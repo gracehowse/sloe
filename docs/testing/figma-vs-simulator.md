@@ -105,6 +105,24 @@ When comparing, tap **days with sage dots** (logged), **scroll** the full stack.
 
 **Agent captures:** `apps/mobile/screenshots/agent/` — e.g. `figma-01-today.png`, `today-mon-1-hero.png`, `today-mon-1-scrolled-meals.png`.
 
+## S5 · Today empty — screenshot wall (ENG-889)
+
+**Figma frame:** [`360:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=360-2) (S5 · Today empty) · Stitch: `docs/prototypes/stitch-sloe/today-empty.html`
+
+**Preconditions:** signed-in user; **today's journal empty** (`consumed === 0`); `today_tracker_tier_v1` ON (default-on).
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Hero — status chip | **Fresh start** label + sparkles; **no fill** behind chip (plum text only) |
+| 2 | Hero — ring centre | **LEFT** (or 0 consumed) with full goal visible; gradient ring on empty day (ENG-1086) |
+| 3 | Hero — stat row | **Goal / Eaten / Bonus** with honest zeros (not hidden) |
+| 4 | Under-ring coach | Food-forward cold-open line (`Fresh start — what's for…`) via `todayRoomForMeal` |
+| 5 | Macro tiles | Tertiary **0 / target** values; no progress bars when tier-v1 ON |
+| 6 | Meal slots | Empty slots at full opacity with aim line (calm mode) |
+| 7 | Web parity | Repeat 1–4 on `http://localhost:3000` tracker at ~390px + desktop |
+
+**Intentional drift (do not file):** Stitch S5 still shows filled `bg-frost-mist` chip and "A blank canvas…" coach copy — product uses de-tinted chip + ENG-939 food-forward coach. Week-strip sage dots on past days alongside Fresh start is correct (today-only diary).
+
 ## Prompt template
 
 ```

@@ -363,7 +363,7 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-1101 | Medium | Dependency update pass — 34 production-dep bumps fail CI, do in smaller batches |
 | ENG-993 | Medium | Defensive: route PostHog flags/experiments through a first-party proxy |
 | ENG-853 | Medium | Docs-only PRs are permanently BLOCKED by required visual checks that never run |
-| ENG-1166 | Low | Root docs reference missing `apps/mobile/AGENTS.md` |
+| ENG-1166 | Low | Root docs reference missing `apps/mobile/AGENTS.md` | **Done** — Option C: `.claude/CLAUDE.md` canonical; root `AGENTS.md` tracked mirror (`docs/decisions/2026-06-17-agent-docs-claude-canonical.md`) |
 | ENG-1160 | Low | Re-home 7 architecture-enabler issues to Platform foundations + retire the dead Premium  |
 | ENG-1159 | Low | Vendor/logging cleanups: edamamNutritionAnalysis dead code, 4000-char caption truncation |
 | ENG-1156 | Low | Delete orphaned onboarding/finalStep.ts (dead code, banned 'staged for follow-up', refer |

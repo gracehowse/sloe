@@ -145,7 +145,7 @@ function Stat({
 /**
  * StatusChip — the calm state pill above the ring (SLOE `01 · Today`
  * frame, chip-left). Three states with Sloe tints + a lucide glyph:
- *   - empty → "Fresh start" (frost-mist / plum, sparkles)
+ *   - empty → "Fresh start" (plum text; fill only when tier-v1 flag OFF)
  *   - under → "Under budget" (sage tint, circle-check)
  *   - over  → "Over budget"  (destructive tint, circle-alert)
  * Copy comes from the shared `todayStatusChip` helper (Figma `01 · Today`).
@@ -161,6 +161,7 @@ function StatusChip({
   isDark: boolean;
   onPress?: () => void;
 }) {
+  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const accent = useAccent();
   // Split the sage into a FILL hue (tint bg) and an INK hue (text/icon). The
   // base sage (#5E7C5A) is only 4.0:1 as text on its own tint — borderline; the
@@ -175,8 +176,20 @@ function StatusChip({
     state === "over"
       ? { fg: red, bg: `${red}1A`, Icon: CircleAlert }
       : state === "empty"
-        ? { fg: plum, bg: isDark ? Colors.dark.backgroundSecondary : Colors.light.ringTrack, Icon: Sparkles }
-        : { fg: sageInk, bg: `${sageFill}2E`, Icon: CircleCheck };
+        ? {
+            fg: plum,
+            bg: tierV1
+              ? "transparent"
+              : isDark
+                ? Colors.dark.backgroundSecondary
+                : Colors.light.ringTrack,
+            Icon: Sparkles,
+          }
+        : {
+            fg: sageInk,
+            bg: tierV1 ? "transparent" : `${sageFill}2E`,
+            Icon: CircleCheck,
+          };
   const { fg, bg, Icon } = config;
   const label = todayStatusChip(state, overByKcal);
   const chipStyle = {

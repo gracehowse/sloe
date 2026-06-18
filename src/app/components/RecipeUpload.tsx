@@ -44,6 +44,7 @@ import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidenc
 import { stripSectionPrefix } from "../../lib/recipe-import/socialUrlHelpers.ts";
 import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
 import { ImportSuccessSheet } from "./suppr/import-success-sheet.tsx";
+import { ImportRecentImports } from "./suppr/import-recent-imports.tsx";
 import { SupprButton } from "./suppr/suppr-button.tsx";
 import {
   IMPORT_ERROR_COPY,
@@ -60,6 +61,10 @@ import {
   saveImportedRecipe as persistImportedRecipeDraft,
   type ApiImportedRecipe,
 } from "../../lib/recipes/persistImportedRecipe.ts";
+import {
+  fetchRecentImports,
+  type RecentImportItem,
+} from "../../lib/recipes/recentImports.ts";
 import {
   Dialog,
   DialogContent,
@@ -192,7 +197,7 @@ function amountToNumeric(raw: string): number | null {
 
 export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
   const router = useRouter();
-  const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets } = useAppData();
+  const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets, userId } = useAppData();
   const searchParams = useSearchParams();
   // import-progress-v2 (2026-06-08) — staged-progress + queue import UX.
   // Flag-gated per CLAUDE.md; the legacy inline-skeleton path stays live in
@@ -236,6 +241,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     title: string;
     macroLine: string | null;
   } | null>(null);
+  /** ENG-898 — recent URL imports (web parity with mobile import-shared). */
+  const [recentImports, setRecentImports] = useState<RecentImportItem[]>([]);
   const [verifying, setVerifying] = useState(false);
   const [verifiedLines, setVerifiedLines] = useState<VerifiedLine[] | null>(null);
   const [verifiedTotals, setVerifiedTotals] = useState<{
@@ -274,6 +281,24 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     }
     return m;
   }, [verifiedLines]);
+
+  const reloadRecentImports = useCallback(async () => {
+    if (!userId) {
+      setRecentImports([]);
+      return;
+    }
+    try {
+      const items = await fetchRecentImports(supabase, userId);
+      setRecentImports(items);
+    } catch {
+      setRecentImports([]);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (mode !== "import") return;
+    void reloadRecentImports();
+  }, [mode, reloadRecentImports]);
 
   const openMatchPicker = (idx: number, suggested: string) => {
     setMatchPickerIdx(idx);
@@ -645,12 +670,13 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         setRecipeId(saved.recipeId);
         setImportSaveFirstActive(true);
         void refreshMyLibraryRecipes();
+        void reloadRecentImports();
         track(AnalyticsEvents.recipe_import_saved_first, { platform: "web" as const });
         return true;
       }
       return false;
     },
-    [refreshMyLibraryRecipes],
+    [refreshMyLibraryRecipes, reloadRecentImports],
   );
 
   /**
@@ -1445,6 +1471,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
 
       await refreshDiscoverRecipes();
       await refreshMyLibraryRecipes();
+      if (mode === "import") void reloadRecentImports();
       ensureRecipeInLibraryWithKind(id, mode === "create" ? "created" : "imported");
 
       // Sloe image system (2026-06-08) — when the recipe saved with the
@@ -1690,11 +1717,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             </div>
           </div>
 
-          {/* Recent Imports placeholder */}
-          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Recent imports</p>
-            <p className="text-xs text-muted-foreground">No recent imports</p>
-          </div>
+          <ImportRecentImports items={recentImports} />
         </div>
       ) : null}
 

@@ -42,6 +42,11 @@ import {
   IMPORT_ERROR_COPY,
   userFacingImportError,
 } from "@suppr/shared/recipes/importErrorCopy";
+import {
+  fetchRecentImports,
+  recentImportMonogram,
+  type RecentImportItem,
+} from "@suppr/shared/recipes/recentImports";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
@@ -314,27 +319,13 @@ export default function ImportSharedScreen() {
   }, [userId]);
 
   // Fetch recent imported recipes
-  const [recentImports, setRecentImports] = useState<{ name: string; source: string; time: string }[]>([]);
+  const [recentImports, setRecentImports] = useState<RecentImportItem[]>([]);
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("recipes")
-        .select("title, source_name, created_at")
-        .eq("author_id", userId)
-        .not("source_url", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(3);
-      if (cancelled || !data) return;
-      const now = Date.now();
-      setRecentImports(data.map((r: any) => {
-        const diffDays = Math.floor((now - new Date(r.created_at).getTime()) / 86400000);
-        const time = diffDays === 0 ? "Today" : diffDays === 1 ? "Yesterday" : `${diffDays} days ago`;
-        const src = (r.source_name ?? "").toLowerCase();
-        const source = src.includes("tiktok") ? "tiktok" : src.includes("instagram") ? "instagram" : src.includes("youtube") ? "youtube" : "web";
-        return { name: r.title, source, time };
-      }));
+    void (async () => {
+      const items = await fetchRecentImports(supabase, userId);
+      if (!cancelled) setRecentImports(items);
     })();
     return () => { cancelled = true; };
   }, [userId]);
@@ -2386,7 +2377,7 @@ export default function ImportSharedScreen() {
                     <View key={idx} style={styles.recentItem}>
                       <View style={styles.recentBadge}>
                         <Text style={styles.recentBadgeText}>
-                          {item.source === "tiktok" ? "TT" : item.source === "instagram" ? "IG" : item.source === "youtube" ? "YT" : "W"}
+                          {recentImportMonogram(item.source)}
                         </Text>
                       </View>
                       <View style={styles.recentInfo}>
@@ -2477,7 +2468,7 @@ export default function ImportSharedScreen() {
                   <View key={idx} style={styles.recentItem}>
                     <View style={styles.recentBadge}>
                       <Text style={styles.recentBadgeText}>
-                        {item.source === "tiktok" ? "TT" : item.source === "instagram" ? "IG" : item.source === "youtube" ? "YT" : "W"}
+                        {recentImportMonogram(item.source)}
                       </Text>
                     </View>
                     <View style={styles.recentInfo}>

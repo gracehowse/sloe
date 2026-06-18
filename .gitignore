@@ -28,8 +28,11 @@ tsconfig.tsbuildinfo
 .cursor/
 .agents/
 .codex/
-# Cursor-generated agent instructions (machine-local; CLAUDE.md is the tracked equivalent).
-AGENTS.md
+# Root AGENTS.md is TRACKED (cross-tool mirror of .claude/CLAUDE.md — ENG-1166 Option C).
+# Ignore nested AGENTS.md stubs only:
+apps/**/AGENTS.md
+# Canonical agent instructions: `.claude/CLAUDE.md` + scoped `apps/*/CLAUDE.md`.
+# After editing CLAUDE.md: npm run sync:agent-docs
 
 # Claude Code local scheduler lock (machine-specific)
 .claude/scheduled_tasks.lock
