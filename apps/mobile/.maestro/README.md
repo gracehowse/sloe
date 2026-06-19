@@ -86,6 +86,22 @@ maestro record .maestro/01_navigation.yaml -e EXPO_DEV_SERVER_URL='exp://127.0.0
 
 **Physical device:** Metro must be reachable from the phone. Often `exp://<your-mac-lan-ip>:8081`, or use `npx expo start --tunnel` and the **`exp://`** URL Expo prints for tunnel mode.
 
+
+### Hydration sentinels for visual evidence
+
+Visual-sweep flows must wait for data-driven screens to expose their hidden
+`*-hydrated` testID before the first `takeScreenshot`. Waiting only for the
+screen container (for example `screen-today`) can capture pre-hydration
+skeletons, transient join-load states, or stale dev-client bundle output that
+looks like a real design regression. Current sentinels are `today-hydrated`,
+`planner-hydrated`, `discover-hydrated`, and `progress-hydrated`; add a matching
+non-user-facing wrapper testID before introducing screenshots for another
+data-driven surface.
+
+`npm run mobile:test:dark-sweep` also terminates the app after pre-warming Metro
+so Maestro launches against the freshly compiled bundle instead of reusing a
+running stale JS bundle.
+
 ## Visual regression — screenshot diff
 
 Maestro flows assert text visibility, not how the screen *looks*. A button can overlap a macro card by 3 px and every `assertVisible` still passes. The screenshot-diff layer closes that gap on the daily-loop surfaces.

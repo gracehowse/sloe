@@ -636,6 +636,7 @@ export default function DiscoverScreen() {
     >
       <RecipesTabChrome />
       <ScrollView
+        testID="discover-hydrated"
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: insets.bottom + 40 }}
         refreshControl={

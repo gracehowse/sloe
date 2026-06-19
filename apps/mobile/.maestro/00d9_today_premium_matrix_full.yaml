@@ -16,7 +16,7 @@ name: "Today premium matrix — full sim (light)"
 - openLink: suppr:///
 - extendedWaitUntil:
     visible:
-      id: "screen-today"
+      id: "today-hydrated"
     timeout: 30000
 - waitForAnimationToEnd
 

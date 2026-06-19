@@ -5051,6 +5051,7 @@ export default function TrackerScreen() {
             the scroll `paddingTop: sm` as the top inset against the screen
             edge, not a margin+gap stack against another element. */}
         <View
+          testID="today-hydrated"
           style={{
             flexDirection: "row",
             justifyContent: "space-between",

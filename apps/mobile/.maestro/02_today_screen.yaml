@@ -8,6 +8,10 @@ name: "Today screen — ring, macros, raised tab-bar Log button → LogSheet"
 - tapOn:
     id: "tab-today"
 - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "today-hydrated"
+    timeout: 30000
 
 # Calorie ring visible — canonical "Today loaded" signal.
 # Empty-day shows "Start your day"; populated day shows "LOGGED" or "kcal".

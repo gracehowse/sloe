@@ -136,17 +136,16 @@ restore() {
 }
 trap restore EXIT
 
-# ─── Force a fresh app launch ONLY if we changed the manifest ────────
-# If the manifest didn't need changing, the running app's in-memory
-# preference already matches what's on disk, so no terminate needed.
-# Terminating when not needed adds fragility — the cold-launched app
-# may not be ready to handle deeplinks before the flow fires them.
-if [ "$MANIFEST_BACKED_UP" = "1" ]; then
-  echo "[dark-sweep] Terminating app so the next launch re-reads AsyncStorage..."
-  xcrun simctl terminate booted "$APP_BUNDLE_ID" 2>/dev/null || true
-  # Give the system a moment to release the app before Maestro relaunches.
-  sleep 2
-fi
+# ─── Force a fresh app launch before capture ────────────────────────
+# ENG-769: the 2026-05-30 sweep captured a stale dev-client JS bundle even
+# though Metro had current source. Pre-warming Metro compiles HEAD; always
+# terminating here forces the dev client to fetch that freshly-built bundle
+# before Maestro captures. Stale running bundles are therefore refused by
+# construction instead of silently producing phantom design evidence.
+echo "[dark-sweep] Terminating app so Maestro launches the freshly pre-warmed bundle..."
+xcrun simctl terminate booted "$APP_BUNDLE_ID" 2>/dev/null || true
+# Give the system a moment to release the app before Maestro relaunches.
+sleep 2
 
 # ─── Run the flow ────────────────────────────────────────────────────
 echo "[dark-sweep] Running Maestro flow: $FLOW"

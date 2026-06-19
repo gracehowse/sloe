@@ -1201,6 +1201,7 @@ export default function ProgressScreen() {
     <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top }}>
     <ProgressTabChrome trailing={progressLogWeightButton} />
     <ScrollView
+      testID="progress-hydrated"
       style={{ flex: 1, backgroundColor: t.bg }}
       contentContainerStyle={progressScrollStyle}
       keyboardShouldPersistTaps="handled"

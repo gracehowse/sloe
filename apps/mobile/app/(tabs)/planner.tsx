@@ -2696,7 +2696,7 @@ export default function PlannerScreen() {
           </View>
         }
       />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView testID="planner-hydrated" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <ReAnimated.View style={headerEntrance.style}>
         {/* Named plan slots switcher — pre-2026-05-22 this rendered
             unconditionally, which on a single-plan setup put a "This

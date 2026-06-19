@@ -14,6 +14,10 @@ name: "Discover — search, filters, import CTA, recipe cards"
 - tapOn:
     id: "subtab-discover"
 - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: "discover-hydrated"
+    timeout: 30000
 
 # Header — Discover sub-tab loaded.
 - assertVisible: ".*Discover.*"

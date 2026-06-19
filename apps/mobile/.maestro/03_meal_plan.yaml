@@ -7,6 +7,10 @@ name: "Meal plan — generate, view, shopping list"
 
 - tapOn:
     id: "tab-plan"
+- extendedWaitUntil:
+    visible:
+      id: "planner-hydrated"
+    timeout: 30000
 - assertVisible: ".*Meal [Pp]lan.*"
 
 # Visual baseline #1 — Plan landing (idle / generated state).
