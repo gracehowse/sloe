@@ -88,6 +88,25 @@ const SLOPE_CAP_KG_PER_DAY = SLOPE_CAP_KG_PER_WEEK / 7;
 export const PLAUSIBILITY_LOWER_FRACTION = 0.85;
 export const PLAUSIBILITY_UPPER_FRACTION = 1.3;
 
+/**
+ * Confidence-tier thresholds. Exported (not inline magic numbers) so the
+ * Progress "data progress toward adaptive" UI reads the SAME gate the engine
+ * uses. ENG-1189: the Maintenance card previously hardcoded `/7` weigh-ins and
+ * `/21` logging days — the *high*-confidence numbers — against lifetime
+ * any-entry day counts, while the value that actually surfaces as "Adaptive"
+ * only needs MEDIUM confidence over gated full days in the trailing window.
+ * Two different gates, one screen → the card read "21/21 + 10/7" full while
+ * still gated. These constants are now the single source of truth.
+ *
+ * Adaptive only *surfaces* as Maintenance at medium/high (the persistence
+ * writer `refreshAdaptiveTdee` skips low-confidence results, and
+ * `resolveMaintenance` rejects low). So MEDIUM is the honest "engages" bar.
+ */
+export const MEDIUM_CONFIDENCE_LOGGING_DAYS = 14;
+export const MEDIUM_CONFIDENCE_WEIGH_INS = 5;
+export const HIGH_CONFIDENCE_LOGGING_DAYS = 21;
+export const HIGH_CONFIDENCE_WEIGH_INS = 7;
+
 export type AdaptiveTdeeClampReason =
   | "below_sedentary_band"
   | "above_sedentary_band"
@@ -206,9 +225,31 @@ function leastSquaresSlopeKgPerDay(entries: [string, number][]): number {
   return (n * sxy - sx * sy) / denom;
 }
 
-export function computeAdaptiveTDEE(
-  input: AdaptiveTdeeInput,
-): AdaptiveTdeeResult | null {
+/**
+ * The completeness floor + gated-day / weigh-in tallies that drive the engage
+ * gate. Extracted so the Progress "data progress toward adaptive" UI can read
+ * the SAME numbers the engine uses (ENG-1189) instead of a parallel,
+ * lifetime-any-entry count. Pure; no side effects.
+ */
+export type AdaptiveDataCounts = {
+  /** The per-day kcal floor applied (max(1000, 0.8 × BMR)). */
+  completeDayFloorKcal: number;
+  /** Gated full logging days within the trailing window. */
+  loggingDays: number;
+  /** Weigh-ins within the trailing window. */
+  weighInCount: number;
+  /** Days with any kcal logged in the window that were excluded as partial. */
+  excludedPartialDays: number;
+  /** The window (days) the counts were measured over. */
+  windowDays: number;
+};
+
+export function computeAdaptiveDataCounts(
+  input: Pick<
+    AdaptiveTdeeInput,
+    "intakeByDay" | "weightByDay" | "entryCountByDay" | "bmrKcal" | "windowDays"
+  >,
+): AdaptiveDataCounts {
   const windowDays = input.windowDays ?? DEFAULT_WINDOW_DAYS;
   const cutoff = cutoffDate(windowDays);
 
@@ -243,9 +284,50 @@ export function computeAdaptiveTDEE(
     ([k]) => k >= cutoff,
   );
 
-  const loggingDays = gatedIntakeEntries.length;
-  const weighInCount = weightEntries.length;
-  const excludedPartialDays = loggedInWindow.length - gatedIntakeEntries.length;
+  return {
+    completeDayFloorKcal,
+    loggingDays: gatedIntakeEntries.length,
+    weighInCount: weightEntries.length,
+    excludedPartialDays: loggedInWindow.length - gatedIntakeEntries.length,
+    windowDays,
+  };
+}
+
+export function computeAdaptiveTDEE(
+  input: AdaptiveTdeeInput,
+): AdaptiveTdeeResult | null {
+  const windowDays = input.windowDays ?? DEFAULT_WINDOW_DAYS;
+  const cutoff = cutoffDate(windowDays);
+
+  const {
+    completeDayFloorKcal,
+    loggingDays,
+    weighInCount,
+    excludedPartialDays,
+  } = computeAdaptiveDataCounts({
+    intakeByDay: input.intakeByDay,
+    weightByDay: input.weightByDay,
+    entryCountByDay: input.entryCountByDay,
+    bmrKcal: input.bmrKcal,
+    windowDays,
+  });
+
+  // Re-derive the gated intake entries for the average (same gate, in-window).
+  const gatedIntakeEntries = sortedEntries(input.intakeByDay).filter(
+    ([k, v]) => {
+      if (k < cutoff || v <= 0) return false;
+      if (v < completeDayFloorKcal) return false;
+      if (input.entryCountByDay) {
+        const count = input.entryCountByDay[k] ?? 0;
+        if (count < MIN_COMPLETE_DAY_ENTRIES) return false;
+      }
+      return true;
+    },
+  );
+
+  const weightEntries = sortedEntries(input.weightByDay).filter(
+    ([k]) => k >= cutoff,
+  );
 
   // Excluded (partial) days do NOT count toward the window or confidence:
   // eligibility is measured on gated days only.
@@ -272,9 +354,15 @@ export function computeAdaptiveTDEE(
   const rawTdee = Math.round(Math.max(800, avgDailyIntake - energyFromWeightChange));
 
   let confidence: "low" | "medium" | "high";
-  if (loggingDays >= 21 && weighInCount >= 7) {
+  if (
+    loggingDays >= HIGH_CONFIDENCE_LOGGING_DAYS &&
+    weighInCount >= HIGH_CONFIDENCE_WEIGH_INS
+  ) {
     confidence = "high";
-  } else if (loggingDays >= 14 && weighInCount >= 5) {
+  } else if (
+    loggingDays >= MEDIUM_CONFIDENCE_LOGGING_DAYS &&
+    weighInCount >= MEDIUM_CONFIDENCE_WEIGH_INS
+  ) {
     confidence = "medium";
   } else {
     confidence = "low";

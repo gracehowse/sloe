@@ -21,6 +21,7 @@ import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
 import { avgCaloriesOverRecentLoggedDays, calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import { computeAdaptiveDataProgressFromMeals } from "../../lib/nutrition/adaptiveDataProgress.ts";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
 import { buildMaintenanceChain } from "../../lib/nutrition/maintenanceChain.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
@@ -2017,6 +2018,18 @@ function ProgressDashboardContent() {
         if (!resolved) return null;
         const showAdaptiveExtras = resolved.source === "adaptive";
         const showMeasuredExtras = resolved.source === "measured";
+        // ENG-1189: honest "how close to adaptive?" status, measured against
+        // the SAME gate the engine uses (gated full days + weigh-ins in the
+        // trailing window, medium-confidence engage thresholds) — not the old
+        // lifetime any-entry counts against the high-confidence /7 + /21 bars.
+        const adaptiveProgress = computeAdaptiveDataProgressFromMeals({
+          mealsByDay: nutritionByDay,
+          weightByDay: weightKgByDay,
+          sex: profileSexCached,
+          weightKg: weightKg ?? null,
+          heightCm: profileHeightCmCached,
+          age: profileAgeCached,
+        });
         return (
         <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6 mt-6" data-testid="progress-maintenance-card">
           <div className="flex items-center gap-2 mb-3">
@@ -2125,11 +2138,8 @@ function ProgressDashboardContent() {
             ) : (
               <>
                 Maintenance is the calories you&apos;d burn in a normal day. Formula estimate from your stats and activity level. Log meals and weigh in regularly to unlock an adaptive value that adjusts to your real burn.
-                {(() => {
-                  const weightDays = Object.keys(weightKgByDay).length;
-                  if (weightDays < 3) return <> You need at least 3 weigh-ins and 7 days of food logging to get started.</>;
-                  return <> Keep logging — your adaptive maintenance will activate once enough data accumulates.</>;
-                })()}
+                {" "}
+                <span data-testid="maintenance-adaptive-status">{adaptiveProgress.message}</span>
               </>
             )}
           </p>
@@ -2201,26 +2211,34 @@ function ProgressDashboardContent() {
             );
           })()}
 
-          {/* Data progress for non-adaptive users */}
+          {/* Data progress for non-adaptive users.
+              ENG-1189 — counts + targets now come from the shared
+              `computeAdaptiveDataProgressFromMeals` helper, which mirrors the
+              engine's gate exactly: weigh-ins + GATED full logging days in the
+              trailing 28-day window, against the MEDIUM-confidence engage
+              thresholds (the bar at which adaptive actually surfaces). Was
+              hardcoded `/7` + `/21` (the high-confidence tier) against lifetime
+              any-entry counts, which let the bars read "full" while the engine
+              was still gated. */}
           {!showAdaptiveExtras && (
-            <div className="mt-3 pt-3 border-t border-border">
+            <div className="mt-3 pt-3 border-t border-border" data-testid="maintenance-data-progress">
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] text-muted-foreground">Weigh-ins</span>
-                    <span className="text-[10px] font-semibold tabular-nums text-foreground">{Object.keys(weightKgByDay).length}/7</span>
+                    <span className="text-[10px] font-semibold tabular-nums text-foreground" data-testid="maintenance-weighin-count">{adaptiveProgress.weighIns}/{adaptiveProgress.weighInsTarget}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (Object.keys(weightKgByDay).length / 7) * 100)}%` }} />
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (adaptiveProgress.weighIns / adaptiveProgress.weighInsTarget) * 100)}%` }} />
                   </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-muted-foreground">Logging days</span>
-                    <span className="text-[10px] font-semibold tabular-nums text-foreground">{Object.keys(nutritionByDay).filter((k) => (nutritionByDay[k] ?? []).length > 0).length}/21</span>
+                    <span className="text-[10px] text-muted-foreground">Full logging days</span>
+                    <span className="text-[10px] font-semibold tabular-nums text-foreground" data-testid="maintenance-logging-count">{adaptiveProgress.loggingDays}/{adaptiveProgress.loggingDaysTarget}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (Object.keys(nutritionByDay).filter((k) => (nutritionByDay[k] ?? []).length > 0).length / 21) * 100)}%` }} />
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (adaptiveProgress.loggingDays / adaptiveProgress.loggingDaysTarget) * 100)}%` }} />
                   </div>
                 </div>
               </div>

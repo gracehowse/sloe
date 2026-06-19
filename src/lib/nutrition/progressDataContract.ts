@@ -30,6 +30,19 @@
  *      Maintenance card falls back to a labelled **"Formula
  *      estimate"** pill with no confidence bars.
  *
+ *      **Compute floor ≠ display engage bar (ENG-1189).** This floor is
+ *      where the engine starts *computing* a value — but that value is
+ *      `low`-confidence, and a low-confidence result is never persisted
+ *      (`refreshAdaptiveTdee` skips it) nor shown (`resolveMaintenance`
+ *      rejects it). Adaptive only *surfaces* as the Maintenance source at
+ *      **medium** confidence (14 gated logging days + 5 weigh-ins). The
+ *      Maintenance card's "how close to adaptive?" progress bars therefore
+ *      target the medium thresholds, counted by the engine's own gate
+ *      (`adaptiveDataProgress.ts` / `computeAdaptiveDataCounts`), not the
+ *      lifetime any-entry counts they used to. See
+ *      `docs/decisions/2026-06-10-adaptive-tdee-gating.md`
+ *      § "Display-layer follow-on — ENG-1189".
+ *
  *   3. **Weight trend floor (`MIN_WEIGH_INS_FOR_TREND = 2`).**
  *      Below this the WeightChart renders its empty-state
  *      caption ("No weigh-ins in this range") instead of a
