@@ -30,6 +30,7 @@ import { resolve } from "node:path";
 const APP_JSON_PATH = resolve(__dirname, "../../app.json");
 const EAS_JSON_PATH = resolve(__dirname, "../../eas.json");
 const PACKAGE_JSON_PATH = resolve(__dirname, "../../package.json");
+const PACKAGE_LOCK_PATH = resolve(__dirname, "../../package-lock.json");
 
 type AppJson = {
   expo: {
@@ -62,10 +63,23 @@ type PackageJson = {
   devDependencies?: Record<string, string>;
 };
 
+type PackageLockJson = {
+  packages?: Record<
+    string,
+    {
+      version?: string;
+      dependencies?: Record<string, string>;
+    }
+  >;
+};
+
 const appJson: AppJson = JSON.parse(readFileSync(APP_JSON_PATH, "utf8"));
 const easJson: EasJson = JSON.parse(readFileSync(EAS_JSON_PATH, "utf8"));
 const packageJson: PackageJson = JSON.parse(
   readFileSync(PACKAGE_JSON_PATH, "utf8"),
+);
+const packageLockJson: PackageLockJson = JSON.parse(
+  readFileSync(PACKAGE_LOCK_PATH, "utf8"),
 );
 
 describe("expo-updates package", () => {
@@ -73,6 +87,29 @@ describe("expo-updates package", () => {
     // Must be a runtime dep — expo-updates ships native code that
     // expo-cli wires into the iOS/Android build at prebuild time.
     expect(packageJson.dependencies?.["expo-updates"]).toBeDefined();
+  });
+});
+
+describe("Skia native dependency lockstep", () => {
+  it("keeps @shopify/react-native-skia package.json and package-lock in exact version lockstep", () => {
+    // Skia ships native code. A JS-only bump can crash the Today hero ring
+    // on devices whose native binary still has an older Skia pod compiled in
+    // (ENG-1206), so dependency bumps must be tied to a native rebuild and
+    // committed with a lockfile that resolves the same exact version.
+    const declaredVersion =
+      packageJson.dependencies?.["@shopify/react-native-skia"];
+    const lockRootVersion =
+      packageLockJson.packages?.[""]?.dependencies?.[
+        "@shopify/react-native-skia"
+      ];
+    const installedVersion =
+      packageLockJson.packages?.["node_modules/@shopify/react-native-skia"]
+        ?.version;
+
+    expect(declaredVersion).toBeDefined();
+    expect(declaredVersion).not.toMatch(/^[~^]/);
+    expect(lockRootVersion).toBe(declaredVersion);
+    expect(installedVersion).toBe(declaredVersion);
   });
 });
 
@@ -95,9 +132,7 @@ describe("app.json — updates block", () => {
   it("declares an updates.url that targets the project's EAS Update endpoint", () => {
     const projectId = appJson.expo.extra?.eas?.projectId;
     expect(projectId).toBeTruthy();
-    expect(appJson.expo.updates?.url).toBe(
-      `https://u.expo.dev/${projectId}`,
-    );
+    expect(appJson.expo.updates?.url).toBe(`https://u.expo.dev/${projectId}`);
   });
 
   it("sets fallbackToCacheTimeout to 0 (never block cold start on network)", () => {
