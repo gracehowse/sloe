@@ -58,6 +58,15 @@ real trend. **R2 must ship with R1** — shipped alone it makes Grace's number
 *worse* (it removes the accidental cushion the intake error was getting from the
 muted trend).
 
+> **AMENDED 2026-06-18 (ENG-1116):** the flat ±0.35 cap was applied
+> *unconditionally*, which under-credited legitimate fast losers (a real
+> 0.5 kg/week loss pinned at ~385 kcal/day instead of ~550 → maintenance read
+> too low). The cap is now **window/confidence-aware** — ±0.35 at low
+> confidence (short/noisy — the original guard), ±0.70 at medium, ±1.00 at high.
+> The tight low-confidence guard is preserved; the cap only widens once the
+> window earns trust, and the result is still bounded by R3 below. See
+> `docs/decisions/2026-06-18-adaptive-tdee-window-aware-slope-cap.md`.
+
 ### R3 — Plausibility bound (a bound, NOT a standing blend)
 Before the value is published, clamp it into **[0.85, 1.30] × sedentary
 Mifflin** and floor it at the **HealthKit resting-energy** minimum when
