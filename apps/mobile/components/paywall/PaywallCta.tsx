@@ -23,6 +23,7 @@ export function PaywallCta({
   loading,
   onPress,
   arrow = false,
+  accessibilityLabel,
 }: {
   label: string;
   color: string;
@@ -30,6 +31,11 @@ export function PaywallCta({
   loading: boolean;
   onPress: () => void;
   arrow?: boolean;
+  /** ENG-716 — spoken override for VoiceOver. The visible `label` can carry a
+   *  "/month" price suffix that reads as "slash month"; pass the natural-
+   *  language form here (e.g. "Subscribe — £7.99 per month") without altering
+   *  the visible text. Falls back to `label` when omitted. */
+  accessibilityLabel?: string;
 }) {
   const colors = useThemeColors();
   return (
@@ -43,7 +49,7 @@ export function PaywallCta({
         loading && { opacity: 0.7 },
       ]}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
     >
       {loading ? (

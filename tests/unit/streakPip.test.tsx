@@ -58,4 +58,14 @@ describe("StreakPip (web)", () => {
     const twoDay = screen.getByRole("status");
     expect(twoDay.className).toMatch(/text-primary/);
   });
+
+  it("renders the milestone tone with the Sloe warning tokens (ENG-716), not amber-* literals", () => {
+    // 7 days is a milestone; the tone must be the semantic warning token pair
+    // (mobile parity: Accent.warning), never the raw `amber-*` palette literals.
+    render(<StreakPip days={7} />);
+    const pip = screen.getByRole("status");
+    expect(pip.className).toMatch(/bg-warning-soft/);
+    expect(pip.className).toMatch(/text-warning-solid/);
+    expect(pip.className).not.toMatch(/amber-\d/);
+  });
 });

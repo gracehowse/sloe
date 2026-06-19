@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FileQuestion } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 
 /**
@@ -10,16 +11,24 @@ import { Button } from "@/app/components/ui/button";
  *
  * Mirrors `app/error.tsx` styling so the recovery surfaces feel like
  * a single product instead of two ad-hoc pages.
+ *
+ * ENG-716 (token + a11y sweep): migrated off the raw `slate-*` Tailwind
+ * palette literals onto the Sloe semantic tokens (`bg-background`,
+ * `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card`).
+ * The recipe 404 (`app/recipe/[id]/not-found.tsx`) now shares this exact
+ * shell — one 404 visual language across the product, lucide icon in a
+ * tokenised circle, card + eyebrow + primary/outline CTA pair.
  */
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen grid place-items-center px-6 py-12 bg-slate-50 dark:bg-slate-950">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-white/70 dark:bg-slate-900/40 p-6 shadow-lg">
-        <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-          404
-        </p>
-        <h1 className="text-slate-900 dark:text-white mb-2 text-xl font-bold -tracking-[0.02em]">
+    <div className="min-h-screen grid place-items-center px-6 py-12 bg-background">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-[var(--elev-card-soft)] text-center">
+        <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-muted">
+          <FileQuestion className="size-7 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+        </div>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">404</p>
+        <h1 className="text-foreground mb-2 text-xl font-bold -tracking-[0.02em]">
           We couldn&apos;t find that page
         </h1>
         {/* 2026-05-12 (premium-bar audit copy fix): old copy assumed the
@@ -27,10 +36,10 @@ export default function NotFound() {
             deleted"). The 404 page handles every missing route — typos,
             stale bookmarks, retired campaign links — not just recipes.
             Generic + actionable reads better. */}
-        <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           The link may be stale, or the content has moved. Try one of these instead.
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 justify-center">
           <Button asChild>
             <Link href="/home">Back to Today</Link>
           </Button>

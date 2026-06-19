@@ -424,6 +424,8 @@ Severity: **`warn`**. The today/ tree carries a baseline of legacy literals (~45
 ### What's NOT enforced
 
 - Hardcoded hex colors in component files. Rule #1 in the implementation list above is convention-only — there's no AST selector that catches hex literals reliably without false positives. The token system + `useThemeColors()` covers the common path; visual review catches the rest.
+
+  _Off-token literals migrated onto semantic tokens (ENG-716, 2026-06-19, token + a11y sweep): `NutritionSourceBadge` (web green/yellow/slate → `success/warning/muted` tokens; mobile cool-slate `#94a3b8` manual → `sourceManual` warm-grey token); web `streak-pip` milestone tone (`amber-*` literals → `warning-soft`/`warning-solid`, matching mobile's `Accent.warning`); both 404 pages (`app/not-found.tsx` + `app/recipe/[id]/not-found.tsx` — slate/violet/indigo literals + 🍽️ emoji → semantic tokens + lucide `FileQuestion`/`UtensilsCrossed`, unified onto one card shell). Source-check guards: `tests/unit/nutritionSourceBadge.test.ts`, `tests/unit/streakPip.test.tsx`, `tests/unit/notFoundTokenParity.test.ts`, `apps/mobile/tests/unit/paywallPriceA11y.test.tsx`. These surfaces should NOT be re-flagged in colour censuses._
 - `tabular-nums` on numerical Text. Rule-by-convention.
 - Tailwind arbitrary values (`p-[14px]`, `text-[15px]`) on web. Possible future addition; the today/ web tree is too clean to make this urgent.
 

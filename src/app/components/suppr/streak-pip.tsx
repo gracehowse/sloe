@@ -97,10 +97,14 @@ export function StreakPip({
     : (ariaLabel ?? baseAria);
 
   const isMilestone = [7, 14, 21, 30, 60, 90, 100, 365].includes(safeDays);
+  // ENG-716 — milestone tone migrated off the raw Tailwind `amber-*` palette
+  // literals onto the Sloe `warning` (amber) semantic tokens, matching the
+  // mobile StreakPip milestone tone (`Accent.warning`). `-soft` fill + `-solid`
+  // text auto-swap in dark mode, replacing the hand-rolled `dark:` overrides.
   const toneClass = freezeProtected
     ? "bg-muted text-muted-foreground"
     : isMilestone
-      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+      ? "bg-warning-soft text-warning-solid"
       : active
         ? "bg-primary/10 text-primary"
         : "bg-muted text-muted-foreground";
