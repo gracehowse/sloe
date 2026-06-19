@@ -39,7 +39,9 @@ import {
  * `docs/decisions/2026-04-19-onboarding-redesign-scope.md`.
  */
 
-const baseState = (overrides: Partial<OnboardingState> = {}): OnboardingState => ({
+const baseState = (
+  overrides: Partial<OnboardingState> = {},
+): OnboardingState => ({
   ...DEFAULT_ONBOARDING_STATE,
   ...overrides,
 });
@@ -122,7 +124,9 @@ describe("onboarding v2 — resolveNextStep auto-skip", () => {
 
   it("clamps to [0, TOTAL_STEPS - 1]", () => {
     expect(resolveNextStep(0, -1, baseState())).toBe(0);
-    expect(resolveNextStep(TOTAL_STEPS - 1, +1, baseState())).toBe(TOTAL_STEPS - 1);
+    expect(resolveNextStep(TOTAL_STEPS - 1, +1, baseState())).toBe(
+      TOTAL_STEPS - 1,
+    );
   });
 });
 
@@ -170,7 +174,9 @@ describe("onboarding v2 — signup after reveal (ENG-962)", () => {
   it("lets users reach reveal without a session (targets-first path)", () => {
     expect(canAdvance("goal", baseState({ goal: "lose" }))).toBe(true);
     expect(canAdvance("reveal", baseState())).toBe(true);
-    expect(canAdvance("signup", baseState(), { hasSession: false })).toBe(false);
+    expect(canAdvance("signup", baseState(), { hasSession: false })).toBe(
+      false,
+    );
   });
 
   it("reveal Continue lands on signup", () => {
@@ -289,7 +295,12 @@ describe("onboarding v2 — canAdvance per step", () => {
     // advances to `data-bridges`, the new terminal step.
     ["reveal", baseState(), true, ""],
     // data-bridges — terminal, all cards optional, "skip" is valid.
-    ["data-bridges", baseState(), true, "always advances (every card optional)"],
+    [
+      "data-bridges",
+      baseState(),
+      true,
+      "always advances (every card optional)",
+    ],
     [
       "data-bridges",
       baseState({ dataBridgeChosen: "skip" }),
@@ -334,7 +345,9 @@ describe("onboarding v2 — signup advance is gated on a real session (ENG-672)"
    * gate is ever loosened back to an unconditional `true`.
    */
   it("BLOCKS advance when no session has landed (the data-loss guard)", () => {
-    expect(canAdvance("signup", baseState(), { hasSession: false })).toBe(false);
+    expect(canAdvance("signup", baseState(), { hasSession: false })).toBe(
+      false,
+    );
     // Undefined hasSession (e.g. a deep-link path that didn't thread
     // auth) must default to the SAFE answer — do not advance.
     expect(canAdvance("signup", baseState(), {})).toBe(false);
@@ -434,12 +447,12 @@ describe("onboarding v2 — pace safety floor is SOFT-WARN", () => {
       paceKgPerWeek: 0.4,
       paceDangerAcknowledged: false,
     });
-    expect(
-      canAdvance("pace", state, { paceWarning: { level: "warn" } }),
-    ).toBe(true);
-    expect(
-      canAdvance("pace", state, { paceWarning: { level: "info" } }),
-    ).toBe(true);
+    expect(canAdvance("pace", state, { paceWarning: { level: "warn" } })).toBe(
+      true,
+    );
+    expect(canAdvance("pace", state, { paceWarning: { level: "info" } })).toBe(
+      true,
+    );
   });
 
   it("allows advance when pace is null — default preset applies", () => {
@@ -478,5 +491,16 @@ describe("onboarding v2 — pace presets + ranges", () => {
       expect(def).toBeLessThanOrEqual(range.max);
     }
     expect(GOAL_DEFAULT_PACE.maintain).toBe(0);
+  });
+});
+
+describe("onboarding v2 — optional pronouns", () => {
+  it("does not gate the sex step or change BMR-driving sex", () => {
+    expect(canAdvance("sex", baseState({ sex: "female", pronouns: "" }))).toBe(
+      true,
+    );
+    expect(
+      canAdvance("sex", baseState({ sex: null, pronouns: "they/them" })),
+    ).toBe(false);
   });
 });

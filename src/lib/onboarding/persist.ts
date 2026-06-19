@@ -149,7 +149,7 @@ export function mapV2GoalToLegacy(goal: V2Goal): ProductionGoal {
 /** Minimal Supabase client shape — same loose typing as
  *  `dailyTargetSnapshot.ts` so this helper works for both web
  *  (`browserClient`) and mobile (`@/lib/supabase`) without `as any`. */
- 
+
 export type PersistSupabaseClient = any;
 
 export interface PersistResult {
@@ -171,6 +171,7 @@ export interface ProfileUpsertRow {
   // tier-column lockdown trigger for paid users and fails the whole
   // upsert. The DB column default ('free') covers new-user inserts.
   sex: Sex | null;
+  pronouns: string | null;
   age: number | null;
   height_cm: number | null;
   weight_kg: number | null;
@@ -238,10 +239,18 @@ export function effectiveTargetsForPersist(
     fat: state.manualTargetsFatG,
   };
   const allFiniteAndPositive =
-    m.kcal != null && Number.isFinite(m.kcal) && m.kcal > 0 &&
-    m.protein != null && Number.isFinite(m.protein) && m.protein > 0 &&
-    m.carbs != null && Number.isFinite(m.carbs) && m.carbs > 0 &&
-    m.fat != null && Number.isFinite(m.fat) && m.fat > 0;
+    m.kcal != null &&
+    Number.isFinite(m.kcal) &&
+    m.kcal > 0 &&
+    m.protein != null &&
+    Number.isFinite(m.protein) &&
+    m.protein > 0 &&
+    m.carbs != null &&
+    Number.isFinite(m.carbs) &&
+    m.carbs > 0 &&
+    m.fat != null &&
+    Number.isFinite(m.fat) &&
+    m.fat > 0;
 
   if (!allFiniteAndPositive) return computed;
 
@@ -305,12 +314,14 @@ export function buildProfileUpsertRow(args: {
     state.manualTargetsProteinG != null &&
     state.manualTargetsCarbsG != null &&
     state.manualTargetsFatG != null;
-  const hasTargets = (manualOverride || !state.weightSkipped) && targets != null;
+  const hasTargets =
+    (manualOverride || !state.weightSkipped) && targets != null;
 
   return {
     id: userId,
     display_name: state.name.trim() ? state.name.trim() : null,
     sex: state.sex,
+    pronouns: state.pronouns.trim() ? state.pronouns.trim() : null,
     age: Number.isFinite(state.age) ? state.age : null,
     height_cm: Number.isFinite(state.heightCm) ? state.heightCm : null,
     weight_kg: state.weightSkipped
@@ -334,7 +345,7 @@ export function buildProfileUpsertRow(args: {
     pace_kg_per_week:
       state.goal === "maintain" || state.weightSkipped || state.goal === null
         ? null
-        : state.paceKgPerWeek ?? GOAL_DEFAULT_PACE[state.goal],
+        : (state.paceKgPerWeek ?? GOAL_DEFAULT_PACE[state.goal]),
     nutrition_strategy: targets?.strategy ?? null,
     dietary: state.diet,
     measurement_system: state.unitSystem,
@@ -385,17 +396,22 @@ export async function persistOnboarding(
     if (
       error &&
       typeof error.message === "string" &&
-      error.message.includes("pace_kg_per_week")
+      (error.message.includes("pace_kg_per_week") ||
+        error.message.includes("pronouns"))
     ) {
       // Observability (data-integrity nit 2026-05-26): make a misordered
       // deploy (code before migration push) visible instead of silent.
       console.warn(
-        "[onboarding-v2] pace_kg_per_week column absent — stripped + retried (apply migration 20260526100000)",
+        error.message.includes("pronouns")
+          ? "[onboarding-v2] pronouns column absent — stripped + retried (apply migration 20260619120200)"
+          : "[onboarding-v2] pace_kg_per_week column absent — stripped + retried (apply migration 20260526100000)",
       );
-      const { pace_kg_per_week: _dropped, ...withoutPace } = row;
+      const retryRow = error.message.includes("pronouns")
+        ? (({ pronouns: _droppedPronouns, ...rest }) => rest)(row)
+        : (({ pace_kg_per_week: _droppedPace, ...rest }) => rest)(row);
       const retry = await supabase
         .from("profiles")
-        .upsert(withoutPace, { onConflict: "id" });
+        .upsert(retryRow, { onConflict: "id" });
       error = retry.error;
     }
 
@@ -435,20 +451,30 @@ export async function persistOnboarding(
         supabase as Parameters<typeof recordGoalHistory>[0],
         args.userId,
         {
-          activity_level: typeof row.activity_level === "string" ? row.activity_level : null,
+          activity_level:
+            typeof row.activity_level === "string" ? row.activity_level : null,
           goal: typeof row.goal === "string" ? row.goal : null,
           plan_pace: typeof row.plan_pace === "string" ? row.plan_pace : null,
-          target_calories: typeof row.target_calories === "number" ? row.target_calories : null,
-          target_protein_g: typeof row.target_protein === "number" ? row.target_protein : null,
-          target_carbs_g: typeof row.target_carbs === "number" ? row.target_carbs : null,
-          target_fat_g: typeof row.target_fat === "number" ? row.target_fat : null,
-          target_fiber_g: typeof row.target_fiber_g === "number" ? row.target_fiber_g : null,
+          target_calories:
+            typeof row.target_calories === "number"
+              ? row.target_calories
+              : null,
+          target_protein_g:
+            typeof row.target_protein === "number" ? row.target_protein : null,
+          target_carbs_g:
+            typeof row.target_carbs === "number" ? row.target_carbs : null,
+          target_fat_g:
+            typeof row.target_fat === "number" ? row.target_fat : null,
+          target_fiber_g:
+            typeof row.target_fiber_g === "number" ? row.target_fiber_g : null,
         },
         "onboarding",
       );
     } catch (e) {
-
-      console.warn("[onboarding-v2] recordGoalHistory seed failed (non-fatal):", e instanceof Error ? e.message : e);
+      console.warn(
+        "[onboarding-v2] recordGoalHistory seed failed (non-fatal):",
+        e instanceof Error ? e.message : e,
+      );
     }
   }
 

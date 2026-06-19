@@ -195,6 +195,8 @@ export interface OnboardingState {
   paceKgPerWeek: number | null;
   // Body stats
   sex: Sex | null;
+  /** Optional identity/pronoun capture. Not used for metabolic math. */
+  pronouns: string;
   age: number;
   heightCm: number;
   weightKg: number;
@@ -298,7 +300,10 @@ export const GOAL_DEFAULT_PACE: Record<Goal, number> = {
  * may reintroduce the 0.9 ceiling — tracked in
  * docs/planning/ongoing-backlog.md.)
  */
-export const PACE_RANGES: Record<Goal, { min: number; max: number; step: number }> = {
+export const PACE_RANGES: Record<
+  Goal,
+  { min: number; max: number; step: number }
+> = {
   lose: { min: 0.1, max: 0.75, step: 0.05 },
   maintain: { min: 0, max: 0, step: 0 },
   gain: { min: 0.1, max: 0.4, step: 0.025 },
@@ -337,6 +342,7 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
   goal: null,
   paceKgPerWeek: null,
   sex: null,
+  pronouns: "",
   age: 28,
   heightCm: 170,
   weightKg: 72,
@@ -398,7 +404,8 @@ export function resolveNextStep(
     const id = STEP_IDS[next];
     const skipPace =
       (state.goal === "maintain" || state.weightSkipped) && id === "pace";
-    const skipAppChoice = options?.appChoiceEnabled !== true && id === "app-choice";
+    const skipAppChoice =
+      options?.appChoiceEnabled !== true && id === "app-choice";
     if (skipPace || skipAppChoice) {
       next += dir;
       continue;
