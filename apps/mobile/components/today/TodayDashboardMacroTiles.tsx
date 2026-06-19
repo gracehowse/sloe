@@ -6,16 +6,14 @@ import {
   Candy,
   ChevronRight,
   Droplet,
-  Dumbbell,
   Gauge,
-  Sprout,
-  Wheat,
   type LucideIcon,
 } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
 import { Colors, Spacing, Type } from "@/constants/theme";
 import { MacroStatTile } from "@/components/nutrition/MacroStatTile";
 import { macroColorFor } from "@/lib/macroColors";
+import { MACRO_ICONS } from "@/lib/macroIconsLucide";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useCalmMode } from "@/lib/calmMode";
 import type { JournalMeal } from "@/lib/nutritionJournal";
@@ -124,7 +122,7 @@ export function TodayDashboardMacroTiles({
   // Figma `654:2` macro glyphs (rendered-verified): protein=Dumbbell,
   // carbs=Wheat, fat=Droplet, fibre=Sprout.
   const macroMap: Record<string, MacroDef> = {
-    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: macroColorFor("protein"), unit: "g", Icon: Dumbbell },
+    protein: { label: "Protein", current: totals.protein, target: targets.protein, color: macroColorFor("protein"), unit: "g", Icon: MACRO_ICONS.protein },
     carbs: {
       // P3-30 (2026-04-25): apply net-carbs lens. Helpers refuse "Net
       // carbs" when fibre is unknown so a misleading headline never
@@ -143,10 +141,10 @@ export function TodayDashboardMacroTiles({
       target: netCarbsForRow(targets.carbs, targets.fiber, Boolean(netCarbsLensEnabled)),
       color: macroColorFor("carbs"),
       unit: "g",
-      Icon: Wheat,
+      Icon: MACRO_ICONS.carbs,
     },
-    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroColorFor("fat"), unit: "g", Icon: Droplet },
-    fiber: { label: "Fibre", current: totals.fiber, target: targets.fiber, color: macroColorFor("fiber"), unit: "g", Icon: Sprout },
+    fat: { label: "Fat", current: totals.fat, target: targets.fat, color: macroColorFor("fat"), unit: "g", Icon: MACRO_ICONS.fat },
+    fiber: { label: "Fibre", current: totals.fiber, target: targets.fiber, color: macroColorFor("fiber"), unit: "g", Icon: MACRO_ICONS.fiber },
     sugar: { label: "Sugar", current: Math.round(microSum.sugarG * 10) / 10, target: 50, color: macroColorFor("sugar"), unit: "g", Icon: Candy, referenceOnly: true },
     sodium: { label: "Sodium", current: Math.round(microSum.sodiumMg), target: 2300, color: macroColorFor("sodium"), unit: "mg", Icon: Gauge, referenceOnly: true },
     water: { label: "Water", current: totalWaterMl, target: waterGoalMl, color: macroColorFor("water"), unit: "ml", Icon: Droplet },

@@ -13,16 +13,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-  Dumbbell,
   Check,
   Circle,
-  Flame,
-  Wheat,
-  Droplet,
   BookOpen,
   User,
   ChevronRight,
+  Flame,
+  type LucideIcon,
 } from "lucide-react-native";
+import { MACRO_ICONS } from "@/lib/macroIconsLucide";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -380,7 +379,7 @@ export default function ProfileScreen() {
     label: string;
     unit: string;
     color: string;
-    Icon: typeof Dumbbell;
+    Icon: LucideIcon;
   }) {
     // DRIFT-07 fix (2026-05-22): align Profile Daily Targets tile with
     // Today's macro tile visual language — uppercase label top-left,
@@ -751,10 +750,10 @@ export default function ProfileScreen() {
                 (destructive), Carbs=blue (info), Fat=amber (warning) —
                 breaks the across-app convention where Protein=blue,
                 Carbs=amber, Fat=magenta. */}
-            <TargetStat value={Number(calories) || 0} label="CALORIES" unit="kcal" color={MacroColors.calories} Icon={Flame} />
-            <TargetStat value={Number(protein) || 0} label="PROTEIN" unit="g" color={MacroColors.protein} Icon={Dumbbell} />
-            <TargetStat value={Number(carbs) || 0} label="CARBS" unit="g" color={MacroColors.carbs} Icon={Wheat} />
-            <TargetStat value={Number(fat) || 0} label="FAT" unit="g" color={MacroColors.fat} Icon={Droplet} />
+            <TargetStat value={Number(calories) || 0} label="CALORIES" unit="kcal" color={MacroColors.calories} Icon={MACRO_ICONS.calories} />
+            <TargetStat value={Number(protein) || 0} label="PROTEIN" unit="g" color={MacroColors.protein} Icon={MACRO_ICONS.protein} />
+            <TargetStat value={Number(carbs) || 0} label="CARBS" unit="g" color={MacroColors.carbs} Icon={MACRO_ICONS.carbs} />
+            <TargetStat value={Number(fat) || 0} label="FAT" unit="g" color={MacroColors.fat} Icon={MACRO_ICONS.fat} />
           </View>
           {/*
             E3 (2026-05-11 visual sweep): the Profile screen showed a
