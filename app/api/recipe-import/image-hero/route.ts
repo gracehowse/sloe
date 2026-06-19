@@ -33,6 +33,7 @@ import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import {
+  FAL_IMAGE_MODEL,
   generateDishImage,
   isFalConfigured,
 } from "@/lib/server/falImageGenerator";
@@ -155,7 +156,12 @@ export async function POST(req: Request) {
 
   const { error: updateError } = await admin
     .from("recipes")
-    .update({ image_url: result.url })
+    .update({
+      image_url: result.url,
+      image_source: "ai_generated",
+      image_model: FAL_IMAGE_MODEL,
+      image_generated_at: new Date().toISOString(),
+    })
     .eq("id", recipeId)
     .eq("author_id", userId);
 

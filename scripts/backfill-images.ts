@@ -65,6 +65,7 @@ import { createClient } from "@supabase/supabase-js";
 import { canonicalImageKey } from "../src/lib/recipe/canonicalImageKey";
 import { cleanIngredientDisplayName } from "../src/lib/recipe/cleanIngredientDisplayName";
 import {
+  FAL_IMAGE_MODEL,
   generateDishImage,
   generateIngredientImage,
   isFalConfigured,
@@ -191,7 +192,12 @@ async function runHeroes(sb: ReturnType<typeof createClient> | null) {
     } else {
       const { error: upErr } = await sb
         .from("recipes")
-        .update({ image_url: result.url })
+        .update({
+          image_url: result.url,
+          image_source: "ai_generated",
+          image_model: FAL_IMAGE_MODEL,
+          image_generated_at: new Date().toISOString(),
+        })
         .eq("id", id);
       if (upErr) {
         failed++;

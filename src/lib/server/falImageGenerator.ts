@@ -71,7 +71,8 @@ import { describeDishAppearance } from "./llmDishAppearance";
 // Model is env-swappable. FLUX dev is the cheap bulk run NOW (~$0.02/image,
 // luxury-grade editorial food photography — verified 2026-06-08); Nano Banana
 // Pro returns for the launch hero set. Override with FAL_IMAGE_MODEL.
-const FAL_MODEL = process.env.FAL_IMAGE_MODEL?.trim() || "fal-ai/flux/dev";
+export const FAL_IMAGE_MODEL = process.env.FAL_IMAGE_MODEL?.trim() || "fal-ai/flux/dev";
+const FAL_MODEL = FAL_IMAGE_MODEL;
 const IS_FLUX = /flux/i.test(FAL_MODEL);
 
 /** Map the brand template's aspect_ratio to a FLUX `image_size` enum.

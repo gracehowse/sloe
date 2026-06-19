@@ -1621,6 +1621,9 @@ export type Database = {
           fat: number
           fiber_g: number
           id: string
+          image_generated_at: string | null
+          image_model: string | null
+          image_source: string | null
           image_url: string | null
           instructions: string | null
           is_verified: boolean
@@ -1657,6 +1660,9 @@ export type Database = {
           fat?: number
           fiber_g?: number
           id?: string
+          image_generated_at?: string | null
+          image_model?: string | null
+          image_source?: string | null
           image_url?: string | null
           instructions?: string | null
           is_verified?: boolean
@@ -1693,6 +1699,9 @@ export type Database = {
           fat?: number
           fiber_g?: number
           id?: string
+          image_generated_at?: string | null
+          image_model?: string | null
+          image_source?: string | null
           image_url?: string | null
           instructions?: string | null
           is_verified?: boolean
