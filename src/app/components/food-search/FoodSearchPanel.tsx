@@ -66,11 +66,6 @@ import { genericFoodMicrosPer100g } from "@/lib/nutrition/genericFoodMicros";
 import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import { sanitizeMicrosPer100g, optionalSanitizedMicrosPer100g } from "@/lib/nutrition/microPlausibility";
 import {
-  isBareGenericNounRow,
-  isLowRelevanceNonVerifiedRow,
-  isLowConfidenceDemotedRow,
-} from "@/lib/nutrition/searchRowTrust";
-import {
   projectRemaining,
   type MacroConsumed,
   type MacroTargets,
@@ -115,15 +110,12 @@ import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPort
 import { toast } from "sonner";
 import { foodSearchPreviewExtraMicroRows } from "@/lib/nutrition/foodSearchPreviewNutrition";
 import {
-  foodSearchTrustWeight,
   foodSearchRankScore,
-  searchRelevance,
-  searchMatchScore,
-  searchRowConfidenceTier,
   splitBestMatches,
   type SearchRowConfidenceTier,
   type SectionedSearchRows,
 } from "@/lib/nutrition/foodSearchRanking";
+import { foodSearchSourceLabel, mergeFoodSearchRows } from "@/lib/nutrition/foodSearchMerge";
 import { foodSearchPreviewPlausibilityWarning } from "@/lib/nutrition/portionPicker";
 import {
   matchHistoryFoods,
@@ -793,31 +785,6 @@ export function splitFoodSearchResults(
   });
 }
 
-/**
- * ENG-815 (redesign_search_results) — human-readable provenance label shown on
- * the redesigned result row's "per 100g · <source>" byline. Mirrors the
- * mobile sibling lane's label map so both surfaces name the same source the
- * same way. Custom rows carry their own "Custom" badge, so they fall through
- * to "Custom".
- */
-function foodSearchSourceLabel(source: SearchResult["_source"]): string {
-  switch (source) {
-    case "USDA":
-      return "USDA";
-    case "OFF":
-      return "Open Food Facts";
-    case "Edamam":
-      return "Edamam";
-    case "FatSecret":
-      return "FatSecret";
-    case "CUSTOM":
-      return "Custom";
-    case "GenericBeverage":
-    case "GenericFood":
-      return "Sloe";
-  }
-}
-
 function buildGenericMatchRow(query: string): SearchResult | null {
   const q = query.trim();
   if (!q) return null;
@@ -1073,9 +1040,6 @@ export function FoodSearchPanel({
     );
   }, [customEnabled, supabase, userId]);
 
-  // Same merge / dedup / trust-weight logic as the legacy FoodSearch
-  // had. Kept inline because it closes over `searchRelevance` (module
-  // scope) and the local SearchResult type. F-77 + F-87 + F-89 + F-90.
   const mergeAndDedup = useCallback(
     (
       q: string,
@@ -1087,68 +1051,18 @@ export function FoodSearchPanel({
       limit: number = 25,
       generics: SearchResult[] = [],
     ): SearchResult[] => {
-      const customResults = customs
-        .map((c) => ({ ...customFoodToSearchResult(c), _rel: searchRelevance(q, c.name) }))
-        .sort((a, b) => (b._rel as number) - (a._rel as number));
-      const trustWeight = (r: SearchResult): number =>
-        foodSearchTrustWeight({
-          source: r._source,
-          verified: r.verified,
-          name: r.name,
-        });
-      const external = [...usda, ...off, ...edamam, ...fatsecret]
-        .map((r) => ({ ...r, _rel: Math.max(0, searchRelevance(q, r.name) + trustWeight(r)) }))
-        .sort((a, b) => (b._rel as number) - (a._rel as number))
-        .filter((r) => {
-          const isVerified = Boolean(r.verified);
-          if (isBareGenericNounRow(r.name, isVerified)) return false;
-          if (isLowRelevanceNonVerifiedRow(r._rel as number, isVerified)) return false;
-          // ENG-807 — honest low-confidence demotion keyed off the REAL tier
-          // (provenance + name match), not the raw `verified` flag. Drops e.g.
-          // a USDA Branded "EGGS" row that carries `verified: false` but high
-          // token overlap. `matchScore` is name-only (trust weight is already
-          // in `_rel` and the tier provenance check — not double-counted).
-          const tier = searchRowConfidenceTier({
-            source: r._source,
-            verified: isVerified,
-            matchScore: searchMatchScore(q, r.name),
-          });
-          if (isLowConfidenceDemotedRow({ tier, score: r._rel as number })) return false;
-          return true;
-        });
-      // 2026-05-06: Per-source dedup (not cross-source). Same-named
-      // foods from different sources (USDA "Mcdonald's, Big Mac" vs
-      // FatSecret "McDonald's · Big Mac" both normalising to
-      // "mcdonaldsbigmac") used to collapse to a single row, which
-      // hid FatSecret entries entirely from "big mac" searches.
-      // Per-source dedup gives the user explicit choice between
-      // sources, matching MFP / Cronometer / Lose It UX.
-      const seen = new Set<string>();
-      const deduped: SearchResult[] = [];
-      for (const r of [...customResults, ...generics, ...external]) {
-        const norm = r._source === "CUSTOM"
-          ? `custom:${r._custom?.id ?? r.key}`
-          : r._source === "GenericBeverage" || r._source === "GenericFood"
-            ? `generic:${r.key}`
-            : `${r._source}|${r.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-        if (seen.has(norm)) continue;
-        seen.add(norm);
-        // ENG-807 — stamp the honest confidence tier on every surviving row so
-        // the UI (next stage's lane) can render the Verified / Estimated chip
-        // without recomputing the match. Derived from BOTH provenance and the
-        // name match (never source alone). Custom rows are user-authored →
-        // "estimated"; the row already carries its own "Custom" badge.
-        deduped.push({
-          ...r,
-          confidenceTier: searchRowConfidenceTier({
-            source: r._source,
-            verified: Boolean(r.verified),
-            matchScore: searchMatchScore(q, r.name),
-          }),
-        });
-        if (deduped.length >= limit) break;
-      }
-      return deduped;
+      const customResults = customs.map(customFoodToSearchResult);
+      return mergeFoodSearchRows({
+        query: q,
+        rows: [...customResults, ...generics, ...usda, ...off, ...edamam, ...fatsecret],
+        limit,
+        dedupeKey: (r) =>
+          r._source === "CUSTOM"
+            ? `custom:${r._custom?.id ?? r.key}`
+            : r._source === "GenericBeverage" || r._source === "GenericFood"
+              ? `generic:${r.key}`
+              : `${r._source}|${r.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+      }) as SearchResult[];
     },
     [],
   );

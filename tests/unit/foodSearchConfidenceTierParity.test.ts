@@ -25,11 +25,13 @@ const WEB_PANEL = resolve(
 );
 const RANKING = resolve(__dirname, "../../src/lib/nutrition/foodSearchRanking.ts");
 const TRUST = resolve(__dirname, "../../src/lib/nutrition/searchRowTrust.ts");
+const MERGE = resolve(__dirname, "../../src/lib/nutrition/foodSearchMerge.ts");
 
 const VERIFY_SRC = readFileSync(MOBILE_VERIFY, "utf8");
 const WEB_SRC = readFileSync(WEB_PANEL, "utf8");
 const RANKING_SRC = readFileSync(RANKING, "utf8");
 const TRUST_SRC = readFileSync(TRUST, "utf8");
+const MERGE_SRC = readFileSync(MERGE, "utf8");
 
 describe("ENG-807 — shared ranking module owns the tier + split", () => {
   it("exposes the strengthened scorer + tier + split helpers", () => {
@@ -64,13 +66,10 @@ describe("ENG-807 — mobile data layer wires the tier + split", () => {
     expect(VERIFY_SRC).toMatch(/searchMatchScore/);
   });
 
-  it("stamps confidenceTier on every merged row", () => {
-    expect(VERIFY_SRC).toMatch(/confidenceTier:\s*searchRowConfidenceTier\(\{/);
-    expect(VERIFY_SRC).toMatch(/confidenceTier\?:\s*SearchRowConfidenceTier/);
-  });
-
-  it("applies the tier-keyed demotion gate in mergeResults", () => {
-    expect(VERIFY_SRC).toMatch(/isLowConfidenceDemotedRow\(\{\s*tier,\s*score:\s*r\._relevance\s*\}\)/);
+  it("delegates merged-row tier stamping and demotion to shared merge", () => {
+    expect(VERIFY_SRC).toMatch(/mergeFoodSearchRows\(\{/);
+    expect(MERGE_SRC).toMatch(/confidenceTier:\s*searchRowConfidenceTier\(\{/);
+    expect(MERGE_SRC).toMatch(/isLowConfidenceDemotedRow\(\{\s*tier,\s*score:\s*row\._relevance\s*\}\)/);
   });
 
   it("exports splitFoodSearchResults backed by the shared splitBestMatches", () => {
@@ -81,18 +80,15 @@ describe("ENG-807 — mobile data layer wires the tier + split", () => {
 
 describe("ENG-807 — web data layer wires the tier + split (parity)", () => {
   it("imports the shared tier + split helpers", () => {
-    expect(WEB_SRC).toMatch(/searchRowConfidenceTier/);
+    expect(WEB_SRC).toMatch(/mergeFoodSearchRows/);
     expect(WEB_SRC).toMatch(/splitBestMatches/);
-    expect(WEB_SRC).toMatch(/searchMatchScore/);
+    expect(MERGE_SRC).toMatch(/searchMatchScore/);
   });
 
-  it("stamps confidenceTier on every merged row", () => {
-    expect(WEB_SRC).toMatch(/confidenceTier:\s*searchRowConfidenceTier\(\{/);
-    expect(WEB_SRC).toMatch(/confidenceTier\?:\s*SearchRowConfidenceTier/);
-  });
-
-  it("applies the tier-keyed demotion gate in mergeAndDedup", () => {
-    expect(WEB_SRC).toMatch(/isLowConfidenceDemotedRow\(\{\s*tier,\s*score:\s*r\._rel\s*as\s*number\s*\}\)/);
+  it("delegates merged-row tier stamping and demotion to shared merge", () => {
+    expect(WEB_SRC).toMatch(/mergeFoodSearchRows\(\{/);
+    expect(MERGE_SRC).toMatch(/confidenceTier:\s*searchRowConfidenceTier\(\{/);
+    expect(MERGE_SRC).toMatch(/isLowConfidenceDemotedRow\(\{\s*tier,\s*score:\s*row\._relevance\s*\}\)/);
   });
 
   it("exports splitFoodSearchResults backed by the shared splitBestMatches", () => {
