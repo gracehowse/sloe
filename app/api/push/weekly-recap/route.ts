@@ -71,6 +71,8 @@ import { timingSafeEqual } from "crypto";
 
 import { sendExpoPush, type ExpoPushMessage } from "@/lib/push/expoPush";
 import { sendWebPushFanout } from "@/lib/push/webPushSend";
+// ENG-717 — local-calendar date key, shared with mobile + the rest of web.
+import { dateKeyFromDate as dateKey } from "@/lib/datetime/dateKey";
 import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
 import { buildWeeklyRecap } from "@/lib/nutrition/weeklyRecap";
 import { buildWeekStats } from "@/lib/nutrition/progressWeekReport";
@@ -1015,13 +1017,6 @@ async function runWeeklyRecapPush(req: Request) {
 // ─────────────────────────────────────────────────────────────────────
 // Local helpers
 // ─────────────────────────────────────────────────────────────────────
-
-function dateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function numOr(v: unknown, fallback: number): number {
   if (typeof v === "number" && Number.isFinite(v)) return v;

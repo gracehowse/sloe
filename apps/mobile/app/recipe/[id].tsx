@@ -43,7 +43,7 @@ import { fetchIngredientImages } from "@suppr/shared/recipe/ingredientImages";
 import { enqueueIngredientImages } from "@suppr/shared/recipe/enqueueIngredientImages";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -89,6 +89,7 @@ import {
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "@suppr/shared/nutrition/verifyConfidencePolicy";
 import { scaleStepText } from "@suppr/shared/nutrition/scaleStepText";
+import { cookStepIngredientChips } from "@suppr/shared/recipe-ingredients/stepIngredients";
 import {
   deriveIngredientVerificationTier,
   ingredientShouldShowVerifyCta,
@@ -1999,6 +2000,20 @@ export default function RecipeDetailScreen() {
           cookScaleFactor !== 1
             ? scaleStepText(cleanedStep, cookScaleFactor)
             : cleanedStep;
+        // ENG-944 — "For this step" chips. Pure matcher against the
+        // recipe's resolved display ingredients; gated behind
+        // `cook_step_ingredients_v1` (default-OFF — flag-off yields []
+        // so nothing renders, byte-identical to today). Quantities run
+        // through `stepIngredientChipLabel(..., cookScaleFactor)` so the
+        // chips respect the active serving scale exactly like the step
+        // text. Matched off the RAW cleaned step so token matching is
+        // stable as the scale changes. Web parity: `CookMode.tsx`.
+        const stepChips = cookStepIngredientChips(
+          isFeatureEnabled("cook_step_ingredients_v1"),
+          cleanedStep,
+          ingredientsForIngredientsTab,
+          cookScaleFactor,
+        );
         return (
           <Modal
             visible={cookMode && instructionSteps.length > 0}
@@ -2082,6 +2097,53 @@ export default function RecipeDetailScreen() {
                 <Text style={{ fontSize: 22, fontWeight: "600", color: colors.text, lineHeight: 32 }}>
                   {scaledStep}
                 </Text>
+                {/* ENG-944 — "For this step" ingredient chips. Quiet
+                    uppercase tracked caption (mirrors the cook.tsx
+                    `lastTimeLabel` treatment) over calm serif amount+name
+                    chips — no loud accent fill. Renders nothing (no empty
+                    label) when the matcher finds no ingredient or the flag
+                    is OFF. */}
+                {stepChips.length > 0 && (
+                  <View style={{ marginTop: Spacing.lg, gap: Spacing.sm }} testID="cook-step-ingredients">
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: "700",
+                        letterSpacing: 1.5,
+                        color: colors.textTertiary,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      For this step
+                    </Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
+                      {stepChips.map((chip) => (
+                        <View
+                          key={chip.key}
+                          style={{
+                            paddingHorizontal: Spacing.dense,
+                            paddingVertical: 6,
+                            borderRadius: Radius.full,
+                            backgroundColor: colors.card,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontFamily: FontFamily.serifRegular,
+                              fontSize: 14,
+                              lineHeight: 18,
+                              color: colors.text,
+                            }}
+                          >
+                            {chip.label}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
               </View>
               <View style={{ flexDirection: "row", gap: Spacing.md }}>
                 <SupprButton

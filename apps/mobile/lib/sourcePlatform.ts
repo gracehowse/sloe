@@ -9,6 +9,7 @@
 
 export {
   detectSourcePlatform,
+  extractCreatorHandleFromImportUrl,
   isCaptionTextPlatform,
   type RecipeSourcePlatform,
 } from "@suppr/shared/recipes/resolveImportUrl";

@@ -117,4 +117,25 @@ describe("F-138 Phase 1 — lookupBarcode read path uses canonical first", () =>
       /\.order\(["']verification_status["'],\s*\{\s*ascending:\s*true/,
     );
   });
+
+  it("reports the canonical/user_foods read failure to Sentry instead of swallowing it (ENG-717)", () => {
+    // The lookup's try/catch falls through to Open Food Facts on failure,
+    // but the failure must not be silent — a broken read (RLS regression,
+    // schema drift, network) has to surface in Sentry.
+    const fnIdx = SRC.indexOf("export async function lookupBarcode");
+    const fnSlice = SRC.slice(fnIdx, fnIdx + 4000);
+    // The catch binds the error and routes it to captureException.
+    expect(fnSlice).toMatch(/catch\s*\(\s*e\s*\)\s*\{[\s\S]*?captureException\(e\)/);
+    // And it is no longer the old empty `catch {}` swallow.
+    expect(fnSlice).not.toMatch(/catch\s*\{\s*\/\/ Fall through to Open Food Facts\s*\}/);
+  });
+
+  it("imports captureException from the mobile errorTracking module", () => {
+    expect(SRC).toMatch(/import\s*\{\s*captureException\s*\}\s*from\s*["']\.\/errorTracking["']/);
+  });
+
+  it("does not log the per-search hit-count on the hot path (ENG-717)", () => {
+    // The `[searchFoods] … hits` console.log fired on every search — removed.
+    expect(SRC).not.toContain("[searchFoods] q=");
+  });
 });

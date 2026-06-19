@@ -89,6 +89,17 @@ const OAUTH2_TOKEN_URL = "https://oauth.fatsecret.com/connect/token";
 let oauth2Cache: { token: string; expiresAtMs: number } | null = null;
 
 /**
+ * ENG-717 — cold-start race guard. On a cold cache, N concurrent callers
+ * (e.g. a recipe-verify fan-out firing foods.search + food.get + autocomplete
+ * at once) would each see `oauth2Cache === null` and race N separate token
+ * fetches against FatSecret's token endpoint — wasteful and a 429 risk. We
+ * cache the in-flight token-fetch PROMISE so concurrent cold callers share
+ * one request. Cleared in a `finally` so a failed fetch doesn't poison the
+ * next call (the next caller starts a fresh fetch).
+ */
+let inFlightTokenFetch: Promise<string | null> | null = null;
+
+/**
  * Hash a string with SHA-256 and return the hex digest. Used to log a
  * deterministic-but-non-revealing fingerprint of the FatSecret
  * client_id when OAuth 2.0 token requests fail. SHA-256 over a 32-char
@@ -163,6 +174,22 @@ async function getOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
   const now = Date.now();
   if (oauth2Cache && oauth2Cache.expiresAtMs - now > 30_000) return oauth2Cache.token;
 
+  // Promise-singleton: if a token fetch is already running, every concurrent
+  // cold caller awaits that same promise instead of starting its own. The
+  // first caller to reach here owns the fetch; the rest piggyback.
+  if (inFlightTokenFetch) return inFlightTokenFetch;
+
+  inFlightTokenFetch = fetchOAuth2Token(cfg).finally(() => {
+    // Always clear — on success the next call hits `oauth2Cache`; on failure
+    // (null return or throw) the next call starts a fresh fetch rather than
+    // re-sharing a dead promise.
+    inFlightTokenFetch = null;
+  });
+  return inFlightTokenFetch;
+}
+
+async function fetchOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
+  const now = Date.now();
   // If the provided credentials are OAuth2 client_id/client_secret, this will succeed.
   // If they are legacy OAuth1 keys, this will fail and we fall back to OAuth1 signing.
   const basic = Buffer.from(`${cfg.consumerKey}:${cfg.consumerSecret}`).toString("base64");
@@ -443,4 +470,5 @@ export async function fatSecretFoodCategoriesGet(
  */
 export function __resetFatSecretOAuth2CacheForTests(): void {
   oauth2Cache = null;
+  inFlightTokenFetch = null;
 }

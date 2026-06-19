@@ -9,12 +9,13 @@
  * full hero with the controls still overlaid — never a regression to a separate
  * nav bar.
  */
-import { Image, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Bookmark, ChevronLeft, MoreHorizontal, Share2 } from "lucide-react-native";
 
 import { Accent, Spacing } from "@/constants/theme";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { SmartImage } from "@/components/ui/SmartImage";
 
 /** Fixed hero height — Figma `332:2` §1 (375px). */
 export const RECIPE_HERO_HEIGHT = 375;
@@ -86,10 +87,11 @@ export function RecipeDetailHero({
       testID="recipe-detail-hero"
     >
       {showPhoto ? (
-        <Image
+        <SmartImage
           source={{ uri: imageUrl as string }}
           style={{ width: "100%", height: "100%" }}
           onError={onImageError}
+          recyclingKey={recipeId}
           accessibilityIgnoresInvertColors
         />
       ) : (

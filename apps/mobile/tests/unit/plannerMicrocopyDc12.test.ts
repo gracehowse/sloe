@@ -54,6 +54,12 @@ describe("Plan tab microcopy (DC12)", () => {
   });
 
   it("web Plan bottom CTA swaps to 'Generate my plan' when no plan exists", () => {
-    expect(WEB_SRC).toContain('plan.length > 0 ? "Regenerate week" : "Generate my plan"');
+    // ENG-956 nested the verb flip under a locked-state branch ("Refresh the
+    // rest" when ≥1 meal is locked), so the original single-line literal is now
+    // multi-line. Assert the populated/empty verb flip still stands.
+    expect(WEB_SRC).toMatch(
+      /plan\.length > 0\s*\n?\s*\?\s*"Regenerate week"\s*\n?\s*:\s*"Generate my plan"/,
+    );
+    expect(WEB_SRC).toContain('"Refresh the rest"');
   });
 });

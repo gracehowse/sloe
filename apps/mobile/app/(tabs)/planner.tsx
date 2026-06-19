@@ -49,6 +49,7 @@ import {
   ChevronRight,
   Cookie,
   Lock,
+  LockOpen,
   MoreHorizontal,
   Package,
   Plus,
@@ -73,6 +74,7 @@ import ReAnimated, {
 } from "react-native-reanimated";
 import { SPRING_DEFAULT, SPRING_SNAPPY } from "@/lib/motion";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { useHaptics } from "@/hooks/useHaptics";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
@@ -82,7 +84,9 @@ import {
   ALL_MEAL_SLOTS,
   DEFAULT_PLANNER_BANDS,
   PORTION_MULTIPLIER_CLAMP,
+  mulberry32,
   refitDayMealsToTargets,
+  regenerateUnlockedMeals,
   scaleMacros,
   slotMacroTargets,
   recipeSlotFitScore,
@@ -363,6 +367,11 @@ type PlanMeal = {
   leftoverOf?: string;
   /** Batch 3.10 — visual-only companion to `leftoverOf`. */
   isLeftover?: boolean;
+  /** P1-19 — neutral-split estimated macros (shows "Estimated · verify" chip). */
+  macrosAreEstimated?: boolean;
+  /** ENG-956 — per-meal lock ("keep this meal"). Regenerate keeps this slot
+   *  and re-rolls only unlocked slots. Mirrors web `DayPlanMeal.isLocked`. */
+  isLocked?: boolean;
 };
 
 type DayPlan = {
@@ -402,6 +411,28 @@ function enrichPlanDaysFiber(days: DayPlan[], pool: RecipeFiberRef[]): DayPlan[]
     ...dp,
     meals: enrichPlanMealsFiber(dp.meals, pool),
   }));
+}
+
+/**
+ * ENG-956 — slot-fit predicate for the keep-locked re-roll. Mirrors the
+ * `recipeFitsSlot` logic the shared sampler uses (untagged recipes fit any
+ * slot; tagged recipes fit only their slots) but reads from the `mealType`
+ * field on the pool entries the generate path builds. Canonicalises via
+ * `normaliseMealSlot` so "breakfast"/"Breakfast"/"BREAKFAST" all match.
+ */
+function recipeFitsSlotMobile(
+  recipe: { mealType?: string | readonly string[] | null },
+  slot: string,
+): boolean {
+  const raw = recipe.mealType;
+  const tags: string[] = Array.isArray(raw)
+    ? raw.map((t) => String(t))
+    : typeof raw === "string"
+      ? [raw]
+      : [];
+  if (tags.length === 0) return true;
+  const canonical = normaliseMealSlot(slot);
+  return tags.some((t) => normaliseMealSlot(t) === canonical);
 }
 
 async function fetchPlanTargetsFromProfile(userId: string): Promise<{
@@ -476,6 +507,9 @@ function planMealPortionMeta(meal: PlanMeal, pool: PlanRecipeRef[]): { displayMu
 
 export default function PlannerScreen() {
   const insets = useSafeAreaInsets();
+  // ENG-956 — canonical haptics vehicle (ENG-1016 commit-rebalance) for the
+  // per-meal lock toggle, routed through the hook rather than a fresh raw call.
+  const haptics = useHaptics();
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
@@ -595,6 +629,13 @@ export default function PlannerScreen() {
   // bare "Empty slot" / "Empty". Same flag as Today (increment 1) — the spine
   // across all four surfaces. OFF → legacy "Empty slot" / "Empty" copy.
   const planAimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
+  // ENG-956 — per-meal lock ("keep this meal", Refresh the rest). Default-OFF.
+  // On → meal rows get a quiet Lock glyph + a "Keep this meal" action in the
+  // row sheet, and Regenerate keeps locked meals while re-rolling only the
+  // unlocked ones (label → "Refresh the rest" when ≥1 meal is locked). Off →
+  // legacy all-or-nothing regenerate. Override in sim via
+  // `EXPO_PUBLIC_FLAG_FORCE_PLAN_MEAL_LOCK_V1=true`.
+  const mealLockEnabled = isFeatureEnabled("plan_meal_lock_v1");
   // ENG-1098 "Calm mode" — quiet the per-slot aim numbers (rows still render;
   // only the "Aim ~X kcal" line is hidden). Shared key with web + Today.
   const [calmMode] = useCalmMode();
@@ -1374,6 +1415,18 @@ export default function PlannerScreen() {
   const planHasRealMeals = useMemo(
     () => (plan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
     [plan],
+  );
+  // ENG-956 — locked-meal count drives the "Refresh the rest" label + the
+  // keep-locked regenerate path. Always 0 when the flag is off.
+  const lockedMealCount = useMemo(
+    () =>
+      mealLockEnabled
+        ? (plan ?? []).reduce(
+            (a, dp) => a + dp.meals.filter((m) => m.isLocked).length,
+            0,
+          )
+        : 0,
+    [mealLockEnabled, plan],
   );
 
   const summaryScore = useMemo(
@@ -2272,6 +2325,65 @@ export default function PlannerScreen() {
           ? savedPool
           : fullPool;
 
+      // ENG-956 — "Refresh the rest". When the flag is on AND the current plan
+      // has ≥1 locked meal, re-roll only the unlocked slots per day (keeping
+      // locked meals byte-identical, rebalancing the remaining macro budget).
+      // We skip the joint sampler + leftovers pass entirely in this mode:
+      // leftovers depend on a fresh whole-week sample and would mutate the
+      // locked rows we promised to preserve.
+      const lockedCountNow =
+        mealLockEnabled && plan
+          ? plan.reduce((a, dp) => a + dp.meals.filter((m) => m.isLocked).length, 0)
+          : 0;
+      const keepLockedActive = lockedCountNow > 0 && !!plan;
+      let lockedRebuiltPlan: DayPlan[] | null = null;
+      if (keepLockedActive && plan) {
+        const baseSeed = Date.now();
+        const recentIds = new Set<string>();
+        lockedRebuiltPlan = plan.map((dp, dayIdxLocal) => {
+          const daySlots = dp.meals.map((m) => m.name);
+          const rand = mulberry32(
+            baseSeed + (dp.day || dayIdxLocal + 1) * 7919 + recipePool.length * 31,
+          );
+          const { meals: nextMeals, residualProteinGap } = regenerateUnlockedMeals({
+            meals: dp.meals,
+            pool: recipePool,
+            slots: daySlots,
+            targets,
+            recentIds,
+            rand,
+            slotFitPredicate: recipeFitsSlotMobile,
+          });
+          for (const m of nextMeals) {
+            if (m.recipeId) recentIds.add(m.recipeId);
+          }
+          const totals = nextMeals.reduce(
+            (acc, ml) => ({
+              calories: acc.calories + ml.calories,
+              protein: acc.protein + ml.protein,
+              carbs: acc.carbs + ml.carbs,
+              fat: acc.fat + ml.fat,
+            }),
+            { calories: 0, protein: 0, carbs: 0, fat: 0 },
+          );
+          return {
+            ...dp,
+            meals: nextMeals,
+            totals,
+            ...(residualProteinGap < 0 ? { residualProteinGap } : {}),
+          } as DayPlan;
+        });
+        track(AnalyticsEvents.plan_regenerated_partial, {
+          lockedCount: lockedCountNow,
+          rerolledCount: lockedRebuiltPlan.reduce(
+            (a, dp) => a + dp.meals.filter((m) => !m.isLocked).length,
+            0,
+          ),
+          days,
+          platform: "mobile",
+        });
+      }
+
       // T14 (full-sweep 2026-04-24): `generateSmartPlan` is a sync
       // sampler over ~20k combinations — 6-11s on-device at pool ≥30.
       // Yield to the UI thread via InteractionManager before running
@@ -2279,39 +2391,47 @@ export default function PlannerScreen() {
       // duration so we can tune the sampler cap with real data.
       const slotCount = ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)).length;
       const generateStartMs = Date.now();
-      const rawPlan = await new Promise<ReturnType<typeof generateSmartPlan>>((resolve) => {
-        InteractionManager.runAfterInteractions(() => {
-          resolve(
-            generateSmartPlan({
-              recipes: recipePool,
-              targets,
-              days,
-              slotConfig: { slots: ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)) },
-            }),
-          );
-        });
-      });
+      // ENG-956 — keep-locked mode reuses the partial-rebuilt plan and skips
+      // the full sampler entirely; otherwise run the normal joint sampler.
+      const rawPlan = keepLockedActive
+        ? (lockedRebuiltPlan as DayPlan[])
+        : await new Promise<ReturnType<typeof generateSmartPlan>>((resolve) => {
+            InteractionManager.runAfterInteractions(() => {
+              resolve(
+                generateSmartPlan({
+                  recipes: recipePool,
+                  targets,
+                  days,
+                  slotConfig: { slots: ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)) },
+                }),
+              );
+            });
+          });
       const generateDurationMs = Date.now() - generateStartMs;
-      track(AnalyticsEvents.meal_plan_generated, {
-        days,
-        durationMs: generateDurationMs,
-        poolSize: recipePool.length,
-        slotCount,
-        platform: "mobile",
-      });
-      const stripped = rawPlan.map((dp) => {
-        const meals = stripPlanPlaceholders(dp.meals);
-        const totals = meals.reduce(
-          (acc, ml) => ({
-            calories: acc.calories + ml.calories,
-            protein: acc.protein + ml.protein,
-            carbs: acc.carbs + ml.carbs,
-            fat: acc.fat + ml.fat,
-          }),
-          { calories: 0, protein: 0, carbs: 0, fat: 0 },
-        );
-        return { ...dp, meals, totals };
-      });
+      if (!keepLockedActive) {
+        track(AnalyticsEvents.meal_plan_generated, {
+          days,
+          durationMs: generateDurationMs,
+          poolSize: recipePool.length,
+          slotCount,
+          platform: "mobile",
+        });
+      }
+      const stripped = keepLockedActive
+        ? (lockedRebuiltPlan as DayPlan[])
+        : rawPlan.map((dp) => {
+            const meals = stripPlanPlaceholders(dp.meals);
+            const totals = meals.reduce(
+              (acc, ml) => ({
+                calories: acc.calories + ml.calories,
+                protein: acc.protein + ml.protein,
+                carbs: acc.carbs + ml.carbs,
+                fat: acc.fat + ml.fat,
+              }),
+              { calories: 0, protein: 0, carbs: 0, fat: 0 },
+            );
+            return { ...dp, meals, totals };
+          });
 
       // Batch 3.10 — leftovers pass using recipe `servings` yield.
       const recipesByRef: Record<string, { servings: number }> = {};
@@ -2320,7 +2440,10 @@ export default function PlannerScreen() {
         if (s && s > 1) recipesByRef[r.id] = { servings: s };
       }
       let newPlan: DayPlan[] = stripped as DayPlan[];
-      if (Object.keys(recipesByRef).length > 0) {
+      // ENG-956 — skip the leftover redistribution in keep-locked mode: it
+      // re-samples downstream slots from a fresh whole-week view and would
+      // overwrite the locked rows we just preserved.
+      if (!keepLockedActive && Object.keys(recipesByRef).length > 0) {
         const { plan: distributed, parentCount, leftoverCount } = distributeLeftovers(
           stripped as DayPlan[],
           recipesByRef,
@@ -2421,7 +2544,7 @@ export default function PlannerScreen() {
     } finally {
       setGenerating(false);
     }
-  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled]);
+  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled]);
 
   const openGenerateMenu = useCallback(() => {
     if (generating) return;
@@ -2800,7 +2923,11 @@ export default function PlannerScreen() {
                 accessibilityLabel="Generate or import plan"
               >
                 <RefreshCw size={14} color="#fff" strokeWidth={1.75} />
-                <Text style={styles.summaryPrimaryText}>Generate ▾</Text>
+                {/* ENG-956 — "Refresh the rest" when ≥1 meal is locked; the
+                    keep-locked re-roll runs inside generatePlan(). */}
+                <Text style={styles.summaryPrimaryText}>
+                  {lockedMealCount > 0 ? "Refresh the rest ▾" : "Generate ▾"}
+                </Text>
               </SupprButton>
               <SupprButton
                 variant="ghost"
@@ -3662,6 +3789,57 @@ export default function PlannerScreen() {
                     </View>
                   ) : null}
                 </View>
+                {/* ENG-956 — quiet per-row lock glyph. Muted LockOpen when
+                    unlocked (a soft "keep this?"), foreground Lock when locked.
+                    Tap toggles without opening the sheet; the sheet's "Keep
+                    this meal" action is the discoverable equivalent. Only on
+                    populated rows + when the flag is on. */}
+                {mealLockEnabled && planMealHasRecipe(meal) ? (
+                  <Pressable
+                    hitSlop={8}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      let nextLocked = false;
+                      let lockedCount = 0;
+                      setPlan((prev) => {
+                        if (!prev) return prev;
+                        const next = prev.map((dpRow, di) => {
+                          if (di !== dayIdx) return dpRow;
+                          return {
+                            ...dpRow,
+                            meals: dpRow.meals.map((m, mi) =>
+                              mi === mealIndexInDay ? { ...m, isLocked: !m.isLocked } : m,
+                            ),
+                          };
+                        });
+                        nextLocked = Boolean(next[dayIdx]?.meals[mealIndexInDay]?.isLocked);
+                        lockedCount = next.reduce(
+                          (a, d) => a + d.meals.filter((m) => m.isLocked).length,
+                          0,
+                        );
+                        return next;
+                      });
+                      haptics.select();
+                      track(AnalyticsEvents.plan_meal_lock_toggled, {
+                        locked: nextLocked,
+                        slot: meal.name,
+                        lockedCount,
+                        platform: "mobile",
+                      });
+                    }}
+                    style={styles.mealOverflowBtn}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: Boolean(meal.isLocked) }}
+                    accessibilityLabel={meal.isLocked ? `Unlock ${meal.name}` : `Keep ${meal.name}`}
+                    testID={`meal-lock-${dp.day}-${mealIndexInDay}`}
+                  >
+                    {meal.isLocked ? (
+                      <Lock size={16} color={colors.text} strokeWidth={2} />
+                    ) : (
+                      <LockOpen size={16} color={colors.textTertiary} strokeWidth={1.75} />
+                    )}
+                  </Pressable>
+                ) : null}
                 {/* 2026-05-22 evening (Grace 3-row cleanup): inline
                     Swap (refresh icon) + Log as planned buttons removed
                     from each Plan row. Both actions remain available
@@ -4177,6 +4355,37 @@ export default function PlannerScreen() {
               setRowMenu(null);
               swapMeal(dayIdx, mealIndexInDay, meal.name);
             };
+            // ENG-956 — toggle the per-meal lock. Pure plan mutation; persists
+            // through the same `setPlan` store as swap / move / portion.
+            const doToggleLock = () => {
+              setRowMenu(null);
+              let nextLocked = false;
+              let lockedCount = 0;
+              setPlan((prev) => {
+                if (!prev) return prev;
+                const next = prev.map((dpRow, di) => {
+                  if (di !== dayIdx) return dpRow;
+                  return {
+                    ...dpRow,
+                    meals: dpRow.meals.map((m, mi) =>
+                      mi === mealIndexInDay ? { ...m, isLocked: !m.isLocked } : m,
+                    ),
+                  };
+                });
+                nextLocked = Boolean(next[dayIdx]?.meals[mealIndexInDay]?.isLocked);
+                lockedCount = next.reduce(
+                  (a, d) => a + d.meals.filter((m) => m.isLocked).length,
+                  0,
+                );
+                return next;
+              });
+              track(AnalyticsEvents.plan_meal_lock_toggled, {
+                locked: nextLocked,
+                slot: meal.name,
+                lockedCount,
+                platform: "mobile",
+              });
+            };
             const doChangePortion = () => {
               setRowMenu(null);
               setPortionModal({ dayIdx, mealIndex: mealIndexInDay });
@@ -4320,6 +4529,13 @@ export default function PlannerScreen() {
                     {hasRecipeOv ? `${Math.round(meal.calories)} kcal · ${meal.name}` : "Empty slot"}
                   </Text>
                 </View>
+                {mealLockEnabled && hasRecipeOv ? (
+                  <ActionRow
+                    label={meal.isLocked ? "Unlock this meal" : "Keep this meal"}
+                    onPress={doToggleLock}
+                    testID="row-action-lock"
+                  />
+                ) : null}
                 {hasRecipeOv ? (
                   <>
                     <ActionRow label="Log as planned" onPress={doLogAsPlanned} testID="row-action-log" />
