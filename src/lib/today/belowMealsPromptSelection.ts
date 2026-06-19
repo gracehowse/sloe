@@ -1,7 +1,9 @@
 /**
- * Below-meals prompt cap — Premium P1 (ENG-585).
+ * Below-meals prompt cap — Premium P1 (ENG-585), tightened by ENG-1183.
  *
- * Priority: check-in > north-star > snap > nudge. At most two render at once.
+ * Priority: check-in > north-star > snap > nudge. At most one dismissible
+ * interruption renders at once so cold-open trust content is never stacked
+ * behind onboarding / check-in chrome.
  */
 
 export type BelowMealsPromptId = "checkin" | "northStar" | "snap" | "nudge";
@@ -13,7 +15,7 @@ export const BELOW_MEALS_PROMPT_PRIORITY: readonly BelowMealsPromptId[] = [
   "nudge",
 ] as const;
 
-export const BELOW_MEALS_PROMPT_MAX = 2;
+export const BELOW_MEALS_PROMPT_MAX = 1;
 
 export function selectBelowMealsPrompts(
   eligible: Partial<Record<BelowMealsPromptId, boolean>>,

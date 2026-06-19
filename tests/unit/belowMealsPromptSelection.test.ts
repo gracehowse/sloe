@@ -16,33 +16,33 @@ describe("selectBelowMealsPrompts", () => {
     expect(all.length).toBe(BELOW_MEALS_PROMPT_MAX);
   });
 
-  it("prefers check-in over north-star when only two slots", () => {
+  it("prefers check-in as the single cold-open interruption", () => {
     expect(
       selectBelowMealsPrompts({
         checkin: true,
         northStar: true,
         snap: true,
       }),
-    ).toEqual(["checkin", "northStar"]);
+    ).toEqual(["checkin"]);
   });
 
-  it("prefers north-star over snap and nudge", () => {
+  it("prefers north-star over snap and nudge when check-in is absent", () => {
     expect(
       selectBelowMealsPrompts({
         northStar: true,
         snap: true,
         nudge: true,
       }),
-    ).toEqual(["northStar", "snap"]);
+    ).toEqual(["northStar"]);
   });
 
-  it("prefers snap over nudge", () => {
+  it("prefers snap over nudge when only acquisition prompts are eligible", () => {
     expect(
       selectBelowMealsPrompts({
         snap: true,
         nudge: true,
       }),
-    ).toEqual(["snap", "nudge"]);
+    ).toEqual(["snap"]);
   });
 
   it("returns empty when nothing eligible", () => {
@@ -51,10 +51,10 @@ describe("selectBelowMealsPrompts", () => {
 });
 
 describe("isBelowMealsPromptVisible", () => {
-  it("hides nudge when check-in and north-star fill the cap", () => {
+  it("hides every lower-priority nudge once one interruption is visible", () => {
     const eligible = { checkin: true, northStar: true, nudge: true };
     expect(isBelowMealsPromptVisible("checkin", eligible)).toBe(true);
-    expect(isBelowMealsPromptVisible("northStar", eligible)).toBe(true);
+    expect(isBelowMealsPromptVisible("northStar", eligible)).toBe(false);
     expect(isBelowMealsPromptVisible("nudge", eligible)).toBe(false);
   });
 });

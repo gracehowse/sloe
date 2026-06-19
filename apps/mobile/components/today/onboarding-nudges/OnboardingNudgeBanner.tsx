@@ -21,10 +21,10 @@ import { useNextNudge } from "./useNextNudge";
 import type { NudgeEligibilityState, OnboardingNudgeId } from "./types";
 
 /**
- * Post-launch onboarding nudge banner — Today tab, just below the
- * calorie ring.
+ * Post-launch onboarding nudge banner — Today tab, below the meals
+ * section so the calorie ring + target rationale stay above the fold.
  *
- * Three nudges, one at a time, in priority order: permissions → import
+ * Three compact nudges, one at a time, in priority order: permissions → import
  * → recipes (`./nudges.ts`). Each banner gets a 7- or 14-day cooldown
  * on "Maybe later"; the permissions nudge additionally drops from the
  * queue permanently once the user has answered the OS prompt — the
@@ -33,6 +33,10 @@ import type { NudgeEligibilityState, OnboardingNudgeId } from "./types";
  *
  * The hook (`useNextNudge`) owns hydration + dismissal persistence;
  * this component owns presentation + the per-id primary action wiring.
+ *
+ * ENG-1183: keep this as a compact row, not a tall onboarding card;
+ * the load-bearing trust content (ring status chip / maintenance rationale)
+ * must be reachable before this nudge.
  *
  * Platform: iOS-only by design. Apple Health is iOS-native, and the
  * decision to defer these three nudges to a Today queue (rather than
@@ -320,17 +324,17 @@ function OnboardingNudgeBannerImpl({
             {nudge.title}
           </Text>
           <Text
+            numberOfLines={2}
+            ellipsizeMode="tail"
             style={{
               // Spec: 13pt secondary — pairs with the 15pt title above
-              // for the small-card cadence. Type.body (14) reads too
-              // assertive at this density.
+              // for the compact-row cadence. Type.body (14) reads too
+              // assertive at this density. ENG-1183 caps this at two
+              // lines so it cannot consume the cold-open viewport.
               // eslint-disable-next-line no-restricted-syntax
               fontSize: 13,
               color: colors.textSecondary,
-              // 2px nudges body up tight to the title — Spacing.xs (4)
-              // is too loose for this stacked-card cadence.
-              // eslint-disable-next-line no-restricted-syntax
-              marginTop: 2,
+              marginTop: Spacing.xs,
               lineHeight: 18,
             }}
           >
@@ -343,7 +347,7 @@ function OnboardingNudgeBannerImpl({
         style={{
           flexDirection: "row",
           gap: Spacing.sm,
-          marginTop: Spacing.md,
+          marginTop: Spacing.sm,
           alignItems: "center",
         }}
       >
@@ -416,7 +420,7 @@ function OnboardingNudgeBannerImpl({
     return (
       <SupprCard
         accessibilityLabel={NUDGE_ACCESSIBILITY_LABEL[nudge.id]}
-        padding="md"
+        padding="sm"
         style={{ marginHorizontal: Spacing.md, marginTop: Spacing.sm }}
       >
         {body}
@@ -432,7 +436,7 @@ function OnboardingNudgeBannerImpl({
       style={{
         marginHorizontal: Spacing.md,
         marginTop: Spacing.sm,
-        padding: Spacing.md,
+        padding: Spacing.sm,
         borderRadius: Radius.md,
         backgroundColor: accent.primary + "0A",
         borderWidth: 1,

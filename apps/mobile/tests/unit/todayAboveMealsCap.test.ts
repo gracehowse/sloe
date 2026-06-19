@@ -191,7 +191,7 @@ describe("Today above-meals cap (mobile) — macro tiles to meals gap", () => {
 });
 
 describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
-  it("uses shared below-meals prompt cap (max 2, ENG-585)", () => {
+  it("uses shared below-meals prompt cap (max 1, ENG-1183)", () => {
     expect(HOST_SRC).toMatch(/belowMealsPromptSelection/);
     expect(HOST_SRC).toMatch(/isBelowMealsPromptVisible/);
     expect(HOST_SRC).toMatch(/showBelowMealsCheckin/);
@@ -221,6 +221,14 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
     expect(northStarAboveIdx).toBeGreaterThan(-1);
     expect(northStarAboveIdx).toBeLessThan(mealsIdx);
     expect(HOST_SRC).toMatch(/showAboveMealsNorthStar\s*&&[\s\S]*<NorthStarBlockHost/);
+  });
+
+  it("OnboardingNudgeBanner renders after meals so trust content stays above the fold (ENG-1183)", () => {
+    const mealsIdx = HOST_SRC.indexOf("<TodayMealsSection");
+    const nudgeIdx = HOST_SRC.indexOf("<OnboardingNudgeBanner");
+    expect(mealsIdx).toBeGreaterThan(-1);
+    expect(nudgeIdx).toBeGreaterThan(-1);
+    expect(nudgeIdx).toBeGreaterThan(mealsIdx);
   });
 
   it("WeeklyCheckinBanner is in the below-meals block, not above macro tiles", () => {
