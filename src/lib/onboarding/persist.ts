@@ -403,7 +403,7 @@ export async function persistOnboarding(
       // deploy (code before migration push) visible instead of silent.
       console.warn(
         error.message.includes("pronouns")
-          ? "[onboarding-v2] pronouns column absent — stripped + retried (apply migration 20260619120000)"
+          ? "[onboarding-v2] pronouns column absent — stripped + retried (apply migration 20260619120200)"
           : "[onboarding-v2] pace_kg_per_week column absent — stripped + retried (apply migration 20260526100000)",
       );
       const retryRow = error.message.includes("pronouns")
