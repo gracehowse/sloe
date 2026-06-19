@@ -35,7 +35,8 @@
 
 ## Automation hooks
 
-- Maestro: [`apps/mobile/.maestro/24_health_sync.yaml`](../../apps/mobile/.maestro/24_health_sync.yaml)
+- Maestro (sim/CI — screen layout only): [`apps/mobile/.maestro/24_health_sync.yaml`](../../apps/mobile/.maestro/24_health_sync.yaml)
+- Maestro (**device-only — MFP import, ENG-874**): [`apps/mobile/.maestro/36_health_sync_mfp_import.yaml`](../../apps/mobile/.maestro/36_health_sync_mfp_import.yaml) — encodes HS-01–HS-09 as a physical-iPhone runbook (covers the connect → enable import → sync → Today-assert path; HS-05–HS-09 stay manual with inline expected results). **Excluded from `config.yaml`** so the sim CI suite never tries it.
 - E2E: [`apps/mobile/e2e/24-health-sync.test.ts`](../../apps/mobile/e2e/24-health-sync.test.ts)
 - Unit: [`apps/mobile/tests/unit/nutritionImportDiagnostics.test.ts`](../../apps/mobile/tests/unit/nutritionImportDiagnostics.test.ts)
 
