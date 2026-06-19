@@ -364,3 +364,13 @@ Exported helper type: `RecipeImportedSource = "url" \| "image"`. Collision / dro
 - [Technical Architecture](../technical/architecture.md)
 - [API Reference](../api/endpoints.md)
 - [Security: Auth & RLS](../security/auth.md)
+
+### ENG-870 recipe claim metadata
+
+`recipes` now carries forward-only creator-claim provenance for post-launch claim-and-merge:
+
+- `content_origin text` — constrained to `private_import`, `first_party`, `claimed`, `seed`, or `plan_import` so public surfaces can distinguish private imported stubs from first-party/claimed Plane-B rows.
+- `claimed_by uuid references profiles(id)`, `claimed_at timestamptz`, `claim_verification jsonb` — set only after verified ownership proof (OAuth handle, one-time bio/caption code, or DNS/meta-tag proof) plus attestation.
+- `recipe_claims` — auditable claim/request table with claimant, exact `source_url`, status (`pending`, `verified`, `rejected`, `withdrawn`), verification payload, and timestamps. Verified rows require a real verification method and matching `source_url`; there is no self-serve "this is mine" path.
+
+Claim merge is forward-only and non-destructive: a verified claim creates or upgrades the claimant's own published `content_origin='claimed'` recipe. Existing users' private imported stubs are never rewritten; they can show an exact-`source_url` "✓ Official version available" prompt with an opt-in switch.

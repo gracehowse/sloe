@@ -62,6 +62,7 @@ import { journalSlotFromMealTypes } from "@suppr/shared/nutrition/recipeJournalS
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
 import { sanitizeRecipeDescription } from "@suppr/shared/recipes/sanitizeRecipeDescription";
 import { isImportedRecipe, importSourceDisclaimer } from "@suppr/shared/recipes/importSourceDisclaimer";
+import { canShowOfficialVersion } from "@suppr/shared/recipes/officialRecipeClaim";
 import {
   pickHeroImageUrl,
   extractVideoHost,
@@ -173,6 +174,7 @@ type FullRecipe = {
   creator_id: string | null;
   author: { display_name: string | null; avatar_url: string | null } | null;
   published?: boolean | null;
+  content_origin?: string | null;
   /** T12 (2026-04-24) — regulated allergens from recipes.allergens. */
   allergens: string[] | null;
 };
@@ -254,6 +256,7 @@ export default function RecipeDetailScreen() {
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
   const [loading, setLoading] = useState(true);
   const [recipe, setRecipe] = useState<FullRecipe | null>(null);
+  const [officialRecipeId, setOfficialRecipeId] = useState<string | null>(null);
   // P3-30 (2026-04-25): net-carbs lens flag for swapping the carbs row label.
   // 2026-05-02 fix: re-read on every screen focus (not just userId change)
   // so toggling "Show net carbs" in the Settings sheet swaps the recipe
@@ -681,7 +684,7 @@ export default function RecipeDetailScreen() {
         let recipeRes = await supabase
           .from("recipes")
           .select(
-            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, published, allergens",
+            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, published, content_origin, allergens",
           )
           .eq("id", recipeId)
           .maybeSingle();
@@ -734,8 +737,30 @@ export default function RecipeDetailScreen() {
             creator_id: (r.creator_id as string | null | undefined) ?? null,
             author,
             published: Boolean(r.published),
+            content_origin: (r.content_origin as string | null | undefined) ?? null,
             allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
           } as FullRecipe);
+
+          const sourceUrl = (r.source_url as string | null | undefined) ?? null;
+          if (canShowOfficialVersion({
+            currentRecipeId: recipeId,
+            sourceUrl,
+            published: Boolean(r.published),
+            contentOrigin: (r.content_origin as string | null | undefined) ?? null,
+          })) {
+            const { data: official } = await supabase
+              .from("recipes")
+              .select("id")
+              .eq("source_url", sourceUrl)
+              .eq("published", true)
+              .eq("content_origin", "claimed")
+              .neq("id", recipeId)
+              .limit(1)
+              .maybeSingle();
+            if (!cancelled) setOfficialRecipeId((official as { id?: string } | null)?.id ?? null);
+          } else {
+            setOfficialRecipeId(null);
+          }
         }
         if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
       } catch (err) {
@@ -1389,6 +1414,28 @@ export default function RecipeDetailScreen() {
     },
     descText: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
 
+    officialCard: {
+      backgroundColor: cardElevation.liftBg ?? colors.card,
+      borderRadius: CARD_RADIUS,
+      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+      borderColor: colors.cardBorder,
+      padding: Spacing.xl,
+      gap: Spacing.sm,
+      ...(cardElevation.shadowStyle ?? {}),
+    },
+    officialTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+    officialCopy: { fontSize: 13, lineHeight: 18, color: colors.textSecondary },
+    officialButton: {
+      alignSelf: "flex-start",
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      marginTop: Spacing.xs,
+    },
+    officialButtonText: { fontSize: 14, fontWeight: "700", color: accent.primary },
+
     sourceCard: {
       backgroundColor: cardElevation.liftBg ?? colors.card,
       borderRadius: CARD_RADIUS,
@@ -1885,6 +1932,23 @@ export default function RecipeDetailScreen() {
 
           {/* Personal notes + rating. */}
           <RecipeNotesCard recipeId={recipeId} userId={userId} colors={colors} />
+
+          {officialRecipeId ? (
+            <View style={styles.officialCard} testID="recipe-official-version-card" accessibilityRole="summary">
+              <Text style={styles.officialTitle}>✓ Official version available</Text>
+              <Text style={styles.officialCopy}>
+                Imported from {recipe.source_name ?? "the original source"} — not posted by the creator.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Switch to official recipe"
+                onPress={() => router.replace(`/recipe/${officialRecipeId}`)}
+                style={styles.officialButton}
+              >
+                <Text style={styles.officialButtonText}>Switch to official</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {/* Source attribution (provenance label) at the foot. */}
           {recipe.source_url || recipe.source_name ? (

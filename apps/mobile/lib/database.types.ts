@@ -1425,6 +1425,63 @@ export type Database = {
           },
         ]
       }
+      recipe_claims: {
+        Row: {
+          attested_at: string | null
+          claimant_id: string
+          created_at: string
+          id: string
+          recipe_id: string | null
+          rejected_at: string | null
+          source_url: string
+          status: string
+          updated_at: string
+          verification: Json
+          verified_at: string | null
+        }
+        Insert: {
+          attested_at?: string | null
+          claimant_id: string
+          created_at?: string
+          id?: string
+          recipe_id?: string | null
+          rejected_at?: string | null
+          source_url: string
+          status?: string
+          updated_at?: string
+          verification?: Json
+          verified_at?: string | null
+        }
+        Update: {
+          attested_at?: string | null
+          claimant_id?: string
+          created_at?: string
+          id?: string
+          recipe_id?: string | null
+          rejected_at?: string | null
+          source_url?: string
+          status?: string
+          updated_at?: string
+          verification?: Json
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_claims_claimant_id_fkey"
+            columns: ["claimant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_claims_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_steps: {
         Row: {
           created_at: string
@@ -1616,6 +1673,10 @@ export type Database = {
           calories: number
           caption_nutrition_claim: Json | null
           carbs: number
+          claimed_at: string | null
+          claimed_by: string | null
+          claim_verification: Json | null
+          content_origin: string
           cook_time_min: number | null
           created_at: string
           creator_calories: number | null
@@ -1655,6 +1716,10 @@ export type Database = {
           calories?: number
           caption_nutrition_claim?: Json | null
           carbs?: number
+          claimed_at?: string | null
+          claimed_by?: string | null
+          claim_verification?: Json | null
+          content_origin?: string
           cook_time_min?: number | null
           created_at?: string
           creator_calories?: number | null
@@ -1694,6 +1759,10 @@ export type Database = {
           calories?: number
           caption_nutrition_claim?: Json | null
           carbs?: number
+          claimed_at?: string | null
+          claimed_by?: string | null
+          claim_verification?: Json | null
+          content_origin?: string
           cook_time_min?: number | null
           created_at?: string
           creator_calories?: number | null
@@ -1726,6 +1795,13 @@ export type Database = {
           verified_source?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "recipes_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recipes_author_id_fkey"
             columns: ["author_id"]
