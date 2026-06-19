@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 type SourceTier = "verified" | "estimated" | "manual";
 
@@ -13,15 +14,27 @@ function classifySource(source?: string | null): SourceTier {
   return "manual";
 }
 
-const CONFIG: Record<SourceTier, { label: string; abbr: string; color: string }> = {
-  verified: { label: "Structured", abbr: "✓", color: Accent.success },
-  estimated: { label: "Estimated", abbr: "~", color: Accent.warning },
-  manual: { label: "Manual", abbr: "✎", color: "#94a3b8" },
+const CONFIG: Record<SourceTier, { label: string; abbr: string }> = {
+  verified: { label: "Structured", abbr: "✓" },
+  estimated: { label: "Estimated", abbr: "~" },
+  manual: { label: "Manual", abbr: "✎" },
 };
 
 export default function NutritionSourceBadge({ source, compact = true }: { source?: string | null; compact?: boolean }) {
   const tier = classifySource(source);
   const cfg = CONFIG[tier];
+  const colors = useThemeColors();
+  // ENG-716 — `manual` previously used a cool-slate literal off the Sloe
+  // palette. It now reads the warm-grey `sourceManual` provenance token (the
+  // canonical "manual source" colour, #9B93A3 light / #857F8B dark), matching
+  // web's `text-muted-foreground` manual badge and dark-swapping correctly.
+  // Verified/estimated stay on the static Accent fills (value preserved).
+  const color =
+    tier === "manual"
+      ? colors.sourceManual
+      : tier === "verified"
+        ? Accent.success
+        : Accent.warning;
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -32,12 +45,12 @@ export default function NutritionSourceBadge({ source, compact = true }: { sourc
           borderRadius: Radius.full, // tags census 2026-06-10
           paddingHorizontal: Spacing.xs,
           paddingVertical: 1,
-          backgroundColor: cfg.color + "18",
+          backgroundColor: color + "18",
         },
-        abbr: { fontSize: 10, fontWeight: "700", color: cfg.color },
-        label: { fontSize: 9, fontWeight: "600", color: cfg.color },
+        abbr: { fontSize: 10, fontWeight: "700", color },
+        label: { fontSize: 9, fontWeight: "600", color },
       }),
-    [cfg.color],
+    [color],
   );
 
   return (

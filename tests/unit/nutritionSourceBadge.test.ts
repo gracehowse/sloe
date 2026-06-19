@@ -1,6 +1,8 @@
 /**
  * Tests for nutrition source classification used in the NutritionSourceBadge component.
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import { classifySource } from "@/components/NutritionSourceBadge";
 
@@ -43,5 +45,55 @@ describe("classifySource", () => {
     expect(classifySource("")).toBe("manual");
     expect(classifySource(null)).toBe("manual");
     expect(classifySource(undefined)).toBe("manual");
+  });
+});
+
+// ── ENG-716 token sweep — the badge palette must trace to semantic tokens ────
+
+/** Strip `//` line + `/* *​/` block comments so negative literal-assertions
+ *  test the actual CODE, not explanatory comments that legitimately reference
+ *  the old literal or a token's hex value (matches the recipeEditTokenSweep
+ *  comment-stripping pattern). */
+function codeOnly(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
+describe("NutritionSourceBadge token discipline (ENG-716)", () => {
+  const webSrc = () =>
+    readFileSync(resolve(__dirname, "../../src/components/NutritionSourceBadge.tsx"), "utf8");
+  const mobileSrc = () =>
+    readFileSync(
+      resolve(__dirname, "../../apps/mobile/components/NutritionSourceBadge.tsx"),
+      "utf8",
+    );
+
+  it("web badge uses the Sloe semantic state tokens, not raw palette literals", () => {
+    const src = webSrc();
+    expect(src).toMatch(/bg-success-soft text-success-solid/);
+    expect(src).toMatch(/bg-warning-soft text-warning-solid/);
+    expect(src).toMatch(/bg-muted text-muted-foreground/);
+    // The old raw Tailwind palette literals are gone (code only).
+    const code = codeOnly(src);
+    expect(code).not.toMatch(/bg-green-\d/);
+    expect(code).not.toMatch(/text-green-\d/);
+    expect(code).not.toMatch(/bg-yellow-\d/);
+    expect(code).not.toMatch(/text-yellow-\d/);
+    expect(code).not.toMatch(/bg-slate-\d/);
+    expect(code).not.toMatch(/text-slate-\d/);
+  });
+
+  it("mobile badge has no hardcoded hex — manual reads the sourceManual token", () => {
+    const src = mobileSrc();
+    // The cool-slate literal is gone; manual now reads the warm-grey
+    // provenance token, dark-swapping via useThemeColors. (Comments may cite
+    // token hex values for documentation — assert against code only.)
+    const code = codeOnly(src);
+    expect(code).not.toMatch(/#94a3b8/i);
+    expect(code).not.toMatch(/#[0-9a-fA-F]{6}\b/);
+    expect(src).toMatch(/colors\.sourceManual/);
+    expect(src).toMatch(/useThemeColors/);
+    // Verified/estimated stay on the static Accent fills (value preserved).
+    expect(src).toMatch(/Accent\.success/);
+    expect(src).toMatch(/Accent\.warning/);
   });
 });

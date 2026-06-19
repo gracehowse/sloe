@@ -73,6 +73,7 @@ export function PaywallPlanSelector({
           subtitle={annualPerMonthLine}
           priceString={annualPriceString}
           periodSuffix="/yr"
+          periodLabel="per year"
           badge={savingsBadge}
           styles={styles}
           accessibilityLabel={`Annual plan, ${annualPriceString} per year${
@@ -89,6 +90,7 @@ export function PaywallPlanSelector({
           subtitle={null}
           priceString={monthlyPriceString}
           periodSuffix="/mo"
+          periodLabel="per month"
           badge={null}
           styles={styles}
           accessibilityLabel={`Monthly plan, ${monthlyPriceString} per month`}
@@ -106,6 +108,7 @@ function PlanRow({
   subtitle,
   priceString,
   periodSuffix,
+  periodLabel,
   badge,
   styles,
   accessibilityLabel,
@@ -116,7 +119,11 @@ function PlanRow({
   title: string;
   subtitle: string | null;
   priceString: string;
+  /** Visual suffix shown beside the price (e.g. "/mo", "/yr"). */
   periodSuffix: string;
+  /** Spoken form of the period for VoiceOver (e.g. "per month") — see the
+   *  price-block a11y note below. */
+  periodLabel: string;
   badge: string | null;
   styles: ReturnType<typeof makeStyles>;
   accessibilityLabel: string;
@@ -147,7 +154,20 @@ function PlanRow({
         {subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}
       </View>
 
-      <View style={styles.priceWrap}>
+      {/* ENG-716 a11y — the visual price splits the amount and the "/mo"·"/yr"
+          suffix into two Text nodes (baseline-aligned serif numeral + small
+          sans suffix). Left bare, VoiceOver reads the suffix literally as
+          "slash m o" / "slash y r". Marking the wrapper `accessible` collapses
+          the block into ONE accessibility element and supplies a spoken
+          "<price> per month/year" label — its child Text nodes are no longer
+          individually focusable, so the "slash …" read can't happen. (The row
+          Pressable's own label already announces the full plan; this hardens
+          the price block itself.) The visible price display is untouched. */}
+      <View
+        style={styles.priceWrap}
+        accessible
+        accessibilityLabel={`${priceString} ${periodLabel}`}
+      >
         <Text style={styles.price}>{priceString}</Text>
         <Text style={styles.pricePeriod}>{periodSuffix}</Text>
       </View>

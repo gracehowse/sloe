@@ -448,6 +448,10 @@ export default function PaywallScreen() {
   // — keeps the card readable during loading or partial provisioning.
   const fallbackProPrice = billing === "annual" ? FALLBACK_PRICES.proAnnual : FALLBACK_PRICES.proMonthly;
   const periodSuffix = billing === "annual" ? "/year" : "/month";
+  // ENG-716 — spoken form of the period for the CTA's VoiceOver label, so the
+  // visible "£7.99/month" suffix isn't read as "slash month". Visible label is
+  // unchanged; only the spoken override below uses this.
+  const periodWord = billing === "annual" ? "per year" : "per month";
 
   const trialApplies = billing === "annual"; // 7-day trial only on Pro annual
   const subscriptionsUnavailable = offeringsReady && packages.length === 0;
@@ -1019,6 +1023,13 @@ export default function PaywallScreen() {
           : trialApplies
             ? "Start free 7-day trial"
             : `Subscribe — ${currentProPkg.product.priceString}${periodSuffix}`
+      }
+      accessibilityLabel={
+        !currentProPkg
+          ? "Loading plans…"
+          : trialApplies
+            ? "Start free 7-day trial"
+            : `Subscribe — ${currentProPkg.product.priceString} ${periodWord}`
       }
       color={trialApplies ? Accent.success : accent.primary}
       disabled={!currentProPkg || purchasing !== null}

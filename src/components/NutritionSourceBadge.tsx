@@ -13,10 +13,17 @@ function classifySource(source?: string | null): SourceTier {
   return "manual";
 }
 
+// ENG-716 — off-token Tailwind palette literals (green/yellow/slate)
+// migrated to the Sloe semantic state tokens. Verified → success (sage),
+// estimated → warning (amber), manual → muted (warm grey). The `-soft`
+// fill + `-solid` text variants auto-swap in dark mode via the CSS vars
+// (no manual `dark:` variant needed — the old slate path even dropped its
+// dark override). Rendered intent is preserved: sage / amber / grey
+// families, with the AA-safe `-solid` text variant carrying the label.
 const CONFIG: Record<SourceTier, { label: string; abbr: string; className: string }> = {
-  verified: { label: "Structured", abbr: "✓", className: "bg-green-500/15 text-green-700 dark:text-green-400" },
-  estimated: { label: "Est.", abbr: "~", className: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" },
-  manual: { label: "Manual", abbr: "✎", className: "bg-slate-500/15 text-slate-500 dark:text-slate-400" },
+  verified: { label: "Structured", abbr: "✓", className: "bg-success-soft text-success-solid" },
+  estimated: { label: "Est.", abbr: "~", className: "bg-warning-soft text-warning-solid" },
+  manual: { label: "Manual", abbr: "✎", className: "bg-muted text-muted-foreground" },
 };
 
 export default function NutritionSourceBadge({ source }: { source?: string | null }) {
