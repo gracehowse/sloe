@@ -101,6 +101,82 @@ describe("MacroDetailPanel — getMacroValue", () => {
     const meal: MacroMeal = { name: "Correction", recipeTitle: "Adjustment", calories: -50 };
     expect(getMacroValue(meal, "calories")).toBe(-50);
   });
+
+  // ENG-1213 — web↔mobile water-breakdown parity. Water lives on
+  // `nutrition_entries.water_ml` → `waterMl` on the in-memory LoggedMeal.
+  it("extracts water from the waterMl key (mobile-style mapping)", () => {
+    const meal = { name: "Water", recipeTitle: "Glass", waterMl: 250 } as unknown as MacroMeal;
+    expect(getMacroValue(meal, "water")).toBe(250);
+  });
+
+  it("falls back to the snake water_ml key", () => {
+    const meal = { name: "Water", recipeTitle: "Glass", water_ml: 330 } as unknown as MacroMeal;
+    expect(getMacroValue(meal, "water")).toBe(330);
+  });
+
+  it("falls back to a bare water key", () => {
+    const meal = { name: "Water", recipeTitle: "Glass", water: 500 } as unknown as MacroMeal;
+    expect(getMacroValue(meal, "water")).toBe(500);
+  });
+
+  it("returns 0 when no water value is present", () => {
+    const meal: MacroMeal = { name: "Snack", recipeTitle: "Apple" };
+    expect(getMacroValue(meal, "water")).toBe(0);
+  });
+
+  it("clamps negative water to 0 and rejects non-finite water (defensive read)", () => {
+    const neg = { name: "x", recipeTitle: "y", waterMl: -100 } as unknown as MacroMeal;
+    expect(getMacroValue(neg, "water")).toBe(0);
+    const bad = { name: "x", recipeTitle: "y", waterMl: "nope" } as unknown as MacroMeal;
+    expect(getMacroValue(bad, "water")).toBe(0);
+  });
+});
+
+describe("MacroDetailPanel — water breakdown (ENG-1213 web↔mobile parity)", () => {
+  const waterMeals = [
+    { name: "Breakfast", recipeTitle: "Coffee", waterMl: 200 },
+    { name: "Lunch", recipeTitle: "Water bottle", waterMl: 500 },
+    { name: "Dinner", recipeTitle: "Soup", waterMl: 300 },
+  ] as unknown as MacroMeal[];
+
+  beforeEach(() => {
+    flagFn.mockReset();
+    flagFn.mockReturnValue(false);
+  });
+  afterEach(() => cleanup());
+
+  it("renders the By-meal list and NO By meal / By ingredient toggle for water", () => {
+    render(
+      <MacroDetailPanel macro="water" meals={waterMeals} open onClose={() => undefined} />,
+    );
+    // By-meal list is present...
+    expect(screen.getByTestId("macro-detail-meal-list")).toBeInTheDocument();
+    // ...the ingredient list is NOT...
+    expect(screen.queryByTestId("macro-detail-ingredient-list")).toBeNull();
+    // ...and the segmented toggle (tablist) is hidden — water has no
+    // per-ingredient decomposition (mirrors mobile BREAKDOWN_MACROS exclusion).
+    expect(screen.queryByRole("tablist", { name: "Breakdown mode" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "By ingredient" })).toBeNull();
+  });
+
+  it("totals water in ml via getMacroValue (sums every meal's waterMl)", () => {
+    render(
+      <MacroDetailPanel macro="water" meals={waterMeals} open onClose={() => undefined} />,
+    );
+    // 200 + 500 + 300 = 1000 ml — rendered with the ml unit in the Total row.
+    expect(screen.getByText("1000ml")).toBeInTheDocument();
+    // Header reflects the Water config label.
+    expect(screen.getByText("Water Breakdown")).toBeInTheDocument();
+  });
+
+  it("still shows the By meal / By ingredient toggle for an ingredient-capable macro (protein)", () => {
+    // Guard against the water carve-out accidentally hiding the toggle globally.
+    render(
+      <MacroDetailPanel macro="protein" meals={waterMeals} open onClose={() => undefined} />,
+    );
+    expect(screen.getByRole("tablist", { name: "Breakdown mode" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "By ingredient" })).toBeInTheDocument();
+  });
 });
 
 describe("MacroDetailPanel — empty state (ENG-825 design_system_elevation)", () => {

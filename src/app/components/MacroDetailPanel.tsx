@@ -18,7 +18,53 @@ import {
 } from "@/lib/nutrition/macroIngredientBreakdown";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 
-export type MacroKey = "protein" | "carbs" | "fat" | "fiber" | "calories";
+export type MacroKey = "protein" | "carbs" | "fat" | "fiber" | "calories" | "water";
+
+/**
+ * Single source of truth for which macro keys actually open the per-macro
+ * detail panel. The Today macro tiles + bars render these — and only these —
+ * as interactive controls; the `openMacroDetail` handler in NutritionTracker
+ * guards on the same set.
+ *
+ * The interactive set is web↔mobile parity (ENG-1213): protein/carbs/fat/fiber
+ * each have a per-meal AND per-ingredient breakdown; `water` has a per-meal
+ * breakdown only (sourced from `nutrition_entries.water_ml`), so the panel hides
+ * the By meal / By ingredient toggle for it and always shows the By-meal view —
+ * mirroring the mobile `BREAKDOWN_MACROS` exclusion in `app/useMacroDetail.ts`.
+ *
+ * Reference-only nutrients (sugar, sodium) are NOT in this set: the panel has no
+ * breakdown for them, so they must render as plain, non-interactive elements
+ * (ENG-848 — dead-tap a11y fix). `calories` is a valid `MacroKey` the panel can
+ * still render (e.g. via the ring deep-link) but is NOT a tile/bar — there is no
+ * calories tile (calories is the ring) — so it is intentionally excluded from the
+ * tile-affordance set on both platforms.
+ *
+ * Consumed by:
+ *   - src/app/components/suppr/today-dashboard-macro-tiles.tsx (affordance)
+ *   - src/app/components/suppr/today-dashboard-macro-bars.tsx  (affordance)
+ *   - src/app/components/NutritionTracker.tsx → openMacroDetail (handler guard)
+ */
+export const MACRO_DETAIL_SUPPORTED_KEYS = [
+  "protein",
+  "carbs",
+  "fat",
+  "fiber",
+  "water",
+] as const satisfies readonly MacroKey[];
+
+export type MacroDetailSupportedKey =
+  (typeof MACRO_DETAIL_SUPPORTED_KEYS)[number];
+
+const MACRO_DETAIL_SUPPORTED_SET: ReadonlySet<string> = new Set(
+  MACRO_DETAIL_SUPPORTED_KEYS,
+);
+
+/** True when `macro` opens a per-macro detail panel (a tile/bar is interactive). */
+export function isMacroDetailSupported(
+  macro: string,
+): macro is MacroDetailSupportedKey {
+  return MACRO_DETAIL_SUPPORTED_SET.has(macro);
+}
 
 export interface MacroMeal {
   name: string;
@@ -58,7 +104,22 @@ const MACRO_CONFIG: Record<
   fat: { label: "Fat", cssVar: "var(--macro-fat)", unit: "g" },
   fiber: { label: "Fiber", cssVar: "var(--success)", unit: "g" },
   calories: { label: "Calories", cssVar: "var(--macro-calories)", unit: "kcal" },
+  water: { label: "Water", cssVar: "var(--macro-water)", unit: "ml" },
 };
+
+/**
+ * Macros with a per-ingredient decomposition (the "By ingredient" toggle).
+ * `water` is per-meal only (it has no `recipe_ingredients` column to scale),
+ * so the toggle is hidden for it — mirrors the mobile `BREAKDOWN_MACROS` set in
+ * `apps/mobile/app/useMacroDetail.ts`.
+ */
+const INGREDIENT_BREAKDOWN_MACROS: ReadonlySet<MacroKey> = new Set<MacroKey>([
+  "protein",
+  "carbs",
+  "fat",
+  "fiber",
+  "calories",
+]);
 
 type BreakdownMode = "meal" | "ingredient";
 
@@ -69,6 +130,15 @@ type BreakdownMode = "meal" | "ingredient";
  * mobile-style key ("fiberG") for fiber.
  */
 export function getMacroValue(meal: MacroMeal, macro: MacroKey): number {
+  if (macro === "water") {
+    // Water lives on `nutrition_entries.water_ml` → mapped to `waterMl` on the
+    // in-memory LoggedMeal (see useNutritionJournalState). Read defensively
+    // (mobile-style `waterMl`, snake `water_ml`, or a bare `water`) and coerce
+    // to a finite number ≥ 0 — mirrors the fiber fallback below.
+    const raw = meal.waterMl ?? meal.water_ml ?? meal.water ?? 0;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    return Number.isFinite(n) ? Math.max(0, n) : 0;
+  }
   if (macro === "fiber") {
     const raw = meal.fiberG ?? meal.fiber ?? 0;
     const direct = typeof raw === "number" ? raw : Number(raw) || 0;
@@ -107,6 +177,11 @@ export function MacroDetailPanel({
   const config = MACRO_CONFIG[macro];
   const router = useRouter();
   const [mode, setMode] = useState<BreakdownMode>("meal");
+  // Water has a per-meal breakdown only (no `recipe_ingredients` column to
+  // scale), so the By meal / By ingredient toggle is hidden for it and the view
+  // is pinned to "meal" — mirrors mobile's `BREAKDOWN_MACROS` exclusion.
+  const supportsIngredientBreakdown = INGREDIENT_BREAKDOWN_MACROS.has(macro);
+  const effectiveMode: BreakdownMode = supportsIngredientBreakdown ? mode : "meal";
   // ENG-825 (2026-05-31 design-direction macro/meal lane). Web mirror of the
   // mobile `NutritionDetailEmptyState`: when `design_system_elevation` is ON
   // the empty state becomes an iconified, elevated card (modern radius +
@@ -140,8 +215,10 @@ export function MacroDetailPanel({
   }, [meals, macro]);
 
   // Derive the per-ingredient breakdown via the SHARED helper (same module
-  // mobile uses) so the scale/reconcile logic is single-sourced.
+  // mobile uses) so the scale/reconcile logic is single-sourced. Skipped
+  // entirely for water — it has no per-ingredient decomposition.
   const ingredientBreakdown = useMemo(() => {
+    if (!supportsIngredientBreakdown) return { lines: [], total: 0 };
     const entries = meals.map((m) =>
       toBreakdownEntry({
         id: m.id ?? "",
@@ -157,7 +234,7 @@ export function MacroDetailPanel({
       }),
     );
     return deriveIngredientBreakdown(entries, ingredientRows ?? [], macro as BreakdownMacro);
-  }, [meals, ingredientRows, macro]);
+  }, [meals, ingredientRows, macro, supportsIngredientBreakdown]);
 
   const formatValue = (v: number): string => {
     const rounded = Math.round(v * 10) / 10;
@@ -172,7 +249,7 @@ export function MacroDetailPanel({
             {config.label} Breakdown
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            {mode === "meal"
+            {effectiveMode === "meal"
               ? `Per-meal ${config.label.toLowerCase()} breakdown for today.`
               : `Per-ingredient ${config.label.toLowerCase()} breakdown for today.`}
           </DialogDescription>
@@ -223,7 +300,10 @@ export function MacroDetailPanel({
           ) : (
             <>
               {/* Segmented toggle: By meal / By ingredient. Mirrors the mobile
-                  macro-detail screen control. */}
+                  macro-detail screen control. Hidden for water — it has no
+                  per-ingredient breakdown, so the view is pinned to By meal
+                  (mobile `BREAKDOWN_MACROS` exclusion, ENG-1213). */}
+              {supportsIngredientBreakdown ? (
               <div
                 role="tablist"
                 aria-label="Breakdown mode"
@@ -256,8 +336,9 @@ export function MacroDetailPanel({
                   );
                 })}
               </div>
+              ) : null}
 
-              {mode === "ingredient" ? (
+              {effectiveMode === "ingredient" ? (
                 <div data-testid="macro-detail-ingredient-list" className="divide-y divide-border">
                   {ingredientBreakdown.lines.map((line, i) => {
                     const pct =
@@ -288,7 +369,7 @@ export function MacroDetailPanel({
               ) : (
                 <>
                   {/* Meal list */}
-                  <div className="divide-y divide-border">
+                  <div data-testid="macro-detail-meal-list" className="divide-y divide-border">
                     {mealValues.map(({ meal, value }, i) => {
                       const pct = total > 0 ? value / total : 0;
                       return (
@@ -362,7 +443,7 @@ export function MacroDetailPanel({
                   className="text-base font-extrabold tabular-nums"
                   style={{ color: config.cssVar }}
                 >
-                  {formatValue(mode === "ingredient" ? ingredientBreakdown.total : total)}
+                  {formatValue(effectiveMode === "ingredient" ? ingredientBreakdown.total : total)}
                 </span>
               </div>
             </>

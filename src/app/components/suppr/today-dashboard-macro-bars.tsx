@@ -5,6 +5,7 @@ import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
 import { SupprCard } from "../ui/suppr-card.tsx";
+import { isMacroDetailSupported } from "../MacroDetailPanel";
 
 /**
  * TodayDashboardMacroBars — alternative macro display: a vertical
@@ -176,7 +177,13 @@ export function TodayDashboardMacroBars({
             </div>
           </>
         );
-        if (onPressMacro) {
+        // ENG-848 — only macros that actually open a detail panel render as
+        // interactive buttons. Reference-only bars (sugar/sodium/water) have no
+        // breakdown, so they render as plain, non-interactive elements — no
+        // button role, no aria-label, no focus affordance.
+        // `isMacroDetailSupported` is the single source of truth shared with the
+        // macro tiles and the `openMacroDetail` handler.
+        if (onPressMacro && isMacroDetailSupported(macro)) {
           return (
             <button
               key={macro}
