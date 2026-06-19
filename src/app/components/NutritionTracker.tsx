@@ -2716,7 +2716,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         ref={calendarInputRef}
         type="date"
         className="sr-only"
-        aria-hidden
+        aria-label="Select journal date"
         min={dateKeyFromDate(journalRangeBounds().min)}
         max={dateKeyFromDate(journalRangeBounds().max)}
         value={selectedDateKey}
