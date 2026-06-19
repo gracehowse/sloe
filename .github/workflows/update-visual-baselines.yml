@@ -1,0 +1,184 @@
+# Regenerate Playwright visual baselines on Linux CI and commit them back.
+#
+# WHY: The #486 / ENG-763 rescued visual harness needs trustworthy baselines.
+# Local macOS rasters do NOT match CI Linux (font hinting + GPU/SwiftShader
+# differ), so copied-from-mac baselines fail every run. The only honest
+# baseline is one rendered on the same ubuntu-latest image the visual job runs
+# on. This workflow does exactly that: it renders the visual specs on Linux
+# with Playwright's --update-snapshots and commits the regenerated PNGs back to
+# the branch you dispatch it against.
+#
+# HOW TO RUN:
+#   - Actions tab → "Update visual baselines" → Run workflow → pick the branch
+#     in `ref` (and optionally a single `spec` to limit the run), OR
+#   - gh workflow run update-visual-baselines.yml -f ref=claude/rescue-486-e2e
+#       (add `-f spec=tests/e2e/visual-audit-authed.spec.ts` to limit to one)
+#
+# REQUIRES (repo → Settings → Secrets and variables → Actions):
+#   - NEXT_PUBLIC_SUPABASE_URL      (public Supabase project URL)
+#   - NEXT_PUBLIC_SUPABASE_ANON_KEY (public anon key)
+#   - SUPABASE_SERVICE_ROLE_KEY     (service role — seeds/repairs the golden account)
+#   - E2E_VISUAL_EMAIL              (the dedicated visual-golden inbox, plus-addressed)
+#   - E2E_VISUAL_PASSWORD           (stable password for that account)
+#   The preflight step fails fast and names any of these that are missing.
+#
+# DETERMINISM CAVEAT (per the #486 rescue note): the two non-deterministic
+# specs — visual-audit-authed and visual-regression-deep — render real
+# user data, so their baselines are only trustworthy when they run on the
+# pinned VISUAL GOLDEN account (Alex Golden: free tier, fixed profile, empty
+# journal). The seed step below resets that account to its canonical state
+# every run; do NOT trust authed/deep baselines produced against any other
+# account. The seeder + npm scripts (`setup:e2e:visual-golden`,
+# `test:e2e:visual:*`, the `chromium-visual` project) must exist on the
+# dispatched `ref` — they live on the #486 rescue branch, not yet on `main`.
+
+name: Update visual baselines
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch to regenerate baselines on and commit back to"
+        required: true
+        default: ${{ github.ref_name }}
+      spec:
+        description: "Optional single spec file to limit the update (e.g. tests/e2e/visual-audit-authed.spec.ts). Leave blank for all visual specs."
+        required: false
+        default: ""
+
+concurrency:
+  group: update-visual-baselines-${{ github.event.inputs.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  regen-baselines:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      E2E_VISUAL_EMAIL: ${{ secrets.E2E_VISUAL_EMAIL }}
+      E2E_VISUAL_PASSWORD: ${{ secrets.E2E_VISUAL_PASSWORD }}
+      VERIFY_STRICT: "0"
+    steps:
+      - name: Checkout dispatched ref
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          # Need a writable token + full history so we can commit + push back.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Preflight — required secrets present
+        run: |
+          missing=()
+          [ -n "$NEXT_PUBLIC_SUPABASE_URL" ]      || missing+=("NEXT_PUBLIC_SUPABASE_URL")
+          [ -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] || missing+=("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]     || missing+=("SUPABASE_SERVICE_ROLE_KEY")
+          [ -n "$E2E_VISUAL_EMAIL" ]              || missing+=("E2E_VISUAL_EMAIL")
+          [ -n "$E2E_VISUAL_PASSWORD" ]           || missing+=("E2E_VISUAL_PASSWORD")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing required Actions secrets: ${missing[*]}"
+            echo "Set them in Settings → Secrets and variables → Actions, then re-run."
+            echo "The golden-account seed + visual login cannot run without them."
+            exit 1
+          fi
+          echo "All required secrets are present."
+
+      - name: Preflight — golden seeder present on this ref
+        run: |
+          if [ ! -f scripts/setup-e2e-visual-golden-user.mts ]; then
+            echo "::error::scripts/setup-e2e-visual-golden-user.mts is missing on ref '${{ github.event.inputs.ref }}'."
+            echo "The golden-account seeder lives on the #486 rescue branch (claude/rescue-486-e2e)."
+            echo "Dispatch this workflow against a ref that contains it (or merge the rescue branch first)."
+            exit 1
+          fi
+          echo "Golden seeder found."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run build
+
+      - name: Seed / reset the visual-golden account
+        # Invoke the seeder directly (the `setup:e2e:visual-golden` npm script
+        # hardcodes --env-file=.env.local, which does not exist in CI). Env is
+        # supplied via the job `env:` block above. Passing E2E_VISUAL_PASSWORD
+        # keeps the account's password stable and prevents any .env.local write.
+        run: npx tsx scripts/setup-e2e-visual-golden-user.mts
+
+      - name: Start Next server (mirror visual-review.yml)
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+        run: |
+          npm run start -- --port 3100 &
+          npx wait-on http://127.0.0.1:3100/login
+
+      - name: Regenerate visual baselines (--update-snapshots)
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+          # Server is already running above — do not let Playwright spawn another.
+          PLAYWRIGHT_SKIP_WEB_SERVER: "1"
+        run: |
+          set -euo pipefail
+          # Visual projects from playwright.config.ts on the rescue branch:
+          #   setup-visual → chromium-visual (golden-account authed visual specs)
+          #   chromium     (public-shell visual specs, no auth)
+          # --update-snapshots writes any missing/changed PNGs without failing.
+          if [ -n "${{ github.event.inputs.spec }}" ]; then
+            echo "Limiting update to: ${{ github.event.inputs.spec }}"
+            npx playwright test "${{ github.event.inputs.spec }}" \
+              --project=chromium \
+              --project=chromium-visual \
+              --update-snapshots
+          else
+            echo "Updating all visual specs."
+            npx playwright test \
+              tests/e2e/visual-audit.spec.ts \
+              tests/e2e/visual-audit-authed.spec.ts \
+              tests/e2e/visual-regression-subpages-public.spec.ts \
+              tests/e2e/visual-regression-subpages-authed.spec.ts \
+              tests/e2e/visual-regression-deep.spec.ts \
+              tests/e2e/visual-redesign-gate15.spec.ts \
+              tests/e2e/visual-redesign-gate15-authed.spec.ts \
+              --project=chromium \
+              --project=chromium-visual \
+              --update-snapshots
+          fi
+
+      - name: Commit regenerated baselines back to the ref
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/e2e/__snapshots__
+          if git diff --cached --quiet; then
+            echo "No baseline changes to commit — snapshots already match Linux render."
+            exit 0
+          fi
+          git commit \
+            -m "chore(e2e): regen visual baselines [skip ci]" \
+            -m "Regenerated on ubuntu-latest via update-visual-baselines.yml." \
+            -m "Refs ENG-763 / #486 (rescued visual harness needs Linux baselines)."
+          git push origin "HEAD:${{ github.event.inputs.ref }}"
+          echo "Pushed regenerated baselines to ${{ github.event.inputs.ref }}."
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-visual-baselines-report
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
