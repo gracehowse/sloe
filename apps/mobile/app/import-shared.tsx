@@ -18,11 +18,14 @@ import {
   AlertCircle,
   Clipboard as ClipboardIcon,
   Camera as CameraIcon,
+  ChevronRight,
   FileText,
+  Link,
   Link2,
   ScanLine,
   Lock,
   Share2,
+  X,
 } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
@@ -93,6 +96,7 @@ import {
 } from "@/lib/resolveImportUrl";
 import {
   detectSourcePlatform,
+  extractCreatorHandleFromImportUrl,
   isCaptionTextPlatform,
 } from "@/lib/sourcePlatform";
 
@@ -335,7 +339,49 @@ export default function ImportSharedScreen() {
     return () => { cancelled = true; };
   }, [userId]);
 
-  // User tier for the photo-import Pro gate (gap #3, 2026-06-09). Photo OCR is
+  // Idle clipboard peek (import.md §3.2) — "Use clipboard" only when pasteboard
+  // holds a recognised URL that differs from the field value.
+  const [idleClipboardUrl, setIdleClipboardUrl] = useState<string | null>(null);
+  const [dismissedCreatorHandle, setDismissedCreatorHandle] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!importRedesign || !userId || state !== "idle") {
+      setIdleClipboardUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const raw = await safeGetClipboardString();
+        if (cancelled) return;
+        const url = raw ? extractUrlFromShareText(raw) : null;
+        setIdleClipboardUrl(url ?? "");
+      } catch {
+        if (!cancelled) setIdleClipboardUrl("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [importRedesign, userId, state]);
+
+  const pastedCreatorHandle = useMemo(() => {
+    if (!importRedesign) return null;
+    const trimmed = manualUrl.trim();
+    if (!trimmed) return null;
+    return extractCreatorHandleFromImportUrl(trimmed);
+  }, [importRedesign, manualUrl]);
+
+  const showCreatorPreview =
+    Boolean(pastedCreatorHandle) && pastedCreatorHandle !== dismissedCreatorHandle;
+
+  const showIdleClipboardRow =
+    importRedesign &&
+    idleClipboardUrl !== null &&
+    idleClipboardUrl.length > 0 &&
+    idleClipboardUrl.trim() !== manualUrl.trim();
+
+  // User tier for the photo-import Pro gate
   // Pro-gated server-side (`/api/recipe-import/image` → 403 `pro_required` for
   // free), so we surface the gate BEFORE the tap: Free users get a Lock badge +
   // route to the paywall; Pro users get the picker. Hydrate synchronously from
@@ -1515,6 +1561,63 @@ export default function ImportSharedScreen() {
     idlePasteSection: {
       gap: Spacing.sm,
     },
+    // §3.2 composite paste row — Link2 + inline terracotta Import pill.
+    pasteFieldRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "stretch",
+      minHeight: 48,
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.xl,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      paddingLeft: Spacing.md,
+      paddingRight: Spacing.xs,
+      gap: Spacing.sm,
+    },
+    pasteFieldInput: {
+      flex: 1,
+      color: colors.text,
+      fontSize: 15,
+      paddingVertical: Spacing.md,
+      minHeight: 44,
+    },
+    pasteImportPill: {
+      backgroundColor: accent.primary,
+      borderRadius: Radius.full,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      minHeight: 44,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    pasteImportPillText: {
+      fontFamily: FontFamily.serifMedium,
+      fontSize: 15,
+      color: colors.primaryForeground,
+    },
+    platformHintShort: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+    creatorPreviewCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.xl,
+      padding: Spacing.md,
+    },
+    creatorPreviewText: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.text,
+    },
+    tertiaryLabelMuted: {
+      ...Type.body,
+      color: colors.textSecondary,
+    },
     // Tertiary affordance rows below the field (clipboard / photo). Left-
     // aligned text-link rows, not boxed buttons.
     tertiaryRow: {
@@ -1592,6 +1695,12 @@ export default function ImportSharedScreen() {
       fontSize: 15,
       color: colors.text,
       textAlign: "center",
+    },
+    methodTileTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: Spacing.xs,
     },
     methodTileSub: {
       fontSize: 11,
@@ -1842,6 +1951,14 @@ export default function ImportSharedScreen() {
     const trimmed = manualUrl.trim();
     if (!trimmed) return null;
     const platform = detectSourcePlatform(trimmed);
+    if (importRedesign) {
+      if (platform !== "instagram" && platform !== "tiktok") return null;
+      return (
+        <Text testID={`import-platform-hint-${platform}`} style={styles.platformHintShort}>
+          Tip: for TikTok and Instagram, use the app's share sheet for best results.
+        </Text>
+      );
+    }
     if (platform !== "instagram" && platform !== "tiktok" && platform !== "youtube") return null;
     const platformLabel =
       platform === "instagram" ? "Instagram" : platform === "tiktok" ? "TikTok" : "YouTube";
@@ -2498,27 +2615,52 @@ export default function ImportSharedScreen() {
                 <Text style={styles.idleSub}>From any link, social post or website.</Text>
               </View>
 
-              {/* Paste field + inline platform hint + Import + tertiary rows */}
+              {/* Paste field + platform hint + method tiles + conditional clipboard */}
               <View style={styles.idlePasteSection}>
-                <TextInput
-                  value={manualUrl}
-                  onChangeText={setManualUrl}
-                  placeholder="https://…"
-                  placeholderTextColor={colors.textTertiary}
-                  style={styles.input}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                />
+                <View style={styles.pasteFieldRow}>
+                  <Link2 size={20} color={colors.textSecondary} />
+                  <TextInput
+                    value={manualUrl}
+                    onChangeText={setManualUrl}
+                    placeholder="Paste a link…"
+                    placeholderTextColor={colors.textTertiary}
+                    style={styles.pasteFieldInput}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                    testID="import-idle-paste-field"
+                  />
+                  <PressableScale
+                    haptic="confirm"
+                    style={styles.pasteImportPill}
+                    onPress={onManualImport}
+                    accessibilityRole="button"
+                    accessibilityLabel="Import recipe from link"
+                    testID="import-shared-import"
+                  >
+                    <Text style={styles.pasteImportPillText}>Import</Text>
+                  </PressableScale>
+                </View>
+
+                {showCreatorPreview && pastedCreatorHandle ? (
+                  <View style={styles.creatorPreviewCard} testID="import-idle-creator-preview">
+                    <Share2 size={20} color={colors.textSecondary} />
+                    <Text style={styles.creatorPreviewText} numberOfLines={1}>
+                      {pastedCreatorHandle}
+                    </Text>
+                    <Pressable
+                      onPress={() => setDismissedCreatorHandle(pastedCreatorHandle)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Dismiss creator preview"
+                      testID="import-idle-creator-preview-dismiss"
+                    >
+                      <X size={16} color={colors.textTertiary} />
+                    </Pressable>
+                  </View>
+                ) : null}
+
                 {renderPlatformHint()}
-                <SupprButton
-                  variant="primary"
-                  style={styles.importBtnLayout}
-                  onPress={onManualImport}
-                  accessibilityLabel="Import recipe from link"
-                  testID="import-shared-import"
-                  label="Import"
-                />
 
                 <View style={styles.methodDividerRow}>
                   <View style={styles.methodDividerLine} />
@@ -2543,9 +2685,17 @@ export default function ImportSharedScreen() {
                       <View style={styles.methodTileIconCircle}>
                         <CameraIcon size={20} color={accent.primary} />
                       </View>
-                      <Text style={styles.methodTileTitle}>Photo</Text>
+                      <View style={styles.methodTileTitleRow}>
+                        <Text style={styles.methodTileTitle}>Photo</Text>
+                        {isFreeTier ? (
+                          <View style={styles.proPill}>
+                            <Lock size={12} color={Accent.warningSolid} />
+                            <Text style={styles.proPillText}>Pro</Text>
+                          </View>
+                        ) : null}
+                      </View>
                       <Text style={styles.methodTileSub}>
-                        {isFreeTier ? "Pro · Snap a recipe" : "Snap a recipe"}
+                        {isFreeTier ? "Snap a recipe" : "Snap a recipe"}
                       </Text>
                     </PressableScale>
                   ) : null}
@@ -2579,15 +2729,18 @@ export default function ImportSharedScreen() {
                   </PressableScale>
                 </View>
 
-                <PressableScale
-                  haptic="selection"
-                  style={styles.tertiaryRow}
-                  onPress={onPasteFromClipboard}
-                  accessibilityRole="button"
-                >
-                  <ClipboardIcon size={18} color={accent.primary} />
-                  <Text style={styles.tertiaryLabel}>Use clipboard</Text>
-                </PressableScale>
+                {showIdleClipboardRow ? (
+                  <PressableScale
+                    haptic="selection"
+                    style={styles.tertiaryRow}
+                    onPress={onPasteFromClipboard}
+                    accessibilityRole="button"
+                    testID="import-idle-use-clipboard"
+                  >
+                    <Link size={16} color={colors.textSecondary} />
+                    <Text style={styles.tertiaryLabelMuted}>Use clipboard</Text>
+                  </PressableScale>
+                ) : null}
               </View>
 
               {/* Trust-affordance row (gap #2 + #9) — non-tappable. Honest:
@@ -2622,6 +2775,7 @@ export default function ImportSharedScreen() {
                         <Text style={styles.recentTitle}>{item.name}</Text>
                         <Text style={styles.recentTime}>{item.time}</Text>
                       </View>
+                      <ChevronRight size={16} color={colors.textTertiary} />
                     </View>
                   ))}
                 </View>

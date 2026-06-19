@@ -64,3 +64,52 @@ export function isCaptionTextPlatform(
 ): platform is CaptionTextPlatform {
   return platform === "instagram" || platform === "tiktok" || platform === "youtube";
 }
+
+const IG_RESERVED_PATH_SEGMENTS = new Set([
+  "p",
+  "reel",
+  "reels",
+  "stories",
+  "explore",
+  "accounts",
+  "tv",
+  "direct",
+]);
+
+/**
+ * Best-effort creator `@handle` from a social import URL (IG / TT / YT).
+ * Returns null when the hostname is not social or the path has no handle.
+ * Used by the import idle CREME-style attribution preview (import.md §3.2).
+ */
+export function extractCreatorHandleFromImportUrl(url: string): string | null {
+  if (typeof url !== "string" || url.trim().length === 0) return null;
+  let parsed: URL;
+  try {
+    const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+    parsed = new URL(normalized);
+  } catch {
+    return null;
+  }
+
+  const platform = detectSourcePlatform(parsed.href);
+
+  if (platform === "instagram") {
+    const seg = parsed.pathname.split("/").filter(Boolean)[0];
+    if (!seg || IG_RESERVED_PATH_SEGMENTS.has(seg.toLowerCase())) return null;
+    return `@${seg}`;
+  }
+
+  if (platform === "tiktok") {
+    const match = parsed.pathname.match(/^\/@([^/?#]+)/i);
+    if (match?.[1]) return `@${match[1]}`;
+    return null;
+  }
+
+  if (platform === "youtube") {
+    const handleMatch = parsed.pathname.match(/^\/@([^/?#]+)/i);
+    if (handleMatch?.[1]) return `@${handleMatch[1]}`;
+    return null;
+  }
+
+  return null;
+}
