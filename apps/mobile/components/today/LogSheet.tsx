@@ -237,6 +237,8 @@ export interface LogSheetProps {
     userId?: string | null;
     /** ENG-772 — journal day for food-search preview time picker. */
     logDateKey?: string;
+    /** Canonical profile timezone for date_key/eaten_at attribution. */
+    profileTimezone?: string | null;
     /** Inline mode — the user's logging history, newest-first (from
      *  `computeRecentMeals`). Powers BOTH the empty-query "Recent" strip and
      *  the typed-query history-first "Past logged" group (ENG-1033). When
@@ -981,6 +983,7 @@ function DefaultComposition({
             supabase={search?.supabase}
             userId={search?.userId}
             logDateKey={search?.logDateKey}
+            profileTimezone={search?.profileTimezone}
             recentFoods={search?.recentFoods}
             favoriteFoods={search?.favoriteFoods}
             onToggleFavorite={search?.onToggleFavorite}

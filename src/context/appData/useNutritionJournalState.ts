@@ -83,8 +83,9 @@ export function useNutritionJournalState(opts: {
   authedUserId: string | null;
   initialByDay: Record<string, LoggedMeal[]>;
   selectedDateKey: string;
+  profileTimezone?: string | null;
 }) {
-  const { authedUserId, initialByDay, selectedDateKey } = opts;
+  const { authedUserId, initialByDay, selectedDateKey, profileTimezone } = opts;
   const [nutritionByDay, setNutritionByDay] = useState<Record<string, LoggedMeal[]>>(() => initialByDay);
   const [dbNutritionEnabled, setDbNutritionEnabled] = useState(true);
   const [dbNutritionWarned, setDbNutritionWarned] = useState(false);
@@ -203,7 +204,12 @@ export function useNutritionJournalState(opts: {
    */
   const buildNutritionEntryRow = useCallback(
     (dayKey: string, meal: LoggedMeal, userId: string) => {
-      const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(meal, dayKey);
+      const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(
+        meal,
+        dayKey,
+        null,
+        profileTimezone,
+      );
       return {
         id: meal.id,
         user_id: userId,
@@ -230,7 +236,7 @@ export function useNutritionJournalState(opts: {
         eaten_at: eatenAt,
       };
     },
-    [],
+    [profileTimezone],
   );
 
   const addLoggedMealForDate = useCallback((
@@ -426,7 +432,12 @@ export function useNutritionJournalState(opts: {
       const existing = prevDay.find((m) => m.id === updated.id);
       if (!existing) return false;
 
-      const resolvedDateKey = nutritionEntryDateKeyAndEatenAt(updated, dayKey).dateKey;
+      const resolvedDateKey = nutritionEntryDateKeyAndEatenAt(
+        updated,
+        dayKey,
+        null,
+        profileTimezone,
+      ).dateKey;
 
       setNutritionByDay((prev) => {
         const without = (prev[dayKey] ?? []).filter((m) => m.id !== updated.id);
@@ -442,7 +453,7 @@ export function useNutritionJournalState(opts: {
 
       if (!authedUserId || !dbNutritionEnabled) return true;
 
-      const payload = buildNutritionEntryUpdatePayload(dayKey, updated);
+      const payload = buildNutritionEntryUpdatePayload(dayKey, updated, profileTimezone);
       const { error } = await supabase
         .from("nutrition_entries")
         .update(payload)
@@ -462,7 +473,7 @@ export function useNutritionJournalState(opts: {
       void refreshAdaptiveTdeeForUser(supabase, authedUserId);
       return true;
     },
-    [authedUserId, dbNutritionEnabled, nutritionByDay, buildNutritionEntryRow, enqueueFailedUpsert],
+    [authedUserId, dbNutritionEnabled, nutritionByDay, buildNutritionEntryRow, enqueueFailedUpsert, profileTimezone],
   );
 
   const mealsForSelectedDate = useMemo(() => {
@@ -484,6 +495,7 @@ export function useNutritionJournalState(opts: {
       const cloned = reanchorMealEatenAt(
         cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
         targetDayKey,
+        profileTimezone,
       ) as Omit<LoggedMeal, "id">;
       addLoggedMealForDate(targetDayKey, cloned, "copy_meal");
       track(AnalyticsEvents.meal_copied, {
@@ -492,7 +504,7 @@ export function useNutritionJournalState(opts: {
         targetDayCount: 1,
       });
     },
-    [nutritionByDay, addLoggedMealForDate],
+    [nutritionByDay, addLoggedMealForDate, profileTimezone],
   );
 
   /**
@@ -518,6 +530,7 @@ export function useNutritionJournalState(opts: {
         const cloned = reanchorMealEatenAt(
           cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
           target,
+          profileTimezone,
         ) as Omit<LoggedMeal, "id">;
         const inserted = await addLoggedMealsForDate(target, [cloned]);
         totalInserted += inserted.length;
@@ -535,7 +548,7 @@ export function useNutritionJournalState(opts: {
         });
       }
     },
-    [nutritionByDay, addLoggedMealsForDate],
+    [nutritionByDay, addLoggedMealsForDate, profileTimezone],
   );
 
   /**
@@ -558,6 +571,7 @@ export function useNutritionJournalState(opts: {
           reanchorMealEatenAt(
             cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
             targetDayKey,
+            profileTimezone,
           ) as Omit<LoggedMeal, "id">,
       );
       const inserted = await addLoggedMealsForDate(targetDayKey, clones);
@@ -574,7 +588,7 @@ export function useNutritionJournalState(opts: {
         });
       }
     },
-    [nutritionByDay, addLoggedMealsForDate],
+    [nutritionByDay, addLoggedMealsForDate, profileTimezone],
   );
 
   /**
@@ -597,6 +611,7 @@ export function useNutritionJournalState(opts: {
             reanchorMealEatenAt(
               cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
               target,
+              profileTimezone,
             ) as Omit<LoggedMeal, "id">,
         );
         const inserted = await addLoggedMealsForDate(target, clones);
@@ -615,7 +630,7 @@ export function useNutritionJournalState(opts: {
         });
       }
     },
-    [nutritionByDay, addLoggedMealsForDate],
+    [nutritionByDay, addLoggedMealsForDate, profileTimezone],
   );
 
   return {

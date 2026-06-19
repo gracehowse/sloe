@@ -471,6 +471,7 @@ export default function TrackerScreen() {
   const [byDay, setByDay] = useState<ByDay>({});
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [profileTimezone, setProfileTimezone] = useState<string | null>(null);
 
   // ENG-798 (Design Direction 2026) — the quiet daily-commit confirm haptic.
   // Provided by `useWinMoment` (defined far below in this component, after the
@@ -515,7 +516,7 @@ export default function TrackerScreen() {
       // ENG (launch-audit P1-2) — single shared row-builder so this
       // immediate path and the 600ms backstop (`useNutritionEntriesSync`)
       // can never diverge on the `eaten_at` / `date_key` column set.
-      const dbRows = meals.map((m) => buildNutritionEntryRow(m, targetDayKey, userId));
+      const dbRows = meals.map((m) => buildNutritionEntryRow(m, targetDayKey, userId, profileTimezone));
       // Upsert (not insert) so a race with the 600ms debounced journal sync
       // never throws duplicate-key and rolls back an optimistic log.
       const { error } = await supabase
@@ -548,7 +549,7 @@ export default function TrackerScreen() {
       scheduleAdaptiveTdeeRefresh(supabase, userId);
       return true;
     },
-    [userId],
+    [userId, profileTimezone],
   );
 
   const flushQueuedJournalWrites = useCallback(async () => {
@@ -580,7 +581,7 @@ export default function TrackerScreen() {
       // day via the same helper), so no `localTime` override is passed here.
       const { error } = await supabase
         .from("nutrition_entries")
-        .update(buildNutritionEntryUpdatePayload(updated, dateKey))
+        .update(buildNutritionEntryUpdatePayload(updated, dateKey, null, profileTimezone))
         .eq("id", mealId)
         .eq("user_id", userId);
       if (error) {
@@ -588,7 +589,7 @@ export default function TrackerScreen() {
           "[tracker] persistMealUpdateImmediate failed:",
           error.message,
         );
-        const row = buildNutritionEntryRow(updated, dateKey, userId);
+        const row = buildNutritionEntryRow(updated, dateKey, userId, profileTimezone);
         const queue = await loadJournalWriteQueue();
         await saveJournalWriteQueue(
           enqueueJournalUpserts(
@@ -605,7 +606,7 @@ export default function TrackerScreen() {
       }
       return true;
     },
-    [userId],
+    [userId, profileTimezone],
   );
   // Pattern #9 (`AN8GJ1Dr3M` + F-131 `AMmlpVOqMnaKKdV2dobjjjg`, 2026-05-08):
   // WhereThisComesFromSheet visibility + last-sync timestamp. One sheet
@@ -938,11 +939,12 @@ export default function TrackerScreen() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("net_carbs_lens_enabled")
+        .select("net_carbs_lens_enabled, tz_iana")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled) return;
       setNetCarbsLensEnabled(Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled));
+      setProfileTimezone((data as { tz_iana?: string | null } | null)?.tz_iana ?? null);
     })().catch(() => { /* noop — preserve default */ });
     return () => {
       cancelled = true;
@@ -2087,7 +2089,7 @@ export default function TrackerScreen() {
         ...(item.source ? { source: item.source } : {}),
         ...(Object.keys(micros).length > 0 ? { micros } : {}),
         ...(isFeatureEnabled("editable_eaten_at")
-          ? { eatenAt: defaultEatenAtForNewLog(dayKey) }
+          ? { eatenAt: defaultEatenAtForNewLog(dayKey, profileTimezone) }
           : {}),
       };
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
@@ -2105,7 +2107,7 @@ export default function TrackerScreen() {
       // to the ledger directly; that ledger now holds quick-add only.
       try { track(AnalyticsEvents.food_logged, { source: "quick_add", slot }); } catch { /* noop */ }
     },
-    [dayKey, userId, persistMealsImmediate],
+    [dayKey, userId, persistMealsImmediate, profileTimezone],
   );
 
   /**
@@ -2161,10 +2163,12 @@ export default function TrackerScreen() {
           : "USDA FoodData Central";
       const eatenAt =
         result.eatenAt ??
-        (isFeatureEnabled("editable_eaten_at") ? defaultEatenAtForNewLog(dayKey) : undefined);
+        (isFeatureEnabled("editable_eaten_at") ? defaultEatenAtForNewLog(dayKey, profileTimezone) : undefined);
       const { dateKey: resolvedDateKey } = nutritionEntryDateKeyAndEatenAt(
         { eatenAt },
         dayKey,
+        null,
+        profileTimezone,
       );
       const meal: JournalMeal = {
         id: newMealId(),
@@ -2206,7 +2210,7 @@ export default function TrackerScreen() {
         });
       } catch { /* noop */ }
     },
-    [activeMealSlot, dayKey, persistMealsImmediate],
+    [activeMealSlot, dayKey, persistMealsImmediate, profileTimezone],
   );
 
   /** ENG-709 — Copy yesterday's meals to today. Called after the user
@@ -2227,6 +2231,7 @@ export default function TrackerScreen() {
             id: newMealId(),
           } as JournalMeal,
           dayKey,
+          profileTimezone,
         );
         if (meal.recipeId) {
           const fresh = await fetchMobileCanonicalRecipeTitle(meal.recipeId);
@@ -2244,7 +2249,7 @@ export default function TrackerScreen() {
       source: "copy_yesterday",
       count: newMeals.length,
     });
-  }, [byDay, dayKey, persistMealsImmediate]);
+  }, [byDay, dayKey, persistMealsImmediate, profileTimezone]);
 
   const handleCopyYesterday = useCallback(() => {
     const count = getYesterdayMeals(byDay, dayKey).length;
@@ -3463,7 +3468,7 @@ export default function TrackerScreen() {
           source: aiLoggingSourceLabel(item.source),
           ...(Object.keys(micros).length > 0 ? { micros } : {}),
           ...(isFeatureEnabled("editable_eaten_at")
-            ? { eatenAt: defaultEatenAtForNewLog(dayKey) }
+            ? { eatenAt: defaultEatenAtForNewLog(dayKey, profileTimezone) }
             : {}),
         };
         return meal;
@@ -3483,7 +3488,7 @@ export default function TrackerScreen() {
         count: newMeals.length,
       });
     },
-    [activeMealSlot, dayKey, userId, persistMealsImmediate],
+    [activeMealSlot, dayKey, userId, persistMealsImmediate, profileTimezone],
   );
 
   // Batch 5.13 — Pro gate for Voice and AI photo logging. Free + Base
@@ -4301,7 +4306,7 @@ export default function TrackerScreen() {
       fat: Math.round(f),
       source: "manual",
       ...(isFeatureEnabled("editable_eaten_at")
-        ? { eatenAt: defaultEatenAtForNewLog(dayKey) }
+        ? { eatenAt: defaultEatenAtForNewLog(dayKey, profileTimezone) }
         : {}),
     };
     setByDay((prev) => ({
@@ -4320,7 +4325,7 @@ export default function TrackerScreen() {
     setCarbs("");
     setFat("");
     setAddOpen(false);
-  }, [dayKey, kcal, protein, carbs, fat, title, activeMealSlot, persistMealsImmediate]);
+  }, [dayKey, kcal, protein, carbs, fat, title, activeMealSlot, persistMealsImmediate, profileTimezone]);
 
   const deleteMeal = useCallback((mealId: string) => {
     // F-74 / F-103 (2026-05-07) — delete is now stimulant-side
@@ -4414,8 +4419,8 @@ export default function TrackerScreen() {
                 : "USDA FoodData Central";
       const eatenAt =
         result.eatenAt ??
-        (isFeatureEnabled("editable_eaten_at") ? defaultEatenAtForNewLog(dayKey) : undefined);
-      const { dateKey: resolvedDateKey } = nutritionEntryDateKeyAndEatenAt({ eatenAt }, dayKey);
+        (isFeatureEnabled("editable_eaten_at") ? defaultEatenAtForNewLog(dayKey, profileTimezone) : undefined);
+      const { dateKey: resolvedDateKey } = nutritionEntryDateKeyAndEatenAt({ eatenAt }, dayKey, null, profileTimezone);
       const meal: JournalMeal = {
         id: newMealId(),
         name: activeMealSlot,
@@ -4449,7 +4454,7 @@ export default function TrackerScreen() {
       }
       return { id: meal.id, title: result.name, kcal: mealCalories };
     },
-    [activeMealSlot, dayKey, persistMealsImmediate],
+    [activeMealSlot, dayKey, persistMealsImmediate, profileTimezone],
   );
 
   const logHistoryItemFromSheet = useCallback(
@@ -4471,7 +4476,7 @@ export default function TrackerScreen() {
         ...(item.source ? { source: item.source } : {}),
         ...(Object.keys(micros).length > 0 ? { micros } : {}),
         ...(isFeatureEnabled("editable_eaten_at")
-          ? { eatenAt: defaultEatenAtForNewLog(dayKey) }
+          ? { eatenAt: defaultEatenAtForNewLog(dayKey, profileTimezone) }
           : {}),
       };
       startTransition(() => {
@@ -4493,7 +4498,7 @@ export default function TrackerScreen() {
         mealIds: [meal.id],
       });
     },
-    [activeMealSlot, dayKey, persistMealsImmediate, presentLogSheetConfirmation],
+    [activeMealSlot, dayKey, persistMealsImmediate, presentLogSheetConfirmation, profileTimezone],
   );
 
   const logSheetGoTos = useMemo(() => {
@@ -4558,7 +4563,7 @@ export default function TrackerScreen() {
       // `date_key` from `eaten_at`, so skipping this would bucket the copy
       // back onto the source day (launch-audit 2026-06-12 copy-path fix).
       const withIds: JournalMeal[] = clones.map((c) =>
-        reanchorMealEatenAt({ ...c, id: newMealId() } as JournalMeal, targetDayKey),
+        reanchorMealEatenAt({ ...c, id: newMealId() } as JournalMeal, targetDayKey, profileTimezone),
       );
       setByDay((prev) => ({
         ...prev,
@@ -4573,7 +4578,7 @@ export default function TrackerScreen() {
       // builder guarantees `eaten_at` + the eaten-derived `date_key` are
       // present (re-anchored above, so date_key === targetDayKey) and keeps
       // the recipe_id FK propagation from Schema refactor Phase 2.
-      const dbRows = withIds.map((m) => buildNutritionEntryRow(m, targetDayKey, userId));
+      const dbRows = withIds.map((m) => buildNutritionEntryRow(m, targetDayKey, userId, profileTimezone));
       const { error } = await supabase.from("nutrition_entries").insert(dbRows);
       if (error) {
         console.error("[tracker] copy/duplicate insert failed:", error.message);
@@ -4622,7 +4627,7 @@ export default function TrackerScreen() {
       }
       return withIds.length;
     },
-    [userId],
+    [userId, profileTimezone],
   );
 
   const copyMealToDate = useCallback(
@@ -4767,9 +4772,9 @@ export default function TrackerScreen() {
     setEditFat(String(Math.round(meal.fat * 10) / 10));
     setEditSlot(normalizeJournalSlotName(meal.name) || "Snacks");
     const chronIso =
-      meal.eatenAt ?? meal.createdAt ?? defaultEatenAtForNewLog(dateKeyFromDate(selectedDate));
-    setEditEatenAtTime(localTimeInputValueFromIso(chronIso));
-  }, [selectedDate]);
+      meal.eatenAt ?? meal.createdAt ?? defaultEatenAtForNewLog(dateKeyFromDate(selectedDate), profileTimezone);
+    setEditEatenAtTime(localTimeInputValueFromIso(chronIso, profileTimezone));
+  }, [selectedDate, profileTimezone]);
 
   /** Open edit modal when returning from meal nutrition screen with `editMealId`. */
   useEffect(() => {
@@ -4803,6 +4808,7 @@ export default function TrackerScreen() {
       editingMeal,
       dayKey,
       localTime,
+      profileTimezone,
     );
     const updated: JournalMeal = {
       ...editingMeal,
@@ -4834,7 +4840,7 @@ export default function TrackerScreen() {
     // 2026-05-08 data-loss hotfix — immediate Supabase update.
     void persistMealUpdateImmediate(updated.id, updated, dayKey);
     setEditingMeal(null);
-  }, [editingMeal, editTitle, editSlot, editKcal, editProtein, editCarbs, editFat, editPortion, editEatenAtTime, dayKey, persistMealUpdateImmediate]);
+  }, [editingMeal, editTitle, editSlot, editKcal, editProtein, editCarbs, editFat, editPortion, editEatenAtTime, dayKey, persistMealUpdateImmediate, profileTimezone]);
 
   const logPlannedMealWithPortion = useCallback(
     async (
@@ -4907,7 +4913,7 @@ export default function TrackerScreen() {
       // builder — Schema refactor Phase 2 semantics preserved).
       const { error } = await supabase
         .from("nutrition_entries")
-        .insert(buildNutritionEntryRow(optimisticMeal, dk, userId));
+        .insert(buildNutritionEntryRow(optimisticMeal, dk, userId, profileTimezone));
       if (error) {
         // Roll back the optimistic add and tell the user.
         setByDay((prev) => ({
@@ -4943,7 +4949,7 @@ export default function TrackerScreen() {
         // ledger bump.
       }
     },
-    [userId, selectedDate, loadJournal],
+    [userId, selectedDate, loadJournal, profileTimezone],
   );
 
   // Group meals by slot
@@ -6079,6 +6085,7 @@ export default function TrackerScreen() {
           supabase: supabase as unknown as { from: (table: string) => unknown },
           userId: userId ?? null,
           logDateKey: dayKey,
+          profileTimezone,
           // History-first search (ENG-1033, MFP grammar): the user's logging
           // history, newest-first, threaded into the inline panel. Powers the
           // empty-query "Recent" strip AND the typed-query "Past logged"
@@ -6510,6 +6517,7 @@ export default function TrackerScreen() {
         // multiple items to the same meal without tapping back through
         // the FAB. The X button still dismisses.
         logDateKey={dayKey}
+        profileTimezone={profileTimezone}
         onSelect={handleFoodSearchSelect}
         onClose={() => setSearchOpen(false)}
       />

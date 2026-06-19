@@ -73,6 +73,8 @@ type Props = {
   onSelect: (result: SelectedFood) => void;
   /** ENG-772 — journal day for food-search preview time picker. */
   logDateKey?: string;
+  /** Canonical profile timezone for date_key/eaten_at attribution. */
+  profileTimezone?: string | null;
   onClose: () => void;
   /**
    * F-128 (Grace, 2026-05-07): "we need to be able to add ingredients
@@ -124,6 +126,7 @@ export default function FoodSearchModal({
   userId,
   onSelect,
   logDateKey,
+  profileTimezone,
   onClose,
   onScanBarcode,
   onVoiceLog,
@@ -310,6 +313,7 @@ export default function FoodSearchModal({
           supabase={supabase}
           userId={userId}
           logDateKey={logDateKey}
+          profileTimezone={profileTimezone}
           onSelect={onSelect}
           mode="full"
           recentFoods={recentFoods}

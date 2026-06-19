@@ -568,6 +568,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     extraWaterByDay,
     notificationPrefs,
     profileDisplayName,
+    profileTimezone,
     authEmail,
     netCarbsLensEnabled,
   } = useAppData();
@@ -696,15 +697,15 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   useEffect(() => {
     if (!isFeatureEnabled("editable_eaten_at")) return;
-    setTimeLabel(localTimeInputValueFromIso(defaultEatenAtForNewLog(selectedDateKey)));
+    setTimeLabel(localTimeInputValueFromIso(defaultEatenAtForNewLog(selectedDateKey, profileTimezone), profileTimezone));
   }, [selectedDateKey]);
 
   const eatenAtForCurrentLog = useCallback((): Pick<LoggedMeal, "eatenAt"> => {
     if (!isFeatureEnabled("editable_eaten_at")) return {};
     const localTime = parseLocalTimeInput(timeLabel);
     const eatenAt = localTime
-      ? eatenAtIsoFromLocalParts(selectedDateKey, localTime.hours, localTime.minutes)
-      : defaultEatenAtForNewLog(selectedDateKey);
+      ? eatenAtIsoFromLocalParts(selectedDateKey, localTime.hours, localTime.minutes, profileTimezone)
+      : defaultEatenAtForNewLog(selectedDateKey, profileTimezone);
     return { eatenAt };
   }, [selectedDateKey, timeLabel]);
 
@@ -3463,6 +3464,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         supabase={supabase}
         userId={authedUserId ?? null}
         logDateKey={selectedDateKey}
+        profileTimezone={profileTimezone}
         macroTargets={{
           calories: effectiveCalorieTarget,
           protein: effectiveMacroTargets.protein,
@@ -3907,6 +3909,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           supabase,
           userId: authedUserId ?? null,
           logDateKey: selectedDateKey,
+          profileTimezone,
           // History-first search (ENG-1033, MFP grammar): the user's logging
           // history, newest-first, threaded into the inline panel so the
           // typed-query "Past logged" group ranks matching past logs above

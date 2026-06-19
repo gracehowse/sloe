@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   compareMealsByChronology,
   dateKeyFromInstant,
@@ -15,6 +15,10 @@ import {
 } from "../../src/lib/nutrition/mealEatenAt";
 
 describe("mealEatenAt (ENG-772)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("prefers eatenAt over createdAt for chronology", () => {
     expect(
       mealChronologyInstantIso({
@@ -115,6 +119,30 @@ describe("mealEatenAt (ENG-772)", () => {
       expect(dateKey).toBe("2026-06-11");
       expect(eatenAt).toBe(clone.eatenAt);
       expect(localTimeInputValueFromIso(eatenAt!)).toBe("08:15");
+    });
+  });
+
+  describe("canonical timezone hardening (ENG-1076)", () => {
+    it("keeps a 23:50 entry on the canonical day when the runtime timezone differs", () => {
+      vi.stubEnv("TZ", "UTC");
+      const canonicalTz = "America/New_York";
+      const eatenAt = eatenAtIsoFromLocalParts("2026-06-12", 23, 50, canonicalTz);
+
+      expect(eatenAt).toBe("2026-06-13T03:50:00.000Z");
+      expect(dateKeyFromInstant(eatenAt)).toBe("2026-06-13");
+      expect(dateKeyFromInstant(eatenAt, canonicalTz)).toBe("2026-06-12");
+      expect(localTimeInputValueFromIso(eatenAt, canonicalTz)).toBe("23:50");
+    });
+
+    it("re-anchors across timezones using the canonical wall-clock time", () => {
+      vi.stubEnv("TZ", "Asia/Tokyo");
+      const canonicalTz = "America/New_York";
+      const sourceIso = eatenAtIsoFromLocalParts("2026-06-12", 23, 50, canonicalTz);
+      const reanchored = reanchorEatenAtToDay(sourceIso, "2026-06-14", canonicalTz);
+
+      expect(reanchored).toBe("2026-06-15T03:50:00.000Z");
+      expect(dateKeyFromInstant(reanchored!, canonicalTz)).toBe("2026-06-14");
+      expect(localTimeInputValueFromIso(reanchored!, canonicalTz)).toBe("23:50");
     });
   });
 });

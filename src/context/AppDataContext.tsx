@@ -120,6 +120,7 @@ interface AppDataContextValue {
   authEmail: string | null;
   profileDisplayName: string | null;
   profileTier: UserTier;
+  profileTimezone: string | null;
   /** Re-fetch tier/display/targets from Supabase (e.g. after Stripe checkout). */
   refreshProfileBasics: () => Promise<void>;
   /** Display preference from profile; internal storage remains metric. */
@@ -392,6 +393,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const waterActivityLoadedRef = useRef(false);
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
   const [profileTier, setProfileTier] = useState<UserTier>("free");
+  const [profileTimezone, setProfileTimezone] = useState<string | null>(null);
   const [profileMeasurementSystem, setProfileMeasurementSystem] = useState<"metric" | "imperial">("metric");
   const [profileWeightSurfaceMode, setProfileWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
   const [dbSavesEnabled, setDbSavesEnabled] = useState(true);
@@ -487,6 +489,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     authedUserId,
     initialByDay: initial.nutritionByDay,
     selectedDateKey,
+    profileTimezone,
   });
 
   const tryEnableDbSaves = useCallback(async () => {
@@ -585,7 +588,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled, pantry_staples, meal_plan_slots",
+          "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled, pantry_staples, meal_plan_slots, tz_iana",
         )
         .eq("id", authedUserId)
         .maybeSingle();
@@ -616,6 +619,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       // downstream `profileTier === "pro"` gate covers founders.
       setProfileTier(normaliseTier(data?.user_tier as string | null | undefined));
       setProfileDisplayName((data?.display_name as string | null) ?? null);
+      setProfileTimezone((data as { tz_iana?: string | null } | null)?.tz_iana ?? null);
       const ms = data?.measurement_system === "imperial" ? "imperial" : "metric";
       setProfileMeasurementSystem(ms);
       setProfileWeightSurfaceMode(coerceWeightSurfaceMode(data?.weight_surface_mode));
@@ -2113,6 +2117,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       authEmail,
       profileDisplayName,
       profileTier,
+      profileTimezone,
       refreshProfileBasics,
       profileMeasurementSystem,
       setProfileMeasurementSystem,
@@ -2205,6 +2210,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       authEmail,
       profileDisplayName,
       profileTier,
+      profileTimezone,
       refreshProfileBasics,
       profileMeasurementSystem,
       setProfileMeasurementSystem,

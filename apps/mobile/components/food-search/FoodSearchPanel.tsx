@@ -242,6 +242,8 @@ export type FoodSearchPanelProps = {
   onSelect: (result: SelectedFood) => void;
   /** ENG-772 — journal day (`YYYY-MM-DD`) for preview time when `editable_eaten_at` is on. */
   logDateKey?: string;
+  /** Canonical profile timezone for date_key/eaten_at attribution. Null falls back to device timezone. */
+  profileTimezone?: string | null;
   /**
    * `"full"` matches the legacy FoodSearchModal density (separator
    * lines, generous paddings).
@@ -359,6 +361,7 @@ export default function FoodSearchPanel({
   userId,
   onSelect,
   logDateKey,
+  profileTimezone,
   mode = "full",
   onScanBarcodePressed,
   inBarcodeMode = false,
@@ -473,9 +476,9 @@ export default function FoodSearchPanel({
   useEffect(() => {
     if (!previewSessionKey || !logDateKey || !previewEatenAtEnabled) return;
     setPreviewEatenAtTime(
-      localTimeInputValueFromIso(defaultEatenAtForNewLog(logDateKey)),
+      localTimeInputValueFromIso(defaultEatenAtForNewLog(logDateKey, profileTimezone), profileTimezone),
     );
-  }, [previewSessionKey, logDateKey, previewEatenAtEnabled]);
+  }, [previewSessionKey, logDateKey, previewEatenAtEnabled, profileTimezone]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
   // No-result loop (audit move-blocker #2, 2026-05-02 — replaces
@@ -1158,10 +1161,10 @@ export default function FoodSearchPanel({
       ...(servingLabel ? { servingLabel } : {}),
       ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
       ...(previewEatenAtEnabled && logDateKey
-        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime) }
+        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime, profileTimezone) }
         : {}),
     };
-  }, [preview, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
+  }, [preview, previewEatenAtEnabled, logDateKey, previewEatenAtTime, profileTimezone]);
 
   const onConfirmPreview = useCallback(() => {
     const selection = buildSelectionFromPreview();

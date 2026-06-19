@@ -258,6 +258,8 @@ export type FoodSearchPanelProps = {
   onSelect: (selection: FoodSearchSelection) => void;
   /** ENG-772 — journal day (`YYYY-MM-DD`) for preview time when `editable_eaten_at` is on. */
   logDateKey?: string;
+  /** Canonical profile timezone for date_key/eaten_at attribution. Null falls back to device timezone. */
+  profileTimezone?: string | null;
   /**
    * `"full"`     — current FoodSearch dialog density.
    * `"compact"`  — tighter rows for LogSheet's smaller vertical budget.
@@ -910,6 +912,7 @@ export function FoodSearchPanel({
   userId,
   onSelect,
   logDateKey,
+  profileTimezone,
   mode = "full",
   onScanBarcodePressed,
   inBarcodeMode = false,
@@ -1010,9 +1013,9 @@ export function FoodSearchPanel({
   useEffect(() => {
     if (!previewSessionKey || !logDateKey || !previewEatenAtEnabled) return;
     setPreviewEatenAtTime(
-      localTimeInputValueFromIso(defaultEatenAtForNewLog(logDateKey)),
+      localTimeInputValueFromIso(defaultEatenAtForNewLog(logDateKey, profileTimezone), profileTimezone),
     );
-  }, [previewSessionKey, logDateKey, previewEatenAtEnabled]);
+  }, [previewSessionKey, logDateKey, previewEatenAtEnabled, profileTimezone]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
@@ -1741,7 +1744,7 @@ export function FoodSearchPanel({
       quantity: preview.quantity,
       ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
       ...(previewEatenAtEnabled && logDateKey
-        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime) }
+        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime, profileTimezone) }
         : {}),
     };
     if (preview.source === "CUSTOM") {
@@ -1760,7 +1763,7 @@ export function FoodSearchPanel({
     }
     onSelect(selection);
     setPreview(null);
-  }, [preview, onSelect, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
+  }, [preview, onSelect, previewEatenAtEnabled, logDateKey, previewEatenAtTime, profileTimezone]);
 
   const onAddPreviewToBasket = useCallback(() => {
     if (!onAddToBasket || !preview) return;
@@ -1776,7 +1779,7 @@ export function FoodSearchPanel({
       quantity: preview.quantity,
       ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
       ...(previewEatenAtEnabled && logDateKey
-        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime) }
+        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime, profileTimezone) }
         : {}),
     };
     if (preview.source === "CUSTOM") {
@@ -1787,7 +1790,7 @@ export function FoodSearchPanel({
     }
     onAddToBasket(selection);
     setPreview(null);
-  }, [onAddToBasket, preview, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
+  }, [onAddToBasket, preview, previewEatenAtEnabled, logDateKey, previewEatenAtTime, profileTimezone]);
 
   const scaled = useMemo(() => {
     if (!preview) return null;

@@ -78,9 +78,15 @@ export function buildNutritionEntryRow(
   meal: JournalMeal,
   anchorDayKey: string,
   userId: string,
+  timeZone?: string | null,
 ): NutritionEntryRow {
   const id = NUTRITION_ENTRY_UUID_RE.test(meal.id) ? meal.id : newMealId();
-  const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(meal, anchorDayKey);
+  const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(
+    meal,
+    anchorDayKey,
+    null,
+    timeZone,
+  );
   return {
     id,
     user_id: userId,
@@ -114,8 +120,14 @@ export function buildNutritionEntryUpdatePayload(
   meal: JournalMeal,
   anchorDayKey: string,
   localTime?: { hours: number; minutes: number } | null,
+  timeZone?: string | null,
 ): NutritionEntryUpdatePayload {
-  const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(meal, anchorDayKey, localTime);
+  const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(
+    meal,
+    anchorDayKey,
+    localTime,
+    timeZone,
+  );
   return {
     date_key: dateKey,
     name: meal.name,

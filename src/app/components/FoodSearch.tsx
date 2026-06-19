@@ -62,6 +62,8 @@ type Props = {
   userId?: string | null;
   /** ENG-772 — journal day for food-search preview time picker. */
   logDateKey?: string;
+  /** Canonical profile timezone for date_key/eaten_at attribution. */
+  profileTimezone?: string | null;
   /** History-first search (ENG-1031) — the user's logging history, newest-
    *  first. Threaded to the panel so the typed-query "Past logged" group
    *  ranks matching past logs above database results. */
@@ -91,6 +93,7 @@ export function FoodSearch({
   supabase,
   userId,
   logDateKey,
+  profileTimezone,
   recentFoods,
 }: Props) {
   // Caller owns the query; the panel reacts to it. We sync the input
@@ -137,6 +140,7 @@ export function FoodSearch({
             supabase={supabase}
             userId={userId}
             logDateKey={logDateKey}
+            profileTimezone={profileTimezone}
             recentFoods={recentFoods}
             mode="full"
             onSelect={(selection) => {
