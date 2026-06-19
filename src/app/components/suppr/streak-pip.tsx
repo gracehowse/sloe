@@ -97,10 +97,16 @@ export function StreakPip({
     : (ariaLabel ?? baseAria);
 
   const isMilestone = [7, 14, 21, 30, 60, 90, 100, 365].includes(safeDays);
-  // ENG-716 — milestone tone migrated off the raw Tailwind `amber-*` palette
-  // literals onto the Sloe `warning` (amber) semantic tokens, matching the
-  // mobile StreakPip milestone tone (`Accent.warning`). `-soft` fill + `-solid`
-  // text auto-swap in dark mode, replacing the hand-rolled `dark:` overrides.
+  // ENG-716 — milestone tone migrated off the raw Tailwind `amber-*` literals
+  // onto the Sloe `warning` semantic tokens (`-soft` fill + `-solid` text, with
+  // dark-mode auto-swap replacing the hand-rolled `dark:` overrides). The token
+  // resolves a touch more desaturated than the old raw amber — a calmer
+  // milestone fill Grace signed off to ship UNFLAGGED (2026-06-19; low-traffic
+  // surface, per the flag rule's explicit sign-off path).
+  // Parity note: this milestone tone is web-only. The mobile twin
+  // (`apps/mobile/components/today/StreakPip.tsx`) renders NO distinct milestone
+  // tone, so there is no counterpart to mirror — a pre-existing gap that predates
+  // this token swap, not a divergence introduced here.
   const toneClass = freezeProtected
     ? "bg-muted text-muted-foreground"
     : isMilestone
