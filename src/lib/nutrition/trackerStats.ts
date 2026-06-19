@@ -1,12 +1,8 @@
 import type { LoggedMeal } from "../../types/recipe";
+import { dateKeyFromDate } from "../dates/dateKey";
+export { dateKeyFromDate } from "../dates/dateKey";
 import { sumDayFiberFromMeals } from "./microNutrientDisplay";
 
-export function dateKeyFromDate(d: Date): string {
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${da}`;
-}
 
 function sumCalories(meals: LoggedMeal[]): number {
   return meals.reduce((a, m) => a + Math.max(0, m.calories), 0);

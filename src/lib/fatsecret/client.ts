@@ -87,6 +87,7 @@ const API_BASE = "https://platform.fatsecret.com/rest/server.api";
 const OAUTH2_TOKEN_URL = "https://oauth.fatsecret.com/connect/token";
 
 let oauth2Cache: { token: string; expiresAtMs: number } | null = null;
+let oauth2Inflight: Promise<string | null> | null = null;
 
 /**
  * Hash a string with SHA-256 and return the hex digest. Used to log a
@@ -162,7 +163,15 @@ function oauthClient(cfg: FatSecretConfig) {
 async function getOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
   const now = Date.now();
   if (oauth2Cache && oauth2Cache.expiresAtMs - now > 30_000) return oauth2Cache.token;
+  if (oauth2Inflight) return oauth2Inflight;
 
+  oauth2Inflight = fetchOAuth2Token(cfg, now).finally(() => {
+    oauth2Inflight = null;
+  });
+  return oauth2Inflight;
+}
+
+async function fetchOAuth2Token(cfg: FatSecretConfig, now: number): Promise<string | null> {
   // If the provided credentials are OAuth2 client_id/client_secret, this will succeed.
   // If they are legacy OAuth1 keys, this will fail and we fall back to OAuth1 signing.
   const basic = Buffer.from(`${cfg.consumerKey}:${cfg.consumerSecret}`).toString("base64");
@@ -443,4 +452,5 @@ export async function fatSecretFoodCategoriesGet(
  */
 export function __resetFatSecretOAuth2CacheForTests(): void {
   oauth2Cache = null;
+  oauth2Inflight = null;
 }

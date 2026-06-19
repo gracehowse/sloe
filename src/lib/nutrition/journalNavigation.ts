@@ -1,13 +1,10 @@
+import { dateKeyFromDate } from "../dates/dateKey";
+export { dateKeyFromDate } from "../dates/dateKey";
+
 /** How far back / forward the journal date picker can move (matches mobile). */
 export const JOURNAL_HISTORY_DAYS_BACK = 1095;
 export const JOURNAL_FUTURE_DAYS = 30;
 
-export function dateKeyFromDate(d: Date): string {
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${da}`;
-}
 
 /** Local midnight range for journal navigation (same bounds as {@link clampJournalDate}). */
 export function journalRangeBounds(): { min: Date; max: Date } {

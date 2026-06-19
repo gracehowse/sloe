@@ -284,4 +284,40 @@ describe("OAuth2 scope flag for Premier tier", () => {
     expect(calls.at(-1) ?? "").toContain("scope=basic");
     expect(calls.at(-1) ?? "").not.toContain("premier");
   });
+
+  it("shares one OAuth2 token request across concurrent cold-start callers", async () => {
+    const tokenResolvers: Array<(value: Response) => void> = [];
+    const tokenResponses = [
+      new Promise<Response>((resolve) => tokenResolvers.push(resolve)),
+    ];
+    const apiResponses = [
+      Promise.resolve({ ok: true, status: 200, json: async () => ({ foods: { food: [] } }) } as Response),
+      Promise.resolve({ ok: true, status: 200, json: async () => ({ foods: { food: [] } }) } as Response),
+    ];
+    const fetchSpy = vi.spyOn(globalThis, "fetch" as never).mockImplementation(
+      ((url: any) => {
+        const u = typeof url === "string" ? url : (url as URL).toString();
+        if (u.includes("oauth.fatsecret.com/connect/token")) {
+          return tokenResponses.shift() ?? Promise.reject(new Error("duplicate token request"));
+        }
+        return apiResponses.shift() ?? Promise.reject(new Error("unexpected API request"));
+      }) as never,
+    );
+
+    const { fatSecretFoodSearch } = await import("../../src/lib/fatsecret/client");
+    const cfg = { consumerKey: "k", consumerSecret: "s", tier: "basic" as const };
+    const first = fatSecretFoodSearch(cfg, "milk");
+    const second = fatSecretFoodSearch(cfg, "eggs");
+
+    expect(tokenResolvers).toHaveLength(1);
+    tokenResolvers[0]!({
+      ok: true,
+      status: 200,
+      json: async () => ({ access_token: "token", expires_in: 600 }),
+    } as Response);
+
+    await expect(Promise.all([first, second])).resolves.toEqual([[], []]);
+    const tokenCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes("oauth.fatsecret.com/connect/token"));
+    expect(tokenCalls).toHaveLength(1);
+  });
 });

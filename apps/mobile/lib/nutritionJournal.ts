@@ -38,6 +38,8 @@ export function normalizeJournalSlotName(raw: string | null | undefined): string
   return n === "Snack" ? "Snacks" : n;
 }
 
+export { dateKeyFromDate } from "@suppr/shared/dates/dateKey";
+
 export type ByDay = Record<string, JournalMeal[]>;
 
 /** Normalize `nutrition_micros` JSONB from Supabase into a number map. */
@@ -53,12 +55,6 @@ export function parseNutritionMicrosJson(raw: unknown): NutritionMicrosMap | und
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-export function dateKeyFromDate(d: Date): string {
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${da}`;
-}
 
 export function newMealId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {

@@ -10,7 +10,7 @@
     "start": "next start",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"app/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" --max-warnings 500",
-    "ci": "npm run verify:production-env && npm run check:migrations:static && npm run typecheck && npm run lint && npm run test:coverage && npm run check:today-captures && npm run check:type-scale && npm run build && npm run mobile:lint && npm run mobile:typecheck && npm run check:mobile-shared-imports && npm run mobile:test:coverage && npm run mobile:test:e2e:verify-suite",
+    "ci": "npm run verify:production-env && npm run check:migrations:static && npm run typecheck && npm run lint && npm run test:coverage && npm run check:today-captures && npm run check:type-scale && npm run check:screen-line-count && npm run build && npm run mobile:lint && npm run mobile:typecheck && npm run check:mobile-shared-imports && npm run mobile:test:coverage && npm run mobile:test:e2e:verify-suite",
     "overnight": "bash scripts/overnight.sh",
     "overnight:stop": "bash scripts/overnight-stop.sh",
     "check:today-captures": "node scripts/check-today-capture-pairs.mjs",
@@ -118,7 +118,8 @@
     "mobile:test:dark-sweep": "npm run --prefix apps/mobile test:dark-sweep",
     "chromatic": "chromatic --playwright --exit-zero-on-changes",
     "test:chromatic:local": "npm run build && npm run start -- --port 3100 & npx wait-on http://127.0.0.1:3100/login && npx playwright test tests/e2e/chromatic-e2e.spec.ts --project=chromium && npm run chromatic",
-    "chromatic:storybook": "chromatic --exit-zero-on-changes"
+    "chromatic:storybook": "chromatic --exit-zero-on-changes",
+    "check:screen-line-count": "node scripts/check-screen-line-count.mjs"
   },
   "dependencies": {
     "@fal-ai/client": "^1.10.1",

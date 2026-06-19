@@ -74,6 +74,8 @@ jobs:
         run: npm run check:today-captures
       - name: Type scale lint (ENG-119)
         run: npm run check:type-scale
+      - name: Screen line-count ratchet (ENG-717)
+        run: npm run check:screen-line-count
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build
