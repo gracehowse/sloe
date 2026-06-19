@@ -275,3 +275,50 @@ describe("toBreakdownEntry / toBreakdownIngredientRow — normalisation", () => 
     expect(r.protein).toBe(12);
   });
 });
+
+describe("deriveIngredientBreakdown — ENG-751 entry snapshots", () => {
+  it("prefers nutrition_entry_ingredients snapshots over recipe-derived/fallback rows", () => {
+    const entries = [
+      toBreakdownEntry({
+        id: "entry-ai",
+        name: "Dinner",
+        recipeTitle: "AI plate",
+        recipeId: null,
+        calories: 300,
+        protein: 30,
+        carbs: 20,
+        fat: 10,
+        fiberG: 4,
+      }),
+    ];
+
+    const { lines, total } = deriveIngredientBreakdown(entries, [], "protein", [
+      {
+        entryId: "entry-ai",
+        name: "Chicken",
+        calories: 220,
+        protein: 24,
+        carbs: 0,
+        fat: 6,
+        fiberG: 0,
+        confidence: 0.82,
+        source: "AI photo",
+      },
+      {
+        entryId: "entry-ai",
+        name: "Rice",
+        calories: 80,
+        protein: 6,
+        carbs: 20,
+        fat: 4,
+        fiberG: 4,
+        confidence: 0.7,
+        source: "AI photo",
+      },
+    ]);
+
+    expect(lines.map((line) => line.name)).toEqual(["Chicken", "Rice"]);
+    expect(lines.map((line) => line.isFallback)).toEqual([false, false]);
+    expect(total).toBe(30);
+  });
+});

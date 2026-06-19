@@ -13,6 +13,7 @@ import {
 import {
   deriveIngredientBreakdown,
   toBreakdownEntry,
+  type BreakdownEntryIngredientSnapshot,
   type BreakdownIngredientRow,
   type BreakdownMacro,
 } from "@/lib/nutrition/macroIngredientBreakdown";
@@ -93,6 +94,7 @@ export interface MacroDetailPanelProps {
    * recipe_ids and run a single `.in("recipe_id", ids)` query.
    */
   ingredientRows?: BreakdownIngredientRow[];
+  entryIngredientSnapshots?: BreakdownEntryIngredientSnapshot[];
 }
 
 const MACRO_CONFIG: Record<
@@ -173,6 +175,7 @@ export function MacroDetailPanel({
   open,
   onClose,
   ingredientRows,
+  entryIngredientSnapshots,
 }: MacroDetailPanelProps) {
   const config = MACRO_CONFIG[macro];
   const router = useRouter();
@@ -233,8 +236,13 @@ export function MacroDetailPanel({
         fiberG: getMacroValue(m, "fiber"),
       }),
     );
-    return deriveIngredientBreakdown(entries, ingredientRows ?? [], macro as BreakdownMacro);
-  }, [meals, ingredientRows, macro, supportsIngredientBreakdown]);
+    return deriveIngredientBreakdown(
+      entries,
+      ingredientRows ?? [],
+      macro as BreakdownMacro,
+      entryIngredientSnapshots ?? [],
+    );
+  }, [meals, ingredientRows, entryIngredientSnapshots, macro, supportsIngredientBreakdown]);
 
   const formatValue = (v: number): string => {
     const rounded = Math.round(v * 10) / 10;

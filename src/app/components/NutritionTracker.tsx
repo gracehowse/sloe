@@ -158,7 +158,9 @@ import { isHealthImportFallbackTitle } from "../../lib/nutrition/healthImportLab
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap";
 import { buildMealEntriesFromSavedMeal } from "../../lib/nutrition/savedMealsLogic";
 import {
+  toBreakdownEntryIngredientSnapshot,
   toBreakdownIngredientRow,
+  type BreakdownEntryIngredientSnapshot,
   type BreakdownIngredientRow,
 } from "../../lib/nutrition/macroIngredientBreakdown";
 import {
@@ -345,6 +347,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [slotNutritionTarget, setSlotNutritionTarget] = useState<string | null>(null);
   const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
   const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
+  const [macroDetailSnapshotRows, setMacroDetailSnapshotRows] = useState<BreakdownEntryIngredientSnapshot[]>([]);
   const [editMealTargetId, setEditMealTargetId] = useState<string | null>(null);
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
@@ -401,16 +404,52 @@ export const NutritionTracker = memo(function NutritionTracker({
   useEffect(() => {
     if (!macroDetailFlagEnabled || macroDetailTarget == null) {
       setMacroDetailIngredientRows([]);
+      setMacroDetailSnapshotRows([]);
       return;
     }
     const recipeIds = Array.from(
       new Set(macroDetailMeals.map((meal) => meal.recipeId).filter((id): id is string => Boolean(id))),
     );
+    const entryIds = macroDetailMeals.map((meal) => meal.id).filter((id): id is string => Boolean(id));
+    let cancelled = false;
+
+    if (entryIds.length > 0) {
+      (supabase as any)
+        .from("nutrition_entry_ingredients")
+        .select("entry_id, name, calories, protein, carbs, fat, fiber_g, confidence, source")
+        .in("entry_id", entryIds)
+        .then(({ data, error }: { data: unknown[] | null; error: { message?: string } | null }) => {
+          if (cancelled) return;
+          if (error) {
+            console.warn("[macro-detail] nutrition_entry_ingredients fetch failed:", error.message);
+            setMacroDetailSnapshotRows([]);
+            return;
+          }
+          setMacroDetailSnapshotRows(
+            (data ?? []).map((raw: unknown) => {
+              const row = raw as Record<string, unknown>;
+              return toBreakdownEntryIngredientSnapshot({
+                entryId: String(row.entry_id ?? ""),
+                name: String(row.name ?? "Item"),
+                calories: Number(row.calories) || 0,
+                protein: Number(row.protein) || 0,
+                carbs: Number(row.carbs) || 0,
+                fat: Number(row.fat) || 0,
+                fiberG: Number(row.fiber_g) || 0,
+                confidence: row.confidence == null ? null : Number(row.confidence),
+                source: row.source == null ? null : String(row.source),
+              });
+            }),
+          );
+        });
+    } else {
+      setMacroDetailSnapshotRows([]);
+    }
+
     if (recipeIds.length === 0) {
       setMacroDetailIngredientRows([]);
-      return;
+      return () => { cancelled = true; };
     }
-    let cancelled = false;
     supabase
       .from("recipe_ingredients")
       .select("recipe_id, name, calories, protein, carbs, fat, fiber_g")
@@ -1541,6 +1580,18 @@ export const NutritionTracker = memo(function NutritionTracker({
             fat: Math.round(item.fat),
             source: aiLoggingSourceLabel(item.source),
             ...(Object.keys(micros).length > 0 ? { micros } : {}),
+            ingredientSnapshots: [
+              {
+                name: item.name,
+                calories: Math.round(item.calories),
+                protein: Math.round(item.protein),
+                carbs: Math.round(item.carbs),
+                fat: Math.round(item.fat),
+                fiberG: item.fiber ?? null,
+                confidence: item.confidence,
+                source: aiLoggingSourceLabel(item.source),
+              },
+            ],
           },
           analyticsSource,
         );
@@ -2748,6 +2799,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           macro={macroDetailTarget}
           meals={macroDetailMeals}
           ingredientRows={macroDetailIngredientRows}
+          entryIngredientSnapshots={macroDetailSnapshotRows}
           open={macroDetailTarget != null}
           onClose={() => setMacroDetailTarget(null)}
         />

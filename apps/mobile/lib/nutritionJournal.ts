@@ -28,6 +28,17 @@ export type JournalMeal = {
    * undefined for Health-import / manual / barcode-only logs.
    */
   recipeId?: string;
+  /** Optional immutable per-entry ingredient/item snapshots for AI/photo/voice logs. */
+  ingredientSnapshots?: Array<{
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiberG?: number | null;
+    confidence?: number | null;
+    source?: string | null;
+  }>;
   recipeImageUrl?: string | null;
   imageUrl?: string | null;
 };

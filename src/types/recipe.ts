@@ -183,6 +183,17 @@ export interface LoggedMeal {
    * don't have a recipe id in scope.
    */
   recipeId?: string;
+  /** Optional immutable per-entry ingredient/item snapshots for AI/photo/voice logs. */
+  ingredientSnapshots?: Array<{
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiberG?: number | null;
+    confidence?: number | null;
+    source?: string | null;
+  }>;
   /** Optional hero image when logged from a recipe or branded search hit. */
   recipeImageUrl?: string | null;
   imageUrl?: string | null;

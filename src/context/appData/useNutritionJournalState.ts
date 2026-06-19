@@ -276,6 +276,21 @@ export function useNutritionJournalState(opts: {
             );
             return;
           }
+          const snapshots = (newMeal.ingredientSnapshots ?? []).map((snapshot) => ({
+            entry_id: id,
+            user_id: authedUserId,
+            name: snapshot.name,
+            calories: snapshot.calories,
+            protein: snapshot.protein,
+            carbs: snapshot.carbs,
+            fat: snapshot.fat,
+            fiber_g: snapshot.fiberG ?? null,
+            confidence: snapshot.confidence ?? null,
+            source: snapshot.source ?? canonicalNutritionEntrySource(newMeal.source) ?? "",
+          }));
+          if (snapshots.length > 0) {
+            void (supabase as any).from("nutrition_entry_ingredients").insert(snapshots);
+          }
           void refreshAdaptiveTdeeForUser(supabase, authedUserId);
           // F-2 (2026-04-19) — freeze today's target on first log of
           // the day. Past days stop moving when the user later edits

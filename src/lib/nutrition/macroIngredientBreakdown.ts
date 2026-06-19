@@ -1,8 +1,10 @@
 /**
  * Macro "By ingredient" breakdown — shared web + mobile derive/scale/reconcile.
  *
- * ENG-748 #10. Per the data-integrity DERIVE verdict (no schema change):
- * a logged `nutrition_entries` row stores `recipe_id` (FK) + `portion_multiplier`,
+ * ENG-748 #10 + ENG-751. Recipe logs derive from live recipe rows; AI/photo/voice
+ * logs may carry immutable `nutrition_entry_ingredients` snapshot rows.
+ *
+ * For recipes, a logged `nutrition_entries` row stores `recipe_id` (FK) + `portion_multiplier`,
  * and `recipe_ingredients` rows each hold an ingredient's FULL macro contribution
  * at the recipe's base servings. So the per-ingredient contribution to a logged
  * entry is simply `recipe_ingredients[i].<macro> × entry.portion_multiplier`.
@@ -23,17 +25,10 @@
  * always equal the whole the user logged.
  *
  * ## Degenerate fallback
- * Entries with no `recipeId` (single foods, AI/photo multi-item meals, or recipes
- * deleted after logging → `recipe_id` SET NULL), or whose recipe has zero ingredient
- * rows, render as a single self-named "ingredient" line carrying the entry's own
- * stored macros. We never show nothing for a logged entry.
- *
- * ## Known gap (tracked, not built here)
- * AI/photo/voice multi-item meals carry their item breakdown only in the unpersisted
- * AI response — there is no `recipe_id` and no per-item snapshot in the schema. Those
- * entries fall through to the single-line fallback (correct, not silent).
- * Splitting those entries needs a `nutrition_entry_ingredients` snapshot child
- * table and is tracked separately in Linear as ENG-751.
+ * Entries with no `recipeId` (single foods, AI/photo multi-item meals before ENG-751,
+ * or recipes deleted after logging → `recipe_id` SET NULL), or whose recipe/snapshot
+ * path has zero rows, render as a single self-named "ingredient" line carrying the
+ * entry's own stored macros. We never show nothing for a logged entry.
  */
 
 /** The macro fields this breakdown supports. Mirrors the macro-detail screen config. */
@@ -87,6 +82,16 @@ export interface BreakdownEntry extends BreakdownMacroValues {
 export interface BreakdownIngredientRow extends BreakdownMacroValues {
   recipeId: string;
   name: string;
+}
+
+/** Immutable per-entry snapshot row, usually captured from AI/photo/voice logging. */
+export interface BreakdownEntryIngredientSnapshot extends BreakdownMacroValues {
+  entryId: string;
+  name: string;
+  /** Source confidence [0,1], preserved for trust posture when callers need it. */
+  confidence?: number | null;
+  /** Provenance such as "AI photo" / "AI voice". */
+  source?: string | null;
 }
 
 /** One aggregated line in the rendered breakdown. */
@@ -150,7 +155,18 @@ export function deriveIngredientBreakdown(
   entries: BreakdownEntry[],
   ingredients: BreakdownIngredientRow[],
   macro: BreakdownMacro,
+  entryIngredientSnapshots: BreakdownEntryIngredientSnapshot[] = [],
 ): IngredientBreakdownResult {
+  // Index snapshot rows by entry first. ENG-751 snapshots are immutable logged-entry
+  // children, so they win over recipe-derived rows whenever present.
+  const byEntry = new Map<string, BreakdownEntryIngredientSnapshot[]>();
+  for (const row of entryIngredientSnapshots) {
+    if (!row.entryId) continue;
+    const list = byEntry.get(row.entryId);
+    if (list) list.push(row);
+    else byEntry.set(row.entryId, [row]);
+  }
+
   // Index ingredient rows by recipe so each entry resolves its rows in O(1).
   const byRecipe = new Map<string, BreakdownIngredientRow[]>();
   for (const row of ingredients) {
@@ -178,9 +194,14 @@ export function deriveIngredientBreakdown(
 
   for (const entry of entries) {
     const storedMacro = macroOf(entry, macro);
-    const rows = entry.recipeId ? byRecipe.get(entry.recipeId) : undefined;
+    const snapshotRows = byEntry.get(entry.id);
+    const rows = snapshotRows && snapshotRows.length > 0
+      ? snapshotRows
+      : entry.recipeId
+        ? byRecipe.get(entry.recipeId)
+        : undefined;
 
-    // Fallback: no recipe link, or the recipe has no ingredient rows.
+    // Fallback: no snapshot/recipe link, or the recipe has no ingredient rows.
     if (!rows || rows.length === 0) {
       // Only emit a fallback line if the entry actually contributes to this macro,
       // OR it's the sole representation of the entry — we still want the entry
@@ -256,6 +277,30 @@ export function toBreakdownEntry(input: {
  * Normalise a raw `recipe_ingredients` row (snake_case from Supabase) into a
  * {@link BreakdownIngredientRow}.
  */
+export function toBreakdownEntryIngredientSnapshot(input: {
+  entryId: string;
+  name?: string | null;
+  calories?: number | null;
+  protein?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
+  fiberG?: number | null;
+  confidence?: number | null;
+  source?: string | null;
+}): BreakdownEntryIngredientSnapshot {
+  return {
+    entryId: input.entryId,
+    name: input.name ?? "",
+    calories: Number(input.calories) || 0,
+    protein: Number(input.protein) || 0,
+    carbs: Number(input.carbs) || 0,
+    fat: Number(input.fat) || 0,
+    fiberG: Number(input.fiberG) || 0,
+    confidence: input.confidence ?? null,
+    source: input.source ?? null,
+  };
+}
+
 export function toBreakdownIngredientRow(input: {
   recipeId: string;
   name?: string | null;

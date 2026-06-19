@@ -4,8 +4,10 @@ import { supabase } from "@/lib/supabase";
 import {
   deriveIngredientBreakdown,
   toBreakdownEntry,
+  toBreakdownEntryIngredientSnapshot,
   toBreakdownIngredientRow,
   type BreakdownEntry,
+  type BreakdownEntryIngredientSnapshot,
   type BreakdownIngredientRow,
   type BreakdownMacro,
   type IngredientBreakdownResult,
@@ -66,6 +68,7 @@ export function useMacroDetail({
 }: UseMacroDetailArgs): UseMacroDetailResult {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [ingredientRows, setIngredientRows] = useState<BreakdownIngredientRow[]>([]);
+  const [entryIngredientSnapshots, setEntryIngredientSnapshots] = useState<BreakdownEntryIngredientSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -111,6 +114,35 @@ export function useMacroDetail({
             waterMl: r.water_ml != null ? Number(r.water_ml) : 0,
           }));
           setMeals(mapped);
+
+          const entryIds = mapped.map((m) => m.id).filter(Boolean);
+          if (entryIds.length > 0) {
+            (supabase as any)
+              .from("nutrition_entry_ingredients")
+              .select("entry_id, name, calories, protein, carbs, fat, fiber_g, confidence, source")
+              .in("entry_id", entryIds)
+              .then(({ data }: { data: unknown[] | null }) => {
+                if (cancelled) return;
+                setEntryIngredientSnapshots(
+                  (data ?? []).map((raw: unknown) => {
+                    const r = raw as Record<string, unknown>;
+                    return toBreakdownEntryIngredientSnapshot({
+                      entryId: r.entry_id as string,
+                      name: r.name as string,
+                      calories: r.calories != null ? Number(r.calories) : 0,
+                      protein: r.protein != null ? Number(r.protein) : 0,
+                      carbs: r.carbs != null ? Number(r.carbs) : 0,
+                      fat: r.fat != null ? Number(r.fat) : 0,
+                      fiberG: r.fiber_g != null ? Number(r.fiber_g) : 0,
+                      confidence: r.confidence == null ? null : Number(r.confidence),
+                      source: r.source == null ? null : String(r.source),
+                    });
+                  }),
+                );
+              });
+          } else {
+            setEntryIngredientSnapshots([]);
+          }
 
           // Batched per-ingredient fetch (one query, no N+1) for the "By
           // ingredient" view. Collect the day's distinct non-null recipe_ids;
@@ -239,8 +271,13 @@ export function useMacroDetail({
         fiberG: m.fiberG,
       }),
     );
-    return deriveIngredientBreakdown(entries, ingredientRows, macro as BreakdownMacro);
-  }, [meals, ingredientRows, macro, supportsIngredientBreakdown]);
+    return deriveIngredientBreakdown(
+      entries,
+      ingredientRows,
+      macro as BreakdownMacro,
+      entryIngredientSnapshots,
+    );
+  }, [meals, ingredientRows, entryIngredientSnapshots, macro, supportsIngredientBreakdown]);
 
   return {
     meals,

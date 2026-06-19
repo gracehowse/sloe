@@ -528,6 +528,25 @@ export default function TrackerScreen() {
       const { error } = await supabase
         .from("nutrition_entries")
         .upsert(dbRows, { onConflict: "id" });
+      if (!error) {
+        const snapshotRows = meals.flatMap((meal) =>
+          (meal.ingredientSnapshots ?? []).map((snapshot) => ({
+            entry_id: meal.id,
+            user_id: userId,
+            name: snapshot.name,
+            calories: snapshot.calories,
+            protein: snapshot.protein,
+            carbs: snapshot.carbs,
+            fat: snapshot.fat,
+            fiber_g: snapshot.fiberG ?? null,
+            confidence: snapshot.confidence ?? null,
+            source: snapshot.source ?? meal.source ?? "",
+          })),
+        );
+        if (snapshotRows.length > 0) {
+          await (supabase as any).from("nutrition_entry_ingredients").insert(snapshotRows);
+        }
+      }
       if (error) {
         console.error("[tracker] persistMealsImmediate failed:", error.message);
         // ENG-1125 — queue for retry; keep optimistic rows visible.
@@ -3473,6 +3492,18 @@ export default function TrackerScreen() {
           fat: Math.round(item.fat),
           source: aiLoggingSourceLabel(item.source),
           ...(Object.keys(micros).length > 0 ? { micros } : {}),
+          ingredientSnapshots: [
+            {
+              name: item.name,
+              calories: Math.round(item.calories),
+              protein: Math.round(item.protein),
+              carbs: Math.round(item.carbs),
+              fat: Math.round(item.fat),
+              fiberG: item.fiber ?? null,
+              confidence: item.confidence,
+              source: aiLoggingSourceLabel(item.source),
+            },
+          ],
           ...(isFeatureEnabled("editable_eaten_at")
             ? { eatenAt: defaultEatenAtForNewLog(dayKey, profileTimeZone) }
             : {}),
