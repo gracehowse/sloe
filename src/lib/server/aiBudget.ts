@@ -46,6 +46,8 @@
 
 import { Redis } from "@upstash/redis";
 
+import { recordUpstashFailure } from "./upstashMonitoring";
+
 // ─────────────────────────────────────────────────────────────────────
 // Price table
 //
@@ -248,10 +250,18 @@ function noteUpstashFailure(err: unknown): void {
     state.firstFailureAt = now;
     state.failOpenUntil = now + FAIL_OPEN_WINDOW_MS;
     console.error("[ai-budget] Upstash failure — entering 5-minute fail-OPEN window", err);
+    recordUpstashFailure(
+      { subsystem: "ai_budget", mode: "call_threw", operation: "budget_window", failBehavior: "open" },
+      err,
+    );
   } else if (state.failOpenUntil != null && now > state.failOpenUntil) {
     // Already past the window — just log; the calling code checks
     // `isInFailOpenWindow()` for the decision.
     console.error("[ai-budget] Upstash still failing past fail-open window — failing CLOSED", err);
+    recordUpstashFailure(
+      { subsystem: "ai_budget", mode: "call_threw", operation: "budget_window", failBehavior: "closed" },
+      err,
+    );
   }
 }
 
