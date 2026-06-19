@@ -1,2 +1,7 @@
 # AsyncStorage/localStorage key constant — not a credential (ENG-1130 false positive).
 25936a810a5be6b32ae1b14811c60331c916a6e4:src/lib/mealPlan/slotCloudSync.ts:generic-api-key:184
+# localStorage key constant moved verbatim from NutritionTracker — not a credential
+# (ENG-621 false positive, same shape as the slotCloudSync entry above). The
+# inline `// gitleaks:allow` on the line only covers a working-tree scan; the CI
+# action scans commit history, so the originating commit needs a fingerprint here.
+abc4c5961c855d498195f51726b3ff7187bdd0df:src/lib/nutrition/trackerLocalState.ts:generic-api-key:14
