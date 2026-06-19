@@ -74,13 +74,33 @@ import {
   DialogTitle,
 } from "./ui/dialog.tsx";
 
+/**
+ * ENG-1211 — method hint passed from an import method tile to the create view
+ * so each tile DELIVERS its method instead of dropping the user on a generic
+ * screen. `paste` → open the paste-ingredient-list dialog on arrival;
+ * `scan` → open the barcode scanner on arrival. Mobile parity: `?autoPaste=1`
+ * / `?autoBarcode=1` on `/create-recipe`.
+ */
+export type CreateMethodHint = "paste" | "scan";
+
 interface RecipeUploadProps {
   userTier: "free" | "base" | "pro";
   onUpgrade?: () => void;
   /** Create = your original recipe (manual entry, your photos). Import = third-party / cookbook / URL / scan for your library only. */
   mode: "create" | "import";
   onSwitchToImport?: () => void;
-  onSwitchToCreate?: () => void;
+  /**
+   * Switch to the create view. ENG-1211: an optional method hint lets a method
+   * tile (Paste text / Scan) ask the create view to auto-activate the matching
+   * affordance on arrival rather than landing the user on a generic form.
+   */
+  onSwitchToCreate?: (method?: CreateMethodHint) => void;
+  /**
+   * ENG-1211: when the create view is opened from an import method tile, this
+   * tells it which affordance to auto-open on mount (paste dialog / scanner).
+   * Consumed once per mount via a ref-guard so a re-render can't re-fire it.
+   */
+  createInitialMethod?: CreateMethodHint;
 }
 
 interface Ingredient {
@@ -195,7 +215,7 @@ function amountToNumeric(raw: string): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
-export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
+export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSwitchToCreate, createInitialMethod }: RecipeUploadProps) {
   const router = useRouter();
   const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets, userId } = useAppData();
   const searchParams = useSearchParams();
@@ -446,6 +466,33 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   }, [runBarcodeLookup, stopScanner]);
 
   useEffect(() => () => stopScanner(), [stopScanner]);
+
+  // ENG-1211 — when the create view is opened from an import method tile
+  // (`createInitialMethod`), auto-activate the promised affordance once on
+  // mount so each tile DELIVERS its method instead of dropping the user on a
+  // generic form. Ref-guarded so a re-render can't re-fire. Mobile parity:
+  // `/create-recipe?autoPaste=1` opens the paste-list modal and
+  // `?autoBarcode=1` opens the barcode scanner.
+  //   - `paste` → open the paste-ingredient-list dialog.
+  //   - `scan`  → open the barcode match picker on the first ingredient row
+  //     (always present — the create form seeds one empty row) and start the
+  //     camera scanner, reusing the existing scan→apply path rather than a
+  //     parallel one.
+  const initialMethodFiredRef = useRef(false);
+  useEffect(() => {
+    if (initialMethodFiredRef.current) return;
+    if (mode !== "create" || !createInitialMethod) return;
+    initialMethodFiredRef.current = true;
+    if (createInitialMethod === "paste") {
+      setPasteDialogOpen(true);
+    } else if (createInitialMethod === "scan") {
+      setMatchPickerIdx(0);
+      setScannerOpen(true);
+      // Defer to next tick so the <video> element the scanner attaches to has
+      // mounted (the picker + scanner UI render conditionally on this state).
+      setTimeout(() => void startScanner(), 0);
+    }
+  }, [mode, createInitialMethod, startScanner]);
 
   // PR-01 (audit 2026-04-28): Base tier folded into Pro. Any legacy
   // `userTier === "base"` row keeps publish access here as a
@@ -1597,7 +1644,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             {mode === "import" && onSwitchToCreate ? (
               <button
                 type="button"
-                onClick={onSwitchToCreate}
+                // ENG-1211 — the header "Create instead" switch lands on the
+                // plain create form (no method hint); only the method tiles
+                // pass a hint. Wrap so the click event isn't read as a method.
+                onClick={() => onSwitchToCreate()}
                 className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-muted/60"
               >
                 Create instead
@@ -1805,7 +1855,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                     type="button"
                     data-testid="import-method-paste-text"
                     aria-label="Paste recipe text from notes"
-                    onClick={() => onSwitchToCreate?.()}
+                    onClick={() => onSwitchToCreate?.("paste")}
                     className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   >
                     <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
@@ -1820,7 +1870,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                     type="button"
                     data-testid="import-method-scan"
                     aria-label="Create a recipe with barcode scan"
-                    onClick={() => onSwitchToCreate?.()}
+                    onClick={() => onSwitchToCreate?.("scan")}
                     className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   >
                     <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
