@@ -57,14 +57,38 @@ export const SLOE_HOW_IT_WORKS = [
   },
 ] as const;
 
-/** Curated pricing bullets for the landing cards (Figma LP1). */
-export function landingFreeFeatures(): string[] {
-  return [
+/**
+ * ENG-1203 — the two MFP-switch-win bullets for the landing Free card.
+ * MyFitnessPal paywalled barcode scanning + custom macro goals in 2026
+ * (the #1 cited exodus reasons); Suppr ships both free, so we call them
+ * out by name with the "Free" prefix as concrete switch reasons. Both
+ * are genuinely free in code — barcode is the always-unlocked Scan chip
+ * (`TodayQuickLogStrip.tsx`, `locked: false`); custom macros is the
+ * onboarding manual-targets card (`data-bridges.tsx`, no Pro gate).
+ */
+export const LANDING_FREE_MFP_SWITCH_WINS = [
+  "Free barcode scanning",
+  "Free custom macros",
+] as const;
+
+/**
+ * Curated pricing bullets for the landing Free card (Figma LP1).
+ *
+ * ENG-1203 — when `mfpWinsEnabled` is true (the default-on
+ * `paywall_free_mfp_wins_v1` flag), the two MFP-switch-win callouts are
+ * appended so the Free column merchandises the features MFP paywalled.
+ * When false, the legacy four-bullet list renders (the kill-switch
+ * path). The caller passes the flag value it reads from analytics.
+ */
+export function landingFreeFeatures(mfpWinsEnabled = false): string[] {
+  const base = [
     "Track calories & macros",
     `Save up to ${FREE_SAVE_LIMIT} recipes`,
     "Cook mode & meal logging",
     "Daily targets",
   ];
+  if (mfpWinsEnabled) base.push(...LANDING_FREE_MFP_SWITCH_WINS);
+  return base;
 }
 
 export const LANDING_PRO_FEATURES = [

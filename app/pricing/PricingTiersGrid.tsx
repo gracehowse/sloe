@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 import type { BillingPeriod, PricingTier } from "../../src/lib/landing/content.ts";
-import { computeAnnualSavingsBadge } from "../../src/lib/landing/content.ts";
+import {
+  computeAnnualSavingsBadge,
+  FREE_CUSTOM_MACROS_FEATURE,
+  PAYWALL_FREE_MFP_WINS_FLAG,
+} from "../../src/lib/landing/content.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
-import { track } from "../../src/lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 import { CurrentTierBadge } from "./CurrentTierBadge.tsx";
 import { CheckoutButton } from "./CheckoutButton.tsx";
 import { PricingNoPaymentChip } from "./PricingNoPaymentChip.tsx";
@@ -119,6 +123,11 @@ export function PricingTiersGrid({
   regionNote?: string;
 }) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
+
+  // ENG-1203 — the "Custom macros — free forever" Free-column bullet is
+  // gated behind the default-on `paywall_free_mfp_wins_v1` flag; off →
+  // the bullet is suppressed (kill switch), leaving the legacy list.
+  const mfpWinsEnabled = isFeatureEnabled(PAYWALL_FREE_MFP_WINS_FLAG);
 
   // Phase 5 / B1.3 (D-2026-04-27-05) — pricing collapses to Free + Pro.
   // PR-01 (audit 2026-04-28): the Base filter is now a no-op — Base
@@ -302,7 +311,12 @@ export function PricingTiersGrid({
                     {tier.featHeadStripped}
                   </li>
                 ) : null}
-                {tier.features.map((feature) => (
+                {tier.features
+                  .filter(
+                    (feature) =>
+                      mfpWinsEnabled || feature !== FREE_CUSTOM_MACROS_FEATURE,
+                  )
+                  .map((feature) => (
                   <li
                     key={feature}
                     className={`flex items-start gap-2 text-sm text-foreground`}

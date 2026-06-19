@@ -52,6 +52,17 @@ export type PricingTier = {
 };
 
 /**
+ * ENG-1203 — the exact Free-column bullet merchandising custom macro
+ * goals as a free MFP-switch win. Exported so `PricingTiersGrid` can
+ * gate JUST this line behind `paywall_free_mfp_wins_v1` (default-on)
+ * without a fragile inline string literal. Genuinely free: the
+ * onboarding manual-targets card (`data-bridges.tsx`) lets any user set
+ * all four kcal/P/C/F values to override the BMR estimate, with no Pro
+ * gate. Phrasing mirrors the adjacent "Barcode scanning — free forever".
+ */
+export const FREE_CUSTOM_MACROS_FEATURE = "Custom macros — free forever";
+
+/**
  * Pricing matches the actual gating in code. Any feature claimed
  * in a tier must have a real gate (server check or client guard);
  * claims without a gate are treated as monetisation bugs and are
@@ -91,7 +102,18 @@ export const PRICING_TIERS: PricingTier[] = [
       // empirical TDEE. Strongest single Free-tier reason to switch.
       "Adaptive TDEE — your target re-tunes as we learn your real maintenance",
       "Recipe import from URL, Instagram, TikTok, YouTube",
+      // ENG-1203 — the two MFP-switch wins called out explicitly on the
+      // Free column. MyFitnessPal paywalled barcode scanning + custom
+      // macro goals in 2026 (the #1 cited exodus reasons); Suppr ships
+      // both free, so they read as concrete switch reasons here. Both
+      // are genuinely free in code — barcode is the always-unlocked Scan
+      // chip (`TodayQuickLogStrip.tsx`, `locked: false`); custom macros
+      // is the onboarding manual-targets card (`data-bridges.tsx`, no Pro
+      // gate). The custom-macros line is gated on `/pricing` behind the
+      // default-on `paywall_free_mfp_wins_v1` flag in `PricingTiersGrid`
+      // (the barcode line predates the rule and stays un-gated).
       "Barcode scanning — free forever",
+      FREE_CUSTOM_MACROS_FEATURE,
       "Cook mode with inline timers",
       "Fiber & water tracking",
       "Single-day meal plan",

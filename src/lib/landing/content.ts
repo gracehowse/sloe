@@ -85,7 +85,11 @@ export type {
   BillingPeriod,
   PricingTier,
 } from "./pricingTiers";
-export { PRICING_TIERS, computeAnnualSavingsBadge } from "./pricingTiers";
+export {
+  PRICING_TIERS,
+  computeAnnualSavingsBadge,
+  FREE_CUSTOM_MACROS_FEATURE,
+} from "./pricingTiers";
 
 /**
  * Paywall value-prop grid + Free-vs-Pro comparison matrix (Figma
@@ -101,6 +105,8 @@ export {
   PAYWALL_VALUE_PROPS,
   PAYWALL_COMPARISON_ROWS,
   PAYWALL_FREE_LIMITS,
+  PAYWALL_FREE_MFP_WINS_FLAG,
+  getPaywallComparisonRows,
 } from "./paywallValueProps";
 
 /* ─────────────── How-it-works ─────────────── */

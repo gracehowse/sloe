@@ -30,6 +30,7 @@ import { PRICING_TIERS } from "@suppr/shared/landing/pricingTiers";
 import {
   PAYWALL_VALUE_PROPS,
   PAYWALL_COMPARISON_ROWS,
+  getPaywallComparisonRows,
 } from "@suppr/shared/landing/paywallValueProps";
 
 const PAYWALL_PATH = resolve(__dirname, "../../app/paywall.tsx");
@@ -74,12 +75,48 @@ describe("mobile paywall — SSOT import parity", () => {
     expect(VALUE_GRID_SRC).toMatch(/PAYWALL_VALUE_PROPS\.map\(/);
   });
 
-  it("the comparison matrix reads the shared PAYWALL_COMPARISON_ROWS SSOT", () => {
+  it("the comparison matrix reads the shared SSOT via the flag-gated selector", () => {
     expect(COMPARISON_SRC).toMatch(
       /from\s+["'][^"']*@suppr\/shared\/landing\/paywallValueProps["']/,
     );
-    expect(COMPARISON_SRC).toContain("PAYWALL_COMPARISON_ROWS");
-    expect(COMPARISON_SRC).toMatch(/PAYWALL_COMPARISON_ROWS\.map\(/);
+    // ENG-1203 — the matrix now renders `getPaywallComparisonRows(flag)`
+    // (which derives from `PAYWALL_COMPARISON_ROWS`), not the raw SSOT
+    // array, so the two free MFP-switch wins can be gated.
+    expect(COMPARISON_SRC).toContain("getPaywallComparisonRows");
+    expect(COMPARISON_SRC).toMatch(/\.map\(/);
+  });
+
+  it("the comparison matrix gates the MFP-switch wins behind the default-on flag", () => {
+    // The kill-switch must be honoured: the component reads
+    // `isFeatureEnabled(PAYWALL_FREE_MFP_WINS_FLAG)` and feeds it to the
+    // selector. If someone hardcodes the rows, the gate is dead.
+    expect(COMPARISON_SRC).toContain("isFeatureEnabled");
+    expect(COMPARISON_SRC).toContain("PAYWALL_FREE_MFP_WINS_FLAG");
+  });
+});
+
+describe("mobile paywall — free MFP-switch wins (ENG-1203)", () => {
+  it("the SSOT (mapped by the mobile matrix) carries both free callouts", () => {
+    const byKey = Object.fromEntries(
+      PAYWALL_COMPARISON_ROWS.map((r) => [r.key, r]),
+    );
+    // Both genuinely free → ✓/✓ (Pro keeps them too). Labels are what
+    // the mobile matrix renders verbatim.
+    expect(byKey.free_barcode_scanning.label).toBe("Barcode scanning");
+    expect(byKey.free_barcode_scanning.free).toBe(true);
+    expect(byKey.free_barcode_scanning.pro).toBe(true);
+    expect(byKey.free_custom_macros.label).toBe("Custom macro goals");
+    expect(byKey.free_custom_macros.free).toBe(true);
+    expect(byKey.free_custom_macros.pro).toBe(true);
+  });
+
+  it("the selector drops both callouts when the flag is off (kill switch)", () => {
+    const offKeys = getPaywallComparisonRows(false).map((r) => r.key);
+    expect(offKeys).not.toContain("free_barcode_scanning");
+    expect(offKeys).not.toContain("free_custom_macros");
+    const onKeys = getPaywallComparisonRows(true).map((r) => r.key);
+    expect(onKeys).toContain("free_barcode_scanning");
+    expect(onKeys).toContain("free_custom_macros");
   });
 });
 

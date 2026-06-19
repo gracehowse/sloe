@@ -187,6 +187,46 @@ RevenueCat's `syncPurchases` + the standard `Linking` deep-link to
 `docs/product/subscriptions-stripe-and-iap.md` file is the canonical
 cross-platform reference.
 
+## Free MFP-switch wins — barcode + custom macros (ENG-1203)
+
+MyFitnessPal paywalled **barcode scanning** and **custom macro goals**
+in 2026 — the #1 cited reasons in the MFP exodus. Suppr ships **both
+free**, so we merchandise them by name as switch reasons. Both are
+genuinely free in code (do not over-claim — verify before editing):
+
+- **Barcode scanning** — the always-unlocked Scan chip
+  (`apps/mobile/components/today/TodayQuickLogStrip.tsx`, the `Scan`
+  entry is `locked: false`).
+- **Custom macros** — the onboarding manual-targets card
+  (`apps/mobile/components/onboarding/steps/data-bridges.tsx`,
+  `ManualTargetsCard`): any user can set all four kcal/P/C/F values to
+  override the BMR estimate. No Pro gate.
+
+Where the callouts render (web == mobile):
+
+| Surface | File | Copy |
+|---|---|---|
+| Landing `/` Free card | `app/(landing)/LandingPage.tsx` → `landingFreeFeatures()` in `src/lib/landing/sloeLandingContent.ts` | "Free barcode scanning", "Free custom macros" |
+| `/pricing` Free column | `src/lib/landing/pricingTiers.ts` (`PRICING_TIERS` Free `features`) → `app/pricing/PricingTiersGrid.tsx` | "Barcode scanning — free forever", "Custom macros — free forever" |
+| `/pricing` + mobile paywall FREE/PRO matrix | `PAYWALL_COMPARISON_ROWS` in `src/lib/landing/paywallValueProps.ts` → `app/pricing/PaywallComparison.tsx` + `apps/mobile/components/paywall/PaywallComparison.tsx` | "Barcode scanning" ✓/✓, "Custom macro goals" ✓/✓ |
+
+In the comparison matrix both rows are **✓ in BOTH columns** — they're
+free, and Pro keeps them. Never render them as Free-only (—/✓); that
+would falsely imply Pro withholds them.
+
+**Feature flag:** the copy change is gated behind the default-on
+`paywall_free_mfp_wins_v1` flag (registered in `REDESIGN_DEFAULT_ON` on
+both `src/lib/analytics/track.ts` and `apps/mobile/lib/analytics.ts`).
+Off → the legacy copy without the two callouts (kill switch). The
+matrix rows are selected via `getPaywallComparisonRows(flagOn)`; the
+landing/pricing bullets gate inline. Once the flag holds 100% for two
+weeks with no regression, the gate can be removed in a cleanup PR.
+
+Tests: `tests/unit/paywallValueProps.test.ts` (SSOT + selector),
+`tests/unit/landingParity.test.tsx` (rendered landing + `/pricing`
+bullets), `apps/mobile/tests/unit/paywallFeaturesParity.test.ts`
+(mobile matrix reads the gated selector).
+
 ## Don'ts
 
 - **Never** hand-edit a version number on the landing page. `currentAppVersionLabel()` reads the latest changelog entry.

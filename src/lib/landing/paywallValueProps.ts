@@ -95,24 +95,47 @@ export type PaywallComparisonRow = {
   key:
     | "log_meals_macros"
     | "browse_community"
+    | "free_barcode_scanning"
+    | "free_custom_macros"
     | "unlimited_imports"
     | "ai_macro_fitting";
   label: string;
   /** `true` → ✓, `false` → —, string → literal value. */
   free: boolean | string;
   pro: boolean | string;
+  /**
+   * ENG-1203 — flags this row as an MFP-switch-win callout (a feature
+   * MyFitnessPal paywalled in 2026 that Suppr ships FREE: barcode
+   * scanning + custom macro goals — the #1 cited exodus reasons).
+   * Renderers gate these rows behind the default-on
+   * `paywall_free_mfp_wins_v1` flag via {@link getPaywallComparisonRows}
+   * so the merchandising change can ramp / kill-switch without a deploy.
+   * Undefined on every legacy row.
+   */
+  mfpSwitchWin?: true;
 };
 
 /**
- * The four headline comparison rows shown on the paywall, in frame
- * order. The full capability ladder (13 rows) lives in
- * `PRICING_TIERS.features`; this is the at-a-glance subset the frame
- * surfaces directly under the value grid.
+ * The headline comparison rows shown on the paywall, in frame order.
+ * The full capability ladder (13 rows) lives in `PRICING_TIERS.features`;
+ * this is the at-a-glance subset the frame surfaces directly under the
+ * value grid.
  *
- * Note the framing: both shared rows show ✓ in BOTH columns (Free is
+ * Note the framing: the shared rows show ✓ in BOTH columns (Free is
  * genuinely useful), and the two Pro-only rows show — / ✓. This
  * reinforces "Pro expands Free" rather than "Free is crippled", per
  * the permission-not-restriction positioning.
+ *
+ * ENG-1203 — the two `mfpSwitchWin` rows (barcode scanning + custom
+ * macros) are also ✓/✓: MyFitnessPal paywalled both in 2026, so they
+ * read as concrete switch reasons here. They're genuinely free in code
+ * — barcode is the always-unlocked Scan chip
+ * (`TodayQuickLogStrip.tsx`, `locked: false`); custom macros is the
+ * onboarding manual-targets card (`data-bridges.tsx`, no Pro gate, set
+ * all four to override the BMR estimate). Both columns ✓ because Pro
+ * keeps them too. Renderers show these only when the default-on
+ * `paywall_free_mfp_wins_v1` flag is enabled — see
+ * {@link getPaywallComparisonRows}.
  */
 export const PAYWALL_COMPARISON_ROWS: readonly PaywallComparisonRow[] = [
   {
@@ -128,6 +151,20 @@ export const PAYWALL_COMPARISON_ROWS: readonly PaywallComparisonRow[] = [
     pro: true,
   },
   {
+    key: "free_barcode_scanning",
+    label: "Barcode scanning",
+    free: true,
+    pro: true,
+    mfpSwitchWin: true,
+  },
+  {
+    key: "free_custom_macros",
+    label: "Custom macro goals",
+    free: true,
+    pro: true,
+    mfpSwitchWin: true,
+  },
+  {
     key: "unlimited_imports",
     label: "Unlimited imports",
     free: false,
@@ -140,6 +177,29 @@ export const PAYWALL_COMPARISON_ROWS: readonly PaywallComparisonRow[] = [
     pro: true,
   },
 ] as const;
+
+/**
+ * ENG-1203 — the PostHog flag (default-on, in `REDESIGN_DEFAULT_ON` on
+ * both platforms) that gates the MFP-switch-win comparison rows
+ * (barcode scanning + custom macros). Exported so renderers + tests
+ * reference one string. Off → the legacy four-row matrix; on → six rows.
+ */
+export const PAYWALL_FREE_MFP_WINS_FLAG = "paywall_free_mfp_wins_v1";
+
+/**
+ * ENG-1203 — resolve the comparison rows to render given the
+ * `paywall_free_mfp_wins_v1` flag state. Pure (no analytics import) so
+ * the leaf SSOT stays mobile-safe and importable on both platforms;
+ * each renderer passes the flag value it reads from its own analytics
+ * module. Flag ON → all rows (including the two MFP-switch wins); flag
+ * OFF → the legacy four rows only.
+ */
+export function getPaywallComparisonRows(
+  mfpWinsEnabled: boolean,
+): readonly PaywallComparisonRow[] {
+  if (mfpWinsEnabled) return PAYWALL_COMPARISON_ROWS;
+  return PAYWALL_COMPARISON_ROWS.filter((r) => !r.mfpSwitchWin);
+}
 
 /**
  * Re-export the source limits these blocks are derived from, so any

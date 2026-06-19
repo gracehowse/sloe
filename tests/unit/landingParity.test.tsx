@@ -162,6 +162,46 @@ describe("landing page — Free-tier save limit parity", () => {
   });
 });
 
+describe("landing page — free MFP-switch wins (ENG-1203)", () => {
+  // MyFitnessPal paywalled barcode scanning + custom macro goals in 2026
+  // (the #1 cited exodus reasons). Suppr ships both free — the landing
+  // Free card must merchandise them by name. The `paywall_free_mfp_wins_v1`
+  // flag is default-on (in `REDESIGN_DEFAULT_ON`), so `isFeatureEnabled`
+  // returns true under vitest and the bullets render.
+  it("calls out Free barcode scanning on the Free card", () => {
+    const { container } = render(<LandingPage />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Free barcode scanning");
+  });
+
+  it("calls out Free custom macros on the Free card", () => {
+    const { container } = render(<LandingPage />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Free custom macros");
+  });
+});
+
+describe("/pricing — free MFP-switch wins on the Free column (ENG-1203)", () => {
+  const TIERS = PRICING_TIERS.map((t) => ({
+    ...t,
+    cta: t.checkoutTier === null ? "Continue for free" : `Upgrade to ${t.name}`,
+    featHeadStripped: t.featHead
+      ? t.featHead.replace(/,\s*plus$/i, "")
+      : undefined,
+  }));
+
+  it("renders both free callouts on the /pricing Free column", () => {
+    const { container } = render(
+      <PricingTiersGrid tiers={TIERS} paywallFrom="deep_link" />,
+    );
+    const text = container.textContent ?? "";
+    // Barcode predates ENG-1203 (un-gated); custom macros is the gated
+    // addition. With the default-on flag both must be present.
+    expect(text).toContain("Barcode scanning — free forever");
+    expect(text).toContain("Custom macros — free forever");
+  });
+});
+
 describe("landing page — roadmap (Figma LP1)", () => {
   it("links to the dedicated /roadmap page instead of inlining the SSOT", () => {
     const { container } = render(<LandingPage />);

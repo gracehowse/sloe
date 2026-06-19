@@ -13,9 +13,11 @@
  *   1. The 2×2 grid carries exactly four props in frame order, each with
  *      a non-empty title + one-line description and an icon name that
  *      resolves on both lucide packages.
- *   2. The comparison matrix carries exactly four rows in frame order
- *      with the right ✓/— framing (both shared rows ✓/✓; both Pro-only
- *      rows —/✓) — the permission-not-restriction shape.
+ *   2. The comparison matrix carries the rows in frame order with the
+ *      right ✓/— framing (shared rows ✓/✓; Pro-only rows —/✓) — the
+ *      permission-not-restriction shape. ENG-1203 added two ✓/✓
+ *      MFP-switch-win rows (barcode + custom macros), flag-gated via
+ *      `getPaywallComparisonRows`.
  *   3. The Free-tier limits the matrix abstracts are DERIVED from the
  *      shared `FREE_SAVE_LIMIT` / `FREE_PHOTO_LOG_WEEKLY_LIMIT`
  *      constants — never hardcoded — so a future limit change can't make
@@ -26,6 +28,8 @@ import {
   PAYWALL_VALUE_PROPS,
   PAYWALL_COMPARISON_ROWS,
   PAYWALL_FREE_LIMITS,
+  PAYWALL_FREE_MFP_WINS_FLAG,
+  getPaywallComparisonRows,
 } from "../../src/lib/landing/paywallValueProps";
 import { FREE_SAVE_LIMIT } from "../../src/context/appData/constants";
 import { FREE_PHOTO_LOG_WEEKLY_LIMIT } from "../../src/lib/nutrition/photoLogQuota";
@@ -84,14 +88,16 @@ describe("PAYWALL_VALUE_PROPS — 2×2 grid SSOT (Figma 284:2)", () => {
 });
 
 describe("PAYWALL_COMPARISON_ROWS — FREE/PRO matrix SSOT (Figma 284:2)", () => {
-  it("carries exactly four rows", () => {
-    expect(PAYWALL_COMPARISON_ROWS).toHaveLength(4);
+  it("carries exactly six rows (4 legacy + 2 ENG-1203 MFP-switch wins)", () => {
+    expect(PAYWALL_COMPARISON_ROWS).toHaveLength(6);
   });
 
-  it("is ordered per the frame", () => {
+  it("is ordered per the frame (MFP wins sit in the ✓/✓ Free-useful block)", () => {
     expect(PAYWALL_COMPARISON_ROWS.map((r) => r.key)).toEqual([
       "log_meals_macros",
       "browse_community",
+      "free_barcode_scanning",
+      "free_custom_macros",
       "unlimited_imports",
       "ai_macro_fitting",
     ]);
@@ -121,6 +127,67 @@ describe("PAYWALL_COMPARISON_ROWS — FREE/PRO matrix SSOT (Figma 284:2)", () =>
     for (const r of PAYWALL_COMPARISON_ROWS) {
       expect(r.label.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("ENG-1203 — free MFP-switch wins (barcode + custom macros)", () => {
+  const byKey = Object.fromEntries(
+    PAYWALL_COMPARISON_ROWS.map((r) => [r.key, r]),
+  );
+
+  it("calls out free barcode scanning as a ✓/✓ row flagged mfpSwitchWin", () => {
+    const row = byKey.free_barcode_scanning;
+    expect(row).toBeDefined();
+    expect(row.label).toBe("Barcode scanning");
+    // Genuinely free → ✓ in BOTH columns (Pro keeps it too).
+    expect(row.free).toBe(true);
+    expect(row.pro).toBe(true);
+    expect(row.mfpSwitchWin).toBe(true);
+  });
+
+  it("calls out free custom macros as a ✓/✓ row flagged mfpSwitchWin", () => {
+    const row = byKey.free_custom_macros;
+    expect(row).toBeDefined();
+    expect(row.label).toBe("Custom macro goals");
+    expect(row.free).toBe(true);
+    expect(row.pro).toBe(true);
+    expect(row.mfpSwitchWin).toBe(true);
+  });
+
+  it("never claims a switch win as Free-only (✓ in both columns — honest)", () => {
+    // The merchandising must not imply the feature is *withheld* from
+    // Pro. Both MFP-win rows are ✓/✓ — they're free, and Pro keeps them.
+    for (const r of PAYWALL_COMPARISON_ROWS) {
+      if (r.mfpSwitchWin) {
+        expect(r.free).toBe(true);
+        expect(r.pro).toBe(true);
+      }
+    }
+  });
+
+  it("exposes the default-on flag string the renderers gate on", () => {
+    expect(PAYWALL_FREE_MFP_WINS_FLAG).toBe("paywall_free_mfp_wins_v1");
+  });
+});
+
+describe("getPaywallComparisonRows — flag-gated row selection (ENG-1203)", () => {
+  it("flag ON → all six rows including the two MFP-switch wins", () => {
+    const rows = getPaywallComparisonRows(true);
+    expect(rows).toHaveLength(6);
+    expect(rows.map((r) => r.key)).toContain("free_barcode_scanning");
+    expect(rows.map((r) => r.key)).toContain("free_custom_macros");
+  });
+
+  it("flag OFF → the legacy four rows, MFP wins suppressed (kill switch)", () => {
+    const rows = getPaywallComparisonRows(false);
+    expect(rows).toHaveLength(4);
+    expect(rows.map((r) => r.key)).toEqual([
+      "log_meals_macros",
+      "browse_community",
+      "unlimited_imports",
+      "ai_macro_fitting",
+    ]);
+    expect(rows.some((r) => r.mfpSwitchWin)).toBe(false);
   });
 });
 

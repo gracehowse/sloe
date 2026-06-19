@@ -1,8 +1,12 @@
+"use client";
+
 import { Check } from "lucide-react";
 import {
-  PAYWALL_COMPARISON_ROWS,
+  getPaywallComparisonRows,
+  PAYWALL_FREE_MFP_WINS_FLAG,
   type PaywallComparisonRow,
 } from "../../src/lib/landing/content.ts";
+import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 
 /**
  * FREE / PRO comparison matrix for `/pricing` — Sloe Pro paywall
@@ -17,6 +21,11 @@ import {
  * reads as "Pro expands Free" rather than "Free is crippled", per the
  * permission-not-restriction positioning. Do not suppress the Free
  * column. See `docs/ux/redesign/paywall.md` §3a.
+ *
+ * ENG-1203 — client component so it can read the default-on
+ * `paywall_free_mfp_wins_v1` flag and surface the two free MFP-switch
+ * wins (barcode scanning + custom macros) as ✓/✓ rows. Off → the legacy
+ * four-row matrix. Mirrors the mobile `PaywallComparison`.
  */
 function Cell({ value }: { value: PaywallComparisonRow["free"] }) {
   if (value === true) {
@@ -42,6 +51,11 @@ function Cell({ value }: { value: PaywallComparisonRow["free"] }) {
 }
 
 export function PaywallComparison() {
+  // ENG-1203 — gate the two free MFP-switch-win rows behind the default-on
+  // flag; off → the legacy four-row matrix (the kill-switch path).
+  const rows = getPaywallComparisonRows(
+    isFeatureEnabled(PAYWALL_FREE_MFP_WINS_FLAG),
+  );
   return (
     <div
       data-testid="paywall-comparison"
@@ -68,7 +82,7 @@ export function PaywallComparison() {
           </tr>
         </thead>
         <tbody>
-          {PAYWALL_COMPARISON_ROWS.map((row) => (
+          {rows.map((row) => (
             <tr
               key={row.key}
               data-testid={`paywall-comparison-${row.key}`}
