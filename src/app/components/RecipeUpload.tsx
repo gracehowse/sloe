@@ -66,6 +66,12 @@ import {
   type RecentImportItem,
 } from "../../lib/recipes/recentImports.ts";
 import {
+  detectSourcePlatform,
+  isCaptionTextPlatform,
+  type CaptionTextPlatform,
+} from "../../lib/recipes/resolveImportUrl.ts";
+import { ImportCaptionPreviewCard } from "./import/ImportCaptionPreviewCard.tsx";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -231,6 +237,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   // hint line stays live in the `else`. Resolved once at mount (PostHog reads
   // are imperative; the screen doesn't re-mount mid-flow).
   const [importRedesign] = useState(() => isFeatureEnabled("recipe-import-redesign"));
+  const [importCaptionPreviewFlag] = useState(() =>
+    isFeatureEnabled("import_caption_preview_v1"),
+  );
   const importQueue = useImportQueue("web", track);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -271,6 +280,12 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   } | null>(null);
   /** ENG-898 — recent URL imports (web parity with mobile import-shared). */
   const [recentImports, setRecentImports] = useState<RecentImportItem[]>([]);
+  const [importCaptionPreviewOpen, setImportCaptionPreviewOpen] = useState(false);
+  const [captionPreviewPlatform, setCaptionPreviewPlatform] =
+    useState<CaptionTextPlatform | null>(null);
+  const [captionPreviewUrl, setCaptionPreviewUrl] = useState("");
+  const [captionDraft, setCaptionDraft] = useState("");
+  const [captionEditing, setCaptionEditing] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verifiedLines, setVerifiedLines] = useState<VerifiedLine[] | null>(null);
   const [verifiedTotals, setVerifiedTotals] = useState<{
@@ -785,6 +800,47 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     [],
   );
 
+  const fetchCaptionImportedRecipe = useCallback(
+    async (
+      url: string,
+      captionText: string,
+      signal?: AbortSignal,
+    ): Promise<{
+      recipe: ApiImportedRecipe;
+      imageUsed?: boolean;
+      captionTruncated?: boolean;
+    }> => {
+      let res: Response;
+      try {
+        res = await fetch("/api/recipe-import/caption", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, captionText }),
+          signal,
+        });
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") throw e;
+        throw new ImportRunnerError("network_error");
+      }
+      if (res.status === 404) {
+        return fetchImportedRecipe(url, signal);
+      }
+      const data = (await res.json()) as {
+        ok?: boolean;
+        recipe?: ApiImportedRecipe;
+        message?: string;
+        error?: string;
+      };
+      if (!data.ok || !data.recipe) {
+        const code =
+          (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        throw new ImportRunnerError(code, data.message);
+      }
+      return { recipe: data.recipe, imageUsed: false, captionTruncated: false };
+    },
+    [fetchImportedRecipe],
+  );
+
   const applyAndMaybeSaveFirst = useCallback(
     async (
       recipe: ApiImportedRecipe,
@@ -883,24 +939,85 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     [importProgressV2, runBulkPhotoImport],
   );
 
-  const runImportFromUrl = async () => {
-    const u = importUrl.trim();
-    if (!u) {
-      toast.error("Paste a recipe URL first.");
-      return;
-    }
+  const executeUrlImport = useCallback(
+    async (u: string) => {
+      if (importProgressV2) {
+        const id = importJobIdForUrl("url", u);
+        let seedTitle = "Recipe";
+        try {
+          seedTitle = new URL(u).hostname.replace(/^www\./, "");
+        } catch {
+          /* keep default */
+        }
+        const enqueued = importQueue.enqueue({
+          id,
+          kind: "url",
+          title: seedTitle,
+          run: async (controls) => {
+            controls.setStage("extracting");
+            const { recipe, imageUsed, captionTruncated } = await fetchImportedRecipe(
+              u,
+              controls.signal,
+            );
+            if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
+            controls.setStage("organizing");
+            controls.setTitle(recipe.title ?? "Imported recipe");
+            await applyAndMaybeSaveFirst(recipe, u, { imageUsed, captionTruncated });
+            return { title: recipe.title ?? "Imported recipe" };
+          },
+        });
+        if (enqueued) {
+          setImportUrl("");
+          setImportHint(null);
+        }
+        return;
+      }
 
-    // import-progress-v2 — enqueue into the shared scheduler so the import
-    // runs with live per-stage progress + queue position in the persistent
-    // drawer, and multiple URLs can import concurrently. The legacy inline
-    // path below stays alive in the `else` (flag OFF).
+      setImportBusy(true);
+      setImportHint(null);
+      try {
+        const { recipe, imageUsed, captionTruncated } = await fetchImportedRecipe(u);
+        const savedFirst = await applyAndMaybeSaveFirst(recipe, u, {
+          imageUsed,
+          captionTruncated,
+        });
+        toast.success(
+          savedFirst
+            ? "Saved to your library — review amounts and nutrition below"
+            : "Imported — review amounts and nutrition before publishing",
+        );
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        const msg = userFacingImportError(e);
+        if (!importRedesign) {
+          toast.error(msg);
+        }
+        setImportHint(msg);
+      } finally {
+        setImportBusy(false);
+      }
+    },
+    [
+      importProgressV2,
+      importQueue,
+      fetchImportedRecipe,
+      applyAndMaybeSaveFirst,
+      importRedesign,
+    ],
+  );
+
+  const runCaptionImportConfirmed = useCallback(async () => {
+    const url = captionPreviewUrl.trim();
+    const caption = captionDraft.trim();
+    if (!url || !caption) return;
+
+    setImportCaptionPreviewOpen(false);
+
     if (importProgressV2) {
-      // Deterministic id so a duplicate concurrent import of the SAME url is a
-      // scheduler no-op (idempotency dedupe).
-      const id = importJobIdForUrl("url", u);
+      const id = importJobIdForUrl("url", `${url}#caption`);
       let seedTitle = "Recipe";
       try {
-        seedTitle = new URL(u).hostname.replace(/^www\./, "");
+        seedTitle = new URL(url).hostname.replace(/^www\./, "");
       } catch {
         /* keep default */
       }
@@ -910,13 +1027,15 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         title: seedTitle,
         run: async (controls) => {
           controls.setStage("extracting");
-          const { recipe, imageUsed, captionTruncated } = await fetchImportedRecipe(u, controls.signal);
+          const { recipe, imageUsed, captionTruncated } = await fetchCaptionImportedRecipe(
+            url,
+            caption,
+            controls.signal,
+          );
           if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
           controls.setStage("organizing");
           controls.setTitle(recipe.title ?? "Imported recipe");
-          // The most-recently-finished import populates the editor form for
-          // review; all imports are listed in the drawer regardless.
-          await applyAndMaybeSaveFirst(recipe, u, { imageUsed, captionTruncated });
+          await applyAndMaybeSaveFirst(recipe, url, { imageUsed, captionTruncated });
           return { title: recipe.title ?? "Imported recipe" };
         },
       });
@@ -930,24 +1049,23 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     setImportBusy(true);
     setImportHint(null);
     try {
-      const { recipe, imageUsed, captionTruncated } = await fetchImportedRecipe(u);
-      const savedFirst = await applyAndMaybeSaveFirst(recipe, u, { imageUsed, captionTruncated });
+      const { recipe, imageUsed, captionTruncated } = await fetchCaptionImportedRecipe(
+        url,
+        caption,
+      );
+      const savedFirst = await applyAndMaybeSaveFirst(recipe, url, {
+        imageUsed,
+        captionTruncated,
+      });
       toast.success(
         savedFirst
           ? "Saved to your library — review amounts and nutrition below"
           : "Imported — review amounts and nutrition before publishing",
       );
+      setImportUrl("");
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
-      // Prefer the server's specific message (carried on the thrown
-      // ImportRunnerError) over the generic per-code copy, sanitised via the
-      // central mapper — preserves the actionable "No Recipe JSON-LD found…"
-      // hint the old inline path surfaced.
       const msg = userFacingImportError(e);
-      // recipe-import-redesign ON → L4 import error (import.md §3.10): inline
-      // amber banner only, no toast (the banner IS the surface). OFF (legacy,
-      // production until the flag ramps) → fire the toast too, exactly as
-      // before #483; the hint renders as the small destructive line.
       if (!importRedesign) {
         toast.error(msg);
       }
@@ -955,7 +1073,45 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     } finally {
       setImportBusy(false);
     }
+  }, [
+    captionPreviewUrl,
+    captionDraft,
+    importProgressV2,
+    importQueue,
+    fetchCaptionImportedRecipe,
+    applyAndMaybeSaveFirst,
+    importRedesign,
+  ]);
+
+  const runImportFromUrl = async () => {
+    const u = importUrl.trim();
+    if (!u) {
+      toast.error("Paste a recipe URL first.");
+      return;
+    }
+
+    if (importCaptionPreviewFlag) {
+      const platform = detectSourcePlatform(u);
+      if (isCaptionTextPlatform(platform)) {
+        setCaptionPreviewUrl(u);
+        setCaptionPreviewPlatform(platform);
+        setCaptionDraft("");
+        setCaptionEditing(true);
+        setImportCaptionPreviewOpen(true);
+        return;
+      }
+    }
+
+    await executeUrlImport(u);
   };
+
+  const dismissCaptionPreview = useCallback(() => {
+    setImportCaptionPreviewOpen(false);
+    setCaptionPreviewPlatform(null);
+    setCaptionPreviewUrl("");
+    setCaptionDraft("");
+    setCaptionEditing(false);
+  }, []);
 
   const loadRecipeForEdit = async (id: string) => {
     setLoadingRecipe(true);
@@ -1741,6 +1897,27 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           Presentation only — paste-link / URL-parse logic unchanged. */}
       {mode === "import" ? (
         <div className="space-y-4 mb-6">
+          {importCaptionPreviewOpen && captionPreviewPlatform ? (
+            <ImportCaptionPreviewCard
+              platform={captionPreviewPlatform}
+              captionDraft={captionDraft}
+              captionEditing={captionEditing}
+              busy={importBusy}
+              onCaptionChange={setCaptionDraft}
+              onToggleEdit={() => setCaptionEditing((v) => !v)}
+              onConfirm={() => void runCaptionImportConfirmed()}
+              onPhotoInstead={() => {
+                dismissCaptionPreview();
+                onPhotoMethodPress();
+              }}
+              onLinkInstead={() => {
+                const url = captionPreviewUrl.trim();
+                dismissCaptionPreview();
+                if (url) void executeUrlImport(url);
+              }}
+            />
+          ) : (
+          <>
           {/* Paste-link pill — the import CTA panel. */}
           <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 text-center">
             {/* ENG-797 brandmark — mobile leads this panel with <SupprMark size={56} /> (apps/mobile/app/import-shared.tsx). Gating is internal to SupprMark (design_system_brandmark). */}
@@ -1885,6 +2062,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               </>
             ) : null}
           </div>
+          </>
+          )}
 
           {/* WORKS WITH — non-tappable trust chips (ENG-898, mobile parity).
               Honest sources we parse; NOT a four-way router. */}

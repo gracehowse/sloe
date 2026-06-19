@@ -71,6 +71,26 @@ import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle
 import { useCalmMode } from "../../lib/preferences/useCalmMode";
 import type { MacroDisplayStyle } from "../../lib/preferences/macroDisplayStyle";
 import { SupprCard } from "./ui/suppr-card";
+// Connections section (ENG-1200) — Household summary reuses the same
+// shared household client + sharing-preset subtitle as Profile.tsx and
+// mobile `SettingsBundleContent`, so the member count + preset label
+// stay in lockstep across all three surfaces.
+import { getMyHousehold } from "../../lib/household/householdClient.ts";
+import {
+  presetFromShareLunch,
+  sharingPresetShortLabel,
+} from "../../lib/household/sharingGrid.ts";
+import {
+  parseSharingStateJson,
+  sharingStorageKey,
+} from "../../lib/household/sharingGridStorage.ts";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
@@ -188,6 +208,19 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
    */
   const [cancelPromptOpen, setCancelPromptOpen] = useState(false);
   const [cancelPromptExporting, setCancelPromptExporting] = useState(false);
+  // Connections section (ENG-1200, mobile parity). `householdSummary` is
+  // null when the user isn't in a household → the Household row hides
+  // (matches mobile + Profile). The Apple Health row is informational
+  // only on web — HealthKit is iOS-only, so tapping it opens an honest
+  // explainer dialog rather than a (fake) connect toggle.
+  const [householdSummary, setHouseholdSummary] = useState<
+    { memberCount: number; subtitle: string } | null
+  >(null);
+  const [appleHealthInfoOpen, setAppleHealthInfoOpen] = useState(false);
+  // ENG-1200 rollout flag. Per the feature-flag rule, this structural /
+  // navigation addition ships gated — the old path (no Connections
+  // section) stays alive when the flag is off. Ramp via PostHog.
+  const connectionsEnabled = isFeatureEnabled("web_settings_connections_v1");
 
   useEffect(() => {
     if (!scrollToPromoOnOpen) return;
@@ -500,6 +533,50 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     const { error } = await supabase.from("profiles").update(updates).eq("id", uid);
     if (error) toast.error("Failed to save preference");
   }, []);
+
+  // Load the household summary for the Connections → Household row.
+  // Mirrors Profile.tsx (same shared client + subtitle format) so the
+  // member count + sharing-preset label read identically across the two
+  // web surfaces and mobile. A failed / empty load just hides the row —
+  // it never blocks the rest of Settings. Skipped entirely when the
+  // Connections flag is off so we don't fetch data we won't render.
+  useEffect(() => {
+    if (!connectionsEnabled) return;
+    let cancelled = false;
+    void (async () => {
+      const { data: authData } = await supabase.auth.getSession();
+      const uid = authData.session?.user.id ?? null;
+      if (!uid || cancelled) return;
+      try {
+        const { data: hh } = await getMyHousehold(supabase as any, uid);
+        if (cancelled) return;
+        if (!hh?.household) {
+          setHouseholdSummary(null);
+          return;
+        }
+        let preset = presetFromShareLunch(Boolean(hh.household.shareLunch));
+        try {
+          if (typeof window !== "undefined") {
+            const raw = window.localStorage.getItem(sharingStorageKey(hh.household.id));
+            const parsed = parseSharingStateJson(raw);
+            if (parsed) preset = parsed.preset;
+          }
+        } catch {
+          // Ignore — fall back to the derived preset.
+        }
+        const count = hh.members.length;
+        setHouseholdSummary({
+          memberCount: count,
+          subtitle: `${count} ${count === 1 ? "person" : "people"} · ${sharingPresetShortLabel(preset)}`,
+        });
+      } catch {
+        if (!cancelled) setHouseholdSummary(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [connectionsEnabled]);
 
   // 2026-04-30 (#15): Reset/Erase parity with mobile
   // (`apps/mobile/components/settings/SettingsBundleContent.tsx`).
@@ -1589,6 +1666,72 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         </div>
       </SupprCard>
 
+      {/* Connections — device & people integrations (ENG-1200, mobile
+          parity). Mobile's `SettingsBundleContent` files Household under a
+          separate "People" group and Apple Health under "Connections"; web
+          groups BOTH under one Connections card per ENG-1200's explicit IA
+          call — the row-level treatment (labels, subtitles, nav targets,
+          icons) still matches mobile, which is what parity needs. Gated
+          behind `web_settings_connections_v1` so the old path (no section)
+          stays live until the flag ramps. Placed after Preferences / before
+          Notifications to mirror mobile's Display → Connections → Reminders
+          order. */}
+      {connectionsEnabled ? (
+        <SupprCard
+          padding="lg"
+          radius="xl"
+          className="mb-6"
+          data-testid="settings-connections-card"
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <Icons.link className="w-5 h-5 text-muted-foreground" />
+            <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Connections</h3>
+          </div>
+          <div className="space-y-1">
+            {/* Household — hidden when the user isn't in a household
+                (mobile + Profile behaviour; no solo row). Hands off to the
+                proven `?view=household-settings` flow the App shell mounts,
+                same as HouseholdBar's Manage link. */}
+            {householdSummary ? (
+              <Link
+                href="/home?view=household-settings"
+                data-testid="settings-household-row"
+                className="w-full flex items-center gap-4 text-left hover:bg-muted/30 -mx-2 px-2 py-2 rounded-lg transition-colors"
+              >
+                <Icons.users className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden />
+                <div className="flex-1 min-w-0">
+                  <span className="block text-sm font-medium text-foreground">Household</span>
+                  <span className="block text-xs text-muted-foreground mt-1 truncate">
+                    {householdSummary.subtitle}
+                  </span>
+                </div>
+                <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
+              </Link>
+            ) : null}
+            {/* Apple Health — informational only. HealthKit is iOS-only, so
+                web never connects; the row opens an honest explainer dialog
+                (no fake connect toggle). Web Health data is read-only,
+                synced from the iOS app (see today-apple-health-card.tsx and
+                the 2026-05-01 data-bridges carve-out). */}
+            <button
+              type="button"
+              onClick={() => setAppleHealthInfoOpen(true)}
+              data-testid="settings-apple-health-row"
+              className="w-full flex items-center gap-4 text-left hover:bg-muted/30 -mx-2 px-2 py-2 rounded-lg transition-colors"
+            >
+              <Icons.activity className="w-5 h-5 text-muted-foreground shrink-0" aria-hidden />
+              <div className="flex-1 min-w-0">
+                <span className="block text-sm font-medium text-foreground">Apple Health</span>
+                <span className="block text-xs text-muted-foreground mt-1">
+                  iOS only · syncs from the Suppr app
+                </span>
+              </div>
+              <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
+            </button>
+          </div>
+        </SupprCard>
+      ) : null}
+
       {/* Notifications */}
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
@@ -2052,6 +2195,24 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         nutritionStrategy={profileNutritionStrategy}
         onConfirm={handleActivityLevelConfirm}
       />
+      {/* Apple Health explainer (ENG-1200). Honest, informational only —
+          web cannot connect HealthKit (iOS-only), so this dialog points
+          the user to the iOS app and is clear that web Health data is
+          read-only. No connect toggle, no fabricated state. */}
+      <Dialog open={appleHealthInfoOpen} onOpenChange={setAppleHealthInfoOpen}>
+        <DialogContent data-testid="settings-apple-health-info-dialog">
+          <DialogHeader>
+            <DialogTitle>Apple Health syncs from iOS</DialogTitle>
+            <DialogDescription>
+              Apple Health connects in the Suppr iOS app — HealthKit is
+              iOS-only, so there&rsquo;s nothing to connect here on the web.
+              Once it&rsquo;s connected on your iPhone, your steps, active
+              energy, and weight show up across Today and Progress here,
+              read-only.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
       {/* P1-6 (audit 2026-04-30): Calmed the Erase confirm copy in
           lockstep with the mobile rewrite. The previous block listed
           every category in the body, which read as shame energy ("look

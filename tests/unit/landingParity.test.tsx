@@ -20,10 +20,34 @@
  * by JSX tags, or composed from constants, still counts.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
+/**
+ * ENG-1204 — control `isFeatureEnabled("landing_hero_hybrid_v1")` per test
+ * so we can assert BOTH hero variants (flag OFF = current hero, flag ON =
+ * hybrid hero) without touching PostHog. Every other `track` export stays
+ * real via `importOriginal`. Default is OFF, matching production: the flag
+ * is deliberately NOT in `REDESIGN_DEFAULT_ON`.
+ */
+const { isFeatureEnabledMock, realFlagImpl } = vi.hoisted(() => {
+  const realFlagImpl = { current: (_flag: string) => false };
+  return {
+    isFeatureEnabledMock: vi.fn((flag: string) => realFlagImpl.current(flag)),
+    realFlagImpl,
+  };
+});
+vi.mock("../../src/lib/analytics/track", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/lib/analytics/track")>();
+  // Default the mock to the REAL flag registry so sibling tests that depend on
+  // genuinely default-on flags (e.g. paywall_free_mfp_wins_v1 — ENG-1203's free
+  // MFP-switch wins) keep rendering. Only the hero tests override
+  // landing_hero_hybrid_v1 per-case.
+  realFlagImpl.current = actual.isFeatureEnabled;
+  return { ...actual, isFeatureEnabled: isFeatureEnabledMock };
+});
 
 /** One shared client so `CheckoutButton` + `CurrentTierBadge` do not each mint a GoTrueClient (test noise). */
 vi.mock("@supabase/supabase-js", () => {
@@ -49,6 +73,18 @@ import {
   FREE_SAVE_LIMIT,
   computeAnnualSavingsBadge,
 } from "../../src/lib/landing/content";
+import {
+  HERO_CURRENT,
+  HERO_HYBRID,
+} from "../../src/lib/landing/sloeLandingContent";
+
+beforeEach(() => {
+  // Reset to production defaults via the REAL registry: landing_hero_hybrid_v1
+  // stays OFF (not in REDESIGN_DEFAULT_ON), paywall_free_mfp_wins_v1 stays ON.
+  // The hybrid-on test opts in explicitly.
+  isFeatureEnabledMock.mockReset();
+  isFeatureEnabledMock.mockImplementation((flag: string) => realFlagImpl.current(flag));
+});
 
 describe("landing page — Sloe editorial parity", () => {
   it("renders the Sloe hero headline from Figma LP1", () => {
@@ -72,6 +108,71 @@ describe("landing page — Sloe editorial parity", () => {
       /browse recipes/i.test(a.textContent ?? ""),
     );
     expect(browse?.getAttribute("href")).toBe("/discover");
+  });
+});
+
+describe("landing page — hero positioning flag (ENG-1204, D-07 HYBRID)", () => {
+  function heroText() {
+    const { container } = render(<LandingPage />);
+    // The first <h1> is the hero headline; the <p> immediately after is the lead.
+    const h1 = container.querySelector("h1");
+    const lead = container.querySelector(".lp-lead-center");
+    return {
+      full: container.textContent ?? "",
+      headline: h1?.textContent ?? "",
+      lead: lead?.textContent ?? "",
+    };
+  }
+
+  it("flag OFF (default) renders the current recipe-first hero", () => {
+    // isFeatureEnabledMock defaults to false in beforeEach.
+    const { headline, lead } = heroText();
+    expect(headline).toContain(HERO_CURRENT.headline.pre.trim());
+    expect(headline).toContain(HERO_CURRENT.headline.em);
+    expect(headline).toContain(HERO_CURRENT.headline.post.trim());
+    expect(lead).toBe(HERO_CURRENT.lead);
+    // The hybrid headline must NOT appear on the flag-off path.
+    expect(headline).not.toContain(HERO_HYBRID.headline.pre.trim());
+  });
+
+  it("flag ON renders the hybrid tracker/coaching headline + import wedge line", () => {
+    isFeatureEnabledMock.mockImplementation(
+      (flag: string) => flag === "landing_hero_hybrid_v1",
+    );
+    const { headline, lead } = heroText();
+    // Headline leads with the tracker + "what to eat next" coaching promise.
+    expect(headline).toContain(HERO_HYBRID.headline.pre.trim());
+    expect(headline).toContain(HERO_HYBRID.headline.em);
+    expect(headline).toContain(HERO_HYBRID.headline.post.trim());
+    // Lead keeps the import hook as the supporting wedge line.
+    expect(lead).toBe(HERO_HYBRID.lead);
+    expect(lead.toLowerCase()).toContain("tiktok or reel");
+    // The current recipe-first headline must NOT appear on the flag-on path.
+    expect(headline).not.toContain(HERO_CURRENT.headline.pre.trim());
+  });
+
+  it("only reads the landing_hero_hybrid_v1 flag for the hero gate", () => {
+    render(<LandingPage />);
+    expect(isFeatureEnabledMock).toHaveBeenCalledWith("landing_hero_hybrid_v1");
+  });
+
+  it("neither variant introduces a new product claim beyond the current hero", () => {
+    // D-07 is an emphasis re-order, not a new promise. Both variants must
+    // only reference surfaces the landing already asserts (recipe import +
+    // macro tracking). Guard against accidental over-claim creep.
+    const FORBIDDEN_NEW_CLAIMS = [
+      "guaranteed",
+      "lose weight",
+      "doctor",
+      "clinically",
+      "personalized coach", // we coach "what to eat next", not a human coach
+    ];
+    for (const variant of [HERO_CURRENT, HERO_HYBRID]) {
+      const blob = `${variant.eyebrow} ${variant.headline.pre} ${variant.headline.em} ${variant.headline.post} ${variant.lead}`.toLowerCase();
+      for (const claim of FORBIDDEN_NEW_CLAIMS) {
+        expect(blob, `${claim} in hero variant`).not.toContain(claim);
+      }
+    }
   });
 });
 

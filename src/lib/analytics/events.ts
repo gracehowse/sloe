@@ -115,6 +115,14 @@ export const AnalyticsEvents = {
    *   { action: "cancel" | "retry", kind, platform, errorCode?, stage } */
   recipe_import_job_action: "recipe_import_job_action",
   meal_plan_generated: "meal_plan_generated",
+  /** ENG-956 — user locked / unlocked a meal row ("keep this meal"). Same
+   *  name web + mobile. Payload: `{ locked: boolean, slot: string, lockedCount,
+   *  platform }` — `lockedCount` is the total locked after the toggle. */
+  plan_meal_lock_toggled: "plan_meal_lock_toggled",
+  /** ENG-956 — "Refresh the rest": a regenerate that kept ≥1 locked meal and
+   *  re-rolled only the unlocked slots. Distinct from `meal_plan_generated`
+   *  (full re-roll). Payload: `{ lockedCount, rerolledCount, days, platform }`. */
+  plan_regenerated_partial: "plan_regenerated_partial",
   shopping_list_generated: "shopping_list_generated",
   smart_suggestion_saved: "smart_suggestion_saved",
   /** ENG-978/979 — user shared the rich recipe card (import success or recipe detail).

@@ -4,8 +4,12 @@ import { AlertTriangle, Check, Info } from "lucide-react-native";
 import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import {
+  ONBOARDING_PACE_VS_TDEE_LABEL_GLOSS,
+  ONBOARDING_PACE_VS_TDEE_LABEL_PLAIN,
+} from "@suppr/shared/onboarding/figmaCopy";
 import {
   GOAL_DEFAULT_PACE,
   PACE_PRESETS,
@@ -64,6 +68,12 @@ export function MobilePaceStep() {
   // per-goal `accent` below stays reserved for the slider track + projection
   // tile (the macro-coded goal hue), matching web `BrandedSlider`.
   const plum = useAccent();
+  // ENG-1187 — gloss the "TDEE" label on first use on the pace screen
+  // behind `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays
+  // in the `else`. Shared web ↔ mobile via `figmaCopy.ts`.
+  const vsTdeeLabel = isFeatureEnabled("onboarding_jargon_gloss_v1")
+    ? ONBOARDING_PACE_VS_TDEE_LABEL_GLOSS
+    : ONBOARDING_PACE_VS_TDEE_LABEL_PLAIN;
   const goal = (state.goal ?? "lose") as Exclude<Goal, "maintain">;
   const range = PACE_RANGES[goal];
   const presets = PACE_PRESETS[goal];
@@ -323,7 +333,7 @@ export function MobilePaceStep() {
                 marginBottom: 4,
               }}
             >
-              vs. your TDEE
+              {vsTdeeLabel}
             </Text>
             {/* SLOE Phase 0: the vs-TDEE hero numeral reads in Newsreader serif
                 (family carries the weight; the `kcal / day` unit stays sans). */}

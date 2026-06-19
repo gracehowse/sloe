@@ -113,3 +113,34 @@ describe("Import surface — L4 error (import.md §3.10, ENG-898)", () => {
     expect(SRC).toMatch(/methodDividerLabel/);
   });
 });
+
+describe("Import surface — idle §3.2 polish (ENG-898 partial)", () => {
+  it("redesign idle uses composite paste row with Link2 + inline Import pill", () => {
+    expect(SRC).toMatch(/pasteFieldRow/);
+    expect(SRC).toMatch(/placeholder="Paste a link…"/);
+    expect(SRC).toMatch(/<Link2 size=\{20\}/);
+    expect(SRC).toMatch(/pasteImportPill/);
+    expect(SRC).toMatch(/testID="import-idle-paste-field"/);
+  });
+
+  it("shows Use clipboard only when idle pasteboard differs from the field", () => {
+    expect(SRC).toMatch(/idleClipboardUrl/);
+    expect(SRC).toMatch(/showIdleClipboardRow/);
+    expect(SRC).toMatch(/testID="import-idle-use-clipboard"/);
+  });
+
+  it("surfaces CREME-style creator preview with dismiss", () => {
+    expect(SRC).toMatch(/extractCreatorHandleFromImportUrl/);
+    expect(SRC).toMatch(/testID="import-idle-creator-preview"/);
+    expect(SRC).toMatch(/import-idle-creator-preview-dismiss/);
+  });
+
+  it("recent import rows include ChevronRight affordance", () => {
+    expect(SRC).toMatch(/<ChevronRight size=\{16\}/);
+  });
+
+  it("redesign platform hint is the short IG/TT share-sheet tip", () => {
+    expect(SRC).toMatch(/platformHintShort/);
+    expect(SRC).toMatch(/use the app\{"'"\}s share sheet for best results/);
+  });
+});

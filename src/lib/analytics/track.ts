@@ -154,6 +154,19 @@ function flagForceOverride(flag: string): boolean | null {
  *
  *  Stage E (onboarding v2) uses this to decide whether to redirect
  *  /onboarding → /onboarding/v2. */
+/**
+ * Default-OFF feature flags (NOT in `REDESIGN_DEFAULT_ON`). Listed here so
+ * the flag is discoverable on both platforms even though "registration" is
+ * really just "the callsite calls `isFeatureEnabled(...)` and the flag is
+ * absent from every default-on set". A flag not in `REDESIGN_DEFAULT_ON`
+ * and not live in PostHog resolves to `false` — the safe dark default.
+ *
+ * - `cook_step_ingredients_v1` (ENG-944) — renders the calm "For this step"
+ *   ingredient chip row under each cook-mode instruction. DEFAULT-OFF;
+ *   ramp via PostHog once visually validated on device. Mirror of the
+ *   mobile note in `apps/mobile/lib/analytics.ts`.
+ */
+
 /** Redesign 2026 flag set — the new design is the DEFAULT in every build
  *  (Grace 2026-06-01: "turn everything on; never flag-gate again"). These
  *  resolve ON regardless of PostHog rollout state; the PostHog rows survive
@@ -253,6 +266,19 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // off → the legacy copy without the two free callouts.
   "paywall_free_mfp_wins_v1",
 ]);
+
+/** Default-OFF flags — registered here as documentation only. They are
+ *  deliberately NOT in `REDESIGN_DEFAULT_ON`, so `isFeatureEnabled`
+ *  resolves them via PostHog and defaults to `false` when PostHog is cold.
+ *  Listing them keeps "is this flag known / on purpose off?" answerable in
+ *  one place (the set is not read at runtime — membership has no effect).
+ *
+ *  - `landing_hero_hybrid_v1` (ENG-1204) — landing hero → HYBRID positioning
+ *    (D-07). ON swaps the recipe-first hero for the tracker/coaching
+ *    headline + import wedge line; OFF keeps the shipped recipe-first hero.
+ *    Default OFF: meaning-changing copy on the top conversion surface, so it
+ *    ramps via PostHog only after brand/copy sign-off (Grace). */
+export const DEFAULT_OFF_FLAGS = new Set<string>(["landing_hero_hybrid_v1"]);
 
 export function isFeatureEnabled(flag: string): boolean {
   const forced = flagForceOverride(flag);

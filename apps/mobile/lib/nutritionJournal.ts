@@ -53,12 +53,11 @@ export function parseNutritionMicrosJson(raw: unknown): NutritionMicrosMap | und
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-export function dateKeyFromDate(d: Date): string {
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${da}`;
-}
+// ENG-717 — single source of truth for the local-calendar date key lives
+// in `src/lib/datetime/dateKey` (shared with web). Re-exported via the
+// `@suppr/shared` alias so existing `from "./nutritionJournal"` importers
+// stay unchanged.
+export { dateKeyFromDate } from "@suppr/shared/datetime/dateKey";
 
 export function newMealId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
