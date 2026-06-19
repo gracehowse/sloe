@@ -1,5 +1,5 @@
 /**
- * Fasting CTAs (WEB) — migration to SupprButton primary
+ * Fasting CTAs (WEB) — anti-drift SupprButton primary pins
  * (button-system canon, `docs/decisions/2026-06-12-button-system-solid-primary.md`).
  *
  * The fasting timer has exactly ONE action per state:
@@ -31,7 +31,7 @@ const FASTING = read("src/app/components/FastingTimer.tsx");
 // The retired everyday aubergine-OUTLINE primary.
 const OUTLINE_PILL = /border-\[1\.5px\]\s+border-primary-solid/;
 
-describe("Fasting (web) — CTA migration to SupprButton", () => {
+describe("Fasting (web) — anti-drift CTA token/variant pins", () => {
   it("imports the shared web SupprButton primitive", () => {
     expect(FASTING).toMatch(
       /import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr\/suppr-button(?:\.tsx)?"/,
@@ -48,7 +48,7 @@ describe("Fasting (web) — CTA migration to SupprButton", () => {
     );
   });
 
-  it("'End fast' (in-progress) is a SOLID primary — the timer's ONE action", () => {
+  it("'End fast' (in-progress) is a SOLID primary — anti-drift only; behaviour covered by loadBearingCtaBehaviour.test.tsx", () => {
     expect(FASTING).toMatch(
       /<SupprButton\s+variant="primary"[\s\S]{0,260}data-testid="fasting-end-button"[\s\S]{0,160}End fast\s*<\/SupprButton>/,
     );

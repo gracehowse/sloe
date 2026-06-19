@@ -41,6 +41,7 @@ CI enforces minimum thresholds in `vitest.unit.config.ts` (lines/statements 56%,
 1. **Shared lib parity** — port existing mobile unit tests for code under `src/lib/**` that web imports but doesn't exercise (e.g. `weightTrend.ts` ✅, plan-import parsers ✅ partial, `normalizeImageForAi` ✅ partial).
 2. **API route integration** — extend `tests/integration/*` for routes still at 0% (auth-adjacent, imports, webhooks).
 3. **Critical components** — RNTL/Playwright component tests for Today, food search, paywall, onboarding (highest user-impact, largest uncovered line count).
+   - ENG-1140 adds `tests/unit/loadBearingCtaBehaviour.test.tsx` as the render-level home for load-bearing CTA behaviour (end-fast, LogSheet manual log commit, and onboarding terminal commit). Source-grep button/card tests are anti-drift token/variant pins only; rendered click/disabled/loading behaviour must be covered in RTL tests.
 4. **Mobile** — `npm run mobile:test:coverage` separately; keep web/mobile parity tests aligned via `@suppr/shared` → `src/lib`.
 
 HTML report: `coverage/index.html` after `npm run test:coverage`.

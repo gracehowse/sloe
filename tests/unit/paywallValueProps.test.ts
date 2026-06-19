@@ -9,6 +9,10 @@
  * one leaf SSOT (`src/lib/landing/paywallValueProps.ts`) so the two
  * platforms can't drift.
  *
+ * Anti-drift scope: render/click behaviour for paywall CTAs lives in
+ * aiPaywallDialog.test.tsx and upgradePaywallDialog.test.tsx; this file only
+ * pins shared value-prop/comparison SSOT shape.
+ *
  * This test guards:
  *   1. The 2×2 grid carries exactly four props in frame order, each with
  *      a non-empty title + one-line description and an icon name that

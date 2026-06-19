@@ -133,7 +133,7 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     expect(ACTIVITY_BONUS).not.toMatch(OUTLINE);
   });
 
-  it("Log sheet 'Done' + barcode 'Log it' are SOLID primaries; 'Undo' + 'Browse recipes' are ghosts", () => {
+  it("Log sheet CTA token/variant anti-drift pins — behaviour covered by loadBearingCtaBehaviour.test.tsx", () => {
     // Button system migration (2026-06-12, ENG-1079): the two sheet commit CTAs
     // → SupprButton variant="primary" (solid plum fill, white label, pill); the
     // secondary Undo + empty-state Browse → variant="ghost" (transparent, plum
