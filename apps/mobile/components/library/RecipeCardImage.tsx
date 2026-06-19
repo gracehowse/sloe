@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Image, View, type ImageStyle } from "react-native";
+import { View, type ImageStyle } from "react-native";
 import { UtensilsCrossed } from "lucide-react-native";
 import { FoodFallbackThumb } from "@/components/imagery/FoodFallbackThumb";
+import { SmartImage } from "@/components/ui/SmartImage";
 
 /**
  * Library recipe card image with on-error fallback (audit 2026-05-04 #28;
@@ -63,11 +64,13 @@ export function RecipeCardImage({
     );
   }
   return (
-    <Image
+    <SmartImage
       source={{ uri }}
       style={cardImageStyle}
       resizeMode="cover"
       onError={() => setErrored(true)}
+      recyclingKey={recipeId ?? uri}
+      placeholderColor={fallbackBg}
     />
   );
 }

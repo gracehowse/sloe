@@ -377,6 +377,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "paywall_free_mfp_wins_v1",
 ]);
 
+// NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
+// REDESIGN_DEFAULT_ON — it ships OFF and ramps via PostHog. SmartImage falls
+// through isFeatureEnabled → PostHog (false until ramped), rendering the
+// verbatim RN Image kill-switch by default. No registry entry is required for
+// an off-by-default flag.
+
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of
  *  `src/lib/analytics/track.ts#isFeatureEnabled` (web).
