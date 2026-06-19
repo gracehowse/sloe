@@ -100,6 +100,7 @@ export const QUOTA_SAFETY_FRACTION = 0.9;
 export const VENDOR_CACHE_TTL_SEC = 24 * 60 * 60;
 
 const CACHE_PREFIX = "pm_vsc"; // vendor-search-cache
+const DETAIL_PREFIX = "pm_vdc"; // vendor-detail-cache
 const QUOTA_PREFIX = "pm_vq"; // vendor-quota
 
 // ── Upstash wiring (shared singleton, same env as rateLimit.ts) ──────────
@@ -175,6 +176,21 @@ export function bucketLocale(locale: CacheLocale | null | undefined): string {
 
 function cacheKey(vendor: VendorId, locale: CacheLocale | null, page: number, query: string): string {
   return `${CACHE_PREFIX}:${vendor}:${bucketLocale(locale)}:p${page}:${normalizeCacheQuery(query)}`;
+}
+
+/**
+ * Cache key for an on-tap nutrition-DETAIL response, keyed by `{vendor}:{foodId}`.
+ *
+ * Detail fetches (Edamam `/nutrients`, USDA `/food/{fdcId}`) are addressed by a
+ * stable vendor food id, NOT a free-text query — so unlike the search cache we
+ * don't normalise a query or partition by page. A given food's detail panel is
+ * identical for every user, so the key is intentionally locale-agnostic: the
+ * micronutrient panel for an Edamam `foodId` / USDA `fdcId` is the same number
+ * regardless of who taps it. The foodId is lightly normalised (trim + lowercase)
+ * so cosmetic id differences don't shatter the entry.
+ */
+function detailKey(vendor: VendorId, foodId: string): string {
+  return `${DETAIL_PREFIX}:${vendor}:${foodId.trim().toLowerCase()}`;
 }
 
 function quotaKey(vendor: VendorId): string {
@@ -257,6 +273,82 @@ export async function setCachedSearch(
   } catch (err) {
     console.error(
       `[vendorSearchCache] write failed (${vendor}) — continuing uncached:`,
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
+// ── Detail cache read/write (ENG-1117) ────────────────────────────────────
+
+/**
+ * Read a cached vendor DETAIL response (the on-tap `/nutrients` micro panel /
+ * USDA food-get payload), keyed by `{vendor}:{foodId}`. Returns the parsed
+ * object (whatever shape the detail route serialised) or null on a miss /
+ * parse failure / store error. NEVER throws — a cache outage must not break a
+ * detail fetch.
+ *
+ * Why a separate helper from `getCachedSearch`: search caches an ARRAY of hits
+ * keyed by query+page; a detail response is a single OBJECT keyed by foodId.
+ * Same Redis instance, same TTL semantics, same fail-soft posture — different
+ * shape and key space (so a foodId can never collide with a query bucket).
+ */
+export async function getCachedDetail<T = unknown>(
+  vendor: VendorId,
+  foodId: string,
+): Promise<T | null> {
+  const key = detailKey(vendor, foodId);
+  const redis = getRedis();
+  try {
+    if (redis) {
+      const raw = await redis.get<string>(key);
+      if (raw == null) return null;
+      // Upstash auto-deserialises JSON; handle both string + object returns.
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : (raw as unknown);
+      return parsed && typeof parsed === "object" ? (parsed as T) : null;
+    }
+    const entry = memCache().get(key);
+    if (!entry) return null;
+    if (entry.expiresAtMs <= Date.now()) {
+      memCache().delete(key);
+      return null;
+    }
+    const parsed = JSON.parse(entry.value);
+    return parsed && typeof parsed === "object" ? (parsed as T) : null;
+  } catch (err) {
+    console.error(
+      `[vendorSearchCache] detail read failed (${vendor}) — treating as miss:`,
+      err instanceof Error ? err.message : String(err),
+    );
+    return null;
+  }
+}
+
+/**
+ * Write a successful vendor DETAIL response to the cache, keyed by
+ * `{vendor}:{foodId}`. ONLY call this with a genuine, non-degraded result —
+ * never an error envelope (so a transient `/nutrients` blip can't poison the
+ * panel for 24h). Same 24h TTL as the search cache (food micros are stable for
+ * days; nutrition is "estimated" anyway).
+ */
+export async function setCachedDetail(
+  vendor: VendorId,
+  foodId: string,
+  detail: unknown,
+  opts?: { ttlSec?: number },
+): Promise<void> {
+  const ttl = opts?.ttlSec && opts.ttlSec > 0 ? Math.floor(opts.ttlSec) : VENDOR_CACHE_TTL_SEC;
+  const key = detailKey(vendor, foodId);
+  const value = JSON.stringify(detail);
+  const redis = getRedis();
+  try {
+    if (redis) {
+      await redis.set(key, value, { ex: ttl });
+      return;
+    }
+    memCache().set(key, { value, expiresAtMs: Date.now() + ttl * 1000 });
+  } catch (err) {
+    console.error(
+      `[vendorSearchCache] detail write failed (${vendor}) — continuing uncached:`,
       err instanceof Error ? err.message : String(err),
     );
   }

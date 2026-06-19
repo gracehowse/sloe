@@ -6,7 +6,27 @@ import { misconfiguredUsdaResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { pickUsdaFoodPortionsPrimaryServing } from "@/lib/nutrition/primaryServing";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import {
+  checkQuota,
+  consumeQuota,
+  getCachedDetail,
+  setCachedDetail,
+} from "@/lib/server/vendorSearchCache";
 
+/**
+ * GET /api/usda/food?fdcId=<id>
+ *
+ * On-tap detail fetch for a USDA search hit — full macro + micro panel +
+ * household-serving portions for an `fdcId`.
+ *
+ * ENG-1117 — this `/food/{fdcId}` detail call counts against USDA FDC's SAME
+ * account-wide ~1,000/hour key budget as `/api/usda/search`. Before this fix
+ * the on-tap detail fetch was UNGUARDED, so detail fetches alone could exhaust
+ * the hourly key cap. We now share the search route's two mechanisms: a
+ * per-fdcId detail cache (repeat taps are free) + the account-level quota
+ * guard (consume on a real call, skip + return the same degraded envelope when
+ * over).
+ */
 export async function GET(req: Request) {
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
@@ -29,14 +49,43 @@ export async function GET(req: Request) {
   if (!Number.isFinite(fdcId) || fdcId <= 0) {
     return NextResponse.json({ ok: false, error: "invalid_fdcId" }, { status: 400 });
   }
+  const cacheId = String(fdcId);
+
+  // ENG-1117 — 1) per-fdcId cache hit: serve the stored detail payload without
+  // a USDA food-get call and without spending quota. Repeat on-tap detail
+  // fetches of the same food are free.
+  const cached = await getCachedDetail<Record<string, unknown>>("usda", cacheId);
+  if (cached) {
+    return NextResponse.json({ ...cached, ok: true, fdcId, cached: true });
+  }
+
+  // ENG-1117 — 2) account-wide quota exhausted: skip the vendor and return the
+  // SAME degraded envelope shape `/api/usda/search` uses, so the client falls
+  // through / surfaces an honest notice instead of an unguarded vendor call.
+  const quota = await checkQuota("usda");
+  if (!quota.allowed) {
+    return NextResponse.json({
+      ok: true,
+      fdcId,
+      degraded: true,
+      degradedReason: "quota_exhausted",
+    });
+  }
 
   const usdaMissing = misconfiguredUsdaResponse();
   if (usdaMissing) return usdaMissing;
 
   try {
     const cfg = fdcConfigFromEnv();
+    // ENG-1117 — consume one quota unit immediately before the live call
+    // (atomic INCR, same as the search route). This is the real spend.
+    await consumeQuota("usda");
     const food = await fdcFoodGet(cfg, fdcId);
     if (!food) {
+      // A genuine 404 is a stable fact, but we deliberately do NOT cache it
+      // here: not-found responses are rare on the detail path (the foodId came
+      // from a live search hit) and caching a 404 risks masking an id that
+      // later resolves. The quota spend already happened on the attempt.
       return NextResponse.json({ ok: false, error: "not_found", message: "Food not found." }, { status: 404 });
     }
     const macrosPer100g = fdcFoodMacrosPer100g(food);
@@ -89,15 +138,21 @@ export async function GET(req: Request) {
     // until the food detail loaded).
     const primaryPortion = pickUsdaFoodPortionsPrimaryServing(macrosPer100g, food.foodPortions ?? null);
 
-    return NextResponse.json({
-      ok: true,
+    // ENG-1117 — build the genuine success payload once so we can both cache it
+    // (per-fdcId, 24h) and return it. A repeat tap of the same food then hits
+    // the cache above and never re-spends quota. We never cache the catch-block
+    // failure below (a transient USDA blip must not poison the panel for 24h).
+    const payload = {
+      ok: true as const,
       fdcId,
       description: food.description,
       macrosPer100g,
       ...(Object.keys(microsPer100g).length > 0 ? { microsPer100g } : {}),
       portions,
       ...(primaryPortion ? { primaryPortion } : {}),
-    });
+    };
+    await setCachedDetail("usda", cacheId, payload);
+    return NextResponse.json(payload);
   } catch (e) {
     captureRouteError(e, "/api/usda/food");
     return NextResponse.json(
