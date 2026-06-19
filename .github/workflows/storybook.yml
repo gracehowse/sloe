@@ -11,28 +11,49 @@ on:
       - "src/styles/**"
       - ".github/workflows/storybook.yml"
   pull_request:
-    paths:
-      - "src/app/components/**"
-      - "src/stories/**"
-      - ".storybook/**"
-      - "src/styles/**"
-      - ".github/workflows/storybook.yml"
 
 concurrency:
-  group: storybook-${{ github.head_ref }}
+  group: storybook-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  storybook:
+  changes:
     runs-on: ubuntu-latest
+    outputs:
+      storybook: ${{ steps.filter.outputs.storybook }}
     steps:
       - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            storybook:
+              - "src/app/components/**"
+              - "src/stories/**"
+              - ".storybook/**"
+              - "src/styles/**"
+              - ".github/workflows/storybook.yml"
+
+  storybook:
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip Storybook for non-component changes
+        if: needs.changes.outputs.storybook != 'true'
+        run: echo "No Storybook-relevant files changed; required check passes without build."
+      - uses: actions/checkout@v6
+        if: needs.changes.outputs.storybook == 'true'
       - uses: actions/setup-node@v4
+        if: needs.changes.outputs.storybook == 'true'
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run build-storybook
+      - if: needs.changes.outputs.storybook == 'true'
+        run: npm ci
+      - if: needs.changes.outputs.storybook == 'true'
+        run: npx playwright install --with-deps chromium
+      - if: needs.changes.outputs.storybook == 'true'
+        run: npm run build-storybook
       - name: Storybook tests (vitest — plays, a11y, interactions, 100% UI coverage)
+        if: needs.changes.outputs.storybook == 'true'
         run: npm run test:storybook:coverage

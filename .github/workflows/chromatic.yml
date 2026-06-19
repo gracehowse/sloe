@@ -7,19 +7,32 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths:
-      - "app/**"
-      - "src/**"
-      - "tests/e2e/**"
-      - "playwright.config.ts"
-      - ".github/workflows/chromatic.yml"
 
 concurrency:
   group: chromatic-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      visual: ${{ steps.filter.outputs.visual }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            visual:
+              - "app/**"
+              - "src/**"
+              - "tests/e2e/**"
+              - "playwright.config.ts"
+              - ".github/workflows/chromatic.yml"
+
   playwright:
+    needs: changes
+    if: needs.changes.outputs.visual == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-noble
@@ -59,24 +72,38 @@ jobs:
 
   chromatic:
     name: Run Chromatic
-    needs: playwright
+    needs: [changes, playwright]
+    if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Skip Chromatic for non-visual changes
+        if: needs.changes.outputs.visual != 'true'
+        run: echo "No Chromatic-relevant files changed; required check passes without upload."
+      - name: Fail when Playwright prerequisites failed
+        if: needs.changes.outputs.visual == 'true' && needs.playwright.result != 'success'
+        run: |
+          echo "Playwright prerequisite result was '${{ needs.playwright.result }}'; refusing to green-light Chromatic."
+          exit 1
       - uses: actions/checkout@v6
+        if: needs.changes.outputs.visual == 'true' && needs.playwright.result == 'success'
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
+        if: needs.changes.outputs.visual == 'true' && needs.playwright.result == 'success'
         with:
           node-version: 20
           cache: npm
       - name: Install dependencies
+        if: needs.changes.outputs.visual == 'true' && needs.playwright.result == 'success'
         run: npm ci
       - name: Download Playwright test results
+        if: needs.changes.outputs.visual == 'true' && needs.playwright.result == 'success'
         uses: actions/download-artifact@v4
         with:
           name: test-results
           path: ./test-results
       - name: Run Chromatic
+        if: needs.changes.outputs.visual == 'true' && needs.playwright.result == 'success'
         uses: chromaui/action@latest
         with:
           playwright: true
