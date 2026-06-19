@@ -141,6 +141,6 @@ describe("Import surface — idle §3.2 polish (ENG-898 partial)", () => {
 
   it("redesign platform hint is the short IG/TT share-sheet tip", () => {
     expect(SRC).toMatch(/platformHintShort/);
-    expect(SRC).toMatch(/use the app's share sheet for best results/);
+    expect(SRC).toMatch(/use the app\{"'"\}s share sheet for best results/);
   });
 });

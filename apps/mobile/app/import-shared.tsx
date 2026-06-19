@@ -1955,7 +1955,7 @@ export default function ImportSharedScreen() {
       if (platform !== "instagram" && platform !== "tiktok") return null;
       return (
         <Text testID={`import-platform-hint-${platform}`} style={styles.platformHintShort}>
-          Tip: for TikTok and Instagram, use the app's share sheet for best results.
+          Tip: for TikTok and Instagram, use the app{"'"}s share sheet for best results.
         </Text>
       );
     }
