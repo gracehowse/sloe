@@ -228,6 +228,18 @@ export interface DayPlanMeal {
    * planner UI surfaces an "Estimated · verify" chip on the row.
    */
   macrosAreEstimated?: boolean;
+  /**
+   * ENG-956 — per-meal lock ("keep this meal"). When true, Regenerate
+   * leaves this slot byte-identical and re-rolls only the unlocked slots,
+   * rebalancing the remaining macro budget (daily target − locked meals)
+   * across them. Gated behind the `plan_meal_lock_v1` flag; absent /
+   * false on every meal restores the legacy all-or-nothing Regenerate.
+   * Persisted in the local plan JSON blob (localStorage / AsyncStorage),
+   * NOT in the relational `meal_plan_meals` cloud store — a lock is a
+   * device-local planning affordance, like the portion stepper, that does
+   * not round-trip through the cloud (intentional, not a gap).
+   */
+  isLocked?: boolean;
 }
 
 export interface DayPlan {

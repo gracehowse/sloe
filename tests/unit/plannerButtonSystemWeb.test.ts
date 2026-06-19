@@ -51,8 +51,11 @@ describe("MealPlanner CTAs — solid primary / ghost (cohesion wave 2026-06-13)"
 
   it("week-summary card: Generate/Regenerate is a SOLID primary, Shopping list is a GHOST", () => {
     // Verb flips with plan state (DC12 parity) — pin the primary wrapping it.
+    // ENG-956: the verb now routes through `regenerateLabel(planHasRealMeals)`
+    // (which returns "Refresh the rest" when ≥1 meal is locked, else the
+    // Generate/Regenerate verb), so pin the helper call rather than the literal.
     expect(PLANNER).toMatch(
-      /<SupprButton\s+variant="primary"\s+loading=\{isGenerating\}\s+onClick=\{handleRegenerate\}[\s\S]{0,400}planHasRealMeals \? "Regenerate" : "Generate"/,
+      /<SupprButton\s+variant="primary"\s+loading=\{isGenerating\}\s+onClick=\{handleRegenerate\}[\s\S]{0,500}regenerateLabel\(planHasRealMeals\)/,
     );
     expect(PLANNER).toMatch(
       /<SupprButton\s+variant="ghost"\s+onClick=\{handleShoppingList\}[\s\S]{0,120}Shopping list\s*</,
@@ -61,8 +64,10 @@ describe("MealPlanner CTAs — solid primary / ghost (cohesion wave 2026-06-13)"
 
   it("bottom CTA row: Generate/Regenerate is a SOLID primary, Shopping list is a GHOST", () => {
     // The generate verb flips with plan state; pin the primary wrapping it.
+    // ENG-956: "Refresh the rest" supersedes the verb when ≥1 meal is locked,
+    // else the existing "Regenerate week" / "Generate my plan" flip stands.
     expect(PLANNER).toMatch(
-      /<SupprButton\s+variant="primary"\s+loading=\{isGenerating\}\s+disabled=\{!sourceCanGenerate\}\s+onClick=\{handleRegenerate\}[\s\S]{0,600}plan\.length > 0 \? "Regenerate week" : "Generate my plan"/,
+      /<SupprButton\s+variant="primary"\s+loading=\{isGenerating\}\s+disabled=\{!sourceCanGenerate\}\s+onClick=\{handleRegenerate\}[\s\S]{0,700}lockedMealCount > 0[\s\S]{0,160}plan\.length > 0\s*\n?\s*\?\s*"Regenerate week"\s*\n?\s*:\s*"Generate my plan"/,
     );
     // The empty-state generate (above) carries the same primary trio but a
     // testid; this row's primary is the one without it. Both are solid.
@@ -93,8 +98,11 @@ describe("MealPlanner CTAs — solid primary / ghost (cohesion wave 2026-06-13)"
   });
 
   it("summary card's Generate verb flips with plan state (no 'Regenerate' when nothing is generated)", () => {
-    // DC12 parity: "Regenerate" misreads on the placeholder-slots form.
-    expect(PLANNER).toMatch(/planHasRealMeals \? "Regenerate" : "Generate"/);
+    // DC12 parity: "Regenerate" misreads on the placeholder-slots form. ENG-956
+    // moved the flip into `regenerateLabel`, which keeps the same verb logic
+    // (populated → "Regenerate", empty → "Generate") plus the locked-state
+    // "Refresh the rest" branch.
+    expect(PLANNER).toMatch(/return populated \? "Regenerate" : "Generate"/);
   });
 
   it("no Plan CTA regresses to the retired outline pill or beige secondary slab", () => {

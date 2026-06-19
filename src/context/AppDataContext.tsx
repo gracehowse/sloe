@@ -1131,8 +1131,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
        * `selectPlanPool` / `canGenerateFromSource` helper (mobile parity).
        */
       source?: PlanSourceMode;
+      /**
+       * ENG-956 — "Refresh the rest". When true AND the active plan has ≥1
+       * `isLocked` meal, regenerate keeps the locked meals byte-identical and
+       * re-rolls only the unlocked slots (rebalancing the remaining macro
+       * budget). When false / no meal locked, the legacy full-plan generate
+       * runs. The MealPlanner passes this only under `plan_meal_lock_v1`.
+       */
+      keepLocked?: boolean;
     }) => {
-      const { generatePlanFromLibrary } = await import("../lib/planning/generateMealPlan.ts");
+      const { generatePlanFromLibrary, regeneratePlanKeepingLocked } = await import(
+        "../lib/planning/generateMealPlan.ts"
+      );
       setIsGeneratingPlan(true);
       try {
         const o = options?.targetsOverride ?? {};
@@ -1194,6 +1204,46 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             return;
           }
           pool = savedRecipes;
+        }
+        // ENG-956 — "Refresh the rest". When the caller asked to keep locked
+        // meals AND the active plan actually has ≥1 locked meal, re-roll only
+        // the unlocked slots against the remaining macro budget, leaving the
+        // locked meals byte-identical. Skips the leftover-distribution pass:
+        // leftovers depend on a fresh whole-week sample, and re-distributing
+        // them would mutate the locked rows we just promised to preserve.
+        const activeLockedPlan =
+          mealPlanSlotsRef.current.find(
+            (s) => s.id === activeMealPlanSlotIdRef.current,
+          )?.plan ?? null;
+        const lockedCount =
+          activeLockedPlan?.reduce(
+            (a, dp) => a + dp.meals.filter((m) => m.isLocked).length,
+            0,
+          ) ?? 0;
+        if (options?.keepLocked && activeLockedPlan && lockedCount > 0) {
+          const partialStartMs = Date.now();
+          const nextPlan = regeneratePlanKeepingLocked({
+            existingPlan: activeLockedPlan,
+            savedRecipes: pool,
+            targets,
+            ...(options?.slots && options.slots.length > 0
+              ? { slots: options.slots }
+              : {}),
+          });
+          const rerolledCount = nextPlan.reduce(
+            (a, dp) => a + dp.meals.filter((m) => !m.isLocked).length,
+            0,
+          );
+          setMealPlan(nextPlan);
+          toast.success("Refreshed the unlocked meals");
+          track(AnalyticsEvents.plan_regenerated_partial, {
+            lockedCount,
+            rerolledCount,
+            days,
+            durationMs: Date.now() - partialStartMs,
+            platform: "web",
+          });
+          return;
         }
         // T14 (full-sweep 2026-04-24): instrument generation duration +
         // pool size so we can set the sampler cap from real data and

@@ -134,6 +134,7 @@ Some state is stored **only** in the browser's `localStorage` (`suppr-app-v1` ke
 | Data | Key in snapshot | Cross-device? | Notes |
 |------|----------------|---------------|-------|
 | Named meal plan slots | `mealPlanSlots`, `activeMealPlanSlotId` | No | Only the **active** plan is synced to `meal_plans`. Other named slots and the slot index are local-only. |
+| Per-meal lock (ENG-956) | `mealPlanSlots[].plan[].meals[].isLocked` | No | "Keep this meal" flag for the `plan_meal_lock_v1` "Refresh the rest" regenerate. Persisted in the local plan JSON blob; **not** written to the relational `meal_plan_meals` cloud table (a lock is a device-local planning affordance, like the portion stepper — no migration). |
 
 > **Why not sync named slots?** Meal plan slots contain full `DayPlan[]` arrays. Syncing every slot would mean writing large JSON blobs on every change. The active plan already syncs; additional slots are a convenience feature for local experimentation.
 
