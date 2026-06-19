@@ -443,11 +443,66 @@ begin
   end if;
 end $$;
 
+
+-- Ordered recipe method rows (ENG-989 step-centric recipe schema)
+create table if not exists public.recipe_steps (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  recipe_id uuid not null references public.recipes(id) on delete cascade,
+  position integer not null,
+  text text not null,
+  constraint recipe_steps_position_positive check (position > 0),
+  constraint recipe_steps_recipe_position_unique unique (recipe_id, position)
+);
+
+create index if not exists recipe_steps_recipe_id_position_idx on public.recipe_steps(recipe_id, position);
+
+alter table public.recipe_steps enable row level security;
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'recipe_steps'
+      and policyname = 'recipe_steps_select_public'
+  ) then
+    create policy "recipe_steps_select_public"
+    on public.recipe_steps for select
+    using (true);
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'recipe_steps'
+      and policyname = 'recipe_steps_write_own_recipe'
+  ) then
+    create policy "recipe_steps_write_own_recipe"
+    on public.recipe_steps
+    for all
+    using (
+      exists (
+        select 1
+        from public.recipes r
+        where r.id = recipe_id and r.author_id = auth.uid()
+      )
+    )
+    with check (
+      exists (
+        select 1
+        from public.recipes r
+        where r.id = recipe_id and r.author_id = auth.uid()
+      )
+    );
+  end if;
+end $$;
+
 -- Recipe ingredient rows (amounts + snapshot macros)
 create table if not exists public.recipe_ingredients (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   recipe_id uuid not null references public.recipes(id) on delete cascade,
+  step_id uuid references public.recipe_steps(id) on delete set null,
   ingredient_id uuid references public.ingredients(id) on delete set null,
   name text not null,
   amount numeric,
@@ -467,6 +522,7 @@ create table if not exists public.recipe_ingredients (
 );
 
 create index if not exists recipe_ingredients_recipe_id_idx on public.recipe_ingredients(recipe_id);
+create index if not exists recipe_ingredients_step_id_idx on public.recipe_ingredients(step_id);
 
 alter table public.recipe_ingredients enable row level security;
 do $$
