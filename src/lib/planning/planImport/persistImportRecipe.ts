@@ -47,6 +47,7 @@ export async function persistImportRecipe(
       published: false,
       source_name: sourceName,
       source_url: null,
+      content_origin: "imported_stub",
       calories: macros.calories,
       protein: macros.protein,
       carbs: macros.carbs,

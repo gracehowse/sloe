@@ -966,7 +966,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, source_url, prep_time_min, cook_time_min, allergens, dietary_flags",
+        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, source_url, content_origin, prep_time_min, cook_time_min, allergens, dietary_flags",
       )
       .eq("author_id", authedUserId)
       .order("created_at", { ascending: false })
@@ -1008,6 +1008,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         // distinguish imported (`source_url` set) vs created drafts —
         // parity with mobile `useSavedLibraryRecipes` / `entryKindForCard`.
         sourceUrl: (row as { source_url?: string | null }).source_url ?? null,
+        contentOrigin: (row as { content_origin?: "first_party" | "imported_stub" | "claimed" | null }).content_origin ?? undefined,
         prepTimeMin: prepOk ? Math.round(prepM) : null,
         cookTimeMin: cookOk ? Math.round(cookM) : null,
         prepTime: formatRecipeMinutes(prepOk ? prepM : null),
@@ -1071,6 +1072,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           meal_type: (src as any).meal_type ?? null,
           dietary: (src as any).dietary ?? [],
           published: false,
+          content_origin: "first_party",
           is_verified: false,
           verified_source: null,
           verified_confidence: null,

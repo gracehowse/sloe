@@ -768,6 +768,7 @@ export default function CreateRecipeScreen() {
           instructions: normaliseInstructions(instructions) || null,
           servings: srv,
           published: publish,
+          content_origin: "first_party",
           meal_type: mealTags.length > 0 ? mealTags : null,
           calories: perServing.calories,
           protein: perServing.protein,

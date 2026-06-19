@@ -36,6 +36,8 @@ export interface RecipeCard {
   creatorCalories?: number;
   feedCreatedAt?: string;
   sourceUrl?: string | null;
+  /** Explicit two-plane origin for private imports vs owned/claimed public recipes. */
+  contentOrigin?: "first_party" | "imported_stub" | "claimed";
   /** Plan import / URL attribution label (e.g. Imported · Week 1). */
   sourceName?: string | null;
   mealSlots?: readonly PlannerMealSlot[] | string[];
