@@ -189,7 +189,7 @@ export async function POST(req: Request) {
   // the model was unsure of (confidence < threshold) so they surface for
   // explicit user confirmation rather than being silently trusted.
   const ingredients = toIngredientLines(structured);
-  const steps = structured.steps;
+  const steps = structured.steps.map((step) => step.text);
   const flaggedIngredients = structured.ingredients
     .filter((ing: StructuredIngredient) => ing.flagged)
     .map((ing: StructuredIngredient) => ({
