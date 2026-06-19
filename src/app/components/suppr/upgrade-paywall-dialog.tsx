@@ -58,14 +58,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
-import { projectId, publicAnonKey } from "../../../../utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../../../utils/supabase/publicConfig.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { PRICING_TIERS } from "../../../lib/landing/pricingTiers.ts";
 import { PaywallTrustStrip } from "../../../../app/pricing/PaywallTrustStrip.tsx";
 
-const supabaseUrl = `https://${projectId}.supabase.co`;
-const supabase = createClient(supabaseUrl, publicAnonKey);
+const supabase = createClient(supabasePublicUrl(), supabasePublicAnonKey());
 
 type Feature = {
   icon: LucideIcon;

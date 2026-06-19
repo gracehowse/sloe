@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import type { PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
-import { projectId, publicAnonKey } from "../../utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../utils/supabase/publicConfig.ts";
 import {
   buildPersonalisedPlanPaywallSummary,
   shouldLeadPaywallWithPersonalisedPlan,
@@ -11,7 +11,7 @@ import {
 } from "../../src/lib/paywall/personalisedPlanSummary.ts";
 import { PricingPersonalisedPlanCard } from "./PricingPersonalisedPlanCard.tsx";
 
-const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
+const supabase = createClient(supabasePublicUrl(), supabasePublicAnonKey());
 
 /**
  * ENG-966 — load onboarding-derived targets and lead the web paywall

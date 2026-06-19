@@ -31,7 +31,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../../utils/supabase/publicConfig.ts";
 import { CreatorFollowButton } from "../../../src/app/components/creator/CreatorFollowButton";
 import {
   CreatorRecipeList,
@@ -39,10 +39,8 @@ import {
   type CreatorRecipeRow,
 } from "../../../src/app/components/creator/CreatorRecipeList";
 
-const supabaseUrl = `https://${projectId}.supabase.co`;
-
 function getServerClient() {
-  return createClient(supabaseUrl, publicAnonKey);
+  return createClient(supabasePublicUrl(), supabasePublicAnonKey());
 }
 
 interface CreatorRow {
