@@ -1,8 +1,8 @@
 # Web per-meal nutrition-detail surface (web↔mobile parity gap #15)
 
-- **Date:** 2026-05-31
+- **Date:** 2026-05-31 (per-meal); **updated 2026-06-19** (slot-aggregate, ENG-837)
 - **Area:** Today tab / nutrition detail (web)
-- **Status:** Resolved (shipped behind a default-OFF flag)
+- **Status:** Resolved (shipped behind a default-OFF flag). **Slot-aggregate parity now closed (2026-06-19, ENG-837)** — web reaches full mobile parity (per-meal AND per-slot) behind the same `web_meal_nutrition_detail` flag.
 - **Parity gap:** P5 parity audit gap **#15** — `docs/planning/2026-05-31-p5-parity-audit-worklist.md`
 
 ## Problem
@@ -84,19 +84,84 @@ edit-meal flow. Web has no per-meal edit modal to route to, so the dialog is
 host). This is a documented platform-native deviation, not a parity gap; wiring
 web meal-edit is separate, larger work.
 
+## Slot-aggregate parity (2026-06-19, ENG-837)
+
+The mobile screen `apps/mobile/app/meal-nutrition.tsx` has TWO modes: single-meal
+(`?id=`) and **slot-aggregate** (`?slot=&date=`), which sums every logged item in
+a slot (e.g. all "Breakfast" entries) into one combined breakdown. The 2026-05-31
+web work shipped the single-meal mode only. ENG-837 closes the slot-aggregate half.
+
+### What shipped (slot-aggregate)
+
+- A quiet **"View slot nutrition"** affordance on each **populated** web slot
+  header (`today-meals-section.tsx`) — a tertiary ghost icon-button (pie-chart
+  glyph + "Slot nutrition" label), NOT a filled CTA (one-filled-CTA rule). It
+  `stopPropagation`s so it opens the aggregate instead of toggling slot collapse,
+  and renders on populated slots only (an empty slot has nothing to aggregate).
+- A new **aggregate mode** on the existing `MealNutritionDialog` via an optional
+  `slotAggregate?: { slotLabel; meals }` prop. When set, the dialog sums the
+  slot's meals and renders the slot label as the title + the combined breakdown
+  (kcal headline, "Combined macros across N items" caption, macro split bar,
+  micro table attributed to "your logged items in this slot"). The per-meal
+  branch (`meal` prop) is untouched.
+- Host wiring in `NutritionTracker.tsx`: a `slotNutritionTarget` slot-name state,
+  the `onOpenSlotNutrition` prop, and a second `MealNutritionDialog` mount in
+  aggregate mode that resolves the slot's meals from `mealsGrouped` (keyed by the
+  same `normalizeJournalSlotName` the section uses).
+
+### Same shared summing helpers as mobile (numbers match by construction)
+
+The aggregate reuses the **exact** helpers mobile's slot total uses — no re-invented
+macro/micro math:
+
+- **Micros:** `sumMicrosFromLoggedMeals(items)` then `delete mergedMicros.fiberG`
+  (fibre is drawn from the summed `fiberG` column once, not double-counted —
+  identical to mobile's delete).
+- **Fibre:** `sumDayFiberFromMeals(items)`.
+- **Macros:** kcal `Math.round(reduce(+calories))`; P/C/F raw `reduce` (the shared
+  `macroCalorieSplit` rounds them) — the same inline reduce mobile uses.
+
+Both helpers live in `src/lib/nutrition/microNutrientDisplay.ts`. Mobile imports
+them via `@suppr/shared/nutrition/microNutrientDisplay` (the mobile tsconfig
+aliases that to this same file) and re-exports them through
+`apps/mobile/lib/healthDietaryNutrients.ts`. One source of truth ⇒ the web slot
+sum and the mobile slot sum can never drift.
+
+### Same flag, flag-OFF unchanged
+
+The slot affordance + aggregate dialog mount are gated behind the SAME
+`isFeatureEnabled("web_meal_nutrition_detail")` flag as the per-meal dialog. Flag
+OFF → `onOpenSlotNutrition` is `undefined` (no header affordance) and the
+aggregate dialog does not mount → byte-identical to today. The per-meal mode is
+unchanged either way.
+
+### Edit hidden on the aggregate (intentional)
+
+The aggregate has no single entry to route an edit to, so the dialog never renders
+the Edit affordance in slot mode — mirroring mobile, which also hides Edit on its
+aggregate. Not a parity gap.
+
 ## Files
 
 - `src/lib/nutrition/macroCalorieSplit.ts` (new, shared) — Hamilton-rounded macro kcal split
-- `src/app/components/suppr/meal-nutrition-dialog.tsx` (new) — the web dialog
-- `src/app/components/suppr/today-meals-section.tsx` — `onOpenMealNutrition` prop + "View nutrition" kebab item (flag-gated via prop presence)
-- `src/app/components/NutritionTracker.tsx` — host state + flag-gated prop wiring + dialog mount
-- `apps/mobile/app/meal-nutrition.tsx` — now imports shared `macroCalorieSplit` (inline copy removed)
+- `src/app/components/suppr/meal-nutrition-dialog.tsx` (new 2026-05-31; **+slot-aggregate mode 2026-06-19**) — the web dialog
+- `src/app/components/suppr/today-meals-section.tsx` — `onOpenMealNutrition` prop + "View nutrition" kebab item; **`onOpenSlotNutrition` prop + "View slot nutrition" header affordance (ENG-837)** (both flag-gated via prop presence)
+- `src/app/components/NutritionTracker.tsx` — host state + flag-gated prop wiring + dialog mount (per-meal **and slot-aggregate**)
+- `apps/mobile/app/meal-nutrition.tsx` — now imports shared `macroCalorieSplit` (inline copy removed); the slot-aggregate source web now mirrors
 - `apps/mobile/tests/unit/macroCalorieSplitLargestRemainder.test.ts` — repointed at the shared impl
-- `tests/unit/mealNutritionDialogWeb.test.tsx` (new) — web dialog + wiring coverage
+- `tests/unit/mealNutritionDialogWeb.test.tsx` (new 2026-05-31; **+slot-aggregate + affordance + flag-gate coverage 2026-06-19**) — web dialog + wiring coverage
 
 ## Tests
 
-- web: render with data (title / kcal / P-C-F % / micro rows), low-data confidence
-  state, empty micros state, the sum-to-100 Hamilton guarantee, and flag-OFF vs
-  flag-ON kebab wiring
+- web (per-meal): render with data (title / kcal / P-C-F % / micro rows), low-data
+  confidence state, empty micros state, the sum-to-100 Hamilton guarantee, and
+  flag-OFF vs flag-ON kebab wiring
+- web (slot-aggregate, ENG-837): the dialog sums kcal (700) / protein (45g) /
+  carbs (67g) / fat (18g) / fibre (6g) / sugar (11g) / sodium (350mg) / iron (1mg)
+  for a hand-computed 3-meal fixture; the slot label renders as the title; the
+  combined-macros caption + sum-to-100 split; the slot-empty state; Edit hidden;
+  single-meal mode unchanged; the header affordance flag-gated (present on
+  populated slots only, calls handler with slot name, stopPropagation); plus a
+  source-check that the host gates both the affordance prop and the aggregate
+  dialog mount behind `web_meal_nutrition_detail`
 - mobile/shared: the largest-remainder edge cases now pin the single shared impl

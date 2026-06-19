@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, Salad } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,8 @@ import {
 import {
   listMicroNutrientsCompleteDisplay,
   mealContributedFiberG,
+  sumDayFiberFromMeals,
+  sumMicrosFromLoggedMeals,
 } from "../../../lib/nutrition/microNutrientDisplay";
 import {
   macroSplitConfidence,
@@ -21,29 +23,42 @@ import { macroCalorieSplit } from "../../../lib/nutrition/macroCalorieSplit";
 import { formatNutritionSourceLabel } from "../../../lib/nutrition/sourceLabel";
 
 /**
- * MealNutritionDialog — web per-meal nutrition-detail surface.
+ * MealNutritionDialog — web per-meal AND per-slot nutrition-detail surface.
  *
- * P5 parity gap #15 (2026-05-31). The web mirror of the mobile
- * `apps/mobile/app/meal-nutrition.tsx` SCREEN. Web is a single-page app
- * (NutritionTracker), so the analog is a Dialog (sibling to MacroDetailPanel /
- * FullNutrientPanelSheet), NOT a route — the meal object is already in memory,
- * so there is no Supabase fetch here (mobile only fetches by id because it is a
- * deep-linkable route).
+ * P5 parity gap #15 (2026-05-31) + ENG-837 slot-aggregate (2026-06-19). The web
+ * mirror of the mobile `apps/mobile/app/meal-nutrition.tsx` SCREEN, which has
+ * TWO modes: single-meal (`?id=`) and slot-aggregate (`?slot=&date=`, sums every
+ * logged item in a slot). Web is a single-page app (NutritionTracker), so the
+ * analog is a Dialog (sibling to MacroDetailPanel / FullNutrientPanelSheet), NOT
+ * a route — the meal/slot items are already in memory, so there is no Supabase
+ * fetch here (mobile only fetches by id/slot+date because it is a deep-linkable
+ * route).
  *
- * Renders, mirroring the mobile single-meal mode:
- *  - meta line (slot name · time · source) + optional portion line (≠1 only)
- *  - total kcal headline
+ * Two callers, mutually exclusive:
+ *  - `meal` set  → single-meal mode (the per-meal kebab "View nutrition")
+ *  - `slotAggregate` set → slot-aggregate mode (the slot-header "View slot
+ *    nutrition"), summing every meal in that slot into one breakdown.
+ *
+ * Renders, mirroring the mobile screen:
+ *  - meta line (slot name · time · source for a single meal; slot label · item
+ *    count for an aggregate) + optional portion line (single-meal, ≠1 only)
+ *  - total kcal headline (summed across the slot in aggregate mode)
  *  - macro calorie-split bar + per-macro grams / kcal / "% of kcal", gated on
  *    `macroSplitConfidence` (shared): `complete` draws the bar + %, `single_macro`
  *    shows the incomplete-data explainer + grams only, `empty` draws a neutral bar
  *  - a "Vitamins, minerals & more" micro table (fibre injected as the first row),
- *    with the same source-attributed empty / populated copy as mobile
+ *    with the same source-attributed empty / populated copy as mobile (aggregate
+ *    mode attributes to "your logged items in this slot")
  *
- * The Hamilton-rounding macro split + the confidence policy + the micro display
- * list are all the SHARED web/mobile modules, so the numbers match mobile by
- * construction.
+ * The slot sum reuses the SAME shared helpers mobile uses for the slot total —
+ * `sumMicrosFromLoggedMeals` (micros) + `sumDayFiberFromMeals` (fibre), both from
+ * `@/lib/nutrition/microNutrientDisplay` (mobile reaches them via
+ * `@suppr/shared/nutrition/microNutrientDisplay`, the same file). Macros sum the
+ * same way as mobile (`reduce`, kcal rounded). The Hamilton-rounding macro split,
+ * the confidence policy, and the micro display list are likewise the SHARED
+ * web/mobile modules, so the numbers match mobile by construction.
  *
- * Feature flag: the entire affordance + this dialog mount behind
+ * Feature flag: the entire affordance(s) + this dialog mount behind
  * `web_meal_nutrition_detail` at the call site (NutritionTracker). This
  * component renders nothing of its own when `open` is false.
  */
@@ -63,13 +78,33 @@ export type MealNutritionMeal = {
   source?: string | null;
 };
 
+/**
+ * ENG-837 — slot-aggregate input. When set, the dialog ignores `meal` and renders
+ * the SUMMED nutrition for `meals` (every logged item in `slotLabel`), mirroring
+ * the mobile `?slot=&date=` screen mode. `slotLabel` is the slot name shown as the
+ * title (e.g. "Breakfast"). `meals` may be empty — the dialog then renders the
+ * designed slot-empty state rather than a zeroed breakdown.
+ */
+export type MealNutritionSlotAggregate = {
+  slotLabel: string;
+  meals: MealNutritionMeal[];
+};
+
 export interface MealNutritionDialogProps {
   meal: MealNutritionMeal | null;
   open: boolean;
   onClose: () => void;
   /**
+   * ENG-837 — slot-aggregate mode. When set, takes precedence over `meal`: the
+   * dialog sums `slotAggregate.meals` (shared helpers) and renders the slot label
+   * + combined breakdown. Undefined → single-meal mode (the existing behaviour).
+   */
+  slotAggregate?: MealNutritionSlotAggregate | null;
+  /**
    * Optional "Edit" affordance — mirrors the mobile screen's header-right Edit
    * action. When omitted, no Edit button renders (the dialog is read-only).
+   * Ignored in slot-aggregate mode (mobile also hides Edit on the aggregate —
+   * there is no single entry to edit).
    */
   onEdit?: (mealId: string) => void;
 }
@@ -117,8 +152,46 @@ function MacroStat({
   );
 }
 
-export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutritionDialogProps) {
-  const fiberDisplay = meal ? mealContributedFiberG(meal) : 0;
+export function MealNutritionDialog({
+  meal,
+  open,
+  onClose,
+  slotAggregate,
+  onEdit,
+}: MealNutritionDialogProps) {
+  const isSlotAggregate = slotAggregate != null;
+  const slotItems = slotAggregate?.meals ?? null;
+
+  // ENG-837 — build the slot aggregate from the SAME shared helpers mobile uses
+  // in `apps/mobile/app/meal-nutrition.tsx` (lines 161-177): macros sum via
+  // `reduce` (kcal rounded, P/C/F raw — the bar/split round them), micros via
+  // `sumMicrosFromLoggedMeals`, fibre via `sumDayFiberFromMeals`. `fiberG` is
+  // deleted from the merged micros so the table draws fibre from the summed
+  // column once (not double-counted) — mobile does the identical delete. Empty
+  // micros → `undefined`, so the table shows the source-attributed empty state.
+  const aggregateMeal = useMemo<MealNutritionMeal | null>(() => {
+    if (!slotAggregate || slotAggregate.meals.length === 0) return null;
+    const items = slotAggregate.meals;
+    const mergedMicros = sumMicrosFromLoggedMeals(items);
+    delete mergedMicros.fiberG;
+    return {
+      id: "__slot_aggregate__",
+      name: slotAggregate.slotLabel,
+      recipeTitle: slotAggregate.slotLabel,
+      calories: Math.round(items.reduce((a, m) => a + m.calories, 0)),
+      protein: items.reduce((a, m) => a + m.protein, 0),
+      carbs: items.reduce((a, m) => a + m.carbs, 0),
+      fat: items.reduce((a, m) => a + m.fat, 0),
+      fiberG: sumDayFiberFromMeals(items),
+      micros: Object.keys(mergedMicros).length > 0 ? mergedMicros : null,
+    };
+  }, [slotAggregate]);
+
+  // The breakdown is computed off the EFFECTIVE meal: the aggregate when in
+  // slot mode, otherwise the single passed-in meal.
+  const effectiveMeal = isSlotAggregate ? aggregateMeal : meal;
+
+  const fiberDisplay = effectiveMeal ? mealContributedFiberG(effectiveMeal) : 0;
 
   // Fibre leads the micro table (mobile parity — MICRO_LINES puts fiberG first).
   // Inject the resolved fibre value into the micros payload so the shared helper
@@ -126,41 +199,46 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
   const microRows = useMemo(
     () =>
       listMicroNutrientsCompleteDisplay({
-        ...(meal?.micros ?? {}),
-        fiberG: fiberDisplay > 0 ? fiberDisplay : (meal?.micros?.fiberG ?? 0),
+        ...(effectiveMeal?.micros ?? {}),
+        fiberG: fiberDisplay > 0 ? fiberDisplay : (effectiveMeal?.micros?.fiberG ?? 0),
       }),
-    [meal?.micros, fiberDisplay],
+    [effectiveMeal?.micros, fiberDisplay],
   );
 
   const split = useMemo(
     () =>
-      meal
-        ? macroCalorieSplit(meal)
+      effectiveMeal
+        ? macroCalorieSplit(effectiveMeal)
         : { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 },
-    [meal],
+    [effectiveMeal],
   );
 
   const splitConfidence = useMemo(
     () =>
-      meal
+      effectiveMeal
         ? macroSplitConfidence({
-            calories: meal.calories,
-            protein: meal.protein,
-            carbs: meal.carbs,
-            fat: meal.fat,
+            calories: effectiveMeal.calories,
+            protein: effectiveMeal.protein,
+            carbs: effectiveMeal.carbs,
+            fat: effectiveMeal.fat,
           })
         : ({ state: "empty" } as const),
-    [meal],
+    [effectiveMeal],
   );
 
-  const portion = meal?.portionMultiplier ?? 1;
+  const portion = effectiveMeal?.portionMultiplier ?? 1;
   // Hide the "Portion ×1" line when the multiplier is the default — it adds no
-  // info (mobile parity). Show only when the user altered the portion.
-  const showPortionLine = Math.abs(portion - 1) > 0.001;
+  // info (mobile parity). Never shown in aggregate mode (no single portion).
+  const showPortionLine = !isSlotAggregate && Math.abs(portion - 1) > 0.001;
   const portionLabel = Number.isInteger(portion) ? String(portion) : String(Math.round(portion * 100) / 100);
 
   const populatedCount = microRows.filter((row) => row.value !== "—").length;
-  const sourceLabel = formatNutritionSourceLabel(meal?.source) ?? "the data source";
+  // Aggregate mode attributes micros to the slot's items, not a single source
+  // (mobile parity — meal-nutrition.tsx line 589-591). Single-meal keeps the
+  // per-entry source label.
+  const sourceLabel = isSlotAggregate
+    ? "your logged items in this slot"
+    : (formatNutritionSourceLabel(meal?.source) ?? "the data source");
 
   return (
     <Dialog
@@ -170,39 +248,75 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
       }}
     >
       <DialogContent className="bg-card border-border max-w-md" data-testid="meal-nutrition-dialog">
-        {meal == null ? (
-          // Defensive empty state — the host only opens with a resolved meal, but
-          // if the meal was removed mid-flow we surface a designed dead-end rather
-          // than a blank dialog (mirrors mobile's NutritionDetailEmptyState).
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-foreground">Meal nutrition</DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                This meal is no longer available.
-              </DialogDescription>
-            </DialogHeader>
-            <div
-              data-testid="meal-nutrition-missing"
-              className="my-4 flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-5 py-8 text-center"
-            >
-              <span className="mb-1 grid h-14 w-14 place-items-center rounded-full bg-muted">
-                <CircleAlert className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} aria-hidden />
-              </span>
-              <p className="text-[18px] font-bold text-foreground">Meal not found</p>
-              <p className="max-w-[280px] text-sm leading-5 text-muted-foreground">
-                It may have been deleted. Close this and open the meal again from Today.
-              </p>
-            </div>
-          </>
+        {effectiveMeal == null ? (
+          // Empty state. Two shapes:
+          //  - slot-aggregate with no items → "Nothing in {slot}" (mobile's
+          //    NO_SLOT_ITEMS state, meal-nutrition.tsx line 265-285).
+          //  - single-meal with a null meal → "Meal not found" (removed mid-flow).
+          isSlotAggregate ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-foreground">
+                  {slotAggregate?.slotLabel?.trim() || "Slot nutrition"}
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground">
+                  No items logged in this slot yet.
+                </DialogDescription>
+              </DialogHeader>
+              <div
+                data-testid="meal-nutrition-slot-empty"
+                className="my-4 flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-5 py-8 text-center"
+              >
+                <span className="mb-1 grid h-14 w-14 place-items-center rounded-full bg-muted">
+                  <Salad className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+                </span>
+                <p className="text-[18px] font-bold text-foreground">
+                  Nothing in {slotAggregate?.slotLabel ?? "this slot"}
+                </p>
+                <p className="max-w-[280px] text-sm leading-5 text-muted-foreground">
+                  Add food to this slot from Today, then open this summary again.
+                </p>
+              </div>
+            </>
+          ) : (
+            // Defensive empty state — the host only opens with a resolved meal,
+            // but if the meal was removed mid-flow we surface a designed dead-end
+            // rather than a blank dialog (mirrors mobile's NutritionDetailEmptyState).
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-foreground">Meal nutrition</DialogTitle>
+                <DialogDescription className="text-muted-foreground">
+                  This meal is no longer available.
+                </DialogDescription>
+              </DialogHeader>
+              <div
+                data-testid="meal-nutrition-missing"
+                className="my-4 flex flex-col items-center gap-2 rounded-xl border border-border bg-card px-5 py-8 text-center"
+              >
+                <span className="mb-1 grid h-14 w-14 place-items-center rounded-full bg-muted">
+                  <CircleAlert className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} aria-hidden />
+                </span>
+                <p className="text-[18px] font-bold text-foreground">Meal not found</p>
+                <p className="max-w-[280px] text-sm leading-5 text-muted-foreground">
+                  It may have been deleted. Close this and open the meal again from Today.
+                </p>
+              </div>
+            </>
+          )
         ) : (
           <>
             <DialogHeader>
               <DialogTitle className="text-foreground">
-                {meal.recipeTitle?.trim() || "Meal nutrition"}
+                {isSlotAggregate
+                  ? slotAggregate?.slotLabel?.trim() || "Slot nutrition"
+                  : effectiveMeal.recipeTitle?.trim() || "Meal nutrition"}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                {[meal.name, meal.time].filter(Boolean).join(" · ")}
-                {meal.source ? ` · ${formatNutritionSourceLabel(meal.source)}` : ""}
+                {isSlotAggregate
+                  ? `${slotItems?.length ?? 0} item${(slotItems?.length ?? 0) !== 1 ? "s" : ""} in this slot`
+                  : `${[effectiveMeal.name, effectiveMeal.time].filter(Boolean).join(" · ")}${
+                      effectiveMeal.source ? ` · ${formatNutritionSourceLabel(effectiveMeal.source)}` : ""
+                    }`}
               </DialogDescription>
             </DialogHeader>
 
@@ -216,8 +330,20 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
                   data-testid="meal-nutrition-kcal"
                   className="mb-3 text-[28px] font-extrabold tabular-nums leading-none text-foreground"
                 >
-                  {Math.round(meal.calories)} kcal
+                  {Math.round(effectiveMeal.calories)} kcal
                 </p>
+                {/* Aggregate sub-label — mirrors mobile's "Combined macros"
+                    (meal-nutrition.tsx line 532-535). Single-meal mode shows
+                    nothing here (the meta line already carries the context). */}
+                {isSlotAggregate ? (
+                  <p
+                    data-testid="meal-nutrition-aggregate-caption"
+                    className="mb-3 text-[13px] font-semibold text-muted-foreground"
+                  >
+                    Combined macros across {slotItems?.length ?? 0} logged item
+                    {(slotItems?.length ?? 0) !== 1 ? "s" : ""}
+                  </p>
+                ) : null}
 
                 {splitConfidence.state === "single_macro" ? (
                   // F-82 — incomplete-data state. Skip the misleading bar +
@@ -227,9 +353,9 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
                       {macroSplitIncompleteCopy(splitConfidence.presentMacro)}
                     </p>
                     <div className="flex justify-between gap-2">
-                      <MacroStat label="Protein" grams={meal.protein} kcal={split.proteinKcal} pct={null} cssVar={MACRO_VARS.protein} />
-                      <MacroStat label="Carbs" grams={meal.carbs} kcal={split.carbsKcal} pct={null} cssVar={MACRO_VARS.carbs} />
-                      <MacroStat label="Fat" grams={meal.fat} kcal={split.fatKcal} pct={null} cssVar={MACRO_VARS.fat} />
+                      <MacroStat label="Protein" grams={effectiveMeal.protein} kcal={split.proteinKcal} pct={null} cssVar={MACRO_VARS.protein} />
+                      <MacroStat label="Carbs" grams={effectiveMeal.carbs} kcal={split.carbsKcal} pct={null} cssVar={MACRO_VARS.carbs} />
+                      <MacroStat label="Fat" grams={effectiveMeal.fat} kcal={split.fatKcal} pct={null} cssVar={MACRO_VARS.fat} />
                     </div>
                   </div>
                 ) : (
@@ -251,21 +377,21 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
                     <div className="flex justify-between gap-2">
                       <MacroStat
                         label="Protein"
-                        grams={meal.protein}
+                        grams={effectiveMeal.protein}
                         kcal={split.proteinKcal}
                         pct={splitConfidence.state === "complete" ? split.proteinPct : null}
                         cssVar={MACRO_VARS.protein}
                       />
                       <MacroStat
                         label="Carbs"
-                        grams={meal.carbs}
+                        grams={effectiveMeal.carbs}
                         kcal={split.carbsKcal}
                         pct={splitConfidence.state === "complete" ? split.carbsPct : null}
                         cssVar={MACRO_VARS.carbs}
                       />
                       <MacroStat
                         label="Fat"
-                        grams={meal.fat}
+                        grams={effectiveMeal.fat}
                         kcal={split.fatKcal}
                         pct={splitConfidence.state === "complete" ? split.fatPct : null}
                         cssVar={MACRO_VARS.fat}
@@ -284,7 +410,9 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
                     as the source's gap, not Suppr's. */}
                 {populatedCount === 0 ? (
                   <p data-testid="meal-nutrition-micros-empty" className="text-xs leading-[17px] text-muted-foreground">
-                    {sourceLabel} did not publish vitamin or mineral data for this product.
+                    {isSlotAggregate
+                      ? "None of the entries in this slot included published vitamin or mineral data."
+                      : `${sourceLabel} did not publish vitamin or mineral data for this product.`}
                   </p>
                 ) : (
                   <>
@@ -320,12 +448,15 @@ export function MealNutritionDialog({ meal, open, onClose, onEdit }: MealNutriti
                 )}
               </div>
 
-              {onEdit ? (
+              {/* Edit is a single-meal action only — the slot aggregate has no
+                  single entry to route to (mobile hides Edit on the aggregate
+                  too, meal-nutrition.tsx line 380-394). */}
+              {onEdit && !isSlotAggregate ? (
                 <div className="mt-4 flex justify-end">
                   <button
                     type="button"
                     data-testid="meal-nutrition-edit"
-                    onClick={() => onEdit(meal.id)}
+                    onClick={() => onEdit(effectiveMeal.id)}
                     className="rounded-md px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/5"
                     aria-label="Edit this meal"
                   >
