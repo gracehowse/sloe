@@ -1,12 +1,11 @@
 import type { LoggedMeal } from "../../types/recipe";
 import { sumDayFiberFromMeals } from "./microNutrientDisplay";
 
-export function dateKeyFromDate(d: Date): string {
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${da}`;
-}
+// ENG-717 — single source of truth for the local-calendar date key lives
+// in `src/lib/datetime/dateKey`. Imported for local use and re-exported so
+// existing `from "./trackerStats"` importers stay unchanged.
+import { dateKeyFromDate } from "../datetime/dateKey";
+export { dateKeyFromDate };
 
 function sumCalories(meals: LoggedMeal[]): number {
   return meals.reduce((a, m) => a + Math.max(0, m.calories), 0);

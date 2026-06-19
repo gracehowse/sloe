@@ -12,6 +12,11 @@ import { NativeModules, Platform } from "react-native";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { supabase } from "./supabase";
 import { refreshAdaptiveTdeeForUser } from "./refreshAdaptiveTdee";
+// ENG-717 — local-calendar date key (shared with web). The shared helper
+// accepts Date | string | number, a strict superset of the old local
+// `dateKey(d: Date | string)`, so HealthKit sample timestamps (strings)
+// still format identically.
+import { dateKeyFromDate as dateKey } from "@suppr/shared/datetime/dateKey";
 import {
   HEALTH_DIETARY_CORE_PERMISSION_KEYS,
   HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
@@ -790,14 +795,6 @@ function saveFoodPromise(
 
 /** Our own bundle ID — used to filter out samples we wrote to avoid re-importing them. */
 const OUR_BUNDLE_ID = "com.supprclub.supprapp";
-
-function dateKey(d: Date | string): string {
-  const date = typeof d === "string" ? new Date(d) : d;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function parseSampleInstant(isoOrDate: string | Date): Date {
   const d = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;

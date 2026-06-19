@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import { supabase } from "./supabase";
 import { authedFetch } from "./authedFetch";
+import { captureException } from "./errorTracking";
 import {
   type OffServingOption,
 } from "@suppr/shared/openFoodFacts/offServingPortions";
@@ -77,6 +78,9 @@ function localeQueryParam(): string {
     const loc = Intl.DateTimeFormat().resolvedOptions().locale;
     return loc ? `&locale=${encodeURIComponent(loc)}` : "";
   } catch {
+    // Intentional silent fallback — pre-SDK-53 Hermes without `Intl` is an
+    // expected runtime condition, not an error. Reporting it would be pure
+    // noise; we just omit the locale param. Not a swallowed error (ENG-717).
     return "";
   }
 }
@@ -1038,15 +1042,6 @@ export async function searchFoods(
     [usda, off, eda, fs] = await Promise.all([usdaP, offP, edamamP, fatsecretP]);
   }
 
-  // 2026-05-06 (Grace) — per-source hit-count log so a search that
-  // surfaces only USDA results immediately shows whether the other
-  // three sources returned 0 hits (env var / quota / outage) or were
-  // simply outranked by USDA in the merge. Quiet log; only fires
-  // once per searchFoods call.
-  console.log(
-    `[searchFoods] q="${t}" page=${page} hits — usda=${usda.length} off=${off.length} edamam=${eda.length} fatsecret=${fs.length}`,
-  );
-
   // ENG-1038 — if any keyed vendor was skipped for quota, tell the UI so it
   // can render an honest "showing saved results" notice. Fired once, after
   // the fan-out resolves, with the set of degraded sources.
@@ -1742,8 +1737,12 @@ export async function lookupBarcode(
         verified: false,
       };
     }
-  } catch {
-    // Fall through to Open Food Facts
+  } catch (e) {
+    // ENG-717 — don't swallow silently: report so a broken
+    // verified_food_canonical / user_foods read (RLS regression, network,
+    // schema drift) is visible in Sentry. Behaviour is unchanged — we
+    // still fall through to the Open Food Facts fallback below.
+    captureException(e);
   }
 
   // 2. Fall back to Open Food Facts via the authenticated proxy (ENG-1075 /

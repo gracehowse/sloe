@@ -226,6 +226,11 @@ export default defineConfig({
       // mount the components without exercising animation internals.
       { find: /^react-native-reanimated$/, replacement: path.resolve(__dirname, "./tests/shims/react-native-reanimated.cjs") },
       { find: /^lucide-react-native$/, replacement: path.resolve(__dirname, "./tests/shims/lucide-react-native.cjs") },
+      // ENG-717 — `@sentry/react-native` ships untransformed ESM + native
+      // spec loads at import time. Any module importing `./errorTracking`
+      // (e.g. `verifyRecipe.ts`, `weeklyRecapPush.ts`) reaches it
+      // transitively; the no-op shim keeps such modules collectable.
+      { find: /^@sentry\/react-native$/, replacement: path.resolve(__dirname, "./tests/shims/sentry-react-native.cjs") },
     ],
   },
 });
