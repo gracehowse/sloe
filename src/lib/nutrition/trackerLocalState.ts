@@ -11,7 +11,7 @@
 import { computeActivityBonusKcal } from "./activityBonus.ts";
 import { todayKey } from "./trackerDate.ts";
 
-export const RECENT_BARCODE_KEY = "suppr-recent-foods-v1";
+export const RECENT_BARCODE_KEY = "suppr-recent-foods-v1"; // gitleaks:allow -- localStorage key, not a credential (generic-api-key false positive; cf. ENG-1130)
 
 /** Must match Settings "Dashboard widgets" keys (`WIDGET_MACRO_OPTIONS`). */
 export const TRACKED_DASHBOARD_MACRO_KEYS = new Set([
