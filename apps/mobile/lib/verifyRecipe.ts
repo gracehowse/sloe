@@ -32,11 +32,6 @@ import {
 } from "@suppr/shared/nutrition/totalGramsForVerifyScale";
 import { inferAllergensFromIngredients } from "@suppr/shared/nutrition/inferAllergens";
 import { isPlausibleMacrosPer100g } from "@suppr/shared/nutrition/macroPlausibility";
-import {
-  isBareGenericNounRow,
-  isLowRelevanceNonVerifiedRow,
-  isLowConfidenceDemotedRow,
-} from "@suppr/shared/nutrition/searchRowTrust";
 import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers";
 
 /**
@@ -54,6 +49,7 @@ import {
   type SearchRowConfidenceTier,
   type SectionedSearchRows,
 } from "@suppr/shared/nutrition/foodSearchRanking";
+import { mergeFoodSearchRows } from "@suppr/shared/nutrition/foodSearchMerge";
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE };
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`
@@ -1385,78 +1381,11 @@ function mergeResults(
     });
   }
 
-  results.sort((a, b) => b._relevance - a._relevance);
-
-  // F-89 + F-90 (2026-04-25) — defence-in-depth filters that fire AFTER
-  // the trust-weighted sort:
-  //   F-89: drop bare-generic-noun rows from non-verified sources (the
-  //         "Egg" / "Eggs" / "Banana" Edamam poison that passes Atwater
-  //         but isn't actually the canonical food).
-  //   F-90: drop very-low-relevance rows from non-verified sources (the
-  //         "Cacio E Pepe Ravioli" surfacing for "eggs" via Edamam's
-  //         category tagging).
-  // Verified USDA Foundation / SR Legacy / Survey rows are exempt — the
-  // tester typed something the verified corpus matched, that's the
-  // canonical answer.
-  const filtered = results.filter((r) => {
-    const isVerified = Boolean(r.verified);
-    if (isBareGenericNounRow(r.name, isVerified)) return false;
-    if (isLowRelevanceNonVerifiedRow(r._relevance, isVerified)) return false;
-    // ENG-807 — honest low-confidence demotion keyed off the REAL tier, not
-    // the raw `verified` flag. Catches estimated-tier rows (e.g. USDA Branded
-    // "EGGS" with high token overlap but no authoritative provenance) that the
-    // raw-flag gate above let through. `matchScore` uses the name-only match
-    // (trust weight is already baked into `_relevance` and into the tier
-    // provenance check — we don't double-count it here).
-    const tier = searchRowConfidenceTier({
-      source: r._source,
-      verified: isVerified,
-      matchScore: searchMatchScore(query, r.name),
-    });
-    if (isLowConfidenceDemotedRow({ tier, score: r._relevance })) return false;
-    return true;
+  return mergeFoodSearchRows({
+    query,
+    rows: results,
+    limit,
   });
-
-  // Deduplicate within a source, not across sources.
-  //
-  // 2026-05-06: TestFlight feedback — "still no fat secret result at
-  // all". Diagnosis: production logs showed FatSecret API returning
-  // hits (no `[fatsecret foods.search] no food entries` warnings), but
-  // the cross-source dedup was dropping them. For "big mac",
-  // USDA's "Mcdonald's, Big Mac" and FatSecret's "McDonald's · Big
-  // Mac" both normalize to the same string ("mcdonaldsbigmac"), so
-  // FatSecret's entry got eliminated even though it carries a
-  // different macro panel.
-  //
-  // Per-source dedup (key = `${source}|${normalized}`) gives the user
-  // explicit choice between USDA / OFF / Edamam / FatSecret for the
-  // same named food, matching MFP / Cronometer / Lose It UX. Same-
-  // source duplicates (e.g. five Edamam Pret entries that all
-  // normalize to "pretchefsalad") still collapse to one.
-  const seen = new Set<string>();
-  const deduped: UnifiedSearchResult[] = [];
-  for (const r of filtered) {
-    const norm = r.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const key = `${r._source}|${norm}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    // ENG-807 — stamp the honest confidence tier on every surviving row so the
-    // UI can render the Verified / Estimated chip without recomputing the
-    // match. Derived from BOTH provenance and the name match (never source
-    // alone). `_relevance` carries the trust-weighted rank score we keep for
-    // the Best/More split.
-    deduped.push({
-      ...r,
-      confidenceTier: searchRowConfidenceTier({
-        source: r._source,
-        verified: Boolean(r.verified),
-        matchScore: searchMatchScore(query, r.name),
-      }),
-    });
-    if (deduped.length >= limit) break;
-  }
-
-  return deduped;
 }
 
 /**
