@@ -32,7 +32,7 @@ const ENG1106 = readFileSync(
   "utf8",
 );
 const ENG1154 = readFileSync(
-  resolve(MIGRATIONS_DIR, "20260615180000_eng1154_pin_search_path_tier_lockdown.sql"),
+  resolve(MIGRATIONS_DIR, "20260615180200_eng1154_pin_search_path_tier_lockdown.sql"),
   "utf8",
 );
 const ENG1154_SQL = ENG1154.replace(/^\s*--.*$/gm, "");
