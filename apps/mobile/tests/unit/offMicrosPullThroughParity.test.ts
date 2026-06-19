@@ -23,7 +23,7 @@ import { describe, expect, it } from "vitest";
 
 const MOBILE_VERIFY = resolve(__dirname, "../../lib/verifyRecipe.ts");
 const MOBILE_BARCODE = resolve(__dirname, "../../app/(tabs)/barcode.tsx");
-const MOBILE_INDEX = resolve(__dirname, "../../app/(tabs)/index.tsx");
+const MOBILE_INDEX = resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
 const MOBILE_MODAL = resolve(__dirname, "../../components/FoodSearchModal.tsx");
 /**
  * 2026-04-30 — preview state + SelectedFood emit live in the shared

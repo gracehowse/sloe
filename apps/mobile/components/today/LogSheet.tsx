@@ -938,7 +938,6 @@ function DefaultComposition({
           onPaywall={describe.onPaywall}
           onReviewActiveChange={setDescribeReviewActive}
           inputHidden={!describeReviewActive && query.trim().length > 0}
-          slotLabel={describe.slotLabel}
         />
       ) : null}
 

@@ -21,7 +21,7 @@
  *  5. Renders the exact primary CTA label "See Pro plans".
  *  6. Handles all three dismiss reasons: "backdrop", "close_button",
  *     "not_now".
- *  7. Host (`app/(tabs)/index.tsx`) replaces the previous
+ *  7. Host (`app/(tabs)/_today/TodayScreen.tsx`) replaces the previous
  *     `router.push("/paywall?from=voice_log|photo_log")` calls in the
  *     free-tier gate with `setAiPaywall({ open: true, feature })`, and
  *     re-exposes the `/paywall?from=...` push inside the sheet's
@@ -35,7 +35,7 @@ import { describe, expect, it } from "vitest";
 const SHEET_PATH = resolve(__dirname, "../../components/AiPaywallSheet.tsx");
 const SHEET_SOURCE = readFileSync(SHEET_PATH, "utf8");
 
-const TODAY_PATH = resolve(__dirname, "../../app/(tabs)/index.tsx");
+const TODAY_PATH = resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
 const TODAY_SOURCE = readFileSync(TODAY_PATH, "utf8");
 
 describe("AiPaywallSheet module contract (Ship M2)", () => {

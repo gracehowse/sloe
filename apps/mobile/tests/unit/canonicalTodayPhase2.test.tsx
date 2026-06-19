@@ -124,7 +124,7 @@ describe("LogFab", () => {
 
 describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
   const indexSrc = fs.readFileSync(
-    path.resolve(__dirname, "../../app/(tabs)/index.tsx"),
+    path.resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
     "utf-8",
   );
 

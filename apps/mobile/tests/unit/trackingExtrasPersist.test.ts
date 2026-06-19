@@ -27,7 +27,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const TODAY_PATH = resolve(__dirname, "../../app/(tabs)/index.tsx");
+const TODAY_PATH = resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
 const TODAY_SRC = readFileSync(TODAY_PATH, "utf8");
 
 describe("Build 41 — addCaffeineMg synchronously captures `next` for persist", () => {

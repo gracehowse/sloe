@@ -29,7 +29,7 @@ const BARCODE_MODAL_SRC = readFileSync(
   "utf8",
 );
 const TODAY_SRC = readFileSync(
-  resolve(REPO, "apps/mobile/app/(tabs)/index.tsx"),
+  resolve(REPO, "apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
 

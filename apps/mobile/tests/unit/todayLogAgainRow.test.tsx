@@ -3,7 +3,7 @@
  * `TodayMealsSection` (mobile) — ENG-786 "Log this/these again" row.
  *
  * The host passes `onLogAgain` ONLY when the `today_log_again` flag is on
- * (see `app/(tabs)/index.tsx` → `onLogAgain={isFeatureEnabled(...) ?
+ * (see `app/(tabs)/_today/TodayScreen.tsx` → `onLogAgain={isFeatureEnabled(...) ?
  * logAgainSlot : undefined}`). The component itself doesn't read the flag —
  * it renders the row iff `hasMeals && isOpen && onLogAgain`. So these tests
  * simulate the host by passing / omitting `onLogAgain`.

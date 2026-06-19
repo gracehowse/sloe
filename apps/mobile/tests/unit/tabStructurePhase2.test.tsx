@@ -222,7 +222,7 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
     // the new avatar's Pressable routes to /(tabs)/settings so a future
     // change can't strand the Settings entry point.
     const indexSrc = fs.readFileSync(
-      path.resolve(__dirname, "../../app/(tabs)/index.tsx"),
+      path.resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
       "utf-8",
     );
     expect(indexSrc).toMatch(/gradientIdSuffix="today-wordmark-header"/);

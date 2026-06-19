@@ -25,8 +25,8 @@ describe("resolveMaintenance adoption (F-3 parity pin)", () => {
     expect(src).toContain("resolveMaintenance(");
   });
 
-  it("mobile Today (app/(tabs)/index.tsx) imports and calls resolveMaintenance", () => {
-    const src = read("apps/mobile/app/(tabs)/index.tsx");
+  it("mobile Today (app/(tabs)/_today/TodayScreen.tsx) imports and calls resolveMaintenance", () => {
+    const src = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
     expect(src).toMatch(/from ["'][^"']*resolveMaintenance(?:\.ts)?["']/);
     expect(src).toContain("resolveMaintenance(");
   });

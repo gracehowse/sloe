@@ -254,7 +254,7 @@ describe("notifications-prompt.tsx wiring", () => {
  * without requiring the user to re-grant permission.
  */
 describe("Today tab token refresh", () => {
-  const TODAY_PATH = resolve(__dirname, "../../app/(tabs)/index.tsx");
+  const TODAY_PATH = resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
   const SOURCE = readFileSync(TODAY_PATH, "utf8");
 
   it("imports refreshExpoPushTokenIfChanged from @/lib/expoPushToken", () => {

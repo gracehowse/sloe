@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const INDEX_SRC = readFileSync(
-  resolve(__dirname, "../../app/(tabs)/index.tsx"),
+  resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
   "utf-8",
 );
 const SKELETON_SRC = readFileSync(

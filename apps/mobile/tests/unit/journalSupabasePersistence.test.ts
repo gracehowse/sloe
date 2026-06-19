@@ -17,7 +17,7 @@ import { resolve } from "node:path";
 
 const REPO = resolve(__dirname, "..", "..", "..", "..");
 const SRC = readFileSync(
-  resolve(REPO, "apps/mobile/app/(tabs)/index.tsx"),
+  resolve(REPO, "apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
 // ENG (2026-06-12, launch-audit P1-1/P1-2) — the per-column row shape

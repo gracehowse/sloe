@@ -19,7 +19,7 @@
  *      (`docs/specs/2026-04-27-mobile-target-edits-parity.md` P0-1 +
  *      P0-2 + P1-1 + P1-2).
  *   5. Eat-again banner REMOVED from the Today host on both mobile
- *      (`apps/mobile/app/(tabs)/index.tsx`) and web
+ *      (`apps/mobile/app/(tabs)/_today/TodayScreen.tsx`) and web
  *      (`src/app/components/NutritionTracker.tsx`) — earlier phases only
  *      tuned its placement; the Sloe Figma-654:2 sweep retired the prompt
  *      entirely so the two surfaces match.
@@ -33,7 +33,7 @@ const DISCOVER = resolve(__dirname, "../../app/(tabs)/discover.tsx");
 const VERIFY = resolve(__dirname, "../../app/recipe/verify.tsx");
 const PROFILE = resolve(__dirname, "../../app/profile.tsx");
 const PROFILE_FLAG = resolve(__dirname, "../../lib/profileTargetsDirtyFlag.ts");
-const TODAY = resolve(__dirname, "../../app/(tabs)/index.tsx");
+const TODAY = resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
 const WEB_TRACKER = resolve(__dirname, "../../../../src/app/components/NutritionTracker.tsx");
 
 const SRC = {

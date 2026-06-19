@@ -41,8 +41,6 @@ export interface RecipeCard {
   contentOrigin?: "first_party" | "imported_stub" | "claimed";
   /** Plan import / URL attribution label (e.g. Imported · Week 1). */
   sourceName?: string | null;
-  /** Recipe provenance plane; `claimed` identifies verified official creator rows. */
-  contentOrigin?: string | null;
   mealSlots?: readonly PlannerMealSlot[] | string[];
   feedSource?: "catalog" | "community";
   /** Human-readable prep time (e.g. "15 min"). */

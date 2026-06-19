@@ -27,7 +27,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const TODAY = readFileSync(
-  resolve(__dirname, "../../app/(tabs)/index.tsx"),
+  resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
 const PROGRESS = readFileSync(

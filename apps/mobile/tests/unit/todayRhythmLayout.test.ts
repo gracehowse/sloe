@@ -19,7 +19,7 @@ describe("Today rhythm layout (ENG-871)", () => {
   });
 
   it("pins section breaks on meals, insight, and TD1/TD2 in Today host", () => {
-    const src = readFileSync(join(ROOT, "app/(tabs)/index.tsx"), "utf8");
+    const src = readFileSync(join(ROOT, "app/(tabs)/_today/TodayScreen.tsx"), "utf8");
     // ENG-1099 M1 flag-gated the break (`tierV1 ? 0 : Layout.todaySectionBreak`);
     // the token is still wired as the rhythm source (flag-off path).
     expect(src).toContain("Layout.todaySectionBreak");

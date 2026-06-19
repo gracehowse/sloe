@@ -2,7 +2,7 @@
  * Today above-meals cap — contract pins (mobile).
  *
  * Authority: `docs/ux/teardown-2026-04-28-daily-loop.md` §F1 + Top-5 #2.
- * Source: `apps/mobile/app/(tabs)/index.tsx`
+ * Source: `apps/mobile/app/(tabs)/_today/TodayScreen.tsx`
  *
  * The teardown's F1 finding called out that the Today screen had no
  * editor: every audit added a card, nothing got deleted, and the
@@ -46,7 +46,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 const HOST_SRC = fs.readFileSync(
-  path.resolve(__dirname, "../../app/(tabs)/index.tsx"),
+  path.resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
   "utf-8",
 );
 

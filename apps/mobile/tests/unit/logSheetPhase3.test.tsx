@@ -458,7 +458,7 @@ describe("LogSheet (mobile) — Recent / Saved browse pills (Phase 4 / Next-10 #
 describe("LogSheet (mobile) — saved-meal portion editor (ENG-783, today-edit-entry-v2)", () => {
   // Surface (b) of ENG-783: the LogSheet "Saved meals" rows. The host
   // passes `saved.onRequestPortion` only when `today-edit-entry-v2` is on
-  // (see `app/(tabs)/index.tsx`). When wired, a saved-meal tap routes to
+  // (see `app/(tabs)/_today/TodayScreen.tsx`). When wired, a saved-meal tap routes to
   // the portion editor instead of logging 1× instantly; when omitted, the
   // old instant-log path (`onPick`) is preserved by the `??` fallback.
   const meal: LogSheetSavedMeal = {

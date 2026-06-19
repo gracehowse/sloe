@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 /**
  * ENG-1065 (TF57 F-158 / F-159 / F-178 / F-179) — Today-cohesion source pins.
  *
- * The Today screen (`app/(tabs)/index.tsx`) is far too large to mount in a unit
+ * The Today screen (`app/(tabs)/_today/TodayScreen.tsx`) is far too large to mount in a unit
  * test, so the host-side wiring of the three founder fixes is pinned by reading
  * the source. These break if a future edit unwires the section rhythm, the
  * empty-state flag gate, or the Complete-Day extraction.
@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 const read = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8");
 
 describe("Today cohesion — index.tsx host wiring", () => {
-  const src = read("../../app/(tabs)/index.tsx");
+  const src = read("../../app/(tabs)/_today/TodayScreen.tsx");
 
   it("F-159: every page-ground section break uses Layout.todaySectionBreak (one rhythm)", () => {
     // Meals, Weekly insight, Planned, Activity, Hydration all introduce on the

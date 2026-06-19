@@ -24,7 +24,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const indexPath = path.resolve(__dirname, "../../app/(tabs)/index.tsx");
+const indexPath = path.resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
 const indexSrc = fs.readFileSync(indexPath, "utf8");
 // 2026-06-12 (audit P2 #5): the openLog open/clear + the two dismissal
 // effects moved out of index.tsx into `hooks/useLogSheetDeepLinks.ts` so
@@ -115,7 +115,7 @@ describe("LogSheet entry-point consolidation (mobile)", () => {
 describe("Today composition root — tracking-extras prefs (P0-3, 2026-04-28)", () => {
   // 2026-05-16 (Today god-component split #4, PR #264): the
   // tracking-extras `useFocusEffect` was extracted out of
-  // `app/(tabs)/index.tsx` into a dedicated hook at
+  // `app/(tabs)/_today/TodayScreen.tsx` into a dedicated hook at
   // `hooks/useTrackingExtrasOnFocus.ts`. The behaviour pin (re-read
   // on every focus, not just mount) is unchanged — it now needs to
   // hold in BOTH files: parent must invoke the hook, hook must use
