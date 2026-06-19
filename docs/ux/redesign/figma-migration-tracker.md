@@ -94,7 +94,7 @@ Confirmed wired, **no Figma frame**. Never remove. Each needs a Stitch→Mobbin�
 2. **Flag-gating debt** (migration flags to retire later, NOT now): `today_meals_figma_654`, `today-status-pills`, `progressLayoutV2`, `plan_empty_state_v2`, `plan_source_selector`, onboarding flag, etc.
 3. **File-size debt** (CLAUDE.md 400-line cap): mobile `(tabs)/index.tsx` 6412L, `NutritionTracker.tsx` 3613L, mobile `progress.tsx` 4007L, `SettingsBundleContent.tsx` ~3600L, web `Settings.tsx` ~88KB — structural refactor needed for clean conformance.
 4. **Figma coverage gaps:** no dark-mode frames for most areas (web has no dark at all); no desktop frames for Recipes/Plan/Recipe-detail/Paywall; no loading/error frames for most areas; states under-designed.
-5. **Web↔mobile parity gaps:** web missing macro-detail/energy-out/where-from detail screens; web Settings missing Household + Apple Health.
+5. **Web↔mobile parity gaps:** web missing macro-detail/energy-out/where-from detail screens. ~~web Settings missing Household + Apple Health~~ ✅ ENG-1200 — web Settings now ships a **Connections** card (Household row → `?view=household-settings`; Apple Health row → honest iOS-only explainer, no fake connect) gated behind `web_settings_connections_v1`. Unblocks ENG-892 Household D10.
 6. **Product-direction decisions needed (→ Linear):** Plan single-day vs multi-day; recipe macro rings vs flat tiles; library filter taxonomy (category vs entry-kind); fasting presets (OMAD vs 20:4/14:10); Ask feature build; Google Sign-In provider.
 7. **Verification blocker (resolved):** web-drive auth was redirecting (localhost vs 127.0.0.1 cookie); fixed — use `WEB_DRIVE_BASE_URL=http://127.0.0.1:3000`.
 
