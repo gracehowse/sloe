@@ -29,7 +29,7 @@ const MOBILE_HOOK_SRC = readFileSync(MOBILE_HOOK, "utf8");
 const MOBILE_SCREEN = resolve(__dirname, "../../app/macro-detail.tsx");
 const MOBILE_SCREEN_SRC = readFileSync(MOBILE_SCREEN, "utf8");
 
-const MOBILE_TODAY = resolve(__dirname, "../../app/(tabs)/index.tsx");
+const MOBILE_TODAY = resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
 const MOBILE_TODAY_SRC = readFileSync(MOBILE_TODAY, "utf8");
 
 const WEB_PANEL = resolve(__dirname, "../../../../src/app/components/MacroDetailPanel.tsx");
