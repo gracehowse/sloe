@@ -1,10 +1,17 @@
 import { test, expect } from "@playwright/test";
 import { hasVisualGoldenCredentials } from "./utils/auth";
 import { visualAuthFileForBaseUrl } from "./utils/authHosts";
-import { dismissVisualOverlays, freezeVisualClock, stabilizeForScreenshot } from "./utils/visual";
+import {
+  dismissVisualOverlays,
+  forceRedesignVisualFlagsOn,
+  freezeVisualClock,
+  stabilizeForScreenshot,
+} from "./utils/visual";
 
 const visualStorageState = hasVisualGoldenCredentials()
-  ? visualAuthFileForBaseUrl(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
+  ? visualAuthFileForBaseUrl(
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+    )
   : undefined;
 
 const viewports = [
@@ -60,6 +67,7 @@ test.describe("Visual regression — authenticated subpages", () => {
       !hasVisualGoldenCredentials(),
       "Set E2E_VISUAL_EMAIL and E2E_VISUAL_PASSWORD for deterministic authed subpage snapshots.",
     );
+    await forceRedesignVisualFlagsOn(page);
     await freezeVisualClock(page);
   });
 
@@ -70,7 +78,9 @@ test.describe("Visual regression — authenticated subpages", () => {
         await page.goto(screen.path, { waitUntil: "domcontentloaded" });
         await dismissVisualOverlays(page);
         await stabilizeForScreenshot(page);
-        await expect(page).toHaveScreenshot(`subpages/authed/${screen.name}-${vp.name}.png`);
+        await expect(page).toHaveScreenshot(
+          `subpages/authed/${screen.name}-${vp.name}.png`,
+        );
       });
     }
   }
