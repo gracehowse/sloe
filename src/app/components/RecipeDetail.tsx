@@ -26,6 +26,7 @@ import {
 } from "../../lib/recipes/seedRecipesV2";
 import { pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
 import { isImportedRecipe, importSourceDisclaimer } from "../../lib/recipes/importSourceDisclaimer.ts";
+import { canShowOfficialVersion } from "../../lib/recipes/officialRecipeClaim.ts";
 import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { fetchIngredientImages } from "../../lib/recipe/ingredientImages.ts";
@@ -471,6 +472,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [followMetaLoaded, setFollowMetaLoaded] = useState(false);
   const [publicSaveCount, setPublicSaveCount] = useState<number | null>(null);
   const [followerCount, setFollowerCount] = useState<number | null>(null);
+  const [officialRecipeId, setOfficialRecipeId] = useState<string | null>(null);
 
   const isMyRecipe = Boolean(
     !isCatalogRecipe &&
@@ -529,7 +531,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
       const { data: metaRow } = await supabase
         .from("recipes")
-        .select("creator_id, author_id")
+        .select("creator_id, author_id, published, content_origin, source_url")
         .eq("id", recipe.id)
         .maybeSingle();
 
@@ -548,6 +550,27 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       const aid = (metaRow.author_id as string | null) ?? null;
       setFollowCreatorId(cid);
       setRecipeAuthorId(aid);
+
+      const sourceUrl = (metaRow as { source_url?: string | null }).source_url ?? recipe.sourceUrl ?? null;
+      if (canShowOfficialVersion({
+        currentRecipeId: recipe.id,
+        sourceUrl,
+        published: (metaRow as { published?: boolean | null }).published ?? recipe.isPublished ?? null,
+        contentOrigin: (metaRow as { content_origin?: string | null }).content_origin ?? null,
+      })) {
+        const { data: official } = await supabase
+          .from("recipes")
+          .select("id")
+          .eq("source_url", sourceUrl)
+          .eq("published", true)
+          .eq("content_origin", "claimed")
+          .neq("id", recipe.id)
+          .limit(1)
+          .maybeSingle();
+        if (!cancelled) setOfficialRecipeId((official as { id?: string } | null)?.id ?? null);
+      } else {
+        setOfficialRecipeId(null);
+      }
 
       if (cid && uid) {
         const { data: fol } = await supabase
@@ -1807,6 +1830,25 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 >
                   {importSourceDisclaimer(recipe.sourceName ?? bylineLabel)}
                 </p>
+              ) : null}
+              {officialRecipeId ? (
+                <div
+                  className="rounded-xl border border-border bg-card p-4 text-sm"
+                  role="status"
+                  data-testid="recipe-official-version-card"
+                >
+                  <p className="font-semibold text-foreground">✓ Official version available</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Imported from {recipe.sourceName ?? "the original source"} — not posted by the creator.
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-3 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => { window.location.href = `/recipe/${officialRecipeId}`; }}
+                  >
+                    Switch to official
+                  </button>
+                </div>
               ) : null}
               {verdict && verdictChip ? (
                 verdictBannerOn ? (

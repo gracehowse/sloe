@@ -376,3 +376,9 @@ Full root `npm test` (all `tests/unit` + `tests/integration`), Playwright specs 
 ## Related Documents
 - [Testing Overview](overview.md)
 - [Technical Architecture](../technical/architecture.md)
+
+### ENG-870 recipe claim & merge
+
+- Unit: `tests/unit/officialRecipeClaim.test.ts` and `apps/mobile/tests/unit/officialRecipeClaimParity.test.ts` pin exact-`source_url` matching, private-stub-only badge eligibility, and rejection of self-serve / attestation-only ownership claims.
+- Regression: when a claimed published recipe exists with the same exact `source_url`, web `RecipeDetail` and mobile `recipe/[id]` render "✓ Official version available" plus "Switch to official" without mutating the imported stub.
+- Security: claim verification must be server-side OAuth handle, one-time bio/caption code, or DNS/meta-tag evidence plus attestation; fuzzy title/handle matching is never sufficient.

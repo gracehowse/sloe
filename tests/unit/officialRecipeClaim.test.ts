@@ -1,0 +1,28 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  canShowOfficialVersion,
+  claimVerificationIsVerified,
+  isExactOfficialSourceMatch,
+} from "@/lib/recipes/officialRecipeClaim";
+
+describe("official recipe claim helpers", () => {
+  it("matches official versions only by exact source_url", () => {
+    expect(isExactOfficialSourceMatch("https://example.com/r", "https://example.com/r")).toBe(true);
+    expect(isExactOfficialSourceMatch("https://example.com/r", "https://example.com/r?utm=x")).toBe(false);
+    expect(isExactOfficialSourceMatch("https://example.com/r", "https://example.com/other")).toBe(false);
+    expect(isExactOfficialSourceMatch(null, "https://example.com/r")).toBe(false);
+  });
+
+  it("only offers the official badge for private imported stubs", () => {
+    expect(canShowOfficialVersion({ currentRecipeId: "stub", sourceUrl: "https://example.com/r", published: false, contentOrigin: "private_import" })).toBe(true);
+    expect(canShowOfficialVersion({ currentRecipeId: "official", sourceUrl: "https://example.com/r", published: true, contentOrigin: "claimed" })).toBe(false);
+    expect(canShowOfficialVersion({ currentRecipeId: "draft", sourceUrl: null, published: false, contentOrigin: "private_import" })).toBe(false);
+  });
+
+  it("rejects self-serve or attestation-only claim attempts", () => {
+    expect(claimVerificationIsVerified({ method: "self_serve", source_url: "https://example.com/r", verified_at: "2026-06-19T00:00:00Z", attestation: true })).toBe(false);
+    expect(claimVerificationIsVerified({ method: "bio_code", source_url: "https://example.com/r", attestation: true })).toBe(false);
+    expect(claimVerificationIsVerified({ method: "dns_meta", source_url: "https://example.com/r", verified_at: "2026-06-19T00:00:00Z", attestation: true })).toBe(true);
+  });
+});
