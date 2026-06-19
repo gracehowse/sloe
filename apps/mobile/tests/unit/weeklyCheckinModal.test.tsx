@@ -200,6 +200,32 @@ describe("WeeklyCheckinModal", () => {
     void queryByText;
   });
 
+  it("ENG-1111 — renders the measured-driven raised target above the current under-logged target", () => {
+    // When the measured branch wins, `buildWeeklyCheckinContent` produces a
+    // suggested target computed against measured expenditure (~1,900) — higher
+    // than the user's collapsed under-logged target (1,329). The modal must
+    // surface that higher number as the bold suggestion, not anchor to intake.
+    const { getByLabelText, getByText } = render(
+      <WeeklyCheckinModal
+        visible
+        content={makeContent({
+          tdeeDeltaKcal: 150,
+          suggestedTargetKcal: 1479,
+          whyLine: "Your real burn is +150 kcal higher than the formula.",
+        })}
+        currentTargetKcal={1329}
+        onAccept={() => {}}
+        onDismiss={() => {}}
+        {...BASE_COLORS}
+      />,
+    );
+    expect(getByLabelText("Suggested 1479 kilocalories per day").props.children).toBe(
+      "1,479",
+    );
+    // Previous (under-logged) target rendered struck-through alongside.
+    expect(getByText("1,329")).toBeTruthy();
+  });
+
   it("renders nothing when content is null (defensive guard)", () => {
     const { toJSON } = render(
       <WeeklyCheckinModal
