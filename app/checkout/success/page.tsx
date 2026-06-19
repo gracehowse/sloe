@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { buildReceiptTrustCopy } from "../../../src/lib/landing/paywallTrust.ts";
+import { SupprWordmark } from "../../../src/app/components/ui/suppr-mark.tsx";
 
 /**
  * `/checkout/success` — explicit, trust-explicit confirmation surface
@@ -74,12 +75,12 @@ export default async function CheckoutSuccessPage({
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 bg-card/90 backdrop-blur-xl border-b border-border px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-lg font-bold bg-clip-text text-transparent"
-            style={{ backgroundImage: "linear-gradient(135deg, #588CE4 0%, #DF5EBC 100%)" }}
-          >
-            Sloe
+          {/* ENG-971 — canonical Sloe wordmark (plum ink via
+              `--foreground-brand`). Replaces the off-palette
+              `#588CE4 → #DF5EBC` gradient clip — never in the locked
+              brand palette and a billing-surface drift. */}
+          <Link href="/" aria-label="Sloe home">
+            <SupprWordmark size={28} />
           </Link>
         </div>
       </header>
@@ -144,10 +145,14 @@ export default async function CheckoutSuccessPage({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
+          {/* ENG-971 — primary CTA on the brand token (`bg-primary` /
+              `--accent-primary` clay-plum), matching every other primary
+              CTA (recipe nav, CheckoutButton). Replaces the off-palette
+              violet→indigo gradient + violet shadow on a billing surface. */}
           <Link
             href="/home?view=today&checkout=success"
             data-testid="checkout-success-continue"
-            className="flex-1 text-center px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:shadow-lg hover:shadow-violet-500/25 transition-all"
+            className="flex-1 text-center px-6 py-3 rounded-xl font-semibold bg-primary text-primary-foreground hover:brightness-95 transition-all"
           >
             Open Sloe
           </Link>

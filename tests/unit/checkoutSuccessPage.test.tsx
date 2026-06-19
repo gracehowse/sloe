@@ -15,7 +15,7 @@
  *   3. Annual vs monthly trial-end labels swap correctly so the
  *      copy reflects the actual purchase.
  */
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import CheckoutSuccessPage from "../../app/checkout/success/page";
 
@@ -77,5 +77,47 @@ describe("/checkout/success — trust-explicit confirmation", () => {
     const receipt = screen.getByTestId("checkout-success-receipt");
     // Defensive default — should not crash, should not claim a trial.
     expect(receipt.textContent).toContain("with your billing period");
+  });
+});
+
+describe("/checkout/success — on-brand palette (ENG-971)", () => {
+  // Assert against rendered markup (no source comments) so the
+  // documented-removal references to the old gradient hex in code
+  // comments can't false-positive. The DOM is what actually ships.
+  let html = "";
+
+  beforeAll(async () => {
+    const ui = await CheckoutSuccessPage({
+      searchParams: Promise.resolve({ period: "monthly", tier: "pro" }),
+    });
+    const { container } = render(ui);
+    html = container.innerHTML;
+  });
+
+  it("renders no off-palette violet/indigo Tailwind classes", () => {
+    expect(html).not.toMatch(/from-violet-/);
+    expect(html).not.toMatch(/to-indigo-/);
+    expect(html).not.toMatch(/(?:bg|text|border)-violet-/);
+    expect(html).not.toMatch(/(?:bg|text|border)-indigo-/);
+    expect(html).not.toMatch(/shadow-violet-/);
+  });
+
+  it("renders no literal off-palette hex (the old #588CE4 → #DF5EBC gradient)", () => {
+    expect(html).not.toMatch(/#588CE4/i);
+    expect(html).not.toMatch(/#DF5EBC/i);
+  });
+
+  it("primary continue CTA uses the brand primary token", async () => {
+    await renderPage({ period: "monthly" });
+    const cta = screen.getByTestId("checkout-success-continue");
+    expect(cta.className).toContain("bg-primary");
+    expect(cta.className).toContain("text-primary-foreground");
+    expect(cta.className).not.toMatch(/violet|indigo/);
+  });
+
+  it("renders the canonical Sloe wordmark in the header (not a gradient clip)", async () => {
+    await renderPage({ period: "monthly" });
+    // SupprWordmark renders role=img aria-label="Sloe".
+    expect(screen.getAllByLabelText("Sloe").length).toBeGreaterThan(0);
   });
 });

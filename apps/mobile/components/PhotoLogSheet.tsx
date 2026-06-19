@@ -306,7 +306,10 @@ export default function PhotoLogSheet({
         setErrorMsg(
           typeof data.message === "string"
             ? data.message
-            : "You've used your free photo logs for this week. Upgrade to Pro for unlimited.",
+            : // ENG-971 — honest billing parity with web: Pro AI photo
+              // logging is capped at 100/day, not unlimited. Mirror
+              // AiPaywallSheet ("up to 100 a day").
+              "You've used all 5 of your free photo logs this week. Pro unlocks AI photo logging up to 100 a day.",
         );
         setStage("error");
         return;
