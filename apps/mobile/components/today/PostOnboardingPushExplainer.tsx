@@ -1,3 +1,4 @@
+import { memo } from "react";
 import * as React from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
@@ -60,7 +61,7 @@ export interface PostOnboardingPushExplainerProps {
   onEnable: () => void;
 }
 
-export function PostOnboardingPushExplainer(
+function PostOnboardingPushExplainerImpl(
   props: PostOnboardingPushExplainerProps,
 ) {
   const { visible, onSkip, onEnable } = props;
@@ -213,5 +214,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+export const PostOnboardingPushExplainer = memo(PostOnboardingPushExplainerImpl);
 
 export default PostOnboardingPushExplainer;

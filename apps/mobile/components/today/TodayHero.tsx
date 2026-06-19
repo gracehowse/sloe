@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 
 import { TodayHeroRing } from "./TodayHeroRing";
@@ -81,7 +81,7 @@ export interface TodayHeroProps {
   coachLine?: React.ReactNode;
 }
 
-export function TodayHero(props: TodayHeroProps) {
+function TodayHeroImpl(props: TodayHeroProps) {
   const {
     consumed,
     goal,
@@ -181,5 +181,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+export const TodayHero = memo(TodayHeroImpl);
 
 export default TodayHero;

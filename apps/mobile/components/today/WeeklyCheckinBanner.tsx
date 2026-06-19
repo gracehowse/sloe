@@ -1,3 +1,4 @@
+import { memo } from "react";
 /**
  * WeeklyCheckinBanner — Sunday-morning prompt on Today that routes to
  * the Weekly Recap surface (which hosts the TDEE delta + goal-pace
@@ -49,7 +50,7 @@ export interface WeeklyCheckinBannerProps {
   onDismiss: () => void;
 }
 
-export function WeeklyCheckinBanner({
+function WeeklyCheckinBannerImpl({
   textColor,
   textSecondaryColor,
   onOpen,
@@ -144,5 +145,7 @@ export function WeeklyCheckinBanner({
     </SupprCard>
   );
 }
+
+export const WeeklyCheckinBanner = memo(WeeklyCheckinBannerImpl);
 
 export default WeeklyCheckinBanner;

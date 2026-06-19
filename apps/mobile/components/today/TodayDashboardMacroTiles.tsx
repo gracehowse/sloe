@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -83,7 +83,7 @@ type MacroDef = {
   referenceOnly?: boolean;
 };
 
-export function TodayDashboardMacroTiles({
+function TodayDashboardMacroTilesImpl({
   trackedMacros,
   totals,
   targets,
@@ -230,5 +230,7 @@ export function TodayDashboardMacroTiles({
     </View>
   );
 }
+
+export const TodayDashboardMacroTiles = memo(TodayDashboardMacroTilesImpl);
 
 export default TodayDashboardMacroTiles;

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import * as React from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
@@ -432,7 +433,7 @@ export interface LogSheetProps {
 
 type BrowseTab = "gotos" | "recent" | "library" | "saved";
 
-export function LogSheet({
+function LogSheetImpl({
   visible,
   onClose,
   search,
@@ -2181,5 +2182,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 });
+
+export const LogSheet = memo(LogSheetImpl);
 
 export default LogSheet;

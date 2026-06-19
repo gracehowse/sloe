@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,7 +46,7 @@ export interface WhyThisNumberSheetProps extends WhyThisNumberInput {
   textTertiaryColor: string;
 }
 
-export function WhyThisNumberSheet({
+function WhyThisNumberSheetImpl({
   visible,
   onClose,
   onPressAdjustTarget,
@@ -290,5 +290,7 @@ export function WhyThisNumberSheet({
     </Modal>
   );
 }
+
+export const WhyThisNumberSheet = memo(WhyThisNumberSheetImpl);
 
 export default WhyThisNumberSheet;

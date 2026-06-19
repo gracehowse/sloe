@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Text, View } from "react-native";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -51,7 +51,7 @@ export interface TodayDeficitInsightProps {
   byDay: Record<string, JournalMeal[]>;
 }
 
-export function TodayDeficitInsight({
+function TodayDeficitInsightImpl({
   remaining,
   selectedDate,
   byDay,
@@ -103,5 +103,7 @@ export function TodayDeficitInsight({
     </View>
   );
 }
+
+export const TodayDeficitInsight = memo(TodayDeficitInsightImpl);
 
 export default TodayDeficitInsight;

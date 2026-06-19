@@ -1,3 +1,4 @@
+import { memo } from "react";
 import * as React from "react";
 import { Text, View } from "react-native";
 import { Sparkles } from "lucide-react-native";
@@ -53,7 +54,7 @@ export interface FirstLogAcknowledgmentProps {
 
 const DEFAULT_AUTO_FADE_MS = 2500;
 
-export function FirstLogAcknowledgment(props: FirstLogAcknowledgmentProps) {
+function FirstLogAcknowledgmentImpl(props: FirstLogAcknowledgmentProps) {
   const {
     visible,
     onDismiss,
@@ -139,5 +140,7 @@ export function FirstLogAcknowledgment(props: FirstLogAcknowledgmentProps) {
     </View>
   );
 }
+
+export const FirstLogAcknowledgment = memo(FirstLogAcknowledgmentImpl);
 
 export default FirstLogAcknowledgment;

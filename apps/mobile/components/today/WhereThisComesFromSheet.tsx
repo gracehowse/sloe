@@ -6,7 +6,7 @@
  * `docs/prototypes/stitch-sloe/energy-source-sheet.html`.
  */
 
-import React from "react";
+import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -69,7 +69,7 @@ export function formatLastSynced(
   });
 }
 
-export function WhereThisComesFromSheet({
+function WhereThisComesFromSheetImpl({
   visible,
   onClose,
   headline,
@@ -253,3 +253,5 @@ function ProvenanceRow({
     </View>
   );
 }
+
+export const WhereThisComesFromSheet = memo(WhereThisComesFromSheetImpl);

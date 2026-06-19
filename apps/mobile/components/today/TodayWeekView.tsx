@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated, {
   Easing,
@@ -194,7 +194,7 @@ function AnimatedBar({
   );
 }
 
-export function TodayWeekView(props: TodayWeekViewProps) {
+function TodayWeekViewImpl(props: TodayWeekViewProps) {
   const {
     days,
     weekTotals,
@@ -637,5 +637,7 @@ function ScrubTooltip({
     </Pressable>
   );
 }
+
+export const TodayWeekView = memo(TodayWeekViewImpl);
 
 export default TodayWeekView;

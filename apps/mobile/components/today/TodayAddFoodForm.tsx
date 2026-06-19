@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { Search } from "lucide-react-native";
 import { Radius, Spacing, Type } from "@/constants/theme";
@@ -35,7 +35,7 @@ export interface TodayAddFoodFormProps {
   textTertiaryColor: string;
 }
 
-export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
+function TodayAddFoodFormImpl(props: TodayAddFoodFormProps) {
   const {
     slots,
     activeMealSlot,
@@ -168,5 +168,7 @@ export function TodayAddFoodForm(props: TodayAddFoodFormProps) {
     </View>
   );
 }
+
+export const TodayAddFoodForm = memo(TodayAddFoodFormImpl);
 
 export default TodayAddFoodForm;

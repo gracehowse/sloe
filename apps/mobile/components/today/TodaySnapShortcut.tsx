@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Camera, Lock } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -39,7 +39,7 @@ export interface TodaySnapShortcutProps {
   testID?: string;
 }
 
-export function TodaySnapShortcut({
+function TodaySnapShortcutImpl({
   onPress,
   locked = false,
   testID,
@@ -184,5 +184,7 @@ export function TodaySnapShortcut({
     </View>
   );
 }
+
+export const TodaySnapShortcut = memo(TodaySnapShortcutImpl);
 
 export default TodaySnapShortcut;

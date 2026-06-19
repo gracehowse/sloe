@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -39,7 +39,7 @@ export interface TodayCompleteDayModalProps {
   textTertiaryColor: string;
 }
 
-export function TodayCompleteDayModal({
+function TodayCompleteDayModalImpl({
   visible,
   onClose,
   isToday,
@@ -173,5 +173,7 @@ export function TodayCompleteDayModal({
     </Modal>
   );
 }
+
+export const TodayCompleteDayModal = memo(TodayCompleteDayModalImpl);
 
 export default TodayCompleteDayModal;

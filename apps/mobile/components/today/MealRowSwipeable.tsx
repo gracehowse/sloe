@@ -1,3 +1,4 @@
+import { memo } from "react";
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
@@ -7,7 +8,7 @@ import { Accent, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /** Swipe-left delete affordance for Today meal rows and Figma summary cards. */
-export function MealRowSwipeable({
+function MealRowSwipeableImpl({
   mealId,
   onDeleteMeal,
   children,
@@ -49,3 +50,5 @@ export function MealRowSwipeable({
     </Swipeable>
   );
 }
+
+export const MealRowSwipeable = memo(MealRowSwipeableImpl);

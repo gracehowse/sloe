@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { View } from "react-native";
 import { Layout } from "@/constants/layout";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -41,7 +41,7 @@ export interface TodayCompleteDayButtonProps {
   onComplete: () => void;
 }
 
-export function TodayCompleteDayButton({
+function TodayCompleteDayButtonImpl({
   userId,
   selectedDate,
   onComplete,
@@ -71,5 +71,7 @@ export function TodayCompleteDayButton({
     </View>
   );
 }
+
+export const TodayCompleteDayButton = memo(TodayCompleteDayButtonImpl);
 
 export default TodayCompleteDayButton;

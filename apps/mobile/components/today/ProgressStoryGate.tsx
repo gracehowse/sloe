@@ -1,3 +1,4 @@
+import { memo } from "react";
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import Svg, { Circle } from "react-native-svg";
@@ -44,7 +45,7 @@ export interface ProgressStoryGateProps {
   testID?: string;
 }
 
-export function ProgressStoryGate({
+function ProgressStoryGateImpl({
   daysLogged,
   hasHistory,
   style,
@@ -192,5 +193,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
 });
+
+export const ProgressStoryGate = memo(ProgressStoryGateImpl);
 
 export default ProgressStoryGate;

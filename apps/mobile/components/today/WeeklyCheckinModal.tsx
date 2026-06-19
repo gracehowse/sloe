@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -45,7 +45,7 @@ export interface WeeklyCheckinModalProps {
   borderColor: string;
 }
 
-export function WeeklyCheckinModal({
+function WeeklyCheckinModalImpl({
   visible,
   content,
   currentTargetKcal,
@@ -353,5 +353,7 @@ function Row({
     </View>
   );
 }
+
+export const WeeklyCheckinModal = memo(WeeklyCheckinModalImpl);
 
 export default WeeklyCheckinModal;

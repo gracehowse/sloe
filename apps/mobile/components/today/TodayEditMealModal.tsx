@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { useAccent } from "@/context/theme";
 import {
@@ -94,7 +94,7 @@ export interface TodayEditMealModalProps {
 }
 
 /** Flag-aware shell — picks the renderer; all wiring is identical. */
-export function TodayEditMealModal(props: TodayEditMealModalProps) {
+function TodayEditMealModalImpl(props: TodayEditMealModalProps) {
   if (props.enabled) return <EditEntryV2 {...props} />;
   return <EditEntryLegacy {...props} />;
 }
@@ -739,5 +739,7 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
     </Modal>
   );
 }
+
+export const TodayEditMealModal = memo(TodayEditMealModalImpl);
 
 export default TodayEditMealModal;
