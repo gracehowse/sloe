@@ -327,3 +327,9 @@ Public-share page (`app/recipe/[id]/page.tsx`) full Sloe reskin (cream, plum ser
 - `CreateRecipeActionSheetGrid` — Julienne 2×2 tiles (link primary, photo Pro lock, PDF coming-soon, manual) + scratch row. Flag: `create_recipe_action_sheet_grid_v1` (default-on; legacy ActionRow list in `else`).
 - Unit: `createRecipeActionSheetGrid.test.ts`, `createRecipeActionSheetProGate.test.ts`.
 - **Tracker delta:** Import partial 7→6 (action sheet grid closed; `/import web` + `/import-shared` + paste-link pill remain).
+
+### Batch 8 — caption preview parity (ENG-898 partial, 2026-06-19, PR #527)
+
+- Web `ImportCaptionPreviewCard` + `import_caption_preview_v1` flag (OFF default).
+- Mobile captionPreview photo/link escape hatches.
+- Unit: `importCaptionPreviewParity.test.ts`.

@@ -19,6 +19,7 @@ import {
   Clipboard as ClipboardIcon,
   Camera as CameraIcon,
   FileText,
+  Link2,
   ScanLine,
   Lock,
   Share2,
@@ -1597,6 +1598,23 @@ export default function ImportSharedScreen() {
       color: colors.textTertiary,
       textAlign: "center",
     },
+    captionEscapeRow: {
+      alignSelf: "stretch",
+      gap: Spacing.sm,
+      marginTop: Spacing.sm,
+    },
+    captionEscapeBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: Spacing.sm,
+      minHeight: 44,
+      paddingVertical: Spacing.sm,
+    },
+    captionEscapeLabel: {
+      ...Type.bodyMuted,
+      color: colors.textSecondary,
+    },
 
     // Trust-affordance row (gap #2 + #9) — non-tappable "WORKS WITH" chips:
     // small cream chips holding only the platform monogram. NOT buttons (the
@@ -1979,6 +1997,40 @@ export default function ImportSharedScreen() {
                 {captionEditing ? "Done editing" : "Edit caption"}
               </Text>
             </Pressable>
+
+            <View style={styles.captionEscapeRow}>
+              <PressableScale
+                haptic="selection"
+                style={styles.captionEscapeBtn}
+                onPress={() => {
+                  setState("idle");
+                  setCaptionPlatform(null);
+                  onPhotoImportPress();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Import from a photo instead"
+                testID="caption-preview-photo-escape"
+              >
+                <CameraIcon size={16} color={colors.textSecondary} />
+                <Text style={styles.captionEscapeLabel}>Import from a photo instead</Text>
+              </PressableScale>
+              <PressableScale
+                haptic="selection"
+                style={styles.captionEscapeBtn}
+                onPress={() => {
+                  const url = captionUrl.trim();
+                  setState("idle");
+                  setCaptionPlatform(null);
+                  if (url) void runImport(url);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Import from link only"
+                testID="caption-preview-link-escape"
+              >
+                <Link2 size={16} color={colors.textSecondary} />
+                <Text style={styles.captionEscapeLabel}>Import from link only</Text>
+              </PressableScale>
+            </View>
           </View>
         )}
 
