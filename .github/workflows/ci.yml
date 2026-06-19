@@ -54,6 +54,8 @@ jobs:
         # applied. The full drift comparison (vs the linked project)
         # stays a local / scheduled task — needs Supabase CLI auth.
         run: npm run check:migrations:static
+      - name: Supabase type parity (web/mobile)
+        run: npm run db:types:check
       - name: Gate-0 DB security contracts (static, ENG-1102)
         run: npm run verify:gate0:static
       - name: Gate-0 live DB verify (optional — linked Supabase + throwaway creds)

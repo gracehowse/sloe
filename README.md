@@ -28,6 +28,8 @@ Copy environment variables from your team vault or Vercel. See [`docs/environmen
 | `npm test` | Unit / integration tests (Vitest) |
 | `npm run test:e2e` | Playwright E2E |
 | `npm run smoke:production` | HTTP smoke against `PLAYWRIGHT_BASE_URL` |
+| `npm run db:types` | Regenerate Supabase types for web, then copy the canonical output to mobile |
+| `npm run db:types:check` | Fail if web and mobile Supabase type files have drifted; run `npm run db:types` to fix |
 
 ## Documentation
 
