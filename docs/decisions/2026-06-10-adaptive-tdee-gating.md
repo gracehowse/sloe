@@ -152,6 +152,60 @@ platforms. Pinned by `progressCommentaryPhase4.test.ts` (web) +
 chip + regime. Verified in-sim: the card shows *"Maintenance held steady this
 week … 1,699 kcal with medium confidence"* + a **Medium** chip.
 
+## Display-layer follow-on — ENG-1189 (2026-06-18)
+
+Persona feedback: the Progress **Maintenance** card showed two progress bars at
+**Weigh-ins 10/7** and **Logging days 21/21** — both met/exceeded — yet the card
+still read **"Formula estimate"** with the copy *"your adaptive maintenance will
+activate once enough data accumulates."* The UI claimed full readiness while the
+engine stayed gated: a self-contradiction.
+
+Root cause: the web card's data-progress block (mobile had no such block) was a
+**parallel, wrong gate**, not the engine's:
+
+- **Wrong denominators.** It hardcoded `/7` weigh-ins and `/21` logging days —
+  the **high**-confidence tier numbers. But adaptive only *surfaces* as the
+  Maintenance source at **medium** confidence (the persistence writer
+  `refreshAdaptiveTdee` skips low-confidence results; `resolveMaintenance`
+  rejects low). The honest engage bar is **14 logging days + 5 weigh-ins**.
+- **Wrong counting.** It counted `Object.keys(nutritionByDay).filter(any-entry)`
+  — every day with any entry, **lifetime** — and `Object.keys(weightKgByDay)`
+  lifetime. The engine counts only **R1-complete full days**
+  (`kcal ≥ max(1000, 0.8 × BMR)`, ≥2 entries) within the **trailing 28-day
+  window**. A user with sparse-but-old logging reads "21/21" while the engine
+  sees a handful of gated in-window days.
+
+Two different gates on one screen → the bars maxed out while the engine had not
+engaged, and the "once enough data accumulates" copy was simply false (either
+enough HAD accumulated, in which case the value should appear; or the *real*
+missing requirement was a different one the bars never showed).
+
+Fix (no change to the kcal math): a shared pure helper
+`src/lib/nutrition/adaptiveDataProgress.ts` (`computeAdaptiveDataProgress` +
+the `computeAdaptiveDataProgressFromMeals` adapter) reports the **same** counts
+the engine gates on — gated full days + weigh-ins in the trailing window —
+against the **medium-confidence engage thresholds**, plus an honest `message`
+naming the real missing requirement (and surfacing the partial-day reason when
+that's what's holding logging days back). To keep the gate single-sourced, the
+engine's gated-day tally was extracted into `computeAdaptiveDataCounts` (reused
+by both), and the confidence-tier magic numbers are now named exports
+(`MEDIUM_CONFIDENCE_LOGGING_DAYS = 14`, `MEDIUM_CONFIDENCE_WEIGH_INS = 5`,
+`HIGH_CONFIDENCE_* = 21 / 7`).
+
+Both Progress surfaces now read the helper: web's bars + copy, and the mobile
+card (which gains the honest status + bars it previously lacked — it was a bare
+"Formula estimate from your stats" with no path to adaptive). Pinned by
+`tests/unit/adaptiveDataProgress.test.ts` (web logic) +
+`apps/mobile/tests/unit/adaptiveDataProgressParity.test.ts` (adoption + the
+contradictory copy / hardcoded denominators staying gone + a mobile-runtime
+exercise of the shared helper).
+
+Not changed: the landing copy at `src/lib/landing/content.ts` still describes
+adaptive as engaging at the `MIN_*` floor (7 days + 3 weigh-ins). That floor is
+where the engine *computes* a value — it's just `low`-confidence and not
+displayed. Reconciling the marketing claim with the medium-confidence *display*
+bar is a product-lead/legal copy decision, deferred (see ENG-1189 follow-ups).
+
 ## One-time refresh for Grace's stored stale value
 
 The fix changes the algorithm, but `daily_targets.maintenance_tdee` /
