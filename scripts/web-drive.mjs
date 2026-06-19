@@ -170,9 +170,14 @@ async function forceFlagsOn(page, flags) {
   }, flags);
 }
 
-/** Dismiss cookie banner + one-shot overlays before capture (tests/e2e/utils/visual.ts#dismissVisualOverlays). */
+/** Dismiss cookie banner + one-shot overlays before capture (tests/e2e/utils/visual.ts#dismissVisualOverlays).
+ *  The generic-dialog patterns are anchored (`^…$`) on purpose: an earlier
+ *  bare `continue` token matched real navigation/auth CTAs ("Continue with
+ *  email", pricing "Continue to checkout"), so this helper would click them
+ *  and either dismiss the email auth modal or navigate a public screenshot
+ *  (e.g. /pricing) off to /login. Only exact dismissal labels are matched now. */
 async function dismissOverlays(page) {
-  for (const rx of [/accept all/i, /dismiss checklist/i, /keep going|continue|got it|close/i]) {
+  for (const rx of [/accept all/i, /dismiss checklist/i, /^(keep going|got it|close)$/i]) {
     const btn = page.getByRole("button", { name: rx }).first();
     if (await btn.isVisible({ timeout: 1200 }).catch(() => false)) {
       await btn.click().catch(() => undefined);
