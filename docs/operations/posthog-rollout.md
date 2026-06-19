@@ -10,6 +10,39 @@ retired.
 
 ## Active flags
 
+### `deeplink_skeletons` (ENG-768)
+
+| Property | Value |
+| --- | --- |
+| Flag ID | _create in PostHog before ramp_ |
+| Type | Boolean |
+| Platforms | Mobile only (iOS) |
+| Owner | Grace |
+| Decision doc | _none — UI-consistency change, no separate decision_ |
+
+Gates the deeplink cold-open loading state on the two mobile surfaces
+that still used a raw centred `ActivityIndicator` + "Loading…": Activity
+Bonus (`apps/mobile/app/burn-detail.tsx`) and Shopping
+(`apps/mobile/app/shopping.tsx`). Flag ON → skeleton silhouette of the
+loaded layout (`BurnDetailLoadingSkeleton` / `ShoppingLoadingSkeleton`,
+both built from the shared `Shimmer` primitive in
+`components/ui/SkeletonRow.tsx`), matching the Progress tab's tile
+treatment. Flag OFF → the legacy spinner, byte-identical to pre-ENG-768.
+
+Default OFF until the PostHog flag is created and ramped — a cold/missing
+client resolves `isFeatureEnabled("deeplink_skeletons")` to `false`, so an
+unconfigured flag keeps the spinner. **Visual validation in the iOS sim is
+a pre-ramp step** (both light + dark; cold-open both screens) before
+flipping the flag on.
+
+#### Ramp schedule
+
+| Phase | Action | Why |
+| --- | --- | --- |
+| Pre-ramp | Validate skeleton in iOS sim (light + dark, both screens) | Visual changes ship validated, never blind. |
+| Ramp | Flip flag → 100% | One tester (Grace); no cohort split needed. |
+| Cleanup | After 2 weeks at 100% with no regression | Remove the gate, keep the row as an emergency kill switch (flag-hygiene rule below). |
+
 ### `session-replay-sample-rate` (ENG-516)
 
 | Property | Value |

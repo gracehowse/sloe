@@ -58,12 +58,14 @@ import {
 } from "@suppr/shared/household/shoppingScope";
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
+import { ShoppingLoadingSkeleton } from "@/components/shopping/ShoppingLoadingSkeleton";
 import { Layout } from "@/constants/layout";
 
 type ShoppingItem = {
@@ -825,22 +827,31 @@ export default function ShoppingListScreen() {
         ) : null}
 
         {loading ? (
-          // E4 (2026-05-11 visual sweep): the bare spinner gave no
-          // context — looked like a frozen screen. Add a "Loading…"
-          // caption so the user knows something's happening, matching
-          // the Discover + Library load-state pattern.
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color={accent.primary} />
-            <Text
-              style={{
-                marginTop: Spacing.md,
-                fontSize: 14,
-                color: colors.textSecondary,
-              }}
-            >
-              Loading your shopping list…
-            </Text>
-          </View>
+          // ENG-768 — deeplink cold-open loading state. Flag ON → skeleton
+          // silhouette of the loaded list (progress card + grouped section
+          // cards), matching the Progress tab's tile treatment; OFF → the
+          // legacy centred spinner (byte-identical to pre-ENG-768). Ramp via
+          // the `deeplink_skeletons` PostHog flag.
+          isFeatureEnabled("deeplink_skeletons") ? (
+            <ShoppingLoadingSkeleton />
+          ) : (
+            // E4 (2026-05-11 visual sweep): the bare spinner gave no
+            // context — looked like a frozen screen. Add a "Loading…"
+            // caption so the user knows something's happening, matching
+            // the Discover + Library load-state pattern.
+            <View style={styles.centered}>
+              <ActivityIndicator size="large" color={accent.primary} />
+              <Text
+                style={{
+                  marginTop: Spacing.md,
+                  fontSize: 14,
+                  color: colors.textSecondary,
+                }}
+              >
+                Loading your shopping list…
+              </Text>
+            </View>
+          )
         ) : items.length === 0 ? (
           // 2026-05-23 — empty state rebuilt. Was a bordered card with
           // a serif headline + body + big primary CTA pill, all wrapped
