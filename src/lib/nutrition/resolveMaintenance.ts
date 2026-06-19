@@ -100,6 +100,17 @@ export interface ResolvedMaintenance {
   adaptiveRejectedBelowFormula: boolean;
   /** Raw adaptive kcal when `adaptiveRejectedBelowFormula` is true. */
   rejectedAdaptiveKcal: number | null;
+  /**
+   * ENG-1111 calorie-safety — measured TDEE sat below the sedentary formula.
+   * Truncated-wear days can pull the measured median below a person's own
+   * sedentary maintenance (an under-eating-risk number). When this fires the
+   * resolver surfaces the FORMULA (not the low measured value) — mirroring the
+   * ENG-1057 guard the adaptive branch already has, so measured can never
+   * recommend below the user's own sedentary formula maintenance.
+   */
+  measuredRejectedBelowFormula: boolean;
+  /** Raw measured kcal when `measuredRejectedBelowFormula` is true. */
+  rejectedMeasuredKcal: number | null;
 }
 
 function isFinitePositive(n: unknown): n is number {
@@ -193,14 +204,35 @@ export function resolveMaintenance(
       Number.isFinite(measuredUpdatedAt.getTime()) &&
       now.getTime() - measuredUpdatedAt.getTime() > ADAPTIVE_STALE_DAYS * 86_400_000;
     if (!measuredStale) {
+      const measuredKcal = Math.round(measuredCandidate);
+      // ENG-1111 calorie-safety: mirror the ENG-1057 adaptive guard below.
+      // Truncated-wear days can pull the measured median below the user's own
+      // sedentary formula maintenance — an under-eating-risk number. Surface the
+      // FORMULA instead, and record the rejection so callers can explain it. The
+      // measured branch previously had NO such floor; this closes that gap.
+      if (formulaKcal != null && measuredKcal < formulaKcal) {
+        return {
+          kcal: formulaKcal,
+          source: "formula",
+          confidence: measuredConfidence,
+          formulaKcal,
+          adaptiveRejectedAsStale: false,
+          adaptiveRejectedBelowFormula: false,
+          rejectedAdaptiveKcal: null,
+          measuredRejectedBelowFormula: true,
+          rejectedMeasuredKcal: measuredKcal,
+        };
+      }
       return {
-        kcal: Math.round(measuredCandidate),
+        kcal: measuredKcal,
         source: "measured",
         confidence: measuredConfidence,
         formulaKcal,
         adaptiveRejectedAsStale: false,
         adaptiveRejectedBelowFormula: false,
         rejectedAdaptiveKcal: null,
+        measuredRejectedBelowFormula: false,
+        rejectedMeasuredKcal: null,
       };
     }
   }
@@ -235,6 +267,8 @@ export function resolveMaintenance(
           adaptiveRejectedAsStale: false,
           adaptiveRejectedBelowFormula: true,
           rejectedAdaptiveKcal: adaptiveKcal,
+          measuredRejectedBelowFormula: false,
+          rejectedMeasuredKcal: null,
         };
       }
       return {
@@ -245,6 +279,8 @@ export function resolveMaintenance(
         adaptiveRejectedAsStale: false,
         adaptiveRejectedBelowFormula: false,
         rejectedAdaptiveKcal: null,
+        measuredRejectedBelowFormula: false,
+        rejectedMeasuredKcal: null,
       };
     }
   }
@@ -258,6 +294,8 @@ export function resolveMaintenance(
     adaptiveRejectedAsStale,
     adaptiveRejectedBelowFormula: false,
     rejectedAdaptiveKcal: null,
+    measuredRejectedBelowFormula: false,
+    rejectedMeasuredKcal: null,
   };
 }
 
