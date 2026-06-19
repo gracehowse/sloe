@@ -320,7 +320,7 @@ describe("wiring pin — every nutrition_entries write builds via buildNutrition
     expect(writers.sort()).toEqual(
       [
         "app/(tabs)/barcode.tsx",
-        "app/(tabs)/index.tsx",
+        "app/(tabs)/_today/TodayScreen.tsx",
         "app/(tabs)/planner.tsx",
         "app/recipe/[id].tsx",
         "hooks/useNutritionEntriesSync.ts",

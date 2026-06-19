@@ -9,7 +9,7 @@
  * deficit`) while past-day rendered 4 (`… + Maintenance`) — a self-
  * inconsistency inside one card.
  *
- * The host (`apps/mobile/app/(tabs)/index.tsx`) feeds
+ * The host (`apps/mobile/app/(tabs)/_today/TodayScreen.tsx`) feeds
  * `profileMaintenanceTdeeKcal` from the shared `resolveMaintenance`
  * helper, which is date-independent. These tests pin the card-level
  * contract so a future refactor that re-introduces an `isToday`

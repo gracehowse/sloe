@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const MOBILE_TODAY = resolve(__dirname, "../../app/(tabs)/index.tsx");
+const MOBILE_TODAY = resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
 const WEB_TODAY = resolve(
   __dirname,
   "../../../../src/app/components/NutritionTracker.tsx",

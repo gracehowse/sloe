@@ -240,7 +240,7 @@ describe("TodayMealsSection — today_log_usual_row_v2 flag", () => {
  * ENG-783 — saved-meal portion editor wiring (today-edit-entry-v2).
  *
  * The host passes `onRequestPortion` ONLY when `today-edit-entry-v2` is on
- * (see `app/(tabs)/index.tsx` → `onRequestPortion={isFeatureEnabled(...) ?
+ * (see `app/(tabs)/_today/TodayScreen.tsx` → `onRequestPortion={isFeatureEnabled(...) ?
  * openPortionConfirm : undefined}`). The component itself doesn't read that
  * flag — it just routes saved-meal taps through `onRequestPortion ??
  * onLogSavedMeal`. So these tests don't mock `today-edit-entry-v2`; they

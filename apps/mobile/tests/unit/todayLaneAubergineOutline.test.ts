@@ -28,7 +28,7 @@ import { describe, expect, it } from "vitest";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf8");
 
-const INDEX = read("app/(tabs)/index.tsx");
+const INDEX = read("app/(tabs)/_today/TodayScreen.tsx");
 const NORTH_STAR = read("components/today/NorthStarBlock.tsx");
 const LOG_SHEET = read("components/today/LogSheet.tsx");
 const QUICK_ADD = read("components/QuickAddPanel.tsx");

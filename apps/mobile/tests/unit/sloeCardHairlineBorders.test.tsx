@@ -102,7 +102,7 @@ describe("resting cards STILL hand-rolled — hairline edge, not a heavy 1pt", (
   // docs/decisions/2026-06-04-card-component-consolidation.md). Until they
   // migrate, they must still draw a hairline, never a 1pt box.
   const HAND_ROLLED = [
-    "app/(tabs)/index.tsx", // styles.card — legacy 3.4k-line screen shell
+    "app/(tabs)/_today/TodayScreen.tsx", // styles.card — legacy 3.4k-line screen shell
     "components/today/ProgressHeadline.tsx",
     "components/today/ProgressStoryGate.tsx",
     "components/RemainingMacrosBar.tsx",

@@ -22,7 +22,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const PATHS = {
-  todayIndex: resolve(__dirname, "../../app/(tabs)/index.tsx"),
+  todayIndex: resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
   barcode: resolve(__dirname, "../../app/(tabs)/barcode.tsx"),
   planner: resolve(__dirname, "../../app/(tabs)/planner.tsx"),
   recipeDetail: resolve(__dirname, "../../app/recipe/[id].tsx"),

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const HOST = readFileSync(
-  resolve(__dirname, "../../app/(tabs)/index.tsx"),
+  resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
 

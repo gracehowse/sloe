@@ -1,5 +1,5 @@
 /**
- * Source-pin: Today host (`apps/mobile/app/(tabs)/index.tsx`) wires
+ * Source-pin: Today host (`apps/mobile/app/(tabs)/_today/TodayScreen.tsx`) wires
  * the long-press on the calorie ring so it fires BOTH the display-
  * mode toggle AND the ring-expanded toggle in lock-step (2026-05-02
  * user feedback: "the click and hold to switch between views was

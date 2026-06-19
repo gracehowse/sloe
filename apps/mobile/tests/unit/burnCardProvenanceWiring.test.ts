@@ -43,7 +43,7 @@ describe("F-131 — TodayActivityBonusCard exposes onShowBurnProvenance", () => 
 });
 
 describe("F-131 — Today host wires the burn provenance sheet", () => {
-  const src = read("apps/mobile/app/(tabs)/index.tsx");
+  const src = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
   const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
   it("uses a single shared provenance state with 'activity' | 'burn' | null", () => {

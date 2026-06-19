@@ -145,13 +145,13 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
     // `styles.card` is the Today top-level resting-card style — it sits on the
     // page (scroll) ground, so it now takes the soft variant, matching every
     // other page-ground Today card. (Was `useTodayCardElevation()` flat.)
-    const src = readFileSync(join(ROOT, "app/(tabs)/index.tsx"), "utf8");
+    const src = readFileSync(join(ROOT, "app/(tabs)/_today/TodayScreen.tsx"), "utf8");
     expect(src).toMatch(/useCardElevation\(\{\s*variant:\s*"soft"\s*\}\)/);
     expect(src).not.toContain("useTodayCardElevation");
   });
 
   it("index.tsx styles.card uses CARD_RADIUS (24px)", () => {
-    const src = readFileSync(join(ROOT, "app/(tabs)/index.tsx"), "utf8");
+    const src = readFileSync(join(ROOT, "app/(tabs)/_today/TodayScreen.tsx"), "utf8");
     expect(src).toMatch(/card:\s*\{[\s\S]*?borderRadius:\s*CARD_RADIUS/);
   });
 
