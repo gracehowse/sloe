@@ -77,6 +77,16 @@ const SAMPLE: Record<string, number> = {
   "2026-03-15": 55.8, // older month — should be in a separate section
 };
 
+function makeDeleteWeight(map: Record<string, number>) {
+  return vi.fn(async (dateISO: string) => {
+    const next = { ...map };
+    delete next[dateISO];
+    updateSpy({ weight_kg_by_day: next });
+    const newest = Object.keys(next).sort().reverse()[0];
+    return { weightKgByDay: next, weightKg: newest ? next[newest] : null };
+  });
+}
+
 describe("<AllWeightDataSheet>", () => {
   it("renders nothing visible when not open", () => {
     const { queryByTestId } = render(
@@ -86,6 +96,7 @@ describe("<AllWeightDataSheet>", () => {
         userId="u-1"
         isImperial={false}
         weightKgByDay={SAMPLE}
+        onDeleteWeight={makeDeleteWeight(SAMPLE)}
         onEntryDeleted={() => {}}
         onEditEntry={() => {}}
       />,
@@ -101,6 +112,7 @@ describe("<AllWeightDataSheet>", () => {
         userId="u-1"
         isImperial={false}
         weightKgByDay={SAMPLE}
+        onDeleteWeight={makeDeleteWeight(SAMPLE)}
         onEntryDeleted={() => {}}
         onEditEntry={() => {}}
       />,
@@ -117,6 +129,7 @@ describe("<AllWeightDataSheet>", () => {
         userId="u-1"
         isImperial={false}
         weightKgByDay={SAMPLE}
+        onDeleteWeight={makeDeleteWeight(SAMPLE)}
         onEntryDeleted={() => {}}
         onEditEntry={() => {}}
       />,
@@ -129,6 +142,7 @@ describe("<AllWeightDataSheet>", () => {
         userId="u-1"
         isImperial
         weightKgByDay={SAMPLE}
+        onDeleteWeight={makeDeleteWeight(SAMPLE)}
         onEntryDeleted={() => {}}
         onEditEntry={() => {}}
       />,
@@ -145,6 +159,7 @@ describe("<AllWeightDataSheet>", () => {
         userId="u-1"
         isImperial={false}
         weightKgByDay={SAMPLE}
+        onDeleteWeight={makeDeleteWeight(SAMPLE)}
         onEntryDeleted={() => {}}
         onEditEntry={() => {}}
       />,
@@ -162,6 +177,7 @@ describe("<AllWeightDataSheet>", () => {
         userId="u-1"
         isImperial={false}
         weightKgByDay={{}}
+        onDeleteWeight={makeDeleteWeight(SAMPLE)}
         onEntryDeleted={() => {}}
         onEditEntry={() => {}}
       />,
@@ -176,7 +192,11 @@ describe("<AllWeightDataSheet>", () => {
     // Two Alerts in the new flow: (1) the row action sheet (Edit / Delete /
     // Cancel), then (2) the delete confirmation (Cancel / Delete). Auto-tap
     // "Delete" on whichever Alert is shown so the chain runs to completion.
-    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(((title, msg, buttons) => {
+    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(((
+      title,
+      msg,
+      buttons,
+    ) => {
       if (Array.isArray(buttons)) {
         const del = buttons.find((b: { text?: string }) => b.text === "Delete");
         del?.onPress?.();
@@ -190,6 +210,7 @@ describe("<AllWeightDataSheet>", () => {
         userId="u-1"
         isImperial={false}
         weightKgByDay={SAMPLE}
+        onDeleteWeight={makeDeleteWeight(SAMPLE)}
         onEntryDeleted={onEntryDeleted}
         onEditEntry={() => {}}
       />,
@@ -200,7 +221,8 @@ describe("<AllWeightDataSheet>", () => {
     });
     const [payload] = updateSpy.mock.calls[0];
     expect(payload).toHaveProperty("weight_kg_by_day");
-    const next = (payload as { weight_kg_by_day: Record<string, number> }).weight_kg_by_day;
+    const next = (payload as { weight_kg_by_day: Record<string, number> })
+      .weight_kg_by_day;
     expect(next[TODAY_ISO]).toBeUndefined();
     // Other entries preserved
     expect(next["2026-05-06"]).toBe(54.3);
@@ -210,7 +232,11 @@ describe("<AllWeightDataSheet>", () => {
 
   it("Cancel on the row action sheet does NOT fire the Supabase update", async () => {
     const onEntryDeleted = vi.fn();
-    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(((title, msg, buttons) => {
+    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(((
+      title,
+      msg,
+      buttons,
+    ) => {
       // No-op: user taps Cancel implicitly by us not calling any onPress.
       void buttons;
     }) as typeof Alert.alert);
@@ -222,6 +248,7 @@ describe("<AllWeightDataSheet>", () => {
         userId="u-1"
         isImperial={false}
         weightKgByDay={SAMPLE}
+        onDeleteWeight={makeDeleteWeight(SAMPLE)}
         onEntryDeleted={onEntryDeleted}
         onEditEntry={() => {}}
       />,
@@ -235,7 +262,11 @@ describe("<AllWeightDataSheet>", () => {
   it("long-press → Edit closes the sheet and routes the date up via onEditEntry", () => {
     const onClose = vi.fn();
     const onEditEntry = vi.fn();
-    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(((title, msg, buttons) => {
+    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(((
+      title,
+      msg,
+      buttons,
+    ) => {
       if (Array.isArray(buttons)) {
         const edit = buttons.find((b: { text?: string }) => b.text === "Edit");
         edit?.onPress?.();
@@ -249,6 +280,7 @@ describe("<AllWeightDataSheet>", () => {
         userId="u-1"
         isImperial={false}
         weightKgByDay={SAMPLE}
+        onDeleteWeight={makeDeleteWeight(SAMPLE)}
         onEntryDeleted={() => {}}
         onEditEntry={onEditEntry}
       />,

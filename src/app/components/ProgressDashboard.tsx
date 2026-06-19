@@ -16,7 +16,7 @@ import {
   Bar,
 } from "recharts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
-import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
+import { persistWeightKgByDay, pruneWeightKgByDay } from "../../lib/progress/weightData.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
 import { avgCaloriesOverRecentLoggedDays, calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
@@ -592,9 +592,6 @@ function ProgressDashboardContent() {
       if (!authedUserId) return;
       const { error } = await supabase.from("profiles").update(patch).eq("id", authedUserId);
       if (error) console.error("[progress] save failed", error.message);
-      else if ("weight_kg_by_day" in patch) {
-        void refreshAdaptiveTdeeForUser(supabase, authedUserId);
-      }
     },
     [authedUserId],
   );
@@ -611,7 +608,7 @@ function ProgressDashboardContent() {
     const newLow =
       winMomentEnabled &&
       isNewWeightLow({ savedKg: kg, priorByDay: weightKgByDay, targetDateKey: tk });
-    const nextMap = { ...weightKgByDay, [tk]: kg };
+    const nextMap = pruneWeightKgByDay({ ...weightKgByDay, [tk]: kg });
     setWeightKgByDay(nextMap);
     setWeightKg(kg);
     setWeightInput("");
@@ -634,8 +631,9 @@ function ProgressDashboardContent() {
         /* analytics fire-and-forget */
       }
     }
-    await persistProfilePatch({ weight_kg: kg, weight_kg_by_day: nextMap });
-  }, [weightInput, profileMeasurementSystem, weightKgByDay, persistProfilePatch]);
+    if (!authedUserId) return;
+    await persistWeightKgByDay({ supabase, userId: authedUserId, weightKgByDay: nextMap, weightKg: kg });
+  }, [weightInput, profileMeasurementSystem, weightKgByDay, authedUserId]);
 
   const saveTodaySteps = useCallback(async () => {
     const v = Math.round(Number.parseFloat(stepsInput.replace(",", ".")));

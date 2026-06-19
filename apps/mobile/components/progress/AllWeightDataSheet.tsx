@@ -14,8 +14,6 @@ import { Scale as ScaleIcon, X } from "lucide-react-native";
 import { IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { supabase } from "@/lib/supabase";
-import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { kgToLb } from "@suppr/shared/units/imperial";
 
 /**
@@ -55,6 +53,10 @@ export interface AllWeightDataSheetProps {
    * state (and trigger a chart re-render). Receives the date key that
    * was removed.
    */
+  onDeleteWeight: (dateISO: string) => Promise<{
+    weightKgByDay: Record<string, number>;
+    weightKg: number | null;
+  }>;
   onEntryDeleted: (dateISO: string, nextMap: Record<string, number>) => void;
   /**
    * ENG-748 #9 — called when the user chooses "Edit" on a row. The parent
@@ -118,6 +120,7 @@ export function AllWeightDataSheet({
   userId,
   isImperial,
   weightKgByDay,
+  onDeleteWeight,
   onEntryDeleted,
   onEditEntry,
 }: AllWeightDataSheetProps) {
@@ -142,20 +145,17 @@ export function AllWeightDataSheet({
   const handleDelete = React.useCallback(
     async (dateISO: string) => {
       if (!userId) return;
-      const next = { ...weightKgByDay };
-      delete next[dateISO];
-      const { error } = await supabase
-        .from("profiles")
-        .update({ weight_kg_by_day: next })
-        .eq("id", userId);
-      if (error) {
-        Alert.alert("Couldn't delete entry", error.message ?? "Try again.");
-        return;
+      try {
+        const saved = await onDeleteWeight(dateISO);
+        onEntryDeleted(dateISO, saved.weightKgByDay);
+      } catch (error) {
+        Alert.alert(
+          "Couldn't delete entry",
+          error instanceof Error ? error.message : "Try again.",
+        );
       }
-      void refreshAdaptiveTdeeForUser(supabase, userId);
-      onEntryDeleted(dateISO, next);
     },
-    [userId, weightKgByDay, onEntryDeleted],
+    [userId, onDeleteWeight, onEntryDeleted],
   );
 
   const confirmDelete = React.useCallback(
@@ -267,7 +267,9 @@ export function AllWeightDataSheet({
           <FlatList
             data={rows}
             keyExtractor={(r) => r.key}
-            contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xl }}
+            contentContainerStyle={{
+              paddingBottom: insets.bottom + Spacing.xl,
+            }}
             renderItem={({ item }) => {
               if (item.kind === "header") {
                 return (
@@ -277,12 +279,7 @@ export function AllWeightDataSheet({
                       { backgroundColor: colors.background },
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.sectionTitle,
-                        { color: colors.text },
-                      ]}
-                    >
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
                       {item.label}
                     </Text>
                     <Text
@@ -291,7 +288,8 @@ export function AllWeightDataSheet({
                         { color: colors.textSecondary },
                       ]}
                     >
-                      {item.count} {item.count === 1 ? "measurement" : "measurements"}
+                      {item.count}{" "}
+                      {item.count === 1 ? "measurement" : "measurements"}
                     </Text>
                   </View>
                 );

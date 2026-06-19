@@ -20,12 +20,12 @@ import { describe, expect, it } from "vitest";
 
 import { Type, FontFamily } from "../../constants/theme";
 
-const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf8");
+const read = (p: string) =>
+  readFileSync(resolve(__dirname, "..", "..", p), "utf8");
 
 const TARGETS = read("app/targets.tsx");
 const HEALTH = read("app/health-sync.tsx");
 const HOUSEHOLD = read("app/household-settings.tsx");
-const WEIGHT = read("app/weight-tracker.tsx");
 const NUTRITION_SOURCES = read("app/nutrition-sources.tsx");
 const PUSH_HEADER = read("components/PushScreenHeader.tsx");
 
@@ -51,23 +51,24 @@ describe("Unified serif screen titles — the five in-body H1s use Type.screenTi
   it("Targets 'Daily targets' is on Type.screenTitle (the one real Inter→serif fix)", () => {
     expect(TARGETS).toMatch(/title:\s*\{\s*\n\s*\.\.\.Type\.screenTitle/);
     // Must NOT regress to the old hand-rolled Inter 24/700 header.
-    expect(TARGETS).not.toMatch(/title:\s*\{[\s\S]{0,80}fontSize:\s*24,\s*\n\s*fontWeight:\s*"700"/);
+    expect(TARGETS).not.toMatch(
+      /title:\s*\{[\s\S]{0,80}fontSize:\s*24,\s*\n\s*fontWeight:\s*"700"/,
+    );
   });
 
   it("Health-Sync title is on Type.screenTitle (was serif 28/700)", () => {
     expect(HEALTH).toMatch(/title:\s*\{\s*\n\s*\.\.\.Type\.screenTitle/);
     // The old hand-rolled serif 28/700 header must be gone.
-    expect(HEALTH).not.toMatch(/title:\s*\{[\s\S]{0,120}fontSize:\s*28,[\s\S]{0,60}fontWeight:\s*"700"/);
+    expect(HEALTH).not.toMatch(
+      /title:\s*\{[\s\S]{0,120}fontSize:\s*28,[\s\S]{0,60}fontWeight:\s*"700"/,
+    );
   });
 
   it("Household title is on Type.screenTitle (was hand-rolled serif 28/600)", () => {
     expect(HOUSEHOLD).toMatch(/\.\.\.Type\.screenTitle[\s\S]{0,80}Household/);
-    expect(HOUSEHOLD).not.toMatch(/fontFamily:\s*FontFamily\.serifSemibold,\s*fontSize:\s*28[\s\S]{0,60}Household/);
-  });
-
-  it("Weight & Trends title is on Type.screenTitle (was Type.display@28)", () => {
-    expect(WEIGHT).toMatch(/headerTitle:\s*\{\s*\n\s*\.\.\.Type\.screenTitle/);
-    expect(WEIGHT).not.toMatch(/headerTitle:\s*\{[\s\S]{0,40}\.\.\.Type\.display/);
+    expect(HOUSEHOLD).not.toMatch(
+      /fontFamily:\s*FontFamily\.serifSemibold,\s*fontSize:\s*28[\s\S]{0,60}Household/,
+    );
   });
 
   it("Nutrition-sources screen title is on Type.screenTitle in the header", () => {
@@ -78,7 +79,11 @@ describe("Unified serif screen titles — the five in-body H1s use Type.screenTi
 
 describe("PushScreenHeader — the single shared nav-title lever (Spec 3)", () => {
   it("renders the title with Type.navTitle, not Type.headline", () => {
-    expect(PUSH_HEADER).toMatch(/\.\.\.Type\.navTitle,\s*color:\s*colors\.text[\s\S]{0,40}\{title\}/);
-    expect(PUSH_HEADER).not.toMatch(/\.\.\.Type\.headline,\s*color:\s*colors\.text[\s\S]{0,40}\{title\}/);
+    expect(PUSH_HEADER).toMatch(
+      /\.\.\.Type\.navTitle,\s*color:\s*colors\.text[\s\S]{0,40}\{title\}/,
+    );
+    expect(PUSH_HEADER).not.toMatch(
+      /\.\.\.Type\.headline,\s*color:\s*colors\.text[\s\S]{0,40}\{title\}/,
+    );
   });
 });

@@ -72,7 +72,25 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-type UpdatePayload = { weight_kg_by_day: Record<string, number>; weight_kg?: number };
+type UpdatePayload = {
+  weight_kg_by_day: Record<string, number>;
+  weight_kg?: number;
+};
+
+function newestDateKey(map: Record<string, number>): string | null {
+  return Object.keys(map).sort().reverse()[0] ?? null;
+}
+
+function makeSaveWeight(map: Record<string, number>) {
+  return vi.fn(async (kg: number, dateKey: string) => {
+    const next = { ...map, [dateKey]: kg };
+    const newest = newestDateKey(next);
+    const payload: UpdatePayload = { weight_kg_by_day: next };
+    if (newest === dateKey) payload.weight_kg = kg;
+    updateSpy(payload);
+    return { weightKgByDay: next, weightKg: newest ? next[newest] : null };
+  });
+}
 
 describe("<LogWeightSheet> edit mode (ENG-748 #9)", () => {
   it("shows edit copy and pre-fills with the stored value for the target date", () => {
@@ -85,6 +103,7 @@ describe("<LogWeightSheet> edit mode (ENG-748 #9)", () => {
         weightKgByDay={SAMPLE}
         weightKg={54.9}
         editDate="2026-05-06"
+        onSaveWeight={makeSaveWeight(SAMPLE)}
         onSaved={() => {}}
       />,
     );
@@ -104,6 +123,7 @@ describe("<LogWeightSheet> edit mode (ENG-748 #9)", () => {
         weightKgByDay={SAMPLE}
         weightKg={54.9}
         editDate="2026-05-06"
+        onSaveWeight={makeSaveWeight(SAMPLE)}
         onSaved={onSaved}
       />,
     );
@@ -135,6 +155,7 @@ describe("<LogWeightSheet> edit mode (ENG-748 #9)", () => {
         weightKgByDay={SAMPLE}
         weightKg={54.9}
         editDate="2026-05-11"
+        onSaveWeight={makeSaveWeight(SAMPLE)}
         onSaved={onSaved}
       />,
     );
@@ -160,6 +181,7 @@ describe("<LogWeightSheet> edit mode (ENG-748 #9)", () => {
         isImperial={false}
         weightKgByDay={SAMPLE}
         weightKg={54.9}
+        onSaveWeight={makeSaveWeight(SAMPLE)}
         onSaved={onSaved}
       />,
     );
@@ -174,7 +196,9 @@ describe("<LogWeightSheet> edit mode (ENG-748 #9)", () => {
   });
 
   it("rejects a non-positive value without writing (failed-write guard)", () => {
-    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation((() => {}) as typeof Alert.alert);
+    const alertSpy = vi
+      .spyOn(Alert, "alert")
+      .mockImplementation((() => {}) as typeof Alert.alert);
     const { getByTestId } = render(
       <LogWeightSheet
         visible
@@ -184,6 +208,7 @@ describe("<LogWeightSheet> edit mode (ENG-748 #9)", () => {
         weightKgByDay={SAMPLE}
         weightKg={54.9}
         editDate="2026-05-06"
+        onSaveWeight={makeSaveWeight(SAMPLE)}
         onSaved={() => {}}
       />,
     );

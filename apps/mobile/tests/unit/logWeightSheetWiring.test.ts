@@ -1,10 +1,9 @@
 /**
  * Weight chart consolidation Phase 1 (2026-05-11, B6).
  *
- * Pins: the Progress tab `/weight-tracker` push CTAs have been
- * replaced by an inline `<LogWeightSheet>` open. The standalone
- * `/weight-tracker` route is still alive for backwards compat
- * (Phase 3 deletes it), but Progress no longer pushes there.
+ * Pins: the Progress tab weight CTAs stay on the inline
+ * `<LogWeightSheet>` open path. The legacy standalone route was
+ * removed in ENG-376 Phase 3, so Progress must not reintroduce it.
  *
  * Without this pin a future agent could re-add a router.push for
  * convenience, undoing the consolidation.
@@ -25,9 +24,7 @@ describe("Progress tab — log-weight inline sheet (Phase 1)", () => {
   });
 
   it("Progress imports LogWeightSheet", () => {
-    expect(src).toContain(
-      'from "@/components/progress/LogWeightSheet"',
-    );
+    expect(src).toContain('from "@/components/progress/LogWeightSheet"');
     expect(src).toContain("LogWeightSheet");
   });
 
@@ -42,8 +39,7 @@ describe("Progress tab — log-weight inline sheet (Phase 1)", () => {
   it("no Progress CTA pushes to /weight-tracker anymore", () => {
     // The 4 prior CTAs (header Scale, Trend tile, sparse-state Log
     // weight, Weight Journey card) must all open the sheet. Phase 3
-    // deletes the route; until then, only deeplinks should land
-    // there — Progress code should not push there itself.
+    // deleted the route, so Progress code must not push there itself.
     expect(src).not.toMatch(/router\.push\(\s*"\/weight-tracker"/);
   });
 
@@ -52,8 +48,7 @@ describe("Progress tab — log-weight inline sheet (Phase 1)", () => {
     // single canonical surface for the weight chart (not delegated to a
     // push route).
     // Premium-audit P0-1 (2026-06-10): the toy inline Sparkline (added in
-    // the 2026-06-04 redesign) was replaced by the canonical `<WeightChart>`
-    // — the same Withings-grade component the /weight-tracker route mounts.
+    // the 2026-06-04 redesign) was replaced by the canonical `<WeightChart>`.
     // Pin the import + the mount + the range wiring so a future agent can't
     // silently regress to the hardcoded-range sparkline.
     expect(src).toContain('from "@/components/progress/WeightChart"');
@@ -64,7 +59,7 @@ describe("Progress tab — log-weight inline sheet (Phase 1)", () => {
     // grammar, so the chart range now derives from the period TYPE (was the
     // relative `rangeKey`). The intent — "range follows the picker, never a
     // hardcoded literal" — is unchanged.
-    expect(src).toContain("progressPeriodToWeightRange(period.type)");
+    expect(src).toMatch(/progressPeriodToWeightRange\(\s*period\.type,?\s*\)/);
     // The retired Sparkline must be fully gone (no dead component / usage).
     expect(src).not.toContain("function Sparkline(");
     expect(src).not.toContain("<Sparkline ");

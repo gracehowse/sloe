@@ -129,6 +129,7 @@ import {
 } from "@/lib/progress/weightTrend";
 import { weightDeltaTone } from "@/lib/progress/progressRangeChart";
 import { WeightChart } from "@/components/progress/WeightChart";
+import { useWeightData } from "@/hooks/useWeightData";
 
 /* ── Helpers ── */
 function parseNumMap(raw: unknown): Record<string, number> {
@@ -195,9 +196,17 @@ export default function ProgressScreen() {
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState(DEFAULT_TARGETS);
   const [byDay, setByDay] = useState<ByDay>({});
-  const [weightKg, setWeightKg] = useState<number | null>(null);
-  const [goalWeightKg, setGoalWeightKg] = useState<number | null>(null);
-  const [weightKgByDay, setWeightKgByDay] = useState<Record<string, number>>({});
+  const {
+    weightKg,
+    goalWeightKg,
+    weightKgByDay,
+    setWeightKg,
+    setGoalWeightKg,
+    hydrateFromProfile,
+    logWeight,
+    editWeight,
+    deleteWeight,
+  } = useWeightData(userId);
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [userGoal, setUserGoal] = useState<string | null>(null);
@@ -491,9 +500,7 @@ export default function ProgressScreen() {
           .maybeSingle();
         if (refreshed) {
           setStepsByDay(parseNumMap((refreshed as any).steps_by_day));
-          setWeightKgByDay(parseNumMap((refreshed as any).weight_kg_by_day));
-          const w = (refreshed as any).weight_kg != null ? Number((refreshed as any).weight_kg) : null;
-          if (Number.isFinite(w)) setWeightKg(w);
+          hydrateFromProfile(refreshed);
         }
       } finally {
         // Only flip if the sync itself didn't already mark failed.
@@ -519,11 +526,7 @@ export default function ProgressScreen() {
         // Fibre bar; falls back to the shared 28g default when unset.
         fiber: ((profile as { target_fiber_g?: number | null }).target_fiber_g as number) ?? DEFAULT_TARGETS.fiber,
       });
-      const w = profile.weight_kg != null ? Number(profile.weight_kg) : null;
-      const gw = profile.goal_weight_kg != null ? Number(profile.goal_weight_kg) : null;
-      setWeightKg(Number.isFinite(w) ? w : null);
-      setGoalWeightKg(Number.isFinite(gw) ? gw : null);
-      setWeightKgByDay(parseNumMap(profile.weight_kg_by_day));
+      hydrateFromProfile(profile);
       setStepsByDay(parseNumMap(profile.steps_by_day));
       // ENG-787 — burn + workout + preference for the effective-target chart.
       setActivityBurnByDay(parseNumMap((profile as any).activity_burn_by_day));
@@ -566,7 +569,8 @@ export default function ProgressScreen() {
       // over-inflated TDEE by ~14% for users who never picked a level
       // (TestFlight `AIIm60nKi_sTu3-4YjR-WR4`, 2026-04-18).
       const actLevel = ((profile as any).activity_level as string) ?? "sedentary";
-      const wForTdee = Number.isFinite(w) ? w! : 70;
+      const profileWeightForTdee = profile.weight_kg != null ? Number(profile.weight_kg) : null;
+      const wForTdee = Number.isFinite(profileWeightForTdee) ? profileWeightForTdee! : 70;
       const sTdee = calculateTDEE(sex, wForTdee, heightCm, ageVal, actLevel);
       setStaticTdee(sTdee);
       const aTdee = (profile as any).adaptive_tdee != null ? Number((profile as any).adaptive_tdee) : null;
@@ -1338,7 +1342,7 @@ export default function ProgressScreen() {
         const fmtW = (kg: number) => formatWeightForUnit({ kg, system: measurementSystem });
         // Premium-audit #3 (2026-06-10): tone the "this week" delta magnitude
         // toward-goal = sage / away-from-goal = amber, via the shared
-        // `weightDeltaTone` helper (same logic as weight-tracker's rangeDelta).
+        // `weightDeltaTone` helper (same logic as the retired weight-tracker rangeDelta).
         // The week baseline is the weigh-in 7 days ago = latest − weekDeltaKg.
         // The arrow icon stays factual/uncoloured (anti-shame brand rule); only
         // the number picks up tone.
@@ -1426,7 +1430,7 @@ export default function ProgressScreen() {
                 plum line + hollow dots, right Y-axis ticks, dashed goal
                 line, range-aware X ticks, scrub-to-read pill, "you are
                 here" marker. Replaces the toy Sparkline; same component the
-                weight-tracker route already mounts (Withings parity). Keyed
+                retired weight-tracker route mounted (Withings parity). Keyed
                 on the period (type + offset) so a period change remounts with
                 a fresh layout. The Trend/Scale toggle is label-only — the
                 chart always draws the points line + smoothed MA envelope. */}
@@ -2152,9 +2156,10 @@ export default function ProgressScreen() {
       weightKgByDay={weightKgByDay}
       weightKg={weightKg}
       editDate={editWeightDate}
-      onSaved={({ weightKgByDay: next, weightKg: kg, isNewLow }) => {
-        setWeightKgByDay(next);
-        setWeightKg(kg);
+      onSaveWeight={(kg, dateKey) =>
+        editWeightDate ? editWeight(kg, dateKey) : logWeight(kg, dateKey)
+      }
+      onSaved={({ isNewLow }) => {
         // ENG-824 — a new all-time low is the single weight landmark worth
         // the reserved celebration. The sheet already fired the loud success
         // haptic (gated on `redesign_winmoment`); mount the Lottie + emit the
@@ -2175,20 +2180,15 @@ export default function ProgressScreen() {
       userId={userId ?? null}
       isImperial={measurementSystem === "imperial"}
       weightKgByDay={weightKgByDay}
+      onDeleteWeight={deleteWeight}
       onEditEntry={(dateISO) => {
         // The all-data sheet closes itself before calling this; open the
         // log sheet in edit mode for the chosen date.
         setEditWeightDate(dateISO);
         setLogWeightOpen(true);
       }}
-      onEntryDeleted={(_dateISO, nextMap) => {
-        setWeightKgByDay(nextMap);
-        // Refresh the latest scalar in case we just deleted today's
-        // entry — fall back to the newest remaining entry.
-        const remaining = Object.entries(nextMap)
-          .filter(([, kg]) => Number.isFinite(kg) && (kg as number) > 0)
-          .sort(([a], [b]) => b.localeCompare(a));
-        setWeightKg(remaining.length > 0 ? (remaining[0][1] as number) : null);
+      onEntryDeleted={(_dateISO, _nextMap) => {
+        // The shared hook has already updated the canonical map and latest scalar.
       }}
     />
     <Milestone30DayModal

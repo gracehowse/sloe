@@ -2,8 +2,7 @@
  * DC12 (2026-05-14, premium-bar audit microcopy sweep).
  *
  * Pins the Headspace-style supportive moment-of-truth line on the
- * canonical mobile weigh-in surface (`LogWeightSheet`) and on the
- * legacy `/weight-tracker` route. The line reframes a high-emotion
+ * canonical mobile weigh-in surface (`LogWeightSheet`). The line reframes a high-emotion
  * scale moment as a data-helps-you statement; if a future agent
  * decides to dedupe or "tighten" the sheet copy, this test fails
  * so the call can be made deliberately.
@@ -17,7 +16,6 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = resolve(__dirname, "../..");
 const SHEET_PATH = resolve(ROOT, "components/progress/LogWeightSheet.tsx");
-const TRACKER_PATH = resolve(ROOT, "app/weight-tracker.tsx");
 const WEB_DASH_PATH = resolve(
   ROOT,
   "../../src/app/components/ProgressDashboard.tsx",
@@ -30,12 +28,6 @@ describe("Weigh-in supportive moment-of-truth copy (DC12)", () => {
     const src = readFileSync(SHEET_PATH, "utf8");
     expect(src).toContain(SUPPORTIVE_LINE);
     expect(src).toContain("log-weight-supportive-copy");
-  });
-
-  it("/weight-tracker legacy route carries the supportive line", () => {
-    const src = readFileSync(TRACKER_PATH, "utf8");
-    expect(src).toContain(SUPPORTIVE_LINE);
-    expect(src).toContain("weight-tracker-supportive-copy");
   });
 
   it("Web ProgressDashboard carries the same supportive line (parity)", () => {

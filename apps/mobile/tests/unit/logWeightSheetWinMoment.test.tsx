@@ -85,6 +85,10 @@ afterEach(() => {
 function renderSheet(onSaved: ReturnType<typeof vi.fn>) {
   return render(
     <LogWeightSheet
+      onSaveWeight={async (kg, dateKey) => ({
+        weightKgByDay: { ...HISTORY, [dateKey]: kg },
+        weightKg: kg,
+      })}
       visible
       onClose={() => {}}
       userId="u-1"
