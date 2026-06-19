@@ -67,11 +67,12 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     const sampleRate = readCachedSampleRate();
     posthog.init(key, {
       // 2026-05-14 — point at the Next.js reverse-proxy
-      // (`next.config.ts` rewrites). `ui_host` keeps PostHog
-      // dashboard deep-links working since the proxy host is not
-      // app.posthog.com.
+      // (`next.config.ts` rewrites). Keep direct PostHog hosts out of
+      // the production client bundle; dashboard deep-links can still be
+      // restored by setting NEXT_PUBLIC_POSTHOG_UI_HOST at build time,
+      // but ingestion/flags must remain on the first-party `/ingest` path.
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || "/ingest",
-      ui_host: "https://us.posthog.com",
+      ui_host: process.env.NEXT_PUBLIC_POSTHOG_UI_HOST?.trim(),
       person_profiles: "identified_only",
       // Start opted out if no consent yet or explicitly declined
       opt_out_capturing_by_default: consent !== "accepted",
