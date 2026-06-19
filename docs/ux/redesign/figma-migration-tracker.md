@@ -333,3 +333,10 @@ Public-share page (`app/recipe/[id]/page.tsx`) full Sloe reskin (cream, plum ser
 - Web `ImportCaptionPreviewCard` + `import_caption_preview_v1` flag (OFF default).
 - Mobile captionPreview photo/link escape hatches.
 - Unit: `importCaptionPreviewParity.test.ts`.
+
+### Batch 9 — `/import-shared` idle §3.2 polish (ENG-898 partial, 2026-06-19, PR #529)
+
+- Mobile redesign idle: composite paste row (`Link2` + "Paste a link…" + inline terracotta Import pill), conditional "Use clipboard" (pasteboard peek + dedup), CREME creator `@handle` preview with dismiss, short IG/TT share-sheet hint, `ChevronRight` on recent rows, photo tile Pro lock pill.
+- Shared helper: `extractCreatorHandleFromImportUrl` in `src/lib/recipes/resolveImportUrl.ts`.
+- Units: `importSharedRedesign.test.ts` (idle §3.2 pins), `extractCreatorHandleFromImportUrl.test.ts`.
+- Flag: existing `recipe-import-redesign` (legacy idle unchanged in `else`).
