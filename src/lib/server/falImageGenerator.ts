@@ -1,53 +1,40 @@
 /**
- * fal.ai image generator — server-only. UNIFIED ON NANO BANANA PRO (2026-06-08):
+ * fal.ai image generator — server-only, cost-guarded (ENG-999).
  *
  * Part of the Sloe image system (2026-06-08,
  * `docs/decisions/2026-06-08-recipe-ingredient-image-system.md`).
  *
  * Two entry points, one per imagery class from the LOCKED brand prompt
- * template (`docs/brand/sloe-image-prompt-template.md`) — BOTH now on Nano
- * Banana Pro (Google Gemini 3 Pro Image, `fal-ai/nano-banana-pro`):
- *   - `generateDishImage(title, keyIngredients[])`   — Template A, NANO BANANA
- *     PRO, 4:3 landscape hero, 2K, finished plated dish, editorial-on-wood.
- *     Migrated FLUX 2 Pro → Nano 2026-06-08 for hyper-realism (the meatballs
- *     A/B head-to-head proved Nano markedly more photoreal for dish heroes;
- *     also unifies the app on ONE model now ingredients are on Nano). Still
- *     calls the LLM dish-appearance step (`describeDishAppearance`) first so
- *     the per-dish prompt describes the COOKED, plated dish — not a raw
- *     ingredient list (which rendered raw eggs / loose powder on top). The
- *     editorial house style + cooked-state guards now live in a FIXED
- *     `system_prompt` (the consistency lever, mirroring the ingredient path),
- *     so every hero reads as one editorial set. NO fixed seed — each dish is
- *     unique, variety is fine; cache stays per-recipe (recipe_id).
- *   - `generateIngredientImage(cleanName)`           — Template B, NANO BANANA
- *     PRO (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image), 1:1, 2K,
- *     single ingredient on pure white. Switched from FLUX 2026-06-08: Nano +
- *     a FIXED `system_prompt` + a FIXED seed (424242) produces a CONSISTENT
- *     set (identical lighting/scale/shadow) so a grid of tiles reads as one
- *     library. The per-image prompt is just the ONE representative subject.
+ * template (`docs/brand/sloe-image-prompt-template.md`):
+ *   - `generateDishImage(title, keyIngredients[])`   — Template A, default
+ *     Nano Banana Pro (`FAL_HERO_IMAGE_MODEL`, fallback `fal-ai/nano-banana-pro`),
+ *     4:3 landscape hero, 2K, finished plated dish, editorial-on-wood. Nano stays
+ *     the default because heroes are high-visibility and cached per recipe.
+ *   - `generateIngredientImage(cleanName)`           — Template B, default cheap
+ *     FLUX tier (`FAL_INGREDIENT_IMAGE_MODEL`, then `FAL_IMAGE_MODEL`, then
+ *     `fal-ai/flux/dev`), 1:1, single ingredient on pure white. Ingredient tiles
+ *     are high-volume, decorative, and cached globally, so ENG-999 moves their
+ *     default away from 2K Nano economics while keeping the prompt contract.
  *
- * Both: build the prompt from the locked template, call the engine, download
- * the returned image, upload it to Supabase Storage (service-role), and
- * return `{ ok, url }` or a typed `{ ok: false, error }`.
+ * Both: reserve fal image budget before calling the vendor, build the prompt
+ * from the locked template, call the selected engine, download the returned
+ * image, upload it to Supabase Storage (service-role), and return `{ ok, url }`
+ * or a typed `{ ok: false, error }`.
  *
  * ── GRACEFUL DEGRADATION (load-bearing) ────────────────────────────
- * fal.ai is OUT OF BALANCE at time of writing — the account is locked
- * ("Exhausted balance") and every generate call 403s. This module is
- * built so that NEVER crashes and NEVER blocks a save:
- *   - `FAL_KEY` missing            → `{ ok:false, error:"fal_not_configured" }`
- *   - fal throws / 4xx / 5xx / lock → `{ ok:false, error:"fal_http_error"|… }`
- *   - upload fails                  → `{ ok:false, error:"upload_failed" }`
+ * fal.ai has previously locked the account for exhausted balance. This module
+ * is built so that NEVER crashes and NEVER blocks a save:
+ *   - `FAL_KEY` missing              → `{ ok:false, error:"fal_not_configured" }`
+ *   - budget cap exceeded            → `{ ok:false, error:"fal_budget_exceeded" }`
+ *   - fal throws / 4xx / 5xx / lock  → `{ ok:false, error:"fal_http_error"|… }`
+ *   - upload fails                   → `{ ok:false, error:"upload_failed" }`
  * Every caller treats a non-ok result as "no image" and falls back to
  * the on-brand placeholder. There is no `throw` on the happy or sad
- * path — the worst case is a typed error object. The instant the fal
- * balance is topped up, this works unchanged.
+ * path — the worst case is a typed error object.
  *
  * Nano Banana Pro (Gemini 3 Pro Image) has NO `negative_prompt` field.
- * Both classes therefore carry their style + exclusions in a FIXED
- * `system_prompt` (a true Gemini-3 system instruction — stronger than a
- * positive avoid-clause), with the per-image `prompt` reduced to the one
- * subject (the dish title + LLM cooked-dish description for heroes; the
- * single representative ingredient for tiles).
+ * The fixed style + exclusions therefore ride as `system_prompt` on Nano and
+ * are folded into the positive prompt on FLUX.
  * ────────────────────────────────────────────────────────────────────
  *
  * NEVER import this file into a client bundle — it reads `FAL_KEY` and
@@ -58,22 +45,26 @@ import { createFalClient } from "@fal-ai/client";
 import type { NanoBananaProInput } from "@fal-ai/client/endpoints";
 import { getSupabaseAdminClient } from "../supabase/serverAdminClient";
 import { describeDishAppearance } from "./llmDishAppearance";
+import {
+  commitFalImageBudget,
+  releaseFalImageBudget,
+  reserveFalImageBudget,
+} from "./falBudget";
 
 /**
- * BOTH classes now run on Nano Banana Pro (Google Gemini 3 Pro Image).
- * Template A (dish heroes) migrated FLUX 2 Pro → Nano 2026-06-08 for
- * hyper-realism (the meatballs A/B head-to-head proved Nano markedly more
- * photoreal for dish heroes), which also unifies the app on ONE model. The
- * prompt templates are model-swappable; the per-image prompt does not change
- * when the model does. See docs/brand/sloe-image-prompt-template.md §6 +
- * the 2026-06-08 decision doc.
+ * ENG-999 model tiering: heroes stay on Nano by default; ingredient tiles use
+ * the cheaper FLUX fallback unless explicitly overridden. Prompt templates are
+ * model-swappable; the per-image prompt does not change when the model does.
  */
-// Model is env-swappable. FLUX dev is the cheap bulk run NOW (~$0.02/image,
-// luxury-grade editorial food photography — verified 2026-06-08); Nano Banana
-// Pro returns for the launch hero set. Override with FAL_IMAGE_MODEL.
-export const FAL_IMAGE_MODEL = process.env.FAL_IMAGE_MODEL?.trim() || "fal-ai/flux/dev";
-const FAL_MODEL = FAL_IMAGE_MODEL;
-const IS_FLUX = /flux/i.test(FAL_MODEL);
+const FALLBACK_FAL_MODEL = process.env.FAL_IMAGE_MODEL?.trim() || "fal-ai/flux/dev";
+const HERO_FAL_MODEL = process.env.FAL_HERO_IMAGE_MODEL?.trim() || "fal-ai/nano-banana-pro";
+const INGREDIENT_FAL_MODEL = process.env.FAL_INGREDIENT_IMAGE_MODEL?.trim() || FALLBACK_FAL_MODEL;
+/** Hero model id for provenance writes (image-hero route, backfill). */
+export const FAL_IMAGE_MODEL = HERO_FAL_MODEL;
+
+function isFluxModel(modelId: string): boolean {
+  return /flux/i.test(modelId);
+}
 
 /** Map the brand template's aspect_ratio to a FLUX `image_size` enum.
  *  (FLUX has no aspect_ratio field; it takes a named image_size.) */
@@ -175,7 +166,8 @@ export type FalImageError = {
     | "fal_no_image"
     | "download_failed"
     | "upload_failed"
-    | "storage_not_configured";
+    | "storage_not_configured"
+    | "fal_budget_exceeded";
   /** Human-readable detail (never surfaced to end users). */
   message: string;
   /** Upstream HTTP status when known (fal lock = 403). */
@@ -293,13 +285,28 @@ async function runNano(
     seed?: number;
   },
   callSite: string,
-): Promise<{ ok: true; imageUrl: string; requestId: string | null } | FalImageError> {
+  budget: { modelId: string; imageClass: "hero" | "ingredient" },
+): Promise<{ ok: true; imageUrl: string; requestId: string | null; budgetGrantId: string } | FalImageError> {
   const key = readFalKey();
   if (!key) {
     return {
       ok: false,
       error: "fal_not_configured",
       message: "FAL_KEY is not set — image generation is unavailable.",
+      upstreamStatus: null,
+    };
+  }
+
+  const budgetGrant = await reserveFalImageBudget({
+    modelId: budget.modelId,
+    imageClass: budget.imageClass,
+  });
+  if (!budgetGrant.ok) {
+    console.warn(`[${callSite}] fal budget exceeded reason=${budgetGrant.reason}`);
+    return {
+      ok: false,
+      error: "fal_budget_exceeded",
+      message: `fal image budget exceeded — ${budgetGrant.reason}.`,
       upstreamStatus: null,
     };
   }
@@ -315,7 +322,7 @@ async function runNano(
     // house-style system instruction folds into the positive prompt (the
     // consistency lever either way — see the note above). Nano keeps the typed
     // shape. 28 steps / guidance 3.5 = FLUX dev's quality sweet spot.
-    const falInput = IS_FLUX
+    const falInput = isFluxModel(budget.modelId)
       ? {
           prompt: [opts.systemPrompt, prompt].filter(Boolean).join("\n\n"),
           image_size: aspectToImageSize(opts.aspectRatio),
@@ -343,7 +350,7 @@ async function runNano(
     // stuck call returns a typed `fal_network_error` instead of blocking a
     // backfill or a server request forever (the module's never-hang contract).
     result = await withTimeout(
-      client.subscribe(FAL_MODEL, {
+      client.subscribe(budget.modelId, {
         input: falInput,
         // Active polling — the proven-reliable shape for the 2K Nano endpoint
         // (see the reliability note above). The status callback is a no-op; its
@@ -358,10 +365,11 @@ async function runNano(
   } catch (err) {
     if (err instanceof FalTimeoutError) {
       console.warn(`[${callSite}] nano generate timed out after ${NANO_TIMEOUT_MS}ms`);
+      await releaseFalImageBudget(budgetGrant.grantId);
       return {
         ok: false,
         error: "fal_network_error",
-        message: `Nano generation exceeded ${Math.round(NANO_TIMEOUT_MS / 1000)}s.`,
+        message: `fal generation exceeded ${Math.round(NANO_TIMEOUT_MS / 1000)}s.`,
         upstreamStatus: null,
       };
     }
@@ -374,6 +382,7 @@ async function runNano(
     const detail = err instanceof Error ? err.message : String(err);
     console.warn(`[${callSite}] nano generate failed status=${status ?? "?"}: ${detail}`);
     if (status != null) {
+      await releaseFalImageBudget(budgetGrant.grantId);
       return {
         ok: false,
         error: "fal_http_error",
@@ -381,6 +390,7 @@ async function runNano(
         upstreamStatus: status,
       };
     }
+    await releaseFalImageBudget(budgetGrant.grantId);
     return {
       ok: false,
       error: "fal_network_error",
@@ -392,6 +402,7 @@ async function runNano(
   const out = result.data as NanoOutput | null;
   const imageUrl = out?.images?.[0]?.url;
   if (typeof imageUrl !== "string" || imageUrl.trim() === "") {
+    await releaseFalImageBudget(budgetGrant.grantId);
     return {
       ok: false,
       error: "fal_no_image",
@@ -399,7 +410,7 @@ async function runNano(
       upstreamStatus: null,
     };
   }
-  return { ok: true, imageUrl, requestId: result.requestId ?? null };
+  return { ok: true, imageUrl, requestId: result.requestId ?? null, budgetGrantId: budgetGrant.grantId };
 }
 
 /**
@@ -528,6 +539,7 @@ export async function generateDishImage(
     prompt,
     { systemPrompt: DISH_SYSTEM_PROMPT, aspectRatio: "4:3" },
     callSite,
+    { modelId: HERO_FAL_MODEL, imageClass: "hero" },
   );
   if (!nano.ok) return nano;
   const stored = await persistToStorage(
@@ -536,7 +548,11 @@ export async function generateDishImage(
     slugify(title, "recipe-hero"),
     callSite,
   );
-  if (!stored.ok) return stored;
+  if (!stored.ok) {
+    await releaseFalImageBudget(nano.budgetGrantId);
+    return stored;
+  }
+  commitFalImageBudget(nano.budgetGrantId);
   return { ok: true, url: stored.publicUrl, requestId: nano.requestId };
 }
 
@@ -559,6 +575,7 @@ export async function generateIngredientImage(cleanName: string): Promise<FalIma
     prompt,
     { systemPrompt: INGREDIENT_SYSTEM_PROMPT, aspectRatio: "1:1", seed: INGREDIENT_SEED },
     callSite,
+    { modelId: INGREDIENT_FAL_MODEL, imageClass: "ingredient" },
   );
   if (!nano.ok) return nano;
   const stored = await persistToStorage(
@@ -567,7 +584,11 @@ export async function generateIngredientImage(cleanName: string): Promise<FalIma
     slugify(cleanName, "ingredient"),
     callSite,
   );
-  if (!stored.ok) return stored;
+  if (!stored.ok) {
+    await releaseFalImageBudget(nano.budgetGrantId);
+    return stored;
+  }
+  commitFalImageBudget(nano.budgetGrantId);
   return { ok: true, url: stored.publicUrl, requestId: nano.requestId };
 }
 

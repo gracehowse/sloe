@@ -179,7 +179,7 @@ mobile `recipe/[id].tsx`, via the shared `enqueueIngredientImages` helper) fires
 each key `pending` via an atomic `insert … on conflict do nothing` (so two devices / two rows for the same
 ingredient never double-spend fal), generates with Nano, and caches `ready`. **Never blocks render**
 (fire-and-forget; the screen re-hydrates on its next load), **never regenerates an existing key**, and
-degrades to the calm placeholder on any fal/DB error. Per-user rate-limited; capped at 6 keys/request.
+degrades to the calm placeholder on any fal/DB error. Per-user rate-limited; capped at 6 keys/request. ENG-999 also makes ingredient generation default to the cheaper FLUX tier (`FAL_INGREDIENT_IMAGE_MODEL`, falling back through `FAL_IMAGE_MODEL` to `fal-ai/flux/dev`) while keeping the same Template-B prompt contract; cached rows mean any ingredient is still generated once.
 The candidate-selection logic is extracted to a pure, unit-tested helper
 (`src/lib/recipe/ingredientImageQueue.ts`).
 
@@ -256,6 +256,42 @@ probes + retried generations drained it). Every Nano call now 403s with
   alone. Then forensically Read each of the 6 regenerated heroes (the per-hero check: hyper-real, no
   raw/uncooked, no raw eggs, no hands, on-brand) before trusting the display.
 
+## ENG-999 cost guardrail + model tiering (2026-06-19)
+
+Founder concern: the 2026-06-08 imagery session burned roughly $30/day while regenerating the
+ingredient library, running Nano-vs-FLUX probes, and retrying against an exhausted balance. That
+was mostly one-time setup work, but at viral volume a runaway lazy-generation loop or per-recipe
+hero spike must not silently spend against fal.
+
+**Decision shipped:**
+
+- **Hard fal budget guardrail.** `src/lib/server/falBudget.ts` reserves fixed per-image spend before
+  any fal request, tracks both UTC-day and UTC-month counters in Upstash (with the same in-memory
+  local/test fallback pattern as the token AI budget), emits a one-per-period 70% warning, and hard
+  denies generation once the cap is exceeded. Defaults: `FAL_BUDGET_DAILY_GBP=10`,
+  `FAL_BUDGET_MONTHLY_GBP=150`; enforcement is on unless `FAL_BUDGET_ENFORCEMENT_ENABLED=false`.
+  Failed vendor/download/upload paths refund the reservation; successful storage writes commit it.
+- **Model tiering.** Heroes default to Nano Banana Pro via `FAL_HERO_IMAGE_MODEL` (fallback
+  `fal-ai/nano-banana-pro`) because they are high-visibility and cached per recipe. Ingredient tiles
+  default to the cheaper FLUX path via `FAL_INGREDIENT_IMAGE_MODEL` (fallback to `FAL_IMAGE_MODEL`,
+  then `fal-ai/flux/dev`) because they are high-volume, simple, single-subject white-background
+  images. The old `FAL_IMAGE_MODEL` remains a global/bulk override for backwards compatibility.
+- **Cost model.** Guardrail accounting prices Nano at 11p/image (~$0.13 at £0.85/$), FLUX 2 Pro at
+  3p/image (~$0.025 rounded up), and FLUX dev at 2p/image. Unknown fal models deliberately fall
+  back to the Nano price so spend is over-counted rather than under-counted until the table is
+  updated.
+- **Dev/test discipline.** A/B probes or speculative regenerations now have to pass the same daily +
+  monthly budget reservation as production calls. Backfills remain dry-run by default and should be
+  scoped with `--heroes-only` / `--ingredients-only` / `--limit` when validating prompt changes.
+
+**Why this loses less than the alternatives.** Keeping Nano everywhere is visually safest but makes
+viral ingredient lazy-generation ~5× more expensive than necessary; moving everything to FLUX saves
+money but weakens the recipe hero surface that users actually share and judge. The tiered default
+keeps Nano where quality matters most and uses FLUX where the image is simple, cached, decorative,
+and cheap to re-shoot later if the ingredient set needs a premium pass. Confidence: 8/10 — actual fal
+pricing should still be re-checked when models/prices change, but the guardrail intentionally
+over-counts unknown models.
+
 ## Display wiring (web + mobile parity)
 
 - **Web** `src/app/components/RecipeDetail.tsx`: load effect hydrates the image map; each ingredient
@@ -300,6 +336,7 @@ probes + retried generations drained it). Every Nano call now 403s with
   (a true Gemini-3 system instruction, stronger than FLUX's positive avoid-clause). Re-verify the branded
   items (protein supplement, chili crisp, dark chocolate) in the post-regeneration sample; if any still
   show faint pseudo-text, note it in the verification table. Whole-food tiles are clean.
+- **fal price table re-verification.** Re-check `src/lib/server/falBudget.ts` prices when fal updates model pricing; unknown models currently over-count at Nano pricing so caps stay conservative.
 - **webp transcode.** Generated images are stored as JPEG (Nano emits jpeg/png, not webp). A storage-layer
   transcode-to-webp is a future optimisation, not a blocker (see `falImageGenerator` docblock).
 
