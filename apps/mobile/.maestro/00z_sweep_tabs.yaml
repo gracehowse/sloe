@@ -6,7 +6,7 @@ name: "Sweep section 1 — Tab landings"
 
 - openLink: suppr:///
 - extendedWaitUntil:
-    visible: { id: "screen-today" }
+    visible: { id: "today-hydrated" }
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/01-today-default
@@ -31,13 +31,13 @@ name: "Sweep section 1 — Tab landings"
 
 - openLink: suppr:///discover
 - extendedWaitUntil:
-    visible: { id: "screen-discover" }
+    visible: { id: "discover-hydrated" }
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/12-discover
 
 - openLink: suppr:///planner
 - extendedWaitUntil:
-    visible: { id: "screen-planner" }
+    visible: { id: "planner-hydrated" }
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/20-plan-default
 - swipe: { direction: UP }
@@ -52,7 +52,7 @@ name: "Sweep section 1 — Tab landings"
 
 - openLink: suppr:///progress
 - extendedWaitUntil:
-    visible: { id: "progress-header" }
+    visible: { id: "progress-hydrated" }
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/30-progress-default
 - swipe: { direction: UP }

@@ -199,7 +199,7 @@ name: "Health Sync — MFP → Apple Health → Suppr meal import (DEVICE ONLY, 
     id: "tab-today"
 - extendedWaitUntil:
     visible:
-      id: "screen-today"
+      id: "today-hydrated"
     timeout: 20000
 - waitForAnimationToEnd
 

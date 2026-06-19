@@ -35,7 +35,7 @@ name: "Premium-bar dark sweep — canonical surfaces in dark appearance"
 - openLink: suppr:///
 - extendedWaitUntil:
     visible:
-      id: "screen-today"
+      id: "today-hydrated"
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/latest/dark-01-today-default
@@ -54,15 +54,15 @@ name: "Premium-bar dark sweep — canonical surfaces in dark appearance"
 - openLink: suppr:///discover
 - extendedWaitUntil:
     visible:
-      id: "screen-discover"
-    timeout: 15000
+      id: "discover-hydrated"
+    timeout: 30000
 - takeScreenshot: screenshots/latest/dark-12-discover
 
 - openLink: suppr:///planner
 - extendedWaitUntil:
     visible:
-      id: "screen-planner"
-    timeout: 15000
+      id: "planner-hydrated"
+    timeout: 30000
 - takeScreenshot: screenshots/latest/dark-20-plan
 
 - openLink: suppr:///shopping
@@ -75,8 +75,8 @@ name: "Premium-bar dark sweep — canonical surfaces in dark appearance"
 - openLink: suppr:///progress
 - extendedWaitUntil:
     visible:
-      id: "progress-header"
-    timeout: 15000
+      id: "progress-hydrated"
+    timeout: 30000
 - takeScreenshot: screenshots/latest/dark-30-progress-default
 - swipe:
     direction: UP

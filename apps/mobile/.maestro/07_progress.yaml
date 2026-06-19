@@ -9,6 +9,10 @@ name: "Progress screen — stats, charts, weight journey, time range"
 - waitForAnimationToEnd
 - waitForAnimationToEnd
 - assertVisible: ".*Progress.*"
+- extendedWaitUntil:
+    visible:
+      id: "progress-hydrated"
+    timeout: 30000
 
 # Wait for data to fully load (stat tiles or empty state — not just the header).
 # 2026-04-20 prototype port: the stable "has data" signal below the

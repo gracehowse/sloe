@@ -29,7 +29,7 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
 - openLink: suppr:///
 - extendedWaitUntil:
     visible:
-      id: "screen-today"
+      id: "today-hydrated"
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/01-today-default
@@ -62,16 +62,16 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
 - openLink: suppr:///discover
 - extendedWaitUntil:
     visible:
-      id: "screen-discover"
-    timeout: 15000
+      id: "discover-hydrated"
+    timeout: 30000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/12-discover
 
 # Plan tab
 - openLink: suppr:///planner
 - extendedWaitUntil:
     visible:
-      id: "screen-planner"
-    timeout: 15000
+      id: "planner-hydrated"
+    timeout: 30000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/20-plan-default
 - swipe:
     direction: UP
@@ -90,8 +90,8 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
 - openLink: suppr:///progress
 - extendedWaitUntil:
     visible:
-      id: "progress-header"
-    timeout: 15000
+      id: "progress-hydrated"
+    timeout: 30000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/30-progress-default
 - swipe:
     direction: UP

@@ -7,7 +7,7 @@ name: "Today premium matrix — active fast (light)"
 - openLink: suppr:///
 - extendedWaitUntil:
     visible:
-      id: "screen-today"
+      id: "today-hydrated"
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/latest/active-fast-mobile-light
