@@ -33,6 +33,8 @@ export interface PortionPickerWebProps {
   onChange: (next: PortionState) => void;
   options?: ReturnType<typeof buildPickerOptions>;
   rememberedGrams?: number | null;
+  /** Hide the quick-chip row (e.g. on cramped sheets). Mirrors the mobile picker. */
+  hideQuickChips?: boolean;
   /** When set, scale + run post-scale plausibility and surface a warning. */
   macrosPer100g?: MacrosPer100gPanel | null;
   /** OFF reconcile flagged per-serving values masquerading as per-100 g. */
@@ -41,7 +43,7 @@ export interface PortionPickerWebProps {
 }
 
 export function PortionPickerWeb(props: PortionPickerWebProps) {
-  const { product, value, onChange, className = "", macrosPer100g, basisCorrected = false } = props;
+  const { product, value, onChange, className = "", hideQuickChips = false, macrosPer100g, basisCorrected = false } = props;
   const [unitOpen, setUnitOpen] = React.useState(false);
 
   const opts =
@@ -140,7 +142,7 @@ export function PortionPickerWeb(props: PortionPickerWebProps) {
         </button>
       </div>
 
-      {opts.quickChips.length > 0 ? (
+      {!hideQuickChips && opts.quickChips.length > 0 ? (
         <div className="mt-3">
           <div className="text-[10px] font-bold tracking-wider uppercase text-muted-foreground mb-2">Quick</div>
           <div className="flex gap-1.5 overflow-x-auto pr-4 [mask-image:linear-gradient(to_right,#000_0,#000_calc(100%-16px),transparent_100%)]">
