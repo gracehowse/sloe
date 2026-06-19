@@ -20,8 +20,8 @@ import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetai
 import {
   macroSplitConfidence,
   macroSplitIncompleteCopy,
-} from "@suppr/shared/nutrition/macroSplitConfidence";
-import { macroCalorieSplit } from "@suppr/shared/nutrition/macroCalorieSplit";
+} from "@suppr/nutrition-core/macroSplitConfidence";
+import { macroCalorieSplit } from "@suppr/nutrition-core/macroCalorieSplit";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -42,7 +42,7 @@ function formatDateLabel(dateKey: string): string {
 
 // Audit M01 (2026-05-05) — the macro kcal-split + largest-remainder (Hamilton)
 // rounding (so the three displayed percentages always sum to exactly 100) now
-// lives in the shared `@suppr/shared/nutrition/macroCalorieSplit` module, imported
+// lives in the shared `@suppr/nutrition-core/macroCalorieSplit` module, imported
 // above and shared with the web meal-nutrition dialog (P5 parity gap #15).
 
 function nutritionRowToJournalMeal(data: Record<string, unknown>): JournalMeal {

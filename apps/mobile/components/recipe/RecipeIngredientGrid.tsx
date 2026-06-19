@@ -35,7 +35,7 @@ import {
 import { cleanIngredientDisplayName } from "@suppr/shared/recipe/cleanIngredientDisplayName";
 // Phase 4 / B3.X — SourceDot per ingredient row (D-2026-04-27-16, §1.6).
 import { SourceDot } from "@/components/ui/SourceDot";
-import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
+import { mapMealSourceToDot } from "@suppr/nutrition-core/sourceMap";
 
 /** Number of cells shown before the grid collapses behind "View all". */
 const GRID_PREVIEW_COUNT = 8;

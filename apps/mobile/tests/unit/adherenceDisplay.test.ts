@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { formatAdherenceHeadline } from "@suppr/shared/nutrition/adherenceDisplay";
+import { formatAdherenceHeadline } from "@suppr/nutrition-core/adherenceDisplay";
 
 describe("formatAdherenceHeadline (mobile @suppr/shared resolution + parity)", () => {
   it("under target: 82 → '82%' Under target (sage)", () => {

@@ -27,7 +27,7 @@ import { authedFetch } from "@/lib/authedFetch";
 import { commitPlanImport } from "@/lib/planImportCommit";
 import { setPendingImportDayPlan } from "@/lib/planImportPendingApply";
 import { rebalanceImportedPlanDays } from "@suppr/shared/planning/planImport/rebalanceImportedPlan";
-import { DEFAULT_PLANNER_BANDS } from "@suppr/shared/nutrition/mealPlanAlgo";
+import { DEFAULT_PLANNER_BANDS } from "@suppr/nutrition-core/mealPlanAlgo";
 import type {
   PlanImportCompiledSlot,
   PlanImportNutritionMode,

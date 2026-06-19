@@ -13,7 +13,7 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { SiriAction } from "@suppr/shared/nutrition/siriDeepLinks";
+import type { SiriAction } from "@suppr/nutrition-core/siriDeepLinks";
 
 const KEY = "pm:siri:pendingAction";
 /** Anything older than 5 minutes is stale — don't fire a log_water that

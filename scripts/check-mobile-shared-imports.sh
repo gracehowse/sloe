@@ -25,28 +25,33 @@ cd "$ROOT/apps/mobile"
 #    not a relative `../../../src/lib/...` chain.
 grep -q 'from "@suppr/shared/recipe-import/classifyMealType"' lib/classifyMealType.ts \
   || { echo "FAIL: lib/classifyMealType.ts must re-export from @suppr/shared/recipe-import/classifyMealType"; exit 1; }
-grep -q 'from "@suppr/shared/nutrition/refreshAdaptiveTdee"' lib/refreshAdaptiveTdee.ts \
-  || { echo "FAIL: lib/refreshAdaptiveTdee.ts must re-export from @suppr/shared/nutrition/refreshAdaptiveTdee"; exit 1; }
+grep -q 'from "@suppr/nutrition-core/refreshAdaptiveTdee"' lib/refreshAdaptiveTdee.ts \
+  || { echo "FAIL: lib/refreshAdaptiveTdee.ts must re-export from @suppr/nutrition-core/refreshAdaptiveTdee"; exit 1; }
 
-# 2. Every `@suppr/shared/*` import in mobile must resolve to a real file under
-#    src/lib (the alias maps `@suppr/shared/X` → `../../src/lib/X`).
+# 2. Every `@suppr/shared/*` and `@suppr/nutrition-core/*` import in mobile must
+#    resolve to a real source file (shared maps to `../../src/lib/X`; nutrition-core
+#    maps to curated stubs under `../../src/lib/nutrition-core/X`).
 fail=0
 while read -r imp; do
   [ -z "$imp" ] && continue
-  file="../../src/lib/${imp#@suppr/shared/}"
+  if [[ "$imp" == @suppr/nutrition-core/* ]]; then
+    file="../../src/lib/nutrition-core/${imp#@suppr/nutrition-core/}"
+  else
+    file="../../src/lib/${imp#@suppr/shared/}"
+  fi
   if [ ! -f "${file}.ts" ] && [ ! -f "${file}.tsx" ] \
      && [ ! -f "${file}/index.ts" ] && [ ! -f "${file}/index.tsx" ] \
      && [ ! -f "${file}" ]; then
     echo "MISSING: $imp (resolved to $file)"
     fail=1
   fi
-done < <(grep -roh 'from "@suppr/shared/[^"]*"' app/ lib/ components/ hooks/ context/ \
+done < <(grep -Eroh 'from "@suppr/(shared|nutrition-core)/[^"]*"' app/ lib/ components/ hooks/ context/ \
            --include='*.ts' --include='*.tsx' 2>/dev/null \
            | sed 's/from "//;s/"//' | sort -u)
 
 if [ "$fail" = "1" ]; then
-  echo "FAIL: unresolved @suppr/shared import(s) above — fix the path or add the file."
+  echo "FAIL: unresolved @suppr/shared or @suppr/nutrition-core import(s) above — fix the path or add the file."
   exit 1
 fi
 
-echo "OK — mobile @suppr/shared re-exports + cross-boundary imports resolve."
+echo "OK — mobile @suppr/shared and @suppr/nutrition-core re-exports + cross-boundary imports resolve."

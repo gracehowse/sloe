@@ -79,7 +79,7 @@ import {
   defaultEatenAtForNewLog,
   eatenAtFromLogDateAndTime,
   localTimeInputValueFromIso,
-} from "@suppr/shared/nutrition/mealEatenAt";
+} from "@suppr/nutrition-core/mealEatenAt";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import {
@@ -92,33 +92,33 @@ import {
   type UnifiedSearchResult,
   type FoodPortion,
 } from "@/lib/verifyRecipe";
-import type { SearchRowConfidenceTier } from "@suppr/shared/nutrition/foodSearchRanking";
+import type { SearchRowConfidenceTier } from "@suppr/nutrition-core/foodSearchRanking";
 import {
   primaryServingToPortionChip,
   type PrimaryServing,
-} from "@suppr/shared/nutrition/primaryServing";
+} from "@suppr/nutrition-core/primaryServing";
 import {
   resolveFoodSearchHeadline,
   FOOD_SEARCH_PER_SERVING_BADGE,
   FOOD_SEARCH_PER_100G_BADGE,
-} from "@suppr/shared/nutrition/foodSearchHeadline";
+} from "@suppr/nutrition-core/foodSearchHeadline";
 import {
   projectRemaining,
   type MacroConsumed,
   type MacroTargets,
-} from "@suppr/shared/nutrition/remainingMacros";
+} from "@suppr/nutrition-core/remainingMacros";
 import {
   createCustomFood,
   deleteCustomFood,
   listCustomFoods,
   searchCustomFoods,
   updateCustomFood,
-} from "@suppr/shared/nutrition/customFoodsClient";
+} from "@suppr/nutrition-core/customFoodsClient";
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
   type CustomFood,
-} from "@suppr/shared/nutrition/customFoods";
+} from "@suppr/nutrition-core/customFoods";
 import CreateCustomFoodSheet, {
   type CreateCustomFoodPayload,
 } from "../CreateCustomFoodSheet";
@@ -128,20 +128,20 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { fetchFatSecretAutocomplete } from "@suppr/shared/nutrition/fatsecretAutocompleteClient";
-import { shouldShowBarcodeFallbackHint } from "@suppr/shared/nutrition/foodSearchLocale";
-import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
-import { portionEqualsLabel } from "@suppr/shared/nutrition/portionEqualsLabel";
-import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion, buildUsdaPreviewFields } from "@suppr/shared/nutrition/foodSearchCore";
-import { foodSearchPreviewExtraMicroRows } from "@suppr/shared/nutrition/foodSearchPreviewNutrition";
-import { foodSearchPreviewPlausibilityWarning } from "@suppr/shared/nutrition/portionPicker";
+import { fetchFatSecretAutocomplete } from "@suppr/nutrition-core/fatsecretAutocompleteClient";
+import { shouldShowBarcodeFallbackHint } from "@suppr/nutrition-core/foodSearchLocale";
+import { formatMacroTrailer } from "@suppr/nutrition-core/macroFormat";
+import { portionEqualsLabel } from "@suppr/nutrition-core/portionEqualsLabel";
+import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion, buildUsdaPreviewFields } from "@suppr/nutrition-core/foodSearchCore";
+import { foodSearchPreviewExtraMicroRows } from "@suppr/nutrition-core/foodSearchPreviewNutrition";
+import { foodSearchPreviewPlausibilityWarning } from "@suppr/nutrition-core/portionPicker";
 import {
   matchHistoryFoods,
   historyMatchNameSet,
   dedupeDbAgainstHistory,
   normalizeHistoryName,
   type HistorySearchMatch,
-} from "@suppr/shared/nutrition/foodHistorySearch";
+} from "@suppr/nutrition-core/foodHistorySearch";
 import {
   matchFavoriteFoods,
   favoriteFoodKeySet,
@@ -149,12 +149,12 @@ import {
   isFavoriteRow,
   type FavoriteSearchItem,
   type FavoriteSearchMatch,
-} from "@suppr/shared/nutrition/favoriteFoodsSearch";
-import { favoriteKey } from "@suppr/shared/nutrition/favoriteFoods";
+} from "@suppr/nutrition-core/favoriteFoodsSearch";
+import { favoriteKey } from "@suppr/nutrition-core/favoriteFoods";
 import {
   optionalSanitizedMicrosPer100g,
   sanitizeMicrosPer100g,
-} from "@suppr/shared/nutrition/microPlausibility";
+} from "@suppr/nutrition-core/microPlausibility";
 import { FavoriteStarButton } from "./FavoriteStarButton";
 
 // 2026-05-15 (ENG-550 phase 2): `STANDARD_UNITS` and `buildPortionList`

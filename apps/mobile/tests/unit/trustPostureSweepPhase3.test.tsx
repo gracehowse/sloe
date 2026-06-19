@@ -15,7 +15,7 @@ import { render } from "@testing-library/react-native";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { mapMealSourceToDot } from "@suppr/shared/nutrition/sourceMap";
+import { mapMealSourceToDot } from "@suppr/nutrition-core/sourceMap";
 import { SourceDot } from "../../components/ui/SourceDot";
 import { TrustChip } from "../../components/ui/TrustChip";
 

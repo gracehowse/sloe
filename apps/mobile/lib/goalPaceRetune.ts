@@ -21,4 +21,4 @@ export {
   type GoalPaceRetuneInput,
   type GoalPaceRetuneResult,
   type RetunePace,
-} from "@suppr/shared/nutrition/goalPaceRetune";
+} from "@suppr/nutrition-core/goalPaceRetune";

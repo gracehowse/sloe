@@ -15,7 +15,7 @@ import {
   type ProgressPeriod,
   type PeriodType,
   type WeekStartDay,
-} from "@suppr/shared/nutrition/progressPeriod";
+} from "@suppr/nutrition-core/progressPeriod";
 
 /**
  * ProgressPeriodControl — Apple Health range grammar (ENG-1030).

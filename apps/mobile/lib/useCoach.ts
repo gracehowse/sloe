@@ -26,12 +26,12 @@ import {
   assembleCandidates,
   applyCoachRanking,
   type CoachCandidate,
-} from "@suppr/shared/nutrition/mealCoach";
+} from "@suppr/nutrition-core/mealCoach";
 import type {
   NorthStarRecipe,
   NorthStarRemaining,
   NorthStarSlot,
-} from "@suppr/shared/nutrition/northStarSuggestion";
+} from "@suppr/nutrition-core/northStarSuggestion";
 import { authedFetch } from "./authedFetch";
 import { getSupprApiBase } from "./supprWeb";
 

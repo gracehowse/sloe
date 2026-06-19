@@ -26,7 +26,7 @@ import { render, fireEvent } from "@testing-library/react-native";
 import { TodayMealsSection } from "../../components/today/TodayMealsSection";
 import { isFeatureEnabled } from "@/lib/analytics";
 import type { JournalMeal } from "../../lib/nutritionJournal";
-import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
+import type { SavedMeal } from "@suppr/nutrition-core/savedMeals";
 
 void React;
 

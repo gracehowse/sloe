@@ -32,9 +32,9 @@ import { X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
-import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
-import { formatMacroTrailer } from "@suppr/shared/nutrition/macroFormat";
+import { formatMacro } from "@suppr/nutrition-core/formatMacro";
+import type { SavedMealItem } from "@suppr/nutrition-core/savedMeals";
+import { formatMacroTrailer } from "@suppr/nutrition-core/macroFormat";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 type Theme = {

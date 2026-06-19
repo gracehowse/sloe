@@ -78,7 +78,7 @@ describe("WeightChart — PanResponder swipe lane is attached", () => {
 
 describe("progress.tsx — swipe wiring reuses the chevron helpers (no duplicate clamp)", () => {
   it("imports the shared previousPeriod/nextPeriod/isCurrentPeriod from the period model", () => {
-    expect(progressSrc).toMatch(/from "@suppr\/shared\/nutrition\/progressPeriod"/);
+    expect(progressSrc).toMatch(/from "@suppr\/(?:shared\/nutrition|nutrition-core)\/progressPeriod"/);
     expect(progressSrc).toMatch(/\bpreviousPeriod\b/);
     expect(progressSrc).toMatch(/\bnextPeriod\b/);
     expect(progressSrc).toMatch(/\bisCurrentPeriod\b/);

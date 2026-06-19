@@ -8,8 +8,8 @@ import {
   macroStatCaption,
   macroStatProgressRatio,
   type MacroStatCaptionTone,
-} from "@suppr/shared/nutrition/macroStatCaption";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+} from "@suppr/nutrition-core/macroStatCaption";
+import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 import { SupprCard } from "@/components/ui/SupprCard";
 
 export interface MacroStatTileProps {

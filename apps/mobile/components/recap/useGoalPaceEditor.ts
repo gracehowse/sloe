@@ -31,8 +31,8 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   recomputeTargetsFromProfile,
   type RecomputedTargets,
-} from "@suppr/shared/nutrition/recomputeTargetsForActivity";
-import { persistRecomputedTargets } from "@suppr/shared/nutrition/persistRecomputedTargets";
+} from "@suppr/nutrition-core/recomputeTargetsForActivity";
+import { persistRecomputedTargets } from "@suppr/nutrition-core/persistRecomputedTargets";
 import { safetyFloorFor } from "@suppr/shared/onboarding/targets";
 import { mapPaceToPreset } from "@suppr/shared/onboarding/persist";
 import {
@@ -47,7 +47,7 @@ import {
   GOAL_EDITOR_PROFILE_COLUMNS,
   type EditorDbGoal,
   type LoadedGoalEditorProfile,
-} from "@suppr/shared/nutrition/goalEditorPace";
+} from "@suppr/nutrition-core/goalEditorPace";
 import {
   cmToFeetInches,
   feetInchesToCm,

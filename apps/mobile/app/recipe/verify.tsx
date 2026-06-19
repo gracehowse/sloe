@@ -40,7 +40,7 @@ import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
-import type { AiLoggedItem } from "@suppr/shared/nutrition/aiLogging";
+import type { AiLoggedItem } from "@suppr/nutrition-core/aiLogging";
 import AddIngredientSheet, {
   type AddIngredientPayload,
 } from "@/components/AddIngredientSheet";
@@ -50,10 +50,10 @@ import {
   effectiveMacros,
   hasOverride,
   recomputeRecipeTotals,
-} from "@suppr/shared/nutrition/ingredientOverrides";
+} from "@suppr/nutrition-core/ingredientOverrides";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { classifyConfidence } from "@suppr/shared/nutrition/aiLogging";
+import { classifyConfidence } from "@suppr/nutrition-core/aiLogging";
 import {
   nutritionDelta,
   type CaptionNutritionClaim,

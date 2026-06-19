@@ -39,13 +39,13 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   classifyDigestHeroTone,
   digestHeroTrackFraction,
-} from "@suppr/shared/nutrition/digest";
+} from "@suppr/nutrition-core/digest";
 import {
   decideWeightSurface,
   DIGEST_HIDDEN_WEIGHT_REPLACEMENT_HINT,
   DIGEST_HIDDEN_WEIGHT_REPLACEMENT_LABEL,
   formatLoggingConsistencyValue,
-} from "@suppr/shared/nutrition/weightSurfaceMode";
+} from "@suppr/nutrition-core/weightSurfaceMode";
 import type { DigestProps } from "@/components/Digest";
 
 export function DigestBlended(props: DigestProps) {

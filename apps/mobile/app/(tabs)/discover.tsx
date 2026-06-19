@@ -23,7 +23,7 @@ import type { RecipeCard } from "@/lib/types";
 import { useAuth } from "@/context/auth";
 import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { supabase } from "@/lib/supabase";
-import { computeRecipeFitPercent } from "@suppr/shared/nutrition/recipeFitPercent";
+import { computeRecipeFitPercent } from "@suppr/nutrition-core/recipeFitPercent";
 import { DISCOVER_POPULAR_MIN_SAVES } from "@suppr/shared/recipes/fetchPublicRecipeSaveCounts";
 import {
   DISCOVER_CATEGORY_PILLS,

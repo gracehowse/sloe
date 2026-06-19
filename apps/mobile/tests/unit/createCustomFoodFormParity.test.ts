@@ -305,7 +305,7 @@ describe("Create custom food form parity (TestFlight AE52_fIRZ-ZIupmoJ8T4yaI)", 
 
   it("the volume converter imports from the shared sourced density module (no per-platform density table)", () => {
     for (const src of [MOBILE_SRC, WEB_SRC]) {
-      expect(src).toMatch(/nutrition\/volumeToGrams/);
+      expect(src).toMatch(/(?:nutrition|nutrition-core)\/volumeToGrams/);
     }
   });
 

@@ -40,7 +40,7 @@ import { Accent, Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
-import { checkScaledLogPlausibility } from "@suppr/shared/nutrition/macroPlausibility";
+import { checkScaledLogPlausibility } from "@suppr/nutrition-core/macroPlausibility";
 import { scaleCorrectionToPer100g, type CorrectionBasis } from "@/lib/barcodeCorrection";
 import { useAuth } from "@/context/auth";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
@@ -50,14 +50,14 @@ import {
   formatPortion,
   stateToGrams,
   type PortionState,
-} from "@suppr/shared/nutrition/portionPicker";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+} from "@suppr/nutrition-core/portionPicker";
+import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 import {
   getMyContributorStats,
   formatHelpedLine,
   type ContributorStats,
 } from "@/lib/contributorStats";
-import { fallbackSlotFromTimeOfDay } from "@suppr/shared/nutrition/recipeJournalSlot";
+import { fallbackSlotFromTimeOfDay } from "@suppr/nutrition-core/recipeJournalSlot";
 
 const DEFAULT_MEAL_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 type MealSlot = string;

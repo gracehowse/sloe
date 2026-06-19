@@ -5,8 +5,8 @@ import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
-import { formatMacroAdherenceBar } from "@suppr/shared/nutrition/progressWeekReport";
-import { formatAdherenceHeadline } from "@suppr/shared/nutrition/adherenceDisplay";
+import { formatMacroAdherenceBar } from "@suppr/nutrition-core/progressWeekReport";
+import { formatAdherenceHeadline } from "@suppr/nutrition-core/adherenceDisplay";
 
 /**
  * ProgressAverageAdherence — Sloe Figma `492:2` "AVERAGE ADHERENCE" card.

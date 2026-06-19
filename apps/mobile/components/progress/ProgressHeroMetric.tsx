@@ -2,7 +2,7 @@ import { Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Spacing } from "@/constants/theme";
-import { formatAdherenceHeadline } from "@suppr/shared/nutrition/adherenceDisplay";
+import { formatAdherenceHeadline } from "@suppr/nutrition-core/adherenceDisplay";
 
 /**
  * ProgressHeroMetric — Oura-style "one big thing" for the Progress tab.

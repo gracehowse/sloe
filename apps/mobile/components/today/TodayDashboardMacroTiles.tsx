@@ -17,7 +17,7 @@ import { MACRO_ICONS } from "@/lib/macroIconsLucide";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useCalmMode } from "@/lib/calmMode";
 import type { JournalMeal } from "@/lib/nutritionJournal";
-import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
+import { carbsLabel, netCarbsForRow } from "@suppr/nutrition-core/netCarbs";
 import { isMacroDetailSupported } from "@/lib/macroDetailConfig";
 
 /**

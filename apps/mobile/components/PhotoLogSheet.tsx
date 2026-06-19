@@ -62,7 +62,7 @@ import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import {
   averageConfidence,
   type AiLoggedItem,
-} from "@suppr/shared/nutrition/aiLogging";
+} from "@suppr/nutrition-core/aiLogging";
 import {
   formatRange,
   formatRangeKcal,
@@ -71,9 +71,9 @@ import {
   sumRanges,
   type PhotoLogAddon,
   type PhotoLogItemRanged,
-} from "@suppr/shared/nutrition/photoLogRanges";
-import { persistPhotoCorrections } from "@suppr/shared/nutrition/photoCorrectionPersist";
-import { FREE_PHOTO_LOG_WEEKLY_LIMIT } from "@suppr/shared/nutrition/photoLogQuota";
+} from "@suppr/nutrition-core/photoLogRanges";
+import { persistPhotoCorrections } from "@suppr/nutrition-core/photoCorrectionPersist";
+import { FREE_PHOTO_LOG_WEEKLY_LIMIT } from "@suppr/nutrition-core/photoLogQuota";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";

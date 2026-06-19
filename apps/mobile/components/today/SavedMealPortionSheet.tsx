@@ -22,8 +22,8 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useSheetMorph } from "@/lib/motion";
-import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
-import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
+import type { SavedMeal } from "@suppr/nutrition-core/savedMeals";
+import { summariseSavedMeal } from "@suppr/nutrition-core/savedMealsLogic";
 import { SupprButton } from "../ui/SupprButton";
 import { PortionStepper, formatMultiplier } from "./PortionStepper";
 

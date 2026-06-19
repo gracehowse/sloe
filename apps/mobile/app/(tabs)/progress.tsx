@@ -44,11 +44,11 @@ import {
   weightJourneyProgress,
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
-import { resolveMaintenance , formatMaintenanceRecapLine } from "@suppr/shared/nutrition/resolveMaintenance";
-import { computeAdaptiveDataProgressFromMeals } from "@suppr/shared/nutrition/adaptiveDataProgress";
-import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/shared/nutrition/measuredTdee";
-import { buildMaintenanceChain } from "@suppr/shared/nutrition/maintenanceChain";
-import type { PlanPace } from "@suppr/shared/nutrition/tdee";
+import { resolveMaintenance , formatMaintenanceRecapLine } from "@suppr/nutrition-core/resolveMaintenance";
+import { computeAdaptiveDataProgressFromMeals } from "@suppr/nutrition-core/adaptiveDataProgress";
+import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/nutrition-core/measuredTdee";
+import { buildMaintenanceChain } from "@suppr/nutrition-core/maintenanceChain";
+import type { PlanPace } from "@suppr/nutrition-core/tdee";
 import {
   coerceMeasurementSystem,
   formatWeightForUnit,
@@ -57,14 +57,14 @@ import {
 import {
   coerceWeightSurfaceMode,
   type WeightSurfaceMode,
-} from "@suppr/shared/nutrition/weightSurfaceMode";
+} from "@suppr/nutrition-core/weightSurfaceMode";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats, type WeekActivityAdjustment } from "@/lib/progressWeekReport";
 import {
   buildCaloriesRangeStatsForWindow,
   buildMacroAdherenceRangeStatsForWindow,
   buildWeightRangeStatsForWindow,
-} from "@suppr/shared/nutrition/progressRangeStats";
+} from "@suppr/nutrition-core/progressRangeStats";
 import {
   DEFAULT_PERIOD,
   PERIOD_TYPES,
@@ -76,9 +76,9 @@ import {
   previousPeriod,
   progressPeriodToWeightRange,
   type ProgressPeriod,
-} from "@suppr/shared/nutrition/progressPeriod";
+} from "@suppr/nutrition-core/progressPeriod";
 import { ProgressPeriodControl } from "@/components/progress/ProgressPeriodControl";
-import { getDailyTargets, type DailyTarget } from "@suppr/shared/nutrition/dailyTargetRead";
+import { getDailyTargets, type DailyTarget } from "@suppr/nutrition-core/dailyTargetRead";
 import { clampTargetToSafetyFloor, coerceSex } from "@suppr/shared/onboarding/targets";
 import {
   readFreezeLedger,
@@ -92,15 +92,15 @@ import {
   type UsualMealRecapInsight,
 } from "@/lib/weeklyRecap";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { listSavedMeals, type SavedMeal, type SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
-import { normaliseRecipeTitle, selectMostFrequentSlotSeed } from "@suppr/shared/nutrition/usualMealHint";
+import { listSavedMeals, type SavedMeal, type SavedMealItem } from "@suppr/nutrition-core/savedMeals";
+import { normaliseRecipeTitle, selectMostFrequentSlotSeed } from "@suppr/nutrition-core/usualMealHint";
 import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   serializePendingUsualMealSave,
-} from "@suppr/shared/nutrition/pendingUsualMealSave";
+} from "@suppr/nutrition-core/pendingUsualMealSave";
 import { formatRecapForShare } from "@/lib/weeklyRecap";
-import { resolveDigestHeadline } from "@suppr/shared/nutrition/digest";
-import type { DigestBlendedExtras } from "@suppr/shared/nutrition/digest";
+import { resolveDigestHeadline } from "@suppr/nutrition-core/digest";
+import type { DigestBlendedExtras } from "@suppr/nutrition-core/digest";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { WinMomentPlayer, type WinMomentCelebration } from "@/components/ui/WinMomentPlayer";
@@ -114,7 +114,7 @@ import { ProgressStoryGate } from "@/components/today/ProgressStoryGate";
 import { hasEnoughDataForStory } from "@/lib/progressStoryGate";
 import { DigestStoryCard } from "@/components/progress/DigestStoryCard";
 import { TrajectoryCard } from "@/components/progress/TrajectoryCard";
-import { computeDayOfWeekPattern } from "@suppr/shared/nutrition/dayOfWeekPattern";
+import { computeDayOfWeekPattern } from "@suppr/nutrition-core/dayOfWeekPattern";
 import { generateProgressCommentary } from "@/lib/progressCommentary";
 import { LogWeightSheet } from "@/components/progress/LogWeightSheet";
 import { AllWeightDataSheet } from "@/components/progress/AllWeightDataSheet";

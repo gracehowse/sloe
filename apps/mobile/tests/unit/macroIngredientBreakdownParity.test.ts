@@ -19,7 +19,7 @@ import {
   toBreakdownEntry,
   toBreakdownIngredientRow,
   toBreakdownSnapshotRow,
-} from "@suppr/shared/nutrition/macroIngredientBreakdown";
+} from "@suppr/nutrition-core/macroIngredientBreakdown";
 
 // The mobile data + derive logic lives in the composition-root hook
 // (ENG-621 pattern); the screen is a thin shell that consumes it.
@@ -44,7 +44,7 @@ const WEB_TRACKER_SRC = readFileSync(WEB_TRACKER, "utf8");
 describe("macro-detail ingredient breakdown — shared-helper wiring", () => {
   it("mobile hook imports the shared derive helper (not a local copy)", () => {
     expect(MOBILE_HOOK_SRC).toMatch(
-      /from\s+["'][^"']*@suppr\/shared\/nutrition\/macroIngredientBreakdown["']/,
+      /from\s+["'][^"']*@suppr\/(?:shared\/nutrition|nutrition-core)\/macroIngredientBreakdown["']/,
     );
     expect(MOBILE_HOOK_SRC).toMatch(/\bderiveIngredientBreakdown\b/);
     expect(MOBILE_HOOK_SRC).toMatch(/\btoBreakdownEntry\b/);

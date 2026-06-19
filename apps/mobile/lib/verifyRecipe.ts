@@ -6,32 +6,37 @@ import {
   type OffServingOption,
 } from "@suppr/shared/openFoodFacts/offServingPortions";
 import { scaleFromPer100gGrams } from "@suppr/shared/openFoodFacts/scaleFromPer100g";
-import { effectiveFoodSearchQuery } from "@suppr/shared/nutrition/foodSearchQuery";
-import { matchGenericBeverage } from "@suppr/shared/nutrition/genericBeverages";
-import { matchGenericFood } from "@suppr/shared/nutrition/genericFoods";
-import { genericFoodMicrosPer100g } from "@suppr/shared/nutrition/genericFoodMicros";
+import { effectiveFoodSearchQuery } from "@suppr/nutrition-core/foodSearchQuery";
+import { matchGenericBeverage } from "@suppr/nutrition-core/genericBeverages";
+import { matchGenericFood } from "@suppr/nutrition-core/genericFoods";
+import { genericFoodMicrosPer100g } from "@suppr/nutrition-core/genericFoodMicros";
 import {
   pickEdamamPrimaryServing,
   pickUsdaBrandedPrimaryServing,
   pickUsdaFoodPortionsPrimaryServing,
   parseOffPrimaryServing,
   type PrimaryServing,
-} from "@suppr/shared/nutrition/primaryServing";
-import { inferNaturalServingFromName } from "@suppr/shared/nutrition/inferNaturalServing";
-import { measureToGrams } from "@suppr/shared/nutrition/measureToGrams";
+} from "@suppr/nutrition-core/primaryServing";
+import { inferNaturalServingFromName } from "@suppr/nutrition-core/inferNaturalServing";
+import { measureToGrams } from "@suppr/nutrition-core/measureToGrams";
 import { checkSubmissionPlausibility } from "@suppr/shared/foodCorrection/plausibility";
 import {
   effectiveMacros as effectiveIngredientMacros,
   recomputeRecipeTotals,
   type IngredientOverride,
-} from "@suppr/shared/nutrition/ingredientOverrides";
+} from "@suppr/nutrition-core/ingredientOverrides";
 import {
   totalGramsForVerifyScale as totalGramsForVerifyScaleImpl,
   totalGramsForVerifyScaleDetailed as totalGramsForVerifyScaleDetailedImpl,
   type VerifyScaleResult,
-} from "@suppr/shared/nutrition/totalGramsForVerifyScale";
-import { inferAllergensFromIngredients } from "@suppr/shared/nutrition/inferAllergens";
-import { isPlausibleMacrosPer100g } from "@suppr/shared/nutrition/macroPlausibility";
+} from "@suppr/nutrition-core/totalGramsForVerifyScale";
+import { inferAllergensFromIngredients } from "@suppr/nutrition-core/inferAllergens";
+import { isPlausibleMacrosPer100g } from "@suppr/nutrition-core/macroPlausibility";
+import {
+  isBareGenericNounRow,
+  isLowRelevanceNonVerifiedRow,
+  isLowConfidenceDemotedRow,
+} from "@suppr/nutrition-core/searchRowTrust";
 import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers";
 
 /**
@@ -40,7 +45,7 @@ import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers
  * maintaining a hand-synced duplicate. Same value as before (0.50);
  * the import path is now stable across web + mobile.
  */
-import { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "@suppr/shared/nutrition/verifyConfidencePolicy";
+import { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "@suppr/nutrition-core/verifyConfidencePolicy";
 import {
   foodSearchRankScore,
   searchMatchScore,
@@ -48,7 +53,7 @@ import {
   splitBestMatches,
   type SearchRowConfidenceTier,
   type SectionedSearchRows,
-} from "@suppr/shared/nutrition/foodSearchRanking";
+} from "@suppr/nutrition-core/foodSearchRanking";
 import { mergeFoodSearchRows } from "@suppr/shared/nutrition/foodSearchMerge";
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE };
 
@@ -1055,7 +1060,7 @@ export async function searchFoods(
  * source if they need to (currently they don't — the macros + caffeine
  * are read directly).
  */
-function genericBeverageToUnifiedResult(b: import("@suppr/shared/nutrition/genericBeverages").GenericBeverage): UnifiedSearchResult {
+function genericBeverageToUnifiedResult(b: import("@suppr/nutrition-core/genericBeverages").GenericBeverage): UnifiedSearchResult {
   return {
     key: `generic-beverage:${b.id}`,
     name: b.name,
@@ -1095,7 +1100,7 @@ function genericBeverageToUnifiedResult(b: import("@suppr/shared/nutrition/gener
  * primary serving carries the curated `servingLabel` (e.g.
  * "1 medium (182g)" for an apple).
  */
-function genericFoodToUnifiedResult(f: import("@suppr/shared/nutrition/genericFoods").GenericFood): UnifiedSearchResult {
+function genericFoodToUnifiedResult(f: import("@suppr/nutrition-core/genericFoods").GenericFood): UnifiedSearchResult {
   // ENG-738 — attach the baked per-100g USDA micronutrient panel for this
   // generic food so the meal-detail "Vitamins, minerals & more" card
   // populates after it's logged. Mirrors the OFF row (which carries

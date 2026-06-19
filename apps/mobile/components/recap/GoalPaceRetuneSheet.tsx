@@ -50,12 +50,12 @@ import {
 } from "@/lib/goalPaceRetune";
 import {
   onboardingGoalForDbGoal,
-} from "@suppr/shared/nutrition/goalPaceRetune";
+} from "@suppr/nutrition-core/goalPaceRetune";
 import { formatKcal } from "@/lib/weeklyCheckin";
-import { backfillDailyTargetsFromProfile } from "@suppr/shared/nutrition/dailyTargetSnapshot";
-import { recordGoalHistory } from "@suppr/shared/nutrition/goalHistory";
+import { backfillDailyTargetsFromProfile } from "@suppr/nutrition-core/dailyTargetSnapshot";
+import { recordGoalHistory } from "@suppr/nutrition-core/goalHistory";
 import type { Goal } from "@suppr/shared/onboarding/state";
-import type { NutritionStrategy, Sex } from "@suppr/shared/nutrition/tdee";
+import type { NutritionStrategy, Sex } from "@suppr/nutrition-core/tdee";
 
 export interface GoalPaceRetuneSheetProps {
   visible: boolean;

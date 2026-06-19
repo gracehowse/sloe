@@ -114,7 +114,7 @@ describe("AI log review parity (audit B5)", () => {
     it("uses the shared aiLogging confidence helpers", () => {
       // Pulls from `src/lib/nutrition/aiLogging.ts` so item-row and
       // header summaries can never disagree on what counts as "low".
-      expect(ITEM_SRC).toMatch(/from\s+["']@suppr\/shared\/nutrition\/aiLogging["']/);
+      expect(ITEM_SRC).toMatch(/from\s+["']@suppr\/(?:shared\/nutrition|nutrition-core)\/aiLogging["']/);
       expect(ITEM_SRC).toMatch(/\bisLowConfidence\b/);
       expect(ITEM_SRC).toMatch(/\bclassifyConfidence\b/);
     });

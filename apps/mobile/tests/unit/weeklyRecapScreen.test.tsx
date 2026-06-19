@@ -32,7 +32,7 @@ import { render, fireEvent } from "@testing-library/react-native";
 // ── Imports (after mocks) ──────────────────────────────────────────
 import { StreakPip } from "../../components/today/StreakPip";
 import WeeklyRecapScreen from "../../app/weekly-recap";
-import { selectClosestToTargetDay } from "@suppr/shared/nutrition/weeklyRecap";
+import { selectClosestToTargetDay } from "@suppr/nutrition-core/weeklyRecap";
 import { FontFamily } from "../../constants/theme";
 
 void React;

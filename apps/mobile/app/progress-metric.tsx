@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, CheckCircle2, ChevronRight } from "lucide-react-native";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -15,7 +15,7 @@ import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
 import { buildWeekStats, getStreakContributingDays } from "@/lib/progressWeekReport";
-import { getDailyTargets, type DailyTarget } from "@suppr/shared/nutrition/dailyTargetRead";
+import { getDailyTargets, type DailyTarget } from "@suppr/nutrition-core/dailyTargetRead";
 import { computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "@/lib/streakFreeze";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 

@@ -15,7 +15,7 @@ import {
 } from "../../lib/recipeTrust";
 import {
   classifyRecipeGluten as webClassify,
-} from "@suppr/shared/nutrition/recipeTrust";
+} from "@suppr/nutrition-core/recipeTrust";
 
 describe("gluten chip parity (mobile re-export)", () => {
   it("mobile and web classifiers are the same function", () => {
