@@ -15,7 +15,9 @@ import {
   toBreakdownEntry,
   type BreakdownIngredientRow,
   type BreakdownMacro,
+  type BreakdownSnapshotRow,
 } from "@/lib/nutrition/macroIngredientBreakdown";
+import { NUTRITION_ENTRY_INGREDIENTS_FLAG } from "@/lib/nutrition/nutritionEntryIngredients";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 
 export type MacroKey = "protein" | "carbs" | "fat" | "fiber" | "calories" | "water";
@@ -93,6 +95,14 @@ export interface MacroDetailPanelProps {
    * recipe_ids and run a single `.in("recipe_id", ids)` query.
    */
   ingredientRows?: BreakdownIngredientRow[];
+  /**
+   * Persisted AI/photo/voice per-item snapshot rows (ENG-751), keyed by entryId.
+   * Optional — when present AND the `nutrition_entry_ingredients_v1` flag is on,
+   * an AI entry's snapshot rows take precedence over its single-line fallback
+   * (the entry splits into one line per item). The CALLER does the I/O (gated by
+   * the same flag) and passes them in; mirrors the mobile `useMacroDetail` fetch.
+   */
+  snapshotRows?: BreakdownSnapshotRow[];
 }
 
 const MACRO_CONFIG: Record<
@@ -173,6 +183,7 @@ export function MacroDetailPanel({
   open,
   onClose,
   ingredientRows,
+  snapshotRows,
 }: MacroDetailPanelProps) {
   const config = MACRO_CONFIG[macro];
   const router = useRouter();
@@ -217,6 +228,9 @@ export function MacroDetailPanel({
   // Derive the per-ingredient breakdown via the SHARED helper (same module
   // mobile uses) so the scale/reconcile logic is single-sourced. Skipped
   // entirely for water — it has no per-ingredient decomposition.
+  // ENG-751 — prefer persisted AI snapshot rows over the single-line fallback
+  // when present + the `nutrition_entry_ingredients_v1` display flag is on.
+  const preferSnapshot = isFeatureEnabled(NUTRITION_ENTRY_INGREDIENTS_FLAG);
   const ingredientBreakdown = useMemo(() => {
     if (!supportsIngredientBreakdown) return { lines: [], total: 0 };
     const entries = meals.map((m) =>
@@ -233,8 +247,11 @@ export function MacroDetailPanel({
         fiberG: getMacroValue(m, "fiber"),
       }),
     );
-    return deriveIngredientBreakdown(entries, ingredientRows ?? [], macro as BreakdownMacro);
-  }, [meals, ingredientRows, macro, supportsIngredientBreakdown]);
+    return deriveIngredientBreakdown(entries, ingredientRows ?? [], macro as BreakdownMacro, {
+      snapshots: snapshotRows ?? [],
+      preferSnapshot,
+    });
+  }, [meals, ingredientRows, snapshotRows, macro, supportsIngredientBreakdown, preferSnapshot]);
 
   const formatValue = (v: number): string => {
     const rounded = Math.round(v * 10) / 10;
@@ -355,6 +372,14 @@ export function MacroDetailPanel({
                           <p className="truncate text-sm font-medium text-foreground">
                             {line.name}
                           </p>
+                          {/* ENG-751 — low-confidence AI snapshot lines carry a
+                              quiet "Estimated" flag (trust posture — flagged,
+                              never dropped). Mirrors the mobile MacroIngredientList. */}
+                          {line.lowConfidence ? (
+                            <p className="truncate text-xs text-muted-foreground">
+                              Estimated — low confidence
+                            </p>
+                          ) : null}
                         </div>
                         <span
                           className="shrink-0 text-sm font-bold tabular-nums"

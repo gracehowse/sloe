@@ -3,8 +3,10 @@ import {
   deriveIngredientBreakdown,
   toBreakdownEntry,
   toBreakdownIngredientRow,
+  toBreakdownSnapshotRow,
   type BreakdownEntry,
   type BreakdownIngredientRow,
+  type BreakdownSnapshotRow,
 } from "../../src/lib/nutrition/macroIngredientBreakdown";
 
 /**
@@ -254,6 +256,157 @@ describe("deriveIngredientBreakdown — aggregation across entries", () => {
     const { lines, total } = deriveIngredientBreakdown([], [], "protein");
     expect(lines).toHaveLength(0);
     expect(total).toBe(0);
+  });
+});
+
+describe("deriveIngredientBreakdown — AI snapshot path (ENG-751)", () => {
+  // An AI/photo/voice entry with persisted per-item snapshot rows.
+  const aiEntry = (over: Partial<Parameters<typeof toBreakdownEntry>[0]> = {}) =>
+    toBreakdownEntry({
+      id: "ai1",
+      name: "Lunch",
+      recipeTitle: "Burrito bowl",
+      recipeId: null, // AI meals have no recipe link
+      portionMultiplier: 1,
+      protein: 40,
+      ...over,
+    });
+
+  const snap = (
+    over: Partial<Parameters<typeof toBreakdownSnapshotRow>[0]> = {},
+  ): BreakdownSnapshotRow =>
+    toBreakdownSnapshotRow({
+      entryId: "ai1",
+      name: "Item",
+      lowConfidence: false,
+      protein: 0,
+      ...over,
+    });
+
+  it("prefers snapshot rows over the single-line fallback when present + flag on", () => {
+    const entries: BreakdownEntry[] = [aiEntry({ protein: 40 })];
+    const snapshots: BreakdownSnapshotRow[] = [
+      snap({ name: "Chicken", protein: 30 }),
+      snap({ name: "Rice", protein: 10 }),
+    ];
+    const { lines, total } = deriveIngredientBreakdown(entries, [], "protein", {
+      snapshots,
+      preferSnapshot: true,
+    });
+    // Splits into one line per snapshot item, reconciled to the entry's stored 40.
+    expect(total).toBeCloseTo(40, 6);
+    expect(lines.map((l) => l.name).sort()).toEqual(["Chicken", "Rice"]);
+    expect(lines.find((l) => l.name === "Chicken")?.value).toBeCloseTo(30, 6);
+    expect(lines.find((l) => l.name === "Rice")?.value).toBeCloseTo(10, 6);
+    expect(lines.every((l) => !l.isFallback)).toBe(true);
+  });
+
+  it("flag OFF keeps today's single-line fallback even when snapshot rows exist", () => {
+    const entries: BreakdownEntry[] = [aiEntry({ protein: 40 })];
+    const snapshots: BreakdownSnapshotRow[] = [
+      snap({ name: "Chicken", protein: 30 }),
+      snap({ name: "Rice", protein: 10 }),
+    ];
+    const { lines, total } = deriveIngredientBreakdown(entries, [], "protein", {
+      snapshots,
+      preferSnapshot: false, // display gate OFF — data is dark
+    });
+    expect(total).toBeCloseTo(40, 6);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].name).toBe("Burrito bowl");
+    expect(lines[0].isFallback).toBe(true);
+  });
+
+  it("reconciles snapshot rows to the entry's stored total (commit-time rounding drift)", () => {
+    // Snapshot items sum to 50g protein, but the entry column stored 45 (rounded
+    // differently at commit). Display must pin to the stored 45 — the logged whole.
+    const entries: BreakdownEntry[] = [aiEntry({ protein: 45 })];
+    const snapshots: BreakdownSnapshotRow[] = [
+      snap({ name: "Steak", protein: 35 }),
+      snap({ name: "Beans", protein: 15 }),
+    ];
+    const { lines, total } = deriveIngredientBreakdown(entries, [], "protein", {
+      snapshots,
+      preferSnapshot: true,
+    });
+    expect(total).toBeCloseTo(45, 6);
+    // factor = 45/50 = 0.9 → [31.5, 13.5]
+    expect(lines.find((l) => l.name === "Steak")?.value).toBeCloseTo(31.5, 6);
+    expect(lines.find((l) => l.name === "Beans")?.value).toBeCloseTo(13.5, 6);
+    expect(close(lines.reduce((s, l) => s + l.value, 0), 45)).toBe(true);
+  });
+
+  it("flags low-confidence snapshot lines (never drops them)", () => {
+    const entries: BreakdownEntry[] = [aiEntry({ protein: 20 })];
+    const snapshots: BreakdownSnapshotRow[] = [
+      snap({ name: "Mystery sauce", protein: 5, lowConfidence: true }),
+      snap({ name: "Tofu", protein: 15, lowConfidence: false }),
+    ];
+    const { lines } = deriveIngredientBreakdown(entries, [], "protein", {
+      snapshots,
+      preferSnapshot: true,
+    });
+    // The low-confidence item is present (not dropped) AND flagged.
+    const sauce = lines.find((l) => l.name === "Mystery sauce");
+    expect(sauce).toBeDefined();
+    expect(sauce?.lowConfidence).toBe(true);
+    expect(lines.find((l) => l.name === "Tofu")?.lowConfidence).toBe(false);
+  });
+
+  it("recipes keep the recipe-derived path — snapshots only apply to their own entry", () => {
+    // A recipe entry (e1) and an AI entry (ai1) on the same day. Snapshot rows
+    // target ai1 only; e1 must still derive from recipe_ingredients.
+    const entries: BreakdownEntry[] = [
+      toBreakdownEntry({
+        id: "e1",
+        name: "Dinner",
+        recipeTitle: "Pasta",
+        recipeId: "r1",
+        portionMultiplier: 1,
+        protein: 12,
+      }),
+      aiEntry({ protein: 8 }),
+    ];
+    const ingredients: BreakdownIngredientRow[] = [
+      toBreakdownIngredientRow({ recipeId: "r1", name: "Pasta", protein: 8 }),
+      toBreakdownIngredientRow({ recipeId: "r1", name: "Cheese", protein: 4 }),
+    ];
+    const snapshots: BreakdownSnapshotRow[] = [snap({ name: "Sandwich", protein: 8 })];
+    const { lines } = deriveIngredientBreakdown(entries, ingredients, "protein", {
+      snapshots,
+      preferSnapshot: true,
+    });
+    // Recipe ingredients present (recipe path), plus the AI snapshot line.
+    expect(lines.find((l) => l.name === "Pasta")?.value).toBeCloseTo(8, 6);
+    expect(lines.find((l) => l.name === "Cheese")?.value).toBeCloseTo(4, 6);
+    expect(lines.find((l) => l.name === "Sandwich")?.value).toBeCloseTo(8, 6);
+  });
+
+  it("falls back to the single line when neither snapshot nor recipe rows exist", () => {
+    const entries: BreakdownEntry[] = [aiEntry({ protein: 40 })];
+    const { lines } = deriveIngredientBreakdown(entries, [], "protein", {
+      snapshots: [],
+      preferSnapshot: true,
+    });
+    expect(lines).toHaveLength(1);
+    expect(lines[0].name).toBe("Burrito bowl");
+    expect(lines[0].isFallback).toBe(true);
+  });
+
+  it("emits 0-value snapshot lines (not a fallback) when the macro is genuinely absent", () => {
+    // Fat-free AI item set viewed under the 'fat' macro.
+    const entries: BreakdownEntry[] = [aiEntry({ protein: 0, fat: 0 })];
+    const snapshots: BreakdownSnapshotRow[] = [
+      snap({ name: "Apple", fat: 0 }),
+      snap({ name: "Berries", fat: 0 }),
+    ];
+    const { lines, total } = deriveIngredientBreakdown(entries, [], "fat", {
+      snapshots,
+      preferSnapshot: true,
+    });
+    expect(total).toBeCloseTo(0, 6);
+    expect(lines.map((l) => l.name).sort()).toEqual(["Apple", "Berries"]);
+    expect(lines.every((l) => l.value === 0 && !l.isFallback)).toBe(true);
   });
 });
 

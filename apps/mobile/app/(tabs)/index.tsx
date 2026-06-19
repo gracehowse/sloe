@@ -178,6 +178,7 @@ import {
   serializeQuickAddCollapsed,
 } from "@suppr/shared/nutrition/todayProgressiveDisclosure";
 import { aiLoggingSourceLabel } from "@suppr/shared/nutrition/aiLogging";
+import { persistEntryIngredientSnapshot } from "@suppr/shared/nutrition/nutritionEntryIngredients";
 import { scaleCaffeineAlcohol } from "@suppr/shared/nutrition/scaleCaffeineAlcoholForGrams";
 import { scaleLoggedMealFiberAndMicros } from "@suppr/shared/nutrition/scaleLoggedMealPortion";
 import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
@@ -3360,6 +3361,10 @@ export default function TrackerScreen() {
         hour: "numeric",
         minute: "2-digit",
       });
+      // ENG-751 — pair each new entry id with the AI item it came from so the
+      // per-item snapshot can be persisted against the parent entry after the
+      // main write lands.
+      const mealItemPairs: { entryId: string; item: (typeof aiItems)[number] }[] = [];
       const newMeals: JournalMeal[] = aiItems.map((item) => {
         // F-74 / F-103 (2026-05-07) — forward optional caffeine /
         // alcohol from the AI item to the journal meal's `micros`
@@ -3397,6 +3402,7 @@ export default function TrackerScreen() {
             ? { eatenAt: defaultEatenAtForNewLog(dayKey, profileTimeZone) }
             : {}),
         };
+        mealItemPairs.push({ entryId: meal.id, item });
         return meal;
       });
       setByDay((prev) => ({
@@ -3405,7 +3411,23 @@ export default function TrackerScreen() {
       }));
       // 2026-05-08 data-loss hotfix — immediate Supabase persist. Commit
       // confirm haptic fires once inside the funnel (ENG-1016).
-      void persistMealsImmediate(dayKey, newMeals);
+      // ENG-751 — chain the per-item snapshot inserts AFTER the entry upsert
+      // resolves, so the FK to nutrition_entries(id) is satisfied. ADDITIVE +
+      // DEFENSIVE: `persistEntryIngredientSnapshot` never throws (table-missing
+      // pre-push / RLS / network all swallow), and we only run it once the
+      // entry write reported success — so it can NEVER break the meal log. The
+      // write path is always-on; only the macro-detail DISPLAY is flag-gated.
+      void persistMealsImmediate(dayKey, newMeals).then((persisted) => {
+        if (!persisted) return;
+        for (const { entryId, item } of mealItemPairs) {
+          void persistEntryIngredientSnapshot(
+            supabase,
+            entryId,
+            [item],
+            aiLoggingSourceLabel(item.source),
+          );
+        }
+      });
       // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` —
       // per-meal micros canonical, no ledger bump on AI commits.
       track(AnalyticsEvents.food_logged, {

@@ -29,11 +29,13 @@ import { useMacroDetail } from "./useMacroDetail";
 // reconciled to the entry's stored total. See
 // `src/lib/nutrition/macroIngredientBreakdown.ts` for the shared web+mobile logic.
 //
-// Entries with no recipe (single foods, deleted recipes, AI/photo multi-item
-// meals) fall back to one self-named line. AI/photo multi-item splitting needs a
-// `nutrition_entry_ingredients` snapshot child table — deferred, see ENG-751
-// (tracked separately; not built here). The supported-macros gating + the
-// derive/scale/reconcile data flow live in the `useMacroDetail` hook.
+// Entries with no recipe (single foods, deleted recipes) fall back to one
+// self-named line. AI/photo/voice entries (ENG-751) split by their persisted
+// `nutrition_entry_ingredients` snapshot rows when the `nutrition_entry_ingredients_v1`
+// display flag is on (each item becomes a line, reconciled to the entry total,
+// low-confidence flagged); flag-OFF keeps the single self-named fallback. The
+// supported-macros gating + the snapshot/recipe derive data flow live in the
+// `useMacroDetail` hook.
 type BreakdownMode = "meal" | "ingredient";
 
 function formatDateLabel(dateKey: string): string {

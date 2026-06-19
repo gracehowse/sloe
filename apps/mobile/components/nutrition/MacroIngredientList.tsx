@@ -7,10 +7,12 @@ import type { IngredientBreakdownResult } from "@suppr/shared/nutrition/macroIng
  * Per-ingredient breakdown list (ENG-748 #10). Renders the reconciled,
  * name-aggregated ingredient lines from the shared derive helper
  * (`src/lib/nutrition/macroIngredientBreakdown.ts`). Each line is one ingredient
- * (or a self-named fallback for entries with no recipe rows), sorted by
- * descending contribution, with a proportion dot scaled by its share of the
- * day's total for the active macro. Visual treatment matches the by-meal flat
- * list so the two breakdown modes feel consistent.
+ * (or a self-named fallback for entries with no recipe rows, or a persisted AI
+ * snapshot item under ENG-751), sorted by descending contribution, with a
+ * proportion dot scaled by its share of the day's total for the active macro.
+ * Visual treatment matches the by-meal flat list so the two breakdown modes feel
+ * consistent. Low-confidence AI snapshot lines carry a quiet "Estimated" label
+ * (trust posture — flagged, never dropped).
  */
 export function MacroIngredientList({
   breakdown,
@@ -57,6 +59,19 @@ export function MacroIngredientList({
               >
                 {line.name}
               </Text>
+              {line.lowConfidence ? (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "500",
+                    color: colors.textSecondary,
+                    marginTop: 2,
+                  }}
+                  numberOfLines={1}
+                >
+                  Estimated — low confidence
+                </Text>
+              ) : null}
             </View>
             <Text
               style={{

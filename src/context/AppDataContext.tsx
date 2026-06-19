@@ -240,7 +240,13 @@ interface AppDataContextValue {
    * / barcode / voice / photo / copy_meal / duplicate_day / saved_meal
    * / custom_food) pass the matching enum so dashboards can slice.
    */
-  addLoggedMeal: (meal: Omit<LoggedMeal, "id">, analyticsSource?: FoodLoggedSource) => string;
+  addLoggedMeal: (
+    meal: Omit<LoggedMeal, "id">,
+    analyticsSource?: FoodLoggedSource,
+    // ENG-751 — fired once the parent nutrition_entries insert resolves so the
+    // AI-commit caller can chain a per-item snapshot write off a confirmed FK.
+    onPersisted?: (persisted: boolean, entryId: string) => void,
+  ) => string;
   addLoggedMealForDate: (
     dayKey: string,
     meal: Omit<LoggedMeal, "id">,
