@@ -96,17 +96,16 @@ export function clampRememberedToServingOptions(
   if (!servingOptions || servingOptions.length === 0) return remembered;
   let bestGrams = remembered;
   let bestDelta = Number.POSITIVE_INFINITY;
-  let exact = false;
   for (const opt of servingOptions) {
     if (!Number.isFinite(opt.grams) || opt.grams <= 0) continue;
     const delta = Math.abs(opt.grams - remembered);
-    if (delta < 0.5) { exact = true; bestGrams = opt.grams; break; }
+    if (delta < 0.5) { bestGrams = opt.grams; break; }
     if (delta < bestDelta) {
       bestDelta = delta;
       bestGrams = opt.grams;
     }
   }
-  return exact ? bestGrams : bestGrams;
+  return bestGrams;
 }
 
 /** Test-only — clear all remembered barcode portions. */
