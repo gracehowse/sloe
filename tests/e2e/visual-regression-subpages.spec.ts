@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { hasE2ECredentials } from "./utils/auth";
-import { dismissVisualOverlays, stabilizeForScreenshot } from "./utils/visual";
+import { hasVisualGoldenCredentials } from "./utils/auth";
+import { visualAuthFileForBaseUrl } from "./utils/authHosts";
+import { dismissVisualOverlays, freezeVisualClock, stabilizeForScreenshot } from "./utils/visual";
+
+const visualStorageState = hasVisualGoldenCredentials()
+  ? visualAuthFileForBaseUrl(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
+  : undefined;
 
 const viewports = [
   { name: "mobile", width: 390, height: 844 },
@@ -49,8 +54,13 @@ test.describe("Visual regression — public subpages", () => {
 
 test.describe("Visual regression — authenticated subpages", () => {
   test.describe.configure({ mode: "serial" });
-  test.beforeEach(() => {
-    test.skip(!hasE2ECredentials(), "Set E2E_EMAIL and E2E_PASSWORD for authed subpage snapshots.");
+  test.use({ storageState: visualStorageState });
+  test.beforeEach(async ({ page }) => {
+    test.skip(
+      !hasVisualGoldenCredentials(),
+      "Set E2E_VISUAL_EMAIL and E2E_VISUAL_PASSWORD for deterministic authed subpage snapshots.",
+    );
+    await freezeVisualClock(page);
   });
 
   for (const screen of authedSubpages) {

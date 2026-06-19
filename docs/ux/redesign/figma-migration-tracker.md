@@ -9,10 +9,10 @@
 |---|---|
 | Total items tracked | **369** |
 | ✅ Matches Figma | 42 (11%) |
-| 🟡 Partial Match | 143 (39%) |
+| 🟡 Partial Match | 141 (38%) |
 | 🔵 App Only (→ Figma task) | 169 (46%) |
-| 🟣 Figma Only (build) | 15 (4%) |
-| **Conformance %** (Matches ÷ Matches+Partial+FigmaOnly) | **21%** |
+| 🟣 Figma Only (build) | 14 (4%) |
+| **Conformance %** (Matches ÷ Matches+Partial+FigmaOnly) | **22%** |
 | Open blockers | 94 |
 
 ### Per-area scorecard
@@ -20,7 +20,7 @@
 |---|--:|--:|--:|--:|--:|---|
 | Today | 37 | 15 | 21 | 0 | 1 | most-conformed; 8 app-only Figma-backfilled 2026-06-08 |
 | Log a meal | 19 | 0 | 6 | 11 | 2 | Figma frame predates search-first refactor |
-| Recipes & Cookbook | 25 | 1 | 10 | 12 | 2 | Discover sections unbuilt; filter taxonomy mismatch |
+| Recipes & Cookbook | 25 | 1 | 9 | 12 | 2 | L2 loading skeleton shipped #483; Discover sections unbuilt |
 | Recipe detail / create / cook | 30 | 1 | 16 | 13 | 0 | rings-vs-tiles call; import has no frame |
 | Plan | 30 | 4 | 7 | 18 | 1 | single-day Figma vs multi-day app |
 | Progress | 35 | 3 | 15 | 17 | 0 | adherence/weight cards drift; fibre data gap |
@@ -28,7 +28,7 @@
 | Account / Settings / More / Ask | 27 | 0 | 13 | 11 | 3 | IA + palette drift; Ask unbuilt |
 | Auth | 23 | 6 | 2 | 13 | 2 | chooser `296:2` rebuilt web+mobile 2026-06-08 (M1 chooser/mobile-login/web-/login/wordmark/terms/Apple ✅); Google SI deferred (ENG-924) |
 | Paywall & win moments | 22 | 0 | 6 | 15 | 1 | streak/import-success are full screens in Figma |
-| Import | 23 | 0 | 8 | 14 | 1 | input-methods vs source-platforms mismatch |
+| Import | 23 | 0 | 7 | 14 | 1 | L4 error shipped #483; input-methods vs source-platforms mismatch |
 | Fasting | 25 | 1 | 12 | 11 | 1 | legacy indigo skin not migrated |
 | Global / Nav / System states | 22 | 0 | 13 | 9 | 0 | dark/loading/offline states; nav icon drift |
 | Landing & Marketing (web) | 20 | 11 | 2 | 7 | 0 | most-migrated already |
@@ -59,7 +59,7 @@
 - **Plan:** 04 Plan legacy single-day frame (309:2) — likely superseded by TD5
 - **Onboarding:** About-you consolidated body stats S2 (190:2)
 - **Account:** Sloe Pro upsell banner (335:23); Account Region row (334:96); **Ask coach screen (185:2) — net-new feature**
-- **Auth:** Google Sign In (296:25 — needs Supabase provider); Continue-with-email progressive disclosure (296:33)
+- **Auth:** Google Sign In (296:25 — needs Supabase provider)
 - **Paywall:** Web import-success surface M6 (304:2)
 - **Import:** macro-check reassurance card (177:81)
 - **Fasting:** K4 'Fasting on Today' explainer header (498:3)
@@ -67,7 +67,7 @@
 ## 🟡 Partial Match — fix to Figma (141, by area)
 **Today (13):** coach-line placement; S5 empty ('Fresh start' chip/copy); L1 loading (Today-shaped skeleton); L5 dark; TD1 Activity&energy; TD2 Hydration; TD3 Weekly insight; TD4 Meal-log; D1 Macro detail; D2 Energy out; W2 tablet; W825 net-energy (web); W840 where-this-comes-from sheet. **+ pixel deltas (depth audit):** avatar clay→plum #6a4b7a 32→36px; hero eyebrow white→rgba(201,194,214,.9) +1px; hero meta add clock+min+dot; hero scrim add flat base layer; Log-slot CTA dashed→solid white card r24 label #6a6072; meal card radius 12→24; meal-row image rule (photo only for library-recipe-with-image, no empty box).
 **Log a meal (6):** entry sheet; search-food; photo-log; voice-log; PRO badge on voice/photo; Recent tab.
-**Recipes & Cookbook (10):** /library Cookbook (high); /discover (high); S7 empty; L2 loading; L6 dark; sub-tab switcher; sticky header; recipe card (232w/r20/172 image); 'What others are saving' grid; category/cuisine filter pills.
+**Recipes & Cookbook (9):** /library Cookbook (high); /discover (high); S7 empty; ~~L2 loading~~ ✅ #483; L6 dark; sub-tab switcher; sticky header; recipe card (232w/r20/172 image); 'What others are saving' grid; category/cuisine filter pills.
 **Recipe detail/create/cook (16):** detail mobile; detail web; public share; servings stepper; cook-mode mobile inline/standalone/web; step timer 'For this step' pills; new-recipe wizard/long-form/web; verify mobile/web; creator mobile/web; 'Fits your day' verdict tones.
 **Plan (7):** tab chrome; week-view mobile; week-view web; S8 empty; shopping mobile; shopping web; 'add week to shopping' CTA.
 **Progress (15):** main screen; header subtitle; THIS WEEK card; AVERAGE ADHERENCE card; weight card; 3-stat row; on-target-days ribbon; S9 empty; over-target colours; D4 weight detail; recent weigh-ins; D7 weekly recap; maintenance card; journey/projection; v2-vs-legacy layout.
@@ -75,7 +75,7 @@
 **Account/Settings/More (13):** Settings root (high); profile row; Units row; Appearance row; Connections; Account group; Account&plan M4 (high); Targets D9 (high); Targets why-number K3; Household D10; Reminders M2 (high); goal/pace editor; delete-account flow.
 **Auth (2 remaining):** /signin alias + /signup mode-state pixel pass (both share the rebuilt `app/login/ui.tsx` chooser — verify the signup-mode terms-checkbox + create-account copy on the email step). ✅ 2026-06-08: M1 chooser, mobile login, web /login, Apple SI flow, terms fine-print, brand wordmark all rebuilt to `296:2` (chooser-first + progressive-disclosure email).
 **Paywall (6):** mobile paywall (high); web pricing; upgrade dialog; M5 streak win (high); M6 import-success (high); trust strip.
-**Import (8):** 'Add a recipe' entry (high); paste-link pill; import CTA; source tiles 3-method (high); L4 error (high); /import web; /import-shared (high); action sheet.
+**Import (7):** 'Add a recipe' entry (high); paste-link pill; import CTA; source tiles 3-method (high); ~~L4 error (high)~~ ✅ #483; /import web; /import-shared (high); action sheet (partial — Pro photo gate #483; 2×2 grid open).
 **Fasting (12):** web route; mobile route; D5 timer (high); preset picker; progress ring (high); stages bar (high); started/goal card; end-fast button; stage narrative; K4 idle (high); K4 active (high); fasting flow.
 **Global/Nav (13):** mobile tab bar; web mobile-web tab bar; mobile-web header; L3 offline; L1/L2 skeletons; L4 import error; L5/L6 dark; S5/S7/S8/S9 empties.
 **Landing (2):** desktop header; footer.
@@ -90,7 +90,7 @@ Confirmed wired, **no Figma frame**. Never remove. Each needs a Stitch→Mobbin�
 - **Settings (11), Paywall (15), Import (14), Onboarding (18), Auth (13), Fasting (11), Recipes (12), Global (9)** — see audit file.
 
 ## Blockers (94) — themes
-1. **Brand drift Suppr→Sloe** still in code: mobile `formatAuthError` "Suppr's servers", paywall "SUPPR PRO", suppr-club.com links, reset-password aria.
+1. **Brand drift Suppr→Sloe** mostly resolved in user-facing copy. 2026-06-17 ENG-1196 re-swept Help, Terms, Privacy, and meal-share attribution and pinned them in `tests/unit/brandDriftSloe.test.ts`; operational mailboxes, bundle IDs, historical docs, and the live `SupprBot` crawler user-agent remain intentionally unchanged.
 2. **Flag-gating debt** (migration flags to retire later, NOT now): `today_meals_figma_654`, `today-status-pills`, `progressLayoutV2`, `plan_empty_state_v2`, `plan_source_selector`, onboarding flag, etc.
 3. **File-size debt** (CLAUDE.md 400-line cap): mobile `(tabs)/index.tsx` 6412L, `NutritionTracker.tsx` 3613L, mobile `progress.tsx` 4007L, `SettingsBundleContent.tsx` ~3600L, web `Settings.tsx` ~88KB — structural refactor needed for clean conformance.
 4. **Figma coverage gaps:** no dark-mode frames for most areas (web has no dark at all); no desktop frames for Recipes/Plan/Recipe-detail/Paywall; no loading/error frames for most areas; states under-designed.
@@ -302,3 +302,22 @@ Public-share page (`app/recipe/[id]/page.tsx`) full Sloe reskin (cream, plum ser
 **Today 🔵 App Only → 0.** All 8 original + 1 bonus (goal-hit inline) move to 🟡 Partial Match (Figma frame exists, app implementation pending).
 
 **Next:** Recipes (12 app-only) → Log a meal (11) → Plan (18) → Progress (17).
+
+### Batch 6 — PR [#483](https://github.com/gracehowse/Suppr/pull/483) partial slices (2026-06-18; merge pending green CI)
+
+**ENG-896 — Library L2 loading (`324:2`):**
+- Mobile `LibraryLoadingSkeleton` replaces cold-load `ActivityIndicator` (2×2 grid silhouettes). Unit: `libraryLoadingSkeleton.test.ts`.
+- Screenshot wall criteria: `docs/testing/figma-vs-simulator.md` Library L2 row.
+
+**ENG-898 — Import L4 error (`207:2`) + action sheet (partial):**
+- Web `RecipeUpload` amber inline `data-testid="import-l4-error"`; mobile `import-shared` editorial error (AlertCircle, retry, clipboard).
+- `CreateRecipeActionSheet` photo Pro gate (Lock + paywall before picker). Unit: `recipeImportSurface.test.tsx`, `importSharedRedesign.test.ts`, `createRecipeActionSheetProGate.test.ts`.
+- Screenshot wall: Import L4 row in `figma-vs-simulator.md`.
+
+**ENG-897 — Signup email step (`296:33`) screenshot wall:**
+- Signed-out web capture + wall criteria in `figma-vs-simulator.md`. Unit pin on main: `authChooserFigma.test.ts` ENG-897 row.
+- `/signup` chooser → email progressive disclosure verified (no middleware block).
+
+**Also in PR:** ENG-889 L5 dark Today verify docs; ENG-1142 visual cohesion gate; ENG-1016 Discover PressableScale haptics.
+
+**Tracker delta (post-merge):** 🟡 143→141 (L2 + L4); 🟣 15→14 (296:33 email step removed from Figma-Only build list — wall + unit pin shipped); Recipes partial 10→9; Import partial 8→7. Parent epics ENG-896/897/898 stay **In Progress**.

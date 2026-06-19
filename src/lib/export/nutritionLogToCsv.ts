@@ -13,8 +13,8 @@
  *   - Columns: date, meal_type, food_name, grams, calories, protein_g,
  *     carbs_g, fat_g, fibre_g, source.
  *   - Anything not in `nutrition_entries` (weight history, custom
- *     foods, saves, etc.) stays JSON-only for now — see the follow-up
- *     note in `resolved.md`.
+ *     foods, saves, etc.) intentionally stays in the JSON export. CSV
+ *     remains nutrition-log scoped so spreadsheet columns stay stable.
  *
  * Quoting rules (RFC 4180-ish, Excel/Sheets compatible):
  *   - A field is quoted when it contains a comma, double-quote, CR, or LF.

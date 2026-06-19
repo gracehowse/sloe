@@ -19,6 +19,7 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
+import { mergeJournalByDay } from "@suppr/shared/nutrition/mergeJournalByDay";
 import { subscribeJournalRefresh } from "@/lib/journalRefresh";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -61,7 +62,7 @@ import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Layout } from "@/constants/layout";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
-import { Shimmer } from "@/components/ui/SkeletonRow";
+import { TodayLoadingSkeleton } from "@/components/today/TodayLoadingSkeleton";
 
 import DayStrip from "@/components/charts/DayStrip";
 import JournalDatePickerModal from "@/components/JournalDatePickerModal";
@@ -1626,13 +1627,10 @@ export default function TrackerScreen() {
       });
       const targetDayKey = dateKeyFromDate(selectedDate);
       setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist. The commit
+      // confirm haptic (Medium, ENG-1016) fires once inside this funnel via
+      // `confirmLogHapticRef` — no per-call-site duplicate buzz.
       void persistMealsImmediate(targetDayKey, newMeals);
-      // 2026-04-28 (teardown Top-5 #5): light haptic on every log so
-      // the action lands in the body, not just on the screen. Success
-      // notification (line ~1515) stays reserved for hitting the
-      // daily target.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       // L6 G1 (2026-04-18) — mirror the web primitive: fire one
       // `food_logged { source: "saved_meal" }` per expanded item so
       // the funnel totals match web. `saved_meal_logged` is still
@@ -1728,10 +1726,9 @@ export default function TrackerScreen() {
       });
       const targetDayKey = dateKeyFromDate(selectedDate);
       setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist. Commit
+      // confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(targetDayKey, newMeals);
-      // 2026-04-28 (teardown Top-5 #5): light haptic on log.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
         track(AnalyticsEvents.usual_meal_log_tapped, {
           slot,
@@ -2090,10 +2087,9 @@ export default function TrackerScreen() {
           : {}),
       };
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist. Commit
+      // confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(dayKey, [meal]);
-      // 2026-04-28 (teardown Top-5 #5): light haptic on log.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       // F-74 / F-103 fix (2026-05-07): NO ledger bump on log paths.
       // Per-meal `micros.caffeineMg` / `alcoholG` is the canonical SoT
       // for food-derived stimulants — `caffeineFromMealsMg` /
@@ -2191,8 +2187,8 @@ export default function TrackerScreen() {
           [resolvedDateKey]: [...(prev[resolvedDateKey] ?? []), meal],
         }));
       });
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
-      void persistMealsImmediate(dayKey, [meal]);
+      // Persist with the anchor dayKey; row builder derives date_key from eatenAt.
+      void persistMealsImmediate(resolvedDateKey, [meal]);
       // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` above —
       // per-meal micros is the canonical SoT for food-derived
       // stimulants. No `bumpStimulantsForLoggedMeal` here.
@@ -3471,12 +3467,11 @@ export default function TrackerScreen() {
         ...prev,
         [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
       }));
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist. Commit
+      // confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(dayKey, newMeals);
       // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` —
       // per-meal micros canonical, no ledger bump on AI commits.
-      // 2026-04-28 (teardown Top-5 #5): light haptic on log.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       track(AnalyticsEvents.food_logged, {
         source: aiItems[0]?.source === "voice" ? "voice" : "photo",
         count: newMeals.length,
@@ -4117,7 +4112,7 @@ export default function TrackerScreen() {
       // Schema refactor Phase 3 (2026-05-11) — legacy by_day JSONB
       // fallback removed. An empty `nutrition_entries` just means an
       // empty journal; we no longer try the deleted legacy table.
-      setByDay(loaded);
+      setByDay((prev) => mergeJournalByDay(loaded, prev));
       // Audit/2026-04-30 — pre-populate the HealthKit-meal-write dedupe
       // set with every meal that already exists in the journal at load
       // time. This ensures the debounced sync effect only writes meals
@@ -4309,10 +4304,9 @@ export default function TrackerScreen() {
     }));
     // 2026-05-08 data-loss hotfix — immediate Supabase persist (was
     // relying on the fragile 600ms debounce that lost ~25 days of
-    // Grace's data on TestFlight reinstall).
+    // Grace's data on TestFlight reinstall). Commit confirm haptic fires
+    // once inside the funnel (ENG-1016).
     void persistMealsImmediate(dayKey, [meal]);
-    // 2026-04-28 (teardown Top-5 #5): light haptic on log.
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTitle("");
     setKcal("");
     setProtein("");
@@ -4479,8 +4473,8 @@ export default function TrackerScreen() {
           [dayKey]: [...(prev[dayKey] ?? []), meal],
         }));
       });
+      // Commit confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(dayKey, [meal]);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
         track(AnalyticsEvents.food_logged, { source: "quick_add", slot: activeMealSlot });
       } catch {
@@ -4563,10 +4557,11 @@ export default function TrackerScreen() {
         ...prev,
         [targetDayKey]: [...(prev[targetDayKey] ?? []), ...withIds],
       }));
-      // 2026-04-28 (teardown Top-5 #5): light haptic on log. Copy /
-      // duplicate paths share this primitive — both feel like a log
-      // to the user, so both fire the same body-feedback tap.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // Copy / duplicate is a log commit — fire the canonical commit confirm
+      // beat (Medium, ENG-1016) through the shared funnel ref rather than a
+      // bespoke raw Light call. This path does its own insert (below) instead
+      // of `persistMealsImmediate`, so the funnel haptic is invoked here.
+      confirmLogHapticRef.current();
       if (!userId) return withIds.length;
       // Single shared row shape (launch-audit P1-2 consolidation) — the
       // builder guarantees `eaten_at` + the eaten-derived `date_key` are
@@ -4984,8 +4979,8 @@ export default function TrackerScreen() {
         createdAt: undefined,
       }));
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), ...clones] }));
+      // Commit confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(dayKey, clones);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
         for (const m of clones) {
           track(AnalyticsEvents.food_logged, {
@@ -5018,15 +5013,7 @@ export default function TrackerScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.scroll}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Shimmer style={{ width: 80, height: 20, borderRadius: Radius.sm }} />
-            <Shimmer style={{ width: 72, height: 16, borderRadius: Radius.sm }} />
-          </View>
-          <Shimmer style={{ height: 160, borderRadius: CARD_RADIUS }} />
-          <Shimmer style={{ height: 80, borderRadius: CARD_RADIUS }} />
-          {[1, 2, 3, 4].map((i) => (
-            <Shimmer key={i} style={{ height: 64, borderRadius: CARD_RADIUS }} />
-          ))}
+          <TodayLoadingSkeleton />
         </View>
       </View>
     );
@@ -5365,6 +5352,17 @@ export default function TrackerScreen() {
                 after mount fades 0.85 → 1.0 over 200ms; subsequent
                 focuses are no-ops (latched via `hasMountedFocusRef`). */}
             <ReAnimated.View style={heroEntrance.style}>
+              {(() => {
+                const coachInHero = isFeatureEnabled("today_coach_in_hero_v1");
+                const heroCoachLine =
+                  coachInHero && !activeFastStart && isToday && remaining > 0 ? (
+                    <TodayDeficitInsight
+                      remaining={remaining}
+                      selectedDate={selectedDate}
+                      byDay={byDay}
+                    />
+                  ) : null;
+                return (
               <TodayHero
                 consumed={totals.calories}
                 goal={effectiveCalorieGoal}
@@ -5393,7 +5391,10 @@ export default function TrackerScreen() {
                   dateKeyFromDate(new Date()),
                 )}
                 onPressStatusChip={() => setWhySheetOpen(true)}
+                coachLine={heroCoachLine ?? undefined}
               />
+                );
+              })()}
             </ReAnimated.View>
 
             {/* Single context block — priority order: fasting >
@@ -5403,6 +5404,18 @@ export default function TrackerScreen() {
                 one prompt above the meals". */}
             <ReAnimated.View style={contextEntrance.style}>
             {(() => {
+              if (isFeatureEnabled("today_coach_in_hero_v1")) {
+                if (activeFastStart) {
+                  return (
+                    <TodayFastingPill
+                      startedAt={activeFastStart}
+                      nowTick={fastingTick}
+                      onPress={() => router.push("/fasting")}
+                    />
+                  );
+                }
+                return null;
+              }
               // 1. Active fast wins outright.
               if (activeFastStart) {
                 return (
@@ -6260,6 +6273,7 @@ export default function TrackerScreen() {
           isFeatureEnabled("log_sheet_nl_text_v1")
             ? {
                 locked: userTier !== "pro",
+                slotLabel: activeMealSlot,
                 onPaywall: () => setAiPaywall({ open: true, feature: "voice_log" }),
                 onParse: (text) =>
                   parseMealDescriptionTranscript({
@@ -6956,4 +6970,3 @@ export default function TrackerScreen() {
     </View>
   );
 }
-

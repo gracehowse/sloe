@@ -23,6 +23,7 @@ import {
 import { Accent, AccentWinGradient, Colors, MacroColors, RING_EMPTY_GRADIENT_OPACITY, Type } from "@/constants/theme";
 import { ringPhase, ringPhaseEvent } from "@/lib/ringPhase";
 import type { SkiaRingArcs as SkiaRingArcsT } from "./SkiaRingArcs";
+import { SkiaRingErrorBoundary } from "./SkiaRingErrorBoundary";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { RING_LABELS } from "@suppr/shared/copy/today";
@@ -375,8 +376,11 @@ export default function CalorieRing({
   const emptyMacroParityOn = isFeatureEnabled("ring_empty_macro_parity_v1");
   // The bold gradient cold-open loop paints only when macros are HIDDEN.
   const showEmptyLoop = isEmpty && emptyGradientOn && !(emptyMacroParityOn && expanded);
+  // When Skia throws at render time (JS/native version skew), fall back to SVG
+  // for the rest of this mount instead of crashing the Today tab.
+  const [skiaRenderFailed, setSkiaRenderFailed] = useState(false);
   const SkiaArcs: typeof SkiaRingArcsT | null = useMemo(() => {
-    if (!skiaFlagOn) return null;
+    if (!skiaFlagOn || skiaRenderFailed) return null;
     // 2026-06-10 INCIDENT: a try/catch around the require is NOT enough —
     // in dev, a native-module throw inside a module factory red-boxes the
     // app even when the requiring code catches (TurboModuleRegistry
@@ -397,7 +401,7 @@ export default function CalorieRing({
     } catch {
       return null;
     }
-  }, [skiaFlagOn]);
+  }, [skiaFlagOn, skiaRenderFailed]);
   const overFrac = !isEmpty && isOver && goal > 0 ? Math.min(consumed / goal - 1, 1) : 0;
   const bonusFrac = !isEmpty && baseGoal && baseGoal < goal && goal > 0 ? (goal - baseGoal) / goal : 0;
 
@@ -507,6 +511,7 @@ export default function CalorieRing({
         {SkiaArcs ? (
           // ring_skia_v1 — Skia arc layer (SPEC 1). Centre overlay below is
           // shared with the SVG path; only the arcs swap renderers.
+          <SkiaRingErrorBoundary onFallback={() => setSkiaRenderFailed(true)}>
           <SkiaArcs
             geom={{
               SIZE,
@@ -542,6 +547,7 @@ export default function CalorieRing({
             emptyGradientStops={AccentWinGradient.stops}
             emptyGradientOpacity={RING_EMPTY_GRADIENT_OPACITY}
           />
+          </SkiaRingErrorBoundary>
         ) : (
         <Svg width={SIZE} height={SIZE} style={{ position: "absolute" }}>
           {/* SLOE redesign (2026-06-03): the MFP-style diagonal hash that

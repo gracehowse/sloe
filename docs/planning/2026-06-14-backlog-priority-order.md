@@ -1,7 +1,7 @@
 # Backlog priority order — entire ENG backlog (2026-06-14)
 
-**Owner:** Grace · **Working set:** **~283 open** ENG issues (was 320; ~54 Done 2026-06-14/17 — excludes 25 Duplicate-state zombies queued for cancellation via ENG-1143). **Updated:** 2026-06-17 (rev 15 — Gate 1.5 `4c4459bb` + quick-wins strategy).  
-**Branch:** `claude/wave-4-trust-cohesion` · **Closeout:** `docs/planning/2026-06-17-gate-15-closeout.md` · **Quick wins:** `docs/planning/2026-06-17-quick-wins-backlog.md` · **Gate 0/1 audit:** `docs/planning/2026-06-17-gate-0-1-agent-audit.md` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
+**Owner:** Grace · **Linear active open:** **214** (Backlog 195 · Todo 5 · In Progress 7 · Blocked 3 · Triage 4). **Updated:** 2026-06-18 (rev 19 — ENG-1143 duplicate sweep; ENG-1183 #478 Done; rev 18 batch 4 Codex/Cursor).  
+**Branch:** `main` · **Closeout:** `docs/planning/2026-06-17-gate-15-closeout.md` · **Quick wins:** `docs/planning/2026-06-17-quick-wins-backlog.md` · **Gate 0/1 audit:** `docs/planning/2026-06-17-gate-0-1-agent-audit.md` · **Companion docs:** `docs/planning/launch-queue-2026-07-01.md`, `docs/ux/reviews/2026-06-14-launch-readiness-audit.md`, `docs/ux/research/2026-06-14-mfp-mealplan-voc.md`.
 **How to read this:** work top-to-bottom by gate. Gates are *sequencing*, not strict 1-N ranks — within a gate, Urgent→High→Medium, clear blockers/deps first. Full **WHAT / WHY / HOW** lives in each ticket body.
 
 **Brief-coverage status (2026-06-14 enrichment pass):**
@@ -172,10 +172,10 @@ Not a "safe to onboard" gate (that's Gate A) — this is "**the viral push lands
 | # | Pri | Surface | Note |
 |---|---|---|---|
 | ENG-895 | Urgent | Conform Onboarding to Figma | **Done** (closeout) — welcome/reveal/pace/projection; photo-hero WO1 split deferred |
-| ENG-889 | High | Conform Today to Figma | **partial** — L1 skeleton + hydration gate (`f04779fd`); S5 Fresh start + screenshot wall open |
+| ENG-889 | High | Conform Today to Figma | **partial** — L1 + S5 + coach-in-hero on main (#472/#476); TD1–TD4 + pixel deltas open |
 | ~~ENG-900~~ | High | ~~Conform Log-a-meal to Figma~~ | **Done** `95a83070` |
-| ENG-901 | High | Conform Paywall & win-moments | **partial** — M5 streak shipped (`4c4459bb`); M6 import-success web open |
-| ENG-896 | High | Conform Recipes & Cookbook | **partial** — Library grid (`4c4459bb`); Discover slabs open |
+| ENG-901 | High | Conform Paywall & win-moments | **Done** — M5/M6 (#472) + trust strip + Sloe upgrade dialog (#476) |
+| ENG-896 | High | Conform Recipes & Cookbook | **partial** — Library grid + Discover slabs verified (#472); 9 partials remain on parent |
 | ~~*(new)*~~ | Urgent | ~~**Suppr→Sloe brand-string sweep**~~ | **Done** `95a83070` (no Linear ticket) |
 | ~~*(new)*~~ | High | ~~**Verify `REDESIGN_DEFAULT_ON` default-on**~~ | **Done** `95a83070` — `tests/unit/redesignDefaultOnParity.test.ts` (no Linear ticket) |
 | ~~ENG-827~~ | High | ~~Golden visual-regression + parity suite~~ | **Done** `95a83070` — `tests/e2e/visual-redesign-gate15*.spec.ts` |
@@ -363,16 +363,17 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-1101 | Medium | Dependency update pass — 34 production-dep bumps fail CI, do in smaller batches |
 | ENG-993 | Medium | Defensive: route PostHog flags/experiments through a first-party proxy |
 | ENG-853 | Medium | Docs-only PRs are permanently BLOCKED by required visual checks that never run |
-| ENG-1166 | Low | Root docs reference missing `apps/mobile/AGENTS.md` |
+| ENG-1166 | Low | Root docs reference missing `apps/mobile/AGENTS.md` | **Done** — Option C: `.claude/CLAUDE.md` canonical; root `AGENTS.md` tracked mirror (`docs/decisions/2026-06-17-agent-docs-claude-canonical.md`) |
 | ENG-1160 | Low | Re-home 7 architecture-enabler issues to Platform foundations + retire the dead Premium  |
 | ENG-1159 | Low | Vendor/logging cleanups: edamamNutritionAnalysis dead code, 4000-char caption truncation |
 | ENG-1156 | Low | Delete orphaned onboarding/finalStep.ts (dead code, banned 'staged for follow-up', refer |
 | ENG-1151 | Low | Extend Sentry PII redaction denylist to health fields (weight/measurements/sex-at-birth/ |
 | ENG-1149 | Low | Delete stale 'KNOWN APPROXIMATION' header in measureToGrams.ts (ENG-701 already fixed th |
-| ENG-1146 | Low | Add FATSECRET_TIER to CI + Vercel + a startup assertion (no prod micros-zeroing — CI hyg |
+| ENG-1146 | Low | Add FATSECRET_TIER to CI + Vercel + a startup assertion (no prod micros-zeroing — CI hyg | **Done (CI half)** — `ci.yml` + `verify-production-env`; Vercel `FATSECRET_TIER=premier` still Grace-gated |
+| ENG-986 | Medium | Shared macro-icon mapping (single source of truth) to prevent glyph drift | **Done** — `macroIcons.ts` + lucide maps; MacroIconRow/Today/Targets/Profile wired |
 | ENG-1145 | Low | Route mobile OFF barcode through /api/off/barcode proxy (curated overrides + rate limit  |
 | ENG-1144 | Low | Sync mobile database.types.ts (missing eaten_at) + CI diff-guard vs web |
-| ENG-1143 | Low | Sweep 25 Duplicate-state issues → Canceled + retire the defunct Premium-bar-audit projec |
+| ENG-1143 | Low | Sweep 25 Duplicate-state issues → Canceled + retire the defunct Premium-bar-audit projec | **Done** — 25 Duplicate→Canceled 2026-06-18; Linear Duplicate filter **0**; Premium-bar-audit project already Completed |
 | ENG-1142 | Low | Re-arm visual-regression gate (Chromatic review or Playwright golden) for cohesion-wave  |
 | ENG-1120 | Low | FatSecret OAuth2 token cached in module memory only — store in Redis to survive serverle |
 | ENG-1114 | Low | Single-region/single-instance SPOF topology (Vercel US-East for UK/EU users; Upstash bla |
@@ -405,11 +406,11 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 |---|---|---|
 | ENG-1141 | Medium | Off-scale spacing/radius/type-ramp literal sweep (Today/Discover/DiscoverFeed) |
 | ENG-1139 | Medium | Replace raw Pressable with PressableScale (haptics) on Today meal rows + Discover cards |
-| ENG-1138 | Medium | Add focus-visible rings to web import-hero slab + meal-slot header (keyboard a11y) |
+| ENG-1138 | Medium | Add focus-visible rings to web import-hero slab + meal-slot header (keyboard a11y) | **Done** (#479) |
 | ENG-1056 | Medium | Enforce no-raw-hex: flip web rule warn→error + add mobile selector (split from ENG-811,  |
 | ENG-1018 | Medium | Radius literal cleanup: 24/22/14/11/10/9/5/3/2 → {4,6,8,12,full} (carve-outs excepted) |
 | ENG-1016 | Medium | Haptic rebalance: route commit-actions through PressableScale (Light→Medium), add web co |
-| ENG-986 | Medium | Shared macro-icon mapping (single source of truth) to prevent glyph drift |
+| ENG-986 | Medium | Shared macro-icon mapping (single source of truth) to prevent glyph drift | **Done** (batch 5) |
 | ENG-780 | Medium | Storybook 100% coverage — web + mobile, all components + screens (additive) |
 | ENG-778 | Medium | Systemic contrast sweep: text-primary on bg-primary/N tints (WCAG AA) |
 | ENG-120 | Medium | Lucide sweep — long-tail (~64 files remaining) |
@@ -444,12 +445,11 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-1152 | Low | Harden SSRF string-layer: block 0.0.0.0 + integer/octal/hex IPv4 encodings |
 | ENG-1075 | Low | Route mobile OFF barcode lookup through /api/off/barcode proxy (parity with web) |
 
-**Schema refactor** (5)
+**Schema refactor** (4)
 
 | # | Pri | Title |
 |---|---|---|
 | ENG-989 | Medium | Step-centric recipe schema (ingredients nested inside steps) |
-| ENG-1157 | Low | Prune dropped meal_plans/meal_plans_legacy DELETEs from account-deletion paths |
 | ENG-1155 | Low | RLS perf: wrap auth.<fn>() in subselect (referrals/referral_credits) + consolidate 12 pe |
 | ENG-1076 | Low | eaten_at timezone hardening before multi-device editing (thread canonical tz through mea |
 | ENG-1052 | Low | P3: schema hardening batch — calories smallint→int, nutrition_entries.source CHECK, save |
@@ -469,7 +469,7 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 |---|---|---|
 | ENG-855 | Medium | "Make anything fit" — Mode B: distribute-around-anchor (Plan tab) |
 | ENG-1150 | Low | Include fiberG when recomputing plan day totals after leftovers/move |
-| ENG-1100 | Low | Plan empty-slot unification: extract shared EmptyMealSlotRow + always-render canonical s |
+| ~~ENG-1100~~ | Low | ~~Plan empty-slot unification~~ | **Done** #472+#475 — extract + partial-day canonical rows |
 
 **Progress tab** (3)
 
@@ -655,9 +655,9 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 
 ## Linear reconciliation
 
-- `label:launch-blocker` = exactly the 19 Gate-0/Gate-1 must-ship items.
+- `label:launch-blocker` = Gate-0/Gate-1 must-ship items (**6 open** · 72 Done · 2 Canceled as of 2026-06-18 post-sweep).
 - `label:paid-ga-blocker` = Gate B (**4 open** after 2026-06-14 ship).
 - **2026-06-14:** 21 issues → Done on `claude/eng-1099-tracker-tier` (see Shipped section); ENG-1099 remains In Progress.
 - ENG-1073 bumped Medium → High (prior pass).
 - This document is the authoritative ordering; Gate 2+ keep existing Linear priority levels.
-- 25 Duplicate-state zombies (Premium-bar-audit project) excluded — cancel via ENG-1143.
+- **ENG-1143 Done (2026-06-18):** 25 Duplicate-state issues → Canceled; Linear Duplicate filter **0**. Active-open rollup **214** (Backlog **195** unchanged — duplicates were not Backlog).

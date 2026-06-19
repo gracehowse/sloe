@@ -222,7 +222,15 @@ export default function CreateRecipeScreen() {
   // here with `?autoPhoto=1` when the user picked "Photo of a recipe"
   // from the multi-source sheet. On mount we fire the photo picker
   // immediately and clear the param so a back-nav doesn't re-pick.
-  const params = useLocalSearchParams<{ autoPhoto?: string }>();
+  // ENG-1211: the import method tiles (import-shared.tsx) route here with
+  // `?autoPaste=1` / `?autoBarcode=1` so the "Paste text" / "Scan" tiles
+  // deliver their method — the paste-list modal / barcode scanner open on
+  // arrival, mirroring the autoPhoto handshake below.
+  const params = useLocalSearchParams<{
+    autoPhoto?: string;
+    autoPaste?: string;
+    autoBarcode?: string;
+  }>();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -499,6 +507,30 @@ export default function CreateRecipeScreen() {
     void importRecipeFromPhoto();
   }, [params.autoPhoto, importRecipeFromPhoto, router]);
 
+  // ENG-1211 — the import "Paste text" tile routes here with `?autoPaste=1`.
+  // Open the paste-list modal on mount once, then clear the param so a
+  // back-nav doesn't re-open it. Mirrors the autoPhoto handshake above.
+  const autoPasteFiredRef = useRef(false);
+  useEffect(() => {
+    if (autoPasteFiredRef.current) return;
+    if (params.autoPaste !== "1") return;
+    autoPasteFiredRef.current = true;
+    router.setParams({ autoPaste: undefined } as Record<string, undefined>);
+    setPasteModalOpen(true);
+  }, [params.autoPaste, router]);
+
+  // ENG-1211 — the import "Scan" tile routes here with `?autoBarcode=1`.
+  // Open the barcode scanner on mount once, then clear the param so a
+  // back-nav doesn't re-open it. Mirrors the autoPhoto handshake above.
+  const autoBarcodeFiredRef = useRef(false);
+  useEffect(() => {
+    if (autoBarcodeFiredRef.current) return;
+    if (params.autoBarcode !== "1") return;
+    autoBarcodeFiredRef.current = true;
+    router.setParams({ autoBarcode: undefined } as Record<string, undefined>);
+    setBarcodeOpen(true);
+  }, [params.autoBarcode, router]);
+
   const onFoodSelected = useCallback((result: SelectedFood) => {
     // 2026-05-06: per-serving-only FatSecret foods (no metric grounding)
     // can't be used as recipe ingredients — recipe math is per-gram.
@@ -540,7 +572,8 @@ export default function CreateRecipeScreen() {
     });
     setSearchReplaceId(null);
     setSearchOpen(false);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // ENG-1016 — adding / replacing an ingredient is a commit → Medium.
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [searchReplaceId]);
 
   // F-128 — AI items (voice/photo) → recipe ingredients. Same shape

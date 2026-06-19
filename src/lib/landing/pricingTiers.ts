@@ -103,7 +103,11 @@ export const PRICING_TIERS: PricingTier[] = [
   },
   {
     name: "Pro",
-    tag: "The full meal-planning loop, plus unlimited AI logging.",
+    // ENG-971 — honest billing: Pro AI photo + voice logging is capped at
+    // 100/day each (the `api:photo-log` / voice buckets), not "unlimited".
+    // The feature bullets below already say "(up to 100/day)"; the tag must
+    // not contradict them. "AI logging" without the false "unlimited".
+    tag: "The full meal-planning loop, plus AI photo and voice logging.",
     price: "£7.99",
     period: "/month",
     annualPrice: "£59.99",

@@ -15,11 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
-  Beef,
-  Wheat,
-  Droplets,
-  Leaf,
 } from "lucide-react-native";
+import { MACRO_ICONS, type MacroIconKey } from "@/lib/macroIconsLucide";
 import Svg, {
   Circle,
   Defs,
@@ -393,23 +390,15 @@ export default function TargetsScreen() {
     }
   };
 
-  // 2026-04-30 (#20, design-system-enforcer): retoken to lucide-react-native
-  // per carryover rule #2 (prototype icon set). The previous Ionicon
-  // names mapped 1:1 to the lucide equivalents already used on Today.
+  // ENG-986: consume the shared macro-icon SSOT (Dumbbell/Wheat/Droplet/Sprout,
+  // pinned to Figma 654:101) so this screen can't drift again. Previously this
+  // hardcoded Beef/Droplets/Leaf — the exact wrong-glyph drift ENG-986 exists
+  // to prevent. Mirrors MacroIconRow / Today tiles.
   const MacroIconFor = ({ macroKey, color }: { macroKey: string; color: string }) => {
     const size = 16;
     const stroke = 1.75;
-    switch (macroKey) {
-      case "protein":
-        return <Beef size={size} color={color} strokeWidth={stroke} />;
-      case "carbs":
-        return <Wheat size={size} color={color} strokeWidth={stroke} />;
-      case "fat":
-        return <Droplets size={size} color={color} strokeWidth={stroke} />;
-      case "fiber":
-      default:
-        return <Leaf size={size} color={color} strokeWidth={stroke} />;
-    }
+    const Icon = MACRO_ICONS[macroKey as MacroIconKey] ?? MACRO_ICONS.fiber;
+    return <Icon size={size} color={color} strokeWidth={stroke} />;
   };
 
   const styles = useMemo(

@@ -7,12 +7,11 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths:
-      - "app/**"
-      - "src/**"
-      - "tests/e2e/**"
-      - "playwright.config.ts"
-      - ".github/workflows/chromatic.yml"
+    # ENG-853: this workflow posts required checks ("Run Chromatic" and
+    # Chromatic's external "UI Tests"). A top-level PR `paths` filter leaves
+    # those required contexts Pending forever on docs-only PRs, so PRs must
+    # always enter the workflow. Keep push path filters out of this required
+    # merge path if main-run cost needs tuning later.
 
 concurrency:
   group: chromatic-${{ github.head_ref || github.ref }}
@@ -37,7 +36,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -67,7 +66,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -90,7 +89,9 @@ jobs:
           # visual PR. Auto-accept so it never asks for manual baseline review:
           # snapshots are still captured + browsable, but Chromatic informs
           # rather than gates. Visual QA is carried by manual SEE + the
-          # Playwright golden specs. Set to `false` to re-enable review.
+          # Playwright golden specs — cohesion gate: ENG-1142
+          # (`npm run test:e2e:visual:cohesion`, docs/decisions/2026-06-18-visual-regression-posture.md).
+          # Set to `false` to re-enable Chromatic review.
           autoAcceptChanges: true
         env:
           CHROMATIC_ARCHIVE_LOCATION: ./test-results

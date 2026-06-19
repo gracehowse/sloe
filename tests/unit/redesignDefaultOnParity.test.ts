@@ -40,6 +40,10 @@ const WEB_ONLY = new Set([
   "today_meals_all_slots_v1",
   // ENG-1092 increment 3 — web Plan config collapse (mobile already collapsed).
   "plan_adjust_collapsed_v1",
+  // ENG-848 — web Today opens MacroDetailPanel; mobile already routes to macro-detail.
+  "web_macro_detail_panel",
+  // ENG-901 — web upgrade dialog Sloe hero; mobile paywall is a separate surface.
+  "paywall_upgrade_dialog_sloe_v1",
 ]);
 
 const MOBILE_ONLY = new Set([

@@ -140,6 +140,8 @@ export function TodayActivityBonusCard({
             adaptiveRejectedAsStale: false,
             adaptiveRejectedBelowFormula: false,
             rejectedAdaptiveKcal: null,
+            measuredRejectedBelowFormula: false,
+            rejectedMeasuredKcal: null,
           })
         : buildTdeeExplainerCopy({
             maintenanceTdeeKcal: maintenanceTdeeKcal!,

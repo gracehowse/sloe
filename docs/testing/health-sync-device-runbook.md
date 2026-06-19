@@ -6,6 +6,13 @@
 
 Agents cannot complete HS-01–HS-09 — they require live MFP → Health → Suppr on a **native dev build or TestFlight** (not Expo Go, not simulator-only).
 
+**Encoded as a Maestro flow:** [`apps/mobile/.maestro/36_health_sync_mfp_import.yaml`](../../apps/mobile/.maestro/36_health_sync_mfp_import.yaml). Run it on the **physical iPhone** after the setup below — it drives connect → enable import → Sync Now → Today-assert (HS-01–HS-04) and leaves HS-05–HS-09 as inline manual steps with expected results. Before running, edit the `MFP_LOGGED_FOOD_NAME` placeholder in the flow to the food you logged in MFP today. The native HealthKit permission sheets are tapped by hand (iOS renders them outside the app). It is deliberately **not** in `config.yaml`, so it never runs in the simulator CI suite.
+
+```bash
+# from apps/mobile, with the device build installed + Metro reachable
+maestro test .maestro/36_health_sync_mfp_import.yaml
+```
+
 ## Before you start (10 min)
 
 1. **Build:** Native dev client or TestFlight — `npm run mobile:ios:device:tunnel:pinned` for device Metro, or install latest TestFlight.

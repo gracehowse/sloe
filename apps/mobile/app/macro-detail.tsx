@@ -4,29 +4,21 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Plus, Salad } from "lucide-react-native";
 
-import { Accent, MacroColors, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { MacroIngredientList } from "@/components/nutrition/MacroIngredientList";
 import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
-import { useMacroDetail, type Meal } from "./useMacroDetail";
+import { MACRO_CONFIG } from "@/lib/macroDetailConfig";
+import { useMacroDetail } from "./useMacroDetail";
 
-// 2026-05-14 (premium-bar audit Group H #4): brand-colour mapping for
-// all 4 macros + fibre + water. Protein/carbs/fat → MacroColors token
-// set. Calories → MacroColors.calories (plum — consistent with the
-// calorie ring). Fibre → Accent.success (green for plant fibre, distinct
-// from the macro trio). Water → Accent.info (blue, same as Today's
-// water tile). ENG-997: calories reconciled from Accent.primary → plum.
-const MACRO_CONFIG: Record<string, { label: string; color: string; unit: string; field: keyof Meal }> = {
-  protein: { label: "Protein", color: MacroColors.protein, unit: "g", field: "protein" },
-  carbs: { label: "Carbs", color: MacroColors.carbs, unit: "g", field: "carbs" },
-  fat: { label: "Fat", color: MacroColors.fat, unit: "g", field: "fat" },
-  fiber: { label: "Fiber", color: Accent.success, unit: "g", field: "fiberG" },
-  calories: { label: "Calories", color: MacroColors.calories, unit: "kcal", field: "calories" },
-  water: { label: "Water", color: Accent.info, unit: "ml", field: "waterMl" },
-};
+// `MACRO_CONFIG` + the supported-key source (`isMacroDetailSupported`,
+// `MACRO_DETAIL_SUPPORTED_KEYS`) live in `@/lib/macroDetailConfig` so the Today
+// tiles + bars can gate their tap affordance on the SAME set this screen reads
+// without importing the screen's `expo-router` dependency. See that file for the
+// ENG-1213 rationale.
 
 // Segmented toggle between "By meal" (breakdown grouped by meal slot) and
 // "By ingredient" (per-ingredient breakdown). The ingredient breakdown is
@@ -69,13 +61,21 @@ export default function MacroDetailScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
 
-  const config = MACRO_CONFIG[macro] ?? MACRO_CONFIG.protein;
+  // ENG-1213: an unsupported macro (e.g. a deep-link to
+  // /macro-detail?macro=sugar) used to silently fall back to MACRO_CONFIG.protein
+  // and render PROTEIN's breakdown under the requested macro's name — plausible
+  // but wrong data. The tile/bar affordance no longer makes sugar/sodium
+  // tappable, but a deep link can still arrive here, so guard explicitly: show a
+  // "No breakdown available" state with a route back rather than wrong data.
+  const config = MACRO_CONFIG[macro] ?? null;
 
   const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>("meal");
 
   // All data + derivation lives in the composition-root hook (ENG-621):
   // entries fetch, batched recipe_ingredients fetch, slot grouping, and the
-  // shared derive/scale/reconcile breakdown.
+  // shared derive/scale/reconcile breakdown. Hooks must run unconditionally
+  // (rules of hooks), so we always call the hook — but with a safe field for the
+  // unsupported case (the result is never rendered when `config` is null).
   const {
     meals,
     loading,
@@ -84,7 +84,39 @@ export default function MacroDetailScreen() {
     slotOrder,
     supportsIngredientBreakdown,
     ingredientBreakdown,
-  } = useMacroDetail({ userId, dateKey, macro, field: config.field });
+  } = useMacroDetail({ userId, dateKey, macro, field: config?.field ?? "protein" });
+
+  if (!config) {
+    return (
+      <View
+        testID="screen-macro-detail"
+        style={{ flex: 1, backgroundColor: colors.background }}
+      >
+        <PushScreenHeader
+          title="Breakdown"
+          onBack={() => router.back()}
+        />
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: Spacing.lg,
+            paddingBottom: insets.bottom + 40,
+          }}
+        >
+          <NutritionDetailEmptyState
+            testID="macro-detail-unsupported"
+            icon={Salad}
+            title="No breakdown available"
+            subtitle="This nutrient doesn't have a per-meal breakdown yet."
+            ctaLabel="Back to Today"
+            ctaIcon={Plus}
+            ctaA11yLabel="Back to Today"
+            ctaColorLegacy={Accent.info}
+            onPress={() => router.replace("/(tabs)")}
+          />
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View testID="screen-macro-detail" style={{ flex: 1, backgroundColor: colors.background }}>

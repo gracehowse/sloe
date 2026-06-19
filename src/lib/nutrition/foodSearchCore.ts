@@ -316,3 +316,66 @@ export function customFoodToHit(food: CustomFood): CustomFoodHit {
     _custom: food,
   };
 }
+
+export type UsdaFoodDetailForPreview = {
+  macrosPer100g: CustomFoodMacrosPer100g;
+  microsPer100g?: Record<string, number>;
+  portions?: FoodPortion[];
+  primaryPortion?: PrimaryServing | null;
+};
+
+export type UsdaSearchHitForPreview = {
+  name: string;
+  fdcId?: number;
+  macrosPer100g?: CustomFoodMacrosPer100g | null;
+  microsPer100g?: Record<string, number>;
+  primaryServing?: PrimaryServing | null;
+};
+
+export type UsdaPreviewFields = {
+  name: string;
+  source: "USDA";
+  macrosPer100g: CustomFoodMacrosPer100g;
+  microsPer100g?: Record<string, number>;
+  portions: FoodPortion[];
+  chosenPortion: FoodPortion;
+  quantity: number;
+  quantityText: string;
+  fdcId?: number;
+};
+
+/**
+ * Build USDA preview/commit fields from a search hit plus an optional
+ * detail fetch. When `/api/usda/food` fails (auth blip, rate limit,
+ * offline) but the search row already surfaced structured macros, fall
+ * back to the hit so logging never blocks on enrichment.
+ */
+export function buildUsdaPreviewFields(
+  hit: UsdaSearchHitForPreview,
+  detail: UsdaFoodDetailForPreview | null | undefined,
+  amount: number | string | null | undefined,
+  unit: string | null | undefined,
+): UsdaPreviewFields | null {
+  const macrosPer100g = detail?.macrosPer100g ?? hit.macrosPer100g ?? null;
+  if (!macrosPer100g) return null;
+
+  const effectivePrimary = hit.primaryServing ?? detail?.primaryPortion ?? null;
+  const portions = buildPortions(detail?.portions ?? [], effectivePrimary);
+  const { portion, quantity } = effectivePrimary
+    ? { portion: portions[0], quantity: 1 }
+    : resolveInitialPortion(portions, amount, unit);
+
+  const microsPer100g = detail?.microsPer100g ?? hit.microsPer100g;
+
+  return {
+    name: hit.name,
+    source: "USDA",
+    macrosPer100g,
+    ...(microsPer100g ? { microsPer100g } : {}),
+    portions,
+    chosenPortion: portion,
+    quantity,
+    quantityText: String(quantity),
+    ...(hit.fdcId != null ? { fdcId: hit.fdcId } : {}),
+  };
+}

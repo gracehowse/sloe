@@ -47,8 +47,14 @@ vi.mock("sonner", () => ({
 // `SupprMark` (rendered on the "Paste a recipe link" card) reads the
 // `design_system_brandmark` flag from this same module. Default it OFF so
 // the legacy S-glyph (still a brand mark) renders; one test flips it on.
+//
+// `recipe-import-redesign` (ENG-898 web flag-gating parity with mobile) gates
+// the NEW L4 amber error banner + the 3-method source tiles. Default it ON in
+// this suite so the existing ENG-669/898 surface assertions keep exercising
+// the new path; the dedicated flag-OFF tests below force it off to pin the
+// legacy fallback (small destructive line + toast.error, no method tiles).
 const { isFeatureEnabledSpy } = vi.hoisted(() => ({
-  isFeatureEnabledSpy: vi.fn(() => false),
+  isFeatureEnabledSpy: vi.fn((flag: string) => flag === "recipe-import-redesign"),
 }));
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: vi.fn(),
@@ -63,7 +69,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Supabase browser client — auth.getSession (used on save) + a chained
-// query builder (used by editRecipe load, which we don't trigger here).
+// query builder (used by editRecipe load + ENG-898 recent imports).
 vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
   supabase: {
     auth: {
@@ -82,12 +88,31 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
           }),
         };
       }
-      // recipes
+      // recipes — upsert/single for save + recent-imports list (ENG-898)
       return {
         upsert: () => ({
           select: () => ({ single: () => Promise.resolve({ data: { id: "recipe-789" }, error: null }) }),
         }),
-        select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
+        select: () => ({
+          eq: () => ({
+            maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            not: () => ({
+              order: () => ({
+                limit: () =>
+                  Promise.resolve({
+                    data: [
+                      {
+                        title: "Sheet-Pan Fajitas",
+                        source_name: "TikTok",
+                        created_at: "2026-06-17T08:00:00.000Z",
+                      },
+                    ],
+                    error: null,
+                  }),
+              }),
+            }),
+          }),
+        }),
       };
     },
   },
@@ -100,6 +125,7 @@ vi.mock("../../src/lib/supabase/uploadRecipeImage.ts", () => ({
 // AppDataContext — RecipeUpload only destructures four members.
 vi.mock("../../src/context/AppDataContext.tsx", () => ({
   useAppData: () => ({
+    userId: "user-123",
     refreshDiscoverRecipes: vi.fn().mockResolvedValue(undefined),
     refreshMyLibraryRecipes: vi.fn().mockResolvedValue(undefined),
     ensureRecipeInLibraryWithKind: vi.fn(),
@@ -125,6 +151,9 @@ beforeEach(() => {
   toastMock.error.mockClear();
   toastMock.warning.mockClear();
   trackMock.mockClear();
+  // Reset to the suite default: only `recipe-import-redesign` ON. Tests that
+  // need other flags (or the legacy OFF path) override per-case.
+  isFeatureEnabledSpy.mockImplementation((flag: string) => flag === "recipe-import-redesign");
 });
 
 afterEach(() => {
@@ -154,6 +183,24 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     expect(screen.getByText("Paste a recipe link")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("https://…")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Import$/ })).toBeInTheDocument();
+    // ENG-898 — 3-method source tiles (mobile parity).
+    expect(screen.getByTestId("import-method-tiles")).toBeInTheDocument();
+    expect(screen.getByTestId("import-method-photo")).toBeInTheDocument();
+    expect(screen.getByTestId("import-method-paste-text")).toBeInTheDocument();
+    expect(screen.getByTestId("import-method-scan")).toBeInTheDocument();
+  });
+
+  it("ENG-898 — renders recent imports when the user has URL-imported recipes", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-06-17T12:00:00.000Z"));
+    try {
+      render(<RecipeUpload userTier="free" mode="import" />);
+      const section = await screen.findByTestId("import-recent-imports");
+      expect(section).toHaveTextContent("Sheet-Pan Fajitas");
+      expect(section).toHaveTextContent("Today");
+      expect(section).toHaveTextContent("TT");
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 
   it("leads the 'Paste a recipe link' card with the Sloe wordmark (mobile parity)", () => {
@@ -172,15 +219,16 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
   });
 
   it("does not gate the import-card mark behind design_system_brandmark", () => {
-    isFeatureEnabledSpy.mockReturnValue(false);
+    // brandmark OFF (redesign flag still resolves per default).
+    isFeatureEnabledSpy.mockImplementation((flag: string) => flag === "recipe-import-redesign");
     render(<RecipeUpload userTier="free" mode="import" />);
     const card = screen.getByText("Paste a recipe link").closest('div[class*="radius-card-lg"]');
     expect(card?.querySelector('[data-slot="sloe-mark"]')).not.toBeNull();
+    // brandmark ON (every flag ON) — the mark must still render.
     isFeatureEnabledSpy.mockReturnValue(true);
     render(<RecipeUpload userTier="free" mode="import" />);
     const cardOn = screen.getAllByText("Paste a recipe link")[1].closest('div[class*="radius-card-lg"]');
     expect(cardOn?.querySelector('[data-slot="sloe-mark"]')).not.toBeNull();
-    isFeatureEnabledSpy.mockReturnValue(false);
   });
 
   it("renders the photo import affordance (extract from image)", () => {
@@ -243,7 +291,9 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     );
   });
 
-  it("surfaces a calm hint (not a crash) when the URL has no parseable recipe", async () => {
+  it("flag ON — surfaces L4 amber inline error (not toast-only) when the URL has no parseable recipe", async () => {
+    // recipe-import-redesign ON (suite default): the L4 banner is the surface,
+    // and the toast is suppressed so the error isn't shown twice.
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       json: async () => ({
@@ -261,13 +311,167 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Import$/ }));
 
     await waitFor(() => {
-      expect(toastMock.error).toHaveBeenCalledWith(
-        "No Recipe JSON-LD found on this page. Paste ingredients and steps manually, or try another URL.",
-      );
+      expect(screen.getByTestId("import-l4-error")).toBeInTheDocument();
     });
-    // The inline hint renders so the user has a recovery path.
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     expect(
       screen.getByText(/No Recipe JSON-LD found on this page/i),
     ).toBeInTheDocument();
+    expect(toastMock.error).not.toHaveBeenCalled();
+  });
+
+  it("flag OFF — legacy error path: small destructive hint + toast.error, NO L4 banner (ENG-898 web flag-gating)", async () => {
+    // recipe-import-redesign OFF (production until the flag ramps): restore the
+    // pre-#483 behaviour — a toast plus the inline destructive line; the new
+    // amber banner must NOT render.
+    isFeatureEnabledSpy.mockImplementation(() => false);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        ok: false,
+        error: "no_recipe_schema",
+        message: "No Recipe JSON-LD found on this page. Paste ingredients and steps manually, or try another URL.",
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecipeUpload userTier="free" mode="import" />);
+    fireEvent.change(screen.getByPlaceholderText("https://…"), {
+      target: { value: "https://example.com/not-a-recipe" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Import$/ }));
+
+    // Legacy: the toast fires with the server's actionable message.
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith(
+        expect.stringMatching(/No Recipe JSON-LD found on this page/i),
+      );
+    });
+    // The inline hint also renders as the small destructive line — but NOT the
+    // new L4 amber banner.
+    expect(
+      screen.getByText(/No Recipe JSON-LD found on this page/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("import-l4-error")).not.toBeInTheDocument();
+    expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
+  });
+
+  it("flag OFF — legacy idle surface does NOT render the 3-method source tiles", () => {
+    // recipe-import-redesign OFF: the tile grid is part of the new design and
+    // must be absent; the legacy photo affordance stays in the "Recipe photo"
+    // card (asserted by the existing photo-import test).
+    isFeatureEnabledSpy.mockImplementation(() => false);
+    render(<RecipeUpload userTier="free" mode="import" />);
+    expect(screen.queryByTestId("import-method-tiles")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("import-method-photo")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("import-method-paste-text")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("import-method-scan")).not.toBeInTheDocument();
+    // The legacy photo affordance is still present in the dedicated card.
+    expect(screen.getByRole("button", { name: "Extract from image" })).toBeInTheDocument();
+  });
+
+  it("ENG-901 M6 — after save in import mode, renders ImportSuccessSheet (not a toast)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        recipe: {
+          title: "Sheet-Pan Chicken Fajitas",
+          description: "Weeknight fajitas",
+          ingredients: ["2 chicken breasts", "1 bell pepper", "1 onion"],
+          instructions: ["Slice everything", "Roast 20 min"],
+          servings: 4,
+          prepTimeMin: 10,
+          cookTimeMin: 20,
+          imageUrl: "https://cdn.test/fajitas.jpg",
+          sourceUrl: "https://example.com/fajitas",
+          sourceName: "Example Kitchen",
+        },
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecipeUpload userTier="free" mode="import" />);
+
+    fireEvent.change(screen.getByPlaceholderText("https://…"), {
+      target: { value: "https://example.com/fajitas" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Import$/ }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Sheet-Pan Chicken Fajitas")).toBeInTheDocument();
+    });
+
+    toastMock.success.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /Save to my library/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("import-success-sheet")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Saved")).toBeInTheDocument();
+    expect(screen.getByText("Sheet-Pan Chicken Fajitas")).toBeInTheDocument();
+    expect(screen.getByText("In your library")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View recipe" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Review ingredients" })).toBeInTheDocument();
+    // Import mode uses the success sheet — not the generic toast terminal.
+    expect(toastMock.success).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * ENG-1211 — each import method tile must DELIVER its method, not drop the user
+ * on a generic create form. The "Paste text" / "Scan" tiles pass a method hint
+ * to `onSwitchToCreate`; the create view auto-opens the matching affordance via
+ * `createInitialMethod`. Web parity with mobile `?autoPaste=1` / `?autoBarcode=1`.
+ */
+describe("Import method tiles deliver their method (ENG-1211)", () => {
+  it("Paste text tile passes the 'paste' hint to onSwitchToCreate", () => {
+    const onSwitchToCreate = vi.fn();
+    render(
+      <RecipeUpload userTier="free" mode="import" onSwitchToCreate={onSwitchToCreate} />,
+    );
+    fireEvent.click(screen.getByTestId("import-method-paste-text"));
+    expect(onSwitchToCreate).toHaveBeenCalledWith("paste");
+  });
+
+  it("Scan tile passes the 'scan' hint to onSwitchToCreate", () => {
+    const onSwitchToCreate = vi.fn();
+    render(
+      <RecipeUpload userTier="free" mode="import" onSwitchToCreate={onSwitchToCreate} />,
+    );
+    fireEvent.click(screen.getByTestId("import-method-scan"));
+    expect(onSwitchToCreate).toHaveBeenCalledWith("scan");
+  });
+
+  it("header 'Create instead' switch passes NO hint (plain create form)", () => {
+    const onSwitchToCreate = vi.fn();
+    render(
+      <RecipeUpload userTier="free" mode="import" onSwitchToCreate={onSwitchToCreate} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Create instead/i }));
+    expect(onSwitchToCreate).toHaveBeenCalledWith();
+    expect(onSwitchToCreate.mock.calls[0][0]).toBeUndefined();
+  });
+
+  it("createInitialMethod='paste' auto-opens the paste-ingredient-list dialog on mount", async () => {
+    render(<RecipeUpload userTier="free" mode="create" createInitialMethod="paste" />);
+    // The paste dialog is the create-view "paste text" affordance.
+    expect(
+      await screen.findByRole("heading", { name: /Paste ingredient list/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("createInitialMethod='scan' auto-opens the barcode scanner picker on mount", async () => {
+    render(<RecipeUpload userTier="free" mode="create" createInitialMethod="scan" />);
+    // The scan affordance is the per-ingredient swap picker with the barcode
+    // section; it opens on the first (always-present) ingredient row.
+    expect(await screen.findByText(/Barcode \(Open Food Facts\)/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Scan with camera/i })).toBeInTheDocument();
+  });
+
+  it("create mode with NO method hint does not auto-open any affordance", () => {
+    render(<RecipeUpload userTier="free" mode="create" />);
+    expect(screen.queryByRole("heading", { name: /Paste ingredient list/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Barcode \(Open Food Facts\)/i)).not.toBeInTheDocument();
   });
 });

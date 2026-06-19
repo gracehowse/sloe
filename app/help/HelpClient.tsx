@@ -47,7 +47,7 @@ function buildSections(email: string): Section[] {
         "nutrition calculate parse ingredient match confidence usda foodfacts fatsecret matching aggregate macros",
       body: (
         <>
-          <p>When you import a recipe, Suppr parses every ingredient and matches it against multiple food databases:</p>
+          <p>When you import a recipe, Sloe parses every ingredient and matches it against multiple food databases:</p>
           <ol className="list-decimal pl-5 space-y-2 mt-3">
             <li><strong>Ingredient parsing</strong> &mdash; each line is broken into name, quantity, and unit. Count-based items (e.g. &ldquo;2 eggs&rdquo;) are converted to gram weights using our staples database of 176+ common foods.</li>
             <li><strong>Database matching</strong> &mdash; each ingredient is searched against USDA FoodData Central, Open Food Facts, and FatSecret. The best match by name similarity and portion plausibility is selected.</li>
@@ -64,7 +64,7 @@ function buildSections(email: string): Section[] {
         "usda fooddata central edamam open food facts fatsecret odbl public domain local staples ingredient database",
       body: (
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>USDA FoodData Central</strong> &mdash; lab-tested nutritional data for thousands of whole foods, maintained by the U.S. Department of Agriculture. Includes Foundation, SR Legacy, and Survey (FNDDS) datasets. FDC data is in the public domain; USDA does not endorse Suppr.</li>
+          <li><strong>USDA FoodData Central</strong> &mdash; lab-tested nutritional data for thousands of whole foods, maintained by the U.S. Department of Agriculture. Includes Foundation, SR Legacy, and Survey (FNDDS) datasets. FDC data is in the public domain; USDA does not endorse Sloe.</li>
           <li><strong>Edamam</strong> &mdash; restaurant and branded-food nutrition data. Food search results that come from Edamam are <em>Powered by Edamam</em> under Edamam&rsquo;s API terms.</li>
           <li><strong>Open Food Facts</strong> &mdash; volunteer-maintained, open database of food products with strong UK, EU, US, and Australian coverage. Product data is &copy; Open Food Facts contributors and made available under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" className="text-violet-600 dark:text-violet-400 underline" rel="noopener noreferrer" target="_blank">Open Database License (ODbL)</a>.</li>
           <li><strong>FatSecret Platform API</strong> &mdash; curated food database with detailed branded and generic food entries including serving size information.</li>
@@ -97,7 +97,7 @@ function buildSections(email: string): Section[] {
       searchBlob:
         "activity adjusted calorie bonus apple health resting active double count tdee",
       body: (
-        <p>When enabled in Settings, Suppr adds <strong>bonus calories</strong> only when your actual total burn (resting + active from Apple Health) exceeds your estimated maintenance TDEE. This prevents double-counting &mdash; your target already includes an activity estimate, so only the surplus above that is added.</p>
+        <p>When enabled in Settings, Sloe adds <strong>bonus calories</strong> only when your actual total burn (resting + active from Apple Health) exceeds your estimated maintenance TDEE. This prevents double-counting &mdash; your target already includes an activity estimate, so only the surplus above that is added.</p>
       ),
     },
     {
@@ -105,7 +105,7 @@ function buildSections(email: string): Section[] {
       title: "Adaptive TDEE",
       searchBlob: "adaptive tdee intake weight changes accuracy",
       body: (
-        <p>After 7+ days of food logging and 3+ weight entries, Suppr computes an <strong>adaptive TDEE</strong> derived from your actual intake and weight changes. This replaces the formula estimate and improves accuracy over time.</p>
+        <p>After 7+ days of food logging and 3+ weight entries, Sloe computes an <strong>adaptive TDEE</strong> derived from your actual intake and weight changes. This replaces the formula estimate and improves accuracy over time.</p>
       ),
     },
     {
@@ -115,7 +115,7 @@ function buildSections(email: string): Section[] {
         "apple health steps active energy resting workouts weight body fat dietary writes reads",
       body: (
         <>
-          <p>Suppr reads and writes the following data from Apple Health (with your permission):</p>
+          <p>Sloe reads and writes the following data from Apple Health (with your permission):</p>
           <ul className="list-disc pl-5 space-y-1 mt-3">
             <li><strong>Reads:</strong> steps, active energy, resting energy, workouts, weight, body fat percentage</li>
             <li><strong>Writes:</strong> dietary energy consumed (so other apps can see your logged intake)</li>
@@ -130,10 +130,10 @@ function buildSections(email: string): Section[] {
         "disclaimer medical advice accuracy weight projection minimum intake third party ai photo voice",
       body: (
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Not medical advice.</strong> Suppr is a personal tracking tool, not a medical device. Always consult a healthcare professional before making significant dietary changes.</li>
+          <li><strong>Not medical advice.</strong> Sloe is a personal tracking tool, not a medical device. Always consult a healthcare professional before making significant dietary changes.</li>
           <li><strong>Nutrition accuracy.</strong> Values are estimates. Actual values vary by preparation method, brand, portion size, and ingredient variability. Confidence scores indicate match quality, not absolute accuracy.</li>
           <li><strong>Weight projections.</strong> Based on 7,700 kcal per kg of body weight. Actual results vary based on metabolism, water retention, muscle mass, and other factors.</li>
-          <li><strong>Minimum intake.</strong> Very low calorie diets (&lt;1,200 kcal for women, &lt;1,500 kcal for men) should only be followed under medical supervision. Suppr does not enforce minimums.</li>
+          <li><strong>Minimum intake.</strong> Very low calorie diets (&lt;1,200 kcal for women, &lt;1,500 kcal for men) should only be followed under medical supervision. Sloe does not enforce minimums.</li>
           <li><strong>Third-party data.</strong> Imported recipes extract data from external sites. We are not responsible for source recipe accuracy.</li>
           <li><strong>AI features.</strong> Photo and voice logging use third-party AI models (e.g. OpenAI). Results are estimates and should be reviewed before saving.</li>
         </ul>
@@ -186,7 +186,7 @@ export default function HelpClient() {
         </p>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-3">Help</h1>
         <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
-          How Suppr works, nutrition methodology, data sources, and disclaimers.
+          How Sloe works, nutrition methodology, data sources, and disclaimers.
         </p>
 
         {/* Search */}

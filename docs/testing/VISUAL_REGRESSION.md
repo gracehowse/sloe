@@ -24,6 +24,14 @@ Do not rely on tab-level flows alone. For every UI change on a deep route:
 | `visual-regression-subpages.spec.ts` | Help, legal, profile, import, billing, create |
 | `visual-regression-deep.spec.ts` | Settings preferences band, `/home?view=targets`, profile Targets tab, recipe detail (`?recipe=`), upgrade paywall dialog |
 
+**Cohesion gate (ENG-1142):** Today + paywall dialog + recipe detail — the three surfaces whose drift hurts brand cohesion most. Filtered run:
+
+```bash
+npm run test:e2e:visual:cohesion
+```
+
+See `docs/decisions/2026-06-18-visual-regression-posture.md` for which spec owns each snapshot.
+
 **Baselines:** `tests/e2e/__snapshots__/` (committed).
 
 ```bash
@@ -118,6 +126,13 @@ npm run test:storybook:coverage # 100% coverage gate on storied UI primitives (C
 `.github/workflows/storybook.yml` runs **Vitest** on PRs that touch components/styles.
 
 `.github/workflows/chromatic.yml` runs **Playwright → Chromatic**: job `playwright` archives E2E pages (`@chromatic-com/playwright`), job `chromatic` uploads `./test-results` via `chromaui/action` with `playwright: true`. Requires `CHROMATIC_PROJECT_TOKEN` (use the token from your **Playwright** Chromatic project if you created one separately from Storybook).
+
+Required visual workflows intentionally run on every pull request, including
+docs-only PRs. Do not add top-level `pull_request.paths` filters to
+`.github/workflows/chromatic.yml` or `.github/workflows/storybook.yml`: GitHub
+leaves branch-protection-required checks Pending when a whole workflow is
+skipped by path filters. Push-to-main path filters are fine because they are not
+the merge gate.
 
 **Coverage in the Storybook UI:** Re-run tests with coverage after pulling latest — coverage is scoped to the storied UI primitives enumerated in `STORYBOOK_UI_COVERAGE` (`vitest.storybook.config.ts`, re-exported by `vitest.config.ts`) — currently 24 — so **All files** should read **100%** when every story variant is exercised. That is the intended target, not 100% of the whole repo (~73k lines). Adding a storied component means adding its source path to that list; the 100% gate then forces full branch/line coverage on it.
 

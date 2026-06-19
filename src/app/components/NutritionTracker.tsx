@@ -105,6 +105,7 @@ import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialo
 import { TodayLoadingSkeleton } from "./suppr/today-loading-skeleton.tsx";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { useWebWinMoment } from "../../lib/preferences/useWebWinMoment.ts";
+import { useCommitPulse } from "../../lib/preferences/useCommitPulse.ts";
 import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
 import { TodayWeekSidebar } from "./suppr/today-week-sidebar";
 import { TodayDesktopRightRail } from "./suppr/today-desktop-right-rail";
@@ -119,6 +120,12 @@ import { TodayDashboardMacroBars } from "./suppr/today-dashboard-macro-bars";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
+import {
+  MacroDetailPanel,
+  isMacroDetailSupported,
+  type MacroKey,
+  type MacroMeal,
+} from "./MacroDetailPanel";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
@@ -152,6 +159,10 @@ import { newId } from "../../context/appData/persistence";
 import { isHealthImportFallbackTitle } from "../../lib/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap";
 import { buildMealEntriesFromSavedMeal } from "../../lib/nutrition/savedMealsLogic";
+import {
+  toBreakdownIngredientRow,
+  type BreakdownIngredientRow,
+} from "../../lib/nutrition/macroIngredientBreakdown";
 import {
   createSavedMeal,
   incrementLogCount,
@@ -222,7 +233,7 @@ export {
 
 const RECENT_BARCODE_KEY = "suppr-recent-foods-v1";
 
-// 2026-05-08 build-47 follow-up — Grace TF: tapping "+ Breakfast" in
+// 2026-05-08 build-47 fix — Grace TF: tapping "+ Breakfast" in
 // the afternoon was logging picks as Snacks. Pick-handlers must use
 // `mealSlot` (the user's choice), and the generic LogSheet-open paths
 // must reset `mealSlot` to a fresh time-of-day default.
@@ -596,6 +607,8 @@ export const NutritionTracker = memo(function NutritionTracker({
   // of the meal whose breakdown is open; the dialog resolves the full LoggedMeal
   // (with micros) from `mealsForSelectedDate`, mirroring the copy-meal pattern.
   const [mealNutritionTargetId, setMealNutritionTargetId] = useState<string | null>(null);
+  const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
+  const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
   const [editMealTargetId, setEditMealTargetId] = useState<string | null>(null);
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
@@ -613,6 +626,84 @@ export const NutritionTracker = memo(function NutritionTracker({
   );
   const [recipeId, setRecipeId] = useState("");
   const [timeLabel, setTimeLabel] = useState("12:00 PM");
+
+  const macroDetailFlagEnabled = isFeatureEnabled("web_macro_detail_panel");
+  const openMacroDetail = useCallback((macro: string) => {
+    if (!macroDetailFlagEnabled) return;
+    // Shared affordance/handler source of truth (ENG-848): the same
+    // `isMacroDetailSupported` set gates which tiles/bars render as buttons, so
+    // a tappable tile can never resolve to a macro this handler ignores.
+    if (isMacroDetailSupported(macro)) {
+      setMacroDetailTarget(macro);
+    }
+  }, [macroDetailFlagEnabled]);
+
+  const macroDetailMeals = useMemo<MacroMeal[]>(
+    () =>
+      mealsForSelectedDate.map((meal) => ({
+        id: meal.id,
+        name: meal.name,
+        recipeTitle: meal.recipeTitle,
+        recipeId: meal.recipeId ?? null,
+        portionMultiplier: meal.portionMultiplier ?? 1,
+        calories: meal.calories,
+        protein: meal.protein,
+        carbs: meal.carbs,
+        fat: meal.fat,
+        fiberG: mealContributedFiberG(meal),
+        // ENG-1213 web↔mobile water-breakdown parity: carry per-meal water so
+        // the macro-detail panel's By-meal view can total water for macro="water"
+        // (mirrors mobile useMacroDetail's `water_ml` → waterMl mapping). The
+        // source value already flows DB → LoggedMeal via useNutritionJournalState
+        // (`water_ml` → `waterMl`).
+        waterMl: meal.waterMl ?? 0,
+        micros: meal.micros ?? null,
+      })),
+    [mealsForSelectedDate],
+  );
+
+  useEffect(() => {
+    if (!macroDetailFlagEnabled || macroDetailTarget == null) {
+      setMacroDetailIngredientRows([]);
+      return;
+    }
+    const recipeIds = Array.from(
+      new Set(macroDetailMeals.map((meal) => meal.recipeId).filter((id): id is string => Boolean(id))),
+    );
+    if (recipeIds.length === 0) {
+      setMacroDetailIngredientRows([]);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("recipe_ingredients")
+      .select("recipe_id, name, calories, protein, carbs, fat, fiber_g")
+      .in("recipe_id", recipeIds)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.warn("[macro-detail] recipe_ingredients fetch failed:", error.message);
+          setMacroDetailIngredientRows([]);
+          return;
+        }
+        setMacroDetailIngredientRows(
+          (data ?? []).map((row: Record<string, unknown>) =>
+            toBreakdownIngredientRow({
+              recipeId: String(row.recipe_id ?? ""),
+              name: String(row.name ?? "Item"),
+              calories: Number(row.calories) || 0,
+              protein: Number(row.protein) || 0,
+              carbs: Number(row.carbs) || 0,
+              fat: Number(row.fat) || 0,
+              fiberG: Number(row.fiber_g) || 0,
+            }),
+          ),
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [macroDetailFlagEnabled, macroDetailMeals, macroDetailTarget]);
 
   useEffect(() => {
     if (!isFeatureEnabled("editable_eaten_at")) return;
@@ -668,7 +759,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   const openLogParam = trackerSearchParams.get("openLog");
   useEffect(() => {
     if (openLogParam !== "1") return;
-    // 2026-05-08 build-47 follow-up — generic `?openLog=1` deep-link is
+    // 2026-05-08 build-47 fix — generic `?openLog=1` deep-link is
     // not slot-specific. Reset mealSlot to time-of-day so the LogSheet
     // header + the pick-handlers default to the right slot. The
     // slot-specific `+ Breakfast` path (onOpenAddForSlot) overrides this.
@@ -2102,7 +2193,8 @@ export const NutritionTracker = memo(function NutritionTracker({
       priorTdee: profileFormulaTdee,
       currentTargetKcal: targets.calories,
       avgCaloriesThisWeek: weekData.weekAvg.calories,
-      // weightDeltaKg follow-up: see PR body. Honest null for now.
+      // Weight trend is intentionally suppressed here: the check-in is
+      // maintenance-target guidance, while weight narrative lives in Progress.
       weightDeltaKg: null,
       // ENG-1027 — sex-aware suggested-target floor (never suggest a man
       // below 1,500 / a woman below 1,200).
@@ -2351,6 +2443,28 @@ export const NutritionTracker = memo(function NutritionTracker({
     isToday: selectedDateKey === todayKey(),
     ready: winReady,
   });
+
+  // ENG-1016 — per-commit ring pulse, the web colour/scale analog of mobile's
+  // Medium commit haptic (web has no haptics). Fires a brief, subtle scale +
+  // soft brand glow on the calorie ring whenever a log lands on the selected
+  // day. Gated behind `redesign_motion` + reduced-motion inside the hook (the
+  // same gate mobile's `confirmLog` uses), so it's inert until ramp. Driven by
+  // the meal-count rising edge — the observable durable-commit signal every
+  // web log entry point (`addLoggedMeal` / `addLoggedMealForDate`) flows
+  // through — mirroring how mobile's CalorieRing reacts to logged-calorie
+  // changes.
+  const { pulse: commitPulse, trigger: triggerCommitPulse } = useCommitPulse();
+  const prevMealCountRef = useRef<{ key: string; count: number } | null>(null);
+  useEffect(() => {
+    const count = mealsForSelectedDate.length;
+    const prev = prevMealCountRef.current;
+    prevMealCountRef.current = { key: selectedDateKey, count };
+    // Only pulse on a rising edge for the SAME day — never on day-switch
+    // (which changes both key and count) or on a remote removal.
+    if (!winReady) return;
+    if (!prev || prev.key !== selectedDateKey) return;
+    if (count > prev.count) triggerCommitPulse();
+  }, [mealsForSelectedDate.length, selectedDateKey, winReady, triggerCommitPulse]);
 
   // ENG-935: "What to eat next" is a PERMANENT glanceable Today block —
   // it renders for today regardless of remaining calories, including the
@@ -2601,7 +2715,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         ref={calendarInputRef}
         type="date"
         className="sr-only"
-        aria-hidden
+        aria-label="Select journal date"
         min={dateKeyFromDate(journalRangeBounds().min)}
         max={dateKeyFromDate(journalRangeBounds().max)}
         value={selectedDateKey}
@@ -2737,6 +2851,21 @@ export const NutritionTracker = memo(function NutritionTracker({
           comes from `src/lib/copy/today.ts`. AI-estimated-count chip
           surfaces inline as a caption inside the hero block via
           `aiSourcedCount` (Phase 4). */}
+      {(() => {
+        const coachInHero = isFeatureEnabled("today_coach_in_hero_v1");
+        const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
+        const coachLineEl =
+          !activeFast &&
+          viewMode === "day" &&
+          selectedDateKey === todayKey() &&
+          remainingToday > 0 ? (
+            <TodayDeficitInsight
+              remaining={remainingToday}
+              selectedDate={selectedDate}
+              byDay={nutritionByDay}
+            />
+          ) : null;
+        return (
       <TodayHeroStats
         loggedKcal={Math.round(totals.calories)}
         targetKcal={Math.round(effectiveCalorieTarget)}
@@ -2751,6 +2880,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         expanded={ringExpanded}
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         pulse={winPulse}
+        commitPulse={commitPulse}
         isOnTrack={
           totals.calories > 100 &&
           effectiveCalorieTarget > 0 &&
@@ -2761,13 +2891,27 @@ export const NutritionTracker = memo(function NutritionTracker({
         // replacing the old adaptiveTdeeConfidence-tier proxy.
         tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
         onPressStatusChip={() => setWhyThisNumberOpen(true)}
+        coachLine={coachInHero ? coachLineEl : undefined}
       />
+        );
+      })()}
 
       {/* Single context block — priority order: fasting > deficit.
           Mutually exclusive (mobile parity, 2026-06-06). Eat-again removed
           from Today scroll (2026-05-22 v4) and fully retired (ENG-984,
           2026-06-17); logging shortcuts live in the Log sheet. */}
       {(() => {
+        if (isFeatureEnabled("today_coach_in_hero_v1")) {
+          if (activeFast) {
+            return (
+              <TodayFastingPill
+                activeFastElapsedLabel={fastingElapsedLabel}
+                fastingOptedIn={fastingOptedIn}
+              />
+            );
+          }
+          return null;
+        }
         if (activeFast) {
           return (
             <TodayFastingPill
@@ -2820,6 +2964,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           waterCurrentMl={totalWaterMl}
           waterTargetMl={targets.waterMl}
           netCarbsLensEnabled={netCarbsLensEnabled}
+          onPressMacro={macroDetailFlagEnabled ? openMacroDetail : undefined}
         />
       ) : (
         <TodayDashboardMacroTiles
@@ -2842,6 +2987,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           nutrientRows={dayNutrientDetailRows}
           onPressViewAllNutrients={() => setFullNutrientPanelOpen(true)}
           viewAllNutrientsCount={FULL_NUTRIENT_PANEL_ROW_COUNT}
+          onPressMacro={macroDetailFlagEnabled ? openMacroDetail : undefined}
         />
       )}
 
@@ -2860,6 +3006,16 @@ export const NutritionTracker = memo(function NutritionTracker({
         proteinG={totals.protein}
         sugarG={dayMicroSumForTracker.sugarG}
       />
+
+      {macroDetailFlagEnabled && macroDetailTarget != null ? (
+        <MacroDetailPanel
+          macro={macroDetailTarget}
+          meals={macroDetailMeals}
+          ingredientRows={macroDetailIngredientRows}
+          open={macroDetailTarget != null}
+          onClose={() => setMacroDetailTarget(null)}
+        />
+      ) : null}
 
       {/* TodayMicrosWidget removed 2026-05-02 (revert PR #30) —
           user feedback: 4-tile widget on Today canvas duplicated
@@ -2983,7 +3139,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         // meals still render via `<TodayPlannedMealsCard>` directly
         // below (gated on `mealPlan` truthy with ≥1 non-placeholder).
         onOpenLogSheet={() => {
-          // 2026-05-08 build-47 follow-up — see other generic-FAB
+          // 2026-05-08 build-47 fix — see other generic-FAB
           // call-sites; reset mealSlot to time-of-day before opening.
           setMealSlot(slotForHour(new Date().getHours()));
           setLogSheetOpen(true);
@@ -3933,7 +4089,7 @@ export const NutritionTracker = memo(function NutritionTracker({
             setLogSheetOpen(false);
             const meal = hostSavedMeals.find((m) => m.id === picked.id);
             if (!meal) return;
-            // 2026-05-08 build-47 follow-up — same reason as recents
+            // 2026-05-08 build-47 fix — same reason as recents
             // above: respect the user's slot choice (mealSlot). The
             // saved-meal's defaultMealSlot was its preference at save
             // time; the user has now explicitly picked a slot to log into.
@@ -3987,7 +4143,7 @@ export const NutritionTracker = memo(function NutritionTracker({
               }
               return;
             }
-            // 2026-05-08 build-47 follow-up — same reason as recents
+            // 2026-05-08 build-47 fix — same reason as recents
             // and saved above: respect the user's slot choice (mealSlot).
             // The recipe's own meal_type was a soft tag; the user has
             // explicitly picked a slot.

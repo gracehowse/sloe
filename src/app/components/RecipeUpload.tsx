@@ -44,6 +44,7 @@ import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidenc
 import { stripSectionPrefix } from "../../lib/recipe-import/socialUrlHelpers.ts";
 import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
 import { ImportSuccessSheet } from "./suppr/import-success-sheet.tsx";
+import { ImportRecentImports } from "./suppr/import-recent-imports.tsx";
 import { SupprButton } from "./suppr/suppr-button.tsx";
 import {
   IMPORT_ERROR_COPY,
@@ -61,6 +62,10 @@ import {
   type ApiImportedRecipe,
 } from "../../lib/recipes/persistImportedRecipe.ts";
 import {
+  fetchRecentImports,
+  type RecentImportItem,
+} from "../../lib/recipes/recentImports.ts";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -69,13 +74,33 @@ import {
   DialogTitle,
 } from "./ui/dialog.tsx";
 
+/**
+ * ENG-1211 — method hint passed from an import method tile to the create view
+ * so each tile DELIVERS its method instead of dropping the user on a generic
+ * screen. `paste` → open the paste-ingredient-list dialog on arrival;
+ * `scan` → open the barcode scanner on arrival. Mobile parity: `?autoPaste=1`
+ * / `?autoBarcode=1` on `/create-recipe`.
+ */
+export type CreateMethodHint = "paste" | "scan";
+
 interface RecipeUploadProps {
   userTier: "free" | "base" | "pro";
   onUpgrade?: () => void;
   /** Create = your original recipe (manual entry, your photos). Import = third-party / cookbook / URL / scan for your library only. */
   mode: "create" | "import";
   onSwitchToImport?: () => void;
-  onSwitchToCreate?: () => void;
+  /**
+   * Switch to the create view. ENG-1211: an optional method hint lets a method
+   * tile (Paste text / Scan) ask the create view to auto-activate the matching
+   * affordance on arrival rather than landing the user on a generic form.
+   */
+  onSwitchToCreate?: (method?: CreateMethodHint) => void;
+  /**
+   * ENG-1211: when the create view is opened from an import method tile, this
+   * tells it which affordance to auto-open on mount (paste dialog / scanner).
+   * Consumed once per mount via a ref-guard so a re-render can't re-fire it.
+   */
+  createInitialMethod?: CreateMethodHint;
 }
 
 interface Ingredient {
@@ -190,14 +215,22 @@ function amountToNumeric(raw: string): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
-export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchToImport, onSwitchToCreate }: RecipeUploadProps) {
+export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSwitchToCreate, createInitialMethod }: RecipeUploadProps) {
   const router = useRouter();
-  const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets } = useAppData();
+  const { refreshDiscoverRecipes, ensureRecipeInLibraryWithKind, refreshMyLibraryRecipes, nutritionTargets, userId } = useAppData();
   const searchParams = useSearchParams();
   // import-progress-v2 (2026-06-08) — staged-progress + queue import UX.
   // Flag-gated per CLAUDE.md; the legacy inline-skeleton path stays live in
   // the `else`. Resolved once at mount (PostHog reads are imperative).
   const [importProgressV2] = useState(() => isFeatureEnabled("import-progress-v2"));
+  // recipe-import-redesign (ENG-898 import surface) — gates the new L4 inline
+  // amber error banner + the 3-method source tiles (Photo / Paste text / Scan).
+  // MIRROR of the mobile flag at `apps/mobile/app/import-shared.tsx` (the same
+  // flag name; NOT in REDESIGN_DEFAULT_ON, so OFF in production until ramped).
+  // Flag-gated per CLAUDE.md; the legacy toast-on-error + small destructive
+  // hint line stays live in the `else`. Resolved once at mount (PostHog reads
+  // are imperative; the screen doesn't re-mount mid-flow).
+  const [importRedesign] = useState(() => isFeatureEnabled("recipe-import-redesign"));
   const importQueue = useImportQueue("web", track);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -236,6 +269,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     title: string;
     macroLine: string | null;
   } | null>(null);
+  /** ENG-898 — recent URL imports (web parity with mobile import-shared). */
+  const [recentImports, setRecentImports] = useState<RecentImportItem[]>([]);
   const [verifying, setVerifying] = useState(false);
   const [verifiedLines, setVerifiedLines] = useState<VerifiedLine[] | null>(null);
   const [verifiedTotals, setVerifiedTotals] = useState<{
@@ -263,6 +298,8 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
   const [scannerError, setScannerError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanStopRef = useRef<(() => void) | null>(null);
+  const photoMethodInputRef = useRef<HTMLInputElement | null>(null);
+  const isFreeTier = userTier === "free";
 
   const verifiedMacroByKey = useMemo(() => {
     if (!verifiedLines) return null;
@@ -274,6 +311,24 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     }
     return m;
   }, [verifiedLines]);
+
+  const reloadRecentImports = useCallback(async () => {
+    if (!userId) {
+      setRecentImports([]);
+      return;
+    }
+    try {
+      const items = await fetchRecentImports(supabase, userId);
+      setRecentImports(items);
+    } catch {
+      setRecentImports([]);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (mode !== "import") return;
+    void reloadRecentImports();
+  }, [mode, reloadRecentImports]);
 
   const openMatchPicker = (idx: number, suggested: string) => {
     setMatchPickerIdx(idx);
@@ -411,6 +466,33 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
   }, [runBarcodeLookup, stopScanner]);
 
   useEffect(() => () => stopScanner(), [stopScanner]);
+
+  // ENG-1211 — when the create view is opened from an import method tile
+  // (`createInitialMethod`), auto-activate the promised affordance once on
+  // mount so each tile DELIVERS its method instead of dropping the user on a
+  // generic form. Ref-guarded so a re-render can't re-fire. Mobile parity:
+  // `/create-recipe?autoPaste=1` opens the paste-list modal and
+  // `?autoBarcode=1` opens the barcode scanner.
+  //   - `paste` → open the paste-ingredient-list dialog.
+  //   - `scan`  → open the barcode match picker on the first ingredient row
+  //     (always present — the create form seeds one empty row) and start the
+  //     camera scanner, reusing the existing scan→apply path rather than a
+  //     parallel one.
+  const initialMethodFiredRef = useRef(false);
+  useEffect(() => {
+    if (initialMethodFiredRef.current) return;
+    if (mode !== "create" || !createInitialMethod) return;
+    initialMethodFiredRef.current = true;
+    if (createInitialMethod === "paste") {
+      setPasteDialogOpen(true);
+    } else if (createInitialMethod === "scan") {
+      setMatchPickerIdx(0);
+      setScannerOpen(true);
+      // Defer to next tick so the <video> element the scanner attaches to has
+      // mounted (the picker + scanner UI render conditionally on this state).
+      setTimeout(() => void startScanner(), 0);
+    }
+  }, [mode, createInitialMethod, startScanner]);
 
   // PR-01 (audit 2026-04-28): Base tier folded into Pro. Any legacy
   // `userTier === "base"` row keeps publish access here as a
@@ -645,12 +727,13 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         setRecipeId(saved.recipeId);
         setImportSaveFirstActive(true);
         void refreshMyLibraryRecipes();
+        void reloadRecentImports();
         track(AnalyticsEvents.recipe_import_saved_first, { platform: "web" as const });
         return true;
       }
       return false;
     },
-    [refreshMyLibraryRecipes],
+    [refreshMyLibraryRecipes, reloadRecentImports],
   );
 
   /**
@@ -779,6 +862,27 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
     [importQueue, fetchPhotoImport, applyAndMaybeSaveFirst],
   );
 
+  const onPhotoMethodPress = useCallback(() => {
+    if (isFreeTier) {
+      onUpgrade?.();
+      return;
+    }
+    photoMethodInputRef.current?.click();
+  }, [isFreeTier, onUpgrade]);
+
+  const onPhotoMethodFiles = useCallback(
+    (fileList: FileList | null) => {
+      if (!fileList || fileList.length === 0) return;
+      if (importProgressV2) {
+        runBulkPhotoImport(fileList);
+      } else {
+        applyImageFile(fileList[0]!);
+      }
+      if (photoMethodInputRef.current) photoMethodInputRef.current.value = "";
+    },
+    [importProgressV2, runBulkPhotoImport],
+  );
+
   const runImportFromUrl = async () => {
     const u = importUrl.trim();
     if (!u) {
@@ -840,7 +944,13 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
       // central mapper — preserves the actionable "No Recipe JSON-LD found…"
       // hint the old inline path surfaced.
       const msg = userFacingImportError(e);
-      toast.error(msg);
+      // recipe-import-redesign ON → L4 import error (import.md §3.10): inline
+      // amber banner only, no toast (the banner IS the surface). OFF (legacy,
+      // production until the flag ramps) → fire the toast too, exactly as
+      // before #483; the hint renders as the small destructive line.
+      if (!importRedesign) {
+        toast.error(msg);
+      }
       setImportHint(msg);
     } finally {
       setImportBusy(false);
@@ -1445,6 +1555,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
 
       await refreshDiscoverRecipes();
       await refreshMyLibraryRecipes();
+      if (mode === "import") void reloadRecentImports();
       ensureRecipeInLibraryWithKind(id, mode === "create" ? "created" : "imported");
 
       // Sloe image system (2026-06-08) — when the recipe saved with the
@@ -1533,7 +1644,10 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             {mode === "import" && onSwitchToCreate ? (
               <button
                 type="button"
-                onClick={onSwitchToCreate}
+                // ENG-1211 — the header "Create instead" switch lands on the
+                // plain create form (no method hint); only the method tiles
+                // pass a hint. Wrap so the click event isn't read as a method.
+                onClick={() => onSwitchToCreate()}
                 className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-muted/60"
               >
                 Create instead
@@ -1655,7 +1769,28 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               </SupprButton>
             </div>
             {importHint ? (
-              <p className="text-xs text-destructive mt-2 text-left">{importHint}</p>
+              importRedesign ? (
+                // recipe-import-redesign ON — L4 inline amber banner (import.md §3.10).
+                <div
+                  data-testid="import-l4-error"
+                  role="alert"
+                  className="mt-4 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 text-left"
+                >
+                  <div className="flex gap-3">
+                    <Icons.alert className="h-10 w-10 shrink-0 text-warning" aria-hidden />
+                    <div>
+                      <p className="font-[family-name:var(--font-headline)] text-lg text-foreground">
+                        Something went wrong
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">{importHint}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Legacy (flag OFF, production) — small destructive hint line;
+                // the actionable error also surfaces as a toast (catch block).
+                <p className="text-xs text-destructive mt-2 text-left">{importHint}</p>
+              )
             ) : null}
 
             {/* import-progress-v2 OFF → legacy inline skeleton. ON → the
@@ -1663,6 +1798,91 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                 live per-stage progress instead. */}
             {importBusy && !importProgressV2 ? (
               <ImportLoadingSkeleton phase="importing" className="mt-4" />
+            ) : null}
+
+            {/* recipe-import-redesign ON — the 3-method source tiles (Photo /
+                Paste text / Scan), mobile parity (apps/mobile/app/import-shared.tsx).
+                OFF (legacy, production) → no tiles; the photo affordance lives in
+                the "Recipe photo" card below, unchanged. */}
+            {importRedesign ? (
+              <>
+                <div className="my-5 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+
+                <input
+                  ref={photoMethodInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple={importProgressV2}
+                  aria-label="Choose recipe photos to import"
+                  className="sr-only"
+                  onChange={(e) => onPhotoMethodFiles(e.target.files)}
+                />
+
+                <div className="grid grid-cols-3 gap-2" data-testid="import-method-tiles">
+                  <button
+                    type="button"
+                    data-testid="import-method-photo"
+                    aria-label={
+                      isFreeTier
+                        ? "Import from a photo — Pro feature, upgrade required"
+                        : "Import from a photo"
+                    }
+                    onClick={onPhotoMethodPress}
+                    className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    <span className="relative inline-flex">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
+                        <Icons.camera className="h-5 w-5 text-primary-solid" aria-hidden />
+                      </span>
+                      {isFreeTier ? (
+                        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-warning/10">
+                          <Icons.lock className="h-2.5 w-2.5 text-warning" aria-hidden />
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                      Photo
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {isFreeTier ? "Pro · Snap a recipe" : "Snap a recipe"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="import-method-paste-text"
+                    aria-label="Paste recipe text from notes"
+                    onClick={() => onSwitchToCreate?.("paste")}
+                    className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
+                      <Icons.copy className="h-5 w-5 text-primary-solid" aria-hidden />
+                    </span>
+                    <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                      Paste text
+                    </span>
+                    <span className="text-xs text-muted-foreground">From notes</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="import-method-scan"
+                    aria-label="Create a recipe with barcode scan"
+                    onClick={() => onSwitchToCreate?.("scan")}
+                    className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
+                      <Icons.scan className="h-5 w-5 text-primary-solid" aria-hidden />
+                    </span>
+                    <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                      Scan
+                    </span>
+                    <span className="text-xs text-muted-foreground">Barcode</span>
+                  </button>
+                </div>
+              </>
             ) : null}
           </div>
 
@@ -1690,11 +1910,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             </div>
           </div>
 
-          {/* Recent Imports placeholder */}
-          <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Recent imports</p>
-            <p className="text-xs text-muted-foreground">No recent imports</p>
-          </div>
+          <ImportRecentImports items={recentImports} />
         </div>
       ) : null}
 
@@ -1740,8 +1956,6 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             : `Paste a screenshot or choose a file. If "Extract from image" is available, it can digitize your own handwritten or typed recipe.`}
         </p>
         <div
-          role="button"
-          tabIndex={0}
           onPaste={(e) => {
             const f = e.clipboardData?.files?.[0];
             if (f) {
@@ -1794,6 +2008,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               <input
                 type="file"
                 accept="image/*"
+                aria-label="Choose recipe photo file"
                 className="block mx-auto text-sm text-muted-foreground"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -1829,8 +2044,9 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-6">Basic information</h3>
         <div className="space-y-4">
           <div>
-            <label className="block mb-2 text-sm font-medium text-foreground">Recipe Title</label>
+            <label htmlFor="recipe-upload-title" className="block mb-2 text-sm font-medium text-foreground">Recipe Title</label>
             <input
+              id="recipe-upload-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -1839,8 +2055,9 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
             />
           </div>
           <div>
-            <label className="block mb-2 text-sm font-medium text-foreground">Description</label>
+            <label htmlFor="recipe-upload-description" className="block mb-2 text-sm font-medium text-foreground">Description</label>
             <textarea
+              id="recipe-upload-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your recipe..."
@@ -1850,8 +2067,9 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block mb-2 text-sm font-medium text-foreground">Servings</label>
+              <label htmlFor="recipe-upload-servings" className="block mb-2 text-sm font-medium text-foreground">Servings</label>
               <input
+                id="recipe-upload-servings"
                 type="number"
                 value={servings}
                 onChange={(e) => setServings(Number(e.target.value))}
@@ -1859,8 +2077,9 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-foreground">Prep (min)</label>
+              <label htmlFor="recipe-upload-prep" className="block mb-2 text-sm font-medium text-foreground">Prep (min)</label>
               <input
+                id="recipe-upload-prep"
                 type="number"
                 value={prepTime}
                 onChange={(e) => setPrepTime(Number(e.target.value))}
@@ -1868,8 +2087,9 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
               />
             </div>
             <div>
-              <label className="block mb-2 text-sm font-medium text-foreground">Cook (min)</label>
+              <label htmlFor="recipe-upload-cook" className="block mb-2 text-sm font-medium text-foreground">Cook (min)</label>
               <input
+                id="recipe-upload-cook"
                 type="number"
                 value={cookTime}
                 onChange={(e) => setCookTime(Number(e.target.value))}
@@ -1879,8 +2099,9 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-2 text-sm font-medium text-foreground">Meal Type</label>
+              <label htmlFor="recipe-upload-meal-type" className="block mb-2 text-sm font-medium text-foreground">Meal Type</label>
               <select
+                id="recipe-upload-meal-type"
                 value={mealType}
                 onChange={(e) => setMealType(e.target.value)}
                 className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -2121,7 +2342,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
         ) : null}
 
         <div className="space-y-3">
-          {ingredients.map((ingredient) => (
+          {ingredients.map((ingredient, ingredientIndex) => (
             <div
               key={ingredient.id}
               className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(18rem,1fr)_auto] sm:items-center sm:gap-3 rounded-xl border border-border p-3 bg-card/40"
@@ -2131,6 +2352,7 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                 value={ingredient.name}
                 onChange={(e) => updateIngredient(ingredient.id, "name", e.target.value)}
                 placeholder="Ingredient name"
+                aria-label={`Ingredient ${ingredientIndex + 1} name`}
                 className="w-full min-w-0 px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
               <div className="flex flex-wrap items-center justify-start gap-2">
@@ -2139,11 +2361,13 @@ export function RecipeUpload({ userTier, onUpgrade: _onUpgrade, mode, onSwitchTo
                   value={ingredient.amount}
                   onChange={(e) => updateIngredient(ingredient.id, "amount", e.target.value)}
                   placeholder="Amount"
+                  aria-label={`Ingredient ${ingredientIndex + 1} amount`}
                   className="w-24 sm:w-28 px-3 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
                 <select
                   value={ingredient.unit}
                   onChange={(e) => updateIngredient(ingredient.id, "unit", e.target.value)}
+                  aria-label={`Ingredient ${ingredientIndex + 1} unit`}
                   className="min-w-[10rem] sm:min-w-[11rem] flex-1 sm:flex-initial px-3 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
                   <option value="">Each / none</option>

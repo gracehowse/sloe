@@ -1,8 +1,20 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PricingHero } from "../../app/pricing/PricingHero.tsx";
+import { PricingLegacyTrustSignals } from "../../app/pricing/PricingLegacyTrustSignals.tsx";
+
+vi.mock("../../src/lib/analytics/track.ts", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/lib/analytics/track.ts")>();
+  return {
+    ...actual,
+    isFeatureEnabled: vi.fn((flag: string) =>
+      flag === "paywall_trust_inline_v1" ? true : actual.isFeatureEnabled(flag),
+    ),
+  };
+});
 
 /**
  * `/pricing` hero — Sloe Pro paywall (Figma `284:2`, 2026-06-08).
@@ -60,6 +72,11 @@ describe("/pricing — 284:2 wiring", () => {
     expect(SRC).toContain("<PaywallComparison />");
   });
 
+  it("gates legacy post-tier trust signals behind paywall_trust_inline_v1 off path", () => {
+    expect(SRC).toContain("<PricingLegacyTrustSignals />");
+    expect(SRC).not.toMatch(/Cloud sync across devices/);
+  });
+
   it("uses design-system tokens rather than raw Tailwind slate classes", () => {
     // M2 — no raw slate-{50,900,950,200,800,400,300,600,700,500}
     // class in the file (dark: or otherwise). If a new slate-* class
@@ -67,5 +84,12 @@ describe("/pricing — 284:2 wiring", () => {
     expect(SRC).not.toMatch(/\bbg-slate-/);
     expect(SRC).not.toMatch(/\btext-slate-/);
     expect(SRC).not.toMatch(/\bborder-slate-/);
+  });
+});
+
+describe("PricingLegacyTrustSignals (ENG-901)", () => {
+  it("renders nothing when paywall_trust_inline_v1 is on (default-on)", () => {
+    const { container } = render(<PricingLegacyTrustSignals />);
+    expect(container).toBeEmptyDOMElement();
   });
 });

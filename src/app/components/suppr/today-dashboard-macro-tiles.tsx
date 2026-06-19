@@ -4,18 +4,17 @@ import * as React from "react";
 import {
   Candy,
   Droplet,
-  Dumbbell,
   Gauge,
-  Sprout,
-  Wheat,
   type LucideIcon,
 } from "lucide-react";
 import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 import { macroStatCaption } from "../../../lib/nutrition/macroStatCaption";
+import { MACRO_ICONS } from "../../../lib/macroIconsLucide";
 import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { useCalmMode } from "../../../lib/preferences/useCalmMode";
+import { isMacroDetailSupported } from "../MacroDetailPanel";
 
 /**
  * TodayDashboardMacroTiles — macro tiles grid for Today.
@@ -80,6 +79,8 @@ export interface TodayDashboardMacroTilesProps {
    *  CTA copy ("View all 34 nutrients"). Defaults to a generic
    *  "View all nutrients" when omitted. */
   viewAllNutrientsCount?: number;
+  /** Opens the host-owned per-macro detail panel for supported macro keys. */
+  onPressMacro?: (macro: string) => void;
 }
 
 type TileMeta = {
@@ -106,7 +107,10 @@ type TileMeta = {
   isOverBudget: boolean;
 };
 
-function buildMacroTile(
+// Exported for unit coverage (ENG-986): asserts each tile consumes the
+// shared macro-icon SSOT and that Water keeps its own Droplet glyph rather
+// than borrowing the fat key.
+export function buildMacroTile(
   macroKey: string,
   props: TodayDashboardMacroTilesProps,
 ): TileMeta | null {
@@ -149,7 +153,7 @@ function buildMacroTile(
     const c = captionFor(cur, tgt, "g");
     return {
       label: "Protein",
-      Icon: Dumbbell,
+      Icon: MACRO_ICONS.protein,
       valueText: formatMacro(cur, "protein"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -180,7 +184,7 @@ function buildMacroTile(
       // math is *defined* for this user, which is what the label should
       // track. Mobile fixed the same bug on 2026-04-30.
       label: carbsLabel(fiberTarget, lensOn),
-      Icon: Wheat,
+      Icon: MACRO_ICONS.carbs,
       valueText: formatMacro(cur, "carbs"),
       targetText: `/ ${formatMacro(tgt, "carbs")} g`,
       pct,
@@ -198,7 +202,7 @@ function buildMacroTile(
     const c = captionFor(cur, tgt, "g");
     return {
       label: "Fat",
-      Icon: Droplet,
+      Icon: MACRO_ICONS.fat,
       valueText: formatMacro(cur, "fat"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -217,7 +221,7 @@ function buildMacroTile(
     const c = captionFor(cur, tgt, "g", { overIsFlag: false });
     return {
       label: "Fibre",
-      Icon: Sprout,
+      Icon: MACRO_ICONS.fiber,
       valueText: formatMacro(cur, "fiber"),
       targetText: `/ ${tgt} g`,
       pct,
@@ -270,6 +274,10 @@ function buildMacroTile(
     const c = captionFor(cur, tgt, "ml", { overIsFlag: false });
     return {
       label: "Water",
+      // ENG-986: Water is NOT a macro SSOT key — bind it to its own Droplet
+      // glyph (matches mobile), not MACRO_ICONS.fat. Sharing the fat key only
+      // worked because both resolve to Droplet today; it silently coupled
+      // Water to Fat and broke parity with mobile.
       Icon: Droplet,
       valueText: formatWaterLine(cur),
       targetText: `/ ${formatWaterLine(tgt)}`,
@@ -285,7 +293,7 @@ function buildMacroTile(
 }
 
 export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
-  const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount } = props;
+  const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount, onPressMacro } = props;
   // ENG-1099 — recipe-tier macro tiles (strip bar+caption, value-colour
   // over-signal). ENG-1098 Calm mode neutralises the over-signal.
   const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
@@ -309,11 +317,8 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
             : overSignal
               ? { color: "var(--accent-warning-solid)", fontWeight: 600 }
               : { color: tile.fillVar };
-        return (
-          <div
-            key={macroKey}
-            className={`rounded-card bg-card card-slab p-4 flex flex-col ${tierV1 ? "gap-2" : "justify-between min-h-24"}`}
-          >
+        const content = (
+          <>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-foreground-secondary">
                 {tile.label}
@@ -390,6 +395,38 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 </span>
               </>
             )}
+          </>
+        );
+        const cardClass = `rounded-card bg-card card-slab p-4 flex flex-col ${
+          tierV1 ? "gap-2" : "justify-between min-h-24"
+        }`;
+        // ENG-848 — only macros that actually open a detail panel render as
+        // interactive buttons. Reference-only tiles (sugar/sodium/water) have
+        // no breakdown, so they must render as plain, non-interactive elements
+        // — no button role, no "Open … breakdown" label, no hover/focus/active
+        // affordance. `isMacroDetailSupported` is the single source of truth
+        // shared with the macro bars and the `openMacroDetail` handler.
+        if (onPressMacro && isMacroDetailSupported(macroKey)) {
+          return (
+            <button
+              key={macroKey}
+              type="button"
+              onClick={() => onPressMacro(macroKey)}
+              className={`${cardClass} text-left transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary active:bg-muted/60`}
+              aria-label={`Open ${tile.label} breakdown`}
+              data-testid={`today-macro-tile-${macroKey}`}
+            >
+              {content}
+            </button>
+          );
+        }
+        return (
+          <div
+            key={macroKey}
+            className={cardClass}
+            data-testid={`today-macro-tile-${macroKey}`}
+          >
+            {content}
           </div>
         );
       })}

@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // ENG-528 (2026-05-16): CloudOff dropped — the "Subscriptions
 // unavailable" card it iconified was removed per Grace decision
 // ("remove entirely; just show the Pro tier value ladder").
-import { X, CheckCircle2, ChefHat, BarChart3, Flag, Tag, ChevronDown, ChevronUp, ShieldCheck, type LucideIcon } from "lucide-react-native";
+import { X, CheckCircle2, ChefHat, BarChart3, Flag, Tag, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
 
@@ -46,6 +46,7 @@ import { PaywallComparison } from "@/components/paywall/PaywallComparison";
 import { PaywallPlanSelector } from "@/components/paywall/PaywallPlanSelector";
 import { PaywallCta } from "@/components/paywall/PaywallCta";
 import { PaywallNoPaymentChip } from "@/components/paywall/PaywallNoPaymentChip";
+import { PaywallTrustStrip } from "@/components/paywall/PaywallTrustStrip";
 import { PaywallPersonalisedPlanCard } from "@/components/paywall/PaywallPersonalisedPlanCard";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
@@ -56,10 +57,6 @@ import {
   shouldLeadPaywallWithPersonalisedPlan,
   type PersonalisedPlanPaywallSummary,
 } from "@suppr/shared/paywall/personalisedPlanSummary";
-import {
-  BARCODE_FREE_PAYWALL_CHIP,
-  BARCODE_FREE_PAYWALL_CHIP_TEST_ID,
-} from "@suppr/shared/nutrition/barcodeFreePromise";
 
 /**
  * Mobile paywall — sells both Base and Pro across monthly + annual.
@@ -883,43 +880,6 @@ export default function PaywallScreen() {
     // padding on top of that.
     scrollContent: { paddingHorizontal: Spacing.xl, paddingBottom: insets.bottom + 160 },
 
-    // Frame `284:2` (2026-06-08): trust chips as a compact, centred row
-    // directly above the CTA (the frame's trust-row position). Chip copy
-    // is preserved verbatim; only the placement moved out of the old
-    // TierCard onto the flat CTA cluster.
-    trustRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: Spacing.sm,
-      marginTop: Spacing.md,
-      marginBottom: Spacing.xs,
-    },
-    trustChip: {
-      // Canonical 2026-05-22: chips use --background-secondary, NOT
-      // --input-background. Inputs and chips were sharing a token,
-      // which is wrong — they have different roles (field vs chip).
-      flexDirection: "row",
-      alignItems: "center",
-      gap: Spacing.xs,
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: Spacing.xs,
-      borderRadius: Radius.full,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      backgroundColor: colors.backgroundSecondary,
-    },
-    barcodeTrustChip: {
-      borderColor: accent.primary,
-      backgroundColor: accent.primarySoft,
-    },
-    trustChipText: {
-      fontSize: 11,
-      fontWeight: "600",
-      color: colors.textSecondary,
-    },
-
     // Frame `284:2` rebuild (2026-06-08): the billing toggle + tier-card
     // styles (toggle*, card*, cardCta*, divider, feat*, savingsBadgeRight,
     // skeletonCard, offeringsFootnote) were removed with the TierCard —
@@ -1185,38 +1145,16 @@ export default function PaywallScreen() {
           );
         })() : null}
 
-        {/* Trust row (Figma `284:2`) — the three CMA/trust chips
-            ("Cancel anytime in App Store" / "7-day refund, no email
-            needed" / "Price never changes mid-trial") rendered as a
-            compact centred row directly above the CTA, where the frame
-            places its "Secure checkout · Cancel anytime" row. The chip
-            COPY is preserved verbatim from `getPaywallTrustChips`
-            (PRESERVED per the spec §12) — only the placement is the
-            frame's. Renders in every state (loading / empty / normal)
-            so the guarantee always sits with the CTA. */}
-        {trustChips && trustChips.length > 0 ? (
-          <View
-            testID="paywall-trust-strip"
-            style={styles.trustRow}
-            accessibilityRole="summary"
-            accessibilityLabel={`Trust commitments: ${trustChips.map((c) => c.a11yLabel).join(". ")}`}
-          >
-            <View
-              testID={BARCODE_FREE_PAYWALL_CHIP_TEST_ID}
-              style={[styles.trustChip, styles.barcodeTrustChip]}
-              accessibilityLabel={BARCODE_FREE_PAYWALL_CHIP.a11yLabel}
-            >
-              <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
-              <Text style={styles.trustChipText}>{BARCODE_FREE_PAYWALL_CHIP.label}</Text>
-            </View>
-            {trustChips.map((chip) => (
-              <View key={chip.label} style={styles.trustChip} accessibilityLabel={chip.a11yLabel}>
-                <ShieldCheck size={12} color={Accent.success} strokeWidth={2.25} />
-                <Text style={styles.trustChipText}>{chip.label}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
+        {/* Trust row (Figma `284:2`) — ENG-901 inline · row when
+            `paywall_trust_inline_v1` is on; legacy pill chips when off. */}
+        <PaywallTrustStrip
+          chips={trustChips}
+          textSecondaryColor={colors.textSecondary}
+          borderColor={colors.border}
+          backgroundSecondaryColor={colors.backgroundSecondary}
+          primaryColor={accent.primary}
+          primarySoftColor={accent.primarySoft}
+        />
 
         {offeringsReady && !subscriptionsUnavailable ? (
           <Text

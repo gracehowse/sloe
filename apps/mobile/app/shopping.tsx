@@ -1011,7 +1011,9 @@ export default function ShoppingListScreen() {
                           <View style={{ flexDirection: "row", alignItems: "stretch" }}>
                             <Pressable
                               onPress={() => {
-                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                // ENG-1016 — marking a staple commits + removes
+                                // rows → Medium, matching the Delete sibling.
+                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                 void markGroupAsStaple(group);
                               }}
                               style={{

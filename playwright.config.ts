@@ -29,6 +29,10 @@ loadEnvLocal();
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 const authFile = authFileForBaseUrl(baseURL);
 const hasE2ECredentials = Boolean(process.env.E2E_EMAIL?.trim() && process.env.E2E_PASSWORD?.trim());
+const hasVisualGoldenCredentials = Boolean(
+  process.env.E2E_VISUAL_EMAIL?.trim() && process.env.E2E_VISUAL_PASSWORD?.trim(),
+);
+const hasAnyAuthedCredentials = hasE2ECredentials || hasVisualGoldenCredentials;
 
 /** Specs that require a signed-in session (storage state from auth.setup.ts). */
 const authedTestMatch = [
@@ -37,6 +41,7 @@ const authedTestMatch = [
   /journeys\/recipe-create-paste\.spec\.ts/,
   /journeys\/cook-mode\.spec\.ts/,
   /journeys\/core-flows-authed\.spec\.ts/,
+  /journeys\/today-contrast-eng1109\.spec\.ts/,
   /visual-audit-authed\.spec\.ts/,
   /visual-regression-subpages\.spec\.ts/,
   /visual-regression-deep\.spec\.ts/,
@@ -111,10 +116,10 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: hasE2ECredentials ? authedTestMatch : undefined,
+      testIgnore: hasAnyAuthedCredentials ? authedTestMatch : undefined,
       use: { ...devices["Desktop Chrome"] },
     },
-    ...(hasE2ECredentials
+    ...(hasAnyAuthedCredentials
       ? [
           {
             name: "setup",

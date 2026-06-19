@@ -2,7 +2,11 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   computeAdaptiveTDEE,
   MIN_COMPLETE_DAY_KCAL,
-  SLOPE_CAP_KG_PER_WEEK,
+  SLOPE_CAP_LOW_KG_PER_WEEK,
+  SLOPE_CAP_MED_KG_PER_WEEK,
+  SLOPE_CAP_HIGH_KG_PER_WEEK,
+  selectSlopeCapKgPerWeek,
+  determineAdaptiveTdeeConfidence,
   PLAUSIBILITY_LOWER_FRACTION,
 } from "@/lib/nutrition/adaptiveTdee";
 
@@ -365,7 +369,7 @@ describe("computeAdaptiveTDEE — R2 slope trend vs the old EMA", () => {
     expect(result.tdee).toBeLessThan(2160);
   });
 
-  it("AUDIT P0: a true 0.5 kg/week loss recovers ~550 kcal/day, NOT the EMA's ~130", () => {
+  it("AUDIT P0 (ENG-1116): a HIGH-confidence 0.5 kg/week loss recovers ~550 kcal/day", () => {
     // The nutrition-calculations audit's named regression anchor
     // (docs/ux/research/2026-06-10-nutrition-calculations-audit.md §#1/§2):
     // "a synthetic 0.5 kg/week series must recover ~550 kcal/day of deficit,
@@ -374,14 +378,13 @@ describe("computeAdaptiveTDEE — R2 slope trend vs the old EMA", () => {
     // measured change 35–85% toward zero. A least-squares slope sees the whole
     // trend, so it recovers the full energy term.
     //
-    // RECONCILIATION with the R2 slope cap (the audit predates it): 0.5 kg/week
-    // = 0.0714 kg/day EXCEEDS the ±0.35 kg/week (0.05 kg/day) water-noise cap
-    // adopted in the gating decision, so the *surfaced* trend is bounded to the
-    // cap (energy 385). The audit's "550 not 130" claim is about SLOPE RECOVERY,
-    // not the post-cap value — so we prove both: (a) the raw least-squares slope
-    // of this series recovers the full ~550 (vs the EMA's ~130), and (b) the cap
-    // then bounds the displayed term to 385. Both are correct under the shipped
-    // architecture.
+    // ENG-1116: the slope cap is now WINDOW/CONFIDENCE-AWARE. This series — 21
+    // full logging days + 21 daily weigh-ins — resolves to HIGH confidence, so
+    // the cap is ±1.0 kg/week (0.1429 kg/day). 0.5 kg/week (0.0714 kg/day) is
+    // comfortably UNDER that, so the full slope is now recovered and surfaced —
+    // not bounded to the old flat ±0.35 (385) that under-credited fast losers.
+    // Eating 1,800 at a +550 term → 2,350. (Previously this test asserted the
+    // capped 1,800 + 385 = 2,185 — that under-read was the bug ENG-1116 fixes.)
     freeze();
     const intakeByDay: Record<string, number> = {};
     const weightByDay: Record<string, number> = {};
@@ -401,7 +404,7 @@ describe("computeAdaptiveTDEE — R2 slope trend vs the old EMA", () => {
     }
 
     // (a) RAW least-squares slope of this exact series, computed independently
-    // of the cap, must recover ~0.0714 kg/day → ~550 kcal/day — and emphatically
+    // of the cap, recovers ~0.0714 kg/day → ~550 kcal/day — and emphatically
     // NOT the EMA's muted ~130.
     const x0 = new Date(dayKeys[0]).getTime();
     const xs = dayKeys.map((k) => (new Date(k).getTime() - x0) / 86_400_000);
@@ -415,14 +418,71 @@ describe("computeAdaptiveTDEE — R2 slope trend vs the old EMA", () => {
     expect(rawEnergyKcalPerDay).toBe(550); // the audit's recovered figure
     expect(rawEnergyKcalPerDay).toBeGreaterThan(130); // NOT the EMA's muted read
 
-    // (b) The shipped estimator surfaces the CAPPED slope (±0.35 kg/week →
-    // 0.05 kg/day → energy 385). Eating 1,800 at a capped +385 term → 2,185.
+    // (b) The shipped estimator confirms HIGH confidence and surfaces the FULL
+    // slope (0.5 kg/week is inside the ±1.0 high-confidence cap), so the energy
+    // term is the real 550 — not the old flat-cap 385. Eating 1,800 → 2,350.
     const result = computeAdaptiveTDEE({ intakeByDay, weightByDay })!;
+    expect(result.confidence).toBe("high");
+    expect(result.smoothedWeightChangeKgPerDay).toBeCloseTo(-(0.5 / 7), 4);
+    expect(result.tdee).toBe(1800 + 550);
+    // Regression guard: the bug under-read this by ~165 kcal (550 − 385).
+    expect(result.tdee).toBeGreaterThan(1800 + 385);
+  });
+
+  it("ENG-1116: a LOW-confidence short window STILL caps the slope at ±0.35 (385)", () => {
+    // The naive fix (raise the flat cap to 1.0) would re-admit water noise on
+    // short windows — the exact failure the 2026-06-10 gating decision fixed.
+    // Prove the tight ±0.35 guard still fires when the window is too short to
+    // trust the slope. 12 full logging days + 3 daily weigh-ins → BELOW the
+    // medium ladder (≥14 days / ≥5 weigh-ins) → LOW confidence → ±0.35 cap.
+    // An absurd 2.1 kg/week "loss" (water flush) must clamp to the low cap, so
+    // the surfaced term is the bounded 385 (1,800 + 385 = 2,185), NOT the raw.
+    freeze();
+    const intakeByDay: Record<string, number> = {};
+    const weightByDay: Record<string, number> = {};
+    const weighInOffsets = [0, 5, 11]; // 3 weigh-ins → below the medium floor
+    for (let i = 0; i < 12; i++) {
+      const d = new Date("2026-06-10T16:00:00.000Z");
+      d.setUTCDate(d.getUTCDate() - (11 - i));
+      const key = d.toISOString().slice(0, 10);
+      intakeByDay[key] = 1800; // full days, clears the 1,000 floor
+      if (weighInOffsets.includes(i)) weightByDay[key] = 80 - i * 0.3; // absurd
+    }
+    const result = computeAdaptiveTDEE({ intakeByDay, weightByDay })!;
+    expect(result.confidence).toBe("low");
+    // Slope clamps to the LOW cap magnitude (loss → negative).
     expect(result.smoothedWeightChangeKgPerDay).toBeCloseTo(
-      -(SLOPE_CAP_KG_PER_WEEK / 7),
+      -(SLOPE_CAP_LOW_KG_PER_WEEK / 7),
       4,
     );
+    // Surfaced energy term is the bounded 385 → 1,800 + 385 = 2,185.
     expect(result.tdee).toBe(1800 + 385);
+  });
+
+  it("ENG-1116: the cap selector + tier ladder pin each tier's magnitude", () => {
+    // Pins the named exports so a silent change to a cap value or the ladder
+    // breaks here. Low = ±0.35, medium = ±0.70, high = ±1.00 kg/week.
+    expect(SLOPE_CAP_LOW_KG_PER_WEEK).toBe(0.35);
+    expect(SLOPE_CAP_MED_KG_PER_WEEK).toBe(0.7);
+    expect(SLOPE_CAP_HIGH_KG_PER_WEEK).toBe(1.0);
+
+    expect(selectSlopeCapKgPerWeek("low")).toBe(0.35);
+    expect(selectSlopeCapKgPerWeek("medium")).toBe(0.7);
+    expect(selectSlopeCapKgPerWeek("high")).toBe(1.0);
+
+    // The cap widens monotonically with the confidence the same ladder yields.
+    expect(determineAdaptiveTdeeConfidence(12, 3)).toBe("low");
+    expect(determineAdaptiveTdeeConfidence(14, 5)).toBe("medium");
+    expect(determineAdaptiveTdeeConfidence(21, 7)).toBe("high");
+    expect(selectSlopeCapKgPerWeek(determineAdaptiveTdeeConfidence(12, 3))).toBe(
+      SLOPE_CAP_LOW_KG_PER_WEEK,
+    );
+    expect(selectSlopeCapKgPerWeek(determineAdaptiveTdeeConfidence(14, 5))).toBe(
+      SLOPE_CAP_MED_KG_PER_WEEK,
+    );
+    expect(selectSlopeCapKgPerWeek(determineAdaptiveTdeeConfidence(21, 7))).toBe(
+      SLOPE_CAP_HIGH_KG_PER_WEEK,
+    );
   });
 
   it("ENG-1024: weekly weigh-ins recover the same slope as daily after gap-fill", () => {
@@ -488,7 +548,7 @@ describe("computeAdaptiveTDEE — R2 slope trend vs the old EMA", () => {
     expect(slopeEnergy).toBeGreaterThan(49);
   });
 
-  it("caps an implausibly steep slope at ±0.35 kg/week", () => {
+  it("caps an implausibly steep slope at the tier the window resolves to", () => {
     freeze();
     const intakeByDay: Record<string, number> = {};
     const weightByDay: Record<string, number> = {};
@@ -500,10 +560,18 @@ describe("computeAdaptiveTDEE — R2 slope trend vs the old EMA", () => {
       weightByDay[key] = 80 - i * 0.3; // absurd 2.1 kg/week loss (water flush)
     }
     const result = computeAdaptiveTDEE({ intakeByDay, weightByDay })!;
-    const capKgPerDay = SLOPE_CAP_KG_PER_WEEK / 7;
-    // Slope is clamped to the cap magnitude (loss → negative).
+    // 21 full days + 21 daily weigh-ins → HIGH confidence → ±1.0 kg/week cap
+    // (ENG-1116). Even widened, the cap still bounds a 2.1 kg/week water flush.
+    expect(result.confidence).toBe("high");
+    const expectedCap = selectSlopeCapKgPerWeek(result.confidence);
+    expect(expectedCap).toBe(SLOPE_CAP_HIGH_KG_PER_WEEK);
+    const capKgPerDay = expectedCap / 7;
+    // Slope is clamped to the resolved tier's cap magnitude (loss → negative).
+    // `smoothedWeightChangeKgPerDay` is surfaced rounded to 4 dp, so allow a
+    // half-ulp-of-4dp tolerance (5e-5) over the raw cap (1.0/7 = 0.142857… does
+    // not divide evenly, unlike the old 0.35/7 = 0.05).
     expect(Math.abs(result.smoothedWeightChangeKgPerDay)).toBeLessThanOrEqual(
-      capKgPerDay + 1e-9,
+      capKgPerDay + 5e-5,
     );
     expect(result.smoothedWeightChangeKgPerDay).toBeCloseTo(-capKgPerDay, 4);
   });

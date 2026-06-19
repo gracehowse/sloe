@@ -281,7 +281,8 @@ export default function VerifyScreen() {
         ...scaled,
       });
       setSearchIndex(null);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // ENG-1016 — replacing an ingredient match is a commit → Medium.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
     [searchIndex, updateIngredient],
   );
@@ -556,7 +557,8 @@ export default function VerifyScreen() {
         // mirroring the ConfidenceDot mapping in the UI.
         confidence_bucket: priorIng.isVerified ? "high" : "medium",
       });
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // ENG-1016 — pinning a manual macro override is a durable commit → Medium.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
     [ingredients, recipeId],
   );
@@ -616,7 +618,8 @@ export default function VerifyScreen() {
         // L6 G4 (2026-04-18) — same mapping as `_overridden` above.
         confidence_bucket: priorIng.isVerified ? "high" : "medium",
       });
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // ENG-1016 — clearing a saved override is a durable commit → Medium.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
     [ingredients, recipeId],
   );

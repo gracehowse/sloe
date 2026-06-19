@@ -64,11 +64,11 @@ Monetisation is the fuel for everything else. The paywall surface must:
 - `PromoCodeBlock` — parity with mobile promo expander.
 
 **Weaknesses:**
-1. **Off-brand colours (real drift):** `CheckoutButton.tsx:80` uses `from-violet-600 to-indigo-600`. Hero gradient `#588CE4 → #DF5EBC`. Trust-icon tokens are `var(--macro-*)`. None of these match the locked palette (terracotta `#C2683E`, sage `#7C8466`, white base, warm near-black). This is not a style preference — it is palette drift that violates the locked design system.
-2. **No food photography** — same gap as mobile. The Julienne benchmark requires a hyperreal finished-dish hero at the top of the pricing surface.
+1. **Off-brand colours (real drift): FIXED (ENG-971).** `CheckoutButton.tsx` and the `/pricing` hero were migrated to brand tokens (`var(--accent-primary)` / `bg-primary`, photo hero). The last remaining drift on a billing surface — the `/checkout/success` page's gradient-clip wordmark (`#588CE4 → #DF5EBC`) and the "Open Sloe" CTA (`from-violet-600 to-indigo-600`) — is now corrected to the canonical Sloe wordmark + `bg-primary` CTA (ENG-971). Trust-icon tokens (`var(--macro-*)`) on `/pricing` remain a separate cleanup item.
+2. **No food photography** — same gap as mobile. The Julienne benchmark requires a hyperreal finished-dish hero at the top of the pricing surface. (Hero photo shipped for `/pricing` — `PricingHero.tsx`.)
 3. **Serif typography absent** — web pricing page uses sans throughout. Pricing headline should be Fraunces/Newsreader (serif display).
 4. **No trial timeline block** — web `/pricing` has no equivalent to the mobile trial timeline. Intentional divergence (web has no IAP trial concept), but the trust message ("your first charge is after 7 days for annual") should still surface prominently on the annual toggle state.
-5. **AI paywall copy bug (parity gap):** `ai-paywall-dialog.tsx:68` says "unlimited AI photo logging (100/day)". Mobile's `AiPaywallSheet.tsx:75` correctly says "up to 100 a day". Web is stale — fix in the same implementation commit.
+5. **AI paywall copy bug (parity gap): FIXED (ENG-971).** `ai-paywall-dialog.tsx` now says "AI photo logging up to 100 a day", matching `AiPaywallSheet.tsx`. The same honest-cap correction was applied to every photo-log quota-exhaustion surface (the `api:photo-log` route message + the web/mobile in-flow fallbacks, which previously said "Upgrade to Pro for unlimited" — false, since Pro AI logging is hard-capped at 100/day) and to the pricing SSOT Pro `tag` (was "...plus unlimited AI logging." → "...plus AI photo and voice logging.").
 
 ### 2c. In-flow AI gate (`AiPaywallSheet` / `ai-paywall-dialog`)
 
@@ -509,7 +509,7 @@ X (Twitter) "Unlock offline videos with Premium" — https://mobbin.com/screens/
 
 **All `ai_paywall_sheet_viewed / dismissed / cta_tapped` events PRESERVED with identical properties.**
 
-**Feature copy SSOT (`FEATURE_COPY` object in `AiPaywallSheet.tsx`) — PRESERVED. Only the "unlimited AI photo logging (100/day)" string is corrected to "Up to 100 photo logs per day" to match mobile's existing honest wording.** This correction must be made on web simultaneously (see §3d).
+**Feature copy SSOT (`FEATURE_COPY` object in `AiPaywallSheet.tsx`) — PRESERVED. The "unlimited AI photo logging (100/day)" string is corrected to honest cap wording to match mobile's existing wording.** SHIPPED (ENG-971): web `ai-paywall-dialog.tsx` photo_log body now reads "Pro unlocks AI photo logging up to 100 a day" verbatim with mobile; the same wording was propagated to the photo-log quota-exhaustion message on the `api:photo-log` route and the web/mobile in-flow fallbacks (which had said "Upgrade to Pro for unlimited"). Pinned by `tests/unit/aiPaywallWebMobileParity.test.ts`.
 
 ---
 
@@ -517,10 +517,10 @@ X (Twitter) "Unlock offline videos with Premium" — https://mobbin.com/screens/
 
 #### Palette correction (blocker — not a redesign preference, a bug)
 
-Fix before any visual redesign work:
-- `CheckoutButton.tsx:80`: remove `from-violet-600 to-indigo-600`; replace with `bg-[#C2683E]` (terracotta) or the Tailwind alias `bg-accent-primary`.
-- `app/pricing/page.tsx:182`: remove `#588CE4 → #DF5EBC` gradient hero. Replace with white (#FFFFFF) base + food-photography hero strip (see §3c below).
-- Trust-icon tokens (`var(--macro-*)`): replace with semantic tokens from the design system. Use `--color-sage` for secondary icons, `--color-terracotta` for primary actions. Do not use nutrition-macro colour tokens for non-nutrition UI.
+- `CheckoutButton.tsx`: **DONE.** `from-violet-600 to-indigo-600` replaced with the brand token (`var(--accent-primary)` / `var(--accent-primary-foreground)`), matching every other primary CTA.
+- `app/pricing` hero: **DONE.** `#588CE4 → #DF5EBC` gradient hero replaced with the food-photography hero strip (`PricingHero.tsx`) + palette/`--background` fade.
+- `/checkout/success` page: **DONE (ENG-971).** Gradient-clip wordmark (`#588CE4 → #DF5EBC`) replaced with the canonical `SupprWordmark` (plum ink via `--foreground-brand`); "Open Sloe" CTA (`from-violet-600 to-indigo-600` + `shadow-violet`) replaced with `bg-primary text-primary-foreground hover:brightness-95`. Pinned by `tests/unit/checkoutSuccessPage.test.tsx`.
+- Trust-icon tokens (`var(--macro-*)`) on `/pricing`: **still open** — replace with semantic tokens from the design system. Use `--color-sage` for secondary icons, `--color-terracotta` for primary actions. Do not use nutrition-macro colour tokens for non-nutrition UI.
 
 #### Hero
 

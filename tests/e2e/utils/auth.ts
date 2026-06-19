@@ -4,6 +4,21 @@ export function hasE2ECredentials(): boolean {
   return Boolean(process.env.E2E_EMAIL?.trim() && process.env.E2E_PASSWORD?.trim());
 }
 
+export function hasVisualGoldenCredentials(): boolean {
+  return Boolean(process.env.E2E_VISUAL_EMAIL?.trim() && process.env.E2E_VISUAL_PASSWORD?.trim());
+}
+
+/** Premium Today matrix seeding (`scripts/e2e-seed-today-premium-matrix.ts`) needs service role. */
+export function hasSupabaseServiceRoleForSeed(): boolean {
+  return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+}
+
+type LoginCredentials = {
+  email: string;
+  password: string;
+  label: string;
+};
+
 /**
  * Sign in via /login UI. Requires E2E_EMAIL and E2E_PASSWORD.
  * The account must have a **complete** Supabase `profiles` row (targets, age, height, etc.)
@@ -15,7 +30,19 @@ export async function loginWithTestUser(page: Page): Promise<void> {
   if (!email || !password) {
     throw new Error("E2E_EMAIL and E2E_PASSWORD must be set");
   }
+  await loginWithCredentials(page, { email, password, label: "E2E" });
+}
 
+export async function loginWithVisualGoldenUser(page: Page): Promise<void> {
+  const email = process.env.E2E_VISUAL_EMAIL?.trim();
+  const password = process.env.E2E_VISUAL_PASSWORD?.trim();
+  if (!email || !password) {
+    throw new Error("E2E_VISUAL_EMAIL and E2E_VISUAL_PASSWORD must be set");
+  }
+  await loginWithCredentials(page, { email, password, label: "visual-golden" });
+}
+
+async function loginWithCredentials(page: Page, credentials: LoginCredentials): Promise<void> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -37,8 +64,8 @@ export async function loginWithTestUser(page: Page): Promise<void> {
       const emailInput = page.getByPlaceholder("you@domain.com");
       const passwordInput = page.getByPlaceholder(/your password/i);
       await expect(emailInput).toBeVisible({ timeout: 15_000 });
-      await emailInput.fill(email);
-      await passwordInput.fill(password);
+      await emailInput.fill(credentials.email);
+      await passwordInput.fill(credentials.password);
 
       const signIn = page.getByRole("button", { name: "Sign in", exact: true }).last();
       await Promise.all([
@@ -61,14 +88,14 @@ export async function loginWithTestUser(page: Page): Promise<void> {
       .catch(() => false);
     throw new Error(
       authError
-        ? "E2E sign-in failed — check credentials or email confirmation in Supabase."
-        : `E2E sign-in did not leave /login after 2 attempts: ${String(lastError)}`,
+        ? `${credentials.label} sign-in failed — check credentials or email confirmation in Supabase.`
+        : `${credentials.label} sign-in did not leave /login after 2 attempts: ${String(lastError)}`,
     );
   }
 
   if (page.url().includes("/onboarding")) {
     throw new Error(
-      "E2E user was sent to /onboarding — complete profile fields in Supabase for this account (targets, age, height, weight, sex, activity, goal).",
+      `${credentials.label} user was sent to /onboarding — complete profile fields in Supabase for this account (targets, age, height, weight, sex, activity, goal).`,
     );
   }
 
@@ -87,8 +114,8 @@ export async function loginWithTestUser(page: Page): Promise<void> {
     const onLanding = await page.getByRole("link", { name: /^sign in$/i }).first().isVisible().catch(() => false);
     throw new Error(
       onLanding
-        ? "E2E sign-in did not establish a session — verify E2E_EMAIL/E2E_PASSWORD against NEXT_PUBLIC_SUPABASE_URL and email confirmation."
-        : "E2E sign-in succeeded but the app shell did not load — expected Today navigation on /today.",
+        ? `${credentials.label} sign-in did not establish a session — verify credentials against NEXT_PUBLIC_SUPABASE_URL and email confirmation.`
+        : `${credentials.label} sign-in succeeded but the app shell did not load — expected Today navigation on /today.`,
     );
   }
 }

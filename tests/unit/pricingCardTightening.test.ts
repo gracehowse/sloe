@@ -10,6 +10,10 @@ const page = fs.readFileSync(
   path.resolve("app/pricing/page.tsx"),
   "utf-8",
 );
+const legacyTrust = fs.readFileSync(
+  path.resolve("app/pricing/PricingLegacyTrustSignals.tsx"),
+  "utf-8",
+);
 
 describe("ENG-63 · Pricing card tightening", () => {
   it("uses p-6 for regular card padding (not p-8)", () => {
@@ -31,8 +35,9 @@ describe("ENG-63 · Pricing card tightening", () => {
   });
 
   it("tighter trust signals margin (mt-10)", () => {
-    expect(page).toContain("mt-10");
-    expect(page).toContain("gap-6");
+    expect(page).toContain("<PricingLegacyTrustSignals />");
+    expect(legacyTrust).toContain("mt-10");
+    expect(legacyTrust).toContain("gap-6");
   });
 
   it("tighter FAQ spacing", () => {

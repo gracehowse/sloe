@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { CircleCheck, Sparkles, TrendingUp } from "lucide-react-native";
+import { CircleCheck, Sparkles } from "lucide-react-native";
 import { Accent, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -191,7 +191,7 @@ export function WeeklyInsightCard({
         style={{ paddingHorizontal: Spacing.xs, gap: Spacing.xs }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-          <TrendingUp size={13} color={accent.primarySolid} strokeWidth={2} />
+          <Sparkles size={13} color={accent.primarySolid} strokeWidth={1.75} />
           <Text style={[styles.headerLabel, { color: accent.primarySolid }]}>
             WEEKLY INSIGHT
           </Text>

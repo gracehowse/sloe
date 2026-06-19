@@ -6,10 +6,12 @@
  * Pins the haptic feedback on the three repeated daily-loop commits + the one
  * daily-loop segment change, so a refactor can't silently drop the buzz:
  *
- *   - LOG MEAL (Today)   — a quiet CONFIRM beat fires once per durable commit,
+ *   - LOG MEAL (Today)   — a Medium CONFIRM beat fires once per durable commit,
  *     wired at the single `persistMealsImmediate` funnel (every log entry
  *     point — quick-add / search / saved-meal / barcode / AI — flows through
- *     it). Gated behind `redesign_motion` inside `use-win-moment`.
+ *     it). Gated behind `redesign_motion` inside `use-win-moment`. ENG-1016
+ *     raised this beat from Light → Medium: a durable log is a COMMIT, and the
+ *     haptic vocabulary reserves Medium for taps that commit.
  *   - LOG WEIGHT         — a confirm (Medium) on save, with the loud
  *     SUCCESS notification reserved for the new-all-time-low landmark. Gated
  *     behind `redesign_winmoment`.
@@ -48,11 +50,17 @@ describe("Daily-loop haptics — LOG MEAL (Today)", () => {
     expect(TODAY).toContain("confirmLogHapticRef.current()");
   });
 
-  it("the confirm haptic is wired at the single persist funnel, fired once", () => {
-    // Exactly one invocation site — fired through the shared persist primitive,
-    // never duplicated per log entry point (no double-buzz).
+  it("the confirm haptic is wired only at durable-commit funnels, once per path", () => {
+    // The commit beat is invoked through the shared `confirmLogHapticRef` funnel,
+    // never as a scattered raw `Haptics.impactAsync(...)` per log entry point.
+    // Two distinct durable-commit code paths fire it (ENG-1016):
+    //   1. `persistMealsImmediate` — the upsert funnel every add/quick-add/
+    //      search/saved-meal/barcode/AI log flows through.
+    //   2. the copy/duplicate path, which does its own insert (not the upsert
+    //      funnel) so it invokes the ref itself.
+    // Each fires exactly once per commit — no double-buzz within a single path.
     const calls = TODAY.match(/confirmLogHapticRef\.current\(\)/g) ?? [];
-    expect(calls.length).toBe(1);
+    expect(calls.length).toBe(2);
   });
 
   it("the ref is kept current from the useWinMoment confirmLog handler", () => {
@@ -63,11 +71,27 @@ describe("Daily-loop haptics — LOG MEAL (Today)", () => {
     // The gate lives in the hook so the wiring stays a no-op until ramp.
     expect(WIN_HOOK).toContain('isFeatureEnabled("redesign_motion")');
     expect(WIN_HOOK).toContain("if (!motionEnabled) return;");
-    // A LIGHT impact — quiet confirm, NOT the loud success reserved for the
-    // win-moment landmark.
+  });
+
+  it("the confirm haptic is a Medium impact — the canonical commit weight (ENG-1016)", () => {
+    // A durable log is a COMMIT, so the ordinary-log beat is Medium — the same
+    // weight as PressableScale haptic="confirm". The loud SUCCESS notification
+    // stays reserved for the win-moment landmark (asserted in winMomentLandmark
+    // tests).
     expect(WIN_HOOK).toContain(
-      "Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)",
+      "void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);",
     );
+  });
+
+  it("the scattered raw per-call-site log haptics were removed (single funnel only)", () => {
+    // Every Today log entry point flows through `persistMealsImmediate`, which
+    // fires the commit beat once via `confirmLogHapticRef`. The legacy
+    // duplicate `Haptics.impactAsync(...Light)` calls scattered across the log
+    // handlers were removed so the user never gets a double-buzz.
+    const lightCalls =
+      TODAY.match(/Haptics\.impactAsync\(Haptics\.ImpactFeedbackStyle\.Light\)/g) ??
+      [];
+    expect(lightCalls.length).toBe(0);
   });
 });
 

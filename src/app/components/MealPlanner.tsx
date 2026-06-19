@@ -90,7 +90,11 @@ import {
   slotMacroTargets,
 } from "../../lib/nutrition/mealPlanAlgo.ts";
 import { coerceMacrosWhenCaloriesButNoGrams } from "../../lib/nutrition/coerceRecipeMacrosForPlanning.ts";
-import { planSlotAimKcal, aimKcalLabel } from "../../lib/nutrition/mealSlotAim.ts";
+import { planSlotAimKcal } from "../../lib/nutrition/mealSlotAim.ts";
+import {
+  EmptyMealSlotAimLine,
+  PlanAbsentMealSlotRow,
+} from "./suppr/empty-meal-slot-row.tsx";
 import type { DayPlan } from "../../types/recipe.ts";
 
 interface MealPlannerProps {
@@ -1663,37 +1667,14 @@ export const MealPlanner = memo(function MealPlanner({
                 const SlotIcon = SLOT_ICONS[slot];
                 const entry = bySlot.get(slot);
                 if (!entry) {
-                  // ENG-1092 — an absent slot states its aim ("Aim ~X kcal")
-                  // instead of "Empty slot"; null (optional Snacks / no target /
-                  // flag off) keeps the legacy copy.
                   const emptyAim = canonicalSlotAim[slot] ?? null;
                   return (
-                    <div
+                    <PlanAbsentMealSlotRow
                       key={slot}
-                      // Audit 2026-04-30 visual-qa P1 #13 — `p-2.5`
-                      // replaces inline `padding: 10` for token parity
-                      // with the surrounding day-card spacing.
-                      className="rounded-xl bg-muted relative p-2.5"
-                    >
-                      <p
-                        className="text-muted-foreground uppercase inline-flex items-center gap-1.5"
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 600,
-                          letterSpacing: "0.1em",
-                          marginBottom: 4,
-                        }}
-                      >
-                        <SlotIcon size={11} aria-hidden />
-                        {slot}
-                      </p>
-                      <p
-                        className="text-[11px] text-muted-foreground tabular-nums"
-                        data-testid={emptyAim != null ? `plan-slot-aim-${slot}` : undefined}
-                      >
-                        {emptyAim != null ? aimKcalLabel(emptyAim) : "Empty slot"}
-                      </p>
-                    </div>
+                      slot={slot}
+                      SlotIcon={SlotIcon}
+                      aimKcal={emptyAim}
+                    />
                   );
                 }
                 const { mealIndex, meal } = entry;
@@ -1855,24 +1836,21 @@ export const MealPlanner = memo(function MealPlanner({
                           Leftover
                         </span>
                       ) : null}
-                      <p
-                        className="text-muted-foreground tabular-nums"
-                        style={{ fontSize: 10 }}
-                        data-testid={
-                          isPlaceholder && slotAim != null
-                            ? `plan-slot-aim-${slot}`
-                            : undefined
-                        }
-                      >
-                        {/* ENG-1092: empty slot states its aim where a populated
-                            row shows kcal · P. No aim (optional/no target) → the
-                            legacy dash line. */}
-                        {isPlaceholder
-                          ? slotAim != null
-                            ? aimKcalLabel(slotAim)
-                            : "— kcal · — P"
-                          : `${kcal} kcal · ${prot} P`}
-                      </p>
+                      {isPlaceholder && slotAim != null ? (
+                        <EmptyMealSlotAimLine
+                          slot={slot}
+                          aimKcal={slotAim}
+                          surface="plan"
+                          density="compact"
+                        />
+                      ) : (
+                        <p
+                          className="text-muted-foreground tabular-nums"
+                          style={{ fontSize: 10 }}
+                        >
+                          {isPlaceholder ? "— kcal · — P" : `${kcal} kcal · ${prot} P`}
+                        </p>
+                      )}
                       {!isPlaceholder &&
                         (meal as { macrosAreEstimated?: boolean }).macrosAreEstimated && (
                           // P1-19 (2026-04-25): the recipe has stated calories

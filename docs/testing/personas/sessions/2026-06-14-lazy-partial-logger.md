@@ -59,6 +59,7 @@
 - **Severity guess:** P1 major
 - **Screenshot:** `apps/mobile/screenshots/personas/lazy-partial-logger/2026-06-14/06-today-full.png`
 - **Trust-impact:** yes — hidden explanation = hidden doubt. Persona cannot validate the estimate.
+- **Resolution 2026-06-18 (ENG-1183):** The first-run checklist now renders as a compact single-next-step card instead of a three-row overlay. It preserves onboarding guidance while capping the cold-open interruption so the Today hero target and "Why this number?" affordance stay reachable above the fold.
 
 ### Finding 3 — No visible feedback on partial/empty days, no tone assessment possible
 

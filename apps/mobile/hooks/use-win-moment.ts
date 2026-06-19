@@ -15,9 +15,12 @@
  *     `redesign_winmoment`. Flag OFF → the hook is inert (returns no active
  *     celebration, fires no haptic), preserving today's static behaviour.
  *   - **Ordinary-log feedback.** A separate `confirmLog()` helper fires a
- *     quiet <100ms confirm haptic on EVERY ordinary log — distinct from the
+ *     Medium-weight confirm haptic on EVERY ordinary log — distinct from the
  *     reserved win-moment. Gated behind `redesign_motion` so the confirm beat
- *     ramps with the motion vocabulary, not the win-moment.
+ *     ramps with the motion vocabulary, not the win-moment. ENG-1016 raised
+ *     this from Light → Medium: a durable log is a COMMIT, and the haptic
+ *     vocabulary reserves Medium for taps that commit (the loud SUCCESS
+ *     notification still belongs only to the win-moment landmark).
  *
  * The caller (Today) feeds the current snapshot every render; the hook tracks
  * the previous snapshot itself and detects the rising edge. When a celebration
@@ -60,7 +63,8 @@ export interface UseWinMoment {
   activeMilestone: number | null;
   /** Call from the `WinMomentPlayer` `onComplete` to dismiss the overlay. */
   onCelebrationComplete: () => void;
-  /** Fire the quiet confirm haptic for an ORDINARY log (not a win-moment).
+  /** Fire the commit confirm haptic for an ORDINARY log (not a win-moment) —
+   *  a Medium impact, the canonical "tap that commits" weight (ENG-1016).
    *  No-op when `redesign_motion` is off. Safe to call on every commit. */
   confirmLog: () => void;
 }
@@ -153,9 +157,11 @@ export function useWinMoment({
 
   const confirmLog = useCallback(() => {
     if (!motionEnabled) return;
-    // Quiet <100ms confirm — a Light impact, NOT the loud success
-    // notification reserved for the win-moment.
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // ENG-1016 — a Medium impact: the canonical "tap that commits" weight.
+    // A durable log is a commit, so it fires the same Medium beat as the
+    // PressableScale `haptic="confirm"` primitive. NOT the loud success
+    // notification, which stays reserved for the win-moment landmark.
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [motionEnabled]);
 
   return { activeCelebration, activeMilestone, onCelebrationComplete, confirmLog };

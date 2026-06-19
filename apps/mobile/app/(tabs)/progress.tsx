@@ -45,6 +45,7 @@ import {
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
 import { resolveMaintenance , formatMaintenanceRecapLine } from "@suppr/shared/nutrition/resolveMaintenance";
+import { computeAdaptiveDataProgressFromMeals } from "@suppr/shared/nutrition/adaptiveDataProgress";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/shared/nutrition/measuredTdee";
 import { buildMaintenanceChain } from "@suppr/shared/nutrition/maintenanceChain";
 import type { PlanPace } from "@suppr/shared/nutrition/tdee";
@@ -1662,6 +1663,17 @@ export default function ProgressScreen() {
           if (!resolved) return null;
           const showAdaptiveExtras = resolved.source === "adaptive";
           const showMeasuredExtras = resolved.source === "measured";
+          // ENG-1189: honest "how close to adaptive?" status, measured against
+          // the SAME gate the engine uses (gated full days + weigh-ins in the
+          // trailing window, medium-confidence engage thresholds). Mirrors web.
+          const adaptiveProgress = computeAdaptiveDataProgressFromMeals({
+            mealsByDay: byDay,
+            weightByDay: weightKgByDay,
+            sex: profileSexState as any,
+            weightKg: latestWeightKg ?? null,
+            heightCm: profileHeightCmState,
+            age: profileAgeState,
+          });
           return (
           <View
             testID="progress-maintenance-card"
@@ -1750,9 +1762,39 @@ export default function ProgressScreen() {
             <Text style={{ fontSize: 12, color: t.sub, lineHeight: 17 }}>
               {showAdaptiveExtras
                 ? `Maintenance is the calories you'd burn in a normal day. Based on your actual intake and weight changes (${adaptiveConfidence ?? "medium"} confidence).`
-                : "Maintenance is the calories you'd burn in a normal day. Formula estimate from your stats and activity level."
+                : "Maintenance is the calories you'd burn in a normal day. Formula estimate from your stats and activity level. Log meals and weigh in regularly to unlock an adaptive value that adjusts to your real burn."
               }
             </Text>
+
+            {/* ENG-1189: honest "what's needed for adaptive" status + bars.
+                Counts mirror the engine gate (gated full days + weigh-ins in
+                the trailing window) against the medium-confidence engage
+                thresholds — no contradictory "full bars but still formula". */}
+            {!showAdaptiveExtras && !showMeasuredExtras && (
+              <View testID="maintenance-data-progress" style={{ marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: t.border }}>
+                <Text testID="maintenance-adaptive-status" style={{ fontSize: 12, color: t.sub, lineHeight: 17, marginBottom: Spacing.sm }}>
+                  {adaptiveProgress.message}
+                </Text>
+                <View style={{ flexDirection: "row", gap: Spacing.sm }}>
+                  {([
+                    { label: "Weigh-ins", have: adaptiveProgress.weighIns, target: adaptiveProgress.weighInsTarget, testID: "maintenance-weighin-count" },
+                    { label: "Full logging days", have: adaptiveProgress.loggingDays, target: adaptiveProgress.loggingDaysTarget, testID: "maintenance-logging-count" },
+                  ] as const).map((row) => (
+                    <View key={row.label} style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.xs }}>
+                        <Text style={{ fontSize: 10, color: t.dim }}>{row.label}</Text>
+                        <Text testID={row.testID} style={{ fontSize: 10, fontWeight: "600", color: t.text, fontVariant: ["tabular-nums"] }}>
+                          {row.have}/{row.target}
+                        </Text>
+                      </View>
+                      <View style={{ height: 6, borderRadius: Radius.full, backgroundColor: t.border, overflow: "hidden" }}>
+                        <View style={{ height: "100%", borderRadius: Radius.full, backgroundColor: t.accentSolid, width: `${Math.min(100, (row.have / row.target) * 100)}%` }} />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
 
             {(() => {
               const chain = buildMaintenanceChain(

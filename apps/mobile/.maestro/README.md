@@ -194,8 +194,9 @@ Flows use `shared/login.yaml`: **`EXPO_DEV_SERVER_URL`**, **`E2E_EMAIL`**, **`E2
 | 27_progress_metric.yaml | Progress metric detail: calorie/protein/streak deep dive, day breakdown |
 | 28_notifications_prompt.yaml | Notification prompt: enable/skip flow (post-onboarding) |
 | 29_more_menu.yaml | Profile/More: all settings sections, widget picker, week start, reset modal, sign out |
+| 36_health_sync_mfp_import.yaml | **DEVICE-ONLY (ENG-874)** — MFP → Apple Health → Suppr meal import: connect, enable import, Sync Now, assert meal on Today. Needs a physical iPhone + live MFP/Health data; **not** in `config.yaml`. Runbook: `docs/testing/health-sync-device-runbook.md` |
 
-**Suite vs files:** `npm run test:e2e` runs the ordered list in **`.maestro/config.yaml`** only. Flows not in the config run manually: **00_connect** (manual Expo URL), **09_onboarding** (long wizard), **19_paywall** (gated/flaky), **23_nutrition_sources** (external link), **26_recipe_verify** (needs specific recipe state), **28_notifications_prompt** (post-onboarding only). Run manually: `maestro test .maestro/09_onboarding.yaml -e …`.
+**Suite vs files:** `npm run test:e2e` runs the ordered list in **`.maestro/config.yaml`** only. Flows not in the config run manually: **00_connect** (manual Expo URL), **09_onboarding** (long wizard), **19_paywall** (gated/flaky), **23_nutrition_sources** (external link), **26_recipe_verify** (needs specific recipe state), **28_notifications_prompt** (post-onboarding only), and **36_health_sync_mfp_import** (physical iPhone + live MFP→Health only — see ENG-874). Run manually: `maestro test .maestro/09_onboarding.yaml -e …`.
 
 ## CI integration
 

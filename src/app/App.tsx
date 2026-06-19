@@ -2,6 +2,9 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+// ENG-1211 — type-only import for the create-view method hint threaded from the
+// import method tiles ("Paste text" / "Scan") through navigateToView.
+import type { CreateMethodHint } from "./components/RecipeUpload.tsx";
 // ENG-1044 — canonical primary-nav glyph set, locked to the native iOS
 // tab bar: Today=Calendar, Plan=BookOpen, Recipes=Utensils,
 // Progress=BarChart3. (Was Sun / BookOpen / CalendarDays / LineChart,
@@ -172,6 +175,10 @@ export default function App() {
   }, [pathname]);
   const [currentView, setCurrentView] = useState<View>("today");
   const [settingsScrollToPromo, setSettingsScrollToPromo] = useState(false);
+  // ENG-1211 — when the create view is reached from an import method tile, this
+  // carries which affordance the create form should auto-open on arrival
+  // (paste dialog / barcode scanner). Cleared once the create view consumes it.
+  const [createInitialMethod, setCreateInitialMethod] = useState<CreateMethodHint | null>(null);
   const [plannerMobileTab, setPlannerMobileTab] = useState<"plan" | "shop">("plan");
 
   // ENG-1017 / ENG-1044 — canonical Plan-first tab order for mobile-web
@@ -280,6 +287,12 @@ export default function App() {
   const navigateToView = useCallback(
     (view: View) => {
       setCurrentView(view);
+      // ENG-1211 — the create-view method hint is single-use: it must only
+      // survive the create-mount it was set for. Clear it on any navigation
+      // away from create so a later header "Create" switch (no method) lands
+      // on the plain form. `onSwitchToCreate` sets the hint *before* calling
+      // navigateToView("create"), so this never clobbers a fresh hint.
+      if (view !== "create") setCreateInitialMethod(null);
       const path = PATH_FOR_VIEW[view] ?? "/today";
       // 2026-05-12 (premium-bar audit refuse-to-pass #2): in-app tab
       // switching uses the History API directly so Next's router
@@ -578,6 +591,11 @@ export default function App() {
               onUpgrade={() => openUpgradePromo("recipe_create")}
               mode="create"
               onSwitchToImport={() => navigateToView("import")}
+              // ENG-1211 — auto-open the affordance the import tile promised
+              // (paste dialog / barcode scanner). The create view consumes it
+              // once on mount; we clear it on the same render so a later
+              // navigation back to create doesn't re-fire.
+              createInitialMethod={createInitialMethod ?? undefined}
             />
           </FeatureErrorBoundary>
         );
@@ -588,7 +606,13 @@ export default function App() {
               userTier={userTier}
               onUpgrade={() => openUpgradePromo("recipe_import")}
               mode="import"
-              onSwitchToCreate={() => navigateToView("create")}
+              // ENG-1211 — pass the method hint from the tile so the create
+              // view auto-activates it. `undefined` (e.g. the header "Create"
+              // switch) lands on the plain create form, unchanged.
+              onSwitchToCreate={(method) => {
+                setCreateInitialMethod(method ?? null);
+                navigateToView("create");
+              }}
             />
           </FeatureErrorBoundary>
         );

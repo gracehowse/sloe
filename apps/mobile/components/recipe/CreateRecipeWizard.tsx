@@ -337,7 +337,8 @@ export default function CreateRecipeWizard() {
       setMacroOverrides({});
       setSearchReplaceId(null);
       setSearchOpen(false);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // ENG-1016 — adding / replacing an ingredient is a commit → Medium.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
     [searchReplaceId],
   );

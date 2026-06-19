@@ -8,11 +8,14 @@ import {
   Pencil,
   Clipboard as ClipboardIcon,
   BookOpen,
+  Lock,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useAuth } from "@/context/auth";
 import { useAccent } from "@/context/theme";
+import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -48,6 +51,8 @@ export interface CreateRecipeActionSheetProps {
 
 export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeActionSheetProps) {
   const router = useRouter();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the clipboard-paste
   // card + the link/cookbook action-row glyphs. The Photo row keeps
@@ -62,6 +67,52 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
   // Force-enable for testing via PostHog targeting (TestFlight) or
   // `EXPO_PUBLIC_FLAG_FORCE_COOKBOOK_IMPORT_ENABLED=true` in the sim.
   const cookbookImportEnabled = isFeatureEnabled("cookbook_import_enabled");
+
+  // Photo OCR is Pro-gated server-side — surface the lock before the tap
+  // (import.md §3.1 / ENG-898 action sheet partial).
+  const [userTier, setUserTier] = React.useState<"free" | "base" | "pro">("free");
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { loadCachedUserTier } = await import("@/lib/cachedUserTier");
+      const cached = await loadCachedUserTier();
+      if (!cancelled) setUserTier(cached);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  React.useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_tier")
+        .eq("id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      const tier = (data?.user_tier as string | null) ?? null;
+      const resolved: "free" | "base" | "pro" =
+        tier === "free" || tier === "base" || tier === "pro" ? tier : "free";
+      setUserTier(resolved);
+      void import("@/lib/cachedUserTier").then(({ saveCachedUserTier }) =>
+        saveCachedUserTier(resolved),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+  const isFreeTier = userTier === "free";
+
+  const onPhotoPress = () => {
+    if (isFreeTier) {
+      go("/paywall?from=import_photo");
+      return;
+    }
+    go("/create-recipe", { autoPhoto: "1" });
+  };
 
   // Clipboard auto-detect: when the sheet opens, peek at the clipboard
   // for a recognised URL (Instagram / TikTok / YouTube / generic web).
@@ -236,10 +287,14 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
             testID="create-action-sheet-photo"
             Icon={Camera}
             iconColor={Accent.success}
-            title="Photo of a recipe"
+            title={isFreeTier ? "Photo of a recipe (Pro)" : "Photo of a recipe"}
             subtitle="Snap a printed recipe or book page — AI fills in the macros."
-            onPress={() => go("/create-recipe", { autoPhoto: "1" })}
+            onPress={onPhotoPress}
             colors={colors}
+            proLocked={isFreeTier}
+            accessibilityHint={
+              isFreeTier ? "Pro feature — upgrade required to scan a recipe photo" : undefined
+            }
           />
           {cookbookImportEnabled && (
             <ActionRow
@@ -292,6 +347,8 @@ function ActionRow({
   subtitle,
   onPress,
   colors,
+  proLocked = false,
+  accessibilityHint,
 }: {
   testID: string;
   Icon: typeof LinkIcon;
@@ -300,12 +357,15 @@ function ActionRow({
   subtitle: string;
   onPress: () => void;
   colors: ReturnType<typeof useThemeColors>;
+  proLocked?: boolean;
+  accessibilityHint?: string;
 }) {
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={title}
+      accessibilityHint={accessibilityHint}
       onPress={onPress}
       style={({ pressed }) => ({
         flexDirection: "row",
@@ -332,9 +392,27 @@ function ActionRow({
         <Icon size={18} color={iconColor} strokeWidth={2} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>
-          {title}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, flexWrap: "wrap" }}>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>
+            {title}
+          </Text>
+          {proLocked ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 2,
+                paddingHorizontal: Spacing.xs,
+                paddingVertical: 2,
+                borderRadius: Radius.sm,
+                backgroundColor: `${Accent.warning}1A`,
+              }}
+            >
+              <Lock size={12} color={Accent.warning} strokeWidth={2} />
+              <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.warning }}>Pro</Text>
+            </View>
+          ) : null}
+        </View>
         <Text
           style={{
             fontSize: 12,

@@ -22,47 +22,40 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const PAYWALL_PATH = resolve(__dirname, "../../app/paywall.tsx");
+const STRIP_PATH = resolve(__dirname, "../../components/paywall/PaywallTrustStrip.tsx");
 
 describe("mobile paywall — trust strip render", () => {
   const src = readFileSync(PAYWALL_PATH, "utf8");
+  const stripSrc = readFileSync(STRIP_PATH, "utf8");
 
   it("imports the SSOT trust chips + receipt builder", () => {
     expect(src).toMatch(
       /from\s+"@suppr\/shared\/landing\/paywallTrust"/,
     );
-    // 2026-05-15: was `PAYWALL_TRUST_CHIPS` static import; now
-    // `getPaywallTrustChips` for platform-aware copy. SSOT root is
-    // still `paywallTrust.ts` (asserted above).
     expect(src).toContain("getPaywallTrustChips");
     expect(src).toContain("buildReceiptTrustCopy");
   });
 
   it("imports ShieldCheck from lucide-react-native for the chip glyph", () => {
-    expect(src).toMatch(/ShieldCheck.*from\s+"lucide-react-native"/s);
+    expect(stripSrc).toMatch(/ShieldCheck.*from\s+"lucide-react-native"/s);
   });
 
   it("renders the trust strip wrapper with a stable testID", () => {
-    expect(src).toContain('testID="paywall-trust-strip"');
+    expect(stripSrc).toContain('testID="paywall-trust-strip"');
   });
 
   it("calls getPaywallTrustChips with the mobile platform tag", () => {
-    // 2026-05-15: was `PAYWALL_TRUST_CHIPS.map(`; now
-    // `getPaywallTrustChips("mobile")` resolves the chip list at
-    // render time so the mobile cancel-path string differs from web.
     expect(src).toMatch(/getPaywallTrustChips\(["']mobile["']\)/);
-    // The result is mapped into chip Views via a local `trustChips`
-    // memo (see paywall.tsx line 385).
-    expect(src).toMatch(/trustChips\.map\(/);
+    expect(src).toMatch(/<PaywallTrustStrip/);
+  });
+
+  it("gates Figma inline trust row behind paywall_trust_inline_v1", () => {
+    expect(stripSrc).toMatch(/paywall_trust_inline_v1/);
   });
 
   it("plan selector → trust strip render in order; CTA is a sticky footer (Figma 284:2 / ENG-1161)", () => {
-    // ENG-1161 moved the primary CTA from an inline render after the trust strip
-    // to an absolutely-positioned sticky footer (testID "paywall-sticky-primary-cta"),
-    // so source order no longer reflects on-screen order for the CTA. Pin what
-    // still holds: plan selector then trust strip in the scroll, and the sticky
-    // CTA footer is present.
     const planSelectorIdx = src.indexOf("<PaywallPlanSelector");
-    const stripIdx = src.indexOf('testID="paywall-trust-strip"');
+    const stripIdx = src.indexOf("<PaywallTrustStrip");
     expect(planSelectorIdx).toBeGreaterThan(0);
     expect(stripIdx).toBeGreaterThan(0);
     expect(planSelectorIdx).toBeLessThan(stripIdx);
@@ -74,10 +67,6 @@ describe("mobile paywall — post-purchase trust Alert", () => {
   const src = readFileSync(PAYWALL_PATH, "utf8");
 
   it("invokes buildReceiptTrustCopy on entitled purchase success", () => {
-    // Source-level guard: the success branch must compose its message
-    // through the SSOT, not a hand-rolled string. Drift would mean the
-    // mobile Alert and the web /checkout/success page can render
-    // different copy.
     expect(src).toMatch(/buildReceiptTrustCopy\(\{[\s\S]*?cancelPath/);
   });
 
@@ -87,11 +76,6 @@ describe("mobile paywall — post-purchase trust Alert", () => {
   });
 
   it("opens an Alert with title 'You\\'re in' so the success message is acknowledged before navigation", () => {
-    // Pre-audit the success path called router.replace immediately —
-    // user never saw confirmation. The Alert.alert(...) call below
-    // adds the explicit acknowledgement step. The button label is
-    // 'Continue' so the user actively dismisses the trust copy
-    // rather than racing past it.
     expect(src).toMatch(/Alert\.alert\(\s*"You're in"/);
     expect(src).toMatch(/text:\s*"Continue"/);
   });

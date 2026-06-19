@@ -1,7 +1,7 @@
 # Gate 1.5 closeout — 2026-06-17
 
-**Branch:** `claude/wave-4-trust-cohesion` · **PR:** [#470](https://github.com/gracehowse/Suppr/pull/470)  
-**Latest commit:** `4c4459bb` (parallel slices) · **Intent:** Ship remaining agent-buildable Gate 1.5 items; document Grace-ops residuals.
+**Branch:** merged to `main` via [#472](https://github.com/gracehowse/Suppr/pull/472) (2026-06-18).  
+**Follow-up PRs:** [#475](https://github.com/gracehowse/Suppr/pull/475) ENG-1100 extract · [#476](https://github.com/gracehowse/Suppr/pull/476) ENG-901/889 **merged**.
 
 ## Shipped in this batch
 
@@ -17,15 +17,16 @@
 | **ENG-1124** | `main` | Already shipped (PR #463) |
 | **ENG-964/965/932** | `main` | Backlog reconciled |
 
-## Partial close — acceptable for July launch
+## Partial close — acceptable for July launch (updated 2026-06-18)
 
-| Ticket | Status | Residual (agent-buildable) |
-|--------|--------|----------------------------|
-| **ENG-889** Today | L1 skeleton shipped | S5 Fresh start; populated-account screenshot wall; Layer-3 edge frames |
-| **ENG-901** Paywall / win | M5 shipped | **M6** import-success overlay on web |
-| **ENG-896** Recipes | Library grid shipped | Discover seamless slab cards |
-| **ENG-898** Import | WORKS WITH row shipped | Recent imports wiring; caption-preview trust card |
-| **ENG-897** Auth | Chooser rebuilt | Signup email-step pixel pass (`296:2`) |
+| Ticket | Status on `main` | Residual |
+|--------|------------------|----------|
+| **ENG-889** Today | L1 + S5 (#472); coach-in-hero + mobile L1 skeleton (#476) | TD1–TD4, L5 dark, pixel deltas, populated-account screenshot wall |
+| **ENG-901** Paywall / win | M5 + M6 (#472); trust strip + Sloe upgrade dialog + pricing dedupe (#476) — **Done** | — |
+| **ENG-896** Recipes | Discover slabs verified (#472) | Library + 9 other partials on parent |
+| **ENG-898** Import | Recent imports + WORKS WITH + caption banner (#472) | Source tiles, L4 error, 6 other partials |
+| **ENG-897** Auth | Chooser + email-step test pin (#472) | Signed-out screenshot pass |
+| **ENG-1100** Plan slots | **Done** — extract (#475) + partial-day canonical rows (#472) | — |
 
 These stay **open as Layer-3 polish** until closed; not all are launch blockers at Layer 2.
 
@@ -45,7 +46,7 @@ These stay **open as Layer-3 polish** until closed; not all are launch blockers 
 - **Wedge cluster:** Done (North Star, cold-open, refugee fork, paywall honesty, barcode CTA)
 - **Onboarding:** Welcome + reveal + pace + projection + app-choice — conformant at copy/chrome level
 - **Today trust:** WhyThisNumber + planned empty + loading skeleton live
-- **Win moments:** Streak M5 live; import-success M6 web gap remains
+- **Win moments:** Streak M5 + web import-success M6 live (#472)
 - **Security eng:** CSRF, nutrition_entries test, FatSecret guard — done; dashboard toggles remain
 
 **Cohesion confidence:** 8/10 post-merge (was 7/10) — pending TF58+ device verify + fresh screenshot wall.

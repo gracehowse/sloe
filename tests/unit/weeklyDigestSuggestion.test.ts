@@ -67,6 +67,8 @@ function makeResolvedAdaptive(overrides: Partial<ResolvedMaintenance> = {}): Res
     adaptiveRejectedAsStale: false,
     adaptiveRejectedBelowFormula: false,
     rejectedAdaptiveKcal: null,
+    measuredRejectedBelowFormula: false,
+    rejectedMeasuredKcal: null,
     ...overrides,
   };
 }

@@ -10,8 +10,9 @@
  * Design constraints:
  *   - Pure — no DOM, no React, no Supabase. Safe to import from both
  *     the Next.js app and the Expo mobile app.
- *   - English only for now; regional / non-English step text falls
- *     through without matches (documented limitation — see roadmap).
+ *   - English-language duration grammar only. Regional / non-English
+ *     step text falls through without matches by design; supporting
+ *     additional grammars should add locale-specific parser fixtures.
  *   - Ranges ("5-10 minutes" / "5–10 minutes") use the upper bound so
  *     the timer is "definitely finished" when it fires, which is what
  *     home cooks expect. `isRange` flag exposed so the UI can display

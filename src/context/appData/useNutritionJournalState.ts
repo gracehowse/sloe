@@ -11,6 +11,7 @@ import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveT
 import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
 import { canonicalNutritionEntrySource } from "../../lib/nutrition/canonicalNutritionEntrySource.ts";
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
+import { mergeJournalByDay } from "../../lib/nutrition/mergeJournalByDay.ts";
 import { nutritionEntryDateKeyAndEatenAt, reanchorMealEatenAt } from "../../lib/nutrition/mealEatenAt.ts";
 import { buildNutritionEntryUpdatePayload } from "../../lib/nutrition/nutritionEntryUpdatePayload.ts";
 import { flushJournalWriteQueue, reconcileQueueAfterFlush } from "../../lib/nutrition/flushJournalWriteQueue.ts";
@@ -186,7 +187,7 @@ export function useNutritionJournalState(opts: {
           if (!byDay[key]) byDay[key] = [];
           byDay[key].push(rowToLoggedMeal(row));
         }
-        setNutritionByDay(byDay);
+        setNutritionByDay((prev) => mergeJournalByDay(byDay, prev));
       }
       } finally {
         if (!cancelled) setJournalHydrated(true);

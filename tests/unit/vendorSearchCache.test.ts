@@ -18,8 +18,10 @@ import {
   bucketLocale,
   checkQuota,
   consumeQuota,
+  getCachedDetail,
   getCachedSearch,
   normalizeCacheQuery,
+  setCachedDetail,
   setCachedSearch,
   _resetVendorSearchCacheForTest,
 } from "../../src/lib/server/vendorSearchCache";
@@ -101,6 +103,54 @@ describe("cache hit / miss", () => {
   it("caches a genuine empty result (stable 'no matches' fact)", async () => {
     await setCachedSearch("usda", "zzzznotafood", []);
     expect(await getCachedSearch("usda", "zzzznotafood")).toEqual([]);
+  });
+});
+
+describe("detail cache hit / miss (ENG-1117)", () => {
+  it("returns null on a cold miss", async () => {
+    expect(await getCachedDetail("edamam", "food_abc")).toBeNull();
+  });
+
+  it("returns the cached OBJECT on a warm hit (detail is an object, not an array)", async () => {
+    const detail = { microsPer100g: { vitaminCMg: 12, calciumMg: 40 } };
+    await setCachedDetail("edamam", "food_abc", detail);
+    expect(await getCachedDetail("edamam", "food_abc")).toEqual(detail);
+  });
+
+  it("caches a USDA detail payload keyed by stringified fdcId", async () => {
+    const payload = { ok: true, fdcId: 12345, macrosPer100g: { calories: 89 }, portions: [] };
+    await setCachedDetail("usda", "12345", payload);
+    expect(await getCachedDetail("usda", "12345")).toEqual(payload);
+  });
+
+  it("folds cosmetic foodId differences (trim + case) into the same entry", async () => {
+    await setCachedDetail("edamam", "Food_ABC", { microsPer100g: {} });
+    expect(await getCachedDetail("edamam", "  food_abc  ")).toEqual({ microsPer100g: {} });
+  });
+
+  it("partitions by vendor — an Edamam detail write is NOT served to USDA", async () => {
+    await setCachedDetail("edamam", "1", { microsPer100g: { ironMg: 2 } });
+    expect(await getCachedDetail("usda", "1")).toBeNull();
+  });
+
+  it("does NOT collide with the search cache key space (same id string)", async () => {
+    await setCachedSearch("usda", "chicken", [{ fdcId: 1 }]);
+    // A detail read for a foodId that happens to equal a query must miss.
+    expect(await getCachedDetail("usda", "chicken")).toBeNull();
+  });
+
+  it("caches an empty micro panel (stable 'vendor publishes nothing extra' fact)", async () => {
+    await setCachedDetail("edamam", "food_empty", { microsPer100g: {} });
+    expect(await getCachedDetail("edamam", "food_empty")).toEqual({ microsPer100g: {} });
+  });
+
+  it("evicts the detail entry after the default 24h TTL elapses", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-18T00:00:00Z"));
+    await setCachedDetail("edamam", "food_ttl", { microsPer100g: { ironMg: 1 } });
+    expect(await getCachedDetail("edamam", "food_ttl")).toEqual({ microsPer100g: { ironMg: 1 } });
+    vi.setSystemTime(new Date("2026-06-18T00:00:00Z").getTime() + (VENDOR_CACHE_TTL_SEC + 1) * 1000);
+    expect(await getCachedDetail("edamam", "food_ttl")).toBeNull();
   });
 });
 

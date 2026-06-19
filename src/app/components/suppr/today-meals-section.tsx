@@ -19,7 +19,8 @@ import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import { MEAL_SLOTS } from "../../../lib/nutrition/mealSlots";
 import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
 import { distributeMealBudget } from "../../../lib/nutrition/mealBudget";
-import { emptySlotAimKcal, aimKcalLabel } from "../../../lib/nutrition/mealSlotAim";
+import { emptySlotAimKcal } from "../../../lib/nutrition/mealSlotAim";
+import { EmptyMealSlotAimLine } from "./empty-meal-slot-row";
 import { DestructiveConfirmDialog } from "./destructive-confirm-dialog";
 import {
   Dialog,
@@ -526,7 +527,7 @@ export function TodayMealsSection({
               {/* Meal header row — TD4: Newsreader slot name + macro chips */}
               <div
                 data-testid={`today-slot-header-${sectionName}`}
-                className={`flex items-center gap-2.5 px-3.5 py-3 cursor-pointer select-none ${hasMeals && isOpen ? "border-b border-border" : ""}`}
+                className={`flex items-center gap-2.5 px-3.5 py-3 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset ${hasMeals && isOpen ? "border-b border-border" : ""}`}
                 onClick={() => {
                   if (!hasMeals) {
                     onOpenAddForSlot(sectionName);
@@ -582,12 +583,11 @@ export function TodayMealsSection({
                         consumedBySlot,
                       );
                       return aim == null ? null : (
-                        <p
-                          data-testid={`today-slot-aim-${sectionName}`}
-                          className="text-[11px] text-foreground-secondary tabular-nums mt-0.5"
-                        >
-                          {aimKcalLabel(aim)}
-                        </p>
+                        <EmptyMealSlotAimLine
+                          slot={sectionName}
+                          aimKcal={aim}
+                          surface="today"
+                        />
                       );
                     })()
                   ) : null}

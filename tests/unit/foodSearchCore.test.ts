@@ -5,6 +5,7 @@ import {
   STANDARD_UNITS,
   customFoodToHit,
   isPerServingPortion,
+  buildUsdaPreviewFields,
   type FoodPortion,
 } from "../../src/lib/nutrition/foodSearchCore";
 import type { CustomFood } from "../../src/lib/nutrition/customFoods";
@@ -317,5 +318,49 @@ describe("isPerServingPortion (ENG-745 regression)", () => {
     // FatSecret food carrying a non-null zero per-100g panel then logged
     // 0 kcal. This predicate ignores per-100g entirely — by design.
     expect(isPerServingPortion({ gramWeight: 0, hasMacrosPerServing: true })).toBe(true);
+  });
+});
+
+describe("buildUsdaPreviewFields", () => {
+  const hitMacros = {
+    calories: 74,
+    protein: 6.2,
+    carbs: 0.1,
+    fat: 5,
+    fiberG: 0,
+    sugarG: 0,
+    sodiumMg: 0,
+  };
+
+  it("falls back to search-hit macros when the detail fetch fails", () => {
+    const preview = buildUsdaPreviewFields(
+      { name: "Eggs, Grade A, Large", fdcId: 123, macrosPer100g: hitMacros },
+      null,
+      null,
+      null,
+    );
+    expect(preview?.macrosPer100g.calories).toBe(74);
+    expect(preview?.name).toBe("Eggs, Grade A, Large");
+    expect(preview?.fdcId).toBe(123);
+  });
+
+  it("prefers detail macros and portions when the fetch succeeds", () => {
+    const detail = {
+      macrosPer100g: { ...hitMacros, calories: 80 },
+      portions: [{ label: "1 large", gramWeight: 50, amount: 1 }],
+      primaryPortion: { label: "1 large", gramWeight: 50, amount: 1 },
+    };
+    const preview = buildUsdaPreviewFields(
+      { name: "Egg", macrosPer100g: hitMacros },
+      detail,
+      null,
+      null,
+    );
+    expect(preview?.macrosPer100g.calories).toBe(80);
+    expect(preview?.chosenPortion.label).toBe("1 large");
+  });
+
+  it("returns null when neither hit nor detail has macros", () => {
+    expect(buildUsdaPreviewFields({ name: "Mystery" }, null, null, null)).toBeNull();
   });
 });

@@ -69,6 +69,32 @@ colours, and the strongest expression of "calm everywhere, alive at the win."
 Mobile + web read the same tokens; the win-moment is colour-themed by token, so
 the colour decision is a one-place change.
 
+### Haptic vocabulary — commit = Medium (refined 2026-06-18, ENG-1016)
+
+The daily-loop haptics (spine rule 6, "alive at the moments that matter") follow
+one rule: **a tap that COMMITS fires the Medium "confirm" weight; navigation /
+selection / stepper / scrub / share taps stay Light.** The loud `success`
+notification stays reserved for the once-per-day win-moment landmark.
+
+- **Mobile vehicles.** The canonical commit beat is `PressableScale
+  haptic="confirm"` (Medium impact), `useHaptics().confirm()` (Medium), or — for
+  the Today log funnel — `useWinMoment.confirmLog()` (Medium, gated behind
+  `redesign_motion`). ENG-1016 raised the Today log beat from Light → Medium (a
+  durable log is a commit) and removed the scattered raw `Haptics.impactAsync`
+  duplicates so every log fires ONE beat through the funnel, not a double-buzz.
+- **Web analog (no haptics).** `useCommitPulse` surfaces a `pulse` boolean the
+  caller maps to a brief, subtle scale-up + soft brand glow on the Today
+  calorie ring (`DailyRing commitPulse`). It's the colour/scale analog of the
+  Medium commit haptic — DISTINCT from the win-moment colour-pulse above (the
+  loud once-per-day gold celebration). Gated behind the SAME `redesign_motion`
+  flag mobile uses + `prefers-reduced-motion`, so the two platforms ramp the
+  commit feedback in lockstep.
+
+A source-text ratchet (`apps/mobile/tests/unit/hapticCommitRebalance.test.ts`)
+pins the commit primitives to Medium and caps the count of raw `expo-haptics`
+call-sites, so new commit taps route through the primitive rather than adding
+fresh scattered raw calls.
+
 ## Hero themes
 
 - **Web hero = warm-paper light** (`#fbfaf6` page, `#fff` cards, chocolate ink

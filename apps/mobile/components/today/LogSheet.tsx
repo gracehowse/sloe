@@ -387,6 +387,8 @@ export interface LogSheetProps {
   /** ENG-972 — inline natural-language describe + parse inside the sheet. */
   describe?: {
     locked?: boolean;
+    /** Active meal slot label (Breakfast/Lunch/…) shown on describe review. */
+    slotLabel?: string;
     onParse: (text: string) => Promise<import("@suppr/shared/nutrition/parseMealDescription").ParseMealDescriptionResult>;
     onCommit: (items: import("@suppr/shared/nutrition/aiLogging").AiLoggedItem[]) => void;
     onPaywall?: () => void;
@@ -927,6 +929,7 @@ function DefaultComposition({
         <LogSheetDescribeFlow
           sheetOpen={visible}
           locked={describe.locked}
+          slotLabel={describe.slotLabel}
           seedText={describeSeedText}
           onSeedConsumed={() => setDescribeSeedText(null)}
           onParse={describe.onParse}

@@ -26,8 +26,8 @@ function countMatches(src: string, pattern: RegExp): number {
 }
 
 describe("Today above-meals cap (web) — context block dispatch", () => {
-  it("TodayFastingPill renders at most once (active fast only; idle Start fast demoted 2026-05-19)", () => {
-    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(1);
+  it("TodayFastingPill renders at most once at runtime (ENG-889 duplicates source refs in flag branches)", () => {
+    expect(countMatches(HOST_SRC, /<TodayFastingPill[\s/]/g)).toBeLessThanOrEqual(2);
   });
 
   it("TodayEatAgainBanner is not rendered on Today (moved to Log sheet, mobile parity 2026-05-22 v4)", () => {
@@ -38,8 +38,14 @@ describe("Today above-meals cap (web) — context block dispatch", () => {
     expect(countMatches(HOST_SRC, /<NorthStarBlockHost[\s/]/g)).toBeLessThanOrEqual(1);
   });
 
-  it("TodayDeficitInsight renders at most once (in the unified dispatch)", () => {
-    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBeLessThanOrEqual(1);
+  it("TodayDeficitInsight appears in hero coachLine and legacy context dispatch only (ENG-889: one path renders)", () => {
+    // Source may reference the component twice (hero slot + flag-off
+    // context branch) but `today_coach_in_hero_v1` short-circuits the
+    // context block so only one instance mounts at runtime.
+    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBeLessThanOrEqual(2);
+    expect(HOST_SRC).toMatch(
+      /isFeatureEnabled\("today_coach_in_hero_v1"\)[\s\S]+?return null;/,
+    );
   });
 });
 
@@ -153,5 +159,20 @@ describe("Today above-meals cap (web) — context dispatch shape", () => {
       HOST_SRC,
     );
     expect(hasIIFE).toBe(true);
+  });
+});
+
+describe("ENG-889 — coach line inside hero card", () => {
+  it("NutritionTracker passes coachLine into TodayHeroStats behind today_coach_in_hero_v1", () => {
+    expect(HOST_SRC).toMatch(/today_coach_in_hero_v1/);
+    expect(HOST_SRC).toMatch(/coachLine=\{coachInHero \? coachLineEl : undefined\}/);
+  });
+
+  it("today-hero-ring renders the coachLine slot below stats", () => {
+    const ring = readFileSync(
+      resolve(REPO, "src/app/components/suppr/today-hero-ring.tsx"),
+      "utf-8",
+    );
+    expect(ring).toMatch(/\{coachLine\}/);
   });
 });

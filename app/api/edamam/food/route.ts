@@ -4,6 +4,12 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { hasEdamamConfig } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import {
+  checkQuota,
+  consumeQuota,
+  getCachedDetail,
+  setCachedDetail,
+} from "@/lib/server/vendorSearchCache";
 
 /**
  * GET /api/edamam/food?foodId=<id>
@@ -24,6 +30,15 @@ import { captureRouteError } from "@/lib/observability/captureRouteError";
  * publishes no extra panel for this food). Never trusts client entitlements;
  * the only thing returned is public nutrition data behind the auth gate +
  * per-user rate limit, same as the USDA detail route.
+ *
+ * ENG-1117 — the `/nutrients` detail call counts against Edamam's SAME
+ * account-wide 1,000/day free-tier ceiling as `/api/edamam/search`. Before
+ * this fix the on-tap detail fetch was UNGUARDED: a few hundred concurrent
+ * tappers could blow the daily cap via detail fetches alone, after which ALL
+ * Edamam search degraded for everyone. We now share the search route's two
+ * mechanisms: a per-foodId detail cache (repeat taps of the same food never
+ * re-spend quota) + the account-level quota guard (consume on a real call,
+ * skip + return the same degraded envelope shape when over).
  */
 export async function GET(req: Request) {
   const userId = await getUserIdFromRequest(req);
@@ -46,6 +61,34 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_foodId" }, { status: 400 });
   }
 
+  // ENG-1117 — 1) per-foodId cache hit: serve the stored micro panel without
+  // an Edamam `/nutrients` call and without spending quota. Repeat on-tap
+  // detail fetches of the same food are free.
+  const cached = await getCachedDetail<{ microsPer100g?: Record<string, number> }>("edamam", foodId);
+  if (cached) {
+    return NextResponse.json({
+      ok: true,
+      foodId,
+      ...(cached.microsPer100g && Object.keys(cached.microsPer100g).length > 0
+        ? { microsPer100g: cached.microsPer100g }
+        : {}),
+      cached: true,
+    });
+  }
+
+  // ENG-1117 — 2) account-wide quota exhausted: skip the vendor and return the
+  // SAME degraded envelope shape `/api/edamam/search` uses, so the client
+  // surfaces an honest notice instead of an unguarded vendor call.
+  const quota = await checkQuota("edamam");
+  if (!quota.allowed) {
+    return NextResponse.json({
+      ok: true,
+      foodId,
+      degraded: true,
+      degradedReason: "quota_exhausted",
+    });
+  }
+
   if (!hasEdamamConfig()) {
     return NextResponse.json(
       {
@@ -63,11 +106,19 @@ export async function GET(req: Request) {
   }
 
   try {
+    // ENG-1117 — consume one quota unit immediately before the live call
+    // (atomic INCR, same as the search route). This is the real spend.
+    await consumeQuota("edamam");
     const microsPer100g = await fetchEdamamMicrosPer100g(cfg, foodId);
+    const hasMicros = Object.keys(microsPer100g).length > 0;
+    // Cache only the genuine successful response so a repeat tap is free. An
+    // empty panel IS a stable fact worth caching (Edamam publishes nothing
+    // extra for this food) — but the catch block below must NOT be cached.
+    await setCachedDetail("edamam", foodId, { microsPer100g });
     return NextResponse.json({
       ok: true,
       foodId,
-      ...(Object.keys(microsPer100g).length > 0 ? { microsPer100g } : {}),
+      ...(hasMicros ? { microsPer100g } : {}),
     });
   } catch (e) {
     captureRouteError(e, "/api/edamam/food");

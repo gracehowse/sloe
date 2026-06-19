@@ -307,26 +307,32 @@ Proposed fix:
 
 ### M5 - Missing `apps/mobile/AGENTS.md` despite root instruction
 
+**Status (2026-06-18):** **Resolved — ENG-1166, Option C.** Tracked mobile
+conventions live in `apps/mobile/CLAUDE.md`; root `AGENTS.md` is a tracked mirror of
+`.claude/CLAUDE.md` (`npm run sync:agent-docs`) so Codex and other agents see rules on clone; nested `apps/**/AGENTS.md` stays gitignored.
+See `docs/decisions/2026-06-17-agent-docs-claude-canonical.md`.
+
 Area: documentation / contributor workflow
 
-Reproduction:
+Reproduction (historical):
 
-1. Follow root `AGENTS.md`, which says mobile-specific conventions live in
+1. Follow root `AGENTS.md`, which said mobile-specific conventions live in
    `apps/mobile/AGENTS.md`.
 2. Attempt to read `apps/mobile/AGENTS.md`.
 
-Observed:
+Observed (historical):
 
-- The file is missing.
+- The file was missing on fresh clones (gitignored + never tracked).
 
 Root cause:
 
-- Documentation drift after project restructuring.
+- Documentation drift after project restructuring; dual `AGENTS.md` / `CLAUDE.md`
+  naming with repo-wide `AGENTS.md` gitignore.
 
-Proposed fix:
+Resolution:
 
-- Restore `apps/mobile/AGENTS.md` or update the root reference to the actual
-  canonical mobile instructions.
+- `.claude/CLAUDE.md` → `apps/mobile/CLAUDE.md` (tracked). No tracked
+  `apps/mobile/AGENTS.md`. Test pin: `tests/unit/agentDocsCanonical.test.ts`.
 
 ### M6 - Silent-deferral comments remain in live code
 

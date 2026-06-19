@@ -112,6 +112,7 @@ describe("DELETE /api/account/delete", () => {
   // handle DB tables, but storage objects are not FK-cascaded.
   it("lists + removes food-evidence storage objects for the user", async () => {
     mockGetUserId.mockResolvedValue("user-evidence-test");
+    const touchedTables: string[] = [];
 
     function chainable(result: { data: unknown; error: unknown }) {
       const p: any = Promise.resolve(result);
@@ -120,6 +121,7 @@ describe("DELETE /api/account/delete", () => {
       return p;
     }
     const okEmpty = () => chainable({ data: [], error: null });
+    const okMealPlanDays = () => chainable({ data: [{ id: "plan-day-1" }], error: null });
     const okNull = () => chainable({ data: null, error: null });
 
     const listFn = vi.fn(() =>
@@ -135,13 +137,22 @@ describe("DELETE /api/account/delete", () => {
     const storageFrom = vi.fn(() => ({ list: listFn, remove: removeFn }));
 
     const client = {
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({ eq: vi.fn(() => okEmpty()) })),
-        delete: vi.fn(() => ({
-          eq: vi.fn(() => okNull()),
-          in: vi.fn(() => okNull()),
-        })),
-        update: vi.fn(() => ({ eq: vi.fn(() => okNull()) })),
+      from: vi.fn((table: string) => ({
+        select: vi.fn(() => {
+          touchedTables.push(table);
+          return { eq: vi.fn(() => (table === "meal_plan_days" ? okMealPlanDays() : okEmpty())) };
+        }),
+        delete: vi.fn(() => {
+          touchedTables.push(table);
+          return {
+            eq: vi.fn(() => okNull()),
+            in: vi.fn(() => okNull()),
+          };
+        }),
+        update: vi.fn(() => {
+          touchedTables.push(table);
+          return { eq: vi.fn(() => okNull()) };
+        }),
       })),
       auth: { admin: { deleteUser: vi.fn(() => Promise.resolve({ error: null })) } },
       storage: { from: storageFrom },
@@ -159,6 +170,10 @@ describe("DELETE /api/account/delete", () => {
       "user-evidence-test/label-photo-1.jpg",
       "user-evidence-test/label-photo-2.jpg",
     ]);
+    expect(touchedTables).not.toContain("meal_plans");
+    expect(touchedTables).not.toContain("meal_plans_legacy");
+    expect(touchedTables).toContain("meal_plan_days");
+    expect(touchedTables).toContain("meal_plan_meals");
   });
 
   it("treats a missing food-evidence bucket as a no-op (does not block auth delete)", async () => {

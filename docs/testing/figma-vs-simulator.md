@@ -105,6 +105,119 @@ When comparing, tap **days with sage dots** (logged), **scroll** the full stack.
 
 **Agent captures:** `apps/mobile/screenshots/agent/` — e.g. `figma-01-today.png`, `today-mon-1-hero.png`, `today-mon-1-scrolled-meals.png`.
 
+## S5 · Today empty — screenshot wall (ENG-889)
+
+**Figma frame:** [`360:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=360-2) (S5 · Today empty) · Stitch: `docs/prototypes/stitch-sloe/today-empty.html`
+
+**Preconditions:** signed-in user; **today's journal empty** (`consumed === 0`); `today_tracker_tier_v1` ON (default-on).
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Hero — status chip | **Fresh start** label + sparkles; **no fill** behind chip (plum text only) |
+| 2 | Hero — ring centre | **LEFT** (or 0 consumed) with full goal visible; gradient ring on empty day (ENG-1086) |
+| 3 | Hero — stat row | **Goal / Eaten / Bonus** with honest zeros (not hidden) |
+| 4 | Under-ring coach | Food-forward cold-open line (`Fresh start — what's for…`) via `todayRoomForMeal` |
+| 5 | Macro tiles | Tertiary **0 / target** values; no progress bars when tier-v1 ON |
+| 6 | Meal slots | Empty slots at full opacity with aim line (calm mode) |
+| 7 | Web parity | Repeat 1–4 on `http://localhost:3000` tracker at ~390px + desktop |
+
+**Intentional drift (do not file):** Stitch S5 still shows filled `bg-frost-mist` chip and "A blank canvas…" coach copy — product uses de-tinted chip + ENG-939 food-forward coach. Week-strip sage dots on past days alongside Fresh start is correct (today-only diary).
+
+## Populated Today + TD3/TD4 — screenshot wall (ENG-889)
+
+**Figma frames:** [`308:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=308-2) (logged hero) · [`480:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=480-2) (TD3 weekly insight + planned) · [`481:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=481-2) (TD4 meal log) · Stitch: `today.html`, `today-insight.html`, `today-meallog.html`
+
+**Preconditions:** signed-in user with **today or recent journal data** (≥1 logged meal); `today_tracker_tier_v1` ON (default-on). Visual golden account is empty by design — use dev session or seed meals for populated captures.
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Hero — status chip | **Under budget** or **Over budget** (not Fresh start); chip tint matches `todayStatusChip` |
+| 2 | Hero — ring + stats | Honest consumed/goal; coach-in-hero line below Goal/Eaten/Bonus when flag on |
+| 3 | Macro tiles | 2×2 grid (or tier-v1 hairline slab); values match logged meals |
+| 4 | TD4 — meal slots | Per-slot `SupprCard` at radius 24; Newsreader slot title; macro grams under name; in-card **Add food** on open populated slots |
+| 5 | TD3 — weekly insight | Clay sparkle overline + data-honest headline/stats (not marketing prose block inside hero) |
+| 6 | TD3 — planned block | "Planned" serif title + empty or slotted planned meals card |
+| 7 | Web parity | Repeat 1–4 at `http://localhost:3000` ~390px + desktop |
+
+**Verified 2026-06-18 (iOS):** populated session (Grace dev) — pass on 1–6; web parity (#7) pending stable dev server.
+
+**Agent captures:** `apps/mobile/screenshots/agent/eng889-populated-today-*.png`, `screenshots/web-drive/today-populated-*.png`
+
+**Figma frame:** [`284:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=284-2) · Stitch: `docs/prototypes/stitch-sloe/paywall.html`
+
+| # | Surface | Deep link / route | Pass criteria |
+|---|---------|-------------------|---------------|
+| 1 | Mobile paywall trust row | `suppr:///paywall` | Inline row: secure checkout + cancel anytime (`PaywallTrustStrip`, `paywall_trust_inline_v1` default-on) |
+| 2 | Web pricing trust row | `/pricing` | Same inline strip; legacy post-tier row hidden when flag on (`PricingLegacyTrustSignals`) |
+| 3 | Web upgrade dialog | Pro-gated Today action → dialog | Sloe photo hero + trust strip in footer (`paywall_upgrade_dialog_sloe_v1`, web-only) |
+
+## Today coach-in-hero — screenshot wall (ENG-889, #476)
+
+**Flag:** `today_coach_in_hero_v1` (default-on)
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Populated Today hero (~390px web + iOS) | Coach/deficit line renders **inside** hero card below Goal/Eaten/Bonus — not duplicated in below-meals context block |
+| 2 | Empty Today (S5) | Fresh start chip + food-forward coach; coach-in-hero path still honest on zero consumed |
+
+**Agent captures:** `apps/mobile/screenshots/agent/paywall-trust-*.png`, `screenshots/web-drive/pricing-trust-*.png`, `today-coach-in-hero-*.png`
+
+## L5 · Today dark — screenshot wall (ENG-889)
+
+**Figma frame:** [`314:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=314-2) (L5 · Today dark) · Stitch: `docs/prototypes/stitch-sloe/today-dark.html`
+
+**Preconditions:** sim system appearance **dark** (`xcrun simctl ui booted appearance dark`); AsyncStorage `suppr_theme` = `auto` or `dark` (not `light` — see `apps/mobile/scripts/run-dark-sweep.sh`); relaunch app after manifest change.
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Canvas | Page ground **`#19181C`** (plum-charcoal), not white/light import |
+| 2 | Hero card | Elevated slab **`#2A2730`**, ring + Goal/Eaten/Bonus readable on dark |
+| 3 | Macro tiles | Dark card fill (same family as hero), not light `#F6F5F2` import |
+| 4 | TD3 / TD4 scroll | Weekly insight + meal slots on dark cards below fold |
+| 5 | Week strip | Minimal clay number + dot (no filled pill) — same as light `654:2` |
+
+**Verified 2026-06-18:** iOS sim populated Today (Grace) — pass on 1–5. Figma `314:2` shows under-budget demo data; sim over-budget state is content drift only.
+
+**Agent captures:** `apps/mobile/screenshots/agent/eng889-l5-today-dark.png`, `eng889-l5-today-dark-scrolled.png`
+
+## Auth signup email step — screenshot wall (ENG-897)
+
+**Figma frame:** [`296:33`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=296-33) (M1 Login/Signup — email progressive disclosure) · parent chooser [`296:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=296-2)
+
+**Preconditions:** signed-out session; route `/signup` (dedicated signup URL, `LoginClient initialMode="signup"`).
+
+| # | Capture | Pass criteria |
+|---|---------|---------------|
+| 1 | Chooser (~390px web) | Sloe wordmark + positioning headline + **Continue with Apple** (near-black) + **Continue with email** (outline) — no Google (ENG-924) |
+| 2 | Email step (~390px web) | **Create your account** serif heading + signup tagline; email + password fields; terms checkbox; **Create Account** CTA; Back affordance to chooser |
+| 3 | Unit pin | `authChooserFigma.test.ts` — ENG-897 row pins source structure |
+
+**Verified 2026-06-18 (web):** pass on 1–2 via signed-out Playwright capture. `/signup` is in `PUBLIC_ROUTES` — prior “middleware → marketing home” note was stale (broken dev server).
+
+**Agent captures:** `screenshots/web-drive/eng897-signup-email-step-mobile.png`
+
+## Import L4 error — screenshot wall (ENG-898)
+
+**Figma frame:** [`207:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=207-2) (L4 Import error)
+
+| # | Surface | Pass criteria |
+|---|---------|---------------|
+| 1 | Web `/import` | Amber inline banner `data-testid="import-l4-error"` — serif “Something went wrong” + `importErrorCopy` body (not toast-only) |
+| 2 | Mobile `import-shared` | Editorial unboxed error — AlertCircle, retry, clipboard escape hatch (`importErrorCopy`) |
+
+**Shipped:** PR [#483](https://github.com/gracehowse/Suppr/pull/483) (`RecipeUpload.tsx`, `import-shared.tsx`, unit pins).
+
+## Library L2 loading — screenshot wall (ENG-896)
+
+**Figma frame:** [`324:2`](https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l/?node-id=324-2) (L2 Recipes loading)
+
+| # | Surface | Pass criteria |
+|---|---------|---------------|
+| 1 | Mobile Library cold load | `LibraryLoadingSkeleton` — 2×2 grid silhouettes (not centred `ActivityIndicator`) |
+| 2 | Discover parity | `DiscoverLoadingSkeleton` already shipped (ENG-604) |
+
+**Verified 2026-06-18:** mobile unit pin `libraryLoadingSkeleton.test.ts`.
+
 ## Prompt template
 
 ```

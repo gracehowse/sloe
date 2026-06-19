@@ -19,17 +19,21 @@
  *
  * Usage (each command launches a fresh browser unless noted):
  *
- *   node scripts/web-drive.mjs shot   <route> [--out FILE] [--auth] [--vp desktop|mobile|WxH] [--full] [--flags a,b] [--dark]
- *   node scripts/web-drive.mjs dom    <route> [--auth] [--vp ...] [--sel CSS]
- *   node scripts/web-drive.mjs snap   <route> [--auth] [--vp ...]          # accessibility tree (ARIA snapshot)
- *   node scripts/web-drive.mjs text   <route> [--auth] [--sel CSS]         # visible text content
- *   node scripts/web-drive.mjs eval   <route> "<js returning JSON>" [--auth] [--vp ...]
+ *   node scripts/web-drive.mjs shot   <route> [--out FILE] [--auth] [--auth-state FILE] [--vp desktop|mobile|WxH] [--full] [--flags a,b] [--dark]
+ *   node scripts/web-drive.mjs dom    <route> [--auth] [--auth-state FILE] [--vp ...] [--sel CSS]
+ *   node scripts/web-drive.mjs snap   <route> [--auth] [--auth-state FILE] [--vp ...]          # accessibility tree (ARIA snapshot)
+ *   node scripts/web-drive.mjs text   <route> [--auth] [--auth-state FILE] [--sel CSS]         # visible text content
+ *   node scripts/web-drive.mjs eval   <route> "<js returning JSON>" [--auth] [--auth-state FILE] [--vp ...]
  *   node scripts/web-drive.mjs flow   <route> [steps...] [--auth] [--out FILE] [--vp ...]
  *        steps: click:"Selector"  fill:"Selector"="value"  wait:ms  goto:/path  shot:FILE
  *
  * Flags:
- *   --auth          load committed signed-in storage state (tests/e2e/.auth/user.json)
- *                   so authed surfaces (Today / Activity / Plan) render instead of /login.
+ *   --auth          load signed-in storage state so authed surfaces (Today /
+ *                   Activity / Plan) render instead of /login. Host-specific:
+ *                   127.0.0.1 uses tests/e2e/.auth/user.json; localhost uses
+ *                   tests/e2e/.auth/user-localhost.json.
+ *   --auth-state    explicit storage-state JSON (persona runs, visual account,
+ *                   or another host). Implies --auth.
  *   --vp <v>        viewport: "desktop" (1440x900), "mobile" (390x844), or "WxH". Default desktop.
  *   --dark          emulate prefers-color-scheme: dark.
  *   --full          full-page screenshot (default: viewport only).
@@ -53,7 +57,10 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 
 const BASE_URL = (process.env.WEB_DRIVE_BASE_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
-const AUTH_STATE = path.resolve("tests/e2e/.auth/user.json");
+const AUTH_STATE_BY_HOST = {
+  "127.0.0.1": "tests/e2e/.auth/user.json",
+  localhost: "tests/e2e/.auth/user-localhost.json",
+};
 const DEFAULT_OUT_DIR = path.resolve("screenshots/web-drive");
 
 const VIEWPORTS = {
@@ -78,10 +85,28 @@ function parseArgs(argv) {
     else if (a === "--vp") opts.vp = argv[++i];
     else if (a === "--out") opts.out = argv[++i];
     else if (a === "--sel") opts.sel = argv[++i];
+    else if (a === "--auth-state") {
+      opts.auth = true;
+      opts.authState = argv[++i];
+    }
     else if (a === "--flags") opts.flags = (argv[++i] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
     else positional.push(a);
   }
   return { positional, opts };
+}
+
+function authStateForBaseUrl() {
+  try {
+    const host = new URL(BASE_URL).hostname;
+    return path.resolve(AUTH_STATE_BY_HOST[host] ?? AUTH_STATE_BY_HOST["127.0.0.1"]);
+  } catch {
+    return path.resolve(AUTH_STATE_BY_HOST["127.0.0.1"]);
+  }
+}
+
+function resolveAuthState(opts) {
+  if (opts.authState) return path.resolve(opts.authState);
+  return authStateForBaseUrl();
 }
 
 function resolveViewport(vp) {
@@ -158,11 +183,13 @@ async function dismissOverlays(page) {
 
 async function withPage(opts, fn) {
   await assertDevServerUp();
-  if (opts.auth && !existsSync(AUTH_STATE)) {
+  const authState = resolveAuthState(opts);
+  if (opts.auth && !existsSync(authState)) {
     die(
       1,
-      `--auth requested but no storage state at ${AUTH_STATE}.\n` +
-        `  Generate it:  E2E_EMAIL=... E2E_PASSWORD=... npx playwright test auth.setup.ts --project=setup`,
+      `--auth requested but no storage state at ${authState}.\n` +
+        `  Generate host-scoped state:  E2E_EMAIL=... E2E_PASSWORD=... npx playwright test auth.setup.ts --project=setup\n` +
+        `  Persona state: pass --auth-state path/to/persona-storage.json if using a custom file.`,
     );
   }
   let browser;
@@ -180,7 +207,7 @@ async function withPage(opts, fn) {
     viewport,
     deviceScaleFactor: 2,
     colorScheme: opts.dark ? "dark" : "light",
-    ...(opts.auth ? { storageState: AUTH_STATE } : {}),
+    ...(opts.auth ? { storageState: authState } : {}),
   });
   const page = await ctx.newPage();
   if (!opts.keepChrome) await hideDevChrome(page);

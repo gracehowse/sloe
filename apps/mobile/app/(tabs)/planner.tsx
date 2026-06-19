@@ -105,7 +105,8 @@ import {
 } from "@suppr/shared/planning/shoppingListMeta";
 import { shouldShowRecipeRemovedBadge } from "@suppr/shared/nutrition/recipeRemovedBadge";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
-import { planSlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
+import { planSlotAimKcal } from "@suppr/shared/nutrition/mealSlotAim";
+import { EmptyMealSlotAimLine } from "@/components/EmptyMealSlotRow";
 import {
   findPlanDayIdForCalendarDate,
   planCalendarDateForIndex,
@@ -181,6 +182,7 @@ import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { Layout } from "@/constants/layout";
 import { consumePendingImportDayPlan } from "@/lib/planImportPendingApply";
+import { orderedPlanDaySlotEntries } from "@/lib/plan/orderedPlanDaySlotEntries";
 
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
   return meals.filter(
@@ -3338,70 +3340,63 @@ export default function PlannerScreen() {
             })()}
 
             <View style={styles.planDayCard}>
-            {dp.meals.length === 0 ? (
-              planAimEmptyOn && aimPlannerTargets ? (
-                // ENG-1092 — a fresh (un-generated) day states each canonical
-                // slot's aim ("Aim ~X kcal") instead of "No meals planned",
-                // mirroring the web grid's informational empty cards. Generate
-                // (above) is the action; these rows are display-only, exactly
-                // like the web `!entry` cards (web/mobile parity). Snacks (the
-                // optional slot) shows just its name. Flag-off → legacy block.
-                (() => {
-                  const slotAims = slotMacroTargets(
-                    [...ALL_MEAL_SLOTS],
-                    aimPlannerTargets,
-                  ).map((t, i) => planSlotAimKcal(ALL_MEAL_SLOTS[i]!, t.calories));
-                  return ALL_MEAL_SLOTS.map((slot, i) => {
-                    const slotKey = resolvePlanSlotIconKey(slot);
-                    // ENG-1098 Calm mode → the rows stay (slot name + icon), the
-                    // aim number is hidden.
-                    const aim = calmMode ? null : slotAims[i];
-                    return (
-                      <View key={`empty-${dp.day}-${slot}`} style={styles.mealRow}>
-                        <PlanMealThumb
-                          hasRecipe={false}
-                          recipeId={null}
-                          recipeTitle=""
-                          imageUri={null}
-                          Icon={SLOT_ICON_MOBILE[slotKey]}
-                          tint={SLOT_COLOR_MOBILE[slotKey]}
-                          iconBoxStyle={styles.mealIconBox}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={[styles.mealSlot, { color: SLOT_COLOR_MOBILE[slotKey] }]}
-                          >
-                            {slot}
-                          </Text>
-                          {aim == null ? null : (
-                            <Text
-                              testID={`plan-slot-aim-${slot}`}
-                              style={[styles.mealMacros, { fontVariant: ["tabular-nums"] }]}
-                              numberOfLines={1}
-                            >
-                              {aimKcalLabel(aim)}
-                            </Text>
-                          )}
-                        </View>
-                      </View>
-                    );
-                  });
-                })()
-              ) : (
-                <View style={styles.dayEmptyState}>
-                  <Text style={styles.dayEmptyText}>
-                    No meals planned for this day yet.
-                  </Text>
-                  <Text style={styles.dayEmptyHint}>
-                    Add a slot below, or regenerate the week.
-                  </Text>
-                </View>
-              )
-            ) : null}
             {(() => {
-              const sortedMeals = sortMealsBySlotOrder(dp.meals);
-              return sortedMeals.map((meal) => {
-              const mealIndexInDay = dp.meals.indexOf(meal);
+              const canonicalAimRows = planAimEmptyOn && !!aimPlannerTargets;
+              if (!canonicalAimRows && dp.meals.length === 0) {
+                return (
+                  <View style={styles.dayEmptyState}>
+                    <Text style={styles.dayEmptyText}>
+                      No meals planned for this day yet.
+                    </Text>
+                    <Text style={styles.dayEmptyHint}>
+                      Add a slot below, or regenerate the week.
+                    </Text>
+                  </View>
+                );
+              }
+              const slotAims = canonicalAimRows
+                ? slotMacroTargets([...ALL_MEAL_SLOTS], aimPlannerTargets).map((t, i) =>
+                    planSlotAimKcal(ALL_MEAL_SLOTS[i]!, t.calories),
+                  )
+                : [];
+              const entries = orderedPlanDaySlotEntries(dp.meals, canonicalAimRows);
+              return entries.map((entry) => {
+                if (entry.kind === "empty") {
+                  const slot = entry.slot;
+                  const slotKey = resolvePlanSlotIconKey(slot);
+                  const aim = calmMode ? null : slotAims[entry.slotIndex];
+                  return (
+                    <View key={`empty-${dp.day}-${slot}`} style={styles.mealRow}>
+                      <PlanMealThumb
+                        hasRecipe={false}
+                        recipeId={null}
+                        recipeTitle=""
+                        imageUri={null}
+                        Icon={SLOT_ICON_MOBILE[slotKey]}
+                        tint={SLOT_COLOR_MOBILE[slotKey]}
+                        iconBoxStyle={styles.mealIconBox}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[styles.mealSlot, { color: SLOT_COLOR_MOBILE[slotKey] }]}
+                        >
+                          {slot}
+                        </Text>
+                        {aim == null ? null : (
+                          <EmptyMealSlotAimLine
+                            slot={slot}
+                            aimKcal={aim}
+                            surface="plan"
+                            variant="plan"
+                            style={styles.mealMacros}
+                          />
+                        )}
+                      </View>
+                    </View>
+                  );
+                }
+                const meal = entry.meal;
+                const mealIndexInDay = entry.mealIndexInDay;
               const multMeta = planMealPortionMeta(meal, planRecipePool);
               const currentMult = multMeta.displayMult;
               const multLabel = multMeta.label;
@@ -3576,13 +3571,13 @@ export default function PlannerScreen() {
                     // populated row shows its kcal. `null` (optional Snacks slot
                     // or no target) → no line, so the row is just the slot name.
                     planRowAim == null ? null : (
-                      <Text
-                        testID={`plan-slot-aim-${meal.name}`}
-                        style={[styles.mealMacros, { fontVariant: ["tabular-nums"] }]}
-                        numberOfLines={1}
-                      >
-                        {aimKcalLabel(planRowAim)}
-                      </Text>
+                      <EmptyMealSlotAimLine
+                        slot={meal.name}
+                        aimKcal={planRowAim}
+                        surface="plan"
+                        variant="plan"
+                        style={styles.mealMacros}
+                      />
                     )
                   ) : (
                     <Text style={styles.mealMacros} numberOfLines={1}>
@@ -3705,7 +3700,7 @@ export default function PlannerScreen() {
               // slot, so the add-back chip strip would duplicate them; suppress
               // it (Generate is the action, web parity — no per-slot add on a
               // fresh day). Populated-but-missing-slot days keep the strip.
-              if (planAimEmptyOn && dp.meals.length === 0) return null;
+              if (planAimEmptyOn && aimPlannerTargets) return null;
               const missing = canonicalSlotsMissingFromDay(dp.meals);
               if (missing.length === 0) return null;
               return (
@@ -3719,7 +3714,8 @@ export default function PlannerScreen() {
                       <Pressable
                         key={slot}
                         onPress={() => {
-                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          // ENG-1016 — adding a meal slot to the plan is a commit → Medium.
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                           setPlan((prev) => {
                             if (!prev) return prev;
                             const next = prev.map((dpRow, di) => {

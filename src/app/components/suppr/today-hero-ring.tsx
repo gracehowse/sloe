@@ -34,6 +34,11 @@ export interface TodayHeroRingProps {
    *  number?" pill; the chip is the calm, Figma-native affordance. */
   onPressStatusChip?: () => void;
   pulse?: boolean;
+  /** ENG-1016 — per-commit ring pulse (the web analog of mobile's Medium
+   *  commit haptic). True for ~160ms after an ordinary log lands. */
+  commitPulse?: boolean;
+  /** ENG-889 — optional coach line rendered inside the hero card below stats. */
+  coachLine?: React.ReactNode;
 }
 
 type ChipState = "empty" | "under" | "over";
@@ -146,6 +151,8 @@ export function TodayHeroRing({
   onPressWhy: _onPressWhy,
   onPressStatusChip,
   pulse = false,
+  commitPulse = false,
+  coachLine,
 }: TodayHeroRingProps) {
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;
@@ -192,6 +199,7 @@ export function TodayHeroRing({
         expanded={expanded}
         onToggle={onToggleExpanded}
         pulse={pulse}
+        commitPulse={commitPulse}
       />
       {/* Goal / Eaten / Bonus stats row — renders on EMPTY days too (web ring
           parity 2026-06-10): the empty page mirrors a populated day, so Eaten 0
@@ -224,6 +232,7 @@ export function TodayHeroRing({
           />
         </div>
       ) : null}
+      {coachLine}
       <button
         type="button"
         data-testid="today-macro-rings-toggle"

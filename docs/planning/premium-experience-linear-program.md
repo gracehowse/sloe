@@ -1,9 +1,9 @@
 # Premium experience — Linear program
 
-**Initiative:** [Premium experience — launch bar](https://linear.app/suppr/initiative/premium-experience-launch-bar-96b6d7b631bb) (`30550be5-85e6-461d-a062-4cf79f37f6a7`)  
-**Aligned with:** [Launch 2026-07-01](https://linear.app/suppr/initiative/launch-2026-07-01-c1ef54a1a247)
+**Initiative (closed):** [Premium experience — launch bar](https://linear.app/suppr/initiative/premium-experience-launch-bar-e306a656a75d) (`ff3b1fcb-16a6-4790-8322-c6a02b5e31df`) — **Completed 2026-06-18**; P0–P4 linked and closed.  
+**Aligned with (historical):** [Launch 2026-07-01](https://linear.app/suppr/initiative/launch-2026-07-01-c1ef54a1a247)
 
-**Duplicate initiative (ignore):** A second initiative with the same name was created when the first `save_initiative` failed (Enterprise sub-initiative). It is marked **Completed** and unlinked from all phase projects: `d4966476-59bd-4f55-a3e3-b26a684a704a` ([old URL](https://linear.app/suppr/initiative/premium-experience-launch-bar-55c0fb315d93)).  
+**Superseded initiative IDs (deleted — do not reference):** `30550be5-85e6-461d-a062-4cf79f37f6a7` (original), `d4966476-59bd-4f55-a3e3-b26a684a704a` (empty duplicate archived 2026-06-11).  
 **Program coordination:** [ENG-567](https://linear.app/suppr/issue/ENG-567/premium-launch-bar-program-coordination)
 
 Replaces checklist-driven [ENG-203](https://linear.app/suppr/issue/ENG-203) / [Premium bar audit (2026-05-12)](https://linear.app/suppr/project/premium-bar-audit-2026-05-12-590c209f5acb) for **active** tracking. Historical audit issues and PR links (`Fixes ENG-xxx`) are preserved.
@@ -40,7 +40,7 @@ Tab polish (Today tab, Recipes, Onboarding + Auth, etc.) stays under [Surface po
 | [Premium P2 — Daily loop excellence](https://linear.app/suppr/project/premium-p2-daily-loop-excellence-71e9fa0f010b) | 2026-06-30 | [ENG-570](https://linear.app/suppr/issue/ENG-570) | Log sheet, meals, north-star, motion |
 | [Premium P3 — Food & plan surfaces](https://linear.app/suppr/project/premium-p3-food-and-plan-surfaces-b059031ea76b) | 2026-07-01 | [ENG-571](https://linear.app/suppr/issue/ENG-571) | Discover, cook, import, plan, web routes |
 | [Premium P4 — Progress, settings & membership](https://linear.app/suppr/project/premium-p4-progress-settings-and-membership-2dedeb10da86) | 2026-07-01 | [ENG-572](https://linear.app/suppr/issue/ENG-572) | Settings DC14, Progress hero, paywall dark |
-| [Premium P5 — Architecture enablers](https://linear.app/suppr/project/premium-p5-architecture-enablers-de2d5a11d2a3) | 2026-07-15 | [ENG-573](https://linear.app/suppr/issue/ENG-573) | `useToday`, `nutrition-core`, App Router (also [Platform foundations](https://linear.app/suppr/initiative/platform-foundations)) |
+| [Premium P5 — Architecture enablers](https://linear.app/suppr/project/premium-p5-architecture-enablers-de2d5a11d2a3) | 2026-07-15 | [ENG-573](https://linear.app/suppr/issue/ENG-573) | `useToday`, `nutrition-core`, App Router (**Platform foundations** only — not under closed Premium initiative) |
 
 ## Issue map (ENG-567 → ENG-645)
 

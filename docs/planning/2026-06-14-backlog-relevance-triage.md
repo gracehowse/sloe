@@ -41,7 +41,8 @@ Lane open-counts: premium-legacy 0 · redesign 17 · figma 32 · category-leadin
 
 - **Figma re-scope under APP-FIRST pivot:** ENG-903, 889, 897, 907, 908 — partials counts stale; resurrect / re-scope / shelve each.
 - **Rebrand + handle sweep (real work, dead-name framing):** ENG-172 (branding sweep), ENG-183 ("Atlas" TM direction), GROW-15 (@suppr handle list) — re-scope as Sloe or confirm getsloe/@getsloe covers it.
-- **Unadjudicated auth/UX product calls:** ENG-525 (/login sign-up toggle keep/remove), ENG-65 (hero-ring gesture web/mobile asymmetry — likely a defended divergence; also miscategorised under Landing), ENG-848 (wire-or-delete web MacroDetailPanel).
+- **Resolved (2026-06-18, #471):** ENG-848 — `web_macro_detail_panel` wired on web Today.
+- **Unadjudicated auth/UX product calls:** ENG-525 (/login sign-up toggle keep/remove), ENG-65 (hero-ring gesture web/mobile asymmetry — likely a defended divergence; also miscategorised under Landing).
 - **Maestro flow possibly obsoleted:** ENG-531 (00c_onboarding_v2 yaml fix — Maestro WDA broken on iOS 26.5; capture moved to simctl/idb).
 - **Stale finance one-off:** ENG-190 (April runway snapshot — close or replace with current month).
 - **Deferred-by-decision net-new builds — still wanted?:** ENG-913 (Ask-coach screen), ENG-71 (re-export landing bundle), ENG-121 (north-star scorer characterisation).

@@ -2,6 +2,11 @@
 
 This is one product across web and mobile.
 
+**Agent doc layout:** Global rules live in this file (`.claude/CLAUDE.md`). A tracked
+mirror at repo-root **`AGENTS.md`** exists so Codex, Cursor, and other agents on a
+fresh clone see the same requirements — run `npm run sync:agent-docs` after editing
+this file. Mobile-scoped rules: **`apps/mobile/CLAUDE.md`**.
+
 ## Decision framework
 
 Match the rigour to the stakes — a light touch on the obvious, full weight on
@@ -210,9 +215,32 @@ If the Notion MCP isn't connected in a session, do the repo work as normal and l
 
 ## Linear updates — non-negotiable
 
-Linear is the canonical task list (per `feedback_work_from_linear.md`). **Initiative status updates** are the rollup mechanism — project-level updates are deprecated on this workspace (confirmed 2026-05-16 against Business trial; the feature has been removed from newer Business workspaces in favour of initiatives, not a toggle).
+Linear is the canonical task list (per `feedback_work_from_linear.md`).
 
-**When you close ≥1 issue, move state on any issue, or add new issues inside an initiative's projects, post an initiative status update before ending the session.** Don't post empty updates — silence is the right move when nothing moved.
+### Agent ownership (Cursor / Claude / Codex)
+
+**Peer-review model** (2026-06-18): Claude **directs and reviews**; Cursor + Codex **implement and QA** (user lens vs engineer lens). QA findings triage through Claude — never Cursor↔Codex ping-pong. Decision: `docs/decisions/2026-06-18-agent-peer-review-model.md`.
+
+Linear **assignee** = accountable human (usually Grace). **Delegate** = app user doing the work (**Cursor** and **Codex** only). **Claude** = labels only (`agent/claude`), never delegate. Full setup: `docs/planning/linear-agent-ownership.md`.
+
+### Agent pickup & delivery (non-negotiable)
+
+**Work from Linear only.** Full workflow: `docs/planning/linear-agent-workflow.md`.
+
+**Pickup:** Cursor → `delegate:Cursor` + `label:agent/cursor`. Codex → `delegate:Codex` + `label:agent/codex` + `ready-for-agent` + **Todo**. Claude → triage/review/planning via `label:agent/claude`; `label:qa-finding` = triage queue. **Do not** assign QA findings directly between Cursor and Codex.
+
+**Before coding:** read ticket → list expected files in a comment → `git fetch origin main && git rebase origin/main` → branch `agent/<agent>/<linear-id>-short-name` → stay in scope.
+
+**After coding:** scoped lint/typecheck/tests → commit → PR linked to ticket → move ticket to **In Review** (PR open) → Linear comment with summary, risks, testing.
+
+**Status mapping until custom workflow states exist:** Todo + `ready-for-agent` = ready for agent; **In Review** = PR open.
+
+Linear has **two different concepts**:
+
+1. **Project state** (`Backlog` / `Planned` / `In Progress` / `Completed` / `Canceled`) — the lifecycle badge on the project bar. **Linear never auto-updates this when issues close.** Agents must set it explicitly via MCP `save_project` with `state`, or run `npm run linear:sync-status` after bulk issue closures.
+2. **Status update posts** (narrative rollups on the Updates tab) — **both** initiative and project level. Linear's initiative overview flags **"child projects requiring updates"** when projects lack a `lastUpdate` post (separate from lifecycle state). Post via MCP `save_status_update` (`type: "project"` or `"initiative"`), or run `npm run linear:sync-status-updates` after bulk syncs.
+
+**When you close ≥1 issue, move state on any issue, or add new issues inside an initiative's projects:** (1) set project **state** if the lifecycle changed (`save_project` or `npm run linear:sync-status`); (2) post **project** and **initiative status updates** if child projects would show as needing updates (`save_status_update` or `npm run linear:sync-status-updates`). Don't post empty updates — silence is the right move when nothing moved.
 
 Tool call:
 
@@ -244,7 +272,7 @@ Archived 2026-06-11: **`Premium experience — launch bar`** (superseded — its
 
 **`launch-blocker` label (workspace-wide):** for issue-level granularity inside any project. Apply to any issue that must ship before 2026-07-01. Use the Linear filter `label:launch-blocker` for a cross-cutting "everything blocking launch" view that doesn't care which project/initiative the issue lives under.
 
-Don't try to enable project status updates — there's no workspace toggle for it; Linear removed the feature. `save_status_update type: "project"` returns "not enabled for this workspace" — don't retry.
+Project and initiative **status update posts** clear the "child projects requiring updates" banner in Linear. Lifecycle state still updates via `save_project` / `save_initiative` or `npm run linear:sync-status`.
 
 ## No silent deferrals — non-negotiable
 

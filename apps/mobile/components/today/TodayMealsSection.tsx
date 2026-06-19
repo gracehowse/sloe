@@ -51,7 +51,8 @@ import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
 import { summariseSavedMeal } from "@suppr/shared/nutrition/savedMealsLogic";
 import { AiFirstLogTooltip } from "./AiFirstLogTooltip";
 import { mealRowImageUrl } from "@suppr/shared/nutrition/foodHistory";
-import { emptySlotAimKcal, aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
+import { emptySlotAimKcal } from "@suppr/shared/nutrition/mealSlotAim";
+import { EmptyMealSlotAimLine } from "@/components/EmptyMealSlotRow";
 import { MealRowSwipeable } from "./MealRowSwipeable";
 import { PressableScale } from "@/components/ui/PressableScale";
 
@@ -1027,18 +1028,12 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
                           consumedBySlot,
                         );
                         return aim == null ? null : (
-                          <Text
-                            testID={`today-slot-aim-${slot}`}
-                            style={{
-                              ...Type.caption,
-                              color: textSecondaryColor,
-                              marginTop: 1,
-                              fontVariant: ["tabular-nums"],
-                            }}
-                            numberOfLines={1}
-                          >
-                            {aimKcalLabel(aim)}
-                          </Text>
+                          <EmptyMealSlotAimLine
+                            slot={slot}
+                            aimKcal={aim}
+                            surface="today"
+                            color={textSecondaryColor}
+                          />
                         );
                       })()}
                   </View>

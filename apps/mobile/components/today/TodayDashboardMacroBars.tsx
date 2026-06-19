@@ -6,6 +6,7 @@ import { SupprCard } from "@/components/ui/SupprCard";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
 import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import { isMacroDetailSupported } from "@/lib/macroDetailConfig";
 
 /**
  * TodayDashboardMacroBars — alternative macro display: a vertical
@@ -163,15 +164,17 @@ export function TodayDashboardMacroBars({
             : remainDisplayed >= 0
               ? `${overBy} ${def.unit} left`
               : `${overBy} ${def.unit} over`;
-        return (
-          <Pressable
-            key={macro}
-            onPress={() => onPressMacro(macro)}
-            accessibilityRole="button"
-            accessibilityLabel={`${def.label}: ${value} of ${targetLabel} ${def.unit}`}
-            hitSlop={6}
-            testID={`today-macro-bar-${macro}`}
-          >
+        // ENG-1213 — only macros with an actual breakdown open the detail
+        // screen. Reference-only rows (sugar/sodium) have no breakdown
+        // (`MACRO_CONFIG` on macro-detail.tsx doesn't define them), so they
+        // render as a plain, non-interactive row — no Pressable, no button role,
+        // no "open breakdown" affordance. `isMacroDetailSupported` is the single
+        // source of truth shared with the macro tiles and the macro-detail
+        // screen's own guard, so a tappable row can never resolve to a macro the
+        // screen would render wrong (protein) data for.
+        const interactive = isMacroDetailSupported(macro);
+        const rowBody = (
+          <>
             <View
               style={{
                 flexDirection: "row",
@@ -233,6 +236,29 @@ export function TodayDashboardMacroBars({
                 }}
               />
             </View>
+          </>
+        );
+        if (!interactive) {
+          return (
+            <View
+              key={macro}
+              accessibilityLabel={`${def.label}: ${value} of ${targetLabel} ${def.unit}`}
+              testID={`today-macro-bar-${macro}`}
+            >
+              {rowBody}
+            </View>
+          );
+        }
+        return (
+          <Pressable
+            key={macro}
+            onPress={() => onPressMacro(macro)}
+            accessibilityRole="button"
+            accessibilityLabel={`${def.label}: ${value} of ${targetLabel} ${def.unit}`}
+            hitSlop={6}
+            testID={`today-macro-bar-${macro}`}
+          >
+            {rowBody}
           </Pressable>
         );
       })}

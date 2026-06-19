@@ -17,11 +17,16 @@
  *   2. WEIGHT TREND (R2): least-squares slope (kg/day) over a
  *      gap-filled *daily* series (ENG-1024 — interpolate sparse weigh-ins
  *      to one reading per day before fitting, so weekly weighers get the
- *      same time-uniform smoothing as daily weighers), capped to
- *      ±SLOPE_CAP_KG_PER_WEEK to reject
- *      water/glycogen noise on short windows. Replaces the old per-weigh-in
- *      EMA(α=0.1), which captured only ~29% of the real weight move with
- *      sparse weigh-ins and so understated the trend term ~3.5×.
+ *      same time-uniform smoothing as daily weighers), then clamped to a
+ *      WINDOW/CONFIDENCE-AWARE slope cap (ENG-1116) to reject water/glycogen
+ *      noise on short windows WITHOUT under-crediting legitimate fast losers
+ *      on long, well-sampled windows. The cap tightens to ±0.35 kg/week at
+ *      low confidence (short/noisy window — the original water-noise guard),
+ *      widening to ±0.7 at medium and ±1.0 at high confidence once the window
+ *      is long enough (≥21 logging days + ≥7 weigh-ins) to trust the slope.
+ *      Replaces the old per-weigh-in EMA(α=0.1), which captured only ~29% of
+ *      the real weight move with sparse weigh-ins and so understated the trend
+ *      term ~3.5×.
  *   3. Convert to energy: 1 kg body mass ≈ 7700 kcal (Hall & Chow).
  *   4. Adaptive TDEE = avg_gated_intake − (weight_change_rate_kg/day × 7700)
  *   5. PLAUSIBILITY BOUND (R3): when a sedentary-formula baseline is supplied,
@@ -70,13 +75,99 @@ export const COMPLETE_DAY_BMR_FRACTION = 0.8;
 export const MIN_COMPLETE_DAY_ENTRIES = 2;
 
 /**
- * R2 slope cap. Weight trend (least-squares slope over raw weigh-ins) is
- * clamped to ±0.35 kg/week so a couple of noisy weigh-ins on a short window
- * cannot blow up the energy term. Forensic R2 spec: "slope cap (e.g.
- * ±0.35 kg/week)".
+ * R2 slope cap — WINDOW/CONFIDENCE-AWARE (ENG-1116).
+ *
+ * The weight trend (least-squares slope over the daily-interpolated series) is
+ * clamped so a couple of noisy weigh-ins on a short window cannot blow up the
+ * energy term. The original implementation used a single flat ±0.35 kg/week.
+ * That was correct as a water-noise guard on short/low-confidence windows, but
+ * applied UNCONDITIONALLY it under-credited legitimate fast losers: a real
+ * 0.5 kg/week deficit pins at the 0.35 cap → ~385 kcal/day of slope energy →
+ * maintenance reads too low → suggested intake too low.
+ *
+ * Fix: the cap magnitude is now derived from the SAME confidence tier the
+ * estimator already computes (loggingDays/weighInCount ladder), so it only
+ * widens once the window is long enough to trust the slope:
+ *   - low    confidence → ±0.35 kg/week (short/noisy — keep the tight guard)
+ *   - medium confidence → ±0.70 kg/week
+ *   - high   confidence → ±1.00 kg/week (≥21 logging days + ≥7 weigh-ins)
+ *
+ * This deliberately does NOT raise the flat cap to 1.0 — that would re-admit
+ * water noise on short windows (the exact failure the 2026-06-10 gating
+ * decision fixed). The cap stays tight at low confidence and only relaxes as
+ * the window earns trust.
+ *
+ * A wider cap is STILL bounded downstream by the R3 plausibility band
+ * ([0.85, 1.30] × sedentary Mifflin) + the resting-energy floor, so a relaxed
+ * slope can never push the estimate outside a person's own physiology.
  */
-export const SLOPE_CAP_KG_PER_WEEK = 0.35;
-const SLOPE_CAP_KG_PER_DAY = SLOPE_CAP_KG_PER_WEEK / 7;
+export const SLOPE_CAP_LOW_KG_PER_WEEK = 0.35;
+export const SLOPE_CAP_MED_KG_PER_WEEK = 0.7;
+export const SLOPE_CAP_HIGH_KG_PER_WEEK = 1.0;
+
+/**
+ * Confidence tier for the adaptive estimate. Hoisted to a named type so the
+ * slope-cap selector and the result share one vocabulary.
+ */
+export type AdaptiveTdeeConfidence = "low" | "medium" | "high";
+
+/**
+ * Selects the slope-cap magnitude (kg/week) for a given confidence tier.
+ * Exported so tests can pin each tier's cap without reconstructing the ladder.
+ */
+export function selectSlopeCapKgPerWeek(
+  confidence: AdaptiveTdeeConfidence,
+): number {
+  switch (confidence) {
+    case "high":
+      return SLOPE_CAP_HIGH_KG_PER_WEEK;
+    case "medium":
+      return SLOPE_CAP_MED_KG_PER_WEEK;
+    case "low":
+    default:
+      return SLOPE_CAP_LOW_KG_PER_WEEK;
+  }
+}
+
+/**
+ * Confidence-tier thresholds. Exported (not inline magic numbers) so the
+ * Progress "data progress toward adaptive" UI reads the SAME gate the engine
+ * uses (ENG-1189) AND the ENG-1116 slope-cap tier derives from the same source —
+ * one definition so the card, the cap, and the surfaced confidence cannot drift.
+ * ENG-1189: the Maintenance card previously hardcoded `/7` weigh-ins + `/21`
+ * logging days (the HIGH numbers) against lifetime any-entry days, while adaptive
+ * actually *surfaces* at MEDIUM over gated full days in the trailing window — two
+ * gates, one screen. Adaptive surfaces only at medium/high (the writer
+ * `refreshAdaptiveTdee` skips low; `resolveMaintenance` rejects low), so MEDIUM
+ * is the honest "engages" bar.
+ */
+export const MEDIUM_CONFIDENCE_LOGGING_DAYS = 14;
+export const MEDIUM_CONFIDENCE_WEIGH_INS = 5;
+export const HIGH_CONFIDENCE_LOGGING_DAYS = 21;
+export const HIGH_CONFIDENCE_WEIGH_INS = 7;
+
+/**
+ * Determines the confidence tier from the gated logging-day + weigh-in counts.
+ * Hoisted (ENG-1116) so the slope cap can read confidence BEFORE the clamp —
+ * the cap magnitude and the surfaced confidence must agree, so both derive from
+ * this one function, against the single-source thresholds above.
+ */
+export function determineAdaptiveTdeeConfidence(
+  loggingDays: number,
+  weighInCount: number,
+): AdaptiveTdeeConfidence {
+  if (
+    loggingDays >= HIGH_CONFIDENCE_LOGGING_DAYS &&
+    weighInCount >= HIGH_CONFIDENCE_WEIGH_INS
+  )
+    return "high";
+  if (
+    loggingDays >= MEDIUM_CONFIDENCE_LOGGING_DAYS &&
+    weighInCount >= MEDIUM_CONFIDENCE_WEIGH_INS
+  )
+    return "medium";
+  return "low";
+}
 
 /**
  * R3 plausibility band, as multiples of the user's *sedentary* Mifflin TDEE.
@@ -206,9 +297,31 @@ function leastSquaresSlopeKgPerDay(entries: [string, number][]): number {
   return (n * sxy - sx * sy) / denom;
 }
 
-export function computeAdaptiveTDEE(
-  input: AdaptiveTdeeInput,
-): AdaptiveTdeeResult | null {
+/**
+ * The completeness floor + gated-day / weigh-in tallies that drive the engage
+ * gate. Extracted so the Progress "data progress toward adaptive" UI can read
+ * the SAME numbers the engine uses (ENG-1189) instead of a parallel,
+ * lifetime-any-entry count. Pure; no side effects.
+ */
+export type AdaptiveDataCounts = {
+  /** The per-day kcal floor applied (max(1000, 0.8 × BMR)). */
+  completeDayFloorKcal: number;
+  /** Gated full logging days within the trailing window. */
+  loggingDays: number;
+  /** Weigh-ins within the trailing window. */
+  weighInCount: number;
+  /** Days with any kcal logged in the window that were excluded as partial. */
+  excludedPartialDays: number;
+  /** The window (days) the counts were measured over. */
+  windowDays: number;
+};
+
+export function computeAdaptiveDataCounts(
+  input: Pick<
+    AdaptiveTdeeInput,
+    "intakeByDay" | "weightByDay" | "entryCountByDay" | "bmrKcal" | "windowDays"
+  >,
+): AdaptiveDataCounts {
   const windowDays = input.windowDays ?? DEFAULT_WINDOW_DAYS;
   const cutoff = cutoffDate(windowDays);
 
@@ -243,9 +356,50 @@ export function computeAdaptiveTDEE(
     ([k]) => k >= cutoff,
   );
 
-  const loggingDays = gatedIntakeEntries.length;
-  const weighInCount = weightEntries.length;
-  const excludedPartialDays = loggedInWindow.length - gatedIntakeEntries.length;
+  return {
+    completeDayFloorKcal,
+    loggingDays: gatedIntakeEntries.length,
+    weighInCount: weightEntries.length,
+    excludedPartialDays: loggedInWindow.length - gatedIntakeEntries.length,
+    windowDays,
+  };
+}
+
+export function computeAdaptiveTDEE(
+  input: AdaptiveTdeeInput,
+): AdaptiveTdeeResult | null {
+  const windowDays = input.windowDays ?? DEFAULT_WINDOW_DAYS;
+  const cutoff = cutoffDate(windowDays);
+
+  const {
+    completeDayFloorKcal,
+    loggingDays,
+    weighInCount,
+    excludedPartialDays,
+  } = computeAdaptiveDataCounts({
+    intakeByDay: input.intakeByDay,
+    weightByDay: input.weightByDay,
+    entryCountByDay: input.entryCountByDay,
+    bmrKcal: input.bmrKcal,
+    windowDays,
+  });
+
+  // Re-derive the gated intake entries for the average (same gate, in-window).
+  const gatedIntakeEntries = sortedEntries(input.intakeByDay).filter(
+    ([k, v]) => {
+      if (k < cutoff || v <= 0) return false;
+      if (v < completeDayFloorKcal) return false;
+      if (input.entryCountByDay) {
+        const count = input.entryCountByDay[k] ?? 0;
+        if (count < MIN_COMPLETE_DAY_ENTRIES) return false;
+      }
+      return true;
+    },
+  );
+
+  const weightEntries = sortedEntries(input.weightByDay).filter(
+    ([k]) => k >= cutoff,
+  );
 
   // Excluded (partial) days do NOT count toward the window or confidence:
   // eligibility is measured on gated days only.
@@ -257,12 +411,27 @@ export function computeAdaptiveTDEE(
     gatedIntakeEntries.reduce((sum, [, v]) => sum + v, 0) / loggingDays,
   );
 
-  // R2 / ENG-1024: least-squares slope over the daily-interpolated series.
+  // ENG-1116: hoist the confidence tier ABOVE the slope clamp so the cap can
+  // read it. Confidence depends only on the gated day/weigh-in counts (both
+  // already known here), so this is order-safe — the value is identical to the
+  // old post-clamp computation. The R3 clamp below may still DOWNGRADE it.
+  let confidence: AdaptiveTdeeConfidence = determineAdaptiveTdeeConfidence(
+    loggingDays,
+    weighInCount,
+  );
+
+  // R2 / ENG-1024: least-squares slope over the daily-interpolated series,
+  // clamped to the window/confidence-aware cap (ENG-1116). Short/low-confidence
+  // windows keep the tight ±0.35 kg/week water-noise guard; long, well-sampled
+  // windows widen to ±0.7 (medium) / ±1.0 (high) so legitimate fast losers are
+  // not under-credited.
+  const slopeCapKgPerWeek = selectSlopeCapKgPerWeek(confidence);
+  const slopeCapKgPerDay = slopeCapKgPerWeek / 7;
   const dailyWeightEntries = dailyInterpolatedWeightEntries(weightEntries);
   const rawSlope = leastSquaresSlopeKgPerDay(dailyWeightEntries);
   const weightChangeKgPerDay = Math.max(
-    -SLOPE_CAP_KG_PER_DAY,
-    Math.min(SLOPE_CAP_KG_PER_DAY, rawSlope),
+    -slopeCapKgPerDay,
+    Math.min(slopeCapKgPerDay, rawSlope),
   );
 
   const energyFromWeightChange = Math.round(
@@ -271,14 +440,10 @@ export function computeAdaptiveTDEE(
 
   const rawTdee = Math.round(Math.max(800, avgDailyIntake - energyFromWeightChange));
 
-  let confidence: "low" | "medium" | "high";
-  if (loggingDays >= 21 && weighInCount >= 7) {
-    confidence = "high";
-  } else if (loggingDays >= 14 && weighInCount >= 5) {
-    confidence = "medium";
-  } else {
-    confidence = "low";
-  }
+  // Confidence is determined once, above the slope clamp (ENG-1116 hoist) via
+  // `determineAdaptiveTdeeConfidence` — single source for both the cap tier and
+  // the surfaced confidence (was a duplicate inline ladder here pre-ENG-1116).
+  // R3 below may still DOWNGRADE `confidence` to "low" on a clamp.
 
   // R3: plausibility bound. Clamp into [0.85, 1.30] × sedentary Mifflin and
   // floor at the Watch resting-energy minimum when available. A clamp is
