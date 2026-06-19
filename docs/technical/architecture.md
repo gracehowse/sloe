@@ -183,9 +183,13 @@ User's saved recipes + profile targets + slot config
     → Return DayPlan[] with meals, multipliers, totals
 ```
 
+## Web App Router product shell
+
+Authenticated product routes live under `app/(product)/`. The group layout mounts `HomePageClient` once, while leaf routes such as `/today`, `/plan`, and `/targets` return `null` and provide route metadata. `src/app/App.tsx` derives the active view from `usePathname()`, preserving canonical deep links without remounting auth/profile gates on in-app tab changes. Product routes are intentionally absent from `PUBLIC_ROUTES` in `middleware.ts`, so unauthenticated deep links redirect to `/login` before client JavaScript runs.
+
 ## Authentication
 
-- **Web:** Email/password, magic link (OTP) via Supabase Auth. No middleware — client-side redirect only.
+- **Web:** Email/password, magic link (OTP) via Supabase Auth. Middleware gates authenticated product routes; client-side guards still handle profile/onboarding state inside the app shell.
 - **Mobile:** Email/password, magic link, Apple Sign-In (expo-apple-authentication → Supabase signInWithIdToken)
 - **API routes:** Most are public with rate limiting. Stripe checkout requires Authorization header.
 - **Database:** Row-Level Security (RLS) on all tables. Users can only access their own data.
