@@ -23,6 +23,7 @@ Canonical implementation paths live under `app/api/**/route.ts`. Detail for heav
 | `/api/usda/search` | GET | Bearer | USDA FDC search |
 | `/api/usda/food` | GET | Bearer | USDA FDC food detail |
 | `/api/edamam/search` | GET | Bearer | Edamam parser search (`q`, optional `mode`) |
+| `/api/edamam/food` | GET | Bearer | Edamam `/nutrients` food detail (per-100g micros) |
 | `/api/off/barcode` | GET | Bearer (see route) | OFF barcode lookup |
 | `/api/barcode-mapping` | GET/POST | See route | Community barcode mapping |
 | `/api/stripe/checkout` | POST | Bearer | Checkout session |
@@ -217,6 +218,23 @@ Get full nutrition data and portion options for a specific USDA food.
   ]
 }
 ```
+
+**Cache + account-level quota guard (ENG-1117):** like `/api/usda/search`, this
+on-tap detail fetch shares USDA FDC's account-wide ~1,000/hr key budget, so it is
+quota-counted (it was previously unguarded). Flow:
+
+1. **Per-`fdcId` cache hit** → returns the stored detail payload with `cached: true`,
+   no USDA call, **no quota spend**. Repeat taps of the same food are free. Key:
+   `pm_vdc:usda:{fdcId}`, 24h TTL (`getCachedDetail`/`setCachedDetail` in
+   `src/lib/server/vendorSearchCache.ts`).
+2. **Account-wide quota exhausted** → skips USDA and returns the same degraded
+   envelope shape the search route uses: `{ ok: true, fdcId, degraded: true,
+   degradedReason: "quota_exhausted" }` — never an unguarded vendor call.
+3. **Cache miss + quota OK** → `consumeQuota("usda")` immediately before the live
+   call, then caches the genuine success. Upstream failures (`502`) and `not_found`
+   (`404`) are **not** cached.
+
+**Errors:** `401`; `429`; `400` invalid_fdcId; `404` not_found; `502` usda_failed; `503` when USDA not configured.
 
 ---
 
@@ -558,6 +576,36 @@ Implementation: [app/api/nutrition/scan-label/route.ts](../../app/api/nutrition/
 **Errors:** `401`; `400` missing_q; `429`; `503` when Edamam not configured.
 
 Implementation: [app/api/edamam/search/route.ts](../../app/api/edamam/search/route.ts).
+
+---
+
+## Edamam food detail
+
+### `GET /api/edamam/food?foodId={id}`
+
+**Auth:** Bearer. **Query:** `foodId` required (non-empty). On-tap detail fetch
+(ENG-738) that calls Edamam's `/nutrients` endpoint to populate the full per-100g
+micronutrient panel for an Edamam search hit.
+
+**Response (ok):** `{ ok: true, foodId, microsPer100g? }` — `microsPer100g` omitted
+when Edamam publishes no extra panel for the food.
+
+**Cache + account-level quota guard (ENG-1117):** the `/nutrients` detail call
+counts against Edamam's **same** account-wide 1,000/day free-tier ceiling as
+`/api/edamam/search` (it was previously unguarded — detail fetches alone could blow
+the daily cap at viral scale). Same flow as `/api/usda/food`:
+
+1. **Per-`foodId` cache hit** → returns the stored micro panel with `cached: true`,
+   no Edamam call, **no quota spend**. Key: `pm_vdc:edamam:{foodId}`, 24h TTL.
+2. **Account-wide quota exhausted** → returns `{ ok: true, foodId, degraded: true,
+   degradedReason: "quota_exhausted" }` — never an unguarded vendor call.
+3. **Cache miss + quota OK** → `consumeQuota("edamam")` immediately before the live
+   call, then caches the genuine success (an empty panel is a cacheable stable fact;
+   an upstream failure is **not** cached).
+
+**Errors:** `401`; `429`; `400` invalid_foodId; `503` when Edamam not configured.
+
+Implementation: [app/api/edamam/food/route.ts](../../app/api/edamam/food/route.ts).
 
 ---
 
