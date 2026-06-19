@@ -46,6 +46,8 @@ type Payload = {
   recipeId?: unknown;
   title?: unknown;
   ingredients?: unknown;
+  preview?: unknown;
+  remove?: unknown;
 };
 
 /** 200 + `skipped` so a fire-and-forget caller treats this as a no-op,
@@ -110,6 +112,8 @@ export async function POST(req: Request) {
     );
   }
   const title = typeof body.title === "string" ? body.title.trim() : "";
+  const preview = body.preview === true;
+  const remove = body.remove === true;
   const ingredients = Array.isArray(body.ingredients)
     ? body.ingredients.map((s) => String(s).trim()).filter(Boolean).slice(0, 6)
     : [];
@@ -124,7 +128,7 @@ export async function POST(req: Request) {
   // recipe still wants a generated hero — only overwrite a null/default).
   const { data: recipeRow, error: fetchError } = await admin
     .from("recipes")
-    .select("id, title, author_id, image_url, published")
+    .select("id, title, author_id, image_url, image_source, published")
     .eq("id", recipeId)
     .maybeSingle();
 
@@ -143,6 +147,27 @@ export async function POST(req: Request) {
 
   const effectiveTitle = title || String((recipeRow as { title?: string }).title ?? "");
 
+  if (remove) {
+    const { error: removeError } = await admin
+      .from("recipes")
+      .update({
+        image_url: null,
+        image_source: null,
+        image_model: null,
+        image_generated_at: null,
+      })
+      .eq("id", recipeId)
+      .eq("author_id", userId)
+      .eq("image_source", "ai_generated");
+
+    if (removeError) {
+      captureRouteError(removeError, "/api/recipe-import/image-hero", { stage: "remove" });
+      return skipped("remove_failed");
+    }
+
+    return NextResponse.json({ ok: true, removed: true }, { status: 200 });
+  }
+
   let result;
   try {
     result = await generateDishImage(effectiveTitle, ingredients, { userId });
@@ -156,6 +181,10 @@ export async function POST(req: Request) {
   if (!result.ok) {
     // fal locked / errored — the documented out-of-balance state. No-op.
     return skipped(result.error);
+  }
+
+  if (preview) {
+    return NextResponse.json({ ok: true, preview: true, url: result.url }, { status: 200 });
   }
 
   const { error: updateError } = await admin

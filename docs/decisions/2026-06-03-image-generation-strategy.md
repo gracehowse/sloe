@@ -37,6 +37,16 @@ Use a **single image engine + one locked Sloe prompt template** for design-time 
 - Single prompt template = brand-consistent ingredient/food/object imagery on demand.
 
 ## Layer 2 — Runtime feature (the Julienne-parity capability)
+**Implementation update (ENG-863, 2026-06-19):** the runtime path is now user-tapped
+behind `recipe_runtime_image_generation_v1` on web + mobile. Gradient/placeholder
+heroes show **"Generate an image"** to the author, generation returns a preview that
+must be approved before `recipes.image_url` is persisted, AI heroes write provenance
+(`image_source='ai_generated'`, model, generated timestamp), render a persistent
+**"Sloe image"** badge + nutrition-decouple caption, and can be removed back to the
+deterministic gradient. Stored fal outputs embed XMP/IPTC-style provenance metadata
+at upload time. The shipped cache remains per recipe row; shared content-hash cache
+is still a separate monetisation/cost decision (ENG-865), not part of this slice.
+
 **Triggers (user-initiated, never silent/auto):**
 1. User imports **their own** recipe with **no image** → "Generate an image" CTA.
 2. Any import that lands on the **gradient placeholder** — the common case, because Suppr deliberately does NOT store Instagram/TikTok/YouTube/publisher images (IP decision: migration `20260427100000` + `BLOCKED_IMAGE_HOSTS` guard) → "Generate an image" fills the gap.

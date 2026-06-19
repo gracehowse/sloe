@@ -157,6 +157,8 @@ type FullRecipe = {
   instructions: string | null;
   image_url: string | null;
   image_source?: string | null;
+  image_model?: string | null;
+  image_generated_at?: string | null;
   servings: number;
   prep_time_min: number | null;
   cook_time_min: number | null;
@@ -304,6 +306,7 @@ export default function RecipeDetailScreen() {
   // fallback in those cases. Reset on recipe id change so navigating
   // between recipes doesn't carry the prior error state.
   const [heroImageBroken, setHeroImageBroken] = useState(false);
+  const [heroGenerating, setHeroGenerating] = useState(false);
   useEffect(() => {
     setHeroImageBroken(false);
   }, [id]);
@@ -684,7 +687,7 @@ export default function RecipeDetailScreen() {
         let recipeRes = await supabase
           .from("recipes")
           .select(
-            "id, title, description, instructions, image_url, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, published, content_origin, allergens",
+            "id, title, description, instructions, image_url, image_source, image_model, image_generated_at, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, published, content_origin, allergens",
           )
           .eq("id", recipeId)
           .maybeSingle();
@@ -1343,6 +1346,76 @@ export default function RecipeDetailScreen() {
     }
     return picked;
   }, [recipe?.image_source, recipe?.image_url, recipe?.source_url]);
+  const sloeImageRuntimeEnabled = isFeatureEnabled("recipe_runtime_image_generation_v1");
+  const isAiGeneratedHero =
+    sloeImageRuntimeEnabled && recipe?.image_source === "ai_generated";
+  const canGenerateSloeHero =
+    sloeImageRuntimeEnabled && isRecipeOwner && !heroImageUrl && !isSeedRecipeId(recipeId);
+
+  const generateSloeHero = useCallback(async () => {
+    if (!recipe || heroGenerating) return;
+    const apiBase = getSupprApiBase();
+    if (!apiBase) {
+      Alert.alert("Image generation unavailable", "Suppr's image service is not configured in this build.");
+      return;
+    }
+    setHeroGenerating(true);
+    try {
+      const previewRes = await authedFetch(`${apiBase}/api/recipe-import/image-hero`, {
+        method: "POST",
+        body: JSON.stringify({
+          recipeId: recipe.id,
+          title: recipe.title,
+          ingredients: ingredients.map((ing) => ing.name).filter(Boolean).slice(0, 12),
+          preview: true,
+        }),
+      });
+      const preview = (await previewRes.json()) as { ok?: boolean; url?: string; message?: string; reason?: string };
+      if (!previewRes.ok || !preview.ok || !preview.url) {
+        Alert.alert("Couldn't generate image", preview.message ?? preview.reason ?? "Please try again.");
+        return;
+      }
+      Alert.alert(
+        "Save this Sloe image?",
+        "Sloe images are illustrative and generated from title + ingredients. Nutrition is estimated separately.",
+        [
+          { text: "Discard", style: "cancel" },
+          {
+            text: "Approve",
+            onPress: async () => {
+              const { error } = await supabase
+                .from("recipes")
+                .update({
+                  image_url: preview.url,
+                  image_source: "ai_generated",
+                  image_model: "fal-ai/nano-banana-pro",
+                  image_generated_at: new Date().toISOString(),
+                })
+                .eq("id", recipe.id)
+                .eq("author_id", userId);
+              if (error) {
+                Alert.alert("Couldn't save image", error.message);
+                return;
+              }
+              setRecipe((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      image_url: preview.url as string,
+                      image_source: "ai_generated",
+                      image_model: "fal-ai/nano-banana-pro",
+                      image_generated_at: new Date().toISOString(),
+                    }
+                  : prev,
+              );
+            },
+          },
+        ],
+      );
+    } finally {
+      setHeroGenerating(false);
+    }
+  }, [heroGenerating, ingredients, recipe, userId]);
 
   /** Recime parity (2026-04-30): "Watch original" affordance in the
    *  inline cook overlay. Renders only when the recipe has a usable
@@ -1542,6 +1615,36 @@ export default function RecipeDetailScreen() {
     if (canEditRecipe(recipe.author_id, userId)) {
       menu.push({ text: "Edit recipe", onPress: () => setRecipeEditOpen(true) });
     }
+    if (isAiGeneratedHero) {
+      menu.push({
+        text: "Remove Sloe image",
+        style: "destructive",
+        onPress: async () => {
+          const apiBase = getSupprApiBase();
+          if (!apiBase) return;
+          const res = await authedFetch(`${apiBase}/api/recipe-import/image-hero`, {
+            method: "POST",
+            body: JSON.stringify({ recipeId: recipe.id, remove: true }),
+          });
+          const json = (await res.json()) as { ok?: boolean; message?: string; reason?: string };
+          if (!res.ok || !json.ok) {
+            Alert.alert("Couldn't remove image", json.message ?? json.reason ?? "Please try again.");
+            return;
+          }
+          setRecipe((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  image_url: null,
+                  image_source: null,
+                  image_model: null,
+                  image_generated_at: null,
+                }
+              : prev,
+          );
+        },
+      });
+    }
     if (!isPublished) {
       menu.push({ text: "Go public", onPress: () => void handleSetPublished(true) });
     } else {
@@ -1735,7 +1838,37 @@ export default function RecipeDetailScreen() {
           onToggleSave={() => toggleSave(recipeId)}
           onShare={handleShare}
           onMore={isRecipeOwner && !isSeedRecipeId(recipeId) ? openOwnerMenu : undefined}
+          showSloeImageLabel={isAiGeneratedHero}
         />
+
+        {isAiGeneratedHero ? (
+          <View style={{ paddingHorizontal: Spacing.md, paddingTop: Spacing.sm }}>
+            <Text
+              style={{
+                ...Type.caption,
+                color: colors.textSecondary,
+                backgroundColor: colors.card,
+                borderRadius: Radius.lg,
+                paddingHorizontal: Spacing.md,
+                paddingVertical: Spacing.sm,
+              }}
+            >
+              Sloe image is illustrative — generated from title + ingredients. Nutrition is
+              estimated separately and may not match the image exactly.
+            </Text>
+          </View>
+        ) : null}
+        {canGenerateSloeHero ? (
+          <View style={{ paddingHorizontal: Spacing.md, paddingTop: Spacing.sm }}>
+            <SupprButton
+              label={heroGenerating ? "Generating…" : "Generate an image"}
+              onPress={() => void generateSloeHero()}
+              disabled={heroGenerating}
+              loading={heroGenerating}
+              variant="primary"
+            />
+          </View>
+        ) : null}
 
         <View style={styles.body}>
           {/* 2. Title block — title, attribution, fits-your-day chip. */}

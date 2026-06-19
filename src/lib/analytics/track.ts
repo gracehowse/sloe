@@ -228,6 +228,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // tiers, quieted washes, de-chromed meal log). Default-on; OFF → the
   // pre-ENG-1099 tracker. Rollback = remove from this set / PostHog off.
   "today_tracker_tier_v1",
+  // ENG-863 — user-tapped Sloe image generation, labelling, nutrition-decouple
+  // copy, and removal on recipe heroes. Default-on with PostHog as kill switch.
+  "recipe_runtime_image_generation_v1",
   // ENG-1131 — web Plan parity: move-meal picker, templates dialog, portion
   // stepper (mobile already ships). Default-on; off → swap-only affordance.
   "plan_web_parity_v1",

@@ -43,6 +43,7 @@
 
 import { createFalClient } from "@fal-ai/client";
 import type { NanoBananaProInput } from "@fal-ai/client/endpoints";
+import sharp from "sharp";
 import { getSupabaseAdminClient } from "../supabase/serverAdminClient";
 import { describeDishAppearance } from "./llmDishAppearance";
 import {
@@ -130,6 +131,38 @@ const INGREDIENT_PREFIX = "ingredients";
 /** Storage upload cap for a generated image — generous; a Nano 2K jpeg is
  *  typically < 3 MB. Guards against a runaway fetch. */
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+const SLOE_IMAGE_XMP = `<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Sloe">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xmlns:xmpRights="http://ns.adobe.com/xap/1.0/rights/"
+      xmlns:Iptc4xmpCore="http://iptc.org/std/Iptc4xmpCore/1.0/xmlns/"
+      xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/">
+      <dc:creator><rdf:Seq><rdf:li>Sloe</rdf:li></rdf:Seq></dc:creator>
+      <dc:description><rdf:Alt><rdf:li xml:lang="x-default">Sloe image — AI-generated from recipe title and ingredients. Illustrative only; nutrition is estimated separately.</rdf:li></rdf:Alt></dc:description>
+      <xmpRights:Marked>True</xmpRights:Marked>
+      <Iptc4xmpCore:CreditLine>Sloe image</Iptc4xmpCore:CreditLine>
+      <photoshop:Source>Sloe AI image generation</photoshop:Source>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`;
+
+async function embedSloeImageMetadata(bytes: Buffer, contentType: string): Promise<Buffer> {
+  try {
+    let pipeline = sharp(bytes).withMetadata();
+    pipeline = pipeline.withXmp(SLOE_IMAGE_XMP);
+    if (contentType.includes("png")) return await pipeline.png().toBuffer();
+    if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+      return await pipeline.jpeg({ quality: 92 }).toBuffer();
+    }
+    return await pipeline.webp({ quality: 92 }).toBuffer();
+  } catch (err) {
+    console.warn("[fal/metadata] provenance metadata embed failed; uploading original bytes", err);
+    return bytes;
+  }
+}
 
 /** Function-level timeout for a single Nano generation. fal's own client-side
  *  `timeout` is documented as not enforced, so we bound it ourselves. A 2K Nano
@@ -470,6 +503,15 @@ async function persistToStorage(
   }
 
   const ext = contentType.includes("png") ? "png" : contentType.includes("jpeg") ? "jpg" : "webp";
+  bytes = await embedSloeImageMetadata(bytes, contentType);
+  if (bytes.byteLength > MAX_IMAGE_BYTES) {
+    return {
+      ok: false,
+      error: "download_failed",
+      message: "Generated image exceeded the size cap after metadata embedding.",
+      upstreamStatus: null,
+    };
+  }
   const path = `${prefix}/${slug}-${Date.now()}.${ext}`;
   const { error: uploadError } = await admin.storage.from(BUCKET).upload(path, bytes, {
     cacheControl: "31536000",

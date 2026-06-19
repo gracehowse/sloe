@@ -391,6 +391,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // macros) on the paywall comparison matrix. Default-on; off → legacy four-row
   // matrix without the two free callouts. Keep in sync with track.ts (web).
   "paywall_free_mfp_wins_v1",
+  // ENG-863 — user-tapped Sloe image generation, labelling, nutrition-decouple
+  // copy, and removal on recipe heroes. Default-on with PostHog as kill switch.
+  "recipe_runtime_image_generation_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in

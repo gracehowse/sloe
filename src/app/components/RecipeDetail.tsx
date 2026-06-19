@@ -434,6 +434,19 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [dbPrepMin, setDbPrepMin] = useState<number | null>(null);
   const [dbCookMin, setDbCookMin] = useState<number | null>(null);
   const [dbMealType, setDbMealType] = useState<string[] | null>(null);
+  const [dbImageUrl, setDbImageUrl] = useState<string | null>(
+    typeof recipe.image === "string" && recipe.image !== DEFAULT_UPLOADED_RECIPE_IMAGE
+      ? recipe.image
+      : null,
+  );
+  const [dbImageSource, setDbImageSource] = useState<string | null>(
+    (recipe as { imageSource?: string | null; image_source?: string | null }).imageSource ??
+      (recipe as { image_source?: string | null }).image_source ??
+      null,
+  );
+  const [heroPreviewUrl, setHeroPreviewUrl] = useState<string | null>(null);
+  const [heroGenerating, setHeroGenerating] = useState(false);
+  const [heroSaving, setHeroSaving] = useState(false);
   const [recipeEditOpen, setRecipeEditOpen] = useState(false);
   const [recipeYieldDraft, setRecipeYieldDraft] = useState("");
   const [recipeYieldSaving, setRecipeYieldSaving] = useState(false);
@@ -738,13 +751,23 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       setDbFetchFailed(false);
       setDbPrepMin(null);
       setDbCookMin(null);
-      const { data: row, error: recipeError } = await supabase
+      let recipeRes = await supabase
         .from("recipes")
         .select(
-          "description, instructions, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, meal_type, prep_time_min, cook_time_min",
+          "description, instructions, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, meal_type, prep_time_min, cook_time_min, image_url, image_source",
         )
         .eq("id", recipe.id)
         .maybeSingle();
+      if (recipeRes.error?.code === "42703") {
+        recipeRes = await supabase
+          .from("recipes")
+          .select(
+            "description, instructions, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, meal_type, prep_time_min, cook_time_min, image_url",
+          )
+          .eq("id", recipe.id)
+          .maybeSingle();
+      }
+      const { data: row, error: recipeError } = recipeRes;
 
       if (cancelled) return;
       if (recipeError || !row) {
@@ -759,6 +782,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       setDbCookMin(Number.isFinite(cookRaw) && cookRaw > 0 ? Math.round(cookRaw) : null);
 
       setDbDescription((row.description as string | null) ?? null);
+      setDbImageUrl((row.image_url as string | null) ?? null);
+      setDbImageSource((row.image_source as string | null) ?? null);
       setDbInstructionsText((row.instructions as string | null) ?? null);
       setDbServings((row.servings as number) ?? recipe.servings);
       const mt = (row as { meal_type?: string[] | string | null }).meal_type;
@@ -843,6 +868,90 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   }, [recipeYieldEditing]);
 
   const ingredients = dbIngredients;
+  const sloeImageRuntimeEnabled = isFeatureEnabled("recipe_runtime_image_generation_v1");
+  const heroImageSource = dbImageSource;
+  const isAiGeneratedHero = sloeImageRuntimeEnabled && heroImageSource === "ai_generated";
+
+  const generateHeroPreview = useCallback(async () => {
+    if (!authUserId || !isMyRecipe || heroGenerating) return;
+    setHeroGenerating(true);
+    try {
+      const res = await fetch("/api/recipe-import/image-hero", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          recipeId: recipe.id,
+          title: recipe.title,
+          ingredients: ingredients.map((ing) => ing.name).filter(Boolean).slice(0, 12),
+          preview: true,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; url?: string; message?: string; reason?: string };
+      if (!res.ok || !json.ok || !json.url) {
+        toast.error(json.message ?? json.reason ?? "Could not generate an image.");
+        return;
+      }
+      setHeroPreviewUrl(json.url);
+    } catch {
+      toast.error("Could not generate an image.");
+    } finally {
+      setHeroGenerating(false);
+    }
+  }, [authUserId, heroGenerating, ingredients, isMyRecipe, recipe.id, recipe.title]);
+
+  const approveHeroPreview = useCallback(async () => {
+    if (!authUserId || !isMyRecipe || !heroPreviewUrl || heroSaving) return;
+    setHeroSaving(true);
+    try {
+      const { error } = await supabase
+        .from("recipes")
+        .update({
+          image_url: heroPreviewUrl,
+          image_source: "ai_generated",
+          image_model: "fal-ai/nano-banana-pro",
+          image_generated_at: new Date().toISOString(),
+        })
+        .eq("id", recipe.id)
+        .eq("author_id", authUserId);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setDbImageUrl(heroPreviewUrl);
+      setDbImageSource("ai_generated");
+      setHeroPreviewUrl(null);
+      await refreshMyLibraryRecipes();
+      toast.success("Sloe image saved");
+    } finally {
+      setHeroSaving(false);
+    }
+  }, [authUserId, heroPreviewUrl, heroSaving, isMyRecipe, recipe.id, refreshMyLibraryRecipes]);
+
+  const removeGeneratedHero = useCallback(async () => {
+    if (!authUserId || !isMyRecipe || heroSaving) return;
+    setHeroSaving(true);
+    try {
+      const res = await fetch("/api/recipe-import/image-hero", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ recipeId: recipe.id, remove: true }),
+      });
+      const json = (await res.json()) as { ok?: boolean; message?: string; reason?: string };
+      if (!res.ok || !json.ok) {
+        toast.error(json.message ?? json.reason ?? "Could not remove the image.");
+        return;
+      }
+      setDbImageUrl(null);
+      setDbImageSource(null);
+      setHeroPreviewUrl(null);
+      await refreshMyLibraryRecipes();
+      toast.success("Sloe image removed");
+    } finally {
+      setHeroSaving(false);
+    }
+  }, [authUserId, heroSaving, isMyRecipe, recipe.id, refreshMyLibraryRecipes]);
 
   // Sloe image system (2026-06-08) — hydrate the ingredient tile images
   // by `name_key`. Keyed on the joined names so it only re-fetches when
@@ -1542,15 +1651,16 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           (right) float as 40px frosted circles. Replaces the old cream sticky
           nav bar + rounded hero. */}
       {(() => {
+        const effectiveImage = heroPreviewUrl ?? dbImageUrl ?? recipe.image;
         const hasRealImage =
-          typeof recipe.image === "string" &&
-          recipe.image !== "" &&
-          recipe.image !== DEFAULT_UPLOADED_RECIPE_IMAGE;
+          typeof effectiveImage === "string" &&
+          effectiveImage !== "" &&
+          effectiveImage !== DEFAULT_UPLOADED_RECIPE_IMAGE;
         const ladderSrc = pickHeroImageUrl({
-          image_url: hasRealImage ? recipe.image : null,
+          image_url: hasRealImage ? effectiveImage : null,
           source_url: recipe.sourceUrl ?? null,
         });
-        const heroSrc = ladderSrc ?? (hasRealImage ? recipe.image : null);
+        const heroSrc = ladderSrc ?? (hasRealImage ? effectiveImage : null);
         const heroCircle =
           "w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-all";
         return (
@@ -1573,6 +1683,42 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={56} />
               </div>
             )}
+            {isAiGeneratedHero || heroPreviewUrl ? (
+              <div className="absolute bottom-4 left-4 rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                Sloe image
+              </div>
+            ) : null}
+            {sloeImageRuntimeEnabled && isMyRecipe && !heroSrc ? (
+              <button
+                type="button"
+                onClick={() => void generateHeroPreview()}
+                disabled={heroGenerating}
+                className="absolute bottom-4 left-4 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+              >
+                {heroGenerating ? "Generating…" : "Generate an image"}
+              </button>
+            ) : null}
+            {heroPreviewUrl ? (
+              <div className="absolute inset-x-4 bottom-4 flex flex-wrap items-center gap-2 rounded-xl bg-black/55 p-3 text-white backdrop-blur-sm">
+                <p className="mr-auto text-sm">Preview this Sloe image before saving.</p>
+                <button
+                  type="button"
+                  onClick={() => setHeroPreviewUrl(null)}
+                  className="rounded-full border border-white/50 px-3 py-1 text-sm"
+                  disabled={heroSaving}
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void approveHeroPreview()}
+                  className="rounded-full bg-white px-3 py-1 text-sm text-foreground"
+                  disabled={heroSaving}
+                >
+                  {heroSaving ? "Saving…" : "Approve"}
+                </button>
+              </div>
+            ) : null}
             {/* Top scrim — rgba(0,0,0,0.4) → transparent. */}
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
             {/* Overlaid controls. */}
@@ -1628,6 +1774,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                       {!isCatalogRecipe ? (
                         <DropdownMenuItem onSelect={() => setRecipeEditOpen(true)}>Edit</DropdownMenuItem>
                       ) : null}
+                      {isAiGeneratedHero ? (
+                        <DropdownMenuItem disabled={heroSaving} onSelect={() => void removeGeneratedHero()}>
+                          Remove Sloe image
+                        </DropdownMenuItem>
+                      ) : null}
                       {isPublished === false ? (
                         <DropdownMenuItem
                           disabled={dbLoading}
@@ -1652,6 +1803,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           </div>
         );
       })()}
+      {isAiGeneratedHero ? (
+        <div className="px-4 pt-3">
+          <p className="rounded-xl bg-card px-4 py-3 text-xs text-muted-foreground">
+            Sloe image is illustrative — generated from title + ingredients. Nutrition is
+            estimated separately and may not match the image exactly.
+          </p>
+        </div>
+      ) : null}
       {/* Audit 2026-04-30 visual-qa P0 #3 — controlled mobile-menu
           dialogs. They're rendered outside the sticky header so the
           dropdown can close cleanly before the dialog opens. */}
