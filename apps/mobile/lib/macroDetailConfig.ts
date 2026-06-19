@@ -12,13 +12,22 @@ import type { Meal } from "@/app/useMacroDetail";
  * one module, so the set of macros that opens a breakdown can never drift from
  * the set of macros the screen can actually render.
  *
- * `MACRO_CONFIG` defines protein/carbs/fat/fiber/calories/water. Reference-only
- * nutrients (sugar, sodium) are deliberately absent: they have no per-meal
- * breakdown, so the Today tiles/bars must render them as plain, non-interactive
- * elements and a deep-link to `/macro-detail?macro=sugar` must not silently fall
- * back to protein's data. Mobile DOES support `water` + `calories` here (unlike
- * the web key set, whose handler only resolves protein/carbs/fat/fiber) — see
- * the parity note in the ENG-1213 commit. Mirrors web ENG-1212 / ENG-848.
+ * `MACRO_CONFIG` defines protein/carbs/fat/fiber/calories/water — these are the
+ * keys the macro-detail SCREEN can render. Reference-only nutrients (sugar,
+ * sodium) are deliberately absent: they have no per-meal breakdown, so the Today
+ * tiles/bars must render them as plain, non-interactive elements and a deep-link
+ * to `/macro-detail?macro=sugar` must not silently fall back to protein's data.
+ *
+ * The TILE-AFFORDANCE set (`MACRO_DETAIL_SUPPORTED_KEYS`) is narrower than
+ * `MACRO_CONFIG`: it excludes `calories` because there is NO calories tile —
+ * calories is the ring — so calories must never render as a tappable tile/bar.
+ * The screen still renders calories via `MACRO_CONFIG[macro]` for the ring
+ * deep-link (it checks `MACRO_CONFIG`, not the supported set). `water` IS in the
+ * affordance set: it has a real per-meal breakdown (`nutrition_entries.water_ml`
+ * → a "By meal" list; excluded from the "By ingredient" toggle). This exact set
+ * — {protein, carbs, fat, fiber, water} — is now web↔mobile parity (ENG-1213);
+ * web matches it in `src/app/components/MacroDetailPanel.tsx`. Mirrors web
+ * ENG-1212 / ENG-848.
  */
 export const MACRO_CONFIG: Record<
   string,
@@ -39,18 +48,30 @@ export const MACRO_CONFIG: Record<
 };
 
 /**
- * Single source of truth for which macro keys open the per-macro breakdown —
- * DERIVED from `MACRO_CONFIG` so the tile/bar affordance and the screen can
- * never disagree.
+ * Single source of truth for which macro keys render an interactive tile/bar
+ * (i.e. open the per-macro breakdown). An EXPLICIT list — NOT `Object.keys(
+ * MACRO_CONFIG)` — because the tile-affordance set is deliberately narrower than
+ * the screen's renderable set: `calories` is in `MACRO_CONFIG` (so the screen
+ * can render the ring deep-link) but is excluded here because there is no
+ * calories tile. This {protein, carbs, fat, fiber, water} set is web↔mobile
+ * parity (ENG-1213).
+ *
+ * The macro-detail SCREEN gates on `MACRO_CONFIG[macro]`, not on this set, so
+ * dropping `calories` here does NOT stop the screen rendering a calories
+ * breakdown — it only stops a calories TILE/BAR from existing (there is none).
  *
  * Consumed by:
  *   - apps/mobile/app/macro-detail.tsx (the screen's own unsupported-key guard)
  *   - apps/mobile/components/today/TodayDashboardMacroTiles.tsx (tile affordance)
  *   - apps/mobile/components/today/TodayDashboardMacroBars.tsx  (bar affordance)
  */
-export const MACRO_DETAIL_SUPPORTED_KEYS = Object.keys(
-  MACRO_CONFIG,
-) as readonly string[];
+export const MACRO_DETAIL_SUPPORTED_KEYS = [
+  "protein",
+  "carbs",
+  "fat",
+  "fiber",
+  "water",
+] as readonly string[];
 
 const MACRO_DETAIL_SUPPORTED_SET: ReadonlySet<string> = new Set(
   MACRO_DETAIL_SUPPORTED_KEYS,

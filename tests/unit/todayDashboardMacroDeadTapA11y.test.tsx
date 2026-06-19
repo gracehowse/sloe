@@ -1,22 +1,23 @@
 /**
  * ENG-848 — macro dead-tap a11y fix (web).
+ * ENG-1213 — web↔mobile water-breakdown parity (water is now interactive).
  *
  * PR #471 wired the per-macro detail panel behind `web_macro_detail_panel`.
  * When the host passes `onPressMacro`, the macro tiles + bars rendered EVERY
  * macro — including reference-only sugar/sodium/water — as a real interactive
- * `<button>` with role=button, an "Open … breakdown" aria-label, and full
- * hover/focus/active affordance. But the host's `openMacroDetail` handler only
- * resolves protein/carbs/fat/fiber (the panel has no breakdown for the others),
- * so sugar/sodium/water were DEAD TAPS: a screen reader announced an actionable
- * control that did nothing.
+ * `<button>`. But the host's `openMacroDetail` handler only resolved
+ * protein/carbs/fat/fiber, so sugar/sodium/water were DEAD TAPS.
  *
- * The fix makes the interactive affordance conditional per-macro via the shared
- * `isMacroDetailSupported` source of truth (exported from MacroDetailPanel and
- * reused by the tiles, the bars, AND the handler guard). These tests render the
- * real components (NOT a source grep) and assert that, with `onPressMacro`
- * wired:
- *   - protein/carbs/fat/fiber DO render as buttons with the breakdown label
- *   - sugar/sodium/water do NOT render as buttons (plain static element,
+ * ENG-1213 levelled web UP to mobile: web now has a real water breakdown
+ * (per-meal, sourced from `nutrition_entries.water_ml`), so `water` joins the
+ * supported set and is interactive again. sugar/sodium stay reference-only and
+ * non-interactive on both platforms. The interactive set is now exactly
+ * {protein, carbs, fat, fiber, water} on web AND mobile.
+ *
+ * These tests render the real components (NOT a source grep) and assert that,
+ * with `onPressMacro` wired:
+ *   - protein/carbs/fat/fiber/water DO render as buttons with the breakdown label
+ *   - sugar/sodium do NOT render as buttons (plain static element,
  *     no role=button, no "Open … breakdown" aria-label)
  */
 import { describe, it, expect, vi } from "vitest";
@@ -48,8 +49,8 @@ const ALL_MACROS = [
   "water",
 ];
 
-const SUPPORTED = ["protein", "carbs", "fat", "fiber"];
-const UNSUPPORTED = ["sugar", "sodium", "water"];
+const SUPPORTED = ["protein", "carbs", "fat", "fiber", "water"];
+const UNSUPPORTED = ["sugar", "sodium"];
 
 const tilesProps = {
   trackedMacros: ALL_MACROS,
@@ -85,15 +86,18 @@ const barsProps = {
   waterTargetMl: 2500,
 };
 
-describe("macro-detail supported-key source of truth (ENG-848)", () => {
-  it("enumerates exactly protein/carbs/fat/fiber", () => {
+describe("macro-detail supported-key source of truth (ENG-848 / ENG-1213)", () => {
+  it("enumerates exactly protein/carbs/fat/fiber/water (web↔mobile parity)", () => {
     expect([...MACRO_DETAIL_SUPPORTED_KEYS]).toEqual(SUPPORTED);
   });
 
-  it("treats reference-only nutrients as unsupported", () => {
+  it("treats reference-only sugar/sodium as unsupported; water IS supported", () => {
     for (const k of SUPPORTED) expect(isMacroDetailSupported(k)).toBe(true);
     for (const k of UNSUPPORTED) expect(isMacroDetailSupported(k)).toBe(false);
-    // `calories` is a valid MacroKey for the panel but is not a tile/bar.
+    // water joined the interactive set (ENG-1213 — real per-meal breakdown).
+    expect(isMacroDetailSupported("water")).toBe(true);
+    // `calories` is a valid MacroKey the panel can render (ring deep-link) but
+    // is NOT a tile/bar — there is no calories tile (calories is the ring).
     expect(isMacroDetailSupported("calories")).toBe(false);
   });
 });
@@ -127,9 +131,10 @@ describe("TodayDashboardMacroTiles — dead-tap a11y (ENG-848)", () => {
       <TodayDashboardMacroTiles {...tilesProps} onPressMacro={() => undefined} />,
     );
     expect(queryByRole("button", { name: "Open Protein breakdown" })).toBeTruthy();
+    // ENG-1213: water is interactive again now web has a real water breakdown.
+    expect(queryByRole("button", { name: "Open Water breakdown" })).toBeTruthy();
     expect(queryByRole("button", { name: "Open Sugar breakdown" })).toBeNull();
     expect(queryByRole("button", { name: "Open Sodium breakdown" })).toBeNull();
-    expect(queryByRole("button", { name: "Open Water breakdown" })).toBeNull();
   });
 });
 

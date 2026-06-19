@@ -650,6 +650,12 @@ export const NutritionTracker = memo(function NutritionTracker({
         carbs: meal.carbs,
         fat: meal.fat,
         fiberG: mealContributedFiberG(meal),
+        // ENG-1213 web↔mobile water-breakdown parity: carry per-meal water so
+        // the macro-detail panel's By-meal view can total water for macro="water"
+        // (mirrors mobile useMacroDetail's `water_ml` → waterMl mapping). The
+        // source value already flows DB → LoggedMeal via useNutritionJournalState
+        // (`water_ml` → `waterMl`).
+        waterMl: meal.waterMl ?? 0,
         micros: meal.micros ?? null,
       })),
     [mealsForSelectedDate],

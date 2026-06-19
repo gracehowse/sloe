@@ -122,18 +122,22 @@ afterEach(() => {
   delete searchParams.date;
 });
 
-describe("ENG-1213 shared supported-key source", () => {
-  it("supports exactly the macros macro-detail.tsx can render (NOT sugar/sodium)", () => {
-    // Derived from MACRO_CONFIG — the single source of truth the tiles, bars,
-    // and the screen all consume. Sugar/sodium are absent so they can never
-    // resolve to a breakdown.
+describe("ENG-1213 shared supported-key source (web↔mobile parity)", () => {
+  it("tile-affordance set is exactly {protein,carbs,fat,fiber,water} — calories excluded", () => {
+    // The interactive tile/bar set is web↔mobile parity (ENG-1213). It is
+    // NARROWER than MACRO_CONFIG: calories is excluded because there is no
+    // calories tile (calories is the ring). Sugar/sodium are reference-only and
+    // never resolve to a breakdown. Web matches this set in MacroDetailPanel.tsx.
     expect([...MACRO_DETAIL_SUPPORTED_KEYS].sort()).toEqual(
-      ["calories", "carbs", "fat", "fiber", "protein", "water"].sort(),
+      ["carbs", "fat", "fiber", "protein", "water"].sort(),
     );
-    expect(isMacroDetailSupported("sugar")).toBe(false);
-    expect(isMacroDetailSupported("sodium")).toBe(false);
     expect(isMacroDetailSupported("protein")).toBe(true);
     expect(isMacroDetailSupported("water")).toBe(true);
+    // calories is renderable by the SCREEN (via MACRO_CONFIG, ring deep-link)
+    // but is NOT a tile/bar affordance — there is no calories tile.
+    expect(isMacroDetailSupported("calories")).toBe(false);
+    expect(isMacroDetailSupported("sugar")).toBe(false);
+    expect(isMacroDetailSupported("sodium")).toBe(false);
   });
 });
 
