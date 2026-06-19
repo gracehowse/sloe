@@ -18,9 +18,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   FatSecretTierError,
+  __clearFatSecretOAuth2MemoryCacheForTests,
   __resetFatSecretOAuth2CacheForTests,
+  __setFatSecretRedisForTests,
   fatSecretConfigFromEnv,
   fatSecretFoodCategoriesGet,
+  fatSecretFoodSearch,
   fatSecretFoodsAutocomplete,
   fatSecretTierFromEnv,
 } from "../../src/lib/fatsecret/client";
@@ -32,6 +35,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  __setFatSecretRedisForTests(undefined);
   process.env = { ...ORIGINAL_ENV };
   vi.restoreAllMocks();
 });
@@ -283,5 +287,118 @@ describe("OAuth2 scope flag for Premier tier", () => {
     });
     expect(calls.at(-1) ?? "").toContain("scope=basic");
     expect(calls.at(-1) ?? "").not.toContain("premier");
+  });
+});
+
+
+// ── OAuth2 Redis cache behaviour ─────────────────────────────────────
+
+type RedisSetCall = { key: string; value: string; opts?: { ex?: number } };
+
+function createFakeRedis(opts?: { throwOn?: "get" | "set" | "del" }) {
+  const store = new Map<string, string>();
+  const setCalls: RedisSetCall[] = [];
+  return {
+    store,
+    setCalls,
+    async get<T = unknown>(key: string): Promise<T | null> {
+      if (opts?.throwOn === "get") throw new Error("redis get failed");
+      return (store.get(key) ?? null) as T | null;
+    },
+    async set(key: string, value: string, setOpts?: { ex?: number }): Promise<"OK"> {
+      if (opts?.throwOn === "set") throw new Error("redis set failed");
+      setCalls.push({ key, value, opts: setOpts });
+      store.set(key, value);
+      return "OK";
+    },
+    async del(...keys: string[]): Promise<number> {
+      if (opts?.throwOn === "del") throw new Error("redis del failed");
+      let deleted = 0;
+      for (const key of keys) {
+        if (store.delete(key)) deleted += 1;
+      }
+      return deleted;
+    },
+  };
+}
+
+function mockOAuth2Fetch(expiresIn: number): { tokenMints: () => number } {
+  let tokenMints = 0;
+  vi.spyOn(globalThis, "fetch" as never).mockImplementation(
+    ((url: any) => {
+      const u = typeof url === "string" ? url : (url as URL).toString();
+      if (u.includes("oauth.fatsecret.com/connect/token")) {
+        tokenMints += 1;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ access_token: `token-${tokenMints}`, expires_in: expiresIn }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ foods: { food: [] } }),
+      } as Response);
+    }) as never,
+  );
+  return { tokenMints: () => tokenMints };
+}
+
+describe("OAuth2 Redis cache", () => {
+  it("reuses one minted token across reset-simulated cold starts when Redis is configured", async () => {
+    const redis = createFakeRedis();
+    __setFatSecretRedisForTests(redis as never);
+    const fetchSpy = mockOAuth2Fetch(3600);
+    const cfg = { consumerKey: "k", consumerSecret: "s", tier: "basic" as const };
+
+    await fatSecretFoodSearch(cfg, "milk");
+    __clearFatSecretOAuth2MemoryCacheForTests();
+    await fatSecretFoodSearch(cfg, "milk");
+
+    expect(fetchSpy.tokenMints()).toBe(1);
+    expect(redis.store.get("fs_oauth2_token:basic")).toBe("token-1");
+  });
+
+  it("writes Redis token TTL as expires_in minus 60 seconds, clamped to at least 60", async () => {
+    const redis = createFakeRedis();
+    __setFatSecretRedisForTests(redis as never);
+    const cfg = { consumerKey: "k", consumerSecret: "s", tier: "basic" as const };
+
+    mockOAuth2Fetch(3600);
+    await fatSecretFoodSearch(cfg, "milk");
+    expect(redis.setCalls.at(-1)).toMatchObject({ key: "fs_oauth2_token:basic", opts: { ex: 3540 } });
+
+    __clearFatSecretOAuth2MemoryCacheForTests();
+    redis.store.clear();
+    mockOAuth2Fetch(30);
+    await fatSecretFoodSearch(cfg, "milk");
+    expect(redis.setCalls.at(-1)).toMatchObject({ key: "fs_oauth2_token:basic", opts: { ex: 60 } });
+  });
+
+  it("partitions Basic and Premier tokens into distinct Redis keys", async () => {
+    const redis = createFakeRedis();
+    __setFatSecretRedisForTests(redis as never);
+    mockOAuth2Fetch(3600);
+
+    await fatSecretFoodSearch({ consumerKey: "k", consumerSecret: "s", tier: "basic" }, "milk");
+    __clearFatSecretOAuth2MemoryCacheForTests();
+    await fatSecretFoodsAutocomplete({ consumerKey: "k", consumerSecret: "s", tier: "premier" }, "milk");
+
+    expect(redis.setCalls.map((call) => call.key)).toEqual([
+      "fs_oauth2_token:basic",
+      "fs_oauth2_token:premier",
+    ]);
+  });
+
+  it("fails open when Redis is unavailable", async () => {
+    const redis = createFakeRedis({ throwOn: "get" });
+    __setFatSecretRedisForTests(redis as never);
+    const fetchSpy = mockOAuth2Fetch(3600);
+
+    await expect(
+      fatSecretFoodSearch({ consumerKey: "k", consumerSecret: "s", tier: "basic" }, "milk"),
+    ).resolves.toEqual([]);
+    expect(fetchSpy.tokenMints()).toBe(1);
   });
 });
