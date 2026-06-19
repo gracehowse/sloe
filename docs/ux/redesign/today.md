@@ -528,19 +528,19 @@ The proposed render order (day view, canonical):
 8. Meals section (slots, rows, quick-add accordion)
 9. North-star card (empty-day-only)
 10. WeeklyInsightCard
-11. WeeklyCheckinBanner / card (when applicable)
-12. OnboardingNudgeBanner (when applicable)
-13. TodayFirstMealEmptyState (brand-new, no meals)
-14. TodayPlannedMealsCard
-15. Activity card (steps histogram)
-16. Activity bonus card (burn breakdown, TDEE sparkline, toggle)
-17. Hydration & stimulants card
-18. Complete Day button
+11. WeeklyCheckinBanner / compact onboarding nudge (when applicable; max one interruption, ENG-1183)
+12. TodayFirstMealEmptyState (brand-new, no meals)
+13. TodayPlannedMealsCard
+14. Activity card (steps histogram)
+15. Activity bonus card (burn breakdown, TDEE sparkline, toggle)
+16. Hydration & stimulants card
+17. Complete Day button
 ```
 
 **Changes from current order:**
 - Deficit insight moved up to position 7 (before meals) so the user sees budget context before the log.
 - North-star moved to position 9 (below meals on empty day) — unchanged from current.
+- ENG-1183: onboarding/check-in prompt chrome stays below meals and is capped to one compact interruption so the hero ring, status chip, and maintenance rationale remain reachable on cold open.
 - Week mode branch: pending resolution of the undiscoverable-toggle issue (see §6.1 below). The week view is not redesigned here until a decision is made on whether it survives.
 
 ---
