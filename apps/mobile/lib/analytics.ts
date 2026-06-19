@@ -371,11 +371,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "paywall_trust_inline_v1",
   // ENG-889 — coach line inside Today hero card (Figma `654:2`). Default-on.
   "today_coach_in_hero_v1",
-  // ENG-685 — adopt expo-image (200ms fade + memory-disk cache + recyclingKey)
-  // to kill recipe-card/hero image pop-in. Ships OFF; ramp via PostHog. Off →
-  // SmartImage renders the verbatim RN Image (kill switch). NOT default-on.
-  "expo_image_adoption_v1",
 ]);
+
+// NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
+// REDESIGN_DEFAULT_ON — it ships OFF and ramps via PostHog. SmartImage falls
+// through isFeatureEnabled → PostHog (false until ramped), rendering the
+// verbatim RN Image kill-switch by default. No registry entry is required for
+// an off-by-default flag.
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of
