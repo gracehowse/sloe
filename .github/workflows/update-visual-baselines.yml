@@ -40,7 +40,7 @@ on:
       ref:
         description: "Branch to regenerate baselines on and commit back to"
         required: true
-        default: ${{ github.ref_name }}
+        default: main
       spec:
         description: "Optional single spec file to limit the update (e.g. tests/e2e/visual-audit-authed.spec.ts). Leave blank for all visual specs."
         required: false
