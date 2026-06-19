@@ -2,6 +2,8 @@ import { headers } from "next/headers";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
+import { recordUpstashFailure } from "./upstashMonitoring";
+
 type Bucket = {
   count: number;
   resetAtMs: number;
@@ -136,6 +138,10 @@ async function rateLimitUpstash(key: string, ip: string, limiter: Ratelimit): Pr
       "[rateLimit] Upstash call threw — falling through to fail-closed/memory path:",
       err instanceof Error ? err.message : String(err),
     );
+    recordUpstashFailure(
+      { subsystem: "rate_limit", mode: "call_threw", operation: "limit", failBehavior: "closed" },
+      err,
+    );
     return null;
   }
 }
@@ -178,6 +184,14 @@ export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitResult
     console.error(
       `[rateLimit] Upstash env missing in production — failing closed for "${opts.keyPrefix}". Set UPSTASH_REDIS_REST_URL/TOKEN.`,
     );
+    recordUpstashFailure({
+      subsystem: "rate_limit",
+      mode: "env_missing",
+      operation: "configure",
+      failBehavior: "closed",
+      keyPrefix: opts.keyPrefix,
+      message: "UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN is missing in production",
+    });
     return {
       ok: false,
       remaining: 0,

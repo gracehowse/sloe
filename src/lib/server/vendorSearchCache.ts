@@ -53,6 +53,8 @@
 
 import { Redis } from "@upstash/redis";
 
+import { recordUpstashFailure } from "./upstashMonitoring";
+
 export type VendorId = "usda" | "edamam" | "fatsecret" | "off";
 
 /** Locale tag bucketed to a region for cache-key stability. Vendor results
@@ -238,6 +240,10 @@ export async function getCachedSearch<T = unknown>(
       `[vendorSearchCache] read failed (${vendor}) — treating as miss:`,
       err instanceof Error ? err.message : String(err),
     );
+    recordUpstashFailure(
+      { subsystem: "vendor_cache", mode: "read_failed", operation: "search_read", failBehavior: "soft", vendor },
+      err,
+    );
     return null;
   }
 }
@@ -274,6 +280,10 @@ export async function setCachedSearch(
     console.error(
       `[vendorSearchCache] write failed (${vendor}) — continuing uncached:`,
       err instanceof Error ? err.message : String(err),
+    );
+    recordUpstashFailure(
+      { subsystem: "vendor_cache", mode: "write_failed", operation: "search_write", failBehavior: "soft", vendor },
+      err,
     );
   }
 }
@@ -319,6 +329,10 @@ export async function getCachedDetail<T = unknown>(
       `[vendorSearchCache] detail read failed (${vendor}) — treating as miss:`,
       err instanceof Error ? err.message : String(err),
     );
+    recordUpstashFailure(
+      { subsystem: "vendor_cache", mode: "read_failed", operation: "detail_read", failBehavior: "soft", vendor },
+      err,
+    );
     return null;
   }
 }
@@ -350,6 +364,10 @@ export async function setCachedDetail(
     console.error(
       `[vendorSearchCache] detail write failed (${vendor}) — continuing uncached:`,
       err instanceof Error ? err.message : String(err),
+    );
+    recordUpstashFailure(
+      { subsystem: "vendor_cache", mode: "write_failed", operation: "detail_write", failBehavior: "soft", vendor },
+      err,
     );
   }
 }
@@ -433,6 +451,16 @@ export async function consumeQuota(vendor: VendorId): Promise<QuotaDecision> {
     console.error(
       `[vendorSearchCache] quota consume failed (${vendor}) — allowing (fail-open):`,
       err instanceof Error ? err.message : String(err),
+    );
+    recordUpstashFailure(
+      {
+        subsystem: "vendor_quota",
+        mode: "quota_consume_failed",
+        operation: "consume_quota",
+        failBehavior: "open",
+        vendor,
+      },
+      err,
     );
     // Fail-open on the consume too: the vendor's own 429 + the cache are the
     // backstop; we never want a Redis blip to brown out search for everyone.

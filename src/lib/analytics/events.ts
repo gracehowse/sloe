@@ -984,6 +984,11 @@ export const AnalyticsEvents = {
    * ENG-543 (in-flight dedup) actually paid off in production.
    */
   today_journal_loaded_ms: "today_journal_loaded_ms",
+  /** ENG-1114 — server-side Upstash dependency failure. Payload:
+   * `{ subsystem, mode, operation, fail_behavior, vendor?, key_prefix?, error_message? }`.
+   * Fired with distinct_id `system:upstash` from server-only monitoring hooks
+   * so PostHog can count failures alongside the Sentry alert. */
+  upstash_dependency_failure: "upstash_dependency_failure",
   /** ENG-8 — server-side voice-log route completed. Payload:
    * `{ totalElapsedMs, aiParseMs, verifyMs, itemCount, confidenceTier }`.
    * Fires on success only (errors already captured by Sentry). Used to
