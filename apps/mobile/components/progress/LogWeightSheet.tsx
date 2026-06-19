@@ -19,8 +19,6 @@ import { FontFamily, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
-import { supabase } from "@/lib/supabase";
-import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { kgToLb, lbToKg } from "@suppr/shared/units/imperial";
 import { isNewWeightLow } from "@suppr/shared/nutrition/weightWinMoment";
 
@@ -38,15 +36,6 @@ import { isNewWeightLow } from "@suppr/shared/nutrition/weightWinMoment";
  * the same optimistic-update + restore-on-error pattern, the same
  * adaptive-TDEE refresh on persist, the same 400-day JSONB prune.
  */
-
-const MAX_JSONB_DAYS = 400;
-
-function pruneByDay(map: Record<string, number>): Record<string, number> {
-  const keys = Object.keys(map).sort().reverse().slice(0, MAX_JSONB_DAYS);
-  const pruned: Record<string, number> = {};
-  for (const k of keys) pruned[k] = map[k];
-  return pruned;
-}
 
 function isoTodayKey(): string {
   const d = new Date();
@@ -95,9 +84,16 @@ export interface LogWeightSheetProps {
    * value for that date. Null/undefined = the normal "log today" flow.
    */
   editDate?: string | null;
+  onSaveWeight: (
+    kg: number,
+    dateKey: string,
+  ) => Promise<{
+    weightKgByDay: Record<string, number>;
+    weightKg: number | null;
+  }>;
   onSaved: (next: {
     weightKgByDay: Record<string, number>;
-    weightKg: number;
+    weightKg: number | null;
     /**
      * ENG-824 (Redesign — Design Direction 2026) — the just-saved weigh-in was
      * a new all-time low (strictly below the prior minimum). The parent uses
@@ -116,6 +112,7 @@ export function LogWeightSheet({
   weightKgByDay,
   weightKg,
   editDate,
+  onSaveWeight,
   onSaved,
 }: LogWeightSheetProps) {
   const colors = useThemeColors();
@@ -160,53 +157,57 @@ export function LogWeightSheet({
     const winMomentEnabled = isFeatureEnabled("redesign_winmoment");
     const newLow =
       winMomentEnabled &&
-      isNewWeightLow({ savedKg: kg, priorByDay: weightKgByDay, targetDateKey: targetKey });
-    const next = pruneByDay({ ...weightKgByDay, [targetKey]: kg });
-    // The scalar `weight_kg` represents the latest weight. Only update it
-    // when the edited/logged entry IS (or becomes) the newest dated entry —
-    // editing an OLD weigh-in must not overwrite the current weight.
-    const newest = newestDateKey(next);
-    const touchesLatest = newest === targetKey;
+      isNewWeightLow({
+        savedKg: kg,
+        priorByDay: weightKgByDay,
+        targetDateKey: targetKey,
+      });
     setSaving(true);
-    const update: { weight_kg_by_day: Record<string, number>; weight_kg?: number } = {
-      weight_kg_by_day: next,
+    let saved: {
+      weightKgByDay: Record<string, number>;
+      weightKg: number | null;
     };
-    if (touchesLatest) update.weight_kg = kg;
-    const { error } = await supabase
-      .from("profiles")
-      .update(update)
-      .eq("id", userId);
-    setSaving(false);
-    if (error) {
+    try {
+      saved = await onSaveWeight(kg, targetKey);
+    } catch (error) {
+      setSaving(false);
       Alert.alert(
         isEditing ? "Couldn't update weight" : "Couldn't save weight",
-        error.message ?? "Try again.",
+        error instanceof Error ? error.message : "Try again.",
       );
       return;
     }
-    // Fire-and-forget — TDEE re-learn pulls from the fresh log.
-    void refreshAdaptiveTdeeForUser(supabase, userId);
+    setSaving(false);
     // ENG-824 — quiet <100ms confirm on every save; a loud success
     // notification is RESERVED for the new-low landmark (the parent plays the
     // WinMomentPlayer on the same beat). Both behind `redesign_winmoment`;
     // flag-off fires neither, preserving today's silent weigh-in.
     if (winMomentEnabled) {
       if (newLow) {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        void Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        );
       } else {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
     }
     onSaved({
-      weightKgByDay: next,
-      // Report the scalar the parent should show: the latest weight after the
-      // write. If we edited the latest entry that's `kg`; otherwise it's the
-      // existing newest value (unchanged).
-      weightKg: touchesLatest ? kg : (newest ? next[newest] : kg),
+      weightKgByDay: saved.weightKgByDay,
+      weightKg: saved.weightKg,
       isNewLow: newLow,
     });
     onClose();
-  }, [input, isImperial, userId, weightKgByDay, editDate, isEditing, onSaved, onClose]);
+  }, [
+    input,
+    isImperial,
+    userId,
+    weightKgByDay,
+    editDate,
+    isEditing,
+    onSaveWeight,
+    onSaved,
+    onClose,
+  ]);
 
   return (
     <Modal
@@ -232,7 +233,9 @@ export function LogWeightSheet({
           testID="log-weight-sheet"
         >
           <View style={styles.handleRow}>
-            <View style={[styles.grabber, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.grabber, { backgroundColor: colors.border }]}
+            />
           </View>
           <View style={styles.headerRow}>
             <Text style={[styles.title, { color: colors.text }]}>

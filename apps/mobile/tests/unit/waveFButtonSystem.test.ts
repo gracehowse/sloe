@@ -1,5 +1,5 @@
 /**
- * Wave F (MOBILE) — Fasting + Health-sync + Targets + Weight + Profile +
+ * Wave F (MOBILE) — Fasting + Health-sync + Targets + Profile +
  * What's-new CTA migration to SupprButton
  * (button-system canon, `docs/decisions/2026-06-12-button-system-solid-primary.md`).
  *
@@ -24,20 +24,19 @@
  * (`fastingButtonSystem`, `settingsLaneAubergineOutline` for health-sync /
  * targets / profile, `todayLaneAubergineOutline` for What's-new). This file is
  * the Wave-F roll-up, and additionally owns the ONLY treatment pins for the
- * standalone `weight-tracker.tsx` Save and the `LogWeightSheet.tsx` Save-weight
- * commit, which previously had only behavioural press tests.
+ * LogWeightSheet Save-weight commit, which previously had only behavioural press tests.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf8");
+const read = (p: string) =>
+  readFileSync(resolve(__dirname, "..", "..", p), "utf8");
 
 const FASTING = read("app/fasting.tsx");
 const HEALTH = read("app/health-sync.tsx");
 const TARGETS = read("app/targets.tsx");
 const PROFILE = read("app/profile.tsx");
-const WEIGHT_TRACKER = read("app/weight-tracker.tsx");
 const LOG_WEIGHT = read("components/progress/LogWeightSheet.tsx");
 const WHATS_NEW = read("app/whats-new.tsx");
 
@@ -59,7 +58,9 @@ describe("Wave F (mobile) — Fasting CTAs", () => {
   });
 
   it("'End fast' (in-progress) is a SOLID primary", () => {
-    expect(FASTING).toMatch(/<SupprButton\s+variant="primary"\s+style=\{styles\.endBtn\}/);
+    expect(FASTING).toMatch(
+      /<SupprButton\s+variant="primary"\s+style=\{styles\.endBtn\}/,
+    );
   });
 
   it("ANTI-REGRESSION: no fasting CTA falls back to the retired aubergine outline", () => {
@@ -140,25 +141,6 @@ describe("Wave F (mobile) — Profile CTAs", () => {
     expect(PROFILE).not.toMatch(/saveBtn:\s*\{/);
     expect(PROFILE).not.toMatch(/saveBtnText:\s*\{/);
     expect(PROFILE).not.toMatch(/cancelBtn:\s*\{/);
-  });
-});
-
-describe("Wave F (mobile) — Weight-tracker Save (this file owns the only treatment pin)", () => {
-  it("imports the shared mobile SupprButton primitive", () => {
-    expect(WEIGHT_TRACKER).toMatch(
-      /import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/,
-    );
-  });
-
-  it("the inline 'Save' is a SOLID primary (the weight-tracker's ONE commit)", () => {
-    expect(WEIGHT_TRACKER).toMatch(
-      /<SupprButton\s+variant="primary"[\s\S]{0,160}onPress=\{\(\) => void saveWeight\(\)\}[\s\S]{0,120}label="Save"/,
-    );
-  });
-
-  it("ANTI-REGRESSION: the weight Save carries no retired aubergine outline", () => {
-    expect(WEIGHT_TRACKER).not.toMatch(OUTLINE_BORDER_COLOR);
-    expect(WEIGHT_TRACKER).not.toMatch(OUTLINE_BORDER_WIDTH);
   });
 });
 

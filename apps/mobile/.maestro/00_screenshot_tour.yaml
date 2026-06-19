@@ -103,12 +103,6 @@ name: "Screenshot tour — capture baseline shots of every key surface"
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/latest/tour-09-discover
 
-# ---- Deep routes ----
-- openLink: suppr:///weight-tracker
-- waitForAnimationToEnd
-- waitForAnimationToEnd
-- takeScreenshot: screenshots/latest/tour-10-weight-tracker
-
 - openLink: suppr:///fasting
 - waitForAnimationToEnd
 - waitForAnimationToEnd

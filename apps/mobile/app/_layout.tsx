@@ -427,7 +427,6 @@ const STACK_HEADER_HIDDEN = new Set([
   "onboarding",
   "notifications-prompt",
   // Custom in-screen headers (avoid double back + native title clash)
-  "weight-tracker",
   "progress-metric",
   "health-sync",
   "fasting",
@@ -482,7 +481,6 @@ const STACK_TITLES: Record<string, string> = {
   fasting: "Fasting",
   "meal-nutrition": "Nutrition",
   "progress-metric": "This week",
-  "weight-tracker": "Weight & trends",
   "recipe/[id]": "Recipe",
   "create-recipe": "New recipe",
   "recipe/create": "New recipe",
@@ -552,7 +550,6 @@ function RootLayoutInner() {
         <Stack.Screen name="recipe/[id]" />
         <Stack.Screen name="shopping" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
-        <Stack.Screen name="weight-tracker" />
         <Stack.Screen name="progress-metric" />
         <Stack.Screen name="meal-nutrition" />
         <Stack.Screen name="import-shared" options={{ headerShown: false }} />
