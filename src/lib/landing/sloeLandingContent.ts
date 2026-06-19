@@ -98,3 +98,70 @@ export const LANDING_PRO_FEATURES = [
   "Weekly recap & trends",
   "Fasting & plan tools",
 ] as const;
+
+/* ─────────────── Hero copy ─────────────── */
+
+/**
+ * Hero copy lives here (not inline in `LandingPage.tsx`) so the landing
+ * parity test pins it and so the two positioning variants sit side by
+ * side, auditable in one place.
+ *
+ * The H1 carries one emphasised fragment rendered as `<em>` — modelled
+ * as `{ pre, em, post }` so the content module owns the words while the
+ * component owns the markup. `eyebrow` and `lead` are plain strings.
+ *
+ * Two variants, selected at render time by the `landing_hero_hybrid_v1`
+ * feature flag (default OFF — see `src/lib/analytics/track.ts`):
+ *
+ *   - `HERO_CURRENT` — the shipped recipe-first hero (the flag-off path;
+ *     stays live until the hybrid flag has ramped to 100%).
+ *   - `HERO_HYBRID` — resolves DECISION D-07 (Grace 2026-05-25: HYBRID).
+ *     Leads with the macro-tracker + "what to eat next" coaching promise
+ *     (the canon spine) as the headline, and keeps the Reel/TikTok import
+ *     hook as the differentiating supporting wedge line. A re-ordering of
+ *     emphasis, NOT a new product claim — both variants assert only what
+ *     the landing already promises.
+ *
+ * NOTE: exact wording is pending brand-manager + copy-reviewer sign-off
+ * (Grace) before the flag ramps past 0% — see ENG-1204.
+ */
+export type HeroHeadline = {
+  /** Leading H1 fragment, rendered before the emphasised `<em>`. */
+  pre: string;
+  /** The single emphasised fragment, rendered inside `<em>`. */
+  em: string;
+  /** Trailing H1 fragment, rendered after the `<em>`. */
+  post: string;
+};
+
+export type HeroCopy = {
+  eyebrow: string;
+  headline: HeroHeadline;
+  lead: string;
+};
+
+/** Shipped recipe-first hero — the flag-OFF (current) path. Wording is
+ *  the verbatim pre-ENG-1204 hero, just lifted out of JSX into the SSOT. */
+export const HERO_CURRENT: HeroCopy = {
+  eyebrow: "For people who love food — and have goals",
+  headline: {
+    pre: "Cook what you love. ",
+    em: "Still",
+    post: " reach your goals.",
+  },
+  lead:
+    "Save any recipe from Instagram, TikTok or the web. Sloe works out the nutrition and helps it fit your day — no foods off-limits.",
+} as const;
+
+/** Hybrid hero (D-07) — the flag-ON path. Tracker + coaching headline,
+ *  import hook demoted to the supporting wedge line. */
+export const HERO_HYBRID: HeroCopy = {
+  eyebrow: "For people who love food — and have goals",
+  headline: {
+    pre: "Know what to eat next. ",
+    em: "Hit",
+    post: " your macros anyway.",
+  },
+  lead:
+    "The calorie & macro tracker that tells you what to eat next — and fits the food you love into your day. Paste a TikTok or Reel and get real macros in seconds.",
+} as const;
