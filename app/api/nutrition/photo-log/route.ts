@@ -198,8 +198,12 @@ export async function POST(req: Request) {
         {
           ok: false,
           error: "upgrade_required",
+          // ENG-971 — honest billing: Pro AI photo logging is capped at
+          // 100/day (the `api:photo-log` bucket below, limit: 100). "Pro
+          // for unlimited" overstated the entitlement. Mirror the
+          // AiPaywallSheet wording ("up to 100 a day") on every surface.
           message:
-            "You've used your free photo logs for this week. Upgrade to Pro for unlimited.",
+            "You've used all 5 of your free photo logs this week. Pro unlocks AI photo logging up to 100 a day.",
           freeQuotaRemaining: 0,
         },
         { status: 403 },
