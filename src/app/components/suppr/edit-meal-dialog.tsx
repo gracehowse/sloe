@@ -40,6 +40,7 @@ export function buildEditedLoggedMeal(input: {
   portionMultiplier: number;
   eatenAtTime?: string;
   editableEatenAt?: boolean;
+  timeZone?: string | null;
 }): LoggedMeal {
   const {
     original,
@@ -53,6 +54,7 @@ export function buildEditedLoggedMeal(input: {
     portionMultiplier,
     eatenAtTime,
     editableEatenAt,
+    timeZone,
   } = input;
   const p0 =
     original.portionMultiplier && original.portionMultiplier > 0
@@ -61,7 +63,7 @@ export function buildEditedLoggedMeal(input: {
   const portionMul = clampEditPortionMultiplier(portionMultiplier);
   const localTime =
     editableEatenAt && eatenAtTime ? parseLocalTimeInput(eatenAtTime) : null;
-  const { eatenAt } = nutritionEntryDateKeyAndEatenAt(original, anchorDayKey, localTime);
+  const { eatenAt } = nutritionEntryDateKeyAndEatenAt(original, anchorDayKey, localTime, { timeZone });
   return {
     ...original,
     name: slot,
@@ -85,6 +87,7 @@ export interface EditMealDialogProps {
   anchorDayKey: string;
   open: boolean;
   slotLabels?: readonly string[];
+  timeZone?: string | null;
   onClose: () => void;
   onSave: (updated: LoggedMeal) => void | Promise<void>;
 }
@@ -94,6 +97,7 @@ export function EditMealDialog({
   anchorDayKey,
   open,
   slotLabels = MEAL_SLOTS,
+  timeZone,
   onClose,
   onSave,
 }: EditMealDialogProps) {
@@ -120,9 +124,9 @@ export function EditMealDialog({
     const chronIso =
       meal.eatenAt ??
       meal.createdAt ??
-      defaultEatenAtForNewLog(anchorDayKey);
-    setEatenAtTime(localTimeInputValueFromIso(chronIso));
-  }, [meal, open, anchorDayKey]);
+      defaultEatenAtForNewLog(anchorDayKey, timeZone);
+    setEatenAtTime(localTimeInputValueFromIso(chronIso, timeZone));
+  }, [meal, open, anchorDayKey, timeZone]);
 
   const handleSave = async () => {
     if (!meal) return;
@@ -140,6 +144,7 @@ export function EditMealDialog({
         portionMultiplier: parseFloat(portion.replace(",", ".")) || 1,
         eatenAtTime,
         editableEatenAt,
+        timeZone,
       });
       await onSave(updated);
       onClose();

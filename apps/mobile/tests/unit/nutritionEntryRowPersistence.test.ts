@@ -95,6 +95,14 @@ describe("buildNutritionEntryRow", () => {
     expect(row.date_key).not.toBe(ANCHOR);
   });
 
+  it("derives date_key from the profile timezone instead of the editing device timezone", () => {
+    const timeZone = "America/New_York";
+    const eatenAt = eatenAtIsoFromLocalParts("2026-06-11", 23, 50, timeZone);
+    const row = buildNutritionEntryRow(makeMeal({ eatenAt }), ANCHOR, USER, timeZone);
+    expect(row.eaten_at).toBe("2026-06-12T03:50:00.000Z");
+    expect(row.date_key).toBe("2026-06-11");
+  });
+
   it("re-mints a non-UUID id but keeps a real UUID", () => {
     expect(buildNutritionEntryRow(makeMeal({ id: VALID_UUID }), ANCHOR, USER).id).toBe(VALID_UUID);
     const reminted = buildNutritionEntryRow(makeMeal({ id: "free-text-id" }), ANCHOR, USER).id;
@@ -140,6 +148,18 @@ describe("buildNutritionEntryUpdatePayload", () => {
     const payload = buildNutritionEntryUpdatePayload(makeMeal(), ANCHOR, { hours: 23, minutes: 30 });
     expect(payload.date_key).toBe(ANCHOR);
     expect(payload.eaten_at).toBe(eatenAtIsoFromLocalParts(ANCHOR, 23, 30));
+  });
+
+  it("localTime override clamps in the profile timezone", () => {
+    const timeZone = "America/New_York";
+    const payload = buildNutritionEntryUpdatePayload(
+      makeMeal(),
+      "2026-06-11",
+      { hours: 23, minutes: 50 },
+      timeZone,
+    );
+    expect(payload.date_key).toBe("2026-06-11");
+    expect(payload.eaten_at).toBe("2026-06-12T03:50:00.000Z");
   });
 
   it("no localTime → derives from meal.eatenAt (as saveEditMeal calls it)", () => {

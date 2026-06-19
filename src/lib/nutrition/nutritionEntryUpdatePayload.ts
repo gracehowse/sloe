@@ -6,8 +6,9 @@ import { nutritionEntryDateKeyAndEatenAt } from "./mealEatenAt.ts";
 export function buildNutritionEntryUpdatePayload(
   dayKey: string,
   meal: LoggedMeal,
+  timeZone?: string | null,
 ): Record<string, unknown> {
-  const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(meal, dayKey);
+  const { dateKey, eatenAt } = nutritionEntryDateKeyAndEatenAt(meal, dayKey, null, { timeZone });
   return {
     date_key: dateKey,
     name: meal.name,

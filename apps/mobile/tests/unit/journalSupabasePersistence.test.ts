@@ -39,7 +39,9 @@ describe("Today journal — every meal-add path persists to Supabase immediately
     expect(slice).toMatch(/from\(["']nutrition_entries["']\)\s*\.upsert/);
     // Rows come from the single shared builder (no inline column literal that
     // could drift from the backstop).
-    expect(slice).toMatch(/meals\.map\(\(m\)\s*=>\s*buildNutritionEntryRow\(m,\s*targetDayKey,\s*userId\)\)/);
+    expect(slice).toMatch(
+      /meals\.map\(\(m\)\s*=>\s*buildNutritionEntryRow\(m,\s*targetDayKey,\s*userId,\s*profileTimeZone\)/,
+    );
     // ENG-1125 — failed upserts queue for retry instead of rolling back UI.
     expect(slice).toMatch(/enqueueJournalUpserts/);
     expect(slice).toMatch(/Saved on this device/);

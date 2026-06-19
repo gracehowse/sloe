@@ -565,6 +565,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     workoutsByDay,
     basalBurnByDay,
     profileMeasurementSystem,
+    profileTimeZone,
     nutritionJournalHydrated,
     nutritionByDay,
     extraWaterByDay,
@@ -707,17 +708,17 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   useEffect(() => {
     if (!isFeatureEnabled("editable_eaten_at")) return;
-    setTimeLabel(localTimeInputValueFromIso(defaultEatenAtForNewLog(selectedDateKey)));
-  }, [selectedDateKey]);
+    setTimeLabel(localTimeInputValueFromIso(defaultEatenAtForNewLog(selectedDateKey, profileTimeZone), profileTimeZone));
+  }, [profileTimeZone, selectedDateKey]);
 
   const eatenAtForCurrentLog = useCallback((): Pick<LoggedMeal, "eatenAt"> => {
     if (!isFeatureEnabled("editable_eaten_at")) return {};
     const localTime = parseLocalTimeInput(timeLabel);
     const eatenAt = localTime
-      ? eatenAtIsoFromLocalParts(selectedDateKey, localTime.hours, localTime.minutes)
-      : defaultEatenAtForNewLog(selectedDateKey);
+      ? eatenAtIsoFromLocalParts(selectedDateKey, localTime.hours, localTime.minutes, profileTimeZone)
+      : defaultEatenAtForNewLog(selectedDateKey, profileTimeZone);
     return { eatenAt };
-  }, [selectedDateKey, timeLabel]);
+  }, [profileTimeZone, selectedDateKey, timeLabel]);
 
   const [addMode, setAddMode] = useState<"recipe" | "manual">("recipe");
   const [manualName, setManualName] = useState("");
@@ -3819,6 +3820,7 @@ export const NutritionTracker = memo(function NutritionTracker({
               : null
           }
           anchorDayKey={selectedDateKey}
+          timeZone={profileTimeZone}
           open={editMealTargetId != null}
           slotLabels={enabledMealSlots}
           onClose={() => setEditMealTargetId(null)}
