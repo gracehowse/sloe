@@ -14,6 +14,7 @@ import { MACRO_ICONS } from "../../../lib/macroIconsLucide";
 import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { useCalmMode } from "../../../lib/preferences/useCalmMode";
+import { isMacroDetailSupported } from "../MacroDetailPanel";
 
 /**
  * TodayDashboardMacroTiles — macro tiles grid for Today.
@@ -399,7 +400,13 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         const cardClass = `rounded-card bg-card card-slab p-4 flex flex-col ${
           tierV1 ? "gap-2" : "justify-between min-h-24"
         }`;
-        if (onPressMacro) {
+        // ENG-848 — only macros that actually open a detail panel render as
+        // interactive buttons. Reference-only tiles (sugar/sodium/water) have
+        // no breakdown, so they must render as plain, non-interactive elements
+        // — no button role, no "Open … breakdown" label, no hover/focus/active
+        // affordance. `isMacroDetailSupported` is the single source of truth
+        // shared with the macro bars and the `openMacroDetail` handler.
+        if (onPressMacro && isMacroDetailSupported(macroKey)) {
           return (
             <button
               key={macroKey}

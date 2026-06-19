@@ -121,6 +121,7 @@ import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
 import {
   MacroDetailPanel,
+  isMacroDetailSupported,
   type MacroKey,
   type MacroMeal,
 } from "./MacroDetailPanel";
@@ -628,7 +629,10 @@ export const NutritionTracker = memo(function NutritionTracker({
   const macroDetailFlagEnabled = isFeatureEnabled("web_macro_detail_panel");
   const openMacroDetail = useCallback((macro: string) => {
     if (!macroDetailFlagEnabled) return;
-    if (macro === "protein" || macro === "carbs" || macro === "fat" || macro === "fiber") {
+    // Shared affordance/handler source of truth (ENG-848): the same
+    // `isMacroDetailSupported` set gates which tiles/bars render as buttons, so
+    // a tappable tile can never resolve to a macro this handler ignores.
+    if (isMacroDetailSupported(macro)) {
       setMacroDetailTarget(macro);
     }
   }, [macroDetailFlagEnabled]);

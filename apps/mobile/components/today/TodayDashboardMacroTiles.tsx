@@ -18,6 +18,7 @@ import { isFeatureEnabled } from "@/lib/analytics";
 import { useCalmMode } from "@/lib/calmMode";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
+import { isMacroDetailSupported } from "@/lib/macroDetailConfig";
 
 /**
  * TodayDashboardMacroTiles — macro tiles grid for Today.
@@ -186,6 +187,16 @@ export function TodayDashboardMacroTiles({
         const def = macroMap[macro];
         if (!def) return null;
 
+        // ENG-1213 — only macros with an actual breakdown open the detail
+        // screen. Reference-only tiles (sugar/sodium) have no breakdown
+        // (`MACRO_CONFIG` on macro-detail.tsx doesn't define them), so they must
+        // render as plain, non-interactive tiles — no Pressable, no "Tap for
+        // detail." a11y label, no scale-press affordance. `isMacroDetailSupported`
+        // is the single source of truth shared with the macro bars and the
+        // macro-detail screen's own guard, so a tappable tile can never resolve
+        // to a macro the screen would render wrong (protein) data for.
+        const interactive = isMacroDetailSupported(macro);
+
         return (
           <MacroStatTile
             key={macro}
@@ -204,7 +215,7 @@ export function TodayDashboardMacroTiles({
             barTrackColor={barTrackColor}
             tierV1={tierV1}
             calmMode={calmMode}
-            onPress={() => onPressMacro(macro)}
+            onPress={interactive ? () => onPressMacro(macro) : undefined}
             testID={`today-macro-tile-${macro}`}
             style={{
               width: "48%",

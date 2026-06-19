@@ -1199,8 +1199,10 @@ export default function RecipeDetailScreen() {
       if (scaledForLog.sodium_mg != null) micros.sodiumMg = scaledForLog.sodium_mg;
       // F-74 / F-103 (2026-05-07) — recipe rows do not carry caffeine_mg /
       // alcohol_g. Per-meal `micros` remains the canonical SoT; recipe-log
-      // stimulant roll-ups require verified per-ingredient micros and are
-      // tracked separately in Linear as ENG-751.
+      // stimulant roll-ups require verified per-ingredient micros aggregated
+      // onto recipe rows, tracked in Linear as ENG-1214. (Was mis-pointed at
+      // ENG-751, which is the AI/photo multi-item snapshot table — different
+      // scope; corrected 2026-06-18.)
       const newId = newMealId();
       // Single shared row shape (launch-audit P1-2 consolidation). Fresh
       // "Add to today" log → no `eatenAt` → `eaten_at: null` with
