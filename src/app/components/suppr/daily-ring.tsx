@@ -133,6 +133,18 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
    * the hook only ever emits `pulse=true` behind that gate.
    */
   pulse?: boolean;
+  /**
+   * ENG-1016 — the per-COMMIT pulse: `true` for ~160ms
+   * (`WEB_COMMIT_PULSE_MS`) right after an ordinary log lands, driven by
+   * `useCommitPulse`. This is the web colour/scale analog of mobile's Medium
+   * "confirm" commit haptic (web has no haptics) — DISTINCT from `pulse`
+   * above (the loud once-per-day gold win celebration). While true the ring
+   * gives a brief, subtle scale-up + soft brand glow so a successful log
+   * "lands" visually. The hook already suppresses it under
+   * `prefers-reduced-motion` and behind the `redesign_motion` flag — the same
+   * gate mobile's `confirmLog` uses — so no extra guard is needed here.
+   */
+  commitPulse?: boolean;
 }
 
 function DailyRing({
@@ -156,6 +168,7 @@ function DailyRing({
   onLongPressToggleDisplayMode: _onLongPressToggleDisplayMode,
   displayMode: _displayMode,
   pulse = false,
+  commitPulse = false,
   ...props
 }: DailyRingProps) {
   const cx = size / 2;
@@ -282,9 +295,16 @@ function DailyRing({
 
   return (
     <div
+      data-commit-pulse={commitPulse ? "true" : undefined}
       className={cn(
         "relative inline-flex items-center justify-center",
         interactive && "cursor-pointer",
+        // ENG-1016 — the per-commit pulse: a brief, subtle scale-up that
+        // settles back, the web analog of mobile's Medium commit haptic. The
+        // transform + spring easing are token-fitted; the source hook already
+        // gates this behind `redesign_motion` + reduced-motion.
+        "transition-transform ease-[cubic-bezier(0.18,0.89,0.32,1.28)]",
+        commitPulse ? "scale-[1.03] duration-150" : "scale-100 duration-300",
         className,
       )}
       style={{ width: size, height: size }}
@@ -404,9 +424,15 @@ function DailyRing({
             transitionTimingFunction: premiumMotion
               ? "cubic-bezier(0.32, 0.72, 0, 1)"
               : "var(--pm-ease)",
+            // The gold win-glow takes priority; otherwise a brief soft brand
+            // glow on a per-commit pulse (ENG-1016) — the calorie arc's own
+            // plum hue, not gold, so the commit beat reads distinct from the
+            // landmark celebration.
             filter: celebrating
               ? "drop-shadow(0 0 8px var(--accent-win))"
-              : undefined,
+              : commitPulse && !isEmpty
+                ? "drop-shadow(0 0 6px var(--macro-calories))"
+                : undefined,
           }}
         />
         {/* Over-budget: the ring CAPS AT FULL — one complete plum lap, NO

@@ -50,6 +50,10 @@ export interface TodayHeroStatsProps extends TodayHeroRingProps {
    *  landmark fires; forwarded to the calorie ring on both breakpoints.
    *  The web colour/motion analog of mobile's success haptic. */
   pulse?: boolean;
+  /** ENG-1016 — per-commit ring pulse. True for ~160ms after an ordinary log
+   *  lands; forwarded to the calorie ring on both breakpoints. The web
+   *  colour/scale analog of mobile's Medium commit haptic. */
+  commitPulse?: boolean;
 }
 
 export function TodayHeroStats(props: TodayHeroStatsProps) {
@@ -76,6 +80,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     onPressWhy,
     onPressStatusChip,
     pulse,
+    commitPulse,
     coachLine,
   } = props;
   return {
@@ -90,6 +95,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     onPressWhy,
     onPressStatusChip,
     pulse,
+    commitPulse,
     coachLine,
   };
 }
@@ -112,6 +118,7 @@ function DesktopHeroStats({
   // match Figma `654:2` (2026-06-08). The learning state lives on Progress.
   // `displayMode` / `onToggleDisplayMode` retired (web ring parity 2026-06-10).
   pulse,
+  commitPulse,
   onPressStatusChip,
   coachLine,
 }: TodayHeroStatsProps) {
@@ -171,6 +178,7 @@ function DesktopHeroStats({
           expanded={expanded}
           onToggle={onToggleExpanded}
           pulse={pulse}
+          commitPulse={commitPulse}
         />
 
         {showStatRow ? (
