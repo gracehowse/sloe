@@ -7,7 +7,9 @@ import { Flame, Footprints, Moon } from "lucide-react-native";
 
 import { Accent, FontFamily, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { BurnDetailLoadingSkeleton } from "@/components/burn/BurnDetailLoadingSkeleton";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -247,10 +249,18 @@ export default function BurnDetailScreen() {
             </Text>
           </View>
         ) : !data ? (
-          <View style={{ alignItems: "center", paddingVertical: 40, gap: Spacing.md }}>
-            <ActivityIndicator size="small" color={accent.primary} />
-            <Text style={{ fontSize: 14, color: colors.textTertiary }}>Loading…</Text>
-          </View>
+          // ENG-768 — deeplink cold-open loading state. Flag ON → skeleton
+          // silhouette of the loaded layout (matches the Progress tab's tile
+          // treatment); OFF → the legacy centred spinner (byte-identical to
+          // pre-ENG-768). Ramp via the `deeplink_skeletons` PostHog flag.
+          isFeatureEnabled("deeplink_skeletons") ? (
+            <BurnDetailLoadingSkeleton />
+          ) : (
+            <View style={{ alignItems: "center", paddingVertical: 40, gap: Spacing.md }}>
+              <ActivityIndicator size="small" color={accent.primary} />
+              <Text style={{ fontSize: 14, color: colors.textTertiary }}>Loading…</Text>
+            </View>
+          )
         ) : (
           <>
             {/* Sits on the burn-detail scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
