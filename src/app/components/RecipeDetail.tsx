@@ -1789,7 +1789,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               {/*
                 ENG-858 / ENG-1042 — import source-card disclaimer. Imported
                 (non-first-party) recipes must carry the body-neutral legal
-                line: facts extracted + nutrition estimated by Suppr, no
+                line: facts extracted + nutrition estimated by Sloe, no
                 affiliation/endorsement. Gated on a persisted source (url or
                 name) and never shown on catalog/first-party recipes. Wording
                 is the single shared constant (legal-approved); see

@@ -815,9 +815,9 @@ export default function PaywallScreen() {
         ? "Cancel anytime in Settings > Apple ID > Subscriptions."
         : "Cancel anytime in Google Play > Payments & subscriptions.";
     if (trialApplies && currentProPkg) {
-      return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
+      return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
     }
-    return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
+    return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
   })();
 
   // ─── Styles ─────────────────────────────────────────────────────
@@ -1271,11 +1271,11 @@ export default function PaywallScreen() {
             )}
           </Pressable>
           <Text style={styles.secondaryDot}>·</Text>
-          <Pressable onPress={() => void Linking.openURL("https://suppr-club.com/terms")}>
+          <Pressable onPress={() => void Linking.openURL("https://getsloe.com/terms")}>
             <Text style={styles.secondaryLink}>Terms</Text>
           </Pressable>
           <Text style={styles.secondaryDot}>·</Text>
-          <Pressable onPress={() => void Linking.openURL("https://suppr-club.com/privacy")}>
+          <Pressable onPress={() => void Linking.openURL("https://getsloe.com/privacy")}>
             <Text style={styles.secondaryLink}>Privacy</Text>
           </Pressable>
         </View>

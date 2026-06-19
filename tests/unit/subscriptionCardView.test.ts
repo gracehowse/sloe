@@ -388,7 +388,7 @@ describe("resolveSubscriptionCardView — cancel/refund block region branch", ()
     if (view.kind !== "active") throw new Error("expected active");
     expect(view.cancelBlock).toContain("keep Pro until the end of your current billing period");
     expect(view.cancelBlock).toContain("Changed your mind within 7 days");
-    expect(view.cancelBlock).toContain("support@suppr-club.com");
+    expect(view.cancelBlock).toContain("support@getsloe.com");
     expect(view.cancelBlock).not.toContain("14-day");
     expect(view.cancelBlock).not.toContain("Consumer Contracts Regulations");
   });

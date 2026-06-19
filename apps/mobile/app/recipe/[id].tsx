@@ -1908,7 +1908,7 @@ export default function RecipeDetailScreen() {
                 ENG-858 / ENG-1042 — import source-card disclaimer. The card is
                 shown only for imported (non-first-party) recipes, so the
                 body-neutral legal line lives at the foot of it: facts extracted
-                + nutrition estimated by Suppr, no affiliation/endorsement.
+                + nutrition estimated by Sloe, no affiliation/endorsement.
                 Wording is the single shared constant (legal-approved); see
                 `src/lib/recipes/importSourceDisclaimer.ts`. Parity with web
                 `RecipeDetail.tsx` (recipe-import-disclaimer).

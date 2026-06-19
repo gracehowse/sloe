@@ -168,10 +168,10 @@ export default async function CheckoutSuccessPage({
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Questions? Email{" "}
           <a
-            href="mailto:support@suppr-club.com"
+            href="mailto:support@getsloe.com"
             className="text-primary underline underline-offset-2"
           >
-            support@suppr-club.com
+            support@getsloe.com
           </a>
           .
         </p>

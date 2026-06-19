@@ -59,7 +59,7 @@ const baseProps: DigestProps = {
       "Maintenance landed around 1,568 kcal this week — formula said 1,670.",
     usualMeal: null,
   },
-  shareText: "My week on Suppr",
+  shareText: "My week on Sloe",
   state: "success",
   onShare: () => {},
   onDismiss: () => {},

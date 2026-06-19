@@ -10,7 +10,7 @@ export function buildLocalDataExport(): Record<string, unknown> {
   const out: Record<string, unknown> = {
     exportedAt: new Date().toISOString(),
     exportVersion: 1,
-    app: "Suppr",
+    app: "Sloe",
   };
   const keys = [STORAGE_KEY, ...EXTRA_KEYS];
   for (const k of keys) {

@@ -1,5 +1,5 @@
 /**
- * Shared changelog data for the "What's new in Suppr" surface.
+ * Shared changelog data for the "What's new in Sloe" surface.
  *
  * Cross-platform contract: **one source of truth** for both mobile
  * (`apps/mobile/app/whats-new.tsx`) and web (`app/whats-new/page.tsx`).
@@ -97,7 +97,7 @@ const CHANGELOGS: ChangelogEntry[] = [
       },
       {
         kind: "fixed",
-        text: "Onboarding data-bridges step no longer says \"Suppr never writes\" — we do write meal macros to Apple Health when you allow it.",
+        text: "Onboarding data-bridges step no longer says \"Sloe never writes\" — we do write meal macros to Apple Health when you allow it.",
       },
       {
         kind: "new",
@@ -185,7 +185,7 @@ const CHANGELOGS: ChangelogEntry[] = [
       },
       {
         kind: "coming_soon",
-        text: "We're exploring ways for creators and coaches to share recipes and meal plans inside Suppr.",
+        text: "We're exploring ways for creators and coaches to share recipes and meal plans inside Sloe.",
       },
     ],
   },

@@ -200,7 +200,7 @@ describe("resolveBillingPortalOutcome", () => {
 describe("BillingUnavailableFallback — legal-reviewer round-6 copy", () => {
   it("renders the support mailto link", () => {
     const { container } = render(<BillingUnavailableFallback />);
-    const mail = container.querySelector('a[href="mailto:support@suppr-club.com"]');
+    const mail = container.querySelector('a[href="mailto:support@getsloe.com"]');
     expect(mail).not.toBeNull();
   });
 

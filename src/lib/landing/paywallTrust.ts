@@ -23,7 +23,7 @@
  *   - "Cancel anytime in-app" — in-app, not via support.
  *   - "7-day refund, no email" — immediate path, not gated on
  *     a support ticket. (Pre-purchase the path is still
- *     `support@suppr-club.com` in the disclosure copy because
+ *     `support@getsloe.com` in the disclosure copy because
  *     refunds are processed manually via Stripe; the chip
  *     surfaces the timing + no-friction promise.)
  *   - "Price never changes mid-trial" — directly counters Lose
@@ -163,6 +163,6 @@ export function buildReceiptTrustCopy(args: {
     `Cancel anytime — ${cancelPath}. ` +
     `Your trial ends ${trialEndsLabel}, first charge after that. ` +
     `Refunds within 7 days, no questions asked, ` +
-    `email support@suppr-club.com if anything's wrong.`
+    `email support@getsloe.com if anything's wrong.`
   );
 }

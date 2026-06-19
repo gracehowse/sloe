@@ -134,7 +134,7 @@ const CANCEL_BLOCK_DEFAULT =
   "When you cancel, you keep Pro until the end of your current billing period — " +
   "we never cut you off early or charge you again. " +
   "Changed your mind within 7 days of a charge? " +
-  "Email support@suppr-club.com and we'll refund it, no questions asked.";
+  "Email support@getsloe.com and we'll refund it, no questions asked.";
 
 /** UK/EU statutory addition — reuses the existing BillingDisclosure
  *  UK/EU wording so counsel only has to bless one phrasing. */

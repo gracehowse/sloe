@@ -44,5 +44,5 @@ export function isImportedRecipe(input: {
 export function importSourceDisclaimer(sourceName?: string | null): string {
   const name = (sourceName ?? "").trim();
   const subject = name.length > 0 ? name : "the original source";
-  return `Recipe imported for your personal cookbook. Ingredients and nutrition are estimated by Suppr and may differ from the original. Not affiliated with or endorsed by ${subject}.`;
+  return `Recipe imported for your personal cookbook. Ingredients and nutrition are estimated by Sloe and may differ from the original. Not affiliated with or endorsed by ${subject}.`;
 }

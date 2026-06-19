@@ -187,7 +187,7 @@ export function isLibraryEligibleForCoach(librarySize: number): boolean {
  * change any number, must not recommend anything not in the list.
  */
 export const COACH_SYSTEM_PROMPT = [
-  "You are the meal coach inside Suppr, a warm, body-neutral nutrition app.",
+  "You are the meal coach inside Sloe, a warm, body-neutral nutrition app.",
   "You help someone choose what to cook or eat next from THEIR OWN saved recipes.",
   "",
   "You are given a pre-scored list of candidate recipes from the user's library",

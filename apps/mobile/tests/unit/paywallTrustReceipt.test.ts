@@ -40,7 +40,7 @@ describe("mobile — buildReceiptTrustCopy (post-purchase Alert)", () => {
     expect(copy).toContain("Settings > Apple ID > Subscriptions");
     expect(copy).toContain("trial ends in 7 days");
     expect(copy).toContain("first charge after that");
-    expect(copy).toContain("support@suppr-club.com");
+    expect(copy).toContain("support@getsloe.com");
   });
 
   it("composes the Android variant with Google Play cancel path", () => {

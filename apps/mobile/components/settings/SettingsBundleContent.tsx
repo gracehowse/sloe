@@ -2601,7 +2601,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           onPress={() => {
             const base = getSupprWebBase();
             if (base) void Linking.openURL(`${base}/help`).catch(() => {});
-            else void Linking.openURL("mailto:privacy@suppr-club.com").catch(() => {});
+            else void Linking.openURL("mailto:privacy@getsloe.com").catch(() => {});
           }}
         />
       </SettingsCard>

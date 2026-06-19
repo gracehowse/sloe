@@ -96,7 +96,7 @@ const FAQ = [
   },
   {
     q: "Do you offer refunds?",
-    a: "If you're unhappy within the first 7 days, email support@suppr-club.com and we'll process a refund. Refunds are handled manually via Stripe.",
+    a: "If you're unhappy within the first 7 days, email support@getsloe.com and we'll process a refund. Refunds are handled manually via Stripe.",
   },
   // 2026-05-12 (premium-bar audit Group A pricing #5 — 6-question
   // FAQ): added two MFP-refugee-relevant entries — privacy posture
@@ -108,7 +108,7 @@ const FAQ = [
   },
   {
     q: "Can I bring in my history from MyFitnessPal, Cronometer, or Lose It?",
-    a: "MyFitnessPal CSV import is on the roadmap — paste-link import from any recipe URL already works. If you have an export from another tracker, email support@suppr-club.com and we'll help you migrate manually in the meantime.",
+    a: "MyFitnessPal CSV import is on the roadmap — paste-link import from any recipe URL already works. If you have an export from another tracker, email support@getsloe.com and we'll help you migrate manually in the meantime.",
   },
 ];
 
