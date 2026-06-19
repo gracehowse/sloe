@@ -28,6 +28,7 @@ export interface RecipeCard {
   creatorImage: string;
   title: string;
   image: string;
+  imageSource?: string | null;
   servings: number;
   calories: number;
   protein: number;

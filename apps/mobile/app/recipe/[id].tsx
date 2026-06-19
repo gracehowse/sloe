@@ -155,6 +155,7 @@ type FullRecipe = {
   description: string | null;
   instructions: string | null;
   image_url: string | null;
+  image_source?: string | null;
   servings: number;
   prep_time_min: number | null;
   cook_time_min: number | null;
@@ -1307,6 +1308,7 @@ export default function RecipeDetailScreen() {
   const heroImageUrl = useMemo<string | null>(() => {
     const picked = pickHeroImageUrl({
       image_url: recipe?.image_url,
+      image_source: recipe?.image_source ?? null,
       source_url: recipe?.source_url,
     });
     if (!picked) return null;
@@ -1315,7 +1317,7 @@ export default function RecipeDetailScreen() {
         .replace(/\/(hqdefault|mqdefault|sddefault|default)\.(jpg|webp)/, "/maxresdefault.$2");
     }
     return picked;
-  }, [recipe?.image_url, recipe?.source_url]);
+  }, [recipe?.image_source, recipe?.image_url, recipe?.source_url]);
 
   /** Recime parity (2026-04-30): "Watch original" affordance in the
    *  inline cook overlay. Renders only when the recipe has a usable

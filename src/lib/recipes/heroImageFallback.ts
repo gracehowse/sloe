@@ -7,10 +7,11 @@
  *
  *   1. `pickHeroImageUrl(recipe)` — best-effort ladder for which URL
  *      to render as the recipe hero. Order:
- *        a) the recipe's own `image_url` (set by the importer / user)
- *        b) a YouTube thumbnail derived from `source_video_url` (or
- *           `source_url` when that itself is a YouTube URL)
- *        c) `null` — caller falls back to the existing deterministic
+ *        a) creator real photo (`image_source: user_upload`)
+ *        b) permitted imported photo (`image_source: imported`) or a
+ *           YouTube thumbnail derived from `source_video_url` / `source_url`
+ *        c) AI-generated private-stub image (`image_source: ai_generated`)
+ *        d) `null` — caller falls back to the existing deterministic
  *           gradient renderer (`RecipeHeroFallback.tsx`).
  *
  *      IG / TikTok thumbnails are NOT inferable from the share URL
@@ -29,6 +30,7 @@
  */
 
 export type RecipeVideoHost = "youtube" | "instagram" | "tiktok" | "other";
+export type RecipeImageSource = "user_upload" | "imported" | "ai_generated" | (string & {});
 
 /** Subset of recipe shape this module needs. Both web `RecipeCard`
  *  and mobile `FullRecipe` (apps/mobile/app/recipe/[id].tsx) carry
@@ -39,6 +41,7 @@ export type RecipeVideoHost = "youtube" | "instagram" | "tiktok" | "other";
  *  will still derive a YouTube thumbnail when the URL is a YT one. */
 export interface HeroImageRecipeInput {
   image_url?: string | null;
+  image_source?: RecipeImageSource | null;
   source_url?: string | null;
   source_video_url?: string | null;
 }
@@ -53,24 +56,41 @@ export interface HeroImageRecipeInput {
  * instant; a 404 is a flash of broken-image then layout shift).
  */
 export function pickHeroImageUrl(recipe: HeroImageRecipeInput): string | null {
-  // 1. Recipe's own image — set by the importer (OG scrape or video
-  //    poster) or by the user during create-recipe.
-  if (typeof recipe.image_url === "string" && recipe.image_url.trim() !== "") {
-    return recipe.image_url;
+  const imageUrl = typeof recipe.image_url === "string" ? recipe.image_url.trim() : "";
+  const imageSource = typeof recipe.image_source === "string" ? recipe.image_source : null;
+
+  // 1. Creator real photo. User uploads must always outrank generated
+  //    enrichment and imported thumbnails because they are the creator's
+  //    owned representation of the dish. Legacy rows without provenance
+  //    are treated as creator/imported real imagery unless their URL is a
+  //    known generated hero path below.
+  if (imageUrl && (imageSource === "user_upload" || (!imageSource && !isGeneratedHeroImageUrl(imageUrl)))) {
+    return imageUrl;
   }
 
-  // 2. Source video thumbnail. Prefer the dedicated `source_video_url`
-  //    when the importer separates it from the page URL; otherwise
-  //    fall back to `source_url` (often the YouTube watch URL itself
-  //    when the recipe was imported from a YT video page).
+  // 2. Permitted imported photo. This includes explicit imported covers
+  //    stored in image_url and YouTube thumbnails derived from source URLs.
+  if (imageUrl && imageSource === "imported") return imageUrl;
   for (const candidate of [recipe.source_video_url, recipe.source_url]) {
     if (typeof candidate !== "string" || candidate.trim() === "") continue;
     const yt = extractYoutubeThumbnail(candidate);
     if (yt) return yt;
   }
 
-  // 3. No safe candidate — caller renders the gradient fallback.
+  // 3. AI-generated private-stub enrichment. Callers can label this as
+  //    AI/Sloe imagery because the provenance is explicit. Published /
+  //    Discover recipes must not receive these URLs in the first place;
+  //    when they lack creator/imported imagery, callers render gradient.
+  if (imageUrl && (imageSource === "ai_generated" || isGeneratedHeroImageUrl(imageUrl))) {
+    return imageUrl;
+  }
+
+  // 4. No safe candidate — caller renders the gradient fallback.
   return null;
+}
+
+export function isGeneratedHeroImageUrl(url: string | null | undefined): boolean {
+  return typeof url === "string" && /(?:^|\/)recipe-images\/heroes\//.test(url);
 }
 
 /**

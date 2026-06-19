@@ -17,6 +17,7 @@ export interface RecipeCard {
   id: string;
   title: string;
   image: string;
+  imageSource?: string | null;
   creatorName: string;
   creatorImage: string;
   servings: number;

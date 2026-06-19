@@ -5,7 +5,7 @@
  *
  * Two independent passes:
  *
- *   (a) HEROES — for every recipe whose `image_url` is NULL or the legacy
+ *   (a) HEROES — for every private draft recipe whose `image_url` is NULL or the legacy
  *       default Unsplash cover, generate a Template-A dish hero
  *       (`generateDishImage`) and write it to `recipes.image_url`.
  *
@@ -151,7 +151,8 @@ async function runHeroes(sb: ReturnType<typeof createClient> | null) {
 
   const { data, error } = await sb
     .from("recipes")
-    .select("id, title, image_url")
+    .select("id, title, image_url, published")
+    .eq("published", false)
     .order("created_at", { ascending: true });
   if (error) {
     log("recipes query failed:", error.message);
