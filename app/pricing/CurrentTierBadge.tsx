@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { projectId, publicAnonKey } from "../../utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../utils/supabase/publicConfig.ts";
 
-const supabaseUrl = `https://${projectId}.supabase.co`;
-const supabase = createClient(supabaseUrl, publicAnonKey);
+const supabase = createClient(supabasePublicUrl(), supabasePublicAnonKey());
 
 /**
  * Client component rendered inside each pricing tier card.

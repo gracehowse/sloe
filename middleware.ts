@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { projectId, publicAnonKey } from "./utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "./utils/supabase/publicConfig.ts";
 
 const PUBLIC_ROUTES = new Set([
   "/",
@@ -81,12 +81,9 @@ export async function middleware(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || `https://${projectId}.supabase.co`;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || publicAnonKey;
-
   const supabase = createServerClient(
-    supabaseUrl,
-    supabaseKey,
+    supabasePublicUrl(),
+    supabasePublicAnonKey(),
     {
       cookies: {
         getAll() {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../../utils/supabase/publicConfig.ts";
 import { safeAuthRedirectPath } from "@/lib/auth/safeRedirectPath";
 
 /**
@@ -30,11 +30,8 @@ async function handleCallback(request: Request) {
     return NextResponse.redirect(login);
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || `https://${projectId}.supabase.co`;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || publicAnonKey;
-
   const cookieStore = await cookies();
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+  const supabase = createServerClient(supabasePublicUrl(), supabasePublicAnonKey(), {
     cookies: {
       getAll() {
         return cookieStore.getAll();

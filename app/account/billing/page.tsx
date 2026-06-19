@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import Stripe from "stripe";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../../utils/supabase/publicConfig.ts";
 import { createSupabaseServiceRoleClient } from "../../../src/lib/supabase/serverAnonClient.ts";
 import { resolveBillingPortalOutcome } from "../../../src/lib/stripe/billingPortalDecision.ts";
 import { BillingUnavailableFallback } from "./BillingUnavailableFallback.tsx";
@@ -52,12 +52,7 @@ export default async function AccountBillingPage() {
   //    `app/page.tsx` uses. Unauthenticated users get the login
   //    redirect from `resolveBillingPortalOutcome`.
   const cookieStore = await cookies();
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
-    `https://${projectId}.supabase.co`;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || publicAnonKey;
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+  const supabase = createServerClient(supabasePublicUrl(), supabasePublicAnonKey(), {
     cookies: {
       getAll() {
         return cookieStore.getAll();

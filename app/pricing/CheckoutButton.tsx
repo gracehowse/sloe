@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { projectId, publicAnonKey } from "../../utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../utils/supabase/publicConfig.ts";
 import { AnalyticsEvents } from "../../src/lib/analytics/events.ts";
 import { track } from "../../src/lib/analytics/track.ts";
 
-const supabaseUrl = `https://${projectId}.supabase.co`;
-const supabase = createClient(supabaseUrl, publicAnonKey);
+const supabase = createClient(supabasePublicUrl(), supabasePublicAnonKey());
 
 export function CheckoutButton({
   tier,

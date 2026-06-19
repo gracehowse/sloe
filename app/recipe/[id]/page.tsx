@@ -2,16 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../../utils/supabase/publicConfig.ts";
 import { PageViewTracker } from "../../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents } from "../../../src/lib/analytics/events.ts";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions.ts";
 import { RecipeHeroFallback } from "../../../src/app/components/suppr/RecipeHeroFallback.tsx";
 
-const supabaseUrl = `https://${projectId}.supabase.co`;
-
 function getServerClient() {
-  return createClient(supabaseUrl, publicAnonKey);
+  return createClient(supabasePublicUrl(), supabasePublicAnonKey());
 }
 
 interface RecipeRow {

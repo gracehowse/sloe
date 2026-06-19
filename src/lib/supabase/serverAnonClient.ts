@@ -1,15 +1,12 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../../utils/supabase/publicConfig.ts";
 import * as Sentry from "@sentry/nextjs";
 
-export function supabasePublicUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
-  return `https://${projectId}.supabase.co`;
-}
+/** Re-exported from the shared resolver; kept here for existing import sites. */
+export { supabasePublicUrl };
 
 export function createSupabaseAnonClient(): SupabaseClient {
-  return createClient(supabasePublicUrl(), publicAnonKey);
+  return createClient(supabasePublicUrl(), supabasePublicAnonKey());
 }
 
 /** Service role client for server-only reads after the caller has verified `userId` (e.g. from JWT). */

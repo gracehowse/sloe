@@ -1,14 +1,16 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info.tsx";
-
-const supabaseUrl = `https://${projectId}.supabase.co`;
+import { supabasePublicAnonKey, supabasePublicUrl } from "../../../utils/supabase/publicConfig.ts";
 
 /**
  * Browser Supabase client.
+ * Connection target is resolved via `supabasePublicUrl()` /
+ * `supabasePublicAnonKey()`, which prefer `NEXT_PUBLIC_SUPABASE_*` when set so
+ * local/staging dev can point at a non-prod project (falls back to the
+ * hard-coded prod project otherwise).
  * Generated types are available in `./database.types.ts` for type-safe queries:
  *   import type { Database } from "./database.types";
  *   supabase.from("recipes").select("...") // typed once Database generic is applied
  * Applying the typed Database generic is tracked in ENG-749.
  */
-export const supabase = createBrowserClient(supabaseUrl, publicAnonKey);
+export const supabase = createBrowserClient(supabasePublicUrl(), supabasePublicAnonKey());
 
