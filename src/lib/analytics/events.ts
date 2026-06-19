@@ -438,9 +438,13 @@ export const AnalyticsEvents = {
    *  `{ weekKey }`. Retire old name 2026-05-18. */
   weekly_recap_push_scheduled: "weekly_recap_push_scheduled",
   /** Canonical delivery event (rename target — split #2 for
-   *  `weekly_recap_push_sent`). Fires when the OS delivers the recap
-   *  push to the device (not yet wired — no delivery listener exists
-   *  today, see TODO in `apps/mobile/app/_layout.tsx`). Payload:
+   *  `weekly_recap_push_sent`). Would fire when the OS delivers the recap
+   *  push to the device. Intentionally never wired — not a pending gap:
+   *  mobile-local recap scheduling was retired on 2026-04-20 (see
+   *  `docs/decisions/2026-04-20-weekly-recap-mobile-local-killed.md`) and
+   *  the recap now ships as a server-side Vercel cron push, so no
+   *  device-side delivery listener exists or is planned. The constant is
+   *  reserved so the split-rename map below stays complete. Payload:
    *  `{ weekKey }`. */
   weekly_recap_push_delivered: "weekly_recap_push_delivered",
   /** User tapped the weekly recap push notification and the OS routed
@@ -1105,6 +1109,8 @@ export type RecipeImportedSource = "url" | "image";
 // Still in dual-emit (active callers remain):
 //   - `streak_freeze_earned_seen` → `streak_freeze_earned_acknowledged`
 //   - `weekly_recap_push_sent` → `weekly_recap_push_scheduled`
-//     (+ `weekly_recap_push_delivered` once a delivery listener lands)
+//     (`weekly_recap_push_delivered` is reserved/intentionally unwired —
+//      mobile-local recap was retired 2026-04-20; recap is now a
+//      server-side cron push with no device delivery listener)
 //
 // See `docs/planning/analytics-dashboards-plan-2026-04-18.md` §4.
