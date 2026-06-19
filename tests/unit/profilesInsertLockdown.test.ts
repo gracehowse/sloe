@@ -31,6 +31,11 @@ const ENG1106 = readFileSync(
   resolve(MIGRATIONS_DIR, "20260614120100_eng1106_saved_meal_items_nutrition_micros.sql"),
   "utf8",
 );
+const ENG1154 = readFileSync(
+  resolve(MIGRATIONS_DIR, "20260615180000_eng1154_pin_search_path_tier_lockdown.sql"),
+  "utf8",
+);
+const ENG1154_SQL = ENG1154.replace(/^\s*--.*$/gm, "");
 
 describe("ENG-1035 — profiles BEFORE INSERT tier lockdown", () => {
   it("attaches a BEFORE INSERT trigger on public.profiles", () => {
@@ -131,5 +136,22 @@ describe("ENG-1103 — deactivate SUPPR_TEST_PREMIUM + throttle redeem_promo_cod
 describe("ENG-1106 — saved-meal items persist nutrition_micros", () => {
   it("adds nutrition_micros jsonb to user_saved_meal_items", () => {
     expect(ENG1106).toMatch(/alter\s+table\s+public\.user_saved_meal_items[\s\S]*nutrition_micros\s+jsonb/i);
+  });
+});
+
+describe("ENG-1154 — tier-lockdown functions pin search_path", () => {
+  it("re-states both trigger functions with public, pg_temp search_path", () => {
+    expect(ENG1154).toMatch(
+      /create\s+or\s+replace\s+function\s+public\.profiles_tier_column_lockdown\(\)[\s\S]*?security\s+invoker[\s\S]*?set\s+search_path\s*=\s*public,\s*pg_temp[\s\S]*?as\s+\$\$/i,
+    );
+    expect(ENG1154).toMatch(
+      /create\s+or\s+replace\s+function\s+public\.profiles_tier_column_insert_lockdown\(\)[\s\S]*?security\s+invoker[\s\S]*?set\s+search_path\s*=\s*public,\s*pg_temp[\s\S]*?as\s+\$\$/i,
+    );
+  });
+
+  it("does not recreate existing trigger bindings", () => {
+    expect(ENG1154_SQL).not.toMatch(/drop\s+trigger/i);
+    expect(ENG1154_SQL).not.toMatch(/create\s+trigger/i);
+    expect(ENG1154).toMatch(/notify\s+pgrst,\s*'reload schema'/i);
   });
 });
