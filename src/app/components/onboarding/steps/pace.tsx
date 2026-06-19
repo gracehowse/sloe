@@ -3,7 +3,11 @@
 import * as React from "react";
 import { AlertTriangle, Check, Info } from "lucide-react";
 import { AnalyticsEvents } from "@/lib/analytics/events";
-import { track } from "@/lib/analytics/track";
+import { isFeatureEnabled, track } from "@/lib/analytics/track";
+import {
+  ONBOARDING_PACE_VS_TDEE_LABEL_GLOSS,
+  ONBOARDING_PACE_VS_TDEE_LABEL_PLAIN,
+} from "@/lib/onboarding/figmaCopy";
 import {
   GOAL_DEFAULT_PACE,
   PACE_PRESETS,
@@ -192,6 +196,13 @@ export function PaceStep() {
           target={projectedTarget}
           delta={dailyMagnitude}
           sign={sign}
+          // ENG-1187 — gloss the "TDEE" label on first use on the pace
+          // screen behind `onboarding_jargon_gloss_v1` (default-OFF).
+          vsTdeeLabel={
+            isFeatureEnabled("onboarding_jargon_gloss_v1")
+              ? ONBOARDING_PACE_VS_TDEE_LABEL_GLOSS
+              : ONBOARDING_PACE_VS_TDEE_LABEL_PLAIN
+          }
         />
       )}
 
@@ -225,11 +236,13 @@ function ProjectionTile({
   target,
   delta,
   sign,
+  vsTdeeLabel,
 }: {
   accent: string;
   target: number;
   delta: number;
   sign: string;
+  vsTdeeLabel: string;
 }) {
   // Tween at ~220 ms per visual-qa P0 fix — eliminates the integer-by-
   // integer snap on slider drags. tabular-nums + Math.round below
@@ -260,7 +273,7 @@ function ProjectionTile({
         </div>
       </div>
       <div>
-        <div className="section-label mb-1">vs. your TDEE</div>
+        <div className="section-label mb-1">{vsTdeeLabel}</div>
         {/* SLOE Phase 0: the vs-TDEE hero numeral reads in the Newsreader serif
             display face; the `kcal / day` unit stays sans. */}
         <div

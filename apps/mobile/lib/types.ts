@@ -105,6 +105,8 @@ export interface DayPlanMeal {
   portionMultiplier?: number;
   isPlaceholder?: boolean;
   recipeId?: string;
+  /** ENG-956 — per-meal lock ("keep this meal"); mirrors web `DayPlanMeal`. */
+  isLocked?: boolean;
 }
 
 export interface DayPlan {

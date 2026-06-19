@@ -69,6 +69,57 @@ Users can reorder meals without regenerating the plan.
 - **Mobile**: the move is available via the meal action sheet (`Move` option). A long-press-drag gesture is deferred to a follow-up to avoid accidental drags during scroll.
 - Analytics: `meal_moved_in_plan` fires with `{ fromSlot, toSlot, crossDay }`.
 
+## Per-Meal Lock — "Refresh the rest" (ENG-956)
+
+Eat-This-Much-style "lock the ones you like, reroll the rest". Lets a user keep
+the meals they're happy with and regenerate only the ones they're not.
+
+**Flag:** `plan_meal_lock_v1` — **default-OFF** (not in either platform's
+`REDESIGN_DEFAULT_ON` registry; ramp via PostHog). Off → the legacy
+all-or-nothing Regenerate, no lock affordance.
+
+**Affordance:**
+- Each populated, non-leftover meal row carries a **quiet lock glyph** (lucide
+  `Lock` when locked / `LockOpen` when not), tinted muted/secondary — tap to
+  toggle without leaving the row.
+- The per-row action menu (web `DropdownMenu`) / action sheet (mobile `rowMenu`)
+  gains **"Keep this meal"** (→ "Unlock this meal" when already locked) as a
+  first-class action.
+
+**Regenerate behaviour:**
+- When **≥1 meal is locked**, the Regenerate CTA microcopy becomes
+  **"Refresh the rest"** (web summary + bottom CTA; mobile primary CTA reads
+  "Refresh the rest ▾").
+- Regenerate then keeps every locked meal **byte-identical** and re-rolls only
+  the **unlocked** slots, rebalancing the **remaining macro budget**
+  (daily target − locked meals' macros) across them — so the day still aims at
+  the full target, not the original per-slot share.
+- Over-locked days (locked macros already exceed the target) floor the remaining
+  budget at a small positive value, so the unlocked slots are minimised rather
+  than breaking band maths.
+- Locked recipes are excluded from the unlocked re-roll pool (no same-day dupe).
+- The leftover-distribution pass is **skipped** in keep-locked mode — it
+  re-samples downstream slots from a fresh whole-week view and would overwrite
+  the locked rows.
+
+**Persistence:** the lock lives on `DayPlanMeal.isLocked` / `PlanMeal.isLocked`
+and persists in the **existing local plan JSON blob** (the named-slot `plan`
+payload in localStorage / AsyncStorage). It is **NOT** stored in the relational
+`meal_plan_meals` cloud table — a lock is a device-local planning affordance
+(like the portion stepper), so no migration was added. Cross-device lock sync is
+intentionally out of scope (not a gap).
+
+**Core algorithm:** `regenerateUnlockedMeals<R>()` in
+`src/lib/nutrition/mealPlanAlgo.ts` (shared web + mobile). Web wraps it as
+`regeneratePlanKeepingLocked()` in `src/lib/planning/generateMealPlan.ts`; mobile
+calls it inline from the Plan tab's generate path.
+
+**Analytics:**
+- `plan_meal_lock_toggled` (`{ locked, slot, lockedCount, platform }`) — fires
+  on every lock/unlock, same name web + mobile.
+- `plan_regenerated_partial` (`{ lockedCount, rerolledCount, days, platform }`) —
+  fires on a "Refresh the rest" regenerate (distinct from `meal_plan_generated`).
+
 ## Save Plan as Template (Batch 3.10)
 A whole week — or any 1–7 day slice — can be saved as a named template (e.g. "Bulk week", "Vacation week"). Templates persist server-side in `user_plan_templates`.
 

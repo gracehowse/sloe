@@ -20,7 +20,7 @@
 
 **Platform notes:**
 - iOS is the primary surface. Web must reach parity on the two documented functional gaps (units/measurement system, notification reminder-time editor + per-kind toggles) — these are not intentional carve-outs, they are open gaps that must close.
-- Apple Health, RevenueCat customer center, and the notifications inbox are mobile-native and have documented web equivalents (Stripe portal for billing, no Health equivalent, no inbox on web). These remain intentional divergences.
+- Apple Health, RevenueCat customer center, and the notifications inbox are mobile-native and have documented web equivalents (Stripe portal for billing, no Health equivalent, no inbox on web). These remain intentional divergences. **(ENG-1200, 2026-06-19)** Web `Settings.tsx` now surfaces a **Connections** card to match mobile reachability: a **Household** row (→ `?view=household-settings`, hidden when solo — same rule as mobile/Profile) and an **Apple Health** row that opens an *honest informational* explainer (HealthKit is iOS-only → connect in the iOS app; web Health data is read-only). The Apple Health row is informational, not a fake web connect — so "no Health equivalent" still holds. Gated behind `web_settings_connections_v1`.
 - The settings shell (`settings.tsx`) renders `SettingsBundleContent.tsx` as its body. `SettingsBundleContent.tsx` is 3,451 lines — it is a legacy file over the 400-line limit. The redesign should target extraction of each card into its own component file (e.g. `components/settings/MembershipCard.tsx`, `GoalsCard.tsx`, etc.) with a thin shell. This is a separate ENG ticket but the spec anticipates it.
 
 ---

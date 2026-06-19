@@ -57,11 +57,18 @@ export type StructuredIngredient = {
   raw: string;
 };
 
+export type StructuredRecipeStep = {
+  text: string;
+  ingredients: StructuredIngredient[];
+};
+
 export type StructuredRecipe = {
   title: string | null;
   servings: number | null;
+  /** Legacy flat list retained for the verification/nutrition pipeline. */
   ingredients: StructuredIngredient[];
-  steps: string[];
+  /** Step-centric method. Steps can carry the ingredients used in that action. */
+  steps: StructuredRecipeStep[];
   prepTimeMin: number | null;
   cookTimeMin: number | null;
   /** Source attribution the model could read from the content (e.g. a
@@ -114,7 +121,14 @@ Return a single JSON object (no markdown fences, no prose) with EXACTLY this sha
       "confidence": number          // 0..1 — how sure YOU are you parsed THIS line's quantity+unit+name correctly.
     }
   ],
-  "steps": string[],                // ordered SHORT IMPERATIVE steps you write ("Heat the oil"); NEVER the source's narrative sentences. [] if none visible.
+  "steps": [
+    {
+      "text": string,              // ordered SHORT IMPERATIVE step ("Heat the oil").
+      "ingredients": [             // ingredients used in THIS step only; [] if none are used.
+        { "quantity": number or null, "unit": string or null, "name": string, "prep": string or null, "confidence": number }
+      ]
+    }
+  ],
   "prepTimeMin": number or null,    // total prep minutes if stated.
   "cookTimeMin": number or null,    // total cook minutes if stated.
   "sourceName": string or null,     // a by-line / author / site if visibly attributed. null otherwise — do NOT invent.
@@ -126,10 +140,10 @@ CRITICAL RULES:
 - "confidence" reflects ONLY your parsing certainty for that line, not how healthy or common the food is. Clear, fully-legible lines → 0.9+. Partly-obscured or ambiguous lines → below 0.6.
 - Split compound amounts into quantity + unit + name. "200g chicken breast, diced" → quantity 200, unit "g", name "chicken breast", prep "diced".
 - For a bare count ("2 eggs"), set quantity 2, unit "" (or null), name "eggs".
-- DO NOT include section headings ("For the sauce:", "For the salad:") as ingredients. Treat the list as flat.
+- DO NOT include section headings ("For the sauce:", "For the salad:") as ingredients. Attribute each real ingredient to the step that uses it, and also include it once in the top-level flat "ingredients" array for backwards compatibility.
 - DO NOT include mid-prep states (e.g. "cornflour mixed with warm water") or serving notes ("to serve (optional)") as ingredients.
 - Ignore hashtags, @mentions, emoji, ads, navigation, page numbers, and other non-recipe text.
-- STEPS: write SHORT functional imperative instructions in YOUR words ("Heat the oil in a pan", "Simmer for 10 minutes") — one action per step. NEVER reproduce the creator's narrative sentences, first-person voice-over, or paragraph prose verbatim; paraphrase the action only.
+- STEPS: write SHORT functional imperative instructions in YOUR words ("Heat the oil in a pan", "Simmer for 10 minutes") — one action per step. NEVER reproduce the creator's narrative sentences, first-person voice-over, or paragraph prose verbatim; paraphrase the action only. For each step, include only the ingredients used in that step so cook mode can render amount chips.
 - If the input contains NO recipe, return {"title": null, "servings": null, "ingredients": [], "steps": [], "prepTimeMin": null, "cookTimeMin": null, "sourceName": null, "notes": null}.
 - Return ONLY the JSON object.`;
 }
@@ -197,7 +211,10 @@ export function ingredientToLine(ing: StructuredIngredient): string {
 
 /** Convenience: every ingredient as a flat line, in order. */
 export function toIngredientLines(recipe: StructuredRecipe): string[] {
-  return recipe.ingredients.map(ingredientToLine).filter((s) => s.length > 0);
+  const ingredients = recipe.ingredients.length > 0
+    ? recipe.ingredients
+    : recipe.steps.flatMap((step) => step.ingredients);
+  return ingredients.map(ingredientToLine).filter((s) => s.length > 0);
 }
 
 /**
@@ -265,8 +282,43 @@ export function parseStructuredRecipe(
     })
     .filter((x): x is StructuredIngredient => x !== null && x.name.length > 0);
 
+  const parseIngredients = (items: unknown): StructuredIngredient[] =>
+    (Array.isArray(items) ? items : [])
+      .map((item): StructuredIngredient | null => {
+        if (typeof item === "string") {
+          const name = item.trim();
+          if (!name) return null;
+          return { quantity: null, unit: null, name, prep: null, confidence: 0.4, flagged: true, raw: name };
+        }
+        if (typeof item !== "object" || item === null) return null;
+        const ri = item as RawIngredient;
+        const name = asStringOrNull(ri.name);
+        const quantity = asPosNumberOrNull(ri.quantity, 100_000);
+        const unit = asStringOrNull(ri.unit);
+        const prep = asStringOrNull(ri.prep);
+        let confidence = clampConfidence(ri.confidence);
+        if (!name) confidence = 0;
+        const resolvedName = name ?? "";
+        const flagged = confidence < LOW_CONFIDENCE_THRESHOLD || resolvedName.length === 0;
+        const structured: StructuredIngredient = { quantity, unit, name: resolvedName, prep, confidence, flagged, raw: "" };
+        structured.raw = ingredientToLine(structured) || resolvedName;
+        return structured;
+      })
+      .filter((x): x is StructuredIngredient => x !== null && x.name.length > 0);
+
   const steps = Array.isArray(raw.steps)
-    ? raw.steps.map((s) => (typeof s === "string" ? s.trim() : "")).filter(Boolean)
+    ? raw.steps
+        .map((s) => {
+          if (typeof s === "string") {
+            const text = s.trim();
+            return text ? { text, ingredients: [] } : null;
+          }
+          if (typeof s !== "object" || s === null) return null;
+          const record = s as { text?: unknown; ingredients?: unknown };
+          const text = asStringOrNull(record.text);
+          return text ? { text, ingredients: parseIngredients(record.ingredients) } : null;
+        })
+        .filter((s): s is { text: string; ingredients: StructuredIngredient[] } => s !== null)
     : [];
 
   const recipe: StructuredRecipe = {

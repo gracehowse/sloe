@@ -87,7 +87,7 @@ Screen-level files (`app/(tabs)/*.tsx`, `app/*.tsx` on mobile; page-level compon
 2. Extract sub-sections into `components/<screen>/` with one component per file.
 3. Keep the screen file as a thin composition shell: imports, layout, data wiring.
 
-Files over 400 lines signal that state, layout, and logic are tangled. The limit is enforced by convention (no lint rule yet — see ENG-119 for the type-ladder lint precedent).
+Files over 400 lines signal that state, layout, and logic are tangled. The limit is enforced by the **line-count ratchet** `npm run check:screen-budget` (`scripts/check-screen-line-budget.mjs`, wired into `npm run ci` + CI; ENG-717). It scans web `src/app/components` + `app` and mobile `apps/mobile/app` + `apps/mobile/components` `.tsx` files. The current offenders are pinned at their line count in `scripts/screen-line-budget.json` (a path → max-lines allow-list) and may **only shrink** — an allow-listed file that grows past its pin, or any new file that crosses 400 lines, fails CI. As you shrink a pinned file, re-pin it lower with `npm run check:screen-budget:write`; once it drops to ≤400 it leaves the allow-list and is held to the hard limit. (The ratchet scopes to `.tsx` screen/component surfaces — `app/api/**` route handlers are `.ts` and not screens, so they're out of scope by design.)
 
 ---
 

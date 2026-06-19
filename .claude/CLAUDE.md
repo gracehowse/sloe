@@ -47,7 +47,7 @@ Then commit to one recommendation — don't hand back a menu.
 - Strong state handling
 - Clear user journeys
 - No accidental divergence between platforms
-- **No screen file over 400 lines.** If a component grows past 400 lines, extract a `use<Screen>()` hook or break child components into their own files. The 3,400-line `(tabs)/index.tsx` and 2,671-line `NutritionTracker.tsx` are legacy — every new touch should move toward the 400-line target, not away from it. (ENG-621)
+- **No screen file over 400 lines.** If a component grows past 400 lines, extract a `use<Screen>()` hook or break child components into their own files. The 3,400-line `(tabs)/index.tsx` and 2,671-line `NutritionTracker.tsx` are legacy — every new touch should move toward the 400-line target, not away from it. (ENG-621) **Enforced by the line-count ratchet** `npm run check:screen-budget` (`scripts/check-screen-line-budget.mjs`, in `npm run ci` + CI): scans web `src/app/components` + `app` and mobile `apps/mobile/app` + `apps/mobile/components` `.tsx` surfaces; legacy offenders are pinned in `scripts/screen-line-budget.json` and may **only shrink**; any new file crossing 400 lines (or an allow-listed file growing past its pin) fails. Shrink a pinned file, then re-pin lower with `npm run check:screen-budget:write`. (ENG-717)
 
 ## UI write discipline — non-negotiable
 

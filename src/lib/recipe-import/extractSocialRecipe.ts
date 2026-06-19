@@ -821,7 +821,7 @@ ${captionForPrompt}
   return {
     title: sanitiseImportedTitle(recipe.title),
     ingredients,
-    steps: recipe.steps,
+    steps: recipe.steps.map((step) => step.text),
     notes: recipe.notes,
     servings: recipe.servings,
     prepTimeMin: recipe.prepTimeMin ?? heur.prepTimeMin,

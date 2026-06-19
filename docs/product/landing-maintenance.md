@@ -45,6 +45,63 @@ algorithm constants, and the real changelog.
 1. Remove the claim from `LandingPage.tsx` and/or the SSOT.
 2. Add the phrase to `FORBIDDEN_CLAIMS` in `tests/unit/landingParity.test.tsx` so it can't silently come back in a copy edit.
 
+## Hero positioning — D-07 HYBRID (ENG-1204)
+
+**Decision D-07 (Grace, 2026-05-25): HYBRID.** The landing hero used to lead
+recipe-first ("Cook what you love. *Still* reach your goals."), which read as a
+recipe app and undersold the macro-tracker spine. MFP refugees search for a
+*tracker replacement* plus the "what to eat next" coaching gap. HYBRID means:
+**lead the hero with the tracker + coaching promise as the headline, and keep
+the Reel/TikTok-import hook as the differentiating supporting wedge line** — the
+import hook is demoted, not dropped.
+
+This is a re-ordering of *emphasis*, not a new product claim. Both variants
+assert only what the landing already promises (recipe import + macro tracking).
+
+### Where the copy lives
+
+Both hero variants live in `src/lib/landing/sloeLandingContent.ts` as
+`HERO_CURRENT` and `HERO_HYBRID` (typed `HeroCopy`), NOT inline in JSX — same
+SSOT pattern as the rest of the Sloe editorial copy. `LandingPage.tsx`'s `Hero`
+component only chooses between them and owns the markup. The H1 is modelled as
+`{ pre, em, post }` so the content module owns the words while the component
+owns the `<em>` emphasis span.
+
+### Feature flag
+
+The variant is selected at render time by `isFeatureEnabled("landing_hero_hybrid_v1")`:
+
+- **OFF (default, production)** → `HERO_CURRENT` (the shipped recipe-first hero).
+- **ON** → `HERO_HYBRID`.
+
+The flag is **default OFF**: it is deliberately NOT in `REDESIGN_DEFAULT_ON` in
+`src/lib/analytics/track.ts`. It's documented in the `DEFAULT_OFF_FLAGS` set in
+that file (documentation only — not read at runtime). Meaning-changing copy on
+the highest-traffic conversion surface ramps via the PostHog dashboard, and only
+after brand/copy sign-off.
+
+> **Pending sign-off:** the exact `HERO_HYBRID` wording is a faithful first
+> draft of D-07 and is **awaiting brand-manager + copy-reviewer sign-off
+> (Grace)** before the flag ramps past 0%. Tweak the `HERO_HYBRID` strings in
+> `sloeLandingContent.ts` — the parity test pins the rendered hero to those
+> constants, so the test follows the copy automatically.
+
+### Tests
+
+`tests/unit/landingParity.test.tsx` (block: *"hero positioning flag (ENG-1204,
+D-07 HYBRID)"*) mocks `isFeatureEnabled` and asserts:
+
+- flag OFF renders `HERO_CURRENT` (and not the hybrid headline);
+- flag ON renders `HERO_HYBRID` headline + the import wedge line (and not the
+  current headline);
+- the gate reads exactly `landing_hero_hybrid_v1`;
+- neither variant introduces a forbidden new claim (guarding the emphasis-only
+  intent of D-07).
+
+When the flag has held 100% for two weeks with no regression, remove the gate
+and `HERO_CURRENT` in a follow-up cleanup PR (and drop `landing_hero_hybrid_v1`
+from `DEFAULT_OFF_FLAGS`).
+
 ## Known monetisation gaps (product decisions needed)
 
 The audit on 2026-04-19 found a set of features that the landing page used to promise as tier-gated but which the codebase does not actually gate. The landing copy has been rewritten to match code reality; these items are now captured here so product can decide whether to (a) add gates or (b) confirm they should remain free. **No landing-page claim has been made about any of these being tier-gated until a gate actually ships.**

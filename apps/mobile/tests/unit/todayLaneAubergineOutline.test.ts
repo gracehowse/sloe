@@ -247,14 +247,13 @@ describe("CTA weight map — Spec 2 outline/pill conversions (2026-06-09)", () =
     expect(PLANNED_MEALS).not.toMatch(/style=\{\{\s*paddingHorizontal:\s*8,\s*paddingVertical:\s*Spacing\.dense\s*\}\}/);
   });
 
-  it("import-shared 'Import' (both idle paths) is a SOLID primary SupprButton", () => {
-    // Sloe button-system canon (2026-06-12): the import action is the screen's
-    // commit, so it's the solid aubergine SupprButton variant="primary".
-    expect(IMPORT_SHARED).toMatch(/testID="import-shared-import"[\s\S]{0,200}label="Import"/);
+  it("import-shared 'Import' uses solid primary treatment on both idle paths", () => {
+    // Legacy idle: full-width SupprButton primary (Sloe button-system canon).
     expect(IMPORT_SHARED).toMatch(/testID="import-shared-import-legacy"[\s\S]{0,200}label="Import"/);
-    // Both idle Import buttons are the primary variant (redesign + legacy).
-    expect(IMPORT_SHARED).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}testID="import-shared-import"/);
     expect(IMPORT_SHARED).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}testID="import-shared-import-legacy"/);
+    // Redesign idle (import.md §3.2): inline terracotta pill inside the paste row.
+    expect(IMPORT_SHARED).toMatch(/testID="import-shared-import"[\s\S]{0,200}pasteImportPill/);
+    expect(IMPORT_SHARED).toMatch(/pasteImportPillText[\s\S]{0,80}>Import</);
     // The retired aubergine-outline style must be gone.
     expect(IMPORT_SHARED).not.toMatch(/outlineImportBtn/);
   });

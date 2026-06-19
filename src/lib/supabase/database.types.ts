@@ -1419,6 +1419,38 @@ export type Database = {
           },
         ]
       }
+      recipe_steps: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          recipe_id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position: number
+          recipe_id: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          recipe_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_steps_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipe_ingredients: {
         Row: {
           added_by_user: boolean
@@ -1439,6 +1471,7 @@ export type Database = {
           override_macros: Json | null
           protein: number
           recipe_id: string
+          step_id: string | null
           sodium_mg: number
           source: string | null
           sugar_g: number
@@ -1463,6 +1496,7 @@ export type Database = {
           override_macros?: Json | null
           protein?: number
           recipe_id: string
+          step_id?: string | null
           sodium_mg?: number
           source?: string | null
           sugar_g?: number
@@ -1487,12 +1521,20 @@ export type Database = {
           override_macros?: Json | null
           protein?: number
           recipe_id?: string
+          step_id?: string | null
           sodium_mg?: number
           source?: string | null
           sugar_g?: number
           unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_steps"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recipe_ingredients_ingredient_id_fkey"
             columns: ["ingredient_id"]

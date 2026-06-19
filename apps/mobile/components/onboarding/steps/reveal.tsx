@@ -16,8 +16,14 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { computeOnboardingRevealProjection } from "@suppr/shared/onboarding/revealProjection";
 import {
+  ONBOARDING_REVEAL_BMR_LABEL_GLOSS,
+  ONBOARDING_REVEAL_BMR_LABEL_PLAIN,
+  ONBOARDING_REVEAL_METHODOLOGY_GLOSS,
+  ONBOARDING_REVEAL_METHODOLOGY_PLAIN,
   ONBOARDING_REVEAL_PERMISSION_QUOTE,
   ONBOARDING_REVEAL_SUBTITLE,
+  ONBOARDING_REVEAL_TDEE_LABEL_GLOSS,
+  ONBOARDING_REVEAL_TDEE_LABEL_PLAIN,
 } from "@suppr/shared/onboarding/figmaCopy";
 import { useOnboarding } from "../context";
 import { MobileMethodologyNote } from "../scaffold";
@@ -37,6 +43,22 @@ export function MobileRevealStep() {
   // the "Adapt" row keeps `MacroColors.fat`, and the macro tiles keep their own
   // `MacroColors` — none of those are the secondary accent.
   const accent = useAccent();
+  // ENG-1187 — gloss BMR / TDEE / Mifflin-St Jeor on first use behind
+  // `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays as the
+  // default; the glossed copy leads with the plain phrase. The
+  // "Show the maths" expander below is the existing power-user affordance
+  // and is intentionally left on the acronyms. Shared web ↔ mobile via
+  // `figmaCopy.ts`.
+  const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
+  const bmrLabel = glossOn
+    ? ONBOARDING_REVEAL_BMR_LABEL_GLOSS
+    : ONBOARDING_REVEAL_BMR_LABEL_PLAIN;
+  const tdeeLabel = glossOn
+    ? ONBOARDING_REVEAL_TDEE_LABEL_GLOSS
+    : ONBOARDING_REVEAL_TDEE_LABEL_PLAIN;
+  const methodologyCopy = glossOn
+    ? ONBOARDING_REVEAL_METHODOLOGY_GLOSS
+    : ONBOARDING_REVEAL_METHODOLOGY_PLAIN;
   const target = targets?.target ?? 0;
 
   const [displayCals, setDisplayCals] = React.useState(0);
@@ -393,14 +415,14 @@ export function MobileRevealStep() {
           }}
         >
           <View style={{ flex: 1 }}>
-            <Text style={overlineStyle(colors)}>BMR</Text>
+            <Text style={overlineStyle(colors)}>{bmrLabel}</Text>
             <Text style={summaryNumStyle(colors)}>
               {targets.bmr.toLocaleString()}
               <Text style={summaryUnitStyle(colors)}> kcal</Text>
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={overlineStyle(colors)}>Est. TDEE</Text>
+            <Text style={overlineStyle(colors)}>{tdeeLabel}</Text>
             <Text style={summaryNumStyle(colors)}>
               {targets.tdee.toLocaleString()}
               <Text style={summaryUnitStyle(colors)}> kcal</Text>
@@ -408,11 +430,7 @@ export function MobileRevealStep() {
           </View>
         </View>
 
-        <MobileMethodologyNote>
-          Values are estimates based on the Mifflin-St Jeor equation. Sloe
-          will re-calibrate your TDEE from your logged intake and activity
-          data over the first ~2 weeks.
-        </MobileMethodologyNote>
+        <MobileMethodologyNote>{methodologyCopy}</MobileMethodologyNote>
 
         {/* 2026-05-12 (premium-bar audit B5 Reveal #3, Cal AI parity):
             "Show the maths" expandable that reveals the formula breakdown

@@ -20,7 +20,7 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Mic, MicOff, Play, Star, Timer as TimerIcon, CheckCircle2 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, FontFamily } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track, isFeatureEnabled } from "@/lib/analytics";
@@ -41,6 +41,10 @@ import {
   formatCookScaleLabel,
   scaleAmountText,
 } from "@suppr/shared/nutrition/recipeScale";
+import {
+  cookStepIngredientChips,
+  type StepMatchableIngredient,
+} from "@suppr/shared/recipe-ingredients/stepIngredients";
 import {
   formatCookHistoryPreview,
   insertCookHistory,
@@ -112,6 +116,19 @@ export default function CookModeScreen() {
     // recipe with unknown yield). `servings` is parsed safely; any
     // non-positive integer is treated as missing.
     servings: servingsParam,
+    // ENG-944 — the recipe's structured ingredients, threaded in as a
+    // JSON array of `{ name, amount, unit }` so the "For this step" chip
+    // matcher has data to work with. Optional + fail-safe parsed: an
+    // absent / malformed param simply yields no chips (the feature is
+    // also flag-gated). A caller serialises only the three fields the
+    // matcher needs — no macros / PII in the deep link.
+    //
+    // NOTE: this standalone `/cook` route has no live caller in the
+    // current app — the active cook surface is the inline overlay in
+    // `app/recipe/[id].tsx` (which has ingredients in scope already). The
+    // param is consumed here so the route is symmetric + ready the moment
+    // a navigation to `/cook` is wired (intentional — not a pending gap).
+    ingredients: ingredientsJson,
   } = useLocalSearchParams<{
     recipeId: string;
     title: string;
@@ -119,6 +136,7 @@ export default function CookModeScreen() {
     sourceVideoUrl?: string;
     sourceUrl?: string;
     servings?: string;
+    ingredients?: string;
   }>();
   /** Base recipe yield, parsed once from the route query. Null when
    *  unknown — the cook header simply omits the "Serves N" line. */
@@ -150,6 +168,39 @@ export default function CookModeScreen() {
       return [];
     }
   })();
+
+  // ENG-944 — structured ingredients threaded via the `ingredients` route
+  // param. Same fail-safe parse shape as `steps`: an absent / malformed /
+  // non-array param yields []. Only rows with a usable `name` are kept;
+  // `amount` / `unit` are normalised to the matcher's shape. The "For this
+  // step" chips are also flag-gated below, so a stale client that never
+  // passes this param simply shows no chips.
+  const stepIngredients: StepMatchableIngredient[] = useMemo(() => {
+    if (!ingredientsJson) return [];
+    try {
+      const parsed = JSON.parse(ingredientsJson);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter(
+          (r): r is { name: unknown; amount?: unknown; unit?: unknown } =>
+            r != null && typeof r === "object",
+        )
+        .map((r) => ({
+          name: typeof r.name === "string" ? r.name : "",
+          amount:
+            typeof r.amount === "string" || typeof r.amount === "number"
+              ? r.amount
+              : null,
+          unit: typeof r.unit === "string" ? r.unit : null,
+        }))
+        .filter((r) => r.name.trim().length > 0);
+    } catch {
+      return [];
+    }
+  }, [ingredientsJson]);
+
+  const stepIngredientsEnabled = isFeatureEnabled("cook_step_ingredients_v1");
+
   const [current, setCurrent] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
   const [timerElapsed, setTimerElapsed] = useState(0);
@@ -227,6 +278,23 @@ export default function CookModeScreen() {
    *  shared `scaleAmountText` helper picks up cooking units / count
    *  nouns and skips time / temperature / step numbers. */
   const stepText = useMemo(() => scaleAmountText(rawStepText, scale), [rawStepText, scale]);
+
+  /** ENG-944 — "For this step" chips for the current step. Pure matcher
+   *  against the threaded structured ingredients; amounts scaled by the
+   *  active `scale`. Gated behind `cook_step_ingredients_v1` (default-OFF)
+   *  AND empty when no ingredients were threaded in — both yield []. The
+   *  match is run on the RAW step text (pre-scale) so token matching is
+   *  stable across scale changes. Web parity: `CookMode.tsx`. */
+  const stepChips = useMemo(
+    () =>
+      cookStepIngredientChips(
+        stepIngredientsEnabled,
+        rawStepText,
+        stepIngredients,
+        scale,
+      ),
+    [stepIngredientsEnabled, stepIngredients, rawStepText, scale],
+  );
 
   /** Parse durations out of the current step text. First match wins —
    *  if the step contains multiple ("simmer 10 minutes, then bake 25
@@ -976,6 +1044,44 @@ export default function CookModeScreen() {
       marginTop: Spacing.xs,
     },
 
+    /** ENG-944 — "For this step" ingredient chips. The caption mirrors the
+     *  `lastTimeLabel` uppercase-tracked treatment; chips are calm cream
+     *  cards (`colors.card` + hairline border) with measured serif text —
+     *  no loud accent fills. Centred to sit under the centred step text. */
+    forStepBlock: {
+      alignItems: "center",
+      gap: Spacing.sm,
+      maxWidth: 420,
+      width: "100%",
+    },
+    forStepLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 1.5,
+      color: colors.textTertiary,
+      textTransform: "uppercase",
+    },
+    forStepChips: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: Spacing.sm,
+    },
+    forStepChip: {
+      paddingHorizontal: Spacing.dense,
+      paddingVertical: 6,
+      borderRadius: Radius.full,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    forStepChipText: {
+      fontFamily: FontFamily.serifRegular,
+      fontSize: 14,
+      lineHeight: 18,
+      color: colors.text,
+    },
+
     /** "Last time" card surfaced above the step text so the user
      *  walks into the cook session reminded of their last cook (timer,
      *  rating, note). Shown only when at least one row exists in
@@ -1409,6 +1515,24 @@ export default function CookModeScreen() {
 
           {/* Step text */}
           <Text style={styles.stepText}>{stepText}</Text>
+
+          {/* ENG-944 — "For this step" ingredient chips. Quiet uppercase
+              tracked caption (mirrors the `lastTimeLabel` treatment) over
+              calm serif amount+name chips — no loud accent fill. Renders
+              nothing (no empty label) when the matcher finds no ingredient
+              or the flag is OFF. */}
+          {stepChips.length > 0 && (
+            <View style={styles.forStepBlock} testID="cook-step-ingredients">
+              <Text style={styles.forStepLabel}>For this step</Text>
+              <View style={styles.forStepChips}>
+                {stepChips.map((chip) => (
+                  <View key={chip.key} style={styles.forStepChip}>
+                    <Text style={styles.forStepChipText}>{chip.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Timer — suggested-duration pill when the step text contains
               a parseable duration ("bake for 25 minutes"); count-down

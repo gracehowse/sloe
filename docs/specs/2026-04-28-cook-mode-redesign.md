@@ -4,6 +4,15 @@
 **Authority:** `docs/specs/2026-04-27-production-design-spec.md` motion §1.1, type §1.2, depth §1.3, dark mode §1.4, iconography §1.5, voice §1.7.
 **Source:** `docs/audits/2026-04-28-visual-qa-pixel-level.md` finding #1.
 
+## Later additions
+
+- **2026-06-19 (ENG-944) — "For this step" inline ingredient chips.** A calm
+  uppercase-captioned chip row of the ingredients each step references
+  (amount + name, scale-aware, serif) renders beneath the instruction in cook
+  mode on both platforms. Pure token matcher (`stepIngredients.ts`), no schema
+  change, gated behind the default-OFF `cook_step_ingredients_v1` flag. Full
+  record: `docs/decisions/2026-06-19-cook-step-ingredients.md`.
+
 ## Ship status (2026-04-30 partial — audit P1 / B5)
 
 Mobile took a focused subset of this spec on 2026-04-30 ahead of the full visual refit, driven by the customer-lens audit:

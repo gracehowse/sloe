@@ -5,10 +5,12 @@ import { Check, Link2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { SupprWordmark } from "@/app/components/ui/suppr-mark";
 import { AnalyticsEvents } from "@/lib/analytics/events";
-import { track } from "@/lib/analytics/track";
+import { isFeatureEnabled, track } from "@/lib/analytics/track";
 import {
   ONBOARDING_WELCOME_BODY_WEB,
   ONBOARDING_WELCOME_EYEBROW,
+  ONBOARDING_WELCOME_TDEE_BULLET_GLOSS,
+  ONBOARDING_WELCOME_TDEE_BULLET_PLAIN,
 } from "@/lib/onboarding/figmaCopy";
 import { useOnboarding } from "../context";
 
@@ -25,6 +27,13 @@ import { useOnboarding } from "../context";
 
 export function WelcomeStep() {
   const { go, displayIndex, displayTotal } = useOnboarding();
+  // ENG-1187 — gloss the unexplained "TDEE" acronym on first use behind
+  // `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays in the
+  // `else`; the glossed copy leads with the plain phrase. Shared web ↔
+  // mobile via `figmaCopy.ts`.
+  const tdeeBullet = isFeatureEnabled("onboarding_jargon_gloss_v1")
+    ? ONBOARDING_WELCOME_TDEE_BULLET_GLOSS
+    : ONBOARDING_WELCOME_TDEE_BULLET_PLAIN;
   return (
     <div className="relative h-full w-full overflow-hidden bg-background text-foreground">
       {/* Gradient washes — the only place product UI shows the
@@ -113,7 +122,7 @@ export function WelcomeStep() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-8 text-xs">
-            <Checkline>Adaptive TDEE that learns from you</Checkline>
+            <Checkline>{tdeeBullet}</Checkline>
             <Checkline>One-tap import from any recipe site</Checkline>
             <Checkline>Calm design, private by default</Checkline>
           </div>

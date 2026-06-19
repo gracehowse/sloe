@@ -136,6 +136,13 @@ export type PlanMeal = {
    * user sees the planner is showing a neutral split, not real data.
    */
   macrosAreEstimated?: boolean;
+  /**
+   * ENG-956 — per-meal lock ("keep this meal"). When true, the regenerate
+   * path keeps this slot byte-identical and re-rolls only the unlocked
+   * slots against the remaining macro budget. Gated by `plan_meal_lock_v1`
+   * in the UI. Mirrors `DayPlanMeal.isLocked` on web.
+   */
+  isLocked?: boolean;
 };
 
 export type DayPlan = {
@@ -861,6 +868,177 @@ export function buildIndependentSlotDayGeneric<R extends MealPlanRecipe>(
     pickedIds,
     residualProteinGap: fit.residualProteinGap,
   };
+}
+
+// ---------------------------------------------------------------------------
+// ENG-956 — per-meal lock ("keep this meal", Refresh the rest).
+//
+// `regenerateUnlockedMeals` partitions a day's meals into locked vs unlocked,
+// keeps the locked meals BYTE-IDENTICAL (the returned objects are the exact
+// same references the caller passed in), and re-rolls ONLY the unlocked slots
+// against the macro budget that REMAINS after subtracting the locked meals'
+// macros. So a plan with one locked 600-kcal lunch and a 2,000-kcal day target
+// rebalances the other slots toward ~1,400 remaining kcal — the plan still
+// aims for the day total, not the original per-slot share.
+//
+// Contract:
+//   - Locked-meal references are preserved untouched (===), so callers and
+//     tests can assert byte-identity across a regenerate.
+//   - Locked recipe ids are excluded from the unlocked re-roll pool so the
+//     same recipe can't land twice in one day.
+//   - When NO meal is locked, the caller should use the normal generate path;
+//     this function still works (every slot is "unlocked") but offers nothing
+//     over a plain regenerate.
+//   - When EVERY meal is locked, the input meals are returned as-is.
+//   - Slot order is preserved (the day renders Breakfast→Snacks regardless of
+//     which slots were locked).
+// ---------------------------------------------------------------------------
+export function regenerateUnlockedMeals<R extends MealPlanRecipe>(input: {
+  /** The day's current meals, in slot order, each possibly `isLocked`. */
+  meals: readonly PlanMeal[];
+  /** Recipe pool to draw unlocked replacements from. */
+  pool: R[];
+  /** Slot labels in display order — one per `meals` entry. */
+  slots: string[];
+  /** Daily macro targets (the FULL day budget, not a remaining budget). */
+  targets: PlannerTargets;
+  /** Recency set from the surrounding multi-day generation (may be empty). */
+  recentIds: Set<string>;
+  /** Seeded RNG. */
+  rand: () => number;
+  /** Slot-fit predicate, same shape `findBestMealSetGeneric` takes. */
+  slotFitPredicate: (recipe: R, slot: string) => boolean;
+}): { meals: PlanMeal[]; residualProteinGap: number } {
+  const { meals, pool, slots, targets, recentIds, rand, slotFitPredicate } = input;
+
+  const lockedIdx = new Set<number>();
+  meals.forEach((m, i) => {
+    if (m.isLocked) lockedIdx.add(i);
+  });
+
+  // Nothing locked, or everything locked → no partial re-roll to do. Return
+  // the meals untouched (every reference preserved).
+  if (lockedIdx.size === 0 || lockedIdx.size === meals.length) {
+    return { meals: meals.slice(), residualProteinGap: 0 };
+  }
+
+  // Macro budget consumed by the locked meals. Day totals (and the locked
+  // meals' macros) already have their portion multiplier baked into the
+  // calorie/macro fields by the generator, so we sum the fields directly.
+  const lockedSum = { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 };
+  const lockedRecipeIds = new Set<string>();
+  for (const i of lockedIdx) {
+    const m = meals[i]!;
+    lockedSum.calories += m.calories;
+    lockedSum.protein += m.protein;
+    lockedSum.carbs += m.carbs;
+    lockedSum.fat += m.fat;
+    lockedSum.fiberG += m.fiberG ?? 0;
+    if (m.recipeId) lockedRecipeIds.add(m.recipeId);
+  }
+
+  // Remaining budget for the unlocked slots. Floor each at a small positive
+  // value so an over-locked day (locked meals already exceed the day target)
+  // doesn't hand the sampler a zero/negative target that breaks band maths —
+  // the sampler then simply minimises the unlocked contribution.
+  const remainingTargets: PlannerTargets = {
+    calories: Math.max(1, targets.calories - lockedSum.calories),
+    protein: Math.max(1, targets.protein - lockedSum.protein),
+    carbs: Math.max(1, targets.carbs - lockedSum.carbs),
+    fat: Math.max(1, targets.fat - lockedSum.fat),
+    fiber: targets.fiber > 0 ? Math.max(0, targets.fiber - lockedSum.fiberG) : 0,
+    calorieBandPct: targets.calorieBandPct,
+    carbFatBandPct: targets.carbFatBandPct,
+  };
+
+  // Unlocked slot labels, in original order, with their day index.
+  const unlockedSlots: { name: string; dayIndex: number }[] = [];
+  slots.forEach((name, i) => {
+    if (!lockedIdx.has(i)) unlockedSlots.push({ name, dayIndex: i });
+  });
+
+  // Exclude any recipe a locked slot is already using so a re-roll can't
+  // duplicate it into an unlocked slot on the same day.
+  const rollPool = pool.filter((r) => !lockedRecipeIds.has(r.id));
+  // Treat locked ids as "recent" too so the sampler's recency penalty also
+  // steers the unlocked slots away from the locked recipes (belt + braces
+  // with the hard pool exclusion above).
+  const recentForRoll = new Set<string>([...recentIds, ...lockedRecipeIds]);
+
+  const slotNames = unlockedSlots.map((s) => s.name);
+  const joint = findBestMealSetGeneric(
+    rollPool,
+    slotNames,
+    remainingTargets,
+    recentForRoll,
+    rand,
+    slotFitPredicate,
+  );
+
+  // Build the replacement meal for each unlocked slot. When the joint sampler
+  // can't satisfy (empty slot pool), fall back to the independent builder so
+  // the unlocked slots still get filled where possible.
+  const replacements = new Map<number, PlanMeal>();
+  let residualProteinGap = 0;
+  if (joint) {
+    residualProteinGap = joint.residualProteinGap;
+    unlockedSlots.forEach((slot, k) => {
+      const r = joint.recipes[k]!;
+      const mult = joint.multipliers[k]!;
+      const scaled = scaleMacros(r, mult);
+      replacements.set(slot.dayIndex, {
+        name: slot.name,
+        recipeTitle: r.title,
+        recipeId: r.id,
+        calories: scaled.calories,
+        protein: scaled.protein,
+        carbs: scaled.carbs,
+        fat: scaled.fat,
+        fiberG: scaled.fiberG,
+        ...((r as { isCoerced?: boolean }).isCoerced
+          ? { macrosAreEstimated: true as const }
+          : {}),
+      });
+    });
+  } else {
+    const fallback = buildIndependentSlotDayGeneric(
+      rollPool,
+      slotNames,
+      remainingTargets,
+      rand,
+      slotFitPredicate,
+    );
+    residualProteinGap = fallback.residualProteinGap;
+    fallback.picks.forEach((p, k) => {
+      const slot = unlockedSlots[p.slotIndex]!;
+      const mult = fallback.multipliers[k]!;
+      const scaled = scaleMacros(p.pick, mult);
+      replacements.set(slot.dayIndex, {
+        name: slot.name,
+        recipeTitle: p.pick.title,
+        recipeId: p.pick.id,
+        calories: scaled.calories,
+        protein: scaled.protein,
+        carbs: scaled.carbs,
+        fat: scaled.fat,
+        fiberG: scaled.fiberG,
+        ...((p.pick as { isCoerced?: boolean }).isCoerced
+          ? { macrosAreEstimated: true as const }
+          : {}),
+      });
+    });
+  }
+
+  // Stitch back: locked slots keep their EXACT original reference; unlocked
+  // slots take their replacement (or, if no replacement could be built — e.g.
+  // no fitting recipe — the original meal is kept rather than dropping the
+  // slot, so the day never loses a row silently).
+  const nextMeals: PlanMeal[] = meals.map((m, i) => {
+    if (lockedIdx.has(i)) return m; // byte-identical reference
+    return replacements.get(i) ?? m;
+  });
+
+  return { meals: nextMeals, residualProteinGap };
 }
 
 function buildIndependentSlotDay(

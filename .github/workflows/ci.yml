@@ -74,6 +74,14 @@ jobs:
         run: npm run check:today-captures
       - name: Type scale lint (ENG-119)
         run: npm run check:type-scale
+      - name: Screen line-count ratchet (ENG-717)
+        # Gives teeth to the "No screen file over 400 lines" rule. Scans
+        # both web (src/app/components, app) and mobile (apps/mobile/app,
+        # apps/mobile/components) `.tsx` surfaces; runs once on the web job
+        # since the checkout includes apps/mobile. Allow-listed legacy
+        # offenders are pinned in scripts/screen-line-budget.json and may
+        # only shrink; any new file crossing 400 lines fails.
+        run: npm run check:screen-budget
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build

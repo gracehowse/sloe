@@ -140,9 +140,9 @@ describe("Wave E (mobile) — weekly-recap", () => {
 });
 
 describe("Wave E (mobile) — import-shared", () => {
-  it("'Import' (both idle paths) is a SOLID primary; the retired outline style is gone", () => {
+  it("'Import' uses solid primary treatment; the retired outline style is gone", () => {
     expect(IMPORT_SHARED).toMatch(
-      /<SupprButton\s+variant="primary"[\s\S]{0,200}testID="import-shared-import"\s+label="Import"/,
+      /testID="import-shared-import"[\s\S]{0,200}pasteImportPill/,
     );
     expect(IMPORT_SHARED).toMatch(
       /<SupprButton\s+variant="primary"[\s\S]{0,200}testID="import-shared-import-legacy"\s+label="Import"/,
