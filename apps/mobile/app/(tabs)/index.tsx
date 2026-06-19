@@ -431,6 +431,11 @@ export default function TrackerScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const userId = session?.user.id;
+  // ENG-1076 — declared here (above persistMealsImmediate /
+  // persistMealUpdateImmediate) so their useCallback dependency arrays don't
+  // reference it in the temporal dead zone. Hydrated from profiles.tz_iana in
+  // the profile-load effect below.
+  const [profileTimeZone, setProfileTimeZone] = useState<string | null>(null);
   // SLOE redesign (2026-06-03): the Today hero greeting uses the user's
   // first name when a REAL one is available on the auth session's
   // `user_metadata` (already loaded — no extra `profiles` read, which
@@ -627,7 +632,6 @@ export default function TrackerScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileTargets, setProfileTargets] = useState(DEFAULT_TRACKER_TARGETS);
-  const [profileTimeZone, setProfileTimeZone] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   // Canonical 2026-05-22 C1: multi-ring removed entirely. Inner macro

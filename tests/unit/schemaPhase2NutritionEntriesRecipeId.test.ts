@@ -92,8 +92,10 @@ describe("Phase 2 — mobile insert sites populate recipe_id", () => {
     // `insertClonedRowsIntoDay` builds every cloned row via the shared
     // builder; the clone keeps `recipeId`, the builder maps it to
     // `recipe_id` (pinned behaviourally in nutritionEntryRowPersistence).
+    // ENG-1076 threaded the canonical `profileTimeZone` as the 4th arg and
+    // wrapped the call across lines — the recipe_id propagation is unchanged.
     expect(MOBILE_TODAY).toMatch(
-      /withIds\.map\(\(m\) => buildNutritionEntryRow\(m, targetDayKey, userId\)\)/,
+      /withIds\.map\(\(m\) =>\s*buildNutritionEntryRow\(m, targetDayKey, userId, profileTimeZone\)/,
     );
   });
 
