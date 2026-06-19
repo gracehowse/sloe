@@ -9,11 +9,11 @@
  * full hero with the controls still overlaid — never a regression to a separate
  * nav bar.
  */
-import { Pressable, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Bookmark, ChevronLeft, MoreHorizontal, Share2 } from "lucide-react-native";
 
-import { Accent, Spacing } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 
@@ -34,6 +34,7 @@ type RecipeDetailHeroProps = {
   onShare: () => void;
   /** Owner-only overflow (edit / publish / delete). Hidden when absent. */
   onMore?: () => void;
+  showSloeImageLabel?: boolean;
 };
 
 function HeroCircleButton({
@@ -79,6 +80,7 @@ export function RecipeDetailHero({
   onToggleSave,
   onShare,
   onMore,
+  showSloeImageLabel = false,
 }: RecipeDetailHeroProps) {
   const showPhoto = Boolean(imageUrl) && !imageBroken;
   return (
@@ -102,6 +104,24 @@ export function RecipeDetailHero({
           <RecipeHeroFallback id={recipeId} title={title} tags={tags} iconSize={56} />
         </View>
       )}
+
+      {showSloeImageLabel ? (
+        <View
+          style={{
+            position: "absolute",
+            left: Spacing.md,
+            bottom: Spacing.md,
+            borderRadius: 999,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            paddingHorizontal: Spacing.sm,
+            paddingVertical: 4,
+          }}
+        >
+          <Text style={{ color: Accent.primaryForeground, ...Type.captionStrong }}>
+            Sloe image
+          </Text>
+        </View>
+      ) : null}
 
       {/* Top scrim — rgba(0,0,0,0.4) → transparent, ~88px under the controls. */}
       <Svg
