@@ -38,6 +38,31 @@ const API_KEY_ANDROID =
 
 let configured = false;
 
+export type BillingPeriod = "monthly" | "annual";
+
+/** Classify a RevenueCat package by tier + billing period from canonical product IDs,
+ * RC default package identifiers, or packageType fallback. */
+export function classifyPackage(pkg: PurchasesPackage): {
+  tier: "base" | "pro" | null;
+  period: BillingPeriod | null;
+} {
+  const pkgId = pkg.identifier.toLowerCase();
+  const productId = (pkg.product.identifier ?? "").toLowerCase();
+  const haystack = `${pkgId} ${productId}`;
+  const tier = haystack.includes("pro")
+    ? "pro"
+    : haystack.includes("base")
+      ? "base"
+      : null;
+  const period: BillingPeriod | null =
+    pkg.packageType === "ANNUAL" || haystack.includes("annual")
+      ? "annual"
+      : pkg.packageType === "MONTHLY" || haystack.includes("monthly")
+        ? "monthly"
+        : null;
+  return { tier, period };
+}
+
 export function isPurchasesApiKeyPresent(): boolean {
   const key = Platform.OS === "ios" ? API_KEY_IOS : API_KEY_ANDROID;
   return !!key;
