@@ -39,6 +39,13 @@ import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAc
 // hero card body for the full rationale).
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSkeleton";
+import { DiscoverCoverImage } from "@/components/discover/DiscoverCoverImage";
+import { DiscoverCuisineRail } from "@/components/discover/DiscoverCuisineRail";
+import {
+  SEED_CLUSTERS,
+  isSeedRecipeId,
+  type SeedCuisineCluster,
+} from "@suppr/shared/recipes/seedRecipesV2";
 
 // ENG-921 (2026-06-07) — CATEGORY filter row per Figma `528:2`. The
 // "Following" pill (B5 Phase 2c follow-graph feature) is preserved as a
@@ -82,30 +89,6 @@ function SourceBadge({ source }: { source?: string }) {
     <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radius.sm, backgroundColor: MODAL_OVERLAY_SCRIM }}>
       <Text style={{ ...Type.caption, color: Accent.primaryForeground }}>{source}</Text>
     </View>
-  );
-}
-
-/** Row thumbnail: if `uri` 404s, show the same glyph box as missing image. */
-function DiscoverCoverImage({
-  uri,
-  style,
-  fallback,
-}: {
-  uri: string | null | undefined;
-  style: StyleProp<ImageStyle>;
-  fallback: ReactNode;
-}) {
-  const [broken, setBroken] = useState(false);
-  const trimmed = (uri ?? "").trim();
-  if (!trimmed || broken) return <>{fallback}</>;
-  return (
-    <Image
-      source={{ uri: trimmed }}
-      style={style}
-      resizeMode="cover"
-      accessibilityIgnoresInvertColors
-      onError={() => setBroken(true)}
-    />
   );
 }
 
@@ -377,6 +360,38 @@ export default function DiscoverScreen() {
     }
     return matchesRecipeCategory(category, r);
   });
+
+  // ENG-695 — cuisine cluster rails (web parity with `DiscoverFeed.tsx`).
+  // On the default For-You view, render image-overlay rails grouped by
+  // `SEED_CLUSTERS`; the flat stacked-card layout below then shows only
+  // community (non-seed) recipes so seeds aren't duplicated. The gating
+  // predicate is intentionally SIMPLER than web — mobile Discover has no
+  // collection / verified / macro-range filters, only search + category +
+  // following — so there's nothing else that could narrow the feed. Flag-
+  // gated; OFF → today's flat layout unchanged (the kill switch). Reverses
+  // the deliberate 2026-05-22 flatten; ramp gated on Grace's nod.
+  const cuisineRailsEnabled = isFeatureEnabled("discover_cuisine_rails_v1");
+  const showClusterCarousels =
+    cuisineRailsEnabled && !search.trim() && category === "all" && !following;
+  const seedRecipesByCluster = new Map<SeedCuisineCluster, RecipeCard[]>();
+  if (showClusterCarousels) {
+    for (const c of SEED_CLUSTERS) seedRecipesByCluster.set(c.id, []);
+    for (const r of filtered) {
+      if (!isSeedRecipeId(r.id)) continue;
+      const after = r.id.slice("seed-v2-".length);
+      for (const c of SEED_CLUSTERS) {
+        if (after.startsWith(`${c.id}-`)) {
+          seedRecipesByCluster.get(c.id)?.push(r);
+          break;
+        }
+      }
+    }
+  }
+  // When rails show, the flat sections read non-seed recipes only (mirrors
+  // web `displayRecipes`); otherwise the full filtered feed as today.
+  const feedRecipes = showClusterCarousels
+    ? filtered.filter((r) => !isSeedRecipeId(r.id))
+    : filtered;
 
   const t = {
     accent: accent.primary,
@@ -1044,30 +1059,45 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
-            {/* 2026-05-22 evening (Grace): editorial hero (overlay
-                title on top of full-bleed image) replaced with the
-                same MacroIconRow card style as the rest of the feed —
-                "everything should be like the bottom one". Single
-                consistent grammar across the whole Discover stream;
-                no special-case treatment for the first card. */}
-            {/* Gap-2 fix (2026-06-09): section headers Type.headline → Type.title
-                (24pt Newsreader serif) for editorial section-divider weight.
-                headers census 2026-06-10: ink colors.text → navPrimary. */}
-            <Text
-              style={{
-                ...Type.title,
-                color: colors.navPrimary,
-                marginBottom: Spacing.sm,
-              }}
-            >
-              Recipe ideas
-            </Text>
+            {/* ENG-695 — cuisine cluster rails (flag-gated; For-You view only).
+                Reverses the 2026-05-22 flatten behind discover_cuisine_rails_v1;
+                OFF → the flat stacked-card layout below renders exactly as before. */}
+            {showClusterCarousels ? (
+              <View testID="discover-cluster-carousels">
+                {SEED_CLUSTERS.map((c) => (
+                  <DiscoverCuisineRail
+                    key={c.id}
+                    title={c.title}
+                    items={seedRecipesByCluster.get(c.id) ?? []}
+                    onPressRecipe={(id) => router.push(`/recipe/${id}`)}
+                  />
+                ))}
+              </View>
+            ) : null}
+            {/* Flat stacked-card feed. When rails show this renders only
+                community (non-seed) recipes so seeds aren't duplicated; the
+                header adapts so it never reads as a second "Recipe ideas".
+                headers census 2026-06-10: Type.title serif, ink navPrimary. */}
+            {feedRecipes.length > 0 ? (
+              <Text
+                style={{
+                  ...Type.title,
+                  color: colors.navPrimary,
+                  marginTop: showClusterCarousels ? Spacing.xl : 0,
+                  marginBottom: Spacing.sm,
+                }}
+              >
+                {showClusterCarousels ? "More from the community" : "Recipe ideas"}
+              </Text>
+            ) : null}
             {/* Gap-3 fix (2026-06-09): hero-card vertical gap 12 → Spacing.md (16). */}
-            <View style={{ gap: Spacing.md }}>
-              {filtered.slice(0, 3).map((r) => renderHeroCard(r))}
-            </View>
+            {feedRecipes.length > 0 ? (
+              <View style={{ gap: Spacing.md }}>
+                {feedRecipes.slice(0, 3).map((r) => renderHeroCard(r))}
+              </View>
+            ) : null}
 
-            {filtered.length > 3 ? (
+            {feedRecipes.length > 3 ? (
               <>
                 {/* Gap-2 fix (2026-06-09): "More ideas" header Type.headline → Type.title.
                     headers census 2026-06-10: ink colors.text → navPrimary. */}
@@ -1096,7 +1126,7 @@ export default function DiscoverScreen() {
                       overflow: "hidden",
                     }}
                   >
-                    {filtered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                    {feedRecipes.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
                   </View>
                 </View>
               </>
