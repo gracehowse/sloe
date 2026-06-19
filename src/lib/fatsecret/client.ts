@@ -1,5 +1,7 @@
 import OAuth from "oauth-1.0a";
 import crypto from "node:crypto";
+import type { Redis } from "@upstash/redis";
+import { __setUpstashRedisForTests, getRedis } from "../server/upstashClient";
 
 /**
  * FatSecret Platform API client.
@@ -86,7 +88,15 @@ export type FatSecretFoodCategory = {
 const API_BASE = "https://platform.fatsecret.com/rest/server.api";
 const OAUTH2_TOKEN_URL = "https://oauth.fatsecret.com/connect/token";
 
-let oauth2Cache: { token: string; expiresAtMs: number } | null = null;
+let oauth2Cache: { key: string; token: string; expiresAtMs: number } | null = null;
+
+function oauth2CacheKey(cfg: FatSecretConfig): string {
+  return `fs_oauth2_token:${cfg.tier}`;
+}
+
+function oauth2Scope(cfg: FatSecretConfig): string {
+  return cfg.tier === "premier" ? "basic premier" : "basic";
+}
 
 /**
  * ENG-717 — cold-start race guard. On a cold cache, N concurrent callers
@@ -172,7 +182,23 @@ function oauthClient(cfg: FatSecretConfig) {
 
 async function getOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
   const now = Date.now();
-  if (oauth2Cache && oauth2Cache.expiresAtMs - now > 30_000) return oauth2Cache.token;
+  const cacheKey = oauth2CacheKey(cfg);
+  if (oauth2Cache && oauth2Cache.key === cacheKey && oauth2Cache.expiresAtMs - now > 30_000) return oauth2Cache.token;
+
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const redisToken = await redis.get<string>(cacheKey);
+      if (typeof redisToken === "string" && redisToken) {
+        // Redis owns the authoritative TTL. Keep a short L1 lifetime so hot
+        // lambdas stay zero-network without serving materially stale tokens.
+        oauth2Cache = { key: cacheKey, token: redisToken, expiresAtMs: now + 60 * 1000 };
+        return redisToken;
+      }
+    } catch {
+      // Fail open: a Redis blip must not break FatSecret auth.
+    }
+  }
 
   // Promise-singleton: if a token fetch is already running, every concurrent
   // cold caller awaits that same promise instead of starting its own. The
@@ -201,7 +227,7 @@ async function fetchOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
   // it errors at request time (not token time), so requesting "premier"
   // on a Basic account would still issue a token but every Premier
   // endpoint call would 401. The tier flag prevents that round trip.
-  body.set("scope", cfg.tier === "premier" ? "basic premier" : "basic");
+  body.set("scope", oauth2Scope(cfg));
 
   const res = await fetch(OAUTH2_TOKEN_URL, {
     method: "POST",
@@ -264,8 +290,16 @@ async function fetchOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
   const expiresIn = (json as Record<string, unknown>).expires_in;
   if (typeof token !== "string" || !token) return null;
   const expSec = typeof expiresIn === "number" ? expiresIn : Number.parseInt(String(expiresIn ?? "0"), 10);
-  const expiresAtMs = now + (Number.isFinite(expSec) && expSec > 0 ? expSec * 1000 : 10 * 60 * 1000);
-  oauth2Cache = { token, expiresAtMs };
+  const ttlSec = Math.max(60, (Number.isFinite(expSec) && expSec > 0 ? expSec : 10 * 60) - 60);
+  const expiresAtMs = now + ttlSec * 1000;
+  oauth2Cache = { key: cacheKey, token, expiresAtMs };
+  if (redis) {
+    try {
+      await redis.set(cacheKey, token, { ex: ttlSec });
+    } catch {
+      // Fail open: per-process L1 remains populated even if Redis write fails.
+    }
+  }
   return token;
 }
 
@@ -469,6 +503,19 @@ export async function fatSecretFoodCategoriesGet(
  * for `vi.spyOn`-style overrides via the named export.
  */
 export function __resetFatSecretOAuth2CacheForTests(): void {
+  const keys = ["basic", "premier"].map((tier) => `fs_oauth2_token:${tier}`);
+  oauth2Cache = null;
+  const redis = getRedis();
+  if (redis) {
+    void Promise.all(keys.map((key) => redis.del(key).catch(() => undefined)));
+  }
+}
+
+export function __clearFatSecretOAuth2MemoryCacheForTests(): void {
   oauth2Cache = null;
   inFlightTokenFetch = null;
+}
+
+export function __setFatSecretRedisForTests(redis: Redis | null | undefined): void {
+  __setUpstashRedisForTests(redis);
 }

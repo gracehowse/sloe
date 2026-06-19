@@ -51,7 +51,7 @@
  * Decision doc: docs/decisions/2026-06-11-vendor-search-cache.md
  */
 
-import { Redis } from "@upstash/redis";
+import { __setUpstashRedisForTests, getRedis } from "./upstashClient";
 
 import { recordUpstashFailure } from "./upstashMonitoring";
 
@@ -108,22 +108,9 @@ const QUOTA_PREFIX = "pm_vq"; // vendor-quota
 // ── Upstash wiring (shared singleton, same env as rateLimit.ts) ──────────
 
 const gVsc = globalThis as unknown as {
-  __pm_vscRedis?: Redis | null;
   __pm_vscMemCache?: Map<string, { value: string; expiresAtMs: number }>;
   __pm_vscMemQuota?: Map<string, { count: number; resetAtMs: number }>;
 };
-
-function getRedis(): Redis | null {
-  if (gVsc.__pm_vscRedis !== undefined) return gVsc.__pm_vscRedis;
-  const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
-  if (!url || !token) {
-    gVsc.__pm_vscRedis = null;
-    return null;
-  }
-  gVsc.__pm_vscRedis = new Redis({ url, token });
-  return gVsc.__pm_vscRedis;
-}
 
 function memCache() {
   return (gVsc.__pm_vscMemCache ??= new Map());
@@ -493,5 +480,5 @@ async function readQuotaCount(vendor: VendorId): Promise<number> {
 export function _resetVendorSearchCacheForTest(): void {
   gVsc.__pm_vscMemCache = new Map();
   gVsc.__pm_vscMemQuota = new Map();
-  gVsc.__pm_vscRedis = undefined;
+  __setUpstashRedisForTests(undefined);
 }
