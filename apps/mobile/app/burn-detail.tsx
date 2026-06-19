@@ -16,8 +16,8 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
-import { resolveMaintenance } from "@suppr/shared/nutrition/resolveMaintenance";
+import { dateKeyFromDate } from "@suppr/nutrition-core/trackerStats";
+import { resolveMaintenance } from "@suppr/nutrition-core/resolveMaintenance";
 import { maintenanceIntakeFromTargetCalories } from "@/lib/calcTargets";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 // `filterByDateRangeDays` import removed 2026-05-13 — was only used

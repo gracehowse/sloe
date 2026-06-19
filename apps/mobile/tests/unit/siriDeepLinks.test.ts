@@ -13,7 +13,7 @@ import {
   TODAY_REMAINING_URL,
   SIRI_DEFAULT_WATER_ML,
   SIRI_DEFAULT_FAST_HOURS,
-} from "@suppr/shared/nutrition/siriDeepLinks";
+} from "@suppr/nutrition-core/siriDeepLinks";
 
 describe("parseSiriDeepLink — log water", () => {
   it("parses the canonical URL", () => {

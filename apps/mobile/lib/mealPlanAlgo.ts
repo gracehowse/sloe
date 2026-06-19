@@ -18,4 +18,4 @@ export {
   type PlannerSlotConfig,
   type DayPlan,
   type PlanMeal,
-} from "@suppr/shared/nutrition/mealPlanAlgo";
+} from "@suppr/nutrition-core/mealPlanAlgo";

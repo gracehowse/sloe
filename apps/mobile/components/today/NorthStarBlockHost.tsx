@@ -25,7 +25,7 @@ import {
   slotSuggestionEyebrow,
   whyLineForSuggestion,
   type NorthStarRecipe,
-} from "@suppr/shared/nutrition/northStarSuggestion";
+} from "@suppr/nutrition-core/northStarSuggestion";
 
 import { NorthStarBlock } from "./NorthStarBlock";
 

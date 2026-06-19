@@ -37,7 +37,7 @@ import {
   detectWinMoment,
   type WinMomentCelebration,
   type WinMomentSnapshot,
-} from "@suppr/shared/nutrition/winMomentLandmark";
+} from "@suppr/nutrition-core/winMomentLandmark";
 
 const LAST_FIRED_KEY = "win_moment_last_date";
 

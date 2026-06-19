@@ -23,15 +23,15 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import type { SavedMealItem } from "@suppr/shared/nutrition/savedMeals";
-import type { DigestBlendedExtras } from "@suppr/shared/nutrition/digest";
+import type { SavedMealItem } from "@suppr/nutrition-core/savedMeals";
+import type { DigestBlendedExtras } from "@suppr/nutrition-core/digest";
 import {
   decideWeightSurface,
   DIGEST_HIDDEN_WEIGHT_REPLACEMENT_HINT,
   DIGEST_HIDDEN_WEIGHT_REPLACEMENT_LABEL,
   formatLoggingConsistencyValue,
   type WeightSurfaceMode,
-} from "@suppr/shared/nutrition/weightSurfaceMode";
+} from "@suppr/nutrition-core/weightSurfaceMode";
 import { DigestBlended } from "@/components/DigestBlended";
 import { SupprButton } from "@/components/ui/SupprButton";
 

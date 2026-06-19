@@ -159,7 +159,7 @@ describe("ENG-738 — generic-food micros thread through both platforms", () => 
   // empty `nutrition_micros`. Pin the new threading on both platforms.
   it("mobile genericFoodToUnifiedResult attaches the baked micros to the row", () => {
     expect(SRC.verify).toMatch(
-      /import\s*\{\s*genericFoodMicrosPer100g\s*\}\s*from\s*"@suppr\/shared\/nutrition\/genericFoodMicros"/,
+      /import\s*\{\s*genericFoodMicrosPer100g\s*\}\s*from\s*"@suppr\/(?:shared\/nutrition|nutrition-core)\/genericFoodMicros"/,
     );
     // Looks up the panel by the food id and conditionally spreads it onto
     // the UnifiedSearchResult exactly like the OFF row.

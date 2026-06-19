@@ -29,7 +29,7 @@ import {
   getUserRecipeNotes,
   upsertUserRecipeNotes,
   type UserRecipeNotes,
-} from "@suppr/shared/nutrition/recipeNotesClient";
+} from "@suppr/nutrition-core/recipeNotesClient";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { track } from "@/lib/analytics";
 

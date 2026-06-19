@@ -3,7 +3,7 @@ import { Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { Check } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { macroStatProgressRatio } from "@suppr/shared/nutrition/macroStatCaption";
+import { macroStatProgressRatio } from "@suppr/nutrition-core/macroStatCaption";
 
 export type MacroStatPillVariant = "delta" | "ratio" | "value";
 

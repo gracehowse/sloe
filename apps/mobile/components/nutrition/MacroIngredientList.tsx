@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import type { IngredientBreakdownResult } from "@suppr/shared/nutrition/macroIngredientBreakdown";
+import type { IngredientBreakdownResult } from "@suppr/nutrition-core/macroIngredientBreakdown";
 
 /**
  * Per-ingredient breakdown list (ENG-748 #10). Renders the reconciled,

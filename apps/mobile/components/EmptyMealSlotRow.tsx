@@ -4,7 +4,7 @@
  * Mirror: `src/app/components/suppr/empty-meal-slot-row.tsx` (web).
  */
 import { Text, type TextStyle } from "react-native";
-import { aimKcalLabel } from "@suppr/shared/nutrition/mealSlotAim";
+import { aimKcalLabel } from "@suppr/nutrition-core/mealSlotAim";
 import { Type } from "@/constants/theme";
 
 export type EmptyMealSlotSurface = "today" | "plan";

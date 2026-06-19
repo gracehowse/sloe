@@ -13,4 +13,4 @@ export {
   type ProgressCommentaryResult,
   type ProgressCommentaryConfidence,
   type ProgressCommentaryTdee,
-} from "@suppr/shared/nutrition/progressCommentary";
+} from "@suppr/nutrition-core/progressCommentary";

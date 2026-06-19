@@ -9,4 +9,4 @@ export {
   resolveCheckinFirstWeekHeadline,
   type WeeklyRecapEmptyCopy,
   type WeeklyRecapEmptyCopyOpts,
-} from "@suppr/shared/nutrition/weeklyRecapEmptyCopy";
+} from "@suppr/nutrition-core/weeklyRecapEmptyCopy";

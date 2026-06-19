@@ -24,7 +24,7 @@ import { supabase } from "@/lib/supabase";
 import {
   fastingStageDisclosure,
   fastingStageNarrative,
-} from "@suppr/shared/nutrition/fastingStageNarrative";
+} from "@suppr/nutrition-core/fastingStageNarrative";
 import {
   FASTING_WINDOW_PRESETS,
   fastingWindowLabel,

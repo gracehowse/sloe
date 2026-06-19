@@ -11,7 +11,7 @@ import {
   type BreakdownMacro,
   type BreakdownSnapshotRow,
   type IngredientBreakdownResult,
-} from "@suppr/shared/nutrition/macroIngredientBreakdown";
+} from "@suppr/nutrition-core/macroIngredientBreakdown";
 import {
   isSnapshotRowLowConfidence,
   NUTRITION_ENTRY_INGREDIENTS_FLAG,

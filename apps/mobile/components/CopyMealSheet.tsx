@@ -19,7 +19,7 @@ import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import {
   addDays,
   sanitizeCopyTargets,
-} from "@suppr/shared/nutrition/copyMeals";
+} from "@suppr/nutrition-core/copyMeals";
 
 type Theme = {
   text: string;

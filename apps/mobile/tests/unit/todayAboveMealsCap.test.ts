@@ -261,7 +261,7 @@ describe("Eat-again banner retired (ENG-984, mobile)", () => {
     // Match the import/render sites only — retirement breadcrumb comments
     // (which name the components) are fine and must not trip these pins.
     expect(HOST_SRC).not.toMatch(/^\s*computeEatAgainCandidatesForSlot,?\s*$/m);
-    expect(HOST_SRC).not.toMatch(/from "@suppr\/shared\/nutrition\/eatAgainDismiss"/);
+    expect(HOST_SRC).not.toMatch(/from "@suppr\/(?:shared\/nutrition|nutrition-core)\/eatAgainDismiss"/);
     expect(HOST_SRC).not.toMatch(/<TodayEatAgainBanner[\s/]/);
     expect(HOST_SRC).not.toMatch(/<TodayEatAgainScroller[\s/]/);
   });

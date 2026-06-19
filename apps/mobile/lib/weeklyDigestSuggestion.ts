@@ -15,4 +15,4 @@ export {
   type DigestSuggestionProfile,
   type DigestSuggestionRule,
   type DigestSuggestionTier,
-} from "@suppr/shared/nutrition/weeklyDigestSuggestion";
+} from "@suppr/nutrition-core/weeklyDigestSuggestion";

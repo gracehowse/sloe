@@ -19,7 +19,7 @@ import {
   toBreakdownEntry,
   toBreakdownIngredientRow,
   toBreakdownSnapshotRow,
-} from "@suppr/shared/nutrition/macroIngredientBreakdown";
+} from "@suppr/nutrition-core/macroIngredientBreakdown";
 
 // The mobile data + derive logic lives in the composition-root hook
 // (ENG-621 pattern); the screen is a thin shell that consumes it.
@@ -29,7 +29,7 @@ const MOBILE_HOOK_SRC = readFileSync(MOBILE_HOOK, "utf8");
 const MOBILE_SCREEN = resolve(__dirname, "../../app/macro-detail.tsx");
 const MOBILE_SCREEN_SRC = readFileSync(MOBILE_SCREEN, "utf8");
 
-const MOBILE_TODAY = resolve(__dirname, "../../app/(tabs)/index.tsx");
+const MOBILE_TODAY = resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
 const MOBILE_TODAY_SRC = readFileSync(MOBILE_TODAY, "utf8");
 
 const WEB_PANEL = resolve(__dirname, "../../../../src/app/components/MacroDetailPanel.tsx");
@@ -44,7 +44,7 @@ const WEB_TRACKER_SRC = readFileSync(WEB_TRACKER, "utf8");
 describe("macro-detail ingredient breakdown — shared-helper wiring", () => {
   it("mobile hook imports the shared derive helper (not a local copy)", () => {
     expect(MOBILE_HOOK_SRC).toMatch(
-      /from\s+["'][^"']*@suppr\/shared\/nutrition\/macroIngredientBreakdown["']/,
+      /from\s+["'][^"']*@suppr\/(?:shared\/nutrition|nutrition-core)\/macroIngredientBreakdown["']/,
     );
     expect(MOBILE_HOOK_SRC).toMatch(/\bderiveIngredientBreakdown\b/);
     expect(MOBILE_HOOK_SRC).toMatch(/\btoBreakdownEntry\b/);

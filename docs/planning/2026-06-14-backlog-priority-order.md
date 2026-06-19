@@ -630,7 +630,7 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-619 | High | Extract useToday() + composition root |
 | ENG-856 | Medium | Decompose Today megafile (index.tsx, 6,317L) — guarded by 19 source-pin tests |
 | ENG-665 | Medium | Tech debt program — Q3 2026 priority stack |
-| ENG-620 | Medium | @suppr/nutrition-core package |
+| ENG-620 | Medium | @suppr/nutrition-core package — started 2026-06-19 (source alias + mobile import migration) |
 | ENG-573 | Medium | P5 umbrella — Architecture enablers |
 
 **Creator platform** (3)

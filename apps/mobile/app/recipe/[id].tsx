@@ -30,13 +30,13 @@ import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate, newMealId, type JournalMeal } from "@/lib/nutritionJournal";
 import { buildNutritionEntryRow } from "@/lib/nutritionEntryRow";
-import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
+import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import {
   recipeAggregateHasFatSecret,
   scrubFatSecretMacros,
   ZEROED_RECIPE_AGGREGATE,
-} from "@suppr/shared/nutrition/fatsecretCacheGuard";
+} from "@suppr/nutrition-core/fatsecretCacheGuard";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
 import { fetchIngredientImages } from "@suppr/shared/recipe/ingredientImages";
@@ -58,7 +58,7 @@ import {
   formatRecipeCreatorCredit,
 } from "@suppr/shared/share/buildRecipeShareCard";
 import { instagramHandleFromPostUrl, tiktokHandleFromPostUrl } from "@suppr/shared/recipe-import/socialUrlHelpers";
-import { journalSlotFromMealTypes } from "@suppr/shared/nutrition/recipeJournalSlot";
+import { journalSlotFromMealTypes } from "@suppr/nutrition-core/recipeJournalSlot";
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
 import { sanitizeRecipeDescription } from "@suppr/shared/recipes/sanitizeRecipeDescription";
 import { isImportedRecipe, importSourceDisclaimer } from "@suppr/shared/recipes/importSourceDisclaimer";
@@ -67,11 +67,11 @@ import {
   pickHeroImageUrl,
   extractVideoHost,
 } from "@suppr/shared/recipes/heroImageFallback";
-import { formatMacroValue } from "@suppr/shared/nutrition/formatMacro";
+import { formatMacroValue } from "@suppr/nutrition-core/formatMacro";
 // GW-08 (audit 2026-04-28): `computeRecipeFitPercent` import dropped
 // when the always-85% pill was removed. Helper is still callable from
 // other surfaces (web Library card) where targets are passed for real.
-import { allocateIngredientMacrosFromLines } from "@suppr/shared/nutrition/allocateIngredientMacrosFromLines";
+import { allocateIngredientMacrosFromLines } from "@suppr/nutrition-core/allocateIngredientMacrosFromLines";
 import {
   findSeedRecipeById,
   isSeedRecipeId,
@@ -81,21 +81,21 @@ import {
   mergeVerifiedMacroRows,
   overallConfidenceFromVerifyJson,
   perServingFromVerifyJson,
-} from "@suppr/shared/nutrition/verifyRecipeResponse";
+} from "@suppr/nutrition-core/verifyRecipeResponse";
 import { structuredIngredientsForVerify } from "@suppr/shared/recipe-ingredients/structuredIngredientsForVerify";
-import { isStructuredSource } from "@suppr/shared/nutrition/structuredSourceGate";
+import { isStructuredSource } from "@suppr/nutrition-core/structuredSourceGate";
 import {
   formatContainsLine,
   normaliseAllergenIds,
 } from "../../../../src/constants/regulatedAllergens";
-import { ingredientVerifyNeedsReview } from "@suppr/shared/nutrition/verifyConfidencePolicy";
-import { scaleStepText } from "@suppr/shared/nutrition/scaleStepText";
+import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
+import { scaleStepText } from "@suppr/nutrition-core/scaleStepText";
 import { cookStepIngredientChips } from "@suppr/shared/recipe-ingredients/stepIngredients";
 import {
   deriveIngredientVerificationTier,
   ingredientShouldShowVerifyCta,
 } from "@suppr/shared/recipe-ingredients/ingredientVerificationStatus";
-import { wouldCoerceMacros } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
+import { wouldCoerceMacros } from "@suppr/nutrition-core/coerceRecipeMacrosForPlanning";
 // PR1 (Paprika parity, 2026-05-02 customer-lens audit) — viewing-
 // servings stepper helpers. Mobile uses the same module as web so
 // bounds + clamp + debounce stay in lock-step.
@@ -106,8 +106,8 @@ import {
   initialViewServings,
   stepViewServings,
   viewMultiplier as computeViewMultiplier,
-} from "@suppr/shared/nutrition/recipeViewScale";
-import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
+} from "@suppr/nutrition-core/recipeViewScale";
+import { carbsLabel, netCarbsForRow } from "@suppr/nutrition-core/netCarbs";
 import { RecipeNotesCard } from "../../components/RecipeNotesCard";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 import { TrustChip } from "../../components/ui/TrustChip";

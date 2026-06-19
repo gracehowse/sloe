@@ -4,8 +4,8 @@ import { Layout } from "@/constants/layout";
 import { Accent, MacroColors, Spacing } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import type { JournalMeal } from "@/lib/nutritionJournal";
-import { carbsLabel, netCarbsForRow } from "@suppr/shared/nutrition/netCarbs";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import { carbsLabel, netCarbsForRow } from "@suppr/nutrition-core/netCarbs";
+import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 import { isMacroDetailSupported } from "@/lib/macroDetailConfig";
 
 /**

@@ -9,4 +9,4 @@ export {
   ringPhaseEvent,
   type RingPhase,
   type RingPhaseEvent,
-} from "@suppr/shared/nutrition/ringPhase";
+} from "@suppr/nutrition-core/ringPhase";

@@ -21,7 +21,7 @@ import {
   addDays,
   expandDateRange,
   sanitizeCopyTargets,
-} from "@suppr/shared/nutrition/copyMeals";
+} from "@suppr/nutrition-core/copyMeals";
 
 type Theme = {
   text: string;

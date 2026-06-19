@@ -17,4 +17,4 @@ export {
   type WeekActivityAdjustment,
   type WeekDayTotals,
   type WeekStatsBundle,
-} from "@suppr/shared/nutrition/progressWeekReport";
+} from "@suppr/nutrition-core/progressWeekReport";

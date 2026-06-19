@@ -6,14 +6,14 @@
  *
  * P5 parity gap #15 (2026-05-31) — the function was extracted from a
  * private helper inside `apps/mobile/app/meal-nutrition.tsx` into the
- * shared `@suppr/shared/nutrition/macroCalorieSplit` module so web and
+ * shared `@suppr/nutrition-core/macroCalorieSplit` module so web and
  * mobile share one implementation (no rounding drift). This test now
  * imports the shared impl directly rather than re-implementing it, and
  * pins the canonical edge cases against the single source of truth.
  */
 import { describe, expect, it } from "vitest";
 
-import { macroCalorieSplit } from "@suppr/shared/nutrition/macroCalorieSplit";
+import { macroCalorieSplit } from "@suppr/nutrition-core/macroCalorieSplit";
 
 describe("macroCalorieSplit — largest-remainder rounding (audit M01, shared)", () => {
   it("returns 0/0/0 for an empty meal (no macros logged)", () => {

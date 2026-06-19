@@ -1,1 +1,1 @@
-export { computeLoggingStreak } from "@suppr/shared/nutrition/trackerStats";
+export { computeLoggingStreak } from "@suppr/nutrition-core/trackerStats";

@@ -17,8 +17,8 @@ import {
   FOOD_SEARCH_PER_100G_BADGE,
   FOOD_SEARCH_PER_SERVING_BADGE,
   resolveFoodSearchHeadline,
-} from "@suppr/shared/nutrition/foodSearchHeadline";
-import type { PrimaryServing } from "@suppr/shared/nutrition/primaryServing";
+} from "@suppr/nutrition-core/foodSearchHeadline";
+import type { PrimaryServing } from "@suppr/nutrition-core/primaryServing";
 
 // "4 tacos (99 g)" shape from the tester's `APGJJlg` screenshot.
 // Per-100g base: 263 kcal. Primary: 99 g → round(263 × 0.99) = 260.

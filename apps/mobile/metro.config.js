@@ -53,6 +53,7 @@ config.resolver = {
   extraNodeModules: {
     ...((config.resolver && config.resolver.extraNodeModules) || {}),
     "@suppr/shared": path.resolve(projectRoot, "../../src/lib"),
+    "@suppr/nutrition-core": path.resolve(projectRoot, "../../src/lib/nutrition-core"),
     react: path.resolve(mobileNodeModules, "react"),
     "react-dom": path.resolve(mobileNodeModules, "react-dom"),
     "@react-native/virtualized-lists": path.resolve(

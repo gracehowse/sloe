@@ -4,7 +4,7 @@ import {
   JOURNAL_WRITE_QUEUE_STORAGE_KEY,
   parseJournalWriteQueue,
   type JournalWriteQueue,
-} from "@suppr/shared/nutrition/journalWriteQueue";
+} from "@suppr/nutrition-core/journalWriteQueue";
 
 export async function loadJournalWriteQueue(): Promise<JournalWriteQueue> {
   try {

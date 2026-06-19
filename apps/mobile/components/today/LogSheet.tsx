@@ -45,14 +45,14 @@ import FoodSearchPanel, {
   type SelectedFood as InlineSelectedFood,
   type SupabaseLike as InlineSupabaseLike,
 } from "@/components/food-search/FoodSearchPanel";
-import type { FavoriteSearchItem as InlineFavoriteSearchItem } from "@suppr/shared/nutrition/favoriteFoodsSearch";
-import type { MacroConsumed, MacroTargets } from "@suppr/shared/nutrition/remainingMacros";
+import type { FavoriteSearchItem as InlineFavoriteSearchItem } from "@suppr/nutrition-core/favoriteFoodsSearch";
+import type { MacroConsumed, MacroTargets } from "@suppr/nutrition-core/remainingMacros";
 import {
   BARCODE_FREE_FOREVER_DETAIL,
   BARCODE_FREE_FOREVER_HEADLINE,
   BARCODE_LOUD_CTA_LABEL,
-} from "@suppr/shared/nutrition/barcodeFreePromise";
-import { looksLikeMealDescription } from "@suppr/shared/nutrition/parseMealDescription";
+} from "@suppr/nutrition-core/barcodeFreePromise";
+import { looksLikeMealDescription } from "@suppr/nutrition-core/parseMealDescription";
 import { LogSheetDescribeFlow } from "@/components/today/LogSheetDescribeFlow";
 
 /** Re-exported for hosts that want the inline-search payload type. */
@@ -390,8 +390,8 @@ export interface LogSheetProps {
     locked?: boolean;
     /** Active meal slot label (Breakfast/Lunch/…) shown on describe review. */
     slotLabel?: string;
-    onParse: (text: string) => Promise<import("@suppr/shared/nutrition/parseMealDescription").ParseMealDescriptionResult>;
-    onCommit: (items: import("@suppr/shared/nutrition/aiLogging").AiLoggedItem[]) => void;
+    onParse: (text: string) => Promise<import("@suppr/nutrition-core/parseMealDescription").ParseMealDescriptionResult>;
+    onCommit: (items: import("@suppr/nutrition-core/aiLogging").AiLoggedItem[]) => void;
     onPaywall?: () => void;
   };
   /** Log-time meal-slot selector (ENG-773). When provided, a 4-segment

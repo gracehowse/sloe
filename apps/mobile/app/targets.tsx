@@ -33,7 +33,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSettingsWinMoment } from "@/hooks/useSettingsWinMoment";
-import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
+import { dateKeyFromDate } from "@suppr/nutrition-core/trackerStats";
 import { resolveLatestWeightKg } from "@suppr/shared/weightProjection";
 import {
   activityLevelCaption,
@@ -44,7 +44,7 @@ import {
 import { SupprButton } from "@/components/ui/SupprButton";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
 import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
-import { paceKgPerWeekFromPreset } from "@suppr/shared/nutrition/whyThisNumber";
+import { paceKgPerWeekFromPreset } from "@suppr/nutrition-core/whyThisNumber";
 import { isFeatureEnabled } from "@/lib/analytics";
 
 /**

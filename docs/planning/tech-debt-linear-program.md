@@ -19,7 +19,7 @@
 | 2 | Extract `useToday()` | [ENG-619](https://linear.app/suppr/issue/ENG-619) | P5 · Cycle 5 target |
 | 2b | App Router migration | [ENG-622](https://linear.app/suppr/issue/ENG-622) | P5 |
 | 2c | P5 umbrella | [ENG-573](https://linear.app/suppr/issue/ENG-573) | Close when 619–622 done |
-| 3 | `@suppr/nutrition-core` | [ENG-620](https://linear.app/suppr/issue/ENG-620) | After 619 or parallel with boundaries |
+| 3 | `@suppr/nutrition-core` | [ENG-620](https://linear.app/suppr/issue/ENG-620) | Started 2026-06-19: curated source alias + mobile import migration; keep boundary guard green before adding modules |
 | 4 | OFF ODbL cache-only | [ENG-661](https://linear.app/suppr/issue/ENG-661) | TODO OFF-1 |
 | 4 | verifyRecipe atomic RPC | [ENG-662](https://linear.app/suppr/issue/ENG-662) | TODO.md |
 | 4 | Onboarding parity | [ENG-663](https://linear.app/suppr/issue/ENG-663) | Web 4 vs mobile 11 steps |

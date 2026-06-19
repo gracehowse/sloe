@@ -6,7 +6,7 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { isFeatureEnabled } from "@/lib/analytics";
-import { formatPlannedMealMacroParts } from "@suppr/shared/nutrition/plannedMealDisplay";
+import { formatPlannedMealMacroParts } from "@suppr/nutrition-core/plannedMealDisplay";
 import { PortionPickerSheet } from "./PortionPickerSheet";
 
 /**

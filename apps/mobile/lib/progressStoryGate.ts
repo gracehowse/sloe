@@ -8,4 +8,4 @@ export {
   buildProgressStoryPlaceholder,
   hasEnoughDataForStory,
   type ProgressStoryPlaceholder,
-} from "@suppr/shared/nutrition/progressStoryGate";
+} from "@suppr/nutrition-core/progressStoryGate";

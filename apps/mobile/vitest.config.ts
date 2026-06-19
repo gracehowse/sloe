@@ -177,6 +177,8 @@ export default defineConfig({
       // TS compiler does. Without this, every test that touches a
       // shared module would fail to resolve under the new alias.
       { find: /^@suppr\/shared\/(.*)$/, replacement: path.resolve(__dirname, "../../src/lib/$1") },
+      { find: /^@suppr\/nutrition-core$/, replacement: path.resolve(__dirname, "../../src/lib/nutrition-core/index.ts") },
+      { find: /^@suppr\/nutrition-core\/(.*)$/, replacement: path.resolve(__dirname, "../../src/lib/nutrition-core/$1") },
       // Route `react-native` to our host-shim so RNTL + components share
       // the same module. The shim exports `View`, `Text`, `Pressable`,
       // `TextInput`, `Modal`, `StyleSheet.flatten`, etc.

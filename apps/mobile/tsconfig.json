@@ -4,9 +4,21 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@suppr/shared/*": ["../../src/lib/*"],
-      "@supabase/supabase-js": ["./node_modules/@supabase/supabase-js"]
+      "@/*": [
+        "./*"
+      ],
+      "@suppr/shared/*": [
+        "../../src/lib/*"
+      ],
+      "@supabase/supabase-js": [
+        "./node_modules/@supabase/supabase-js"
+      ],
+      "@suppr/nutrition-core": [
+        "../../src/lib/nutrition-core/index.ts"
+      ],
+      "@suppr/nutrition-core/*": [
+        "../../src/lib/nutrition-core/*"
+      ]
     }
   },
   "include": [

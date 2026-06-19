@@ -79,7 +79,7 @@ import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import type { BarcodeProduct } from "@/lib/verifyRecipe";
-import type { AiLoggedItem } from "@suppr/shared/nutrition/aiLogging";
+import type { AiLoggedItem } from "@suppr/nutrition-core/aiLogging";
 import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";

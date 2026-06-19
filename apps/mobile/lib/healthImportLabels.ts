@@ -5,4 +5,4 @@
 export {
   formatHealthImportFallbackTitle,
   isHealthImportFallbackTitle,
-} from "@suppr/shared/nutrition/healthImportLabels";
+} from "@suppr/nutrition-core/healthImportLabels";

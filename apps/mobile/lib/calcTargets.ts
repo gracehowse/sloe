@@ -1,5 +1,5 @@
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { calculateBudget, type PlanPace } from "@suppr/shared/nutrition/tdee";
+import { calculateBudget, type PlanPace } from "@suppr/nutrition-core/tdee";
 import { clampTargetToSafetyFloor, coerceSex } from "@suppr/shared/onboarding/targets";
 
 /** Body-stat fields fetched from profiles */
