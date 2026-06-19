@@ -28,10 +28,10 @@ export function BillingUnavailableFallback() {
         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
           Manage your billing by emailing{" "}
           <a
-            href="mailto:support@suppr-club.com"
+            href="mailto:support@getsloe.com"
             className="text-violet-600 dark:text-violet-400 underline underline-offset-2"
           >
-            support@suppr-club.com
+            support@getsloe.com
           </a>
           . You can cancel anytime by replying to support; we&apos;ll process
           it on the same business day. We usually reply within one business

@@ -40,12 +40,12 @@ describe("build-45/46 — voice recognition package + plugin + iOS purpose strin
     expect(present, "expo-speech-recognition plugin must be registered").toBe(true);
   });
 
-  it("ios.infoPlist declares NSSpeechRecognitionUsageDescription with Suppr-branded copy", () => {
+  it("ios.infoPlist declares NSSpeechRecognitionUsageDescription with Sloe-branded copy", () => {
     const infoPlist = cfg.expo?.ios?.infoPlist ?? {};
     const v = infoPlist.NSSpeechRecognitionUsageDescription;
     expect(typeof v, "NSSpeechRecognitionUsageDescription must be a string").toBe("string");
     expect(v.length).toBeGreaterThan(20);
-    expect(v).toMatch(/Suppr/);
+    expect(v).toMatch(/Sloe/);
     // Apple boilerplate placeholder must be gone.
     expect(v).not.toMatch(/\$\(PRODUCT_NAME\)/);
   });
@@ -54,7 +54,7 @@ describe("build-45/46 — voice recognition package + plugin + iOS purpose strin
     const infoPlist = cfg.expo?.ios?.infoPlist ?? {};
     const v = infoPlist.NSMicrophoneUsageDescription;
     expect(typeof v, "NSMicrophoneUsageDescription must be a string").toBe("string");
-    expect(v).toMatch(/Suppr/);
+    expect(v).toMatch(/Sloe/);
     expect(v).not.toMatch(/\$\(PRODUCT_NAME\)/);
   });
 });

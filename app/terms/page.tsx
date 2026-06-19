@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { TrustPageLayout } from "../../src/app/components/trust/TrustPageLayout";
 
-const DEFAULT_SUPPORT_EMAIL = "support@suppr-club.com";
+const DEFAULT_SUPPORT_EMAIL = "support@getsloe.com";
 
 // 2026-05-12 (premium-bar audit Group A trust pages — sticky ToC):
 // the top-12 sections most users jump to. Section ids map 1:1 with

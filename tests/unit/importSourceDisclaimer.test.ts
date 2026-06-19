@@ -36,14 +36,14 @@ describe("importSourceDisclaimer — legal-approved wording", () => {
   it("names the source in the non-endorsement clause when known", () => {
     const text = importSourceDisclaimer("Smitten Kitchen");
     expect(text).toBe(
-      "Recipe imported for your personal cookbook. Ingredients and nutrition are estimated by Suppr and may differ from the original. Not affiliated with or endorsed by Smitten Kitchen.",
+      "Recipe imported for your personal cookbook. Ingredients and nutrition are estimated by Sloe and may differ from the original. Not affiliated with or endorsed by Smitten Kitchen.",
     );
   });
 
   it("includes the three legally-required clauses (personal copy / estimated / no endorsement)", () => {
     const text = importSourceDisclaimer("@chef");
     expect(text).toContain("imported for your personal cookbook");
-    expect(text).toContain("estimated by Suppr and may differ from the original");
+    expect(text).toContain("estimated by Sloe and may differ from the original");
     expect(text).toContain("Not affiliated with or endorsed by @chef");
   });
 

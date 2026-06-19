@@ -244,6 +244,6 @@ export const FAQS: ReadonlyArray<{ q: string; a: string }> = [
   // landing's no-vapourware stance.
   {
     q: "Do you offer refunds?",
-    a: "If you're unhappy within the first 7 days, email support@suppr-club.com and we'll process a refund. Refunds are handled manually via Stripe.",
+    a: "If you're unhappy within the first 7 days, email support@getsloe.com and we'll process a refund. Refunds are handled manually via Stripe.",
   },
 ];

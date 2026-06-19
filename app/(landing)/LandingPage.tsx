@@ -504,7 +504,7 @@ function LandingFooter() {
                   <Link href="/terms">Terms</Link>
                 </li>
                 <li>
-                  <a href="mailto:support@suppr-club.com">Contact</a>
+                  <a href="mailto:support@getsloe.com">Contact</a>
                 </li>
               </ul>
             </div>

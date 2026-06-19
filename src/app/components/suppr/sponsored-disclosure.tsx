@@ -38,10 +38,10 @@ const DISCLOSURE_LABEL: Record<DisclosureKind, string> = {
 
 const DISCLOSURE_TOOLTIP: Record<DisclosureKind, string> = {
   sponsored:
-    "Suppr was paid by the partner to feature this content. Our editorial review still applies.",
+    "Sloe was paid by the partner to feature this content. Our editorial review still applies.",
   affiliate:
-    "Suppr earns a commission if you purchase via this link, at no extra cost to you. We only link to products we'd recommend regardless.",
-  ad: "Paid placement. Suppr does not endorse the advertised product.",
+    "Sloe earns a commission if you purchase via this link, at no extra cost to you. We only link to products we'd recommend regardless.",
+  ad: "Paid placement. Sloe does not endorse the advertised product.",
 };
 
 export interface SponsoredDisclosureProps

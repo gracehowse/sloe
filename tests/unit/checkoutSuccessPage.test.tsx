@@ -34,7 +34,7 @@ describe("/checkout/success — trust-explicit confirmation", () => {
     expect(receipt.textContent).toContain("Settings > Subscription");
     expect(receipt.textContent).toContain("first charge after that");
     expect(receipt.textContent).toContain("7 days");
-    expect(receipt.textContent).toContain("support@suppr-club.com");
+    expect(receipt.textContent).toContain("support@getsloe.com");
   });
 
   it("renders three trust bullets each with a ShieldCheck icon", async () => {
@@ -52,7 +52,7 @@ describe("/checkout/success — trust-explicit confirmation", () => {
     expect(manageLink.getAttribute("href")).toBe("/account/billing");
   });
 
-  it("renders 'Open Suppr' continue CTA that lands on Today", async () => {
+  it("renders 'Open Sloe' continue CTA that lands on Today", async () => {
     await renderPage({ period: "annual" });
     const openLink = screen.getByTestId("checkout-success-continue");
     expect(openLink.getAttribute("href")).toContain("/home");

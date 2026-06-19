@@ -401,7 +401,7 @@ export function UpgradePaywallDialog({
   const altLine = isAnnual
     ? ` (or ${proMonthlyPrice} per month on the monthly plan)`
     : "";
-  const renewalNote = `${productName} renews automatically at ${priceLabel} per ${periodNoun}${altLine} until cancelled. Cancel anytime from Account → Billing. Prices include any applicable VAT. 7-day refund policy: support@suppr-club.com.`;
+  const renewalNote = `${productName} renews automatically at ${priceLabel} per ${periodNoun}${altLine} until cancelled. Cancel anytime from Account → Billing. Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
 
   const primaryCtaLabel = `Upgrade to Pro · ${priceLabel}/${periodShort}`;
   const secondaryCtaLabel = "Continue for free";

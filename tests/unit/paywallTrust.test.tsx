@@ -135,7 +135,7 @@ describe("buildReceiptTrustCopy — receipt composition", () => {
     expect(copy).toContain("first charge after that");
     expect(copy).toContain("7 days");
     expect(copy).toContain("no questions asked");
-    expect(copy).toContain("support@suppr-club.com");
+    expect(copy).toContain("support@getsloe.com");
   });
 
   it("substitutes the cancelPath into the lead clause (platform-specific)", () => {
