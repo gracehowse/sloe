@@ -399,6 +399,20 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
 // verbatim RN Image kill-switch by default. No registry entry is required for
 // an off-by-default flag.
 
+/**
+ * DEFAULT-OFF flags (registered for discoverability — NOT in REDESIGN_DEFAULT_ON,
+ * so `isFeatureEnabled` resolves them false until PostHog ramps them). Keep this
+ * list in sync with the same block in `src/lib/analytics/track.ts`.
+ *
+ * - `nutrition_entry_ingredients_v1` (ENG-751) — DISPLAY gate for splitting AI/
+ *   photo/voice meals into per-item lines in the macro-detail "By ingredient"
+ *   view from the persisted `nutrition_entry_ingredients` snapshot. OFF → today's
+ *   single self-named fallback line. The WRITE path (snapshot capture) is
+ *   always-on + defensive; this flag gates only the read/display so data can
+ *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
+ */
+export const KNOWN_DEFAULT_OFF_FLAGS = ["nutrition_entry_ingredients_v1"] as const;
+
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of
  *  `src/lib/analytics/track.ts#isFeatureEnabled` (web).

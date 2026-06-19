@@ -159,8 +159,17 @@ import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap";
 import { buildMealEntriesFromSavedMeal } from "../../lib/nutrition/savedMealsLogic";
 import {
   toBreakdownIngredientRow,
+  toBreakdownSnapshotRow,
   type BreakdownIngredientRow,
+  type BreakdownSnapshotRow,
 } from "../../lib/nutrition/macroIngredientBreakdown";
+import {
+  isSnapshotRowLowConfidence,
+  persistEntryIngredientSnapshot,
+  NUTRITION_ENTRY_INGREDIENTS_FLAG,
+  NUTRITION_ENTRY_INGREDIENTS_TABLE,
+  type NutritionEntryIngredientRow,
+} from "../../lib/nutrition/nutritionEntryIngredients";
 import {
   createSavedMeal,
   incrementLogCount,
@@ -345,6 +354,10 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [slotNutritionTarget, setSlotNutritionTarget] = useState<string | null>(null);
   const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
   const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
+  // ENG-751 — persisted AI/photo/voice per-item snapshot rows for the open
+  // day's entries. Gated by the display flag; flag-OFF leaves this empty so the
+  // panel keeps today's single-line fallback (data backfills while dark).
+  const [macroDetailSnapshotRows, setMacroDetailSnapshotRows] = useState<BreakdownSnapshotRow[]>([]);
   const [editMealTargetId, setEditMealTargetId] = useState<string | null>(null);
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
@@ -432,6 +445,62 @@ export const NutritionTracker = memo(function NutritionTracker({
               carbs: Number(row.carbs) || 0,
               fat: Number(row.fat) || 0,
               fiberG: Number(row.fiber_g) || 0,
+            }),
+          ),
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [macroDetailFlagEnabled, macroDetailMeals, macroDetailTarget]);
+
+  // ENG-751 — fetch persisted AI snapshot rows for the open day's entries,
+  // gated by the display flag. Fully defensive: a missing table (pre-push) or a
+  // failed query swallows + leaves the rows empty, so the panel degrades to the
+  // recipe / single-line fallback path. Covers EVERY entry id (AI meals have no
+  // recipe_id, so the recipe-id set above would miss them).
+  useEffect(() => {
+    if (
+      !macroDetailFlagEnabled ||
+      macroDetailTarget == null ||
+      !isFeatureEnabled(NUTRITION_ENTRY_INGREDIENTS_FLAG)
+    ) {
+      setMacroDetailSnapshotRows([]);
+      return;
+    }
+    const entryIds = Array.from(
+      new Set(macroDetailMeals.map((meal) => meal.id).filter((id): id is string => Boolean(id))),
+    );
+    if (entryIds.length === 0) {
+      setMacroDetailSnapshotRows([]);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from(NUTRITION_ENTRY_INGREDIENTS_TABLE)
+      .select("entry_id, name, calories, protein, carbs, fat, fiber_g, confidence")
+      .in("entry_id", entryIds)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.warn(
+            "[macro-detail] nutrition_entry_ingredients fetch failed:",
+            error.message,
+          );
+          setMacroDetailSnapshotRows([]);
+          return;
+        }
+        setMacroDetailSnapshotRows(
+          ((data ?? []) as NutritionEntryIngredientRow[]).map((row) =>
+            toBreakdownSnapshotRow({
+              entryId: row.entry_id,
+              name: row.name,
+              lowConfidence: isSnapshotRowLowConfidence(row),
+              calories: row.calories,
+              protein: row.protein,
+              carbs: row.carbs,
+              fat: row.fat,
+              fiberG: row.fiber_g,
             }),
           ),
         );
@@ -1530,6 +1599,14 @@ export const NutritionTracker = memo(function NutritionTracker({
         ) {
           micros.alcoholG = Math.round(item.alcoholG * 10) / 10;
         }
+        // ENG-751 — persist the AI per-item breakdown into the snapshot child
+        // table. ADDITIVE + DEFENSIVE: `persistEntryIngredientSnapshot` never
+        // throws (table-missing pre-push, RLS, network all swallow) and only
+        // runs once `addLoggedMeal` reports the parent `nutrition_entries`
+        // insert RESOLVED — so the FK target exists (no `setTimeout(0)` race)
+        // and it can never break the meal log. Mirrors mobile's
+        // `persistMealsImmediate().then(...)` ordering. Write path is always-on;
+        // only the macro-detail DISPLAY is flag-gated.
         addLoggedMeal(
           {
             name: mealSlot,
@@ -1543,6 +1620,15 @@ export const NutritionTracker = memo(function NutritionTracker({
             ...(Object.keys(micros).length > 0 ? { micros } : {}),
           },
           analyticsSource,
+          (persisted, persistedEntryId) => {
+            if (!persisted) return;
+            void persistEntryIngredientSnapshot(
+              supabase,
+              persistedEntryId,
+              [item],
+              aiLoggingSourceLabel(item.source),
+            );
+          },
         );
       }
       const label = items[0]?.source === "voice" ? "voice" : "photo";
@@ -2748,6 +2834,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           macro={macroDetailTarget}
           meals={macroDetailMeals}
           ingredientRows={macroDetailIngredientRows}
+          snapshotRows={macroDetailSnapshotRows}
           open={macroDetailTarget != null}
           onClose={() => setMacroDetailTarget(null)}
         />

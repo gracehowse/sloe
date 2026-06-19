@@ -267,18 +267,31 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "paywall_free_mfp_wins_v1",
 ]);
 
-/** Default-OFF flags — registered here as documentation only. They are
- *  deliberately NOT in `REDESIGN_DEFAULT_ON`, so `isFeatureEnabled`
- *  resolves them via PostHog and defaults to `false` when PostHog is cold.
- *  Listing them keeps "is this flag known / on purpose off?" answerable in
- *  one place (the set is not read at runtime — membership has no effect).
+/**
+ * Default-OFF flags — registered for discoverability only. They are
+ * deliberately NOT in `REDESIGN_DEFAULT_ON`, so `isFeatureEnabled` resolves
+ * them via PostHog and defaults to `false` when PostHog is cold. Listing them
+ * keeps "is this flag known / on purpose off?" answerable in one place (the
+ * list is not read at runtime — membership has no effect). Keep in sync with
+ * the same block in `apps/mobile/lib/analytics.ts` (mobile omits web-only
+ * flags like the landing hero).
  *
- *  - `landing_hero_hybrid_v1` (ENG-1204) — landing hero → HYBRID positioning
- *    (D-07). ON swaps the recipe-first hero for the tracker/coaching
- *    headline + import wedge line; OFF keeps the shipped recipe-first hero.
- *    Default OFF: meaning-changing copy on the top conversion surface, so it
- *    ramps via PostHog only after brand/copy sign-off (Grace). */
-export const DEFAULT_OFF_FLAGS = new Set<string>(["landing_hero_hybrid_v1"]);
+ * - `landing_hero_hybrid_v1` (ENG-1204) — landing hero → HYBRID positioning
+ *   (D-07). ON swaps the recipe-first hero for the tracker/coaching headline +
+ *   import wedge line; OFF keeps the shipped recipe-first hero. Default OFF:
+ *   meaning-changing copy on the top conversion surface, ramps via PostHog only
+ *   after brand/copy sign-off (Grace). (web-only — no mobile landing surface.)
+ * - `nutrition_entry_ingredients_v1` (ENG-751) — DISPLAY gate for splitting AI/
+ *   photo/voice meals into per-item lines in the macro-detail "By ingredient"
+ *   view from the persisted `nutrition_entry_ingredients` snapshot. OFF → today's
+ *   single self-named fallback line. The WRITE path (snapshot capture) is
+ *   always-on + defensive; this flag gates only the read/display so data can
+ *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
+ */
+export const KNOWN_DEFAULT_OFF_FLAGS = [
+  "landing_hero_hybrid_v1",
+  "nutrition_entry_ingredients_v1",
+] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
   const forced = flagForceOverride(flag);

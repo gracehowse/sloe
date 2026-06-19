@@ -5,11 +5,20 @@ import {
   deriveIngredientBreakdown,
   toBreakdownEntry,
   toBreakdownIngredientRow,
+  toBreakdownSnapshotRow,
   type BreakdownEntry,
   type BreakdownIngredientRow,
   type BreakdownMacro,
+  type BreakdownSnapshotRow,
   type IngredientBreakdownResult,
 } from "@suppr/shared/nutrition/macroIngredientBreakdown";
+import {
+  isSnapshotRowLowConfidence,
+  NUTRITION_ENTRY_INGREDIENTS_FLAG,
+  NUTRITION_ENTRY_INGREDIENTS_TABLE,
+  type NutritionEntryIngredientRow,
+} from "@suppr/shared/nutrition/nutritionEntryIngredients";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { mealContributedFiberG } from "@/lib/healthDietaryNutrients";
 import { parseNutritionMicrosJson } from "@/lib/nutritionJournal";
 
@@ -66,6 +75,10 @@ export function useMacroDetail({
 }: UseMacroDetailArgs): UseMacroDetailResult {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [ingredientRows, setIngredientRows] = useState<BreakdownIngredientRow[]>([]);
+  // ENG-751 — persisted AI/photo/voice per-item snapshot rows for the day's
+  // entries. Only fetched + applied when the display flag is on; flag-OFF keeps
+  // today's single-line fallback (the data can backfill while the gate is dark).
+  const [snapshotRows, setSnapshotRows] = useState<BreakdownSnapshotRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,6 +96,49 @@ export function useMacroDetail({
       if (!cancelled) setLoading(false);
     };
     const timer = setTimeout(finish, TIMEOUT_MS);
+
+    // ENG-751 — fetch persisted AI snapshot rows for the day's entries. Gated by
+    // the display flag so a flag-OFF read never splits. Fully defensive: if the
+    // table doesn't exist yet (pre-push) or the query fails, swallow + leave
+    // `snapshotRows` empty so the read degrades to the recipe / fallback path.
+    const fetchSnapshots = async (entryIds: string[]): Promise<void> => {
+      if (!isFeatureEnabled(NUTRITION_ENTRY_INGREDIENTS_FLAG) || entryIds.length === 0) {
+        if (!cancelled) setSnapshotRows([]);
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from(NUTRITION_ENTRY_INGREDIENTS_TABLE)
+          .select("entry_id, name, calories, protein, carbs, fat, fiber_g, confidence")
+          .in("entry_id", entryIds);
+        if (cancelled) return;
+        if (error) throw error;
+        setSnapshotRows(
+          ((data ?? []) as NutritionEntryIngredientRow[]).map((r) =>
+            toBreakdownSnapshotRow({
+              entryId: r.entry_id,
+              name: r.name,
+              lowConfidence: isSnapshotRowLowConfidence(r),
+              calories: r.calories,
+              protein: r.protein,
+              carbs: r.carbs,
+              fat: r.fat,
+              fiberG: r.fiber_g,
+            }),
+          ),
+        );
+      } catch (err) {
+        if (cancelled) return;
+        if (typeof console !== "undefined") {
+          console.warn(
+            "[macro-detail] nutrition_entry_ingredients fetch failed:",
+            err instanceof Error ? err.message : err,
+          );
+        }
+        setSnapshotRows([]);
+      }
+    };
+
     supabase
       .from("nutrition_entries")
       .select(
@@ -92,7 +148,7 @@ export function useMacroDetail({
       .eq("date_key", dateKey)
       .order("created_at", { ascending: true })
       .then(
-        ({ data: rows }) => {
+        async ({ data: rows }) => {
           if (cancelled) return;
           const mapped: Meal[] = (rows ?? []).map((r: Record<string, unknown>) => ({
             id: (r.id as string) ?? "",
@@ -112,6 +168,12 @@ export function useMacroDetail({
           }));
           setMeals(mapped);
 
+          // ENG-751 — snapshot fetch covers EVERY entry id (AI meals have no
+          // recipe_id, so the recipe-id set below would miss them). Runs in
+          // parallel with the recipe-ingredients fetch.
+          const entryIds = mapped.map((m) => m.id).filter((x) => !!x);
+          const snapshotPromise = fetchSnapshots(entryIds);
+
           // Batched per-ingredient fetch (one query, no N+1) for the "By
           // ingredient" view. Collect the day's distinct non-null recipe_ids;
           // recipe_ingredients is public-readable. If there are none (single
@@ -120,6 +182,8 @@ export function useMacroDetail({
             new Set(mapped.map((m) => m.recipeId).filter((x): x is string => !!x)),
           );
           if (recipeIds.length === 0) {
+            await snapshotPromise;
+            if (cancelled) return;
             clearTimeout(timer);
             setIngredientRows([]);
             finish();
@@ -130,9 +194,8 @@ export function useMacroDetail({
             .select("recipe_id, name, calories, protein, carbs, fat, fiber_g")
             .in("recipe_id", recipeIds)
             .then(
-              ({ data: ingRows }) => {
+              async ({ data: ingRows }) => {
                 if (cancelled) return;
-                clearTimeout(timer);
                 setIngredientRows(
                   (ingRows ?? []).map((r: Record<string, unknown>) =>
                     toBreakdownIngredientRow({
@@ -146,11 +209,13 @@ export function useMacroDetail({
                     }),
                   ),
                 );
-                finish();
-              },
-              (err: unknown) => {
+                await snapshotPromise;
                 if (cancelled) return;
                 clearTimeout(timer);
+                finish();
+              },
+              async (err: unknown) => {
+                if (cancelled) return;
                 if (typeof console !== "undefined") {
                   console.warn(
                     "[macro-detail] recipe_ingredients fetch failed:",
@@ -158,8 +223,12 @@ export function useMacroDetail({
                   );
                 }
                 // Degrade gracefully: with no ingredient rows the "By
-                // ingredient" view falls back to one self-named line per entry.
+                // ingredient" view falls back to one self-named line per entry
+                // (or the snapshot split, if snapshot rows loaded).
                 setIngredientRows([]);
+                await snapshotPromise;
+                if (cancelled) return;
+                clearTimeout(timer);
                 finish();
               },
             );
@@ -239,8 +308,15 @@ export function useMacroDetail({
         fiberG: m.fiberG,
       }),
     );
-    return deriveIngredientBreakdown(entries, ingredientRows, macro as BreakdownMacro);
-  }, [meals, ingredientRows, macro, supportsIngredientBreakdown]);
+    // ENG-751 — prefer persisted AI snapshot rows over the single-line fallback
+    // when present + the display flag is on. `snapshotRows` is only populated
+    // when the flag was on at fetch time, but we re-check the flag here so the
+    // gate is unambiguous at the derive boundary too.
+    return deriveIngredientBreakdown(entries, ingredientRows, macro as BreakdownMacro, {
+      snapshots: snapshotRows,
+      preferSnapshot: isFeatureEnabled(NUTRITION_ENTRY_INGREDIENTS_FLAG),
+    });
+  }, [meals, ingredientRows, snapshotRows, macro, supportsIngredientBreakdown]);
 
   return {
     meals,

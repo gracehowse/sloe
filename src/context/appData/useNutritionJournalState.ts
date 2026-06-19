@@ -247,6 +247,12 @@ export function useNutritionJournalState(opts: {
     // `tests/unit/foodLoggedSourceParity.test.ts` ensures no
     // regression to a bare `food_logged` emit.
     analyticsSource: FoodLoggedSource = "manual",
+    // ENG-751 — optional hook fired once the parent `nutrition_entries` insert
+    // resolves (mobile parity with `persistMealsImmediate().then(...)`), so a
+    // per-item snapshot write can chain off a CONFIRMED FK target instead of
+    // racing the in-flight insert on a `setTimeout(0)`. `persisted=false` on any
+    // insert error / missing-table → the caller skips the snapshot.
+    onPersisted?: (persisted: boolean, entryId: string) => void,
   ): string => {
     const id = newId("meal");
     const newMeal = { ...meal, id };
@@ -267,6 +273,7 @@ export function useNutritionJournalState(opts: {
             const msg = error.message ?? "";
             if (looksLikeMissingTableError(msg)) {
               setDbNutritionEnabled(false);
+              onPersisted?.(false, id);
               return;
             }
             // ENG-1125 — keep optimistic UI; queue for retry instead of rollback.
@@ -274,6 +281,7 @@ export function useNutritionJournalState(opts: {
             toast.warning(
               "Saved on this device — we'll sync when you're back online.",
             );
+            onPersisted?.(false, id);
             return;
           }
           void refreshAdaptiveTdeeForUser(supabase, authedUserId);
@@ -282,6 +290,9 @@ export function useNutritionJournalState(opts: {
           // activity_level / plan_pace / goal. Fire-and-forget — a
           // snapshot write failure must never roll back the log.
           void snapshotDailyTargetIfMissing(supabase, authedUserId);
+          // ENG-751 — parent insert confirmed; let the caller write the per-item
+          // snapshot now that the FK target row exists on the server.
+          onPersisted?.(true, id);
           // F-74 / F-103 fix (2026-05-07): per-meal `micros.caffeineMg`
           // / `alcoholG` is the canonical SoT — `NutritionTracker`
           // re-sums it at render via `caffeineFromMealsMgToday` /
@@ -372,8 +383,12 @@ export function useNutritionJournalState(opts: {
   );
 
   const addLoggedMeal = useCallback(
-    (meal: Omit<LoggedMeal, "id">, analyticsSource?: FoodLoggedSource): string => {
-      return addLoggedMealForDate(selectedDateKey, meal, analyticsSource);
+    (
+      meal: Omit<LoggedMeal, "id">,
+      analyticsSource?: FoodLoggedSource,
+      onPersisted?: (persisted: boolean, entryId: string) => void,
+    ): string => {
+      return addLoggedMealForDate(selectedDateKey, meal, analyticsSource, onPersisted);
     },
     [addLoggedMealForDate, selectedDateKey],
   );

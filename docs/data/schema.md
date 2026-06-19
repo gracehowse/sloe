@@ -33,6 +33,7 @@ PostgreSQL via Supabase. Row-Level Security (RLS) enabled on all tables.
 | `user_favorite_foods` | Starred meals for one-tap re-log (Quick add Favourites tab) | Relational |
 | `user_saved_meals` | User-defined meal combos (e.g. "My usual breakfast") parent row | Relational |
 | `user_saved_meal_items` | Child items belonging to a saved-meal combo, ordered by `position` | Relational |
+| `nutrition_entry_ingredients` | **(ENG-751)** Immutable per-item AI/photo/voice meal snapshot — child rows of `nutrition_entries`. Carries the un-rounded macros + `confidence` + `source` the rounded entry columns drop. Read (gated by `nutrition_entry_ingredients_v1`) to split AI meals into per-item lines in the macro-detail "By ingredient" view. | Relational (child of `nutrition_entries`) |
 | `user_custom_foods` | User-defined custom foods (e.g. homemade granola). Macros per `base_grams`, natural-portion shortcuts in `servings jsonb`, optional detailed micros (`sugar_g`, `saturated_fat_g`, `sodium_mg`), `servings_per_container`, and `barcode` for scan-same-package recall | Relational |
 | `user_plan_templates` | Named reusable snapshots of a 1–7 day meal plan slice (Batch 3.10) | Relational — JSONB `slots` array |
 
@@ -53,6 +54,51 @@ The `recipes` table stores **per-serving** values (calories, protein, carbs, fat
 - `added_by_user boolean not null default false` — distinguishes rows the user added post-import (via the "+ Add ingredient" button on web `RecipeDetail` and mobile `recipe/verify.tsx`) from importer-parsed rows. Default `false` means no backfill is needed; existing rows stay classified as importer-parsed.
 - Shared totaliser `src/lib/nutrition/ingredientOverrides.ts` exposes `effectiveMacros` + `recomputeRecipeTotals` so web and mobile cannot drift on override precedence. Mobile re-exports the helpers via `apps/mobile/lib/verifyRecipe.ts`.
 - Overrides never affect sugar / sodium snapshots (no override surface yet) — those continue to come from the matched source.
+
+### AI/photo/voice per-item snapshot — `nutrition_entry_ingredients` (ENG-751)
+The macro-detail "By ingredient" view derives per-ingredient macros for logged
+**recipes** from `recipe_ingredients × portion_multiplier`, reconciled to the
+entry total. AI/photo/voice meals have **no `recipe_id`**: each AI item is
+committed as its OWN `nutrition_entries` row, and its per-item breakdown
+(AI-resolved name, un-rounded macros, per-item `confidence` + `source`) lived
+only in the unpersisted AI response. So those entries rendered as a single
+self-named fallback line — correct, but lossy.
+
+`nutrition_entry_ingredients` is an **immutable child table** of
+`nutrition_entries` that persists that breakdown at commit time:
+
+- **Columns:** `id`, `entry_id` (FK → `nutrition_entries(id)` **ON DELETE
+  CASCADE**), `name`, `calories` / `protein` / `carbs` / `fat` / `fiber_g`
+  (`numeric`, full AI fidelity — vs the rounded `smallint`/`real` on the parent
+  entry; matches the `user_saved_meal_items` precedent), `confidence`
+  (`numeric` in `[0,1]`), `source` (`text`, e.g. `'AI voice'` / `'AI photo'`),
+  `created_at`.
+- **RLS:** user-owned, default-deny. Ownership is derived via the parent
+  entry's `user_id` (the exact `exists(... from nutrition_entries e ...)` pattern
+  `user_saved_meal_items` uses). **SELECT + INSERT only** — no UPDATE/DELETE
+  policy (snapshots are immutable; cascade handles delete).
+- **Trust posture:** every row carries `confidence`; `< 0.5` (or null) is
+  low-confidence and the read/render path **flags** it ("Estimated — low
+  confidence") rather than dropping it. The write builder **never fabricates** —
+  items the AI returned without a usable calorie value are skipped, not
+  zero-filled.
+- **Write path** (`persistEntryIngredientSnapshot`, shared
+  `src/lib/nutrition/nutritionEntryIngredients.ts`): **always-on**, additive,
+  and fully defensive — it runs AFTER the main `nutrition_entries` write, in a
+  fire-and-forget `void` that **can never break the meal log** (table-missing
+  pre-push, RLS, network, or a brief FK race all swallow + log). Wired into
+  `commitAiLoggedItems` on web (`NutritionTracker.tsx`) and mobile
+  (`(tabs)/index.tsx`).
+- **Read path** (shared `deriveIngredientBreakdown`): when an entry has snapshot
+  rows AND the `nutrition_entry_ingredients_v1` **display flag** is on, those
+  rows take precedence over both the recipe path and the fallback — the entry
+  splits into one line per item, reconciled to the entry's stored total.
+  Flag-OFF = today's single-line fallback (so the data backfills while dark).
+- **Types:** `database.types.ts` is **not yet regenerated** (it reads the LIVE
+  schema, which won't have the table until `supabase db push --linked` runs). An
+  explicit `NutritionEntryIngredientRow` interface + typed casts at the supabase
+  boundary cover the gap (the `profiles.meal_plan_slots` precedent).
+  **Post-apply follow-up (ENG-751): regen `database.types.ts` and drop the casts.**
 
 ### JSON blob tables (Phase 0)
 `meal_plans`, `nutrition_journals`, `shopping_lists` each store the entire user's data in a single JSON column. **This is explicitly Phase 0** and will need row-per-entry tables before scale.
@@ -161,6 +207,7 @@ Some state is stored **only** in the browser's `localStorage` (`suppr-app-v1` ke
 | `user_plan_templates` | Migration `20260421160000` — Batch 3.10 named plan templates (1–7 day slices, JSONB slots) |
 | `meal_plan_days.servings_used`, `meal_plan_meals.is_leftover`, `meal_plan_meals.leftover_of_recipe_id` | Migration `20260421160000` — Batch 3.10 leftovers distribution state |
 | `profiles.streak_freeze_budget_max`, `profiles.streak_freezes_earned_at`, `profiles.streak_freezes_used_history`, `profiles.weekly_recap_push_enabled`, `profiles.weekly_recap_last_seen_week_key` | Migration `20260421170000` — Batch 4.11 streak freeze + weekly recap |
+| `nutrition_entry_ingredients` | Migration `20260619120000` — **ENG-751** per-item AI/photo/voice meal snapshot. **Types not yet regenerated** (the table doesn't exist in the live schema until `supabase db push --linked` runs). Accessed via the explicit `NutritionEntryIngredientRow` interface + typed `as` casts (`src/lib/nutrition/nutritionEntryIngredients.ts`). **Post-apply follow-up (ENG-751): run `npm run db:types` and drop the casts.** |
 
 **To wire up**: apply all pending migrations to the remote DB, regenerate types, then add `<Database>` generic to `createBrowserClient` and `createClient` calls.
 

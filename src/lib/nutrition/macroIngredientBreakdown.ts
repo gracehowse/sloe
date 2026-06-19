@@ -28,12 +28,17 @@
  * rows, render as a single self-named "ingredient" line carrying the entry's own
  * stored macros. We never show nothing for a logged entry.
  *
- * ## Known gap (tracked, not built here)
- * AI/photo/voice multi-item meals carry their item breakdown only in the unpersisted
- * AI response — there is no `recipe_id` and no per-item snapshot in the schema. Those
- * entries fall through to the single-line fallback (correct, not silent).
- * Splitting those entries needs a `nutrition_entry_ingredients` snapshot child
- * table and is tracked separately in Linear as ENG-751.
+ * ## AI/photo/voice snapshot path (ENG-751)
+ * AI/photo/voice meals carry their item breakdown only in the unpersisted AI
+ * response — there is no `recipe_id`. ENG-751 persists that breakdown into a
+ * `nutrition_entry_ingredients` snapshot child table at commit time. When an
+ * entry has snapshot rows AND the caller opts in (`preferSnapshot`, gated by the
+ * `nutrition_entry_ingredients_v1` display flag), those rows take precedence over
+ * BOTH the recipe-derived path and the single-line fallback: the entry splits
+ * into one line per snapshot item, reconciled to the entry's stored total exactly
+ * like the recipe path. Recipes keep the recipe-derived path; entries with neither
+ * snapshot rows nor recipe rows keep the single self-named fallback line.
+ * See {@link ./nutritionEntryIngredients}.
  */
 
 /** The macro fields this breakdown supports. Mirrors the macro-detail screen config. */
@@ -89,6 +94,20 @@ export interface BreakdownIngredientRow extends BreakdownMacroValues {
   name: string;
 }
 
+/**
+ * A persisted AI/photo/voice snapshot item (ENG-751), normalised for the
+ * breakdown. `entryId` links it to its parent {@link BreakdownEntry}; its macro
+ * fields are the item's OWN contribution (already at the logged portion — the
+ * snapshot is captured post-scale, so there is no portion multiplier to apply).
+ * `lowConfidence` lets the read path flag the line without re-deriving from the
+ * raw confidence float.
+ */
+export interface BreakdownSnapshotRow extends BreakdownMacroValues {
+  entryId: string;
+  name: string;
+  lowConfidence: boolean;
+}
+
 /** One aggregated line in the rendered breakdown. */
 export interface IngredientBreakdownLine {
   /** Ingredient (or food) display name; aggregation key. */
@@ -101,6 +120,12 @@ export interface IngredientBreakdownLine {
    * UI optionally style it differently, though by default it renders identically.
    */
   isFallback: boolean;
+  /**
+   * True when this line came from a low-confidence AI snapshot item (ENG-751).
+   * The UI flags it ("estimated — low confidence") rather than dropping it, per
+   * the trust posture. Recipe-derived and fallback lines are never low-confidence.
+   */
+  lowConfidence: boolean;
 }
 
 export interface IngredientBreakdownResult {
@@ -141,15 +166,32 @@ function safeMultiplier(m: number): number {
  * two logged recipes sums into one line). Fallback lines aggregate by the entry's
  * display name too.
  *
+ * ## Snapshot precedence (ENG-751)
+ * When `options.preferSnapshot` is set AND an entry has ≥1 snapshot row, those
+ * rows take precedence over the recipe path and the fallback for that entry: it
+ * splits into one line per snapshot item, reconciled to the entry's stored total
+ * (so the parts still equal the logged whole, even if the snapshot was rounded
+ * differently at commit). Each line carries `lowConfidence` from its source item.
+ * `preferSnapshot` is the display-flag gate — OFF restores today's behaviour
+ * (recipe path / single-line fallback) even when snapshot rows exist, so the data
+ * can backfill while dark.
+ *
  * @param entries     the day's logged entries, normalised
  * @param ingredients all base-servings ingredient rows for the day's recipes (one
  *                    batched query, keyed by recipeId)
  * @param macro       the active macro to break down
+ * @param options     `snapshots`: persisted AI snapshot rows keyed by entryId;
+ *                    `preferSnapshot`: gate (the `nutrition_entry_ingredients_v1`
+ *                    display flag) — when false, snapshots are ignored entirely.
  */
 export function deriveIngredientBreakdown(
   entries: BreakdownEntry[],
   ingredients: BreakdownIngredientRow[],
   macro: BreakdownMacro,
+  options?: {
+    snapshots?: BreakdownSnapshotRow[];
+    preferSnapshot?: boolean;
+  },
 ): IngredientBreakdownResult {
   // Index ingredient rows by recipe so each entry resolves its rows in O(1).
   const byRecipe = new Map<string, BreakdownIngredientRow[]>();
@@ -160,24 +202,75 @@ export function deriveIngredientBreakdown(
     else byRecipe.set(row.recipeId, [row]);
   }
 
+  // Index snapshot rows by entry — only when the display flag opts in, so a
+  // flag-OFF read can't accidentally split (the data is captured always-on but
+  // dark). An empty / absent snapshot set leaves every entry on its prior path.
+  const preferSnapshot = options?.preferSnapshot === true;
+  const bySnapshotEntry = new Map<string, BreakdownSnapshotRow[]>();
+  if (preferSnapshot && options?.snapshots) {
+    for (const row of options.snapshots) {
+      if (!row.entryId) continue;
+      const list = bySnapshotEntry.get(row.entryId);
+      if (list) list.push(row);
+      else bySnapshotEntry.set(row.entryId, [row]);
+    }
+  }
+
   // Aggregate reconciled contributions by ingredient name. Track fallback-ness so a
   // name that only ever appears as a fallback line is flagged; if a name appears both
   // as a real ingredient and a fallback (unlikely but possible) the real wins.
-  const agg = new Map<string, { value: number; isFallback: boolean }>();
+  // `lowConfidence` is sticky: any low-confidence contribution to a name flags the
+  // whole line (we never hide uncertainty by averaging it away).
+  const agg = new Map<
+    string,
+    { value: number; isFallback: boolean; lowConfidence: boolean }
+  >();
 
-  const addLine = (name: string, value: number, isFallback: boolean) => {
+  const addLine = (
+    name: string,
+    value: number,
+    isFallback: boolean,
+    lowConfidence = false,
+  ) => {
     const key = name.trim() || "Item";
     const existing = agg.get(key);
     if (existing) {
       existing.value += value;
       existing.isFallback = existing.isFallback && isFallback;
+      existing.lowConfidence = existing.lowConfidence || lowConfidence;
     } else {
-      agg.set(key, { value, isFallback });
+      agg.set(key, { value, isFallback, lowConfidence });
     }
   };
 
   for (const entry of entries) {
     const storedMacro = macroOf(entry, macro);
+
+    // 1. Snapshot path (ENG-751) — preferred when the entry has persisted AI
+    //    item rows and the display flag is on. Splits the entry into one line
+    //    per snapshot item, reconciled to the entry's stored total exactly like
+    //    the recipe path, carrying each item's low-confidence flag.
+    const snapRows = bySnapshotEntry.get(entry.id);
+    if (snapRows && snapRows.length > 0) {
+      const snapValues = snapRows.map((r) => macroOf(r, macro));
+      const snapSum = snapValues.reduce((s, v) => s + v, 0);
+      if (snapSum <= 0) {
+        // Snapshot items contribute 0 to this macro (e.g. a fat-free item set
+        // under the fat view). Show each item at 0 so composition is visible,
+        // matching the recipe-path 0 behaviour. No fabricated fallback line.
+        snapRows.forEach((r) => addLine(r.name, 0, false, r.lowConfidence));
+      } else {
+        // Reconcile to the entry's stored total (handles commit-time rounding
+        // drift between the snapshot rows and the entry column).
+        const factor = storedMacro / snapSum;
+        snapRows.forEach((r, i) =>
+          addLine(r.name, snapValues[i] * factor, false, r.lowConfidence),
+        );
+      }
+      continue;
+    }
+
+    // 2. Recipe path (or fallback). Resolve the entry's recipe ingredient rows.
     const rows = entry.recipeId ? byRecipe.get(entry.recipeId) : undefined;
 
     // Fallback: no recipe link, or the recipe has no ingredient rows.
@@ -213,11 +306,45 @@ export function deriveIngredientBreakdown(
   }
 
   const lines: IngredientBreakdownLine[] = Array.from(agg.entries())
-    .map(([name, v]) => ({ name, value: v.value, isFallback: v.isFallback }))
+    .map(([name, v]) => ({
+      name,
+      value: v.value,
+      isFallback: v.isFallback,
+      lowConfidence: v.lowConfidence,
+    }))
     .sort((a, b) => b.value - a.value);
 
   const total = lines.reduce((s, l) => s + l.value, 0);
   return { lines, total };
+}
+
+/**
+ * Normalise a raw `nutrition_entry_ingredients` snapshot row (snake_case from
+ * Supabase) into a {@link BreakdownSnapshotRow}. Shared so web + mobile build
+ * snapshot rows identically. `lowConfidence` is resolved by the caller via the
+ * shared `isSnapshotRowLowConfidence` helper (the confidence threshold lives in
+ * `aiLogging.ts`, single-sourced).
+ */
+export function toBreakdownSnapshotRow(input: {
+  entryId: string;
+  name?: string | null;
+  lowConfidence: boolean;
+  calories?: number | null;
+  protein?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
+  fiberG?: number | null;
+}): BreakdownSnapshotRow {
+  return {
+    entryId: input.entryId,
+    name: input.name ?? "",
+    lowConfidence: input.lowConfidence,
+    calories: Number(input.calories) || 0,
+    protein: Number(input.protein) || 0,
+    carbs: Number(input.carbs) || 0,
+    fat: Number(input.fat) || 0,
+    fiberG: Number(input.fiberG) || 0,
+  };
 }
 
 /**
