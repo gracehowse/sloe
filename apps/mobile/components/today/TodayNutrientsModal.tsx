@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Radius, Spacing } from "@/constants/theme";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -23,7 +23,7 @@ export interface TodayNutrientsModalProps {
   textTertiaryColor: string;
 }
 
-export function TodayNutrientsModal({
+function TodayNutrientsModalImpl({
   visible,
   onClose,
   rows,
@@ -101,5 +101,7 @@ export function TodayNutrientsModal({
     </Modal>
   );
 }
+
+export const TodayNutrientsModal = memo(TodayNutrientsModalImpl);
 
 export default TodayNutrientsModal;

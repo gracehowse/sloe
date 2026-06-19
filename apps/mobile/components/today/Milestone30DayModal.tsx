@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,7 +34,7 @@ export interface Milestone30DayModalProps {
   borderColor: string;
 }
 
-export function Milestone30DayModal({
+function Milestone30DayModalImpl({
   visible,
   content,
   onDismiss,
@@ -378,5 +378,7 @@ function formatSignedKg(n: number): string {
   const sign = n > 0 ? "+" : "−";
   return `${sign}${Math.abs(n).toFixed(1)} kg`;
 }
+
+export const Milestone30DayModal = memo(Milestone30DayModalImpl);
 
 export default Milestone30DayModal;

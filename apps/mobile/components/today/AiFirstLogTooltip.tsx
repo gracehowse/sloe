@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { memo, useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Sparkles, X } from "lucide-react-native";
 
@@ -55,7 +55,7 @@ export interface AiFirstLogTooltipProps {
 
 const DEFAULT_AUTO_FADE_MS = 6000;
 
-export function AiFirstLogTooltip(props: AiFirstLogTooltipProps) {
+function AiFirstLogTooltipImpl(props: AiFirstLogTooltipProps) {
   const { visible, onDismiss, autoFadeMs = DEFAULT_AUTO_FADE_MS } = props;
   // Secondary accent (Frost flag → damson, else clay) for the tooltip tint,
   // icon, text, and dismiss glyph. Read before the early return so the hook
@@ -127,5 +127,7 @@ export function AiFirstLogTooltip(props: AiFirstLogTooltipProps) {
     </View>
   );
 }
+
+export const AiFirstLogTooltip = memo(AiFirstLogTooltipImpl);
 
 export default AiFirstLogTooltip;

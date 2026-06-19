@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { View } from "react-native";
 import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
 import { Spacing } from "@/constants/theme";
@@ -6,7 +6,7 @@ import { Spacing } from "@/constants/theme";
 /**
  * Reserved branding row at the top of Today — Sloe wordmark only.
  */
-export function TodayBrandBar() {
+function TodayBrandBarImpl() {
   return (
     <View
       testID="today-brand-bar"
@@ -19,3 +19,5 @@ export function TodayBrandBar() {
     </View>
   );
 }
+
+export const TodayBrandBar = memo(TodayBrandBarImpl);

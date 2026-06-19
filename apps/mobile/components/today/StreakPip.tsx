@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, Text, View, type ViewStyle, type StyleProp } from "react-native";
 import { Flame, Shield } from "lucide-react-native";
 
@@ -80,7 +80,7 @@ export interface StreakPipProps {
   freezeProtected?: boolean;
 }
 
-export function StreakPip({
+function StreakPipImpl({
   days,
   accessibilityHint,
   style,
@@ -220,5 +220,7 @@ export function StreakPip({
     </View>
   );
 }
+
+export const StreakPip = memo(StreakPipImpl);
 
 export default StreakPip;

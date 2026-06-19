@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Text, View } from "react-native";
 
 import { Layout } from "@/constants/layout";
@@ -19,7 +19,7 @@ export interface TodayScrollSectionHeaderProps {
   testID?: string;
 }
 
-export function TodayScrollSectionHeader({
+function TodayScrollSectionHeaderImpl({
   title,
   subtitle,
   testID,
@@ -49,5 +49,7 @@ export function TodayScrollSectionHeader({
     </View>
   );
 }
+
+export const TodayScrollSectionHeader = memo(TodayScrollSectionHeaderImpl);
 
 export default TodayScrollSectionHeader;

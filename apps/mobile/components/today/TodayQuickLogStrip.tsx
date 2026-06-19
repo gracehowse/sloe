@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import {
   Camera,
@@ -48,7 +48,7 @@ export interface TodayQuickLogStripProps {
   textTertiaryColor: string;
 }
 
-export function TodayQuickLogStrip({
+function TodayQuickLogStripImpl({
   userTier,
   onOpenSearch,
   onOpenVoice,
@@ -136,5 +136,7 @@ export function TodayQuickLogStrip({
     </View>
   );
 }
+
+export const TodayQuickLogStrip = memo(TodayQuickLogStripImpl);
 
 export default TodayQuickLogStrip;

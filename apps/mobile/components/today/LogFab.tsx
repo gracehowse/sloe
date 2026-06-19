@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -50,7 +50,7 @@ export interface LogFabProps {
   right?: number;
 }
 
-export function LogFab({ visible = true, onPress, bottom = 100, right = 18 }: LogFabProps) {
+function LogFabImpl({ visible = true, onPress, bottom = 100, right = 18 }: LogFabProps) {
   const accent = useAccent();
   if (!visible) return null;
 
@@ -96,5 +96,7 @@ export function LogFab({ visible = true, onPress, bottom = 100, right = 18 }: Lo
     </View>
   );
 }
+
+export const LogFab = memo(LogFabImpl);
 
 export default LogFab;

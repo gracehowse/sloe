@@ -8,7 +8,7 @@
  * `CopyMealSheet` / `DuplicateDaySheet` — modal + scrim + sheet card +
  * drag handle + close X + cancel button.
  */
-import React from "react";
+import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { X } from "lucide-react-native";
@@ -32,7 +32,7 @@ export type PortionPickerSheetProps = {
   onPick: (portion: number) => void;
 };
 
-export function PortionPickerSheet({
+function PortionPickerSheetImpl({
   visible,
   onClose,
   mealName,
@@ -169,5 +169,7 @@ export function PortionPickerSheet({
     </Modal>
   );
 }
+
+export const PortionPickerSheet = memo(PortionPickerSheetImpl);
 
 export default PortionPickerSheet;

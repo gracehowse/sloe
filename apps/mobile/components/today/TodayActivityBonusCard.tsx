@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
@@ -131,7 +131,7 @@ export interface TodayActivityBonusCardProps {
   showActivityBudgetDiscoverBanner?: boolean;
 }
 
-export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
+function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
   const {
     isToday,
     hasBurnData,
@@ -743,5 +743,7 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
     </>
   );
 }
+
+export const TodayActivityBonusCard = memo(TodayActivityBonusCardImpl);
 
 export default TodayActivityBonusCard;

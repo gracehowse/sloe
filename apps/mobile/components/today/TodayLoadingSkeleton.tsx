@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { View } from "react-native";
 
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
@@ -12,7 +13,7 @@ import { Radius, Spacing } from "@/constants/theme";
  * meal rows) so journal hydration reads as "Today is loading" in light
  * and dark (`Shimmer` uses theme `inputBg`).
  */
-export function TodayLoadingSkeleton() {
+function TodayLoadingSkeletonImpl() {
   return (
     <View testID="today-loading-skeleton" accessibilityLabel="Loading Today">
       <View
@@ -84,3 +85,5 @@ export function TodayLoadingSkeleton() {
     </View>
   );
 }
+
+export const TodayLoadingSkeleton = memo(TodayLoadingSkeletonImpl);

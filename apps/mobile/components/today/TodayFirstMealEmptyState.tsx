@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Plus, Sparkles } from "lucide-react-native";
 import { Spacing, Type } from "@/constants/theme";
@@ -35,7 +35,7 @@ export interface TodayFirstMealEmptyStateProps {
   cardBorderColor: string;
 }
 
-export function TodayFirstMealEmptyState({
+function TodayFirstMealEmptyStateImpl({
   onLogMeal,
   isBrandNew,
   tipDismissed,
@@ -138,5 +138,7 @@ export function TodayFirstMealEmptyState({
     </SupprCard>
   );
 }
+
+export const TodayFirstMealEmptyState = memo(TodayFirstMealEmptyStateImpl);
 
 export default TodayFirstMealEmptyState;

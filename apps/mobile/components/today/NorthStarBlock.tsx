@@ -1,3 +1,4 @@
+import { memo } from "react";
 import * as React from "react";
 import {
   Alert,
@@ -116,7 +117,7 @@ export interface NorthStarBlockProps {
 const SKIP_THRESHOLD = 50;
 const FIGMA_HERO_HEIGHT = 320;
 
-export function NorthStarBlock({
+function NorthStarBlockImpl({
   kind,
   suggestion,
   ctaLabel = "Log it",
@@ -832,5 +833,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.8)",
   },
 });
+
+export const NorthStarBlock = memo(NorthStarBlockImpl);
 
 export default NorthStarBlock;

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
@@ -230,7 +230,7 @@ function StatusChip({
 }
 
 
-export function TodayHeroRing({
+function TodayHeroRingImpl({
   consumed,
   goal,
   baseGoal,
@@ -453,5 +453,7 @@ export function TodayHeroRing({
     </SupprCard>
   );
 }
+
+export const TodayHeroRing = memo(TodayHeroRingImpl);
 
 export default TodayHeroRing;

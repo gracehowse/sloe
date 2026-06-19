@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, MacroColors, Spacing } from "@/constants/theme";
@@ -46,7 +46,7 @@ type BarDef = {
   unit: string;
 };
 
-export function TodayDashboardMacroBars({
+function TodayDashboardMacroBarsImpl({
   trackedMacros,
   totals,
   targets,
@@ -265,3 +265,5 @@ export function TodayDashboardMacroBars({
     </SupprCard>
   );
 }
+
+export const TodayDashboardMacroBars = memo(TodayDashboardMacroBarsImpl);

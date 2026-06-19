@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { CircleCheck, Sparkles } from "lucide-react-native";
 import { Accent, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
@@ -128,7 +128,7 @@ function Stat({
   );
 }
 
-export function WeeklyInsightCard({
+function WeeklyInsightCardImpl({
   householdSize,
   loggedDaysInWeek,
   weekAvgKcal,
@@ -374,5 +374,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+
+export const WeeklyInsightCard = memo(WeeklyInsightCardImpl);
 
 export default WeeklyInsightCard;

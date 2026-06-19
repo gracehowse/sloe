@@ -1,3 +1,4 @@
+import { memo } from "react";
 import * as React from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -138,7 +139,7 @@ export type OnboardingNudgeBannerProps = {
  * Today screen (lifetime meal count + OS notifications status) here, so
  * the host doesn't have to know about HK / notifications plumbing.
  */
-export function OnboardingNudgeBanner({
+function OnboardingNudgeBannerImpl({
   mealsTodayCount,
   libraryCount,
 }: OnboardingNudgeBannerProps) {
@@ -442,5 +443,7 @@ export function OnboardingNudgeBanner({
     </View>
   );
 }
+
+export const OnboardingNudgeBanner = memo(OnboardingNudgeBannerImpl);
 
 export default OnboardingNudgeBanner;

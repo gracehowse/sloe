@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { memo, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Minus, Plus } from "lucide-react-native";
 import { IconSize, Radius, Spacing } from "@/constants/theme";
@@ -43,7 +43,7 @@ export interface PortionStepperProps {
   testIDPrefix?: string;
 }
 
-export function PortionStepper({
+function PortionStepperImpl({
   value,
   onChange,
   colors,
@@ -135,5 +135,7 @@ const s = StyleSheet.create({
   // Chips census (2026-06-10): §7 family — fully round, hairline.
   chip: { paddingHorizontal: Spacing.dense, paddingVertical: 8, borderRadius: Radius.full, borderWidth: StyleSheet.hairlineWidth },
 });
+
+export const PortionStepper = memo(PortionStepperImpl);
 
 export default PortionStepper;

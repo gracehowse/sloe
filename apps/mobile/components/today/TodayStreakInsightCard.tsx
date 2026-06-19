@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Flame, Snowflake } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
@@ -21,7 +21,7 @@ export interface TodayStreakInsightCardProps {
   textSecondaryColor: string;
 }
 
-export function TodayStreakInsightCard({
+function TodayStreakInsightCardImpl({
   streakDays,
   freezesAvailableToday,
   hasUnseenFreezeEarned,
@@ -116,5 +116,7 @@ export function TodayStreakInsightCard({
     </View>
   );
 }
+
+export const TodayStreakInsightCard = memo(TodayStreakInsightCardImpl);
 
 export default TodayStreakInsightCard;

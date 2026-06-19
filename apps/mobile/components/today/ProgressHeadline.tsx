@@ -1,3 +1,4 @@
+import { memo } from "react";
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Sparkles } from "lucide-react-native";
@@ -41,7 +42,7 @@ export interface ProgressHeadlineProps {
   testID?: string;
 }
 
-export function ProgressHeadline({
+function ProgressHeadlineImpl({
   commentary,
   style,
   testID,
@@ -156,5 +157,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
 });
+
+export const ProgressHeadline = memo(ProgressHeadlineImpl);
 
 export default ProgressHeadline;

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, Text } from "react-native";
 import { Clock } from "lucide-react-native";
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
@@ -40,7 +40,7 @@ export type TodayFastingPillProps =
       onPress: () => void;
     };
 
-export function TodayFastingPill(props: TodayFastingPillProps) {
+function TodayFastingPillImpl(props: TodayFastingPillProps) {
   const accent = useAccent();
   const colors = useThemeColors();
   if (props.mode === "idle") {
@@ -102,5 +102,7 @@ export function TodayFastingPill(props: TodayFastingPillProps) {
     </Pressable>
   );
 }
+
+export const TodayFastingPill = memo(TodayFastingPillImpl);
 
 export default TodayFastingPill;

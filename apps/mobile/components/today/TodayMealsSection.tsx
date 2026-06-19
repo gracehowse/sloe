@@ -1,4 +1,4 @@
-import React, { useMemo, useState, type ReactNode } from "react";
+import React, { memo, useMemo, useState, type ReactNode } from "react";
 import {
   Alert,
   Image,
@@ -617,7 +617,7 @@ function savedMealsForSlot(meals: readonly SavedMeal[], slot: string): SavedMeal
   });
 }
 
-export function TodayMealsSection(props: TodayMealsSectionProps) {
+function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
   const {
     slots,
     mealGroups,
@@ -1697,5 +1697,7 @@ export function TodayMealsSection(props: TodayMealsSectionProps) {
     </View>
   );
 }
+
+export const TodayMealsSection = memo(TodayMealsSectionImpl);
 
 export default TodayMealsSection;

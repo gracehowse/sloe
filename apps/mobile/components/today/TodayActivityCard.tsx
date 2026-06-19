@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Flame, Footprints, Info } from "lucide-react-native";
 import { Accent, Spacing, Type } from "@/constants/theme";
@@ -40,7 +40,7 @@ export interface TodayActivityCardProps {
   borderColor: string;
 }
 
-export function TodayActivityCard({
+function TodayActivityCardImpl({
   dayLabel,
   stepsCount,
   dailyStepsGoal,
@@ -136,5 +136,7 @@ export function TodayActivityCard({
     </SupprCard>
   );
 }
+
+export const TodayActivityCard = memo(TodayActivityCardImpl);
 
 export default TodayActivityCard;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { memo, useState } from "react";
 import { Pressable, Text, useColorScheme, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
@@ -82,7 +82,7 @@ function MacroLine({
   );
 }
 
-export function TodayPlannedMealsCard({
+function TodayPlannedMealsCardImpl({
   plannedMeals,
   onLogPlannedMealWithPortion,
 }: TodayPlannedMealsCardProps) {
@@ -195,5 +195,7 @@ export function TodayPlannedMealsCard({
     </View>
   );
 }
+
+export const TodayPlannedMealsCard = memo(TodayPlannedMealsCardImpl);
 
 export default TodayPlannedMealsCard;

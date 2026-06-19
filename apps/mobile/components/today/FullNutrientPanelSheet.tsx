@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   Modal,
@@ -235,7 +235,7 @@ function SectionBlock({
   );
 }
 
-export function FullNutrientPanelSheet({
+function FullNutrientPanelSheetImpl({
   visible,
   onClose,
   microSum,
@@ -347,5 +347,7 @@ export function FullNutrientPanelSheet({
     </Modal>
   );
 }
+
+export const FullNutrientPanelSheet = memo(FullNutrientPanelSheetImpl);
 
 export default FullNutrientPanelSheet;

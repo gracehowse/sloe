@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { memo, useEffect, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   KeyboardAvoidingView,
@@ -58,7 +58,7 @@ export interface SavedMealPortionSheetProps {
   onClose: () => void;
 }
 
-export function SavedMealPortionSheet({
+function SavedMealPortionSheetImpl({
   meal,
   slot,
   slots,
@@ -319,5 +319,7 @@ const s = StyleSheet.create({
     width: "100%",
   },
 });
+
+export const SavedMealPortionSheet = memo(SavedMealPortionSheetImpl);
 
 export default SavedMealPortionSheet;

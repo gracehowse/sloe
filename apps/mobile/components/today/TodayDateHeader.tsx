@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LayoutGrid, Sun } from "lucide-react-native";
@@ -53,7 +53,7 @@ export interface TodayDateHeaderProps {
   stripOnly?: boolean;
 }
 
-export function TodayDateHeader({
+function TodayDateHeaderImpl({
   viewMode,
   onViewModeChange,
   selectedDate,
@@ -389,5 +389,7 @@ export function TodayDateHeader({
     </View>
   );
 }
+
+export const TodayDateHeader = memo(TodayDateHeaderImpl);
 
 export default TodayDateHeader;

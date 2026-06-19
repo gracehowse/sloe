@@ -1,3 +1,4 @@
+import { memo } from "react";
 /**
  * NorthStarBlockHost — mobile wrapper that runs the suggestion picker
  * and selects which `<NorthStarBlock>` kind to render.
@@ -89,7 +90,7 @@ export interface NorthStarBlockHostProps {
   hasEverLoggedAnyMeal?: boolean;
 }
 
-export function NorthStarBlockHost({
+function NorthStarBlockHostImpl({
   viewMode,
   savedRecipesForLibrary,
   remainingCalories,
@@ -202,5 +203,7 @@ export function NorthStarBlockHost({
     />
   );
 }
+
+export const NorthStarBlockHost = memo(NorthStarBlockHostImpl);
 
 export default NorthStarBlockHost;

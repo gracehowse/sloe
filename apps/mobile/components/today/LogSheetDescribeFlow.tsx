@@ -2,6 +2,7 @@
  * ENG-972 — inline natural-language describe flow inside the Log sheet.
  * Parses via `/api/nutrition/voice-log`, review via shared AI row UI.
  */
+import { memo } from "react";
 import * as React from "react";
 import {
   ActivityIndicator,
@@ -46,7 +47,7 @@ export type LogSheetDescribeFlowProps = {
   slotLabel?: string;
 };
 
-export function LogSheetDescribeFlow({
+function LogSheetDescribeFlowImpl({
   sheetOpen,
   locked = false,
   seedText,
@@ -259,3 +260,5 @@ export function LogSheetDescribeFlow({
     </View>
   );
 }
+
+export const LogSheetDescribeFlow = memo(LogSheetDescribeFlowImpl);
