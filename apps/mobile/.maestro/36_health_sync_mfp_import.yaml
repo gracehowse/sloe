@@ -1,0 +1,257 @@
+# @cases HS-01..HS-09
+# @screen health-sync
+# @device-only   (NOT in config.yaml CI suite — requires a physical iPhone + live MFP→Health data)
+appId: com.supprclub.supprapp
+name: "Health Sync — MFP → Apple Health → Suppr meal import (DEVICE ONLY, ENG-874)"
+# =============================================================================
+# ENG-874 — Apple Health meal-import device flow
+# -----------------------------------------------------------------------------
+# WHY DEVICE-ONLY: the MyFitnessPal → Apple Health leg cannot exist on the iOS
+# simulator (no real HealthKit store, no MFP). This flow is therefore a HUMAN
+# RUNBOOK encoded in Maestro: Grace runs it on her PHYSICAL iPhone against a
+# native dev build or TestFlight (NOT Expo Go, NOT the simulator). It is
+# deliberately EXCLUDED from apps/mobile/.maestro/config.yaml so the sim CI
+# suite never tries (and fails) to run it.
+#
+# Companion runbook (do these by hand, then run this flow):
+#   docs/testing/health-sync-device-runbook.md
+# Matrix this flow maps to:
+#   docs/testing/health-sync-functionality-matrix.md  (HS-01..HS-09)
+#
+# -----------------------------------------------------------------------------
+# DEVICE PRECONDITIONS — set these up by hand BEFORE running. None of them can
+# be scripted by Maestro (they live in MFP / Apple Health / iOS, outside Suppr):
+#
+#   [P1] PHYSICAL iPhone running a NATIVE Sloe build (dev client or TestFlight).
+#        Expo Go and the simulator both lack HealthKit + dietary samples and
+#        will show "Apple Health isn't available" — the flow cannot pass there.
+#   [P2] MyFitnessPal installed, linked to Apple Health, with "Write Dietary
+#        Energy" sharing ON (MFP → Settings → Apps & Devices → Apple Health).
+#   [P3] At least one food logged in MFP **today**.
+#   [P4] That food is visible as an INDIVIDUAL sample under Apple Health →
+#        Browse → Nutrition → Dietary Energy (a per-food entry with a time —
+#        NOT only a single daily total). This is HS-01's baseline.
+#   [P5] Suppr signed in on this device, profiles.onboarding_completed = true
+#        (so the app lands on Today, not onboarding).
+#
+# When the flow tells you to interact with a NATIVE iOS HealthKit permission
+# sheet ("Sloe would like to access your Health data"), that sheet is rendered
+# by iOS, not by Suppr — Maestro on a local device cannot reliably tap it, so
+# those are flagged as MANUAL TAP steps with the expected result. Grant ALL
+# requested categories (especially Dietary Energy) when prompted.
+# =============================================================================
+---
+# Launch the app, preserving the logged-in session AND any Health permissions /
+# imported data already on the device (clearState: false). This shared flow is
+# the physical-device variant: it does NOT depend on Metro and tolerates a
+# cold native launch.
+- runFlow: shared/login-device.yaml
+
+# ----------------------------------------------------------------------------
+# Step 2 — Navigate to Settings → Health Sync.
+# Settings → Apple Health is reachable in the app, but the /more Connections
+# row has been UI-orphaned since the Group G IA collapse (see 24_health_sync's
+# note). The canonical, stable entry is the deeplink, which is what the device
+# runbook tells Grace to use (suppr:///health-sync). Selector confirmed in
+# code: the screen root is <ScrollView testID="screen-health-sync"> and the
+# deeplink target id is asserted in 00z_sweep_deeplinks.yaml.
+# ----------------------------------------------------------------------------
+- openLink: suppr:///health-sync
+- extendedWaitUntil:
+    visible:
+      id: "screen-health-sync"
+    timeout: 20000
+- assertVisible: "Health Sync"          # screen title <Text>Health Sync</Text>
+
+# ----------------------------------------------------------------------------
+# HS-02 (part A) — Connect Apple Health.
+# The Connect CTA is a SupprButton whose visible label + accessibilityLabel are
+# both "Connect Health Data" (SupprButton uses accessibilityLabel ?? label).
+# If the device is already connected from a prior run, the screen shows "Sync
+# Now" instead and there is no Connect button — handle both.
+#
+# Tapping Connect triggers a NATIVE iOS HealthKit permission sheet, which iOS
+# renders outside the app. Maestro on a local physical device cannot reliably
+# drive that system sheet, so granting is a MANUAL TAP.
+# ----------------------------------------------------------------------------
+- runFlow:
+    when:
+      visible: "Connect Health Data"
+    commands:
+      - tapOn: "Connect Health Data"
+      # MANUAL [HS-02]: the iOS "Sloe would like to access your Health data"
+      # sheet appears now. Toggle EVERYTHING on (Steps, Active Energy, Weight,
+      # Workouts, AND Dietary Energy) → tap "Allow". Expected: the app returns
+      # and shows a "Connected" (or "Connected (limited)") alert, then renders
+      # "Sync Now" in place of "Connect Health Data".
+      - extendedWaitUntil:
+          visible: "Sync Now"
+          timeout: 60000
+      # Dismiss the post-connect "Connected" alert if it's still up.
+      - runFlow:
+          when:
+            visible: "OK"
+          commands:
+            - tapOn: "OK"
+            - waitForAnimationToEnd
+
+# At this point the screen must be in the connected state (Sync Now visible).
+- assertVisible: "Sync Now"
+
+# ----------------------------------------------------------------------------
+# HS-02 (part B) — Enable "Import meals from Health" + grant dietary perms.
+# The toggle is a <Switch> with no testID, but a stable accessibilityLabel:
+#   "Import meals from Health, currently off"  (or "... currently on")
+# Confirmed in apps/mobile/app/health-sync.tsx. Maestro matches it by label.
+# If import is already ON from a prior run, the "currently off" matcher is
+# absent and we skip the tap (idempotent).
+# ----------------------------------------------------------------------------
+- runFlow:
+    when:
+      visible: "Import meals from Health, currently off"
+    commands:
+      - tapOn: "Import meals from Health, currently off"
+      # MANUAL [HS-02]: enabling import requests Dietary Energy READ access via
+      # a second native HealthKit sheet (requestDietaryHealthPermissions). If it
+      # appears, grant Dietary Energy → Allow. Expected: the toggle STAYS ON.
+      # If dietary read is denied, the app turns the toggle back OFF and shows
+      # a "Meal import" alert with an "Open Settings" action — that is a FAIL
+      # for HS-02; fix permissions in iOS Settings → Privacy → Health → Sloe.
+      - waitForAnimationToEnd
+
+# Assert the toggle is now ON (permission state held). If this matcher fails,
+# dietary read was likely denied — see the MANUAL note above. This is the
+# HS-02 pass/fail gate that CAN be asserted from inside the app.
+- assertVisible: "Import meals from Health, currently on"
+
+# ----------------------------------------------------------------------------
+# HS-03 (pre-check) — "Check meal import" probe (read-only, writes nothing).
+# Stable selector: testID="health-sync-test-import" (only rendered when import
+# is ON + available + connected). The runbook tells Grace to use this first to
+# disambiguate an honest zero from a permission problem.
+# ----------------------------------------------------------------------------
+- runFlow:
+    when:
+      visible:
+        id: "health-sync-test-import"
+    commands:
+      - tapOn:
+          id: "health-sync-test-import"
+      # A confirmation Alert appears first ("Check meal import from Health?").
+      - extendedWaitUntil:
+          visible: "Check"
+          timeout: 10000
+      - tapOn: "Check"
+      # MANUAL [HS-03]: read the resulting alert.
+      #   PASS  → "Meals found in Health ✓" + "Found N dietary energy sample(s)
+      #           from other apps ... (sources: MyFitnessPal)".
+      #   INVESTIGATE → "No meals found in Health" — capture the body text; it
+      #           distinguishes zero-permission vs only-own-samples vs genuinely
+      #           empty (per the per-cause copy in handleTestImport).
+      - extendedWaitUntil:
+          visible: ".*(?:Meals found in Health|No meals found in Health).*"
+          timeout: 20000
+      # Dismiss the probe alert.
+      - runFlow:
+          when:
+            visible: "OK"
+          commands:
+            - tapOn: "OK"
+            - waitForAnimationToEnd
+
+# ----------------------------------------------------------------------------
+# HS-03 — Trigger a sync ("Sync Now").
+# Sync Now is the connected-state SupprButton (label + a11y label "Sync Now").
+# It pulls activity AND, because import is ON, runs syncNutritionFromHealth and
+# appends an import summary to the lastResult line under the button.
+# ----------------------------------------------------------------------------
+- tapOn: "Sync Now"
+# syncHealthData + dietary import can take a few seconds (18s native timeout).
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    # lastResult always renders after a sync completes. We can't assert the
+    # exact count generically (it depends on live MFP data), so we wait for any
+    # of the known result fragments. "Updated", "No new data", "Imported",
+    # "samples" all come from formatNutritionImportSummary / handleSync.
+    visible: ".*(?:Updated|No new data|Imported|sample|import).*"
+    timeout: 30000
+# MANUAL [HS-03 pass criteria]: read the lastResult line under Sync Now.
+#   PASS → mentions imported items (N > 0) for fresh MFP food, OR an HONEST zero
+#          with a reason (e.g. "needs Dietary Energy read access"). A silent
+#          "No new data" with MFP food clearly present in Health = FAIL → use
+#          Check meal import (above) to diagnose.
+
+# ----------------------------------------------------------------------------
+# HS-04 — Navigate to Today and assert the imported meal appears.
+# Selector: bottom tab id "tab-today" (stable Maestro id). Logged meals render
+# in slot cards testID="today-slot-{breakfast|lunch|dinner|snack}", each meal
+# row showing its title text (m.recipeTitle) — there is no per-row testID, so
+# the assertion is on the meal TITLE text.
+#
+# We cannot hardcode the exact title (it's whatever you logged in MFP today),
+# so the assertVisible below uses a PLACEHOLDER you MUST edit before running:
+#   - If import labels are detailed  → the MFP food name (e.g. "Banana").
+#   - If "Simple labels only" is ON  → "Imported food" (titles render as
+#                                       "Imported food (N kcal)").
+# Edit MFP_LOGGED_FOOD_NAME to the food you logged in MFP today.
+# ----------------------------------------------------------------------------
+- tapOn:
+    id: "tab-today"
+- extendedWaitUntil:
+    visible:
+      id: "screen-today"
+    timeout: 20000
+- waitForAnimationToEnd
+
+# Make sure the meal slots are in view (Today scrolls; meals sit below the ring).
+- scrollUntilVisible:
+    element:
+      id: "today-slot-breakfast"
+    direction: DOWN
+    timeout: 15000
+    optional: true
+
+# >>> EDIT THIS before running on device: set it to the food you logged in MFP
+# today (detailed labels) OR keep "Imported food" if Simple labels only is ON.
+- assertVisible: ".*(?:MFP_LOGGED_FOOD_NAME|Imported food).*"
+# MANUAL [HS-04 pass criteria]: the imported meal sits in the correct slot for
+# its logged time AND the calorie ring + day totals reflect the added energy.
+# Verify by eye that the ring's consumed value went up (the ring status chip is
+# testID="today-ring-status-chip"); there is no numeric testID to assert the
+# exact kcal generically, so this is an eyeball check.
+
+# =============================================================================
+# REMAINING MATRIX CASES — these need state-mutating, time-sensitive, or
+# native-only steps that are not safe to auto-drive in a single device pass.
+# Run them BY HAND immediately after this flow and record results in
+# docs/testing/health-sync-functionality-matrix.md (Result column). Each maps
+# 1:1 to the matrix ID.
+#
+# HS-05  De-dup: tap "Sync Now" again within 5 min. EXPECT: no duplicate meal
+#        rows on Today (dedup via health_sample_id). lastResult should report
+#        the items as skipped/deduped, not re-imported.
+#
+# HS-06  Tombstone: delete the imported meal on Today (long-press row → Delete,
+#        or swipe), then tap "Sync Now". EXPECT: the deleted meal does NOT
+#        reappear (deleted-sample tombstone respected). "Re-import from Apple
+#        Health" intentionally clears the tombstone — do NOT use it for HS-06.
+#
+# HS-07  Gate: toggle "Import meals from Health" OFF, then "Sync Now". EXPECT:
+#        no NEW apple_health rows are added. (Selector to toggle off:
+#        accessibilityLabel "Import meals from Health, currently on".)
+#
+# HS-08  Generic labels: turn import ON + "Simple labels only" ON (Switch
+#        accessibilityLabel "Simple labels only, currently off"), log a NEW
+#        food in MFP, sync. EXPECT: new titles render as "Imported food
+#        (N kcal)" with no brand/item name.
+#
+# HS-09  Dev metadata: on a DEV build only, open suppr:///dev/health-import-labels
+#        and inspect the raw HK metadata for the MFP samples (informs label
+#        fixes). Not present on TestFlight/prod builds.
+# =============================================================================
+
+# Leave the app on the Today tab shell so any subsequent manual flow resumes
+# from a known state.
+- tapOn:
+    id: "tab-today"
+- waitForAnimationToEnd
