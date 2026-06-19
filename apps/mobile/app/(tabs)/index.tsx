@@ -24,6 +24,7 @@ import { subscribeJournalRefresh } from "@/lib/journalRefresh";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
+import { useTodayWidgetSnapshot } from "@/hooks/useTodayWidgetSnapshot";
 import { useTrackingExtrasOnFocus } from "@/hooks/useTrackingExtrasOnFocus";
 import { useLogSheetDeepLinks } from "@/hooks/useLogSheetDeepLinks";
 import {
@@ -3016,97 +3017,16 @@ export default function TrackerScreen() {
   const showBelowMealsSnap = isBelowMealsPromptVisible("snap", belowMealsPromptEligible);
   const showBelowMealsNudge = isBelowMealsPromptVisible("nudge", belowMealsPromptEligible);
 
-  // Batch 5.12 — iOS widget snapshot. Writes today's totals + fast state
-  // to a shared App Group-accessible snapshot (AsyncStorage always, file
-  // best-effort). Debounced 500 ms so a rapid sequence of macro edits
-  // doesn't flood disk. Only runs when viewing today — yesterday's numbers
-  // should never appear in the widget.
-  //
-  // L6 G7 (2026-04-18) — tag each successful write with the `trigger`
-  // that caused it: macro totals/targets vs active fast state vs an
-  // initial "scheduled" write after hydration. Product uses this to
-  // triage why the iOS home-screen widget goes stale.
-  const widgetSnapshotSignatureRef = useRef<{
-    totalsKey: string;
-    fastKey: string | null;
-    wroteOnce: boolean;
-  }>({ totalsKey: "", fastKey: null, wroteOnce: false });
-  useEffect(() => {
-    if (!hydrated || !isToday || viewMode !== "day") return;
-    const currentTotalsKey = [
-      totals.calories,
-      totals.protein,
-      totals.carbs,
-      totals.fat,
-      effectiveCalorieGoal,
-      effectiveMacroTargets.protein,
-      effectiveMacroTargets.carbs,
-      effectiveMacroTargets.fat,
-    ].join(":");
-    const currentFastKey = activeFastStart ?? null;
-    const prev = widgetSnapshotSignatureRef.current;
-    let trigger: "totals_changed" | "fast_state_changed" | "scheduled_refresh";
-    if (!prev.wroteOnce) {
-      // First write after hydrate — classified as a scheduled refresh
-      // so the initial liveness ping isn't misattributed to totals.
-      trigger = "scheduled_refresh";
-    } else if (prev.fastKey !== currentFastKey) {
-      trigger = "fast_state_changed";
-    } else {
-      trigger = "totals_changed";
-    }
-    let cancelled = false;
-    const handle = setTimeout(() => {
-      if (cancelled) return;
-      (async () => {
-        const { buildWidgetSnapshot, writeWidgetSnapshot } = await import("@/lib/widgetSnapshot");
-        const snapshot = buildWidgetSnapshot({
-          kcalConsumed: totals.calories,
-          kcalTarget: effectiveCalorieGoal,
-          proteinTargetG: effectiveMacroTargets.protein,
-          proteinConsumedG: totals.protein,
-          carbsTargetG: effectiveMacroTargets.carbs,
-          carbsConsumedG: totals.carbs,
-          fatTargetG: effectiveMacroTargets.fat,
-          fatConsumedG: totals.fat,
-          fastStartsAt: activeFastStart,
-          // Threaded from `profiles.fasting_window` (parsed in
-          // `loadProfileTargets`). `buildWidgetSnapshot` clamps to 1..48h
-          // and defaults to 16 if anything is off — safe to pass directly.
-          fastTargetHours,
-        });
-        const result = await writeWidgetSnapshot(snapshot);
-        if (result.ok) {
-          widgetSnapshotSignatureRef.current = {
-            totalsKey: currentTotalsKey,
-            fastKey: currentFastKey,
-            wroteOnce: true,
-          };
-          track(AnalyticsEvents.widget_snapshot_updated, { trigger });
-        }
-      })().catch(() => {
-        // Never let a widget persistence failure break Today.
-      });
-    }, 500);
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [
+  useTodayWidgetSnapshot({
     hydrated,
     isToday,
     viewMode,
-    totals.calories,
-    totals.protein,
-    totals.carbs,
-    totals.fat,
+    totals,
     effectiveCalorieGoal,
-    effectiveMacroTargets.protein,
-    effectiveMacroTargets.carbs,
-    effectiveMacroTargets.fat,
+    effectiveMacroTargets,
     activeFastStart,
     fastTargetHours,
-  ]);
+  });
 
   const loggedDays = useMemo(() => {
     const s = new Set<string>();

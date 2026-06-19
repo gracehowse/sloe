@@ -45,6 +45,8 @@ Each live section maps to an approved Sloe frame:
 
 **Track A — Decompose first (structural, zero visual change).** Per audit §7, extract a `useToday()` composition root + sub-hooks (`useTodayProfile`, `useTodayJournal`, `useTodayBudget`, `useTodayActivityHydration`, `useTodayCelebrations`, `useTodayWidgetSnapshot`) and a `<TodayModals>` host for the ~900-line sheet stack. Screen file → ~300-400-line shell. **Move handlers WITH their exact `useCallback` deps** (the 2026-05-08 data-loss bug came from breaking this). Validate behaviour-identical before any re-skin.
 
+2026-06-19 ENG-856 progress: `useTodayWidgetSnapshot` is now extracted behind behavioural hook tests that assert the 500 ms debounce, Today/day-view guard, snapshot payload, and analytics trigger classification. Continue the remaining extraction order from context-block → toast → budget → activity/hydration → profile → celebrations → modals → journal last, converting any source-text pins to behavioural coverage before moving guarded logic.
+
 **Track B — Re-skin each section to its Sloe frame**, in place, wiring the same props:
 1. **Hero** (greeting, week strip, ring, macro tiles, what-to-eat) → 01 Today. Reconcile the ring to the Figma overage **arc**.
 2. **Meals** (`TodayMealsSection`) → TD4 (per-meal macro chips, Log-usual pill, food rows, + Add food).
