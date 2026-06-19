@@ -31,12 +31,15 @@ never escaped and a MISSING import still passed CI).
 
 ## Intentionally NOT in local `npm run ci` (env-dependent / heavy)
 
-These stay CI-only by design — they need network, credentials, browser/sim
-binaries, or are too slow for the local gate. If `npm run ci` is green but one of
-these is red on CI, it's an environment/integration issue, not a code-tree issue:
+These stay out of the default local gate — run explicitly before push when you touch the surface:
 
-- **Playwright browser install + E2E smoke** — needs `npx playwright install` +
-  a running app + network (`test:e2e`).
+| Gate | CI workflow | Local script |
+|------|-------------|--------------|
+| Playwright smoke E2E | `ci.yml` → `test:e2e` on `:3100` | `npm run test:e2e:ci-parity` |
+| Playwright public visual | `visual-review.yml` | `npm run test:e2e:ci-parity` (included) or `npm run test:e2e:visual:public` against dev |
+| Playwright authed visual | `visual-review.yml` | `npm run test:e2e:visual:authed` (needs `E2E_VISUAL_*`) |
+
+Other CI-only gates (unchanged):
 - **Food-search provider smoke** — optional; hits FatSecret/Edamam (creds + network).
 - **Metro bundle-check (`expo export`)** — the full Metro pipeline (~minutes) with
   Expo env placeholders; catches RN/Expo SDK mismatches before EAS (ENG-562).
