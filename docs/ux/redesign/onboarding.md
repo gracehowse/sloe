@@ -60,6 +60,33 @@ All token references use the warm-coaching direction locked 2026-06-02.
 
 **Platforms:** iOS-primary (Apple Sign-In, HealthKit, haptics, RulerSlider). Web parity with documented divergences (narrative column, email auth, no Apple Health card, step counter differences on refresh-plan).
 
+### Jargon gloss at trust moments (ENG-1187, flag `onboarding_jargon_gloss_v1`, default-OFF)
+
+Onboarding leans on unexplained `TDEE` / `BMR` / `Mifflin-St Jeor` at three
+trust moments where a first-time user can't decode the acronyms. The mitigations
+already present (plain headline number, honest "estimates" framing, the "Show
+the maths" expander) stay; the gloss fixes the **default labels** so the acronym
+is glossed on first use per screen, calm-coach voice — lead with the plain
+phrase, keep the acronym secondary in parentheses, don't repeat the parenthetical.
+
+| Site | Plain (default) | Glossed (flag ON) |
+|---|---|---|
+| Welcome reassurance bullet (web) | "Adaptive TDEE that learns from you" | "Adaptive daily calorie burn (TDEE) that learns from you" |
+| Pace live-feedback tile (web + mobile) | "vs. your TDEE" | "vs. your daily burn (TDEE)" |
+| Reveal BMR tile (web + mobile) | "BMR" | "Calories at rest (BMR)" |
+| Reveal TDEE tile (web + mobile) | "Est. TDEE" | "Est. daily burn (TDEE)" |
+| Reveal methodology note (web + mobile) | "…based on the Mifflin-St Jeor equation." | "…based on the Mifflin-St Jeor equation — a standard formula for estimating the calories you burn." |
+
+All glossed + plain strings live in the shared copy module
+`src/lib/onboarding/figmaCopy.ts` (imported by mobile via
+`@suppr/shared/onboarding/figmaCopy`), so web ↔ mobile can't drift. Each of the
+~5 render sites selects glossed vs plain via
+`isFeatureEnabled("onboarding_jargon_gloss_v1")` with the plain copy in the
+`else`. The flag is **default-OFF** (not in either platform's
+`REDESIGN_DEFAULT_ON`); ramp via PostHog. The "Show the maths" expander keeps the
+acronyms intentionally — it's the power-user audit trail, not a first-use trust
+moment. Copy-parity + flag-gating pins: `tests/unit/onboardingJargonGloss.test.ts`.
+
 ---
 
 ## 2. Current design — full UX audit
