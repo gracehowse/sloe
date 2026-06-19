@@ -8,13 +8,20 @@
 import { test, expect } from "@playwright/test";
 import { hasVisualGoldenCredentials } from "./utils/auth";
 import { visualAuthFileForBaseUrl } from "./utils/authHosts";
-import { dismissVisualOverlays, freezeVisualClock, stabilizeForScreenshot } from "./utils/visual";
+import {
+  dismissVisualOverlays,
+  forceRedesignVisualFlagsOn,
+  freezeVisualClock,
+  stabilizeForScreenshot,
+} from "./utils/visual";
 
 const visualStorageState = hasVisualGoldenCredentials()
-  ? visualAuthFileForBaseUrl(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
+  ? visualAuthFileForBaseUrl(
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+    )
   : undefined;
 
-test.describe("Visual regression — Gate 1.5 log sheet (ENG-827 / ENG-900)", () => {
+test.describe("Visual regression — Gate 1.5 log sheet and food search (ENG-827 / ENG-900 / ENG-838)", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: visualStorageState });
   test.beforeEach(async ({ page }) => {
@@ -22,6 +29,7 @@ test.describe("Visual regression — Gate 1.5 log sheet (ENG-827 / ENG-900)", ()
       !hasVisualGoldenCredentials(),
       "Set E2E_VISUAL_EMAIL and E2E_VISUAL_PASSWORD for deterministic authed Gate 1.5 snapshots.",
     );
+    await forceRedesignVisualFlagsOn(page);
     await freezeVisualClock(page);
   });
 
@@ -42,5 +50,27 @@ test.describe("Visual regression — Gate 1.5 log sheet (ENG-827 / ENG-900)", ()
     await expect(page).toHaveScreenshot("gate15/log-sheet-mobile-web.png", {
       maxDiffPixelRatio: 0.01,
     });
+  });
+
+  test("food search redesigned results mobile-web", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/today", { waitUntil: "domcontentloaded" });
+    await dismissVisualOverlays(page);
+    const logFab = page.getByTestId("mobile-web-tab-log-button");
+    await expect(logFab).toBeVisible({ timeout: 30_000 });
+    await logFab.click();
+    const searchInput = page.getByTestId("log-sheet-search-input");
+    await expect(searchInput).toBeVisible({ timeout: 15_000 });
+    await searchInput.fill("chicken");
+    await expect(page.getByTestId("food-search-results-redesign")).toBeVisible({
+      timeout: 30_000,
+    });
+    await stabilizeForScreenshot(page, 1500);
+    await expect(page).toHaveScreenshot(
+      "gate15/food-search-results-mobile-web.png",
+      {
+        maxDiffPixelRatio: 0.01,
+      },
+    );
   });
 });

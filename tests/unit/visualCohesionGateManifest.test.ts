@@ -19,6 +19,14 @@ const DEEP_SPEC = readFileSync(
   resolve(__dirname, "../e2e/visual-regression-deep.spec.ts"),
   "utf8",
 );
+const GATE15_AUTHED_SPEC = readFileSync(
+  resolve(__dirname, "../e2e/visual-redesign-gate15-authed.spec.ts"),
+  "utf8",
+);
+const VISUAL_UTILS = readFileSync(
+  resolve(__dirname, "../e2e/utils/visual.ts"),
+  "utf8",
+);
 
 describe("visual cohesion gate manifest (ENG-1142)", () => {
   it("exposes npm run test:e2e:visual:cohesion targeting both specs", () => {
@@ -40,6 +48,24 @@ describe("visual cohesion gate manifest (ENG-1142)", () => {
     expect(DEEP_SPEC).toMatch(/recipe detail/);
     expect(DEEP_SPEC).toMatch(/upgrade paywall dialog/);
     expect(DEEP_SPEC).toMatch(/toHaveScreenshot\(`deep\/recipe-detail-/);
-    expect(DEEP_SPEC).toMatch(/toHaveScreenshot\(`deep\/paywall-dialog-/);
+    expect(DEEP_SPEC).toMatch(/deep\/paywall-dialog-\$\{vp\.name\}\.png/);
+  });
+
+  it("pins ENG-838 flag-ON visual coverage", () => {
+    expect(VISUAL_UTILS).toContain("REDESIGN_VISUAL_FLAGS");
+    expect(VISUAL_UTILS).toContain('"design_system_elevation"');
+    expect(VISUAL_UTILS).toContain('"web-subscription-card"');
+    expect(VISUAL_UTILS).toContain('"redesign_search_results"');
+    expect(AUTHED_SPEC).toContain("forceRedesignVisualFlagsOn(page)");
+    expect(DEEP_SPEC).toContain("forceRedesignVisualFlagsOn(page)");
+    expect(GATE15_AUTHED_SPEC).toContain(
+      "food search redesigned results mobile-web",
+    );
+    expect(GATE15_AUTHED_SPEC).toContain(
+      'getByTestId("food-search-results-redesign")',
+    );
+    expect(GATE15_AUTHED_SPEC).toContain(
+      "gate15/food-search-results-mobile-web.png",
+    );
   });
 });

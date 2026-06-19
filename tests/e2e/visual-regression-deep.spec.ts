@@ -1,14 +1,21 @@
 import { test, expect } from "@playwright/test";
 import { hasVisualGoldenCredentials } from "./utils/auth";
 import { visualAuthFileForBaseUrl } from "./utils/authHosts";
-import { dismissVisualOverlays, freezeVisualClock, stabilizeForScreenshot } from "./utils/visual";
+import {
+  dismissVisualOverlays,
+  forceRedesignVisualFlagsOn,
+  freezeVisualClock,
+  stabilizeForScreenshot,
+} from "./utils/visual";
 
 /** ENG-1142 cohesion gate — recipe detail + paywall dialog are two of
  *  three gated surfaces (see `docs/decisions/2026-06-18-visual-regression-posture.md`).
  *  Run only cohesion snapshots: `npm run test:e2e:visual:cohesion`. */
 
 const visualStorageState = hasVisualGoldenCredentials()
-  ? visualAuthFileForBaseUrl(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
+  ? visualAuthFileForBaseUrl(
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+    )
   : undefined;
 
 const viewports = [
@@ -28,6 +35,7 @@ test.describe("Visual regression — deep authenticated routes", () => {
       !hasVisualGoldenCredentials(),
       "Set E2E_VISUAL_EMAIL and E2E_VISUAL_PASSWORD for deterministic deep route snapshots.",
     );
+    await forceRedesignVisualFlagsOn(page);
     await freezeVisualClock(page);
   });
 
@@ -39,14 +47,18 @@ test.describe("Visual regression — deep authenticated routes", () => {
       const fastingLink = page.getByTestId("settings-fasting-link");
       await fastingLink.scrollIntoViewIfNeeded();
       await stabilizeForScreenshot(page, 1500);
-      await expect(page).toHaveScreenshot(`deep/settings-preferences-${vp.name}.png`);
+      await expect(page).toHaveScreenshot(
+        `deep/settings-preferences-${vp.name}.png`,
+      );
     });
 
     test(`targets view ${vp.name}`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await page.goto("/home?view=targets", { waitUntil: "domcontentloaded" });
       await dismissVisualOverlays(page);
-      await expect(page.getByTestId("targets-how-is-this-calculated")).toBeVisible({
+      await expect(
+        page.getByTestId("targets-how-is-this-calculated"),
+      ).toBeVisible({
         timeout: 30_000,
       });
       await stabilizeForScreenshot(page);
@@ -59,7 +71,9 @@ test.describe("Visual regression — deep authenticated routes", () => {
       await dismissVisualOverlays(page);
       await page.getByRole("button", { name: /macro calculator/i }).click();
       await stabilizeForScreenshot(page);
-      await expect(page).toHaveScreenshot(`deep/profile-targets-tab-${vp.name}.png`);
+      await expect(page).toHaveScreenshot(
+        `deep/profile-targets-tab-${vp.name}.png`,
+      );
     });
 
     test(`recipe detail ${vp.name}`, async ({ page }) => {
@@ -68,7 +82,9 @@ test.describe("Visual regression — deep authenticated routes", () => {
         waitUntil: "domcontentloaded",
       });
       await dismissVisualOverlays(page);
-      await expect(page.getByTestId("recipe-body-title")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByTestId("recipe-body-title")).toBeVisible({
+        timeout: 30_000,
+      });
       await stabilizeForScreenshot(page, 3000);
       await expect(page).toHaveScreenshot(`deep/recipe-detail-${vp.name}.png`);
     });
@@ -78,16 +94,24 @@ test.describe("Visual regression — deep authenticated routes", () => {
       await page.goto("/profile", { waitUntil: "domcontentloaded" });
       await dismissVisualOverlays(page);
       const upgrade = page.getByRole("button", { name: /upgrade to pro/i });
-      const hasUpgrade = await upgrade.isVisible({ timeout: 5000 }).catch(() => false);
-      test.skip(!hasUpgrade, "Free/Base upgrade row not visible — user may already be Pro.");
+      const hasUpgrade = await upgrade
+        .isVisible({ timeout: 5000 })
+        .catch(() => false);
+      test.skip(
+        !hasUpgrade,
+        "Free/Base upgrade row not visible — user may already be Pro.",
+      );
       await upgrade.click();
-      await expect(page.locator("#upgrade-paywall-title")).toBeVisible({ timeout: 15_000 });
-      await stabilizeForScreenshot(page, 1500);
-      await expect(page).toHaveScreenshot(`deep/paywall-dialog-${vp.name}.png`, {
-        mask: [
-          page.locator('[class*="animate-pulse"]'),
-        ],
+      await expect(page.locator("#upgrade-paywall-title")).toBeVisible({
+        timeout: 15_000,
       });
+      await stabilizeForScreenshot(page, 1500);
+      await expect(page).toHaveScreenshot(
+        `deep/paywall-dialog-${vp.name}.png`,
+        {
+          mask: [page.locator('[class*="animate-pulse"]')],
+        },
+      );
     });
   }
 });

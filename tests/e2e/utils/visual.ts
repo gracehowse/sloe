@@ -3,6 +3,21 @@ import type { Page } from "@playwright/test";
 export const VISUAL_GOLDEN_NOW_ISO =
   process.env.E2E_VISUAL_NOW?.trim() || "2026-06-16T17:00:00.000Z";
 
+export const REDESIGN_VISUAL_FLAGS = [
+  "design_system_brandmark",
+  "design_system_colours",
+  "design_system_elevation",
+  "design_system_icons",
+  "redesign_branded_sheets",
+  "redesign_motion",
+  "redesign_search_results",
+  "redesign_winmoment",
+  "web-meal-nutrition-detail",
+  "web-subscription-card",
+] as const;
+
+export type RedesignVisualFlag = (typeof REDESIGN_VISUAL_FLAGS)[number];
+
 /**
  * Authed visual goldens must not drift with wall-clock time. Freeze before
  * navigation so the Today date strip, greeting, targets, and profile-derived
@@ -45,7 +60,9 @@ export async function dismissVisualOverlays(page: Page): Promise<void> {
     await page.waitForTimeout(400);
   }
 
-  const keepGoing = page.getByRole("button", { name: /keep going|continue|got it|close/i }).first();
+  const keepGoing = page
+    .getByRole("button", { name: /keep going|continue|got it|close/i })
+    .first();
   if (await keepGoing.isVisible({ timeout: 1000 }).catch(() => false)) {
     await keepGoing.click().catch(() => undefined);
     await page.waitForTimeout(400);
@@ -77,7 +94,10 @@ export async function hideDevChrome(page: Page): Promise<void> {
 }
 
 /** Let fonts, charts, and client hydration settle before snapshot assertions. */
-export async function stabilizeForScreenshot(page: Page, ms = 2500): Promise<void> {
+export async function stabilizeForScreenshot(
+  page: Page,
+  ms = 2500,
+): Promise<void> {
   await page.waitForLoadState("domcontentloaded");
   await page.evaluate(() => document.fonts?.ready);
   await page.waitForTimeout(ms);
@@ -100,7 +120,7 @@ export async function stabilizeForScreenshot(page: Page, ms = 2500): Promise<voi
  */
 export async function forceFlagsOn(
   page: Page,
-  flags: string[],
+  flags: readonly string[],
   on = true,
 ): Promise<void> {
   await page.addInitScript(
@@ -113,4 +133,13 @@ export async function forceFlagsOn(
     },
     [flags, on] as const,
   );
+}
+
+/**
+ * Force the redesign flag bundle ON for committed visual-regression goldens.
+ * This covers the default-on redesign flags plus the web-only visual surfaces
+ * that still have independent kill switches (subscription card and meal detail).
+ */
+export async function forceRedesignVisualFlagsOn(page: Page): Promise<void> {
+  await forceFlagsOn(page, REDESIGN_VISUAL_FLAGS, true);
 }

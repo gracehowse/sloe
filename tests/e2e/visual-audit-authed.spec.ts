@@ -1,14 +1,21 @@
 import { test, expect } from "@playwright/test";
 import { hasVisualGoldenCredentials } from "./utils/auth";
 import { visualAuthFileForBaseUrl } from "./utils/authHosts";
-import { dismissVisualOverlays, freezeVisualClock, stabilizeForScreenshot } from "./utils/visual";
+import {
+  dismissVisualOverlays,
+  forceRedesignVisualFlagsOn,
+  freezeVisualClock,
+  stabilizeForScreenshot,
+} from "./utils/visual";
 
 /** ENG-1142 cohesion gate — Today is one of three gated surfaces (see
  *  `docs/decisions/2026-06-18-visual-regression-posture.md`). Run only
  *  cohesion snapshots: `npm run test:e2e:visual:cohesion`. */
 
 const visualStorageState = hasVisualGoldenCredentials()
-  ? visualAuthFileForBaseUrl(process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000")
+  ? visualAuthFileForBaseUrl(
+      process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+    )
   : undefined;
 
 const authedScreens = [
@@ -34,6 +41,7 @@ test.describe("Visual regression — authenticated tabs", () => {
       !hasVisualGoldenCredentials(),
       "Set E2E_VISUAL_EMAIL and E2E_VISUAL_PASSWORD for deterministic authed visual regression.",
     );
+    await forceRedesignVisualFlagsOn(page);
     await freezeVisualClock(page);
   });
 
@@ -44,7 +52,9 @@ test.describe("Visual regression — authenticated tabs", () => {
         await page.goto(screen.path, { waitUntil: "domcontentloaded" });
         await dismissVisualOverlays(page);
         await stabilizeForScreenshot(page);
-        await expect(page).toHaveScreenshot(`tabs/${screen.name}-${vp.name}.png`);
+        await expect(page).toHaveScreenshot(
+          `tabs/${screen.name}-${vp.name}.png`,
+        );
       });
     }
   }
