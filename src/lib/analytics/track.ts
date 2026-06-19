@@ -233,9 +233,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "log_sheet_nl_text_v1",
   // ENG-980 — save-first import lands in Library before review (mobile import).
   "import-save-first-v1",
-  // ENG-898 — web caption preview + trust banner before IG/TT/YT URL import.
-  // Web-only; mobile uses import-shared captionPreview state. NOT default-on.
-  "import_caption_preview_v1",
   // ENG-965 / ENG-990 — surface MFP/MacroFactor refugee app-choice step by default.
   "onboarding-app-choice",
   // ENG-1065 — Planned card empty branch on Today (F-178/F-179). Default-on;
