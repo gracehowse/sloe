@@ -571,6 +571,7 @@ export default function ProfileScreen() {
       // honest. (migration 20260427110000)
       target_calories_set_at: new Date().toISOString(),
       target_calories_source: "user",
+      target_fiber_source: "user",
     };
     // Use upsert so it works for both new and existing profiles
     const { error } = await supabase.from("profiles").upsert(profileData, { onConflict: "id" });

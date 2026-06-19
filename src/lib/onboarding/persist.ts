@@ -193,6 +193,7 @@ export interface ProfileUpsertRow {
    *  to satisfy the CHECK; v2 vs legacy attribution is captured via
    *  the `onboarding_completed` analytics event payload, not here. */
   target_calories_source: "onboarding" | null;
+  target_fiber_source: "onboarding" | null;
   target_protein: number | null;
   target_carbs: number | null;
   target_fat: number | null;
@@ -344,6 +345,7 @@ export function buildProfileUpsertRow(args: {
     // option). v2-specific attribution is fired via the
     // `onboarding_completed` analytics event payload.
     target_calories_source: hasTargets ? "onboarding" : null,
+    target_fiber_source: hasTargets ? "onboarding" : null,
     target_protein: hasTargets ? targets!.proteinG : null,
     target_carbs: hasTargets ? targets!.carbsG : null,
     target_fat: hasTargets ? targets!.fatG : null,

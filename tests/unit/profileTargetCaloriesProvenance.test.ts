@@ -60,6 +60,7 @@ async function simulateRecomputeWrite(
     ...dbWriteable,
     target_calories_set_at: now.toISOString(),
     target_calories_source: "recompute" as const,
+    target_fiber_source: "recompute" as const,
   };
   await mockSupabase.from("profiles").update(payload).eq("id", userId);
   return payload;
@@ -106,6 +107,7 @@ describe("target_calories provenance write contract", () => {
         "target_calories",
         "target_calories_set_at",
         "target_calories_source",
+        "target_fiber_source",
         "target_carbs",
         "target_fat",
         "target_fiber_g",
@@ -220,6 +222,7 @@ describe("target_calories provenance write contract", () => {
     expect(result.ok).toBe(true);
     const written = updates.at(-1)!;
     expect(written.target_calories_source).toBe("recompute");
+    expect(written.target_fiber_source).toBe("recompute");
     expect(written.target_calories_set_at).toBe(now.toISOString());
 
     // The Rule 2 suppression check must NOT fire for this write (it only
