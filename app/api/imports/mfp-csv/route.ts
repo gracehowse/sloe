@@ -26,10 +26,13 @@
  *     synchronously. Per-row enrichment for a 1k-row import would
  *     blow the Vercel `maxDuration` budget several times over, and
  *     the CSV macros are the source app's user-confirmed totals.
- *     Background re-matching for low-confidence rows is a deferred
- *     follow-up — see `docs/decisions/2026-05-02-mfp-csv-import.md`.
- *     If a future change adds the enrichment pass, the threshold
- *     should be >= `MFP_MATCH_CONFIDENCE_THRESHOLD` (0.7).
+ *     ENG-750 rejects background re-matching for "low-confidence" rows:
+ *     imports store no confidence score, and auto-swapping MFP-confirmed
+ *     macros for fuzzy guesses would violate the nutrition trust bar.
+ *     Any future enrichment must be user-initiated per entry, show
+ *     candidates from the lightweight log-sheet matcher, and only apply
+ *     after explicit confirmation; see
+ *     `docs/decisions/2026-05-02-mfp-csv-import.md`.
  *   - Hard cap at 1000 rows per request. Larger histories should be
  *     split into multiple uploads (UI handles this transparently).
  *   - Multipart form-data input — `<input type="file">` and
