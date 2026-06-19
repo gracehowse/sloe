@@ -22,6 +22,7 @@ import { isFeatureEnabled } from "@/lib/analytics";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import { extractUrlFromShareText } from "@/lib/resolveImportUrl";
 import { detectSourcePlatform } from "@/lib/sourcePlatform";
+import { CreateRecipeActionSheetGrid } from "./CreateRecipeActionSheetGrid";
 
 /**
  * CreateRecipeActionSheet — bottom-sheet that replaces the single-route
@@ -67,6 +68,7 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
   // Force-enable for testing via PostHog targeting (TestFlight) or
   // `EXPO_PUBLIC_FLAG_FORCE_COOKBOOK_IMPORT_ENABLED=true` in the sim.
   const cookbookImportEnabled = isFeatureEnabled("cookbook_import_enabled");
+  const gridLayout = isFeatureEnabled("create_recipe_action_sheet_grid_v1");
 
   // Photo OCR is Pro-gated server-side — surface the lock before the tap
   // (import.md §3.1 / ENG-898 action sheet partial).
@@ -274,6 +276,16 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
             </Pressable>
           ) : null}
 
+          {gridLayout ? (
+            <CreateRecipeActionSheetGrid
+              accentPrimary={accent.primary}
+              isFreeTier={isFreeTier}
+              cookbookImportEnabled={cookbookImportEnabled}
+              onPhotoPress={onPhotoPress}
+              go={go}
+            />
+          ) : (
+            <>
           <ActionRow
             testID="create-action-sheet-link"
             Icon={LinkIcon}
@@ -316,6 +328,8 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
             onPress={() => go("/recipe/create")}
             colors={colors}
           />
+            </>
+          )}
 
           <Pressable
             accessibilityRole="button"

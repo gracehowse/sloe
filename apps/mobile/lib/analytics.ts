@@ -283,6 +283,19 @@ export function reset(): void {
   getPostHogClient()?.reset();
 }
 
+/**
+ * Default-OFF feature flags (NOT in `REDESIGN_DEFAULT_ON`). Listed here so
+ * the flag is discoverable on both platforms; a flag absent from every
+ * default-on set and not live in PostHog resolves to `false` (the safe
+ * dark default). To preview on device, force it ON via the dev Settings
+ * panel (`setForcedFlag("cook_step_ingredients_v1", true)`).
+ *
+ * - `cook_step_ingredients_v1` (ENG-944) — renders the calm "For this step"
+ *   ingredient chip row under each cook-mode instruction. DEFAULT-OFF;
+ *   ramp via PostHog once visually validated on device. Mirror of the web
+ *   note in `src/lib/analytics/track.ts`.
+ */
+
 /** Redesign 2026 flag set — the new design is the DEFAULT in every build
  *  (Grace 2026-06-01: "turn everything on; never flag-gate again"). These
  *  resolve ON regardless of PostHog rollout state or the dead env-force
@@ -342,6 +355,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (stronger tint + solid plum icon + "Paste link" pill). Legacy nav-row slab
   // stays in the component `else` as the kill switch.
   "discover_import_hero_v1",
+  // ENG-898 — CreateRecipeActionSheet 2×2 Julienne-style source grid (import.md
+  // §3.1). Default-on; off → legacy stacked ActionRow list.
+  "create_recipe_action_sheet_grid_v1",
   "design_system_elevation",
   "design_system_colours",
   "design_system_brandmark",
@@ -376,6 +392,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // matrix without the two free callouts. Keep in sync with track.ts (web).
   "paywall_free_mfp_wins_v1",
 ]);
+
+// NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
+// REDESIGN_DEFAULT_ON — it ships OFF and ramps via PostHog. SmartImage falls
+// through isFeatureEnabled → PostHog (false until ramped), rendering the
+// verbatim RN Image kill-switch by default. No registry entry is required for
+// an off-by-default flag.
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of

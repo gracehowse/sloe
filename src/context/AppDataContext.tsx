@@ -97,6 +97,7 @@ import {
   mergeCloudMetadataIntoSlots,
   metadataFromSlots,
   parseMealPlanSlotsMetadata,
+  type MealPlanSlotSyncLedger,
 } from "../lib/mealPlan/slotCloudSync.ts";
 import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.ts";
 
@@ -313,6 +314,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const mealPlanSlotsCloudLoadedRef = useRef(false);
   const mealPlanSlotsRef = useRef(mealPlanSlots);
   mealPlanSlotsRef.current = mealPlanSlots;
+  /**
+   * ENG-1194: per-slot sync ledger (updatedAt + tombstones). Kept in a ref, not
+   * React state — it never drives render, only the cloud metadata write-back +
+   * merge. Stamped on every create/rename/delete; reconciled by the cloud merge.
+   */
+  const mealPlanSlotLedgerRef = useRef<MealPlanSlotSyncLedger>({});
+  const stampMealPlanSlot = useCallback((slotId: string, deleted: boolean) => {
+    const nowIso = new Date().toISOString();
+    const prev = mealPlanSlotLedgerRef.current;
+    mealPlanSlotLedgerRef.current = {
+      ...prev,
+      [slotId]: { updatedAt: nowIso, deletedAt: deleted ? nowIso : null },
+    };
+  }, []);
 
   const mealPlan = useMemo(() => {
     return mealPlanSlots.find((s) => s.id === activeMealPlanSlotId)?.plan ?? null;
@@ -350,27 +365,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const createMealPlanSlot = useCallback((name: string) => {
     const id = newId("planslot");
     const label = name.trim() || "New plan";
+    stampMealPlanSlot(id, false); // ENG-1194: timestamp the create.
     setMealPlanSlots((prev) => [...prev, { id, name: label, plan: null }]);
     setActiveMealPlanSlotId(id);
     return id;
-  }, []);
+  }, [stampMealPlanSlot]);
 
   const renameMealPlanSlot = useCallback((slotId: string, name: string) => {
     const n = name.trim();
     if (!n) return;
+    stampMealPlanSlot(slotId, false); // ENG-1194: timestamp the rename.
     setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, name: n } : s)));
-  }, []);
+  }, [stampMealPlanSlot]);
 
   const deleteMealPlanSlot = useCallback((slotId: string) => {
     setMealPlanSlots((prev) => {
       if (prev.length <= 1) return prev;
       const filtered = prev.filter((s) => s.id !== slotId);
+      if (filtered.length === prev.length) return prev; // unknown id — no-op.
+      stampMealPlanSlot(slotId, true); // ENG-1194: tombstone the delete.
       if (activeMealPlanSlotIdRef.current === slotId) {
         setActiveMealPlanSlotId(filtered[0]!.id);
       }
       return filtered;
     });
-  }, []);
+  }, [stampMealPlanSlot]);
   const [nutritionTargets, setNutritionTargets] = useState(initial.nutritionTargets);
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
   // P3-30 (2026-04-25): net-carbs lens opt-in. Default false to preserve
@@ -633,11 +652,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         (data as { meal_plan_slots?: unknown } | null)?.meal_plan_slots,
       );
       if (cloudSlotMeta) {
-        setMealPlanSlots((prev) => mergeCloudMetadataIntoSlots(prev, cloudSlotMeta).slots);
-        setActiveMealPlanSlotId((prev) => {
-          const merged = mergeCloudMetadataIntoSlots(mealPlanSlotsRef.current, cloudSlotMeta);
-          return merged.activeSlotId ?? prev;
-        });
+        // ENG-1194: merge once (last-writer-wins per slot), then apply slots +
+        // active + reconciled ledger so tombstones survive into the next write.
+        const merged = mergeCloudMetadataIntoSlots(
+          mealPlanSlotsRef.current,
+          cloudSlotMeta,
+          mealPlanSlotLedgerRef.current,
+        );
+        mealPlanSlotLedgerRef.current = merged.ledger;
+        setMealPlanSlots(merged.slots);
+        if (merged.activeSlotId) setActiveMealPlanSlotId(merged.activeSlotId);
       }
       mealPlanSlotsCloudLoadedRef.current = true;
       const hasTargets = Boolean(
@@ -1131,8 +1155,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
        * `selectPlanPool` / `canGenerateFromSource` helper (mobile parity).
        */
       source?: PlanSourceMode;
+      /**
+       * ENG-956 — "Refresh the rest". When true AND the active plan has ≥1
+       * `isLocked` meal, regenerate keeps the locked meals byte-identical and
+       * re-rolls only the unlocked slots (rebalancing the remaining macro
+       * budget). When false / no meal locked, the legacy full-plan generate
+       * runs. The MealPlanner passes this only under `plan_meal_lock_v1`.
+       */
+      keepLocked?: boolean;
     }) => {
-      const { generatePlanFromLibrary } = await import("../lib/planning/generateMealPlan.ts");
+      const { generatePlanFromLibrary, regeneratePlanKeepingLocked } = await import(
+        "../lib/planning/generateMealPlan.ts"
+      );
       setIsGeneratingPlan(true);
       try {
         const o = options?.targetsOverride ?? {};
@@ -1194,6 +1228,46 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             return;
           }
           pool = savedRecipes;
+        }
+        // ENG-956 — "Refresh the rest". When the caller asked to keep locked
+        // meals AND the active plan actually has ≥1 locked meal, re-roll only
+        // the unlocked slots against the remaining macro budget, leaving the
+        // locked meals byte-identical. Skips the leftover-distribution pass:
+        // leftovers depend on a fresh whole-week sample, and re-distributing
+        // them would mutate the locked rows we just promised to preserve.
+        const activeLockedPlan =
+          mealPlanSlotsRef.current.find(
+            (s) => s.id === activeMealPlanSlotIdRef.current,
+          )?.plan ?? null;
+        const lockedCount =
+          activeLockedPlan?.reduce(
+            (a, dp) => a + dp.meals.filter((m) => m.isLocked).length,
+            0,
+          ) ?? 0;
+        if (options?.keepLocked && activeLockedPlan && lockedCount > 0) {
+          const partialStartMs = Date.now();
+          const nextPlan = regeneratePlanKeepingLocked({
+            existingPlan: activeLockedPlan,
+            savedRecipes: pool,
+            targets,
+            ...(options?.slots && options.slots.length > 0
+              ? { slots: options.slots }
+              : {}),
+          });
+          const rerolledCount = nextPlan.reduce(
+            (a, dp) => a + dp.meals.filter((m) => !m.isLocked).length,
+            0,
+          );
+          setMealPlan(nextPlan);
+          toast.success("Refreshed the unlocked meals");
+          track(AnalyticsEvents.plan_regenerated_partial, {
+            lockedCount,
+            rerolledCount,
+            days,
+            durationMs: Date.now() - partialStartMs,
+            platform: "web",
+          });
+          return;
         }
         // T14 (full-sweep 2026-04-24): instrument generation duration +
         // pool size so we can set the sampler cap from real data and
@@ -1555,12 +1629,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned, mealPlan]);
 
   // ENG-1130 — sync named slot registry (ids, names, active) to profiles.
+  // ENG-1194 — payload now also carries per-slot updatedAt + tombstones so a
+  // cross-device delete propagates (last-writer-wins) instead of being re-pushed.
   useEffect(() => {
     if (!authedUserId || !mealPlanSlotsCloudLoadedRef.current) return;
     const t = setTimeout(async () => {
       const payload = metadataFromSlots(
         mealPlanSlotsRef.current,
         activeMealPlanSlotIdRef.current,
+        mealPlanSlotLedgerRef.current, // ENG-1194: carry timestamps + tombstones.
       );
       const { error } = await supabase
         .from("profiles")

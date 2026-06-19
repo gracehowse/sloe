@@ -5,8 +5,14 @@ import { BookOpen, Check, ChevronDown, ChevronUp, Sparkles, Target } from "lucid
 import { isFeatureEnabled } from "../../../../lib/analytics/track";
 import { computeOnboardingRevealProjection } from "../../../../lib/onboarding/revealProjection";
 import {
+  ONBOARDING_REVEAL_BMR_LABEL_GLOSS,
+  ONBOARDING_REVEAL_BMR_LABEL_PLAIN,
+  ONBOARDING_REVEAL_METHODOLOGY_GLOSS,
+  ONBOARDING_REVEAL_METHODOLOGY_PLAIN,
   ONBOARDING_REVEAL_PERMISSION_QUOTE,
   ONBOARDING_REVEAL_SUBTITLE,
+  ONBOARDING_REVEAL_TDEE_LABEL_GLOSS,
+  ONBOARDING_REVEAL_TDEE_LABEL_PLAIN,
 } from "../../../../lib/onboarding/figmaCopy";
 import { useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
@@ -29,6 +35,23 @@ interface RevealProps {
 
 export function RevealStep({ compact = false }: RevealProps) {
   const { targets, state } = useOnboarding();
+
+  // ENG-1187 — gloss BMR / TDEE / Mifflin-St Jeor on first use behind
+  // `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays as the
+  // default; the glossed copy leads with the plain phrase. The
+  // "Show the maths" expander below is the existing power-user affordance
+  // and is intentionally left on the acronyms. Shared web ↔ mobile via
+  // `figmaCopy.ts`.
+  const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
+  const bmrLabel = glossOn
+    ? ONBOARDING_REVEAL_BMR_LABEL_GLOSS
+    : ONBOARDING_REVEAL_BMR_LABEL_PLAIN;
+  const tdeeLabel = glossOn
+    ? ONBOARDING_REVEAL_TDEE_LABEL_GLOSS
+    : ONBOARDING_REVEAL_TDEE_LABEL_PLAIN;
+  const methodologyCopy = glossOn
+    ? ONBOARDING_REVEAL_METHODOLOGY_GLOSS
+    : ONBOARDING_REVEAL_METHODOLOGY_PLAIN;
 
   // Animated count-up — easeOutCubic over ~1.2s.
   const [displayCals, setDisplayCals] = React.useState(0);
@@ -255,7 +278,7 @@ export function RevealStep({ compact = false }: RevealProps) {
 
         <div className="bg-card border border-border rounded-xl p-3.5 grid grid-cols-2 gap-3">
           <div>
-            <div className="section-label">BMR</div>
+            <div className="section-label">{bmrLabel}</div>
             <div className="text-lg font-bold tabular-nums text-foreground tracking-tight mt-0.5">
               {targets.bmr.toLocaleString()}
               <span className="text-[11px] text-muted-foreground font-medium ml-1">
@@ -264,7 +287,7 @@ export function RevealStep({ compact = false }: RevealProps) {
             </div>
           </div>
           <div>
-            <div className="section-label">Est. TDEE</div>
+            <div className="section-label">{tdeeLabel}</div>
             <div className="text-lg font-bold tabular-nums text-foreground tracking-tight mt-0.5">
               {targets.tdee.toLocaleString()}
               <span className="text-[11px] text-muted-foreground font-medium ml-1">
@@ -274,11 +297,7 @@ export function RevealStep({ compact = false }: RevealProps) {
           </div>
         </div>
 
-        <MethodologyNote>
-          Values are estimates based on the Mifflin-St Jeor equation. Sloe
-          will re-calibrate your TDEE from your logged intake and activity
-          data over the first ~2 weeks.
-        </MethodologyNote>
+        <MethodologyNote>{methodologyCopy}</MethodologyNote>
 
         {/* 2026-05-12 (premium-bar audit B5 #3 — Cal AI parity, web
             mirror of mobile `RevealShowTheMaths`): "Show the maths"

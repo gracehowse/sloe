@@ -28,7 +28,7 @@
 | Account / Settings / More / Ask | 27 | 0 | 13 | 11 | 3 | IA + palette drift; Ask unbuilt |
 | Auth | 23 | 6 | 2 | 13 | 2 | chooser `296:2` rebuilt web+mobile 2026-06-08 (M1 chooser/mobile-login/web-/login/wordmark/terms/Apple ✅); Google SI deferred (ENG-924) |
 | Paywall & win moments | 22 | 0 | 6 | 15 | 1 | streak/import-success are full screens in Figma |
-| Import | 23 | 0 | 7 | 14 | 1 | L4 error shipped #483; input-methods vs source-platforms mismatch |
+| Import | 23 | 0 | 6 | 14 | 1 | L4 + action-sheet grid shipped; input-methods vs source-platforms mismatch |
 | Fasting | 25 | 1 | 12 | 11 | 1 | legacy indigo skin not migrated |
 | Global / Nav / System states | 22 | 0 | 13 | 9 | 0 | dark/loading/offline states; nav icon drift |
 | Landing & Marketing (web) | 20 | 11 | 2 | 7 | 0 | most-migrated already |
@@ -75,7 +75,7 @@
 **Account/Settings/More (13):** Settings root (high); profile row; Units row; Appearance row; Connections; Account group; Account&plan M4 (high); Targets D9 (high); Targets why-number K3; Household D10; Reminders M2 (high); goal/pace editor; delete-account flow.
 **Auth (2 remaining):** /signin alias + /signup mode-state pixel pass (both share the rebuilt `app/login/ui.tsx` chooser — verify the signup-mode terms-checkbox + create-account copy on the email step). ✅ 2026-06-08: M1 chooser, mobile login, web /login, Apple SI flow, terms fine-print, brand wordmark all rebuilt to `296:2` (chooser-first + progressive-disclosure email).
 **Paywall (6):** mobile paywall (high); web pricing; upgrade dialog; M5 streak win (high); M6 import-success (high); trust strip.
-**Import (7):** 'Add a recipe' entry (high); paste-link pill; import CTA; source tiles 3-method (high); ~~L4 error (high)~~ ✅ #483; /import web; /import-shared (high); action sheet (partial — Pro photo gate #483; 2×2 grid open).
+**Import (6):** 'Add a recipe' entry (high); paste-link pill; import CTA; source tiles 3-method (high); ~~L4 error (high)~~ ✅ #483; /import web; /import-shared (high); ~~action sheet 2×2 grid~~ ✅ (partial — Pro photo gate #483; grid `create_recipe_action_sheet_grid_v1`).
 **Fasting (12):** web route; mobile route; D5 timer (high); preset picker; progress ring (high); stages bar (high); started/goal card; end-fast button; stage narrative; K4 idle (high); K4 active (high); fasting flow.
 **Global/Nav (13):** mobile tab bar; web mobile-web tab bar; mobile-web header; L3 offline; L1/L2 skeletons; L4 import error; L5/L6 dark; S5/S7/S8/S9 empties.
 **Landing (2):** desktop header; footer.
@@ -94,7 +94,7 @@ Confirmed wired, **no Figma frame**. Never remove. Each needs a Stitch→Mobbin�
 2. **Flag-gating debt** (migration flags to retire later, NOT now): `today_meals_figma_654`, `today-status-pills`, `progressLayoutV2`, `plan_empty_state_v2`, `plan_source_selector`, onboarding flag, etc.
 3. **File-size debt** (CLAUDE.md 400-line cap): mobile `(tabs)/index.tsx` 6412L, `NutritionTracker.tsx` 3613L, mobile `progress.tsx` 4007L, `SettingsBundleContent.tsx` ~3600L, web `Settings.tsx` ~88KB — structural refactor needed for clean conformance.
 4. **Figma coverage gaps:** no dark-mode frames for most areas (web has no dark at all); no desktop frames for Recipes/Plan/Recipe-detail/Paywall; no loading/error frames for most areas; states under-designed.
-5. **Web↔mobile parity gaps:** web missing macro-detail/energy-out/where-from detail screens; web Settings missing Household + Apple Health.
+5. **Web↔mobile parity gaps:** web missing macro-detail/energy-out/where-from detail screens. ~~web Settings missing Household + Apple Health~~ ✅ ENG-1200 — web Settings now ships a **Connections** card (Household row → `?view=household-settings`; Apple Health row → honest iOS-only explainer, no fake connect) gated behind `web_settings_connections_v1`. Unblocks ENG-892 Household D10.
 6. **Product-direction decisions needed (→ Linear):** Plan single-day vs multi-day; recipe macro rings vs flat tiles; library filter taxonomy (category vs entry-kind); fasting presets (OMAD vs 20:4/14:10); Ask feature build; Google Sign-In provider.
 7. **Verification blocker (resolved):** web-drive auth was redirecting (localhost vs 127.0.0.1 cookie); fixed — use `WEB_DRIVE_BASE_URL=http://127.0.0.1:3000`.
 
@@ -321,3 +321,22 @@ Public-share page (`app/recipe/[id]/page.tsx`) full Sloe reskin (cream, plum ser
 **Also in PR:** ENG-889 L5 dark Today verify docs; ENG-1142 visual cohesion gate; ENG-1016 Discover PressableScale haptics.
 
 **Tracker delta (post-merge):** 🟡 143→141 (L2 + L4); 🟣 15→14 (296:33 email step removed from Figma-Only build list — wall + unit pin shipped); Recipes partial 10→9; Import partial 8→7. Parent epics ENG-896/897/898 stay **In Progress**.
+
+### Batch 7 — action sheet 2×2 grid (ENG-898 partial, 2026-06-19)
+
+- `CreateRecipeActionSheetGrid` — Julienne 2×2 tiles (link primary, photo Pro lock, PDF coming-soon, manual) + scratch row. Flag: `create_recipe_action_sheet_grid_v1` (default-on; legacy ActionRow list in `else`).
+- Unit: `createRecipeActionSheetGrid.test.ts`, `createRecipeActionSheetProGate.test.ts`.
+- **Tracker delta:** Import partial 7→6 (action sheet grid closed; `/import web` + `/import-shared` + paste-link pill remain).
+
+### Batch 8 — caption preview parity (ENG-898 partial, 2026-06-19, PR #527)
+
+- Web `ImportCaptionPreviewCard` + `import_caption_preview_v1` flag (OFF default).
+- Mobile captionPreview photo/link escape hatches.
+- Unit: `importCaptionPreviewParity.test.ts`.
+
+### Batch 9 — `/import-shared` idle §3.2 polish (ENG-898 partial, 2026-06-19, PR #529)
+
+- Mobile redesign idle: composite paste row (`Link2` + "Paste a link…" + inline terracotta Import pill), conditional "Use clipboard" (pasteboard peek + dedup), CREME creator `@handle` preview with dismiss, short IG/TT share-sheet hint, `ChevronRight` on recent rows, photo tile Pro lock pill.
+- Shared helper: `extractCreatorHandleFromImportUrl` in `src/lib/recipes/resolveImportUrl.ts`.
+- Units: `importSharedRedesign.test.ts` (idle §3.2 pins), `extractCreatorHandleFromImportUrl.test.ts`.
+- Flag: existing `recipe-import-redesign` (legacy idle unchanged in `else`).

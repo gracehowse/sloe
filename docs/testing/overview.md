@@ -170,7 +170,9 @@ npm run mobile:verify
 
 GitHub Actions (`.github/workflows/ci.yml`):
 
-**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm run test:coverage` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
+**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm run test:coverage` → `check:today-captures` → `check:type-scale` → `check:screen-budget` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
+
+**Static line/scale ratchets (web job):** `check:type-scale` (ENG-119 — Tailwind `text-[Npx]` off the canonical type ramp) and `check:screen-budget` (ENG-717 — the "no screen file over 400 lines" rule; scans web `src/app/components` + `app` and mobile `apps/mobile/app` + `apps/mobile/components` `.tsx` surfaces, pins current offenders in `scripts/screen-line-budget.json` at their line count so they can only shrink, fails on any new >400 file or a pinned file growing). Re-pin a shrunk file with `npm run check:screen-budget:write`.
 
 **Mobile job:** under `apps/mobile` — ESLint, TypeScript, import-path guards, `npm run test:coverage` (Vitest with Istanbul coverage for `app/**` and `lib/**`; HTML under `apps/mobile/coverage/`), `npm run test:e2e:verify-suite` (Maestro flow files + `config.yaml` manifest — does not run the simulator on CI).
 

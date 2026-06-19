@@ -8,6 +8,7 @@ import {
   fitDayToTargets,
   refitDayMealsToTargets,
   mulberry32,
+  regenerateUnlockedMeals,
   scaleMacros,
 } from "../nutrition/mealPlanAlgo";
 import type {
@@ -264,6 +265,83 @@ export function generatePlanFromLibrary(input: {
   }
 
   return plans;
+}
+
+/**
+ * ENG-956 — "Refresh the rest". Re-roll only the UNLOCKED meals of an existing
+ * plan, keeping each `isLocked` meal byte-identical and rebalancing the
+ * remaining macro budget (daily target − locked meals) across the unlocked
+ * slots. Web wrapper around `regenerateUnlockedMeals<RecipeCard>`.
+ *
+ * Per day: locked meals are preserved (same reference), unlocked slots are
+ * re-sampled against `target − locked`. Day totals are recomputed from the
+ * stitched meal list. The `isLocked` flag is preserved on locked meals so the
+ * UI keeps showing the lock; replacement meals come back unlocked.
+ *
+ * Used by the planner's Regenerate button when the `plan_meal_lock_v1` flag is
+ * on AND ≥1 meal is locked; otherwise the caller falls back to the full
+ * `generatePlanFromLibrary` path (legacy all-or-nothing regenerate).
+ */
+export function regeneratePlanKeepingLocked(input: {
+  existingPlan: DayPlan[];
+  savedRecipes: RecipeCard[];
+  targets: PlannerTargets;
+  /** Which slots are in play — defaults to all 4. */
+  slots?: string[];
+  /** RNG seed — defaults to Date.now(). */
+  seed?: number;
+}): DayPlan[] {
+  const { existingPlan, savedRecipes, targets } = input;
+  const pool = savedRecipes
+    .map((r) => ({
+      ...r,
+      ...coerceMacrosWhenCaloriesButNoGrams({
+        calories: r.calories,
+        protein: r.protein,
+        carbs: r.carbs,
+        fat: r.fat,
+        fiberG: r.fiberG,
+      }),
+    }))
+    .filter(
+      (r) =>
+        (Number.isFinite(r.calories) && r.calories > 0) ||
+        (Number.isFinite(r.protein) && r.protein > 0) ||
+        (Number.isFinite(r.carbs) && r.carbs > 0) ||
+        (Number.isFinite(r.fat) && r.fat > 0),
+    );
+  const baseSeed = input.seed ?? Date.now();
+  const slotFitPredicate = (recipe: RecipeCard, slot: string) =>
+    recipeFitsMealSlot(recipe, slot as PlannerMealSlot);
+
+  const recentIds = new Set<string>();
+  return existingPlan.map((dp, dayIdx) => {
+    // Each day's unlocked slots are read from the meals' own `name`, so a
+    // day with a non-default slot set still maps correctly.
+    const daySlots = input.slots ?? dp.meals.map((m) => m.name);
+    const rand = mulberry32(baseSeed + (dp.day || dayIdx + 1) * 7919 + pool.length * 31);
+    const { meals, residualProteinGap } = regenerateUnlockedMeals({
+      meals: dp.meals,
+      pool,
+      slots: daySlots,
+      targets,
+      recentIds,
+      rand,
+      slotFitPredicate,
+    });
+    // Feed every recipe used this day (locked + re-rolled) into the recency
+    // set so multi-day plans keep variety across days.
+    for (const m of meals) {
+      if (m.recipeId) recentIds.add(m.recipeId);
+    }
+    const totals = dayPlanTotalsFromMeals(meals as DayPlanMeal[]);
+    return {
+      ...dp,
+      meals: meals as DayPlanMeal[],
+      totals,
+      ...(residualProteinGap < 0 ? { residualProteinGap } : {}),
+    };
+  });
 }
 
 // fitDayToTargets is exported by mealPlanAlgo.ts; re-exported here for
