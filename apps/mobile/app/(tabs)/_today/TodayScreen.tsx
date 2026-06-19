@@ -4280,7 +4280,7 @@ export default function TrackerScreen() {
           const row = data as { source?: string | null; health_sample_id?: string | null } | null;
           if (row?.source === "apple_health" && row.health_sample_id) {
             const { markHealthSampleDeleted } = await import(
-              "../../lib/deletedHealthSamples"
+              "@/lib/deletedHealthSamples"
             );
             void markHealthSampleDeleted(row.health_sample_id);
           }

@@ -72,8 +72,6 @@ export interface RecipeCard {
    * disclaimer (ENG-858) to name the non-endorsement clause.
    */
   sourceName?: string | null;
-  /** Recipe provenance plane; `claimed` identifies verified official creator rows. */
-  contentOrigin?: string | null;
   /** Human-readable prep time (e.g. "15 min"). */
   prepTime?: string;
   /** Human-readable cook time (e.g. "30 min"). */
