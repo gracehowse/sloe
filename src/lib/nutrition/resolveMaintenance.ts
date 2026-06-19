@@ -170,6 +170,20 @@ export function resolveMaintenance(
   const measuredConfident =
     measuredConfidence === "medium" || measuredConfidence === "high";
 
+  // ENG-1111 — DOUBLE-COUNT MUTUAL EXCLUSION (load-bearing).
+  // Measured TDEE is FULL-day expenditure (HealthKit resting + active over
+  // complete-wear days). When this branch wins it REPLACES maintenance — it
+  // does not stack on top of it. The per-day activity bonus
+  // (`computeActivityBonusKcal`, gated by `prefer_activity_adjusted_calories`)
+  // adds workout burn ON TOP of maintenance, so it MUST contribute 0 whenever
+  // maintenance `source === "measured"` — otherwise the Watch's active energy
+  // is counted twice (once inside measured TDEE, once in the bonus). That
+  // suppression lives in `computeActivityBonusKcal` (it returns 0 for
+  // `maintenanceSource === "measured"`) and is asserted in
+  // `tests/unit/activityBonus.test.ts`. The adaptive + formula branches below
+  // are the lazy-day/NEAT (sedentary) seed precisely so the bonus can pay for
+  // activity exactly once; the measured branch is the only branch whose number
+  // already includes active energy, hence the only one that zeros the bonus.
   if (opts.enableMeasured && measuredCandidate != null && measuredConfident) {
     const measuredUpdatedAt = profile.measured_tdee_updated_at
       ? new Date(profile.measured_tdee_updated_at)

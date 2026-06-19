@@ -20,6 +20,15 @@ export const RESTING_VS_MEDIAN_FLOOR = 0.6;
 /** Resting must be ≥ this fraction of BMR when BMR is known. */
 export const RESTING_VS_BMR_FLOOR = 0.7;
 
+/**
+ * Complete-wear days at/above this count promote the estimate to `high`
+ * confidence. Below it (but still ≥ MIN_COMPLETE_WEAR_DAYS) the estimate is
+ * `medium`. Mirrors `HIGH_CONFIDENCE_LOGGING_DAYS` in `adaptiveTdee.ts` so the
+ * measured branch can't claim higher confidence than adaptive would on the
+ * same volume of data. Named (not inline) so the threshold is auditable.
+ */
+export const HIGH_CONFIDENCE_WEAR_DAYS = 21;
+
 export type MeasuredTdeeConfidence = "medium" | "high";
 
 export type MeasuredTdeeInput = {
@@ -108,7 +117,7 @@ export function computeMeasuredTDEE(
   if (dailyTotals.length < MIN_COMPLETE_WEAR_DAYS) return null;
 
   const confidence: MeasuredTdeeConfidence =
-    dailyTotals.length >= 21 ? "high" : "medium";
+    dailyTotals.length >= HIGH_CONFIDENCE_WEAR_DAYS ? "high" : "medium";
 
   return {
     tdee: medianRounded(dailyTotals),
