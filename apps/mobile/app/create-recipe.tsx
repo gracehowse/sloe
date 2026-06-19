@@ -572,7 +572,8 @@ export default function CreateRecipeScreen() {
     });
     setSearchReplaceId(null);
     setSearchOpen(false);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // ENG-1016 — adding / replacing an ingredient is a commit → Medium.
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [searchReplaceId]);
 
   // F-128 — AI items (voice/photo) → recipe ingredients. Same shape

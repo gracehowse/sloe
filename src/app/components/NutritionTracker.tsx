@@ -105,6 +105,7 @@ import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialo
 import { TodayLoadingSkeleton } from "./suppr/today-loading-skeleton.tsx";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { useWebWinMoment } from "../../lib/preferences/useWebWinMoment.ts";
+import { useCommitPulse } from "../../lib/preferences/useCommitPulse.ts";
 import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
 import { TodayWeekSidebar } from "./suppr/today-week-sidebar";
 import { TodayDesktopRightRail } from "./suppr/today-desktop-right-rail";
@@ -2443,6 +2444,28 @@ export const NutritionTracker = memo(function NutritionTracker({
     ready: winReady,
   });
 
+  // ENG-1016 — per-commit ring pulse, the web colour/scale analog of mobile's
+  // Medium commit haptic (web has no haptics). Fires a brief, subtle scale +
+  // soft brand glow on the calorie ring whenever a log lands on the selected
+  // day. Gated behind `redesign_motion` + reduced-motion inside the hook (the
+  // same gate mobile's `confirmLog` uses), so it's inert until ramp. Driven by
+  // the meal-count rising edge — the observable durable-commit signal every
+  // web log entry point (`addLoggedMeal` / `addLoggedMealForDate`) flows
+  // through — mirroring how mobile's CalorieRing reacts to logged-calorie
+  // changes.
+  const { pulse: commitPulse, trigger: triggerCommitPulse } = useCommitPulse();
+  const prevMealCountRef = useRef<{ key: string; count: number } | null>(null);
+  useEffect(() => {
+    const count = mealsForSelectedDate.length;
+    const prev = prevMealCountRef.current;
+    prevMealCountRef.current = { key: selectedDateKey, count };
+    // Only pulse on a rising edge for the SAME day — never on day-switch
+    // (which changes both key and count) or on a remote removal.
+    if (!winReady) return;
+    if (!prev || prev.key !== selectedDateKey) return;
+    if (count > prev.count) triggerCommitPulse();
+  }, [mealsForSelectedDate.length, selectedDateKey, winReady, triggerCommitPulse]);
+
   // ENG-935: "What to eat next" is a PERMANENT glanceable Today block —
   // it renders for today regardless of remaining calories, including the
   // over-budget / on-target case. The previous `> 0` gate hid the block
@@ -2857,6 +2880,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         expanded={ringExpanded}
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         pulse={winPulse}
+        commitPulse={commitPulse}
         isOnTrack={
           totals.calories > 100 &&
           effectiveCalorieTarget > 0 &&

@@ -930,7 +930,8 @@ export default function ImportSharedScreen() {
         return { ...prev, ingredientMacros: next };
       });
       setSearchIngredientIdx(null);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // ENG-1016 — replacing an ingredient's match is a commit → Medium.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
     [searchIngredientIdx],
   );
@@ -999,7 +1000,8 @@ export default function ImportSharedScreen() {
         return { ...prev, ingredientMacros: next };
       });
       setOverrideIngredientIdx(null);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // ENG-1016 — overwriting a row's macros is a commit → Medium.
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     },
     [overrideIngredientIdx],
   );

@@ -200,8 +200,9 @@ function EditEntryV2(props: TodayEditMealModalProps) {
   const portionNum = parsePortion(editPortion);
   const portionLabel = formatMultiplier(portionNum);
 
-  // Quiet log-confirm haptic on portion recalc (the ±/chip-committed value,
-  // never raw keystrokes) — same Light-impact "confirm" feel as the Save CTA.
+  // Quiet selection haptic on portion recalc (the ±/chip-committed value,
+  // never raw keystrokes) — a Light stepper beat. The durable Save CTA fires
+  // the heavier Medium ("confirm") commit beat (ENG-1016).
   const onPortionChange = (next: number) => {
     if (motionEnabled) {
       try {
@@ -708,9 +709,16 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
             />
           </View>
           <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.md }}>
-            <Pressable style={[styles.submitBtn, { flex: 1 }]} onPress={onSave}>
+            {/* ENG-1016 — Save is a commit → Medium ("confirm") haptic via the
+                canonical PressableScale primitive, matching the redesigned
+                EditEntryV2 Save CTA. */}
+            <PressableScale
+              haptic="confirm"
+              style={[styles.submitBtn, { flex: 1 }]}
+              onPress={onSave}
+            >
               <Text style={styles.submitBtnText}>Save Changes</Text>
-            </Pressable>
+            </PressableScale>
             <Pressable
               style={{
                 flex: 1,

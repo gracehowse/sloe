@@ -3714,7 +3714,8 @@ export default function PlannerScreen() {
                       <Pressable
                         key={slot}
                         onPress={() => {
-                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          // ENG-1016 — adding a meal slot to the plan is a commit → Medium.
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                           setPlan((prev) => {
                             if (!prev) return prev;
                             const next = prev.map((dpRow, di) => {
