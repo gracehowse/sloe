@@ -63,6 +63,8 @@ export interface RecipeCard {
    * 2026-04-18). Parity with mobile `RecipeCard.sourceUrl`.
    */
   sourceUrl?: string | null;
+  /** Explicit two-plane origin for private imports vs owned/claimed public recipes. */
+  contentOrigin?: "first_party" | "imported_stub" | "claimed";
   /**
    * Human attribution for an imported recipe (creator handle / site name).
    * Parity with mobile `recipe.source_name`. Used by the import source-card

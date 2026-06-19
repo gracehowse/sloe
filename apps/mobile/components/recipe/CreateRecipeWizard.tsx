@@ -566,6 +566,7 @@ export default function CreateRecipeWizard() {
             instructions: normaliseInstructions(instructionsString) || null,
             servings: srv,
             published: publishOnSave,
+            content_origin: "first_party",
             calories: roundCalories(perServing.calories),
             protein: roundMacro(perServing.protein),
             carbs: roundMacro(perServing.carbs),

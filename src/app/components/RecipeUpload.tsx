@@ -1608,6 +1608,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                 : null,
             source_url: attributionUrl,
             source_name: attributionName,
+            content_origin: attributionUrl ? "imported_stub" : "first_party",
             // F-72 (2026-05-08) — recipes.{calories,protein,carbs,fat}
             // are NUMERIC(10, 2). Round at the boundary to 1 decimal so
             // values written from web match the wizard write shape and

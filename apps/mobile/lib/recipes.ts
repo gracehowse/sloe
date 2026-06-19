@@ -88,7 +88,7 @@ export function useDiscoverRecipes() {
         await supabase
           .from("recipes")
           .select(
-            "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, allergens, dietary_flags",
+            "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, content_origin, prep_time_min, cook_time_min, allergens, dietary_flags",
           )
           .eq("published", true)
           .order("created_at", { ascending: false })
@@ -148,6 +148,7 @@ export function useDiscoverRecipes() {
           // creations (only curated `creators` table rows have an id).
           creatorId: r.creator_id ?? null,
           sourceUrl: r.source_url ?? null,
+          contentOrigin: r.content_origin ?? undefined,
           sourceName: (r.source_name as string | null | undefined) ?? null,
           mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
           feedSource: "community" as const,
@@ -458,7 +459,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
           await supabase
             .from("recipes")
             .select(
-              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
+              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, content_origin, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
             )
             .eq("author_id", userId)
             .order("created_at", { ascending: false }))(),
@@ -505,7 +506,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
           await supabase
             .from("recipes")
             .select(
-              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
+              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, content_origin, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
             )
             .in("id", extraIds))(),
         new Promise<typeof libraryRaceTimeout>((resolve) => {
@@ -579,6 +580,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
           // creations (only curated `creators` table rows have an id).
           creatorId: r.creator_id ?? null,
           sourceUrl: r.source_url ?? null,
+          contentOrigin: r.content_origin ?? undefined,
           sourceName: (r.source_name as string | null | undefined) ?? null,
           mealSlots: Array.isArray(r.meal_type) ? r.meal_type : r.meal_type ? [r.meal_type] : undefined,
           prepTimeMin: prepOk ? Math.round(prepM) : null,

@@ -1,12 +1,15 @@
 # Creator-content model — two planes, first-party canonical (2026-06-03)
 
-**Status:** Decided (product-lead, 8/10), pending implementation. Post-Today; most of it post-launch.
+**Status:** Decided (product-lead, 8/10). ENG-869 data model implemented; claim/merge remains post-launch.
 **Linear:** initiative "Recipe import, AI imagery & creators" → project "Creator platform" (ENG-868/869/870).
 **Context:** Suppr runs two opposite content models — un-owned **imported** recipes (facts-only, photos blocked, AI/placeholder image, link-back) and **first-party creators** ("Recipe Go Public" + `/creator/[id]`) who want ownership, credit, their own photos. This reconciles them.
 
 ## The model: two planes, one bridge
 - **Plane A — private imports (facts-only).** What exists today: facts + `source_url`/`source_name`, gradient placeholder (creator photo blocked), **private by default, never published, never in Discover, never SEO-indexed.** The creator didn't opt in, so this object has no public surface. Correct as-is.
 - **Plane B — first-party creator recipes (owned).** Authored or *claimed*, with photo/prose/brand, `published=true`, in Discover + on `/creator/[id]`. Opted in, owned, photo shown.
+
+## Data model
+Every `recipes` row carries `content_origin` as `first_party`, `imported_stub`, or `claimed`. `content_origin` describes the row itself: private import writes use `imported_stub`; creator-authored writes use `first_party`; future verified claim writes use `claimed`. The column is a classifier for query/ranking/UI decisions, not a foreign key to another recipe and not permission to rewrite a user-owned copy.
 
 ## Canonical rule — PLANE-SCOPED (the key revision)
 **First-party is canonical only within the PUBLIC plane.** When a published first-party version exists, it's what Discover/search/share surfaces. An imported **private** stub is never overwritten or "beaten" — it stays the user's private object exactly as imported/customised. **De-dupe operates on what's shown publicly, never on what a user privately owns.** ("De-dupe so theirs wins" is right for Discover, wrong if read as silently rewriting users' private saved stubs — that's a trust violation.)
@@ -39,7 +42,8 @@ The funnel pitch is true only when: link-back is **surfaced** (not buried — EN
 ## Sequencing
 - **Launch-relevant:** surface link-back (ENG-858), stop verbatim prose (ENG-857), DMCA (ENG-859).
 - **Post-Today:** `image_source` provenance + precedence ladder (ENG-862/864).
-- **Post-launch:** full claim & merge + "switch to official" + Discover de-dupe ranking (ENG-870). Trigger = first real creator asks; at N=1 there's nothing to claim.
+- **Implemented in ENG-869:** `recipes.content_origin` enum + backfill and write-path tagging for imports versus first-party creates.
+- **Post-launch:** full claim & merge + "switch to official" + Discover de-dupe ranking (ENG-870). Trigger = first real creator asks; at N=1 there's nothing to claim. Discover de-dupe is ranking-only: when a `claimed`/`first_party` public row and private stubs share an exact `source_url`, the owned public row ranks first in Discover/public search; private rows are never mutated, deleted, or repointed.
 - **Never build:** retroactive silent merge that mutates users' private saved stubs.
 
 ## Open / risks

@@ -79,6 +79,7 @@ describe("persistImportRecipe", () => {
     const insertCall = (supabase.from as ReturnType<typeof vi.fn>).mock.results[0]
       .value.insert.mock.calls[0][0];
     expect(insertCall.calories).toBe(420);
+    expect(insertCall.content_origin).toBe("imported_stub");
     expect(insertCall.is_verified).toBe(false);
   });
 

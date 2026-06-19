@@ -1617,6 +1617,7 @@ export type Database = {
           caption_nutrition_claim: Json | null
           carbs: number
           cook_time_min: number | null
+          content_origin: Database["public"]["Enums"]["recipe_content_origin"]
           created_at: string
           creator_calories: number | null
           creator_id: string | null
@@ -1656,6 +1657,7 @@ export type Database = {
           caption_nutrition_claim?: Json | null
           carbs?: number
           cook_time_min?: number | null
+          content_origin?: Database["public"]["Enums"]["recipe_content_origin"]
           created_at?: string
           creator_calories?: number | null
           creator_id?: string | null
@@ -1695,6 +1697,7 @@ export type Database = {
           caption_nutrition_claim?: Json | null
           carbs?: number
           cook_time_min?: number | null
+          content_origin?: Database["public"]["Enums"]["recipe_content_origin"]
           created_at?: string
           creator_calories?: number | null
           creator_id?: string | null
@@ -2678,7 +2681,7 @@ export type Database = {
       tier_rank: { Args: { p_tier: string }; Returns: number }
     }
     Enums: {
-      [_ in never]: never
+      recipe_content_origin: "first_party" | "imported_stub" | "claimed"
     }
     CompositeTypes: {
       [_ in never]: never

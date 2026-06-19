@@ -139,6 +139,7 @@ export async function saveImportedRecipe(
       cook_time_min: cookRounded,
       source_url: sourceUrl,
       source_name: sourceName,
+      content_origin: "imported_stub",
       published: false,
       meal_type: recipe.mealType ?? classifyMealType({
         title,
@@ -276,6 +277,7 @@ export async function updateImportedRecipe(
       cook_time_min: cookRounded,
       source_url: sourceUrl,
       source_name: sourceName,
+      content_origin: "imported_stub",
       meal_type: recipe.mealType ?? classifyMealType({
         title,
         ingredients,
