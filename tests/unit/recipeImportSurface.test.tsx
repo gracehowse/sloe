@@ -47,8 +47,14 @@ vi.mock("sonner", () => ({
 // `SupprMark` (rendered on the "Paste a recipe link" card) reads the
 // `design_system_brandmark` flag from this same module. Default it OFF so
 // the legacy S-glyph (still a brand mark) renders; one test flips it on.
+//
+// `recipe-import-redesign` (ENG-898 web flag-gating parity with mobile) gates
+// the NEW L4 amber error banner + the 3-method source tiles. Default it ON in
+// this suite so the existing ENG-669/898 surface assertions keep exercising
+// the new path; the dedicated flag-OFF tests below force it off to pin the
+// legacy fallback (small destructive line + toast.error, no method tiles).
 const { isFeatureEnabledSpy } = vi.hoisted(() => ({
-  isFeatureEnabledSpy: vi.fn(() => false),
+  isFeatureEnabledSpy: vi.fn((flag: string) => flag === "recipe-import-redesign"),
 }));
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: vi.fn(),
@@ -145,6 +151,9 @@ beforeEach(() => {
   toastMock.error.mockClear();
   toastMock.warning.mockClear();
   trackMock.mockClear();
+  // Reset to the suite default: only `recipe-import-redesign` ON. Tests that
+  // need other flags (or the legacy OFF path) override per-case.
+  isFeatureEnabledSpy.mockImplementation((flag: string) => flag === "recipe-import-redesign");
 });
 
 afterEach(() => {
@@ -210,15 +219,16 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
   });
 
   it("does not gate the import-card mark behind design_system_brandmark", () => {
-    isFeatureEnabledSpy.mockReturnValue(false);
+    // brandmark OFF (redesign flag still resolves per default).
+    isFeatureEnabledSpy.mockImplementation((flag: string) => flag === "recipe-import-redesign");
     render(<RecipeUpload userTier="free" mode="import" />);
     const card = screen.getByText("Paste a recipe link").closest('div[class*="radius-card-lg"]');
     expect(card?.querySelector('[data-slot="sloe-mark"]')).not.toBeNull();
+    // brandmark ON (every flag ON) — the mark must still render.
     isFeatureEnabledSpy.mockReturnValue(true);
     render(<RecipeUpload userTier="free" mode="import" />);
     const cardOn = screen.getAllByText("Paste a recipe link")[1].closest('div[class*="radius-card-lg"]');
     expect(cardOn?.querySelector('[data-slot="sloe-mark"]')).not.toBeNull();
-    isFeatureEnabledSpy.mockReturnValue(false);
   });
 
   it("renders the photo import affordance (extract from image)", () => {
@@ -281,7 +291,9 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     );
   });
 
-  it("surfaces L4 amber inline error (not toast-only) when the URL has no parseable recipe", async () => {
+  it("flag ON — surfaces L4 amber inline error (not toast-only) when the URL has no parseable recipe", async () => {
+    // recipe-import-redesign ON (suite default): the L4 banner is the surface,
+    // and the toast is suppressed so the error isn't shown twice.
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       json: async () => ({
@@ -306,6 +318,56 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
       screen.getByText(/No Recipe JSON-LD found on this page/i),
     ).toBeInTheDocument();
     expect(toastMock.error).not.toHaveBeenCalled();
+  });
+
+  it("flag OFF — legacy error path: small destructive hint + toast.error, NO L4 banner (ENG-898 web flag-gating)", async () => {
+    // recipe-import-redesign OFF (production until the flag ramps): restore the
+    // pre-#483 behaviour — a toast plus the inline destructive line; the new
+    // amber banner must NOT render.
+    isFeatureEnabledSpy.mockImplementation(() => false);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        ok: false,
+        error: "no_recipe_schema",
+        message: "No Recipe JSON-LD found on this page. Paste ingredients and steps manually, or try another URL.",
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecipeUpload userTier="free" mode="import" />);
+    fireEvent.change(screen.getByPlaceholderText("https://…"), {
+      target: { value: "https://example.com/not-a-recipe" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Import$/ }));
+
+    // Legacy: the toast fires with the server's actionable message.
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith(
+        expect.stringMatching(/No Recipe JSON-LD found on this page/i),
+      );
+    });
+    // The inline hint also renders as the small destructive line — but NOT the
+    // new L4 amber banner.
+    expect(
+      screen.getByText(/No Recipe JSON-LD found on this page/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("import-l4-error")).not.toBeInTheDocument();
+    expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument();
+  });
+
+  it("flag OFF — legacy idle surface does NOT render the 3-method source tiles", () => {
+    // recipe-import-redesign OFF: the tile grid is part of the new design and
+    // must be absent; the legacy photo affordance stays in the "Recipe photo"
+    // card (asserted by the existing photo-import test).
+    isFeatureEnabledSpy.mockImplementation(() => false);
+    render(<RecipeUpload userTier="free" mode="import" />);
+    expect(screen.queryByTestId("import-method-tiles")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("import-method-photo")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("import-method-paste-text")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("import-method-scan")).not.toBeInTheDocument();
+    // The legacy photo affordance is still present in the dedicated card.
+    expect(screen.getByRole("button", { name: "Extract from image" })).toBeInTheDocument();
   });
 
   it("ENG-901 M6 — after save in import mode, renders ImportSuccessSheet (not a toast)", async () => {
