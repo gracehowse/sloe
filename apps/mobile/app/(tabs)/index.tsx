@@ -1627,13 +1627,10 @@ export default function TrackerScreen() {
       });
       const targetDayKey = dateKeyFromDate(selectedDate);
       setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist. The commit
+      // confirm haptic (Medium, ENG-1016) fires once inside this funnel via
+      // `confirmLogHapticRef` — no per-call-site duplicate buzz.
       void persistMealsImmediate(targetDayKey, newMeals);
-      // 2026-04-28 (teardown Top-5 #5): light haptic on every log so
-      // the action lands in the body, not just on the screen. Success
-      // notification (line ~1515) stays reserved for hitting the
-      // daily target.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       // L6 G1 (2026-04-18) — mirror the web primitive: fire one
       // `food_logged { source: "saved_meal" }` per expanded item so
       // the funnel totals match web. `saved_meal_logged` is still
@@ -1729,10 +1726,9 @@ export default function TrackerScreen() {
       });
       const targetDayKey = dateKeyFromDate(selectedDate);
       setByDay((prev) => ({ ...prev, [targetDayKey]: [...(prev[targetDayKey] ?? []), ...newMeals] }));
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist. Commit
+      // confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(targetDayKey, newMeals);
-      // 2026-04-28 (teardown Top-5 #5): light haptic on log.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
         track(AnalyticsEvents.usual_meal_log_tapped, {
           slot,
@@ -2091,10 +2087,9 @@ export default function TrackerScreen() {
           : {}),
       };
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), meal] }));
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist. Commit
+      // confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(dayKey, [meal]);
-      // 2026-04-28 (teardown Top-5 #5): light haptic on log.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       // F-74 / F-103 fix (2026-05-07): NO ledger bump on log paths.
       // Per-meal `micros.caffeineMg` / `alcoholG` is the canonical SoT
       // for food-derived stimulants — `caffeineFromMealsMg` /
@@ -3472,12 +3467,11 @@ export default function TrackerScreen() {
         ...prev,
         [dayKey]: [...(prev[dayKey] ?? []), ...newMeals],
       }));
-      // 2026-05-08 data-loss hotfix — immediate Supabase persist.
+      // 2026-05-08 data-loss hotfix — immediate Supabase persist. Commit
+      // confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(dayKey, newMeals);
       // F-74 / F-103 fix (2026-05-07): see `quickAddMeal` —
       // per-meal micros canonical, no ledger bump on AI commits.
-      // 2026-04-28 (teardown Top-5 #5): light haptic on log.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       track(AnalyticsEvents.food_logged, {
         source: aiItems[0]?.source === "voice" ? "voice" : "photo",
         count: newMeals.length,
@@ -4310,10 +4304,9 @@ export default function TrackerScreen() {
     }));
     // 2026-05-08 data-loss hotfix — immediate Supabase persist (was
     // relying on the fragile 600ms debounce that lost ~25 days of
-    // Grace's data on TestFlight reinstall).
+    // Grace's data on TestFlight reinstall). Commit confirm haptic fires
+    // once inside the funnel (ENG-1016).
     void persistMealsImmediate(dayKey, [meal]);
-    // 2026-04-28 (teardown Top-5 #5): light haptic on log.
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTitle("");
     setKcal("");
     setProtein("");
@@ -4480,8 +4473,8 @@ export default function TrackerScreen() {
           [dayKey]: [...(prev[dayKey] ?? []), meal],
         }));
       });
+      // Commit confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(dayKey, [meal]);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
         track(AnalyticsEvents.food_logged, { source: "quick_add", slot: activeMealSlot });
       } catch {
@@ -4564,10 +4557,11 @@ export default function TrackerScreen() {
         ...prev,
         [targetDayKey]: [...(prev[targetDayKey] ?? []), ...withIds],
       }));
-      // 2026-04-28 (teardown Top-5 #5): light haptic on log. Copy /
-      // duplicate paths share this primitive — both feel like a log
-      // to the user, so both fire the same body-feedback tap.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // Copy / duplicate is a log commit — fire the canonical commit confirm
+      // beat (Medium, ENG-1016) through the shared funnel ref rather than a
+      // bespoke raw Light call. This path does its own insert (below) instead
+      // of `persistMealsImmediate`, so the funnel haptic is invoked here.
+      confirmLogHapticRef.current();
       if (!userId) return withIds.length;
       // Single shared row shape (launch-audit P1-2 consolidation) — the
       // builder guarantees `eaten_at` + the eaten-derived `date_key` are
@@ -4985,8 +4979,8 @@ export default function TrackerScreen() {
         createdAt: undefined,
       }));
       setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), ...clones] }));
+      // Commit confirm haptic fires once inside the funnel (ENG-1016).
       void persistMealsImmediate(dayKey, clones);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       try {
         for (const m of clones) {
           track(AnalyticsEvents.food_logged, {
