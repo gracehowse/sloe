@@ -37,6 +37,11 @@ const RN_SHIM_PATH = pathResolve(__dirname, "shims", "react-native.cjs");
 const RN_SVG_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-svg.cjs");
 const RN_GH_SHIM_PATH = pathResolve(__dirname, "shims", "react-native-gesture-handler.cjs");
 const LUCIDE_SHIM_PATH = pathResolve(__dirname, "shims", "lucide-react-native.cjs");
+// ENG-717 — `@sentry/react-native` ships untransformed ESM that throws on
+// import in vitest. Modules importing `./errorTracking` (e.g.
+// `verifyRecipe.ts`, `weeklyRecapPush.ts`) reach it transitively; this
+// no-op shim keeps them loadable without a per-test mock.
+const SENTRY_RN_SHIM_PATH = pathResolve(__dirname, "shims", "sentry-react-native.cjs");
 // NOTE: static image `require(".../foo.png")` calls are handled by the
 // `transform` hook in vitest.config.ts (rewritten to an inline stub), not here —
 // vite-node's runtime `require` bypasses this resolver patch.
@@ -82,6 +87,9 @@ ModuleRef._resolveFilename = function patchedResolveFilename(
   if (request === "lucide-react-native" || request === "lucide-react-native/") {
     return LUCIDE_SHIM_PATH;
   }
+  if (request === "@sentry/react-native" || request === "@sentry/react-native/") {
+    return SENTRY_RN_SHIM_PATH;
+  }
   return originalResolveFilename.call(
     ModuleRef,
     request,
@@ -104,6 +112,8 @@ const REDIRECTS: Record<string, string> = {
   "react-native-gesture-handler/": RN_GH_SHIM_PATH,
   "lucide-react-native": LUCIDE_SHIM_PATH,
   "lucide-react-native/": LUCIDE_SHIM_PATH,
+  "@sentry/react-native": SENTRY_RN_SHIM_PATH,
+  "@sentry/react-native/": SENTRY_RN_SHIM_PATH,
 };
 
 const originalCreateRequire = Module.createRequire;
