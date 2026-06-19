@@ -19,6 +19,7 @@ import {
   parseMealPlanSlotsMetadata,
   ACTIVE_MEAL_PLAN_SLOT_STORAGE_KEY,
   MEAL_PLAN_SLOTS_STORAGE_KEY,
+  type MealPlanSlotSyncLedger,
 } from "@suppr/shared/mealPlan/slotCloudSync";
 import { supabase } from "@/lib/supabase";
 import type { DayPlan } from "../../../src/types/recipe";
@@ -32,6 +33,9 @@ import type { DayPlan } from "../../../src/types/recipe";
  * data shape and rules can never drift. ENG-1130 syncs slot metadata
  * (ids, names, active selection) to `profiles.meal_plan_slots`; each
  * slot's plan body is stored via `save_meal_plan(p_slot_id, …)`.
+ * ENG-1194 adds a per-slot sync ledger (`ledgerRef`) carrying `updatedAt`
+ * timestamps + soft-delete tombstones so cross-device deletes propagate
+ * (last-writer-wins per slot) instead of a peer resurrecting a deleted slot.
  *
  * Storage keys are versioned (`-v1`) so a future schema change can
  * write to `-v2` and leave old data untouched until the migrator
@@ -81,6 +85,17 @@ export function useMealPlanSlots(
   const activeRef = useRef(activeSlotId);
   activeRef.current = activeSlotId;
   const cloudMetadataLoadedRef = useRef(false);
+  // ENG-1194: per-slot sync ledger (updatedAt + tombstones). Held in a ref —
+  // it never drives render, only the cloud metadata write-back + merge. Stamped
+  // on every create/rename/delete; reconciled by the cloud merge.
+  const ledgerRef = useRef<MealPlanSlotSyncLedger>({});
+  const stampSlot = useCallback((slotId: string, deleted: boolean) => {
+    const nowIso = new Date().toISOString();
+    ledgerRef.current = {
+      ...ledgerRef.current,
+      [slotId]: { updatedAt: nowIso, deletedAt: deleted ? nowIso : null },
+    };
+  }, []);
 
   // Hydrate from AsyncStorage on mount.
   useEffect(() => {
@@ -130,11 +145,16 @@ export function useMealPlanSlots(
         (data as { meal_plan_slots?: unknown } | null)?.meal_plan_slots,
       );
       if (cloudMeta) {
-        setSlots((prev) => mergeCloudMetadataIntoSlots(prev, cloudMeta).slots);
-        setActiveSlotId((prev) => {
-          const merged = mergeCloudMetadataIntoSlots(slotsRef.current, cloudMeta);
-          return merged.activeSlotId ?? prev;
-        });
+        // ENG-1194: merge once (last-writer-wins per slot), then apply slots +
+        // active + reconciled ledger so tombstones survive into the next write.
+        const merged = mergeCloudMetadataIntoSlots(
+          slotsRef.current,
+          cloudMeta,
+          ledgerRef.current,
+        );
+        ledgerRef.current = merged.ledger;
+        setSlots(merged.slots);
+        if (merged.activeSlotId) setActiveSlotId(merged.activeSlotId);
       }
       cloudMetadataLoadedRef.current = true;
     })();
@@ -164,7 +184,11 @@ export function useMealPlanSlots(
   useEffect(() => {
     if (!userId || hydrating || !cloudMetadataLoadedRef.current) return;
     const t = setTimeout(async () => {
-      const payload = metadataFromSlots(slotsRef.current, activeRef.current);
+      const payload = metadataFromSlots(
+        slotsRef.current,
+        activeRef.current,
+        ledgerRef.current, // ENG-1194: carry timestamps + tombstones.
+      );
       await supabase.from("profiles").update({ meal_plan_slots: payload }).eq("id", userId);
     }, 600);
     return () => clearTimeout(t);
@@ -198,25 +222,38 @@ export function useMealPlanSlots(
 
   const createNewSlot = useCallback<UseMealPlanSlotsResult["createNewSlot"]>((name) => {
     const result = createSlot(slotsRef.current, name);
+    // createSlot returns the first slot id when at cap (no append) — only stamp
+    // when a genuinely new slot was added.
+    if (result.slots.length > slotsRef.current.length) {
+      stampSlot(result.id, false); // ENG-1194: timestamp the create.
+    }
     setSlots(result.slots);
     setActiveSlotId(result.id);
     return result.id;
-  }, []);
+  }, [stampSlot]);
 
   const renameExistingSlot = useCallback<UseMealPlanSlotsResult["renameExistingSlot"]>(
     (slotId, name) => {
+      if (name.trim() && slotsRef.current.some((s) => s.id === slotId)) {
+        stampSlot(slotId, false); // ENG-1194: timestamp the rename.
+      }
       setSlots((prev) => renameSlot(prev, slotId, name));
     },
-    [],
+    [stampSlot],
   );
 
   const deleteExistingSlot = useCallback<UseMealPlanSlotsResult["deleteExistingSlot"]>(
     (slotId) => {
       const result = deleteSlot(slotsRef.current, slotId, activeRef.current);
+      // deleteSlot is a no-op for the last remaining slot / unknown id — only
+      // tombstone when a slot was actually removed.
+      if (result.slots.length < slotsRef.current.length) {
+        stampSlot(slotId, true); // ENG-1194: tombstone the delete.
+      }
       setSlots(result.slots);
       if (result.activeId !== activeRef.current) setActiveSlotId(result.activeId);
     },
-    [],
+    [stampSlot],
   );
 
   const activePlan = activePlanFromSlots(slots, activeSlotId);

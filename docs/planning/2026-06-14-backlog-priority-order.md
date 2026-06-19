@@ -280,7 +280,8 @@ Audit P2s + wedge-validated planning/recipe gaps. Prioritise the meal-planning +
 | ENG-1135 | Medium | Plan tab | ~~Shopping list plan-date subtitle + staleness hint~~ — **Done** |
 | ENG-1133 | Medium | Plan tab | ~~Expand grocery categoriser beyond ~12 keywords~~ — **Done** |
 | ENG-1131 | Medium | Plan tab | ~~Web Plan feature parity (move, templates, portion, suggestions)~~ — **Done** |
-| ENG-1130 | Medium | Plan tab | ~~Sync named plan slots (cut/family/vacation) across devices~~ — **Done** PR #456 |
+| ENG-1130 | Medium | Plan tab | ~~Sync named plan slots (cut/family/vacation) across devices~~ — **Done** PR #456 (cross-device *deletion* follow-up: ENG-1194) |
+| ENG-1194 | Medium | Plan tab | ~~Cross-device slot deletion doesn't propagate (needs tombstones)~~ — **Done** — in-JSON `updated_at` + soft-delete tombstones, last-writer-wins per slot (`docs/decisions/2026-06-19-meal-plan-slot-deletion-tombstones.md`) |
 | ENG-1129 | Medium | Recipes tab | ~~Cook-mode servings confirm (batch vs eaten)~~ — **Done** |
 | ENG-1126 | Medium | Recipes tab | Recipe collections/folders for library organisation (Paprika parity) |
 | ENG-1125 | Medium | Today tab | ~~No offline/durable write-queue~~ — **Done** PR #456 |
