@@ -80,6 +80,46 @@ new copy.
 > "how this fits your day" labelled-bar treatment. These web parity items are
 > tracked, not silently dropped.
 
+### Method tiles deliver their method (ENG-1211, 2026-06-18)
+
+The three-method tile row (**Photo / Paste text / Scan**) must DELIVER the
+method it advertises — tapping a tile lands on the matching affordance, not a
+generic screen.
+
+- **Photo** — Pro-gated picker (`onPhotoImportPress`, mobile) / file input
+  (`onPhotoMethodPress`, web). Unchanged by ENG-1211.
+- **Paste text** — opens a paste-ingredient affordance on arrival.
+- **Scan** — opens the barcode scanner on arrival.
+
+**Mobile** (`apps/mobile/app/import-shared.tsx`): both the "Paste text" and
+"Scan" tiles route to `/create-recipe` — which already owns the paste-list modal,
+the barcode scanner, AND the photo picker — passing a method hint:
+`/create-recipe?autoPaste=1` and `/create-recipe?autoBarcode=1`.
+`create-recipe.tsx` reads the param and fires the matching affordance once on
+mount, then clears the param so a back-nav doesn't re-open it — mirroring the
+existing `?autoPhoto=1` handshake used by `CreateRecipeActionSheet`. (Before:
+"Paste text" routed to `/recipe/create`, the guided wizard, which has **no** paste
+affordance and so dead-ended; "Scan" routed to `/create-recipe` with **no** param,
+so the scanner never opened.)
+
+**Web** (`src/app/components/RecipeUpload.tsx` + `src/app/App.tsx`): the tiles
+pass a method hint through `onSwitchToCreate("paste" | "scan")`. `App.tsx` stores
+it in `createInitialMethod` state and threads it to the create-mode
+`<RecipeUpload createInitialMethod=... />`; the create view auto-opens the
+paste-ingredient-list dialog (`paste`) or the barcode swap picker + camera scanner
+on the first ingredient row (`scan`) once on mount (ref-guarded). The header
+"Create instead" switch passes no hint and lands on the plain create form.
+
+> **Web scan path:** web genuinely has a barcode scanner (`BarcodeDetector` +
+> `getUserMedia`, `startScanner`), but it lives inside the per-ingredient swap
+> picker (it applies a scanned product as a match override on an ingredient
+> row). The `scan` hint reuses that real path by opening the picker on the
+> first (always-present) ingredient row — no parallel scanner was invented.
+
+Pinned by `tests/unit/recipeImportSurface.test.tsx` (web behavioural),
+`tests/unit/recipeUploadImportMethodTiles.test.ts` (web source guard), and
+`apps/mobile/tests/unit/importMethodTileDelivery.test.ts` (mobile source guard).
+
 ## Flow
 
 ### Step 1: URL Detection

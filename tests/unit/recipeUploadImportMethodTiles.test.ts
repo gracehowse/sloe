@@ -26,4 +26,14 @@ describe("RecipeUpload import method tiles (ENG-898 web parity)", () => {
   it("shows an or divider between URL import and method tiles", () => {
     expect(UPLOAD).toMatch(/>\s*or\s*</);
   });
+
+  it("ENG-1211 — tiles pass a method hint so each delivers its method", () => {
+    // Paste text → "paste"; Scan → "scan" (not a bare onSwitchToCreate()).
+    expect(UPLOAD).toMatch(/onClick=\{\(\) => onSwitchToCreate\?\.\("paste"\)\}/);
+    expect(UPLOAD).toMatch(/onClick=\{\(\) => onSwitchToCreate\?\.\("scan"\)\}/);
+    // The create view consumes the hint via createInitialMethod.
+    expect(UPLOAD).toContain("createInitialMethod");
+    expect(UPLOAD).toContain('createInitialMethod === "paste"');
+    expect(UPLOAD).toContain('createInitialMethod === "scan"');
+  });
 });

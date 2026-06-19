@@ -417,3 +417,61 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     expect(toastMock.success).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * ENG-1211 — each import method tile must DELIVER its method, not drop the user
+ * on a generic create form. The "Paste text" / "Scan" tiles pass a method hint
+ * to `onSwitchToCreate`; the create view auto-opens the matching affordance via
+ * `createInitialMethod`. Web parity with mobile `?autoPaste=1` / `?autoBarcode=1`.
+ */
+describe("Import method tiles deliver their method (ENG-1211)", () => {
+  it("Paste text tile passes the 'paste' hint to onSwitchToCreate", () => {
+    const onSwitchToCreate = vi.fn();
+    render(
+      <RecipeUpload userTier="free" mode="import" onSwitchToCreate={onSwitchToCreate} />,
+    );
+    fireEvent.click(screen.getByTestId("import-method-paste-text"));
+    expect(onSwitchToCreate).toHaveBeenCalledWith("paste");
+  });
+
+  it("Scan tile passes the 'scan' hint to onSwitchToCreate", () => {
+    const onSwitchToCreate = vi.fn();
+    render(
+      <RecipeUpload userTier="free" mode="import" onSwitchToCreate={onSwitchToCreate} />,
+    );
+    fireEvent.click(screen.getByTestId("import-method-scan"));
+    expect(onSwitchToCreate).toHaveBeenCalledWith("scan");
+  });
+
+  it("header 'Create instead' switch passes NO hint (plain create form)", () => {
+    const onSwitchToCreate = vi.fn();
+    render(
+      <RecipeUpload userTier="free" mode="import" onSwitchToCreate={onSwitchToCreate} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Create instead/i }));
+    expect(onSwitchToCreate).toHaveBeenCalledWith();
+    expect(onSwitchToCreate.mock.calls[0][0]).toBeUndefined();
+  });
+
+  it("createInitialMethod='paste' auto-opens the paste-ingredient-list dialog on mount", async () => {
+    render(<RecipeUpload userTier="free" mode="create" createInitialMethod="paste" />);
+    // The paste dialog is the create-view "paste text" affordance.
+    expect(
+      await screen.findByRole("heading", { name: /Paste ingredient list/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("createInitialMethod='scan' auto-opens the barcode scanner picker on mount", async () => {
+    render(<RecipeUpload userTier="free" mode="create" createInitialMethod="scan" />);
+    // The scan affordance is the per-ingredient swap picker with the barcode
+    // section; it opens on the first (always-present) ingredient row.
+    expect(await screen.findByText(/Barcode \(Open Food Facts\)/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Scan with camera/i })).toBeInTheDocument();
+  });
+
+  it("create mode with NO method hint does not auto-open any affordance", () => {
+    render(<RecipeUpload userTier="free" mode="create" />);
+    expect(screen.queryByRole("heading", { name: /Paste ingredient list/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Barcode \(Open Food Facts\)/i)).not.toBeInTheDocument();
+  });
+});
