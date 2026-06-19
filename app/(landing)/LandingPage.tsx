@@ -29,7 +29,6 @@ import {
   TRENDING_RECIPES,
   landingFreeFeatures,
 } from "../../src/lib/landing/sloeLandingContent.ts";
-import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 import { FatSecretBadge } from "../../src/app/components/ui/FatSecretBadge";
 import "./landing.css";
 

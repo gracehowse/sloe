@@ -32,11 +32,20 @@ import { join } from "node:path";
  * real via `importOriginal`. Default is OFF, matching production: the flag
  * is deliberately NOT in `REDESIGN_DEFAULT_ON`.
  */
-const { isFeatureEnabledMock } = vi.hoisted(() => ({
-  isFeatureEnabledMock: vi.fn((_flag: string) => false),
-}));
+const { isFeatureEnabledMock, realFlagImpl } = vi.hoisted(() => {
+  const realFlagImpl = { current: (_flag: string) => false };
+  return {
+    isFeatureEnabledMock: vi.fn((flag: string) => realFlagImpl.current(flag)),
+    realFlagImpl,
+  };
+});
 vi.mock("../../src/lib/analytics/track", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/lib/analytics/track")>();
+  // Default the mock to the REAL flag registry so sibling tests that depend on
+  // genuinely default-on flags (e.g. paywall_free_mfp_wins_v1 — ENG-1203's free
+  // MFP-switch wins) keep rendering. Only the hero tests override
+  // landing_hero_hybrid_v1 per-case.
+  realFlagImpl.current = actual.isFeatureEnabled;
   return { ...actual, isFeatureEnabled: isFeatureEnabledMock };
 });
 
@@ -70,10 +79,11 @@ import {
 } from "../../src/lib/landing/sloeLandingContent";
 
 beforeEach(() => {
-  // Default every test to the production default: flag OFF (current hero).
+  // Reset to production defaults via the REAL registry: landing_hero_hybrid_v1
+  // stays OFF (not in REDESIGN_DEFAULT_ON), paywall_free_mfp_wins_v1 stays ON.
   // The hybrid-on test opts in explicitly.
   isFeatureEnabledMock.mockReset();
-  isFeatureEnabledMock.mockImplementation((_flag: string) => false);
+  isFeatureEnabledMock.mockImplementation((flag: string) => realFlagImpl.current(flag));
 });
 
 describe("landing page — Sloe editorial parity", () => {
