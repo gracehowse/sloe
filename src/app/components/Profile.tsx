@@ -355,6 +355,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             // (migration 20260427110000)
             target_calories_set_at: new Date().toISOString(),
             target_calories_source: "user",
+            target_fiber_source: "user",
             target_protein: manualTargets.protein,
             target_carbs: manualTargets.carbs,
             target_fat: manualTargets.fat,

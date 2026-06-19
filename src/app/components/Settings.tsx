@@ -383,6 +383,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             // we actually recomputed targets. (migration 20260427110000)
             target_calories_set_at: new Date().toISOString(),
             target_calories_source: "recompute" as const,
+            target_fiber_source: "recompute" as const,
           }
         : baseUpdate;
       // `maintenanceTdee` is exposed for the toast only — not a DB column.
@@ -404,12 +405,19 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           const { data: oldProfile } = await supabase
             .from("profiles")
             .select(
-              "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
+              "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_fiber_source, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
             )
             .eq("id", uid)
             .maybeSingle();
           if (oldProfile) {
             await backfillDailyTargetsFromProfile(supabase as any, uid, oldProfile);
+            if (oldProfile.target_fiber_source === "user") {
+              const userFiber = Number(oldProfile.target_fiber_g);
+              if (Number.isFinite(userFiber) && userFiber > 0) {
+                writeable.target_fiber_g = userFiber;
+                writeable.target_fiber_source = "user";
+              }
+            }
           }
         } catch {
           // Backfill never blocks the user's settings save.
@@ -599,6 +607,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           target_calories: NUTRITION_DEFAULTS.calories,
           target_calories_set_at: new Date().toISOString(),
           target_calories_source: "reset_default",
+          target_fiber_source: "recompute",
           target_protein: NUTRITION_DEFAULTS.protein,
           target_carbs: NUTRITION_DEFAULTS.carbs,
           target_fat: NUTRITION_DEFAULTS.fat,

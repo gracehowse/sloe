@@ -172,7 +172,7 @@ export async function persistRecomputedTargets(
       const { data } = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_calories_source, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_fiber_source, target_calories_source, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -199,17 +199,12 @@ export async function persistRecomputedTargets(
     // silently clobber a fibre the user chose. Precedence:
     //   1. An explicit edit this session from the goal-pace editor's fibre
     //      input (`fiberOverrideG`) — the freshest intent.
-    //   2. A sticky user-set fibre: when the user hand-set their macro block
-    //      in the /profile editor (`target_calories_source === "user"`),
+    //   2. A sticky user-set fibre: when `target_fiber_source === "user"`,
     //      carry their `target_fiber_g` forward instead of the formula value.
     //   3. Otherwise the formula fibre from `writeableTargets` stands.
     // We deliberately keep `target_calories_source = "recompute"` (set just
     // below) — preserving fibre is independent of calorie provenance, and a
     // "user" stamp would wrongly trip the digest-suppression cooldown.
-    // v1 limitation (tracked — see the ENG-779 follow-up for a dedicated
-    // `target_fiber_source` column): a fibre set via the goal-pace editor is
-    // honoured on THIS write but a LATER recompute re-derives it unless the
-    // profile is also calorie-"user".
     const fiberOverride = input.fiberOverrideG;
     if (
       typeof fiberOverride === "number" &&
@@ -217,11 +212,15 @@ export async function persistRecomputedTargets(
       fiberOverride > 0
     ) {
       update.target_fiber_g = Math.round(fiberOverride);
-    } else if (oldProfile?.target_calories_source === "user") {
+      update.target_fiber_source = "user";
+    } else if (oldProfile?.target_fiber_source === "user") {
       const userFiber = Number(oldProfile.target_fiber_g);
       if (Number.isFinite(userFiber) && userFiber > 0) {
         update.target_fiber_g = userFiber;
+        update.target_fiber_source = "user";
       }
+    } else {
+      update.target_fiber_source = input.source ?? "recompute";
     }
 
     update.target_calories_source = input.source ?? "recompute";

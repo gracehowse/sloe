@@ -102,6 +102,7 @@ describe("buildProfileUpsertRow — happy path", () => {
       target_calories: targets!.target,
       target_calories_set_at: "2026-04-20T03:00:00.000Z",
       target_calories_source: "onboarding",
+      target_fiber_source: "onboarding",
       target_protein: targets!.proteinG,
       target_carbs: targets!.carbsG,
       target_fat: targets!.fatG,
@@ -139,6 +140,7 @@ describe("buildProfileUpsertRow — weightSkipped", () => {
     expect(row.target_fat).toBeNull();
     expect(row.target_fiber_g).toBeNull();
     expect(row.target_calories_source).toBeNull();
+    expect(row.target_fiber_source).toBeNull();
     expect(row.target_calories_set_at).toBeNull();
     expect(row.plan_pace).toBeNull();
     // Continuous pace is null when weight was skipped — same gating as

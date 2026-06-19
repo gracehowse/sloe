@@ -1112,6 +1112,7 @@ export type Database = {
           target_calories: number | null
           target_calories_set_at: string | null
           target_calories_source: string | null
+          target_fiber_source: string | null
           target_carbs: number | null
           target_fat: number | null
           target_fiber_g: number | null
@@ -1187,6 +1188,7 @@ export type Database = {
           target_calories?: number | null
           target_calories_set_at?: string | null
           target_calories_source?: string | null
+          target_fiber_source?: string | null
           target_carbs?: number | null
           target_fat?: number | null
           target_fiber_g?: number | null
@@ -1262,6 +1264,7 @@ export type Database = {
           target_calories?: number | null
           target_calories_set_at?: string | null
           target_calories_source?: string | null
+          target_fiber_source?: string | null
           target_carbs?: number | null
           target_fat?: number | null
           target_fiber_g?: number | null

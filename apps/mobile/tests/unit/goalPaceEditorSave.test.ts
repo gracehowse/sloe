@@ -260,6 +260,42 @@ describe("mobile GoalPaceEditorSheet — persisted write", () => {
     expect(written.pace_kg_per_week).toBe(0);
   });
 
+
+  it("stamps edited fibre as user-owned and preserves it on later recomputes", async () => {
+    const recomputed = recomputeTargetsFromProfile({ ...BODY, goal: "cut" })!;
+    const first = makeMockSupabase(OLD_PROFILE);
+
+    await persistRecomputedTargets(first as never, "u1", {
+      profileUpdate: { goal: "cut", plan_pace: "steady" },
+      recomputed,
+      source: "recompute",
+      fiberOverrideG: 41.4,
+    });
+
+    const firstWrite = first.updates.at(-1)!;
+    expect(firstWrite.target_fiber_g).toBe(41);
+    expect(firstWrite.target_fiber_source).toBe("user");
+    expect(firstWrite.target_calories_source).toBe("recompute");
+
+    const later = makeMockSupabase({
+      ...OLD_PROFILE,
+      target_fiber_g: 41,
+      target_fiber_source: "user",
+      target_calories_source: "recompute",
+    });
+
+    await persistRecomputedTargets(later as never, "u1", {
+      profileUpdate: { goal: "bulk", plan_pace: "steady" },
+      recomputed: recomputeTargetsFromProfile({ ...BODY, goal: "bulk" })!,
+      source: "recompute",
+    });
+
+    const laterWrite = later.updates.at(-1)!;
+    expect(laterWrite.target_fiber_g).toBe(41);
+    expect(laterWrite.target_fiber_source).toBe("user");
+    expect(laterWrite.target_calories_source).toBe("recompute");
+  });
+
   it("goal-weight-only edit does not recompute (recomputed = null → no target write)", async () => {
     const supabase = makeMockSupabase(null);
     const res = await persistRecomputedTargets(supabase as never, "u1", {
