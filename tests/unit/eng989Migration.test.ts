@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-const sql = readFileSync("supabase/migrations/20260615180000_eng989_step_centric_recipes.sql", "utf8");
+const sql = readFileSync("supabase/migrations/20260615180100_eng989_step_centric_recipes.sql", "utf8");
 
 describe("ENG-989 step-centric recipe migration", () => {
   it("creates relational recipe steps and a nullable ingredient step link", () => {
