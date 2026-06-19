@@ -254,6 +254,19 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "paywall_free_mfp_wins_v1",
 ]);
 
+/** Default-OFF flags — registered here as documentation only. They are
+ *  deliberately NOT in `REDESIGN_DEFAULT_ON`, so `isFeatureEnabled`
+ *  resolves them via PostHog and defaults to `false` when PostHog is cold.
+ *  Listing them keeps "is this flag known / on purpose off?" answerable in
+ *  one place (the set is not read at runtime — membership has no effect).
+ *
+ *  - `landing_hero_hybrid_v1` (ENG-1204) — landing hero → HYBRID positioning
+ *    (D-07). ON swaps the recipe-first hero for the tracker/coaching
+ *    headline + import wedge line; OFF keeps the shipped recipe-first hero.
+ *    Default OFF: meaning-changing copy on the top conversion surface, so it
+ *    ramps via PostHog only after brand/copy sign-off (Grace). */
+export const DEFAULT_OFF_FLAGS = new Set<string>(["landing_hero_hybrid_v1"]);
+
 export function isFeatureEnabled(flag: string): boolean {
   const forced = flagForceOverride(flag);
   if (forced !== null) return forced;

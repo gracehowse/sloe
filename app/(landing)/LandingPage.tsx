@@ -21,12 +21,15 @@ import { PRICING_TIERS } from "../../src/lib/landing/content.ts";
 import { PAYWALL_FREE_MFP_WINS_FLAG } from "../../src/lib/landing/content.ts";
 import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 import {
+  HERO_CURRENT,
+  HERO_HYBRID,
   LANDING_PRO_FEATURES,
   SLOE_DIFFERENCE_BULLETS,
   SLOE_HOW_IT_WORKS,
   TRENDING_RECIPES,
   landingFreeFeatures,
 } from "../../src/lib/landing/sloeLandingContent.ts";
+import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 import { FatSecretBadge } from "../../src/app/components/ui/FatSecretBadge";
 import "./landing.css";
 
@@ -140,21 +143,25 @@ function ThemeToggle() {
 }
 
 function Hero() {
+  // D-07 (ENG-1204): hybrid positioning leads with the tracker + "what to
+  // eat next" coaching promise and demotes the import hook to the wedge
+  // line. Gated behind `landing_hero_hybrid_v1` (default OFF — see
+  // `src/lib/analytics/track.ts`); the current recipe-first hero stays
+  // live in the flag-off path until the flag ramps to 100%.
+  const hero = isFeatureEnabled("landing_hero_hybrid_v1") ? HERO_HYBRID : HERO_CURRENT;
   return (
     <section className="lp-hero">
       <div className="lp-wrap lp-hero-inner">
-        <p className="lp-eyebrow-center">For people who love food — and have goals</p>
+        <p className="lp-eyebrow-center">{hero.eyebrow}</p>
         <h1 className="lp-h-hero">
-          <span className="lp-h-hero-muted">Cook what you love.</span>
+          <span className="lp-h-hero-muted">{hero.headline.pre.trim()}</span>
           <br />
           <span className="lp-h-hero-strong">
-            <em>Still</em> reach your goals.
+            <em>{hero.headline.em}</em>
+            {hero.headline.post}
           </span>
         </h1>
-        <p className="lp-lead-center">
-          Save any recipe from Instagram, TikTok or the web. Sloe works out the nutrition and helps
-          it fit your day — no foods off-limits.
-        </p>
+        <p className="lp-lead-center">{hero.lead}</p>
         <div className="lp-hero-ctas">
           <Link className="lp-btn lp-btn-primary lp-btn-lg" href={SIGNUP_HREF}>
             Get the app
