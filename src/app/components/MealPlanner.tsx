@@ -7,6 +7,7 @@ import {
   Cookie,
   LayoutTemplate,
   Lock,
+  LockOpen,
   MoreHorizontal,
   Package,
   Plus,
@@ -251,6 +252,12 @@ export const MealPlanner = memo(function MealPlanner({
   // already ships these; web catches up behind one flag). Default-on; off → swap-
   // only slot affordance and no templates entry point.
   const planWebParity = isFeatureEnabled("plan_web_parity_v1");
+  // ENG-956 — per-meal lock ("keep this meal", Refresh the rest). Default-OFF.
+  // On → each meal row gets a quiet Lock glyph + a "Keep this meal" action, and
+  // Regenerate keeps locked meals while re-rolling only the unlocked ones
+  // (label becomes "Refresh the rest" when ≥1 meal is locked). Off → the legacy
+  // all-or-nothing Regenerate; no lock affordance.
+  const mealLockEnabled = isFeatureEnabled("plan_meal_lock_v1");
   // ENG-696 / ENG-647 — "Import existing plan" entry point. Same flag the
   // mobile Plan tab + deep link gate on (`plan_import_enabled`). Off → the
   // Import affordance is hidden and the Plan surface keeps the
@@ -415,6 +422,26 @@ export const MealPlanner = memo(function MealPlanner({
     () => (mealPlan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
     [mealPlan],
   );
+  // ENG-956 — count locked meals across the plan; drives the "Refresh the
+  // rest" label + the keep-locked regenerate path. Always 0 when the flag is
+  // off (no lock affordance is rendered, so nothing can be locked).
+  const lockedMealCount = useMemo(
+    () =>
+      mealLockEnabled
+        ? (mealPlan ?? []).reduce(
+            (a, dp) => a + dp.meals.filter((m) => m.isLocked).length,
+            0,
+          )
+        : 0,
+    [mealLockEnabled, mealPlan],
+  );
+  // ENG-956 — the primary regenerate CTA's verb. "Refresh the rest" when ≥1
+  // meal is locked (we keep those + re-roll the rest); otherwise the existing
+  // Generate (empty plan) / Regenerate (populated plan) wording.
+  const regenerateLabel = (populated: boolean): string => {
+    if (lockedMealCount > 0) return "Refresh the rest";
+    return populated ? "Regenerate" : "Generate";
+  };
   const summarySubtitle = summary
     ? planHasRealMeals
       ? buildPlanWeekSummarySubtitle(summary, worstShortDayLabel)
@@ -493,13 +520,18 @@ export const MealPlanner = memo(function MealPlanner({
       );
       const useSlotOverride =
         slotsList.length > 0 && slotsList.length < SLOTS.length;
+      // ENG-956 — when ≥1 meal is locked, ask the generator to keep the
+      // locked meals and re-roll only the unlocked slots ("Refresh the rest").
+      // The generator falls back to a full regenerate when nothing is locked.
+      const keepLocked = mealLockEnabled && lockedMealCount > 0;
       await generateMealPlan({
         days,
         ...(useSlotOverride ? { slots: slotsList } : {}),
         ...(planSourceSelector ? { source: planSource } : {}),
+        ...(keepLocked ? { keepLocked: true } : {}),
       });
       await generateShoppingListFromPlan();
-      toast.success("Plan regenerated");
+      if (!keepLocked) toast.success("Plan regenerated");
     } catch {
       toast.error("Could not regenerate plan. Save more recipes and try again.");
     } finally {
@@ -661,6 +693,43 @@ export const MealPlanner = memo(function MealPlanner({
         return next;
       });
       toast.success("Meal moved");
+    },
+    [setMealPlan],
+  );
+
+  // ENG-956 — toggle the per-meal lock ("keep this meal"). Pure local plan
+  // mutation; persists through the same slot-plan store as swap/move/portion.
+  const toggleMealLock = useCallback(
+    (day: number, mealIndex: number, slotName: string) => {
+      let nextLocked = false;
+      let lockedCount = 0;
+      setMealPlan((prev) => {
+        if (!prev) return prev;
+        const next = prev.map((dp) => {
+          if (dp.day !== day) return dp;
+          return {
+            ...dp,
+            meals: dp.meals.map((m, mi) =>
+              mi === mealIndex ? { ...m, isLocked: !m.isLocked } : m,
+            ),
+          };
+        });
+        const target = next
+          .find((dp) => dp.day === day)
+          ?.meals[mealIndex];
+        nextLocked = Boolean(target?.isLocked);
+        lockedCount = next.reduce(
+          (a, dp) => a + dp.meals.filter((m) => m.isLocked).length,
+          0,
+        );
+        return next;
+      });
+      track(AnalyticsEvents.plan_meal_lock_toggled, {
+        locked: nextLocked,
+        slot: slotName,
+        lockedCount,
+        platform: "web",
+      });
     },
     [setMealPlan],
   );
@@ -1124,8 +1193,9 @@ export const MealPlanner = memo(function MealPlanner({
               {/* DC12 parity (2026-06-13): "Regenerate" misreads in the
                   placeholder-slots / no-real-meals form of this card — nothing
                   has been generated yet. Use "Generate" there, matching mobile's
-                  summary-card verb + the bottom-row CTA's plan-state flip. */}
-              {planHasRealMeals ? "Regenerate" : "Generate"}
+                  summary-card verb + the bottom-row CTA's plan-state flip.
+                  ENG-956: "Refresh the rest" when ≥1 meal is locked. */}
+              {regenerateLabel(planHasRealMeals)}
             </SupprButton>
             <SupprButton variant="ghost" onClick={handleShoppingList}>
               <ShoppingCart size={14} strokeWidth={2} />
@@ -1726,6 +1796,11 @@ export const MealPlanner = memo(function MealPlanner({
                   (meal as { isLeftover?: boolean }).isLeftover ||
                     (meal as { leftoverOf?: string }).leftoverOf,
                 );
+                // ENG-956 — per-meal lock. Only meaningful on populated,
+                // non-leftover rows (a placeholder / leftover has no recipe to
+                // keep). Gated by the `plan_meal_lock_v1` flag.
+                const lockAvailable = mealLockEnabled && !isPlaceholder && !isLeftover;
+                const mealLocked = Boolean((meal as { isLocked?: boolean }).isLocked);
                 return (
                   <div
                     key={slot}
@@ -1876,6 +1951,37 @@ export const MealPlanner = memo(function MealPlanner({
                           </span>
                         )}
                     </button>
+                    {/* ENG-956 — quiet per-row lock glyph. Muted when unlocked
+                        (a subtle "you could keep this"), foreground when locked.
+                        Sits to the LEFT of the action menu (right:38 = 8 + 22 +
+                        8) so the two top-right affordances don't overlap; falls
+                        back to right:8 when the parity menu isn't rendered. */}
+                    {lockAvailable ? (
+                      <button
+                        type="button"
+                        data-testid="meal-planner-lock-toggle"
+                        onClick={() => toggleMealLock(dp.day, mealIndex, slot)}
+                        aria-label={mealLocked ? `Unlock ${slot}` : `Keep ${slot}`}
+                        aria-pressed={mealLocked}
+                        title={mealLocked ? "Locked — won't change on Refresh" : "Keep this meal"}
+                        className={`absolute grid place-items-center bg-card ${
+                          mealLocked
+                            ? "text-foreground"
+                            : "text-muted-foreground/60 hover:text-foreground"
+                        }`}
+                        style={{
+                          top: 8,
+                          right: planWebParity ? 38 : 8,
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          border: "1px solid var(--border)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {mealLocked ? <Lock size={11} /> : <LockOpen size={11} />}
+                      </button>
+                    ) : null}
                     {planWebParity ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -1898,6 +2004,21 @@ export const MealPlanner = memo(function MealPlanner({
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-card border-border">
+                          {/* ENG-956 — "Keep this meal" is the first-class lock
+                              action; the row's Lock glyph is the quick toggle. */}
+                          {lockAvailable ? (
+                            <DropdownMenuItem
+                              onClick={() => toggleMealLock(dp.day, mealIndex, slot)}
+                              className="cursor-pointer"
+                            >
+                              {mealLocked ? (
+                                <LockOpen size={14} className="mr-2" />
+                              ) : (
+                                <Lock size={14} className="mr-2" />
+                              )}
+                              {mealLocked ? "Unlock this meal" : "Keep this meal"}
+                            </DropdownMenuItem>
+                          ) : null}
                           {!isPlaceholder ? (
                             <>
                               <DropdownMenuItem
@@ -2144,8 +2265,13 @@ export const MealPlanner = memo(function MealPlanner({
               keeps the regenerate verb since a plan IS visible
               there. Mobile parity:
               `apps/mobile/app/(tabs)/planner.tsx` "Generate my
-              plan". */}
-          {plan.length > 0 ? "Regenerate week" : "Generate my plan"}
+              plan".
+              ENG-956: "Refresh the rest" when ≥1 meal is locked. */}
+          {lockedMealCount > 0
+            ? "Refresh the rest"
+            : plan.length > 0
+              ? "Regenerate week"
+              : "Generate my plan"}
         </SupprButton>
         <SupprButton variant="ghost" onClick={handleShoppingList}>
           <ShoppingCart size={14} strokeWidth={2} />
