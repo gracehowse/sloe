@@ -35,6 +35,8 @@ import {
   purchasePackage,
   restorePurchases,
   syncTierToSupabase,
+  classifyPackage,
+  type BillingPeriod,
 } from "@/lib/purchases";
 import { classifyPaywallReadiness } from "@/lib/paywallReadiness";
 import { useAuth } from "@/context/auth";
@@ -146,8 +148,6 @@ const TIMELINE: {
   },
 ];
 
-type BillingPeriod = "monthly" | "annual";
-
 /** Map a raw `?from=` URL-param string into the canonical enum. Unknown
  *  / missing values fall back to `"deep_link"` so the paywall can be
  *  opened from a generic link without fabricating a specific surface.
@@ -179,13 +179,6 @@ function normalisePaywallFrom(raw: unknown): PaywallViewedFrom {
 function isProFlavouredContext(from: PaywallViewedFrom): boolean {
   return from === "voice_log" || from === "photo_log" || from === "trial_end";
 }
-
-/** Classify a RevenueCat package by tier + frequency. RC offerings
- *  expose both `packageType` (ANNUAL/MONTHLY) and an identifier; we
- *  combine the product identifier (for tier) with packageType (for
- *  frequency) and fall back to identifier substring matching so the
- *  paywall works even if the offering is provisioned with custom
- *  identifiers like `suppr_pro_annual_v1`. */
 
 /**
  * Frame `284:2` plan selector — the annual row's per-month line ("just
@@ -223,27 +216,6 @@ function computeSavingsBadgeFromStrings(
   if (!Number.isFinite(annual) || !Number.isFinite(monthly) || monthly <= 0) return null;
   const pct = Math.round((1 - annual / (monthly * 12)) * 100);
   return pct > 0 ? `Save ${pct}%` : null;
-}
-
-function classifyPackage(pkg: PurchasesPackage): {
-  tier: "base" | "pro" | null;
-  period: BillingPeriod | null;
-} {
-  const pkgId = pkg.identifier.toLowerCase();
-  const productId = (pkg.product.identifier ?? "").toLowerCase();
-  const haystack = `${pkgId} ${productId}`;
-  const tier = haystack.includes("pro")
-    ? "pro"
-    : haystack.includes("base")
-      ? "base"
-      : null;
-  const period: BillingPeriod | null =
-    pkg.packageType === "ANNUAL" || haystack.includes("annual")
-      ? "annual"
-      : pkg.packageType === "MONTHLY" || haystack.includes("monthly")
-        ? "monthly"
-        : null;
-  return { tier, period };
 }
 
 export default function PaywallScreen() {

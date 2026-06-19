@@ -47,6 +47,20 @@ of `"no-api-key"`.
 
 ---
 
+## 0. Local StoreKit testing
+
+Use `npm run ios:simulator` from `apps/mobile/` to boot a debug build. The Expo config plugin copies `storekit/Suppr.storekit` to `ios/Suppr.storekit` and patches the shared `Suppr.xcscheme` LaunchAction with `StoreKitConfigurationFileReference`, so Simulator debug runs load the offline StoreKit catalog.
+
+Manual lifecycle harness in Xcode: open `apps/mobile/ios/Suppr.xcworkspace`, run the `Suppr` debug scheme, then use **Debug → StoreKit → Manage Transactions** to drive these five checks against the paywall (`apps/mobile/app/paywall.tsx`):
+
+1. **Successful purchase:** buy `pro_monthly_v1` or `pro_annual_v1`; `purchasePackage` should return success, `pollUntilEntitled` should observe Pro, and `syncTierToSupabase` should either write `profiles.user_tier = pro` or return the expected lockdown outcome while the RevenueCat webhook catches up.
+2. **User-cancel / failed purchase:** cancel the StoreKit sheet or enable the StoreKit purchase error; `purchasePackage` should return `{ success: false }` and leave the tier unchanged.
+3. **Restore:** clear local app state, keep an active StoreKit transaction, tap Restore; `restorePurchases` should return entitled `CustomerInfo` and unlock Pro.
+4. **Downgrade / cancel:** cancel the active subscription in Manage Transactions and refresh; empty active entitlements must not be written over a stored higher tier by the client downgrade guard.
+5. **Entitlement refresh:** trigger a transaction state change, then pull `getCustomerInfo`; the app should refresh entitlement state without needing TestFlight.
+
+Server parity note: the authoritative live tier write is the RevenueCat webhook at `app/api/revenuecat/webhook/route.ts` / `src/lib/revenuecat/webhookProcess.ts`; the client lockdown outcome is expected when direct `profiles.user_tier` writes are blocked. Attach a simulator screenshot of the Pro-unlocked state to the PR when this manual harness is run on macOS.
+
 ## 2. App Store Connect — create the StoreKit products
 
 RevenueCat references App Store Connect product IDs, not its own
@@ -61,8 +75,8 @@ SKUs. The products must exist and be in **Ready to Submit** or
      month, base price £7.99 (UK; let Apple's price-tier matrix
      handle EU / US auto-conversion).
    - **Pro Annual** — product ID `pro_annual_v1`, recurring 1
-     year, base price £71.88 (£5.99/mo equivalent, gives the
-     "Save 37%" badge the math).
+     year, base price £59.99 (£5.00/mo equivalent, matching the
+     customer-facing pricing SSOT and StoreKit harness).
 3. **Trial:** add a 7-day **Free Trial** introductory offer on
    the annual product only (matches the pricing decision).
 4. Fill the required localised display name + description +
