@@ -20,7 +20,7 @@ const POSTHOG_KEY =
 // 2026-05-14 — default to the reverse-proxy on suppr-club.com (see
 // `next.config.ts` rewrites). The proxy gives all PostHog traffic a
 // first-party origin so DNS-level blockers, hostile WiFi, and
-// `*.posthog.com` content blockers can't drop the flush — the root
+// third-party PostHog content blockers can't drop the flush — the root
 // cause diagnosed for `PostHogFetchNetworkError` flush failures on
 // Grace's iPhone over both LTE and WiFi.
 const POSTHOG_HOST =
