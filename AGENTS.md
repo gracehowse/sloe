@@ -329,3 +329,31 @@ ARIA tree alone).
 ## Git hooks
 
 Hooks live under `scripts/git-hooks/` (see `prepare-commit-msg`). New machines need the same `core.hooksPath` setting.
+
+## Cursor Cloud (cloud agents)
+
+Durable notes for cloud-agent VMs (Linux, deps pre-installed via the startup
+script: `npm ci` at root + in `apps/mobile`, plus `npx playwright install
+chromium`). `AGENTS.md` is gitignored, so cloud-agent context lives here.
+
+- **Web is the runnable surface.** `npm run dev` → http://localhost:3000.
+  Standard commands are in the README "Scripts" table / `package.json`.
+- **The web app talks to the LIVE hosted Supabase with no `.env.local`** — the
+  browser client falls back to the hard-coded prod project in
+  `utils/supabase/info.tsx`. Email sign-up returns a session immediately (no
+  confirmation), so auth/data work out of the box — but **test signups/writes
+  hit the real prod DB; use throwaway `…@example.com` emails.** Set
+  `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` to point dev at a
+  non-prod project (resolver in `utils/supabase/publicConfig.ts`).
+- The boot log `[Suppr] Missing server env (…)` is **expected and non-fatal** —
+  only server-only features (service-role ops, USDA/FatSecret, Stripe) need those
+  secrets; client food search + meal logging work without them.
+- **Never run `npm run build` and `npm run dev` together** — both write `.next`
+  and corrupt each other.
+- `scripts/web-drive.mjs` probes `127.0.0.1:3000` (not `localhost`). Drive
+  interactive auth/sign-up flows in a real desktop browser — the helper is built
+  for unauthenticated/`--auth`-storage-state captures, not interactive login.
+- **The mobile app can't run on the Linux cloud VM** (needs macOS + Xcode sim).
+  `mobile:lint` / `mobile:typecheck` / `mobile:test` and `npx expo export` do
+  run here; mobile typecheck needs **root** `node_modules` (shared `@suppr/shared/*`).
+- CI pins Node 20; the cloud VM runs Node 22, which installs/builds/tests fine.
