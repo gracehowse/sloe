@@ -3,8 +3,10 @@ import { Check } from "lucide-react-native";
 
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import {
-  PAYWALL_COMPARISON_ROWS,
+  getPaywallComparisonRows,
+  PAYWALL_FREE_MFP_WINS_FLAG,
   type PaywallComparisonRow,
 } from "@suppr/shared/landing/paywallValueProps";
 
@@ -20,6 +22,11 @@ import {
  * is genuinely useful); the two Pro-only rows show — / ✓. Reads as
  * "Pro expands Free", not "Free is crippled" — permission-not-
  * restriction positioning. See `docs/ux/redesign/paywall.md` §3a.
+ *
+ * ENG-1203 — when `paywall_free_mfp_wins_v1` is on (default), two extra
+ * ✓/✓ rows surface the free MFP-switch wins (barcode scanning + custom
+ * macros). Off → the legacy four-row matrix. Gated via
+ * `getPaywallComparisonRows`.
  */
 // Damson-lilac wash for the PRO column (mirrors web --accent-info-soft).
 // Accent.win (#6A4B7A = rgb(106,75,122)) @ ~8% via the alpha-suffix pattern.
@@ -57,6 +64,11 @@ function Cell({
 export function PaywallComparison() {
   const colors = useThemeColors();
   const styles = makeStyles(colors);
+  // ENG-1203 — gate the two free MFP-switch-win rows behind the default-on
+  // flag; off → the legacy four-row matrix (the kill-switch path).
+  const rows = getPaywallComparisonRows(
+    isFeatureEnabled(PAYWALL_FREE_MFP_WINS_FLAG),
+  );
   return (
     <View style={styles.wrap} testID="paywall-comparison">
       {/* Header row — FREE / PRO column labels. */}
@@ -70,7 +82,7 @@ export function PaywallComparison() {
         </View>
       </View>
 
-      {PAYWALL_COMPARISON_ROWS.map((row) => (
+      {rows.map((row) => (
         <View
           key={row.key}
           testID={`paywall-comparison-${row.key}`}

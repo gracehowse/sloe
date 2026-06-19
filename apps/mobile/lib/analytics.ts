@@ -371,6 +371,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "paywall_trust_inline_v1",
   // ENG-889 — coach line inside Today hero card (Figma `654:2`). Default-on.
   "today_coach_in_hero_v1",
+  // ENG-1203 — merchandise the free MFP-switch wins (barcode scanning + custom
+  // macros) on the paywall comparison matrix. Default-on; off → legacy four-row
+  // matrix without the two free callouts. Keep in sync with track.ts (web).
+  "paywall_free_mfp_wins_v1",
 ]);
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

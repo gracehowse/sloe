@@ -18,6 +18,8 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { PRICING_TIERS } from "../../src/lib/landing/content.ts";
+import { PAYWALL_FREE_MFP_WINS_FLAG } from "../../src/lib/landing/content.ts";
+import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 import {
   LANDING_PRO_FEATURES,
   SLOE_DIFFERENCE_BULLETS,
@@ -361,6 +363,12 @@ function Pricing() {
   const pro = PRICING_TIERS.find((t) => t.name === "Pro");
   if (!free || !pro) return null;
 
+  // ENG-1203 — append the free MFP-switch wins (barcode + custom macros)
+  // when the default-on flag is enabled; off → the legacy four bullets.
+  const freeFeatures = landingFreeFeatures(
+    isFeatureEnabled(PAYWALL_FREE_MFP_WINS_FLAG),
+  );
+
   return (
     <section className="lp-section" id="pricing">
       <div className="lp-wrap lp-pricing-wrap">
@@ -384,7 +392,7 @@ function Pricing() {
               Get started
             </Link>
             <ul className="lp-price-features">
-              {landingFreeFeatures().map((f) => (
+              {freeFeatures.map((f) => (
                 <li key={f}>
                   <Check width={16} height={16} aria-hidden />
                   {f}

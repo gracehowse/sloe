@@ -367,6 +367,8 @@ The Pro TierCard retains its existing feature list (MacroFactor-style capability
 
 **Important:** showing Free's many checkmarks is intentional. It reinforces "Free is genuinely useful — Pro extends it" per the permission-not-restriction positioning. Do not suppress the Free column.
 
+**ENG-1203 — free MFP-switch wins:** the implemented headline matrix (`PAYWALL_COMPARISON_ROWS` in `src/lib/landing/paywallValueProps.ts`) now carries two extra ✓/✓ rows — **Barcode scanning** and **Custom macro goals** — between the shared rows and the Pro-only rows. MyFitnessPal paywalled both in 2026; Suppr ships them free, so they read as concrete switch reasons. Both are ✓ in BOTH columns (free, and Pro keeps them) — never —/✓. Gated behind the default-on `paywall_free_mfp_wins_v1` flag via `getPaywallComparisonRows(flagOn)` on both platforms; off → the legacy four-row matrix. See `docs/product/landing-maintenance.md` → "Free MFP-switch wins".
+
 **All feature limits (10 saves, 5-per-7-day photo, 1-day plan, voice=Pro-only) are displayed exactly as they exist in the product.** Display values must be derived from constants (`FREE_SAVE_LIMIT`, `FREE_PHOTO_LOG_WEEKLY_LIMIT`), not hardcoded in the matrix. See §9 (parity gap 7) — the `FREE_SAVE_LIMIT` duplication risk is a pre-existing issue; the matrix must read from the SSOT.
 
 ---

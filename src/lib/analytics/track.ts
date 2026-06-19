@@ -248,6 +248,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "paywall_upgrade_dialog_sloe_v1",
   // ENG-889 — coach line renders inside the Today hero card (Figma `654:2`).
   "today_coach_in_hero_v1",
+  // ENG-1203 — merchandise the free MFP-switch wins (barcode scanning + custom
+  // macros) on the landing Free column + paywall comparison matrix. Default-on;
+  // off → the legacy copy without the two free callouts.
+  "paywall_free_mfp_wins_v1",
 ]);
 
 export function isFeatureEnabled(flag: string): boolean {
