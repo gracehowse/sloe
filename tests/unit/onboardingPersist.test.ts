@@ -23,7 +23,9 @@ import { computeV2Targets } from "../../src/lib/onboarding/targets";
  *   - daily_targets snapshot NOT called from this path (F-2 invariant)
  */
 
-const baseState = (overrides: Partial<OnboardingState> = {}): OnboardingState => ({
+const baseState = (
+  overrides: Partial<OnboardingState> = {},
+): OnboardingState => ({
   ...DEFAULT_ONBOARDING_STATE,
   ...overrides,
 });
@@ -39,6 +41,7 @@ const COMPLETE_PROFILE: Partial<OnboardingState> = {
   activity: "moderate",
   unitSystem: "metric",
   diet: ["vegetarian"],
+  pronouns: "she/her",
 };
 
 describe("mapV2GoalToLegacy", () => {
@@ -84,6 +87,7 @@ describe("buildProfileUpsertRow — happy path", () => {
       id: "u1",
       display_name: "Grace",
       sex: "female",
+      pronouns: "she/her",
       age: 28,
       height_cm: 168,
       weight_kg: 62,
@@ -125,6 +129,24 @@ describe("buildProfileUpsertRow — happy path", () => {
   });
 });
 
+describe("buildProfileUpsertRow — optional pronouns", () => {
+  it("trims pronouns and writes null when skipped", () => {
+    const withPronouns = buildProfileUpsertRow({
+      userId: "u1",
+      state: baseState({ ...COMPLETE_PROFILE, pronouns: "  they/them  " }),
+      targets: null,
+    });
+    expect(withPronouns.pronouns).toBe("they/them");
+
+    const skipped = buildProfileUpsertRow({
+      userId: "u1",
+      state: baseState({ ...COMPLETE_PROFILE, pronouns: "   " }),
+      targets: null,
+    });
+    expect(skipped.pronouns).toBeNull();
+  });
+});
+
 describe("buildProfileUpsertRow — weightSkipped", () => {
   it("writes a partial profile with null weight + null targets", () => {
     const state = baseState({ ...COMPLETE_PROFILE, weightSkipped: true });
@@ -149,6 +171,7 @@ describe("buildProfileUpsertRow — weightSkipped", () => {
     // The captured fields still write — display_name, sex, age, etc.
     expect(row.display_name).toBe("Grace");
     expect(row.sex).toBe("female");
+    expect(row.pronouns).toBe("she/her");
     expect(row.age).toBe(28);
     expect(row.height_cm).toBe(168);
     expect(row.activity_level).toBe("moderate");

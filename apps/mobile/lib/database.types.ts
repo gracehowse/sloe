@@ -1101,6 +1101,7 @@ export type Database = {
           pace_kg_per_week: number | null
           plan_pace: string | null
           prefer_activity_adjusted_calories: boolean | null
+          pronouns: string | null
           sex: string | null
           steps_by_day: Json
           streak_freeze_budget_max: number
@@ -1177,6 +1178,7 @@ export type Database = {
           pace_kg_per_week?: number | null
           plan_pace?: string | null
           prefer_activity_adjusted_calories?: boolean | null
+          pronouns?: string | null
           sex?: string | null
           steps_by_day?: Json
           streak_freeze_budget_max?: number
@@ -1253,6 +1255,7 @@ export type Database = {
           pace_kg_per_week?: number | null
           plan_pace?: string | null
           prefer_activity_adjusted_calories?: boolean | null
+          pronouns?: string | null
           sex?: string | null
           steps_by_day?: Json
           streak_freeze_budget_max?: number

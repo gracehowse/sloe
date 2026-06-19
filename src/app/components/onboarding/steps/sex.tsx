@@ -4,6 +4,7 @@ import * as React from "react";
 import { Info, Shield } from "lucide-react";
 import { OptionCard } from "@/app/components/ui/option-card";
 import type { Sex } from "@/lib/nutrition/tdee";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 import { useOnboarding } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
@@ -38,6 +39,7 @@ export function SexStep() {
   const { state, set } = useOnboarding();
   const overline = useStepOverline();
   const [helpOpen, setHelpOpen] = React.useState(false);
+  const genderFieldEnabled = isFeatureEnabled("onboarding_gender_field_v1");
 
   return (
     <StepBody>
@@ -59,6 +61,29 @@ export function SexStep() {
           />
         ))}
       </div>
+
+      {genderFieldEnabled && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <label
+            htmlFor="onboarding-pronouns"
+            className="block text-sm font-semibold text-foreground"
+          >
+            Pronouns or gender (optional)
+          </label>
+          <p className="mt-1 mb-3 text-xs leading-relaxed text-muted-foreground">
+            This is for how Sloe refers to you — it never changes your metabolic
+            estimate.
+          </p>
+          <input
+            id="onboarding-pronouns"
+            type="text"
+            value={state.pronouns}
+            onChange={(event) => set({ pronouns: event.target.value })}
+            placeholder="e.g. she/her, they/them, non-binary"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+          />
+        </div>
+      )}
 
       <button
         type="button"
@@ -84,11 +109,11 @@ export function SexStep() {
           <p className="m-0 mb-2.5">
             If you&apos;re trans, non-binary, or gender non-conforming:
             there&apos;s no perfect answer here. If you haven&apos;t started
-            gender-affirming hormones, your sex assigned at birth is usually
-            the closer estimate. After several months on hormones, body
-            composition shifts and the other coefficient may begin to fit
-            better — but evidence is limited. Pick what feels right, or
-            choose &ldquo;Prefer not to say&rdquo; for the midpoint.
+            gender-affirming hormones, your sex assigned at birth is usually the
+            closer estimate. After several months on hormones, body composition
+            shifts and the other coefficient may begin to fit better — but
+            evidence is limited. Pick what feels right, or choose &ldquo;Prefer
+            not to say&rdquo; for the midpoint.
           </p>
           <p className="m-0 text-muted-foreground">
             For best results, consult your doctor. You can change this at any
@@ -100,8 +125,8 @@ export function SexStep() {
       <div className="mt-auto pt-5 text-[11px] text-muted-foreground leading-relaxed flex gap-2 items-start">
         <Shield className="size-3 text-muted-foreground mt-px" aria-hidden />
         <span>
-          Stored privately on your device and synced only to your Sloe
-          account. Never shared.
+          Stored privately on your device and synced only to your Sloe account.
+          Never shared.
         </span>
       </div>
     </StepBody>

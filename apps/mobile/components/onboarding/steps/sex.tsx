@@ -1,11 +1,12 @@
 import * as React from "react";
-import { Spacing } from "@/constants/theme";
-import { Pressable, Text, View } from "react-native";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { OptionCard } from "@/components/OptionCard";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { Sex } from "@/lib/tdee";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
@@ -30,6 +31,7 @@ export function MobileSexStep() {
   const { state, set, go } = useOnboarding();
   const overline = useStepOverline();
   const [helpOpen, setHelpOpen] = React.useState(false);
+  const genderFieldEnabled = isFeatureEnabled("onboarding_gender_field_v1");
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the help-toggle glyph
   // and the expanded explainer's tinted box + overline. The OptionCards flip via
@@ -77,6 +79,57 @@ export function MobileSexStep() {
         ))}
       </View>
 
+      {genderFieldEnabled ? (
+        <View
+          style={{
+            marginTop: Spacing.md,
+            padding: Spacing.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: Radius.xl,
+            backgroundColor: colors.card,
+          }}
+        >
+          <Text
+            style={{
+              ...Type.body,
+              color: colors.text,
+            }}
+          >
+            Pronouns or gender (optional)
+          </Text>
+          <Text
+            style={{
+              marginTop: Spacing.xs,
+              marginBottom: Spacing.dense,
+              ...Type.captionStrong,
+              color: colors.textSecondary,
+            }}
+          >
+            This is for how Sloe refers to you — it never changes your metabolic
+            estimate.
+          </Text>
+          <TextInput
+            value={state.pronouns}
+            onChangeText={(pronouns) => set({ pronouns })}
+            placeholder="e.g. she/her, they/them, non-binary"
+            placeholderTextColor={colors.textTertiary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={{
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: Radius.lg,
+              paddingHorizontal: Spacing.dense,
+              paddingVertical: Spacing.sm,
+              color: colors.text,
+              backgroundColor: colors.background,
+              ...Type.body,
+            }}
+          />
+        </View>
+      ) : null}
+
       <Pressable
         onPress={() => setHelpOpen((v) => !v)}
         accessibilityRole="button"
@@ -112,7 +165,7 @@ export function MobileSexStep() {
             backgroundColor: accent.primary + "10",
             borderColor: accent.primary + "33",
             borderWidth: 1,
-            borderRadius: 12,
+            borderRadius: Radius.xl,
           }}
         >
           <Text
@@ -148,11 +201,11 @@ export function MobileSexStep() {
           >
             If you&apos;re trans, non-binary, or gender non-conforming:
             there&apos;s no perfect answer here. If you haven&apos;t started
-            gender-affirming hormones, your sex assigned at birth is usually
-            the closer estimate. After several months on hormones, body
-            composition shifts and the other coefficient may begin to fit
-            better — but evidence is limited. Pick what feels right, or
-            choose &ldquo;Prefer not to say&rdquo; for the midpoint.
+            gender-affirming hormones, your sex assigned at birth is usually the
+            closer estimate. After several months on hormones, body composition
+            shifts and the other coefficient may begin to fit better — but
+            evidence is limited. Pick what feels right, or choose &ldquo;Prefer
+            not to say&rdquo; for the midpoint.
           </Text>
           <Text
             style={{
@@ -189,8 +242,8 @@ export function MobileSexStep() {
             lineHeight: 17,
           }}
         >
-          Stored privately on your device and synced only to your Sloe
-          account. Never shared.
+          Stored privately on your device and synced only to your Sloe account.
+          Never shared.
         </Text>
       </View>
     </MobileStepBody>
