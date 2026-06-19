@@ -74,11 +74,12 @@ shapes — covered in follow-ups; see `## Out of scope`).
    `upsert(..., { onConflict: "user_id,source,source_id",
    ignoreDuplicates: true })`.
 
-### Why we DON'T do per-row food matching synchronously
+### Why we DON'T do background food matching
 
 The original spec proposed enriching each row by best-effort
 matching against USDA / Open Food Facts / FatSecret with a 0.7
-confidence threshold. We deferred this for two reasons:
+confidence threshold. ENG-750 re-scoped that idea because background
+re-matching is the wrong trust posture for imported log history:
 
 1. **Performance**: per-row enrichment for a 1000-row import would
    take ~17 minutes at typical food-search latencies — well past
@@ -90,12 +91,20 @@ confidence threshold. We deferred this for two reasons:
    fuzzy match overriding a correct user value is a regression of
    data trust, which CLAUDE.md explicitly forbids ("if matching is
    uncertain, do not guess").
+3. **Data shape**: imported `nutrition_entries` do not store match
+   confidence, so there is no reliable "low-confidence MFP row" cohort
+   to find later.
 
-If we later add a background enrichment pass (e.g. a queued job
-that walks unmatched rows post-import), the threshold should be
->= 0.7 (`MFP_MATCH_CONFIDENCE_THRESHOLD` in the route). Anything
-softer risks silently overriding correct values; anything stricter
-matches almost nothing in practice.
+The correct future design is ENG-750: a user-initiated, per-entry
+"find a better match" affordance. The user opens one imported entry,
+searches with the lightweight log-sheet matcher (`foodSearchCore.ts`),
+reviews candidates + confidence, and explicitly confirms any swap.
+Verbatim import stays the default.
+
+If that opt-in enrichment flow ships, candidate confidence should stay
+>= 0.7 (`MFP_MATCH_CONFIDENCE_THRESHOLD`). Anything softer risks
+encouraging users to replace correct values with weak guesses; anything
+stricter matches almost nothing in practice.
 
 ### Privacy
 
@@ -140,7 +149,7 @@ paths re-shaped to match the canonical onboarding rename
 | Lose It! CSV | Different column names ("Date", "Name", "Type", "Calories", "Fat (g)", etc.) — same parser shape with a header-alias extension. | Future PR |
 | Cronometer CSV | Has rich micronutrient columns we'd want to preserve to `nutrition_micros`; needs schema work first. | Future PR |
 | Paprika CSV | Recipe-side, not log-side — a different surface (recipe importer, not history importer). | Future PR |
-| Background enrichment | Async re-match against USDA/OFF/FatSecret with >= 0.7 confidence. | Future PR; constants already exposed. |
+| Opt-in per-entry enrichment | ENG-750 user-initiated "find a better match" on one imported entry at a time, using the lightweight log-sheet matcher and explicit confirmation before any swap. Background re-match is rejected because imported rows have no confidence score and source macros are user-confirmed. | Product-lead + design before implementation; constant exposed for the candidate-confidence floor. |
 
 ## Files
 

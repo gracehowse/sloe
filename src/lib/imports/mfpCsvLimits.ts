@@ -14,18 +14,21 @@ export const MFP_IMPORT_ROW_CAP = 1000;
 export const MFP_IMPORT_BYTE_CAP = 5 * 1024 * 1024;
 
 /**
- * Confidence threshold for "use a matched food name in place of the
- * raw CSV food string" in any future background-enrichment pass. Set
- * deliberately high — anything softer risks silently overriding
- * user-confirmed MFP totals with weak fuzzy matches, which CLAUDE.md
- * prohibits. Now exactly aligned with the verify-pipeline accept floor
+ * Confidence threshold for any future user-initiated "find a better
+ * match" flow on an imported log entry. Set deliberately high —
+ * anything softer risks asking users to swap their MFP-confirmed totals
+ * for weak fuzzy matches, which CLAUDE.md prohibits. Now exactly
+ * aligned with the verify-pipeline accept floor
  * `MIN_ACCEPT_CONFIDENCE = MIN_MATCH_CONFIDENCE = 0.70` in
  * `verifyIngredients` (both raised to the published reject-< 0.70 band
  * in ENG-691, 2026-05-25).
  *
  * The synchronous import route (`POST /api/imports/mfp-csv`) does NOT
- * currently re-match CSV rows — see the decision doc at
- * `docs/decisions/2026-05-02-mfp-csv-import.md` for why. This constant
- * is exported for the deferred enrichment job to use.
+ * re-match CSV rows, and ENG-750 explicitly rejects background
+ * low-confidence re-matching because imported rows have no stored
+ * confidence and their macros are already user-confirmed in the source
+ * app. If enrichment ships, it must be opt-in, per-entry, and confirmed
+ * by the user before any swap is applied. See the decision doc at
+ * `docs/decisions/2026-05-02-mfp-csv-import.md`.
  */
 export const MFP_MATCH_CONFIDENCE_THRESHOLD = 0.7;
