@@ -77,6 +77,11 @@ function restingEnergyFloorFromBasal(json: unknown): number | null {
  * BMR + the sedentary multiplier are read from profile body stats; both
  * arms degrade gracefully (`computeAdaptiveTDEE` falls back to the flat
  * 1000-kcal floor / skips the band when a stat is missing).
+ *
+ * The same `sedentaryTdeeKcal` + `restingEnergyFloorKcal` are ALSO passed to
+ * `computeMeasuredTDEE` (ENG-1111) so its estimator-level plausibility floor is
+ * active at the writer — an implausibly-low measured median (truncated-wear
+ * bias) is rejected before it can be persisted to `measured_tdee`.
  */
 export async function refreshAdaptiveTdeeForUser(
   supabase: SupabaseClient,
@@ -151,10 +156,17 @@ export async function refreshAdaptiveTdeeForUser(
 
   const restingByDay = parseBurnByDay(profile.basal_burn_by_day);
   const activeByDay = parseBurnByDay(profile.activity_burn_by_day);
+  // ENG-1111 calorie-safety: pass the SAME sedentary-TDEE + resting-energy
+  // floor the adaptive branch already uses, so the estimator-level plausibility
+  // clamp in `computeMeasuredTDEE` is active at the writer — a measured median
+  // below the resting-energy floor or 0.85 × sedentary is rejected before it
+  // can ever be persisted to `measured_tdee`.
   const measuredComputed = computeMeasuredTDEE({
     restingByDay,
     activeByDay,
     bmrKcal,
+    sedentaryTdeeKcal,
+    restingEnergyFloorKcal,
   });
 
   const updatePayload: Record<string, unknown> = {
