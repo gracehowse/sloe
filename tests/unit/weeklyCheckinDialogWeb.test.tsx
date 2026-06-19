@@ -141,6 +141,33 @@ describe("WeeklyCheckinDialog (web parity)", () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
+  it("ENG-1111 — renders the measured-driven raised target above the current under-logged target", () => {
+    // When the measured branch wins, `buildWeeklyCheckinContent` computes the
+    // suggested target against measured expenditure (~1,900) — higher than the
+    // user's collapsed under-logged target (1,329). The dialog must surface the
+    // higher number as the bold suggestion, never anchor to logged intake.
+    render(
+      <WeeklyCheckinDialog
+        open
+        content={makeContent({
+          tdeeDeltaKcal: 150,
+          suggestedTargetKcal: 1479,
+          whyLine: "Your real burn is +150 kcal higher than the formula.",
+        })}
+        currentTargetKcal={1329}
+        onAccept={() => {}}
+        onDismiss={() => {}}
+      />,
+    );
+    const suggested = screen.getByLabelText(
+      "Suggested 1479 kilocalories per day",
+    );
+    expect(suggested.textContent).toBe("1,479");
+    // Previous (under-logged) target rendered struck-through alongside.
+    const prev = screen.getByText("1,329");
+    expect(prev).toHaveClass("line-through");
+  });
+
   it("renders nothing when content is null (defensive guard)", () => {
     const { container } = render(
       <WeeklyCheckinDialog

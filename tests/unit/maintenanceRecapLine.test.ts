@@ -76,6 +76,8 @@ describe("formatMaintenanceRecapLine — happy path", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     };
     const line = formatMaintenanceRecapLine(resolved);
     expect(line).toBe(
@@ -140,6 +142,8 @@ describe("formatMaintenanceRecapLine — suppression rules", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     };
     expect(formatMaintenanceRecapLine(resolved)).toBeNull();
   });
@@ -153,6 +157,8 @@ describe("formatMaintenanceRecapLine — suppression rules", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     };
     expect(formatMaintenanceRecapLine(resolved)).toBeNull();
   });
@@ -169,6 +175,8 @@ describe("formatMaintenanceRecapLine — suppression rules", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     };
     expect(formatMaintenanceRecapLine(resolved)).toBeNull();
   });
@@ -184,6 +192,8 @@ describe("formatMaintenanceRecapLine — direction", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     };
     const line = formatMaintenanceRecapLine(resolved);
     expect(line).toBe(
@@ -200,6 +210,8 @@ describe("formatMaintenanceRecapLine — direction", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     };
     const line = formatMaintenanceRecapLine(resolved);
     expect(line).toBe(

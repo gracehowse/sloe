@@ -100,6 +100,17 @@ export interface ResolvedMaintenance {
   adaptiveRejectedBelowFormula: boolean;
   /** Raw adaptive kcal when `adaptiveRejectedBelowFormula` is true. */
   rejectedAdaptiveKcal: number | null;
+  /**
+   * ENG-1111 calorie-safety — measured TDEE sat below the sedentary formula.
+   * Truncated-wear days can pull the measured median below a person's own
+   * sedentary maintenance (an under-eating-risk number). When this fires the
+   * resolver surfaces the FORMULA (not the low measured value) — mirroring the
+   * ENG-1057 guard the adaptive branch already has, so measured can never
+   * recommend below the user's own sedentary formula maintenance.
+   */
+  measuredRejectedBelowFormula: boolean;
+  /** Raw measured kcal when `measuredRejectedBelowFormula` is true. */
+  rejectedMeasuredKcal: number | null;
 }
 
 function isFinitePositive(n: unknown): n is number {
@@ -170,6 +181,20 @@ export function resolveMaintenance(
   const measuredConfident =
     measuredConfidence === "medium" || measuredConfidence === "high";
 
+  // ENG-1111 — DOUBLE-COUNT MUTUAL EXCLUSION (load-bearing).
+  // Measured TDEE is FULL-day expenditure (HealthKit resting + active over
+  // complete-wear days). When this branch wins it REPLACES maintenance — it
+  // does not stack on top of it. The per-day activity bonus
+  // (`computeActivityBonusKcal`, gated by `prefer_activity_adjusted_calories`)
+  // adds workout burn ON TOP of maintenance, so it MUST contribute 0 whenever
+  // maintenance `source === "measured"` — otherwise the Watch's active energy
+  // is counted twice (once inside measured TDEE, once in the bonus). That
+  // suppression lives in `computeActivityBonusKcal` (it returns 0 for
+  // `maintenanceSource === "measured"`) and is asserted in
+  // `tests/unit/activityBonus.test.ts`. The adaptive + formula branches below
+  // are the lazy-day/NEAT (sedentary) seed precisely so the bonus can pay for
+  // activity exactly once; the measured branch is the only branch whose number
+  // already includes active energy, hence the only one that zeros the bonus.
   if (opts.enableMeasured && measuredCandidate != null && measuredConfident) {
     const measuredUpdatedAt = profile.measured_tdee_updated_at
       ? new Date(profile.measured_tdee_updated_at)
@@ -179,14 +204,35 @@ export function resolveMaintenance(
       Number.isFinite(measuredUpdatedAt.getTime()) &&
       now.getTime() - measuredUpdatedAt.getTime() > ADAPTIVE_STALE_DAYS * 86_400_000;
     if (!measuredStale) {
+      const measuredKcal = Math.round(measuredCandidate);
+      // ENG-1111 calorie-safety: mirror the ENG-1057 adaptive guard below.
+      // Truncated-wear days can pull the measured median below the user's own
+      // sedentary formula maintenance — an under-eating-risk number. Surface the
+      // FORMULA instead, and record the rejection so callers can explain it. The
+      // measured branch previously had NO such floor; this closes that gap.
+      if (formulaKcal != null && measuredKcal < formulaKcal) {
+        return {
+          kcal: formulaKcal,
+          source: "formula",
+          confidence: measuredConfidence,
+          formulaKcal,
+          adaptiveRejectedAsStale: false,
+          adaptiveRejectedBelowFormula: false,
+          rejectedAdaptiveKcal: null,
+          measuredRejectedBelowFormula: true,
+          rejectedMeasuredKcal: measuredKcal,
+        };
+      }
       return {
-        kcal: Math.round(measuredCandidate),
+        kcal: measuredKcal,
         source: "measured",
         confidence: measuredConfidence,
         formulaKcal,
         adaptiveRejectedAsStale: false,
         adaptiveRejectedBelowFormula: false,
         rejectedAdaptiveKcal: null,
+        measuredRejectedBelowFormula: false,
+        rejectedMeasuredKcal: null,
       };
     }
   }
@@ -221,6 +267,8 @@ export function resolveMaintenance(
           adaptiveRejectedAsStale: false,
           adaptiveRejectedBelowFormula: true,
           rejectedAdaptiveKcal: adaptiveKcal,
+          measuredRejectedBelowFormula: false,
+          rejectedMeasuredKcal: null,
         };
       }
       return {
@@ -231,6 +279,8 @@ export function resolveMaintenance(
         adaptiveRejectedAsStale: false,
         adaptiveRejectedBelowFormula: false,
         rejectedAdaptiveKcal: null,
+        measuredRejectedBelowFormula: false,
+        rejectedMeasuredKcal: null,
       };
     }
   }
@@ -244,6 +294,8 @@ export function resolveMaintenance(
     adaptiveRejectedAsStale,
     adaptiveRejectedBelowFormula: false,
     rejectedAdaptiveKcal: null,
+    measuredRejectedBelowFormula: false,
+    rejectedMeasuredKcal: null,
   };
 }
 

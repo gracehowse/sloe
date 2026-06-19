@@ -212,6 +212,8 @@ export function TodayActivityBonusCard(props: TodayActivityBonusCardProps) {
             adaptiveRejectedAsStale: false,
             adaptiveRejectedBelowFormula: false,
             rejectedAdaptiveKcal: null,
+            measuredRejectedBelowFormula: false,
+            rejectedMeasuredKcal: null,
           })
         : buildTdeeExplainerCopy({
             maintenanceTdeeKcal: maintenanceTdeeKcal!,

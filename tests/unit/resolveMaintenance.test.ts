@@ -195,6 +195,11 @@ describe("resolveMaintenance", () => {
   });
 
   it("ENG-1111 — prefers measured TDEE when flag on and confidence is medium+", () => {
+    // Measured (2,400) is above the sedentary formula (~2,136 for this 80 kg /
+    // 180 cm / 30 yo male) so the FIX 3 under-eating floor does NOT bind — the
+    // trustworthy-measured number wins. (Pre-FIX 3 this used 1,900, which now
+    // sits below the formula and would correctly fall back; the happy-path
+    // assertion is the measured-ABOVE-formula case.)
     const now = new Date("2026-06-14T12:00:00Z");
     const resolved = resolveMaintenance(
       {
@@ -202,14 +207,14 @@ describe("resolveMaintenance", () => {
         adaptive_tdee: 1329,
         adaptive_tdee_confidence: "high",
         adaptive_tdee_updated_at: "2026-06-13T12:00:00Z",
-        measured_tdee: 1900,
+        measured_tdee: 2400,
         measured_tdee_confidence: "medium",
         measured_tdee_updated_at: "2026-06-13T12:00:00Z",
       },
       { now, enableMeasured: true },
     );
     expect(resolved!.source).toBe("measured");
-    expect(resolved!.kcal).toBe(1900);
+    expect(resolved!.kcal).toBe(2400);
     expect(resolved!.confidence).toBe("medium");
   });
 
@@ -247,6 +252,55 @@ describe("resolveMaintenance", () => {
       { now, enableMeasured: true },
     );
     expect(resolved!.source).toBe("adaptive");
+  });
+
+  it("ENG-1111 FIX 3 — measured BELOW the sedentary formula surfaces the FORMULA (under-eating floor)", () => {
+    // Truncated-wear days can pull the measured median below the user's own
+    // sedentary maintenance. For an 80 kg / 180 cm / 30 yo male, sedentary
+    // formula ≈ 2,136. A measured value of 1,900 < formula must NOT be shown as
+    // Maintenance — surface the formula instead, mirroring the adaptive ENG-1057
+    // guard. Without this floor measured would recommend below sedentary.
+    const now = new Date("2026-06-14T12:00:00Z");
+    const resolved = resolveMaintenance(
+      {
+        ...baseProfile,
+        adaptive_tdee: null,
+        adaptive_tdee_confidence: null,
+        measured_tdee: 1900,
+        measured_tdee_confidence: "high",
+        measured_tdee_updated_at: "2026-06-13T12:00:00Z",
+      },
+      { now, enableMeasured: true },
+    );
+    expect(resolved).not.toBeNull();
+    expect(resolved!.source).toBe("formula");
+    expect(resolved!.kcal).toBe(resolved!.formulaKcal);
+    expect(resolved!.kcal).toBeGreaterThan(1900);
+    expect(resolved!.measuredRejectedBelowFormula).toBe(true);
+    expect(resolved!.rejectedMeasuredKcal).toBe(1900);
+  });
+
+  it("ENG-1111 FIX 3 — measured ABOVE the sedentary formula still surfaces measured (happy path intact)", () => {
+    // Same profile (sedentary formula ≈ 2,136). A measured value of 2,400 is
+    // above the floor, so the measured number must still win — the floor must
+    // not regress the trustworthy-measured happy path.
+    const now = new Date("2026-06-14T12:00:00Z");
+    const resolved = resolveMaintenance(
+      {
+        ...baseProfile,
+        adaptive_tdee: 1329,
+        adaptive_tdee_confidence: "high",
+        adaptive_tdee_updated_at: "2026-06-13T12:00:00Z",
+        measured_tdee: 2400,
+        measured_tdee_confidence: "high",
+        measured_tdee_updated_at: "2026-06-13T12:00:00Z",
+      },
+      { now, enableMeasured: true },
+    );
+    expect(resolved!.source).toBe("measured");
+    expect(resolved!.kcal).toBe(2400);
+    expect(resolved!.measuredRejectedBelowFormula).toBe(false);
+    expect(resolved!.rejectedMeasuredKcal).toBeNull();
   });
 });
 
@@ -313,6 +367,8 @@ describe("buildMaintenancePopoverCopy", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     });
     expect(copy).toContain("Maintenance is the calories you'd burn in a normal day.");
     expect(copy).toContain("actual intake");
@@ -328,6 +384,8 @@ describe("buildMaintenancePopoverCopy", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     });
     expect(copy).toContain("Maintenance is the calories you'd burn in a normal day.");
     expect(copy).toContain("Formula estimate");
@@ -343,6 +401,8 @@ describe("buildMaintenancePopoverCopy", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     });
     // Shouldn't contain "null confidence" — should pick a sensible default.
     expect(copy).not.toContain("null");
@@ -358,6 +418,8 @@ describe("buildMaintenancePopoverCopy", () => {
       adaptiveRejectedAsStale: false,
       adaptiveRejectedBelowFormula: false,
       rejectedAdaptiveKcal: null,
+      measuredRejectedBelowFormula: false,
+      rejectedMeasuredKcal: null,
     });
     expect(copy).toMatch(/Apple Health/);
   });
