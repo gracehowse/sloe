@@ -66,6 +66,21 @@ describe("ENG-608 web route completion", () => {
     expect(appSrc).toContain("plan_import_enabled");
   });
 
+  // ENG-622 — the web Targets surface must be reachable at /targets on a
+  // hard reload / deep link (the in-app SPA nav already worked). Same two-part
+  // wiring: (1) the path→view map carries the `targets` segment; (2)
+  // `renderView()` has a `case "targets"` that renders <Targets />.
+  it("renders Targets for the /targets view (ENG-622)", () => {
+    const pagePath = resolve(REPO, "app/(product)/targets/page.tsx");
+    expect(existsSync(pagePath), "targets page missing").toBe(true);
+    const appSrc = readFileSync(resolve(REPO, "src/app/App.tsx"), "utf8");
+    // (1) path → view is reachable.
+    expect(appSrc).toMatch(/targets:\s*"targets"/);
+    // (2) the view renders the Targets surface.
+    expect(appSrc).toMatch(/case\s+"targets":/);
+    expect(appSrc).toMatch(/<Targets/);
+  });
+
   it("navigates log sheet and checkout success to /today", () => {
     const appSrc = readFileSync(resolve(REPO, "src/app/App.tsx"), "utf8");
     expect(appSrc).toMatch(/\/today\?openLog=1/);
