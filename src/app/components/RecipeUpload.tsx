@@ -203,6 +203,14 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   // Flag-gated per CLAUDE.md; the legacy inline-skeleton path stays live in
   // the `else`. Resolved once at mount (PostHog reads are imperative).
   const [importProgressV2] = useState(() => isFeatureEnabled("import-progress-v2"));
+  // recipe-import-redesign (ENG-898 import surface) — gates the new L4 inline
+  // amber error banner + the 3-method source tiles (Photo / Paste text / Scan).
+  // MIRROR of the mobile flag at `apps/mobile/app/import-shared.tsx` (the same
+  // flag name; NOT in REDESIGN_DEFAULT_ON, so OFF in production until ramped).
+  // Flag-gated per CLAUDE.md; the legacy toast-on-error + small destructive
+  // hint line stays live in the `else`. Resolved once at mount (PostHog reads
+  // are imperative; the screen doesn't re-mount mid-flow).
+  const [importRedesign] = useState(() => isFeatureEnabled("recipe-import-redesign"));
   const importQueue = useImportQueue("web", track);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -889,7 +897,13 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       // central mapper — preserves the actionable "No Recipe JSON-LD found…"
       // hint the old inline path surfaced.
       const msg = userFacingImportError(e);
-      // L4 import error (import.md §3.10) — inline amber banner, not toast-only.
+      // recipe-import-redesign ON → L4 import error (import.md §3.10): inline
+      // amber banner only, no toast (the banner IS the surface). OFF (legacy,
+      // production until the flag ramps) → fire the toast too, exactly as
+      // before #483; the hint renders as the small destructive line.
+      if (!importRedesign) {
+        toast.error(msg);
+      }
       setImportHint(msg);
     } finally {
       setImportBusy(false);
@@ -1705,21 +1719,28 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               </SupprButton>
             </div>
             {importHint ? (
-              <div
-                data-testid="import-l4-error"
-                role="alert"
-                className="mt-4 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 text-left"
-              >
-                <div className="flex gap-3">
-                  <Icons.alert className="h-10 w-10 shrink-0 text-warning" aria-hidden />
-                  <div>
-                    <p className="font-[family-name:var(--font-headline)] text-lg text-foreground">
-                      Something went wrong
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">{importHint}</p>
+              importRedesign ? (
+                // recipe-import-redesign ON — L4 inline amber banner (import.md §3.10).
+                <div
+                  data-testid="import-l4-error"
+                  role="alert"
+                  className="mt-4 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 text-left"
+                >
+                  <div className="flex gap-3">
+                    <Icons.alert className="h-10 w-10 shrink-0 text-warning" aria-hidden />
+                    <div>
+                      <p className="font-[family-name:var(--font-headline)] text-lg text-foreground">
+                        Something went wrong
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">{importHint}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                // Legacy (flag OFF, production) — small destructive hint line;
+                // the actionable error also surfaces as a toast (catch block).
+                <p className="text-xs text-destructive mt-2 text-left">{importHint}</p>
+              )
             ) : null}
 
             {/* import-progress-v2 OFF → legacy inline skeleton. ON → the
@@ -1729,82 +1750,90 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               <ImportLoadingSkeleton phase="importing" className="mt-4" />
             ) : null}
 
-            <div className="my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">or</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
+            {/* recipe-import-redesign ON — the 3-method source tiles (Photo /
+                Paste text / Scan), mobile parity (apps/mobile/app/import-shared.tsx).
+                OFF (legacy, production) → no tiles; the photo affordance lives in
+                the "Recipe photo" card below, unchanged. */}
+            {importRedesign ? (
+              <>
+                <div className="my-5 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
 
-            <input
-              ref={photoMethodInputRef}
-              type="file"
-              accept="image/*"
-              multiple={importProgressV2}
-              aria-label="Choose recipe photos to import"
-              className="sr-only"
-              onChange={(e) => onPhotoMethodFiles(e.target.files)}
-            />
+                <input
+                  ref={photoMethodInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple={importProgressV2}
+                  aria-label="Choose recipe photos to import"
+                  className="sr-only"
+                  onChange={(e) => onPhotoMethodFiles(e.target.files)}
+                />
 
-            <div className="grid grid-cols-3 gap-2" data-testid="import-method-tiles">
-              <button
-                type="button"
-                data-testid="import-method-photo"
-                aria-label={
-                  isFreeTier
-                    ? "Import from a photo — Pro feature, upgrade required"
-                    : "Import from a photo"
-                }
-                onClick={onPhotoMethodPress}
-                className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                <span className="relative inline-flex">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
-                    <Icons.camera className="h-5 w-5 text-primary-solid" aria-hidden />
-                  </span>
-                  {isFreeTier ? (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-warning/10">
-                      <Icons.lock className="h-2.5 w-2.5 text-warning" aria-hidden />
+                <div className="grid grid-cols-3 gap-2" data-testid="import-method-tiles">
+                  <button
+                    type="button"
+                    data-testid="import-method-photo"
+                    aria-label={
+                      isFreeTier
+                        ? "Import from a photo — Pro feature, upgrade required"
+                        : "Import from a photo"
+                    }
+                    onClick={onPhotoMethodPress}
+                    className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    <span className="relative inline-flex">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
+                        <Icons.camera className="h-5 w-5 text-primary-solid" aria-hidden />
+                      </span>
+                      {isFreeTier ? (
+                        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-warning/10">
+                          <Icons.lock className="h-2.5 w-2.5 text-warning" aria-hidden />
+                        </span>
+                      ) : null}
                     </span>
-                  ) : null}
-                </span>
-                <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
-                  Photo
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {isFreeTier ? "Pro · Snap a recipe" : "Snap a recipe"}
-                </span>
-              </button>
-              <button
-                type="button"
-                data-testid="import-method-paste-text"
-                aria-label="Paste recipe text from notes"
-                onClick={() => onSwitchToCreate?.()}
-                className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
-                  <Icons.copy className="h-5 w-5 text-primary-solid" aria-hidden />
-                </span>
-                <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
-                  Paste text
-                </span>
-                <span className="text-xs text-muted-foreground">From notes</span>
-              </button>
-              <button
-                type="button"
-                data-testid="import-method-scan"
-                aria-label="Create a recipe with barcode scan"
-                onClick={() => onSwitchToCreate?.()}
-                className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
-                  <Icons.scan className="h-5 w-5 text-primary-solid" aria-hidden />
-                </span>
-                <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
-                  Scan
-                </span>
-                <span className="text-xs text-muted-foreground">Barcode</span>
-              </button>
-            </div>
+                    <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                      Photo
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {isFreeTier ? "Pro · Snap a recipe" : "Snap a recipe"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="import-method-paste-text"
+                    aria-label="Paste recipe text from notes"
+                    onClick={() => onSwitchToCreate?.()}
+                    className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
+                      <Icons.copy className="h-5 w-5 text-primary-solid" aria-hidden />
+                    </span>
+                    <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                      Paste text
+                    </span>
+                    <span className="text-xs text-muted-foreground">From notes</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="import-method-scan"
+                    aria-label="Create a recipe with barcode scan"
+                    onClick={() => onSwitchToCreate?.()}
+                    className="flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-center transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  >
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background">
+                      <Icons.scan className="h-5 w-5 text-primary-solid" aria-hidden />
+                    </span>
+                    <span className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                      Scan
+                    </span>
+                    <span className="text-xs text-muted-foreground">Barcode</span>
+                  </button>
+                </div>
+              </>
+            ) : null}
           </div>
 
           {/* WORKS WITH — non-tappable trust chips (ENG-898, mobile parity).
