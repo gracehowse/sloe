@@ -619,7 +619,7 @@ export default function CreateRecipeWizard() {
         // Strictly fire-and-forget: never awaited, never blocks the save,
         // and the route no-ops cleanly (200 `skipped`) while fal.ai is
         // unconfigured or out of balance.
-        if (!imgUrl) {
+        if (!publishOnSave && !imgUrl) {
           const heroBase = getSupprApiBase();
           if (heroBase) {
             void authedFetch(`${heroBase}/api/recipe-import/image-hero`, {

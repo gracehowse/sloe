@@ -16,6 +16,7 @@ import {
   isMealPlanPlaceholderLikeTitle,
 } from "../lib/nutrition/portionMultiplier.ts";
 import { formatRecipeMinutes } from "../lib/recipe/formatRecipeMinutes.ts";
+import { pickHeroImageUrl } from "../lib/recipes/heroImageFallback.ts";
 import { supabase } from "../lib/supabase/browserClient.ts";
 import type {
   DayPlan,
@@ -879,7 +880,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, allergens, dietary_flags, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
+        "id, title, image_url, image_source, source_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, allergens, dietary_flags, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
       )
       .eq("published", true)
       .order("created_at", { ascending: false })
@@ -914,7 +915,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         // a no-op for any title that already contains lowercase, so
         // mixed-case authored titles pass through untouched.
         title: normalizeRecipeTitle(row.title as string | null | undefined),
-        image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
+        image: pickHeroImageUrl({
+          image_url: row.image_url as string | null,
+          image_source: (row as { image_source?: string | null }).image_source ?? null,
+          source_url: (row as { source_url?: string | null }).source_url ?? null,
+        }) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
         servings: (row.servings as number) ?? 1,
         calories: (row.calories as number) ?? 0,
         protein: (row.protein as number) ?? 0,
@@ -966,7 +971,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, source_url, content_origin, prep_time_min, cook_time_min, allergens, dietary_flags",
+        "id, title, image_url, image_source, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, published, source_name, source_url, content_origin, prep_time_min, cook_time_min, allergens, dietary_flags",
       )
       .eq("author_id", authedUserId)
       .order("created_at", { ascending: false })
@@ -988,7 +993,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         // a no-op for any title that already contains lowercase, so
         // mixed-case authored titles pass through untouched.
         title: normalizeRecipeTitle(row.title as string | null | undefined),
-        image: (row.image_url as string | null) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
+        image: pickHeroImageUrl({
+          image_url: row.image_url as string | null,
+          image_source: (row as { image_source?: string | null }).image_source ?? null,
+          source_url: (row as { source_url?: string | null }).source_url ?? null,
+        }) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
         servings: (row.servings as number) ?? 1,
         calories: (row.calories as number) ?? 0,
         protein: (row.protein as number) ?? 0,

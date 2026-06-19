@@ -69,6 +69,28 @@ describe("pickHeroImageUrl — fallback ladder", () => {
     expect(got).toBe("https://img.youtube.com/vi/aaaaaaaaaaa/maxresdefault.jpg");
   });
 
+
+  it("implements image_source precedence: creator/imported before labelled AI before gradient", () => {
+    expect(pickHeroImageUrl({
+      image_url: "https://cdn.example.com/creator.jpg",
+      image_source: "user_upload",
+      source_url: "https://youtu.be/dQw4w9WgXcQ",
+    })).toBe("https://cdn.example.com/creator.jpg");
+
+    expect(pickHeroImageUrl({
+      image_url: "https://cdn.example.com/imported.jpg",
+      image_source: "imported",
+      source_url: "https://youtu.be/dQw4w9WgXcQ",
+    })).toBe("https://cdn.example.com/imported.jpg");
+
+    expect(pickHeroImageUrl({
+      image_url: "https://cdn.example.com/recipe-images/heroes/ai.jpg",
+      image_source: "ai_generated",
+    })).toBe("https://cdn.example.com/recipe-images/heroes/ai.jpg");
+
+    expect(pickHeroImageUrl({ image_url: null, image_source: "ai_generated" })).toBeNull();
+  });
+
   it("returns null for Instagram source URLs (no inferable thumbnail)", () => {
     const got = pickHeroImageUrl({
       image_url: null,

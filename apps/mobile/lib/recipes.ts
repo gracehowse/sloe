@@ -14,6 +14,7 @@ import { fetchPublicRecipeSaveCounts } from "@suppr/shared/recipes/fetchPublicRe
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { SEED_RECIPES_V2 } from "@suppr/shared/recipes/seedRecipesV2";
 import { seedsToRecipeCards } from "@suppr/shared/recipes/seedRecipesToCard";
+import { pickHeroImageUrl } from "@suppr/shared/recipes/heroImageFallback";
 
 // F-21 (2026-04-21): when a recipe has no image_url we previously fell back to
 // a single shared Unsplash salad, so every placeholder recipe looked identical
@@ -88,7 +89,7 @@ export function useDiscoverRecipes() {
         await supabase
           .from("recipes")
           .select(
-            "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, content_origin, prep_time_min, cook_time_min, allergens, dietary_flags",
+            "id, title, image_url, image_source, servings, calories, protein, carbs, fat, fiber_g, is_verified, created_at, author_id, creator_id, meal_type, source_url, source_name, content_origin, prep_time_min, cook_time_min, allergens, dietary_flags",
           )
           .eq("published", true)
           .order("created_at", { ascending: false })
@@ -129,7 +130,11 @@ export function useDiscoverRecipes() {
           // a no-op for any title that already contains lowercase, so
           // mixed-case authored titles pass through untouched.
           title: normalizeRecipeTitle(r.title),
-          image: r.image_url ?? pickDefaultImage(r.id),
+          image: pickHeroImageUrl({
+            image_url: r.image_url ?? null,
+            image_source: r.image_source ?? null,
+            source_url: r.source_url ?? null,
+          }) ?? pickDefaultImage(r.id),
           creatorName: r.source_name ?? "Community",
           creatorImage: DEFAULT_AVATAR,
           servings: r.servings ?? 1,
@@ -459,7 +464,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
           await supabase
             .from("recipes")
             .select(
-              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, content_origin, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
+              "id, title, image_url, image_source, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, content_origin, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
             )
             .eq("author_id", userId)
             .order("created_at", { ascending: false }))(),
@@ -506,7 +511,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
           await supabase
             .from("recipes")
             .select(
-              "id, title, image_url, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, content_origin, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
+              "id, title, image_url, image_source, servings, calories, protein, carbs, fat, fiber_g, is_verified, published, author_id, creator_id, meal_type, source_url, source_name, content_origin, prep_time_min, cook_time_min, created_at, allergens, dietary_flags, author:profiles!author_id(display_name, avatar_url)",
             )
             .in("id", extraIds))(),
         new Promise<typeof libraryRaceTimeout>((resolve) => {
@@ -557,7 +562,11 @@ export function useSavedLibraryRecipes(userId: string | null) {
           // 2026-04-26 polish: render-time normalisation for legacy
           // ALL-CAPS rows. See useDiscoverRecipes() above for rationale.
           title: normalizeRecipeTitle(r.title),
-          image: r.image_url ?? pickDefaultImage(r.id),
+          image: pickHeroImageUrl({
+            image_url: r.image_url ?? null,
+            image_source: r.image_source ?? null,
+            source_url: r.source_url ?? null,
+          }) ?? pickDefaultImage(r.id),
           creatorName,
           creatorImage,
           servings: r.servings ?? 1,

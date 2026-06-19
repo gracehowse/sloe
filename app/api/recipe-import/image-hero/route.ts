@@ -124,7 +124,7 @@ export async function POST(req: Request) {
   // recipe still wants a generated hero — only overwrite a null/default).
   const { data: recipeRow, error: fetchError } = await admin
     .from("recipes")
-    .select("id, title, author_id, image_url")
+    .select("id, title, author_id, image_url, published")
     .eq("id", recipeId)
     .maybeSingle();
 
@@ -135,6 +135,10 @@ export async function POST(req: Request) {
   if (!recipeRow || (recipeRow as { author_id?: string }).author_id !== userId) {
     // Not the user's recipe (or gone) — refuse without leaking which.
     return NextResponse.json(importErrorResponse("unauthorized"), { status: 403 });
+  }
+
+  if ((recipeRow as { published?: boolean | null }).published === true) {
+    return skipped("published_no_ai_image");
   }
 
   const effectiveTitle = title || String((recipeRow as { title?: string }).title ?? "");

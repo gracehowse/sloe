@@ -1723,7 +1723,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       // or out of balance. The recipe already shows the calm placeholder
       // until/if a real hero lands; a later detail-view load picks up the
       // generated `image_url`.
-      if ((finalImageUrl || DEFAULT_COVER_IMAGE) === DEFAULT_COVER_IMAGE) {
+      if (!effectivePublished && (finalImageUrl || DEFAULT_COVER_IMAGE) === DEFAULT_COVER_IMAGE) {
         void fetch("/api/recipe-import/image-hero", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

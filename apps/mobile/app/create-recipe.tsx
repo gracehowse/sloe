@@ -817,7 +817,7 @@ export default function CreateRecipeScreen() {
       // route no-ops cleanly (200 `skipped`) while fal.ai is unconfigured
       // or out of balance. The recipe shows the calm placeholder until/if
       // a real hero lands.
-      if (!imgUrl) {
+      if (!publish && !imgUrl) {
         const heroBase = getSupprApiBase();
         if (heroBase) {
           void authedFetch(`${heroBase}/api/recipe-import/image-hero`, {

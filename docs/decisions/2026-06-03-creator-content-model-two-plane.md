@@ -36,6 +36,8 @@ Do **not** drop `creator_id` as part of ENG-868. It remains part of the future c
 ## AI image precedence ladder
 creator real photo (`user_upload`) > permitted imported photo > AI-generated (`ai_generated`, labelled "Sloe image") > gradient. **AI generation is disabled on the public/Discover plane entirely** — private-stub enrichment only; published recipes have a real photo or the gradient. Consumes the `image_source` column (see image-gen decision).
 
+Implementation update (ENG-864, 2026-06-19): the shared `pickHeroImageUrl` ladder now consumes `image_source`; `/api/recipe-import/image-hero`, web/mobile auto-fire call sites, and `scripts/backfill-images.ts` all hard-skip published recipes so AI hero generation remains private-stub only.
+
 ## Is import creator-friendly? Yes — IF we build the bridge before scaling
 The funnel pitch is true only when: link-back is **surfaced** (not buried — ENG-858), we **don't reproduce creator prose verbatim** (ENG-857), claim verification is real, and opt-out/takedown is easy. With those, import sends named credit + traffic to creators and the claim turns a passive mention into an owned audience. Without them, it curdles into appropriation.
 
