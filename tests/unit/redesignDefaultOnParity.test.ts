@@ -51,6 +51,8 @@ const MOBILE_ONLY = new Set([
   "ring_skia_v1",
   // ENG-1097 — Today import nudge flat white card (iOS-only surface).
   "import_nudge_flat_white_v1",
+  // ENG-898 — CreateRecipeActionSheet 2×2 grid; web has no action sheet surface.
+  "create_recipe_action_sheet_grid_v1",
 ]);
 
 /** Gate 1.5 redesign surfaces that must ship default-on on both platforms. */
