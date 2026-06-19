@@ -1,6 +1,6 @@
 # ENG-1099 — Today tracker craft-tier redesign spec
 
-**Date:** 2026-06-14 · **Status:** spec ready → **HTML prototype next, then Grace red-line, then flag-gated build.** Production rebuild NOT started. · **Source:** ui-product-designer, executing the M1–M6 brief in `docs/planning/2026-06-14-eng1099-today-craft-census.md`. iOS leads, web parity.
+**Date:** 2026-06-14 · **Status (updated 2026-06-18):** **ALL M1–M6 SHIPPED to `main` behind `today_tracker_tier_v1` (default-on), both platforms.** Original status below was "spec ready → prototype → build" — the build then happened across PRs #448 (M1/M2/M3), #451, #456, #467, #457. See the **"Implementation status (2026-06-18 reconciliation)"** section at the foot of this doc. Remaining work is two explicitly-deferred follow-up tickets (Skia overflow arc + lower-fold rhythm) and a SIM/visual red-line pass — NOT spec implementation. · **Source:** ui-product-designer, executing the M1–M6 brief in `docs/planning/2026-06-14-eng1099-today-craft-census.md`. iOS leads, web parity.
 
 ## The one rule
 The recipe screen's whole secret (verified in `recipe/[id].tsx:1344`): the body is **one rule** — `padding: Spacing.xl, gap: Spacing.xl` (24), content flat on cream, macro strip a single hairline slab with serif values coloured per macro, one confident accent. The tracker loses because every block re-decides its own padding, elevation, type, accent. **The whole spec is: make the tracker obey the recipe's one rule — 24 between blocks, flat on cream, two number tiers, one loud accent (the ring), macro-identity colour where the recipe already taught the user to read it.**
@@ -52,3 +52,30 @@ Hero stat 19/18 → **18**; slot-header padding 12/12 vs 14/10 → **12/12**; sl
 
 ## Files (executor / prototype)
 `apps/mobile/components/today/{TodayHeroRing,TodayDashboardMacroTiles,TodayMealsSection,NorthStarBlock}.tsx`, `apps/mobile/components/nutrition/MacroStatTile.tsx`, `apps/mobile/app/(tabs)/index.tsx` (scroll `contentContainerStyle` + section-break removals ~3754-3756, 5323/5403/5481/5519/5610), `apps/mobile/constants/theme.ts` (+`Type.statValue`) + `layout.ts` (deprecate the inter-block gap tokens); web twins under `src/app/components/suppr/` + the Today scroll container. Benchmark to match (do not change): `RecipeMacroStrip.tsx`, `recipe/[id].tsx:1344`.
+
+---
+
+## Implementation status (2026-06-18 reconciliation)
+
+The "build NOT started" header was stale. Auditing `main` against the 12 acceptance criteria: **every milestone M1–M6 shipped, both platforms, behind `today_tracker_tier_v1` (default-on; flag-OFF keeps the pre-ENG-1099 path verbatim).** The whole `today_tracker_tier_v1` flag is registered default-on in `apps/mobile/lib/analytics.ts:323` and `src/lib/analytics/track.ts:217`.
+
+| Milestone | Status on `main` | Where (mobile / web) | Carried by |
+|---|---|---|---|
+| **M1** rhythm (24 inter-block, kill 32 section-breaks) | Shipped | `index.tsx` section breaks all `tierV1 ? 0 : Layout.todaySectionBreak` (incl. lower-fold — open-Q3 resolved toward whole-scroll 24) / web `todaySectionBreakClass` | #448, #467 |
+| **M2** flat the card stack | Shipped | hero/tiles/slots/north-star `lift={tierV1 ? "flat" : "soft"}` / web flat since 2026-06-12 | #448 |
+| **M3** strip macro tile + value-colour signal | Shipped | `MacroStatTile.tsx` tier path drops bar+caption, value-colour over/under, `minHeight 56`, `PressableScale` / web `today-dashboard-macro-tiles.tsx` | #448 |
+| **M4** two serif tiers / stat-row `Type.statValue` | Shipped | `Type.statValue` (#448, bumped 18→22 in #457); `TodayHeroRing` Stat uses it under tierV1 / web `today-hero-stats.tsx` serif 18 under tierV1 | #448, #451, #457 |
+| **M5** quiet the washes | Shipped | slot icon chip `tierV1 ? col+"12" : col+"18"`, log-usual pill `tierV1 ? colors.fillQuiet : col+"18"` / web hero chips de-tinted to text-only, slot tints, log-usual quiet | #456, #467 |
+| **M6** de-chrome the meal log | Shipped | meal rows/add-food/log-usual/browse/north-star hero all `PressableScale haptic="selection"`; band-tight chip on-family `Accent.success+"1A"` / `successSolid` (off-family `rgba(34,168,96,0.10)` only in flag-OFF else) / web `todayMealRowPressClass` + `active:scale-[0.97]`, north-star `bg-success/10 text-success-solid` | #456, #467 |
+
+**Source-pinned by tests** (break if the wiring is unwired): `apps/mobile/tests/unit/todayCohesionWiring.test.ts` (M5 slot tints + log-usual, M6 meal-row/log-usual PressableScale, RC-3 hero macro-rings toggle, RC-4 north-star sage, figma-hero PressableScale), `apps/mobile/tests/unit/todayRhythmLayout.test.ts` (M1), `tests/unit/todayCohesionWiringWeb.test.ts` (M1 `todaySectionBreakClass`, M6 meal-row press), `tests/unit/todayHeroStats.test.tsx` (M4), `tests/unit/todayCardElevationSweep.test.ts` (M2 flat-gating).
+
+### One deliberate divergence from this spec (documented, not a gap)
+- **Interactions §: "north-star CTA ('Log it') → `Success` notification (a commit)."** Code reality: the primary CTA's `onPrimaryCta` runs `router.push('/recipe/${recipeId}')` (`index.tsx:5550`) — it **navigates** to the recipe; it does NOT commit a log (the log happens later in the recipe/cook flow). Firing the iOS Success notification haptic on a pure navigation would lie ("done!" when nothing was logged). The CTA therefore stays on `SupprButton`'s default `confirm` (medium impact), which is the correct grammar for a navigation action. `PressableScale` *does* support `haptic="success"` — it's just wrong here. If the CTA ever becomes a true inline one-tap log, switch it to `success` then.
+
+### Explicitly deferred — separate tickets (per the spec's own "Open questions")
+- **Open-Q1: over-budget ring overflow arc (Skia)** — needs `@shopify/react-native-skia` (native rebuild, not OTA). Out of this OTA-able rhythm/elevation/type/colour pass by design. → still a separate ticket (route to product-lead sequencing).
+- **Open-Q4: macro-identity colour AA at prototype time** — the tier tiles use the `*Solid` darker variants (e.g. `Accent.warningSolid` for amber-over) so the over-signal meets AA; confirm with a measured contrast pass during the SIM red-line.
+
+### Still needed before the flag can be considered fully validated
+- **SIM + web visual red-line** of the tier-ON state on a populated account (light + dark + cold-open/new-user), per the census "Grace red-lines the prototype" gate and `feedback_visual_validation_mandatory`. The code is in; the pixels have not been signed off in this session. This is a visual change — treat the red-line as the merge gate, not the typecheck.

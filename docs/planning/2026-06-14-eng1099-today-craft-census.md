@@ -1,6 +1,6 @@
 # ENG-1099 — Today tracker craft-gap census (the brief)
 
-**Date:** 2026-06-14 · **Status:** census/brief ready — **rebuild is Grace-red-line-gated, not started** · **Source:** ui-critic tier diagnosis + visual-qa forensic census (parallel lanes), cross-checked against the live `RecipeDetail` benchmark + a captured Today render (`screenshots/web-drive/today-tall-calmoff.png`).
+**Date:** 2026-06-14 · **Status (updated 2026-06-18):** **brief delivered; M1–M6 SHIPPED to `main` behind `today_tracker_tier_v1` (default-on), both platforms.** See the per-milestone reconciliation table in `docs/planning/2026-06-14-eng1099-tracker-redesign-spec.md` → "Implementation status (2026-06-18 reconciliation)". Remaining: SIM/web visual red-line on a populated account + two explicitly-deferred follow-ups (Skia overflow arc, macro AA contrast measure). · **Source:** ui-critic tier diagnosis + visual-qa forensic census (parallel lanes), cross-checked against the live `RecipeDetail` benchmark + a captured Today render (`screenshots/web-drive/today-tall-calmoff.png`).
 
 ## Why this exists
 The 2026-06-13 "two personalities" review scored Today's **tracker half a 7** and the **recipe-detail screen a 9**. Decision (`docs/decisions/2026-06-13-keep-today-centre-premium-frame.md`): **close the gap by raising the tracker to recipe-tier craft — subtractive cohesion, NOT new chrome; numbers stay visible; single-hero cap holds; zero IA change.** iOS leads, web parity. This doc is the brief for that rebuild — diagnosis only.
