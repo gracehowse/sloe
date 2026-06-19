@@ -338,6 +338,11 @@ export const NutritionTracker = memo(function NutritionTracker({
   // of the meal whose breakdown is open; the dialog resolves the full LoggedMeal
   // (with micros) from `mealsForSelectedDate`, mirroring the copy-meal pattern.
   const [mealNutritionTargetId, setMealNutritionTargetId] = useState<string | null>(null);
+  // ENG-837 — slot-aggregate nutrition dialog target. Holds the slot NAME whose
+  // combined breakdown is open; the dialog sums that slot's meals (resolved from
+  // `mealsGrouped`) via the shared helpers. Mirrors the mobile `?slot=&date=`
+  // screen mode.
+  const [slotNutritionTarget, setSlotNutritionTarget] = useState<string | null>(null);
   const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
   const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
   const [editMealTargetId, setEditMealTargetId] = useState<string | null>(null);
@@ -2857,6 +2862,15 @@ export const NutritionTracker = memo(function NutritionTracker({
             ? setMealNutritionTargetId
             : undefined
         }
+        // ENG-837 — "View slot nutrition" header affordance + slot-aggregate
+        // dialog, gated behind the SAME `web_meal_nutrition_detail` flag. Flag
+        // OFF → prop undefined → no slot affordance, header byte-identical.
+        // Mirror: apps/mobile/app/meal-nutrition.tsx?slot=&date=.
+        onOpenSlotNutrition={
+          isFeatureEnabled("web_meal_nutrition_detail")
+            ? setSlotNutritionTarget
+            : undefined
+        }
         onEditMeal={
           isFeatureEnabled("web_logged_meal_edit")
             ? setEditMealTargetId
@@ -3539,6 +3553,29 @@ export const NutritionTracker = memo(function NutritionTracker({
                 }
               : undefined
           }
+        />
+      )}
+
+      {/* ENG-837 — slot-aggregate nutrition dialog (web mirror of
+          apps/mobile/app/meal-nutrition.tsx?slot=&date=). Same flag as the
+          per-meal dialog. Sums the targeted slot's meals (resolved from
+          `mealsGrouped`, keyed identically by `normalizeJournalSlotName`) via
+          the shared `sumMicrosFromLoggedMeals` / `sumDayFiberFromMeals` helpers
+          inside the dialog — no Supabase fetch, no re-summing math here. */}
+      {isFeatureEnabled("web_meal_nutrition_detail") && (
+        <MealNutritionDialog
+          meal={null}
+          slotAggregate={
+            slotNutritionTarget
+              ? {
+                  slotLabel: slotNutritionTarget,
+                  meals:
+                    mealsGrouped.find((g) => g.name === slotNutritionTarget)?.meals ?? [],
+                }
+              : null
+          }
+          open={slotNutritionTarget != null}
+          onClose={() => setSlotNutritionTarget(null)}
         />
       )}
 

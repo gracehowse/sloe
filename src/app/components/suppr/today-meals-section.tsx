@@ -99,6 +99,15 @@ export interface TodayMealsSectionProps {
    */
   onOpenMealNutrition?: (mealId: string) => void;
   /**
+   * ENG-837 — open the per-slot nutrition-detail dialog
+   * (`<MealNutritionDialog slotAggregate>`), summing every logged item in the
+   * slot. When set (flag `web_meal_nutrition_detail` on), a quiet "View slot
+   * nutrition" affordance renders on each POPULATED slot header. Undefined (flag
+   * off) → no affordance, the slot header is byte-identical to before. Mirror:
+   * the mobile slot opens `apps/mobile/app/meal-nutrition.tsx?slot=&date=`.
+   */
+  onOpenSlotNutrition?: (slot: string) => void;
+  /**
    * ENG-1122 — open the logged-meal edit dialog. When set (flag
    * `web_logged_meal_edit` on), an "Edit" item renders in each meal row's
    * kebab menu. Undefined (flag off) → no item.
@@ -319,6 +328,7 @@ export function TodayMealsSection({
   onRequestCopyMeal,
   onDeleteMeal,
   onOpenMealNutrition,
+  onOpenSlotNutrition,
   onEditMeal,
   onOpenLogSheet,
   savedMeals,
@@ -630,6 +640,30 @@ export function TodayMealsSection({
                     </span>
                   </button>
                 )}
+                {/* ENG-837 — quiet "View slot nutrition" affordance. Populated
+                    slots only (an empty slot has nothing to aggregate). Tertiary
+                    ghost icon-button (NOT a filled CTA — one filled CTA per
+                    screen rule). `stopPropagation` so it opens the slot-aggregate
+                    dialog instead of toggling the slot collapse. Only renders when
+                    the host wired `onOpenSlotNutrition` (flag
+                    `web_meal_nutrition_detail` on); flag-OFF → absent, slot header
+                    byte-identical. Mirror: mobile slot → meal-nutrition.tsx?slot=. */}
+                {onOpenSlotNutrition && hasMeals ? (
+                  <button
+                    type="button"
+                    data-testid={`today-slot-view-nutrition-${sectionName}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenSlotNutrition(sectionName);
+                    }}
+                    className="mr-0.5 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label={`View combined nutrition for ${sectionName}`}
+                    title={`View combined nutrition for ${sectionName}`}
+                  >
+                    <Icons.pieChart className="w-3.5 h-3.5" aria-hidden />
+                    <span className="sr-only sm:not-sr-only">Slot nutrition</span>
+                  </button>
+                ) : null}
                 {/* ENG-1095: empty slots show a "+" (add) affordance, not a
                     chevron — a downward chevron on an empty row reads as
                     "expand" when there's nothing to expand. Matches mobile's
