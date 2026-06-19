@@ -156,11 +156,15 @@ describe("/api/usda/search — cache + quota wiring", () => {
     );
   });
 
-  it("does NOT cache a USDA hard failure (502 path)", async () => {
-    fdcFoodsSearchMock.mockRejectedValueOnce(new Error("USDA 502"));
+  it("does NOT cache a USDA hard failure (degraded path)", async () => {
+    // ENG-1119 — a hard USDA failure no longer 502s; it degrades to a 200
+    // envelope (covered in depth by usdaSearchResilience.test.ts). Here we
+    // only pin that the failure is NOT written to the cache. A non-transient
+    // 4xx is used so the route does not retry (keeping the mock to one reject).
+    fdcFoodsSearchMock.mockRejectedValueOnce(new Error("USDA FDC HTTP 400 bad request"));
     const GET = await loadUsda();
     const res = await GET(makeReq("http://localhost/api/usda/search?q=chicken"));
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(200);
     expect(setCachedSearchMock).not.toHaveBeenCalled();
   });
 });

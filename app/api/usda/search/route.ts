@@ -11,6 +11,39 @@ import {
   setCachedSearch,
 } from "@/lib/server/vendorSearchCache";
 
+/**
+ * ENG-1119 — USDA search resilience.
+ *
+ * `fdcFoodsSearch` throws `Error("USDA FDC HTTP <status> …")` on a non-ok
+ * upstream response. A transient 5xx is exactly the case worth one bounded
+ * retry: USDA's FDC endpoint occasionally returns a 502/503/504 under load,
+ * and a second attempt a few hundred ms later usually succeeds. We classify
+ * the failure from the thrown message and retry ONCE on a 5xx (or a thrown
+ * network/timeout error, which `AbortSignal.timeout` surfaces) — never on a
+ * 4xx / 429, which won't recover and would only burn the next request's
+ * headroom. This mirrors the Supadata client's "transient-only" retry policy
+ * (`src/lib/server/supadata/client.ts`).
+ */
+const USDA_RETRY_BACKOFF_MS = 300;
+
+/**
+ * True when the upstream failure looks transient and worth one retry: a 5xx
+ * from FDC, or a thrown fetch/timeout error (no HTTP status surfaced). A 4xx
+ * (including 429 rate-limit) is treated as non-transient — retrying it just
+ * wastes the route's budget on a request that will fail the same way.
+ */
+function isTransientUsdaError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  const httpMatch = /USDA FDC HTTP (\d{3})/.exec(msg);
+  if (httpMatch) {
+    const status = Number(httpMatch[1]);
+    return status >= 500 && status <= 599;
+  }
+  // No HTTP status in the message → fetch threw (DNS, connection reset) or the
+  // 5s AbortSignal.timeout fired. Both are transient; one retry is safe.
+  return true;
+}
+
 export async function GET(req: Request) {
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
@@ -66,19 +99,45 @@ export async function GET(req: Request) {
 
   const cfg = fdcConfigFromEnv();
 
+  // Consume one quota unit for this logical search BEFORE the live call
+  // (atomic). The retry below re-issues the same search on a transient 5xx but
+  // does NOT spend a second quota unit — a single user search is one quota
+  // unit regardless of how many internal HTTP attempts it takes. (Parity with
+  // the OFF degraded-on-failure path, which also spends quota exactly once.)
+  await consumeQuota("usda");
+
   try {
-    // Consume one quota unit immediately before the live call (atomic).
-    await consumeQuota("usda");
-    const hits = await fdcFoodsSearch(cfg, q, { pageNumber });
+    let hits;
+    try {
+      hits = await fdcFoodsSearch(cfg, q, { pageNumber });
+    } catch (e) {
+      // ENG-1119 — one bounded retry on a transient 5xx (or thrown
+      // network/timeout). A 4xx / 429 is not retried (see isTransientUsdaError).
+      if (!isTransientUsdaError(e)) throw e;
+      await new Promise((r) => setTimeout(r, USDA_RETRY_BACKOFF_MS));
+      hits = await fdcFoodsSearch(cfg, q, { pageNumber });
+    }
     // Cache only the genuine, successful response — never an error/degraded.
     await setCachedSearch("usda", q, hits, { locale, page: pageNumber });
     return NextResponse.json({ ok: true, hits, page: pageNumber });
   } catch (e) {
+    // ENG-1119 — a hard USDA failure (post-retry, or a non-transient 4xx) no
+    // longer 502s and breaks the food-search merge. It degrades HONESTLY with
+    // the SAME envelope shape as quota exhaustion / the OFF route (HTTP 200,
+    // ok:true, hits:[], degraded:true) so both clients' `responseIsDegraded`
+    // notice fires (web FoodSearchPanel; mobile verifyRecipe) and the other
+    // three sources keep rendering — instead of the whole pipeline erroring.
+    // Static reason only — no raw upstream message leaks to the client.
+    // The failure is NOT cached (setCachedSearch only runs on success above),
+    // so a later request can still hit a recovered USDA.
     captureRouteError(e, "/api/usda/search");
-    return NextResponse.json(
-      { ok: false, error: "usda_failed", message: e instanceof Error ? e.message : "USDA request failed" },
-      { status: 502 },
-    );
+    return NextResponse.json({
+      ok: true,
+      hits: [],
+      page: pageNumber,
+      degraded: true,
+      degradedReason: "usda_unavailable",
+    });
   }
 }
 
