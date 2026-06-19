@@ -9,7 +9,7 @@ import {
   type MacroConsumed,
   type MacroTargets,
   type RemainingMacros,
-} from "@suppr/shared/nutrition/remainingMacros";
+} from "@suppr/nutrition-core/remainingMacros";
 
 /**
  * RemainingMacrosBar (mobile) — parity with

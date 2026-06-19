@@ -17,4 +17,4 @@ export {
   type FreezeUsedEntry,
   type StreakByDay,
   type StreakMeal,
-} from "@suppr/shared/nutrition/streakFreeze";
+} from "@suppr/nutrition-core/streakFreeze";

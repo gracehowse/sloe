@@ -24,7 +24,7 @@ import {
   isOverTarget,
   weeklyAlcoholG,
   type StimulantTargets,
-} from "@suppr/shared/nutrition/hydrationStimulants";
+} from "@suppr/nutrition-core/hydrationStimulants";
 
 /**
  * HydrationStimulantsCard (mobile) — Sloe `TD2 · Hydration & stimulants`

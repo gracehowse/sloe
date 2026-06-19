@@ -35,7 +35,7 @@ vi.mock("@/context/theme", () => ({
 }));
 
 import { ProgressPeriodControl } from "../../components/progress/ProgressPeriodControl";
-import type { ProgressPeriod } from "@suppr/shared/nutrition/progressPeriod";
+import type { ProgressPeriod } from "@suppr/nutrition-core/progressPeriod";
 
 // Wed 10 Jun 2026 — fixed clock so labels are deterministic.
 const NOW = new Date(2026, 5, 10, 14, 30, 0);

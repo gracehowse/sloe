@@ -1,8 +1,8 @@
 /**
  * ENG-1100 — canonical Plan day slot order (web `bySlot` parity).
  */
-import { ALL_MEAL_SLOTS } from "@suppr/shared/nutrition/mealPlanAlgo";
-import { normaliseMealSlot } from "@suppr/shared/nutrition/mealSlots";
+import { ALL_MEAL_SLOTS } from "@suppr/nutrition-core/mealPlanAlgo";
+import { normaliseMealSlot } from "@suppr/nutrition-core/mealSlots";
 import {
   resolvePlanSlotIconKey,
   type PlanSlotIconKey,

@@ -26,7 +26,7 @@ import * as React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 
-import { projectRemaining } from "@suppr/shared/nutrition/remainingMacros";
+import { projectRemaining } from "@suppr/nutrition-core/remainingMacros";
 
 import FoodSearchModal from "../../components/FoodSearchModal";
 

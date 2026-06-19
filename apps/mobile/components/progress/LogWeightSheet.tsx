@@ -22,7 +22,7 @@ import { isFeatureEnabled } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
 import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { kgToLb, lbToKg } from "@suppr/shared/units/imperial";
-import { isNewWeightLow } from "@suppr/shared/nutrition/weightWinMoment";
+import { isNewWeightLow } from "@suppr/nutrition-core/weightWinMoment";
 
 /**
  * Weight chart consolidation Phase 1 (2026-05-11, B6 / F-132).

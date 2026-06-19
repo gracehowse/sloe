@@ -11,7 +11,7 @@ import { Text, View } from "react-native";
 
 import { FontFamily, MacroColors, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import type { Goal } from "@suppr/shared/nutrition/goalEditorPace";
+import type { Goal } from "@suppr/nutrition-core/goalEditorPace";
 import { MobileMiniSlider } from "../onboarding/slider";
 
 const ACCENT_BY_GOAL: Record<Exclude<Goal, "maintain">, string> = {

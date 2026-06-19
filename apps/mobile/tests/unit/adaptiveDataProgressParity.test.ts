@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { computeAdaptiveDataProgressFromMeals } from "@suppr/shared/nutrition/adaptiveDataProgress";
+import { computeAdaptiveDataProgressFromMeals } from "@suppr/nutrition-core/adaptiveDataProgress";
 
 /**
  * ENG-1189 parity pin. The Progress Maintenance card showed

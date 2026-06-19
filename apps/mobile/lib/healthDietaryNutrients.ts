@@ -16,7 +16,7 @@ import {
   sumMicrosFromLoggedMeals,
   type MealNutritionDisplayInput,
   type MicroNutrientDisplayRow,
-} from "@suppr/shared/nutrition/microNutrientDisplay";
+} from "@suppr/nutrition-core/microNutrientDisplay";
 
 export {
   buildDayNutrientDetailRows,

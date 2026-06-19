@@ -1,7 +1,7 @@
 import {
   fetchCanonicalRecipeTitle,
   type RecipeTitleLookupClient,
-} from "@suppr/shared/nutrition/resolveRecipeLogTitles";
+} from "@suppr/nutrition-core/resolveRecipeLogTitles";
 import { supabase } from "@/lib/supabase";
 
 /** Typed once — avoids TS2589 deep-instantiation at every call site. */

@@ -10,7 +10,7 @@ import { MacroIngredientList } from "@/components/nutrition/MacroIngredientList"
 import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
-import { dateKeyFromDate } from "@suppr/shared/nutrition/trackerStats";
+import { dateKeyFromDate } from "@suppr/nutrition-core/trackerStats";
 import { MACRO_CONFIG } from "@/lib/macroDetailConfig";
 import { useMacroDetail } from "./useMacroDetail";
 

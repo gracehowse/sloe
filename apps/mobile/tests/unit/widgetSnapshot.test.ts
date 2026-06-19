@@ -10,7 +10,7 @@ import {
   SUPPR_WIDGET_SNAPSHOT_KEY,
   SUPPR_WIDGET_SNAPSHOT_FILENAME,
   WIDGET_TAP_DEEP_LINK,
-} from "@suppr/shared/nutrition/widgetSnapshot";
+} from "@suppr/nutrition-core/widgetSnapshot";
 
 const BASE = {
   kcalConsumed: 0,

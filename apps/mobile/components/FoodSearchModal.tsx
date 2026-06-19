@@ -54,7 +54,7 @@ import FoodSearchPanel, {
   type SupabaseLike,
   type FoodSearchPanelProps,
 } from "./food-search/FoodSearchPanel";
-import type { MacroConsumed, MacroTargets } from "@suppr/shared/nutrition/remainingMacros";
+import type { MacroConsumed, MacroTargets } from "@suppr/nutrition-core/remainingMacros";
 
 /** Re-exported for backwards compat with existing call sites that
  *  imported `SelectedFood` from this module path. */

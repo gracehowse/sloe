@@ -20,7 +20,7 @@ import {
   stateToGrams,
   type PortionState,
   type ProductInput,
-} from "@suppr/shared/nutrition/portionPicker";
+} from "@suppr/nutrition-core/portionPicker";
 
 void React;
 

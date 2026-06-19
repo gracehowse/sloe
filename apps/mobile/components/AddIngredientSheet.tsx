@@ -34,9 +34,9 @@ import { authedFetch } from "@/lib/authedFetch";
 import {
   sanitizeOverrideInput,
   type IngredientOverride,
-} from "@suppr/shared/nutrition/ingredientOverrides";
-import { ingredientVerifyNeedsReview } from "@suppr/shared/nutrition/verifyConfidencePolicy";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+} from "@suppr/nutrition-core/ingredientOverrides";
+import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
+import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";

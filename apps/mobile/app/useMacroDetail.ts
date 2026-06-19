@@ -9,7 +9,7 @@ import {
   type BreakdownIngredientRow,
   type BreakdownMacro,
   type IngredientBreakdownResult,
-} from "@suppr/shared/nutrition/macroIngredientBreakdown";
+} from "@suppr/nutrition-core/macroIngredientBreakdown";
 import { mealContributedFiberG } from "@/lib/healthDietaryNutrients";
 import { parseNutritionMicrosJson } from "@/lib/nutritionJournal";
 

@@ -16,7 +16,7 @@ import { fireEvent, render } from "@testing-library/react-native";
 
 import { NorthStarBlockHost } from "../../components/today/NorthStarBlockHost";
 import { isFeatureEnabled } from "@/lib/analytics";
-import type { NorthStarRecipe } from "@suppr/shared/nutrition/northStarSuggestion";
+import type { NorthStarRecipe } from "@suppr/nutrition-core/northStarSuggestion";
 
 // The NorthStar render path reads ONE flag — `today_meals_figma_654` (in
 // `NorthStarBlock`). Default it ON (the production default: Figma 654:2 hero),

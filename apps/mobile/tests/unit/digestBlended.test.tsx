@@ -35,7 +35,7 @@ vi.mock("@/lib/analytics", () => ({
 
 import { isFeatureEnabled } from "@/lib/analytics";
 import { Digest, type DigestProps } from "../../components/Digest";
-import type { DigestBlendedExtras } from "@suppr/shared/nutrition/digest";
+import type { DigestBlendedExtras } from "@suppr/nutrition-core/digest";
 
 const baseProps: DigestProps = {
   weekKey: "2026-W21",

@@ -82,7 +82,7 @@ vi.mock("@/hooks/useCardElevation", () => ({
 import { isFeatureEnabled } from "@/lib/analytics";
 import { SavedMealPortionSheet } from "../../components/today/SavedMealPortionSheet";
 import { TodayEditMealModal } from "../../components/today/TodayEditMealModal";
-import type { SavedMeal } from "@suppr/shared/nutrition/savedMeals";
+import type { SavedMeal } from "@suppr/nutrition-core/savedMeals";
 import type { JournalMeal } from "../../lib/nutritionJournal";
 
 const flagFn = isFeatureEnabled as unknown as ReturnType<typeof vi.fn>;

@@ -7,7 +7,7 @@ import {
   NUTRITION_ENTRY_UUID_RE as UUID_RE,
 } from "@/lib/nutritionEntryRow";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
-import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
+import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
 
 /**
  * 2026-05-16 — Today extract #3.

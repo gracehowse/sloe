@@ -95,7 +95,7 @@ describe("WeightChart swipe — progress.tsx wiring (reuse, not duplicate)", () 
     expect(progressSrc).toMatch(/onSwipeNext=\{\(\) => \{[\s\S]*?setPeriod\(nextPeriod\(period\)\)/);
     // Imported from the shared period model (single source of clamp logic).
     expect(progressSrc).toMatch(
-      /from "@suppr\/shared\/nutrition\/progressPeriod"/,
+      /from "@suppr\/(?:shared\/nutrition|nutrition-core)\/progressPeriod"/,
     );
   });
 

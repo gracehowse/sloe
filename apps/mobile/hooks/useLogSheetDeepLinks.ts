@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 
-import { slotForHour } from "@suppr/shared/nutrition/recipeJournalSlot";
+import { slotForHour } from "@suppr/nutrition-core/recipeJournalSlot";
 
 /**
  * 2026-06-12 — Today extract (audit P2 #5).

@@ -80,7 +80,7 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
 
   it("mobile verifyRecipe.ts imports the inference helpers from the shared module", () => {
     expect(MOBILE_VERIFY_SRC).toMatch(
-      /from\s+["'][^"']*@suppr\/shared\/nutrition\/primaryServing["']/,
+      /from\s+["'][^"']*@suppr\/(?:shared\/nutrition|nutrition-core)\/primaryServing["']/,
     );
     for (const fn of SOURCE_HELPERS) {
       expect(MOBILE_VERIFY_SRC).toMatch(new RegExp(`\\b${fn}\\b`));
@@ -89,13 +89,13 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
 
   it("mobile food-search surface imports the portion-chip adapter from the shared module", () => {
     expect(MOBILE_COMBINED_SRC).toMatch(
-      /from\s+["'][^"']*\/nutrition\/primaryServing["']/,
+      /from\s+["'][^"']*\/(?:nutrition|nutrition-core)\/primaryServing["']/,
     );
     expect(MOBILE_COMBINED_SRC).toMatch(/\bprimaryServingToPortionChip\b/);
   });
 
   it("web FoodSearchPanel imports inference helpers and buildPortions", () => {
-    expect(WEB_SRC).toMatch(/from\s+["'][^"']*\/nutrition\/primaryServing["']/);
+    expect(WEB_SRC).toMatch(/from\s+["'][^"']*\/(?:nutrition|nutrition-core)\/primaryServing["']/);
     for (const fn of SOURCE_HELPERS) {
       expect(WEB_SRC).toMatch(new RegExp(`\\b${fn}\\b`));
     }
@@ -109,7 +109,7 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
 
     for (const src of [MOBILE_COMBINED_SRC, WEB_SRC]) {
       expect(src).toMatch(
-        /from\s+["'][^"']*\/nutrition\/foodSearchHeadline["']/,
+        /from\s+["'][^"']*\/(?:nutrition|nutrition-core)\/foodSearchHeadline["']/,
       );
       expect(src).toMatch(/\bresolveFoodSearchHeadline\b/);
       expect(src).toMatch(/FOOD_SEARCH_PER_SERVING_BADGE/);

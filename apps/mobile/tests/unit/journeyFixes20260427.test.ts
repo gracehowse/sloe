@@ -271,7 +271,7 @@ describe("Fix 5 — Eat-again removed from Today host (web + mobile)", () => {
   });
 
   it("mobile host no longer imports the retired eat-again plumbing (ENG-984)", () => {
-    expect(SRC.today).not.toContain('from "@suppr/shared/nutrition/eatAgainDismiss"');
+    expect(SRC.today).not.toContain('from "@suppr/nutrition-core/eatAgainDismiss"');
     expect(SRC.today).not.toContain("computeEatAgainCandidatesForSlot,");
   });
 

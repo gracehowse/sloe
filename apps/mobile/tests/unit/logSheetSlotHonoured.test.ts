@@ -91,7 +91,7 @@ describe("build-47 — generic FAB-open paths reset activeMealSlot to time-of-da
     // ENG-773: the quick-log path now uses the shared ladder so it can
     // never drift from the recipe-log path again.
     expect(SRC).toMatch(
-      /import\s*\{[^}]*\bslotForHour\b[^}]*\}\s*from\s*["']@suppr\/shared\/nutrition\/recipeJournalSlot["']/,
+      /import\s*\{[^}]*\bslotForHour\b[^}]*\}\s*from\s*["']@suppr\/(?:shared\/nutrition|nutrition-core)\/recipeJournalSlot["']/,
     );
     // The old local copy (its own 10/14/17 cutoffs) must be gone.
     expect(SRC).not.toMatch(/function\s+slotForHour\(/);

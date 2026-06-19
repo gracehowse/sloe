@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeLoggingStreak,
   computeWeekLoggedDays,
-} from "@suppr/shared/nutrition/trackerStats";
+} from "@suppr/nutrition-core/trackerStats";
 import type { LoggedMeal } from "../../../../src/types/recipe";
 
 function meal(cals = 500): LoggedMeal {

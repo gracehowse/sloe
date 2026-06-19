@@ -7,4 +7,4 @@ export {
   buildDigestStory,
   type DigestStoryInput,
   type DigestStoryResult,
-} from "@suppr/shared/nutrition/digestStory";
+} from "@suppr/nutrition-core/digestStory";

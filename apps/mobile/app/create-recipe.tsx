@@ -53,7 +53,7 @@ import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import type { BarcodeProduct } from "@/lib/verifyRecipe";
-import type { AiLoggedItem } from "@suppr/shared/nutrition/aiLogging";
+import type { AiLoggedItem } from "@suppr/nutrition-core/aiLogging";
 import MealTypePicker from "@/components/MealTypePicker";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
@@ -61,8 +61,8 @@ import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle
 import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
 import { parseRawIngredients } from "@suppr/shared/recipe-ingredients/parseRawIngredients";
 import { splitPastedIngredientLines } from "@suppr/shared/recipe-ingredients/splitPastedIngredientLines";
-import { flatMacroRowsFromVerifyJson } from "@suppr/shared/nutrition/verifyRecipeResponse";
-import { ingredientVerifyNeedsReview } from "@suppr/shared/nutrition/verifyConfidencePolicy";
+import { flatMacroRowsFromVerifyJson } from "@suppr/nutrition-core/verifyRecipeResponse";
+import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
 
 let ImagePicker: typeof import("expo-image-picker") | null = null;
 try {

@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import {
   BARCODE_FREE_PAYWALL_CHIP,
   BARCODE_FREE_PAYWALL_CHIP_TEST_ID,
-} from "@suppr/shared/nutrition/barcodeFreePromise";
+} from "@suppr/nutrition-core/barcodeFreePromise";
 import {
   getPaywallTrustChips,
   PAYWALL_TRUST_SECURE_CHECKOUT,

@@ -1,4 +1,4 @@
 export {
   refreshAdaptiveTdeeForUser,
   scheduleAdaptiveTdeeRefresh,
-} from "@suppr/shared/nutrition/refreshAdaptiveTdee";
+} from "@suppr/nutrition-core/refreshAdaptiveTdee";

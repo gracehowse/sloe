@@ -21,7 +21,7 @@ import {
   classifyConfidence,
   isLowConfidence,
   type AiLoggedItem,
-} from "@suppr/shared/nutrition/aiLogging";
+} from "@suppr/nutrition-core/aiLogging";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { SearchResultConfidenceChip } from "@/components/ui/SearchResultConfidenceChip";
 import Badge from "./Badge";

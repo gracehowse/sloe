@@ -51,7 +51,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";

@@ -61,7 +61,7 @@ import {
   type CustomFood,
   type CustomFoodServing,
   type MacroBasis,
-} from "@suppr/shared/nutrition/customFoods";
+} from "@suppr/nutrition-core/customFoods";
 // ENG-748 #15 (2026-05-27) — density-aware "1 cup → grams" converter for
 // custom-food entry. Reuses the shared, sourced density table + conversion
 // math (no invented densities); only converts when the food's density is
@@ -69,7 +69,7 @@ import {
 import {
   isVolumeUnit,
   volumeToGrams,
-} from "@suppr/shared/nutrition/volumeToGrams";
+} from "@suppr/nutrition-core/volumeToGrams";
 import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
 
 /** F-156 PR-1 — AsyncStorage key for the user's last-chosen macro basis. */

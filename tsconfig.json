@@ -26,6 +26,12 @@
     "paths": {
       "@/*": [
         "src/*"
+      ],
+      "@suppr/nutrition-core": [
+        "src/lib/nutrition-core/index.ts"
+      ],
+      "@suppr/nutrition-core/*": [
+        "src/lib/nutrition-core/*"
       ]
     },
     "plugins": [

@@ -9,7 +9,7 @@ import { useAccent } from "@/context/theme";
 import {
   buildWhyThisNumber,
   type WhyThisNumberInput,
-} from "@suppr/shared/nutrition/whyThisNumber";
+} from "@suppr/nutrition-core/whyThisNumber";
 
 /**
  * WhyThisNumberSheet — "Why this number?" tap-to-explain sheet for the

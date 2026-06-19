@@ -27,7 +27,7 @@ import {
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import type { PlanTemplate } from "@suppr/shared/nutrition/planTemplates";
+import type { PlanTemplate } from "@suppr/nutrition-core/planTemplates";
 
 type Mode = "save" | "list";
 

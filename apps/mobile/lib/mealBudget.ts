@@ -1,1 +1,1 @@
-export * from "@suppr/shared/nutrition/mealBudget";
+export * from "@suppr/nutrition-core/mealBudget";

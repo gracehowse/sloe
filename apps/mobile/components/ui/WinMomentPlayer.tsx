@@ -62,7 +62,7 @@ import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import {
   STREAK_WIN_SUBHEAD,
   showStreakMilestoneDisplay,
-} from "@suppr/shared/nutrition/winMomentStreakCopy";
+} from "@suppr/nutrition-core/winMomentStreakCopy";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 

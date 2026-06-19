@@ -12,7 +12,7 @@ import { Radius, Spacing } from "@/constants/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import type { EditorDbGoal } from "@suppr/shared/nutrition/goalEditorPace";
+import type { EditorDbGoal } from "@suppr/nutrition-core/goalEditorPace";
 
 export const GOAL_OPTIONS: { value: EditorDbGoal; label: string; desc: string }[] = [
   { value: "cut", label: "Lose weight", desc: "Eat in a deficit" },

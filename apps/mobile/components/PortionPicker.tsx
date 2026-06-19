@@ -20,7 +20,7 @@ import {
   stepperStep,
   switchUnit,
   unitLabel,
-} from "@suppr/shared/nutrition/portionPicker";
+} from "@suppr/nutrition-core/portionPicker";
 
 /**
  * PortionPicker — Lose It! / MFP-style amount + unit selector. Replaces

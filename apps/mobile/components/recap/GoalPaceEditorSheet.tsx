@@ -53,7 +53,7 @@ import {
   SAFETY_ACK_TITLE,
   SAFETY_ACK_CONFIRM_LABEL,
   safetyAckBody,
-} from "@suppr/shared/nutrition/goalEditorPace";
+} from "@suppr/nutrition-core/goalEditorPace";
 
 import { useGoalPaceEditor } from "./useGoalPaceEditor";
 import { GoalPaceSlider } from "./GoalPaceSlider";

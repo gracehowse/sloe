@@ -84,17 +84,17 @@ import { probeHealthAccess } from "@/lib/healthSync";
 import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
 import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
-import { saveWeekStartDay } from "@suppr/shared/nutrition/weekStartDayClient";
+import { saveWeekStartDay } from "@suppr/nutrition-core/weekStartDayClient";
 import {
   MEAL_SLOT_PRESET_OPTIONS,
   parseUserMealSlotConfig,
   type MealSlotPreset,
-} from "@suppr/shared/nutrition/userMealSlotConfig";
+} from "@suppr/nutrition-core/userMealSlotConfig";
 import { parsePantryStaples } from "@suppr/shared/planning/pantryStaples";
 import {
   normalizeWeekSummaryMode,
   type WeekSummaryMode,
-} from "@suppr/shared/nutrition/weekSummaryWindow";
+} from "@suppr/nutrition-core/weekSummaryWindow";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { saveDisplayName } from "@suppr/shared/account/displayName";
 import { track, isFeatureEnabled } from "@/lib/analytics";
@@ -110,7 +110,7 @@ import {
   parseTrackingExtras,
   serializeTrackingExtras,
   type TrackingExtras,
-} from "@suppr/shared/nutrition/trackingExtras";
+} from "@suppr/nutrition-core/trackingExtras";
 import { getMyHousehold } from "@suppr/shared/household/householdClient";
 import {
   presetFromShareLunch,

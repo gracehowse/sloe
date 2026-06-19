@@ -31,7 +31,7 @@ vi.mock("../../lib/supabase", () => ({
 /* eslint-disable import/first -- deferred until after the supabase vi.mock above */
 import { searchFoods } from "../../lib/verifyRecipe";
 import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
-import { genericFoodMicrosPer100g } from "@suppr/shared/nutrition/genericFoodMicros";
+import { genericFoodMicrosPer100g } from "@suppr/nutrition-core/genericFoodMicros";
 /* eslint-enable import/first */
 
 beforeEach(() => {

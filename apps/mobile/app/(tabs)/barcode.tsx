@@ -35,14 +35,14 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/auth";
 import { dateKeyFromDate, newMealId, type JournalMeal } from "@/lib/nutritionJournal";
 import { buildNutritionEntryRow } from "@/lib/nutritionEntryRow";
-import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
-import { checkScaledLogPlausibility } from "@suppr/shared/nutrition/macroPlausibility";
-import { scaleCaffeineAlcohol } from "@suppr/shared/nutrition/scaleCaffeineAlcoholForGrams";
+import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
+import { checkScaledLogPlausibility } from "@suppr/nutrition-core/macroPlausibility";
+import { scaleCaffeineAlcohol } from "@suppr/nutrition-core/scaleCaffeineAlcoholForGrams";
 import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
 import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } from "@/lib/barcodePortionMemory";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { ServingStepper } from "@/components/food-log/ServingStepper";
-import { fallbackSlotFromTimeOfDay } from "@suppr/shared/nutrition/recipeJournalSlot";
+import { fallbackSlotFromTimeOfDay } from "@suppr/nutrition-core/recipeJournalSlot";
 
 export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();

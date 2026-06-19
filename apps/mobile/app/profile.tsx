@@ -42,7 +42,7 @@ import {
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { recordGoalHistory } from "@suppr/shared/nutrition/goalHistory";
+import { recordGoalHistory } from "@suppr/nutrition-core/goalHistory";
 import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
 import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
 

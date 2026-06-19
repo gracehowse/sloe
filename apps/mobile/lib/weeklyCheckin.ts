@@ -33,4 +33,4 @@ export {
   type WeeklyCheckinContentInput,
   type WeeklyCheckinDecision,
   type WeeklyCheckinGateInput,
-} from "@suppr/shared/nutrition/weeklyCheckin";
+} from "@suppr/nutrition-core/weeklyCheckin";

@@ -31,8 +31,8 @@ import {
   parseTimersInStep,
   formatTimer as formatTimerShared,
   type ParsedTimer,
-} from "@suppr/shared/nutrition/recipeTimers";
-import { createSavedMeal } from "@suppr/shared/nutrition/savedMeals";
+} from "@suppr/nutrition-core/recipeTimers";
+import { createSavedMeal } from "@suppr/nutrition-core/savedMeals";
 import {
   COOK_SCALE_PRESETS,
   clampCookScale,
@@ -40,13 +40,13 @@ import {
   cookScaleStorageKey,
   formatCookScaleLabel,
   scaleAmountText,
-} from "@suppr/shared/nutrition/recipeScale";
+} from "@suppr/nutrition-core/recipeScale";
 import {
   formatCookHistoryPreview,
   insertCookHistory,
   listRecentCookHistory,
   type CookHistoryRow,
-} from "@suppr/shared/nutrition/recipeCookHistoryClient";
+} from "@suppr/nutrition-core/recipeCookHistoryClient";
 import {
   COOK_HISTORY_KEY_PREFIX,
   COOK_NOTE_MAX_LEN,

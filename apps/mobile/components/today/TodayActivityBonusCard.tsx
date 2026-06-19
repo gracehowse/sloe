@@ -13,7 +13,7 @@ import { SupprCard } from "@/components/ui/SupprCard";
 import {
   weekSummaryHeading,
   type WeekSummaryMode,
-} from "@suppr/shared/nutrition/weekSummaryWindow";
+} from "@suppr/nutrition-core/weekSummaryWindow";
 import {
   buildTdeeExplainerCopy,
   calculateBMR,
@@ -24,8 +24,8 @@ import {
   buildMaintenancePopoverCopy,
   type MaintenanceConfidence,
   type MaintenanceSource,
-} from "@suppr/shared/nutrition/resolveMaintenance";
-import { weekDeficitToKg } from "@suppr/shared/nutrition/maintenanceChain";
+} from "@suppr/nutrition-core/resolveMaintenance";
+import { weekDeficitToKg } from "@suppr/nutrition-core/maintenanceChain";
 import {
   NET_ENERGY_CHIP_BG,
   NET_ENERGY_CHIP_LABEL,
@@ -34,7 +34,7 @@ import {
   netEnergyKcalUnit,
   netEnergyMarkerFraction,
   netEnergySubline,
-} from "@suppr/shared/nutrition/netEnergyBalance";
+} from "@suppr/nutrition-core/netEnergyBalance";
 import {
   TODAY_HEALTH_CONNECT_ROUTE,
   WEEKLY_ROLLING_DENOMINATOR_HINT,
@@ -43,7 +43,7 @@ import {
   ACTIVITY_BUDGET_DISCOVER_BODY,
   ACTIVITY_BUDGET_DISCOVER_CTA,
   ACTIVITY_BUDGET_DISCOVER_TITLE,
-} from "@suppr/shared/nutrition/activityBudgetDiscoverability";
+} from "@suppr/nutrition-core/activityBudgetDiscoverability";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 

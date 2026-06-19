@@ -23,8 +23,8 @@ import {
   averageConfidence,
   isLowConfidence,
   type AiLoggedItem,
-} from "@suppr/shared/nutrition/aiLogging";
-import type { ParseMealDescriptionResult } from "@suppr/shared/nutrition/parseMealDescription";
+} from "@suppr/nutrition-core/aiLogging";
+import type { ParseMealDescriptionResult } from "@suppr/nutrition-core/parseMealDescription";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 

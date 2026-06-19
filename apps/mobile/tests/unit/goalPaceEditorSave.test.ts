@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   recomputeTargetsFromProfile,
-} from "@suppr/shared/nutrition/recomputeTargetsForActivity";
-import { persistRecomputedTargets } from "@suppr/shared/nutrition/persistRecomputedTargets";
+} from "@suppr/nutrition-core/recomputeTargetsForActivity";
+import { persistRecomputedTargets } from "@suppr/nutrition-core/persistRecomputedTargets";
 import { mapPaceToPreset } from "@suppr/shared/onboarding/persist";
 import {
   paceChanged,
@@ -10,7 +10,7 @@ import {
   parseWeightInputToKg,
   parseHeightInputToCm,
   type EditorDbGoal,
-} from "@suppr/shared/nutrition/goalEditorPace";
+} from "@suppr/nutrition-core/goalEditorPace";
 import { lbToKg, feetInchesToCm } from "@suppr/shared/units/imperial";
 
 /**

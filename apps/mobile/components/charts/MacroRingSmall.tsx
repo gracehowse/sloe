@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 

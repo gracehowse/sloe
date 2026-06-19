@@ -8,7 +8,7 @@
  * do not delete coverage to chase a faster local run without discussion.
  */
 import { describe, it, expect } from "vitest";
-import { generateSmartPlan, type SimpleRecipe } from "@suppr/shared/nutrition/mealPlanAlgo";
+import { generateSmartPlan, type SimpleRecipe } from "@suppr/nutrition-core/mealPlanAlgo";
 
 const recipes: SimpleRecipe[] = [
   { id: "r1", title: "Oats", calories: 350, protein: 12, carbs: 55, fat: 8, fiberG: 6 },

@@ -12,4 +12,4 @@
 export {
   barcodeConfidenceTier,
   type BarcodeConfidenceTier,
-} from "@suppr/shared/nutrition/barcodeConfidence";
+} from "@suppr/nutrition-core/barcodeConfidence";

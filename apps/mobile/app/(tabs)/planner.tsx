@@ -38,7 +38,7 @@ import {
 } from "@suppr/shared/household/shoppingScope";
 import { dateKeyFromDate, newMealId, type JournalMeal } from "@/lib/nutritionJournal";
 import { buildNutritionEntryRow } from "@/lib/nutritionEntryRow";
-import { snapshotDailyTargetIfMissing } from "@suppr/shared/nutrition/dailyTargetSnapshot";
+import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
 import { fetchPlannedMealMicros } from "@suppr/shared/planning/plannedMealMicros";
 import {
   Check,
@@ -88,7 +88,7 @@ import {
   recipeSlotFitScore,
   type PlannerTargets,
 } from "@/lib/mealPlanAlgo";
-import { isMealPlanPlaceholderLikeTitle } from "@suppr/shared/nutrition/portionMultiplier";
+import { isMealPlanPlaceholderLikeTitle } from "@suppr/nutrition-core/portionMultiplier";
 import {
   generateShoppingListFromRecipeEntriesAsync,
   shoppingListIngredientMultiplier,
@@ -103,9 +103,9 @@ import {
   SHOPPING_LIST_OUT_OF_SYNC_STORAGE_KEY,
   SHOPPING_LIST_PLAN_START_STORAGE_KEY,
 } from "@suppr/shared/planning/shoppingListMeta";
-import { shouldShowRecipeRemovedBadge } from "@suppr/shared/nutrition/recipeRemovedBadge";
-import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
-import { planSlotAimKcal } from "@suppr/shared/nutrition/mealSlotAim";
+import { shouldShowRecipeRemovedBadge } from "@suppr/nutrition-core/recipeRemovedBadge";
+import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/nutrition-core/coerceRecipeMacrosForPlanning";
+import { planSlotAimKcal } from "@suppr/nutrition-core/mealSlotAim";
 import { EmptyMealSlotAimLine } from "@/components/EmptyMealSlotRow";
 import {
   findPlanDayIdForCalendarDate,
@@ -122,8 +122,8 @@ import {
   planWeekHeadlineTone,
   type PlanWeekHeadlineTone,
 } from "@suppr/shared/planning/planWeekSummary";
-import { formatPlannedMealKcalMacrosLine } from "@suppr/shared/nutrition/plannedMealDisplay";
-import { formatMacro } from "@suppr/shared/nutrition/formatMacro";
+import { formatPlannedMealKcalMacrosLine } from "@suppr/nutrition-core/plannedMealDisplay";
+import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 import {
   enrichPlanMealsFiber,
   planMealFiberG,
@@ -142,18 +142,18 @@ import {
   markLeftoversOnSwap,
   moveMealInPlan,
   type LeftoverAwareMeal,
-} from "@suppr/shared/nutrition/leftoversPlanner";
+} from "@suppr/nutrition-core/leftoversPlanner";
 import {
   buildTemplateFromWeek,
   applyTemplateToWeek,
   type PlanTemplate,
-} from "@suppr/shared/nutrition/planTemplates";
+} from "@suppr/nutrition-core/planTemplates";
 import {
   createPlanTemplate,
   deletePlanTemplate,
   listPlanTemplates,
-} from "@suppr/shared/nutrition/planTemplatesClient";
-import { normaliseMealSlot } from "@suppr/shared/nutrition/mealSlots";
+} from "@suppr/nutrition-core/planTemplatesClient";
+import { normaliseMealSlot } from "@suppr/nutrition-core/mealSlots";
 import {
   isSameCalendarDay,
   resolvePlanSlotIconKey,

@@ -24,8 +24,8 @@
  *      PostgREST upsert column set can never become heterogeneous.
  */
 import { newMealId, type JournalMeal } from "@/lib/nutritionJournal";
-import { canonicalNutritionEntrySource } from "@suppr/shared/nutrition/canonicalNutritionEntrySource";
-import { nutritionEntryDateKeyAndEatenAt } from "@suppr/shared/nutrition/mealEatenAt";
+import { canonicalNutritionEntrySource } from "@suppr/nutrition-core/canonicalNutritionEntrySource";
+import { nutritionEntryDateKeyAndEatenAt } from "@suppr/nutrition-core/mealEatenAt";
 
 /** Matches the `nutrition_entries` id format; non-matching ids get re-minted. */
 export const NUTRITION_ENTRY_UUID_RE =

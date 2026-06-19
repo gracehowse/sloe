@@ -16,7 +16,7 @@ import {
   activityLevelPreviewKcal,
   type ActivityLevel,
   type Sex,
-} from "@suppr/shared/nutrition/tdee";
+} from "@suppr/nutrition-core/tdee";
 import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";

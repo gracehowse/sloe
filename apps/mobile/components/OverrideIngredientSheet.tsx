@@ -26,7 +26,7 @@ import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import {
   sanitizeOverrideInput,
   type IngredientOverride,
-} from "@suppr/shared/nutrition/ingredientOverrides";
+} from "@suppr/nutrition-core/ingredientOverrides";
 
 type Theme = {
   text: string;
