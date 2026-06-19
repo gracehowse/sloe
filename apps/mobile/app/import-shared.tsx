@@ -821,12 +821,19 @@ export default function ImportSharedScreen() {
     void runImageImport();
   }, [isFreeTier, router, runImageImport]);
 
+  // ENG-1211 — each method tile must DELIVER its method, not drop the user on a
+  // generic screen. `/create-recipe` already owns all three affordances (the
+  // paste-list modal, the barcode scanner, and the photo picker). Mirror the
+  // existing `?autoPhoto=1` handshake (see create-recipe.tsx) so the paste tile
+  // opens the paste-list modal on arrival and the scan tile opens the barcode
+  // scanner on arrival. `/recipe/create` (the guided wizard) had no paste
+  // affordance, which is why the previous "Paste text" target dead-ended.
   const onPasteTextImportPress = useCallback(() => {
-    router.push("/recipe/create" as any);
+    router.push("/create-recipe?autoPaste=1" as any);
   }, [router]);
 
   const onScanImportPress = useCallback(() => {
-    router.push("/create-recipe" as any);
+    router.push("/create-recipe?autoBarcode=1" as any);
   }, [router]);
 
   useEffect(() => {
