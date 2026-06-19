@@ -322,16 +322,14 @@ Public-share page (`app/recipe/[id]/page.tsx`) full Sloe reskin (cream, plum ser
 
 **Tracker delta (post-merge):** 🟡 143→141 (L2 + L4); 🟣 15→14 (296:33 email step removed from Figma-Only build list — wall + unit pin shipped); Recipes partial 10→9; Import partial 8→7. Parent epics ENG-896/897/898 stay **In Progress**.
 
-<<<<<<< HEAD
 ### Batch 7 — action sheet 2×2 grid (ENG-898 partial, 2026-06-19)
 
 - `CreateRecipeActionSheetGrid` — Julienne 2×2 tiles (link primary, photo Pro lock, PDF coming-soon, manual) + scratch row. Flag: `create_recipe_action_sheet_grid_v1` (default-on; legacy ActionRow list in `else`).
 - Unit: `createRecipeActionSheetGrid.test.ts`, `createRecipeActionSheetProGate.test.ts`.
 - **Tracker delta:** Import partial 7→6 (action sheet grid closed; `/import web` + `/import-shared` + paste-link pill remain).
-=======
+
 ### Batch 8 — caption preview parity (ENG-898 partial, 2026-06-19, PR #527)
 
 - Web `ImportCaptionPreviewCard` + `import_caption_preview_v1` flag (OFF default).
 - Mobile captionPreview photo/link escape hatches.
 - Unit: `importCaptionPreviewParity.test.ts`.
->>>>>>> fe06aded (docs: tracker batch 8 caption preview (ENG-898))
