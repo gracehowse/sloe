@@ -36,6 +36,20 @@ line(
 );
 line(has(supabaseUrl), "NEXT_PUBLIC_SUPABASE_URL");
 line(has(serviceRole), "SUPABASE_SERVICE_ROLE_KEY");
+
+const fatSecretTier = (process.env.FATSECRET_TIER ?? "").trim().toLowerCase();
+const fatSecretTierOk = fatSecretTier === "premier";
+line(
+  fatSecretTierOk,
+  "FATSECRET_TIER",
+  fatSecretTierOk ? "premier" : fatSecretTier ? `${fatSecretTier} (expected premier)` : "unset (defaults to basic in code)",
+);
+if (!fatSecretTierOk) {
+  console.log(
+    "[--] FatSecret: set FATSECRET_TIER=premier in Vercel prod+preview for autocomplete/categories endpoints (ENG-1146 CI hygiene).",
+  );
+}
+
 const privacyEmail = process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim();
 console.log(
   `[--] NEXT_PUBLIC_PRIVACY_EMAIL — ${
