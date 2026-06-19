@@ -23,6 +23,7 @@ import {
   formatCookScaleLabel,
 } from "../../lib/nutrition/recipeScale.ts";
 import { scaleStepText } from "../../lib/nutrition/scaleStepText.ts";
+import { cookStepIngredientChips } from "../../lib/recipe-ingredients/stepIngredients.ts";
 import {
   COOK_HISTORY_NOTE_MAX_LEN,
   formatCookHistoryPreview,
@@ -186,6 +187,27 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
   const stepTimers: ParsedTimer[] = useMemo(
     () => parseTimersInStep(currentStepCleaned),
     [currentStepCleaned],
+  );
+
+  /** ENG-944 — "For this step" chips. Match the current step's text
+   *  against the recipe's structured ingredients (pure matcher) and
+   *  render the relevant amount+name beneath the instruction so the cook
+   *  never scrolls back up to re-check a quantity. Gated behind
+   *  `cook_step_ingredients_v1` (default-OFF) — flag-off resolves to an
+   *  empty list so nothing renders. Quantities run through
+   *  `stepIngredientChipLabel(..., scaleFactor)` so chips respect the
+   *  active serving scale, exactly like the step text. Matched off the
+   *  RAW cleaned step (not the scaled text) so token matching is stable
+   *  as the user changes scale. */
+  const stepIngredientChips = useMemo(
+    () =>
+      cookStepIngredientChips(
+        isFeatureEnabled("cook_step_ingredients_v1"),
+        currentStepCleaned,
+        ingredients,
+        scaleFactor,
+      ),
+    [currentStepCleaned, ingredients, scaleFactor],
   );
 
   /** Hydrate the persisted scale factor for this (userId, recipeId).
@@ -861,6 +883,32 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               <div className="max-w-lg text-center mb-8">
                 {renderedStep}
               </div>
+
+              {/* ENG-944 — "For this step" ingredient chips. Quiet uppercase
+                  tracked caption (matches the "Last time" label treatment)
+                  over calm serif amount+name chips — no loud accent fills.
+                  Renders nothing (no empty label) when the matcher finds no
+                  ingredient for this step or the flag is OFF. */}
+              {stepIngredientChips.length > 0 && (
+                <div
+                  className="max-w-lg w-full mb-8 flex flex-col items-center gap-2"
+                  data-testid="cook-step-ingredients"
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    For this step
+                  </p>
+                  <ul className="flex flex-wrap justify-center gap-2">
+                    {stepIngredientChips.map((chip) => (
+                      <li
+                        key={chip.key}
+                        className="px-3 py-1 rounded-full bg-muted/60 border border-border font-serif text-sm text-foreground"
+                      >
+                        {chip.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Navigation */}
               <div className="flex items-center gap-4">

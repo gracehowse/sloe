@@ -154,6 +154,19 @@ function flagForceOverride(flag: string): boolean | null {
  *
  *  Stage E (onboarding v2) uses this to decide whether to redirect
  *  /onboarding → /onboarding/v2. */
+/**
+ * Default-OFF feature flags (NOT in `REDESIGN_DEFAULT_ON`). Listed here so
+ * the flag is discoverable on both platforms even though "registration" is
+ * really just "the callsite calls `isFeatureEnabled(...)` and the flag is
+ * absent from every default-on set". A flag not in `REDESIGN_DEFAULT_ON`
+ * and not live in PostHog resolves to `false` — the safe dark default.
+ *
+ * - `cook_step_ingredients_v1` (ENG-944) — renders the calm "For this step"
+ *   ingredient chip row under each cook-mode instruction. DEFAULT-OFF;
+ *   ramp via PostHog once visually validated on device. Mirror of the
+ *   mobile note in `apps/mobile/lib/analytics.ts`.
+ */
+
 /** Redesign 2026 flag set — the new design is the DEFAULT in every build
  *  (Grace 2026-06-01: "turn everything on; never flag-gate again"). These
  *  resolve ON regardless of PostHog rollout state; the PostHog rows survive
