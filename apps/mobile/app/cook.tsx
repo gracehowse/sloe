@@ -26,6 +26,8 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { CookLogServingsSheet } from "@/components/cook/CookLogServingsSheet";
+import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
+import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   parseTimersInStep,
@@ -200,6 +202,9 @@ export default function CookModeScreen() {
   }, [ingredientsJson]);
 
   const stepIngredientsEnabled = isFeatureEnabled("cook_step_ingredients_v1");
+  /** ENG-947 — horizontal swipe + quiet segment indicator. Default-OFF
+   *  so cook mode stays byte-identical until ramped. */
+  const cookSwipeStepsEnabled = isFeatureEnabled("cook_swipe_steps_v1");
 
   const [current, setCurrent] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
@@ -582,8 +587,7 @@ export default function CookModeScreen() {
           text: "Next step",
           style: "default",
           onPress: () => {
-            stopTimer();
-            if (current < totalSteps) setCurrent((c) => c + 1);
+            if (current < totalSteps) setStepIndex(current + 1, "timer");
           },
         },
       ],
@@ -662,22 +666,6 @@ export default function CookModeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDone]);
 
-  const goNext = () => {
-    stopTimer();
-    if (current < totalSteps) {
-      void Haptics.selectionAsync();
-      setCurrent((c) => c + 1);
-    }
-  };
-
-  const goPrev = () => {
-    stopTimer();
-    if (current > 0) {
-      void Haptics.selectionAsync();
-      setCurrent((c) => c - 1);
-    }
-  };
-
   const startTimer = () => {
     setTimerElapsed(0);
     setTimerDurationSec(0); // explicit stopwatch mode
@@ -722,6 +710,36 @@ export default function CookModeScreen() {
     setTimerElapsed(0);
     setTimerDurationSec(0);
     setTimerDoneFired(false);
+  };
+
+  const setStepIndex = useCallback(
+    (nextIndex: number, via: "button" | "swipe" | "timer") => {
+      stopTimer();
+      if (nextIndex < 0 || nextIndex > totalSteps || nextIndex === current) {
+        return;
+      }
+      void Haptics.selectionAsync();
+      if (via === "swipe") {
+        track(AnalyticsEvents.cook_step_swiped, {
+          direction: nextIndex > current ? "next" : "prev",
+          platform: "ios",
+        });
+      }
+      setCurrent(nextIndex);
+    },
+    [current, totalSteps, recipeId],
+  );
+
+  const goNext = () => {
+    if (current < totalSteps) {
+      setStepIndex(current + 1, "button");
+    }
+  };
+
+  const goPrev = () => {
+    if (current > 0) {
+      setStepIndex(current - 1, "button");
+    }
   };
 
   /** Append a cook session to the per-recipe history in AsyncStorage.
@@ -1408,17 +1426,27 @@ export default function CookModeScreen() {
         </View>
       </View>
 
-      {/* Progress bar */}
-      <View style={styles.progressBar}>
-        <Animated.View
-          style={[
-            styles.progressBarFilled,
-            {
-              width: progressWidth,
-            },
-          ]}
-        />
-      </View>
+      {/* Progress — segment indicator when swipe flag is ON; legacy
+          filled bar otherwise (byte-identical pre-ENG-947). */}
+      {cookSwipeStepsEnabled ? (
+        <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.sm }}>
+          <CookStepPageIndicator
+            currentIndex={Math.min(current, Math.max(totalSteps - 1, 0))}
+            totalSteps={totalSteps}
+          />
+        </View>
+      ) : (
+        <View style={styles.progressBar}>
+          <Animated.View
+            style={[
+              styles.progressBarFilled,
+              {
+                width: progressWidth,
+              },
+            ]}
+          />
+        </View>
+      )}
 
       {/* Voice handsfree banner — only renders when the toggle is ON.
           v1 transparency: tells the user voice listening isn't live
@@ -1464,6 +1492,13 @@ export default function CookModeScreen() {
       )}
 
       {!isDone ? (
+        <CookStepSwipeSurface
+          enabled={cookSwipeStepsEnabled}
+          stepIndex={current}
+          stepCount={totalSteps}
+          onBeforeStepChange={stopTimer}
+          onStepIndexChange={(index) => setStepIndex(index, "swipe")}
+        >
         <View style={styles.stepContainer}>
           {/* Recipe scale segmented control (Paprika parity, 2026-04-30).
               Tap a preset to rewrite the visible amounts in the step
@@ -1602,6 +1637,7 @@ export default function CookModeScreen() {
             />
           </View>
         </View>
+        </CookStepSwipeSurface>
       ) : (
         /* Done state — calmer completion card (audit P1, 2026-04-30).
            Replaces the static 🎉 hero with a useful "what next" surface:

@@ -30,6 +30,7 @@ import {
   cookTextScaleStorageKey,
   stepCookTextScale,
 } from "../../lib/nutrition/cookTextScale.ts";
+import { resolveCookStepSwipe } from "../../lib/nutrition/cookStepSwipe.ts";
 import { scaleStepText } from "../../lib/nutrition/scaleStepText.ts";
 import { cookStepIngredientChips } from "../../lib/recipe-ingredients/stepIngredients.ts";
 import {
@@ -300,6 +301,11 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
    *  is NOT re-applied (so flipping the flag off is a clean revert). */
   const textSizeControlEnabled = isFeatureEnabled("cook_text_size_control_v1");
 
+  /** ENG-947 — touch swipe between steps. Default-OFF; web already has
+   *  the segment indicator — this flag only gates swipe behaviour. */
+  const cookSwipeStepsEnabled = isFeatureEnabled("cook_swipe_steps_v1");
+  const touchStartXRef = useRef<number | null>(null);
+
   /** ENG-949 — hydrate the per-user cook text scale from localStorage.
    *  Keyed on the user, so it follows the cook across recipes. Falls
    *  back to 1× silently. Gated on the flag so flag-off renders default. */
@@ -521,6 +527,57 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       setCurrentStep((s) => s - 1);
     }
   }, [currentStep]);
+
+  const commitCookStepSwipe = useCallback(
+    (direction: "next" | "prev") => {
+      try {
+        track(AnalyticsEvents.cook_step_swiped, {
+          direction,
+          platform: "web",
+        });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+      if (direction === "next") goNext();
+      else goPrev();
+    },
+    [goNext, goPrev],
+  );
+
+  const handleCookTouchStart = useCallback(
+    (clientX: number) => {
+      if (!cookSwipeStepsEnabled || isDone) return;
+      touchStartXRef.current = clientX;
+    },
+    [cookSwipeStepsEnabled, isDone],
+  );
+
+  const handleCookTouchEnd = useCallback(
+    (clientX: number) => {
+      if (!cookSwipeStepsEnabled || isDone) return;
+      const startX = touchStartXRef.current;
+      touchStartXRef.current = null;
+      if (startX == null) return;
+      const translationX = clientX - startX;
+      const viewportWidth =
+        typeof window !== "undefined" ? window.innerWidth : 390;
+      const direction = resolveCookStepSwipe({
+        translationX,
+        velocityX: 0,
+        viewportWidth,
+        stepIndex: currentStep,
+        stepCount: totalSteps,
+      });
+      if (direction !== "none") commitCookStepSwipe(direction);
+    },
+    [
+      commitCookStepSwipe,
+      cookSwipeStepsEnabled,
+      currentStep,
+      isDone,
+      totalSteps,
+    ],
+  );
 
   const toggleIngredientChecked = useCallback((idx: number) => {
     setCheckedIngredients((prev) => {
@@ -883,7 +940,25 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       {/* Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Main Step Area */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto">
+        <div
+          className="flex-1 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto"
+          onTouchStart={
+            cookSwipeStepsEnabled
+              ? (event) => {
+                  const touch = event.changedTouches[0] ?? event.touches[0];
+                  if (touch) handleCookTouchStart(touch.clientX);
+                }
+              : undefined
+          }
+          onTouchEnd={
+            cookSwipeStepsEnabled
+              ? (event) => {
+                  const touch = event.changedTouches[0];
+                  if (touch) handleCookTouchEnd(touch.clientX);
+                }
+              : undefined
+          }
+        >
           {!isDone ? (
             <>
               {/* Scaled-for-N-servings banner — only when the user has
