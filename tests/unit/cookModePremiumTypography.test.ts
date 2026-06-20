@@ -22,7 +22,8 @@ describe("ENG-605 cook mode premium typography", () => {
   });
 
   it("fires selection haptic on step next/prev", () => {
-    expect(COOK).toMatch(/goNext[\s\S]{0,200}Haptics\.selectionAsync/);
-    expect(COOK).toMatch(/goPrev[\s\S]{0,200}Haptics\.selectionAsync/);
+    expect(COOK).toMatch(/setStepIndex[\s\S]{0,240}Haptics\.selectionAsync/);
+    expect(COOK).toMatch(/goNext[\s\S]{0,120}setStepIndex/);
+    expect(COOK).toMatch(/goPrev[\s\S]{0,120}setStepIndex/);
   });
 });
