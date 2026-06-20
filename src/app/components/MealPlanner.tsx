@@ -70,7 +70,7 @@ import {
 import { PlanMoveMealDialog } from "./suppr/plan-move-meal-dialog.tsx";
 import { PlanPortionDialog, planMealDisplayMultiplier } from "./suppr/plan-portion-dialog.tsx";
 import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog.tsx";
-import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions.ts";
+import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions";
 import {
   DropdownMenu,
   DropdownMenuContent,

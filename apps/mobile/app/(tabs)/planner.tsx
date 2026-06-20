@@ -78,6 +78,8 @@ import { useHaptics } from "@/hooks/useHaptics";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
+import { PlanSmartSuggestionsCard } from "@/components/planner/PlanSmartSuggestionsCard";
+import { usePlanSmartSuggestions } from "@/hooks/usePlanSmartSuggestions";
 import { SupprButton } from "@/components/ui/SupprButton";
 import {
   generateSmartPlan,
@@ -636,6 +638,9 @@ export default function PlannerScreen() {
   // legacy all-or-nothing regenerate. Override in sim via
   // `EXPO_PUBLIC_FLAG_FORCE_PLAN_MEAL_LOCK_V1=true`.
   const mealLockEnabled = isFeatureEnabled("plan_meal_lock_v1");
+  // ENG-1193 / ENG-1131 — smart recipe suggestions on Plan (shared scorer +
+  // save CTA). Same flag as web `plan_web_parity_v1` (default-on).
+  const planWebParity = isFeatureEnabled("plan_web_parity_v1");
   // ENG-1098 "Calm mode" — quiet the per-slot aim numbers (rows still render;
   // only the "Aim ~X kcal" line is hidden). Shared key with web + Today.
   const [calmMode] = useCalmMode();
@@ -1416,6 +1421,14 @@ export default function PlannerScreen() {
     () => (plan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
     [plan],
   );
+  const { suggestions: planSmartSuggestions } = usePlanSmartSuggestions({
+    enabled: planWebParity,
+    userId,
+    mealPlan: plan,
+    planHasRealMeals,
+    savedRecipes,
+    discoverRecipes,
+  });
   // ENG-956 — locked-meal count drives the "Refresh the rest" label + the
   // keep-locked regenerate path. Always 0 when the flag is off.
   const lockedMealCount = useMemo(
@@ -3990,6 +4003,10 @@ export default function PlannerScreen() {
             ) : null}
           </View>
         )}
+
+        {planWebParity && planHasRealMeals ? (
+          <PlanSmartSuggestionsCard userId={userId} suggestions={planSmartSuggestions} />
+        ) : null}
 
         {/* Shopping list CTA card removed 2026-04-20 per Grace's
             review — "This week" summary card already carries the

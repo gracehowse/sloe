@@ -124,6 +124,8 @@ export const AnalyticsEvents = {
    *  (full re-roll). Payload: `{ lockedCount, rerolledCount, days, platform }`. */
   plan_regenerated_partial: "plan_regenerated_partial",
   shopping_list_generated: "shopping_list_generated",
+  /** Planner overlap suggestions — user saved a suggested recipe from the Plan tab.
+   *  Payload: `{ recipeId, platform: "web" | "mobile" }`. */
   smart_suggestion_saved: "smart_suggestion_saved",
   /** ENG-978/979 — user shared the rich recipe card (import success or recipe detail).
    *  Payload: `{ surface: "import_success" | "recipe_detail", platform, hasCreatorCredit }`. */

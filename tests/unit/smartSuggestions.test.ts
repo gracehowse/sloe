@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   collectPlanIngredientKeys,
   computeSmartRecipeSuggestions,
-} from "../../src/lib/planning/smartSuggestions.ts";
+} from "../../src/lib/planning/smartSuggestions";
 
 describe("computeSmartRecipeSuggestions", () => {
   it("returns pool recipes that share ingredients with the plan, excluding meals already on the plan", () => {
