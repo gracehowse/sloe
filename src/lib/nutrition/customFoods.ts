@@ -453,3 +453,22 @@ export function customFoodToPrimaryServing(
     fat: roundTo(per100g.fat * factor, 1),
   };
 }
+
+/** Quiet reuse copy shown whenever a remembered photo/voice correction
+ *  is applied from the user's personal food bank (ENG-976). Editorial,
+ *  not gamified — the sous-chef who remembers how you like things. */
+export const LEARNED_CUSTOM_FOOD_REUSE_CUE =
+  "Using your numbers for this one";
+
+/** True when a custom-food row was auto-upserted from a photo- or
+ *  voice-log correction rather than hand-entered via Create Custom Food. */
+export function isLearnedCustomFoodSource(
+  source: CustomFoodSource | undefined,
+): boolean {
+  return source === "photo_correction" || source === "voice_correction";
+}
+
+/** Convenience wrapper for a full `CustomFood` row. */
+export function isLearnedCustomFood(food: Pick<CustomFood, "source">): boolean {
+  return isLearnedCustomFoodSource(food.source);
+}

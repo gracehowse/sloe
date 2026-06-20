@@ -117,6 +117,9 @@ import {
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
+  isLearnedCustomFood,
+  isLearnedCustomFoodSource,
+  LEARNED_CUSTOM_FOOD_REUSE_CUE,
   type CustomFood,
 } from "@suppr/nutrition-core/customFoods";
 import CreateCustomFoodSheet, {
@@ -463,6 +466,8 @@ export default function FoodSearchPanel({
     customFoodId?: string;
     fatSecretFoodId?: string;
     imageUrl?: string | null;
+    /** ENG-976 — remembered photo/voice correction reuse cue. */
+    showLearnedReuseCue?: boolean;
   } | null>(null);
   const [previewEatenAtTime, setPreviewEatenAtTime] = useState("12:00");
   const previewEatenAtEnabled =
@@ -868,6 +873,7 @@ export default function FoodSearchPanel({
           quantity: defaultQty,
           quantityText: String(defaultQty),
           customFoodId: food.id,
+          showLearnedReuseCue: isLearnedCustomFood(food),
         });
       } else {
         setLoadingKey(null);
@@ -1030,6 +1036,7 @@ export default function FoodSearchPanel({
               name: updated.brand ? `${updated.name} · ${updated.brand}` : updated.name,
               macrosPer100g: customFoodToMacrosPer100g(updated),
               portions: buildCustomFoodPortions(updated),
+              showLearnedReuseCue: isLearnedCustomFood(updated),
             }
           : prev,
       );
@@ -1446,6 +1453,14 @@ export default function FoodSearchPanel({
               ) : (
                 <Text style={styles.per100g}>Tap for nutrition info</Text>
               )}
+              {customFood && isLearnedCustomFoodSource(customFood.source) ? (
+                <Text
+                  testID="learned-custom-food-cue"
+                  style={{ fontSize: 11, fontStyle: "italic", color: colors.textSecondary, marginTop: 2 }}
+                >
+                  {LEARNED_CUSTOM_FOOD_REUSE_CUE}
+                </Text>
+              ) : null}
             </View>
             {headline.mode !== "placeholder" && !isLoading ? (
               <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{headline.headlineKcal}</Text>
@@ -1752,6 +1767,14 @@ export default function FoodSearchPanel({
             ) : (
               <Text style={styles.per100g}>Tap for nutrition info</Text>
             )}
+            {customFood && isLearnedCustomFoodSource(customFood.source) ? (
+              <Text
+                testID="learned-custom-food-cue"
+                style={{ fontSize: 11, fontStyle: "italic", color: colors.textSecondary, marginTop: 2 }}
+              >
+                {LEARNED_CUSTOM_FOOD_REUSE_CUE}
+              </Text>
+            ) : null}
           </View>
           {headline.mode !== "placeholder" && !isLoading ? (
             <View style={{ alignItems: "flex-end" }}>
@@ -1869,6 +1892,15 @@ export default function FoodSearchPanel({
           padding: Spacing.xl, gap: Spacing.md,
         }}>
           <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>{preview.name}</Text>
+
+          {preview.showLearnedReuseCue ? (
+            <Text
+              testID="learned-custom-food-cue"
+              style={{ fontSize: 13, fontStyle: "italic", color: colors.textSecondary }}
+            >
+              {LEARNED_CUSTOM_FOOD_REUSE_CUE}
+            </Text>
+          ) : null}
 
           {originalDescription ? (
             <Text style={{ fontSize: 13, fontStyle: "italic", color: colors.textSecondary }}>
