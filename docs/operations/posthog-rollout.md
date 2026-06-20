@@ -10,6 +10,34 @@ retired.
 
 ## Active flags
 
+### `cook_swipe_steps_v1` (ENG-947)
+
+| Property | Value |
+| --- | --- |
+| Flag ID | _create in PostHog before ramp_ |
+| Type | Boolean |
+| Platforms | Web + Mobile (iOS) |
+| Owner | Grace |
+| Decision doc | [2026-06-20-cook-mode-swipe-steps](../decisions/2026-06-20-cook-mode-swipe-steps.md) |
+
+Gates **horizontal swipe between cook steps** plus the quiet segment page
+indicator on mobile (replacing the legacy filled progress bar). Flag ON → swipe
+with selection haptic + segment indicator on `/cook` and the recipe cook
+overlay; touch swipe on web (segment indicator already existed). Flag OFF →
+buttons-only navigation; mobile keeps the legacy progress bar — byte-identical
+to pre-ENG-947.
+
+Default OFF until the PostHog flag is created and ramped. Adoption is
+queryable via `cook_step_swiped` (`{ direction, platform }`).
+
+#### Ramp schedule
+
+| Phase | Action | Why |
+| --- | --- | --- |
+| Pre-ramp | Validate swipe + indicator in iOS sim + web mobile-web width | Structural UI ships validated, never blind. |
+| Ramp | Flip flag → 100% | One tester (Grace); no cohort split needed. |
+| Cleanup | After 2 weeks at 100% with no regression | Remove the gate; keep the row as an emergency kill switch. |
+
 ### `cook_text_size_control_v1` (ENG-949)
 
 | Property | Value |

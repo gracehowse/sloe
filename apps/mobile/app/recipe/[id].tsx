@@ -1,10 +1,13 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
+import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
 import { formatMultiplier } from "@/components/today/PortionStepper";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
 import {
   ActivityIndicator,
   Alert,
@@ -267,6 +270,9 @@ export default function RecipeDetailScreen() {
   // Flag-off keeps the overlay byte-identical and skips re-applying a
   // previously-persisted size, so flipping it off is a clean revert.
   const cookTextSizeControlEnabled = isFeatureEnabled("cook_text_size_control_v1");
+  /** ENG-947 — horizontal swipe + quiet segment indicator in the cook
+   *  overlay. Default-OFF for byte-identical revert. */
+  const cookSwipeStepsEnabled = isFeatureEnabled("cook_swipe_steps_v1");
 
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
   const [loading, setLoading] = useState(true);
@@ -386,6 +392,27 @@ export default function RecipeDetailScreen() {
       });
     },
     [userId],
+  );
+
+  const changeCookStep = useCallback(
+    (nextIndex: number, via: "button" | "swipe" = "button") => {
+      setCookStep((prev) => {
+        if (nextIndex < 0 || nextIndex === prev) return prev;
+        void Haptics.selectionAsync();
+        if (via === "swipe") {
+          try {
+            track(AnalyticsEvents.cook_step_swiped, {
+              direction: nextIndex > prev ? "next" : "prev",
+              platform: "ios",
+            });
+          } catch {
+            /* analytics fire-and-forget */
+          }
+        }
+        return nextIndex;
+      });
+    },
+    [],
   );
 
   const [userTargets, setUserTargets] = useState({ calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
@@ -2414,6 +2441,20 @@ export default function RecipeDetailScreen() {
                     </Text>
                   </View>
                 )}
+                {cookSwipeStepsEnabled ? (
+                  <View style={{ marginBottom: Spacing.md }}>
+                    <CookStepPageIndicator
+                      currentIndex={cookStep}
+                      totalSteps={instructionSteps.length}
+                    />
+                  </View>
+                ) : null}
+                <CookStepSwipeSurface
+                  enabled={cookSwipeStepsEnabled}
+                  stepIndex={cookStep}
+                  stepCount={instructionSteps.length}
+                  onStepIndexChange={(index) => changeCookStep(index, "swipe")}
+                >
                 <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
                   Step {cookStep + 1} of {instructionSteps.length}
                 </Text>
@@ -2483,13 +2524,14 @@ export default function RecipeDetailScreen() {
                     </View>
                   </View>
                 )}
+                </CookStepSwipeSurface>
               </View>
               <View style={{ flexDirection: "row", gap: Spacing.md }}>
                 <SupprButton
                   variant="ghost"
                   style={{ flex: 1 }}
                   label="Previous"
-                  onPress={() => setCookStep((s) => Math.max(0, s - 1))}
+                  onPress={() => changeCookStep(Math.max(0, cookStep - 1), "button")}
                   disabled={cookStep === 0}
                 />
                 {cookStep < instructionSteps.length - 1 ? (
@@ -2500,7 +2542,7 @@ export default function RecipeDetailScreen() {
                     variant="primary"
                     style={{ flex: 1 }}
                     label="Next"
-                    onPress={() => setCookStep((s) => s + 1)}
+                    onPress={() => changeCookStep(cookStep + 1, "button")}
                   />
                 ) : (
                   <Pressable

@@ -116,11 +116,10 @@ describe("Haptic commit-rebalance — canonical commit primitives encode Medium"
 
 describe("Haptic commit-rebalance — raw expo-haptics ratchet (ENG-1016)", () => {
   // Recorded ceiling after ENG-1016's consolidation pass. Census on main was
-  // ~112; this pass removed 8 scattered Today log haptics → 104. The ceiling
-  // is intentionally set AT the post-pass count: route new commit taps through
-  // the primitives instead of adding raw calls. Lowering it (more deletions)
-  // is always welcome; raising it requires a deliberate edit + rationale.
-  const RAW_HAPTIC_CEILING = 104;
+  // ~112; this pass removed 8 scattered Today log haptics → 104. ENG-947 adds
+  // one raw selection haptic in `changeCookStep` (recipe cook overlay step nav
+  // previously had none) → 105. Route further commit taps through primitives.
+  const RAW_HAPTIC_CEILING = 105;
 
   it("does not grow the number of raw Haptics call-sites in production code", () => {
     const count = countRawHapticCallSites();
