@@ -105,7 +105,7 @@ describe("F-74 / F-103 — per-meal micros canonical (no double-count)", () => {
 // --- Static pin: log paths must not bump / decrement the ledger ----------
 
 const LOG_PATHS_NO_BUMP = [
-  "apps/mobile/app/(tabs)/index.tsx",
+  "apps/mobile/app/(tabs)/_today/TodayScreen.tsx",
   "apps/mobile/app/(tabs)/barcode.tsx",
   "apps/mobile/app/(tabs)/planner.tsx",
   "apps/mobile/app/recipe/[id].tsx",

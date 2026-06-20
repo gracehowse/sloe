@@ -19,7 +19,7 @@ const WEB_JOURNAL_HOOK = readFileSync(
   "utf8",
 );
 const MOBILE_TODAY = readFileSync(
-  resolve(__dirname, "../../apps/mobile/app/(tabs)/index.tsx"),
+  resolve(__dirname, "../../apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
 const MOBILE_RECIPE_DETAIL = readFileSync(

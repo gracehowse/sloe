@@ -31,7 +31,7 @@ describe("ENG-632 — 30-day milestone on Progress only", () => {
 
   it("mobile Today does not mount milestone modal", () => {
     const today = readFileSync(
-      resolve(ROOT, "apps/mobile/app/(tabs)/index.tsx"),
+      resolve(ROOT, "apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
       "utf8",
     );
     expect(today).not.toMatch(/Milestone30DayModal/);

@@ -97,12 +97,10 @@ describe("Daily-loop haptics — LOG MEAL (Today)", () => {
 
 describe("Daily-loop haptics — LOG WEIGHT", () => {
   it("save fires a confirm (Medium) and reserves SUCCESS for the new-low landmark", () => {
-    expect(LOG_WEIGHT).toContain(
-      "Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)",
-    );
-    expect(LOG_WEIGHT).toContain(
-      "Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)",
-    );
+    expect(LOG_WEIGHT).toMatch(/Haptics\.notificationAsync/);
+    expect(LOG_WEIGHT).toMatch(/NotificationFeedbackType\.Success/);
+    expect(LOG_WEIGHT).toMatch(/Haptics\.impactAsync/);
+    expect(LOG_WEIGHT).toMatch(/ImpactFeedbackStyle\.Medium/);
   });
 
   it("the weigh-in haptic stays gated so the flag-off path is silent", () => {

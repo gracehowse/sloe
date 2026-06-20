@@ -84,7 +84,6 @@ describe("net-carbs lens round-trip (P2-26 + P3-30 + polish A.2)", () => {
   describe("Tracker macro tile (web)", () => {
     it("today-dashboard-macro-tiles.tsx imports the shared helpers and uses them on the carbs tile", () => {
       const src = read("src/app/components/suppr/today-dashboard-macro-tiles.tsx");
-      // Optional `.ts`/`.tsx` extension on the import path — some files use it explicitly.
       expect(src).toMatch(/from\s+["'][^"']*nutrition\/netCarbs(?:\.tsx?)?["']/);
       expect(src).toMatch(/carbsLabel\(/);
       expect(src).toMatch(/netCarbsForRow\(/);
@@ -101,13 +100,13 @@ describe("net-carbs lens round-trip (P2-26 + P3-30 + polish A.2)", () => {
     it("TodayDashboardMacroTiles.tsx imports + uses the shared helpers", () => {
       const src = read("apps/mobile/components/today/TodayDashboardMacroTiles.tsx");
       // Optional `.ts`/`.tsx` extension on the import path — some files use it explicitly.
-      expect(src).toMatch(/from\s+["'][^"']*nutrition\/netCarbs(?:\.tsx?)?["']/);
+      expect(src).toMatch(/from\s+["']@suppr\/nutrition-core\/netCarbs["']/);
       expect(src).toMatch(/carbsLabel\(/);
       expect(src).toMatch(/netCarbsForRow\(/);
     });
 
     it("the Tracker (mobile) fetches the lens flag and passes it down", () => {
-      const src = read("apps/mobile/app/(tabs)/index.tsx");
+      const src = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
       expect(src).toMatch(/net_carbs_lens_enabled/);
       expect(src).toMatch(/setNetCarbsLensEnabled/);
       expect(src).toMatch(/netCarbsLensEnabled=\{netCarbsLensEnabled\}/);
@@ -117,7 +116,6 @@ describe("net-carbs lens round-trip (P2-26 + P3-30 + polish A.2)", () => {
   describe("Recipe Detail (web)", () => {
     it("imports the helpers and uses them on the carbs row", () => {
       const src = read("src/app/components/RecipeDetail.tsx");
-      // Optional `.ts`/`.tsx` extension on the import path — some files use it explicitly.
       expect(src).toMatch(/from\s+["'][^"']*nutrition\/netCarbs(?:\.tsx?)?["']/);
       expect(src).toMatch(/carbsLabel\(/);
       expect(src).toMatch(/netCarbsForRow\(/);
@@ -128,7 +126,7 @@ describe("net-carbs lens round-trip (P2-26 + P3-30 + polish A.2)", () => {
     it("imports the helpers and uses them on the carbs row", () => {
       const src = read("apps/mobile/app/recipe/[id].tsx");
       // Optional `.ts`/`.tsx` extension on the import path — some files use it explicitly.
-      expect(src).toMatch(/from\s+["'][^"']*nutrition\/netCarbs(?:\.tsx?)?["']/);
+      expect(src).toMatch(/from\s+["']@suppr\/nutrition-core\/netCarbs["']/);
       expect(src).toMatch(/carbsLabel\(/);
       expect(src).toMatch(/netCarbsForRow\(/);
     });
@@ -151,7 +149,7 @@ describe("net-carbs lens round-trip (P2-26 + P3-30 + polish A.2)", () => {
     // screen's existing focus-refresh path so a tab return picks
     // up the new value.
     it("Today tab fetches net_carbs_lens_enabled inside loadProfileTargets", () => {
-      const src = read("apps/mobile/app/(tabs)/index.tsx");
+      const src = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
       // The select string passed to loadProfileTargets must include the
       // column so the focus-effect refresh repropagates the toggle.
       const loadProfileTargetsBlock =

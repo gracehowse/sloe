@@ -95,7 +95,7 @@ describe("ENG-1140 load-bearing CTA render behaviour", () => {
   });
 
   it("end-fast CTA renders from persisted active fast and commits an ended session on click", async () => {
-    const active = { start: "2026-06-19T10:00:00.000Z", end: null };
+    const active = { start: new Date(Date.now() - 3600_000).toISOString(), end: null };
     mockMaybeSingle.mockResolvedValue({
       data: { fasting_sessions: [active], fasting_window: "16:8" },
     });

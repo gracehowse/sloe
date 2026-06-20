@@ -43,7 +43,7 @@ const WEB_PROFILE = readFileSync(
   "utf8",
 );
 const MOBILE_TODAY = readFileSync(
-  resolve(ROOT, "apps/mobile/app/(tabs)/index.tsx"),
+  resolve(ROOT, "apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
 const MOBILE_TARGETS = readFileSync(

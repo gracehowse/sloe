@@ -54,7 +54,7 @@ const INVENTORY: Site[] = [
   // insert in this file (~2543) is the copy/duplicate path which clones
   // already-validated rows; safe by provenance but co-located with the
   // guarded insert in the same file, so the inline guard pattern matches.
-  { file: "apps/mobile/app/(tabs)/index.tsx", reason: "guarded-inline" },
+  { file: "apps/mobile/app/(tabs)/_today/TodayScreen.tsx", reason: "guarded-inline" },
 
   // addRecipeToTodayJournal — P0-3 added inline guard before insert.
   { file: "apps/mobile/app/recipe/[id].tsx", reason: "guarded-inline" },

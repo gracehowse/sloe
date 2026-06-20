@@ -37,7 +37,7 @@ describe("Round 2 — text / casing fixes", () => {
     //   (2) the chip label "All nutrients" exists inside
     //       TodayDashboardMacroTiles.tsx
     //   (3) count-appended variant does not exist
-    const HOST = read("apps/mobile/app/(tabs)/index.tsx");
+    const HOST = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
     expect(HOST).not.toMatch(/View all nutrients/);
     expect(HOST).not.toMatch(/dayNutrientDetailRowsWithoutMacroDupes\.length\}\)/);
 
@@ -178,7 +178,7 @@ describe("Round 2 — design-tokens documentation", () => {
 
 describe("Round 2 follow-through — D25 inline strip empty-state gate (superseded by Phase 2 / B1.2)", () => {
   it("TodayQuickLogStrip is no longer rendered on Today (Phase 2 / B1.2 canonical Today)", () => {
-    const SRC = read("apps/mobile/app/(tabs)/index.tsx");
+    const SRC = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
     // Phase 2 / B1.2 (2026-04-27, D-2026-04-27-15): the canonical
     // Today removes the QuickLogStrip from the composition root in
     // favour of the persistent <LogFab>. This test was previously

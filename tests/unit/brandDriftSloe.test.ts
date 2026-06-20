@@ -161,7 +161,7 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
 
     // Mailboxes and the live import crawler user-agent are infrastructure,
     // not user-facing product brand claims.
-    expect(terms).toContain("support@suppr-club.com");
+    expect(terms).toContain("support@getsloe.com");
     expect(terms).toContain("SupprBot");
     expect(privacy).toContain("privacy@suppr-club.com");
     expect(privacy).toContain("dmca@suppr-club.com");

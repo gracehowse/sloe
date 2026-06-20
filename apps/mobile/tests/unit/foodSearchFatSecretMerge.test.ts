@@ -27,6 +27,10 @@ const WEB_PANEL_PATH = resolve(
   __dirname,
   "../../../../src/app/components/food-search/FoodSearchPanel.tsx",
 );
+const WEB_MERGE = resolve(
+  __dirname,
+  "../../../../src/lib/nutrition/foodSearchMerge.ts",
+);
 const FATSECRET_SEARCH_ROUTE_PATH = resolve(
   __dirname,
   "../../../../app/api/fatsecret/search/route.ts",
@@ -39,6 +43,7 @@ const FATSECRET_FOOD_ROUTE_PATH = resolve(
 const VERIFY_SRC = readFileSync(VERIFY_PATH, "utf8");
 const PANEL_SRC = readFileSync(PANEL_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PANEL_PATH, "utf8");
+const WEB_MERGE_SRC = readFileSync(WEB_MERGE, "utf8");
 const FATSECRET_SEARCH_ROUTE_SRC = readFileSync(FATSECRET_SEARCH_ROUTE_PATH, "utf8");
 const FATSECRET_FOOD_ROUTE_SRC = readFileSync(FATSECRET_FOOD_ROUTE_PATH, "utf8");
 
@@ -155,10 +160,10 @@ describe("Lane-A — web/mobile parity", () => {
     expect(WEB_SRC).toMatch(/Promise\.race/);
   });
 
-  it("web mergeAndDedup takes a fatsecret slot + applies shared trust weight", () => {
-    expect(WEB_SRC).toMatch(/fatsecret:\s*SearchResult\[\]\s*=\s*\[\]/);
-    expect(WEB_SRC).toMatch(/foodSearchTrustWeight/);
-    expect(WEB_SRC).toMatch(/source:\s*r\._source/);
+  it("web merge pipeline applies shared rank/trust via mergeFoodSearchRows (ENG-1113)", () => {
+    expect(WEB_SRC).toMatch(/mergeFoodSearchRows\(/);
+    expect(WEB_MERGE_SRC).toMatch(/foodSearchRankScore/);
+    expect(WEB_MERGE_SRC).toMatch(/isBareGenericNounRow/);
   });
 
   it("web on-tap fetches /api/fatsecret/food via fetchFatSecretDetail", () => {

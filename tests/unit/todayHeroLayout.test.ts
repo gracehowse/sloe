@@ -15,7 +15,7 @@ const WEB_RING = readFileSync(
   "utf8",
 );
 const MOBILE = readFileSync(
-  resolve(ROOT, "apps/mobile/app/(tabs)/index.tsx"),
+  resolve(ROOT, "apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
 const COPY = readFileSync(resolve(ROOT, "src/lib/copy/today.ts"), "utf8");

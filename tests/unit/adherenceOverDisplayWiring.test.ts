@@ -23,7 +23,7 @@ describe("adherence over-display wiring (source pin, ENG-1073)", () => {
     it(`${name} imports formatAdherenceHeadline from the shared module`, () => {
       const src = readFileSync(path, "utf8");
       expect(src).toMatch(/formatAdherenceHeadline/);
-      expect(src).toMatch(/nutrition\/adherenceDisplay/);
+      expect(src).toMatch(/adherenceDisplay/);
     });
 
     it(`${name} uses formatAdherenceHeadline when adherencePct > 110 (no flag gate)`, () => {

@@ -35,6 +35,7 @@ const WEB_FOOD_SEARCH = resolve(
 const WEB_DATE_HEADER = resolve(__dirname, "../../../../src/app/components/suppr/today-date-header.tsx");
 const SHARED_CONFIDENCE = resolve(__dirname, "../../../../src/lib/nutrition/macroSplitConfidence.ts");
 const SHARED_TITLE = resolve(__dirname, "../../../../src/lib/recipe/normaliseDisplayTitle.ts");
+const SHARED_MERGE = resolve(__dirname, "../../../../src/lib/nutrition/foodSearchMerge.ts");
 
 const SRC = {
   mealsSection: readFileSync(MOBILE_TODAY_MEALS, "utf8"),
@@ -48,6 +49,7 @@ const SRC = {
   webDateHeader: readFileSync(WEB_DATE_HEADER, "utf8"),
   confidence: readFileSync(SHARED_CONFIDENCE, "utf8"),
   title: readFileSync(SHARED_TITLE, "utf8"),
+  merge: readFileSync(SHARED_MERGE, "utf8"),
 };
 
 describe("F-80 — meal-card header survives `Log usual` chip", () => {
@@ -209,22 +211,19 @@ describe("F-91 — name-based natural-serving inference for verified USDA rows",
 });
 
 describe("F-89 + F-90 — bare-noun + low-relevance filters applied at merge", () => {
-  it("mobile mergeResults imports and applies isBareGenericNounRow + isLowRelevanceNonVerifiedRow", () => {
-    expect(SRC.verify).toMatch(/import\s*\{[^}]*isBareGenericNounRow[^}]*\}/s);
-    expect(SRC.verify).toMatch(/isBareGenericNounRow\(r\.name,\s*isVerified\)/);
-    expect(SRC.verify).toMatch(/isLowRelevanceNonVerifiedRow\(r\._relevance,\s*isVerified\)/);
+  it("mobile mergeResults routes through shared mergeFoodSearchRows (ENG-1113)", () => {
+    expect(SRC.verify).toMatch(/mergeFoodSearchRows\(/);
+    expect(SRC.verify).toMatch(/from "@suppr\/shared\/nutrition\/foodSearchMerge"/);
   });
 
-  it("web mergeAndDedup applies the same filters", () => {
-    expect(SRC.webSearch).toMatch(/import\s*\{[^}]*isBareGenericNounRow[^}]*\}/s);
-    expect(SRC.webSearch).toMatch(/isBareGenericNounRow\(r\.name,\s*isVerified\)/);
-    // After the FoodSearchPanel extraction the `_rel` field is widened
-    // to `unknown` on the panel's local type, so the call site casts
-    // (`r._rel as number`). Same semantics — gate the row on relevance
-    // when the source isn't verified.
-    expect(SRC.webSearch).toMatch(
-      /isLowRelevanceNonVerifiedRow\(r\._rel(?:\s+as\s+number)?,\s*isVerified\)/,
-    );
+  it("shared merge module applies isBareGenericNounRow + isLowRelevanceNonVerifiedRow", () => {
+    expect(SRC.merge).toMatch(/isBareGenericNounRow\(row\.name, isVerified\)/);
+    expect(SRC.merge).toMatch(/isLowRelevanceNonVerifiedRow\(row\._relevance, isVerified\)/);
+  });
+
+  it("web FoodSearchPanel delegates merge to mergeFoodSearchRows", () => {
+    expect(SRC.webSearch).toMatch(/mergeFoodSearchRows\(/);
+    expect(SRC.merge).toMatch(/isBareGenericNounRow/);
   });
 });
 
