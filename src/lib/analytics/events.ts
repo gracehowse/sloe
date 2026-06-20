@@ -257,6 +257,10 @@ export const AnalyticsEvents = {
    *  Fires once per committed swipe (not on button nav). Same event
    *  name web ↔ mobile. */
   cook_step_swiped: "cook_step_swiped",
+  /** ENG-946 — user toggled an ingredient checklist row. Payload:
+   *  `{ recipeId, index, checked, surface, platform }`. Session-local
+   *  state only; fires on each toggle. Same event name web ↔ mobile. */
+  cook_ingredient_checked: "cook_ingredient_checked",
   /** User saved a per-cook history row from the completion card
    *  (Paprika parity, 2026-04-30). Payload:
    *    `{ recipeId, scale, rating, hasNote, durationSec }`.

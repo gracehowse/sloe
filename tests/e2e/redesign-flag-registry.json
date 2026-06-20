@@ -2,8 +2,8 @@
   "_doc": "Canonical registry for the 2026 redesign visual-flag capture gate (docs/planning/2026-06-20-redesign-execution-protocol.md §3; enforcement ENG-1221). The capture spec (tests/e2e/screenshots/redesign-flags-capture.spec.ts) and the capture:redesign:* scripts READ capturedWeb from here, so there is no array to drift. `npm run check:redesign-flags` asserts the buckets are disjoint and that EVERY isFeatureEnabled(...) literal in code is classified — a new flag fails CI until placed. capturedWeb = web/both flags that change look/layout/motion → forced ON in the WEB Playwright capture sweep so flag-ON pixels are verified. capturedMobile = mobile-only visual flags → must be verified by a MOBILE capture sweep (Maestro/sim); NOT in the web spec (no web surface). Wiring a mobile capture that consumes this list is tracked in ENG-1221. excluded = logic / capability gate / behavior / no redesign-look surface / test-and-doc artifacts. Classification is judgment per flag (platform from a code scan); errors are low-consequence and reversible — a mis-excluded flag just isn't captured (status quo), a mis-captured one is harmlessly forced on. Review and re-bucket freely.",
   "capturedWeb": [
     "card_cohesion_white_v1",
+    "cook_ingredient_checklist_v1",
     "cook_step_ingredients_v1",
-    "cook_swipe_steps_v1",
     "cook_swipe_steps_v1",
     "cook_text_size_control_v1",
     "design_system_brandmark",
@@ -53,6 +53,7 @@
   ],
   "capturedMobile": [
     "brand_frost_secondary",
+    "cook_ingredient_checklist_v1",
     "cook_swipe_steps_v1",
     "create_recipe_action_sheet_grid_v1",
     "deeplink_skeletons",

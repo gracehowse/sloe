@@ -69,6 +69,7 @@ import {
 import { saveVerifiedIngredientsRpc } from "../../lib/nutrition/saveVerifiedIngredientsRpc.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { CookIngredientChecklist } from "./cook/CookIngredientChecklist.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -380,6 +381,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   // lockstep with mobile's unconditional `useCardElevation` soft lift.)
   const redesignColours = isFeatureEnabled("design_system_colours");
   const winFeedback = isFeatureEnabled("redesign_winmoment");
+  /** ENG-946 — tap-to-check ingredient checklist on the Ingredients tab. */
+  const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
   // Commit-CTA press payoff (web analog of the mobile confirm haptic). A subtle
   // active-state scale + a brief brightness lift on press, gated on
   // `redesign_winmoment`. Flag-off keeps the existing hover-only transition.
@@ -2552,6 +2555,26 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
               Matching each line against the food database (USDA / Open Food Facts / FatSecret / Edamam when configured)…
             </p>
+          ) : null}
+          {cookIngredientChecklistEnabled && ingredients.length > 0 ? (
+            <div className="mb-4">
+              <CookIngredientChecklist
+                recipeId={String(recipe.id)}
+                items={ingredients.map((ingredient) => {
+                  const amountLine = ingredient.amount
+                    ? formatIngredientAmountUnit(
+                        formatIngredientAmount((parseFloat(ingredient.amount) * servings) / baseServings),
+                        ingredient.unit,
+                      )
+                    : ingredient.unit;
+                  return {
+                    name: cleanIngredientDisplayName(ingredient.name) || ingredient.name,
+                    amountLabel: amountLine || null,
+                  };
+                })}
+                surface="recipe_detail"
+              />
+            </div>
           ) : null}
           {/* Figma 332:2 — ingredient photo-card grid (mirrors the
               public-share + mobile detail). Each card is a white slab with a

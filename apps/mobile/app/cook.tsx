@@ -28,6 +28,7 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { CookLogServingsSheet } from "@/components/cook/CookLogServingsSheet";
 import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
 import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
+import { CookMiseEnPlace } from "@/components/cook/CookMiseEnPlace";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   parseTimersInStep,
@@ -47,6 +48,7 @@ import {
   cookStepIngredientChips,
   type StepMatchableIngredient,
 } from "@suppr/shared/recipe-ingredients/stepIngredients";
+import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
 import {
   formatCookHistoryPreview,
   insertCookHistory,
@@ -205,6 +207,10 @@ export default function CookModeScreen() {
   /** ENG-947 — horizontal swipe + quiet segment indicator. Default-OFF
    *  so cook mode stays byte-identical until ramped. */
   const cookSwipeStepsEnabled = isFeatureEnabled("cook_swipe_steps_v1");
+  /** ENG-946 — tap-to-check ingredient checklist + optional mise en place.
+   *  Default-OFF for byte-identical revert. */
+  const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
+  const [cookPhase, setCookPhase] = useState<"mise" | "steps">("steps");
 
   const [current, setCurrent] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
@@ -300,6 +306,37 @@ export default function CookModeScreen() {
       ),
     [stepIngredientsEnabled, stepIngredients, rawStepText, scale],
   );
+
+  /** ENG-946 — checklist rows for mise en place (scaled amounts). */
+  const checklistItems = useMemo(
+    () =>
+      stepIngredients.map((ing) => {
+        const numericAmount =
+          typeof ing.amount === "number"
+            ? ing.amount
+            : typeof ing.amount === "string"
+              ? Number.parseFloat(ing.amount)
+              : NaN;
+        const scaledAmount =
+          Number.isFinite(numericAmount) && scale !== 1
+            ? Math.round(numericAmount * scale * 100) / 100
+            : ing.amount;
+        const amountLabel =
+          scaledAmount != null || ing.unit
+            ? formatIngredientAmountUnit(scaledAmount, ing.unit)
+            : null;
+        return { name: ing.name, amountLabel };
+      }),
+    [stepIngredients, scale],
+  );
+
+  useEffect(() => {
+    if (cookIngredientChecklistEnabled && checklistItems.length > 0) {
+      setCookPhase("mise");
+    } else {
+      setCookPhase("steps");
+    }
+  }, [recipeId, cookIngredientChecklistEnabled, checklistItems.length]);
 
   /** Parse durations out of the current step text. First match wins —
    *  if the step contains multiple ("simmer 10 minutes, then bake 25
@@ -1372,7 +1409,9 @@ export default function CookModeScreen() {
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Text style={styles.headerExit}>Exit</Text>
         </Pressable>
-        <Text style={styles.headerCounter}>Step {current + 1} of {totalSteps}</Text>
+        <Text style={styles.headerCounter}>
+          {cookPhase === "mise" ? "Gather ingredients" : `Step ${current + 1} of ${totalSteps}`}
+        </Text>
         {/* Right slot: Watch Original (when available) + voice
             handsfree toggle. Recime parity (2026-04-30) for watch-
             original; Paprika parity (2026-05-01) for the mic toggle.
@@ -1475,7 +1514,7 @@ export default function CookModeScreen() {
           how the previous cook went (Paprika parity, 2026-04-30). The
           first row gets the rich preview; the count of older rows is
           surfaced as a small subline. */}
-      {!isDone && recentHistory.length > 0 && (
+      {!isDone && recentHistory.length > 0 && cookPhase === "steps" && (
         <View style={styles.lastTimeCard}>
           <Text style={styles.lastTimeLabel}>Last time</Text>
           <Text style={styles.lastTimePreview}>
@@ -1491,7 +1530,14 @@ export default function CookModeScreen() {
         </View>
       )}
 
-      {!isDone ? (
+      {cookPhase === "mise" ? (
+        <CookMiseEnPlace
+          recipeId={recipeId}
+          recipeTitle={title}
+          items={checklistItems}
+          onContinueToSteps={() => setCookPhase("steps")}
+        />
+      ) : !isDone ? (
         <CookStepSwipeSurface
           enabled={cookSwipeStepsEnabled}
           stepIndex={current}

@@ -10,6 +10,34 @@ retired.
 
 ## Active flags
 
+### `cook_ingredient_checklist_v1` (ENG-946)
+
+| Property | Value |
+| --- | --- |
+| Flag ID | _create in PostHog before ramp_ |
+| Type | Boolean |
+| Platforms | Web + Mobile (iOS) |
+| Owner | Grace |
+| Decision doc | [2026-06-20-cook-ingredient-checklist](../decisions/2026-06-20-cook-ingredient-checklist.md) |
+
+Gates **tap-to-check ingredient rows** (session-local, shared between recipe
+detail and cook mode) plus the optional **"Gather your ingredients"** mise en
+place screen before step 1. Flag ON → checklist on the Ingredients tab, mise
+screen on mobile cook entry, shared store on web cook sidebar. Flag OFF → no
+recipe-detail checklist, no mise screen; web cook sidebar keeps legacy local-only
+check state.
+
+Default OFF until ramped. Adoption via `cook_ingredient_checked`
+(`{ recipeId, index, checked, surface, platform }`).
+
+#### Ramp schedule
+
+| Phase | Action | Why |
+| --- | --- | --- |
+| Pre-ramp | Validate checklist + mise in iOS sim + web | Structural UI ships validated, never blind. |
+| Ramp | Flip flag → 100% | One tester (Grace). |
+| Cleanup | After 2 weeks at 100% with no regression | Remove gate; keep kill switch row. |
+
 ### `cook_swipe_steps_v1` (ENG-947)
 
 | Property | Value |

@@ -3,6 +3,8 @@ import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
 import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
+import { CookMiseEnPlace } from "@/components/cook/CookMiseEnPlace";
+import { CookIngredientChecklist } from "@/components/cook/CookIngredientChecklist";
 import { formatMultiplier } from "@/components/today/PortionStepper";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
@@ -94,6 +96,7 @@ import {
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
 import { scaleStepText } from "@suppr/nutrition-core/scaleStepText";
+import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
 import {
   canDecreaseCookTextScale,
   canIncreaseCookTextScale,
@@ -273,6 +276,9 @@ export default function RecipeDetailScreen() {
   /** ENG-947 — horizontal swipe + quiet segment indicator in the cook
    *  overlay. Default-OFF for byte-identical revert. */
   const cookSwipeStepsEnabled = isFeatureEnabled("cook_swipe_steps_v1");
+  /** ENG-946 — tap-to-check ingredient checklist + optional mise en place
+   *  in the cook overlay. Default-OFF for byte-identical revert. */
+  const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
 
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
   const [loading, setLoading] = useState(true);
@@ -336,6 +342,7 @@ export default function RecipeDetailScreen() {
   const lowConfidenceAutoNudgeShown = useRef<Set<string>>(new Set());
   const [cookMode, setCookMode] = useState(false);
   const [cookStep, setCookStep] = useState(0);
+  const [cookPhase, setCookPhase] = useState<"mise" | "steps">("steps");
   /** ENG-949 — per-user cook-mode text scale (A−/A+). Persisted to
    *  AsyncStorage keyed on the user (not the recipe), so the size
    *  preference follows the cook across every recipe. Default 1× keeps
@@ -1908,8 +1915,27 @@ export default function RecipeDetailScreen() {
     is_verified: ing.is_verified ?? null,
   }));
 
+  const ingredientChecklistItems = ingredientsForIngredientsTab.map((ing) => {
+    const scaledAmount =
+      ing.amount != null
+        ? Math.round(ing.amount * viewMultiplier * 100) / 100
+        : null;
+    return {
+      name: ing.name,
+      amountLabel:
+        scaledAmount != null || ing.unit
+          ? formatIngredientAmountUnit(scaledAmount, ing.unit)
+          : null,
+    };
+  });
+
   const openCookMode = () => {
     setCookStep(0);
+    setCookPhase(
+      cookIngredientChecklistEnabled && ingredientsForIngredientsTab.length > 0
+        ? "mise"
+        : "steps",
+    );
     setCookMode(true);
   };
 
@@ -2140,6 +2166,13 @@ export default function RecipeDetailScreen() {
           ) : null}
 
           {/* 6. Ingredients thumbnail grid. */}
+          {cookIngredientChecklistEnabled && ingredientChecklistItems.length > 0 ? (
+            <CookIngredientChecklist
+              recipeId={recipeId}
+              items={ingredientChecklistItems}
+              surface="recipe_detail"
+            />
+          ) : null}
           <RecipeIngredientGrid
             recipeId={recipeId}
             ingredients={gridIngredients}
@@ -2319,8 +2352,29 @@ export default function RecipeDetailScreen() {
             onRequestClose={() => {
               setCookMode(false);
               setCookStep(0);
+              setCookPhase("steps");
             }}
           >
+            {cookPhase === "mise" && cookIngredientChecklistEnabled ? (
+              <CookMiseEnPlace
+                recipeId={recipeId}
+                recipeTitle={recipe?.title}
+                items={ingredientsForIngredientsTab.map((ing) => {
+                  const scaledAmount =
+                    ing.amount != null
+                      ? Math.round(ing.amount * cookScaleFactor * 100) / 100
+                      : null;
+                  return {
+                    name: ing.name,
+                    amountLabel:
+                      scaledAmount != null || ing.unit
+                        ? formatIngredientAmountUnit(scaledAmount, ing.unit)
+                        : null,
+                  };
+                })}
+                onContinueToSteps={() => setCookPhase("steps")}
+              />
+            ) : (
             <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
               <View>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
@@ -2557,6 +2611,7 @@ export default function RecipeDetailScreen() {
                 )}
               </View>
             </View>
+            )}
           </Modal>
         );
       })()}
