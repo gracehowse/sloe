@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type ImageStyle, type StyleProp } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type ImageStyle, type StyleProp } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
@@ -24,7 +24,8 @@ import { useAuth } from "@/context/auth";
 import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
 import { supabase } from "@/lib/supabase";
 import { computeRecipeFitPercent } from "@suppr/nutrition-core/recipeFitPercent";
-import { DISCOVER_POPULAR_MIN_SAVES } from "@suppr/shared/recipes/fetchPublicRecipeSaveCounts";
+import { discoverQualifiesAsPopular } from "@suppr/shared/recipes/discoverPopularQualification";
+import { isSeedRecipeId } from "@suppr/shared/recipes/seedRecipesV2";
 import {
   DISCOVER_CATEGORY_PILLS,
   matchesRecipeCategory,
@@ -39,6 +40,8 @@ import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAc
 // hero card body for the full rationale).
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSkeleton";
+import { DiscoverClusterCarousels } from "@/components/discover/DiscoverClusterCarousels";
+import { SmartImage } from "@/components/ui/SmartImage";
 
 // ENG-921 (2026-06-07) — CATEGORY filter row per Figma `528:2`. The
 // "Following" pill (B5 Phase 2c follow-graph feature) is preserved as a
@@ -99,10 +102,11 @@ function DiscoverCoverImage({
   const trimmed = (uri ?? "").trim();
   if (!trimmed || broken) return <>{fallback}</>;
   return (
-    <Image
+    <SmartImage
       source={{ uri: trimmed }}
       style={style}
       resizeMode="cover"
+      recyclingKey={trimmed}
       accessibilityIgnoresInvertColors
       onError={() => setBroken(true)}
     />
@@ -124,10 +128,11 @@ function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
       }}
     >
       {showPhoto ? (
-        <Image
+        <SmartImage
           source={{ uri: trimmed }}
           style={{ width: "100%", height: "100%" }}
           resizeMode="cover"
+          recyclingKey={item.id}
           accessibilityIgnoresInvertColors
           onError={() => setBroken(true)}
         />
@@ -368,7 +373,7 @@ export default function DiscoverScreen() {
     // Discover-only signals; everything else routes through the shared
     // predicate (web ↔ mobile parity).
     if (category === "all") return true;
-    if (category === "trending") return (r.saves ?? r.savedCount ?? 0) >= DISCOVER_POPULAR_MIN_SAVES;
+    if (category === "trending") return discoverQualifiesAsPopular(r);
     if (category === "from-reels") {
       const sp = (r as { sourcePlatform?: string | null; source?: string | null }).sourcePlatform
         ?? (r as { source?: string | null }).source ?? null;
@@ -553,11 +558,14 @@ export default function DiscoverScreen() {
     [router, colors, heroColor, t.accent, targets, cardElevation],
   );
 
-  // 2026-05-03 — mobile Discover uses one layout for every filter:
-  // stacked hero cards ("Matches your day" + "More ideas"). Web still
-  // shows cuisine cluster carousels on the default "For You" view
-  // (`DiscoverFeed.tsx`); mobile dropped the carousel branch so
-  // switching pills does not swap between two different IA patterns.
+  // ENG-695 — cuisine cluster carousels on the default unfiltered view
+  // (web parity: `DiscoverFeed.tsx`). When carousels render, seeds are
+  // excluded from the flat hero/list below to avoid duplication.
+  const showClusterCarousels =
+    !search.trim() && category === "all" && !following;
+  const displayFiltered = showClusterCarousels
+    ? filtered.filter((r) => !isSeedRecipeId(r.id))
+    : filtered;
 
   // ── Compact list row — "More ideas" section. 40×40 icon-box on the
   // left, title + source·time in the middle, trailing kcal / P / C.
@@ -1029,7 +1037,7 @@ export default function DiscoverScreen() {
               </View>
             ) : null}
           </View>
-        ) : filtered.length === 0 ? (
+        ) : displayFiltered.length === 0 && !showClusterCarousels ? (
           <View style={{ paddingTop: 60, paddingBottom: 20, alignItems: "center", gap: 8 }}>
             {search.trim() ? (
               <Search size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
@@ -1045,6 +1053,9 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
+            {showClusterCarousels ? (
+              <DiscoverClusterCarousels recipes={recipes.filter((r) => isSeedRecipeId(r.id))} />
+            ) : null}
             {/* 2026-05-22 evening (Grace): editorial hero (overlay
                 title on top of full-bleed image) replaced with the
                 same MacroIconRow card style as the rest of the feed —
@@ -1054,6 +1065,8 @@ export default function DiscoverScreen() {
             {/* Gap-2 fix (2026-06-09): section headers Type.headline → Type.title
                 (24pt Newsreader serif) for editorial section-divider weight.
                 headers census 2026-06-10: ink colors.text → navPrimary. */}
+            {displayFiltered.length > 0 ? (
+            <>
             <Text
               style={{
                 ...Type.title,
@@ -1065,10 +1078,10 @@ export default function DiscoverScreen() {
             </Text>
             {/* Gap-3 fix (2026-06-09): hero-card vertical gap 12 → Spacing.md (16). */}
             <View style={{ gap: Spacing.md }}>
-              {filtered.slice(0, 3).map((r) => renderHeroCard(r))}
+              {displayFiltered.slice(0, 3).map((r) => renderHeroCard(r))}
             </View>
 
-            {filtered.length > 3 ? (
+            {displayFiltered.length > 3 ? (
               <>
                 {/* Gap-2 fix (2026-06-09): "More ideas" header Type.headline → Type.title.
                     headers census 2026-06-10: ink colors.text → navPrimary. */}
@@ -1097,10 +1110,12 @@ export default function DiscoverScreen() {
                       overflow: "hidden",
                     }}
                   >
-                    {filtered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                    {displayFiltered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
                   </View>
                 </View>
               </>
+            ) : null}
+            </>
             ) : null}
           </>
         )}

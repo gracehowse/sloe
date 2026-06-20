@@ -1052,6 +1052,56 @@ export type Database = {
           },
         ]
       }
+      nutrition_entry_ingredients: {
+        Row: {
+          calories: number | null
+          carbs: number | null
+          confidence: number | null
+          created_at: string
+          entry_id: string
+          fat: number | null
+          fiber_g: number | null
+          id: string
+          name: string
+          protein: number | null
+          source: string | null
+        }
+        Insert: {
+          calories?: number | null
+          carbs?: number | null
+          confidence?: number | null
+          created_at?: string
+          entry_id: string
+          fat?: number | null
+          fiber_g?: number | null
+          id?: string
+          name: string
+          protein?: number | null
+          source?: string | null
+        }
+        Update: {
+          calories?: number | null
+          carbs?: number | null
+          confidence?: number | null
+          created_at?: string
+          entry_id?: string
+          fat?: number | null
+          fiber_g?: number | null
+          id?: string
+          name?: string
+          protein?: number | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_entry_ingredients_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "nutrition_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           activity_burn_by_day: Json | null
@@ -1059,9 +1109,6 @@ export type Database = {
           adaptive_tdee: number | null
           adaptive_tdee_confidence: string | null
           adaptive_tdee_updated_at: string | null
-          measured_tdee: number | null
-          measured_tdee_confidence: string | null
-          measured_tdee_updated_at: string | null
           age: number | null
           avatar_url: string | null
           basal_burn_by_day: Json | null
@@ -1089,9 +1136,12 @@ export type Database = {
           last_weekly_checkin_decision: string | null
           last_weekly_checkin_shown_at: string | null
           last_weekly_recap_push_sent_at: string | null
-          measurement_system: string | null
+          meal_plan_slots: Json
           meal_slot_config: Json | null
-          pantry_staples: Json | null
+          measured_tdee: number | null
+          measured_tdee_confidence: string | null
+          measured_tdee_updated_at: string | null
+          measurement_system: string | null
           milestone_30_shown_at: string | null
           net_carbs_lens_enabled: boolean
           notification_prefs: Json
@@ -1099,6 +1149,7 @@ export type Database = {
           nutrition_strategy: string | null
           onboarding_completed: boolean | null
           pace_kg_per_week: number | null
+          pantry_staples: Json
           plan_pace: string | null
           prefer_activity_adjusted_calories: boolean | null
           pronouns: string | null
@@ -1113,10 +1164,10 @@ export type Database = {
           target_calories: number | null
           target_calories_set_at: string | null
           target_calories_source: string | null
-          target_fiber_source: string | null
           target_carbs: number | null
           target_fat: number | null
           target_fiber_g: number | null
+          target_fiber_source: string | null
           target_protein: number | null
           target_water_ml: number | null
           tracked_macros: Json
@@ -1136,9 +1187,6 @@ export type Database = {
           adaptive_tdee?: number | null
           adaptive_tdee_confidence?: string | null
           adaptive_tdee_updated_at?: string | null
-          measured_tdee?: number | null
-          measured_tdee_confidence?: string | null
-          measured_tdee_updated_at?: string | null
           age?: number | null
           avatar_url?: string | null
           basal_burn_by_day?: Json | null
@@ -1166,9 +1214,12 @@ export type Database = {
           last_weekly_checkin_decision?: string | null
           last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
-          measurement_system?: string | null
+          meal_plan_slots?: Json
           meal_slot_config?: Json | null
-          pantry_staples?: Json | null
+          measured_tdee?: number | null
+          measured_tdee_confidence?: string | null
+          measured_tdee_updated_at?: string | null
+          measurement_system?: string | null
           milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json
@@ -1176,6 +1227,7 @@ export type Database = {
           nutrition_strategy?: string | null
           onboarding_completed?: boolean | null
           pace_kg_per_week?: number | null
+          pantry_staples?: Json
           plan_pace?: string | null
           prefer_activity_adjusted_calories?: boolean | null
           pronouns?: string | null
@@ -1190,10 +1242,10 @@ export type Database = {
           target_calories?: number | null
           target_calories_set_at?: string | null
           target_calories_source?: string | null
-          target_fiber_source?: string | null
           target_carbs?: number | null
           target_fat?: number | null
           target_fiber_g?: number | null
+          target_fiber_source?: string | null
           target_protein?: number | null
           target_water_ml?: number | null
           tracked_macros?: Json
@@ -1213,9 +1265,6 @@ export type Database = {
           adaptive_tdee?: number | null
           adaptive_tdee_confidence?: string | null
           adaptive_tdee_updated_at?: string | null
-          measured_tdee?: number | null
-          measured_tdee_confidence?: string | null
-          measured_tdee_updated_at?: string | null
           age?: number | null
           avatar_url?: string | null
           basal_burn_by_day?: Json | null
@@ -1243,9 +1292,12 @@ export type Database = {
           last_weekly_checkin_decision?: string | null
           last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
-          measurement_system?: string | null
+          meal_plan_slots?: Json
           meal_slot_config?: Json | null
-          pantry_staples?: Json | null
+          measured_tdee?: number | null
+          measured_tdee_confidence?: string | null
+          measured_tdee_updated_at?: string | null
+          measurement_system?: string | null
           milestone_30_shown_at?: string | null
           net_carbs_lens_enabled?: boolean
           notification_prefs?: Json
@@ -1253,6 +1305,7 @@ export type Database = {
           nutrition_strategy?: string | null
           onboarding_completed?: boolean | null
           pace_kg_per_week?: number | null
+          pantry_staples?: Json
           plan_pace?: string | null
           prefer_activity_adjusted_calories?: boolean | null
           pronouns?: string | null
@@ -1267,10 +1320,10 @@ export type Database = {
           target_calories?: number | null
           target_calories_set_at?: string | null
           target_calories_source?: string | null
-          target_fiber_source?: string | null
           target_carbs?: number | null
           target_fat?: number | null
           target_fiber_g?: number | null
+          target_fiber_source?: string | null
           target_protein?: number | null
           target_water_ml?: number | null
           tracked_macros?: Json
@@ -1374,57 +1427,6 @@ export type Database = {
           },
         ]
       }
-      recipe_cook_history: {
-        Row: {
-          cooked_at: string
-          created_at: string
-          duration_seconds: number | null
-          id: string
-          note: string | null
-          rating: number | null
-          recipe_id: string
-          scale_factor: number | null
-          user_id: string
-        }
-        Insert: {
-          cooked_at?: string
-          created_at?: string
-          duration_seconds?: number | null
-          id?: string
-          note?: string | null
-          rating?: number | null
-          recipe_id: string
-          scale_factor?: number | null
-          user_id: string
-        }
-        Update: {
-          cooked_at?: string
-          created_at?: string
-          duration_seconds?: number | null
-          id?: string
-          note?: string | null
-          rating?: number | null
-          recipe_id?: string
-          scale_factor?: number | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recipe_cook_history_recipe_id_fkey"
-            columns: ["recipe_id"]
-            isOneToOne: false
-            referencedRelation: "recipes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "recipe_cook_history_recipe_id_fkey"
-            columns: ["recipe_id"]
-            isOneToOne: false
-            referencedRelation: "recipes_implausible_macros"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       recipe_claims: {
         Row: {
           attested_at: string | null
@@ -1480,36 +1482,62 @@ export type Database = {
             referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "recipe_claims_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      recipe_steps: {
+      recipe_cook_history: {
         Row: {
+          cooked_at: string
           created_at: string
+          duration_seconds: number | null
           id: string
-          position: number
+          note: string | null
+          rating: number | null
           recipe_id: string
-          text: string
+          scale_factor: number | null
+          user_id: string
         }
         Insert: {
+          cooked_at?: string
           created_at?: string
+          duration_seconds?: number | null
           id?: string
-          position: number
+          note?: string | null
+          rating?: number | null
           recipe_id: string
-          text: string
+          scale_factor?: number | null
+          user_id: string
         }
         Update: {
+          cooked_at?: string
           created_at?: string
+          duration_seconds?: number | null
           id?: string
-          position?: number
+          note?: string | null
+          rating?: number | null
           recipe_id?: string
-          text?: string
+          scale_factor?: number | null
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "recipe_steps_recipe_id_fkey"
+            foreignKeyName: "recipe_cook_history_recipe_id_fkey"
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_cook_history_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
             referencedColumns: ["id"]
           },
         ]
@@ -1534,9 +1562,9 @@ export type Database = {
           override_macros: Json | null
           protein: number
           recipe_id: string
-          step_id: string | null
           sodium_mg: number
           source: string | null
+          step_id: string | null
           sugar_g: number
           unit: string | null
         }
@@ -1559,9 +1587,9 @@ export type Database = {
           override_macros?: Json | null
           protein?: number
           recipe_id: string
-          step_id?: string | null
           sodium_mg?: number
           source?: string | null
+          step_id?: string | null
           sugar_g?: number
           unit?: string | null
         }
@@ -1584,20 +1612,13 @@ export type Database = {
           override_macros?: Json | null
           protein?: number
           recipe_id?: string
-          step_id?: string | null
           sodium_mg?: number
           source?: string | null
+          step_id?: string | null
           sugar_g?: number
           unit?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "recipe_ingredients_step_id_fkey"
-            columns: ["step_id"]
-            isOneToOne: false
-            referencedRelation: "recipe_steps"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "recipe_ingredients_ingredient_id_fkey"
             columns: ["ingredient_id"]
@@ -1617,6 +1638,13 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes_implausible_macros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_steps"
             referencedColumns: ["id"]
           },
         ]
@@ -1664,6 +1692,45 @@ export type Database = {
           },
         ]
       }
+      recipe_steps: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          recipe_id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position: number
+          recipe_id: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          recipe_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_steps_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_steps_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes_implausible_macros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           alcohol_g: number
@@ -1673,10 +1740,10 @@ export type Database = {
           calories: number
           caption_nutrition_claim: Json | null
           carbs: number
+          claim_verification: Json | null
           claimed_at: string | null
           claimed_by: string | null
-          claim_verification: Json | null
-          content_origin: string
+          content_origin: Database["public"]["Enums"]["recipe_content_origin"]
           cook_time_min: number | null
           created_at: string
           creator_calories: number | null
@@ -1716,10 +1783,10 @@ export type Database = {
           calories?: number
           caption_nutrition_claim?: Json | null
           carbs?: number
+          claim_verification?: Json | null
           claimed_at?: string | null
           claimed_by?: string | null
-          claim_verification?: Json | null
-          content_origin?: string
+          content_origin?: Database["public"]["Enums"]["recipe_content_origin"]
           cook_time_min?: number | null
           created_at?: string
           creator_calories?: number | null
@@ -1759,10 +1826,10 @@ export type Database = {
           calories?: number
           caption_nutrition_claim?: Json | null
           carbs?: number
+          claim_verification?: Json | null
           claimed_at?: string | null
           claimed_by?: string | null
-          claim_verification?: Json | null
-          content_origin?: string
+          content_origin?: Database["public"]["Enums"]["recipe_content_origin"]
           cook_time_min?: number | null
           created_at?: string
           creator_calories?: number | null
@@ -1796,15 +1863,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "recipes_claimed_by_fkey"
-            columns: ["claimed_by"]
+            foreignKeyName: "recipes_author_id_fkey"
+            columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "recipes_author_id_fkey"
-            columns: ["author_id"]
+            foreignKeyName: "recipes_claimed_by_fkey"
+            columns: ["claimed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2754,7 +2821,7 @@ export type Database = {
       tier_rank: { Args: { p_tier: string }; Returns: number }
     }
     Enums: {
-      [_ in never]: never
+      recipe_content_origin: "first_party" | "imported_stub" | "claimed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2881,6 +2948,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      recipe_content_origin: ["first_party", "imported_stub", "claimed"],
+    },
   },
 } as const

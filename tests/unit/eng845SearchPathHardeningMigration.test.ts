@@ -16,7 +16,7 @@ import { resolve } from "node:path";
 const SQL = readFileSync(
   resolve(
     process.cwd(),
-    "supabase/migrations/20260615180000_eng845_search_path_pg_temp_hardening.sql",
+    "supabase/migrations/20260615180300_eng845_search_path_pg_temp_hardening.sql",
   ),
   "utf-8",
 );

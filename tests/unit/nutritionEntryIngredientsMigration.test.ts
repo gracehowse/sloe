@@ -18,12 +18,12 @@ import { join } from "node:path";
 const MIGRATION = readFileSync(
   join(
     process.cwd(),
-    "supabase/migrations/20260619120000_eng751_nutrition_entry_ingredients.sql",
+    "supabase/migrations/20260620120100_eng751_nutrition_entry_ingredients.sql",
   ),
   "utf8",
 );
 
-describe("20260619120000_eng751_nutrition_entry_ingredients migration", () => {
+describe("20260620120100_eng751_nutrition_entry_ingredients migration", () => {
   it("creates the table with the documented columns + precision", () => {
     expect(MIGRATION).toMatch(
       /create table if not exists public\.nutrition_entry_ingredients/,

@@ -10,7 +10,7 @@ import { RecipeDetail } from "./RecipeDetail";
 import type { RecipeCard } from "../../types/recipe.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
-import { DISCOVER_POPULAR_MIN_SAVES } from "../../lib/recipes/fetchPublicRecipeSaveCounts.ts";
+import { discoverQualifiesAsPopular } from "../../lib/recipes/discoverPopularQualification.ts";
 import {
   DISCOVER_CATEGORY_PILLS,
   matchesRecipeCategory,
@@ -328,7 +328,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
       // are Discover-only signals; everything else routes through the
       // shared `matchesRecipeCategory` predicate (web ↔ mobile parity).
       if (category === "trending") {
-        if ((recipe.savedCount ?? 0) < DISCOVER_POPULAR_MIN_SAVES) return false;
+        if (!discoverQualifiesAsPopular(recipe)) return false;
       } else if (category === "from-reels") {
         // From Reels — recipes imported from a social short-form platform.
         const sp = recipe.sourcePlatform;

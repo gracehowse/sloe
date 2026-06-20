@@ -15,9 +15,9 @@ describe("official recipe claim helpers", () => {
   });
 
   it("only offers the official badge for private imported stubs", () => {
-    expect(canShowOfficialVersion({ currentRecipeId: "stub", sourceUrl: "https://example.com/r", published: false, contentOrigin: "private_import" })).toBe(true);
+    expect(canShowOfficialVersion({ currentRecipeId: "stub", sourceUrl: "https://example.com/r", published: false, contentOrigin: "imported_stub" })).toBe(true);
     expect(canShowOfficialVersion({ currentRecipeId: "official", sourceUrl: "https://example.com/r", published: true, contentOrigin: "claimed" })).toBe(false);
-    expect(canShowOfficialVersion({ currentRecipeId: "draft", sourceUrl: null, published: false, contentOrigin: "private_import" })).toBe(false);
+    expect(canShowOfficialVersion({ currentRecipeId: "draft", sourceUrl: null, published: false, contentOrigin: "imported_stub" })).toBe(false);
   });
 
   it("rejects self-serve or attestation-only claim attempts", () => {

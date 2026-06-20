@@ -369,7 +369,7 @@ Exported helper type: `RecipeImportedSource = "url" \| "image"`. Collision / dro
 
 `recipes` now carries forward-only creator-claim provenance for post-launch claim-and-merge:
 
-- `content_origin text` — constrained to `private_import`, `first_party`, `claimed`, `seed`, or `plan_import` so public surfaces can distinguish private imported stubs from first-party/claimed Plane-B rows.
+- `content_origin recipe_content_origin` — enum `first_party` | `imported_stub` | `claimed` (ENG-869) so public surfaces can distinguish private imported stubs from first-party/claimed Plane-B rows.
 - `claimed_by uuid references profiles(id)`, `claimed_at timestamptz`, `claim_verification jsonb` — set only after verified ownership proof (OAuth handle, one-time bio/caption code, or DNS/meta-tag proof) plus attestation.
 - `recipe_claims` — auditable claim/request table with claimant, exact `source_url`, status (`pending`, `verified`, `rejected`, `withdrawn`), verification payload, and timestamps. Verified rows require a real verification method and matching `source_url`; there is no self-serve "this is mine" path.
 

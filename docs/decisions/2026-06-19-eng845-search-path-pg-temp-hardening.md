@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-19
 - **Area:** Security · Defence-in-depth (Postgres SECURITY DEFINER hardening)
-- **Status:** **Staged, awaiting apply.** Migration `20260615180000_eng845_search_path_pg_temp_hardening.sql` is staged; **Grace must run `supabase db push --linked`** (CLAUDE.md forbids Claude/MCP applying committed migrations). Confirmed live after push by Supabase advisor lints 0028/0029 clearing for these functions.
+- **Status:** **Applied** (2026-06-19 via `supabase db push --linked --include-all`, migration `20260615180300_eng845_search_path_pg_temp_hardening.sql`).
 - **Severity:** P3 (defence-in-depth). The real `pg_temp` object-shadowing injection vector is **already closed** — every ref inside these functions is schema-qualified — so this is pure consistency hardening, not a live-exploit fix.
 - **Closes:** ENG-557 **F4** — the explicitly-deferred tail of the 2026-06-02 SECURITY DEFINER RPC audit (`supabase/migrations/20260602120000_eng557_rpc_security_hardening.sql` header, lines 23–26).
 - **Owner of apply step:** Grace.

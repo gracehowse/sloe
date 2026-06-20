@@ -24,7 +24,7 @@ describe("ENG-869 recipe content_origin writes", () => {
   });
 
   it("migration backfills source_url rows only and documents non-destructive private-copy semantics", () => {
-    const sql = read("supabase/migrations/20260619120000_eng869_recipes_content_origin.sql");
+    const sql = read("supabase/migrations/20260620120200_eng869_recipes_content_origin.sql");
     expect(sql).toContain("recipe_content_origin");
     expect(sql).toContain("'first_party', 'imported_stub', 'claimed'");
     expect(sql).toMatch(/set content_origin = 'imported_stub'\s+where source_url is not null/i);

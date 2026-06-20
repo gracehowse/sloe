@@ -1,5 +1,5 @@
 -- ============================================================================
--- 20260615180000_eng845_search_path_pg_temp_hardening.sql
+-- 20260615180300_eng845_search_path_pg_temp_hardening.sql
 --
 -- ENG-845 — [Security][P3] search_path pg_temp consistency tail (ENG-557 F4).
 --

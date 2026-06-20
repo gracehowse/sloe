@@ -1,7 +1,6 @@
 import React, { memo, useMemo, useState, type ReactNode } from "react";
 import {
   Alert,
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -11,6 +10,7 @@ import {
   View,
   type PressableProps,
 } from "react-native";
+import { SmartImage } from "@/components/ui/SmartImage";
 import ReAnimated, { FadeInDown } from "react-native-reanimated";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
@@ -470,9 +470,10 @@ function MealActionSheet({
           {/* Header the native sheet cannot render: thumbnail + name + macro preview. */}
           <View style={[mas.header, { borderBottomColor: colors.border }]}>
             {thumbUrl ? (
-              <Image
+              <SmartImage
                 source={{ uri: thumbUrl }}
                 style={mas.thumb}
+                recyclingKey={thumbUrl}
                 accessibilityIgnoresInvertColors
               />
             ) : (
@@ -1285,9 +1286,10 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                                   flexShrink: 0,
                                 }}
                               >
-                                <Image
+                                <SmartImage
                                   source={{ uri: thumbUrl }}
                                   style={{ width: 40, height: 40 }}
+                                  recyclingKey={m.id}
                                   accessibilityIgnoresInvertColors
                                 />
                               </View>
