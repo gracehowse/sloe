@@ -617,6 +617,15 @@ export const AnalyticsEvents = {
    * Identical payload on both platforms (web `PhotoLogDialog` +
    * mobile `PhotoLogSheet`) so the conversion funnel stays comparable. */
   photo_log_correction_persisted: "photo_log_correction_persisted",
+  /** ENG-977 — the calm post-log "what to eat next" micro-moment fired
+   * after an AI log (photo / voice / describe) committed and there was
+   * budget left for the day. Bridges log → suggestion (Cal AI's missing
+   * coaching layer). Gated by `post_log_what_next_v1`. Payload:
+   * `{ source: "photo" | "voice" | "describe"; hasSuggestion: boolean;
+   * slot: "breakfast" | "lunch" | "dinner" | "snack" | "none"; platform }`.
+   * No PII; recipe ids are not sent (matches `meal_coach_suggestion_shown`).
+   * Same event name web ↔ mobile so the moment is one cross-platform funnel. */
+  post_log_suggestion_shown: "post_log_suggestion_shown",
   /** User tapped the "Snap a meal" shortcut surfaced on Today
    * (audit 2026-04-30 — Lose It "Closer" parity). Fires regardless of
    * tier so we can measure how often the shortcut is the entry point

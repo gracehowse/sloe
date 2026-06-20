@@ -277,6 +277,8 @@ import { TodaySnapShortcut } from "@/components/today/TodaySnapShortcut";
 import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
 // Activation hook (audit 2026-04-30) — first-log toast + push explainer.
 import { FirstLogAcknowledgment } from "@/components/today/FirstLogAcknowledgment";
+import { PostLogSuggestionToast } from "@/components/today/PostLogSuggestionToast";
+import { buildPostLogSuggestion } from "@suppr/nutrition-core/postLogSuggestion";
 import { PostOnboardingPushExplainer } from "@/components/today/PostOnboardingPushExplainer";
 // Phase 5 / B3.M (2026-04-27) — wire the NorthStarBlockHost on Today.
 import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
@@ -1205,6 +1207,8 @@ export default function TrackerScreen() {
   const [firstLogAckShown, setFirstLogAckShown] = useState<boolean | null>(null);
   const [firstLogToastVisible, setFirstLogToastVisible] = useState(false);
   const firstLogPrevCountRef = useRef<number | null>(null);
+  // ENG-977 — calm post-log "what to eat next" micro-moment line.
+  const [postLogNudgeLine, setPostLogNudgeLine] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     AsyncStorage.getItem(FIRST_LOG_ACK_STORAGE_KEY)
@@ -3418,8 +3422,62 @@ export default function TrackerScreen() {
         source: aiItems[0]?.source === "voice" ? "voice" : "photo",
         count: newMeals.length,
       });
+
+      // ENG-977 — calm post-log "what to eat next" micro-moment. The
+      // commit just changed the remaining budget; bridge log → suggestion
+      // (the coaching layer Cal AI lacks). Gated by `post_log_what_next_v1`.
+      // Surfaced as a transient toast; null when there's no room left
+      // (at/over budget) so we don't force the framing.
+      if (isFeatureEnabled("post_log_what_next_v1")) {
+        const added = aiItems.reduce(
+          (acc, it) => ({
+            calories: acc.calories + Math.round(it.calories),
+            protein: acc.protein + Math.round(it.protein),
+            carbs: acc.carbs + Math.round(it.carbs),
+            fat: acc.fat + Math.round(it.fat),
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        );
+        const nudge = buildPostLogSuggestion({
+          library: savedRecipesForLibrary,
+          remaining: {
+            calories: effectiveCalorieGoal - (totals.calories + added.calories),
+            protein: effectiveMacroTargets.protein - (totals.protein + added.protein),
+            carbs: effectiveMacroTargets.carbs - (totals.carbs + added.carbs),
+            fat: effectiveMacroTargets.fat - (totals.fat + added.fat),
+          },
+          dailyCalorieTarget: effectiveCalorieGoal,
+          source: aiItems[0]?.source === "voice" ? "voice" : "photo",
+          userCreatedAt: session?.user?.created_at ?? null,
+        });
+        if (nudge) {
+          setPostLogNudgeLine(nudge.line);
+          track(AnalyticsEvents.post_log_suggestion_shown, {
+            source: nudge.source,
+            hasSuggestion: nudge.hasSuggestion,
+            slot: nudge.slot ?? "none",
+            platform: "ios",
+          });
+        }
+      }
     },
-    [activeMealSlot, dayKey, persistMealsImmediate, profileTimeZone, userId],
+    [
+      activeMealSlot,
+      dayKey,
+      persistMealsImmediate,
+      profileTimeZone,
+      userId,
+      savedRecipesForLibrary,
+      effectiveCalorieGoal,
+      effectiveMacroTargets.protein,
+      effectiveMacroTargets.carbs,
+      effectiveMacroTargets.fat,
+      totals.calories,
+      totals.protein,
+      totals.carbs,
+      totals.fat,
+      session?.user?.created_at,
+    ],
   );
 
   // Batch 5.13 — Pro gate for Voice and AI photo logging. Free + Base
@@ -5002,6 +5060,12 @@ export default function TrackerScreen() {
       <FirstLogAcknowledgment
         visible={firstLogToastVisible}
         onDismiss={dismissFirstLogToast}
+        topInset={insets.top + Spacing.sm}
+      />
+      <PostLogSuggestionToast
+        visible={postLogNudgeLine !== null}
+        line={postLogNudgeLine}
+        onDismiss={() => setPostLogNudgeLine(null)}
         topInset={insets.top + Spacing.sm}
       />
       <PostOnboardingPushExplainer

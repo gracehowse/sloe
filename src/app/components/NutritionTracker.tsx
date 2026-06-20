@@ -90,6 +90,7 @@ import { LogSheet } from "./suppr/log-sheet";
 import { useIsDesktop } from "./ui/use-mobile";
 import { NorthStarBlockHost } from "./suppr/north-star-block-host";
 import { type NorthStarRecipe } from "../../lib/nutrition/northStarSuggestion";
+import { buildPostLogSuggestion } from "../../lib/nutrition/postLogSuggestion";
 import {
   dayActivityBudgetAddonWeb,
   loadRecentFoods,
@@ -1568,6 +1569,23 @@ export const NutritionTracker = memo(function NutritionTracker({
     };
   }, []);
 
+  /**
+   * ENG-977 — latest-value snapshot for the calm post-log "what to eat
+   * next" micro-moment. `commitAiLoggedItems` is declared above the day
+   * totals / targets / library consts (TDZ), so we read them through a
+   * ref kept fresh by the effect below rather than threading them into
+   * the callback's dep array. The ref always holds the most recent
+   * pre-commit snapshot; the commit adds the new items on top to derive
+   * remaining-after-log.
+   */
+  const postLogNudgeCtxRef = useRef<{
+    library: NorthStarRecipe[];
+    calorieTarget: number;
+    macroTargets: { protein: number; carbs: number; fat: number };
+    totals: { calories: number; protein: number; carbs: number; fat: number };
+    userCreatedAt: string | null;
+  } | null>(null);
+
   const commitAiLoggedItems = useCallback(
     (items: AiLoggedItem[]) => {
       if (items.length === 0) return;
@@ -1631,6 +1649,52 @@ export const NutritionTracker = memo(function NutritionTracker({
         );
       }
       const label = items[0]?.source === "voice" ? "voice" : "photo";
+
+      // ENG-977 — calm post-log "what to eat next" micro-moment. The
+      // commit just changed the remaining budget; bridge log → suggestion
+      // (the coaching layer Cal AI lacks). When the moment fires it
+      // replaces the plain count confirmation with one quiet line; when
+      // there's no room left (at/over budget) it returns null and we keep
+      // the count toast. Gated behind `post_log_what_next_v1`.
+      const ctx = postLogNudgeCtxRef.current;
+      if (isFeatureEnabled("post_log_what_next_v1") && ctx) {
+        const added = items.reduce(
+          (acc, it) => ({
+            calories: acc.calories + Math.round(it.calories),
+            protein: acc.protein + Math.round(it.protein),
+            carbs: acc.carbs + Math.round(it.carbs),
+            fat: acc.fat + Math.round(it.fat),
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        );
+        const nudge = buildPostLogSuggestion({
+          library: ctx.library,
+          remaining: {
+            calories: ctx.calorieTarget - (ctx.totals.calories + added.calories),
+            protein: ctx.macroTargets.protein - (ctx.totals.protein + added.protein),
+            carbs: ctx.macroTargets.carbs - (ctx.totals.carbs + added.carbs),
+            fat: ctx.macroTargets.fat - (ctx.totals.fat + added.fat),
+          },
+          dailyCalorieTarget: ctx.calorieTarget,
+          source: label,
+          userCreatedAt: ctx.userCreatedAt,
+        });
+        if (nudge) {
+          toast.success(nudge.line);
+          try {
+            track(AnalyticsEvents.post_log_suggestion_shown, {
+              source: nudge.source,
+              hasSuggestion: nudge.hasSuggestion,
+              slot: nudge.slot ?? "none",
+              platform: "web",
+            });
+          } catch {
+            /* analytics noop */
+          }
+          return;
+        }
+      }
+
       toast.success(`Logged ${items.length} item${items.length === 1 ? "" : "s"} from ${label}`);
     },
     [addLoggedMeal, mealSlot],
@@ -2264,6 +2328,39 @@ export const NutritionTracker = memo(function NutritionTracker({
     isToday: selectedDateKey === todayKey(),
     ready: winReady,
   });
+
+  // ENG-977 — keep the post-log nudge snapshot fresh so the commit
+  // callback (declared above these consts) can read live totals,
+  // targets, and library without a TDZ in its dep array.
+  useEffect(() => {
+    postLogNudgeCtxRef.current = {
+      library: savedRecipesForLibrary as NorthStarRecipe[],
+      calorieTarget: effectiveCalorieTarget,
+      macroTargets: {
+        protein: effectiveMacroTargets.protein,
+        carbs: effectiveMacroTargets.carbs,
+        fat: effectiveMacroTargets.fat,
+      },
+      totals: {
+        calories: totals.calories,
+        protein: totals.protein,
+        carbs: totals.carbs,
+        fat: totals.fat,
+      },
+      userCreatedAt: authUserCreatedAt ?? null,
+    };
+  }, [
+    savedRecipesForLibrary,
+    effectiveCalorieTarget,
+    effectiveMacroTargets.protein,
+    effectiveMacroTargets.carbs,
+    effectiveMacroTargets.fat,
+    totals.calories,
+    totals.protein,
+    totals.carbs,
+    totals.fat,
+    authUserCreatedAt,
+  ]);
 
   // ENG-1016 — per-commit ring pulse, the web colour/scale analog of mobile's
   // Medium commit haptic (web has no haptics). Fires a brief, subtle scale +
