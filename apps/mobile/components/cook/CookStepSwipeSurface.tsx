@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Animated, Dimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import * as Haptics from "expo-haptics";
 import {
   cookStepSwipeRubberBand,
   resolveCookStepSwipe,
@@ -59,7 +58,6 @@ export function CookStepSwipeSurface({
       const nextIndex = direction === "next" ? current + 1 : current - 1;
       if (nextIndex < 0 || nextIndex >= stepCountRef.current) return;
       onBeforeStepChangeRef.current?.();
-      void Haptics.selectionAsync();
       onStepIndexChangeRef.current(nextIndex);
     },
     [],
