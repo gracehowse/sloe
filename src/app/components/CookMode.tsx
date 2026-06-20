@@ -31,6 +31,11 @@ import {
   stepCookTextScale,
 } from "../../lib/nutrition/cookTextScale.ts";
 import { resolveCookStepSwipe } from "../../lib/nutrition/cookStepSwipe.ts";
+import { useCookIngredientChecklist } from "../../lib/nutrition/useCookIngredientChecklist.ts";
+import { CookMiseEnPlace } from "./cook/CookMiseEnPlace.tsx";
+import { CookIngredientChecklist } from "./cook/CookIngredientChecklist.tsx";
+import { formatIngredientAmountUnit } from "../../lib/recipe-ingredients/formatIngredientAmount.ts";
+import { cleanIngredientDisplayName } from "../../lib/recipe/cleanIngredientDisplayName.ts";
 import { scaleStepText } from "../../lib/nutrition/scaleStepText.ts";
 import { cookStepIngredientChips } from "../../lib/recipe-ingredients/stepIngredients.ts";
 import {
@@ -306,6 +311,40 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
   const cookSwipeStepsEnabled = isFeatureEnabled("cook_swipe_steps_v1");
   const touchStartXRef = useRef<number | null>(null);
 
+  /** ENG-946 — shared session checklist + optional mise en place. Default-OFF;
+   *  flag-off keeps the legacy sidebar local state byte-identical. */
+  const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
+  const sharedIngredientChecklist = useCookIngredientChecklist(String(recipe.id));
+  const [miseComplete, setMiseComplete] = useState(
+    () => !isFeatureEnabled("cook_ingredient_checklist_v1") || ingredients.length === 0,
+  );
+
+  useEffect(() => {
+    setMiseComplete(!cookIngredientChecklistEnabled || ingredients.length === 0);
+  }, [recipe.id, cookIngredientChecklistEnabled, ingredients.length]);
+
+  const checklistItems = useMemo(
+    () =>
+      ingredients.map((ing) => {
+        const numericAmount =
+          typeof ing.amount === "string" ? Number.parseFloat(ing.amount) : NaN;
+        const scaledAmount =
+          Number.isFinite(numericAmount) && scaleFactor !== 1
+            ? Math.round(numericAmount * scaleFactor * 100) / 100
+            : ing.amount;
+        return {
+          name: cleanIngredientDisplayName(ing.name) || ing.name,
+          amountLabel: scaledAmount || ing.unit
+            ? formatIngredientAmountUnit(
+                typeof scaledAmount === "string" ? scaledAmount : String(scaledAmount ?? ""),
+                ing.unit,
+              )
+            : null,
+        };
+      }),
+    [ingredients, scaleFactor],
+  );
+
   /** ENG-949 — hydrate the per-user cook text scale from localStorage.
    *  Keyed on the user, so it follows the cook across recipes. Falls
    *  back to 1× silently. Gated on the flag so flag-off renders default. */
@@ -579,14 +618,40 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
     ],
   );
 
-  const toggleIngredientChecked = useCallback((idx: number) => {
-    setCheckedIngredients((prev) => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  }, []);
+  const toggleIngredientChecked = useCallback(
+    (idx: number) => {
+      if (cookIngredientChecklistEnabled) {
+        const checked = sharedIngredientChecklist.toggle(idx);
+        try {
+          track(AnalyticsEvents.cook_ingredient_checked, {
+            recipeId: String(recipe.id),
+            index: idx,
+            checked,
+            surface: "cook_sidebar",
+            platform: "web",
+          });
+        } catch {
+          /* analytics fire-and-forget */
+        }
+        return;
+      }
+      setCheckedIngredients((prev) => {
+        const next = new Set(prev);
+        if (next.has(idx)) next.delete(idx);
+        else next.add(idx);
+        return next;
+      });
+    },
+    [cookIngredientChecklistEnabled, recipe.id, sharedIngredientChecklist],
+  );
+
+  const isIngredientChecked = useCallback(
+    (idx: number) =>
+      cookIngredientChecklistEnabled
+        ? sharedIngredientChecklist.isChecked(idx)
+        : checkedIngredients.has(idx),
+    [checkedIngredients, cookIngredientChecklistEnabled, sharedIngredientChecklist],
+  );
 
   const commitLogMeal = useCallback(
     (servingsToLog: number) => {
@@ -959,7 +1024,14 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               : undefined
           }
         >
-          {!isDone ? (
+          {!miseComplete ? (
+            <CookMiseEnPlace
+              recipeId={String(recipe.id)}
+              recipeTitle={recipe.title}
+              items={checklistItems}
+              onStartCooking={() => setMiseComplete(true)}
+            />
+          ) : !isDone ? (
             <>
               {/* Scaled-for-N-servings banner — only when the user has
                   actually scaled the recipe via the servings stepper
@@ -1307,7 +1379,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                       type="button"
                       onClick={() => toggleIngredientChecked(idx)}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                        checkedIngredients.has(idx)
+                        isIngredientChecked(idx)
                           ? "line-through text-muted-foreground bg-muted"
                           : "text-muted-foreground hover:bg-muted/60"
                       }`}
