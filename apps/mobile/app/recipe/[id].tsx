@@ -1915,23 +1915,19 @@ export default function RecipeDetailScreen() {
     is_verified: ing.is_verified ?? null,
   }));
 
-  const ingredientChecklistItems = useMemo(
-    () =>
-      ingredientsForIngredientsTab.map((ing) => {
-        const scaledAmount =
-          ing.amount != null
-            ? Math.round(ing.amount * viewMultiplier * 100) / 100
-            : null;
-        return {
-          name: ing.name,
-          amountLabel:
-            scaledAmount != null || ing.unit
-              ? formatIngredientAmountUnit(scaledAmount, ing.unit)
-              : null,
-        };
-      }),
-    [ingredientsForIngredientsTab, viewMultiplier],
-  );
+  const ingredientChecklistItems = ingredientsForIngredientsTab.map((ing) => {
+    const scaledAmount =
+      ing.amount != null
+        ? Math.round(ing.amount * viewMultiplier * 100) / 100
+        : null;
+    return {
+      name: ing.name,
+      amountLabel:
+        scaledAmount != null || ing.unit
+          ? formatIngredientAmountUnit(scaledAmount, ing.unit)
+          : null,
+    };
+  });
 
   const openCookMode = () => {
     setCookStep(0);
