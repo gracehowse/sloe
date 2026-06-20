@@ -183,6 +183,8 @@ interface AppDataContextValue {
    * without re-fetching `getMyHousehold` itself.
    */
   activeHouseholdId: string | null;
+  /** ENG-849 — member count for household-aware decorative copy on Today. */
+  householdMemberCount: number;
   nutritionTargets: MacroTargets;
   setNutritionTargets: Dispatch<SetStateAction<MacroTargets>>;
   preferActivityAdjustedCalories: boolean;
@@ -455,18 +457,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // mount picks up the new id). Drives scope on
   // `useShoppingListState` and on the local generate / clear paths.
   const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
+  const [householdMemberCount, setHouseholdMemberCount] = useState(1);
   useEffect(() => {
-    if (!authedUserId) { setActiveHouseholdId(null); return; }
+    if (!authedUserId) { setActiveHouseholdId(null); setHouseholdMemberCount(1); return; }
     let cancelled = false;
     void (async () => {
       try {
         const { data } = await getMyHousehold(supabase as unknown as { from: (t: string) => unknown; rpc: (f: string, p: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> }, authedUserId);
         if (!cancelled) {
-          const hh = (data as { household?: { id?: string } | null } | null)?.household;
+          const hh = (data as { household?: { id?: string } | null; members?: unknown[] } | null)?.household;
           setActiveHouseholdId(hh?.id ?? null);
+          const memberLen = (data as { members?: unknown[] } | null)?.members?.length ?? 0;
+          setHouseholdMemberCount(memberLen > 0 ? memberLen : 1);
         }
       } catch {
-        if (!cancelled) setActiveHouseholdId(null);
+        if (!cancelled) {
+          setActiveHouseholdId(null);
+          setHouseholdMemberCount(1);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -2244,6 +2252,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeShoppingItem,
       addShoppingItem,
       activeHouseholdId,
+      householdMemberCount,
       nutritionTargets,
       setNutritionTargets,
       preferActivityAdjustedCalories,
@@ -2337,6 +2346,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeShoppingItem,
       addShoppingItem,
       activeHouseholdId,
+      householdMemberCount,
       nutritionTargets,
       setNutritionTargets,
       preferActivityAdjustedCalories,

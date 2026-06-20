@@ -25,6 +25,7 @@ import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
 import { useTodayWidgetSnapshot } from "@/hooks/useTodayWidgetSnapshot";
 import { useTrackingExtrasOnFocus } from "@/hooks/useTrackingExtrasOnFocus";
 import { useLogSheetDeepLinks } from "@/hooks/useLogSheetDeepLinks";
+import { useHouseholdMemberCount } from "@/hooks/useHouseholdMemberCount";
 import {
   dateKeyFromDate,
   newMealId,
@@ -415,6 +416,7 @@ function formatMealTimeDisplay(
 // everywhere).
 export default function TrackerScreen() {
   const { router, params, insets, session, userId } = useToday();
+  const householdMemberCount = useHouseholdMemberCount(userId);
   // ENG-1076 — declared here (above persistMealsImmediate /
   // persistMealUpdateImmediate) so their useCallback dependency arrays don't
   // reference it in the temporal dead zone. Hydrated from profiles.tz_iana in
@@ -5595,19 +5597,14 @@ export default function TrackerScreen() {
           </ReAnimated.View>
         )}
 
-        {/* ENG-754 — weekly insight card (mobile port of web's
-            `TodayWeeklyInsightCard`). Flag-gated; renders below the
-            meals list on Today (day view). `householdSize={1}` is the
-            honest minimum (the user themselves) — the Today screen does
-            not load household membership, so we show the calm "Planning
-            for you this week" line rather than fabricate a count.
-            ENG-758 tracks wiring a real household size when the Today
-            data layer exposes it. Every other figure is derived from
-            `weekData` (already on screen). */}
+        {/* ENG-754 / ENG-849 — weekly insight card (mobile port of web's
+            `TodayWeeklyInsightCard`). Renders below the meals list on
+            Today (day view). Household headcount comes from
+            `useHouseholdMemberCount` (solo → 1). */}
         {viewMode === "day" && (
           <View style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak }}>
           <WeeklyInsightCard
-            householdSize={1}
+            householdSize={householdMemberCount}
             loggedDaysInWeek={weekData.days.filter((d) => d.totals.calories > 0).length}
             weekAvgKcal={
               weekData.days.some((d) => d.totals.calories > 0)
