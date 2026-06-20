@@ -335,6 +335,59 @@ export default function RecipeDetailScreen() {
    *  preference follows the cook across every recipe. Default 1× keeps
    *  the step text byte-identical to pre-ENG-949 until the user opts in. */
   const [cookTextScale, setCookTextScale] = useState(1);
+
+  /** ENG-949 — hydrate the per-user cook text scale from AsyncStorage.
+   *  Keyed on the user, so it follows the cook across recipes. Re-reads
+   *  when userId resolves. Falls back to 1× silently. Declared up here
+   *  (with the other top-level hooks) so it never sits behind an early
+   *  return — rules-of-hooks. */
+  useEffect(() => {
+    if (!cookTextSizeControlEnabled) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(cookTextScaleStorageKey(userId));
+        if (!raw || cancelled) return;
+        const clamped = clampCookTextScale(Number.parseFloat(raw));
+        if (clamped !== 1) setCookTextScale(clamped);
+      } catch {
+        /* storage flaky — leave at 1× */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, cookTextSizeControlEnabled]);
+
+  /** Step the cook text size and persist it. `direction` > 0 grows,
+   *  <= 0 shrinks; the step helper clamps at the ends so a tap on a
+   *  disabled control is a no-op. */
+  const handleCookTextScaleStep = useCallback(
+    (direction: number) => {
+      setCookTextScale((prev) => {
+        const next = stepCookTextScale(prev, direction);
+        if (next === prev) return prev;
+        void AsyncStorage.setItem(
+          cookTextScaleStorageKey(userId),
+          String(next),
+        ).catch(() => {
+          /* storage flaky — keep the in-memory size */
+        });
+        try {
+          track(AnalyticsEvents.cook_text_scale_changed, {
+            scale: next,
+            direction: direction > 0 ? "up" : "down",
+            platform: "ios",
+          });
+        } catch {
+          /* analytics fire-and-forget */
+        }
+        return next;
+      });
+    },
+    [userId],
+  );
+
   const [userTargets, setUserTargets] = useState({ calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
   const [trackedMacros, setTrackedMacros] = useState<string[]>([...DEFAULT_TRACKED_MACROS]);
   const [logPortion, setLogPortion] = useState(1);
@@ -1832,56 +1885,6 @@ export default function RecipeDetailScreen() {
     setCookStep(0);
     setCookMode(true);
   };
-
-  /** ENG-949 — hydrate the per-user cook text scale from AsyncStorage.
-   *  Keyed on the user, so it follows the cook across recipes. Re-reads
-   *  when userId resolves. Falls back to 1× silently. */
-  useEffect(() => {
-    if (!cookTextSizeControlEnabled) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(cookTextScaleStorageKey(userId));
-        if (!raw || cancelled) return;
-        const clamped = clampCookTextScale(Number.parseFloat(raw));
-        if (clamped !== 1) setCookTextScale(clamped);
-      } catch {
-        /* storage flaky — leave at 1× */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, cookTextSizeControlEnabled]);
-
-  /** Step the cook text size and persist it. `direction` > 0 grows,
-   *  <= 0 shrinks; the step helper clamps at the ends so a tap on a
-   *  disabled control is a no-op. */
-  const handleCookTextScaleStep = useCallback(
-    (direction: number) => {
-      setCookTextScale((prev) => {
-        const next = stepCookTextScale(prev, direction);
-        if (next === prev) return prev;
-        void AsyncStorage.setItem(
-          cookTextScaleStorageKey(userId),
-          String(next),
-        ).catch(() => {
-          /* storage flaky — keep the in-memory size */
-        });
-        try {
-          track(AnalyticsEvents.cook_text_scale_changed, {
-            scale: next,
-            direction: direction > 0 ? "up" : "down",
-            platform: "ios",
-          });
-        } catch {
-          /* analytics fire-and-forget */
-        }
-        return next;
-      });
-    },
-    [userId],
-  );
 
   const cleanDescription = sanitizeRecipeDescription(recipe.description);
   const allergenLine = formatContainsLine(normaliseAllergenIds(recipe.allergens ?? []));
