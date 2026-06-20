@@ -36,6 +36,7 @@ PostgreSQL via Supabase. Row-Level Security (RLS) enabled on all tables.
 | `nutrition_entry_ingredients` | **(ENG-751)** Immutable per-item AI/photo/voice meal snapshot — child rows of `nutrition_entries`. Carries the un-rounded macros + `confidence` + `source` the rounded entry columns drop. Read (gated by `nutrition_entry_ingredients_v1`) to split AI meals into per-item lines in the macro-detail "By ingredient" view. | Relational (child of `nutrition_entries`) |
 | `user_custom_foods` | User-defined custom foods (e.g. homemade granola). Macros per `base_grams`, natural-portion shortcuts in `servings jsonb`, optional detailed micros (`sugar_g`, `saturated_fat_g`, `sodium_mg`), `servings_per_container`, and `barcode` for scan-same-package recall | Relational |
 | `user_plan_templates` | Named reusable snapshots of a 1–7 day meal plan slice (Batch 3.10) | Relational — JSONB `slots` array |
+| `recipe_claims` | **(ENG-870)** Server-owned audit/request log for verified creator recipe claims. Client roles have no direct grants; claimed recipe state is written only by a future verified server/RPC flow after OAuth handle, bio-code, or DNS/meta proof. | Relational audit log |
 
 ## Key Design Decisions
 
