@@ -194,7 +194,6 @@ Flows use `shared/login.yaml`: **`EXPO_DEV_SERVER_URL`**, **`E2E_EMAIL`**, **`E2
 | 11_discover.yaml | Discover: search, filter pills, import CTA, recipe cards, scroll, import navigation |
 | 12_library.yaml | Library: saved recipes, sort, search, empty state |
 | 13_fasting.yaml | Intermittent fasting: timer ring, start/end fast, history |
-| 14_weight_tracker.yaml | Weight tracker: weight/steps/water/body fat inputs, journey chart |
 | 15_meal_nutrition.yaml | Meal nutrition detail: macro breakdown per logged meal |
 | 16_shopping.yaml | Shopping list: items, check off, navigation from planner |
 | 17_cook_mode.yaml | Cook mode: step-by-step nav, timer, completion |
