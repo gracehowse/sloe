@@ -22,6 +22,14 @@ import {
   cookScaleStorageKey,
   formatCookScaleLabel,
 } from "../../lib/nutrition/recipeScale.ts";
+import {
+  canDecreaseCookTextScale,
+  canIncreaseCookTextScale,
+  clampCookTextScale,
+  cookStepFontSize,
+  cookTextScaleStorageKey,
+  stepCookTextScale,
+} from "../../lib/nutrition/cookTextScale.ts";
 import { scaleStepText } from "../../lib/nutrition/scaleStepText.ts";
 import { cookStepIngredientChips } from "../../lib/recipe-ingredients/stepIngredients.ts";
 import {
@@ -144,6 +152,12 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
   const [savingHistory, setSavingHistory] = useState(false);
   const [historySaved, setHistorySaved] = useState(false);
   const [servingsDialogOpen, setServingsDialogOpen] = useState(false);
+
+  /** ENG-949 — per-user cook-mode text scale (A−/A+). Persisted to
+   *  localStorage keyed on the user (not the recipe), so the size
+   *  preference follows the cook across every recipe. Default 1× keeps
+   *  the step text byte-identical to pre-ENG-949 until the user opts in. */
+  const [textScale, setTextScale] = useState<number>(1);
 
   const totalSteps = instructionSteps.length;
   const isLastStep = currentStep >= totalSteps - 1;
@@ -278,6 +292,60 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       }
     },
     [scale, persistScale, recipe.id],
+  );
+
+  /** ENG-949 — the in-cook text-size control ships behind a flag
+   *  (`cook_text_size_control_v1`, default-OFF). Flag-off keeps cook mode
+   *  byte-identical to before: no control, and a previously-persisted size
+   *  is NOT re-applied (so flipping the flag off is a clean revert). */
+  const textSizeControlEnabled = isFeatureEnabled("cook_text_size_control_v1");
+
+  /** ENG-949 — hydrate the per-user cook text scale from localStorage.
+   *  Keyed on the user, so it follows the cook across recipes. Falls
+   *  back to 1× silently. Gated on the flag so flag-off renders default. */
+  useEffect(() => {
+    if (typeof window === "undefined" || !textSizeControlEnabled) return;
+    try {
+      const raw = window.localStorage.getItem(cookTextScaleStorageKey(userId));
+      if (!raw) return;
+      const clamped = clampCookTextScale(Number.parseFloat(raw));
+      if (clamped !== 1) setTextScale(clamped);
+    } catch {
+      /* localStorage unavailable — leave at 1× */
+    }
+  }, [userId, textSizeControlEnabled]);
+
+  /** Step the cook text size and persist it. `direction` > 0 grows,
+   *  <= 0 shrinks; the step helper clamps at the ends so a tap on a
+   *  disabled control is a no-op. */
+  const handleTextScaleStep = useCallback(
+    (direction: number) => {
+      setTextScale((prev) => {
+        const next = stepCookTextScale(prev, direction);
+        if (next === prev) return prev;
+        if (typeof window !== "undefined") {
+          try {
+            window.localStorage.setItem(
+              cookTextScaleStorageKey(userId),
+              String(next),
+            );
+          } catch {
+            /* storage flaky — keep the in-memory size */
+          }
+        }
+        try {
+          track(AnalyticsEvents.cook_text_scale_changed, {
+            scale: next,
+            direction: direction > 0 ? "up" : "down",
+            platform: "web",
+          });
+        } catch {
+          /* analytics fire-and-forget */
+        }
+        return next;
+      });
+    },
+    [userId],
   );
 
   /** Capture the moment the user landed in cook mode so the completion
@@ -582,11 +650,20 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
    */
   const renderedStep = useMemo(() => {
     const isScaled = scaleFactor !== 1;
+    // ENG-949 — when the user has chosen a non-default text size, drive
+    // the step font-size inline (the Tailwind text-2xl/3xl classes stay
+    // for the 1× default so the responsive desktop bump is preserved).
+    // `leading-relaxed` is em-relative, so line height scales with it.
+    const stepFontStyle =
+      textScale !== 1 ? { fontSize: cookStepFontSize(30, textScale) } : undefined;
     if (isScaled) {
       // Scaled mode — pill buttons live below the paragraph because
       // offsets in the rewritten text aren't safe to index against.
       return (
-        <div className="text-2xl sm:text-3xl leading-relaxed text-foreground">
+        <div
+          className="text-2xl sm:text-3xl leading-relaxed text-foreground"
+          style={stepFontStyle}
+        >
           <p>{currentStepText}</p>
           {stepTimers.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2 justify-center">
@@ -612,7 +689,14 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       );
     }
     if (stepTimers.length === 0) {
-      return <p className="text-2xl sm:text-3xl leading-relaxed text-foreground">{currentStepCleaned}</p>;
+      return (
+        <p
+          className="text-2xl sm:text-3xl leading-relaxed text-foreground"
+          style={stepFontStyle}
+        >
+          {currentStepCleaned}
+        </p>
+      );
     }
     const nodes: React.ReactNode[] = [];
     let cursor = 0;
@@ -641,11 +725,14 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       nodes.push(currentStepCleaned.slice(cursor));
     }
     return (
-      <p className="text-2xl sm:text-3xl leading-relaxed text-foreground">
+      <p
+        className="text-2xl sm:text-3xl leading-relaxed text-foreground"
+        style={stepFontStyle}
+      >
         {nodes}
       </p>
     );
-  }, [currentStepCleaned, currentStepText, scaleFactor, stepTimers, startTimer]);
+  }, [currentStepCleaned, currentStepText, scaleFactor, stepTimers, startTimer, textScale]);
 
   /** Recime parity (2026-04-30): tap "Watch original" → opens the
    *  source video URL in a new tab and emits the analytics event with
@@ -704,6 +791,35 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               <Play className="w-4 h-4" />
               <span className="hidden sm:inline">Watch original</span>
             </SupprButton>
+          ) : null}
+          {/* ENG-949 — A−/A+ text-size control. Quiet, muted, sits left
+              of Ingredients. Disabled at the size bounds; the persisted
+              size follows the user across recipes. Flag-gated (default-OFF). */}
+          {textSizeControlEnabled ? (
+          <div
+            className="inline-flex items-center rounded-xl bg-muted/60 p-0.5"
+            role="group"
+            aria-label="Cook text size"
+          >
+            <button
+              type="button"
+              onClick={() => handleTextScaleStep(-1)}
+              disabled={!canDecreaseCookTextScale(textScale)}
+              aria-label="Decrease text size"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              A−
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTextScaleStep(1)}
+              disabled={!canIncreaseCookTextScale(textScale)}
+              aria-label="Increase text size"
+              className="px-2.5 py-1.5 rounded-lg text-sm font-bold text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              A+
+            </button>
+          </div>
           ) : null}
           <button
             type="button"

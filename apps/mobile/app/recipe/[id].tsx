@@ -4,6 +4,7 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { formatMultiplier } from "@/components/today/PortionStepper";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Alert,
@@ -90,6 +91,14 @@ import {
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
 import { scaleStepText } from "@suppr/nutrition-core/scaleStepText";
+import {
+  canDecreaseCookTextScale,
+  canIncreaseCookTextScale,
+  clampCookTextScale,
+  cookStepFontSize,
+  cookTextScaleStorageKey,
+  stepCookTextScale,
+} from "@suppr/nutrition-core/cookTextScale";
 import { cookStepIngredientChips } from "@suppr/shared/recipe-ingredients/stepIngredients";
 import {
   deriveIngredientVerificationTier,
@@ -254,6 +263,10 @@ export default function RecipeDetailScreen() {
   // ENG-819 — quiet confirm haptic on the recipe-detail commit CTAs, behind
   // `redesign_winmoment` (haptic-only; the frame layout is the one prod path).
   const winMomentFeedback = isFeatureEnabled("redesign_winmoment");
+  // ENG-949 — in-cook A−/A+ text-size control, behind a flag (default-OFF).
+  // Flag-off keeps the overlay byte-identical and skips re-applying a
+  // previously-persisted size, so flipping it off is a clean revert.
+  const cookTextSizeControlEnabled = isFeatureEnabled("cook_text_size_control_v1");
 
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
   const [loading, setLoading] = useState(true);
@@ -317,6 +330,64 @@ export default function RecipeDetailScreen() {
   const lowConfidenceAutoNudgeShown = useRef<Set<string>>(new Set());
   const [cookMode, setCookMode] = useState(false);
   const [cookStep, setCookStep] = useState(0);
+  /** ENG-949 — per-user cook-mode text scale (A−/A+). Persisted to
+   *  AsyncStorage keyed on the user (not the recipe), so the size
+   *  preference follows the cook across every recipe. Default 1× keeps
+   *  the step text byte-identical to pre-ENG-949 until the user opts in. */
+  const [cookTextScale, setCookTextScale] = useState(1);
+
+  /** ENG-949 — hydrate the per-user cook text scale from AsyncStorage.
+   *  Keyed on the user, so it follows the cook across recipes. Re-reads
+   *  when userId resolves. Falls back to 1× silently. Declared up here
+   *  (with the other top-level hooks) so it never sits behind an early
+   *  return — rules-of-hooks. */
+  useEffect(() => {
+    if (!cookTextSizeControlEnabled) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(cookTextScaleStorageKey(userId));
+        if (!raw || cancelled) return;
+        const clamped = clampCookTextScale(Number.parseFloat(raw));
+        if (clamped !== 1) setCookTextScale(clamped);
+      } catch {
+        /* storage flaky — leave at 1× */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, cookTextSizeControlEnabled]);
+
+  /** Step the cook text size and persist it. `direction` > 0 grows,
+   *  <= 0 shrinks; the step helper clamps at the ends so a tap on a
+   *  disabled control is a no-op. */
+  const handleCookTextScaleStep = useCallback(
+    (direction: number) => {
+      setCookTextScale((prev) => {
+        const next = stepCookTextScale(prev, direction);
+        if (next === prev) return prev;
+        void AsyncStorage.setItem(
+          cookTextScaleStorageKey(userId),
+          String(next),
+        ).catch(() => {
+          /* storage flaky — keep the in-memory size */
+        });
+        try {
+          track(AnalyticsEvents.cook_text_scale_changed, {
+            scale: next,
+            direction: direction > 0 ? "up" : "down",
+            platform: "ios",
+          });
+        } catch {
+          /* analytics fire-and-forget */
+        }
+        return next;
+      });
+    },
+    [userId],
+  );
+
   const [userTargets, setUserTargets] = useState({ calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
   const [trackedMacros, setTrackedMacros] = useState<string[]>([...DEFAULT_TRACKED_MACROS]);
   const [logPortion, setLogPortion] = useState(1);
@@ -2258,6 +2329,59 @@ export default function RecipeDetailScreen() {
                         </Text>
                       </Pressable>
                     ) : null}
+                    {/* ENG-949 — A−/A+ text-size control. Quiet muted
+                        track; disabled at the size bounds. The persisted
+                        size follows the user across recipes. Flag-gated
+                        (default-OFF). */}
+                    {cookTextSizeControlEnabled ? (
+                    <View
+                      accessibilityRole="adjustable"
+                      accessibilityLabel="Cook text size"
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        backgroundColor: colors.card,
+                        borderRadius: Radius.md,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <Pressable
+                        onPress={() => handleCookTextScaleStep(-1)}
+                        disabled={!canDecreaseCookTextScale(cookTextScale)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Decrease text size"
+                        accessibilityState={{ disabled: !canDecreaseCookTextScale(cookTextScale) }}
+                        hitSlop={8}
+                        style={{
+                          paddingHorizontal: Spacing.dense,
+                          paddingVertical: 6,
+                          opacity: canDecreaseCookTextScale(cookTextScale) ? 1 : 0.3,
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.textSecondary }}>
+                          A−
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => handleCookTextScaleStep(1)}
+                        disabled={!canIncreaseCookTextScale(cookTextScale)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Increase text size"
+                        accessibilityState={{ disabled: !canIncreaseCookTextScale(cookTextScale) }}
+                        hitSlop={8}
+                        style={{
+                          paddingHorizontal: Spacing.dense,
+                          paddingVertical: 6,
+                          opacity: canIncreaseCookTextScale(cookTextScale) ? 1 : 0.3,
+                        }}
+                      >
+                        <Text style={{ fontSize: 17, fontWeight: "700", color: colors.textSecondary }}>
+                          A+
+                        </Text>
+                      </Pressable>
+                    </View>
+                    ) : null}
                     <Pressable
                       onPress={() => {
                         setCookMode(false);
@@ -2293,7 +2417,23 @@ export default function RecipeDetailScreen() {
                 <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
                   Step {cookStep + 1} of {instructionSteps.length}
                 </Text>
-                <Text style={{ fontSize: 22, fontWeight: "600", color: colors.text, lineHeight: 32 }}>
+                {/* ENG-949 — flag-ON: base 24 (matches the standalone /cook
+                    screen; the overlay used to read 22 and felt smaller)
+                    scaled by the per-user A−/A+ size, lineHeight ~1.4× so big
+                    sizes stay legible. Flag-OFF: the legacy 22 / 32 exactly. */}
+                <Text
+                  style={{
+                    fontSize: cookStepFontSize(
+                      cookTextSizeControlEnabled ? 24 : 22,
+                      cookTextScale,
+                    ),
+                    fontWeight: "600",
+                    color: colors.text,
+                    lineHeight: cookTextSizeControlEnabled
+                      ? Math.round(cookStepFontSize(24, cookTextScale) * 1.4)
+                      : 32,
+                  }}
+                >
                   {scaledStep}
                 </Text>
                 {/* ENG-944 — "For this step" ingredient chips. Quiet

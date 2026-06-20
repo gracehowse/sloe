@@ -245,6 +245,13 @@ export const AnalyticsEvents = {
    *  segmented control commit advances; not on first render. Used to
    *  measure scaling adoption + the most-popular preset. */
   recipe_scale_changed: "recipe_scale_changed",
+  /** ENG-949 — user changed the cook-mode text size via the in-cook
+   *  A−/A+ control. Payload: `{ scale: number; direction: "up" | "down";
+   *  platform: "web" | "ios" }`. Fires on each commit (not first render),
+   *  so adoption + the most-used size are queryable. The pref is global
+   *  per user (not per recipe), so no recipeId is sent. Same event name
+   *  web ↔ mobile. */
+  cook_text_scale_changed: "cook_text_scale_changed",
   /** User saved a per-cook history row from the completion card
    *  (Paprika parity, 2026-04-30). Payload:
    *    `{ recipeId, scale, rating, hasNote, durationSec }`.

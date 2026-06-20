@@ -16,6 +16,7 @@ export * from "../nutrition/barcodeConfidence";
 export * from "../nutrition/barcodeFreePromise";
 export * from "../nutrition/canonicalNutritionEntrySource";
 export * from "../nutrition/coerceRecipeMacrosForPlanning";
+export * from "../nutrition/cookTextScale";
 export * from "../nutrition/copyMeals";
 export * from "../nutrition/copyYesterdayMeals";
 export * from "../nutrition/customFoods";
