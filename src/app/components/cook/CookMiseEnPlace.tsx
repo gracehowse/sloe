@@ -10,7 +10,7 @@ export interface CookMiseEnPlaceProps {
   recipeId: string;
   recipeTitle?: string;
   items: CookIngredientChecklistItem[];
-  onStartCooking: () => void;
+  onContinueToSteps: () => void;
 }
 
 /** Optional pre-step "Gather your ingredients" screen — web (ENG-946). */
@@ -18,7 +18,7 @@ export function CookMiseEnPlace({
   recipeId,
   recipeTitle,
   items,
-  onStartCooking,
+  onContinueToSteps,
 }: CookMiseEnPlaceProps) {
   return (
     <div
@@ -37,7 +37,7 @@ export function CookMiseEnPlace({
           Tap each line as you add it — so you never wonder whether the salt went in.
         </p>
         <CookIngredientChecklist recipeId={recipeId} items={items} surface="mise" />
-        <SupprButton variant="primary" className="w-full mt-4" onClick={onStartCooking}>
+        <SupprButton variant="primary" className="w-full mt-4" onClick={onContinueToSteps}>
           Start cooking
         </SupprButton>
       </div>

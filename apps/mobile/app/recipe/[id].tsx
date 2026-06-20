@@ -2376,7 +2376,7 @@ export default function RecipeDetailScreen() {
                         : null,
                   };
                 })}
-                onStartCooking={() => setCookPhase("steps")}
+                onContinueToSteps={() => setCookPhase("steps")}
               />
             ) : (
             <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>

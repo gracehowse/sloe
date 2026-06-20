@@ -1535,7 +1535,7 @@ export default function CookModeScreen() {
           recipeId={recipeId}
           recipeTitle={title}
           items={checklistItems}
-          onStartCooking={() => setCookPhase("steps")}
+          onContinueToSteps={() => setCookPhase("steps")}
         />
       ) : !isDone ? (
         <CookStepSwipeSurface

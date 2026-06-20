@@ -11,7 +11,7 @@ export interface CookMiseEnPlaceProps {
   recipeId: string;
   recipeTitle?: string;
   items: CookIngredientChecklistItem[];
-  onStartCooking: () => void;
+  onContinueToSteps: () => void;
   testID?: string;
 }
 
@@ -20,7 +20,7 @@ export function CookMiseEnPlace({
   recipeId,
   recipeTitle,
   items,
-  onStartCooking,
+  onContinueToSteps,
   testID = "cook-mise-en-place",
 }: CookMiseEnPlaceProps) {
   const colors = useThemeColors();
@@ -46,7 +46,7 @@ export function CookMiseEnPlace({
         variant="primary"
         style={styles.cta}
         label="Start cooking"
-        onPress={onStartCooking}
+        onPress={onContinueToSteps}
         haptic="selection"
         accessibilityLabel="Start cooking steps"
       />

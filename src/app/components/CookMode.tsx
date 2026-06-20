@@ -1029,7 +1029,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               recipeId={String(recipe.id)}
               recipeTitle={recipe.title}
               items={checklistItems}
-              onStartCooking={() => setMiseComplete(true)}
+              onContinueToSteps={() => setMiseComplete(true)}
             />
           ) : !isDone ? (
             <>
