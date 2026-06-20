@@ -93,6 +93,7 @@ export * from "../nutrition/plannedMealDisplay";
 export * from "../nutrition/portionEqualsLabel";
 export * from "../nutrition/portionMultiplier";
 export * from "../nutrition/portionPicker";
+export * from "../nutrition/postLogSuggestion";
 export * from "../nutrition/primaryServing";
 export * from "../nutrition/progressCommentary";
 export * from "../nutrition/progressRangeStats";

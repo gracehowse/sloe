@@ -43,6 +43,37 @@ flipping the flag on.
 | Ramp | Flip flag → 100% | One tester (Grace); no cohort split needed. |
 | Cleanup | After 2 weeks at 100% with no regression | Remove the gate, keep the row as an emergency kill switch (flag-hygiene rule below). |
 
+### `post_log_what_next_v1` (ENG-977)
+
+| Property | Value |
+| --- | --- |
+| Flag ID | _create in PostHog before ramp_ |
+| Type | Boolean |
+| Platforms | Web + mobile (iOS) |
+| Owner | Grace |
+| Decision doc | [2026-06-20-post-log-what-next-micro-moment](../decisions/2026-06-20-post-log-what-next-micro-moment.md) |
+
+Gates the calm post-log "what to eat next" micro-moment: after an AI log
+(photo / voice / describe) commits with budget left for the day, the generic
+"Logged N items" toast is replaced by one grounded line — a library suggestion
+or a plain budget read-out (`buildPostLogSuggestion`,
+`src/lib/nutrition/postLogSuggestion.ts`). Flag OFF → the legacy count toast,
+byte-identical to pre-ENG-977.
+
+Default OFF until the PostHog flag is created and ramped — a cold/missing
+client resolves `isFeatureEnabled("post_log_what_next_v1")` to `false`. The
+suggestion is deterministic + grounded (reuses the `northStarSuggestion`
+scorer over the user's own library and remaining budget), so there is no
+AI-cost or "AI broke → blank" risk to ramp around.
+
+#### Ramp schedule
+
+| Phase | Action | Why |
+| --- | --- | --- |
+| Pre-ramp | Validate the line on web + iOS sim (over-budget → no nudge; budget-left → suggestion/read-out) | Visual changes ship validated, never blind. |
+| Ramp | Flip flag → 100% | One tester (Grace); no cohort split needed. |
+| Cleanup | After 2 weeks at 100% with no regression | Remove the gate, keep the default-toast `else` branch as the fallback. |
+
 ### `session-replay-sample-rate` (ENG-516)
 
 | Property | Value |
