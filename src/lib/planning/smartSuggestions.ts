@@ -1,6 +1,6 @@
-import type { DayPlan, RecipeCard } from "../../types/recipe.ts";
-import { isMealPlanPlaceholderLikeTitle } from "../nutrition/portionMultiplier.ts";
-import { normalizeIngredientNameKey } from "./ingredientNameKey.ts";
+import type { DayPlan, RecipeCard } from "../../types/recipe";
+import { isMealPlanPlaceholderLikeTitle } from "../nutrition/portionMultiplier";
+import { normalizeIngredientNameKey } from "./ingredientNameKey";
 
 /**
  * Ingredient name keys already required by non-placeholder meals in the plan.
