@@ -22,7 +22,6 @@ executionOrder:
     - 11_discover.yaml
     - 12_library.yaml
     - 13_fasting.yaml
-    - 14_weight_tracker.yaml
     - 15_meal_nutrition.yaml
     - 16_shopping.yaml
     - 17_cook_mode.yaml
