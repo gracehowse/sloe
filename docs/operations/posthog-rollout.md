@@ -10,6 +10,37 @@ retired.
 
 ## Active flags
 
+### `cook_text_size_control_v1` (ENG-949)
+
+| Property | Value |
+| --- | --- |
+| Flag ID | _create in PostHog before ramp_ |
+| Type | Boolean |
+| Platforms | Web + Mobile (iOS) |
+| Owner | Grace |
+| Decision doc | [2026-06-20-cook-mode-text-size-control](../decisions/2026-06-20-cook-mode-text-size-control.md) |
+
+Gates the in-cook **A−/A+ text-size control** that scales the step
+instruction text and persists the choice per user. Flag ON → the control
+renders in the cook header (web `CookMode.tsx`) and the cook overlay header
+(`apps/mobile/app/recipe/[id].tsx`), a previously-persisted size is applied,
+and the mobile step base is 24 px. Flag OFF → no control, no persisted size
+re-applied, and the mobile step text stays at the legacy `22 / 32` — i.e.
+byte-identical to pre-ENG-949.
+
+Default OFF until the PostHog flag is created and ramped — a cold/missing
+client resolves `isFeatureEnabled("cook_text_size_control_v1")` to `false`.
+Adoption + most-used size are queryable via the `cook_text_scale_changed`
+event (`{ scale, direction, platform }`, same name web ↔ mobile).
+
+#### Ramp schedule
+
+| Phase | Action | Why |
+| --- | --- | --- |
+| Pre-ramp | Validate in iOS sim + web (light + dark, smallest + largest size) | Structural UI ships validated, never blind. |
+| Ramp | Flip flag → 100% | One tester (Grace); no cohort split needed. |
+| Cleanup | After 2 weeks at 100% with no regression | Remove the gate; keep the row as an emergency kill switch. |
+
 ### `deeplink_skeletons` (ENG-768)
 
 | Property | Value |
