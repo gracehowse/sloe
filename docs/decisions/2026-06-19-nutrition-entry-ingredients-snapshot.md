@@ -1,7 +1,7 @@
 # `nutrition_entry_ingredients` snapshot — split AI/photo/voice meals by item
 
 **Date:** 2026-06-19
-**Status:** Resolved (pending Grace's `supabase db push --linked` + data-integrity / qa-lead review)
+**Status:** Resolved (applied 2026-06-19 via `supabase db push --linked --include-all`, migration `20260620120100_eng751_nutrition_entry_ingredients.sql`)
 **Area:** Nutrition data / macro-detail / schema
 **Ticket:** ENG-751
 
@@ -103,15 +103,8 @@ that aggregates items into ONE entry splits correctly without a second migration
 
 ## Migration + types
 
-- Staged: `supabase/migrations/20260619120000_eng751_nutrition_entry_ingredients.sql`.
-  **NOT applied** — per CLAUDE.md, do not `apply_migration` / `db push` from an
-  agent. Grace runs `supabase db push --linked`.
-- `database.types.ts` is **NOT regenerated** here (it reads the live schema, which
-  won't have the table until the push). The explicit `NutritionEntryIngredientRow`
-  interface + typed `as` casts at the supabase boundary cover the gap (the
-  `profiles.meal_plan_slots` precedent).
-- **Post-apply follow-up (ENG-751):** after the push, run `npm run db:types` and
-  drop the casts. Tracked here + in code comments — not a silent TODO.
+- Applied: `supabase/migrations/20260620120100_eng751_nutrition_entry_ingredients.sql` (2026-06-19 via `supabase db push --linked --include-all`).
+- `database.types.ts` regenerated 2026-06-19 (`npm run db:types`).
 
 ## Alternatives considered
 

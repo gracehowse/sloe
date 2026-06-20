@@ -1,18 +1,14 @@
 -- ENG-870 — verified creator claim audit trail and forward-only recipe claim metadata.
 -- Stage this migration for `supabase db push --linked`; do not apply via MCP.
+--
+-- content_origin already exists from ENG-869 (public.recipe_content_origin enum:
+-- first_party | imported_stub | claimed). This migration adds claim audit columns
+-- and the recipe_claims request log only — it does not recreate content_origin.
 
 alter table public.recipes
-  add column if not exists content_origin text not null default 'private_import',
   add column if not exists claimed_by uuid references public.profiles(id) on delete set null,
   add column if not exists claimed_at timestamptz,
   add column if not exists claim_verification jsonb;
-
-alter table public.recipes
-  drop constraint if exists recipes_content_origin_check;
-
-alter table public.recipes
-  add constraint recipes_content_origin_check
-  check (content_origin in ('private_import', 'first_party', 'claimed', 'seed', 'plan_import'));
 
 create table if not exists public.recipe_claims (
   id uuid primary key default gen_random_uuid(),
