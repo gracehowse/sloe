@@ -104,6 +104,7 @@ export function TodayDesktopFrame({ userTier, onOpenProgress }: TodayDesktopFram
     basalBurnByDay,
     nutritionTargets,
     profileMeasurementSystem,
+    householdMemberCount,
   } = useAppData();
   const { authedUserId } = useAuthSession();
 
@@ -168,12 +169,7 @@ export function TodayDesktopFrame({ userTier, onOpenProgress }: TodayDesktopFram
 
   const dailyKcalTarget = normalizeMacroTargets(nutritionTargets).calories;
 
-  // Household size is not yet exposed on the data context; until it
-  // is, the insight card shows "Planning for you this week" for
-  // solo accounts. Joining a household is visible via the Household
-  // panel directly above — the insight line is decorative, not a
-  // source of truth.
-  const householdSize = 1;
+  const householdSize = householdMemberCount;
 
   const stepsForSelectedDay = Object.prototype.hasOwnProperty.call(stepsByDay, breadcrumbKey)
     ? (stepsByDay[breadcrumbKey] ?? 0)
