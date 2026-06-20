@@ -33,6 +33,8 @@ import {
   parseGoalEditorProfileRow,
   parseHeightInputToCm,
   parseWeightInputToKg,
+  parseFiberInputToG,
+  fiberGoalChanged,
   seatPaceForEditor,
   GOAL_EDITOR_PROFILE_COLUMNS,
   type EditorDbGoal,
@@ -69,6 +71,7 @@ export function useGoalPaceEditorDialog({
   const [heightCmInput, setHeightCmInput] = React.useState("");
   const [heightFeetInput, setHeightFeetInput] = React.useState("");
   const [heightInchesInput, setHeightInchesInput] = React.useState("");
+  const [fiberInput, setFiberInput] = React.useState("");
   // ENG-1027 — explicit below-floor acknowledgment (Cronometer pattern).
   const [acknowledged, setAcknowledged] = React.useState(false);
 
@@ -131,6 +134,9 @@ export function useGoalPaceEditorDialog({
         setHeightFeetInput("");
         setHeightInchesInput("");
       }
+      setFiberInput(
+        p.targetFiberG != null && p.targetFiberG > 0 ? String(p.targetFiberG) : "",
+      );
       setLoading(false);
     })();
     return () => {
@@ -208,7 +214,16 @@ export function useGoalPaceEditorDialog({
     return Math.abs(a - goalWeightKg) > 0.05;
   }, [loaded, goalWeightKg]);
 
-  const dirty = recomputeChanged || goalWeightChanged;
+  const editedFiberG = React.useMemo(
+    () => parseFiberInputToG(fiberInput),
+    [fiberInput],
+  );
+  const fiberChanged = React.useMemo(
+    () => loaded != null && fiberGoalChanged(loaded.targetFiberG, editedFiberG),
+    [loaded, editedFiberG],
+  );
+
+  const dirty = recomputeChanged || goalWeightChanged || fiberChanged;
 
   const preview = React.useMemo<RecomputedTargets | null>(() => {
     if (!loaded || !recomputeChanged) return null;
@@ -230,6 +245,12 @@ export function useGoalPaceEditorDialog({
     });
   }, [loaded, goal, pace, effectiveWeightKg, effectiveHeightCm, recomputeChanged]);
 
+  const previewFiberG = React.useMemo(() => {
+    if (editedFiberG != null) return editedFiberG;
+    if (preview) return preview.target_fiber_g;
+    return loaded?.targetFiberG ?? null;
+  }, [editedFiberG, preview, loaded?.targetFiberG]);
+
   const belowSafetyFloor =
     preview != null &&
     goal === "cut" &&
@@ -248,7 +269,9 @@ export function useGoalPaceEditorDialog({
 
   // Gate: when below the floor, Save is disabled until the user ticks the
   // acknowledgment. Above the floor this is always true.
-  const canSave = canSaveBelowFloor({ belowSafetyFloor, acknowledged });
+  const canSave =
+    canSaveBelowFloor({ belowSafetyFloor, acknowledged }) &&
+    (!fiberChanged || editedFiberG != null);
 
   const handleSave = React.useCallback(async () => {
     if (!dirty || saving || !loaded) return;
@@ -287,6 +310,7 @@ export function useGoalPaceEditorDialog({
         recomputed,
         source: "recompute",
         paceKgPerWeek: continuousPace,
+        fiberOverrideG: fiberChanged ? editedFiberG : undefined,
       });
 
       if (!result.ok) {
@@ -305,6 +329,7 @@ export function useGoalPaceEditorDialog({
           weightChanged,
           heightChanged,
           goalWeightChanged,
+          fiberChanged,
           recomputed: recomputed != null,
           newTargetKcal: recomputed?.target_calories ?? null,
           belowSafetyFloor,
@@ -338,6 +363,8 @@ export function useGoalPaceEditorDialog({
     goalWeightChanged,
     goalWeightKg,
     preview,
+    fiberChanged,
+    editedFiberG,
     belowSafetyFloor,
     acknowledged,
     onSaved,
@@ -367,6 +394,9 @@ export function useGoalPaceEditorDialog({
     setHeightInchesInput,
     goalWeightInput,
     setGoalWeightInput,
+    fiberInput,
+    setFiberInput,
+    previewFiberG,
     preview,
     belowSafetyFloor,
     safetyFloorKcal,

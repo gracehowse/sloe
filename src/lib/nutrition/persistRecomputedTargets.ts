@@ -190,6 +190,12 @@ export async function persistRecomputedTargets(
   // Step 2 — build the write payload. `maintenanceTdee` is a derived
   // convenience field on RecomputedTargets, NOT a DB column — strip it.
   const update: Record<string, unknown> = { ...profileUpdate };
+  const fiberOverride = input.fiberOverrideG;
+  const hasFiberOverride =
+    typeof fiberOverride === "number" &&
+    Number.isFinite(fiberOverride) &&
+    fiberOverride > 0;
+
   if (recomputed) {
     const { maintenanceTdee: _maintenance, ...writeableTargets } = recomputed;
     Object.assign(update, writeableTargets);
@@ -205,12 +211,7 @@ export async function persistRecomputedTargets(
     // We deliberately keep `target_calories_source = "recompute"` (set just
     // below) — preserving fibre is independent of calorie provenance, and a
     // "user" stamp would wrongly trip the digest-suppression cooldown.
-    const fiberOverride = input.fiberOverrideG;
-    if (
-      typeof fiberOverride === "number" &&
-      Number.isFinite(fiberOverride) &&
-      fiberOverride > 0
-    ) {
+    if (hasFiberOverride) {
       update.target_fiber_g = Math.round(fiberOverride);
       update.target_fiber_source = "user";
     } else if (oldProfile?.target_fiber_source === "user") {
@@ -239,6 +240,11 @@ export async function persistRecomputedTargets(
     if (continuousPace !== undefined) {
       update.pace_kg_per_week = continuousPace;
     }
+  } else if (hasFiberOverride) {
+    // ENG-846 — fibre-only edit from the goal-pace editor. No calorie /
+    // macro / provenance movement; stamp user-owned fibre only.
+    update.target_fiber_g = Math.round(fiberOverride);
+    update.target_fiber_source = "user";
   }
 
   // Step 3 — write the profile row.

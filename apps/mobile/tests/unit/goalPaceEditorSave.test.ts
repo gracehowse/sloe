@@ -296,6 +296,27 @@ describe("mobile GoalPaceEditorSheet — persisted write", () => {
     expect(laterWrite.target_calories_source).toBe("recompute");
   });
 
+  it("ENG-846 — fibre-only edit stamps user-owned fibre without moving calories", async () => {
+    const supabase = makeMockSupabase({
+      ...OLD_PROFILE,
+      target_fiber_g: 25,
+      target_fiber_source: "recompute",
+    });
+
+    const res = await persistRecomputedTargets(supabase as never, "u1", {
+      profileUpdate: {},
+      recomputed: null,
+      fiberOverrideG: 32,
+    });
+
+    expect(res.ok).toBe(true);
+    expect(res.wroteTargets).toBe(false);
+    const written = supabase.updates.at(-1)!;
+    expect(written.target_fiber_g).toBe(32);
+    expect(written.target_fiber_source).toBe("user");
+    expect(written).not.toHaveProperty("target_calories");
+  });
+
   it("goal-weight-only edit does not recompute (recomputed = null → no target write)", async () => {
     const supabase = makeMockSupabase(null);
     const res = await persistRecomputedTargets(supabase as never, "u1", {

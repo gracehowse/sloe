@@ -12,9 +12,11 @@ import {
   canSaveBelowFloor,
   dbGoalToSliderGoal,
   defaultPaceForDbGoal,
+  fiberGoalChanged,
   paceChanged,
   paceForPreset,
   paceRangeForDbGoal,
+  parseFiberInputToG,
   parseGoalEditorProfileRow,
   parseHeightInputToCm,
   parseWeightInputToKg,
@@ -203,6 +205,8 @@ describe("goalEditorPace — profile row parsing", () => {
       adaptiveTdee: 1850,
       adaptiveTdeeConfidence: "high",
       adaptiveTdeeUpdatedAt: "2026-05-25T00:00:00.000Z",
+      targetFiberG: null,
+      targetFiberSource: null,
     });
   });
 
@@ -245,6 +249,37 @@ describe("canSaveBelowFloor (ENG-1027)", () => {
     expect(
       canSaveBelowFloor({ belowSafetyFloor: true, acknowledged: true }),
     ).toBe(true);
+  });
+});
+
+describe("goalEditorPace — fibre input (ENG-846)", () => {
+  it("parseFiberInputToG accepts positive whole grams and rejects blank/invalid", () => {
+    expect(parseFiberInputToG("")).toBeNull();
+    expect(parseFiberInputToG("  ")).toBeNull();
+    expect(parseFiberInputToG("abc")).toBeNull();
+    expect(parseFiberInputToG("0")).toBeNull();
+    expect(parseFiberInputToG("30")).toBe(30);
+    expect(parseFiberInputToG("30.6")).toBe(31);
+  });
+
+  it("fiberGoalChanged ignores blank edits and detects real changes", () => {
+    expect(fiberGoalChanged(30, null)).toBe(false);
+    expect(fiberGoalChanged(30, 30)).toBe(false);
+    expect(fiberGoalChanged(30, 35)).toBe(true);
+    expect(fiberGoalChanged(null, 25)).toBe(true);
+  });
+
+  it("parseGoalEditorProfileRow loads target_fiber_g + source", () => {
+    const p = parseGoalEditorProfileRow({
+      sex: "female",
+      activity_level: "moderate",
+      goal: "cut",
+      plan_pace: "steady",
+      target_fiber_g: 28,
+      target_fiber_source: "user",
+    });
+    expect(p.targetFiberG).toBe(28);
+    expect(p.targetFiberSource).toBe("user");
   });
 });
 
