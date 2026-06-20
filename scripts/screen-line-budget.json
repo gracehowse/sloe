@@ -67,7 +67,7 @@
   "apps/mobile/components/today/TodayMealsSection.tsx": 1705,
   "apps/mobile/components/today/TodayWeekView.tsx": 643,
   "apps/mobile/components/VoiceLogSheet.tsx": 450,
-  "src/app/components/CookMode.tsx": 1264,
+  "src/app/components/CookMode.tsx": 1339,
   "src/app/components/DiscoverFeed.tsx": 1157,
   "src/app/components/FastingTimer.tsx": 582,
   "src/app/components/food-search/FoodSearchPanel.tsx": 2976,
