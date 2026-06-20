@@ -39,7 +39,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -58,6 +57,7 @@ import {
 import { useGoalPaceEditor } from "./useGoalPaceEditor";
 import { GoalPaceSlider } from "./GoalPaceSlider";
 import { GoalPaceBodyFields } from "./GoalPaceBodyFields";
+import { GoalPaceSecondaryTargets } from "./GoalPaceSecondaryTargets";
 import { GoalOptionList, GoalPaceFooter } from "./GoalPaceControls";
 
 export interface GoalPaceEditorSheetProps {
@@ -199,75 +199,14 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                 setHeightInchesInput={editor.setHeightInchesInput}
               />
 
-              {/* Goal weight */}
-              {sectionLabel(`Goal weight (${editor.weightUnit})`)}
-              <TextInput
-                value={editor.goalWeightInput}
-                onChangeText={editor.setGoalWeightInput}
-                keyboardType="decimal-pad"
-                placeholder={`Target weight in ${editor.weightUnit}`}
-                placeholderTextColor={colors.textTertiary}
-                testID="goal-weight-input"
-                style={{
-                  borderWidth: 1.5,
-                  borderColor: colors.cardBorder,
-                  borderRadius: Radius.md,
-                  paddingVertical: Spacing.md,
-                  paddingHorizontal: Spacing.md,
-                  fontSize: 15,
-                  color: colors.text,
-                  backgroundColor: colors.card,
-                  marginBottom: Spacing.xs,
-                }}
+              <GoalPaceSecondaryTargets
+                weightUnit={editor.weightUnit}
+                goalWeightInput={editor.goalWeightInput}
+                setGoalWeightInput={editor.setGoalWeightInput}
+                fiberInput={editor.fiberInput}
+                setFiberInput={editor.setFiberInput}
+                previewFiberG={editor.previewFiberG}
               />
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: colors.textTertiary,
-                  marginBottom: Spacing.lg,
-                  lineHeight: 17,
-                }}
-              >
-                Used for your projected reach-date only — it doesn&apos;t change your
-                calorie target.
-              </Text>
-
-              {/* Fibre goal (ENG-846) — user-owned; sticky across recomputes */}
-              {sectionLabel("Daily fibre (g)")}
-              <TextInput
-                value={editor.fiberInput}
-                onChangeText={editor.setFiberInput}
-                keyboardType="number-pad"
-                placeholder={
-                  editor.previewFiberG != null
-                    ? `Recommended ${editor.previewFiberG}g`
-                    : "Daily fibre target in grams"
-                }
-                placeholderTextColor={colors.textTertiary}
-                testID="goal-fiber-input"
-                style={{
-                  borderWidth: 1.5,
-                  borderColor: colors.cardBorder,
-                  borderRadius: Radius.md,
-                  paddingVertical: Spacing.md,
-                  paddingHorizontal: Spacing.md,
-                  fontSize: 15,
-                  color: colors.text,
-                  backgroundColor: colors.card,
-                  marginBottom: Spacing.xs,
-                }}
-              />
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: colors.textTertiary,
-                  marginBottom: Spacing.lg,
-                  lineHeight: 17,
-                }}
-              >
-                Your fibre goal stays put when you change pace — unless you edit it
-                here.
-              </Text>
 
               {/* Live preview (adaptive-aware) */}
               {editor.preview ? (

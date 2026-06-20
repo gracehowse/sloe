@@ -314,9 +314,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     netCarbsLensEnabled,
     householdMemberCount,
   } = useAppData();
-  // Suppress unused warning for caffeine-by-day (currently shown only via
-  // today's number; weekly caffeine view is a separate roadmap item).
-  void _extraCaffeineByDay;
+  void _extraCaffeineByDay; // unused — caffeine shown only via today's number
 
   // ENG-798 (Redesign — Design Direction 2026) — gate the Today win-moment
   // detection until after first paint so the initial snapshot is captured
@@ -2999,7 +2997,6 @@ export const NutritionTracker = memo(function NutritionTracker({
         }
       />
       </div>
-
       <TodayWeeklyInsightMobileCard
         householdSize={householdMemberCount}
         loggedDaysInWeek={weekData.loggedDaysInWeek}
