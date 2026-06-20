@@ -1,8 +1,8 @@
+import { SmartImage } from "@/components/ui/SmartImage";
 import { memo } from "react";
 import * as React from "react";
 import {
   Alert,
-  Image,
   PanResponder,
   Pressable,
   StyleSheet,
@@ -356,10 +356,11 @@ function NorthStarFigmaHero({
       >
         <View style={StyleSheet.absoluteFill}>
           {suggestion.thumbnail ? (
-            <Image
+            <SmartImage
               source={{ uri: suggestion.thumbnail }}
               style={StyleSheet.absoluteFill}
               resizeMode="cover"
+              recyclingKey={suggestion.recipeId ?? suggestion.thumbnail}
             />
           ) : (
             <RecipeHeroFallback
@@ -553,9 +554,11 @@ function NorthStarDefault({
             match the bumped 64pt thumb spec. */}
         <View style={styles.thumb}>
           {suggestion.thumbnail ? (
-            <Image
+            <SmartImage
               source={{ uri: suggestion.thumbnail }}
               style={{ width: "100%", height: "100%", borderRadius: 8 }}
+              resizeMode="cover"
+              recyclingKey={suggestion.recipeId ?? suggestion.thumbnail}
             />
           ) : (
             <RecipeHeroFallback

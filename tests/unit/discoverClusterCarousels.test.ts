@@ -21,9 +21,11 @@ import { SEED_CLUSTERS } from "../../src/lib/recipes/seedRecipesV2";
 const ROOT = resolve(__dirname, "../..");
 const WEB_DISCOVER_PATH = resolve(ROOT, "src/app/components/DiscoverFeed.tsx");
 const MOBILE_DISCOVER_PATH = resolve(ROOT, "apps/mobile/app/(tabs)/discover.tsx");
+const MOBILE_CLUSTER_PATH = resolve(ROOT, "apps/mobile/components/discover/DiscoverClusterCarousels.tsx");
 
 const WEB_SRC = readFileSync(WEB_DISCOVER_PATH, "utf8");
 const MOBILE_SRC = readFileSync(MOBILE_DISCOVER_PATH, "utf8");
+const MOBILE_CLUSTER_SRC = readFileSync(MOBILE_CLUSTER_PATH, "utf8");
 
 /** Reading order pinned in the brief. */
 const ORDERED_CLUSTERS = [
@@ -82,17 +84,14 @@ describe("Discover cluster carousels (Wave 4 — 2026-05-02)", () => {
     });
   });
 
-  describe("mobile Discover — flat feed (no cluster carousels)", () => {
-    it("does not wire per-cluster carousel testids (web-only pattern)", () => {
-      expect(MOBILE_SRC).not.toMatch(/discover-cluster-\$\{cluster\.id\}/);
+  describe("mobile Discover — cuisine cluster carousels (ENG-695)", () => {
+    it("wires per-cluster carousel testids", () => {
+      expect(MOBILE_CLUSTER_SRC).toMatch(/discover-cluster-\$\{cluster\.id\}/);
     });
 
-    it("does not map SEED_CLUSTERS in the screen module", () => {
-      expect(MOBILE_SRC).not.toMatch(/SEED_CLUSTERS\.map/);
-    });
-
-    it("documents single-layout parity choice vs web carousels", () => {
-      expect(MOBILE_SRC).toMatch(/mobile dropped the carousel branch/);
+    it("renders DiscoverClusterCarousels on the default unfiltered view", () => {
+      expect(MOBILE_SRC).toMatch(/DiscoverClusterCarousels/);
+      expect(MOBILE_SRC).toMatch(/showClusterCarousels/);
     });
   });
 
