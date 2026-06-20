@@ -216,6 +216,8 @@ async function getOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
 
 async function fetchOAuth2Token(cfg: FatSecretConfig): Promise<string | null> {
   const now = Date.now();
+  const cacheKey = oauth2CacheKey(cfg);
+  const redis = getRedis();
   // If the provided credentials are OAuth2 client_id/client_secret, this will succeed.
   // If they are legacy OAuth1 keys, this will fail and we fall back to OAuth1 signing.
   const basic = Buffer.from(`${cfg.consumerKey}:${cfg.consumerSecret}`).toString("base64");
