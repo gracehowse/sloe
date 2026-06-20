@@ -27,9 +27,10 @@
  *
  * Posture (unchanged): goal/pace/weight/height → recompute + provenance
  * "recompute"; goal-weight-only → column write; goal → maintain clears
- * plan_pace; safety floor is soft-warn-not-block. Fibre / per-macro
- * overrides stay on /profile — reachable via "Customise macros"
- * (`onCustomiseMacros`). Gated behind `goal-editor` at the call-site.
+ * plan_pace; safety floor is soft-warn-not-block. Fibre is editable inline
+ * here (ENG-846); per-macro overrides beyond fibre stay on /profile —
+ * reachable via "Customise macros" (`onCustomiseMacros`). Gated behind
+ * `goal-editor` at the call-site.
  */
 
 import * as React from "react";
@@ -258,6 +259,33 @@ export function GoalPaceEditorDialog({
               </p>
             </div>
 
+            {/* Fibre goal (ENG-846) — user-owned; sticky across recomputes */}
+            <div>
+              <label htmlFor="goal-fiber-input" className={sectionCls}>
+                Daily fibre (g)
+              </label>
+              <input
+                id="goal-fiber-input"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                step={1}
+                value={e.fiberInput}
+                onChange={(ev) => e.setFiberInput(ev.target.value)}
+                data-testid="goal-fiber-input"
+                placeholder={
+                  e.previewFiberG != null
+                    ? `Recommended ${e.previewFiberG}g`
+                    : "Daily fibre target in grams"
+                }
+                className={`ph-mask ${inputCls}`}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Your fibre goal stays put when you change pace — unless you edit it
+                here.
+              </p>
+            </div>
+
             {/* Live preview of the recomputed target (adaptive-aware) */}
             {e.preview ? (
               <div
@@ -272,7 +300,8 @@ export function GoalPaceEditorDialog({
                 </p>
                 <p className="text-[11px] text-muted-foreground tabular-nums mt-1.5">
                   Protein {e.preview.target_protein}g · Carbs {e.preview.target_carbs}g
-                  · Fat {e.preview.target_fat}g · Fibre {e.preview.target_fiber_g}g
+                  · Fat {e.preview.target_fat}g · Fibre{" "}
+                  {e.previewFiberG ?? e.preview.target_fiber_g}g
                 </p>
               </div>
             ) : null}

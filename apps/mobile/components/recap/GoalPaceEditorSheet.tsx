@@ -232,6 +232,43 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                 calorie target.
               </Text>
 
+              {/* Fibre goal (ENG-846) — user-owned; sticky across recomputes */}
+              {sectionLabel("Daily fibre (g)")}
+              <TextInput
+                value={editor.fiberInput}
+                onChangeText={editor.setFiberInput}
+                keyboardType="number-pad"
+                placeholder={
+                  editor.previewFiberG != null
+                    ? `Recommended ${editor.previewFiberG}g`
+                    : "Daily fibre target in grams"
+                }
+                placeholderTextColor={colors.textTertiary}
+                testID="goal-fiber-input"
+                style={{
+                  borderWidth: 1.5,
+                  borderColor: colors.cardBorder,
+                  borderRadius: Radius.md,
+                  paddingVertical: Spacing.md,
+                  paddingHorizontal: Spacing.md,
+                  fontSize: 15,
+                  color: colors.text,
+                  backgroundColor: colors.card,
+                  marginBottom: Spacing.xs,
+                }}
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: colors.textTertiary,
+                  marginBottom: Spacing.lg,
+                  lineHeight: 17,
+                }}
+              >
+                Your fibre goal stays put when you change pace — unless you edit it
+                here.
+              </Text>
+
               {/* Live preview (adaptive-aware) */}
               {editor.preview ? (
                 <View
@@ -271,7 +308,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                   >
                     Protein {editor.preview.target_protein}g · Carbs{" "}
                     {editor.preview.target_carbs}g · Fat {editor.preview.target_fat}g · Fibre{" "}
-                    {editor.preview.target_fiber_g}g
+                    {editor.previewFiberG ?? editor.preview.target_fiber_g}g
                   </Text>
                 </View>
               ) : null}

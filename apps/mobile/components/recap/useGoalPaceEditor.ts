@@ -43,6 +43,8 @@ import {
   parseGoalEditorProfileRow,
   parseHeightInputToCm,
   parseWeightInputToKg,
+  parseFiberInputToG,
+  fiberGoalChanged,
   seatPaceForEditor,
   GOAL_EDITOR_PROFILE_COLUMNS,
   type EditorDbGoal,
@@ -84,6 +86,7 @@ export function useGoalPaceEditor({
   const [heightCmInput, setHeightCmInput] = useState("");
   const [heightFeetInput, setHeightFeetInput] = useState("");
   const [heightInchesInput, setHeightInchesInput] = useState("");
+  const [fiberInput, setFiberInput] = useState("");
   // ENG-1027 — explicit below-floor acknowledgment (Cronometer pattern).
   const [acknowledged, setAcknowledged] = useState(false);
 
@@ -141,6 +144,9 @@ export function useGoalPaceEditor({
         setHeightFeetInput("");
         setHeightInchesInput("");
       }
+      setFiberInput(
+        p.targetFiberG != null && p.targetFiberG > 0 ? String(p.targetFiberG) : "",
+      );
       setLoading(false);
     })();
     return () => {
@@ -231,7 +237,16 @@ export function useGoalPaceEditor({
     return Math.abs(a - goalWeightKg) > 0.05;
   }, [loaded, goalWeightKg]);
 
-  const dirty = recomputeChanged || goalWeightChanged;
+  const editedFiberG = useMemo(
+    () => parseFiberInputToG(fiberInput),
+    [fiberInput],
+  );
+  const fiberChanged = useMemo(
+    () => loaded != null && fiberGoalChanged(loaded.targetFiberG, editedFiberG),
+    [loaded, editedFiberG],
+  );
+
+  const dirty = recomputeChanged || goalWeightChanged || fiberChanged;
 
   // Live preview — adaptive-aware. Only when a recompute input moved AND
   // we have the body basics.
@@ -255,6 +270,12 @@ export function useGoalPaceEditor({
     });
   }, [loaded, goal, pace, effectiveWeightKg, effectiveHeightCm, recomputeChanged]);
 
+  const previewFiberG = useMemo(() => {
+    if (editedFiberG != null) return editedFiberG;
+    if (preview) return preview.target_fiber_g;
+    return loaded?.targetFiberG ?? null;
+  }, [editedFiberG, preview, loaded?.targetFiberG]);
+
   const belowSafetyFloor =
     preview != null &&
     goal === "cut" &&
@@ -273,7 +294,9 @@ export function useGoalPaceEditor({
 
   // Gate: when below the floor the Save button is disabled until the user
   // ticks the acknowledgment. Above the floor this is always true.
-  const canSave = canSaveBelowFloor({ belowSafetyFloor, acknowledged });
+  const canSave =
+    canSaveBelowFloor({ belowSafetyFloor, acknowledged }) &&
+    (!fiberChanged || editedFiberG != null);
 
   const handleConfirm = useCallback(async () => {
     if (!dirty || saving || !loaded || !userId) {
@@ -315,6 +338,7 @@ export function useGoalPaceEditor({
         recomputed,
         source: "recompute",
         paceKgPerWeek: continuousPace,
+        fiberOverrideG: fiberChanged ? editedFiberG : undefined,
       });
 
       if (!result.ok) {
@@ -333,6 +357,7 @@ export function useGoalPaceEditor({
           weightChanged,
           heightChanged,
           goalWeightChanged,
+          fiberChanged,
           recomputed: recomputed != null,
           newTargetKcal: recomputed?.target_calories ?? null,
           belowSafetyFloor,
@@ -368,6 +393,8 @@ export function useGoalPaceEditor({
     goalWeightChanged,
     goalWeightKg,
     preview,
+    fiberChanged,
+    editedFiberG,
     belowSafetyFloor,
     acknowledged,
     onSaved,
@@ -400,6 +427,9 @@ export function useGoalPaceEditor({
     setHeightInchesInput,
     goalWeightInput,
     setGoalWeightInput,
+    fiberInput,
+    setFiberInput,
+    previewFiberG,
     // preview + safety
     preview,
     belowSafetyFloor,

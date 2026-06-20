@@ -62,13 +62,17 @@ export interface LoadedGoalEditorProfile {
   adaptiveTdee: number | null;
   adaptiveTdeeConfidence: string | null;
   adaptiveTdeeUpdatedAt: string | null;
+  /** Stored fibre target (g). Null when unset on the profile row. */
+  targetFiberG: number | null;
+  /** Fibre provenance — `user` values are sticky across recomputes (ENG-779). */
+  targetFiberSource: "onboarding" | "recompute" | "user" | null;
 }
 
 /** The exact column list both editors select from `profiles`. Single
  *  source so the two SELECTs can't drift (e.g. one forgets to add the
  *  adaptive columns). */
 export const GOAL_EDITOR_PROFILE_COLUMNS =
-  "sex, age, weight_kg, height_cm, activity_level, goal, plan_pace, pace_kg_per_week, goal_weight_kg, nutrition_strategy, measurement_system, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at";
+  "sex, age, weight_kg, height_cm, activity_level, goal, plan_pace, pace_kg_per_week, goal_weight_kg, nutrition_strategy, measurement_system, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, target_fiber_g, target_fiber_source";
 
 /** Map the loaded DB goal string to one of the three editor options. */
 export function normalizeEditorGoal(raw: string | null | undefined): EditorDbGoal {
@@ -132,6 +136,16 @@ export function parseGoalEditorProfileRow(
     adaptiveTdeeUpdatedAt:
       typeof row.adaptive_tdee_updated_at === "string"
         ? row.adaptive_tdee_updated_at
+        : null,
+    targetFiberG:
+      typeof row.target_fiber_g === "number" && row.target_fiber_g > 0
+        ? Math.round(row.target_fiber_g)
+        : null,
+    targetFiberSource:
+      row.target_fiber_source === "onboarding" ||
+      row.target_fiber_source === "recompute" ||
+      row.target_fiber_source === "user"
+        ? row.target_fiber_source
         : null,
   };
 }
@@ -323,6 +337,33 @@ export function canSaveBelowFloor(input: {
 }): boolean {
   if (!input.belowSafetyFloor) return true;
   return input.acknowledged;
+}
+
+/**
+ * Parse a fibre goal input (whole grams) back to g. Returns `null` for
+ * blank / non-finite / non-positive input so the caller can treat an
+ * empty field as "no explicit edit this session".
+ */
+export function parseFiberInputToG(raw: string): number | null {
+  const t = raw.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n);
+}
+
+/**
+ * True when the edited fibre differs from the seated profile value.
+ * Blank / invalid input is NOT treated as a change — the user must
+ * enter a positive whole-gram value to commit a fibre edit (ENG-846).
+ */
+export function fiberGoalChanged(
+  seatedFiberG: number | null | undefined,
+  editedFiberG: number | null,
+): boolean {
+  if (editedFiberG == null) return false;
+  if (seatedFiberG == null || seatedFiberG <= 0) return true;
+  return Math.round(seatedFiberG) !== Math.round(editedFiberG);
 }
 
 /** Re-export so a single import covers the editor's pace types. */
