@@ -15,7 +15,7 @@
  *
  * Write-side callers (must call `snapshotDailyTargetIfMissing`):
  *   - Web: `src/context/appData/useNutritionJournalState.ts`
- *   - Mobile: `apps/mobile/app/(tabs)/index.tsx`,
+ *   - Mobile: `apps/mobile/app/(tabs)/_today/TodayScreen.tsx`,
  *     `apps/mobile/app/(tabs)/barcode.tsx`,
  *     `apps/mobile/app/(tabs)/planner.tsx`,
  *     `apps/mobile/app/recipe/[id].tsx`
@@ -47,7 +47,7 @@ const WEB_JOURNAL_STATE = resolve(
   __dirname,
   "../../src/context/appData/useNutritionJournalState.ts",
 );
-const MOBILE_TODAY = resolve(__dirname, "../../apps/mobile/app/(tabs)/index.tsx");
+const MOBILE_TODAY = resolve(__dirname, "../../apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
 const MOBILE_BARCODE = resolve(__dirname, "../../apps/mobile/app/(tabs)/barcode.tsx");
 const MOBILE_PLANNER = resolve(__dirname, "../../apps/mobile/app/(tabs)/planner.tsx");
 const MOBILE_RECIPE = resolve(__dirname, "../../apps/mobile/app/recipe/[id].tsx");

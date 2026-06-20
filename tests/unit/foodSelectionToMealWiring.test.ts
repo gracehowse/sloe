@@ -10,7 +10,7 @@ const ROOT = join(__dirname, "../..");
 describe("foodSelectionToMeal wiring (ENG-1046)", () => {
   it("mobile Today handleFoodSearchSelect uses foodSelectionToMealMacros", () => {
     const src = readFileSync(
-      join(ROOT, "apps/mobile/app/(tabs)/index.tsx"),
+      join(ROOT, "apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
       "utf8",
     );
     expect(src).toMatch(/foodSelectionToMealMacros/);

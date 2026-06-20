@@ -27,6 +27,10 @@ const WEB_OFF_SEARCH = resolve(
   __dirname,
   "../../../../src/lib/openFoodFacts/searchProducts.ts",
 );
+const WEB_FOOD_SEARCH_MERGE = resolve(
+  __dirname,
+  "../../../../src/lib/nutrition/foodSearchMerge.ts",
+);
 const WEB_OFF_BARCODE = resolve(
   __dirname,
   "../../../../src/lib/openFoodFacts/fetchProductByBarcode.ts",
@@ -36,6 +40,7 @@ const VERIFY_SRC = readFileSync(MOBILE_VERIFY, "utf8");
 const BARCODE_SRC = readFileSync(MOBILE_BARCODE, "utf8");
 const WEB_SEARCH_SRC = readFileSync(WEB_FOOD_SEARCH, "utf8");
 const WEB_OFF_SEARCH_SRC = readFileSync(WEB_OFF_SEARCH, "utf8");
+const WEB_MERGE_SRC = readFileSync(WEB_FOOD_SEARCH_MERGE, "utf8");
 const WEB_OFF_BARCODE_SRC = readFileSync(WEB_OFF_BARCODE, "utf8");
 
 describe("F-77 OFF Atwater plausibility gate — every ingest point", () => {
@@ -62,9 +67,10 @@ describe("F-77 trust-weighted ranking — USDA over OFF on tie/near-tie", () => 
     expect(VERIFY_SRC).toMatch(/source:\s*"OFF"/);
   });
 
-  it("web mergeAndDedup applies a trustWeight delta to USDA / OFF / Edamam rows", () => {
-    expect(WEB_SEARCH_SRC).toMatch(/foodSearchTrustWeight/);
-    expect(WEB_SEARCH_SRC).toMatch(/searchRelevance\(q,\s*r\.name\)\s*\+\s*trustWeight\(r\)/);
+  it("web merge pipeline applies shared rank/trust via mergeFoodSearchRows (ENG-1113)", () => {
+    expect(WEB_SEARCH_SRC).toMatch(/mergeFoodSearchRows\(/);
+    expect(WEB_MERGE_SRC).toMatch(/foodSearchRankScore/);
+    expect(WEB_MERGE_SRC).toMatch(/isBareGenericNounRow/);
   });
 });
 

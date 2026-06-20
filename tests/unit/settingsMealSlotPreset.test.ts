@@ -24,7 +24,7 @@ describe("Settings meal slot preset (ENG-1177)", () => {
 
   it("Today hosts thread enabled slots from profile", () => {
     const web = readFileSync(join(ROOT, "src/app/components/NutritionTracker.tsx"), "utf8");
-    const mobile = readFileSync(join(ROOT, "apps/mobile/app/(tabs)/index.tsx"), "utf8");
+    const mobile = readFileSync(join(ROOT, "apps/mobile/app/(tabs)/_today/TodayScreen.tsx"), "utf8");
     expect(web).toContain("enabledMealSlotLabels");
     expect(web).toContain("slotLabels={enabledMealSlots}");
     expect(mobile).toContain("enabledMealSlotLabels");

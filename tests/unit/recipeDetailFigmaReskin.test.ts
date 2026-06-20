@@ -381,7 +381,7 @@ describe("mobile detail — Figma radii (delta 6)", () => {
     // Radius.lg=8 ladder must still never return.
     const cardBlock = MOBILE_SRC.slice(
       MOBILE_SRC.indexOf("card: {\n      backgroundColor: cardElevation"),
-      MOBILE_SRC.indexOf("cardTitle:"),
+      MOBILE_SRC.indexOf("descText:"),
     );
     expect(cardBlock).toContain("borderRadius: CARD_RADIUS");
     expect(cardBlock).not.toContain("borderRadius: Radius.lg");

@@ -91,12 +91,10 @@ describe("ENG-824 — weight win-moment parity (both platforms)", () => {
   });
 
   it("mobile fires the loud success haptic only on a new low, quiet confirm otherwise", () => {
-    expect(MOBILE_SHEET).toContain(
-      "Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)",
-    );
-    expect(MOBILE_SHEET).toContain(
-      "Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)",
-    );
+    expect(MOBILE_SHEET).toMatch(/Haptics\.notificationAsync/);
+    expect(MOBILE_SHEET).toMatch(/NotificationFeedbackType\.Success/);
+    expect(MOBILE_SHEET).toMatch(/Haptics\.impactAsync/);
+    expect(MOBILE_SHEET).toMatch(/ImpactFeedbackStyle\.Medium/);
   });
 
   it("both platforms mount the reserved WinMomentPlayer on a new low", () => {

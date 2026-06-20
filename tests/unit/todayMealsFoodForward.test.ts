@@ -42,8 +42,8 @@ describe("Today meals section — food-forward row UI", () => {
     expect(web).toMatch(/h-10 w-10 rounded-lg object-cover/);
   });
 
-  it("mobile uses mealRowImageUrl + Image thumb", () => {
+  it("mobile uses mealRowImageUrl + SmartImage thumb (ENG-685)", () => {
     expect(mobile).toContain("mealRowImageUrl");
-    expect(mobile).toContain("<Image");
+    expect(mobile).toContain("<SmartImage");
   });
 });

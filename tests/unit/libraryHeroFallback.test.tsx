@@ -58,6 +58,6 @@ describe("RecipeDetail renders RecipeHeroFallback when no real image + ladder yi
     // a non-string when recipe.image was null/undefined — `<img>`
     // then rendered broken. Post-fix: heroSrc resolves to a string
     // OR null, with the null branch rendering <RecipeHeroFallback>.
-    expect(RECIPE_DETAIL_SRC).toMatch(/heroSrc = ladderSrc \?\? \(hasRealImage \? recipe\.image : null\)/);
+    expect(RECIPE_DETAIL_SRC).toMatch(/heroSrc = ladderSrc \?\? \(hasRealImage \? effectiveImage : null\)/);
   });
 });

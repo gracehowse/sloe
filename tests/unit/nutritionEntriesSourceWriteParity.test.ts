@@ -65,7 +65,7 @@ const INVENTORY: Site[] = [
     payloadPin: /\.upsert\(rows|buildNutritionEntryRow\(/,
   },
   {
-    file: "apps/mobile/app/(tabs)/index.tsx",
+    file: "apps/mobile/app/(tabs)/_today/TodayScreen.tsx",
     payloadPin: /buildNutritionEntryRow\(/,
   },
   {

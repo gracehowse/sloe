@@ -22,7 +22,7 @@ describe("ENG-1184 — status chip → WhyThisNumber on Today", () => {
   });
 
   it("mobile Today hosts WhyThisNumberSheet and wires onPressStatusChip", () => {
-    const today = read("apps/mobile/app/(tabs)/index.tsx");
+    const today = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
     expect(today).toMatch(/<WhyThisNumberSheet/);
     expect(today).toMatch(/onPressStatusChip=\{\(\) => setWhySheetOpen\(true\)\}/);
     expect(today).toMatch(/whySheetOpen/);
