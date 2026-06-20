@@ -80,6 +80,9 @@ import {
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
+  isLearnedCustomFood,
+  isLearnedCustomFoodSource,
+  LEARNED_CUSTOM_FOOD_REUSE_CUE,
   type CustomFood,
 } from "../../../lib/nutrition/customFoods";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
@@ -967,6 +970,8 @@ export function FoodSearchPanel({
     quantity: number;
     customFoodId?: string;
     imageUrl?: string | null;
+    /** ENG-976 — remembered photo/voice correction reuse cue. */
+    showLearnedReuseCue?: boolean;
   } | null>(null);
   const [previewEatenAtTime, setPreviewEatenAtTime] = useState("12:00");
   const previewEatenAtEnabled =
@@ -1291,6 +1296,7 @@ export function FoodSearchPanel({
         chosenPortion: chosen,
         quantity,
         customFoodId: food.id,
+        showLearnedReuseCue: isLearnedCustomFood(food),
       });
     },
     [],
@@ -1602,6 +1608,7 @@ export function FoodSearchPanel({
               name: updated.brand ? `${updated.name} · ${updated.brand}` : updated.name,
               macrosPer100g: customFoodToMacrosPer100g(updated),
               portions: buildCustomFoodPortions(updated),
+              showLearnedReuseCue: isLearnedCustomFood(updated),
             }
           : prev,
       );
@@ -2053,6 +2060,14 @@ export function FoodSearchPanel({
             ) : (
               <span className="block mt-1 text-xs text-muted-foreground">Tap for nutrition info</span>
             )}
+            {customFood && isLearnedCustomFoodSource(customFood.source) ? (
+              <span
+                className="block mt-0.5 text-[11px] italic text-muted-foreground/90"
+                data-testid="learned-custom-food-cue"
+              >
+                {LEARNED_CUSTOM_FOOD_REUSE_CUE}
+              </span>
+            ) : null}
           </div>
           {headline.mode !== "placeholder" && loadingKey !== item.key ? (
             <div className="flex flex-col items-end shrink-0">
@@ -2135,6 +2150,15 @@ export function FoodSearchPanel({
           </button>
 
           <h3 className="font-semibold text-foreground">{preview.name}</h3>
+
+          {preview.showLearnedReuseCue ? (
+            <p
+              className="text-sm italic text-muted-foreground -mt-2"
+              data-testid="learned-custom-food-cue"
+            >
+              {LEARNED_CUSTOM_FOOD_REUSE_CUE}
+            </p>
+          ) : null}
 
           {originalDescription && (
             <p className="text-sm italic text-muted-foreground -mt-1">
@@ -2649,6 +2673,14 @@ export function FoodSearchPanel({
                       ) : (
                         <span className="text-xs text-muted-foreground">Tap for nutrition info</span>
                       )}
+                      {customFood && isLearnedCustomFoodSource(customFood.source) ? (
+                        <span
+                          className="block mt-0.5 text-[11px] italic text-muted-foreground/90"
+                          data-testid="learned-custom-food-cue"
+                        >
+                          {LEARNED_CUSTOM_FOOD_REUSE_CUE}
+                        </span>
+                      ) : null}
                     </div>
                     {headline.mode !== "placeholder" && loadingKey !== item.key ? (
                       <span className="text-sm font-bold text-foreground tabular-nums">{headline.headlineKcal}</span>
