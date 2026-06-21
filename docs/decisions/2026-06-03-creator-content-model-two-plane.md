@@ -45,6 +45,7 @@ The funnel pitch is true only when: link-back is **surfaced** (not buried — EN
 - **Launch-relevant:** surface link-back (ENG-858), stop verbatim prose (ENG-857), DMCA (ENG-859).
 - **Post-Today:** `image_source` provenance + precedence ladder (ENG-862/864).
 - **Implemented in ENG-869:** `recipes.content_origin` enum + backfill and write-path tagging for imports versus first-party creates.
+- **Implemented in ENG-870 foundation:** claim metadata is server-owned. `recipe_claims` is RLS/default-deny for client roles, `claimed` recipes require verified source-ownership proof, and normal recipe owner insert/update policies reject `content_origin = 'claimed'` plus `claimed_by`/`claimed_at`/`claim_verification`. A future claim flow must write through a service-role or `SECURITY DEFINER` path after OAuth/bio/DNS verification.
 - **Post-launch:** full claim & merge + "switch to official" + Discover de-dupe ranking (ENG-870). Trigger = first real creator asks; at N=1 there's nothing to claim. Discover de-dupe is ranking-only: when a `claimed`/`first_party` public row and private stubs share an exact `source_url`, the owned public row ranks first in Discover/public search; private rows are never mutated, deleted, or repointed.
 - **Never build:** retroactive silent merge that mutates users' private saved stubs.
 
