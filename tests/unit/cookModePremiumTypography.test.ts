@@ -22,7 +22,9 @@ describe("ENG-605 cook mode premium typography", () => {
   });
 
   it("fires selection haptic on step next/prev", () => {
-    expect(COOK).toMatch(/setStepIndex[\s\S]{0,240}Haptics\.selectionAsync/);
+    // ENG-948 added multi-timer guards before the haptic in setStepIndex —
+    // widen the window so the structural contract still pins the beat.
+    expect(COOK).toMatch(/setStepIndex[\s\S]{0,400}Haptics\.selectionAsync/);
     expect(COOK).toMatch(/goNext[\s\S]{0,120}setStepIndex/);
     expect(COOK).toMatch(/goPrev[\s\S]{0,120}setStepIndex/);
   });

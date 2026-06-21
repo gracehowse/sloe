@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as Haptics from "expo-haptics";
 import { track } from "@/lib/analytics";
+import { useHaptics } from "@/hooks/useHaptics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { ParsedTimer } from "@suppr/nutrition-core/recipeTimers";
 import {
@@ -15,6 +15,7 @@ export function useCookRunningTimers(recipeId: string, enabled: boolean) {
   const [runningTimers, setRunningTimers] = useState<CookRunningTimer[]>([]);
   const firedIdsRef = useRef(new Set<string>());
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const haptics = useHaptics();
 
   const startParsedTimer = useCallback(
     (parsed: ParsedTimer, stepIndex: number) => {
@@ -61,7 +62,7 @@ export function useCookRunningTimers(recipeId: string, enabled: boolean) {
 
         for (const completed of result.newlyCompleted) {
           firedIdsRef.current.add(completed.id);
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptics.success();
           track(AnalyticsEvents.recipe_timer_completed, {
             recipeId,
             seconds: completed.totalSeconds,
@@ -77,7 +78,7 @@ export function useCookRunningTimers(recipeId: string, enabled: boolean) {
         tickRef.current = null;
       }
     };
-  }, [enabled, recipeId, runningTimers.length]);
+  }, [enabled, haptics, recipeId, runningTimers.length]);
 
   return {
     runningTimers,
