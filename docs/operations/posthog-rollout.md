@@ -10,6 +10,33 @@ retired.
 
 ## Active flags
 
+### `cook_multi_timers_v1` (ENG-948)
+
+| Property | Value |
+| --- | --- |
+| Flag ID | _create in PostHog before ramp_ |
+| Type | Boolean |
+| Platforms | Mobile (iOS) |
+| Owner | Grace |
+| Decision doc | [2026-06-20-cook-multi-timers](../decisions/2026-06-20-cook-multi-timers.md) |
+
+Gates **one timer pill per parsed duration** in the current cook step plus a
+**concurrent heads-up countdown strip** (timers survive step navigation).
+Flag ON → multi-pill + strip on `/cook`. Flag OFF → legacy single suggested
+timer + one countdown — byte-identical to pre-ENG-948 mobile. Web already
+ships multi-timer without this gate.
+
+Default OFF until ramped. Adoption via existing `recipe_timer_started` /
+`recipe_timer_completed`.
+
+#### Ramp schedule
+
+| Phase | Action | Why |
+| --- | --- | --- |
+| Pre-ramp | Validate multi-pill + concurrent strip in iOS sim | Visual/timer UX must be exercised before ramp. |
+| Ramp | Flip flag → 100% | One tester (Grace). |
+| Cleanup | After 2 weeks at 100% with no regression | Remove gate; keep kill switch row. |
+
 ### `cook_ingredient_checklist_v1` (ENG-946)
 
 | Property | Value |

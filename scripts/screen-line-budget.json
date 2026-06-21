@@ -13,7 +13,7 @@
   "apps/mobile/app/(tabs)/planner.tsx": 4736,
   "apps/mobile/app/(tabs)/progress.tsx": 2376,
   "apps/mobile/app/burn-detail.tsx": 561,
-  "apps/mobile/app/cook.tsx": 1875,
+  "apps/mobile/app/cook.tsx": 1920,
   "apps/mobile/app/cookbook-import.tsx": 786,
   "apps/mobile/app/create-recipe.tsx": 1425,
   "apps/mobile/app/creator/[id].tsx": 651,

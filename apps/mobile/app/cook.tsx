@@ -29,6 +29,9 @@ import { CookLogServingsSheet } from "@/components/cook/CookLogServingsSheet";
 import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
 import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
 import { CookMiseEnPlace } from "@/components/cook/CookMiseEnPlace";
+import { CookRunningTimerStrip } from "@/components/cook/CookRunningTimerStrip";
+import { CookStepTimerPills } from "@/components/cook/CookStepTimerPills";
+import { useCookRunningTimers } from "@/hooks/useCookRunningTimers";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   parseTimersInStep,
@@ -210,6 +213,9 @@ export default function CookModeScreen() {
   /** ENG-946 — tap-to-check ingredient checklist + optional mise en place.
    *  Default-OFF for byte-identical revert. */
   const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
+  /** ENG-948 — one pill per parsed duration + concurrent countdown stack.
+   *  Default-OFF; flag-off keeps the single suggested-timer pill. */
+  const cookMultiTimersEnabled = isFeatureEnabled("cook_multi_timers_v1");
   const [cookPhase, setCookPhase] = useState<"mise" | "steps">("steps");
 
   const [current, setCurrent] = useState(0);
@@ -355,10 +361,20 @@ export default function CookModeScreen() {
     [rawStepText],
   );
   const suggestedTimer: ParsedTimer | null = parsedTimers[0] ?? null;
+  const {
+    runningTimers,
+    startParsedTimer,
+    cancelTimer: cancelRunningTimer,
+    resetTimer: resetRunningTimer,
+  } = useCookRunningTimers(recipeId ?? "", cookMultiTimersEnabled);
+  const activeStepTimerCount = runningTimers.filter(
+    (timer) => timer.stepIndex === current && !timer.done,
+  ).length;
   /** True only when there's a suggested timer AND the user hasn't
    *  started any timer for this step yet — drives the pulse animation. */
-  const showSuggestedPill =
-    suggestedTimer != null && !timerActive && timerDurationSec === 0;
+  const showSuggestedPill = cookMultiTimersEnabled
+    ? parsedTimers.length > 0 && activeStepTimerCount === 0 && !timerActive
+    : suggestedTimer != null && !timerActive && timerDurationSec === 0;
 
   // Track cook mode open — parity with web `CookMode.tsx` (audit R2,
   // 2026-04-18). Same event name + `{ recipeId, stepCount }` payload shape
@@ -751,7 +767,11 @@ export default function CookModeScreen() {
 
   const setStepIndex = useCallback(
     (nextIndex: number, via: "button" | "swipe" | "timer") => {
-      stopTimer();
+      if (!cookMultiTimersEnabled) {
+        stopTimer();
+      } else if (timerActive) {
+        stopTimer();
+      }
       if (nextIndex < 0 || nextIndex > totalSteps || nextIndex === current) {
         return;
       }
@@ -764,7 +784,7 @@ export default function CookModeScreen() {
       }
       setCurrent(nextIndex);
     },
-    [current, totalSteps, recipeId],
+    [cookMultiTimersEnabled, current, totalSteps, recipeId],
   );
 
   const goNext = () => {
@@ -1465,6 +1485,14 @@ export default function CookModeScreen() {
         </View>
       </View>
 
+      {cookMultiTimersEnabled ? (
+        <CookRunningTimerStrip
+          timers={runningTimers}
+          onReset={resetRunningTimer}
+          onCancel={cancelRunningTimer}
+        />
+      ) : null}
+
       {/* Progress — segment indicator when swipe flag is ON; legacy
           filled bar otherwise (byte-identical pre-ENG-947). */}
       {cookSwipeStepsEnabled ? (
@@ -1615,10 +1643,10 @@ export default function CookModeScreen() {
             </View>
           )}
 
-          {/* Timer — suggested-duration pill when the step text contains
-              a parseable duration ("bake for 25 minutes"); count-down
-              when started from the pill; manual count-up stopwatch
-              fallback otherwise. */}
+          {/* Timer — suggested-duration pill(s) when the step text contains
+              parseable durations; count-down when started; manual count-up
+              stopwatch fallback otherwise. Multi-timer flag renders one pill
+              per match + a concurrent heads-up strip (ENG-948). */}
           <View style={styles.timerSection}>
             {timerActive ? (
               <>
@@ -1630,6 +1658,23 @@ export default function CookModeScreen() {
                 <Pressable style={styles.timerStopBtn} onPress={stopTimer}>
                   <Text style={styles.timerStopText}>Stop</Text>
                 </Pressable>
+              </>
+            ) : cookMultiTimersEnabled ? (
+              <>
+                <CookStepTimerPills
+                  timers={parsedTimers}
+                  pulseFirst={showSuggestedPill}
+                  pulseRef={pulseRef}
+                  onStart={(timer) => startParsedTimer(timer, current)}
+                />
+                <SupprButton
+                  variant="ghost"
+                  style={styles.timerSecondaryBtn}
+                  onPress={startTimer}
+                  haptic="selection"
+                  accessibilityLabel="Start stopwatch"
+                  label={parsedTimers.length > 0 ? "Or start a stopwatch" : "Start stopwatch"}
+                />
               </>
             ) : (
               <>
