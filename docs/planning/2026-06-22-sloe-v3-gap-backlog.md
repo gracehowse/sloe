@@ -48,6 +48,26 @@ web Apple Health card WIRED this session** (38b0e7ec); #6 mobile billing
 deep-links to RevenueCat (functionally done, no screen); #16 editorial Profile
 partially built.
 
+**LEGAL LAUNCH-GATE CLUSTER — DONE 2026-06-22 (Grace authorised):**
+- **recipe_reports queue APPLIED TO PROD** (269826a0) — durable OSA/DSA report
+  queue. Built → security-reviewer (safe-to-apply) + data-integrity (fix-first =
+  post-apply type regen) → `supabase db push --linked` → **live-DB verified**
+  (rls on, deny-all policy, anon/auth revoked) → types regenerated. Report sheet
+  now POSTs non-copyright reports here (describe→submit→ack), email only on
+  failure.
+- **getsloe.com canonical** (262bac2b) — DMCA + privacy pages migrated off
+  suppr-club.com (Grace's call). **OPS owed (Grace):** provision dmca@getsloe.com
+  + privacy@getsloe.com mailboxes; file the USCO designated agent against
+  getsloe.com.
+- **REVIEW FOLLOW-UPS OWED (track as Linear, no silent deferrals):**
+  (1) **Edge-IP rate-limit hardening** before flipping `IG_TT_IMPORT_ENABLED` —
+  both `/api/recipe-report` + `/api/dmca-takedown` key the limit on the
+  client-forgeable `x-forwarded-for[0]`; switch to the platform-trusted IP
+  (`request.ip` / `x-vercel-forwarded-for`) once in `getIpFromHeaders`, + a
+  CAPTCHA/auth second factor for the public report endpoint. (2) **Mobile parity**
+  for the report sheet (`apps/mobile/app/recipe/[id].tsx` → same endpoint) — iOS
+  is primary + this is a legal channel; needs a sim.
+
 **SHIPPED 2026-06-22 (Grace's-call batch):** **#10** web cook multi-timer gated
 behind `cook_multi_timers_v1` to match mobile (bd1b099a — web was always-multi;
 now both default single until ramp). **#19** per-recipe Report/DMCA sheet
