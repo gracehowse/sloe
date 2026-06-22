@@ -72,9 +72,11 @@ export interface ReportRecipeDialogProps {
   onOpenChange: (open: boolean) => void;
   recipeId: string;
   recipeTitle?: string;
-  /** Injectable for tests; defaults to a real navigation. */
+  /** Injectable for tests; defaults to a real navigation (copyright → DMCA). */
   navigate?: (href: string) => void;
 }
+
+type Phase = "choose" | "describe" | "sending" | "sent" | "error";
 
 export function ReportRecipeDialog({
   open,
@@ -83,12 +85,18 @@ export function ReportRecipeDialog({
   recipeTitle,
   navigate,
 }: ReportRecipeDialogProps) {
-  // "sent" holds an in-dialog acknowledgement after a non-copyright report, so
-  // the report never silently evaporates if the user's mail client doesn't open
-  // (legal-reviewer Finding 2). Reset whenever the dialog (re)opens.
-  const [sent, setSent] = React.useState(false);
+  // Non-copyright reports are durably logged to /api/recipe-report (the OSA/DSA
+  // queue, ENG-1225 #19) — never a silent mailto. Email is only the error
+  // fallback. State resets whenever the dialog (re)opens.
+  const [phase, setPhase] = React.useState<Phase>("choose");
+  const [reason, setReason] = React.useState<ReportReason | null>(null);
+  const [description, setDescription] = React.useState("");
   React.useEffect(() => {
-    if (open) setSent(false);
+    if (open) {
+      setPhase("choose");
+      setReason(null);
+      setDescription("");
+    }
   }, [open]);
 
   const go = (href: string) => {
@@ -96,46 +104,110 @@ export function ReportRecipeDialog({
     else if (typeof window !== "undefined") window.location.href = href;
   };
 
-  const handle = (reason: ReportReason) => {
-    const title = recipeTitle?.trim() || `recipe ${recipeId}`;
-    if (reason.kind === "dmca") {
+  const pick = (r: ReportReason) => {
+    if (r.kind === "dmca") {
       go(`/dmca?recipe=${encodeURIComponent(recipeId)}`);
       onOpenChange(false);
       return;
     }
+    setReason(r);
+    setPhase("describe");
+  };
+
+  const submit = async () => {
+    if (!reason) return;
+    setPhase("sending");
+    try {
+      const res = await fetch("/api/recipe-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipeId,
+          reason: reason.key,
+          description: description.trim() || undefined,
+        }),
+      });
+      setPhase(res.ok ? "sent" : "error");
+    } catch {
+      setPhase("error");
+    }
+  };
+
+  const mailtoFallback = () => {
+    const title = recipeTitle?.trim() || `recipe ${recipeId}`;
     const subject = encodeURIComponent(`Recipe report — ${title}`);
     const body = encodeURIComponent(
-      `Recipe: ${title} (id: ${recipeId})\nReason: ${reason.label}\n\nWhat's wrong?\n`,
+      `Recipe: ${title} (id: ${recipeId})\nReason: ${reason?.label ?? ""}\n\n${description}`,
     );
     go(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`);
-    setSent(true);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-w-sm" data-testid="report-recipe-dialog">
-        {sent ? (
+        {phase === "sent" ? (
           <>
             <DialogHeader>
               <DialogTitle className="text-foreground">Thanks for flagging this</DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                We&apos;ve opened an email to our team. If your mail app
-                didn&apos;t open, write to{" "}
-                <a className="underline text-foreground/80" href={`mailto:${SUPPORT_EMAIL}`}>
-                  {SUPPORT_EMAIL}
-                </a>
-                . We review reports within 5 business days — reporting flags
-                content for review and doesn&apos;t guarantee removal.
+                We&apos;ve logged your report and review reports within 5
+                business days. Reporting flags content for review and
+                doesn&apos;t guarantee removal.
               </DialogDescription>
             </DialogHeader>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              data-testid="report-done"
-              className="mt-1 inline-flex h-10 items-center justify-center rounded-lg bg-primary-solid px-4 text-sm font-medium text-primary-foreground hover:bg-primary-solid/90"
-            >
-              Done
-            </button>
+            <PrimaryBtn onClick={() => onOpenChange(false)} testId="report-done">Done</PrimaryBtn>
+          </>
+        ) : phase === "error" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Couldn&apos;t save that</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Something went wrong saving your report. Please email{" "}
+                <a className="underline text-foreground/80" href={`mailto:${SUPPORT_EMAIL}`} onClick={mailtoFallback}>
+                  {SUPPORT_EMAIL}
+                </a>{" "}
+                and we&apos;ll look into it.
+              </DialogDescription>
+            </DialogHeader>
+            <PrimaryBtn onClick={() => onOpenChange(false)} testId="report-done">Close</PrimaryBtn>
+          </>
+        ) : phase === "describe" || phase === "sending" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-foreground">{reason?.label}</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Add anything that helps us review it. Reporting flags content for
+                review — it doesn&apos;t guarantee removal.
+              </DialogDescription>
+            </DialogHeader>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={5000}
+              rows={4}
+              data-testid="report-description"
+              placeholder="What's wrong? (optional)"
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            />
+            <div className="mt-1 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPhase("choose")}
+                disabled={phase === "sending"}
+                className="inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:bg-muted/50 disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => void submit()}
+                disabled={phase === "sending"}
+                data-testid="report-submit"
+                className="inline-flex h-10 flex-1 items-center justify-center rounded-lg bg-primary-solid px-4 text-sm font-medium text-primary-foreground hover:bg-primary-solid/90 disabled:opacity-50"
+              >
+                {phase === "sending" ? "Sending…" : "Submit report"}
+              </button>
+            </div>
           </>
         ) : (
           <>
@@ -143,27 +215,27 @@ export function ReportRecipeDialog({
               <DialogTitle className="text-foreground">Report an issue</DialogTitle>
               <DialogDescription className="text-muted-foreground">
                 What&apos;s wrong with this recipe? Copyright claims go to our
-                DMCA team; everything else reaches support. We respond within 5
-                business days.
+                DMCA team; everything else reaches our review queue. We respond
+                within 5 business days.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-2 py-1">
-              {REASONS.map((reason) => {
-                const Icon = reason.icon;
+              {REASONS.map((r) => {
+                const Icon = r.icon;
                 return (
                   <button
-                    key={reason.key}
+                    key={r.key}
                     type="button"
-                    onClick={() => handle(reason)}
-                    data-testid={`report-reason-${reason.key}`}
+                    onClick={() => pick(r)}
+                    data-testid={`report-reason-${r.key}`}
                     className="flex items-start gap-3 rounded-xl border border-border bg-card px-3.5 py-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                       <Icon size={16} aria-hidden />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-medium text-foreground">{reason.label}</span>
-                      <span className="block text-[12px] text-muted-foreground">{reason.hint}</span>
+                      <span className="block text-sm font-medium text-foreground">{r.label}</span>
+                      <span className="block text-[12px] text-muted-foreground">{r.hint}</span>
                     </span>
                   </button>
                 );
@@ -173,6 +245,27 @@ export function ReportRecipeDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PrimaryBtn({
+  onClick,
+  testId,
+  children,
+}: {
+  onClick: () => void;
+  testId: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testId}
+      className="mt-1 inline-flex h-10 items-center justify-center rounded-lg bg-primary-solid px-4 text-sm font-medium text-primary-foreground hover:bg-primary-solid/90"
+    >
+      {children}
+    </button>
   );
 }
 
