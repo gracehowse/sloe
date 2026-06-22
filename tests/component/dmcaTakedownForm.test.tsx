@@ -114,7 +114,7 @@ describe("DmcaTakedownForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /Submit takedown request/i }));
 
     await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent(/email dmca@suppr-club.com/i),
+      expect(screen.getByRole("alert")).toHaveTextContent(/email dmca@getsloe.com/i),
     );
   });
 

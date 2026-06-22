@@ -75,14 +75,14 @@ export function DmcaTakedownForm() {
       }
       setState({
         kind: "error",
-        message: data.message ?? "Submission failed. Please email dmca@suppr-club.com instead.",
+        message: data.message ?? "Submission failed. Please email dmca@getsloe.com instead.",
         field: typeof data.field === "string" ? data.field : null,
       });
     } catch {
       setState({
         kind: "error",
         message:
-          "Network error. Please retry or email dmca@suppr-club.com directly.",
+          "Network error. Please retry or email dmca@getsloe.com directly.",
         field: null,
       });
     }
@@ -152,7 +152,7 @@ export function DmcaTakedownForm() {
           id="dmca-recipe"
           type="text"
           required
-          placeholder="https://suppr-club.com/recipe/..."
+          placeholder="https://getsloe.com/recipe/..."
           value={supprRecipeId}
           onChange={(e) => setSupprRecipeId(e.target.value)}
           aria-invalid={errorField === "supprRecipeId" || undefined}

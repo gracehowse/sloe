@@ -72,7 +72,7 @@ export async function POST(req: Request) {
         ok: false,
         error: "rate_limited",
         message:
-          "Too many takedown submissions from this network. If your request is urgent, email dmca@suppr-club.com instead.",
+          "Too many takedown submissions from this network. If your request is urgent, email dmca@getsloe.com instead.",
       },
       { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
     );
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
         ok: false,
         error: "server_misconfigured",
         message:
-          "We're temporarily unable to record submissions through the form. Please email dmca@suppr-club.com directly.",
+          "We're temporarily unable to record submissions through the form. Please email dmca@getsloe.com directly.",
       },
       { status: 503 },
     );
@@ -151,7 +151,7 @@ export async function POST(req: Request) {
         ok: false,
         error: "persist_failed",
         message:
-          "We couldn't record your submission. Please email dmca@suppr-club.com so we can act on it directly.",
+          "We couldn't record your submission. Please email dmca@getsloe.com so we can act on it directly.",
       },
       { status: 500 },
     );

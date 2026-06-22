@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   description: "How to submit a copyright takedown notice, counter-notice, and Suppr's repeat-infringer policy.",
 };
 
-const DMCA_EMAIL = "dmca@suppr-club.com";
+const DMCA_EMAIL = "dmca@getsloe.com";
 
 export default function DmcaPage() {
   return (
@@ -90,7 +90,7 @@ export default function DmcaPage() {
             <li>
               identification of the material on Suppr that you claim is infringing &mdash; please include the
               full URL (for example{" "}
-              <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">https://suppr-club.com/recipe/...</code>
+              <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">https://getsloe.com/recipe/...</code>
               ) or any other information that lets us locate it;
             </li>
             <li>your contact information: full legal name, address, telephone number, and email;</li>

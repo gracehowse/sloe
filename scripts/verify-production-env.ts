@@ -53,7 +53,7 @@ if (!fatSecretTierOk) {
 const privacyEmail = process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim();
 console.log(
   `[--] NEXT_PUBLIC_PRIVACY_EMAIL — ${
-    privacyEmail ? `set (${privacyEmail})` : "unset; /privacy defaults to privacy@suppr-club.com"
+    privacyEmail ? `set (${privacyEmail})` : "unset; /privacy defaults to privacy@getsloe.com"
   }`,
 );
 

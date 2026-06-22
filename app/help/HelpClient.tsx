@@ -27,7 +27,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 
-const DEFAULT_EMAIL = "privacy@suppr-club.com";
+const DEFAULT_EMAIL = "privacy@getsloe.com";
 
 type Section = {
   id: string;
