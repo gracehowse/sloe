@@ -24,17 +24,17 @@
  *   3. Geometry: the thicker hero does not open an awkward WIDE calorie→protein
  *      gap — it sits no further from its first macro than the inter-macro gaps.
  *
- * Rendered through the `TodayHeroRing` wrapper (matches the sibling
- * `calorieRingOverageArc` / `calorieRingGoalZeroCalibrating` tests — the
- * SVG/Reanimated bits exercise cleanly through the wrapper). The
- * `react-native-svg` test shim forwards `strokeWidth` onto a host node, so a
- * tree walk can read it.
+ * Rendered through `CalorieRing` directly. The Today hero now defaults to the
+ * v3 `CalorieRingDial` (the `sloe_v3_ring` flag is default-ON, no concentric
+ * stroke arcs), so the stroke-width hierarchy is pinned by exercising the
+ * still-shipping `CalorieRing` component itself. The `react-native-svg` test
+ * shim forwards `strokeWidth` onto a host node, so a tree walk can read it.
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react-native";
 
-import { TodayHeroRing } from "../../components/today/TodayHeroRing";
+import CalorieRing from "../../components/charts/CalorieRing";
 import { ringGeometry } from "../../components/charts/CalorieRing";
 
 void React;
@@ -55,21 +55,18 @@ function collectStrokeWidths(root: any): number[] {
 
 function renderRing(expanded: boolean) {
   return render(
-    <TodayHeroRing
+    <CalorieRing
       consumed={1200}
       goal={2000}
       baseGoal={2000}
       textColor="#1A1A1A"
       secondaryColor="#6B6B6B"
       trackColor="#EDEAF1"
-      cardBackgroundColor="#F6F5F2"
-      borderColor="#E3DFEA"
       proteinPct={0.6}
       carbsPct={0.5}
       fatPct={0.4}
       expanded={expanded}
-      onToggleExpanded={() => {}}
-      textTertiaryColor="#9A9A9A"
+      onToggle={() => {}}
     />,
   );
 }

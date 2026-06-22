@@ -89,6 +89,9 @@ export function CalorieRingDial({
   const colors = useThemeColors();
   const reduce = useReduceMotion();
 
+  // Cold start / no profile yet (goal<=0): calibrating, not "0 left" — parity
+  // with the legacy ring's "Start your day" (ENG-1225 ring-flag default-on).
+  const isCalibrating = target <= 0;
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;
   const pct = target > 0 ? Math.min(1, consumed / target) : 0;
@@ -105,11 +108,15 @@ export function CalorieRingDial({
         ? [colors.ringUnderA, colors.ringUnderB]
         : [colors.ringEmptyA, colors.ringEmptyB];
 
-  const centerValue = isOver
-    ? Math.round(consumed - target)
-    : Math.max(0, Math.round(target - consumed));
+  // Cold start (goal<=0): no budget/verdict yet, so show what's LOGGED (real
+  // numbers always — Grace 2026-06-10), never "OVER" or a misleading "0 left".
+  const centerValue = isCalibrating
+    ? Math.round(consumed)
+    : isOver
+      ? Math.round(consumed - target)
+      : Math.max(0, Math.round(target - consumed));
   const animated = useCountUp(centerValue, reduce);
-  const label = isOver ? "KCAL OVER" : "KCAL LEFT";
+  const label = isCalibrating ? "LOGGED" : isOver ? "KCAL OVER" : "KCAL LEFT";
 
   const track: React.ReactNode[] = [];
   const lit: React.ReactNode[] = [];

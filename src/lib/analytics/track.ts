@@ -268,6 +268,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // macros) on the landing Free column + paywall comparison matrix. Default-on;
   // off → the legacy copy without the two free callouts.
   "paywall_free_mfp_wins_v1",
+  // ENG-1225 — the v3 jewel watch-dial as the Today hero ring (desktop +
+  // mobile-web). Default-on; off → the legacy concentric DailyRing (kill switch).
+  // Keep in sync with the mobile set in apps/mobile/lib/analytics.ts.
+  "sloe_v3_ring",
 ]);
 
 /**

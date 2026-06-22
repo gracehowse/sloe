@@ -28,17 +28,20 @@
  *   5. NO node references the retired `overHash` diagonal pattern.
  *   6. Under budget renders the plum ring and NO overage lap / glow.
  *
- * Rendered through the `TodayHeroRing` wrapper (matches the sibling
- * `calorieRingGoalZeroCalibrating` test — the SVG/Reanimated bits are
- * easiest to exercise through the wrapper that already works in-suite).
- * The `react-native-svg` test shim forwards every prop (incl. `stroke` and
- * `fill`) onto a host View, so a tree walk can read the arc/dot colours.
+ * Rendered through `CalorieRing` directly. The Today hero now defaults to the
+ * v3 `CalorieRingDial` (the `sloe_v3_ring` flag is default-ON), so the legacy
+ * `TodayHeroRing` wrapper no longer paints these concentric arcs — but
+ * `CalorieRing` still ships (the dev ring-states screen, `WinMomentPlayer`,
+ * `TodayDashboardMacroRings`), so its overage-wrap grammar is pinned here by
+ * exercising the component itself. The `react-native-svg` test shim forwards
+ * every prop (incl. `stroke` and `fill`) onto a host View, so a tree walk can
+ * read the arc/dot colours.
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react-native";
 
-import { TodayHeroRing } from "../../components/today/TodayHeroRing";
+import CalorieRing from "../../components/charts/CalorieRing";
 import { MacroColors, Colors } from "../../constants/theme";
 
 void React;
@@ -101,14 +104,11 @@ const baseProps = {
   textColor: "#221B26",
   secondaryColor: "#6A6072",
   trackColor: "#EDEAF1",
-  cardBackgroundColor: "#F6F5F2",
-  borderColor: "#E8E2EC",
-  textTertiaryColor: "#9B93A3",
   proteinPct: 0.6,
   carbsPct: 0.6,
   fatPct: 0.6,
   expanded: true,
-  onToggleExpanded: () => {},
+  onToggle: () => {},
   onToggleDisplayMode: () => {},
   displayMode: "consumed" as const,
 } as const;
@@ -116,7 +116,7 @@ const baseProps = {
 describe("CalorieRing — Apple-Watch overage wrap (plum lap, no red)", () => {
   it("over budget: base ring stays PLUM (not recoloured red)", () => {
     const { UNSAFE_root } = render(
-      <TodayHeroRing {...baseProps} consumed={2400} goal={2000} />,
+      <CalorieRing {...baseProps} consumed={2400} goal={2000} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
     expect(strokes.some(isPlum)).toBe(true);
@@ -124,7 +124,7 @@ describe("CalorieRing — Apple-Watch overage wrap (plum lap, no red)", () => {
 
   it("over budget: NO red overage arc anywhere (the red treatment is retired)", () => {
     const { UNSAFE_root } = render(
-      <TodayHeroRing {...baseProps} consumed={2400} goal={2000} />,
+      <CalorieRing {...baseProps} consumed={2400} goal={2000} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
     const fills = collectFills(UNSAFE_root).map((s) => s.toUpperCase());
@@ -137,7 +137,7 @@ describe("CalorieRing — Apple-Watch overage wrap (plum lap, no red)", () => {
     // overage. The second-lap wrap was an activity-ring idiom (wrong
     // comparable) — retired after 7 rounds of trying to make it read.
     const { UNSAFE_root } = render(
-      <TodayHeroRing {...baseProps} consumed={2400} goal={2000} />,
+      <CalorieRing {...baseProps} consumed={2400} goal={2000} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
     expect(strokes.some(isOverageLap)).toBe(false);
@@ -147,14 +147,14 @@ describe("CalorieRing — Apple-Watch overage wrap (plum lap, no red)", () => {
 
   it("never references the retired `overHash` diagonal pattern", () => {
     const { toJSON } = render(
-      <TodayHeroRing {...baseProps} consumed={2400} goal={2000} />,
+      <CalorieRing {...baseProps} consumed={2400} goal={2000} />,
     );
     expect(treeString(toJSON())).not.toContain("overHash");
   });
 
   it("under budget: plum ring, NO overage lap and NO glow and NO red", () => {
     const { UNSAFE_root } = render(
-      <TodayHeroRing {...baseProps} consumed={1200} goal={2000} />,
+      <CalorieRing {...baseProps} consumed={1200} goal={2000} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
     const fills = collectFills(UNSAFE_root).map((s) => s.toUpperCase());
@@ -193,7 +193,7 @@ describe("CalorieRing — empty-ring grey track (no blue calibrating gradient)",
 
   it("empty (consumed 0): NO blue #588CE4 stroke anywhere", () => {
     const { UNSAFE_root } = render(
-      <TodayHeroRing {...baseProps} consumed={0} goal={2000} />,
+      <CalorieRing {...baseProps} consumed={0} goal={2000} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
     expect(strokes.some((s) => s === BLUE_IDLE)).toBe(false);
@@ -201,7 +201,7 @@ describe("CalorieRing — empty-ring grey track (no blue calibrating gradient)",
 
   it("empty (consumed 0): the lifted borderStrong track colour is present", () => {
     const { UNSAFE_root } = render(
-      <TodayHeroRing {...baseProps} consumed={0} goal={2000} />,
+      <CalorieRing {...baseProps} consumed={0} goal={2000} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
     expect(strokes.some(isEmptyTrack)).toBe(true);
@@ -209,7 +209,7 @@ describe("CalorieRing — empty-ring grey track (no blue calibrating gradient)",
 
   it("empty with no goal yet (goal 0): still uses borderStrong track, no blue", () => {
     const { UNSAFE_root } = render(
-      <TodayHeroRing {...baseProps} consumed={0} goal={0} />,
+      <CalorieRing {...baseProps} consumed={0} goal={0} />,
     );
     const strokes = collectStrokes(UNSAFE_root).map((s) => s.toUpperCase());
     expect(strokes.some((s) => s === BLUE_IDLE)).toBe(false);
@@ -218,7 +218,7 @@ describe("CalorieRing — empty-ring grey track (no blue calibrating gradient)",
 
   it("never references the retired `ringIdle` calibrating gradient", () => {
     const { toJSON } = render(
-      <TodayHeroRing {...baseProps} consumed={0} goal={2000} />,
+      <CalorieRing {...baseProps} consumed={0} goal={2000} />,
     );
     expect(treeString(toJSON())).not.toContain("ringIdle");
   });

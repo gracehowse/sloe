@@ -394,6 +394,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-863 — user-tapped Sloe image generation, labelling, nutrition-decouple
   // copy, and removal on recipe heroes. Default-on with PostHog as kill switch.
   "recipe_runtime_image_generation_v1",
+  // ENG-1225 #3 — unified "import anything" sheet (detect-anything classifier +
+  // single front door). Default-on per the "turn everything on" rule; off → the
+  // legacy per-surface nav (Discover card → /import-shared), kept as kill switch.
+  "sloe_v3_unified_import",
+  // ENG-1225 — the v3 jewel watch-dial as the Today hero ring. Default-on; the
+  // dial handles cold-start (goal<=0 → logged kcal + "LOGGED", real numbers
+  // always per 2026-06-10) so it has legacy parity with CalorieRing.
+  // OFF → the legacy concentric CalorieRing (kill switch). Keep in sync w/ web.
+  "sloe_v3_ring",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
