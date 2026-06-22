@@ -111,6 +111,8 @@ import { generateProgressCommentary } from "../../lib/nutrition/progressCommenta
 import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProgress.ts";
 import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
 import { SupprCard } from "./ui/suppr-card.tsx";
+import { ProgressActivitySection } from "./suppr/progress-activity-section.tsx";
+import { getLatestHealthSnapshot } from "../../lib/health/healthSnapshots.ts";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
@@ -593,6 +595,14 @@ function ProgressDashboardContent() {
       const { error } = await supabase.from("profiles").update(patch).eq("id", authedUserId);
       if (error) console.error("[progress] save failed", error.message);
     },
+    [authedUserId],
+  );
+
+  // ENG-1225 gap #21: feed the v3 AppleHealthCard. Reads the latest snapshot the
+  // iOS app wrote to `health_snapshots` (web has no HealthKit). Stable supabase
+  // import → deps are just the user id.
+  const fetchHealthSnapshot = useCallback(
+    () => getLatestHealthSnapshot(supabase, authedUserId ?? ""),
     [authedUserId],
   );
 
@@ -2422,65 +2432,24 @@ function ProgressDashboardContent() {
         );
       })()}
 
-      {/* STEPS */}
-      <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6">
-        <p className="text-sm font-semibold text-foreground mb-3">Steps</p>
-        <div className="flex gap-6 mb-3">
-          {/* SLOE Phase 0: the Steps today/goal big stat numerals read in the
-              Newsreader serif display face; the labels below stay sans. */}
-          <div className="text-center">
-            <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-foreground tabular-nums">{(stepsByDay[todayKey()] ?? 0).toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Today</p>
-          </div>
-          <div className="text-center">
-            <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-success tabular-nums">{dailyStepsGoal.toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Goal</p>
-          </div>
-        </div>
-        {stepsChartData.length >= 2 && (
-          <div className="mb-3">
-            <ResponsiveContainer width="100%" height={80}>
-              <BarChart data={stepsChartData}>
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
-                <Tooltip contentStyle={{ fontSize: 11 }} />
-                <ReferenceLine y={dailyStepsGoal} stroke="var(--success)" strokeDasharray="4 4" />
-                <Bar dataKey="value" fill="var(--success)" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input
-            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
-            placeholder="Steps today"
-            value={stepsInput}
-            onChange={(e) => setStepsInput(e.target.value)}
-            type="number"
-          />
-          <SupprButton variant="ghost" onClick={() => void saveTodaySteps()}>Save</SupprButton>
-        </div>
-      </SupprCard>
-
-      {/* BODY FAT */}
-      <SupprCard elevation="card" padding="lg" radius="lg">
-        <p className="text-sm font-semibold text-foreground mb-3">Body Fat</p>
-        {/* ENG-534 (2026-05-16): body-fat % is HIGH-class. `ph-mask`
-            makes PostHog session-replay render this as a grey block. */}
-        {/* SLOE Phase 0: the body-fat hero stat reads in the Newsreader serif
-            display face (big numerals are a serif moment). `ph-mask` preserved. */}
-        <p className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none text-foreground tabular-nums mb-3 ph-mask">{bodyFatPct != null ? `${Math.round(bodyFatPct * 10) / 10}%` : "—"}</p>
-        <div className="flex gap-2">
-          <input
-            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
-            placeholder="Body fat %"
-            value={bodyFatInput}
-            onChange={(e) => setBodyFatInput(e.target.value)}
-            type="number"
-            step="0.1"
-          />
-          <SupprButton variant="ghost" onClick={() => void saveBodyFat()}>Save</SupprButton>
-        </div>
-      </SupprCard>
+      {/* Activity feeding maintenance — v3 read-only AppleHealthCard behind
+          `web_apple_health_card` (parity with mobile), else the legacy manual
+          Steps + Body-Fat inputs. Extracted to a child so this pinned host
+          shrinks (ENG-1225 gap #21). */}
+      <ProgressActivitySection
+        fetchSnapshot={fetchHealthSnapshot}
+        useImperial={profileMeasurementSystem === "imperial"}
+        stepsByDay={stepsByDay}
+        dailyStepsGoal={dailyStepsGoal}
+        stepsChartData={stepsChartData}
+        stepsInput={stepsInput}
+        setStepsInput={setStepsInput}
+        saveTodaySteps={saveTodaySteps}
+        bodyFatPct={bodyFatPct}
+        bodyFatInput={bodyFatInput}
+        setBodyFatInput={setBodyFatInput}
+        saveBodyFat={saveBodyFat}
+      />
       <p
         data-testid="progress-nutrition-estimate-footer"
         className="mt-6 text-[11px] text-muted-foreground text-center leading-snug"
