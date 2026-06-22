@@ -84,7 +84,7 @@ import { SupprButton } from "./suppr/suppr-button";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
-import { StreakPip } from "./suppr/streak-pip";
+import { useWeeklyRecap } from "./suppr/use-weekly-recap";
 import { LogSheet } from "./suppr/log-sheet";
 // Phase 4 / B3.Y — desktop modal mode for the LogSheet.
 import { useIsDesktop } from "./ui/use-mobile";
@@ -2253,6 +2253,8 @@ export const NutritionTracker = memo(function NutritionTracker({
     maintenanceForWeek,
   ]);
 
+  // ENG-1225 #20 — weekly recap opened by the Today StreakPip.
+  const weeklyRecap = useWeeklyRecap(weekData.days, weekData.label, targets.calories);
   // Burn data for the selected day
   const dayWorkouts = workoutsByDay[selectedDateKey] ?? [];
   const basalBurnKcal = basalBurnByDay[selectedDateKey] ?? 0;
@@ -2700,13 +2702,11 @@ export const NutritionTracker = memo(function NutritionTracker({
         stripOnly={viewMode === "day"}
         streakDays={protectedStreakLength}
         freezeProtected={protectedDateKeys.has(todayKey())}
+        onStreakPress={weeklyRecap.trigger}
       />
-
+      {weeklyRecap.dialog}
       {missedYesterdayVisible && (
-        <p
-          data-testid="today-missed-yesterday-copy"
-          className="mt-0.5 px-3 text-center text-xs text-muted-foreground"
-        >
+        <p data-testid="today-missed-yesterday-copy" className="mt-0.5 px-3 text-center text-xs text-muted-foreground">
           {MISSED_YESTERDAY_COPY}
         </p>
       )}
