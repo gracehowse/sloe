@@ -44,6 +44,11 @@ create index if not exists recipe_reports_recipe_idx
 
 alter table public.recipe_reports enable row level security;
 
+-- Belt-and-suspenders (matches 20260702120000_eng870_recipe_claim): RLS already
+-- denies anon + authenticated, but revoke table grants too so there is no path
+-- to the table outside the service-role client.
+revoke all on table public.recipe_reports from anon, authenticated;
+
 -- "service_role_only" — anon + authenticated see/write nothing; the
 -- service-role key bypasses RLS so the API route can insert. Idempotent.
 drop policy if exists "recipe_reports_service_role_only" on public.recipe_reports;

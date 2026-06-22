@@ -1692,6 +1692,45 @@ export type Database = {
           },
         ]
       }
+      recipe_reports: {
+        Row: {
+          description: string | null
+          id: string
+          reason: string
+          reporter_ip: string | null
+          reporter_user_agent: string | null
+          reviewed_at: string | null
+          reviewer_notes: string | null
+          status: string
+          submitted_at: string
+          suppr_recipe_id: string
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          reason: string
+          reporter_ip?: string | null
+          reporter_user_agent?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          submitted_at?: string
+          suppr_recipe_id: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          reason?: string
+          reporter_ip?: string | null
+          reporter_user_agent?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          submitted_at?: string
+          suppr_recipe_id?: string
+        }
+        Relationships: []
+      }
       recipe_steps: {
         Row: {
           created_at: string
