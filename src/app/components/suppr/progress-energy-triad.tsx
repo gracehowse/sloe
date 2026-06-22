@@ -8,8 +8,11 @@
  *   - AVG INTAKE — range avg calories/day.
  *   - EST. TDEE — resolved maintenance; SAGE value + "ADAPTIVE" sub-label
  *     when the engine value won (else "FORMULA").
- *   - DEFICIT — maintenance − avg intake; SAGE when a real deficit, AMBER
- *     "surplus" when intake exceeds maintenance.
+ *   - DEFICIT — maintenance − avg intake; the result reads in PLUM (the brand
+ *     headline accent, matching the v3 prototype's Progress energy-balance
+ *     `deficit → var(--primary-active)`, Sloe-App.html L5010), AMBER "surplus"
+ *     when intake exceeds maintenance. NB: differs from the Today NetEnergy card
+ *     where a *deficit is the good state* and reads sage.
  *
  * All numbers are real (range stats + resolved maintenance). Cells render
  * "—" when the underlying value isn't available yet — never fabricated.
@@ -104,7 +107,7 @@ export function ProgressEnergyTriad({
             color: isSurplus
               ? "var(--warning)"
               : deficitKcal != null && deficitKcal > 0
-                ? "var(--accent-success-solid)"
+                ? "var(--primary)"
                 : "var(--foreground)",
           }}
         >

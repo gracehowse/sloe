@@ -3,9 +3,11 @@ import { ProgressEnergyTriad } from "./progress-energy-triad";
 
 /**
  * ProgressEnergyTriad — AVG INTAKE / EST. TDEE / DEFICIT row. Pins the v3
- * token roles (ENG-1225): EST. TDEE + a real deficit read in SAGE
- * (`--accent-success-solid`), a surplus in AMBER (`--warning`). Guards the
- * regression where the recolour turned the `sage` alias plum.
+ * token roles (ENG-1225): EST. TDEE reads SAGE (`--accent-success-solid`); a
+ * real DEFICIT reads PLUM (`--primary`, the brand headline accent, per the v3
+ * Progress energy-balance prototype L5010); a SURPLUS reads AMBER
+ * (`--warning`). Guards the recolour regression (the `sage` alias was plum) and
+ * the over-correction (deficit briefly went sage; it's the plum result number).
  */
 const meta = {
   title: "Suppr/ProgressEnergyTriad",
