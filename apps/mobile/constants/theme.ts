@@ -254,6 +254,30 @@ export const MacroColors = {
 };
 
 /**
+ * Dark-scheme macro hues (ENG-1223). The v3 light macros are tuned for the
+ * white ground — protein plum `#3B2A4D` is near-invisible on the Nocturne dark
+ * ground `#120D18`. The core 5 mirror web `.dark` (`src/styles/theme.css`)
+ * value-for-value (pinned by `crossPlatformThemeTokens.test.ts`); sugar/sodium/
+ * water have no web dark token (secondary micros) so they're lightened here for
+ * dark-ground contrast. Resolve via `macroColorFor(key, isDark)` /
+ * `useMacroColors()` — never read `MacroColors.*` directly in a themed surface.
+ */
+export const MacroColorsDark: typeof MacroColors = {
+  calories: '#7FA078',         // sage (lightened)
+  protein:  '#B9A7CC',         // plum (lightened)
+  proteinSolid: '#B9A7CC',
+  carbs:    '#E0A64A',         // amber (lightened)
+  carbsSolid: '#E0A64A',
+  fat:      '#D489A3',         // berry rose (lightened)
+  fatSolid: '#D489A3',
+  fiber:    '#7FA078',         // sage (lightened)
+  fiberSolid: '#7FA078',
+  sugar:    '#A98BC0',         // damson (lightened — no web dark token)
+  sodium:   '#D89A6E',         // clay (lightened — no web dark token)
+  water:    '#7FAAB8',         // teal (lightened — no web dark token)
+};
+
+/**
  * Meal-slot tint roles — aligned with web `--slot-*` CSS custom properties.
  *
  * 2026-05-01 (ui-critic P2 #10): Snacks previously borrowed

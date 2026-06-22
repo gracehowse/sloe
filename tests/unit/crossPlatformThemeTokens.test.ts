@@ -85,6 +85,16 @@ function readMobileMacro(key: string): string {
   return raw.replace(/['"]/g, "").toLowerCase();
 }
 
+/** Read a `key: '#hex'` entry from the `MacroColorsDark` literal (ENG-1223). */
+function readMobileMacroDark(key: string): string {
+  const start = MOBILE_THEME.indexOf("export const MacroColorsDark");
+  expect(start, "MacroColorsDark literal").toBeGreaterThanOrEqual(0);
+  const slice = MOBILE_THEME.slice(start, start + 900);
+  const m = slice.match(new RegExp(`${key}:\\s*([^,]+),`));
+  expect(m, `MacroColorsDark.${key}`).not.toBeNull();
+  return m![1].trim().replace(/['"]/g, "").toLowerCase();
+}
+
 const LIGHT = block(":root");
 const DARK = block(".dark");
 
@@ -143,6 +153,16 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       expect(readCssVar(DARK, "over-budget-fg")).toBe(
         readMobileColor("dark", "overBudgetFg"),
       );
+    });
+
+    it("macro hues (ENG-1223 — web .dark ↔ mobile MacroColorsDark parity)", () => {
+      // Dark-scheme macros must lighten so protein (plum) doesn't vanish on the
+      // Nocturne ground. Core 5 mirror web `.dark` value-for-value.
+      expect(readCssVar(DARK, "macro-protein")).toBe(readMobileMacroDark("protein"));
+      expect(readCssVar(DARK, "macro-carbs")).toBe(readMobileMacroDark("carbs"));
+      expect(readCssVar(DARK, "macro-fat")).toBe(readMobileMacroDark("fat"));
+      expect(readCssVar(DARK, "macro-calories")).toBe(readMobileMacroDark("calories"));
+      expect(readCssVar(DARK, "macro-fiber")).toBe(readMobileMacroDark("fiber"));
     });
   });
 

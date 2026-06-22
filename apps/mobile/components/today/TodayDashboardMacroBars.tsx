@@ -1,7 +1,8 @@
 import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Layout } from "@/constants/layout";
-import { Accent, MacroColors, Spacing } from "@/constants/theme";
+import { Accent, Spacing } from "@/constants/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { SupprCard } from "@/components/ui/SupprCard";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/nutrition-core/netCarbs";
@@ -62,6 +63,10 @@ function TodayDashboardMacroBarsImpl({
 }: TodayDashboardMacroBarsProps) {
   void _cardColor;
   void _cardBorderColor;
+  // ENG-1223: scheme-resolved macro hues so plum/amber/berry bars stay legible
+  // on the Nocturne dark ground. Named `macroColors` (not `macro`) to avoid
+  // shadowing the `macro` key in the `trackedMacros.map` below.
+  const { colors: macroColors } = useMacroColors();
   const microSum = mealsToday.reduce(
     (a, m) => ({
       sugarG:
@@ -79,7 +84,7 @@ function TodayDashboardMacroBarsImpl({
       label: "Protein",
       current: totals.protein,
       target: targets.protein,
-      color: MacroColors.protein,
+      color: macroColors.protein,
       unit: "g",
     },
     carbs: {
@@ -94,14 +99,14 @@ function TodayDashboardMacroBarsImpl({
         targets.fiber,
         Boolean(netCarbsLensEnabled),
       ),
-      color: MacroColors.carbs,
+      color: macroColors.carbs,
       unit: "g",
     },
     fat: {
       label: "Fat",
       current: totals.fat,
       target: targets.fat,
-      color: MacroColors.fat,
+      color: macroColors.fat,
       unit: "g",
     },
     fiber: {
@@ -122,14 +127,14 @@ function TodayDashboardMacroBarsImpl({
       label: "Sodium",
       current: Math.round(microSum.sodiumMg),
       target: 2300,
-      color: MacroColors.sodium,
+      color: macroColors.sodium,
       unit: "mg",
     },
     water: {
       label: "Water",
       current: totalWaterMl,
       target: waterGoalMl,
-      color: MacroColors.water ?? Accent.info,
+      color: macroColors.water ?? Accent.info,
       unit: "ml",
     },
   };
