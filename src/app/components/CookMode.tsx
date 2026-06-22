@@ -311,6 +311,10 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
   const cookSwipeStepsEnabled = isFeatureEnabled("cook_swipe_steps_v1");
   const touchStartXRef = useRef<number | null>(null);
 
+  // ENG-948 — concurrent timers; default-OFF for web↔mobile parity (mobile
+  // gates the same at apps/mobile/app/cook.tsx). Flag-off = one timer at a time.
+  const cookMultiTimersEnabled = isFeatureEnabled("cook_multi_timers_v1");
+
   /** ENG-946 — shared session checklist + optional mise en place. Default-OFF;
    *  flag-off keeps the legacy sidebar local state byte-identical. */
   const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
@@ -504,24 +508,19 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
     (timer: ParsedTimer) => {
       const id = `${currentStep}:${timer.startIndex}:${Date.now()}`;
       const endsAtMs = Date.now() + timer.totalSeconds * 1000;
-      setRunningTimers((prev) => [
-        ...prev,
-        {
-          id,
-          stepIndex: currentStep,
-          label: timer.label,
-          totalSeconds: timer.totalSeconds,
-          endsAtMs,
-          remainingSeconds: timer.totalSeconds,
-          done: false,
-        },
-      ]);
+      const next = {
+        id, stepIndex: currentStep, label: timer.label,
+        totalSeconds: timer.totalSeconds, endsAtMs,
+        remainingSeconds: timer.totalSeconds, done: false,
+      };
+      // Flag-off (mobile parity): one timer at a time → replace. On → stack.
+      setRunningTimers((prev) => (cookMultiTimersEnabled ? [...prev, next] : [next]));
       track(AnalyticsEvents.recipe_timer_started, {
         recipeId: recipe.id,
         seconds: timer.totalSeconds,
       });
     },
-    [currentStep, recipe.id],
+    [currentStep, recipe.id, cookMultiTimersEnabled],
   );
 
   const cancelTimer = useCallback((id: string) => {
