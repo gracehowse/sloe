@@ -1,10 +1,16 @@
 diff --git a/node_modules/@expo/plist/build/parse.js b/node_modules/@expo/plist/build/parse.js
-index ce1f99b..52a67d5 100644
+index 572d7f8..49822f0 100644
 --- a/node_modules/@expo/plist/build/parse.js
 +++ b/node_modules/@expo/plist/build/parse.js
-@@ -66,7 +66,7 @@ function isEmptyNode(node) {
+@@ -65,8 +65,13 @@ function isEmptyNode(node) {
+  * @api public
   */
  function parse(xml) {
++    // Strip a leading BOM / whitespace — xmldom 0.9.x throws a FATAL error when
++    // the <?xml ?> declaration isn't at byte 0, and expo-generated
++    // *.entitlements can carry a leading newline. (Suppr patch — keeps the
++    // strict xmldom but tolerates the leading byte.)
++    xml = String(xml).replace(/^﻿/, '').replace(/^\s+/, '');
      // prevent the parser from logging non-fatal errors
 -    const doc = new xmldom_1.DOMParser({ errorHandler() { } }).parseFromString(xml);
 +    const doc = new xmldom_1.DOMParser({ errorHandler() { } }).parseFromString(xml, 'text/xml');

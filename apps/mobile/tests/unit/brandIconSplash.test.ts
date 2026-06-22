@@ -12,7 +12,8 @@ const REPO_ROOT = join(ROOT, "../..");
  * asserted unconditionally. The generated `ios/` catalog is verified only when
  * present (i.e. on a machine that has built locally), and skipped in CI.
  */
-const IOS = join(ROOT, "ios/Suppr");
+// Project folder follows app.json `name` ("Sloe"); was "Suppr" pre-rebrand.
+const IOS = join(ROOT, "ios/Sloe");
 const hasNativeIos = existsSync(IOS);
 
 /**

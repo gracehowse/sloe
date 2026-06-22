@@ -31,12 +31,14 @@ function patchStoreKitScheme(projectRoot) {
   const schemeDir = path.join(
     projectRoot,
     "ios",
-    "Suppr.xcodeproj",
+    // Project/scheme name follows app.json `name` ("Sloe"); was "Suppr"
+    // pre-rebrand. Bundle id + URL scheme stay "suppr".
+    "Sloe.xcodeproj",
     "xcshareddata",
     "xcschemes",
   );
   fs.mkdirSync(schemeDir, { recursive: true });
-  const schemePath = path.join(schemeDir, "Suppr.xcscheme");
+  const schemePath = path.join(schemeDir, "Sloe.xcscheme");
   if (!fs.existsSync(schemePath)) {
     fs.writeFileSync(
       schemePath,
@@ -66,8 +68,21 @@ function withStoreKitConfiguration(config) {
 
   return withXcodeProject(config, (cfg) => {
     const project = cfg.modResults;
-    if (!project.hasFile(STOREKIT_FILE)) {
-      project.addResourceFile(STOREKIT_FILE, { target: project.getFirstTarget().uuid });
+    try {
+      if (!project.hasFile(STOREKIT_FILE)) {
+        project.addResourceFile(STOREKIT_FILE, { target: project.getFirstTarget().uuid });
+      }
+    } catch (err) {
+      // `xcode`'s addResourceFile throws "Cannot read properties of null
+      // (reading 'path')" on a freshly-generated project whose Resources build
+      // phase group has no path (lib incompatibility, surfaced after the
+      // Suppr→Sloe project rename + a clean prebuild). NON-FATAL: the StoreKit
+      // config the Simulator actually uses is wired via the scheme's
+      // <StoreKitConfigurationFileReference> in patchStoreKitScheme above; the
+      // resource entry only affects Xcode-UI visibility. (Tracked: ENG-1225.)
+      console.warn(
+        `[withStoreKitConfiguration] skipped addResourceFile (scheme reference still applied): ${err.message}`,
+      );
     }
     return cfg;
   });
