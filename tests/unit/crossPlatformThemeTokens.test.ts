@@ -107,19 +107,19 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       );
     });
 
-    it("macro hues (Sloe Phase 0 — web ↔ mobile MacroColors parity)", () => {
-      // Sloe: protein olive-sage, carbs clay, fat amber, calories plum.
+    it("macro hues (Sloe v3 — web ↔ mobile MacroColors parity)", () => {
+      // Sloe v3: protein plum, carbs amber, fat berry-rose, calories sage.
       expect(readCssVar(LIGHT, "macro-protein")).toBe(readMobileMacro("protein"));
       expect(readCssVar(LIGHT, "macro-carbs")).toBe(readMobileMacro("carbs"));
       expect(readCssVar(LIGHT, "macro-fat")).toBe(readMobileMacro("fat"));
       expect(readCssVar(LIGHT, "macro-calories")).toBe(readMobileMacro("calories"));
     });
 
-    it("macro hues resolve to the documented Sloe values", () => {
-      expect(readCssVar(LIGHT, "macro-protein")).toBe("#7c8466"); // olive-sage
-      expect(readCssVar(LIGHT, "macro-carbs")).toBe("#c8794e");   // clay
-      expect(readCssVar(LIGHT, "macro-fat")).toBe("#c9892c");     // amber
-      expect(readCssVar(LIGHT, "macro-calories")).toBe("#3b2a4d"); // plum
+    it("macro hues resolve to the documented Sloe v3 values", () => {
+      expect(readCssVar(LIGHT, "macro-protein")).toBe("#3b2a4d"); // plum
+      expect(readCssVar(LIGHT, "macro-carbs")).toBe("#c9892c");   // amber
+      expect(readCssVar(LIGHT, "macro-fat")).toBe("#b25d7a");     // berry rose
+      expect(readCssVar(LIGHT, "macro-calories")).toBe("#5e7c5a"); // sage
     });
 
     it("calorie ring empty track", () => {

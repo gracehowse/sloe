@@ -156,9 +156,13 @@ describe("Elevation.cardSoft — the 16% soft lift, web ↔ mobile", () => {
     expect(Elevation.cardSoft.shadowColor.toLowerCase()).toBe("#221b26");
   });
 
-  it("matches the web --elev-card-soft token EXACTLY (16% / 18px / y+6 / Sloe ink)", () => {
-    // The web token must carry the same three levers, so web == mobile cards.
-    // Source-read the light :root token straight from theme.css.
+  it("web --elev-card-soft is the Sloe v3 LAYERED lift; mobile keeps the single-shadow equivalent (platform divergence)", () => {
+    // Sloe v3 (ENG-1222): the web token becomes a three-layer Sloe-Deep
+    // (#241733 == rgba(36,23,51)) penumbra — a tight contact shadow + a mid
+    // ambient + a wide soft halo ("elevation, not warmth"). React Native cannot
+    // render layered shadows, so MOBILE keeps the single-shadow equivalent
+    // (Elevation.cardSoft: 0.16 / 18px / y+6, Sloe ink). They are intentionally
+    // NOT byte-identical — same intent, platform-appropriate form.
     const themeCss = readFileSync(
       resolve(MOBILE_ROOT, "../../src/styles/theme.css"),
       "utf8",
@@ -167,8 +171,15 @@ describe("Elevation.cardSoft — the 16% soft lift, web ↔ mobile", () => {
     const m = root.match(/--elev-card-soft:\s*([^;]+);/);
     expect(m, "--elev-card-soft in :root").not.toBeNull();
     const webToken = m![1].trim().toLowerCase().replace(/\s+/g, " ");
-    // 0 6px 18px rgba(34, 27, 38, 0.16) — y+6, radius 18, Sloe ink at 16%.
-    expect(webToken).toBe("0 6px 18px rgba(34, 27, 38, 0.16)");
+    // Web is the layered v3 lift: three Sloe-Deep rgba(36,23,51) stops, with a
+    // wide soft halo carrying a negative spread (-10px) — unique to the layered
+    // form, absent from the old single shadow.
+    expect(webToken).toContain("rgba(36, 23, 51, 0.06)");
+    expect(webToken).toContain("-10px");
+    expect(webToken.match(/rgba\(36, 23, 51,/g)?.length).toBe(3);
+    // Mobile keeps the tuned single-shadow equivalent.
+    expect(Elevation.cardSoft.shadowOpacity).toBe(0.16);
+    expect(Elevation.cardSoft.shadowRadius).toBe(18);
   });
 
   it("the flat `card` token stays flat — it is no longer the hook default", () => {

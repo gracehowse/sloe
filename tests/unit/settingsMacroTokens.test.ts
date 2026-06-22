@@ -93,14 +93,15 @@ describe("MACRO_COLORS_LIGHT pins canonical theme.css :root values", () => {
     expect(MACRO_COLORS_LIGHT.fiber).toBe(readRootVar("macro-fiber"));
   });
 
-  it("fiber (teal) and calories (plum) are distinct Sloe hues", () => {
-    // Sloe Phase 0: the calorie ring owns plum (chrome hue); fiber is teal.
-    // They are NO LONGER the same hue (the old 8-slot palette folded both onto
-    // green). Icon (Flame/Leaf) + unit (kcal/g) still differentiate neighbours.
-    expect(MACRO_COLORS_LIGHT.fiber).not.toBe(MACRO_COLORS_LIGHT.calories);
-    expect(readRootVar("macro-fiber")).not.toBe(readRootVar("macro-calories"));
-    expect(MACRO_COLORS_LIGHT.calories).toBe("#3B2A4D");
-    expect(MACRO_COLORS_LIGHT.fiber).toBe("#4A7878");
+  it("Sloe v3 small palette: calories + fiber SHARE sage; protein owns plum", () => {
+    // Sloe v3 (2026-06-21) deliberately shrinks the macro palette — calories and
+    // fiber both render sage, differentiated by icon (Flame/Leaf) + label + unit
+    // (kcal/g) + position, not by a unique hue. Protein owns plum (distinct from
+    // the sage ring) and carbs owns amber.
+    expect(MACRO_COLORS_LIGHT.calories).toBe("#5E7C5A"); // sage
+    expect(MACRO_COLORS_LIGHT.fiber).toBe("#5E7C5A");    // sage (shared by design)
+    expect(MACRO_COLORS_LIGHT.protein).toBe("#3B2A4D");  // plum
+    expect(MACRO_COLORS_LIGHT.protein).not.toBe(MACRO_COLORS_LIGHT.calories);
   });
 
   it("sodium matches --macro-sodium", () => {
@@ -111,7 +112,7 @@ describe("MACRO_COLORS_LIGHT pins canonical theme.css :root values", () => {
     expect(MACRO_COLORS_LIGHT.water).toBe(readRootVar("macro-water"));
   });
 
-  it("sugar matches --macro-sugar (Yellow — sugar is a carb)", () => {
+  it("sugar matches --macro-sugar (damson in v3)", () => {
     expect(MACRO_COLORS_LIGHT.sugar).toBe(readRootVar("macro-sugar"));
   });
 

@@ -127,15 +127,19 @@ describe("Today elevation — north star + macro tiles + hydration all soft", ()
   });
 });
 
-describe("Today card fill — Figma surface.card", () => {
-  it("theme.css light material is the §1 inversion: white card on a gently DEEPENED cream ground (2026-06-16)", () => {
-    // Ground deepened #FBF8F3 → #F3F0E8 (a gentle ~5 L* step) so the flat-card
-    // grammar has real ground↔card contrast without reading dark. See
-    // docs/decisions/2026-06-16-deepen-ground-for-flat-cards.md. Card stays white.
+describe("Today card fill — Sloe v3 white-ground elevation model", () => {
+  it("theme.css light is pure white ground + white cards that LIFT on a layered shadow (v3, 2026-06-21)", () => {
+    // Sloe v3 (docs/ux/redesign/v3) reverses the 2026-06-12 flat-card-on-cream
+    // grammar: the in-product ground returns to PURE WHITE and white cards
+    // separate via `--elev-card-soft` ("elevation, not warmth"). Cream is now
+    // marketing-only (`--background-marketing`).
     const theme = read("src/styles/theme.css");
-    expect(theme).toMatch(/:root[\s\S]*?--background:\s*#F3F0E8/i);
+    expect(theme).toMatch(/:root[\s\S]*?--background:\s*#FFFFFF/i);
     expect(theme).toMatch(/:root[\s\S]*?--card:\s*#FFFFFF/i);
-    expect(theme).not.toMatch(/--card:\s*#ECECEA/i);
+    expect(theme).toMatch(/--background-grouped:\s*#F5F4F7/i);
+    expect(theme).toMatch(/--background-marketing:\s*#FBF8F3/i);
+    // The resting card-slab lifts (no longer flat box-shadow: none).
+    expect(theme).toMatch(/\.card-slab\s*\{[\s\S]*?box-shadow:\s*var\(--elev-card-soft\)/i);
   });
 });
 

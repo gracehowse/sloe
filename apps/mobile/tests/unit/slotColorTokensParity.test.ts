@@ -52,10 +52,10 @@ describe("SlotColors token (ui-critic P2 #10 — magenta=fat=snack collision fix
     });
 
     it("snack tint is teal (#4A7878), distinct from MacroColors.fat", () => {
-      // Sloe Phase 0 (dossier D-4): snack → teal. Fat is amber (#C9892C);
-      // teal keeps the snack slot collision-free with every macro hue.
+      // Sloe v3: snack → teal. Fat is now berry-rose (#B25D7A); teal keeps the
+      // snack slot collision-free with every macro hue.
       expect(SlotColors.snack.toLowerCase()).toBe("#4a7878");
-      expect(MacroColors.fat.toLowerCase()).toBe("#c9892c");
+      expect(MacroColors.fat.toLowerCase()).toBe("#b25d7a");
       expect(SlotColors.snack.toLowerCase()).not.toBe(
         MacroColors.fat.toLowerCase(),
       );
