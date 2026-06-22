@@ -235,7 +235,7 @@ export function ReportRecipeDialog({
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-medium text-foreground">{r.label}</span>
-                      <span className="block text-[12px] text-muted-foreground">{r.hint}</span>
+                      <span className="block text-[13px] text-muted-foreground">{r.hint}</span>
                     </span>
                   </button>
                 );

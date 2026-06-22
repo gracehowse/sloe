@@ -213,7 +213,7 @@ function ProgressEnergyEquation({
         onClick={() => setShowHow((v) => !v)}
         aria-expanded={showHow}
         data-testid="progress-energy-how"
-        className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-primary-solid hover:opacity-80"
+        className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-primary-solid hover:opacity-80"
       >
         How maintenance works
         {showHow ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
@@ -251,7 +251,7 @@ function EqTerm({
 }) {
   return (
     <div className="min-w-0 flex-1 text-center">
-      <p className="text-[20px] font-bold tabular-nums leading-none" style={color ? { color } : undefined}>
+      <p className="text-[18px] font-bold tabular-nums leading-none" style={color ? { color } : undefined}>
         {value}
       </p>
       <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
