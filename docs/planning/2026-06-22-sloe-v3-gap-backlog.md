@@ -4,6 +4,39 @@
 > truth for the rest of the v3 reskin. Cross-check flag/ramp state in PostHog
 > before acting on any "wire/ramp" item. Project: Linear "Sloe v3 — full reskin".
 
+## Progress log
+
+- **2026-06-21 — #1 + #2 DONE (commit f4e30acd).** Jewel dial wired into BOTH
+  real Today heroes behind `sloe_v3_ring`: web `DesktopHeroStats`
+  (`today-hero-stats.tsx`) swaps `DailyRing`→`CalorieRingDial`; mobile native
+  hero via extracted `TodayHeroRingGraphic` (keeps the pinned 459-line
+  `TodayHeroRing` host at budget). **Real bug caught by SEEing:**
+  `TodayHeroStats` mounts both breakpoint dials at once → shared
+  `cr-dial-<state>` SVG defs ids collided → visible dial's lit segments never
+  painted. Fixed with `React.useId()` namespacing. Web verified all 3 states
+  in the carded desktop hero (new `today-hero-stats.stories.tsx` regression
+  layer). **Mobile-sim SEE still owed** (no sim bootable this session; dial is
+  sim-verified standalone + web parity is fully SEEn).
+- **2026-06-21 — weight-line token-role DONE (commit 90ef51e6).** Web Progress
+  weight card line/gradient/dots carbs-amber → `--macro-protein` (plum), parity
+  with mobile `WeightChart` (`accent.primary`). Visual pass on the rendered
+  card queued with #23 (same card drive). Mobile already correct.
+- **OPEN — #25 onboarding reveal ring is NOT a clean wire.** `CalorieRingDial`
+  is a *kcal-left/over* dial (center = `target − consumed`, sweep =
+  consumption); the reveal needs the *target* number counting up with a
+  celebratory 0→100% sweep. Drop-in would show "0 kcal left" on a target-reveal
+  surface. Needs a small design decision + a shared ring primitive (the
+  prototype's `SloeRingHero` shows an arbitrary numeral + full dial) + both
+  platforms + sim. Re-scope out of "Phase-0 wire."
+- **OPEN — energy-triad deficit/TDEE colour needs prototype grounding.** Both
+  platforms paint the deficit/TDEE stat with `MacroColors.protein` /
+  `--macro-protein-solid` (plum) via a misleadingly-named `const sage =
+  MacroColors.protein` alias (was sage pre-v3 recolour). Surplus already uses
+  amber (`--warning`) correctly. Whether deficit should be sage (calorie domain)
+  or plum is ambiguous vs the backlog prose — ground against `Sloe-App.html`
+  before changing. The triad is also slated for a full rebuild in #23, so fold
+  the colour call into that.
+
 The reports' file/flag facts check out: the v3 ring dial is built on both platforms but only web's mobile-web branch wires it; the cook flags exist (default-OFF); the macro-rings primitives exist on both but mobile's branch is missing. I have enough verified grounding to synthesize. Here's the backlog.
 
 ---
