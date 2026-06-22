@@ -48,6 +48,29 @@ web Apple Health card WIRED this session** (38b0e7ec); #6 mobile billing
 deep-links to RevenueCat (functionally done, no screen); #16 editorial Profile
 partially built.
 
+**#23 EQUATION LAYOUT — web DONE (c9a48725).** Progress energy balance →
+prototype equation (intake − maintenance = deficit/day, operators + "How
+maintenance works" explainer) behind `sloe_v3_energy_equation` (default-OFF);
+triad in the else. Maintenance sage / deficit plum. Web-SEEn + tested. **Mobile
+equation parity owed** (next sim session). Adapt-row numbers omitted (no
+formula-baseline value — would be fabricated; explainer uses words).
+
+**#14 Discover creator rail — CONTENT-BLOCKED.** `creators` table is EMPTY
+(0 rows, 0 creators-with-recipes, verified via Supabase MCP). The rail can't be
+built without fabricating creators — it's a content/launch dependency, not a
+code task. The featured-editorial-hero half is buildable (recipes exist) but
+DiscoverFeed already has hero treatment (isHero idx===0) so the gap is marginal.
+
+**SIM RESTORED + visual-test capability confirmed (2026-06-22).** `Sloe-Verify`
+(iOS 26.5) boots; dev client pre-installed; eyes (`simctl io screenshot`+Read) +
+hands (`idb` companion). **To force a mobile flag:** inject
+`__SUPPR_FORCE_FLAGS__` = `{"flag":true}` into the sim's AsyncStorage manifest
+(`<dataContainer>/Library/Application Support/com.supprclub.supprapp/RCTAsyncLocalStorage_V1/manifest.json`)
+with the app terminated, then relaunch (primes from AsyncStorage). Verified the
+**mobile Today hero jewel dial** (sloe_v3_ring forced) + **energy-triad TDEE
+sage** live. Data-gated mobile verifications (deficit plum, weight-chart plum,
+apple-health) need a seeded account (empty sim account hides those cards).
+
 **LEGAL LAUNCH-GATE CLUSTER — DONE 2026-06-22 (Grace authorised):**
 - **recipe_reports queue APPLIED TO PROD** (269826a0) — durable OSA/DSA report
   queue. Built → security-reviewer (safe-to-apply) + data-integrity (fix-first =
