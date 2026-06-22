@@ -52,8 +52,15 @@ partially built.
 1. **#10** — `cook_multi_timers_v1` is mobile-only; web appends timers
    unconditionally. Parity gap (S). *Decision needed: gate web to match mobile,
    or un-gate mobile — multi-timer is a flagged feature.* NOT web-SEEable.
-2. **#22** — web Progress two-card new-user empty state (M) — neither platform
-   has it; web uses a bare `ProgressStoryGate` placeholder.
+2. **#22** — web Progress new-user empty state (M). **NUANCE (don't blind-port):**
+   the prototype (L4950-4962) is two cards — "Weekly recap → A little more to go"
+   + "Weight → No weigh-ins yet → Log weight". But web already has
+   `ProgressStoryGate` (progress-ring + "N days logged · 3 needed to unlock"),
+   which is *richer* than the prototype's plain recap card — KEEP it
+   (mix-and-match rule). The real gap is the missing dedicated "No weigh-ins
+   yet → Add your first weight" weight empty card (the weight card currently
+   only renders a chart at ≥2 weigh-ins, with no first-weight CTA). Surgical add,
+   not a two-card replace. Confirm keep-vs-replace with Grace before building.
 3. **#18** — editorial Cookbook shelves + featured hero, replacing the flat grid
    (`Library.tsx` ~L537) (L).
 4. **#19** — per-recipe Report/DMCA sheet (`RecipeDetail.tsx`) (M) — legal bundle.
