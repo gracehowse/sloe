@@ -1,4 +1,22 @@
-import { detectSocialPlatform, type SocialPlatform } from "./extractSocialRecipe";
+/**
+ * Social platforms the import wedge recognises. Mirrors
+ * `extractSocialRecipe.ts`'s `SocialPlatform`/`detectSocialPlatform`, inlined
+ * here so this pure classifier stays free of that module's server-only deps
+ * (SSRF guard, fetch, Upstash monitoring) — it must import cleanly into mobile.
+ */
+export type SocialPlatform = "instagram" | "tiktok" | "youtube" | null;
+
+function detectSocialPlatform(url: string): SocialPlatform {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host === "instagram.com" || host.endsWith(".instagram.com") || host === "instagr.am") return "instagram";
+    if (host === "tiktok.com" || host.endsWith(".tiktok.com") || host === "vm.tiktok.com") return "tiktok";
+    if (host === "youtube.com" || host === "www.youtube.com" || host === "m.youtube.com" || host === "youtu.be") return "youtube";
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * classifyImport (ENG-1225 #3) — the shared "detect-anything" classifier behind
