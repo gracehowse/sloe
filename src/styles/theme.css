@@ -624,6 +624,16 @@
   --fill-quiet: #2C2A30;
   --ring-track: #372F44;
 
+  /** Sloe v3 jewel-ring (dark) — brighter stops so the gem reads luminous on
+   *  plum-black; tick lifts to a frost-grey alpha visible on Nocturne. Mirrors
+   *  the prototype dark `:root`. */
+  --ring-under-a: #6FA06A;  --ring-under-b: #B6E0AD;
+  --ring-over-a:  #D2614A;  --ring-over-b:  #F0A47A;
+  --ring-empty-a: #6A5A7E;  --ring-empty-b: #B9ADD0;
+  --ring-channel: rgba(0, 0, 0, 0.28);
+  --ring-cap-core: #FBF7FF;
+  --ring-tick: rgba(201, 194, 214, 0.24);
+
   /** Sidebar — Sloe dark. */
   --sidebar: #19181C;
   --sidebar-foreground: #F5F3F4;
