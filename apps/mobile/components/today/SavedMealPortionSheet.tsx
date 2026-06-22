@@ -16,7 +16,8 @@ import * as Haptics from "expo-haptics";
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
-import { Elevation, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Elevation, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -68,6 +69,7 @@ function SavedMealPortionSheetImpl({
 }: SavedMealPortionSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const { colors: macro } = useMacroColors(); // ENG-1223: scheme-resolved macros
   // Slot pill border/fill + footer CTA outline use the scheme-resolved
   // accent so deep plum stays legible on dark (hook inverts to aubergine).
   const accent = useAccent();
@@ -115,10 +117,10 @@ function SavedMealPortionSheetImpl({
     : { kcal: 0, protein: 0, carbs: 0, fat: 0 };
 
   const macroSummary = [
-    { key: "calories", label: "kcal", color: MacroColors.calories, value: scaled.kcal },
-    { key: "protein", label: "P", color: MacroColors.protein, value: scaled.protein },
-    { key: "carbs", label: "C", color: MacroColors.carbs, value: scaled.carbs },
-    { key: "fat", label: "F", color: MacroColors.fat, value: scaled.fat },
+    { key: "calories", label: "kcal", color: macro.calories, value: scaled.kcal },
+    { key: "protein", label: "P", color: macro.protein, value: scaled.protein },
+    { key: "carbs", label: "C", color: macro.carbs, value: scaled.carbs },
+    { key: "fat", label: "F", color: macro.fat, value: scaled.fat },
   ] as const;
 
   return (

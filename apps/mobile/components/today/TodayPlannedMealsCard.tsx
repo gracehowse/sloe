@@ -1,7 +1,8 @@
 import React, { memo, useState } from "react";
-import { Pressable, Text, useColorScheme, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
@@ -59,25 +60,26 @@ function MacroLine({
   meal: TodayPlannedMealEntry;
   textSecondaryColor: string;
 }) {
-  const isDark = useColorScheme() === "dark";
+  const { colors: macro } = useMacroColors(); // ENG-1223: scheme-resolved macros
   const parts = formatPlannedMealMacroParts(
     Number(meal.calories) || 0,
     Number(meal.protein) || 0,
     Number(meal.carbs) || 0,
     Number(meal.fat) || 0,
   );
-  // Fresh-eyes P1 (2026-06-10): static MacroColors.protein fails AA as 11px
-  // caption on dark cards — lift to successLight on dark only.
-  const proteinColor = isDark ? Accent.successLight : MacroColors.protein;
+  // ENG-1223: scheme-resolved plum — `macro.protein` is #B9A7CC on dark
+  // (lightened plum, clears AA at 11px), replacing the old green successLight
+  // dark-only hack which was off-hue for v3 (protein is plum, not green).
+  const proteinColor = macro.protein;
   return (
     <Text style={{ ...Type.caption, color: textSecondaryColor, marginTop: 2 }}>
       <Text style={{ fontVariant: ["tabular-nums"] }}>{parts.kcal.toLocaleString()} kcal</Text>
       {" · "}
       <Text style={{ color: proteinColor, fontVariant: ["tabular-nums"] }}>{parts.protein}g P</Text>
       {" · "}
-      <Text style={{ color: MacroColors.carbs, fontVariant: ["tabular-nums"] }}>{parts.carbs}g C</Text>
+      <Text style={{ color: macro.carbs, fontVariant: ["tabular-nums"] }}>{parts.carbs}g C</Text>
       {" · "}
-      <Text style={{ color: MacroColors.fat, fontVariant: ["tabular-nums"] }}>{parts.fat}g F</Text>
+      <Text style={{ color: macro.fat, fontVariant: ["tabular-nums"] }}>{parts.fat}g F</Text>
     </Text>
   );
 }
