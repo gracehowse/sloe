@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
-import { MacroColors, Type } from "@/constants/theme";
+import { Type } from "@/constants/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -185,6 +186,8 @@ export function TodayDashboardMacroRings({
   netCarbsLensEnabled,
 }: TodayDashboardMacroRingsProps) {
   const colors = useThemeColors();
+  // ENG-1223: scheme-resolved macro hues (plum/amber/berry lighten on dark).
+  const { colors: macro } = useMacroColors();
   const reduce = useReduceMotion();
   const grow = useGrow(reduce, `${totals.protein}-${totals.carbs}-${totals.fat}`);
 
@@ -194,7 +197,7 @@ export function TodayDashboardMacroRings({
         label="Protein"
         current={totals.protein}
         target={targets.protein}
-        color={MacroColors.protein}
+        color={macro.protein}
         tickColor={colors.ringTick}
         textColor={colors.text}
         subColor={colors.textTertiary}
@@ -206,7 +209,7 @@ export function TodayDashboardMacroRings({
         label={netCarbsLensEnabled ? "Net carbs" : "Carbs"}
         current={totals.carbs}
         target={targets.carbs}
-        color={MacroColors.carbs}
+        color={macro.carbs}
         tickColor={colors.ringTick}
         textColor={colors.text}
         subColor={colors.textTertiary}
@@ -218,7 +221,7 @@ export function TodayDashboardMacroRings({
         label="Fat"
         current={totals.fat}
         target={targets.fat}
-        color={MacroColors.fat}
+        color={macro.fat}
         tickColor={colors.ringTick}
         textColor={colors.text}
         subColor={colors.textTertiary}
