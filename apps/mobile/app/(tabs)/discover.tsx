@@ -45,6 +45,7 @@ import { SmartImage } from "@/components/ui/SmartImage";
 import { IconBox } from "@/components/discover/IconBox";
 import { CreatorRail } from "@/components/discover/CreatorRail";
 import { useTopCreators } from "@/hooks/useTopCreators";
+import { UnifiedImportSheet } from "@/components/import/UnifiedImportSheet";
 
 // ENG-921 (2026-06-07) — CATEGORY filter row per Figma `528:2`. The
 // "Following" pill (B5 Phase 2c follow-graph feature) is preserved as a
@@ -154,6 +155,7 @@ export default function DiscoverScreen() {
   const { recipes, loading, refresh } = useDiscoverRecipes();
   // ENG-1225 #14 — "top creators by saves" rail (hidden until populated).
   const topCreators = useTopCreators();
+  const [unifiedImportOpen, setUnifiedImportOpen] = useState(false); // ENG-1225 #3
 
   // ENG-700 — after publishing from Library / recipe detail, Discover
   // must refetch `published=true` rows when the user switches sub-tabs.
@@ -882,15 +884,12 @@ export default function DiscoverScreen() {
             recipe rows. Mirrors Recime's import-link pattern. testID
             preserved for the Maestro 25_import_shared flow. */}
         {importHero ? (
-          // ENG-1087 — hero affordance. Keeps the tinted-slab grammar (flat-card
-          // law) but raises the weight so the viral-hook import beats a settings
-          // row: stronger ~20% tint, a SOLID plum icon circle (white glyph), a
-          // serif headline title, and a filled "Paste link" pill in place of the
-          // passive chevron (do-it-here, not navigate). The whole slab is the tap
-          // target → the import/paste screen; the pill is the affordance, not a
-          // nested pressable.
+          // ENG-1087 — hero affordance (raised weight: SOLID plum icon + filled
+          // "Paste link" pill, the whole slab taps through to import). ENG-1225
+          // #3: with `sloe_v3_unified_import` ON, the slab opens the unified
+          // "import anything" sheet instead of navigating; OFF keeps the legacy nav.
           <Pressable
-            onPress={() => router.push("/import-shared" as Href)}
+            onPress={() => isFeatureEnabled("sloe_v3_unified_import") ? setUnifiedImportOpen(true) : router.push("/import-shared" as Href)}
             accessibilityRole="button"
             accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
             testID="discover-import-cta"
@@ -1155,6 +1154,7 @@ export default function DiscoverScreen() {
           <ChevronRight size={16} color={colors.textTertiary} />
         </Pressable>
       </ScrollView>
+      <UnifiedImportSheet visible={unifiedImportOpen} onClose={() => setUnifiedImportOpen(false)} />
     </View>
   );
 }

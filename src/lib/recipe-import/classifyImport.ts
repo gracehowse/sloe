@@ -60,10 +60,19 @@ export interface ImportClassification {
   platform: SocialPlatform;
 }
 
-/** First http(s) URL in a blob of text (handles trailing punctuation). */
+/**
+ * First URL in a blob of text. Handles the common share/paste case where the
+ * scheme is dropped (`instagram.com/reel/…`, `tiktok.com/@x/video/…`) by
+ * accepting a scheme-less host+path and normalising it to `https://`. Requires a
+ * path segment on scheme-less matches so a bare domain-in-a-sentence isn't
+ * mistaken for a link. Trailing punctuation is trimmed.
+ */
 function firstUrl(text: string): string | null {
-  const m = text.match(/https?:\/\/[^\s<>"')]+/i);
-  return m ? m[0].replace(/[),.;]+$/, "") : null;
+  const schemed = text.match(/https?:\/\/[^\s<>"')]+/i);
+  if (schemed) return schemed[0].replace(/[),.;]+$/, "");
+  const bare = text.match(/\b((?:www\.)?[a-z0-9][a-z0-9-]*\.[a-z]{2,}\/[^\s<>"')]+)/i);
+  if (bare) return `https://${bare[1].replace(/[),.;]+$/, "")}`;
+  return null;
 }
 
 const SOCIAL_LABEL: Record<Exclude<SocialPlatform, null>, string> = {

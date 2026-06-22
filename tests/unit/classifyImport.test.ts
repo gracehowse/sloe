@@ -29,6 +29,19 @@ describe("classifyImport", () => {
     );
   });
 
+  it("detects scheme-less shared/pasted URLs (https:// often dropped)", () => {
+    // The common share-sheet case — no scheme.
+    expect(classifyImport("tiktok.com/@a/video/9").kind).toBe("social");
+    expect(classifyImport("tiktok.com/@a/video/9").platform).toBe("tiktok");
+    expect(classifyImport("www.instagram.com/reel/Cabc/").platform).toBe("instagram");
+    expect(classifyImport("bbcgoodfood.com/recipes/lasagne").kind).toBe("recipe-url");
+  });
+
+  it("does NOT treat a bare domain in prose (no path) as a URL", () => {
+    expect(classifyImport("My favourite is the one from tiktok obviously").kind).not.toBe("social");
+    expect(classifyImport("Recipe text without any link").kind).toBe("recipe-text");
+  });
+
   it("a non-social URL → recipe-url", () => {
     const r = classifyImport("https://www.bbcgoodfood.com/recipes/lasagne");
     expect(r.kind).toBe("recipe-url");
