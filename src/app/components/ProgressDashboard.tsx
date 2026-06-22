@@ -112,6 +112,8 @@ import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProg
 import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
 import { SupprCard } from "./ui/suppr-card.tsx";
 import { ProgressActivitySection } from "./suppr/progress-activity-section.tsx";
+import { ProgressWeightEmptyState } from "./suppr/progress-weight-empty-state.tsx";
+import { WeightStatRow } from "./suppr/weight-stat-row.tsx";
 import { getLatestHealthSnapshot } from "../../lib/health/healthSnapshots.ts";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
@@ -1311,6 +1313,9 @@ function ProgressDashboardContent() {
           users see the direction tile above instead). */}
       {profileWeightSurfaceMode === "show" ? (() => {
         const sortedWeightDays = Object.entries(weightKgByDay).sort(([a], [b]) => a.localeCompare(b));
+        // ENG-1225 #22 — "No weigh-ins yet" state (transient flag) replaces the
+        // broken "—" hero/chart/stat-row; the Log-weight input stays below.
+        const showWeightEmpty = sortedWeightDays.length === 0 && isFeatureEnabled("web_progress_weight_empty");
         const startKg = sortedWeightDays.length > 0 ? sortedWeightDays[0][1] : null;
         const weekDeltaKg = weightRange.weekDeltaKg;
         const rateKgPerWeek = goalTimeline?.weeklyRateKg ?? null;
@@ -1345,6 +1350,9 @@ function ProgressDashboardContent() {
               "Daily Calories" / "Average Adherence" cards, so the weight card
               is no longer the only Progress card without a header. */}
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid mb-2">Weight</p>
+          {showWeightEmpty ? (
+            <ProgressWeightEmptyState />
+          ) : (<>
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="ph-mask">
@@ -1456,22 +1464,14 @@ function ProgressDashboardContent() {
               </ResponsiveContainer>
             </div>
           )}
-          {/* START / CURRENT / GOAL / RATE stat row */}
-          <div className="mt-3 grid grid-cols-4 gap-1 border-t border-border pt-3">
-            {([
-              ["Start", startKg != null ? formatWeight(startKg) : "—"],
-              ["Current", latestWeightKg != null ? formatWeight(latestWeightKg) : "—"],
-              ["Goal", goalWeightKg != null ? formatWeight(goalWeightKg) : "—"],
-              ["Rate", rateKgPerWeek != null && rateKgPerWeek !== 0
-                ? `${rateKgPerWeek < 0 ? "−" : "+"}${formatRatePerWeek(rateKgPerWeek).replace("/week", "/wk")}`
-                : "—"],
-            ] as const).map(([label, value]) => (
-              <div key={label} className="text-center">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{label}</p>
-                <p className="mt-1 text-[15px] font-semibold tabular-nums text-foreground ph-mask">{value}</p>
-              </div>
-            ))}
-          </div>
+          {/* START / CURRENT / GOAL / RATE stat row (extracted, ENG-1225 #22) */}
+          <WeightStatRow
+            start={startKg != null ? formatWeight(startKg) : "—"}
+            current={latestWeightKg != null ? formatWeight(latestWeightKg) : "—"}
+            goal={goalWeightKg != null ? formatWeight(goalWeightKg) : "—"}
+            rate={rateKgPerWeek != null && rateKgPerWeek !== 0 ? `${rateKgPerWeek < 0 ? "−" : "+"}${formatRatePerWeek(rateKgPerWeek).replace("/week", "/wk")}` : "—"}
+          />
+          </>)}
           {/* Log weight — centred button + a quick inline input */}
           <div className="mt-3 flex items-center gap-2">
             <input
