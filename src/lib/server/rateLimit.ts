@@ -3,6 +3,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
 import { recordUpstashFailure } from "./upstashMonitoring";
+import { getTrustedClientIp } from "./clientIp";
 
 type Bucket = {
   count: number;
@@ -26,12 +27,13 @@ function isProductionRuntime(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
+// ENG-1226: the bucket key must use the platform-injected, non-forgeable client
+// IP — never the client-supplied leftmost `x-forwarded-for` hop, which a
+// scripted attacker can rotate to bypass the per-IP cap. Delegated to the shared
+// `getTrustedClientIp` so the rate limiter and the `reporter_ip` audit fields
+// (DMCA + recipe-report routes) all derive the IP the same trusted way.
 function getIpFromHeaders(h: { get: (name: string) => string | null }): string | null {
-  const xff = h.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]?.trim() || null;
-  const realIp = h.get("x-real-ip");
-  if (realIp) return realIp.trim();
-  return null;
+  return getTrustedClientIp(h);
 }
 
 // Best-effort in-memory limiter (works in dev and single-instance).

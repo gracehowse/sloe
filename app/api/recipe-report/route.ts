@@ -13,6 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
+import { getTrustedClientIp } from "@/lib/server/clientIp";
 import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
 import { assertOrigin } from "@/lib/api/assertOrigin";
 
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const reporterIp = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? null;
+  const reporterIp = getTrustedClientIp(h);
   const reporterUserAgent = h.get("user-agent");
 
   const { error } = await admin.from("recipe_reports").insert({
