@@ -44,4 +44,22 @@ describe("ENG-870 recipe claim migration security", () => {
       expect(policy).toContain("claim_verification IS NULL");
     }
   });
+
+  it("prevents normal recipe owners from clearing existing server-owned claim state", () => {
+    const updatePolicyStart = normalized.indexOf('CREATE POLICY "recipes_update_own"');
+    const insertPolicyStart = normalized.indexOf('CREATE POLICY "recipes_insert_own"');
+    expect(updatePolicyStart).toBeGreaterThan(-1);
+    expect(insertPolicyStart).toBeGreaterThan(-1);
+
+    const updatePolicy = normalized.slice(updatePolicyStart, insertPolicyStart);
+    const usingClause = updatePolicy.slice(
+      updatePolicy.indexOf("USING ("),
+      updatePolicy.indexOf("WITH CHECK"),
+    );
+
+    expect(usingClause).toContain("content_origin <> 'claimed'");
+    expect(usingClause).toContain("claimed_by IS NULL");
+    expect(usingClause).toContain("claimed_at IS NULL");
+    expect(usingClause).toContain("claim_verification IS NULL");
+  });
 });

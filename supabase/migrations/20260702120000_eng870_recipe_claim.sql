@@ -67,7 +67,13 @@ create index if not exists recipe_claims_claimant_status_idx on public.recipe_cl
 -- recipe owners cannot self-assert official status from browser/mobile clients.
 DROP POLICY IF EXISTS "recipes_update_own" ON public.recipes;
 CREATE POLICY "recipes_update_own" ON public.recipes FOR UPDATE
-  USING (auth.uid() = author_id)
+  USING (
+    auth.uid() = author_id
+    AND content_origin <> 'claimed'
+    AND claimed_by IS NULL
+    AND claimed_at IS NULL
+    AND claim_verification IS NULL
+  )
   WITH CHECK (
     auth.uid() = author_id
     AND content_origin <> 'claimed'
