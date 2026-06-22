@@ -70,17 +70,19 @@ describe("CalorieRingDial — jewel watch dial", () => {
       <CalorieRingDial consumed={2300} target={2000} />,
     );
     expect(litTransforms(container).length).toBe(48);
-    expect(container.querySelector("#cr-dial-over")).not.toBeNull();
+    // Gradient id is instance-namespaced (`useId()`, ENG-1225) so two dials can
+    // coexist (mobile-web + desktop) without colliding defs — match by state prefix.
+    expect(container.querySelector('[id^="cr-dial-over"]')).not.toBeNull();
   });
 
   it("under budget uses the sage gradient; empty uses the frost gradient", () => {
     const { container: under } = render(
       <CalorieRingDial consumed={1200} target={2000} />,
     );
-    expect(under.querySelector("#cr-dial-under")).not.toBeNull();
+    expect(under.querySelector('[id^="cr-dial-under"]')).not.toBeNull();
     const { container: empty } = render(
       <CalorieRingDial consumed={0} target={2000} />,
     );
-    expect(empty.querySelector("#cr-dial-empty")).not.toBeNull();
+    expect(empty.querySelector('[id^="cr-dial-empty"]')).not.toBeNull();
   });
 });

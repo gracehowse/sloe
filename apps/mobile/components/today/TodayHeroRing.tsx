@@ -4,7 +4,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react-native";
-import CalorieRing from "@/components/charts/CalorieRing";
+import { TodayHeroRingGraphic } from "@/components/today/TodayHeroRingGraphic";
 import { Layout } from "@/constants/layout";
 import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -307,7 +307,7 @@ function TodayHeroRingImpl({
           onPress={onPressStatusChip}
         />
       </View>
-      <CalorieRing
+      <TodayHeroRingGraphic
         consumed={consumed}
         goal={goal}
         baseGoal={baseGoal}
@@ -318,7 +318,7 @@ function TodayHeroRingImpl({
         carbsPct={carbsPct}
         fatPct={fatPct}
         expanded={expanded}
-        onToggle={onToggleExpanded}
+        onToggleExpanded={onToggleExpanded}
       />
       {/* Goal / Eaten / Bonus stats row — SLOE `01 · Today` frame.
           2026-06-10 (Grace): renders on EMPTY days too — the empty page

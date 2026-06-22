@@ -87,7 +87,13 @@ export function CalorieRingDial({
   const drawn = (isEmpty ? 0.004 : pct) * grow;
 
   const stateKey = isOver ? "over" : isEmpty ? "empty" : "under";
-  const gid = `cr-dial-${stateKey}`;
+  // Namespace the gradient/filter ids PER INSTANCE (ENG-1225): `TodayHeroStats`
+  // mounts two dials at once (mobile-web + desktop, one hidden per breakpoint).
+  // A shared `cr-dial-<state>` id made every `url(#…)` resolve to the FIRST
+  // (hidden) instance's defs, so the visible dial's lit segments never painted.
+  // `useId()` gives each instance its own stable ids. (SVG-safe: strip colons.)
+  const uid = React.useId().replace(/:/g, "");
+  const gid = `cr-dial-${stateKey}-${uid}`;
   const ca = `var(--ring-${stateKey}-a)`;
   const cb = `var(--ring-${stateKey}-b)`;
 
