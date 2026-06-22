@@ -27,30 +27,18 @@ import {
 } from "../../lib/recipes/seedRecipesV2.ts";
 import { DiscoverRecipeImage } from "./suppr/discover-recipe-image";
 import { SupprCard } from "./ui/suppr-card";
+import {
+  loadCollections,
+  saveCollections,
+  type CollectionRow,
+} from "../../lib/discover/collections.ts";
+import { useTopCreators } from "./suppr/use-top-creators";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // from the Discover hero card — see the comment on the card body.
 
-const COLLECTIONS_KEY = "suppr-collections-v1";
 /** ISO timestamp: last time the user left the Discover view (used for "new from follows" banner). */
 const DISCOVER_LAST_LEFT_AT_KEY = "suppr-discover-last-left-at";
-
-type CollectionRow = { id: string; name: string; recipeIds: string[] };
-
-function loadCollections(): CollectionRow[] {
-  try {
-    const raw = localStorage.getItem(COLLECTIONS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as CollectionRow[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveCollections(rows: CollectionRow[]) {
-  localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(rows));
-}
 
 interface DiscoverFeedProps {
   userTier: UserTier;
@@ -142,6 +130,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   });
   const [collections] = useState<CollectionRow[]>(() => loadCollections());
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  // ENG-1225 #14 — "top creators by saves" rail (v3 `.creator-rail`).
+  // Hidden today (the `creators` table is empty pre-launch); lights up
+  // automatically once creators exist. Mobile parity: discover.tsx.
+  const creatorRail = useTopCreators((c) => router.push(`/creator/${c.id}`));
   // ENG-921 (2026-06-07) — CATEGORY filters per Figma `528:2`
   // (All · Trending · Quick 30 · Under 500 cal · High protein · From
   // Reels · Breakfast · Dinner · Dessert · Soup · Pasta · Chicken).
@@ -526,6 +518,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             </button>
           ) : null}
         </div>
+
+        {/* Creator rail (ENG-1225 #14) — self-hides when empty. */}
+        <div className="mt-4 pl-4 pr-2 md:pl-0 md:pr-0">{creatorRail}</div>
 
         {/* Category filter pills — ENG-921 / Figma `528:2`. "Following"
             leads as a secondary feed-scope toggle (wired follow-graph

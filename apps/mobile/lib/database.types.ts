@@ -2858,6 +2858,16 @@ export type Database = {
         Returns: undefined
       }
       tier_rank: { Args: { p_tier: string }; Returns: number }
+      top_creators_by_saves: {
+        Args: { p_limit?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          handle: string
+          id: string
+          saves: number
+        }[]
+      }
     }
     Enums: {
       recipe_content_origin: "first_party" | "imported_stub" | "claimed"

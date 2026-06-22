@@ -42,6 +42,9 @@ import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSkeleton";
 import { DiscoverClusterCarousels } from "@/components/discover/DiscoverClusterCarousels";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { IconBox } from "@/components/discover/IconBox";
+import { CreatorRail } from "@/components/discover/CreatorRail";
+import { useTopCreators } from "@/hooks/useTopCreators";
 
 // ENG-921 (2026-06-07) — CATEGORY filter row per Figma `528:2`. The
 // "Following" pill (B5 Phase 2c follow-graph feature) is preserved as a
@@ -59,14 +62,6 @@ import { SmartImage } from "@/components/ui/SmartImage";
  */
 const RECIPE_CARD_RADIUS = CARD_RADIUS;
 
-/* ── Icon Box (local helper matching prototype) ── */
-function IconBox({ color, size = 28, children }: { color: string; size?: number; children: React.ReactNode }) {
-  return (
-    <View style={{ width: size, height: size, borderRadius: size / 3.5, backgroundColor: color + "18", alignItems: "center", justifyContent: "center" }}>
-      {children}
-    </View>
-  );
-}
 
 // Fit-percent badge history:
 //   - F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) removed
@@ -157,6 +152,8 @@ export default function DiscoverScreen() {
   const userId = session?.user?.id ?? null;
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
+  // ENG-1225 #14 — "top creators by saves" rail (hidden until populated).
+  const topCreators = useTopCreators();
 
   // ENG-700 — after publishing from Library / recipe detail, Discover
   // must refetch `published=true` rows when the user switches sub-tabs.
@@ -690,6 +687,9 @@ export default function DiscoverScreen() {
             style={{ flex: 1, fontSize: 14, color: colors.text, padding: 0 }}
           />
         </View>
+
+        {/* Creator rail (ENG-1225 #14) — self-hides when empty. */}
+        <CreatorRail creators={topCreators} onSelect={(c) => router.push(`/creator/${c.id}`)} />
 
         {/* Filter pills.
             Audit 2026-05-04 #27: previously the row's last pill ("High
