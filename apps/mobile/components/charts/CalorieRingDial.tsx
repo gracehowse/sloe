@@ -1,13 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient,
-  RadialGradient,
-  Rect,
-  Stop,
-} from "react-native-svg";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { Type } from "@/constants/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -181,19 +174,9 @@ export function CalorieRingDial({
             <Stop offset="0" stopColor={cb} />
             <Stop offset="1" stopColor={ca} />
           </LinearGradient>
-          <RadialGradient id={`${gid}-core`} cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor={cb} stopOpacity={0.22} />
-            <Stop offset="0.42" stopColor={cb} stopOpacity={0.07} />
-            <Stop offset="0.72" stopColor={cb} stopOpacity={0} />
-          </RadialGradient>
-          <RadialGradient id={`${gid}-rim`} cx="50%" cy="50%" r="50%">
-            <Stop offset="0.62" stopColor={cb} stopOpacity={0} />
-            <Stop offset="0.88" stopColor={cb} stopOpacity={0.1} />
-            <Stop offset="1" stopColor={cb} stopOpacity={0} />
-          </RadialGradient>
         </Defs>
-        <Circle cx={CX} cy={CX} r={96} fill={`url(#${gid}-rim)`} opacity={grow} />
-        <Circle cx={CX} cy={CX} r={80} fill={`url(#${gid}-core)`} opacity={grow} />
+        {/* White-background variant (Grace 2026-06-22): jewel bloom dropped —
+            same segments + leading-cap glow, on a clean white ground. */}
         {track}
         {lit}
       </Svg>

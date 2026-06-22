@@ -185,31 +185,10 @@ export function CalorieRingDial({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          <radialGradient id={`${gid}-core`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={cb} stopOpacity="0.22" />
-            <stop offset="42%" stopColor={cb} stopOpacity="0.07" />
-            <stop offset="72%" stopColor={cb} stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id={`${gid}-rim`} cx="50%" cy="50%" r="50%">
-            <stop offset="62%" stopColor={cb} stopOpacity="0" />
-            <stop offset="88%" stopColor={cb} stopOpacity="0.10" />
-            <stop offset="100%" stopColor={cb} stopOpacity="0" />
-          </radialGradient>
         </defs>
-        <circle
-          cx={CX}
-          cy={CX}
-          r={96}
-          fill={`url(#${gid}-rim)`}
-          style={{ opacity: grow, transition: "opacity 1.1s var(--pm-ease)" }}
-        />
-        <circle
-          cx={CX}
-          cy={CX}
-          r={80}
-          fill={`url(#${gid}-core)`}
-          style={{ opacity: grow, transition: "opacity 1.2s var(--pm-ease)" }}
-        />
+        {/* White-background variant (Grace 2026-06-22): the jewel `.ring-wrap`
+            bloom (the radial-gradient halo seated beneath the dial) is dropped —
+            same segments + leading-cap glow, on a clean white ground. */}
         {track}
         {lit}
       </svg>

@@ -46,12 +46,14 @@ export function TodayHeroRingGraphic({
   onToggleExpanded,
 }: TodayHeroRingGraphicProps) {
   if (isFeatureEnabled("sloe_v3_ring")) {
-    const isEmpty = consumed === 0 || goal <= 0;
+    // The jewel watch-dial does NOT use the legacy empty-state 0.72 shrink (it
+    // read too small — Grace 2026-06-22); it sits at a bumped full size so the
+    // thin-tick dial still anchors the hero.
     return (
       <CalorieRingDial
         consumed={consumed}
         target={goal}
-        size={ringGeometry(isEmpty).SIZE}
+        size={Math.round(ringGeometry(false).SIZE * 1.15)}
       />
     );
   }
