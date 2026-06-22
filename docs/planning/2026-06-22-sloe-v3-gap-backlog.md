@@ -48,6 +48,13 @@ web Apple Health card WIRED this session** (38b0e7ec); #6 mobile billing
 deep-links to RevenueCat (functionally done, no screen); #16 editorial Profile
 partially built.
 
+**SHIPPED 2026-06-22 (this session):** #22 web weight "No weigh-ins yet" empty
+state (48c5011c, mirrors mobile WeightSparseState); **#4 + #20 the shareable
+WeeklyRecap** — SVG brand-lacquer card (f5770772) + Save/Share dialog (9dd0cf4b)
++ Today StreakPip wiring with real week stats (3975ae96). The viral artifact is
+reachable + shareable on web. Mobile recap-card parity (its weekly-recap.tsx is
+still a check-in screen) is the remaining #4 follow-up.
+
 **BUILD NOW (unblocked, web-verifiable, no sim) — corrected order:**
 1. **#10** — `cook_multi_timers_v1` is mobile-only; web appends timers
    unconditionally. Parity gap (S). *Decision needed: gate web to match mobile,
