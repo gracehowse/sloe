@@ -162,11 +162,16 @@ describe("ENG-1109 — Today call sites use AA-safe tokens", () => {
     expect(TODAY_MEALS).toContain("var(--macro-fiber-solid)");
   });
 
-  it("mobile SlotMacroChips use MacroColors *Solid tokens", () => {
-    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.proteinSolid");
-    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.carbsSolid");
-    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.fatSolid");
-    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.fiberSolid");
+  it("mobile SlotMacroChips use the *Solid AA-safe macro tokens", () => {
+    // ENG-1223 made mobile macros scheme-aware via the `useMacroColors()` hook
+    // (light → MacroColors, dark → MacroColorsDark). The chips now read the
+    // *Solid AA-safe variants off the hook's `m` colours rather than the static
+    // `MacroColors.*` import — the AA-safe-solid intent is unchanged.
+    expect(MOBILE_TODAY_MEALS).toContain("useMacroColors");
+    expect(MOBILE_TODAY_MEALS).toContain(".proteinSolid");
+    expect(MOBILE_TODAY_MEALS).toContain(".carbsSolid");
+    expect(MOBILE_TODAY_MEALS).toContain(".fatSolid");
+    expect(MOBILE_TODAY_MEALS).toContain(".fiberSolid");
   });
 
   it("web slot pills use foreground-secondary, not slot hue as text", () => {

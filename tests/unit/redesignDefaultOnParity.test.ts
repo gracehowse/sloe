@@ -44,6 +44,14 @@ const WEB_ONLY = new Set([
   "web_macro_detail_panel",
   // ENG-901 — web upgrade dialog Sloe hero; mobile paywall is a separate surface.
   "paywall_upgrade_dialog_sloe_v1",
+  // ENG-1225 flag-collapse sweep (2026-06-22) — the v3 Progress refinements
+  // are web-only paths; mobile has its own native Progress surfaces.
+  "sloe_v3_energy_equation",
+  "web_apple_health_card",
+  "web_progress_weight_empty",
+  // ENG-837/P5#15 — web per-meal/slot nutrition detail; mobile already ships
+  // the native `meal-nutrition` route, so this flag is web-only by design.
+  "web_meal_nutrition_detail",
 ]);
 
 const MOBILE_ONLY = new Set([
@@ -53,6 +61,9 @@ const MOBILE_ONLY = new Set([
   "import_nudge_flat_white_v1",
   // ENG-898 — CreateRecipeActionSheet 2×2 grid; web has no action sheet surface.
   "create_recipe_action_sheet_grid_v1",
+  // ENG-1225 #3 — unified "import anything" sheet shipped iOS-first; the web
+  // unified front door is a pending parity build, so this is mobile-only today.
+  "sloe_v3_unified_import",
 ]);
 
 /** Gate 1.5 redesign surfaces that must ship default-on on both platforms. */

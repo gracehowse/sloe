@@ -272,6 +272,18 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // mobile-web). Default-on; off → the legacy concentric DailyRing (kill switch).
   // Keep in sync with the mobile set in apps/mobile/lib/analytics.ts.
   "sloe_v3_ring",
+  // ENG-1225 flag-collapse sweep (2026-06-22, "turn everything on") — the v3
+  // Progress refinements that were built but dark-by-default. Each default-on
+  // now; off → the respective legacy path (kill switch).
+  //   energy equation: the Burned − Eaten = Net triad on Progress.
+  "sloe_v3_energy_equation",
+  //   Apple Health read-only card (parity with mobile); off → manual entry.
+  "web_apple_health_card",
+  //   Progress weight empty-state (no weigh-ins yet); off → bare empty chart.
+  "web_progress_weight_empty",
+  //   Today meal nutrition detail (MealNutritionDialog + slot detail) — fixes
+  //   an asymmetric parity break (mobile already live, web was OFF).
+  "web_meal_nutrition_detail",
 ]);
 
 /**

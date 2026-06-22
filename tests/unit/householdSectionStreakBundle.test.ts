@@ -189,8 +189,14 @@ describe("Premium parity — household settings redesign (2026-06-09)", () => {
   });
 
   // GAP 5: section eyebrows use sage secondary on both platforms.
-  it("mobile eyebrows use MacroColors.protein sage token via Type.label", () => {
-    expect(MOBILE_HOUSEHOLD).toContain("MacroColors.protein");
+  it("mobile eyebrows use the sage protein token via Type.label (scheme-aware)", () => {
+    // ENG-1223 scheme-aware macros: the eyebrow colour now reads `mc.protein`
+    // where `mc = useResolvedScheme()==="dark" ? MacroColorsDark : MacroColors`,
+    // replacing the static `MacroColors.protein`. Same sage token, scheme-aware.
+    expect(MOBILE_HOUSEHOLD).toMatch(
+      /useResolvedScheme\(\)\s*===\s*"dark"\s*\?\s*MacroColorsDark\s*:\s*MacroColors/,
+    );
+    expect(MOBILE_HOUSEHOLD).toContain("mc.protein");
     expect(MOBILE_HOUSEHOLD).toContain("Type.label");
     // Old off-spec letterSpacing 1.4 is gone; Type.label carries 0.88.
     expect(MOBILE_HOUSEHOLD).not.toMatch(/letterSpacing:\s*1\.4/);
