@@ -6,8 +6,8 @@ import { CalorieRingDial } from "./calorie-ring-dial";
  * states so Chromatic guards them as a durable regression layer:
  *
  *   - Empty (0 eaten)      → frost dial, single leading gem.
- *   - Under budget         → sage gradient-lit segments fill to progress.
- *   - Over budget          → destructive→warm segments full circle, warning numeral.
+ *   - Under target         → sage gradient-lit segments fill to progress.
+ *   - Over target          → destructive→warm segments full circle, warning numeral.
  */
 function Dial({ consumed, target }: { consumed: number; target: number }) {
   return (
@@ -41,12 +41,12 @@ export const Empty: Story = {
 };
 
 export const Under: Story = {
-  name: "Under budget (sage)",
+  name: "Under target (sage)",
   render: () => <Dial consumed={1200} target={2000} />,
 };
 
 export const Over: Story = {
-  name: "Over budget (destructive→warm)",
+  name: "Over target (destructive→warm)",
   render: () => <Dial consumed={2300} target={2000} />,
 };
 
