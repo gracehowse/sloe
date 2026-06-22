@@ -20,7 +20,10 @@
  * Mirror: `apps/mobile/components/progress/ProgressEnergyTriad.tsx`.
  */
 
+import * as React from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { SupprCard } from "../ui/suppr-card";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 export interface ProgressEnergyTriadProps {
   /** Range average calories/day. Null → "—". */
@@ -71,6 +74,23 @@ export function ProgressEnergyTriad({
       ? Math.round(maintenanceKcal - avgIntakeKcal)
       : null;
   const isSurplus = deficitKcal != null && deficitKcal < 0;
+
+  // Sloe v3 (ENG-1225 #23): the prototype's Progress energy balance is an
+  // EQUATION (intake − maintenance = deficit/day) with a "How maintenance works"
+  // explainer, not a 3-cell triad (Sloe-App.html L5001-5018). Transient flag;
+  // the triad stays in the else until collapsed.
+  if (isFeatureEnabled("sloe_v3_energy_equation")) {
+    return (
+      <ProgressEnergyEquation
+        avgIntakeKcal={avgIntakeKcal}
+        maintenanceKcal={maintenanceKcal}
+        deficitKcal={deficitKcal}
+        isSurplus={isSurplus}
+        isAdaptive={isAdaptive}
+        className={className}
+      />
+    );
+  }
 
   return (
     <div
@@ -126,6 +146,126 @@ export function ProgressEnergyTriad({
         ) : null}
       </Cell>
     </div>
+  );
+}
+
+/**
+ * ProgressEnergyEquation — the v3 energy-balance equation
+ * (`intake − maintenance = deficit/day`) + a "How maintenance works"
+ * explainer, per `Sloe-App.html` L5001-5018. Maintenance reads sage, the
+ * deficit result reads plum (surplus → amber) — same token roles as the triad.
+ * The prototype's `2,260 → maintenance` adapt-row is intentionally omitted:
+ * the formula-baseline value isn't passed to this component, and inventing one
+ * would be a fabricated number (the explainer states the adapt behaviour in
+ * words instead).
+ */
+function ProgressEnergyEquation({
+  avgIntakeKcal,
+  maintenanceKcal,
+  deficitKcal,
+  isSurplus,
+  isAdaptive,
+  className,
+}: {
+  avgIntakeKcal: number | null;
+  maintenanceKcal: number | null;
+  deficitKcal: number | null;
+  isSurplus: boolean;
+  isAdaptive: boolean;
+  className?: string;
+}) {
+  const [showHow, setShowHow] = React.useState(false);
+  const hasMaintenance = maintenanceKcal != null && maintenanceKcal > 0;
+  const resultValue =
+    deficitKcal == null
+      ? "—"
+      : deficitKcal > 0
+        ? `−${deficitKcal.toLocaleString()}`
+        : deficitKcal === 0
+          ? "0"
+          : `+${Math.abs(deficitKcal).toLocaleString()}`;
+  const resultColor = isSurplus
+    ? "var(--warning)"
+    : deficitKcal != null && deficitKcal > 0
+      ? "var(--primary)"
+      : "var(--foreground)";
+
+  return (
+    <SupprCard
+      data-testid="progress-energy-equation"
+      elevation="card"
+      radius="lg"
+      padding="lg"
+      className={className}
+    >
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+        Energy balance · 7-day average
+      </p>
+      <div className="mt-3 flex items-end justify-between gap-1">
+        <EqTerm label="Avg intake" value={avgIntakeKcal != null ? avgIntakeKcal.toLocaleString() : "—"} />
+        <EqOp>−</EqOp>
+        <EqTerm label="Maintenance" value={hasMaintenance ? maintenanceKcal!.toLocaleString() : "—"} color="var(--accent-success-solid)" />
+        <EqOp>=</EqOp>
+        <EqTerm label={isSurplus ? "Surplus/day" : "Deficit/day"} value={resultValue} color={resultColor} />
+      </div>
+      <button
+        type="button"
+        onClick={() => setShowHow((v) => !v)}
+        aria-expanded={showHow}
+        data-testid="progress-energy-how"
+        className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-primary-solid hover:opacity-80"
+      >
+        How maintenance works
+        {showHow ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+      </button>
+      {showHow ? (
+        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+          Maintenance (your TDEE) is what you&apos;d burn on a normal day. Sloe
+          starts from a formula, then{" "}
+          <span className="font-semibold text-foreground">adapts</span> to your
+          real weight trend and logging — so it gets truer the more you use it.
+          {hasMaintenance ? (
+            <>
+              {" "}
+              You&apos;re currently on the{" "}
+              <span className="font-semibold text-foreground">
+                {isAdaptive ? "adaptive estimate" : "formula estimate"}
+              </span>
+              .
+            </>
+          ) : null}
+        </p>
+      ) : null}
+    </SupprCard>
+  );
+}
+
+function EqTerm({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) {
+  return (
+    <div className="min-w-0 flex-1 text-center">
+      <p className="text-[20px] font-bold tabular-nums leading-none" style={color ? { color } : undefined}>
+        {value}
+      </p>
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function EqOp({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="pb-3 text-[18px] font-light text-muted-foreground" aria-hidden>
+      {children}
+    </span>
   );
 }
 

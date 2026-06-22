@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import * as React from "react";
 import { ProgressEnergyTriad } from "./progress-energy-triad";
 
 /**
@@ -39,4 +40,29 @@ export const Surplus: Story = {
 export const Maintenance: Story = {
   name: "At maintenance",
   args: { avgIntakeKcal: 2200, maintenanceKcal: 2200, isAdaptive: true },
+};
+
+/**
+ * v3 equation layout (ENG-1225 #23): `intake − maintenance = deficit/day` +
+ * a "How maintenance works" explainer, behind `sloe_v3_energy_equation`.
+ * Forced on via `__SUPPR_FORCE_FLAGS__` (dev resolver in track.ts).
+ */
+function ForceEquation({ children }: { children: React.ReactNode }) {
+  if (typeof window !== "undefined") {
+    const w = window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> };
+    w.__SUPPR_FORCE_FLAGS__ = { ...(w.__SUPPR_FORCE_FLAGS__ ?? {}), sloe_v3_energy_equation: true };
+  }
+  return <>{children}</>;
+}
+
+export const EquationDeficit: Story = {
+  name: "Equation — deficit",
+  decorators: [(Story) => <ForceEquation><Story /></ForceEquation>],
+  args: { avgIntakeKcal: 1800, maintenanceKcal: 2200, isAdaptive: true },
+};
+
+export const EquationSurplus: Story = {
+  name: "Equation — surplus",
+  decorators: [(Story) => <ForceEquation><Story /></ForceEquation>],
+  args: { avgIntakeKcal: 2400, maintenanceKcal: 2200, isAdaptive: false },
 };
