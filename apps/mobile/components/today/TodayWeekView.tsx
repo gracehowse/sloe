@@ -7,8 +7,8 @@ import Animated, {
   withDelay,
   withTiming,
 } from "react-native-reanimated";
-import { Accent, Colors, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, Colors, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
@@ -225,7 +225,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
   // accent series: logged-under bars, the scrubbed/current-day highlight, the
   // target rule, and the "Daily avg" figure. The over-budget amber + the
   // deficit/surplus status hues keep their own `Accent.warning`/`.success`.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors; // ENG-1223
 
   /** Tap-to-scrub: the bar index whose tooltip is currently visible.
    *  `null` means no tooltip is open. */
@@ -463,9 +463,9 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
         <Text style={{ fontSize: 11, color: textTertiaryColor, marginBottom: Spacing.sm }}>
           Based on {daysWithFood} day{daysWithFood !== 1 ? "s" : ""} with logged food
         </Text>
-        <MacroBarRow label="PROTEIN" current={weekAvg.protein} goal={proteinTarget} color={MacroColors.protein} styles={styles} />
-        <MacroBarRow label="CARBS" current={weekAvg.carbs} goal={carbsTarget} color={MacroColors.carbs} styles={styles} />
-        <MacroBarRow label="FATS" current={weekAvg.fat} goal={fatTarget} color={MacroColors.fat} styles={styles} />
+        <MacroBarRow label="PROTEIN" current={weekAvg.protein} goal={proteinTarget} color={mc.protein} styles={styles} />
+        <MacroBarRow label="CARBS" current={weekAvg.carbs} goal={carbsTarget} color={mc.carbs} styles={styles} />
+        <MacroBarRow label="FATS" current={weekAvg.fat} goal={fatTarget} color={mc.fat} styles={styles} />
       </View>
 
       {/* Macro bars per day */}
@@ -495,12 +495,12 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
                     return (
                       <>
                         <View
-                          style={{ width: `${(day.totals.protein / total) * 100}%`, backgroundColor: MacroColors.protein }}
+                          style={{ width: `${(day.totals.protein / total) * 100}%`, backgroundColor: mc.protein }}
                         />
                         <View
-                          style={{ width: `${(day.totals.carbs / total) * 100}%`, backgroundColor: MacroColors.carbs }}
+                          style={{ width: `${(day.totals.carbs / total) * 100}%`, backgroundColor: mc.carbs }}
                         />
-                        <View style={{ width: `${(day.totals.fat / total) * 100}%`, backgroundColor: MacroColors.fat }} />
+                        <View style={{ width: `${(day.totals.fat / total) * 100}%`, backgroundColor: mc.fat }} />
                       </>
                     );
                   })()}
@@ -521,15 +521,15 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
         </View>
         <View style={{ flexDirection: "row", gap: Spacing.lg, justifyContent: "center", marginTop: Spacing.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: MacroColors.protein }} />
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mc.protein }} />
             <Text style={{ fontSize: 10, color: textSecondaryColor }}>Protein</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: MacroColors.carbs }} />
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mc.carbs }} />
             <Text style={{ fontSize: 10, color: textSecondaryColor }}>Carbs</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: MacroColors.fat }} />
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mc.fat }} />
             <Text style={{ fontSize: 10, color: textSecondaryColor }}>Fat</Text>
           </View>
         </View>

@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
-import { useAccent } from "@/context/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -22,7 +22,7 @@ import {
   Accent,
   Elevation,
   IconSize,
-  MacroColors,
+  MacroColors, MacroColorsDark,
   Radius,
   Spacing,
   Type,
@@ -160,7 +160,7 @@ function EditEatenAtTimeField(props: {
  * `useThemeColors()` itself; ignores the legacy color props.
  */
 function EditEntryV2(props: TodayEditMealModalProps) {
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors; // ENG-1223
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const card = useCardElevation();
@@ -215,10 +215,10 @@ function EditEntryV2(props: TodayEditMealModalProps) {
   };
 
   const macroFields = [
-    { key: "calories", label: "Calories", unit: "kcal", color: MacroColors.calories, value: editKcal, onChange: onEditKcalChange },
-    { key: "protein", label: "Protein", unit: "g", color: MacroColors.protein, value: editProtein, onChange: onEditProteinChange },
-    { key: "carbs", label: "Carbs", unit: "g", color: MacroColors.carbs, value: editCarbs, onChange: onEditCarbsChange },
-    { key: "fat", label: "Fat", unit: "g", color: MacroColors.fat, value: editFat, onChange: onEditFatChange },
+    { key: "calories", label: "Calories", unit: "kcal", color: mc.calories, value: editKcal, onChange: onEditKcalChange },
+    { key: "protein", label: "Protein", unit: "g", color: mc.protein, value: editProtein, onChange: onEditProteinChange },
+    { key: "carbs", label: "Carbs", unit: "g", color: mc.carbs, value: editCarbs, onChange: onEditCarbsChange },
+    { key: "fat", label: "Fat", unit: "g", color: mc.fat, value: editFat, onChange: onEditFatChange },
   ] as const;
   const macroRows = [macroFields.slice(0, 2), macroFields.slice(2, 4)];
 
