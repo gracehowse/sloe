@@ -61,8 +61,8 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { CARD_RADIUS, SHEET_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
@@ -511,7 +511,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // affordances, settings-toggle switch tracks, section accents, and primary
   // CTAs. Destructive actions (sign out / delete) keep `Accent.destructive`;
   // status keeps success/warning; macros keep `MacroColors`.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // One-card-treatment (2026-06-09): soft chrome for the page-ground stat
   // tiles (Recipes / Streak), matching the SettingsCard sections around them.
   // Tile-class rule (2026-06-10): stat tiles are flat-tonal, not lifted.
@@ -3159,13 +3159,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             </Text>
             {(
               [
-                { key: "protein", label: "Protein", color: MacroColors.protein },
-                { key: "carbs", label: "Carbs", color: MacroColors.carbs },
-                { key: "fat", label: "Fat", color: MacroColors.fat },
-                { key: "fiber", label: "Fiber", color: MacroColors.fiber },
-                { key: "sugar", label: "Sugar", color: MacroColors.sugar },
-                { key: "sodium", label: "Sodium", color: MacroColors.sodium },
-                { key: "water", label: "Water", color: MacroColors.water },
+                { key: "protein", label: "Protein", color: mc.protein },
+                { key: "carbs", label: "Carbs", color: mc.carbs },
+                { key: "fat", label: "Fat", color: mc.fat },
+                { key: "fiber", label: "Fiber", color: mc.fiber },
+                { key: "sugar", label: "Sugar", color: mc.sugar },
+                { key: "sodium", label: "Sodium", color: mc.sodium },
+                { key: "water", label: "Water", color: mc.water },
               ] as const
             ).map(({ key, label, color }) => {
               const isActive = trackedMacros.includes(key);

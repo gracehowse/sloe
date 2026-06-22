@@ -63,8 +63,8 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Elevation, MacroColors, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, Elevation, MacroColors, MacroColorsDark, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated, {
   useAnimatedStyle,
@@ -515,7 +515,7 @@ export default function PlannerScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the today-card edge,
   // generate/regenerate CTAs, refresh affordance, active controls, and link
   // actions. Threaded into the memoised StyleSheet via the dep array below.
@@ -3447,10 +3447,10 @@ export default function PlannerScreen() {
               return (
                 <PlanDayMacroSummary
                   cells={[
-                    { label: "P", value: dp.totals.protein, target: planTargets.protein, color: MacroColors.protein },
-                    { label: "C", value: dp.totals.carbs, target: planTargets.carbs, color: MacroColors.carbs },
-                    { label: "F", value: dp.totals.fat, target: planTargets.fat, color: MacroColors.fat },
-                    { label: "Fi", value: dayFiber, target: planTargets.fiber, color: MacroColors.fiber },
+                    { label: "P", value: dp.totals.protein, target: planTargets.protein, color: mc.protein },
+                    { label: "C", value: dp.totals.carbs, target: planTargets.carbs, color: mc.carbs },
+                    { label: "F", value: dp.totals.fat, target: planTargets.fat, color: mc.fat },
+                    { label: "Fi", value: dayFiber, target: planTargets.fiber, color: mc.fiber },
                   ]}
                 />
               );
@@ -3996,7 +3996,7 @@ export default function PlannerScreen() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: MacroColors.fat + "12",
+                    backgroundColor: mc.fat + "12",
                   }}
                 />
               </Animated.View>

@@ -9,9 +9,9 @@ import Svg, {
 } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import { BookOpen, CircleCheck, Scale, Sparkles, Target } from "lucide-react-native";
-import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
 import { Layout } from "@/constants/layout";
-import { useAccent } from "@/context/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { computeOnboardingRevealProjection } from "@suppr/shared/onboarding/revealProjection";
@@ -42,7 +42,7 @@ export function MobileRevealStep() {
   // icon. The "Watch the ring fill" row keeps `Accent.success` (green status),
   // the "Adapt" row keeps `MacroColors.fat`, and the macro tiles keep their own
   // `MacroColors` — none of those are the secondary accent.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // ENG-1187 — gloss BMR / TDEE / Mifflin-St Jeor on first use behind
   // `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays as the
   // default; the glossed copy leads with the plain phrase. The
@@ -387,19 +387,19 @@ export function MobileRevealStep() {
           <MacroTile
             name="Protein"
             value={targets.proteinG}
-            color={MacroColors.protein}
+            color={mc.protein}
             pct={Math.round(((targets.proteinG * 4) / targets.target) * 100)}
           />
           <MacroTile
             name="Carbs"
             value={targets.carbsG}
-            color={MacroColors.carbs}
+            color={mc.carbs}
             pct={Math.round(((targets.carbsG * 4) / targets.target) * 100)}
           />
           <MacroTile
             name="Fat"
             value={targets.fatG}
-            color={MacroColors.fat}
+            color={mc.fat}
             pct={Math.round(((targets.fatG * 9) / targets.target) * 100)}
           />
         </View>
@@ -493,8 +493,8 @@ export function MobileRevealStep() {
           />
           <NextStepRow
             Icon={Sparkles}
-            iconBg={`${MacroColors.fat}1A`}
-            iconColor={MacroColors.fat}
+            iconBg={`${mc.fat}1A`}
+            iconColor={mc.fat}
             title="Adapt over the first ~2 weeks"
             sub="As you log + weigh in, Sloe re-tunes your TDEE to what your body actually does."
           />

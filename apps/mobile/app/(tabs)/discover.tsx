@@ -14,9 +14,9 @@ import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
 import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
-import { useAccent } from "@/context/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import type { RecipeCard } from "@/lib/types";
@@ -143,7 +143,7 @@ export default function DiscoverScreen() {
   const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Seamless recipe slab: soft plum lift off the page in light, tonal lift +
   // hairline in dark (RN renders shadows poorly on dark). Mirrors the Library
   // card so the two recipe surfaces stay in lockstep across schemes.
@@ -384,9 +384,9 @@ export default function DiscoverScreen() {
     accent: accent.primary,
     green: Accent.success,
     amber: Accent.warning,
-    protein: MacroColors.protein,
-    carbs: MacroColors.carbs,
-    fat: MacroColors.fat,
+    protein: mc.protein,
+    carbs: mc.carbs,
+    fat: mc.fat,
   };
 
   // Aubergine-on-surface tokens (Sloe treatment system) — selected filter

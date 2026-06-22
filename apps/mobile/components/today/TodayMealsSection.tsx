@@ -37,8 +37,9 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { Accent, Elevation, MacroColors, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { Accent, Elevation, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SHEET_RADIUS, SupprCard } from "@/components/ui/SupprCard";
 import { SupprMark } from "@/components/SupprMark";
@@ -319,6 +320,7 @@ function SlotMacroChips({
   fiber: number;
   kcalColor: string;
 }) {
+  const { colors: m } = useMacroColors();
   return (
     <View
       style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: Spacing.sm, marginTop: Spacing.xs }}
@@ -329,17 +331,15 @@ function SlotMacroChips({
       >
         {kcal} kcal
       </Text>
-      <Text style={{ ...Type.caption, color: MacroColors.proteinSolid, fontVariant: ["tabular-nums"] }}>
-        {Math.round(protein)}g
-      </Text>
-      <Text style={{ ...Type.caption, color: MacroColors.carbsSolid, fontVariant: ["tabular-nums"] }}>
+      <Text style={{ ...Type.caption, color: m.proteinSolid, fontVariant: ["tabular-nums"] }}>{Math.round(protein)}g</Text>
+      <Text style={{ ...Type.caption, color: m.carbsSolid, fontVariant: ["tabular-nums"] }}>
         {Math.round(carbs)}g
       </Text>
-      <Text style={{ ...Type.caption, color: MacroColors.fatSolid, fontVariant: ["tabular-nums"] }}>
+      <Text style={{ ...Type.caption, color: m.fatSolid, fontVariant: ["tabular-nums"] }}>
         {Math.round(fat)}g
       </Text>
       {Number.isFinite(fiber) && fiber > 0 ? (
-        <Text style={{ ...Type.caption, color: MacroColors.fiberSolid, fontVariant: ["tabular-nums"] }}>
+        <Text style={{ ...Type.caption, color: m.fiberSolid, fontVariant: ["tabular-nums"] }}>
           {Math.round(fiber * 10) / 10}g
         </Text>
       ) : null}

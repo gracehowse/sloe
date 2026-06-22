@@ -13,8 +13,8 @@ import { slotLineItemLabels } from "@/lib/mealNutritionLabels";
 import { formatNutritionSourceLabel } from "@/lib/sourceLabel";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
-import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
 import {
@@ -80,7 +80,7 @@ export default function MealNutritionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)");
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
@@ -543,9 +543,9 @@ export default function MealNutritionScreen() {
               {macroSplitIncompleteCopy(splitConfidence.presentMacro)}
             </Text>
             <View style={styles.macroGrid}>
-              <MacroStat label="Protein" grams={meal.protein} pct={null} color={MacroColors.protein} textColor={colors.text} />
-              <MacroStat label="Carbs" grams={meal.carbs} pct={null} color={MacroColors.carbs} textColor={colors.text} />
-              <MacroStat label="Fat" grams={meal.fat} pct={null} color={MacroColors.fat} textColor={colors.text} />
+              <MacroStat label="Protein" grams={meal.protein} pct={null} color={mc.protein} textColor={colors.text} />
+              <MacroStat label="Carbs" grams={meal.carbs} pct={null} color={mc.carbs} textColor={colors.text} />
+              <MacroStat label="Fat" grams={meal.fat} pct={null} color={mc.fat} textColor={colors.text} />
             </View>
           </View>
         ) : (
@@ -553,9 +553,9 @@ export default function MealNutritionScreen() {
             <View style={styles.macroBar}>
               {splitConfidence.state === "complete" ? (
                 <>
-                  <View style={[styles.macroSeg, { flex: Math.max(split.proteinPct, 1), backgroundColor: MacroColors.protein }]} />
-                  <View style={[styles.macroSeg, { flex: Math.max(split.carbsPct, 1), backgroundColor: MacroColors.carbs }]} />
-                  <View style={[styles.macroSeg, { flex: Math.max(split.fatPct, 1), backgroundColor: MacroColors.fat }]} />
+                  <View style={[styles.macroSeg, { flex: Math.max(split.proteinPct, 1), backgroundColor: mc.protein }]} />
+                  <View style={[styles.macroSeg, { flex: Math.max(split.carbsPct, 1), backgroundColor: mc.carbs }]} />
+                  <View style={[styles.macroSeg, { flex: Math.max(split.fatPct, 1), backgroundColor: mc.fat }]} />
                 </>
               ) : (
                 <View style={[styles.macroSeg, { flex: 1, backgroundColor: colors.cardBorder }]} />
@@ -563,9 +563,9 @@ export default function MealNutritionScreen() {
             </View>
 
             <View style={styles.macroGrid}>
-              <MacroStat label="Protein" grams={meal.protein} pct={split.proteinPct} color={MacroColors.protein} textColor={colors.text} />
-              <MacroStat label="Carbs" grams={meal.carbs} pct={split.carbsPct} color={MacroColors.carbs} textColor={colors.text} />
-              <MacroStat label="Fat" grams={meal.fat} pct={split.fatPct} color={MacroColors.fat} textColor={colors.text} />
+              <MacroStat label="Protein" grams={meal.protein} pct={split.proteinPct} color={mc.protein} textColor={colors.text} />
+              <MacroStat label="Carbs" grams={meal.carbs} pct={split.carbsPct} color={mc.carbs} textColor={colors.text} />
+              <MacroStat label="Fat" grams={meal.fat} pct={split.fatPct} color={mc.fat} textColor={colors.text} />
             </View>
           </>
         )}

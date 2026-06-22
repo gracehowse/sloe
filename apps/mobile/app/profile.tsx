@@ -25,8 +25,8 @@ import { MACRO_ICONS } from "@/lib/macroIconsLucide";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
@@ -51,7 +51,7 @@ export default function ProfileScreen() {
   // `accent` (aubergine) drives the loading spinner. The Save CTA + selected
   // dietary pills now use the static `accent.primarySolid` / `accent.primarySoft`
   // treatment tokens directly (Sloe, 2026-06-08). Macros keep `MacroColors`.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
   // soft-elevation.md): the identity card AND the Daily Targets / Edit Targets /
   // Dietary Preferences cards all sit directly on the page ground, so they take the
@@ -751,10 +751,10 @@ export default function ProfileScreen() {
                 (destructive), Carbs=blue (info), Fat=amber (warning) —
                 breaks the across-app convention where Protein=blue,
                 Carbs=amber, Fat=magenta. */}
-            <TargetStat value={Number(calories) || 0} label="CALORIES" unit="kcal" color={MacroColors.calories} Icon={MACRO_ICONS.calories} />
-            <TargetStat value={Number(protein) || 0} label="PROTEIN" unit="g" color={MacroColors.protein} Icon={MACRO_ICONS.protein} />
-            <TargetStat value={Number(carbs) || 0} label="CARBS" unit="g" color={MacroColors.carbs} Icon={MACRO_ICONS.carbs} />
-            <TargetStat value={Number(fat) || 0} label="FAT" unit="g" color={MacroColors.fat} Icon={MACRO_ICONS.fat} />
+            <TargetStat value={Number(calories) || 0} label="CALORIES" unit="kcal" color={mc.calories} Icon={MACRO_ICONS.calories} />
+            <TargetStat value={Number(protein) || 0} label="PROTEIN" unit="g" color={mc.protein} Icon={MACRO_ICONS.protein} />
+            <TargetStat value={Number(carbs) || 0} label="CARBS" unit="g" color={mc.carbs} Icon={MACRO_ICONS.carbs} />
+            <TargetStat value={Number(fat) || 0} label="FAT" unit="g" color={mc.fat} Icon={MACRO_ICONS.fat} />
           </View>
           {/*
             E3 (2026-05-11 visual sweep): the Profile screen showed a
@@ -823,14 +823,14 @@ export default function ProfileScreen() {
           <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
               <View style={styles.macroLabelRow}>
-                <View style={[styles.macroDot, { backgroundColor: MacroColors.protein }]} />
+                <View style={[styles.macroDot, { backgroundColor: mc.protein }]} />
                 <Text style={[styles.inputLabel, { marginTop: 0 }]}>Protein (g)</Text>
               </View>
               <TextInput value={protein} onChangeText={setProtein} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
             <View style={styles.inputHalf}>
               <View style={styles.macroLabelRow}>
-                <View style={[styles.macroDot, { backgroundColor: MacroColors.carbs }]} />
+                <View style={[styles.macroDot, { backgroundColor: mc.carbs }]} />
                 <Text style={[styles.inputLabel, { marginTop: 0 }]}>Carbs (g)</Text>
               </View>
               <TextInput value={carbs} onChangeText={setCarbs} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
@@ -840,14 +840,14 @@ export default function ProfileScreen() {
           <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
               <View style={styles.macroLabelRow}>
-                <View style={[styles.macroDot, { backgroundColor: MacroColors.fat }]} />
+                <View style={[styles.macroDot, { backgroundColor: mc.fat }]} />
                 <Text style={[styles.inputLabel, { marginTop: 0 }]}>Fat (g)</Text>
               </View>
               <TextInput value={fat} onChangeText={setFat} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
             </View>
             <View style={styles.inputHalf}>
               <View style={styles.macroLabelRow}>
-                <View style={[styles.macroDot, { backgroundColor: MacroColors.fiber }]} />
+                <View style={[styles.macroDot, { backgroundColor: mc.fiber }]} />
                 <Text style={[styles.inputLabel, { marginTop: 0 }]}>Fiber (g)</Text>
               </View>
               <TextInput value={fiber} onChangeText={setFiber} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />
@@ -857,7 +857,7 @@ export default function ProfileScreen() {
           <View style={styles.inputGrid}>
             <View style={styles.inputHalf}>
               <View style={styles.macroLabelRow}>
-                <View style={[styles.macroDot, { backgroundColor: MacroColors.water }]} />
+                <View style={[styles.macroDot, { backgroundColor: mc.water }]} />
                 <Text style={[styles.inputLabel, { marginTop: 0 }]}>Water (ml)</Text>
               </View>
               <TextInput value={water} onChangeText={setWater} keyboardType="number-pad" style={styles.input} placeholderTextColor={colors.tabIconDefault} />

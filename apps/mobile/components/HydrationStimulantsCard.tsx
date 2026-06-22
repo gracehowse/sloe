@@ -10,9 +10,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/layout";
-import { Accent, MacroColors, Radius, Spacing, StimulantColors, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, StimulantColors, Type } from "@/constants/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
 import {
@@ -84,11 +85,10 @@ function formatWaterLine(
   return `${value} ${unit}`;
 }
 
-const COLORS: Record<"water" | "caffeine" | "alcohol", string> = {
-  water: MacroColors.water, // teal (shared --macro-water token)
-  caffeine: StimulantColors.caffeine, // damson — mirrors web --stimulant-caffeine
-  alcohol: Accent.warning, // amber; over-target label also uses amber
-};
+// Scheme-aware (ENG-1223): `water` takes the resolved --macro-water from `useMacroColors()`; caffeine/alcohol are scheme-neutral tokens.
+function tones(water: string): Record<"water" | "caffeine" | "alcohol", string> {
+  return { water, caffeine: StimulantColors.caffeine, alcohol: Accent.warning };
+}
 
 /**
  * SloeCard — the Hydration / Stimulants section card. Card CHROME (warm-grey
@@ -179,10 +179,10 @@ function Row({
   children: React.ReactNode;
   onReset: () => void;
 }) {
-  const colors = useThemeColors();
+  const colors = useThemeColors(), tone$ = tones(useMacroColors().colors.water);
   const cardElevation = useCardElevation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const barColor = overTarget ? Accent.warning : COLORS[tone];
+  const barColor = overTarget ? Accent.warning : tone$[tone];
   return (
     <View
       style={{
@@ -202,7 +202,7 @@ function Row({
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
-          <Ionicons name={icon} size={18} color={COLORS[tone]} />
+          <Ionicons name={icon} size={18} color={tone$[tone]} />
           <Text numberOfLines={1} style={{ fontSize: 15, color: colors.text }}>
             {label}
           </Text>
@@ -337,7 +337,7 @@ function Chip({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const color = COLORS[tone];
+  const color = tones(useMacroColors().colors.water)[tone];
   return (
     <Pressable
       accessibilityRole="button"

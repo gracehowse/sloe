@@ -72,8 +72,8 @@ import Svg, {
   Rect,
   Stop,
 } from "react-native-svg";
-import { Accent, FontWeight, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, FontWeight, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
   defaultEatenAtForNewLog,
@@ -372,7 +372,7 @@ export default function FoodSearchPanel({
   favoritePendingKeys,
   onAddToBasket,
 }: FoodSearchPanelProps) {
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for this panel's CTAs,
   // the "Add custom"/barcode affordances, and the segmented/tab active state.
   // Source/confidence chrome and `MacroColors` stay warm.
@@ -1429,9 +1429,9 @@ export default function FoodSearchPanel({
               {headline.mode === "per-serving" ? (
                 <>
                   <View style={styles.macroPreview}>
-                    <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
-                    <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
-                    <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
                   </View>
                   <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
                   <Text style={styles.per100g}>
@@ -1442,9 +1442,9 @@ export default function FoodSearchPanel({
               ) : headline.mode === "per-100g" && headline.macros ? (
                 <>
                   <View style={styles.macroPreview}>
-                    <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
-                    <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
-                    <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
+                    <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
                   </View>
                   <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
                 </>
@@ -1743,9 +1743,9 @@ export default function FoodSearchPanel({
             {headline.mode === "per-serving" ? (
               <>
                 <View style={styles.macroPreview}>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
                 </View>
                 <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
                 <Text style={styles.per100g}>
@@ -1756,9 +1756,9 @@ export default function FoodSearchPanel({
             ) : headline.mode === "per-100g" && headline.macros ? (
               <>
                 <View style={styles.macroPreview}>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.protein }]}>P {headline.macros.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.carbs }]}>C {headline.macros.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: MacroColors.fat }]}>F {headline.macros.fat}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
                 </View>
                 <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
               </>
@@ -2042,7 +2042,7 @@ export default function FoodSearchPanel({
           {previewPlausibilityWarning ? (
             <Text
               accessibilityRole="alert"
-              style={{ fontSize: 12, color: MacroColors.calories, marginTop: Spacing.sm }}
+              style={{ fontSize: 12, color: mc.calories, marginTop: Spacing.sm }}
             >
               {previewPlausibilityWarning}
             </Text>

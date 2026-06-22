@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { FontFamily, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useMacroColors } from "@/lib/macroColors";
 import {
   PAYWALL_PERSONALISED_PLAN_TEST_ID,
   type PersonalisedPlanPaywallSummary,
@@ -18,6 +19,7 @@ export function PaywallPersonalisedPlanCard({
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
+  const { colors: macro } = useMacroColors();
 
   return (
     <View
@@ -39,7 +41,7 @@ export function PaywallPersonalisedPlanCard({
         <Text style={[styles.goal, { color: colors.textSecondary }]}>{summary.goalLabel}</Text>
       ) : null}
       {summary.proteinG != null ? (
-        <Text style={[styles.protein, { color: MacroColors.protein }]}>
+        <Text style={[styles.protein, { color: macro.protein }]}>
           {summary.proteinG}g protein / day
         </Text>
       ) : null}

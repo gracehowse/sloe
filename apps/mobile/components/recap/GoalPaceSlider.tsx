@@ -9,15 +9,16 @@
 
 import { Text, View } from "react-native";
 
-import { FontFamily, MacroColors, Radius } from "@/constants/theme";
+import { FontFamily, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useMacroColors } from "@/lib/macroColors";
 import type { Goal } from "@suppr/nutrition-core/goalEditorPace";
 import { MobileMiniSlider } from "../onboarding/slider";
 
-const ACCENT_BY_GOAL: Record<Exclude<Goal, "maintain">, string> = {
-  lose: MacroColors.fat,
-  gain: MacroColors.protein,
-  recomp: MacroColors.carbs,
+const MACRO_KEY_BY_GOAL: Record<Exclude<Goal, "maintain">, "fat" | "protein" | "carbs"> = {
+  lose: "fat",
+  gain: "protein",
+  recomp: "carbs",
 };
 
 export interface GoalPaceSliderProps {
@@ -39,10 +40,11 @@ export function GoalPaceSlider({
   sliderGoal,
 }: GoalPaceSliderProps) {
   const colors = useThemeColors();
+  const { colors: macro } = useMacroColors();
   const accent =
     sliderGoal === "maintain"
-      ? MacroColors.fat
-      : ACCENT_BY_GOAL[sliderGoal];
+      ? macro.fat
+      : macro[MACRO_KEY_BY_GOAL[sliderGoal]];
 
   return (
     <View

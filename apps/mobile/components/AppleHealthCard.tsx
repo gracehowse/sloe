@@ -1,8 +1,9 @@
 import React from "react";
 import { Linking, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { Footprints, Flame, HeartPulse, Scale } from "lucide-react-native";
-import { Accent, MacroColors, Radius } from "@/constants/theme";
+import { Accent, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -67,6 +68,7 @@ export function AppleHealthCard({
   // Secondary accent (Frost flag → damson, else clay) for the sync spinner,
   // Retry, and manage link. The not-authorised caution keeps `Accent.warning`.
   const accent = useAccent();
+  const { colors: macro } = useMacroColors();
   // One-card-treatment soft lift (2026-06-09): the Apple Health card sits
   // directly on the Progress page ground, so it takes the soft elevation like
   // every sibling content card. Spread onto the OUTER shell View. Mirrors web's
@@ -183,14 +185,14 @@ export function AppleHealthCard({
     {
       key: "resting",
       Icon: HeartPulse,
-      color: MacroColors.fat,
+      color: macro.fat,
       label: "Resting burn",
       value: formatKcal(restingBurnKcal),
     },
     {
       key: "weight",
       Icon: Scale,
-      color: MacroColors.protein,
+      color: macro.protein,
       label: "Weight",
       value: formatWeight(weightKg, useImperial),
       hint: status === "ready" && weightKg == null ? "No weigh-in today" : undefined,

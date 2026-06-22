@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Flame, Footprints, Moon } from "lucide-react-native";
 
-import { Accent, FontFamily, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
@@ -46,7 +46,7 @@ export default function BurnDetailScreen() {
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useColorScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the loading spinner,
   // the workout/barbell glyph, and the Apple-Health-source switch track. The
   // burn/activity identity (rings, honey) keeps `Accent.activity*` (held).
@@ -346,7 +346,7 @@ export default function BurnDetailScreen() {
                   textColor={colors.text}
                   subtitleColor={colors.textTertiary}
                   isLast
-                  stepsBar={{ pct: stepsPct, color: MacroColors.calories }}
+                  stepsBar={{ pct: stepsPct, color: mc.calories }}
                 />
                 {data.workouts.map((w, i) => (
                   <View

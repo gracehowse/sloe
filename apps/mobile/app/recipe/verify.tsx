@@ -15,8 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, FontWeight, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, FontWeight, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -78,7 +78,7 @@ export default function VerifyScreen() {
   const { id, fixture } = useLocalSearchParams<{ id?: string; fixture?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Fixture mode is gated on BOTH the URL param AND `__DEV__` (audit
   // 2026-06-12 P2 #3): in a release build a stale/forged `?fixture=1` must NOT
   // inject the QA fixture rows — it falls through to the normal missing/stale
@@ -880,20 +880,20 @@ export default function VerifyScreen() {
           </Text>
           <View style={styles.totalsRow}>
             <View style={styles.totalItem}>
-              <Text style={[styles.totalValue, { color: MacroColors.protein }]}>{totals.perServing.protein}g</Text>
+              <Text style={[styles.totalValue, { color: mc.protein }]}>{totals.perServing.protein}g</Text>
               <Text style={styles.totalKey}>protein</Text>
             </View>
             <View style={styles.totalItem}>
-              <Text style={[styles.totalValue, { color: MacroColors.carbs }]}>{totals.perServing.carbs}g</Text>
+              <Text style={[styles.totalValue, { color: mc.carbs }]}>{totals.perServing.carbs}g</Text>
               <Text style={styles.totalKey}>carbs</Text>
             </View>
             <View style={styles.totalItem}>
-              <Text style={[styles.totalValue, { color: MacroColors.fat }]}>{totals.perServing.fat}g</Text>
+              <Text style={[styles.totalValue, { color: mc.fat }]}>{totals.perServing.fat}g</Text>
               <Text style={styles.totalKey}>fat</Text>
             </View>
             {totals.perServing.fiberG > 0 && (
               <View style={styles.totalItem}>
-                <Text style={[styles.totalValue, { color: MacroColors.fiber }]}>{totals.perServing.fiberG}g</Text>
+                <Text style={[styles.totalValue, { color: mc.fiber }]}>{totals.perServing.fiberG}g</Text>
                 <Text style={styles.totalKey}>fibre</Text>
               </View>
             )}
