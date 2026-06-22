@@ -1408,32 +1408,32 @@ function ProgressDashboardContent() {
               <ResponsiveContainer width="100%" height={150}>
                 <LineChart data={weightChartData} margin={{ top: 6, right: 6, bottom: 0, left: 6 }}>
                   <defs>
-                    <linearGradient id="weight-clay-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--macro-carbs)" stopOpacity={0.18} />
-                      <stop offset="100%" stopColor="var(--macro-carbs)" stopOpacity={0} />
+                    <linearGradient id="weight-trend-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--macro-protein)" stopOpacity={0.18} />
+                      <stop offset="100%" stopColor="var(--macro-protein)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
                   <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
                   <Tooltip contentStyle={{ fontSize: 11 }} />
-                  {/* Trend = smoothed MA line; Scale = raw weigh-ins. Clay line
-                      with a soft area fill (frame styling). */}
+                  {/* Trend = MA line; Scale = raw weigh-ins. Brand-plum line —
+                      parity w/ mobile WeightChart; was carbs-amber (ENG-1225). */}
                   {weightView === "scale" || showRawDots ? (
                     <Line
                       type="monotone"
                       dataKey="value"
-                      stroke="var(--macro-carbs)"
+                      stroke="var(--macro-protein)"
                       strokeWidth={2.25}
-                      fill="url(#weight-clay-fill)"
-                      dot={weightView === "scale" ? { r: 3, fill: "var(--card)", stroke: "var(--macro-carbs)", strokeWidth: 2 } : false}
-                      activeDot={{ r: 5, fill: "var(--macro-carbs)", stroke: "var(--card)", strokeWidth: 2 }}
+                      fill="url(#weight-trend-fill)"
+                      dot={weightView === "scale" ? { r: 3, fill: "var(--card)", stroke: "var(--macro-protein)", strokeWidth: 2 } : false}
+                      activeDot={{ r: 5, fill: "var(--macro-protein)", stroke: "var(--card)", strokeWidth: 2 }}
                       connectNulls
                     />
                   ) : (
                     <Line
                       type="monotone"
                       dataKey="ma"
-                      stroke="var(--macro-carbs)"
+                      stroke="var(--macro-protein)"
                       strokeWidth={2.25}
                       dot={false}
                       connectNulls
