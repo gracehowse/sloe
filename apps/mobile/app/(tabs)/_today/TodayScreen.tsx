@@ -268,8 +268,7 @@ import { SavedMealPortionSheet } from "@/components/today/SavedMealPortionSheet"
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
 import { GradientAvatar } from "@/components/GradientAvatar";
 import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
-import { TodayDashboardMacroTiles } from "@/components/today/TodayDashboardMacroTiles";
-import { TodayDashboardMacroBars } from "@/components/today/TodayDashboardMacroBars";
+import { TodayMacroSection } from "@/components/today/TodayMacroSection";
 import { useMacroDisplayStyle } from "@/lib/macroDisplayStyle";
 import { FullNutrientPanelSheet } from "@/components/today/FullNutrientPanelSheet";
 import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
@@ -5503,43 +5502,26 @@ export default function TrackerScreen() {
                   to the user-controllable toggle. Default still ships
                   bars (set in `macroDisplayStyle.ts`); tiles is the
                   opt-in alternate for the Cronometer-style grid look. */}
-              {macroDisplayStyle === "tiles" ? (
-                <TodayDashboardMacroTiles
-                  trackedMacros={trackedMacros}
-                  totals={totals}
-                  targets={dashboardMacroTargets}
-                  totalWaterMl={totalWaterMl}
-                  waterGoalMl={waterGoalMl}
-                  mealsToday={mealsToday}
-                  onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
-                  cardColor={colors.card}
-                  cardBorderColor={colors.cardBorder}
-                  borderColor={colors.border}
-                  textColor={colors.text}
-                  textSecondaryColor={colors.textSecondary}
-                  textTertiaryColor={colors.textTertiary}
-                  mutedColor={colors.border}
-                  netCarbsLensEnabled={netCarbsLensEnabled}
-                />
-              ) : (
-                <TodayDashboardMacroBars
-                  trackedMacros={trackedMacros}
-                  totals={totals}
-                  targets={dashboardMacroTargets}
-                  totalWaterMl={totalWaterMl}
-                  waterGoalMl={waterGoalMl}
-                  mealsToday={mealsToday}
-                  onPressMacro={(macro) => router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })}
-                  cardColor={colors.card}
-                  cardBorderColor={colors.cardBorder}
-                  borderColor={colors.border}
-                  textColor={colors.text}
-                  textSecondaryColor={colors.textSecondary}
-                  textTertiaryColor={colors.textTertiary}
-                  mutedColor={colors.border}
-                  netCarbsLensEnabled={netCarbsLensEnabled}
-                />
-              )}
+              <TodayMacroSection
+                macroDisplayStyle={macroDisplayStyle}
+                trackedMacros={trackedMacros}
+                totals={totals}
+                targets={dashboardMacroTargets}
+                totalWaterMl={totalWaterMl}
+                waterGoalMl={waterGoalMl}
+                mealsToday={mealsToday}
+                onPressMacro={(macro) =>
+                  router.push({ pathname: "/macro-detail", params: { macro, date: dayKey } })
+                }
+                cardColor={colors.card}
+                cardBorderColor={colors.cardBorder}
+                borderColor={colors.border}
+                textColor={colors.text}
+                textSecondaryColor={colors.textSecondary}
+                textTertiaryColor={colors.textTertiary}
+                mutedColor={colors.border}
+                netCarbsLensEnabled={netCarbsLensEnabled}
+              />
             </ReAnimated.View>
             {/* TodayMicrosWidget removed 2026-05-02 (revert PR #30) —
                 user feedback: 4-tile widget on Today canvas duplicated

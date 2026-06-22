@@ -76,6 +76,7 @@ import {
   useMacroDisplayStyle,
   type MacroDisplayStyle,
 } from "@/lib/macroDisplayStyle";
+import { MACRO_DISPLAY_OPTIONS } from "@suppr/shared/preferences/macroDisplayStyle";
 import { useCalmMode } from "@/lib/calmMode";
 import { supabase } from "@/lib/supabase";
 import { fastingWindowLabel } from "@suppr/shared/fasting/milestones";
@@ -2353,10 +2354,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           iconColor={t.accent}
           label="Macro display"
           description="Tiles = 2×2 squares (recommended). Bars = one full-width list."
-          options={[
-            { value: "tiles", label: "Tiles (2×2)" },
-            { value: "bars", label: "Bars (list)" },
-          ]}
+          options={MACRO_DISPLAY_OPTIONS}
           value={macroDisplayStyle}
           onChange={(next) => setMacroDisplayStyle(next as MacroDisplayStyle)}
           colors={colors}
