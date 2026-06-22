@@ -60,6 +60,7 @@ import {
   View,
 } from "react-native";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { WeeklyRecapShareButton } from "@/components/recap/WeeklyRecapShareButton";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostHogMaskView } from "posthog-react-native";
@@ -770,12 +771,11 @@ export default function WeeklyRecapScreen() {
             "Start streak" badge on the recap header. The empty card below already
             explains the streak state. Active pip (≥1 day) stays as a calm informational
             badge. Non-tappable here since we are already on the recap destination. */}
-        {streakDays > 0 ? (
-          <View style={{ marginTop: Spacing.md, alignSelf: "flex-start" }}>
-            <StreakPip days={streakDays} size="lg" />
-          </View>
-        ) : null}
+        {streakDays > 0 ? <View style={{ marginTop: Spacing.md, alignSelf: "flex-start" }}><StreakPip days={streakDays} size="lg" /></View> : null}
       </View>
+
+      {/* Shareable weekly-recap card (ENG-1225 #4, web parity) — the viral artifact. */}
+      {daysLogged > 0 ? <View style={{ marginBottom: Spacing.xl }}><WeeklyRecapShareButton weekLabel={weekLabel} days={weekStats.days.map((d) => ({ totals: { calories: d.calories } }))} targetCalories={targets.calories} /></View> : null}
 
       {/* Weekly Check-in — TDEE delta + goal-pace re-tune (MacroFactor
           parity, 2026-04-30). Shown above the existing recap rollups

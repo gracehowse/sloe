@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { WeeklyRecapDialog } from "./weekly-recap-dialog";
-
-interface RecapWeekDay {
-  totals: { calories: number };
-}
+import {
+  deriveWeeklyRecapStats,
+  type RecapWeekDayTotals as RecapWeekDay,
+} from "../../../lib/nutrition-core/weeklyRecapStats";
 
 /**
  * useWeeklyRecap — derives the shareable recap stats from the Today week strip
@@ -22,21 +22,11 @@ export function useWeeklyRecap(
 ): { trigger: () => void; dialog: React.ReactNode } {
   const [open, setOpen] = React.useState(false);
 
-  const dailyCalories = days.map((d) =>
-    d.totals.calories > 0 ? Math.round(d.totals.calories) : null,
+  // Shared derivation (ENG-1225 #4) — web + mobile compute identical stats.
+  const { dailyCalories, onTargetDays, narrative } = deriveWeeklyRecapStats(
+    days,
+    targetCalories,
   );
-  const onTargetDays = days.filter(
-    (d) => d.totals.calories > 0 && d.totals.calories <= targetCalories,
-  ).length;
-  const loggedDays = dailyCalories.filter((c) => c != null).length;
-  const narrative =
-    loggedDays === 0
-      ? "A fresh week ahead."
-      : onTargetDays >= 5
-        ? "A steady, consistent week."
-        : onTargetDays >= 3
-          ? "Solid progress this week."
-          : "Every logged day counts.";
 
   const dialog = (
     <WeeklyRecapDialog
