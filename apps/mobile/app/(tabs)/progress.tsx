@@ -27,7 +27,8 @@ import { Layout } from "@/constants/layout";
 import { ProgressTabChrome } from "@/components/tabs/ProgressTabChrome";
 import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
 import { useMilestone30DayOnProgress } from "@/hooks/useMilestone30DayOnProgress";
-import { Accent, FontFamily, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useAccent } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -176,6 +177,7 @@ export default function ProgressScreen() {
   // itself (goal dot / chart) keeps clay via `t.carbs`; status keeps
   // success/warning/destructive; macros keep `MacroColors`.
   const accent = useAccent();
+  const { colors: macro } = useMacroColors(); // ENG-1223: scheme-resolved macros
   const haptics = useHaptics();
   // One-card-treatment soft elevation (2026-06-09,
   // docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md): every
@@ -1044,9 +1046,7 @@ export default function ProgressScreen() {
     green: Accent.success,
     amber: Accent.warning,
     red: Accent.destructive,
-    protein: MacroColors.protein,
-    carbs: MacroColors.carbs,
-    fat: MacroColors.fat,
+    protein: macro.protein, carbs: macro.carbs, fat: macro.fat,
   };
 
   const hasData = Object.keys(byDay).length > 0;
@@ -1305,7 +1305,7 @@ export default function ProgressScreen() {
           { name: "Protein", pct: macroRange.proteinPct, color: t.protein },
           { name: "Carbs", pct: macroRange.carbsPct, color: t.carbs },
           { name: "Fat", pct: macroRange.fatPct, color: t.fat },
-          { name: "Fibre", pct: macroRange.fiberPct, color: MacroColors.fiber },
+          { name: "Fibre", pct: macroRange.fiberPct, color: macro.fiber },
         ]}
       />
 
