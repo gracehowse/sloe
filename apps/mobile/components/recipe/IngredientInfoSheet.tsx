@@ -29,7 +29,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { X } from "lucide-react-native";
 
-import { Elevation, FontFamily, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Elevation, FontFamily, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -67,6 +68,7 @@ export function IngredientInfoSheet({
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
+  const { colors: macro } = useMacroColors(); // ENG-1223: scheme-resolved macros
   // Aubergine OUTLINE (Sloe treatment §1) — light detects via the white sheet
   // surface, dark uses the lifted aubergine so the border + label clear AA.
   // ENG-1013 (2026-06-10): useAccent() already scheme-resolves primarySolid
@@ -77,10 +79,10 @@ export function IngredientInfoSheet({
 
   const macroSummary = info
     ? ([
-        { key: "calories", label: "kcal", color: MacroColors.calories, value: Math.round(info.calories) },
-        { key: "protein", label: "P", color: MacroColors.protein, value: Math.round(info.protein) },
-        { key: "carbs", label: "C", color: MacroColors.carbs, value: Math.round(info.carbs) },
-        { key: "fat", label: "F", color: MacroColors.fat, value: Math.round(info.fat) },
+        { key: "calories", label: "kcal", color: macro.calories, value: Math.round(info.calories) },
+        { key: "protein", label: "P", color: macro.protein, value: Math.round(info.protein) },
+        { key: "carbs", label: "C", color: macro.carbs, value: Math.round(info.carbs) },
+        { key: "fat", label: "F", color: macro.fat, value: Math.round(info.fat) },
       ] as const)
     : [];
 
