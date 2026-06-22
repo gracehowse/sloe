@@ -48,7 +48,21 @@ web Apple Health card WIRED this session** (38b0e7ec); #6 mobile billing
 deep-links to RevenueCat (functionally done, no screen); #16 editorial Profile
 partially built.
 
-**SHIPPED 2026-06-22 (this session):** #22 web weight "No weigh-ins yet" empty
+**SHIPPED 2026-06-22 (Grace's-call batch):** **#10** web cook multi-timer gated
+behind `cook_multi_timers_v1` to match mobile (bd1b099a — web was always-multi;
+now both default single until ramp). **#19** per-recipe Report/DMCA sheet
+(7cfad7c2) — **legal-reviewer PASS-WITH-CHANGES for the beta window**; copyright
+→ pre-filled `/dmca`, else → support email + in-dialog ack; copy corrected
+(recipes aren't copyrightable; no guaranteed takedown; 5-day SLA; IP/UA
+disclosure). **Legal follow-ups OWED (surfaced to Grace, not resolved):**
+(a) **public-launch BLOCK** before flipping `IG_TT_IMPORT_ENABLED` — a durable
+`recipe_reports` queue (email-only fails OSA/DSA once imported UGC is live) +
+USCO designated-agent registration; (b) **Grace decision** — canonical
+legal-contact domain (`getsloe.com` app-wide vs `suppr-club.com` on DMCA/privacy
+pages; intersects the USCO filing); (c) mobile parity for the report sheet +
+same copy. Full review in the legal-reviewer agent output this session.
+
+**SHIPPED 2026-06-22 (earlier this session):** #22 web weight "No weigh-ins yet" empty
 state (48c5011c, mirrors mobile WeightSparseState); **#4 + #20 the shareable
 WeeklyRecap** — SVG brand-lacquer card (f5770772) + Save/Share dialog (9dd0cf4b)
 + Today StreakPip wiring with real week stats (3975ae96). The viral artifact is
