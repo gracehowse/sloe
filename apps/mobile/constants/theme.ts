@@ -391,6 +391,13 @@ export const Colors = {
      *  to the 100%-opacity fill arc. Macro tracks use a tint of their OWN hue
      *  (in CalorieRing/SkiaRingArcs), not this. ↔ web --ring-track-bold. */
     ringTrackBold: 'rgba(59, 42, 77, 0.24)',
+    /** Sloe v3 jewel watch-dial — graduation ticks + state gradient stops +
+     *  luminous gem core. ↔ web theme.css `--ring-{tick,under,over,empty,cap-core}`. */
+    ringTick: 'rgba(59, 42, 77, 0.20)',
+    ringCapCore: '#FFFFFF',
+    ringUnderA: '#4D7A50', ringUnderB: '#93C08C',
+    ringOverA: '#C0533F', ringOverB: '#E08A5F',
+    ringEmptyA: '#C4BCD4', ringEmptyB: '#E6E0F1',
   },
   dark: {
     // SLOE Phase 0 dark — warm aubergine graphite, not cool-slate.
@@ -437,6 +444,13 @@ export const Colors = {
     /** Bold ring track (dark) — lifted plum #815E91 at 22% so the unfilled ring
      *  reads on the dark card. ↔ web .dark --ring-track-bold. */
     ringTrackBold: 'rgba(129, 94, 145, 0.34)',
+    /** Sloe v3 jewel watch-dial (dark) — brighter so the gem reads luminous on
+     *  Nocturne. ↔ web .dark `--ring-{tick,under,over,empty,cap-core}`. */
+    ringTick: 'rgba(201, 194, 214, 0.24)',
+    ringCapCore: '#FBF7FF',
+    ringUnderA: '#6FA06A', ringUnderB: '#B6E0AD',
+    ringOverA: '#D2614A', ringOverB: '#F0A47A',
+    ringEmptyA: '#6A5A7E', ringEmptyB: '#B9ADD0',
   },
 };
 
