@@ -14,7 +14,7 @@
  * of truth.
  */
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 type SubmitState =
   | { kind: "idle" }
@@ -30,6 +30,14 @@ export function DmcaTakedownForm() {
   const [supprRecipeId, setSupprRecipeId] = useState("");
   const [description, setDescription] = useState("");
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
+
+  // ENG-1225 #19 — pre-fill the recipe field when arriving from a recipe's
+  // "Report an issue → Copyright" route (`/dmca?recipe=<id>`). Set after mount
+  // to avoid an SSR hydration mismatch.
+  useEffect(() => {
+    const recipe = new URLSearchParams(window.location.search).get("recipe");
+    if (recipe) setSupprRecipeId(recipe);
+  }, []);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -195,6 +203,13 @@ export function DmcaTakedownForm() {
           </p>
         )}
       </div>
+      {/* Point-of-collection transparency (ENG-1225 #19, legal-reviewer Finding
+          5) — the server records submission metadata; the privacy policy covers
+          it, this discloses it where the data is taken. */}
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        We record your IP address and browser with this submission to prevent
+        abuse.
+      </p>
     </form>
   );
 }
