@@ -1,5 +1,5 @@
 import { Text, View, type TextStyle } from "react-native";
-import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -37,8 +37,10 @@ export function ProgressEnergyTriad({
   const colors = useThemeColors();
   const dim = colors.textTertiary;
   const text = colors.text;
-  // Sage (protein/olive) for TDEE + a real deficit; amber for a surplus.
-  const sage = MacroColors.protein;
+  // Sage for TDEE + a real deficit; amber for a surplus. Was MacroColors.protein
+  // — which the v3 recolour turned PLUM (energy/deficit is calorie-domain → sage,
+  // per the prototype NetEnergy `deficit → var(--success)`). ENG-1225 token-role.
+  const sage = Accent.successSolid;
 
   const deficitKcal =
     avgIntakeKcal != null && maintenanceKcal != null && maintenanceKcal > 0

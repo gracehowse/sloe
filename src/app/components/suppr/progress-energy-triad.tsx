@@ -82,7 +82,7 @@ export function ProgressEnergyTriad({
       <Cell label="Est. TDEE" testId="progress-energy-tdee">
         <p
           className="mt-1.5 text-[18px] font-bold tabular-nums"
-          style={{ color: "var(--macro-protein-solid)" }}
+          style={{ color: "var(--accent-success-solid)" }}
         >
           {maintenanceKcal != null && maintenanceKcal > 0
             ? maintenanceKcal.toLocaleString()
@@ -91,7 +91,7 @@ export function ProgressEnergyTriad({
         {maintenanceKcal != null && maintenanceKcal > 0 ? (
           <p
             className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: "var(--macro-protein-solid)" }}
+            style={{ color: "var(--accent-success-solid)" }}
           >
             {isAdaptive ? "Adaptive" : "Formula"}
           </p>
@@ -104,7 +104,7 @@ export function ProgressEnergyTriad({
             color: isSurplus
               ? "var(--warning)"
               : deficitKcal != null && deficitKcal > 0
-                ? "var(--macro-protein-solid)"
+                ? "var(--accent-success-solid)"
                 : "var(--foreground)",
           }}
         >
