@@ -28,14 +28,48 @@
   surface. Needs a small design decision + a shared ring primitive (the
   prototype's `SloeRingHero` shows an arbitrary numeral + full dial) + both
   platforms + sim. Re-scope out of "Phase-0 wire."
-- **OPEN — energy-triad deficit/TDEE colour needs prototype grounding.** Both
-  platforms paint the deficit/TDEE stat with `MacroColors.protein` /
-  `--macro-protein-solid` (plum) via a misleadingly-named `const sage =
-  MacroColors.protein` alias (was sage pre-v3 recolour). Surplus already uses
-  amber (`--warning`) correctly. Whether deficit should be sage (calorie domain)
-  or plum is ambiguous vs the backlog prose — ground against `Sloe-App.html`
-  before changing. The triad is also slated for a full rebuild in #23, so fold
-  the colour call into that.
+- **RESOLVED — energy-triad colours, grounded on `Sloe-App.html`.** The triad's
+  `const sage = MacroColors.protein` alias was sage pre-recolour, plum after.
+  Prototype Progress energy-balance (L5008/L5010): **maintenance = sage, deficit
+  = plum (`--primary-active`)**; surplus stays amber. Net: TDEE → sage (cf2b0a16),
+  deficit → plum (07c1d3df, after a brief wrong sage detour from grounding on the
+  *Today* NetEnergy card where deficit-is-good=sage). Mobile schemed too.
+
+## Verified status — 2026-06-21 gap-audit workflow (7 agents, supersedes §2 prose)
+
+The ranked table in §2 was **wrong on ~15 items**. Verified against current code:
+
+**DONE / not-a-gap (no action):** #1, #2 (dial in heroes — this session); **#8
+mobile macro Rings is fully built** (3-way `TodayMacroSection` switch +
+`TodayDashboardMacroRings`, no silent Bars fallback — backlog FALSE); #11 (meal
+detail flag-asymmetry intentional); **#12/#13 Plan** has no `sloe_v3_plan` flag
+and nothing was promised-and-missing — no-op until a v3 Plan spec lands; **#21
+web Apple Health card WIRED this session** (38b0e7ec); #6 mobile billing
+deep-links to RevenueCat (functionally done, no screen); #16 editorial Profile
+partially built.
+
+**BUILD NOW (unblocked, web-verifiable, no sim) — corrected order:**
+1. **#10** — `cook_multi_timers_v1` is mobile-only; web appends timers
+   unconditionally. Parity gap (S). *Decision needed: gate web to match mobile,
+   or un-gate mobile — multi-timer is a flagged feature.* NOT web-SEEable.
+2. **#22** — web Progress two-card new-user empty state (M) — neither platform
+   has it; web uses a bare `ProgressStoryGate` placeholder.
+3. **#18** — editorial Cookbook shelves + featured hero, replacing the flat grid
+   (`Library.tsx` ~L537) (L).
+4. **#19** — per-recipe Report/DMCA sheet (`RecipeDetail.tsx`) (M) — legal bundle.
+5. **#4** — shareable WeeklyRecap card (gradient hero + sparkline + `sloe.co`
+   watermark + Save/Share) (L) — viral artifact; mobile `weekly-recap.tsx` is a
+   check-in screen, not the card.
+6. **#3** — unify the fragmented importer (URL/CSV/Plan are 3 surfaces) (M).
+7. **#24** — two-pane WebSettings (L); **#16** editorial Profile finish (M).
+
+**Backlog claims that were FALSE:** #3, #5, #7, #8, #15, #20, #21(stale), #12,
+#13, #14(partial), #10(count), #6, #9, #24, #4. Full per-item evidence in the
+workflow output (run `wtmcqvkuv`).
+
+**Genuinely-open large builds (need design/scope):** #15 trial step (no flow),
+#9 Coach destination (only a NorthStarBlock fragment), #17 BatchCook (doesn't
+exist), #4 recap card, #24 two-pane settings.
 
 The reports' file/flag facts check out: the v3 ring dial is built on both platforms but only web's mobile-web branch wires it; the cook flags exist (default-OFF); the macro-rings primitives exist on both but mobile's branch is missing. I have enough verified grounding to synthesize. Here's the backlog.
 
