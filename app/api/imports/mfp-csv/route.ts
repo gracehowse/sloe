@@ -12,6 +12,15 @@
  * them apart.
  *
  * Decisions:
+ *   - Preview-first (ENG-1234). `?mode=preview` (the default, and what
+ *     any caller that omits the param gets) parses the file and returns
+ *     `{ source, total, unmatched, truncated, sample }` WITHOUT writing a
+ *     single row. `?mode=commit` re-parses the same file and inserts. The
+ *     two-phase flow is the MFP-refugee trust moment: the user sees their
+ *     own data mapped correctly before anything lands. Re-parsing on
+ *     commit (rather than trusting client-sent rows) keeps the server the
+ *     sole authority over what enters the DB; the dedup index makes the
+ *     extra round-trip idempotent. Only commits consume the rate limit.
  *   - Auto-detect via {@link parseCsvImport}. No `source` parameter on
  *     the request — the header row is the source of truth. If the file
  *     can't be auto-detected (header row matches no adapter), the
@@ -65,6 +74,15 @@ import { canonicalNutritionEntrySource } from "@/lib/nutrition/canonicalNutritio
 import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
+
+/**
+ * How many parsed rows the preview returns to the client. Big enough to
+ * build trust that the right columns mapped (date / meal / food / macros)
+ * across a few days, small enough to keep the payload tiny. The full
+ * `total` count is returned separately so the client can render
+ * "+N more". (ENG-1234)
+ */
+const PREVIEW_SAMPLE_SIZE = 8;
 
 type EntryInsert = {
   user_id: string;
@@ -140,25 +158,43 @@ export async function POST(req: Request) {
     );
   }
 
-  // 2. Rate limit — 5 imports / day / user. Bulk imports are heavy.
-  const rl = await rateLimit({
-    keyPrefix: "api:imports:mfp-csv",
-    userId,
-    limit: 5,
-    windowMs: 24 * 60 * 60_000,
-  });
-  if (!rl.ok) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "rate_limited",
-        message: "MFP imports are limited to 5 per day. Try again tomorrow.",
-      },
-      {
-        status: 429,
-        headers: { "Retry-After": String(rl.retryAfterSec) },
-      },
-    );
+  // 2. Mode. `commit` inserts; anything else (including absent) is a
+  //    fail-safe `preview` — parse + sample only, no DB write. The whole
+  //    import contract is preview-first (ENG-1234): the client uploads
+  //    once to preview the parsed sample, the user confirms what they're
+  //    about to import, and only the explicit `commit` round-trip writes
+  //    anything. A stale or malformed caller therefore can never insert
+  //    by omission — the worst it can do is parse a file in memory.
+  const mode =
+    new URL(req.url).searchParams.get("mode") === "commit"
+      ? "commit"
+      : "preview";
+
+  // 3. Rate limit — COMMITS only. A preview is an in-memory parse (auth +
+  //    byte-cap bounded, no DB cost), so counting it against the 5/day
+  //    insert budget would halve a user's real import allowance for no
+  //    abuse benefit. The expensive, abusable op is the batched insert,
+  //    and that is exactly what stays capped. (ENG-1234)
+  if (mode === "commit") {
+    const rl = await rateLimit({
+      keyPrefix: "api:imports:mfp-csv",
+      userId,
+      limit: 5,
+      windowMs: 24 * 60 * 60_000,
+    });
+    if (!rl.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "rate_limited",
+          message: "MFP imports are limited to 5 per day. Try again tomorrow.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rl.retryAfterSec) },
+        },
+      );
+    }
   }
 
   // 3. Parse multipart body.
@@ -263,10 +299,11 @@ export async function POST(req: Request) {
     entries.push(entry);
   });
 
-  // Sample is the first 5 mapped rows (post-CSV-parse, pre-insert) so
-  // the UI can show a confidence-building preview. The `meal` field is
-  // the canonical slot (or `snack` fallback for adapter `null`).
-  const sample = capped.slice(0, 5).map((r) => ({
+  // Sample is the first N mapped rows (post-CSV-parse, pre-insert) so
+  // the UI can show a confidence-building preview before the user commits.
+  // The `meal` field is the canonical slot (or `snack` fallback for
+  // adapter `null`).
+  const sample = capped.slice(0, PREVIEW_SAMPLE_SIZE).map((r) => ({
     date: r.date,
     meal: r.slot ?? "snack",
     name: r.name,
@@ -290,7 +327,29 @@ export async function POST(req: Request) {
     );
   }
 
-  // 7. Insert. Use the service-role client because the JWT for
+  // Preview mode stops here — the file parsed cleanly, so hand the client
+  // the source, the total importable count, the skipped count, and a
+  // sample to render. NOTHING is written. The client shows this, the user
+  // confirms, and the follow-up `?mode=commit` request (same file)
+  // re-parses server-side and inserts. Re-parsing on commit keeps the
+  // server the single source of truth for what lands in the DB — the
+  // client never gets to hand us macros to insert — and the
+  // `(user_id, source, source_id)` dedup index makes the round-trip
+  // idempotent. (ENG-1234)
+  if (mode === "preview") {
+    return NextResponse.json({
+      ok: true,
+      mode: "preview",
+      source,
+      total: entries.length,
+      unmatched: unmatchedCount,
+      truncated,
+      sample,
+      warnings,
+    });
+  }
+
+  // Insert (commit). Use the service-role client because the JWT for
   //    `getUserIdFromRequest` doesn't authenticate the Postgres role
   //    we need for batched inserts; we already verified `userId`
   //    above so RLS is enforced in code, not in DB.
@@ -335,6 +394,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
+    mode: "commit",
     source,
     imported,
     unmatched: unmatchedCount,

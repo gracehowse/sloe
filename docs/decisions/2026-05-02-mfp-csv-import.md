@@ -151,9 +151,51 @@ paths re-shaped to match the canonical onboarding rename
 | Paprika CSV | Recipe-side, not log-side — a different surface (recipe importer, not history importer). | Future PR |
 | Opt-in per-entry enrichment | ENG-750 user-initiated "find a better match" on one imported entry at a time, using the lightweight log-sheet matcher and explicit confirmation before any swap. Background re-match is rejected because imported rows have no confidence score and source macros are user-confirmed. | Product-lead + design before implementation; constant exposed for the candidate-confidence floor. |
 
+## 2026-06-23 update — preview-before-commit (ENG-1234)
+
+The original card uploaded once and **inserted immediately**, surfacing the
+parsed sample only *after* the rows had already landed. For the MFP-refugee
+trust moment that's backwards: the user should see their own data mapped
+correctly *before* anything is written. The import is now two-phase:
+
+- **`POST …/mfp-csv?mode=preview`** (the default — an absent/invalid `mode`
+  resolves here as a fail-safe) parses the file and returns
+  `{ source, total, unmatched, truncated, sample }` with **no DB write and no
+  rate-limit consumption**. A stale caller can therefore never insert by
+  omission.
+- **`POST …/mfp-csv?mode=commit`** re-parses the same file and inserts. Only
+  commits touch the rate limiter (still 5/day) and the DB. Re-parsing on
+  commit (rather than trusting client-sent rows) keeps the server the sole
+  authority over what enters the DB; the `(user_id, source, source_id)` dedup
+  index makes the extra round-trip idempotent.
+
+Both platforms drive the identical flow through a shared headless hook,
+`src/lib/imports/useCsvImportFlow.ts` (web imports it via `@/lib/imports/…`,
+mobile via `@suppr/shared/imports/…`). Each card injects its own `track`,
+`AnalyticsEvents.*`, and an uploader; the hook owns the
+idle→previewing→preview→success/error state machine. The preview sample table
+is a per-platform presentation component (`CsvImportPreview`). New funnel
+event `mfp_csv_import_previewed` sits between `started` and `completed` so
+parse-success and confirm-through rates are both measurable.
+
+No feature flag: this is a data-integrity fix on a write path (flag-gating
+would keep the blind-insert path alive as the rollback target — the opposite
+of the goal), consistent with the standing "turn everything on, never
+flag-gate again" / flag-collapse direction. Validated with before/after
+captures on web + iOS rather than a ramp.
+
+Shared-React note: the hook is the first `src/lib` module to call React
+hooks. Metro already dedupes `react` to apps/mobile's copy for shared files
+(`metro.config.js` `extraNodeModules.react`); the mobile vitest config now
+mirrors that dedupe so the two React versions don't collide under test.
+
 ## Files
 
 - `src/lib/imports/parseMfpCsv.ts` — parser
+- `src/lib/imports/useCsvImportFlow.ts` — shared two-phase hook (ENG-1234)
+- `src/lib/imports/csvSourceLabel.ts` — adapter-id → display-name helper
+- `src/app/components/imports/CsvImportPreview.tsx` — web preview table
+- `apps/mobile/components/imports/CsvImportPreview.tsx` — mobile preview table
 - `src/lib/imports/mfpCsvLimits.ts` — caps + thresholds
 - `app/api/imports/mfp-csv/route.ts` — POST endpoint
 - `src/app/components/imports/MfpCsvImportCard.tsx` — web card
@@ -162,7 +204,7 @@ paths re-shaped to match the canonical onboarding rename
 - `apps/mobile/components/onboarding/steps/data-bridges.tsx` — wires mobile card into onboarding
 - `src/app/components/Settings.tsx` — wires web card into Privacy & Security
 - `apps/mobile/components/settings/SettingsBundleContent.tsx` — wires mobile card into App section
-- `src/lib/analytics/events.ts` — `mfp_csv_import_{started,completed,failed}`
+- `src/lib/analytics/events.ts` — `mfp_csv_import_{started,previewed,completed,failed}`
 - `tests/unit/parseMfpCsv.test.ts`
 - `tests/integration/mfpCsvImportRoute.test.ts`
 - `tests/unit/mfpCsvImportCardWeb.test.tsx`

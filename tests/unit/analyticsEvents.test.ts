@@ -35,6 +35,20 @@ describe("AnalyticsEvents registry", () => {
     expect(AnalyticsEvents.onboarding_app_choice).toBe("onboarding_app_choice");
   });
 
+  it("registers the MFP CSV import funnel events (ENG-1234 preview→commit)", () => {
+    // The two-phase MFP-refugee import funnel: started → previewed →
+    // completed (or failed). A rename to any of these breaks the
+    // parse-success and confirm-through rates the import wedge depends on.
+    expect(AnalyticsEvents.mfp_csv_import_started).toBe("mfp_csv_import_started");
+    expect(AnalyticsEvents.mfp_csv_import_previewed).toBe(
+      "mfp_csv_import_previewed",
+    );
+    expect(AnalyticsEvents.mfp_csv_import_completed).toBe(
+      "mfp_csv_import_completed",
+    );
+    expect(AnalyticsEvents.mfp_csv_import_failed).toBe("mfp_csv_import_failed");
+  });
+
   it("registers fit_this_in_previewed with the canonical value", () => {
     expect(AnalyticsEvents.fit_this_in_previewed).toBe("fit_this_in_previewed");
   });

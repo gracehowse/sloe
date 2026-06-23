@@ -799,6 +799,22 @@ export const AnalyticsEvents = {
    *    }
    *  See `docs/decisions/2026-05-02-mfp-csv-import.md`. */
   mfp_csv_import_started: "mfp_csv_import_started",
+  /** 2026-06-23 (ENG-1234) — the preview parsed successfully and the user
+   *  is now looking at their sampled rows, deciding whether to commit.
+   *  The key MFP-refugee trust-funnel step between `started` and
+   *  `completed`: `started → previewed` measures parse success,
+   *  `previewed → completed` measures confirm-through. Identical payload
+   *  on web + mobile.
+   *  Payload:
+   *    {
+   *      total: number,       // rows that WILL import on commit
+   *      unmatched: number,   // rows skipped (e.g. missing calories)
+   *      truncated: boolean,  // true when input had >1000 rows
+   *      source: string,      // detected adapter id (mfp / lose-it / …)
+   *      surface: "onboarding" | "settings",
+   *      platform: "web" | "ios"
+   *    } */
+  mfp_csv_import_previewed: "mfp_csv_import_previewed",
   /** 2026-05-02 — MFP CSV import finished successfully (HTTP 200 with
    *  `ok: true`). Identical payload on web + mobile so funnels read the
    *  same.

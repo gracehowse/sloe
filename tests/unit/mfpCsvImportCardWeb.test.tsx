@@ -2,14 +2,14 @@
 /**
  * Render + upload behaviour test for `<MfpCsvImportCard>` (web).
  *
- * Pins the four UI states the MFP-refugee onboarding card must
- * surface, plus the analytics events fired on each:
+ * Pins the two-phase (preview → confirm) MFP-refugee import (ENG-1234):
  *   1. Idle — "Choose CSV file" button is the visible affordance.
- *   2. Uploading — the picked filename is surfaced while the upload
- *      is in flight.
- *   3. Success — "Imported N meals from MyFitnessPal" copy appears
+ *   2. Preview — picking a file uploads to `?mode=preview` (no write) and
+ *      the parsed sample is shown with an Import CTA; `mfp_csv_import_started`
+ *      + `mfp_csv_import_previewed` fire.
+ *   3. Commit — confirming uploads to `?mode=commit`; success copy appears
  *      and `mfp_csv_import_completed` fires with the result payload.
- *   4. Error — the route's error message is surfaced verbatim and
+ *   4. Error — a failed preview surfaces the route's message verbatim and
  *      `mfp_csv_import_failed` fires with the route's error code.
  *
  * Mirrors `apps/mobile/tests/unit/mfpCsvImportCardMobile.test.tsx`.
@@ -32,7 +32,7 @@ vi.mock("@/lib/analytics/track", () => ({
   track: (...args: unknown[]) => trackMock(...args),
   // MfpCsvImportCard renders inside a <SupprCard>, which reads this flag at
   // render time. Flag OFF keeps the legacy paint; these tests assert
-  // functional behaviour (idle/upload/error), not elevation.
+  // functional behaviour (idle/preview/commit/error), not elevation.
   isFeatureEnabled: () => false,
 }));
 
@@ -72,47 +72,103 @@ function pickFile(file: File) {
   fireEvent.change(input);
 }
 
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+const SAMPLE = [
+  {
+    date: "2024-08-12",
+    meal: "breakfast",
+    name: "Oats",
+    calories: 420,
+    protein: 14,
+    carbs: 68,
+    fat: 10,
+  },
+  {
+    date: "2024-08-12",
+    meal: "lunch",
+    name: "Salad",
+    calories: 540,
+    protein: 52,
+    carbs: 42,
+    fat: 18,
+  },
+];
+
 describe("MfpCsvImportCard (web)", () => {
   it("renders the idle state with the choose-file affordance", () => {
     render(<MfpCsvImportCard surface="onboarding" />);
-    // Copy generalised from MyFitnessPal-specific to multi-app (CSV
-    // adapter framework) in the working tree — assert the heading.
     expect(screen.getByText("Import from another app")).toBeInTheDocument();
     expect(screen.getByTestId("mfp-csv-choose-file")).toBeInTheDocument();
   });
 
-  it("uploads the picked file and surfaces success copy + analytics", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
+  it("previews the parsed sample, then commits on confirm (with analytics)", async () => {
+    const fetchMock = vi.fn(async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes("mode=preview")) {
+        return jsonResponse({
           ok: true,
-          imported: 5,
+          mode: "preview",
+          source: "mfp",
+          total: 5,
           unmatched: 0,
           truncated: false,
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      ),
-    );
+          sample: SAMPLE,
+        });
+      }
+      // commit
+      return jsonResponse({
+        ok: true,
+        mode: "commit",
+        imported: 5,
+        unmatched: 0,
+        truncated: false,
+      });
+    });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     render(<MfpCsvImportCard surface="onboarding" />);
     pickFile(new File(["Date,Food\n2024-08-12,Eggs"], "mfp.csv", { type: "text/csv" }));
 
+    // Preview surfaces the sample BEFORE any commit.
     await waitFor(() =>
-      expect(
-        screen.getByText(/Imported 5 meals/),
-      ).toBeInTheDocument(),
+      expect(screen.getByTestId("mfp-csv-preview")).toBeInTheDocument(),
     );
+    expect(screen.getByText("Oats")).toBeInTheDocument();
+    expect(screen.getByText("Salad")).toBeInTheDocument();
 
-    // Started + completed events fired with the right payload.
-    const startedCalls = trackMock.mock.calls.filter(
-      (c) => c[0] === AnalyticsEvents.mfp_csv_import_started,
+    // started + previewed fired; NOT completed yet.
+    expect(
+      trackMock.mock.calls.filter(
+        (c) => c[0] === AnalyticsEvents.mfp_csv_import_started,
+      ),
+    ).toHaveLength(1);
+    const previewedCalls = trackMock.mock.calls.filter(
+      (c) => c[0] === AnalyticsEvents.mfp_csv_import_previewed,
     );
-    expect(startedCalls).toHaveLength(1);
-    expect(startedCalls[0][1]).toMatchObject({
+    expect(previewedCalls).toHaveLength(1);
+    expect(previewedCalls[0][1]).toMatchObject({
+      total: 5,
+      source: "mfp",
       surface: "onboarding",
       platform: "web",
     });
+    expect(
+      trackMock.mock.calls.filter(
+        (c) => c[0] === AnalyticsEvents.mfp_csv_import_completed,
+      ),
+    ).toHaveLength(0);
+
+    // Confirm → commit.
+    fireEvent.click(screen.getByTestId("mfp-csv-confirm-import"));
+    await waitFor(() =>
+      expect(screen.getByText(/Imported 5 meals/)).toBeInTheDocument(),
+    );
 
     const completedCalls = trackMock.mock.calls.filter(
       (c) => c[0] === AnalyticsEvents.mfp_csv_import_completed,
@@ -126,23 +182,25 @@ describe("MfpCsvImportCard (web)", () => {
       platform: "web",
     });
 
-    // Verify the bearer token was sent.
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Two round-trips: preview then commit, both bearer-authed.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("mode=preview");
+    expect(String(fetchMock.mock.calls[1][0])).toContain("mode=commit");
     const init = fetchMock.mock.calls[0][1] as RequestInit | undefined;
     const headers = new Headers(init?.headers as HeadersInit | undefined);
     expect(headers.get("authorization")).toBe("Bearer test-token");
   });
 
-  it("surfaces a 422 error message and fires the failed event", async () => {
+  it("surfaces a 422 preview error and fires the failed event", async () => {
     const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
+      jsonResponse(
+        {
           ok: false,
           error: "no_rows",
           message:
             "We couldn't find a Date/Food column. Re-export from MyFitnessPal with the standard CSV format.",
-        }),
-        { status: 422, headers: { "content-type": "application/json" } },
+        },
+        422,
       ),
     );
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -163,10 +221,14 @@ describe("MfpCsvImportCard (web)", () => {
     expect(failedCalls[0][1]).toMatchObject({
       error: "no_rows",
       status: 422,
+      phase: "preview",
       surface: "settings",
       platform: "web",
     });
 
+    // Never reached commit — the preview failed.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("mode=preview");
     // Try-again button is rendered for retry.
     expect(screen.getByTestId("mfp-csv-retry")).toBeInTheDocument();
   });

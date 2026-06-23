@@ -2,13 +2,13 @@
 /**
  * Render + upload behaviour test for `<MobileMfpCsvImportCard>`.
  *
- * Pins the same four UI states the web counterpart locks
- * (idle / uploading / success / error) plus the same analytics
- * payloads, with two mobile-specific contracts:
+ * Pins the two-phase (preview → confirm) MFP-refugee import (ENG-1234),
+ * matching the web counterpart, with two mobile-specific contracts:
  *
  *   - The picker invocation path uses `expo-document-picker.getDocumentAsync`.
- *     Cancelled picks are no-ops; an asset triggers an upload via
- *     `authedFetch` to `${getSupprApiBase()}/api/imports/mfp-csv`.
+ *     Cancelled picks are no-ops; an asset triggers a preview upload via
+ *     `authedFetch` to `${getSupprApiBase()}/api/imports/mfp-csv?mode=preview`,
+ *     and confirming uploads the same asset to `?mode=commit`.
  *   - Multipart payload uses the React Native `{ uri, name, type }`
  *     file shape (RN's FormData accepts this in lieu of the web `Blob`
  *     flavour).
@@ -72,6 +72,27 @@ vi.mock("expo-document-picker", () => ({
   getDocumentAsync: (...a: unknown[]) => documentPickerMock(...a),
 }));
 
+const CSV_ASSET = {
+  canceled: false,
+  assets: [{ uri: "file:///mock/mfp.csv", name: "mfp.csv", mimeType: "text/csv" }],
+};
+
+const SAMPLE = [
+  { date: "2024-08-12", meal: "breakfast", name: "Oats", calories: 420, protein: 14, carbs: 68, fat: 10 },
+  { date: "2024-08-12", meal: "lunch", name: "Salad", calories: 540, protein: 52, carbs: 42, fat: 18 },
+];
+
+/** authedFetch stub that branches on the `?mode=` query. */
+function mockUpload(
+  preview: { ok: boolean; status: number; body: unknown },
+  commit?: { ok: boolean; status: number; body: unknown },
+) {
+  authedFetchMock.mockImplementation(async (url: string) => {
+    const cfg = String(url).includes("mode=commit") ? commit! : preview;
+    return { ok: cfg.ok, status: cfg.status, json: async () => cfg.body };
+  });
+}
+
 beforeEach(() => {
   authedFetchMock.mockReset();
   documentPickerMock.mockReset();
@@ -85,57 +106,55 @@ afterEach(() => {
 describe("MobileMfpCsvImportCard", () => {
   it("renders the idle state with the choose-file affordance", () => {
     render(<MobileMfpCsvImportCard surface="onboarding" />);
-    // Copy generalised from MyFitnessPal-specific to multi-app (CSV
-    // adapter framework) in the working tree — assert the heading.
     expect(screen.getByText("Import from another app")).toBeTruthy();
     expect(screen.getByTestId("mfp-csv-choose-file")).toBeTruthy();
   });
 
-  it("uploads a picked asset and surfaces success copy + analytics", async () => {
-    documentPickerMock.mockResolvedValue({
-      canceled: false,
-      assets: [
-        {
-          uri: "file:///mock/mfp.csv",
-          name: "mfp.csv",
-          mimeType: "text/csv",
-        },
-      ],
-    });
-    authedFetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
+  it("previews the parsed sample, then commits on confirm (with analytics)", async () => {
+    documentPickerMock.mockResolvedValue(CSV_ASSET);
+    mockUpload(
+      {
         ok: true,
-        imported: 7,
-        unmatched: 0,
-        truncated: false,
-      }),
-    });
+        status: 200,
+        body: {
+          ok: true,
+          mode: "preview",
+          source: "mfp",
+          total: 7,
+          unmatched: 0,
+          truncated: false,
+          sample: SAMPLE,
+        },
+      },
+      {
+        ok: true,
+        status: 200,
+        body: { ok: true, mode: "commit", imported: 7, unmatched: 0, truncated: false },
+      },
+    );
 
     render(<MobileMfpCsvImportCard surface="onboarding" />);
     fireEvent.press(screen.getByTestId("mfp-csv-choose-file"));
 
-    await waitFor(() =>
-      expect(screen.getByText(/Imported 7 meals/)).toBeTruthy(),
-    );
+    // Preview surfaces the sample before any commit.
+    await waitFor(() => expect(screen.getByTestId("mfp-csv-preview")).toBeTruthy());
+    expect(screen.getByText("Oats")).toBeTruthy();
+    expect(screen.getByText("Salad")).toBeTruthy();
 
-    // Verify the upload fired with the right URL + method.
-    expect(authedFetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = authedFetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://suppr-club.com/api/imports/mfp-csv");
-    expect(init.method).toBe("POST");
-
-    // Started + completed events both fired with platform: "ios".
-    const trackCalls = trackMock.mock.calls;
-    const started = trackCalls.find(
+    const started = trackMock.mock.calls.find(
       (c) => c[0] === AnalyticsEvents.mfp_csv_import_started,
     );
-    expect(started?.[1]).toMatchObject({
-      surface: "onboarding",
-      platform: "ios",
-    });
-    const completed = trackCalls.find(
+    expect(started?.[1]).toMatchObject({ surface: "onboarding", platform: "ios" });
+    const previewed = trackMock.mock.calls.find(
+      (c) => c[0] === AnalyticsEvents.mfp_csv_import_previewed,
+    );
+    expect(previewed?.[1]).toMatchObject({ total: 7, source: "mfp", platform: "ios" });
+
+    // Confirm → commit.
+    fireEvent.press(screen.getByTestId("mfp-csv-confirm-import"));
+    await waitFor(() => expect(screen.getByText(/Imported 7 meals/)).toBeTruthy());
+
+    const completed = trackMock.mock.calls.find(
       (c) => c[0] === AnalyticsEvents.mfp_csv_import_completed,
     );
     expect(completed?.[1]).toMatchObject({
@@ -145,50 +164,48 @@ describe("MobileMfpCsvImportCard", () => {
       surface: "onboarding",
       platform: "ios",
     });
+
+    // Two round-trips: preview then commit.
+    expect(authedFetchMock).toHaveBeenCalledTimes(2);
+    expect(String(authedFetchMock.mock.calls[0][0])).toContain("mode=preview");
+    expect(String(authedFetchMock.mock.calls[1][0])).toContain("mode=commit");
+    const [, init] = authedFetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.method).toBe("POST");
   });
 
-  it("surfaces a 429 rate-limit message and fires the failed event", async () => {
-    documentPickerMock.mockResolvedValue({
-      canceled: false,
-      assets: [
-        {
-          uri: "file:///mock/mfp.csv",
-          name: "mfp.csv",
-          mimeType: "text/csv",
-        },
-      ],
-    });
-    authedFetchMock.mockResolvedValue({
+  it("surfaces a preview parse error and fires the failed event", async () => {
+    documentPickerMock.mockResolvedValue(CSV_ASSET);
+    mockUpload({
       ok: false,
-      status: 429,
-      json: async () => ({
+      status: 422,
+      body: {
         ok: false,
-        error: "rate_limited",
-        message: "MFP imports are limited to 5 per day. Try again tomorrow.",
-      }),
+        error: "no_rows",
+        message: "We couldn't find a Date/Food column in this CSV.",
+      },
     });
 
     render(<MobileMfpCsvImportCard surface="settings" />);
     fireEvent.press(screen.getByTestId("mfp-csv-choose-file"));
 
     await waitFor(() =>
-      expect(
-        screen.getByText(/MFP imports are limited to 5 per day/),
-      ).toBeTruthy(),
+      expect(screen.getByText(/We couldn't find a Date\/Food column/)).toBeTruthy(),
     );
 
-    const trackCalls = trackMock.mock.calls;
-    const failed = trackCalls.find(
+    const failed = trackMock.mock.calls.find(
       (c) => c[0] === AnalyticsEvents.mfp_csv_import_failed,
     );
     expect(failed?.[1]).toMatchObject({
-      error: "rate_limited",
-      status: 429,
+      error: "no_rows",
+      status: 422,
+      phase: "preview",
       surface: "settings",
       platform: "ios",
     });
 
-    // Try-again affordance rendered.
+    // Never reached commit.
+    expect(authedFetchMock).toHaveBeenCalledTimes(1);
+    expect(String(authedFetchMock.mock.calls[0][0])).toContain("mode=preview");
     expect(screen.getByTestId("mfp-csv-retry")).toBeTruthy();
   });
 
@@ -198,16 +215,14 @@ describe("MobileMfpCsvImportCard", () => {
     render(<MobileMfpCsvImportCard />);
     fireEvent.press(screen.getByTestId("mfp-csv-choose-file"));
 
-    // Wait a microtask so the dynamic import + handler resolve.
     await Promise.resolve();
     await Promise.resolve();
 
     expect(authedFetchMock).not.toHaveBeenCalled();
-    // No started event either — the picker cancel happens before
-    // the upload kicks off.
-    const trackCalls = trackMock.mock.calls;
     expect(
-      trackCalls.find((c) => c[0] === AnalyticsEvents.mfp_csv_import_started),
+      trackMock.mock.calls.find(
+        (c) => c[0] === AnalyticsEvents.mfp_csv_import_started,
+      ),
     ).toBeUndefined();
   });
 });

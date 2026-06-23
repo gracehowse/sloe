@@ -170,7 +170,17 @@ export default defineConfig({
     },
   },
   resolve: {
+    // Mirror Metro's `extraNodeModules.react` dedupe (see metro.config.js):
+    // shared `src/lib/*` files are watched from ../../src and would otherwise
+    // resolve `react` by walking up to the monorepo root (React 18, for
+    // Next.js), while the mobile renderer + components use apps/mobile's
+    // React 19. A shared hook (`useCsvImportFlow`, ENG-1234) is the first
+    // src/lib module to call React hooks, so without this the two copies
+    // collide → "Invalid hook call". Force every `react` import to the mobile
+    // copy, exactly as Metro does at runtime.
+    dedupe: ["react", "react/jsx-runtime", "react/jsx-dev-runtime"],
     alias: [
+      { find: /^react$/, replacement: path.resolve(__dirname, "node_modules/react") },
       { find: "@", replacement: path.resolve(__dirname, ".") },
       // ENG-551 (2026-05-16) — mirror the `@suppr/shared/*` tsconfig
       // path so vitest resolves shared-lib imports the same way the
