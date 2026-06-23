@@ -2376,13 +2376,7 @@ export default function RecipeDetailScreen() {
               />
             ) : (
             <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
-              {/* ENG-1230: the top group MUST be `flex: 1` — `CookStepSwipeSurface`
-                  (when `cook_swipe_steps_v1` is ON) wraps the step body in a
-                  `flex: 1` Animated.View, which collapses to zero height inside a
-                  non-flex parent, making ALL step content invisible. Giving this
-                  wrapper flex height lets the swipe surface fill it (matching the
-                  flex chain in the standalone /cook screen). */}
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1 /* ENG-1230: CookStepSwipeSurface wraps the step body in a flex:1 view that collapses in a non-flex parent — this group must provide flex height. */ }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
                   <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>

@@ -19,7 +19,14 @@ export interface CookStepSwipeSurfaceProps {
 
 /** Horizontal swipe wrapper for cook-mode step content (ENG-947).
  *  Keeps Prev/Next buttons as the accessible fallback; swipe adds a
- *  large, messy-hands-friendly target with a gentle slide. */
+ *  large, messy-hands-friendly target with a gentle slide.
+ *
+ *  LAYOUT CONTRACT (ENG-1230): when `enabled`, children are wrapped in a
+ *  `flex: 1` Animated.View so the translateX slide fills the step area. That
+ *  `flex: 1` collapses to zero height in a NON-flex parent — which silently
+ *  hides ALL step content. Callers MUST render this inside a flex parent that
+ *  grants it height (the standalone `/cook` screen does; `recipe/[id].tsx`'s
+ *  inline cook overlay had to add `flex: 1` to its step-body group to fix it). */
 export function CookStepSwipeSurface({
   enabled,
   stepIndex,
