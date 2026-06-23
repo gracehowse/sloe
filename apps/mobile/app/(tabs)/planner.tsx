@@ -2860,7 +2860,7 @@ export default function PlannerScreen() {
               Shopping list CTA card further down (`/shopping`).
             - Regenerate reuses the existing `generatePlan` used by the
               empty-state Generate Plan button. */}
-        {plan && plan.length > 0 && planTargets && summaryScore && (
+        {!sloeV3Plan && plan && plan.length > 0 && planTargets && summaryScore && (
           <View
             style={[
               styles.summaryCard,
@@ -2964,16 +2964,14 @@ export default function PlannerScreen() {
         </ReAnimated.View>
 
         <ReAnimated.View style={planEntrance.style}>
-        {/* 2026-05-23 — Plan setup chip row (variant B).
-            Replaces the three-section inline setup card. Two borderless
-            tinted chips condense plan length+start and meal-toggle
-            settings; tapping a chip opens a focused bottom sheet.
-            Regenerate moves to a ghost text-link on the right so it
-            doesn't compete visually with the primary FAB. Day cards
-            stay primary on first scroll instead of being pushed below
-            a settings form. HTML prototype:
-            `/tmp/suppr-prototypes/plan-chip-variants.html` (B). */}
-        {plan && plan.length > 0 ? (() => {
+        {/* 2026-05-23 — Plan setup chip row (variant B). Two borderless tinted
+            chips condense plan length+start and meal-toggle settings; tapping a
+            chip opens a focused bottom sheet. Prototype:
+            `/tmp/suppr-prototypes/plan-chip-variants.html` (B). ENG-1225: hidden
+            under sloe_v3_plan — the v3 surface owns setup via its header adjust
+            action, and the "All meals" chip would clash with the v3 meal-filter
+            chips. */}
+        {!sloeV3Plan && plan && plan.length > 0 ? (() => {
           const startLabelForChip =
             startOffset === 0 ? "Today" : startOffset === 1 ? "Tomorrow" : "Next week";
           const lengthStartLabel = `${days} day${days > 1 ? "s" : ""} · ${startLabelForChip}`;
@@ -3323,8 +3321,10 @@ export default function PlannerScreen() {
             so taps still reach the underlying rows — by design we don't
             block interaction during regenerate; we just signal "new
             plan incoming". The cold-start path (no existing plan)
-            still shows the 3 SkeletonCards above. */}
-        {plan && (
+            still shows the 3 SkeletonCards above.
+            ENG-1225: the v3 Plan surface renders its own meal section, so the
+            legacy day-card stack is hidden under sloe_v3_plan. */}
+        {!sloeV3Plan && plan && (
           <View style={{ position: "relative", gap: Layout.planDayGap }}>
         {plan.map((dp, dayIdx) => {
           // Build-12 H-5 (TestFlight `AH8csBqtZsBJJr0uHgXyEcE`,
