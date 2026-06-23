@@ -50,7 +50,7 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
           recipeTitle={recipe.title}
         />
         <View style={styles.kick}>
-          <Text style={styles.kickText}>Tonight's pick</Text>
+          <Text style={styles.kickText}>{"Tonight's pick"}</Text>
         </View>
       </View>
       <View style={styles.body}>
