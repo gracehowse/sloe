@@ -425,6 +425,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // on mobile too (ProgressEnergyEquation), so it's a SHARED default-on flag
   // (was web-only). Off → the legacy 3-cell triad (kill switch).
   "sloe_v3_energy_equation",
+  // ENG-1225 Block 2 — the v3 Plan IA top section (PlanV3Surface: "Your plan"
+  // header + verdict + week-strip day selector + day-detail calorie band).
+  // Mobile-only for now (web Plan v3 is a later block). Off → the legacy Plan
+  // header/chrome (kill switch). Per-slot cards + meal-filter = Block 3.
+  "sloe_v3_plan",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in

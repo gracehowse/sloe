@@ -65,6 +65,9 @@ const MOBILE_ONLY = new Set([
   // ENG-1225 #3 — unified "import anything" sheet shipped iOS-first; the web
   // unified front door is a pending parity build, so this is mobile-only today.
   "sloe_v3_unified_import",
+  // ENG-1225 Block 2 — the v3 Plan IA top section (PlanV3Surface) shipped
+  // mobile-first; web Plan v3 is a later block, so this is mobile-only today.
+  "sloe_v3_plan",
 ]);
 
 /** Gate 1.5 redesign surfaces that must ship default-on on both platforms. */

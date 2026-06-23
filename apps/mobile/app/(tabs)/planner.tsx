@@ -175,7 +175,7 @@ import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
 import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
 import { PlanRegenerateToast } from "@/components/plan/PlanRegenerateToast";
-import { PlanHeaderV3 } from "@/components/plan/PlanHeaderV3";
+import { PlanV3Surface } from "@/components/plan/PlanV3Surface";
 import { computePlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
 import {
   type PlanSourceMode,
@@ -1479,6 +1479,16 @@ export default function PlannerScreen() {
       ? `${start.getDate()}–${end.getDate()} ${mon(start)}`
       : `${start.getDate()} ${mon(start)} – ${end.getDate()} ${mon(end)}`;
   }, [planStartDate]);
+  // v3 week-strip dates — anchored to planStartDate (same source as the overline;
+  // planCalendarDateForIndex drifts from *today* once a day passes the start).
+  const planV3WeekDates = useMemo(() => {
+    const start = planStartDate ? new Date(planStartDate) : new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, [planStartDate]);
 
   // ENG-1092 — render-scope PlannerTargets for the empty-slot "Aim ~X kcal"
   // line (same shape the swap handler builds). Drives `slotMacroTargets` per
@@ -2649,6 +2659,7 @@ export default function PlannerScreen() {
           Shopping list as a sub-view). Tapping "Shopping" routes to
           the existing `/shopping` screen which carries a mirroring
           header so the user can return without losing their place. */}
+      {sloeV3Plan ? null : (
       <PlanTabChrome
         value="plan"
         onChange={(next) => {
@@ -2682,15 +2693,21 @@ export default function PlannerScreen() {
           </View>
         }
       />
+      )}
       <ScrollView testID="planner-hydrated" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <ReAnimated.View style={headerEntrance.style}>
         {sloeV3Plan ? (
-          <PlanHeaderV3
-            dateRangeLabel={planV3WeekLabel}
+          <PlanV3Surface
+            plan={plan}
+            targetKcal={planTargets?.calories ?? 0}
+            weekDates={planV3WeekDates}
+            weekLabel={planV3WeekLabel}
             verdict={planV3Verdict}
+            household={null}
             onGenerate={openGenerateMenu}
             onAdjust={() => setTemplatesOpen(true)}
             onTemplates={() => setTemplatesOpen(true)}
+            onOpenHousehold={() => setTemplatesOpen(true)}
           />
         ) : null}
         {/* Named plan slots switcher — pre-2026-05-22 this rendered
