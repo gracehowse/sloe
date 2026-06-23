@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  computePlanDayDetail,
   computePlanDayStatus,
   computePlanWeekVerdict,
   countPlanDayMainSlotsFilled,
@@ -124,3 +125,38 @@ describe("computePlanWeekVerdict", () => {
     expect(v.headline).toBe("On track — 2 of 3 days land");
   });
 });
+
+describe("computePlanDayDetail", () => {
+  it("nothing planned → 'Nothing planned yet', success tone", () => {
+    const d = computePlanDayDetail(0, 1830, 0, 0);
+    expect(d.subline).toBe("Nothing planned yet");
+    expect(d.barPct).toBe(0);
+    expect(d.tone).toBe("success");
+  });
+
+  it("meaningfully under (gap > 250) → 'short — room for more'", () => {
+    const d = computePlanDayDetail(1490, 1830, 3, 0);
+    expect(d.subline).toBe("≈340 kcal short — room for more");
+    expect(d.barPct).toBeCloseTo(1490 / 1830, 5);
+    expect(d.tone).toBe("success");
+  });
+
+  it("near target (within band) → 'Lands on target'", () => {
+    expect(computePlanDayDetail(1800, 1830, 3, 0).subline).toBe(
+      "Lands on target",
+    );
+  });
+
+  it("over target (> 200) → 'over target' + warning tone + capped bar", () => {
+    const d = computePlanDayDetail(2200, 1830, 4, 0);
+    expect(d.subline).toBe("≈370 over target");
+    expect(d.tone).toBe("warning");
+    expect(d.barPct).toBe(1); // capped
+  });
+
+  it("appends ' · N cooked' when slots are cooked", () => {
+    expect(computePlanDayDetail(1490, 1830, 3, 2).subline).toBe(
+      "≈340 kcal short — room for more · 2 cooked",
+    );
+  });
+})

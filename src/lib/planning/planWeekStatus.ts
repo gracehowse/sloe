@@ -104,3 +104,51 @@ export function computePlanWeekVerdict(
     tone: allLand ? "success" : "warning",
   };
 }
+
+export interface PlanDayDetail {
+  /** Foot subline copy under the calorie band. */
+  subline: string;
+  /** Progress-bar fill fraction 0..1 (capped at full). */
+  barPct: number;
+  /** Bar/headline tone — `warning` only when meaningfully over target. */
+  tone: "success" | "warning";
+}
+
+/**
+ * Per-day calorie-band detail for the v3 Plan day card (prototype Plan
+ * `plan-day` ~L4776-4778): the fill %, the tone, and the gap subline. Shared so
+ * web + mobile read the same thresholds.
+ *
+ * - `plannedCount === 0` → "Nothing planned yet"
+ * - gap > 250 under → "≈{gap} kcal short — room for more"
+ * - gap < −200 (i.e. > 200 over) → "≈{over} over target"
+ * - otherwise → "Lands on target"
+ * - appends " · {n} cooked" when any slot is cooked.
+ * Bar tone goes `warning` once the day runs > 200 kcal over target.
+ */
+export function computePlanDayDetail(
+  dayTotalKcal: number,
+  targetKcal: number,
+  plannedCount: number,
+  cookedCount: number,
+): PlanDayDetail {
+  const gap = targetKcal - dayTotalKcal;
+  let subline: string;
+  if (plannedCount <= 0) {
+    subline = "Nothing planned yet";
+  } else if (gap > 250) {
+    subline = `≈${Math.round(gap)} kcal short — room for more`;
+  } else if (gap < -200) {
+    subline = `≈${Math.round(Math.abs(gap))} over target`;
+  } else {
+    subline = "Lands on target";
+  }
+  if (cookedCount > 0) {
+    subline += ` · ${cookedCount} cooked`;
+  }
+  const barPct =
+    targetKcal > 0 ? Math.min(1, Math.max(0, dayTotalKcal / targetKcal)) : 0;
+  const tone: "success" | "warning" =
+    dayTotalKcal > targetKcal + 200 ? "warning" : "success";
+  return { subline, barPct, tone };
+}
