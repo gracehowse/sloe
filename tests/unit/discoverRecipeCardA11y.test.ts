@@ -28,6 +28,15 @@ const MOBILE_DISCOVER_PATH = resolve(ROOT, "apps/mobile/app/(tabs)/discover.tsx"
 
 const WEB_DISCOVER_SRC = readFileSync(WEB_DISCOVER_PATH, "utf8");
 const MOBILE_DISCOVER_SRC = readFileSync(MOBILE_DISCOVER_PATH, "utf8");
+// The compact More-ideas row Pressable was extracted to DiscoverMoreIdeaRow
+// (ENG-1225 Block 6 pre-work); scan both files so the per-card a11y pins still
+// count the hero card (discover.tsx) + the More-ideas row (DiscoverMoreIdeaRow).
+const MOBILE_MORE_IDEA_PATH = resolve(
+  ROOT,
+  "apps/mobile/components/discover/DiscoverMoreIdeaRow.tsx",
+);
+const MOBILE_A11Y_SRC =
+  MOBILE_DISCOVER_SRC + "\n" + readFileSync(MOBILE_MORE_IDEA_PATH, "utf8");
 
 describe("recipeCardAccessibilityLabel — shared helper", () => {
   it("builds a descriptive, trust-safe label with title, macros, cook time, and a call to action", () => {
@@ -121,8 +130,8 @@ describe("ENG-1147 — mobile Discover recipe cards carry an accessible name", (
   });
 
   it("feeds a recipeCardAccessibilityLabel accessibilityLabel to every recipe-card Pressable", () => {
-    // Hero card + More-ideas row.
-    const matches = MOBILE_DISCOVER_SRC.match(
+    // Hero card (discover.tsx) + More-ideas row (DiscoverMoreIdeaRow.tsx).
+    const matches = MOBILE_A11Y_SRC.match(
       /accessibilityLabel=\{recipeCardAccessibilityLabel\(/g,
     );
     expect(matches?.length ?? 0).toBe(2);
@@ -131,7 +140,7 @@ describe("ENG-1147 — mobile Discover recipe cards carry an accessible name", (
   it("marks the recipe-card Pressables with accessibilityRole='button'", () => {
     // The hero card + More-ideas row Pressables both gained the role so
     // VoiceOver announces them as buttons, not generic views.
-    const roleMatches = MOBILE_DISCOVER_SRC.match(
+    const roleMatches = MOBILE_A11Y_SRC.match(
       /accessibilityRole="button"\s*\n\s*accessibilityLabel=\{recipeCardAccessibilityLabel\(/g,
     );
     expect(roleMatches?.length ?? 0).toBe(2);
