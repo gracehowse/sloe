@@ -59,12 +59,20 @@ export interface CalorieRingDialProps {
   target: number;
   /** Rendered diameter in px (default 224). Geometry scales from the 224 base. */
   size?: number;
+  /**
+   * Ring-only mode (ENG-1225 onboarding reveal): render just the jewel
+   * tick-ring + grow, no centre value/label — the host overlays its own centre
+   * (the reveal's "Crunching…" beat → serif count-up). Parity with the mobile
+   * dial's `hideCenter`.
+   */
+  hideCenter?: boolean;
 }
 
 export function CalorieRingDial({
   consumed,
   target,
   size = BASE,
+  hideCenter = false,
 }: CalorieRingDialProps) {
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;
@@ -192,17 +200,19 @@ export function CalorieRingDial({
         {track}
         {lit}
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span
-          className="font-[family-name:var(--font-headline)] text-[44px] font-normal leading-none tabular-nums"
-          style={isOver ? { color: "var(--warning)" } : undefined}
-        >
-          {animated.toLocaleString()}
-        </span>
-        <span className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
-          {label}
-        </span>
-      </div>
+      {hideCenter ? null : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span
+            className="font-[family-name:var(--font-headline)] text-[44px] font-normal leading-none tabular-nums"
+            style={isOver ? { color: "var(--warning)" } : undefined}
+          >
+            {animated.toLocaleString()}
+          </span>
+          <span className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-foreground-tertiary">
+            {label}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

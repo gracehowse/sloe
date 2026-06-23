@@ -79,12 +79,20 @@ export interface CalorieRingDialProps {
   target: number;
   /** Rendered diameter in px (default 224). Geometry scales from the 224 base. */
   size?: number;
+  /**
+   * Ring-only mode (ENG-1225 onboarding reveal): render just the jewel
+   * tick-ring + grow animation, no centre value/label — the host overlays its
+   * own centre (e.g. the reveal's "Crunching…" beat → serif count-up). The
+   * count-up still runs but is hidden, which is fine (cheap, keeps the API flat).
+   */
+  hideCenter?: boolean;
 }
 
 export function CalorieRingDial({
   consumed,
   target,
   size = BASE,
+  hideCenter = false,
 }: CalorieRingDialProps) {
   const colors = useThemeColors();
   const reduce = useReduceMotion();
@@ -187,19 +195,21 @@ export function CalorieRingDial({
         {track}
         {lit}
       </Svg>
-      <View style={styles.center} pointerEvents="none">
-        <Text
-          style={[
-            styles.value,
-            isOver ? { color: colors.overBudgetFg } : { color: colors.text },
-          ]}
-        >
-          {animated.toLocaleString()}
-        </Text>
-        <Text style={[styles.label, { color: colors.textTertiary }]}>
-          {label}
-        </Text>
-      </View>
+      {hideCenter ? null : (
+        <View style={styles.center} pointerEvents="none">
+          <Text
+            style={[
+              styles.value,
+              isOver ? { color: colors.overBudgetFg } : { color: colors.text },
+            ]}
+          >
+            {animated.toLocaleString()}
+          </Text>
+          <Text style={[styles.label, { color: colors.textTertiary }]}>
+            {label}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
