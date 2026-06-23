@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type ImageStyle, type StyleProp } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
@@ -42,6 +42,8 @@ import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSkeleton";
 import { DiscoverClusterCarousels } from "@/components/discover/DiscoverClusterCarousels";
 import { DiscoverQuickWeeknight } from "@/components/discover/DiscoverQuickWeeknight";
+import { DiscoverCollections } from "@/components/discover/DiscoverCollections";
+import { DiscoverMoreIdeaRow } from "@/components/discover/DiscoverMoreIdeaRow";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { IconBox } from "@/components/discover/IconBox";
 import { CreatorRail } from "@/components/discover/CreatorRail";
@@ -82,31 +84,6 @@ function SourceBadge({ source }: { source?: string }) {
     <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radius.sm, backgroundColor: MODAL_OVERLAY_SCRIM }}>
       <Text style={{ ...Type.caption, color: Accent.primaryForeground }}>{source}</Text>
     </View>
-  );
-}
-
-/** Row thumbnail: if `uri` 404s, show the same glyph box as missing image. */
-function DiscoverCoverImage({
-  uri,
-  style,
-  fallback,
-}: {
-  uri: string | null | undefined;
-  style: StyleProp<ImageStyle>;
-  fallback: ReactNode;
-}) {
-  const [broken, setBroken] = useState(false);
-  const trimmed = (uri ?? "").trim();
-  if (!trimmed || broken) return <>{fallback}</>;
-  return (
-    <SmartImage
-      source={{ uri: trimmed }}
-      style={style}
-      resizeMode="cover"
-      recyclingKey={trimmed}
-      accessibilityIgnoresInvertColors
-      onError={() => setBroken(true)}
-    />
   );
 }
 
@@ -564,76 +541,6 @@ export default function DiscoverScreen() {
     ? filtered.filter((r) => !isSeedRecipeId(r.id))
     : filtered;
 
-  // ── Compact list row — "More ideas" section. 40×40 icon-box on the
-  // left, title + source·time in the middle, trailing kcal / P / C.
-  // Each row after the first gets a top-border so the parent card
-  // renders a divider sequence. */
-  const renderMoreIdeaRow = useCallback(
-    (item: RecipeCard, idx: number) => {
-      const kcal = Math.round(item.calories);
-      const protein = Math.round(item.protein);
-      const carbs = Math.round(item.carbs);
-      return (
-        <Pressable
-          key={item.id}
-          onPress={() => router.push(`/recipe/${item.id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={recipeCardAccessibilityLabel({
-            title: decodeEntities(item.title),
-            calories: kcal,
-            protein,
-            carbs,
-            cookTime: item.cookTime ?? null,
-          })}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            // Gap-3 fix (2026-06-09): row gap 12 → Spacing.md (16) — on-scale.
-            gap: Spacing.md,
-            // Gap-3 fix: row padding 12 → Spacing.md (16) — on-scale.
-            padding: Spacing.md,
-            borderTopWidth: idx > 0 ? 1 : 0,
-            borderTopColor: colors.cardBorder,
-          }}
-        >
-          {/* F-55 (2026-04-22): use real thumbnail when the recipe has
-              an image_url (social-feed parity — tester flagged "the
-              more you might like is wrong - this is supposed to be
-              like a social media feed").
-              2026-06-08 (§11.4): image-less / broken rows now fall back
-              to the warm sage→cream RecipeHeroFallback (same calm tile as
-              the hero card + Library), not a flat inputBg chef-hat box —
-              so the row never reads as an empty grey/lilac thumbnail. */}
-          <DiscoverCoverImage
-            uri={item.image}
-            style={{ width: 56, height: 56, borderRadius: 10 }}
-            fallback={
-              <View style={{ width: 56, height: 56, borderRadius: 10, overflow: "hidden", backgroundColor: colors.card }}>
-                <RecipeHeroFallback id={item.id} title={item.title} iconSize={20} />
-              </View>
-            }
-          />
-          <View style={{ flex: 1 }}>
-            {/* Gap-1 fix (2026-06-09): recipe names ALWAYS Newsreader serif per
-                design-system §2.3 rule 2. Was Type.body (Inter 14pt). */}
-            <Text style={{ ...Type.headline, fontWeight: '600', color: colors.text }} numberOfLines={1}>
-              {decodeEntities(item.title)}
-            </Text>
-            <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>
-              {displayAttribution({ creatorName: item.creatorName, source: item.source })}
-              {item.cookTime ? ` · ${item.cookTime}` : ""}
-            </Text>
-          </View>
-          <Text style={{ ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-            <Text style={{ fontWeight: "600", color: colors.text }}>{kcal}</Text>
-            {` · ${protein}P · ${carbs}C`}
-          </Text>
-        </Pressable>
-      );
-    },
-    [router, colors],
-  );
-
   return (
     <View
       testID="screen-discover"
@@ -1059,6 +966,12 @@ export default function DiscoverScreen() {
                 onPressRecipe={(r) => router.push(`/recipe/${r.id}`)}
               />
             ) : null}
+            {/* ENG-1225 Block 6 — v3 "Collections" gradient tiles that deep-link
+                into the category pills (self-gating on sloe_v3_discover_editorial
+                + ≥1 non-empty tile). */}
+            {showClusterCarousels ? (
+              <DiscoverCollections recipes={recipes} onSelectCategory={setCategory} />
+            ) : null}
             {showClusterCarousels ? (
               <DiscoverClusterCarousels recipes={recipes.filter((r) => isSeedRecipeId(r.id))} />
             ) : null}
@@ -1109,7 +1022,14 @@ export default function DiscoverScreen() {
                       overflow: "hidden",
                     }}
                   >
-                    {displayFiltered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                    {displayFiltered.slice(3).map((r, idx) => (
+                      <DiscoverMoreIdeaRow
+                        key={r.id}
+                        item={r}
+                        idx={idx}
+                        onPress={() => router.push(`/recipe/${r.id}`)}
+                      />
+                    ))}
                   </View>
                 </View>
               </>
