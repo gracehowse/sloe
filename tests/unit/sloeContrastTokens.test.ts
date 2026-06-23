@@ -61,6 +61,11 @@ function ratio(a: string | RGB, b: string | RGB): number {
 // Surfaces
 const WHITE = "#FFFFFF";
 const CARD = "#F6F5F2";
+// Warm cream page (#F9F1E6) — the Today/Progress ground the amber status chips
+// sit on. This is the surface the storybook a11y addon flagged (`#956619`
+// warning-solid was 4.47:1 here, JUST under AA — the gap this guard had missed
+// by only testing CARD). (2026-06-23)
+const CREAM = "#F9F1E6";
 const DARK_CARD = "#232126";
 // Honey activity-soft tint as it actually composites on the card:
 // rgba(214,162,74,0.16) over #F6F5F2 → ≈ #F1E8D7 (the surface the burn-detail
@@ -73,7 +78,7 @@ const PRIMARY_FILL = "#C8794E"; // --accent-primary (clay, fill-only)
 const PRIMARY_SOLID = "#A0552E"; // --accent-primary-solid (clay text)
 const ACTIVITY_FILL = "#D6A24A"; // --activity (honey, fill-only)
 const ACTIVITY_SOLID = "#8A5A14"; // --activity-solid (honey text)
-const WARNING_SOLID = "#956619"; // --accent-warning-solid (amber text)
+const WARNING_SOLID = "#925812"; // --accent-warning-solid (amber text, 2026-06-23 darken)
 const DARK_BRAND = "#A98CB8"; // --foreground-brand dark (text lift of plum)
 const DARK_ACTIVITY_SOLID = "#E0B25E"; // --activity-solid dark
 
@@ -94,8 +99,11 @@ describe("Sloe text tokens clear WCAG AA on their surfaces", () => {
     expect(ratio(ACTIVITY_SOLID, WHITE)).toBeGreaterThanOrEqual(AA_NORMAL); // ~5.9
   });
 
-  it("warning-solid (amber text) passes AA-normal on the card", () => {
-    expect(ratio(WARNING_SOLID, CARD)).toBeGreaterThanOrEqual(AA_NORMAL); // ~4.8
+  it("warning-solid (amber text) passes AA-normal on white, card + cream", () => {
+    expect(ratio(WARNING_SOLID, WHITE)).toBeGreaterThanOrEqual(AA_NORMAL); // ~5.8
+    expect(ratio(WARNING_SOLID, CARD)).toBeGreaterThanOrEqual(AA_NORMAL); // ~5.3
+    // The cream-page chip surface the old #956619 (4.47) failed on.
+    expect(ratio(WARNING_SOLID, CREAM)).toBeGreaterThanOrEqual(AA_NORMAL); // ~5.2
   });
 
   it("net-energy chip backgrounds carry white label at AA-normal", () => {

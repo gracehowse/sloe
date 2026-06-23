@@ -1918,7 +1918,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               ? { fg: "#5E7C5A", bg: "rgba(94,124,90,0.1)" }
               : verdict.tone === "destructive"
                 ? { fg: "var(--destructive)", bg: "color-mix(in srgb, var(--destructive) 12%, transparent)" }
-                : { fg: "var(--warning)", bg: "color-mix(in srgb, var(--warning) 12%, transparent)" }
+                : { fg: "var(--accent-warning-solid)", bg: "color-mix(in srgb, var(--warning) 12%, transparent)" }
             : null;
           // ENG-1085 — confident SOLID verdict banner (white on a scheme-constant
           // dark tone, AA-safe in both schemes; mirrors mobile RecipeTitleBlock).
@@ -2514,13 +2514,13 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           recipe.creatorCalories &&
           Math.abs(recipe.creatorCalories - recipe.calories) / recipe.calories > 0.1 && (
             <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
-              <Icons.caution className="w-4 h-4 text-warning mt-0.5" />
+              <Icons.caution className="w-4 h-4 text-warning-solid mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-warning">
+                <p className="text-sm font-medium text-warning-solid">
                   Creator stated {recipe.creatorCalories} kcal (
                   {Math.round(((recipe.creatorCalories - recipe.calories) / recipe.calories) * 100)}% difference)
                 </p>
-                <p className="text-xs text-warning/80 mt-0.5">Verified value calculated from ingredient data</p>
+                <p className="text-xs text-warning-solid/80 mt-0.5">Verified value calculated from ingredient data</p>
               </div>
             </div>
           )}

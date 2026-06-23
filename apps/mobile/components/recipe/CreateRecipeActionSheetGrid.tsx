@@ -208,7 +208,7 @@ function SourceTile({
               justifyContent: "center",
             }}
           >
-            <Lock size={12} color={Accent.warning} strokeWidth={2} />
+            <Lock size={12} color={Accent.warningSolid} strokeWidth={2} />
           </View>
         ) : null}
       </View>

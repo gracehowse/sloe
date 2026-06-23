@@ -99,7 +99,7 @@ function kindBadgeClasses(kind: LibraryEntryKind): string {
     case "created":
       return "bg-primary/10 text-primary";
     case "imported":
-      return "bg-warning-soft text-warning";
+      return "bg-warning-soft text-warning-solid";
     case "saved":
     default:
       return "bg-muted text-muted-foreground";

@@ -112,7 +112,7 @@ export function TodayAtAGlance({
         </p>
       )}
       {!allTargetsHit && streakDays > 0 && caloriesEaten === 0 && (
-        <p className="text-sm text-warning font-medium mb-4">
+        <p className="text-sm text-warning-solid font-medium mb-4">
           You have a {streakDays}-day streak going. Log a meal to keep it alive!
         </p>
       )}

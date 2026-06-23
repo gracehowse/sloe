@@ -65,10 +65,15 @@ export const Accent = {
   successSolid: '#466046',
   /** Amber slot — warning, sodium, approaching limits. (over-budget moved to
    *  red per dossier D-2; bonus/burn own honey via `Accent.activity`.)
-   *  `warningSolid` (#956619, 5.01:1 on white) carries text usage. */
+   *  `warning` (#C9892C, 2.96:1 text-fail) is FILLS ONLY (dots / bars / soft
+   *  tints). `warningSolid` carries ALL amber TEXT + icons. Darkened
+   *  #956619 → #925812 (2026-06-23, a11y parity with web `--accent-warning-solid`):
+   *  the old solid was 5.01:1 white but only 4.47:1 on the cream the amber chips
+   *  sit on; #925812 is 5.79 white / 5.17 cream — PASS as text (a touch more
+   *  orange than `activitySolid` #8A5A14 so warning ≠ honey-bonus). */
   warning: '#C9892C',
   warningLight: '#D6A24A',
-  warningSolid: '#956619',
+  warningSolid: '#925812',
   /** Brick slot — destructive, error, over-budget. Base hue is the TEXT
    *  token in practice, so it must clear AA 4.5:1 as text: darkened
    *  #C0533F → #B04434 (2026-06-09, a11y; 4.86:1 on the cream

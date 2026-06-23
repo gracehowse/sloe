@@ -178,7 +178,7 @@ export function AppleHealthCard({
     {
       key: "active",
       icon: <Flame size={16} aria-hidden />,
-      iconClass: "bg-warning-soft text-warning",
+      iconClass: "bg-warning-soft text-warning-solid",
       label: "Active energy",
       value: formatKcal(snapshot.activeEnergyKcal),
     },

@@ -154,7 +154,7 @@ export function PlanTemplatesDialog({
               />
             </label>
             {sourceMealCount === 0 ? (
-              <p className="text-xs text-warning" aria-live="polite">
+              <p className="text-xs text-warning-solid" aria-live="polite">
                 This plan has no meals to save. Generate a plan first.
               </p>
             ) : (

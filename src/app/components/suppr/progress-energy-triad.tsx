@@ -125,7 +125,7 @@ export function ProgressEnergyTriad({
           className="mt-1.5 text-[18px] font-bold tabular-nums"
           style={{
             color: isSurplus
-              ? "var(--warning)"
+              ? "var(--accent-warning-solid)"
               : deficitKcal != null && deficitKcal > 0
                 ? "var(--primary)"
                 : "var(--foreground)",
@@ -140,7 +140,7 @@ export function ProgressEnergyTriad({
             : "—"}
         </p>
         {isSurplus ? (
-          <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-warning">
+          <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-warning-solid">
             Surplus
           </p>
         ) : null}
@@ -185,7 +185,7 @@ function ProgressEnergyEquation({
           ? "0"
           : `+${Math.abs(deficitKcal).toLocaleString()}`;
   const resultColor = isSurplus
-    ? "var(--warning)"
+    ? "var(--accent-warning-solid)"
     : deficitKcal != null && deficitKcal > 0
       ? "var(--primary)"
       : "var(--foreground)";

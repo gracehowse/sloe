@@ -104,7 +104,7 @@ export function PermissionsStep() {
         subtitle="Optional — you can change it later in Settings."
       />
       <PermissionCard
-        icon={<Bell className="size-5 text-warning" />}
+        icon={<Bell className="size-5 text-warning-solid" />}
         iconBg="bg-warning/12"
         title="Notifications"
         body="Gentle reminders only — an evening nudge when you're off-target, plus a Sunday recap of your week."

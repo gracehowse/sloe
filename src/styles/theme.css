@@ -148,8 +148,15 @@
   /** Semantic states (Sloe palette).
    *  - success → sage. Fill 4.66:1 on white but 4.40:1 on oat (text fails),
    *    so `--accent-success-solid` (#466046) carries text: 6.95/6.56 PASS.
-   *  - warning → amber. Fill 2.96:1 (text fails), `--accent-warning-solid`
-   *    (#956619) carries text: 5.01/4.73 PASS.
+   *  - warning → amber. Fill `--accent-warning` (#C9892C) is 2.96:1 (text
+   *    fails) — use it ONLY for fills / dots / ring arcs. `--accent-warning-solid`
+   *    carries ALL amber TEXT + icons (`text-warning-solid`). Darkened
+   *    #956619 → #925812 (2026-06-23, a11y): the old solid was 5.01:1 on white
+   *    but only 4.47:1 on the cream `#F9F1E6` the Today/Progress amber chips sit
+   *    on (the `today-ring-status-chip` storybook a11y failure). #925812 is
+   *    5.79:1 white / 5.17:1 cream — PASS as text on both, still clearly amber
+   *    (a touch more orange than `--activity-solid` #8A5A14 so warning ≠ honey).
+   *    See ENG-811 + feedback_root_cause_class_of_bug.
    *  - destructive → warm brick. The base hue is the TEXT token in practice
    *    (`text-destructive` resolves here), so it must clear AA 4.5:1 as text.
    *    Darkened #C0533F → #B04434 (2026-06-09, a11y): 5.64:1 on white,
@@ -161,7 +168,7 @@
   --accent-success-solid: #466046;
   --accent-success-soft: rgba(94, 124, 90, 0.12);
   --accent-warning: #C9892C;
-  --accent-warning-solid: #956619;
+  --accent-warning-solid: #925812;
   --accent-warning-soft: rgba(201, 137, 44, 0.12);
   /* ENG-1085 — "Fits your day" verdict-banner fills. SCHEME-CONSTANT (defined
    * only here, not overridden in .dark) dark tones so WHITE text clears AA in

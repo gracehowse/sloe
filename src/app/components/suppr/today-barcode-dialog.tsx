@@ -553,7 +553,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-semibold">
                               <span className="text-destructive">P {formatMacro(scaled.protein, "protein", "g")}</span>
                               <span className="text-[var(--macro-carbs)]">C {formatMacro(scaled.carbs, "carbs", "g")}</span>
-                              <span className="text-warning">F {formatMacro(scaled.fat, "fat", "g")}</span>
+                              <span className="text-warning-solid">F {formatMacro(scaled.fat, "fat", "g")}</span>
                               {scaled.fiberG > 0 ? (
                                 <span className="text-muted-foreground">Fiber {formatMacro(scaled.fiberG, "fiber", "g")}</span>
                               ) : null}

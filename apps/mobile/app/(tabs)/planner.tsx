@@ -3156,7 +3156,7 @@ export default function PlannerScreen() {
                       {locked ? (
                         <Lock
                           size={11}
-                          color={days === d ? Accent.success : Accent.warning}
+                          color={days === d ? Accent.success : Accent.warningSolid}
                           strokeWidth={2}
                           accessibilityLabel="Pro only"
                         />
@@ -3470,7 +3470,7 @@ export default function PlannerScreen() {
                 <Text
                   accessibilityRole="text"
                   accessibilityLabel={`Protein ${under} grams under target. Scale ${lowest.name} up or swap to a higher-protein recipe.`}
-                  style={{ fontSize: 12, color: Accent.warning, marginTop: 4, marginBottom: 4, lineHeight: 16 }}
+                  style={{ fontSize: 12, color: Accent.warningSolid, marginTop: 4, marginBottom: 4, lineHeight: 16 }}
                   testID="residual-protein-gap-hint"
                 >
                   Protein {under}g under target — try scaling {lowest.name} up or swap to a higher-protein recipe.
@@ -3621,7 +3621,7 @@ export default function PlannerScreen() {
                       icon={
                         <Package
                           size={10}
-                          color={Accent.warning}
+                          color={Accent.warningSolid}
                           strokeWidth={2}
                           accessibilityElementsHidden
                           importantForAccessibility="no"
@@ -3793,7 +3793,7 @@ export default function PlannerScreen() {
                         style={{
                           fontSize: 10,
                           fontWeight: "600",
-                          color: Accent.warning,
+                          color: Accent.warningSolid,
                         }}
                       >
                         Estimated · verify
@@ -4158,7 +4158,7 @@ export default function PlannerScreen() {
                         {d} day{d > 1 ? "s" : ""}
                       </Text>
                       {locked ? (
-                        <Lock size={11} color={days === d ? Accent.success : Accent.warning} strokeWidth={2} accessibilityLabel="Pro only" />
+                        <Lock size={11} color={days === d ? Accent.success : Accent.warningSolid} strokeWidth={2} accessibilityLabel="Pro only" />
                       ) : null}
                     </View>
                   </Pressable>

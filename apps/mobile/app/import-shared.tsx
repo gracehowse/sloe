@@ -2304,7 +2304,7 @@ export default function ImportSharedScreen() {
                     gap: 10,
                   }}
                 >
-                  <Ionicons name="alert-circle-outline" size={20} color={Accent.warning} style={{ marginTop: 1 }} />
+                  <Ionicons name="alert-circle-outline" size={20} color={Accent.warningSolid} style={{ marginTop: 1 }} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14, marginBottom: 2 }}>
                       {headline}
@@ -2384,7 +2384,7 @@ export default function ImportSharedScreen() {
                         <Ionicons
                           name="alert-circle"
                           size={18}
-                          color={Accent.warning}
+                          color={Accent.warningSolid}
                           style={{ marginRight: 8, marginTop: 2 }}
                         />
                       )}
@@ -2519,7 +2519,7 @@ export default function ImportSharedScreen() {
           importRedesign ? (
             <View style={styles.errorRedesignSection} accessibilityRole="alert">
               <View style={styles.errorRedesignHeader}>
-                <AlertCircle size={40} color={Accent.warning} strokeWidth={1.75} />
+                <AlertCircle size={40} color={Accent.warningSolid} strokeWidth={1.75} />
                 <Text style={styles.errorRedesignTitle}>Something went wrong</Text>
                 <Text style={styles.errorRedesignBody}>
                   {error ?? "Something went wrong."}

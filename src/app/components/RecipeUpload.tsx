@@ -1955,7 +1955,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   className="mt-4 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3 text-left"
                 >
                   <div className="flex gap-3">
-                    <Icons.alert className="h-10 w-10 shrink-0 text-warning" aria-hidden />
+                    <Icons.alert className="h-10 w-10 shrink-0 text-warning-solid" aria-hidden />
                     <div>
                       <p className="font-[family-name:var(--font-headline)] text-lg text-foreground">
                         Something went wrong
@@ -2018,7 +2018,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                       </span>
                       {isFreeTier ? (
                         <span className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-warning/10">
-                          <Icons.lock className="h-2.5 w-2.5 text-warning" aria-hidden />
+                          <Icons.lock className="h-2.5 w-2.5 text-warning-solid" aria-hidden />
                         </span>
                       ) : null}
                     </span>

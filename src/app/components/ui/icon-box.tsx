@@ -23,7 +23,7 @@ const iconBoxVariants = cva(
       tone: {
         primary: "bg-primary/10 text-primary",
         success: "bg-success-soft text-success",
-        warning: "bg-warning-soft text-warning",
+        warning: "bg-warning-soft text-warning-solid",
         destructive: "bg-destructive/10 text-destructive",
         protein: "bg-macro-protein-soft text-macro-protein",
         carbs: "bg-macro-carbs-soft text-macro-carbs",

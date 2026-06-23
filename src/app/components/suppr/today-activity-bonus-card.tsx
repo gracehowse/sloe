@@ -427,7 +427,7 @@ export function TodayActivityBonusCard({
               ? "text-muted-foreground"
               : isWeekDeficit
                 ? "text-[var(--success)]"
-                : "text-[var(--warning)]";
+                : "text-[var(--accent-warning-solid)]";
             return (
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">

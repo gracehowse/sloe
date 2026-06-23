@@ -164,7 +164,7 @@ function LogSheetDescribeFlowImpl({
           ))}
         </ScrollView>
         {low ? (
-          <Text style={{ fontSize: 11, color: Accent.warning, marginBottom: Spacing.sm }}>
+          <Text style={{ fontSize: 11, color: Accent.warningSolid, marginBottom: Spacing.sm }}>
             Some items are low confidence — check portions before logging.
           </Text>
         ) : null}

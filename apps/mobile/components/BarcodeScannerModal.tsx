@@ -836,7 +836,7 @@ export default function BarcodeScannerModal({
       lineHeight: 20,
       fontVariant: ["tabular-nums"],
     },
-    macroTileNumKcal: { color: Accent.warning },
+    macroTileNumKcal: { color: Accent.warningSolid },
     macroTileLabel: {
       marginTop: 4,
       fontSize: 10,

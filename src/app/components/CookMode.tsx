@@ -1246,7 +1246,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                     >
                       <svg
                         className={`w-7 h-7 transition-colors ${
-                          filled ? "text-warning" : "text-muted-foreground"
+                          filled ? "text-warning-solid" : "text-muted-foreground"
                         }`}
                         fill={filled ? "currentColor" : "none"}
                         stroke="currentColor"

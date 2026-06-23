@@ -148,7 +148,7 @@ function RemainingMacrosBar({
             </div>
             <span
               className="tabular-nums text-lg font-bold leading-none"
-              style={{ color: over ? "var(--warning)" : "var(--foreground)" }}
+              style={{ color: over ? "var(--accent-warning-solid)" : "var(--foreground)" }}
             >
               {display}
               {unit === "g" && <span className="text-[10px] font-semibold ml-0.5">g</span>}
@@ -178,7 +178,7 @@ function RemainingMacrosBar({
                     <span className="text-[9px] text-muted-foreground uppercase tracking-wider">after</span>
                     <span
                       className="tabular-nums text-xs font-semibold"
-                      style={{ color: pOver ? "var(--warning)" : "var(--foreground)" }}
+                      style={{ color: pOver ? "var(--accent-warning-solid)" : "var(--foreground)" }}
                     >
                       {pDisplay}
                       {unit === "g" && <span className="text-[8px] ml-0.5">g</span>}

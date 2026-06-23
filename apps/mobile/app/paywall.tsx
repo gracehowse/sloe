@@ -142,7 +142,7 @@ const TIMELINE: {
   },
   {
     icon: Flag,
-    color: Accent.warning,
+    color: Accent.warningSolid,
     title: "Day 7: Trial ends",
     desc: "Your trial ends. Continue with Pro or switch to the free plan.",
   },

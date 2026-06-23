@@ -1058,7 +1058,7 @@ export default function HealthSyncScreen() {
       {!available && (
         <View style={[styles.cardShadowWrapper, { marginTop: Spacing.xs }]}>
           <View style={[styles.card, { borderColor: Accent.warning + "40", gap: Spacing.sm }]}>
-            <Text style={{ fontSize: 14, color: Accent.warning, fontWeight: "600" as const }}>
+            <Text style={{ fontSize: 14, color: Accent.warningSolid, fontWeight: "600" as const }}>
               {isExpoGoRuntime()
                 ? "Apple Health isn't available in Expo Go."
                 : "Apple Health isn't available on this device."}

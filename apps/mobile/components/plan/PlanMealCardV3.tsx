@@ -67,8 +67,8 @@ export function PlanMealCardV3({
         </Text>
         {note === "batch" ? (
           <View style={styles.batch}>
-            <Flame size={12} color={Accent.warning} />
-            <Text style={[styles.batchText, { color: Accent.warning }]}>Batch</Text>
+            <Flame size={12} color={Accent.warningSolid} />
+            <Text style={[styles.batchText, { color: Accent.warningSolid }]}>Batch</Text>
           </View>
         ) : note ? (
           <Text style={[styles.note, { color: colors.navPrimary }]}>{note}</Text>

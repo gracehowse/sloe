@@ -101,7 +101,7 @@ export function SaveLimitBanner({
     <div
       className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between gap-3 ${
         atLimit
-          ? "bg-warning/10 text-warning border border-warning/30"
+          ? "bg-warning/10 text-warning-solid border border-warning/30"
           : "bg-muted text-muted-foreground border border-border"
       }`}
     >

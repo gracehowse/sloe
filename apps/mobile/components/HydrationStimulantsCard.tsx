@@ -258,7 +258,7 @@ function Row({
         </Text>
       ) : null}
       {overTarget ? (
-        <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.warning, marginTop: Spacing.xs }}>
+        <Text style={{ fontSize: 10, fontWeight: "700", color: Accent.warningSolid, marginTop: Spacing.xs }}>
           {overCopy}
         </Text>
       ) : null}

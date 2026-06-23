@@ -226,9 +226,11 @@ describe("web recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2)",
     expect(SRC).not.toMatch(/var\(--accent-win\)/);
     // Success leads with the sage token; over-budget tones use the
     // warning / destructive CSS vars (never a raw hex for the over states).
+    // The warning chip text uses the AA-safe `--accent-warning-solid` (the
+    // 2026-06-23 amber-text a11y fix), not the bright `--warning` fill.
     expect(SRC).toMatch(/\{ fg: "#5E7C5A", bg: "rgba\(94,124,90,0\.1\)" \}/);
     expect(SRC).toMatch(/fg: "var\(--destructive\)"/);
-    expect(SRC).toMatch(/fg: "var\(--warning\)"/);
+    expect(SRC).toMatch(/fg: "var\(--accent-warning-solid\)"/);
   });
 
   it("verdict renders as a confident full-width solid banner (ENG-1085); legacy pill kept as the flag-off path", () => {

@@ -804,7 +804,7 @@ export default function CreateCustomFoodSheet({
                   accessibilityLiveRegion="polite"
                   style={{
                     fontSize: 11,
-                    color: Accent.warning,
+                    color: Accent.warningSolid,
                     marginBottom: Spacing.md,
                     marginTop: -Spacing.sm,
                   }}
