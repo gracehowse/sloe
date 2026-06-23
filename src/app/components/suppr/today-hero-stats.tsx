@@ -320,7 +320,7 @@ function HeroStatusChip({
       ? {
           label: todayStatusChip("over"),
           className: tierV1
-            ? "bg-warning-soft text-warning"
+            ? "bg-warning-soft text-warning-solid"
             : "bg-destructive/10 text-destructive",
           Icon: CircleAlert,
         }

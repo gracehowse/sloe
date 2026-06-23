@@ -69,7 +69,7 @@ export function PlanHouseholdBannerV3({
         Cooking for {servingCount} · {names}
       </Text>
       {mismatchEaters != null ? (
-        <Text style={[styles.flag, { color: Accent.warning }]}>
+        <Text style={[styles.flag, { color: Accent.warningSolid }]}>
           {mismatchEaters}× — match
         </Text>
       ) : (
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     fontFamily: Type.label.fontFamily,
   },
   label: { ...Type.label, textTransform: "none", letterSpacing: 0, flex: 1, fontSize: 13 },
-  flag: { ...Type.statLabel, fontSize: 11, color: Accent.warning },
+  flag: { ...Type.statLabel, fontSize: 11, color: Accent.warningSolid },
 });
 
 export default PlanHouseholdBannerV3;

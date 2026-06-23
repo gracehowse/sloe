@@ -715,7 +715,7 @@ export default function PhotoLogSheet({
                             {low && (
                               <Text
                                 accessibilityRole="alert"
-                                style={{ fontSize: 11, color: Accent.warning, marginTop: 2 }}
+                                style={{ fontSize: 11, color: Accent.warningSolid, marginTop: 2 }}
                               >
                                 Low confidence — verify before logging.
                               </Text>

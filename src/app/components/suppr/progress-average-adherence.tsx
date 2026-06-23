@@ -141,10 +141,10 @@ export function ProgressAverageAdherence({
         // NOT the destructive-red ring carve-out. Mirror: mobile.
         <p
           data-testid="progress-adherence-pct"
-          className="mt-2 font-[family-name:var(--font-headline)] text-[40px] font-medium leading-none text-warning tabular-nums"
+          className="mt-2 font-[family-name:var(--font-headline)] text-[40px] font-medium leading-none text-warning-solid tabular-nums"
         >
           {overDisplay.value}
-          <span className="text-[22px] text-warning/70">{overDisplay.suffix}</span>
+          <span className="text-[22px] text-warning-solid/70">{overDisplay.suffix}</span>
         </p>
       ) : (
         <p

@@ -99,7 +99,7 @@ export function MacroStatPill({
             style={{
               fontSize: 11,
               fontWeight: "600",
-              color: Accent.warning,
+              color: Accent.warningSolid,
               fontVariant: ["tabular-nums"],
             }}
           >

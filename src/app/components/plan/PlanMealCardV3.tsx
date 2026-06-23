@@ -88,10 +88,10 @@ export function PlanMealCardV3({
         </span>
         {note === "batch" ? (
           <span className="mt-1 flex items-center gap-[3px]">
-            <Flame className="size-3" style={{ color: "var(--warning)" }} />
+            <Flame className="size-3" style={{ color: "var(--accent-warning-solid)" }} />
             <span
               className="text-[10px] font-semibold uppercase tracking-[0.04em]"
-              style={{ color: "var(--warning)" }}
+              style={{ color: "var(--accent-warning-solid)" }}
             >
               Batch
             </span>

@@ -624,7 +624,7 @@ export function CreateCustomFoodDialog({
               </p>
             )}
             {scanWarning && (
-              <p className="text-xs text-warning" role="status" aria-live="polite">
+              <p className="text-xs text-warning-solid" role="status" aria-live="polite">
                 {scanWarning}
               </p>
             )}

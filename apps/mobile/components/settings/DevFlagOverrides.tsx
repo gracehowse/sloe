@@ -108,7 +108,7 @@ export function DevFlagOverrides() {
         gap: Spacing.sm,
       }}
     >
-      <Text style={{ ...Type.label, color: Accent.warning }}>
+      <Text style={{ ...Type.label, color: Accent.warningSolid }}>
         DEV · Flag overrides
       </Text>
       <Text style={{ ...Type.caption, color: colors.textSecondary }}>

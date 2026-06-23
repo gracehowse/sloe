@@ -334,7 +334,7 @@ export function MobileMfpCsvImportCard({
           {state.kind === "error" && (
             <View style={{ marginTop: 12 }}>
               <Text
-                style={{ fontSize: 12, color: Accent.warning, marginBottom: 8 }}
+                style={{ fontSize: 12, color: Accent.warningSolid, marginBottom: 8 }}
                 accessibilityRole="alert"
               >
                 {state.message}

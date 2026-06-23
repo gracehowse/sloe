@@ -120,7 +120,7 @@ function TodayDashboardMacroBarsImpl({
       label: "Sugar",
       current: Math.round(microSum.sugarG * 10) / 10,
       target: 50,
-      color: Accent.warning,
+      color: Accent.warningSolid,
       unit: "g",
     },
     sodium: {

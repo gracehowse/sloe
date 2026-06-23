@@ -156,7 +156,7 @@ export function ProgressEnergyTriad({
         </Text>
         {/* headers census 2026-06-10: 9px sub-label → Type.label. */}
         {isSurplus ? (
-          <Text style={{ ...Type.label, color: Accent.warning, marginTop: 2 }}>
+          <Text style={{ ...Type.label, color: Accent.warningSolid, marginTop: 2 }}>
             Surplus
           </Text>
         ) : null}

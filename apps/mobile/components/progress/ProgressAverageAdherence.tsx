@@ -152,10 +152,10 @@ export function ProgressAverageAdherence({
         // the destructive-red ring carve-out. Mirror: web.
         <Text
           testID="progress-adherence-pct"
-          style={{ ...Type.display, fontSize: 40, lineHeight: 44, color: Accent.warning, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
+          style={{ ...Type.display, fontSize: 40, lineHeight: 44, color: Accent.warningSolid, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
         >
           {overDisplay.value}
-          <Text style={{ fontSize: 22, color: Accent.warning }}>{overDisplay.suffix}</Text>
+          <Text style={{ fontSize: 22, color: Accent.warningSolid }}>{overDisplay.suffix}</Text>
         </Text>
       ) : (
         <Text

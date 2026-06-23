@@ -204,7 +204,7 @@ export function CalorieRingDial({
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className="font-[family-name:var(--font-headline)] text-[44px] font-normal leading-none tabular-nums"
-            style={isOver ? { color: "var(--warning)" } : undefined}
+            style={isOver ? { color: "var(--accent-warning-solid)" } : undefined}
           >
             {animated.toLocaleString()}
           </span>

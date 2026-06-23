@@ -145,10 +145,10 @@ type SwapTarget = { day: number; slot: SlotKey; mealIndex: number };
  *  never red). */
 function toneClasses(tone: DayTotalTone): string {
   if (tone === "neutral") return "bg-muted text-muted-foreground";
-  if (tone === "amber") return "bg-warning-soft text-warning";
+  if (tone === "amber") return "bg-warning-soft text-warning-solid";
   // For "red" we still use the warning palette (over-budget = amber
   // not destructive per the prototype carryover rule).
-  return "bg-warning-soft text-warning";
+  return "bg-warning-soft text-warning-solid";
 }
 
 /** F2-E (2026-04-28) — portion-multiplier display label, hidden at
@@ -1903,7 +1903,7 @@ export const MealPlanner = memo(function MealPlanner({
                       {isLeftover ? (
                         <span
                           data-testid="meal-planner-leftover-badge"
-                          className="inline-flex items-center gap-1 rounded-full bg-warning/15 text-warning"
+                          className="inline-flex items-center gap-1 rounded-full bg-warning/15 text-warning-solid"
                           style={{
                             fontSize: 9,
                             fontWeight: 700,

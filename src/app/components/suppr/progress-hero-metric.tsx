@@ -194,7 +194,7 @@ export function ProgressHeroMetric({
             // "over" tag, amber (warning) not the raw "111%" red number.
             <span
               data-testid="progress-hero-pct"
-              className="flex items-baseline tabular-nums leading-none text-warning"
+              className="flex items-baseline tabular-nums leading-none text-warning-solid"
             >
               <span className="text-[28px] font-extrabold">{overDisplay.value}%</span>
               <span className="ml-0.5 text-[11px] font-semibold">{overDisplay.qualifier}</span>

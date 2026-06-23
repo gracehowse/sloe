@@ -417,7 +417,7 @@ export function HouseholdPanel() {
                   <div className="flex-1 grid grid-cols-4 gap-1">
                     <div className="text-center">
                       <p className="text-[10px] text-muted-foreground leading-tight">Cal left</p>
-                      <p className="text-xs font-semibold tabular-nums" style={{ color: m.remaining.calories > 0 ? "var(--success)" : "var(--warning)" }}>{m.remaining.calories}</p>
+                      <p className="text-xs font-semibold tabular-nums" style={{ color: m.remaining.calories > 0 ? "var(--success)" : "var(--accent-warning-solid)" }}>{m.remaining.calories}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[10px] text-muted-foreground leading-tight">Protein left</p>
@@ -439,7 +439,7 @@ export function HouseholdPanel() {
                   <div className="flex-1 grid grid-cols-4 gap-1">
                     <div className="text-center">
                       <p className="text-[10px] text-muted-foreground leading-tight">Cal left</p>
-                      <p className="text-xs font-semibold tabular-nums" style={{ color: m.remaining.calories > 0 ? "var(--success)" : "var(--warning)" }}>{m.remaining.calories}</p>
+                      <p className="text-xs font-semibold tabular-nums" style={{ color: m.remaining.calories > 0 ? "var(--success)" : "var(--accent-warning-solid)" }}>{m.remaining.calories}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[10px] text-muted-foreground leading-tight">Protein left</p>

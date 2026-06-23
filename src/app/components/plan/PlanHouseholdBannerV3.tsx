@@ -70,7 +70,7 @@ export function PlanHouseholdBannerV3({
       {mismatchEaters != null ? (
         <span
           className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.04em]"
-          style={{ color: "var(--warning)" }}
+          style={{ color: "var(--accent-warning-solid)" }}
         >
           {mismatchEaters}× — match
         </span>

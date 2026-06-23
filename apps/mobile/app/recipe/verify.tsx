@@ -800,7 +800,7 @@ export default function VerifyScreen() {
           <View style={{ width: 50 }} />
         </View>
         <View style={styles.centered}>
-          <Text style={{ color: Accent.warning, textAlign: "center", marginHorizontal: 24 }}>
+          <Text style={{ color: Accent.warningSolid, textAlign: "center", marginHorizontal: 24 }}>
             {loadError}
           </Text>
         </View>
@@ -946,7 +946,7 @@ export default function VerifyScreen() {
                 onPress={() => setExpandedIndex(expanded ? null : i)}
               >
                 {needsReview && !rowHasOverride && (
-                  <Ionicons name="alert-circle" size={18} color={Accent.warning} style={{ marginRight: Spacing.sm }} />
+                  <Ionicons name="alert-circle" size={18} color={Accent.warningSolid} style={{ marginRight: Spacing.sm }} />
                 )}
                 <View style={styles.ingContent}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
@@ -1130,7 +1130,7 @@ export default function VerifyScreen() {
                             accessibilityLabel="Needs density — tap to switch to grams and scale this ingredient"
                             hitSlop={6}
                           >
-                            <Text style={{ fontSize: 11, color: Accent.warning, textDecorationLine: "underline" }}>
+                            <Text style={{ fontSize: 11, color: Accent.warningSolid, textDecorationLine: "underline" }}>
                               needs density — tap to switch to g
                             </Text>
                           </Pressable>

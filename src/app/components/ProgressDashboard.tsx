@@ -1332,7 +1332,7 @@ function ProgressDashboardContent() {
           weekDeltaTone === "progress"
             ? "text-success"
             : weekDeltaTone === "regress"
-              ? "text-warning"
+              ? "text-warning-solid"
               : "text-muted-foreground";
         return (
         <SupprCard elevation="card" padding="lg" radius="lg" className="relative mb-4" data-testid="progress-weight-card">
@@ -1840,7 +1840,7 @@ function ProgressDashboardContent() {
           data-testid="progress-demoted-chip-calories"
           className="rounded-lg border border-border bg-transparent px-3 py-2 text-left hover:bg-muted/30 transition-colors flex items-center gap-2"
         >
-          <Icons.calories className="h-3.5 w-3.5 text-warning shrink-0" aria-hidden />
+          <Icons.calories className="h-3.5 w-3.5 text-warning-solid shrink-0" aria-hidden />
           <div className="flex-1 min-w-0">
             <p
               data-testid="progress-avg-calories-label"

@@ -422,8 +422,8 @@ function ActionRow({
                 backgroundColor: `${Accent.warning}1A`,
               }}
             >
-              <Lock size={12} color={Accent.warning} strokeWidth={2} />
-              <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.warning }}>Pro</Text>
+              <Lock size={12} color={Accent.warningSolid} strokeWidth={2} />
+              <Text style={{ fontSize: 11, fontWeight: "600", color: Accent.warningSolid }}>Pro</Text>
             </View>
           ) : null}
         </View>

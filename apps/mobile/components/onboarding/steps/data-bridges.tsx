@@ -330,7 +330,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
             paddingVertical: 8,
           }}
         >
-          <Ionicons name="alert-circle-outline" size={14} color={Accent.warning} />
+          <Ionicons name="alert-circle-outline" size={14} color={Accent.warningSolid} />
           <Text style={{ flex: 1, fontSize: 11, color: colors.textSecondary, lineHeight: 16 }}>
             {error}
           </Text>
@@ -431,7 +431,7 @@ function NotificationsCard({ userId }: { userId: string | null }) {
     >
       {error ? (
         <Text
-          style={{ fontSize: 11, color: Accent.warning, marginTop: 8, lineHeight: 16 }}
+          style={{ fontSize: 11, color: Accent.warningSolid, marginTop: 8, lineHeight: 16 }}
         >
           {error}
         </Text>

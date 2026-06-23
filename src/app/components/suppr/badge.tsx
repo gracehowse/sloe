@@ -37,7 +37,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   // Info — cyan/water token; used for informational metadata.
   info: "bg-[color-mix(in_oklab,var(--macro-water)_14%,transparent)] text-[color:var(--macro-water)] border-[color:color-mix(in_oklab,var(--macro-water)_35%,transparent)]",
   // Warn — amber warning token.
-  warn: "bg-warning/10 text-warning border-warning/30",
+  warn: "bg-warning/10 text-warning-solid border-warning/30",
   // Pro — primary-coloured; marks Pro-gated features.
   pro: "bg-primary/10 text-primary border-primary/30",
   // AI — violet/chart-5 token. Pulled from the existing theme --chart-5.
@@ -45,10 +45,10 @@ const variantStyles: Record<BadgeVariant, string> = {
   // Added — success/green: new content the user added themselves.
   added: "bg-success/10 text-success border-success/30",
   // Override — amber warning: a manual override pinned on a row.
-  override: "bg-warning/10 text-warning border-warning/30",
+  override: "bg-warning/10 text-warning-solid border-warning/30",
   // Leftover — subtle accent with amber tone that matches the planner's
   // existing leftover tile chrome.
-  leftover: "bg-warning/10 text-warning border-warning/30",
+  leftover: "bg-warning/10 text-warning-solid border-warning/30",
   // Custom — primary: user-created foods in the search results.
   custom: "bg-primary/10 text-primary border-primary/30",
   // Freeze — cyan/water token with a snowflake prefix.

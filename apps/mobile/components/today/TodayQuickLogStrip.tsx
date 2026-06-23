@@ -74,7 +74,7 @@ function TodayQuickLogStripImpl({
     onPress: () => void;
     locked: boolean;
   }[] = [
-    { label: "Search", Glyph: Search, color: Accent.warning, onPress: onOpenSearch, locked: false },
+    { label: "Search", Glyph: Search, color: Accent.warningSolid, onPress: onOpenSearch, locked: false },
     { label: "Voice", Glyph: Mic, color: Accent.success, onPress: onOpenVoice, locked: proLocked },
     { label: "Snap", Glyph: Camera, color: accent.primary, onPress: onOpenPhoto, locked: proLocked },
     { label: "Scan", Glyph: ScanBarcode, color: Accent.magenta, onPress: onOpenBarcode, locked: false },

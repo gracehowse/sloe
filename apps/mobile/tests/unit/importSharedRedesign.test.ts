@@ -96,7 +96,8 @@ describe("Import surface — L4 error (import.md §3.10, ENG-898)", () => {
   it("redesign path uses amber AlertCircle + unboxed editorial error", () => {
     expect(SRC).toMatch(/state === "error"[\s\S]{0,80}importRedesign \?/);
     expect(SRC).toMatch(/errorRedesignSection/);
-    expect(SRC).toMatch(/AlertCircle size=\{40\} color=\{Accent\.warning\}/);
+    // Icon uses the AA-safe `warningSolid` amber (2026-06-23 amber-text a11y fix).
+    expect(SRC).toMatch(/AlertCircle size=\{40\} color=\{Accent\.warningSolid\}/);
     expect(SRC).toMatch(/Something went wrong/);
     expect(SRC).toMatch(/Or paste a different link/);
   });
