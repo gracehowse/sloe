@@ -22,6 +22,9 @@ import { describe, expect, it } from "vitest";
 const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf8");
 
 const WEB = read("src/app/components/ProgressDashboard.tsx");
+// The Steps + Body-Fat inputs (legacy, flag-off path) were extracted into the
+// ProgressActivitySection child (ENG-1225 gap #21); their Save CTAs live there.
+const WEB_ACTIVITY = read("src/app/components/suppr/progress-activity-section.tsx");
 const MOBILE = read("apps/mobile/app/(tabs)/progress.tsx");
 const WEB_PRIMITIVE = read("src/app/components/suppr/suppr-button.tsx");
 const MOBILE_PRIMITIVE = read("apps/mobile/components/ui/SupprButton.tsx");
@@ -55,8 +58,9 @@ describe("Progress CTAs — solid primary / ghost (button system 2026-06-12)", (
   });
 
   it("web inline 'Save' (Steps + Body fat) are GHOST secondaries", () => {
-    expect(WEB).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,120}saveTodaySteps\(\)[\s\S]{0,40}>\s*Save\s*<\/SupprButton>/);
-    expect(WEB).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,120}saveBodyFat\(\)[\s\S]{0,40}>\s*Save\s*<\/SupprButton>/);
+    // Now in the extracted ProgressActivitySection (flag-off legacy path).
+    expect(WEB_ACTIVITY).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,120}saveTodaySteps\(\)[\s\S]{0,40}>\s*Save\s*<\/SupprButton>/);
+    expect(WEB_ACTIVITY).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,120}saveBodyFat\(\)[\s\S]{0,40}>\s*Save\s*<\/SupprButton>/);
   });
 
   it("the migrated Progress CTAs no longer carry the retired outline pill", () => {

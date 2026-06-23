@@ -163,7 +163,7 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
     // not user-facing product brand claims.
     expect(terms).toContain("support@getsloe.com");
     expect(terms).toContain("SupprBot");
-    expect(privacy).toContain("privacy@suppr-club.com");
-    expect(privacy).toContain("dmca@suppr-club.com");
+    expect(privacy).toContain("privacy@getsloe.com");
+    expect(privacy).toContain("dmca@getsloe.com");
   });
 });

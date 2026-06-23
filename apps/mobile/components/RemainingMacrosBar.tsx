@@ -1,6 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -35,21 +36,21 @@ export interface RemainingMacrosBarProps {
 type Column = {
   key: "calories" | "protein" | "carbs" | "fat" | "fiber";
   label: string;
-  color: string;
   unit: "kcal" | "g";
 };
 
+// ENG-1223: colour resolved at render via `useMacroColors().colorFor(key)` so it
+// follows the scheme — the column key carries the macro identity, not a hex.
 const BASE_COLUMNS: Column[] = [
-  { key: "calories", label: "KCAL", color: MacroColors.calories, unit: "kcal" },
-  { key: "protein", label: "PROTEIN", color: MacroColors.protein, unit: "g" },
-  { key: "carbs", label: "CARBS", color: MacroColors.carbs, unit: "g" },
-  { key: "fat", label: "FAT", color: MacroColors.fat, unit: "g" },
+  { key: "calories", label: "KCAL", unit: "kcal" },
+  { key: "protein", label: "PROTEIN", unit: "g" },
+  { key: "carbs", label: "CARBS", unit: "g" },
+  { key: "fat", label: "FAT", unit: "g" },
 ];
 
 const FIBER_COLUMN: Column = {
   key: "fiber",
   label: "FIBER",
-  color: MacroColors.fiber,
   unit: "g",
 };
 
@@ -92,6 +93,7 @@ export function RemainingMacrosBar({
   style,
 }: RemainingMacrosBarProps) {
   const colors = useThemeColors();
+  const { colorFor } = useMacroColors();
   const cardElevation = useCardElevation();
   const current = React.useMemo(() => computeRemaining(targets, consumed), [targets, consumed]);
   const projected = React.useMemo(
@@ -152,7 +154,7 @@ export function RemainingMacrosBar({
             accessible
           >
             <View style={styles.labelRow}>
-              <View style={[styles.dot, { backgroundColor: col.color }]} />
+              <View style={[styles.dot, { backgroundColor: colorFor(col.key) }]} />
               <Text style={[styles.label, { color: colors.textTertiary }]}>{col.label}</Text>
             </View>
             <Text

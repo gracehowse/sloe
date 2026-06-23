@@ -1,18 +1,24 @@
 import { Text, View, type TextStyle } from "react-native";
-import { Accent, MacroColors, Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { ProgressEnergyEquation } from "./ProgressEnergyEquation";
 
 /**
  * ProgressEnergyTriad — Sloe Figma `492:2` AVG INTAKE / EST. TDEE / DEFICIT
  * three-cell row.
  *
  * Three separate cream cells (not one divided card, per the frame):
- *   - AVG INTAKE — range avg calories/day.
+ *   - AVG INTAKE — range avg calories/day (neutral).
  *   - EST. TDEE — resolved maintenance; SAGE value + "ADAPTIVE" sub-label
  *     when the engine value won (else "FORMULA").
- *   - DEFICIT — maintenance − avg intake; SAGE when a real deficit, AMBER
- *     "surplus" when intake exceeds maintenance.
+ *   - DEFICIT — maintenance − avg intake; the result reads in PLUM (the brand
+ *     headline accent, matching the v3 prototype's Progress energy-balance
+ *     `deficit → var(--primary-active)`, Sloe-App.html L5010), AMBER "surplus"
+ *     when intake exceeds maintenance. NB: this differs from the Today
+ *     NetEnergy card where a *deficit is the good state* and reads sage.
  *
  * All numbers are real (range stats + resolved maintenance). Cells render
  * "—" when the underlying value isn't available yet — never fabricated.
@@ -35,16 +41,39 @@ export function ProgressEnergyTriad({
   isAdaptive,
 }: ProgressEnergyTriadProps) {
   const colors = useThemeColors();
+  const isDark = useColorScheme() === "dark";
   const dim = colors.textTertiary;
   const text = colors.text;
-  // Sage (protein/olive) for TDEE + a real deficit; amber for a surplus.
-  const sage = MacroColors.protein;
+  // EST. TDEE / maintenance = scheme-aware sage (AA solid on light, lighter on
+  // Nocturne). The DEFICIT result = plum (the brand headline accent) via the one
+  // scheme-resolved plum source. Both were MacroColors.protein, which the v3
+  // recolour turned plum — that made TDEE wrong (should be sage) AND left the
+  // dark-mode sage too dark; this splits + schemes them. ENG-1225 token-role,
+  // grounded on Sloe-App.html Progress energy-balance L5008/L5010.
+  const sage = isDark ? Accent.successLight : Accent.successSolid;
+  const plum = colors.navPrimary;
 
   const deficitKcal =
     avgIntakeKcal != null && maintenanceKcal != null && maintenanceKcal > 0
       ? Math.round(maintenanceKcal - avgIntakeKcal)
       : null;
   const isSurplus = deficitKcal != null && deficitKcal < 0;
+
+  // Sloe v3 (ENG-1225, Block 8): the prototype's Progress energy balance is an
+  // EQUATION (intake − maintenance = deficit/day) with a "How maintenance works"
+  // explainer, not a 3-cell triad (Sloe-App.html L5001-5018). Mirrors the web
+  // twin's flag gate; the legacy triad stays in the else until collapsed.
+  if (isFeatureEnabled("sloe_v3_energy_equation")) {
+    return (
+      <ProgressEnergyEquation
+        avgIntakeKcal={avgIntakeKcal}
+        maintenanceKcal={maintenanceKcal}
+        deficitKcal={deficitKcal}
+        isSurplus={isSurplus}
+        isAdaptive={isAdaptive}
+      />
+    );
+  }
 
   // headers census 2026-06-10: triad eyebrow → Type.label token.
   const eyebrow: TextStyle = { ...Type.label, color: dim };
@@ -112,7 +141,7 @@ export function ProgressEnergyTriad({
               color: isSurplus
                 ? Accent.warning
                 : deficitKcal != null && deficitKcal > 0
-                  ? sage
+                  ? plum
                   : text,
             },
           ]}

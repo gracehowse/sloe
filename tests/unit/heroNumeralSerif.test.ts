@@ -178,8 +178,12 @@ describe("SLOE hero numerals — web reads serif (Newsreader), parity with mobil
     // Days-to-goal numeral (single-line span).
     const dtg = lineWith(src, "{timeline.daysToGoal}");
     expect(dtg).toContain(SERIF_WEB_HEADLINE);
-    // Body fat hero (single-line <p>).
-    const bf = lineWith(src, "bodyFatPct != null ?");
+    // Steps + body-fat heroes moved into the extracted ProgressActivitySection
+    // (ENG-1225 gap #21); assert their serif numerals there.
+    const activity = read("src/app/components/suppr/progress-activity-section.tsx");
+    const steps = lineWith(activity, "stepsByDay[todayKey()]");
+    expect(steps).toContain(SERIF_WEB_HEADLINE);
+    const bf = lineWith(activity, "bodyFatPct != null ?");
     expect(bf).toContain(SERIF_WEB_HEADLINE);
   });
 

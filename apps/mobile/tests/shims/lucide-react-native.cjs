@@ -48,6 +48,7 @@ function iconStub(name) {
 const ICON_NAMES = [
   "Activity",
   "AlertCircle",
+  "AlertTriangle",
   "AlignLeft",
   "Armchair",
   "ArrowDown",
@@ -95,6 +96,7 @@ const ICON_NAMES = [
   "Coffee",
   "Cookie",
   "Copy",
+  "Copyright",
   "Database",
   "Download",
   "Droplet",
@@ -153,6 +155,7 @@ const ICON_NAMES = [
   "Settings2",
   "Share2",
   "Shield",
+  "ShieldAlert",
   "ShieldCheck",
   "ShoppingCart",
   "Sliders",

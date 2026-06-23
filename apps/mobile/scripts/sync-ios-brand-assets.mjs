@@ -24,7 +24,8 @@ import sharp from "sharp";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = path.join(ROOT, "assets/images");
-const XC = path.join(ROOT, "ios/Suppr/Images.xcassets");
+// Project folder follows app.json `name` ("Sloe"); was "Suppr" pre-rebrand.
+const XC = path.join(ROOT, "ios/Sloe/Images.xcassets");
 const APP_ICON = path.join(XC, "AppIcon.appiconset/App-Icon-1024x1024@1x.png");
 const SPLASH_SET = path.join(XC, "SplashScreenLogo.imageset");
 const SPLASH_BG = path.join(XC, "SplashScreenBackground.colorset/Contents.json");
@@ -79,7 +80,7 @@ async function main() {
   for (const f of [SRC_ICON, SRC_SPLASH, SRC_SPLASH_DARK]) {
     await fs.access(f);
   }
-  await fs.access(path.join(ROOT, "ios/Suppr"));
+  await fs.access(path.join(ROOT, "ios/Sloe"));
 
   // App icon must be fully opaque (no alpha) — iOS rejects icons with alpha.
   const iconStats = await sharp(SRC_ICON).stats();

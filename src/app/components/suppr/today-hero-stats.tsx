@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { DailyRing } from "./daily-ring";
+import { CalorieRingDial } from "./calorie-ring-dial";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 import {
   MACRO_RING_TOGGLE,
@@ -135,6 +136,12 @@ function DesktopHeroStats({
     : isOver
       ? "over"
       : "under";
+  // Sloe v3 (ENG-1225): swap the concentric ring for the jewel watch-dial on
+  // the desktop hero too — mirrors mobile-web `TodayHeroRing`. The dial is
+  // calorie-only (macros move to the separate Tiles/Bars/Rings section, so the
+  // expand toggle no longer drives the ring). Transient flag, collapsed once
+  // verified.
+  const v3Ring = isFeatureEnabled("sloe_v3_ring");
 
   return (
     // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
@@ -157,29 +164,37 @@ function DesktopHeroStats({
           <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
         </div>
 
-        <DailyRing
-          consumed={consumed}
-          target={target}
-          size={DESKTOP_RING_GEOMETRY.size}
-          // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
-          // the macro stroke; the collapsed lone ring keeps the confident bold
-          // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
-          strokeWidth={
-            expanded
-              ? DESKTOP_RING_GEOMETRY.strokeWidth
-              : DESKTOP_RING_GEOMETRY.strokeWidthBold
-          }
-          ringRadius={DESKTOP_RING_GEOMETRY.radius}
-          macroRadii={DESKTOP_RING_GEOMETRY.macroRadii}
-          macroStroke={DESKTOP_RING_GEOMETRY.macroStroke}
-          proteinPct={proteinPct}
-          carbsPct={carbsPct}
-          fatPct={fatPct}
-          expanded={expanded}
-          onToggle={onToggleExpanded}
-          pulse={pulse}
-          commitPulse={commitPulse}
-        />
+        {v3Ring ? (
+          <CalorieRingDial
+            consumed={consumed}
+            target={target}
+            size={DESKTOP_RING_GEOMETRY.size}
+          />
+        ) : (
+          <DailyRing
+            consumed={consumed}
+            target={target}
+            size={DESKTOP_RING_GEOMETRY.size}
+            // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
+            // the macro stroke; the collapsed lone ring keeps the confident bold
+            // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
+            strokeWidth={
+              expanded
+                ? DESKTOP_RING_GEOMETRY.strokeWidth
+                : DESKTOP_RING_GEOMETRY.strokeWidthBold
+            }
+            ringRadius={DESKTOP_RING_GEOMETRY.radius}
+            macroRadii={DESKTOP_RING_GEOMETRY.macroRadii}
+            macroStroke={DESKTOP_RING_GEOMETRY.macroStroke}
+            proteinPct={proteinPct}
+            carbsPct={carbsPct}
+            fatPct={fatPct}
+            expanded={expanded}
+            onToggle={onToggleExpanded}
+            pulse={pulse}
+            commitPulse={commitPulse}
+          />
+        )}
 
         {showStatRow ? (
           <div

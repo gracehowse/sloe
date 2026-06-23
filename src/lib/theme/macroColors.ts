@@ -16,21 +16,20 @@
  * `apps/mobile/constants/theme.ts`.
  */
 
-/** Light-mode macro hexes — pinned to `:root` block in theme.css. SLOE Phase 0
- *  (2026-06-03): calories → plum (the calorie ring / chrome hue), protein →
- *  olive-sage, carbs → clay, fat → amber, fiber → teal. Sugar follows carbs;
- *  sodium → amber; water → teal. Icon + label carry the differentiation where
- *  hues sit close. Drift vs `theme.css` is caught by
- *  `tests/unit/settingsMacroTokens.test.ts`. */
+/** Light-mode macro hexes — pinned to `:root` block in theme.css. Sloe v3
+ *  (2026-06-21): calories + fiber → sage, protein → plum, carbs → amber,
+ *  fat → berry-rose (new), sugar → damson, sodium → clay, water → muted teal.
+ *  Icon + label carry the differentiation where hues sit close. Drift vs
+ *  `theme.css` is caught by `tests/unit/settingsMacroTokens.test.ts`. */
 export const MACRO_COLORS_LIGHT = {
-  calories: "#3B2A4D",
-  protein:  "#7C8466",
-  carbs:    "#C8794E",
-  fat:      "#C9892C",
-  fiber:    "#4A7878",
-  sugar:    "#C8794E",
-  sodium:   "#C9892C",
-  water:    "#4A7878",
+  calories: "#5E7C5A",
+  protein:  "#3B2A4D",
+  carbs:    "#C9892C",
+  fat:      "#B25D7A",
+  fiber:    "#5E7C5A",
+  sugar:    "#6A4B7A",
+  sodium:   "#C8794E",
+  water:    "#5A8A99",
 } as const;
 
 /** CSS-var references — preferred for inline `style` values (auto dark-mode). */

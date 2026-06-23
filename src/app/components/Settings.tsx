@@ -69,7 +69,10 @@ import { MfpCsvImportCard } from "./imports/MfpCsvImportCard";
 import { SubscriptionCard } from "./settings/SubscriptionCard";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import { useCalmMode } from "../../lib/preferences/useCalmMode";
-import type { MacroDisplayStyle } from "../../lib/preferences/macroDisplayStyle";
+import {
+  type MacroDisplayStyle,
+  MACRO_DISPLAY_OPTIONS,
+} from "../../lib/preferences/macroDisplayStyle";
 import { SupprCard } from "./ui/suppr-card";
 // Connections section (ENG-1200) — Household summary reuses the same
 // shared household client + sharing-preset subtitle as Profile.tsx and
@@ -98,10 +101,6 @@ const THEME_OPTIONS = [
   { value: "dark", label: "Dark" },
 ] as const;
 
-const MACRO_DISPLAY_OPTIONS = [
-  { value: "tiles", label: "Tiles (2×2)" },
-  { value: "bars", label: "Bars (list)" },
-] as const;
 
 /**
  * Audit 2026-04-30 P0-3 — Dashboard widget swatches now read from the

@@ -30,7 +30,7 @@ const REQUIRED_PHRASES = [
   // Discloses what we store
   "creator", // creator handle
   // Provides the takedown channel
-  "dmca@suppr-club.com",
+  "dmca@getsloe.com",
   // Provides the SLA
   "7 business days",
 ];

@@ -70,6 +70,7 @@ import {
 import { PlanMoveMealDialog } from "./suppr/plan-move-meal-dialog.tsx";
 import { PlanPortionDialog, planMealDisplayMultiplier } from "./suppr/plan-portion-dialog.tsx";
 import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog.tsx";
+import { PlanV3Connected } from "./plan/PlanV3Connected.tsx";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions";
 import {
   DropdownMenu,
@@ -236,17 +237,19 @@ export const MealPlanner = memo(function MealPlanner({
   // saved-only path with the hard 0-saved gate. Mobile twin:
   // `apps/mobile/app/(tabs)/planner.tsx`.
   const planSourceSelector = isFeatureEnabled("plan_source_selector");
+  // ENG-1225 — the v3 Plan surface (header verdict + week strip + day detail +
+  // meal filter/cards + shopping tool), mirroring the SEE-validated mobile Plan.
+  // ON → <PlanV3Connected> replaces the legacy body; OFF → the legacy body. The
+  // swap/templates/shopping/generate dialogs stay live (they back the v3 taps).
+  const sloeV3Plan = isFeatureEnabled("sloe_v3_plan");
   // ENG-1092 increment 2 ("Purposeful empties") — empty Plan day-card slots
-  // state "Aim ~X kcal" (static per-slot dietitian share) instead of the bare
-  // "Empty slot". Same flag as Today (increment 1) — the spine across all four
-  // surfaces; mobile twin reads the same flag. OFF → legacy "Empty slot".
+  // state "Aim ~X kcal" (static per-slot dietitian share) instead of bare
+  // "Empty slot". Same flag as Today (increment 1). OFF → legacy "Empty slot".
   const planAimEmptyOn = isFeatureEnabled("plan_today_aim_empty_v1");
   // ENG-1092 increment 3 — collapse the always-open Plan-length / Slots / Start
-  // chip rows behind ONE "Adjust plan" control (web parity catch-up to mobile,
-  // which already condenses these into chips → sheets). The trigger shows the
-  // current settings ("7 days · Today · All meals") so defaults stay loud; the
-  // popover holds the full pickers. OFF → the three inline rows (unchanged).
-  // Web-only flag (mobile already collapsed); default-OFF until Grace red-lines.
+  // chip rows behind ONE "Adjust plan" control (web parity catch-up to mobile).
+  // Trigger shows current settings ("7 days · Today · All meals"); popover holds
+  // the pickers. OFF → the three inline rows. Web-only, default-OFF.
   const planAdjustCollapsed = isFeatureEnabled("plan_adjust_collapsed_v1");
   // ENG-1131 — web Plan parity: move-meal, templates, portion stepper (mobile
   // already ships these; web catches up behind one flag). Default-on; off → swap-
@@ -1060,6 +1063,20 @@ export const MealPlanner = memo(function MealPlanner({
 
   return (
     <div className="product-shell py-pm-6 space-y-5">
+      {sloeV3Plan ? (
+        <PlanV3Connected
+          plan={plan}
+          targetCalories={targetCalories}
+          startOffset={startOffset}
+          onGenerate={handleRegenerate}
+          onAdjust={() => setTemplatesOpen(true)}
+          onOpenShopping={handleShoppingList}
+          onSwapSlot={(day, slotIndex) =>
+            openSwap(day, SLOTS[slotIndex] ?? "snacks", slotIndex)
+          }
+        />
+      ) : (
+        <>
       <div className="hidden md:block">
       {/* Sloe DS (Figma 523:2 / ENG-919) — page title reads in Newsreader
           serif plum (`text-foreground-brand`), matching the Today / Progress /
@@ -1088,28 +1105,21 @@ export const MealPlanner = memo(function MealPlanner({
           for accounts without a household. */}
       <HouseholdBar />
 
-      {/* F2-F (2026-04-28): week summary card. Mobile parity at
-          `apps/mobile/app/(tabs)/planner.tsx:1639-1698`. Carries the
-          "hits targets N of M days" headline + worst-short-day
-          diagnosis + Shopping list / Regenerate CTAs. Hidden when no
-          plan exists; the bottom CTA row takes over. */}
+      {/* F2-F (2026-04-28): week summary card. Mobile parity at planner.tsx
+          :1639-1698. "hits targets N of M days" headline + worst-short diagnosis
+          + Shopping/Regenerate CTAs. Hidden when no plan (bottom CTA takes over). */}
       {showSummaryCard && summary ? (
         <SupprCard
           data-testid="planner-week-summary-card"
-          // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-
-          // card-treatment-soft-elevation.md): the week summary slab sits
-          // directly on the Plan page ground, so it lifts soft (`.card-slab`)
-          // like every other resting card — mirrors mobile `summaryCard`
-          // `lift="soft"`. Was the flat default.
+          // One-treatment soft lift (2026-06-09): page-ground slab → soft
+          // `.card-slab` like every resting card (mirrors mobile `lift="soft"`).
           elevation="card"
           padding="lg"
           radius="xl"
           className="mb-4"
         >
           {/* ENG-820 — one-shot scale-pulse keyframe for the win rising edge.
-              Scoped inline (mirrors `AppLoadingSkeleton`) so no theme.css edit
-              is needed; the `prefers-reduced-motion` guard disables the
-              transform for motion-sensitive users, matching the hook's intent. */}
+              Scoped inline (no theme.css edit); prefers-reduced-motion disables it. */}
           <style>{`
             @keyframes planner-win-pulse {
               0% { transform: scale(1); }
@@ -1625,13 +1635,10 @@ export const MealPlanner = memo(function MealPlanner({
           return (
             // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-
             // one-card-treatment-soft-elevation.md): each per-day kanban column
-            // sits directly in the page-ground grid (not nested in another
-            // card), so it lifts soft (`.card-slab`) like every other resting
-            // card. The Today column keeps tone="primary" — the soft shadow
-            // composes with the tint (border dropped, tint carries). Was the
-            // flat default. (Mobile renders Plan days as a continuous list, not
-            // cards — that layout divergence predates this sweep; the rule
-            // applies to whatever cards sit on each platform's page ground.)
+            // sits on the page-ground grid → soft `.card-slab` like every
+            // resting card. Today keeps tone="primary" (soft shadow composes
+            // with the tint, border dropped). Mobile renders Plan days as a
+            // continuous list — that layout divergence predates this sweep.
             <SupprCard
               key={`day-${dp.day}`}
               elevation="card"
@@ -2258,14 +2265,9 @@ export const MealPlanner = memo(function MealPlanner({
           onClick={handleRegenerate}
         >
           <RefreshCw size={14} strokeWidth={2} />
-          {/* DC12 (2026-05-14, premium-bar audit) — when no plan
-              exists yet this is the empty-state CTA; the verb
-              "Regenerate" misreads at that moment (nothing has
-              been generated to re-do). The summary-card path
-              keeps the regenerate verb since a plan IS visible
-              there. Mobile parity:
-              `apps/mobile/app/(tabs)/planner.tsx` "Generate my
-              plan".
+          {/* DC12 (2026-05-14, premium-bar audit) — no-plan empty state uses
+              "Generate my plan" ("Regenerate" misreads when nothing exists yet);
+              the summary-card path keeps the regenerate verb (a plan IS visible).
               ENG-956: "Refresh the rest" when ≥1 meal is locked. */}
           {lockedMealCount > 0
             ? "Refresh the rest"
@@ -2288,14 +2290,12 @@ export const MealPlanner = memo(function MealPlanner({
           </SupprButton>
         ) : null}
       </div>
+        </>
+      )}
 
-      {/* Modal-dismissibility audit (2026-04-30) — migrated from a
-          custom fixed-overlay div to Radix Dialog so the swap picker
-          dismisses via Escape, the visible Radix close X, AND
-          backdrop click (including iOS Safari touch, where the prior
-          synthetic-click + stopPropagation combo silently swallowed
-          backdrop taps). DialogContent ships its own corner X, so the
-          custom close button was removed to avoid a double-X. */}
+      {/* Modal-dismissibility audit (2026-04-30) — Radix Dialog so the swap
+          picker dismisses via Escape, the Radix close X, AND backdrop click
+          (incl. iOS Safari touch). DialogContent ships its own X (no double-X). */}
       <Dialog
         open={swapFor !== null}
         onOpenChange={(nextOpen) => {

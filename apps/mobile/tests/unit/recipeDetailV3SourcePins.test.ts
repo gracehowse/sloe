@@ -74,8 +74,11 @@ describe("mobile recipe-detail — kcal lives in the macro strip CAL column (ENG
     expect(MACRO_STRIP).toMatch(/fontSize:\s*24/);
     expect(MACRO_STRIP).toMatch(/fontVariant:\s*\["tabular-nums"\]/);
     // calories column colour comes from the plum token, not a hardcoded hex.
-    expect(MACRO_STRIP).toMatch(/macroValueColor\(cell\.key,\s*colors\.navPrimary\)/);
-    expect(MACRO_STRIP).toMatch(/case "calories":\s*default:\s*return plum;/);
+    // ENG-1223: `macroValueColor` is now scheme-aware (takes `isDark`); calories
+    // still returns the passed plum (navPrimary), the other macros resolve via
+    // the scheme-aware `macroColorFor`.
+    expect(MACRO_STRIP).toMatch(/macroValueColor\(cell\.key,\s*colors\.navPrimary,\s*isDark\)/);
+    expect(MACRO_STRIP).toMatch(/if \(key === "calories"\) return plum;/);
   });
 
   it("the macro card carries a per-serving accessibility label (`per portion` semantics)", () => {

@@ -54,6 +54,8 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { useRecipeReport } from "@/hooks/useRecipeReport";
+import { SloeImageNotice } from "@/components/recipe/SloeImageNotice";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { authedFetch } from "@/lib/authedFetch";
 import { track, isFeatureEnabled } from "@/lib/analytics";
@@ -283,6 +285,8 @@ export default function RecipeDetailScreen() {
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
   const [loading, setLoading] = useState(true);
   const [recipe, setRecipe] = useState<FullRecipe | null>(null);
+  // ENG-1227 — per-recipe "Report an issue" sheet (web parity #19), in `onMore`.
+  const report = useRecipeReport(recipeId, recipe?.title ? decodeEntities(recipe.title) : undefined);
   const [officialRecipeId, setOfficialRecipeId] = useState<string | null>(null);
   // P3-30 (2026-04-25): net-carbs lens flag for swapping the carbs row label.
   // 2026-05-02 fix: re-read on every screen focus (not just userId change)
@@ -1791,9 +1795,19 @@ export default function RecipeDetailScreen() {
           );
         },
       },
+      { text: "Report an issue", onPress: report.openReport },
       { text: "Cancel", style: "cancel" },
     );
     Alert.alert("Recipe options", undefined, menu);
+  };
+
+  // Owners get the full owner menu (Report appended); everyone else gets Report.
+  const openRecipeOptions = () => {
+    if (isRecipeOwner && !isSeedRecipeId(recipeId)) return openOwnerMenu();
+    Alert.alert("Recipe options", undefined, [
+      { text: "Report an issue", onPress: report.openReport },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
   // Per-ingredient tap → branded `IngredientInfoSheet` (status / source /
@@ -1961,27 +1975,11 @@ export default function RecipeDetailScreen() {
           onBack={goBack}
           onToggleSave={() => toggleSave(recipeId)}
           onShare={handleShare}
-          onMore={isRecipeOwner && !isSeedRecipeId(recipeId) ? openOwnerMenu : undefined}
+          onMore={openRecipeOptions}
           showSloeImageLabel={isAiGeneratedHero}
         />
 
-        {isAiGeneratedHero ? (
-          <View style={{ paddingHorizontal: Spacing.md, paddingTop: Spacing.sm }}>
-            <Text
-              style={{
-                ...Type.caption,
-                color: colors.textSecondary,
-                backgroundColor: colors.card,
-                borderRadius: Radius.lg,
-                paddingHorizontal: Spacing.md,
-                paddingVertical: Spacing.sm,
-              }}
-            >
-              Sloe image is illustrative — generated from title + ingredients. Nutrition is
-              estimated separately and may not match the image exactly.
-            </Text>
-          </View>
-        ) : null}
+        {isAiGeneratedHero ? <SloeImageNotice /> : null}
         {canGenerateSloeHero ? (
           <View style={{ paddingHorizontal: Spacing.md, paddingTop: Spacing.sm }}>
             <SupprButton
@@ -2265,6 +2263,8 @@ export default function RecipeDetailScreen() {
       {/* Ingredient detail — branded sheet (premium-audit 2026-06-09, gap 5);
           replaces the prior `Alert.alert` info popup. The Verify CTA renders
           only when the host resolved a route for a still-needs-review tier. */}
+      {report.sheet}
+
       <IngredientInfoSheet
         info={ingredientInfo}
         onClose={() => {
@@ -2376,7 +2376,7 @@ export default function RecipeDetailScreen() {
               />
             ) : (
             <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
-              <View>
+              <View style={{ flex: 1 /* ENG-1230: CookStepSwipeSurface wraps the step body in a flex:1 view that collapses in a non-flex parent — this group must provide flex height. */ }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
                   <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>

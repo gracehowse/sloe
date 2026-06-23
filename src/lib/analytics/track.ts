@@ -161,10 +161,14 @@ function flagForceOverride(flag: string): boolean | null {
  * absent from every default-on set". A flag not in `REDESIGN_DEFAULT_ON`
  * and not live in PostHog resolves to `false` — the safe dark default.
  *
- * - `cook_step_ingredients_v1` (ENG-944) — renders the calm "For this step"
- *   ingredient chip row under each cook-mode instruction. DEFAULT-OFF;
- *   ramp via PostHog once visually validated on device. Mirror of the
- *   mobile note in `apps/mobile/lib/analytics.ts`.
+ * - `reveal-macro-tile-paired-pct` — onboarding reveal-step layout A/B.
+ *   DEFAULT-OFF *by design*: Grace ramps it in PostHog only after validating
+ *   in TestFlight, so it is deliberately excluded from the ENG-1225 flag-
+ *   collapse sweep. Mirror of the mobile note in `apps/mobile/lib/analytics.ts`.
+ *
+ * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
+ *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was fixed
+ *  — the v3 cook baseline is now default-on.)
  */
 
 /** Redesign 2026 flag set — the new design is the DEFAULT in every build
@@ -268,6 +272,40 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // macros) on the landing Free column + paywall comparison matrix. Default-on;
   // off → the legacy copy without the two free callouts.
   "paywall_free_mfp_wins_v1",
+  // ENG-1225 — the v3 jewel watch-dial as the Today hero ring (desktop +
+  // mobile-web). Default-on; off → the legacy concentric DailyRing (kill switch).
+  // Keep in sync with the mobile set in apps/mobile/lib/analytics.ts.
+  "sloe_v3_ring",
+  // ENG-1225 Block 5 — the v3 Cookbook editorial shelves (Tonight's pick hero +
+  // Fits-your-day / Quick / High-protein) above the Library grid on the All
+  // filter. Default-on; off → the flat grid only (kill switch). Mobile + web.
+  "sloe_v3_editorial_shelves",
+  // ENG-1225 Block 6 — the v3 Discover editorial sections (Quick weeknight
+  // no-photo cards + Collections). Default-on; off → the legacy feed without
+  // those sections (kill switch). Mobile + web.
+  "sloe_v3_discover_editorial",
+  // ENG-1225 flag-collapse sweep (2026-06-22, "turn everything on") — the v3
+  // Progress refinements that were built but dark-by-default. Each default-on
+  // now; off → the respective legacy path (kill switch).
+  //   energy equation: the Burned − Eaten = Net triad on Progress.
+  "sloe_v3_energy_equation",
+  //   Apple Health read-only card (parity with mobile); off → manual entry.
+  "web_apple_health_card",
+  //   Progress weight empty-state (no weigh-ins yet); off → bare empty chart.
+  "web_progress_weight_empty",
+  //   Today meal nutrition detail (MealNutritionDialog + slot detail) — fixes
+  //   an asymmetric parity break (mobile already live, web was OFF).
+  "web_meal_nutrition_detail",
+  // ENG-1225 flag-collapse sweep (2026-06-22) — the v3 cook-mode baseline
+  // (audit launch-blocker #4). Built (ENG-944/946/947/948/949) but dark-by-
+  // default until this sweep; on-device SEE found a swipe-surface render bug
+  // (step body invisible), FIXED in ENG-1230 before flipping these on.
+  // Default-on now, off → pre-v3 cook (kill switch). Keep in sync with mobile.
+  "cook_step_ingredients_v1",
+  "cook_swipe_steps_v1",
+  "cook_ingredient_checklist_v1",
+  "cook_multi_timers_v1",
+  "cook_text_size_control_v1",
 ]);
 
 /**

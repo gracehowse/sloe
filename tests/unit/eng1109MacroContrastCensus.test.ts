@@ -130,8 +130,14 @@ describe("ENG-1109 — macro -solid tokens clear WCAG AA on light surfaces", () 
     },
   );
 
-  it("fill macro hues fail AA as 11px text on card (why -solid exists)", () => {
-    expect(ratio(readCssVar(light, "macro-protein"), card)).toBeLessThan(AA_NORMAL);
+  it("light-as-text-risky fill hues fail AA on card (why -solid exists); plum/sage pass", () => {
+    // Sloe v3: the warm/mid fills (carbs amber, fat berry-rose) still fail AA as
+    // small text, so they carry a darkened `-solid`. Protein (plum) and fiber/
+    // calories (sage) are dark enough to pass as fill — their `-solid` equals the
+    // fill — so the small palette is partly self-sufficient.
+    expect(ratio(readCssVar(light, "macro-carbs"), card)).toBeLessThan(AA_NORMAL);
+    expect(ratio(readCssVar(light, "macro-fat"), card)).toBeLessThan(AA_NORMAL);
+    expect(ratio(readCssVar(light, "macro-protein"), card)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
 
@@ -156,11 +162,16 @@ describe("ENG-1109 — Today call sites use AA-safe tokens", () => {
     expect(TODAY_MEALS).toContain("var(--macro-fiber-solid)");
   });
 
-  it("mobile SlotMacroChips use MacroColors *Solid tokens", () => {
-    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.proteinSolid");
-    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.carbsSolid");
-    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.fatSolid");
-    expect(MOBILE_TODAY_MEALS).toContain("MacroColors.fiberSolid");
+  it("mobile SlotMacroChips use the *Solid AA-safe macro tokens", () => {
+    // ENG-1223 made mobile macros scheme-aware via the `useMacroColors()` hook
+    // (light → MacroColors, dark → MacroColorsDark). The chips now read the
+    // *Solid AA-safe variants off the hook's `m` colours rather than the static
+    // `MacroColors.*` import — the AA-safe-solid intent is unchanged.
+    expect(MOBILE_TODAY_MEALS).toContain("useMacroColors");
+    expect(MOBILE_TODAY_MEALS).toContain(".proteinSolid");
+    expect(MOBILE_TODAY_MEALS).toContain(".carbsSolid");
+    expect(MOBILE_TODAY_MEALS).toContain(".fatSolid");
+    expect(MOBILE_TODAY_MEALS).toContain(".fiberSolid");
   });
 
   it("web slot pills use foreground-secondary, not slot hue as text", () => {

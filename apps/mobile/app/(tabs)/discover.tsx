@@ -1,7 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type ImageStyle, type StyleProp } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
@@ -14,9 +14,9 @@ import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
 import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
-import { useAccent } from "@/context/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import type { RecipeCard } from "@/lib/types";
@@ -41,7 +41,14 @@ import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAc
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSkeleton";
 import { DiscoverClusterCarousels } from "@/components/discover/DiscoverClusterCarousels";
+import { DiscoverQuickWeeknight } from "@/components/discover/DiscoverQuickWeeknight";
+import { DiscoverCollections } from "@/components/discover/DiscoverCollections";
+import { DiscoverMoreIdeaRow } from "@/components/discover/DiscoverMoreIdeaRow";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { IconBox } from "@/components/discover/IconBox";
+import { CreatorRail } from "@/components/discover/CreatorRail";
+import { useTopCreators } from "@/hooks/useTopCreators";
+import { UnifiedImportSheet } from "@/components/import/UnifiedImportSheet";
 
 // ENG-921 (2026-06-07) — CATEGORY filter row per Figma `528:2`. The
 // "Following" pill (B5 Phase 2c follow-graph feature) is preserved as a
@@ -59,14 +66,6 @@ import { SmartImage } from "@/components/ui/SmartImage";
  */
 const RECIPE_CARD_RADIUS = CARD_RADIUS;
 
-/* ── Icon Box (local helper matching prototype) ── */
-function IconBox({ color, size = 28, children }: { color: string; size?: number; children: React.ReactNode }) {
-  return (
-    <View style={{ width: size, height: size, borderRadius: size / 3.5, backgroundColor: color + "18", alignItems: "center", justifyContent: "center" }}>
-      {children}
-    </View>
-  );
-}
 
 // Fit-percent badge history:
 //   - F-11 (TestFlight `AA63DQ7xd2gRhdjC3L7gjtE`, 2026-04-19) removed
@@ -85,31 +84,6 @@ function SourceBadge({ source }: { source?: string }) {
     <View style={{ position: "absolute", top: 8, left: 8, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radius.sm, backgroundColor: MODAL_OVERLAY_SCRIM }}>
       <Text style={{ ...Type.caption, color: Accent.primaryForeground }}>{source}</Text>
     </View>
-  );
-}
-
-/** Row thumbnail: if `uri` 404s, show the same glyph box as missing image. */
-function DiscoverCoverImage({
-  uri,
-  style,
-  fallback,
-}: {
-  uri: string | null | undefined;
-  style: StyleProp<ImageStyle>;
-  fallback: ReactNode;
-}) {
-  const [broken, setBroken] = useState(false);
-  const trimmed = (uri ?? "").trim();
-  if (!trimmed || broken) return <>{fallback}</>;
-  return (
-    <SmartImage
-      source={{ uri: trimmed }}
-      style={style}
-      resizeMode="cover"
-      recyclingKey={trimmed}
-      accessibilityIgnoresInvertColors
-      onError={() => setBroken(true)}
-    />
   );
 }
 
@@ -148,7 +122,7 @@ export default function DiscoverScreen() {
   const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Seamless recipe slab: soft plum lift off the page in light, tonal lift +
   // hairline in dark (RN renders shadows poorly on dark). Mirrors the Library
   // card so the two recipe surfaces stay in lockstep across schemes.
@@ -157,6 +131,9 @@ export default function DiscoverScreen() {
   const userId = session?.user?.id ?? null;
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
+  // ENG-1225 #14 — "top creators by saves" rail (hidden until populated).
+  const topCreators = useTopCreators();
+  const [unifiedImportOpen, setUnifiedImportOpen] = useState(false); // ENG-1225 #3
 
   // ENG-700 — after publishing from Library / recipe detail, Discover
   // must refetch `published=true` rows when the user switches sub-tabs.
@@ -387,9 +364,9 @@ export default function DiscoverScreen() {
     accent: accent.primary,
     green: Accent.success,
     amber: Accent.warning,
-    protein: MacroColors.protein,
-    carbs: MacroColors.carbs,
-    fat: MacroColors.fat,
+    protein: mc.protein,
+    carbs: mc.carbs,
+    fat: mc.fat,
   };
 
   // Aubergine-on-surface tokens (Sloe treatment system) — selected filter
@@ -470,7 +447,6 @@ export default function DiscoverScreen() {
               2026-05-03 — failed remote URLs use the same fallback and
               collapse aspect ratio via `DiscoverHeroMedia`. */}
           <DiscoverHeroMedia item={item} />
-          {/* Gap-3 fix (2026-06-09): card body padding 14 → Spacing.md (16) — on-scale. */}
           <View style={{ padding: Spacing.md }}>
             {/* Fit-percent pill — primary-tinted, top-right of the
                 card body. Matches prototype treatment. */}
@@ -522,10 +498,8 @@ export default function DiscoverScreen() {
                 discover should display like this"). Was 60 lines of
                 inline duplicate; component owns the icon/colour/letter
                 grammar so any palette token shift cascades cleanly. */}
-            {/* Gap-3 fix (2026-06-09): marginTop 10 → Spacing.sm (8) — on-scale.
-                Gap-6 fix: iconSize bumped 11→13 + emphasiseProtein active so protein
-                reads unmistakably heavier at card scale. `proteinTextColor` = full
-                ink (`colors.text`) vs secondary for all other macros. */}
+            {/* iconSize 13 + emphasiseProtein + proteinTextColor = full ink so
+                protein reads unmistakably heavier at card scale (Gap-6). */}
             <MacroIconRow
               kcal={kcal > 0 ? kcal : null}
               protein={protein}
@@ -566,76 +540,6 @@ export default function DiscoverScreen() {
   const displayFiltered = showClusterCarousels
     ? filtered.filter((r) => !isSeedRecipeId(r.id))
     : filtered;
-
-  // ── Compact list row — "More ideas" section. 40×40 icon-box on the
-  // left, title + source·time in the middle, trailing kcal / P / C.
-  // Each row after the first gets a top-border so the parent card
-  // renders a divider sequence. */
-  const renderMoreIdeaRow = useCallback(
-    (item: RecipeCard, idx: number) => {
-      const kcal = Math.round(item.calories);
-      const protein = Math.round(item.protein);
-      const carbs = Math.round(item.carbs);
-      return (
-        <Pressable
-          key={item.id}
-          onPress={() => router.push(`/recipe/${item.id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={recipeCardAccessibilityLabel({
-            title: decodeEntities(item.title),
-            calories: kcal,
-            protein,
-            carbs,
-            cookTime: item.cookTime ?? null,
-          })}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            // Gap-3 fix (2026-06-09): row gap 12 → Spacing.md (16) — on-scale.
-            gap: Spacing.md,
-            // Gap-3 fix: row padding 12 → Spacing.md (16) — on-scale.
-            padding: Spacing.md,
-            borderTopWidth: idx > 0 ? 1 : 0,
-            borderTopColor: colors.cardBorder,
-          }}
-        >
-          {/* F-55 (2026-04-22): use real thumbnail when the recipe has
-              an image_url (social-feed parity — tester flagged "the
-              more you might like is wrong - this is supposed to be
-              like a social media feed").
-              2026-06-08 (§11.4): image-less / broken rows now fall back
-              to the warm sage→cream RecipeHeroFallback (same calm tile as
-              the hero card + Library), not a flat inputBg chef-hat box —
-              so the row never reads as an empty grey/lilac thumbnail. */}
-          <DiscoverCoverImage
-            uri={item.image}
-            style={{ width: 56, height: 56, borderRadius: 10 }}
-            fallback={
-              <View style={{ width: 56, height: 56, borderRadius: 10, overflow: "hidden", backgroundColor: colors.card }}>
-                <RecipeHeroFallback id={item.id} title={item.title} iconSize={20} />
-              </View>
-            }
-          />
-          <View style={{ flex: 1 }}>
-            {/* Gap-1 fix (2026-06-09): recipe names ALWAYS Newsreader serif per
-                design-system §2.3 rule 2. Was Type.body (Inter 14pt). */}
-            <Text style={{ ...Type.headline, fontWeight: '600', color: colors.text }} numberOfLines={1}>
-              {decodeEntities(item.title)}
-            </Text>
-            <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>
-              {displayAttribution({ creatorName: item.creatorName, source: item.source })}
-              {item.cookTime ? ` · ${item.cookTime}` : ""}
-            </Text>
-          </View>
-          <Text style={{ ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>
-            <Text style={{ fontWeight: "600", color: colors.text }}>{kcal}</Text>
-            {` · ${protein}P · ${carbs}C`}
-          </Text>
-        </Pressable>
-      );
-    },
-    [router, colors],
-  );
 
   return (
     <View
@@ -690,6 +594,9 @@ export default function DiscoverScreen() {
             style={{ flex: 1, fontSize: 14, color: colors.text, padding: 0 }}
           />
         </View>
+
+        {/* Creator rail (ENG-1225 #14) — self-hides when empty. */}
+        <CreatorRail creators={topCreators} onSelect={(c) => router.push(`/creator/${c.id}`)} />
 
         {/* Filter pills.
             Audit 2026-05-04 #27: previously the row's last pill ("High
@@ -882,15 +789,12 @@ export default function DiscoverScreen() {
             recipe rows. Mirrors Recime's import-link pattern. testID
             preserved for the Maestro 25_import_shared flow. */}
         {importHero ? (
-          // ENG-1087 — hero affordance. Keeps the tinted-slab grammar (flat-card
-          // law) but raises the weight so the viral-hook import beats a settings
-          // row: stronger ~20% tint, a SOLID plum icon circle (white glyph), a
-          // serif headline title, and a filled "Paste link" pill in place of the
-          // passive chevron (do-it-here, not navigate). The whole slab is the tap
-          // target → the import/paste screen; the pill is the affordance, not a
-          // nested pressable.
+          // ENG-1087 — hero affordance (raised weight: SOLID plum icon + filled
+          // "Paste link" pill, the whole slab taps through to import). ENG-1225
+          // #3: with `sloe_v3_unified_import` ON, the slab opens the unified
+          // "import anything" sheet instead of navigating; OFF keeps the legacy nav.
           <Pressable
-            onPress={() => router.push("/import-shared" as Href)}
+            onPress={() => isFeatureEnabled("sloe_v3_unified_import") ? setUnifiedImportOpen(true) : router.push("/import-shared" as Href)}
             accessibilityRole="button"
             accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
             testID="discover-import-cta"
@@ -1053,18 +957,29 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
+            {/* ENG-1225 Block 6 — v3 "Quick weeknight" no-photo quick-access
+                section ABOVE the cuisine clusters (default view; self-gating on
+                sloe_v3_discover_editorial + quick recipes). */}
+            {showClusterCarousels ? (
+              <DiscoverQuickWeeknight
+                recipes={recipes}
+                onPressRecipe={(r) => router.push(`/recipe/${r.id}`)}
+              />
+            ) : null}
+            {/* ENG-1225 Block 6 — v3 "Collections" gradient tiles that deep-link
+                into the category pills (self-gating on sloe_v3_discover_editorial
+                + ≥1 non-empty tile). */}
+            {showClusterCarousels ? (
+              <DiscoverCollections recipes={recipes} onSelectCategory={setCategory} />
+            ) : null}
             {showClusterCarousels ? (
               <DiscoverClusterCarousels recipes={recipes.filter((r) => isSeedRecipeId(r.id))} />
             ) : null}
-            {/* 2026-05-22 evening (Grace): editorial hero (overlay
-                title on top of full-bleed image) replaced with the
-                same MacroIconRow card style as the rest of the feed —
-                "everything should be like the bottom one". Single
-                consistent grammar across the whole Discover stream;
-                no special-case treatment for the first card. */}
-            {/* Gap-2 fix (2026-06-09): section headers Type.headline → Type.title
-                (24pt Newsreader serif) for editorial section-divider weight.
-                headers census 2026-06-10: ink colors.text → navPrimary. */}
+            {/* 2026-05-22 (Grace): editorial hero replaced with the same
+                MacroIconRow card style as the feed — "everything should be like
+                the bottom one"; one grammar across the Discover stream. Section
+                headers = Type.title (24pt serif) ink navPrimary (Gap-2/headers
+                census 2026-06-09/10). */}
             {displayFiltered.length > 0 ? (
             <>
             <Text
@@ -1076,15 +991,12 @@ export default function DiscoverScreen() {
             >
               Recipe ideas
             </Text>
-            {/* Gap-3 fix (2026-06-09): hero-card vertical gap 12 → Spacing.md (16). */}
             <View style={{ gap: Spacing.md }}>
               {displayFiltered.slice(0, 3).map((r) => renderHeroCard(r))}
             </View>
 
             {displayFiltered.length > 3 ? (
               <>
-                {/* Gap-2 fix (2026-06-09): "More ideas" header Type.headline → Type.title.
-                    headers census 2026-06-10: ink colors.text → navPrimary. */}
                 <Text
                   style={{
                     ...Type.title,
@@ -1110,7 +1022,14 @@ export default function DiscoverScreen() {
                       overflow: "hidden",
                     }}
                   >
-                    {displayFiltered.slice(3).map((r, idx) => renderMoreIdeaRow(r, idx))}
+                    {displayFiltered.slice(3).map((r, idx) => (
+                      <DiscoverMoreIdeaRow
+                        key={r.id}
+                        item={r}
+                        idx={idx}
+                        onPress={() => router.push(`/recipe/${r.id}`)}
+                      />
+                    ))}
                   </View>
                 </View>
               </>
@@ -1155,6 +1074,7 @@ export default function DiscoverScreen() {
           <ChevronRight size={16} color={colors.textTertiary} />
         </Pressable>
       </ScrollView>
+      <UnifiedImportSheet visible={unifiedImportOpen} onClose={() => setUnifiedImportOpen(false)} />
     </View>
   );
 }

@@ -25,6 +25,8 @@ const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf
 
 const LIBRARY = read("src/app/components/Library.tsx");
 const PROGRESS = read("src/app/components/ProgressDashboard.tsx");
+// Steps + Body-Fat inputs extracted into ProgressActivitySection (ENG-1225 #21).
+const PROGRESS_ACTIVITY = read("src/app/components/suppr/progress-activity-section.tsx");
 const SETTINGS = read("src/app/components/Settings.tsx");
 const HYDRATION = read("src/app/components/suppr/hydration-stimulants-card.tsx");
 
@@ -77,10 +79,11 @@ describe("Wave D (web) — ProgressDashboard CTAs", () => {
   });
 
   it("inline Saves (Steps + Body fat) are GHOST secondaries", () => {
-    expect(PROGRESS).toMatch(
+    // In the extracted ProgressActivitySection (flag-off legacy path).
+    expect(PROGRESS_ACTIVITY).toMatch(
       /<SupprButton\s+variant="ghost"\s+onClick=\{\(\) => void saveTodaySteps\(\)\}\s*>\s*Save\s*<\/SupprButton>/,
     );
-    expect(PROGRESS).toMatch(
+    expect(PROGRESS_ACTIVITY).toMatch(
       /<SupprButton\s+variant="ghost"\s+onClick=\{\(\) => void saveBodyFat\(\)\}\s*>\s*Save\s*<\/SupprButton>/,
     );
   });

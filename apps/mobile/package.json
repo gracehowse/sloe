@@ -23,7 +23,7 @@
     "ios:prebuild": "expo prebuild --platform ios",
     "ios:prune-stale-workspace": "rm -rf ios/mobile.xcworkspace",
     "ios:fix-workspace": "bash ./scripts/ensure-suppr-xcworkspace.sh",
-    "ios:xcode": "npm run ios:prune-stale-workspace && npm run ios:fix-workspace && open ios/Suppr.xcworkspace",
+    "ios:xcode": "npm run ios:prune-stale-workspace && npm run ios:fix-workspace && open ios/Sloe.xcworkspace",
     "web": "expo start --web",
     "lint": "expo lint -- --no-error-on-unmatched-pattern",
     "typecheck": "tsc --noEmit",

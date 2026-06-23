@@ -1,17 +1,19 @@
 import * as React from "react";
 import { Pressable, ScrollView, Text, TextStyle, View } from "react-native";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  Stop,
-} from "react-native-svg";
+import {
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  CircleCheck,
+  Scale,
+  Sparkles,
+  Target,
+} from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { BookOpen, CircleCheck, Scale, Sparkles, Target } from "lucide-react-native";
-import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { CalorieRingDial } from "@/components/charts/CalorieRingDial";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
 import { Layout } from "@/constants/layout";
-import { useAccent } from "@/context/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { computeOnboardingRevealProjection } from "@suppr/shared/onboarding/revealProjection";
@@ -42,7 +44,7 @@ export function MobileRevealStep() {
   // icon. The "Watch the ring fill" row keeps `Accent.success` (green status),
   // the "Adapt" row keeps `MacroColors.fat`, and the macro tiles keep their own
   // `MacroColors` — none of those are the secondary accent.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // ENG-1187 — gloss BMR / TDEE / Mifflin-St Jeor on first use behind
   // `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays as the
   // default; the glossed copy leads with the plain phrase. The
@@ -62,7 +64,6 @@ export function MobileRevealStep() {
   const target = targets?.target ?? 0;
 
   const [displayCals, setDisplayCals] = React.useState(0);
-  const [progress, setProgress] = React.useState(0);
   // 2026-05-12 (premium-bar audit DC1 — refuse-to-pass #5, Cal AI
   // plan-reveal borrow): the ring + number used to start counting
   // the instant the screen mounted, which read as "the page just
@@ -75,7 +76,6 @@ export function MobileRevealStep() {
   React.useEffect(() => {
     if (target === 0) {
       setDisplayCals(0);
-      setProgress(0);
       setRevealStarted(false);
       return;
     }
@@ -99,7 +99,6 @@ export function MobileRevealStep() {
         const p = Math.min(1, (Date.now() - start) / dur);
         const e = 1 - Math.pow(1 - p, 3);
         setDisplayCals(Math.round(target * e));
-        setProgress(e);
         if (p < 1) raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
@@ -183,9 +182,6 @@ export function MobileRevealStep() {
   });
 
   const SIZE = 220;
-  const R = 88;
-  const C = 2 * Math.PI * R;
-  const dashOffset = C * (1 - progress);
 
   return (
     <ScrollView
@@ -265,37 +261,20 @@ export function MobileRevealStep() {
         <View
           style={{ width: SIZE, height: SIZE, alignItems: "center", justifyContent: "center" }}
         >
-          <Svg
-            width={SIZE}
-            height={SIZE}
-            style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}
-          >
-            <Defs>
-              <SvgLinearGradient id="reveal-grad" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor={accent.primaryLight} />
-                <Stop offset="1" stopColor={accent.primary} />
-              </SvgLinearGradient>
-            </Defs>
-            <Circle
-              cx={SIZE / 2}
-              cy={SIZE / 2}
-              r={R}
-              stroke={colors.inputBg}
-              strokeWidth={12}
-              fill="none"
+          {/* Sloe v3 (ENG-1225): the onboarding reveal ring is the same jewel
+              watch-dial as the Today hero (CalorieRingDial), sized to the
+              reveal. consumed flips 0→target on `revealStarted` so the dial's
+              grow sweeps the segments to a full sage ring on the reveal beat.
+              `hideCenter` lets the reveal keep its bespoke centre (the
+              "Crunching…" beat → serif count-up). */}
+          <View style={{ position: "absolute" }}>
+            <CalorieRingDial
+              consumed={revealStarted ? target : 0}
+              target={target}
+              size={SIZE}
+              hideCenter
             />
-            <Circle
-              cx={SIZE / 2}
-              cy={SIZE / 2}
-              r={R}
-              stroke="url(#reveal-grad)"
-              strokeWidth={12}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={`${C} ${C}`}
-              strokeDashoffset={dashOffset}
-            />
-          </Svg>
+          </View>
           <View style={{ alignItems: "center" }}>
             {/* 2026-05-12 (premium-bar audit DC1 — Cal AI plan-reveal):
                 during the ~700ms anticipation beat the centre shows a
@@ -387,19 +366,19 @@ export function MobileRevealStep() {
           <MacroTile
             name="Protein"
             value={targets.proteinG}
-            color={MacroColors.protein}
+            color={mc.protein}
             pct={Math.round(((targets.proteinG * 4) / targets.target) * 100)}
           />
           <MacroTile
             name="Carbs"
             value={targets.carbsG}
-            color={MacroColors.carbs}
+            color={mc.carbs}
             pct={Math.round(((targets.carbsG * 4) / targets.target) * 100)}
           />
           <MacroTile
             name="Fat"
             value={targets.fatG}
-            color={MacroColors.fat}
+            color={mc.fat}
             pct={Math.round(((targets.fatG * 9) / targets.target) * 100)}
           />
         </View>
@@ -493,8 +472,8 @@ export function MobileRevealStep() {
           />
           <NextStepRow
             Icon={Sparkles}
-            iconBg={`${MacroColors.fat}1A`}
-            iconColor={MacroColors.fat}
+            iconBg={`${mc.fat}1A`}
+            iconColor={mc.fat}
             title="Adapt over the first ~2 weeks"
             sub="As you log + weigh in, Sloe re-tunes your TDEE to what your body actually does."
           />

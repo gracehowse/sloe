@@ -84,7 +84,7 @@ import { SupprButton } from "./suppr/suppr-button";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
-import { StreakPip } from "./suppr/streak-pip";
+import { useWeeklyRecap } from "./suppr/use-weekly-recap";
 import { LogSheet } from "./suppr/log-sheet";
 // Phase 4 / B3.Y — desktop modal mode for the LogSheet.
 import { useIsDesktop } from "./ui/use-mobile";
@@ -114,8 +114,7 @@ import { TodayStepsCard } from "./suppr/today-steps-card";
 import { TodayActivityBonusCard } from "./suppr/today-activity-bonus-card";
 import { TodayScrollSectionHeader } from "./suppr/today-scroll-section-header";
 import { TodayWeekView } from "./suppr/today-week-view";
-import { TodayDashboardMacroTiles } from "./suppr/today-dashboard-macro-tiles";
-import { TodayDashboardMacroBars } from "./suppr/today-dashboard-macro-bars";
+import { TodayMacroSection } from "./suppr/today-macro-section";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
@@ -2254,6 +2253,8 @@ export const NutritionTracker = memo(function NutritionTracker({
     maintenanceForWeek,
   ]);
 
+  // ENG-1225 #20 — weekly recap opened by the Today StreakPip.
+  const weeklyRecap = useWeeklyRecap(weekData.days, weekData.label, targets.calories);
   // Burn data for the selected day
   const dayWorkouts = workoutsByDay[selectedDateKey] ?? [];
   const basalBurnKcal = basalBurnByDay[selectedDateKey] ?? 0;
@@ -2701,13 +2702,11 @@ export const NutritionTracker = memo(function NutritionTracker({
         stripOnly={viewMode === "day"}
         streakDays={protectedStreakLength}
         freezeProtected={protectedDateKeys.has(todayKey())}
+        onStreakPress={weeklyRecap.trigger}
       />
-
+      {weeklyRecap.dialog}
       {missedYesterdayVisible && (
-        <p
-          data-testid="today-missed-yesterday-copy"
-          className="mt-0.5 px-3 text-center text-xs text-muted-foreground"
-        >
+        <p data-testid="today-missed-yesterday-copy" className="mt-0.5 px-3 text-center text-xs text-muted-foreground">
           {MISSED_YESTERDAY_COPY}
         </p>
       )}
@@ -2866,48 +2865,29 @@ export const NutritionTracker = memo(function NutritionTracker({
           standalone block below now ship inline inside this component
           via the `nutrientRows` prop, so the above-meals composition
           stays at four blocks (date / hero / context / macro tiles). */}
-      {macroDisplayStyle === "bars" ? (
-        <TodayDashboardMacroBars
-          trackedMacros={trackedDashboardMacros}
-          proteinCurrent={totals.protein}
-          proteinTarget={effectiveMacroTargets.protein}
-          carbsCurrent={totals.carbs}
-          carbsTarget={effectiveMacroTargets.carbs}
-          fatCurrent={totals.fat}
-          fatTarget={effectiveMacroTargets.fat}
-          fiberCurrent={totals.fiber}
-          fiberTarget={targets.fiber}
-          sugarG={dayMicroSumForTracker.sugarG}
-          sodiumMg={dayMicroSumForTracker.sodiumMg}
-          waterCurrentMl={totalWaterMl}
-          waterTargetMl={targets.waterMl}
-          netCarbsLensEnabled={netCarbsLensEnabled}
-          onPressMacro={macroDetailFlagEnabled ? openMacroDetail : undefined}
-        />
-      ) : (
-        <TodayDashboardMacroTiles
-          trackedMacros={trackedDashboardMacros}
-          proteinCurrent={totals.protein}
-          proteinTarget={effectiveMacroTargets.protein}
-          carbsCurrent={totals.carbs}
-          carbsTarget={effectiveMacroTargets.carbs}
-          fatCurrent={totals.fat}
-          fatTarget={effectiveMacroTargets.fat}
-          fiberCurrent={totals.fiber}
-          fiberTarget={targets.fiber}
-          sugarG={dayMicroSumForTracker.sugarG}
-          sodiumMg={dayMicroSumForTracker.sodiumMg}
-          waterCurrentMl={totalWaterMl}
-          waterTargetMl={targets.waterMl}
-          formatWaterLine={formatWaterLine}
-          onAddWaterMl={addWaterMlForSelectedDay}
-          netCarbsLensEnabled={netCarbsLensEnabled}
-          nutrientRows={dayNutrientDetailRows}
-          onPressViewAllNutrients={() => setFullNutrientPanelOpen(true)}
-          viewAllNutrientsCount={FULL_NUTRIENT_PANEL_ROW_COUNT}
-          onPressMacro={macroDetailFlagEnabled ? openMacroDetail : undefined}
-        />
-      )}
+      <TodayMacroSection
+        macroDisplayStyle={macroDisplayStyle}
+        trackedMacros={trackedDashboardMacros}
+        proteinCurrent={totals.protein}
+        proteinTarget={effectiveMacroTargets.protein}
+        carbsCurrent={totals.carbs}
+        carbsTarget={effectiveMacroTargets.carbs}
+        fatCurrent={totals.fat}
+        fatTarget={effectiveMacroTargets.fat}
+        fiberCurrent={totals.fiber}
+        fiberTarget={targets.fiber}
+        sugarG={dayMicroSumForTracker.sugarG}
+        sodiumMg={dayMicroSumForTracker.sodiumMg}
+        waterCurrentMl={totalWaterMl}
+        waterTargetMl={targets.waterMl}
+        formatWaterLine={formatWaterLine}
+        onAddWaterMl={addWaterMlForSelectedDay}
+        netCarbsLensEnabled={netCarbsLensEnabled}
+        nutrientRows={dayNutrientDetailRows}
+        onPressViewAllNutrients={() => setFullNutrientPanelOpen(true)}
+        viewAllNutrientsCount={FULL_NUTRIENT_PANEL_ROW_COUNT}
+        onPressMacro={macroDetailFlagEnabled ? openMacroDetail : undefined}
+      />
 
       {/* PR #47 full-nutrient panel — opened from the
           TodayDashboardMacroTiles "View all N nutrients" pill above.

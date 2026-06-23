@@ -107,6 +107,10 @@ export function useCardElevation(
   // an accepted no-op so ~30 call sites + their tests need no signature churn;
   // the dark tonal lift (`liftBg`) survives as fill-based separation (NOT a
   // shadow/border), mirroring web `.dark .card-slab`'s `--card-elevated` fill.
+  //
+  // NOTE (Sloe v3, ENG-1222): v3 reverses this to LIFTED white-on-white cards —
+  // but that is done in P2 (the de-carded Today rebuild), with the full
+  // elevation-test cluster updated together. Kept flat here until then.
   if (isDark) {
     return {
       shadowStyle: undefined,

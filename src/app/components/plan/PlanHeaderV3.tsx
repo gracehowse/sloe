@@ -1,0 +1,110 @@
+"use client";
+
+import * as React from "react";
+import { Bookmark, Sparkles, SlidersHorizontal } from "lucide-react";
+
+import type { PlanWeekVerdict } from "@/lib/planning/planWeekStatus";
+
+/**
+ * PlanHeaderV3 — the Sloe v3 Plan header + week-verdict row.
+ *
+ * WEB parity twin of `apps/mobile/components/plan/PlanHeaderV3.tsx` (prototype
+ * `docs/ux/redesign/v3/Sloe-App.html` Plan screen ~L4707–4721): the date-range
+ * overline + "Your plan" serif title with three quiet round action buttons
+ * (generate / adjust / templates), then a verdict row — a tone dot +
+ * "On track — N of M days land" headline + "{M−N} days need a meal or swap"
+ * nudge. The verdict comes from {@link PlanWeekVerdict} (`computePlanWeekVerdict`),
+ * so completeness logic stays shared web↔mobile.
+ *
+ * Presentational only — the host computes the date label + verdict and owns the
+ * generate/adjust/templates handlers. Behind the `sloe_v3_plan` flag (host-gated).
+ */
+export interface PlanHeaderV3Props {
+  /** Week range, e.g. "16–22 June". Rendered uppercase as the overline. */
+  dateRangeLabel: string;
+  /** Completeness verdict, or `null` before a plan exists (verdict row hidden). */
+  verdict: PlanWeekVerdict | null;
+  onGenerate: () => void;
+  onAdjust: () => void;
+  onTemplates: () => void;
+}
+
+function ActButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[var(--background-secondary)] text-foreground transition-[background-color,transform] hover:bg-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95"
+    >
+      {children}
+    </button>
+  );
+}
+
+export function PlanHeaderV3({
+  dateRangeLabel,
+  verdict,
+  onGenerate,
+  onAdjust,
+  onTemplates,
+}: PlanHeaderV3Props) {
+  return (
+    <div className="mb-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 shrink">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-foreground-tertiary">
+            {dateRangeLabel.toUpperCase()}
+          </p>
+          <h2 className="mt-0.5 font-[family-name:var(--font-headline)] text-[28px] font-medium leading-tight tracking-tight text-foreground">
+            Your plan
+          </h2>
+        </div>
+        <div className="flex items-center gap-1">
+          <ActButton label="Generate week" onClick={onGenerate}>
+            <Sparkles className="size-[17px]" strokeWidth={1.9} />
+          </ActButton>
+          <ActButton label="Adjust constraints" onClick={onAdjust}>
+            <SlidersHorizontal className="size-[17px]" strokeWidth={1.9} />
+          </ActButton>
+          <ActButton label="Plan templates" onClick={onTemplates}>
+            <Bookmark className="size-4" strokeWidth={1.9} />
+          </ActButton>
+        </div>
+      </div>
+
+      {verdict ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span
+            aria-hidden
+            className="size-2 rounded-full"
+            style={{
+              backgroundColor:
+                verdict.tone === "success"
+                  ? "var(--accent-success)"
+                  : "var(--warning)",
+            }}
+          />
+          <span className="text-[13px] font-semibold leading-[18px] text-foreground">
+            {verdict.headline}
+          </span>
+          {verdict.subline ? (
+            <span className="text-[11px] text-foreground-tertiary">
+              {verdict.subline}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export default PlanHeaderV3;

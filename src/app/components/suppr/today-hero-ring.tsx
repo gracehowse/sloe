@@ -3,6 +3,7 @@
 import * as React from "react";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
+import { CalorieRingDial } from "./calorie-ring-dial";
 import { MACRO_RING_TOGGLE, todayStatusChip } from "../../../lib/copy/today";
 import { useCalorieRingGeometry } from "../../../lib/hooks/useCalorieRingGeometry";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
@@ -158,6 +159,11 @@ export function TodayHeroRing({
   const isOver = target > 0 && consumed > target;
   const chipState: ChipState = isEmpty ? "empty" : isOver ? "over" : "under";
   const ringGeometry = useCalorieRingGeometry();
+  // Sloe v3 (ENG-1222 P1): swap the concentric ring for the jewel watch-dial
+  // (calorie-only; macros move to the separate Tiles/Bars/Rings section). The
+  // surrounding hero structure is unchanged here — the de-carded v3 hero layout
+  // lands in P2. Transient flag, collapsed once verified in sim.
+  const v3Ring = isFeatureEnabled("sloe_v3_ring");
   const bonusKcal =
     baseGoal && baseGoal < target ? Math.round(target - baseGoal) : 0;
 
@@ -180,27 +186,35 @@ export function TodayHeroRing({
       <div className="flex w-full items-center justify-between gap-2">
         <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
       </div>
-      <DailyRing
-        consumed={consumed}
-        target={target}
-        size={ringGeometry.size}
-        // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
-        // the macro stroke; the collapsed lone ring keeps the confident bold
-        // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
-        strokeWidth={
-          expanded ? ringGeometry.strokeWidth : ringGeometry.strokeWidthBold
-        }
-        ringRadius={ringGeometry.radius}
-        macroRadii={ringGeometry.macroRadii}
-        macroStroke={ringGeometry.macroStroke}
-        proteinPct={proteinPct}
-        carbsPct={carbsPct}
-        fatPct={fatPct}
-        expanded={expanded}
-        onToggle={onToggleExpanded}
-        pulse={pulse}
-        commitPulse={commitPulse}
-      />
+      {v3Ring ? (
+        <CalorieRingDial
+          consumed={consumed}
+          target={target}
+          size={ringGeometry.size}
+        />
+      ) : (
+        <DailyRing
+          consumed={consumed}
+          target={target}
+          size={ringGeometry.size}
+          // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
+          // the macro stroke; the collapsed lone ring keeps the confident bold
+          // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
+          strokeWidth={
+            expanded ? ringGeometry.strokeWidth : ringGeometry.strokeWidthBold
+          }
+          ringRadius={ringGeometry.radius}
+          macroRadii={ringGeometry.macroRadii}
+          macroStroke={ringGeometry.macroStroke}
+          proteinPct={proteinPct}
+          carbsPct={carbsPct}
+          fatPct={fatPct}
+          expanded={expanded}
+          onToggle={onToggleExpanded}
+          pulse={pulse}
+          commitPulse={commitPulse}
+        />
+      )}
       {/* Goal / Eaten / Bonus stats row — renders on EMPTY days too (web ring
           parity 2026-06-10): the empty page mirrors a populated day, so Eaten 0
           and Bonus +0 are honest numbers, not noise. Gated on `target > 0`

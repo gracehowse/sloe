@@ -1,8 +1,9 @@
 import * as React from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors, Spacing } from "@/constants/theme";
+import { Accent, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { requestHealthPermissions } from "@/lib/healthSync";
@@ -16,6 +17,7 @@ import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 export function MobilePermissionsStep() {
   const { state, set } = useOnboarding();
   const overline = useStepOverline();
+  const { colors: macro } = useMacroColors();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const [healthBusy, setHealthBusy] = React.useState(false);
@@ -111,7 +113,7 @@ export function MobilePermissionsStep() {
       />
       <PermissionCard
         icon="heart-outline"
-        iconColor={MacroColors.fat}
+        iconColor={macro.fat}
         title="Apple Health"
         body="Read your active energy and steps to refine your adaptive TDEE. Sloe does not write to Health."
         granted={state.healthGranted}

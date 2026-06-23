@@ -288,12 +288,18 @@ export function reset(): void {
  * the flag is discoverable on both platforms; a flag absent from every
  * default-on set and not live in PostHog resolves to `false` (the safe
  * dark default). To preview on device, force it ON via the dev Settings
- * panel (`setForcedFlag("cook_step_ingredients_v1", true)`).
+ * panel (`setForcedFlag("reveal-macro-tile-paired-pct", true)`).
  *
- * - `cook_step_ingredients_v1` (ENG-944) — renders the calm "For this step"
- *   ingredient chip row under each cook-mode instruction. DEFAULT-OFF;
- *   ramp via PostHog once visually validated on device. Mirror of the web
- *   note in `src/lib/analytics/track.ts`.
+ * - `reveal-macro-tile-paired-pct` — onboarding reveal-step layout A/B that
+ *   pairs the macro % inline with grams. DEFAULT-OFF *by design*: Grace
+ *   ramps it in PostHog only after validating it in TestFlight, so it is
+ *   deliberately excluded from the ENG-1225 flag-collapse sweep (not a
+ *   built-but-dark v3 surface). Mirror of the web note in
+ *   `src/lib/analytics/track.ts`.
+ *
+ * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
+ *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was
+ *  fixed — the v3 cook baseline is now default-on.)
  */
 
 /** Redesign 2026 flag set — the new design is the DEFAULT in every build
@@ -394,6 +400,44 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-863 — user-tapped Sloe image generation, labelling, nutrition-decouple
   // copy, and removal on recipe heroes. Default-on with PostHog as kill switch.
   "recipe_runtime_image_generation_v1",
+  // ENG-1225 #3 — unified "import anything" sheet (detect-anything classifier +
+  // single front door). Default-on per the "turn everything on" rule; off → the
+  // legacy per-surface nav (Discover card → /import-shared), kept as kill switch.
+  "sloe_v3_unified_import",
+  // ENG-1225 — the v3 jewel watch-dial as the Today hero ring. Default-on; the
+  // dial handles cold-start (goal<=0 → logged kcal + "LOGGED", real numbers
+  // always per 2026-06-10) so it has legacy parity with CalorieRing.
+  // OFF → the legacy concentric CalorieRing (kill switch). Keep in sync w/ web.
+  "sloe_v3_ring",
+  // ENG-1225 Block 5 — the v3 Cookbook editorial shelves (Tonight's pick hero +
+  // Fits-your-day / Quick / High-protein) above the Library grid on the All
+  // filter. Default-on; off → the flat grid only (kill switch). Keep in sync w/ web.
+  "sloe_v3_editorial_shelves",
+  // ENG-1225 Block 6 — the v3 Discover editorial sections (Quick weeknight
+  // no-photo cards + Collections) above the cuisine clusters. Default-on; off →
+  // the legacy feed without those sections (kill switch). Keep in sync w/ web.
+  "sloe_v3_discover_editorial",
+  // ENG-1225 flag-collapse sweep (2026-06-22) — the v3 cook-mode baseline.
+  // Built (ENG-944/946/947/948/949) but dark-by-default until this sweep; the
+  // audit's launch-blocker #4. On-device SEE found a swipe-surface render bug
+  // (step body invisible) — FIXED in ENG-1230 (recipe/[id].tsx top-group flex)
+  // before flipping these on. Each default-on now; off → pre-v3 cook (kill
+  // switch). Keep in sync with web.
+  "cook_step_ingredients_v1", // "For this step" ingredient chip row
+  "cook_swipe_steps_v1", // swipe between steps + quiet page indicator
+  "cook_ingredient_checklist_v1", // mise-en-place ingredient checklist
+  "cook_multi_timers_v1", // concurrent step timers
+  "cook_text_size_control_v1", // cook-mode text-size control
+  // ENG-1225 Block 8 — Progress energy balance as an EQUATION (intake −
+  // maintenance = deficit/day) + "How maintenance works" explainer. Now built
+  // on mobile too (ProgressEnergyEquation), so it's a SHARED default-on flag
+  // (was web-only). Off → the legacy 3-cell triad (kill switch).
+  "sloe_v3_energy_equation",
+  // ENG-1225 Block 2 — the v3 Plan IA top section (PlanV3Surface: "Your plan"
+  // header + verdict + week-strip day selector + day-detail calorie band).
+  // Mobile-only for now (web Plan v3 is a later block). Off → the legacy Plan
+  // header/chrome (kill switch). Per-slot cards + meal-filter = Block 3.
+  "sloe_v3_plan",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in

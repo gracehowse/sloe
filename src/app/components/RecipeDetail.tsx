@@ -19,6 +19,7 @@ import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { classifyConfidence } from "../../lib/nutrition/aiLogging";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
+import { useRecipeReport } from "./suppr/use-recipe-report";
 import { normaliseRecipeDisplayTitle } from "../../lib/recipe/normaliseDisplayTitle";
 import {
   findSeedRecipeById,
@@ -496,6 +497,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       (recipe.authorId ?? recipeAuthorId) &&
       authUserId === (recipe.authorId ?? recipeAuthorId),
   );
+  const report = useRecipeReport(recipe.id, normaliseRecipeDisplayTitle(recipe.title));
 
   const setPublished = async (nextPublished: boolean) => {
     if (!authUserId || !isMyRecipe) return;
@@ -1762,45 +1764,37 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 >
                   <Icons.share className="w-5 h-5" />
                 </button>
-                {isMyRecipe ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="More actions"
-                        className={`${heroCircle} text-white`}
-                      >
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {!isCatalogRecipe ? (
-                        <DropdownMenuItem onSelect={() => setRecipeEditOpen(true)}>Edit</DropdownMenuItem>
-                      ) : null}
-                      {isAiGeneratedHero ? (
-                        <DropdownMenuItem disabled={heroSaving} onSelect={() => void removeGeneratedHero()}>
-                          Remove Sloe image
-                        </DropdownMenuItem>
-                      ) : null}
-                      {isPublished === false ? (
-                        <DropdownMenuItem
-                          disabled={dbLoading}
-                          onSelect={() => setGoPublicMobileOpen(true)}
-                        >
-                          Go public
-                        </DropdownMenuItem>
-                      ) : null}
-                      {isPublished === true ? (
-                        <DropdownMenuItem
-                          disabled={dbLoading}
-                          onSelect={() => setUnpublishOpen(true)}
-                        >
-                          Unpublish
-                        </DropdownMenuItem>
-                      ) : null}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : null}
+                {/* Always-rendered overflow menu: owner actions gated on
+                    isMyRecipe; "Report an issue" (ENG-1225 #19) for everyone —
+                    non-owners report others' recipes, which is the point. */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="More actions"
+                      className={`${heroCircle} text-white`}
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {isMyRecipe && !isCatalogRecipe ? (
+                      <DropdownMenuItem onSelect={() => setRecipeEditOpen(true)}>Edit</DropdownMenuItem>
+                    ) : null}
+                    {isMyRecipe && isAiGeneratedHero ? (
+                      <DropdownMenuItem disabled={heroSaving} onSelect={() => void removeGeneratedHero()}>
+                        Remove Sloe image
+                      </DropdownMenuItem>
+                    ) : null}
+                    {isMyRecipe && isPublished === false ? (
+                      <DropdownMenuItem disabled={dbLoading} onSelect={() => setGoPublicMobileOpen(true)}>Go public</DropdownMenuItem>
+                    ) : null}
+                    {isMyRecipe && isPublished === true ? (
+                      <DropdownMenuItem disabled={dbLoading} onSelect={() => setUnpublishOpen(true)}>Unpublish</DropdownMenuItem>
+                    ) : null}
+                    <DropdownMenuItem onSelect={report.openReport}>Report an issue</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -1841,6 +1835,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           </AlertDialogContent>
         </AlertDialog>
       ) : null}
+      {report.dialog}
       {isMyRecipe && isPublished === false && goPublicMobileOpen ? (
         <GoPublicDialog
           recipeTitle={recipe.title}

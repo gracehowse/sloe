@@ -20,6 +20,7 @@ import * as React from "react";
 import { ScrollView, View, Text } from "react-native";
 import { Stack } from "expo-router";
 import CalorieRing from "@/components/charts/CalorieRing";
+import { CalorieRingDial } from "@/components/charts/CalorieRingDial";
 
 const STATES = [
   {
@@ -109,6 +110,23 @@ export default function CalorieRingStatesScreen() {
                   expanded={false}
                   displayMode="remaining"
                 />
+              </View>
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 1.2,
+                  color: "#666",
+                  marginBottom: 8,
+                }}
+              >
+                v3 JEWEL DIAL
+              </Text>
+              <View
+                testID={`dial-${s.id}`}
+                style={{ alignItems: "center", marginBottom: 12 }}
+              >
+                <CalorieRingDial consumed={s.consumed} target={s.goal} size={200} />
               </View>
               <Text style={{ fontSize: 12, color: "#666" }}>{s.note}</Text>
               <Text style={{ fontSize: 11, color: "#999", marginTop: 4 }}>

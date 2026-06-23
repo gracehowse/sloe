@@ -1,7 +1,8 @@
 import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { Accent, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
@@ -62,6 +63,7 @@ export function ProgressAverageAdherence({
   adherenceDeltaPct,
 }: ProgressAverageAdherenceProps) {
   const colors = useThemeColors();
+  const { colors: macro } = useMacroColors(); // ENG-1223: scheme-resolved dot
   // "AVERAGE ADHERENCE" overline uses accent.primarySolid — scheme-resolved
   // so the deep plum lifts to the OLED-contrast aubergine on dark.
   const accent = useAccent();
@@ -129,7 +131,7 @@ export function ProgressAverageAdherence({
               {onTargetDays.map((on, i) => (
                 <View
                   key={i}
-                  style={{ width: 9, height: 9, borderRadius: Radius.full, backgroundColor: on ? MacroColors.protein : colors.cardBorder }}
+                  style={{ width: 9, height: 9, borderRadius: Radius.full, backgroundColor: on ? macro.protein : colors.cardBorder }}
                 />
               ))}
             </View>

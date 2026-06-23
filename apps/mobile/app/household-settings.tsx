@@ -46,8 +46,8 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
-import { Accent, FontFamily, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import {
   getMyHousehold,
   setHouseholdMemberShareTargets,
@@ -157,7 +157,7 @@ export default function HouseholdSettingsScreen() {
   // Open-Plan/Invite links, add-member affordance, active selection radios +
   // dots, member-scope chips, and the primary CTAs/toggles. Destructive actions
   // (leave/remove) keep `Accent.destructive`.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // One-card-treatment soft elevation (docs/decisions/2026-06-09-one-card-treatment-
   // soft-elevation.md): the Members / Sharing presets / Privacy / Legend cards all
   // sit directly on the page ground, so they take the SOFT lift, routed through the
@@ -600,7 +600,7 @@ export default function HouseholdSettingsScreen() {
                 }}
               >
                 {/* Eyebrow: Type.label token (sage #7C8466, letterSpacing 0.88, uppercase) */}
-                <Text style={[Type.label, { color: MacroColors.protein }]}>
+                <Text style={[Type.label, { color: mc.protein }]}>
                   Members
                 </Text>
                 <Pressable
@@ -736,7 +736,7 @@ export default function HouseholdSettingsScreen() {
             {/* Privacy — per-member share_targets opt-in (H4, 2026-04-21) */}
             <View style={{ marginBottom: Spacing.md }} testID="household-settings-privacy">
               {/* Eyebrow: Type.label token (sage secondary) */}
-              <Text style={[Type.label, { color: MacroColors.protein, marginBottom: Spacing.sm }]}>
+              <Text style={[Type.label, { color: mc.protein, marginBottom: Spacing.sm }]}>
                 Privacy
               </Text>
               {/* Outer wrapper carries the soft lift (elevation system); inner clips border */}
@@ -782,7 +782,7 @@ export default function HouseholdSettingsScreen() {
             {/* Presets */}
             <View style={{ marginBottom: Spacing.md }}>
               {/* Eyebrow: Type.label token (sage secondary) */}
-              <Text style={[Type.label, { color: MacroColors.protein, marginBottom: Spacing.sm }]}>
+              <Text style={[Type.label, { color: mc.protein, marginBottom: Spacing.sm }]}>
                 Which meals are shared?
               </Text>
               {/* Outer wrapper carries the soft lift (elevation system); inner clips border+overflow */}
@@ -859,7 +859,7 @@ export default function HouseholdSettingsScreen() {
                 }}
               >
                 {/* Eyebrow: Type.label token (sage secondary) */}
-                <Text style={[Type.label, { color: MacroColors.protein }]}>
+                <Text style={[Type.label, { color: mc.protein }]}>
                   Weekly plan
                 </Text>
                 <Text style={{ fontSize: 11, color: colors.textTertiary }} testID="household-grid-summary">

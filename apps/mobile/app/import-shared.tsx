@@ -36,8 +36,8 @@ import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius, FontFamily, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, FontFamily, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useAuth } from "@/context/auth";
@@ -200,7 +200,7 @@ type ImportState =
 type ProgressStep = "ingredients" | "nutrition" | "macros";
 
 export default function ImportSharedScreen() {
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the import CTAs,
   // outline/text-link buttons, source/share callouts, and the various entry-
   // point glyphs (search, restaurant, clipboard, camera, person, bookmark).
@@ -2323,10 +2323,10 @@ export default function ImportSharedScreen() {
                 <Text style={styles.macroCardTitle}>HOW THIS FITS YOUR DAY</Text>
                 <View style={styles.macroRow}>
                   {[
-                    { val: previewNutrition.calories, unit: "", label: "kcal", target: profileTargets.calories, color: MacroColors.calories },
-                    { val: previewNutrition.protein, unit: "g", label: "protein", target: profileTargets.protein, color: MacroColors.protein },
-                    { val: previewNutrition.carbs, unit: "g", label: "carbs", target: profileTargets.carbs, color: MacroColors.carbs },
-                    { val: previewNutrition.fat, unit: "g", label: "fat", target: profileTargets.fat, color: MacroColors.fat },
+                    { val: previewNutrition.calories, unit: "", label: "kcal", target: profileTargets.calories, color: mc.calories },
+                    { val: previewNutrition.protein, unit: "g", label: "protein", target: profileTargets.protein, color: mc.protein },
+                    { val: previewNutrition.carbs, unit: "g", label: "carbs", target: profileTargets.carbs, color: mc.carbs },
+                    { val: previewNutrition.fat, unit: "g", label: "fat", target: profileTargets.fat, color: mc.fat },
                   ].map((m) => (
                     <View key={m.label} style={styles.macroItem}>
                       <Text style={[styles.macroValue, { color: m.color }]} numberOfLines={1}>

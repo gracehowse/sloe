@@ -28,7 +28,7 @@ for (const f of expectedMigrations) {
   line(ok, f, ok ? "ready to push to Supabase" : "file missing from repo");
 }
 
-const privacyDefault = "privacy@suppr-club.com";
+const privacyDefault = "privacy@getsloe.com";
 const privacyEnv = process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim();
 console.log("\n=== Privacy contact (build-time) ===\n");
 line(

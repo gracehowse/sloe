@@ -32,8 +32,8 @@ import {
 import * as Haptics from "expo-haptics";
 import { decode } from "base64-arraybuffer";
 
-import { Accent, MacroColors, Spacing, Radius, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { decodeEntities } from "@/lib/decodeEntities";
@@ -194,7 +194,7 @@ export default function CreateRecipeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBackOrCancel = useSafeBack("/(tabs)/settings");
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the header title,
   // add-row affordance, and primary submit CTA. Threaded into the memoised
   // StyleSheet via the dep array below. Macros keep `MacroColors`; errors keep
@@ -1209,15 +1209,15 @@ export default function CreateRecipeScreen() {
                 <Text style={styles.totalKey}>kcal</Text>
               </View>
               <View style={styles.totalItem}>
-                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: MacroColors.protein }]}>{perServing.protein}g</Text>
+                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: mc.protein }]}>{perServing.protein}g</Text>
                 <Text style={styles.totalKey}>protein</Text>
               </View>
               <View style={styles.totalItem}>
-                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: MacroColors.carbs }]}>{perServing.carbs}g</Text>
+                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: mc.carbs }]}>{perServing.carbs}g</Text>
                 <Text style={styles.totalKey}>carbs</Text>
               </View>
               <View style={styles.totalItem}>
-                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: MacroColors.fat }]}>{perServing.fat}g</Text>
+                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: mc.fat }]}>{perServing.fat}g</Text>
                 <Text style={styles.totalKey}>fat</Text>
               </View>
             </View>

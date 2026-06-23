@@ -179,7 +179,9 @@ function withIosMetroBundleUrlFallback(config) {
     async (cfg) => {
       const appDelegatePath = path.join(
         cfg.modRequest.platformProjectRoot,
-        "Suppr",
+        // Project folder follows app.json `name` ("Sloe"); bundle/slug/scheme
+        // stay "suppr". Was "Suppr" pre-rebrand (stale).
+        "Sloe",
         "AppDelegate.swift",
       );
       let contents = await fs.readFile(appDelegatePath, "utf8");

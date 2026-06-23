@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { TrustPageLayout } from "../../src/app/components/trust/TrustPageLayout";
 
-const DEFAULT_PRIVACY_EMAIL = "privacy@suppr-club.com";
+const DEFAULT_PRIVACY_EMAIL = "privacy@getsloe.com";
 
 // 2026-05-12 (premium-bar audit Group A trust pages — sticky ToC):
 // privacy is the most-jumped-to trust surface (UK/EU users looking
@@ -120,10 +120,10 @@ export default function PrivacyPage() {
             Creators can request removal of any recipe imported from their
             public post by emailing{" "}
             <a
-              href="mailto:dmca@suppr-club.com"
+              href="mailto:dmca@getsloe.com"
               className="text-violet-600 dark:text-violet-400 underline"
             >
-              dmca@suppr-club.com
+              dmca@getsloe.com
             </a>{" "}
             or by submitting the form on{" "}
             <Link href="/dmca" className="text-violet-600 dark:text-violet-400 underline">

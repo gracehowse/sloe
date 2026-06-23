@@ -15,7 +15,9 @@
  */
 import { Text, View } from "react-native";
 
-import { FontFamily, MacroColors, Spacing, Type } from "@/constants/theme";
+import { FontFamily, Spacing, Type } from "@/constants/theme";
+import { macroColorFor } from "@/lib/macroColors";
+import { useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export type RecipeMacroCell = {
@@ -28,26 +30,20 @@ export type RecipeMacroCell = {
   unit: string;
 };
 
-/** Per-macro value colour — Figma `332:2` §4. */
+/** Per-macro value colour — Figma `332:2` §4. ENG-1223: scheme-aware (plum
+ *  protein etc. lighten on dark); calories uses the passed nav-plum. */
 function macroValueColor(
   key: RecipeMacroCell["key"],
   plum: string,
+  isDark: boolean,
 ): string {
-  switch (key) {
-    case "protein":
-      return MacroColors.protein; // sage
-    case "carbs":
-      return MacroColors.carbs; // clay
-    case "fat":
-      return MacroColors.fat; // amber
-    case "calories":
-    default:
-      return plum;
-  }
+  if (key === "calories") return plum;
+  return macroColorFor(key, isDark);
 }
 
 export function RecipeMacroStrip({ cells }: { cells: RecipeMacroCell[] }) {
   const colors = useThemeColors();
+  const isDark = useResolvedScheme() === "dark";
   return (
     <View
       testID="recipe-macros-grid"
@@ -79,7 +75,7 @@ export function RecipeMacroStrip({ cells }: { cells: RecipeMacroCell[] }) {
               fontSize: 24,
               lineHeight: 28,
               fontWeight: "400",
-              color: macroValueColor(cell.key, colors.navPrimary),
+              color: macroValueColor(cell.key, colors.navPrimary, isDark),
               fontVariant: ["tabular-nums"],
             }}
           >

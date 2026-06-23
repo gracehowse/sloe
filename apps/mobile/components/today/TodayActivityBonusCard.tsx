@@ -4,7 +4,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { Flame, Target, TrendingUp, Utensils } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
-import { Accent, Colors, FontFamily, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Colors, FontFamily, FontWeight, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -173,8 +173,8 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
   const cardElevation = useTodayCardElevation();
   // Theme-aware honey TEXT (base honey is fill-only): deep honey on light,
   // lifted honey on dark; both clear AA. Mirrors web `--activity-solid`.
-  const activitySolid =
-    useColorScheme() === "dark" ? Accent.activitySolidDark : Accent.activitySolid;
+  const isDark = useColorScheme() === "dark";
+  const activitySolid = isDark ? Accent.activitySolidDark : Accent.activitySolid;
   // Secondary accent (Frost flag → damson, else clay) for the two CTAs on this
   // card (the "Enable activity budget" discover button + the popover "Close").
   // The honey activity data (flame/arc/kcal via `Accent.activity*`), the sage/
@@ -515,7 +515,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
               style={{ alignItems: "center", flex: 1 }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.sm, marginBottom: Spacing.xs }}>
-                <Target size={IconSize.sm} color={MacroColors.calories} strokeWidth={2} />
+                <Target size={IconSize.sm} color={(isDark ? MacroColorsDark : MacroColors).calories} strokeWidth={2} />
                 <Text style={{ ...Type.label, color: textTertiaryColor }}>
                   Maintenance
                 </Text>

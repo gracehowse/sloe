@@ -149,8 +149,8 @@ describe("Today above-meals cap (mobile) — canonical four primitives", () => {
     expect(countMatches(HOST_SRC, /<TodayHero[\s/]/g)).toBe(1);
   });
 
-  it("renders <TodayDashboardMacroTiles> exactly once", () => {
-    expect(countMatches(HOST_SRC, /<TodayDashboardMacroTiles[\s/]/g)).toBe(1);
+  it("renders <TodayMacroSection> exactly once (the Tiles/Bars/Rings switcher)", () => {
+    expect(countMatches(HOST_SRC, /<TodayMacroSection[\s/]/g)).toBe(1);
   });
 
   it("renders <TodayMealsSection> exactly once", () => {
@@ -160,9 +160,8 @@ describe("Today above-meals cap (mobile) — canonical four primitives", () => {
 
 function macroGridToMealsSlice(src: string): string {
   const mealsIdx = src.indexOf("<TodayMealsSection");
-  const tilesIdx = src.lastIndexOf("<TodayDashboardMacroTiles", mealsIdx);
-  const barsIdx = src.lastIndexOf("<TodayDashboardMacroBars", mealsIdx);
-  const macroIdx = Math.max(tilesIdx, barsIdx);
+  // ENG-1224: Tiles/Bars/Rings switch now renders through <TodayMacroSection>.
+  const macroIdx = src.lastIndexOf("<TodayMacroSection", mealsIdx);
   expect(macroIdx).toBeGreaterThan(-1);
   expect(mealsIdx).toBeGreaterThan(macroIdx);
   return src.slice(macroIdx, mealsIdx);

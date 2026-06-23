@@ -10,7 +10,13 @@ const ROOT = resolve(__dirname, "../..");
 describe("ENG-685 SmartImage adoption", () => {
   it("mobile Discover cover + hero media use SmartImage", () => {
     const src = readFileSync(resolve(ROOT, "apps/mobile/app/(tabs)/discover.tsx"), "utf8");
-    expect(src).toMatch(/DiscoverCoverImage[\s\S]*SmartImage/);
+    // DiscoverCoverImage (the More-ideas row thumbnail) was extracted to
+    // DiscoverMoreIdeaRow (ENG-1225 Block 6 pre-work); it still uses SmartImage.
+    const moreIdea = readFileSync(
+      resolve(ROOT, "apps/mobile/components/discover/DiscoverMoreIdeaRow.tsx"),
+      "utf8",
+    );
+    expect(moreIdea).toMatch(/DiscoverCoverImage[\s\S]*SmartImage/);
     expect(src).toMatch(/DiscoverHeroMedia[\s\S]*SmartImage/);
   });
 

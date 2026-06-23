@@ -14,7 +14,7 @@
  * of truth.
  */
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 type SubmitState =
   | { kind: "idle" }
@@ -30,6 +30,14 @@ export function DmcaTakedownForm() {
   const [supprRecipeId, setSupprRecipeId] = useState("");
   const [description, setDescription] = useState("");
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
+
+  // ENG-1225 #19 — pre-fill the recipe field when arriving from a recipe's
+  // "Report an issue → Copyright" route (`/dmca?recipe=<id>`). Set after mount
+  // to avoid an SSR hydration mismatch.
+  useEffect(() => {
+    const recipe = new URLSearchParams(window.location.search).get("recipe");
+    if (recipe) setSupprRecipeId(recipe);
+  }, []);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -67,14 +75,14 @@ export function DmcaTakedownForm() {
       }
       setState({
         kind: "error",
-        message: data.message ?? "Submission failed. Please email dmca@suppr-club.com instead.",
+        message: data.message ?? "Submission failed. Please email dmca@getsloe.com instead.",
         field: typeof data.field === "string" ? data.field : null,
       });
     } catch {
       setState({
         kind: "error",
         message:
-          "Network error. Please retry or email dmca@suppr-club.com directly.",
+          "Network error. Please retry or email dmca@getsloe.com directly.",
         field: null,
       });
     }
@@ -144,7 +152,7 @@ export function DmcaTakedownForm() {
           id="dmca-recipe"
           type="text"
           required
-          placeholder="https://suppr-club.com/recipe/..."
+          placeholder="https://getsloe.com/recipe/..."
           value={supprRecipeId}
           onChange={(e) => setSupprRecipeId(e.target.value)}
           aria-invalid={errorField === "supprRecipeId" || undefined}
@@ -195,6 +203,13 @@ export function DmcaTakedownForm() {
           </p>
         )}
       </div>
+      {/* Point-of-collection transparency (ENG-1225 #19, legal-reviewer Finding
+          5) — the server records submission metadata; the privacy policy covers
+          it, this discloses it where the data is taken. */}
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        We record your IP address and browser with this submission to prevent
+        abuse.
+      </p>
     </form>
   );
 }

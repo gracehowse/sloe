@@ -28,8 +28,8 @@ import * as Haptics from "expo-haptics";
 // vitest shim). Mirrors `PressableScale.tsx`.
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-import { Accent, Colors, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, Colors, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
@@ -458,7 +458,7 @@ function NorthStarDefault({
   // Secondary accent (Frost flag → damson, else clay) for the "What to eat
   // next" overline + the suggestion CTA. The band-fit green chip + plum keep
   // their own tokens.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   // Pan responder for swipe-to-skip. We use raw PanResponder rather
   // than reanimated here because the block is a single-state gesture
@@ -643,7 +643,7 @@ function NorthStarDefault({
                   color: suggestion.bandTight
                     ? tierV1
                       ? Accent.successSolid
-                      : MacroColors.calories
+                      : mc.calories
                     : colors.textSecondary,
                 }}
               >

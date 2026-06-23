@@ -45,8 +45,8 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { requestHealthPermissions, syncHealthData } from "@/lib/healthSync";
@@ -117,7 +117,7 @@ function ManualTargetsCard() {
   // glyph. The kcal field label stays clay deliberately (calories identity —
   // calories→plum reconciliation is a separate follow-up per the ship plan's
   // open Q1); the P/C/F field labels keep their `MacroColors`.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Mirror state.* into local string buffers so the user can clear
   // a field mid-edit (numeric inputs don't tolerate empty-string
   // round-trips through Number).
@@ -171,21 +171,21 @@ function ManualTargetsCard() {
           value={protein}
           onChangeText={setProtein}
           onBlur={commit}
-          color={MacroColors.protein}
+          color={mc.protein}
         />
         <TargetInput
           label="C g"
           value={carbs}
           onChangeText={setCarbs}
           onBlur={commit}
-          color={MacroColors.carbs}
+          color={mc.carbs}
         />
         <TargetInput
           label="F g"
           value={fat}
           onChangeText={setFat}
           onBlur={commit}
-          color={MacroColors.fat}
+          color={mc.fat}
         />
       </View>
       <Text
@@ -268,7 +268,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
   // Secondary accent (Frost flag → damson, else clay) for the "Open Settings"
   // link and the "Allow Health access" CTA. The card's heart glyph keeps
   // `MacroColors.fat`, and the permission-error box keeps `Accent.warning`.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const granted = state.healthGranted === true;
@@ -312,7 +312,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
   return (
     <BridgeCard
       icon="heart-outline"
-      iconColor={MacroColors.fat}
+      iconColor={mc.fat}
       title="Connect Apple Health"
       body="Read active energy + steps so your adaptive TDEE calibrates from day 1. If you opt in later, logged meals can also sync back to Health."
       grantedBadge={granted ? "Connected" : null}

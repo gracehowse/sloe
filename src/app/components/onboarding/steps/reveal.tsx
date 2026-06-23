@@ -16,6 +16,7 @@ import {
 } from "../../../../lib/onboarding/figmaCopy";
 import { useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
+import { CalorieRingDial } from "../../suppr/calorie-ring-dial";
 
 /**
  * Reveal — step 11. The "aha" moment. Animated count-up on the daily
@@ -55,7 +56,6 @@ export function RevealStep({ compact = false }: RevealProps) {
 
   // Animated count-up — easeOutCubic over ~1.2s.
   const [displayCals, setDisplayCals] = React.useState(0);
-  const [ringProgress, setRingProgress] = React.useState(0);
   // 2026-05-12 (premium-bar audit DC1 — Cal AI plan-reveal borrow,
   // web parity with mobile reveal.tsx): ~700ms anticipation beat
   // before the count-up + ring sweep begin. Reads as "the engine is
@@ -65,7 +65,6 @@ export function RevealStep({ compact = false }: RevealProps) {
   React.useEffect(() => {
     if (target === 0) {
       setDisplayCals(0);
-      setRingProgress(0);
       setRevealStarted(false);
       return;
     }
@@ -81,7 +80,6 @@ export function RevealStep({ compact = false }: RevealProps) {
         const p = Math.min(1, (now - start) / dur);
         const e = 1 - Math.pow(1 - p, 3);
         setDisplayCals(Math.round(target * e));
-        setRingProgress(e);
         if (p < 1) raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
@@ -128,9 +126,6 @@ export function RevealStep({ compact = false }: RevealProps) {
   });
 
   // Ring geometry
-  const R = 88;
-  const C = 2 * Math.PI * R;
-  const dash = C * ringProgress;
 
   return (
     <div
@@ -174,39 +169,17 @@ export function RevealStep({ compact = false }: RevealProps) {
           className="relative mx-auto"
           style={{ width: compact ? 210 : 240, height: compact ? 210 : 240 }}
         >
-          <svg
-            width="100%"
-            height="100%"
-            viewBox="0 0 220 220"
-            style={{ transform: "rotate(-90deg)" }}
-          >
-            <defs>
-              <linearGradient id="reveal-grad" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" />
-                <stop offset="100%" stopColor="var(--macro-fat)" />
-              </linearGradient>
-            </defs>
-            <circle
-              cx={110}
-              cy={110}
-              r={R}
-              stroke="var(--input-background)"
-              strokeWidth={12}
-              fill="none"
-            />
-            <circle
-              cx={110}
-              cy={110}
-              r={R}
-              stroke="url(#reveal-grad)"
-              strokeWidth={12}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={C}
-              strokeDashoffset={C - dash}
-              style={{ transition: "stroke-dashoffset 80ms linear" }}
-            />
-          </svg>
+          {/* Sloe v3 (ENG-1225): the onboarding reveal ring is the same jewel
+              watch-dial as the Today hero (CalorieRingDial), parity with mobile.
+              consumed flips 0→target on `revealStarted` so the dial's grow sweeps
+              to a full sage ring on the reveal beat; `hideCenter` keeps the
+              reveal's bespoke centre (the "Crunching…" beat → serif count-up). */}
+          <CalorieRingDial
+            consumed={revealStarted ? target : 0}
+            target={target}
+            size={compact ? 210 : 240}
+            hideCenter
+          />
           <div className="absolute inset-0 flex flex-col justify-center items-center">
             {revealStarted ? (
               <>

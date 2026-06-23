@@ -235,18 +235,46 @@ export const StimulantColors = {
  *  + position remain the primary identity channel; colour is secondary. Mirrors
  *  web `--macro-*` in `src/styles/theme.css`. */
 export const MacroColors = {
-  calories: '#3B2A4D',         // Plum — the calorie ring (Sloe chrome hue)
-  protein:  '#7C8466',         // Olive-sage (graphics)
-  proteinSolid: '#5F6650',     // ENG-1109 — small text on light backgrounds
-  carbs:    Accent.carbs,      // Clay (#C8794E)
-  carbsSolid: '#9A5A32',
-  fat:      '#C9892C',         // Amber
-  fatSolid: '#956619',
-  fiber:    '#4A7878',         // Teal
-  fiberSolid: '#3A5F5F',
-  sugar:    Accent.carbs,      // Sugar follows carbs (clay)
-  sodium:   '#C9892C',         // Amber (mirrors web --macro-sodium)
-  water:    '#4A7878',         // Teal
+  // Sloe v3 reassignment (2026-06-21, prototype `:root`) — protein → plum,
+  // carbs → amber, fat → berry-rose (NEW), fiber + calories → sage,
+  // sugar → damson, sodium → clay, water → muted teal. `-Solid` darkened
+  // variants carry small text/icon at AA on light. ↔ web src/styles/theme.css.
+  calories: '#5E7C5A',         // Sage — under-budget calorie ring identity
+  protein:  '#3B2A4D',         // Plum
+  proteinSolid: '#3B2A4D',     // 12:1 on white — AA PASS
+  carbs:    '#C9892C',         // Amber
+  carbsSolid: '#956619',
+  fat:      '#B25D7A',         // Berry rose — NEW v3 hue
+  fatSolid: '#9A4A66',         // darkened berry — ~6:1 on white, AA PASS
+  fiber:    '#5E7C5A',         // Sage
+  fiberSolid: '#466046',
+  sugar:    '#6A4B7A',         // Damson
+  sodium:   '#C8794E',         // Clay
+  water:    '#5A8A99',         // Muted teal
+};
+
+/**
+ * Dark-scheme macro hues (ENG-1223). The v3 light macros are tuned for the
+ * white ground — protein plum `#3B2A4D` is near-invisible on the Nocturne dark
+ * ground `#120D18`. The core 5 mirror web `.dark` (`src/styles/theme.css`)
+ * value-for-value (pinned by `crossPlatformThemeTokens.test.ts`); sugar/sodium/
+ * water have no web dark token (secondary micros) so they're lightened here for
+ * dark-ground contrast. Resolve via `macroColorFor(key, isDark)` /
+ * `useMacroColors()` — never read `MacroColors.*` directly in a themed surface.
+ */
+export const MacroColorsDark: typeof MacroColors = {
+  calories: '#7FA078',         // sage (lightened)
+  protein:  '#B9A7CC',         // plum (lightened)
+  proteinSolid: '#B9A7CC',
+  carbs:    '#E0A64A',         // amber (lightened)
+  carbsSolid: '#E0A64A',
+  fat:      '#D489A3',         // berry rose (lightened)
+  fatSolid: '#D489A3',
+  fiber:    '#7FA078',         // sage (lightened)
+  fiberSolid: '#7FA078',
+  sugar:    '#A98BC0',         // damson (lightened — no web dark token)
+  sodium:   '#D89A6E',         // clay (lightened — no web dark token)
+  water:    '#7FAAB8',         // teal (lightened — no web dark token)
 };
 
 /**
@@ -323,36 +351,22 @@ export const Colors = {
     text: '#221B26',                // aubergine ink (the warmth lives here)
     textSecondary: '#655C6E',
     textTertiary: '#9B93A3',
-    // Material inversion (2026-06-10 fresh-eyes challenge §1+§2): CREAM
-    // ground + WHITE cards. The old white-ground/cream-card pairing differed
-    // by ~3 RGB points — the material system never registered, so real
-    // variation read as chaos. White cards are the gallery surface for food
-    // imagery. Recipe detail pioneered this grammar — the app converges TO it.
-    //
-    // 2026-06-16 (Grace, Natural Cycles / Withings study): deepen the ground a
-    // GENTLE step. The 2026-06-12 flat-card decision (docs/decisions/2026-06-12-
-    // flat-card-surfaces.md) bet separation on ground↔card contrast ALONE but
-    // kept the near-white splash cream #FBF8F3 (L*≈98) — only ~2 L* below the
-    // white card, so the flat cards barely registered. A first pass to a deep,
-    // more-saturated oat (#EFE8DA, L*≈92, R-B=21) read TOO DARK/heavy — a warm
-    // tan at L*92 carries far more visual weight than NC's neutral greige at the
-    // same lightness. The fix is a gentle lightness step that keeps the cream's
-    // ORIGINAL low warmth (R-B≈11, not 21): #F3F0E8 (L*≈95) gives a ~5 L* gap
-    // (≈2.2× the old 2 L*) — enough for the flat white card to lift, while the
-    // page stays a light, airy cream. Separation = the tonal step + the neutral-
-    // white-card-on-warm-ground temperature contrast. Still warm cream, NOT
-    // Withings' cooler grey (brand equity, per 2026-06-12). SPLASH/icon ground
-    // stays #FBF8F3 in app.json (a launch frame, not card-bearing —
-    // brandIconSplash.test.ts pins it). Dark mode unchanged — the dark card
-    // (#232126) already lifts off the dark ground (#19181C).
-    background: '#F3F0E8',          // light warm cream — flat cards lift by a gentle tonal step (2026-06-16)
-    backgroundSecondary: '#EFEBE1', // recessed secondary ground (recipe-detail cards lift off it too)
-    card: '#FFFFFF',                // white card on cream ground (inversion §1) — real tonal presence
-    cardElevated: '#FFFFFF',        // same fill in light; dark uses a stepped lift (fill IS the separation post flat-cards 2026-06-12)
-    fillQuiet: '#F2EFE9',           // quiet fill — nested affordances inside flat cards (Withings grammar, 2026-06-12 decision); ↔ web --fill-quiet
-    cardBorder: '#E8E2EC',          // hairline (Sloe line)
-    border: '#E8E2EC',
-    borderStrong: '#C9C2D6',
+    // Sloe v3 surface model (2026-06-21, prototype docs/ux/redesign/v3). The
+    // in-product ground returns to PURE WHITE; cream is marketing-only. v3
+    // REVERSES the 2026-06-12 flat-card-on-cream grammar: white cards LIFT on
+    // the layered Elevation.cardSoft over a whisper-cool white ground
+    // ("elevation, not warmth"). Depth comes from backgroundGrouped (cool
+    // plum-grey) + the shadow, not a warm page tint. Splash/icon ground stays
+    // #FBF8F3 in app.json (brandIconSplash.test.ts pins it). ↔ web theme.css.
+    background: '#FFFFFF',          // pure white app canvas
+    backgroundSecondary: '#F1F0F4', // recessed cool plum-grey (tracks, wells)
+    backgroundGrouped: '#F5F4F7',   // faint cool-plum grouped ground (NOT beige)
+    card: '#FFFFFF',                // white card — lift via Elevation.cardSoft
+    cardElevated: '#FFFFFF',
+    fillQuiet: '#F1F0F4',           // cool quiet fill (was warm cream); ↔ web --fill-quiet
+    cardBorder: '#EAE7F0',          // v3 faint cool-plum hairline
+    border: '#EAE7F0',
+    borderStrong: '#D9D4E0',
     tint: Accent.primary,
     /** Nav / brand primary — Sloe plum. The FAB, wordmark, and page titles
      *  use this (locked Grace 2026-06-04: plum = brand/nav primary, clay =
@@ -363,7 +377,7 @@ export const Colors = {
     icon: '#655C6E',
     tabIconDefault: '#9B93A3',
     tabIconSelected: Accent.primary,
-    inputBg: '#F6F5F2',
+    inputBg: '#FFFFFF',             // v3 white input on white ground — lift via border
     overlay: '#00000088',
     /** Source / provenance dots — Sloe palette. Mirrors web --source-*. */
     sourceUsda: '#5E7C5A',          // sage
@@ -391,8 +405,8 @@ export const Colors = {
     primaryForeground: '#ffffff',
     /** Logo plate — Sloe plum rings on oat (mirrors web --brand-mark-ring). */
     brandMarkRing: '#3B2A4D',
-    /** Calorie ring empty track — Sloe frost-mist (readable on white hero). */
-    ringTrack: '#EDEAF1',
+    /** Calorie ring empty track — v3 frost-grey (visible full ring on white). */
+    ringTrack: '#D8D0E6',
     /** Bold ring track — a 14% tint of the plum ring hue (#3B2A4D), used as the
      *  empty-arc track in every LOGGED state (design-director 2026-06-16, Apple
      *  Fitness grammar). The old frost-mist #EDEAF1 measured ~10/255 off the
@@ -401,20 +415,28 @@ export const Colors = {
      *  to the 100%-opacity fill arc. Macro tracks use a tint of their OWN hue
      *  (in CalorieRing/SkiaRingArcs), not this. ↔ web --ring-track-bold. */
     ringTrackBold: 'rgba(59, 42, 77, 0.24)',
+    /** Sloe v3 jewel watch-dial — graduation ticks + state gradient stops +
+     *  luminous gem core. ↔ web theme.css `--ring-{tick,under,over,empty,cap-core}`. */
+    ringTick: 'rgba(59, 42, 77, 0.20)',
+    ringCapCore: '#FFFFFF',
+    ringUnderA: '#4D7A50', ringUnderB: '#93C08C',
+    ringOverA: '#C0533F', ringOverB: '#E08A5F',
+    ringEmptyA: '#C4BCD4', ringEmptyB: '#E6E0F1',
   },
   dark: {
     // SLOE Phase 0 dark — warm aubergine graphite, not cool-slate.
-    text: '#F5F3F4',                // ↔ web --foreground (ivory ink)
-    textSecondary: '#B7B2BA',
-    textTertiary: '#857F8B',
-    background: '#19181C',          // ↔ web --background
-    backgroundSecondary: '#232126', // ↔ web --background-secondary
-    card: '#232126',                // ↔ web --card
-    cardElevated: '#2A2730',        // ↔ web --card-elevated (premium tier)
-    fillQuiet: '#2C2A30',           // quiet fill (dark) — one step above the dark card fill; ↔ web dark --fill-quiet
-    cardBorder: '#35323A',          // ↔ web --border
-    border: '#35323A',
-    borderStrong: '#47424F',        // ↔ web --border-strong
+    text: '#ECE8F0',                // ↔ web --foreground (soft plum-white, never pure #fff)
+    textSecondary: '#B8B0C4',
+    textTertiary: '#8A8198',
+    background: '#120D18',          // ↔ web --background (Nocturne deep plum-black)
+    backgroundSecondary: '#1A1422', // ↔ web --background-secondary
+    backgroundGrouped: '#161019',   // ↔ web --background-grouped
+    card: '#211A2A',                // ↔ web --card (raised plum card)
+    cardElevated: '#2A2233',        // ↔ web --card-elevated (one-step lift)
+    fillQuiet: '#241C2E',           // quiet fill (dark) — ↔ web dark --muted
+    cardBorder: '#332843',          // ↔ web --border
+    border: '#332843',
+    borderStrong: '#443656',        // ↔ web --border-strong
     tint: Accent.primaryLight,
     /** Nav / brand primary — Sloe lifted plum on dark (matches `_gen.mjs`
      *  HEAD_DARK `plum:'#815E91'`). See light-mode note above. */
@@ -422,7 +444,7 @@ export const Colors = {
     icon: '#B7B2BA',                // ↔ web --foreground-secondary (dark)
     tabIconDefault: '#857F8B',
     tabIconSelected: Accent.primaryLight,
-    inputBg: '#232126',             // ↔ web --input-background (dark)
+    inputBg: '#1A1422',             // ↔ web --input-background (dark)
     overlay: '#000000aa',
     /** Source / provenance dots — Sloe dark (lifted). */
     sourceUsda: '#83A57E',
@@ -446,6 +468,13 @@ export const Colors = {
     /** Bold ring track (dark) — lifted plum #815E91 at 22% so the unfilled ring
      *  reads on the dark card. ↔ web .dark --ring-track-bold. */
     ringTrackBold: 'rgba(129, 94, 145, 0.34)',
+    /** Sloe v3 jewel watch-dial (dark) — brighter so the gem reads luminous on
+     *  Nocturne. ↔ web .dark `--ring-{tick,under,over,empty,cap-core}`. */
+    ringTick: 'rgba(201, 194, 214, 0.24)',
+    ringCapCore: '#FBF7FF',
+    ringUnderA: '#6FA06A', ringUnderB: '#B6E0AD',
+    ringOverA: '#D2614A', ringOverB: '#F0A47A',
+    ringEmptyA: '#6A5A7E', ringEmptyB: '#B9ADD0',
   },
 };
 

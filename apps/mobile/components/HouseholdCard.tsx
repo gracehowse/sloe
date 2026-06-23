@@ -4,8 +4,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, Radius, MacroColors } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, Radius, MacroColors, MacroColorsDark } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprButton } from "@/components/ui/SupprButton";
 // Direct-to-Supabase household client. Replaced the old
@@ -76,7 +76,7 @@ export function HouseholdCard() {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the card's accent
   // colour token. Macros keep `MacroColors`; status keeps success/warning.
-  const accent = useAccent();
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   const [data, setData] = useState<HouseholdData | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"idle" | "create" | "join">("idle");
@@ -99,9 +99,9 @@ export function HouseholdCard() {
     accent: accent.primary,
     green: Accent.success,
     amber: Accent.warning,
-    protein: MacroColors.protein,
-    carbs: MacroColors.carbs,
-    fat: MacroColors.fat,
+    protein: mc.protein,
+    carbs: mc.carbs,
+    fat: mc.fat,
   };
 
   const load = useCallback(async () => {

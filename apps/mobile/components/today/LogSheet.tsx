@@ -34,8 +34,8 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import * as Haptics from "expo-haptics";
 
-import { Accent, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 import { SourceDot, type SourceDotSource } from "@/components/ui/SourceDot";
@@ -1400,7 +1400,7 @@ function LogSheetDailyProgress({
   macroTargets: MacroTargets;
   macroConsumed: MacroConsumed;
 }) {
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   const kcalTarget = Math.round(macroTargets.calories);
   const kcalConsumed = Math.round(macroConsumed.calories);
   return (
@@ -1422,9 +1422,9 @@ function LogSheetDailyProgress({
       <View style={styles.dailyMacroRow}>
         {(
           [
-            ["P", macroConsumed.protein, MacroColors.protein],
-            ["C", macroConsumed.carbs, MacroColors.carbs],
-            ["F", macroConsumed.fat, MacroColors.fat],
+            ["P", macroConsumed.protein, mc.protein],
+            ["C", macroConsumed.carbs, mc.carbs],
+            ["F", macroConsumed.fat, mc.fat],
           ] as const
         ).map(([letter, grams, color]) => (
           <View key={letter} style={{ alignItems: "center" }}>

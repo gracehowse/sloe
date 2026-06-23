@@ -1,8 +1,8 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { AlertTriangle, Check, Info } from "lucide-react-native";
-import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -36,10 +36,10 @@ import { MobileMiniSlider } from "../slider";
  * @react-native-community/slider for one screen.
  */
 
-const ACCENT_BY_GOAL: Record<Exclude<Goal, "maintain">, string> = {
-  lose: MacroColors.fat,
-  gain: MacroColors.protein,
-  recomp: MacroColors.carbs,
+const MACRO_KEY_BY_GOAL: Record<Exclude<Goal, "maintain">, keyof typeof MacroColors> = {
+  lose: "fat",
+  gain: "protein",
+  recomp: "carbs",
 };
 
 export function MobilePaceStep() {
@@ -67,7 +67,7 @@ export function MobilePaceStep() {
   // ring — mirroring the web pace step + the diet/allergy chip pattern. The
   // per-goal `accent` below stays reserved for the slider track + projection
   // tile (the macro-coded goal hue), matching web `BrandedSlider`.
-  const plum = useAccent();
+  const plum = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // ENG-1187 — gloss the "TDEE" label on first use on the pace screen
   // behind `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays
   // in the `else`. Shared web ↔ mobile via `figmaCopy.ts`.
@@ -77,7 +77,7 @@ export function MobilePaceStep() {
   const goal = (state.goal ?? "lose") as Exclude<Goal, "maintain">;
   const range = PACE_RANGES[goal];
   const presets = PACE_PRESETS[goal];
-  const accent = ACCENT_BY_GOAL[goal];
+  const accent = mc[MACRO_KEY_BY_GOAL[goal]];
   const pace = state.paceKgPerWeek ?? GOAL_DEFAULT_PACE[goal];
 
   // Commit the visible default into state so Continue works on first

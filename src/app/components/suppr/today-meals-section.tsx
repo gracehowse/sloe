@@ -536,31 +536,29 @@ export function TodayMealsSection({
             >
               {/* Meal header row — TD4: Newsreader slot name + macro chips */}
               <div
-                data-testid={`today-slot-header-${sectionName}`}
-                className={`flex items-center gap-2.5 px-3.5 py-3 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset ${hasMeals && isOpen ? "border-b border-border" : ""}`}
-                onClick={() => {
-                  if (!hasMeals) {
-                    onOpenAddForSlot(sectionName);
-                    return;
-                  }
-                  onToggleSlot(sectionName);
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    if (!hasMeals) onOpenAddForSlot(sectionName);
-                    else onToggleSlot(sectionName);
-                  }
-                }}
-                aria-expanded={hasMeals ? isOpen : undefined}
-                aria-label={
-                  hasMeals
-                    ? `${sectionName}, ${sectionMeals.length} items — expand or collapse`
-                    : `${sectionName} — add food`
-                }
+                className={`flex items-center gap-2.5 px-3.5 py-3 ${hasMeals && isOpen ? "border-b border-border" : ""}`}
               >
+                {/* Expand/add trigger is a real <button> over the icon+name;
+                    the action pills are SIBLINGS (un-nested) so the row no
+                    longer trips axe `nested-interactive`. (ENG-1225) */}
+                <button
+                  type="button"
+                  data-testid={`today-slot-header-${sectionName}`}
+                  onClick={() => {
+                    if (!hasMeals) {
+                      onOpenAddForSlot(sectionName);
+                      return;
+                    }
+                    onToggleSlot(sectionName);
+                  }}
+                  aria-expanded={hasMeals ? isOpen : undefined}
+                  aria-label={
+                    hasMeals
+                      ? `${sectionName}, ${sectionMeals.length} items — expand or collapse`
+                      : `${sectionName} — add food`
+                  }
+                  className="flex flex-1 min-w-0 items-center gap-2.5 text-left cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+                >
                 <IconBox
                   size="sm"
                   tone={mealIconInfo.tone}
@@ -602,6 +600,7 @@ export function TodayMealsSection({
                     })()
                   ) : null}
                 </div>
+                </button>
                 {/* Ship M1 — `Log usual: {name}` pill on slot headers with
                     ≥1 saved meal matching this slot. 2+ matches open the
                     picker sheet. Replaces the old 10px "Save combo"

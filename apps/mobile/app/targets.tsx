@@ -25,8 +25,8 @@ import Svg, {
 } from "react-native-svg";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -56,7 +56,7 @@ import { isFeatureEnabled } from "@/lib/analytics";
  * surface so we don't duplicate state).
  */
 export default function TargetsScreen() {
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the calorie target
   // ring's SVG gradient stops (primaryLight → primary), the loading spinners,
   // and the help affordance. Threaded into the memoised StyleSheet via the dep
@@ -379,14 +379,14 @@ export default function TargetsScreen() {
   const macroColorFor = (key: string): string => {
     switch (key) {
       case "protein":
-        return MacroColors.protein;
+        return mc.protein;
       case "carbs":
-        return MacroColors.carbs;
+        return mc.carbs;
       case "fat":
-        return MacroColors.fat;
+        return mc.fat;
       case "fiber":
       default:
-        return MacroColors.fiber;
+        return mc.fiber;
     }
   };
 

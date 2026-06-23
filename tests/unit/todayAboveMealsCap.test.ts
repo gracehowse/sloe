@@ -51,9 +51,9 @@ describe("Today above-meals cap (web) — context block dispatch", () => {
 
 function macroGridToMealsSlice(src: string): string {
   const mealsIdx = src.indexOf("<TodayMealsSection");
-  const tilesIdx = src.lastIndexOf("<TodayDashboardMacroTiles", mealsIdx);
-  const barsIdx = src.lastIndexOf("<TodayDashboardMacroBars", mealsIdx);
-  const macroIdx = Math.max(tilesIdx, barsIdx);
+  // ENG-1224: the Tiles/Bars/Rings switch is rendered through the extracted
+  // <TodayMacroSection> (was an inline <TodayDashboardMacroTiles/Bars> ternary).
+  const macroIdx = src.lastIndexOf("<TodayMacroSection", mealsIdx);
   expect(macroIdx).toBeGreaterThan(-1);
   expect(mealsIdx).toBeGreaterThan(macroIdx);
   return src.slice(macroIdx, mealsIdx);
@@ -94,8 +94,8 @@ describe("Today above-meals cap (web) — canonical four primitives", () => {
     expect(countMatches(HOST_SRC, /<TodayHeroStats[\s/]/g)).toBe(1);
   });
 
-  it("renders <TodayDashboardMacroTiles> exactly once", () => {
-    expect(countMatches(HOST_SRC, /<TodayDashboardMacroTiles[\s/]/g)).toBe(1);
+  it("renders <TodayMacroSection> exactly once (the Tiles/Bars/Rings switcher)", () => {
+    expect(countMatches(HOST_SRC, /<TodayMacroSection[\s/]/g)).toBe(1);
   });
 });
 

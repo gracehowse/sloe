@@ -120,6 +120,8 @@ vi.mock("@/context/theme", async () => {
   return {
     useTheme: () => ({ resolved: "light", colors: {} }),
     useAccent: () => Accent,
+    // ENG-1223: FoodSearchPanel now reads the scheme to resolve macro colours.
+    useResolvedScheme: () => "light",
   };
 });
 

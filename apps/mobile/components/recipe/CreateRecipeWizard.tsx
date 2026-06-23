@@ -60,8 +60,8 @@ import {
   X,
 } from "lucide-react-native";
 
-import { Accent, MacroColors, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAuth } from "@/context/auth";
@@ -129,7 +129,7 @@ function platformProp(): "ios" | "android" | "web" {
 export default function CreateRecipeWizard() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the wizard header,
   // add-ingredient affordance, step controls, and primary CTAs. Threaded into
   // the memoised StyleSheet via the dep array below. Macros keep `MacroColors`;
@@ -1274,7 +1274,7 @@ export default function CreateRecipeWizard() {
                   P / C / F / Fiber per row below. */}
               <MacroOverrideRow
                 label="Calories"
-                color={MacroColors.calories}
+                color={mc.calories}
                 suffix="kcal"
                 value={perServing.calories}
                 override={undefined}
@@ -1286,7 +1286,7 @@ export default function CreateRecipeWizard() {
               />
               <MacroOverrideRow
                 label="Protein"
-                color={MacroColors.protein}
+                color={mc.protein}
                 suffix="g"
                 value={perServing.protein}
                 override={macroOverrides.protein}
@@ -1296,7 +1296,7 @@ export default function CreateRecipeWizard() {
               />
               <MacroOverrideRow
                 label="Carbs"
-                color={MacroColors.carbs}
+                color={mc.carbs}
                 suffix="g"
                 value={perServing.carbs}
                 override={macroOverrides.carbs}
@@ -1306,7 +1306,7 @@ export default function CreateRecipeWizard() {
               />
               <MacroOverrideRow
                 label="Fat"
-                color={MacroColors.fat}
+                color={mc.fat}
                 suffix="g"
                 value={perServing.fat}
                 override={macroOverrides.fat}
@@ -1316,7 +1316,7 @@ export default function CreateRecipeWizard() {
               />
               <MacroOverrideRow
                 label="Fiber"
-                color={MacroColors.fiber}
+                color={mc.fiber}
                 suffix="g"
                 value={perServing.fiberG}
                 override={macroOverrides.fiberG}

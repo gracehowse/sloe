@@ -5,8 +5,8 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 
-import { MacroColors } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { MACRO_ICONS } from "@/lib/macroIconsLucide";
 
 /**
@@ -116,6 +116,8 @@ export function MacroIconRow({
   // Clock icon uses the scheme-resolved accent primary so it stays
   // legible on dark (deep plum `#3B2A4D` is invisible on near-black).
   const accent = useAccent();
+  // ENG-1223: scheme-resolved macro hues — plum protein etc. lighten on dark.
+  const { colors: macro } = useMacroColors();
   return (
     <View
       style={[{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }, style]}
@@ -123,7 +125,7 @@ export function MacroIconRow({
       {typeof kcal === "number" && Number.isFinite(kcal) ? (
         <Chunk
           Icon={MACRO_ICONS.calories}
-          iconColor={MacroColors.calories}
+          iconColor={macro.calories}
           value={`${Math.round(kcal)} kcal`}
           textColor={textColor}
           textTertiaryColor={textTertiaryColor}
@@ -134,7 +136,7 @@ export function MacroIconRow({
       {typeof protein === "number" && Number.isFinite(protein) ? (
         <Chunk
           Icon={MACRO_ICONS.protein}
-          iconColor={MacroColors.protein}
+          iconColor={macro.protein}
           value={`${Math.round(protein)}g`}
           letter={showMacroLetters ? "P" : undefined}
           textColor={emphasiseProtein ? (proteinTextColor ?? textColor) : textColor}
@@ -146,7 +148,7 @@ export function MacroIconRow({
       {typeof carbs === "number" && Number.isFinite(carbs) ? (
         <Chunk
           Icon={MACRO_ICONS.carbs}
-          iconColor={MacroColors.carbs}
+          iconColor={macro.carbs}
           value={`${Math.round(carbs)}g`}
           letter={showMacroLetters ? "C" : undefined}
           textColor={textColor}
@@ -158,7 +160,7 @@ export function MacroIconRow({
       {typeof fat === "number" && Number.isFinite(fat) ? (
         <Chunk
           Icon={MACRO_ICONS.fat}
-          iconColor={MacroColors.fat}
+          iconColor={macro.fat}
           value={`${Math.round(fat)}g`}
           letter={showMacroLetters ? "F" : undefined}
           textColor={textColor}
@@ -170,7 +172,7 @@ export function MacroIconRow({
       {typeof fiber === "number" && Number.isFinite(fiber) && fiber > 0 ? (
         <Chunk
           Icon={MACRO_ICONS.fiber}
-          iconColor={MacroColors.fiber}
+          iconColor={macro.fiber}
           value={`${Math.round(fiber * 10) / 10}g`}
           textColor={textColor}
           textTertiaryColor={textTertiaryColor}

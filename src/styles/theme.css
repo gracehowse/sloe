@@ -68,20 +68,20 @@
    *  are pure white. Mirrors mobile `Colors.light` in
    *  `apps/mobile/constants/theme.ts`. Spec:
    *  `docs/ux/redesign/phase-0-token-foundation-dossier.md`. */
-  /* Material inversion (2026-06-10 fresh-eyes §1+§2, mirror of mobile
-     theme.ts): cream brand ground + white cards.
-     2026-06-16 (Grace, Natural Cycles / Withings study): the working ground
-     deepens a GENTLE step from the near-white splash cream #FBF8F3 (L*≈98) to a
-     light warm cream #F3F0E8 (L*≈95). The 2026-06-12 flat-card grammar bets
-     separation on ground↔card contrast ALONE; at ~2 L* the flat cards barely
-     registered. A first pass to #EFE8DA (L*≈92, R-B=21) read too dark — a
-     saturated tan carries more weight than NC's neutral greige at equal
-     lightness — so this keeps the cream's original low warmth (R-B≈11) at a
-     ~5 L* gap: cards lift, page stays light. Still warm cream, NOT cooler grey
-     (brand equity). Splash/icon ground stays #FBF8F3 (app.json, not a
-     card-bearing surface). Mirrors mobile Colors.light. */
-  --background: #F3F0E8;
-  --background-secondary: #EFEBE1;
+  /* Sloe v3 surface model (2026-06-21, Grace's consolidated Claude-Design
+     prototype `docs/ux/redesign/v3/Sloe-App.html`). The in-product ground
+     returns to PURE WHITE; cream (`--background-marketing`) is reserved for
+     marketing / landing / paywall only. This REVERSES the 2026-06-12 flat-card-
+     on-cream grammar: per the prototype, "white-on-white is NOT warmth, NOT
+     beige fills and NOT 1px hairlines — it is ELEVATION: a whisper-cool
+     near-white ground so BRIGHT WHITE cards lift on a soft layered shadow."
+     Depth now comes from `--background-grouped` (cool plum-grey grouped ground)
+     + the layered `--elev-card-soft`, not from a warm page tint. Mirrors mobile
+     Colors.light. Spec: v3 `:root` surface block. */
+  --background: #FFFFFF;            /* pure white app canvas */
+  --background-secondary: #F1F0F4; /* recessed cool plum-grey (tracks, wells) */
+  --background-grouped: #F5F4F7;   /* faint cool-plum grouped ground (NOT beige) */
+  --background-marketing: #FBF8F3; /* Oat — marketing / landing / paywall ONLY */
   --foreground: #221B26;
   --foreground-secondary: #655C6E;
   --foreground-tertiary: #9B93A3;
@@ -140,7 +140,7 @@
   --primary-soft: var(--accent-primary-soft);
   --secondary: var(--background-secondary);
   --secondary-foreground: var(--foreground);
-  --muted: var(--background-secondary);
+  --muted: #EBEAF1;              /* v3 frost-grey — chips / pressed fill */
   --muted-foreground: var(--foreground-secondary);
   --accent: var(--background-secondary);
   --accent-foreground: var(--foreground);
@@ -206,10 +206,10 @@
   --destructive-solid: var(--accent-destructive-solid);
   --destructive-soft: var(--accent-destructive-soft);
 
-  --border: #E8E2EC;
-  --border-strong: #C9C2D6;
+  --border: #EAE7F0;             /* v3 faint cool-plum hairline */
+  --border-strong: #D9D4E0;
   --input: transparent;
-  --input-background: #F6F5F2;
+  --input-background: #FFFFFF;   /* v3 white input on white ground — lift via --border */
   --switch-background: #C9C2D6;
   --ring: var(--accent-primary);
 
@@ -232,28 +232,34 @@
    *  water → teal. The `-solid` variants exist for the macros used as small
    *  TEXT on light (protein olive 3.93:1 → #5F6650 5.99:1; others read fine
    *  as arcs/dots at 3:1 graphical). */
-  --macro-protein: #7C8466;
-  --macro-protein-solid: #5F6650;
-  --macro-protein-soft: rgba(124, 132, 102, 0.12);
-  --macro-carbs: #C8794E;
-  --macro-carbs-solid: #9A5A32;
-  --macro-carbs-soft: rgba(200, 121, 78, 0.12);
-  --macro-fat: #C9892C;
-  --macro-fat-solid: #956619;
-  --macro-fat-soft: rgba(201, 137, 44, 0.12);
-  --macro-calories: #3B2A4D;
-  /** Calorie ring over-budget second lap (lifted plum) + leading-cap glow. */
-  --ring-overage-lap: #6A4B7A;
-  --ring-overage-glow: #9A7BAA;
-  --macro-fiber: #4A7878;
-  --macro-fiber-solid: #3A5F5F;
-  --macro-fiber-soft: rgba(74, 120, 120, 0.12);
-  --macro-sugar: #C8794E;
-  --macro-sugar-soft: rgba(200, 121, 78, 0.12);
-  --macro-sodium: #C9892C;
-  --macro-sodium-soft: rgba(201, 137, 44, 0.08);
-  --macro-water: #4A7878;
-  --macro-water-soft: rgba(74, 120, 120, 0.08);
+  /** Sloe v3 macro reassignment (2026-06-21, prototype `:root`). Fixed across
+   *  all surfaces, never reassign per-surface: protein → plum, carbs → amber,
+   *  fat → berry-rose (NEW hue), fiber → sage, calories → sage (under-budget
+   *  ring identity). Sugar → damson, sodium → clay, water → muted teal. The
+   *  `-solid` darkened variants carry small-text/icon usage at AA on white. */
+  --macro-protein: #3B2A4D;                       /* plum */
+  --macro-protein-solid: #3B2A4D;                 /* 12:1 on white — AA PASS */
+  --macro-protein-soft: rgba(59, 42, 77, 0.12);
+  --macro-carbs: #C9892C;                         /* amber */
+  --macro-carbs-solid: #956619;                   /* 5.01:1 — AA PASS */
+  --macro-carbs-soft: rgba(201, 137, 44, 0.12);
+  --macro-fat: #B25D7A;                           /* berry rose — NEW v3 hue */
+  --macro-fat-solid: #9A4A66;                     /* darkened berry — ~6:1 on white, AA PASS */
+  --macro-fat-soft: rgba(178, 93, 122, 0.12);
+  --macro-calories: #5E7C5A;                      /* sage — under-budget ring identity */
+  /** Calorie ring over-budget second lap + leading-cap glow — warm-red family
+   *  (v3 over gradient #C0533F→#E08A5F), distinct from the sage under arc. */
+  --ring-overage-lap: #C0533F;
+  --ring-overage-glow: #E08A5F;
+  --macro-fiber: #5E7C5A;                         /* sage */
+  --macro-fiber-solid: #466046;                   /* 6.95:1 — AA PASS */
+  --macro-fiber-soft: rgba(94, 124, 90, 0.12);
+  --macro-sugar: #6A4B7A;                          /* damson — 7.24:1 as text, AA PASS */
+  --macro-sugar-soft: rgba(106, 75, 122, 0.12);
+  --macro-sodium: #C8794E;                         /* clay */
+  --macro-sodium-soft: rgba(200, 121, 78, 0.08);
+  --macro-water: #5A8A99;                          /* muted teal */
+  --macro-water-soft: rgba(90, 138, 153, 0.12);
 
   /** Meal-slot tints — Sloe palette (dossier D-4).
    *  Breakfast → amber, Lunch → sage, Dinner → damson, Snack → teal.
@@ -270,7 +276,7 @@
   /** Stimulant tracker colours — Sloe palette.
    *  Caffeine → damson, Alcohol → amber ("approaching weekly limit"). */
   --stimulant-caffeine: #6A4B7A;
-  --stimulant-alcohol: #C9892C;
+  --stimulant-alcohol: #C8794E;   /* v3 clay — "approaching weekly limit" */
 
   /** Confidence colours — Sloe palette.
    *  high → sage, med → amber, low → destructive. */
@@ -326,36 +332,31 @@
    *  Card = list rows on a card. Sheet = bottom-sheets. Float = popovers.
    *  FloatPrimary = FAB (primary tint underneath). */
   --elev-card: 0 1px 3px rgba(34, 27, 38, 0.06);
-  /** Soft resting-card shadow — ENG-795. The blessed resting-card lift, routed
-   *  through <SupprCard>. Mirrors mobile `Elevation.cardSoft` EXACTLY:
-   *  aubergine Sloe ink (#221B26 == rgba(34,27,38)) at 0.16 opacity, 18px
-   *  radius, y+6. 2026-06-04 (Grace "push it to 10%"): bumped 0.07 → 0.10 +
-   *  12px → 14px. 2026-06-04 (Grace "cards still blend on-device"): bumped again
-   *  0.10 → 0.16 + 14px → 18px + y+4 → y+6, in lockstep with mobile. Edge-pixel
-   *  sampling on the sim PROVED the shadow rendered but was too weak — the
-   *  #F6F5F2 fill sits only ~10 lum below the #FFFFFF page, so the shadow must
-   *  do all the lifting; a 10%/14px halo read lighter than the card at its
-   *  outer reach. 0.16/18px/y+6 is a confident-but-still-soft plum penumbra
-   *  (wide radius keeps it ambient, not a hard Material drop shadow). The flat
-   *  `--elev-card` above stays as the explicit flat fallback. */
-  --elev-card-soft: 0 6px 18px rgba(34, 27, 38, 0.16);
+  /** Soft resting-card shadow — Sloe v3 layered lift (prototype `--shadow-card`).
+   *  v3 REVERSES the 2026-06-12 flat-card-on-cream grammar: white cards now lift
+   *  on a whisper-cool white ground via a three-layer Sloe-Deep (#241733 ==
+   *  rgba(36,23,51)) penumbra — a tight contact shadow + a mid ambient + a wide
+   *  soft halo. Depth = elevation, not page warmth. Mirrors mobile
+   *  `Elevation.cardSoft`. The flat `--elev-card` above stays as the explicit
+   *  flat fallback. */
+  --elev-card-soft: 0 0.5px 1px rgba(36, 23, 51, 0.06), 0 4px 8px -3px rgba(36, 23, 51, 0.06), 0 14px 32px -10px rgba(36, 23, 51, 0.10);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.12);
   --elev-float-primary: 0 4px 16px rgba(200, 121, 78, 0.40);
 
   /** Chart colours — Sloe palette: plum / sage / clay / amber / teal. */
-  --chart-1: #3B2A4D;
-  --chart-2: #5E7C5A;
-  --chart-3: #C8794E;
-  --chart-4: #C9892C;
-  --chart-5: #4A7878;
+  --chart-1: #3B2A4D;  /* plum */
+  --chart-2: #5E7C5A;  /* sage */
+  --chart-3: #C9892C;  /* amber */
+  --chart-4: #B25D7A;  /* berry rose */
+  --chart-5: #6A4B7A;  /* damson */
 
   /** Ring empty track — Sloe frost-mist (readable on white hero; parity
    *  mobile `ringTrack`). */
   /* Quiet fill — nested affordances inside flat cards (Withings grammar,
      docs/decisions/2026-06-12-flat-card-surfaces.md). NOT a card fill. */
-  --fill-quiet: #F2EFE9;
-  --ring-bg: #EDEAF1;
+  --fill-quiet: #F1F0F4;   /* v3 cool quiet fill (was warm cream) */
+  --ring-bg: #D8D0E6;      /* v3 frost-grey ring track — visible full ring on white */
   /** Bold ring track — 14%→24% tint of the plum ring hue (#3B2A4D), the
    *  empty-arc track in every LOGGED state (Apple Fitness grammar, design-
    *  director 2026-06-16). The old frost-mist #EDEAF1 was ~10/255 off white —
@@ -369,7 +370,19 @@
    *  EVERY state — under AND over budget (web ring parity 2026-06-10; the old
    *  `--destructive` over-recolour is retired, the over verdict lives in the
    *  centre + status chip). */
-  --ring-track: #EDEAF1;
+  --ring-track: #D8D0E6;
+
+  /** Sloe v3 jewel-grade ring (prototype `:root`). The DailyRing arc draws as a
+   *  gradient (deep → fresh stop), with a luminous gem cap, an engraved inner
+   *  channel on the track, and watch-dial graduation ticks. Consumed by the
+   *  Phase 1 ring component (web SVG / mobile Skia). Locked rule:
+   *  empty = frost bloom, under = sage gradient, over = destructive → warm. */
+  --ring-under-a: #4D7A50;  --ring-under-b: #93C08C;   /* sage → fresh leaf */
+  --ring-over-a:  #C0533F;  --ring-over-b:  #E08A5F;   /* destructive → warm */
+  --ring-empty-a: #C4BCD4;  --ring-empty-b: #E6E0F1;   /* frost bloom */
+  --ring-channel: rgba(36, 23, 51, 0.06);              /* engraved inner edge */
+  --ring-cap-core: #FFFFFF;                             /* luminous gem highlight */
+  --ring-tick: rgba(59, 42, 77, 0.20);                 /* watch-dial graduations */
 
   /** Font weights */
   --font-weight-normal: 400;
@@ -383,15 +396,15 @@
   --sidebar-foreground: #221B26;
   --sidebar-primary: #3B2A4D;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #EDEAF1;
+  --sidebar-accent: #EBEAF1;
   --sidebar-accent-foreground: #221B26;
-  --sidebar-border: #E8E2EC;
+  --sidebar-border: #EAE7F0;
   --sidebar-ring: #5B3B6E;
 
   /** Glass / surface tokens (Apple-style, used by marketing pages) */
   --glass: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(0, 0, 0, 0.06);
-  --border-strong: rgba(0, 0, 0, 0.1);
+  --border-strong: #D9D4E0;   /* v3 — was a stray rgba(0,0,0,.1) override shadowing the light value */
   --accent-muted: rgba(91, 59, 110, 0.12);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -406,11 +419,12 @@
    *  Warm-dark aubergine graphite. All neutrals shifted toward warm plum-ink
    *  (ivory text, not cool slate). Accents lifted for OLED contrast. Mirrors
    *  mobile `Colors.dark` in `apps/mobile/constants/theme.ts`. */
-  --background: #19181C;
-  --background-secondary: #232126;
-  --foreground: #F5F3F4;
-  --foreground-secondary: #B7B2BA;
-  --foreground-tertiary: #857F8B;
+  --background: #120D18;             /* v3 Nocturne — deep plum-black ground */
+  --background-secondary: #1A1422;   /* recessed plum layer (tracks, wells) */
+  --background-grouped: #161019;     /* grouped dark ground (utility screens) */
+  --foreground: #ECE8F0;             /* soft plum-white — never pure #fff */
+  --foreground-secondary: #B8B0C4;
+  --foreground-tertiary: #8A8198;
   /** Brand-tinted heading ink — Sloe dark plum. Newsreader card titles on dark.
    *  This is the TEXT lift of the plum hue (5.4:1 on the dark #232126 card — AA
    *  PASS), distinct from the #815E91 FILL lift used by the calorie ring /
@@ -419,11 +433,11 @@
    *  counterpart is #3B2A4D. (Mobile's fixed `MacroColors.calories` #3B2A4D is
    *  a separate dark-contrast bug — ENG ticket, not this light-theme fix.) */
   --foreground-brand: #A98CB8;
-  --card: #232126;
-  --card-elevated: #2A2730;
-  --card-foreground: #F5F3F4;
-  --popover: #2A2730;
-  --popover-foreground: #F5F3F4;
+  --card: #211A2A;                   /* v3 raised plum card on near-black */
+  --card-elevated: #2A2233;          /* one-step lift above resting card */
+  --card-foreground: #ECE8F0;
+  --popover: #261E31;
+  --popover-foreground: #ECE8F0;
 
   /** Sloe dark accents — aubergine lifted for OLED contrast. Primary fill
    *  #7E5C92 (white label ≈4.5:1 — AA); `-solid` (text/icon/link on dark) is
@@ -442,7 +456,7 @@
   --primary-soft: var(--accent-primary-soft);
   --secondary: var(--background-secondary);
   --secondary-foreground: var(--foreground);
-  --muted: var(--background-secondary);
+  --muted: #241C2E;              /* v3 dark frost — chips / pressed fill */
   --muted-foreground: var(--foreground-secondary);
   --accent: var(--background-secondary);
   --accent-foreground: var(--foreground);
@@ -482,10 +496,10 @@
   --destructive-solid: var(--accent-destructive-solid);
   --destructive-soft: var(--accent-destructive-soft);
 
-  --border: #35323A;
-  --border-strong: #47424F;
+  --border: #332843;             /* v3 Nocturne hairline */
+  --border-strong: #443656;
   --input: var(--border);
-  --input-background: #232126;
+  --input-background: #1A1422;   /* v3 dark input well */
   --switch-background: #47424F;
   --ring: var(--accent-primary);
 
@@ -501,28 +515,32 @@
   --warning-foreground: #ffffff;
   --warning-soft: var(--accent-warning-soft);
 
-  /** Macro colours — Sloe dark, OLED-lifted. */
-  --macro-protein: #A2AE88;
-  --macro-protein-solid: #A2AE88;
-  --macro-protein-soft: rgba(162, 174, 136, 0.16);
-  --macro-carbs: #D58A5E;
-  --macro-carbs-solid: #E8A882;
-  --macro-carbs-soft: rgba(213, 138, 94, 0.16);
-  --macro-fat: #D6A24A;
-  --macro-fat-solid: #E8B86A;
-  --macro-fat-soft: rgba(214, 162, 74, 0.16);
-  --macro-calories: #815E91;
-  --ring-overage-lap: #9A7BAA;
-  --ring-overage-glow: #C4ACD0;
-  --macro-fiber: #6FA3A3;
-  --macro-fiber-solid: #8FC4C4;
-  --macro-fiber-soft: rgba(111, 163, 163, 0.16);
-  --macro-sugar: #D58A5E;
-  --macro-sugar-soft: rgba(213, 138, 94, 0.16);
-  --macro-sodium: #D6A24A;
-  --macro-sodium-soft: rgba(214, 162, 74, 0.16);
-  --macro-water: #6FA3A3;
-  --macro-water-soft: rgba(111, 163, 163, 0.16);
+  /** Macro colours — Sloe v3 dark, OLED-lifted (prototype dark `:root`).
+   *  protein → lilac, carbs → amber-light, fat → rose-light (NEW), fiber +
+   *  calories → sage-light, sugar → damson-light, sodium → clay-light,
+   *  water → muted-teal-light. Lifted fills clear AA as text on the dark card,
+   *  so `-solid` == fill here (dark `-solid` pattern). */
+  --macro-protein: #B9A7CC;
+  --macro-protein-solid: #B9A7CC;
+  --macro-protein-soft: rgba(185, 167, 204, 0.16);
+  --macro-carbs: #E0A64A;
+  --macro-carbs-solid: #E0A64A;
+  --macro-carbs-soft: rgba(224, 166, 74, 0.16);
+  --macro-fat: #D489A3;
+  --macro-fat-solid: #D489A3;
+  --macro-fat-soft: rgba(212, 137, 163, 0.16);
+  --macro-calories: #7FA078;
+  --ring-overage-lap: #DC6B55;
+  --ring-overage-glow: #E8A882;
+  --macro-fiber: #7FA078;
+  --macro-fiber-solid: #7FA078;
+  --macro-fiber-soft: rgba(127, 160, 120, 0.16);
+  --macro-sugar: #B196CB;
+  --macro-sugar-soft: rgba(177, 150, 203, 0.16);
+  --macro-sodium: #D58A5E;
+  --macro-sodium-soft: rgba(213, 138, 94, 0.16);
+  --macro-water: #6FA6B5;
+  --macro-water-soft: rgba(111, 166, 181, 0.16);
 
   /** Meal-slot tints — Sloe dark, OLED-lifted (dossier D-4). */
   --slot-breakfast: #D6A24A;         /* amber-light  */
@@ -585,17 +603,17 @@
    *  2026-06-04 to track the light token's softer/deeper penumbra; the 0.45
    *  opacity is kept (a light-mode lever — 0.16 would be invisible on a dark
    *  surface, so the dark opacity stays high and only the geometry tracks). */
-  --elev-card-soft: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --elev-card-soft: 0 1px 0 rgba(255, 255, 255, 0.03), 0 14px 34px rgba(0, 0, 0, 0.45);
   --elev-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
   --elev-float: 0 4px 16px rgba(0, 0, 0, 0.4);
   --elev-float-primary: 0 4px 16px rgba(213, 138, 94, 0.45);
 
-  /** Chart colours — Sloe dark (lifted). */
-  --chart-1: #815E91;
-  --chart-2: #83A57E;
-  --chart-3: #D58A5E;
-  --chart-4: #D6A24A;
-  --chart-5: #6FA3A3;
+  /** Chart colours — Sloe v3 dark (lifted): lilac / sage / amber / rose / damson. */
+  --chart-1: #B9A7CC;
+  --chart-2: #7FA078;
+  --chart-3: #E0A64A;
+  --chart-4: #D489A3;
+  --chart-5: #B196CB;
 
   /** Ring empty track — Sloe dark plum-mist. */
   --ring-bg: #372F44;
@@ -605,6 +623,16 @@
   /* Quiet fill (dark) — one step above the dark card fill. */
   --fill-quiet: #2C2A30;
   --ring-track: #372F44;
+
+  /** Sloe v3 jewel-ring (dark) — brighter stops so the gem reads luminous on
+   *  plum-black; tick lifts to a frost-grey alpha visible on Nocturne. Mirrors
+   *  the prototype dark `:root`. */
+  --ring-under-a: #6FA06A;  --ring-under-b: #B6E0AD;
+  --ring-over-a:  #D2614A;  --ring-over-b:  #F0A47A;
+  --ring-empty-a: #6A5A7E;  --ring-empty-b: #B9ADD0;
+  --ring-channel: rgba(0, 0, 0, 0.28);
+  --ring-cap-core: #FBF7FF;
+  --ring-tick: rgba(201, 194, 214, 0.24);
 
   /** Sidebar — Sloe dark. */
   --sidebar: #19181C;
@@ -645,6 +673,9 @@
 
   /* Core */
   --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-background-grouped: var(--background-grouped);
+  --color-background-marketing: var(--background-marketing);
   --color-foreground: var(--foreground);
   /* Sloe ink scale — Figma `ink` / `ink-soft` / `ink-faint`. */
   --color-foreground-secondary: var(--foreground-secondary);
@@ -941,39 +972,37 @@
 
 @layer utilities {
   /**
-   * Resting Sloe card shell — #F6F5F2 on white, soft lift in light,
-   * tonal lift + hairline in dark (mirrors mobile useCardElevation).
-   */
-  /* FLAT-CARD SURFACES (2026-06-12, Withings grammar — see
-     docs/decisions/2026-06-12-flat-card-surfaces.md): soft lift retired;
-     flat white on the cream ground, zero shadow/border. Mirrors mobile
-     useCardElevation. */
+   * Resting Sloe card shell — Sloe v3 (2026-06-21). v3 REVERSES the 2026-06-12
+   * flat-card-on-cream grammar: white cards now LIFT on the layered
+   * `--elev-card-soft` over the whisper-cool white ground ("elevation, not
+   * warmth"). A flat white card on a white ground is invisible — the lift IS the
+   * separation. Mirrors mobile useCardElevation. */
   .card-slab {
     background-color: var(--card);
-    box-shadow: none;
+    box-shadow: var(--elev-card-soft);
     border-color: transparent;
     border-width: 0;
   }
 
-  /** Figma Today `654:2` — warm slab on white, tonal separation only. */
   .card-slab-flat {
     background-color: var(--card);
-    box-shadow: none;
+    box-shadow: var(--elev-card-soft);
     border-color: transparent;
     border-width: 0;
   }
 
   .dark .card-slab-flat {
     background-color: var(--card);
-    box-shadow: none;
+    box-shadow: var(--elev-card-soft);
     border-width: 0;
     border-color: transparent;
   }
 
   .dark .card-slab {
-    /* Dark flat: tonal fill IS the separation — hairline dropped (2026-06-12). */
-    background-color: var(--card-elevated);
-    box-shadow: none;
+    /* Nocturne: raised plum card lifts on the dark layered shadow + 1px top
+       highlight (baked into --elev-card-soft dark). */
+    background-color: var(--card);
+    box-shadow: var(--elev-card-soft);
     border-width: 0;
     border-color: transparent;
   }

@@ -90,6 +90,14 @@ function parseArgs(argv) {
       opts.authState = argv[++i];
     }
     else if (a === "--flags") opts.flags = (argv[++i] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    else if (a === "--ls") {
+      const raw = argv[++i] ?? "";
+      const eq = raw.indexOf("=");
+      if (eq > 0) {
+        opts.ls = opts.ls ?? {};
+        opts.ls[raw.slice(0, eq)] = raw.slice(eq + 1);
+      }
+    }
     else positional.push(a);
   }
   return { positional, opts };
@@ -160,6 +168,18 @@ async function hideDevChrome(page) {
   });
 }
 
+/** Seed localStorage prefs before load (e.g. `--ls suppr.prefs.macro_display=rings`). */
+async function seedLocalStorage(page, ls) {
+  if (!ls || !Object.keys(ls).length) return;
+  await page.addInitScript((entries) => {
+    try {
+      for (const k of Object.keys(entries)) window.localStorage.setItem(k, entries[k]);
+    } catch {
+      /* storage unavailable — ignore */
+    }
+  }, ls);
+}
+
 /** Force PostHog flags ON client-side via the repo's __SUPPR_FORCE_FLAGS__ hook (tests/e2e/utils/visual.ts#forceFlagsOn). */
 async function forceFlagsOn(page, flags) {
   if (!flags?.length) return;
@@ -217,6 +237,7 @@ async function withPage(opts, fn) {
   const page = await ctx.newPage();
   if (!opts.keepChrome) await hideDevChrome(page);
   await forceFlagsOn(page, opts.flags);
+  await seedLocalStorage(page, opts.ls);
   try {
     return await fn(page, { viewport });
   } finally {

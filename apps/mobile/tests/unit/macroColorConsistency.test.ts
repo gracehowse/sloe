@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { Accent, MacroColors } from "../../constants/theme";
+import { MacroColors } from "../../constants/theme";
 import { macroColorFor } from "../../lib/macroColors";
 
 const REPO_ROOT = resolve(__dirname, "../../../..");
@@ -25,28 +25,27 @@ describe("macroColorFor — canonical palette", () => {
     expect(macroColorFor("water")).toBe(MacroColors.water);
   });
 
-  it("sugar follows carbs (clay — sugar is a carb)", () => {
-    // Sloe Phase 0: carbs + sugar are clay (#C8794E).
-    expect(MacroColors.sugar.toLowerCase()).toBe("#c8794e");
-    expect(MacroColors.sugar).toBe(MacroColors.carbs);
+  it("sugar is damson (Sloe v3 — no longer follows carbs)", () => {
+    // Sloe v3: sugar → damson (#6A4B7A), distinct from carbs (amber).
+    expect(MacroColors.sugar.toLowerCase()).toBe("#6a4b7a");
+    expect(MacroColors.sugar).not.toBe(MacroColors.carbs);
   });
 
-  it("calories is plum and fiber is teal (Sloe — distinct hues)", () => {
-    // Sloe Phase 0 (dossier): the calorie ring owns plum (chrome hue); fiber
-    // is teal. They are NO LONGER the same hue (the old 8-slot palette folded
-    // both onto green). Icon + unit still differentiate from neighbours.
-    expect(MacroColors.calories.toLowerCase()).toBe("#3b2a4d");
-    expect(MacroColors.fiber.toLowerCase()).toBe("#4a7878");
-    expect(MacroColors.fiber).toBe(Accent.fiber);
-    expect(MacroColors.calories).not.toBe(MacroColors.fiber);
+  it("calories + fiber both sage; protein owns plum (Sloe v3 small palette)", () => {
+    // Sloe v3 (2026-06-21): calories and fiber both render sage (#5E7C5A),
+    // differentiated by icon + unit + position, not hue. Protein owns plum,
+    // distinct from the sage ring.
+    expect(MacroColors.calories.toLowerCase()).toBe("#5e7c5a");
+    expect(MacroColors.fiber.toLowerCase()).toBe("#5e7c5a");
+    expect(MacroColors.protein.toLowerCase()).toBe("#3b2a4d");
+    expect(MacroColors.protein).not.toBe(MacroColors.calories);
   });
 
-  it("carbs maps to clay — distinct from sodium + fat", () => {
-    // Sloe Phase 0: carbs is clay; sodium is honey; fat is amber. The
-    // invariant is that carbs stays distinct from its warm-hue neighbours so
-    // they never read as the same role on one screen.
-    expect(MacroColors.carbs).toBe(Accent.carbs);
-    expect(MacroColors.carbs.toLowerCase()).toBe("#c8794e");
+  it("carbs maps to amber — distinct from sodium (clay) + fat (berry-rose)", () => {
+    // Sloe v3: carbs is amber; sodium is clay; fat is berry-rose. The invariant
+    // is that carbs stays distinct from its neighbours so they never read as the
+    // same role on one screen.
+    expect(MacroColors.carbs.toLowerCase()).toBe("#c9892c");
     expect(MacroColors.carbs).not.toBe(MacroColors.sodium);
     expect(MacroColors.carbs).not.toBe(MacroColors.fat);
   });

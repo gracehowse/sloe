@@ -20,7 +20,7 @@ import {
   PREMIUM_MOTION_COUNT_MS,
 } from "@suppr/shared/preferences/premiumMotion";
 
-import { Accent, AccentWinGradient, Colors, MacroColors, RING_EMPTY_GRADIENT_OPACITY, Type } from "@/constants/theme";
+import { Accent, AccentWinGradient, Colors, MacroColors, MacroColorsDark, RING_EMPTY_GRADIENT_OPACITY, Type } from "@/constants/theme";
 import { ringPhase, ringPhaseEvent } from "@/lib/ringPhase";
 import type { SkiaRingArcs as SkiaRingArcsT } from "./SkiaRingArcs";
 import { SkiaRingErrorBoundary } from "./SkiaRingErrorBoundary";
@@ -310,7 +310,7 @@ export default function CalorieRing({
   // size, real numbers. The §5 compact-empty experiment is retired.
   const { SIZE, STROKE, MACRO_STROKE, CX, R, MACRO_R } = ringGeometry(false, !expanded);
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  const isDark = colorScheme === "dark", mc = isDark ? MacroColorsDark : MacroColors; // ENG-1223
   /** Calorie ring colour. SLOE redesign (2026-06-03, `01 · Today` frame +
    *  `_gen.mjs multiRing`): the calorie ring is ALWAYS plum — under-budget
    *  AND over-budget. Dark mode lifts plum to #815E91 per the Sloe dark
@@ -530,7 +530,7 @@ export default function CalorieRing({
             overFrac={overFrac}
             bonusFrac={bonusFrac}
             macroPcts={[proteinPct, carbsPct, fatPct]}
-            macroColors={[MacroColors.protein, MacroColors.carbs, MacroColors.fat]}
+            macroColors={[mc.protein, mc.carbs, mc.fat]}
             trackColor={outerTrackColor}
             emptyInnerColor={emptyTrackColor}
             ringColor={isEmpty ? outerTrackColor : ringStateColor}
@@ -671,7 +671,7 @@ export default function CalorieRing({
                 strokeW={MACRO_STROKE}
                 radius={MACRO_R[0]}
                 pct={proteinPct}
-                color={MacroColors.protein}
+                color={mc.protein}
                 delay={100}
               />
               <MacroRing
@@ -679,7 +679,7 @@ export default function CalorieRing({
                 strokeW={MACRO_STROKE}
                 radius={MACRO_R[1]}
                 pct={carbsPct}
-                color={MacroColors.carbs}
+                color={mc.carbs}
                 delay={200}
               />
               <MacroRing
@@ -687,7 +687,7 @@ export default function CalorieRing({
                 strokeW={MACRO_STROKE}
                 radius={MACRO_R[2]}
                 pct={fatPct}
-                color={MacroColors.fat}
+                color={mc.fat}
                 delay={300}
               />
             </>

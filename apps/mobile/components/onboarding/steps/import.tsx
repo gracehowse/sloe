@@ -7,8 +7,9 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "../context";
 import type { ImportSource } from "@/lib/onboarding";
@@ -268,6 +269,7 @@ function ImportParsing() {
 
 function ImportDone({ source }: { source: ImportSource }) {
   const colors = useThemeColors();
+  const { colors: macro } = useMacroColors();
   const src =
     source === "tiktok"
       ? "tiktok.com"
@@ -352,9 +354,9 @@ function ImportDone({ source }: { source: ImportSource }) {
           }}
         >
           <MiniStat n="620" u="kcal" c={Accent.successLight} />
-          <MiniStat n="48" u="P g" c={MacroColors.protein} />
-          <MiniStat n="52" u="C g" c={MacroColors.carbs} />
-          <MiniStat n="22" u="F g" c={MacroColors.fat} />
+          <MiniStat n="48" u="P g" c={macro.protein} />
+          <MiniStat n="52" u="C g" c={macro.carbs} />
+          <MiniStat n="22" u="F g" c={macro.fat} />
         </View>
       </View>
     </View>

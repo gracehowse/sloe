@@ -13,19 +13,15 @@ describe("Today macro scaling (activity bonus)", () => {
     expect(HOST).toMatch(/effectiveMacroTargets/);
   });
 
-  it("passes scaled macros into dashboard tiles and bars, not raw profile targets", () => {
+  it("passes scaled macros into the macro section, not raw profile targets", () => {
+    // ENG-1224: tiles/bars/rings now render through the extracted
+    // <TodayMacroSection> switcher; it must receive the scaled targets.
     expect(HOST).toMatch(/dashboardMacroTargets/);
     expect(HOST).toMatch(
-      /<TodayDashboardMacroTiles[\s\S]*?targets=\{dashboardMacroTargets\}/,
-    );
-    expect(HOST).toMatch(
-      /<TodayDashboardMacroBars[\s\S]*?targets=\{dashboardMacroTargets\}/,
+      /<TodayMacroSection[\s\S]*?targets=\{dashboardMacroTargets\}/,
     );
     expect(HOST).not.toMatch(
-      /<TodayDashboardMacroTiles[\s\S]*?targets=\{targets\}/,
-    );
-    expect(HOST).not.toMatch(
-      /<TodayDashboardMacroBars[\s\S]*?targets=\{targets\}/,
+      /<TodayMacroSection[\s\S]*?targets=\{targets\}[\s\S]*?\/>/,
     );
   });
 });

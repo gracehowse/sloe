@@ -51,6 +51,7 @@ import { classifyLibraryEntry } from "@suppr/shared/recipes/libraryEntryKind";
 import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
+import { LibraryShelvesHeader } from "@/components/library/LibraryShelvesHeader";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — Library cards no longer render the chip; see the comment
 // by each card body for the rationale.
@@ -957,8 +958,7 @@ export default function LibraryScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           renderItem={renderRecipe}
-          // 2-column photo grid — Figma `527:2`. `key` is required so RN
-          // re-mounts the list when numColumns is constant (defensive).
+          // 2-column photo grid — Figma `527:2`.
           numColumns={2}
           columnWrapperStyle={styles.columnWrap}
           contentContainerStyle={styles.list}
@@ -967,10 +967,9 @@ export default function LibraryScreen() {
           }
           ListHeaderComponent={
             <>
-              {/* Search row — Figma `527:2` order: search sits above the
-                  category pills. Create lives on the count row (the `+`) and
-                  in the empty-state CTA (ENG-1197); the tab-bar FAB opens the
-                  food Log sheet, NOT recipe creation. */}
+              {/* Search row — Figma `527:2`: search above the category pills.
+                  Create lives on the count row + the empty-state CTA (ENG-1197);
+                  the tab-bar FAB opens the food Log sheet, not recipe creation. */}
               <View style={styles.searchRow}>
                 <View style={styles.searchInputWrap}>
                   <SearchIcon size={16} color={colors.textTertiary} />
@@ -984,9 +983,8 @@ export default function LibraryScreen() {
                   />
                 </View>
               </View>
-              {/* Category filter pills — ENG-921 / Figma `527:2`.
-                  Clay-fill active, line-border inactive. Web parity:
-                  `src/app/components/Library.tsx`. */}
+              {/* Category filter pills — ENG-921 / Figma `527:2` (web parity:
+                  Library.tsx). Clay-fill active, line-border inactive. */}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1015,13 +1013,16 @@ export default function LibraryScreen() {
                   );
                 })}
               </ScrollView>
-              {/* Contextual plan-import source pills — ENG-921 polish
-                  (2026-06-07). Plan imports are a refinement of
-                  "Imported", so they only reveal when the Imported
-                  segment is active AND the user actually has plan
-                  imports. This keeps the default Library at a single
-                  filter row (categories) while preserving plan-import
-                  filtering reachability. */}
+              {/* ENG-1225 Block 5 — v3 editorial shelves above the grid (All only). */}
+              <LibraryShelvesHeader
+                filtered={filtered}
+                category={category}
+                onPressRecipe={(r) => router.push(`/recipe/${r.id}`)}
+              />
+              {/* Contextual plan-import source pills — ENG-921 (2026-06-07).
+                  Plan imports refine "Imported", so they reveal only when the
+                  Imported segment is active AND the user has plan imports —
+                  keeping the default Library at one filter row. */}
               {importPlanPills.length > 0 &&
               (secondary === "imported" || secondary?.startsWith("plan-import:")) ? (
                 <ScrollView
@@ -1055,11 +1056,9 @@ export default function LibraryScreen() {
                 </ScrollView>
               ) : null}
               {/* Count line + quiet controls — Figma `527:2` ("24 saved
-                  recipes"). The calm count sits left; the saved-vs-imported
-                  narrowing (entry-kind cycle), sort cycle, and Create ride
-                  as quiet trailing controls so the distinction stays
-                  reachable WITHOUT a second pill row. Web parity:
-                  `src/app/components/Library.tsx`. */}
+                  recipes"). Calm count left; entry-kind cycle, sort cycle, and
+                  Create ride as quiet trailing controls (no second pill row).
+                  Web parity: `src/app/components/Library.tsx`. */}
               {!(loading && savedRecipes.length === 0) ? (
                 <View style={styles.countRow}>
                   <Text style={styles.countText}>

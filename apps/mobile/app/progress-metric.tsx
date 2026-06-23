@@ -10,8 +10,8 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { supabase } from "@/lib/supabase";
-import { Accent, FontFamily, MacroColors, Radius, Spacing } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
 import { buildWeekStats, getStreakContributingDays } from "@/lib/progressWeekReport";
@@ -42,7 +42,7 @@ export default function ProgressMetricDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBack = useSafeBack("/(tabs)/progress");
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the local accent
   // token. Status keeps success/warning/destructive; macros keep `MacroColors`.
   const accent = useAccent();
@@ -217,9 +217,9 @@ export default function ProgressMetricDetailScreen() {
       green: Accent.success,
       amber: Accent.warning,
       red: Accent.destructive,
-      protein: MacroColors.protein,
+      protein: mc.protein,
     }),
-    [colors, accent],
+    [colors, accent, mc],
   );
 
   // ENG-822 — soft resting-card elevation (or the flag-off flat/hairline

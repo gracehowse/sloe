@@ -63,8 +63,8 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Elevation, MacroColors, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, Elevation, MacroColors, MacroColorsDark, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated, {
   useAnimatedStyle,
@@ -174,6 +174,10 @@ import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
 import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
+import { PlanRegenerateToast } from "@/components/plan/PlanRegenerateToast";
+import { PlanV3Surface } from "@/components/plan/PlanV3Surface";
+import { usePlanV3MealActions } from "@/components/plan/usePlanV3MealActions";
+import { computePlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
 import {
   type PlanSourceMode,
   DEFAULT_PLAN_SOURCE_MODE,
@@ -515,7 +519,7 @@ export default function PlannerScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
-  const colors = useThemeColors();
+  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the today-card edge,
   // generate/regenerate CTAs, refresh affordance, active controls, and link
   // actions. Threaded into the memoised StyleSheet via the dep array below.
@@ -1331,28 +1335,29 @@ export default function PlannerScreen() {
     });
   }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool, startOffset]);
 
-  // ENG-820 (Plan win-moment, Redesign — Design Direction 2026): one flag gates
-  // the whole Plan win layer — the state-aware headline tone + pulse, the 7/7
-  // success haptic, and the generate/move settle haptics. Flag OFF preserves
-  // today's flat headline + silent commits. Declared here (before the move
-  // handler) so callers below can read it without a TDZ hazard.
+  // ENG-1225 Block 3 — v3 Plan meal handlers (open → recipe detail; add → swap
+  // picker), lifted to a hook so the pinned planner stays lean.
+  const planV3Meal = usePlanV3MealActions({ plan, savedRecipes, discoverRecipes, swapMeal });
+
+  // ENG-820 (Plan win-moment): one flag gates the whole Plan win layer — the
+  // state-aware headline tone + pulse, the 7/7 success haptic, and generate/move
+  // settle haptics. OFF preserves the flat headline + silent commits. Declared
+  // here (before the move handler) so callers below read it without a TDZ hazard.
   const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
 
   // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-card-
-  // treatment-soft-elevation.md): every card sitting directly on the Plan page
-  // ground gets the SOFT lift so it separates from the #FFFFFF page like every
-  // other resting card (Today hero, Progress weight card, shopping group cards).
-  // Was the no-arg `flat` default — a page-ground summary slab read as an
-  // undifferentiated flat block next to the soft-lifted cards on Today/Progress.
-  // Spread onto the summary + setup card Views below (shadow on the OUTER node;
-  // these cards don't clip, so a single-node spread is iOS-safe).
+  // treatment-soft-elevation.md): every card directly on the Plan page ground
+  // gets the SOFT lift so it separates from the #FFFFFF page like every other
+  // resting card (Today hero, Progress weight card, shopping group cards). Was
+  // the no-arg `flat` default — a page-ground slab read as undifferentiated next
+  // to the soft-lifted cards. Spread onto the summary + setup card Views below
+  // (shadow on the OUTER node; single-node spread is iOS-safe, these don't clip).
   const cardElevation = useCardElevation({ variant: "soft" });
 
-  // Batch 3.10 mobile parity — move a meal between slots / days.
-  // Uses the shared `moveMealInPlan` helper. Two-way swap when destination
-  // is occupied; source becomes an empty placeholder when destination was
-  // empty. If the source is a parent-of-leftovers, caller has already
-  // confirmed (see long-press handler) and we run `markLeftoversOnSwap`
+  // Batch 3.10 mobile parity — move a meal between slots / days via the shared
+  // `moveMealInPlan` helper. Two-way swap when the destination is occupied; the
+  // source becomes an empty placeholder otherwise. A parent-of-leftovers source
+  // is caller-confirmed (long-press handler) and runs `markLeftoversOnSwap`
   // before the move so totals stay right.
   const handleMove = useCallback(
     (from: { day: number; slotIndex: number }, to: { day: number; slotIndex: number }) => {
@@ -1375,12 +1380,11 @@ export default function PlannerScreen() {
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
         // ENG-1150 — re-resolve per-row fibre on both affected days before
-        // persist so the day-total fibre cell follows the moved meal. The
-        // shared moveMealInPlan recomputes totals (fiber included), but mobile
-        // derives the displayed fibre from the meal rows via planMealFiberG, so
-        // the rows must carry a resolved fiberG. Idempotent enrich.
+        // persist so the day-total fibre cell follows the moved meal: mobile
+        // derives displayed fibre from the rows via planMealFiberG, so rows must
+        // carry a resolved fiberG (idempotent enrich; moveMealInPlan already
+        // recomputes totals). Fire-and-forget persist; UI already reflects it.
         const enriched = enrichPlanDaysFiber(next, recipeFiberPool);
-        // Fire-and-forget persist; UI already reflects the move.
         void persistPlan(enriched);
         return enriched;
       });
@@ -1449,6 +1453,43 @@ export default function PlannerScreen() {
         : null,
     [plan, planTargets],
   );
+
+  // Sloe v3 (ENG-1225) — the v3 Plan header verdict (planning completeness, "N
+  // of 7 days land") + week-range overline, behind sloe_v3_plan. Each plan day's
+  // positional slots (ALL_MEAL_SLOTS[i]) map to the shared status helper.
+  const sloeV3Plan = isFeatureEnabled("sloe_v3_plan");
+  const planV3Verdict = useMemo(
+    () =>
+      computePlanWeekVerdict(
+        (plan ?? []).map((dp) =>
+          dp.meals.map((m, i) => ({
+            slot: ALL_MEAL_SLOTS[i] ?? "Snacks",
+            kcal: m.calories,
+            empty: m.isPlaceholder,
+          })),
+        ),
+      ),
+    [plan],
+  );
+  const planV3WeekLabel = useMemo(() => {
+    const start = planStartDate ? new Date(planStartDate) : new Date();
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const mon = (d: Date) => d.toLocaleDateString("en-GB", { month: "long" });
+    return start.getMonth() === end.getMonth()
+      ? `${start.getDate()}–${end.getDate()} ${mon(start)}`
+      : `${start.getDate()} ${mon(start)} – ${end.getDate()} ${mon(end)}`;
+  }, [planStartDate]);
+  // v3 week-strip dates — anchored to planStartDate (same source as the overline;
+  // planCalendarDateForIndex drifts from *today* once a day passes the start).
+  const planV3WeekDates = useMemo(() => {
+    const start = planStartDate ? new Date(planStartDate) : new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, [planStartDate]);
 
   // ENG-1092 — render-scope PlannerTargets for the empty-slot "Aim ~X kcal"
   // line (same shape the swap handler builds). Drives `slotMacroTargets` per
@@ -2612,70 +2653,13 @@ export default function PlannerScreen() {
       testID="screen-planner"
       style={[styles.container, { paddingTop: insets.top }]}
     >
-      {/* Group E Card 4 (premium-bar audit 2026-05-14): regenerate
-          diff toast. Absolutely positioned overlay below the status
-          bar so it doesn't compete for header space. Auto-dismisses
-          after 2.4s via the effect on `regenerateToast`. Hosts no
-          tap target — calm-reward posture matching
-          `FirstLogAcknowledgment`. */}
-      {regenerateToast?.visible ? (
-        <View
-          testID="planner-regenerate-toast"
-          accessibilityRole="alert"
-          accessibilityLabel={`Plan updated. ${regenerateToast.changedCount} meals changed.`}
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: insets.top + Spacing.sm,
-            left: Spacing.md,
-            right: Spacing.md,
-            zIndex: 1000,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: Spacing.sm,
-            paddingVertical: Spacing.sm,
-            paddingHorizontal: Spacing.md,
-            borderRadius: Radius.md,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: accent.primary + "40",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.12,
-            shadowRadius: 6,
-            elevation: 4,
-          }}
-        >
-          <View
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: Radius.full,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: accent.primary + "1A",
-            }}
-          >
-            <RefreshCw size={14} color={accent.primary} strokeWidth={2.25} />
-          </View>
-          <Text
-            style={{
-              flex: 1,
-              fontSize: 14,
-              fontWeight: "600",
-              color: colors.text,
-              letterSpacing: -0.1,
-            }}
-          >
-            Plan updated — {regenerateToast.changedCount}{" "}
-            {regenerateToast.changedCount === 1 ? "meal" : "meals"} changed
-          </Text>
-        </View>
-      ) : null}
-      {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default,
-          Shopping list as a sub-view). Tapping "Shopping" routes to
-          the existing `/shopping` screen which carries a mirroring
-          header so the user can return without losing their place. */}
+      {/* Regenerate diff toast — extracted to its own component (ENG-1225
+          Block 1) to free planner.tsx line-budget for the v3 Plan UI. */}
+      <PlanRegenerateToast toast={regenerateToast} topInset={insets.top} />
+      {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default, Shopping as a
+          sub-view → `/shopping`). Hidden under sloe_v3_plan: the v3 header owns
+          generate/adjust/templates and PlanToolsV3 carries the Shopping row. */}
+      {sloeV3Plan ? null : (
       <PlanTabChrome
         value="plan"
         onChange={(next) => {
@@ -2709,17 +2693,32 @@ export default function PlannerScreen() {
           </View>
         }
       />
+      )}
       <ScrollView testID="planner-hydrated" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <ReAnimated.View style={headerEntrance.style}>
-        {/* Named plan slots switcher — pre-2026-05-22 this rendered
-            unconditionally, which on a single-plan setup put a "This
-            week" pill right under the "This week" sub-tab and a
-            redundant "+ New" affordance with no obvious purpose.
-            Grace 2026-05-22: "drop the redundant This week pill row".
-            Gate behind >1 plan slot so multi-plan users keep the
-            switcher; single-plan users see a cleaner Plan tab.
-            Creating a new plan slot moves through Settings → Plan
-            slots when only one plan exists. */}
+        {sloeV3Plan ? (
+          <PlanV3Surface
+            plan={plan}
+            targetKcal={planTargets?.calories ?? 0}
+            weekDates={planV3WeekDates}
+            weekLabel={planV3WeekLabel}
+            verdict={planV3Verdict}
+            household={null}
+            onGenerate={openGenerateMenu}
+            onAdjust={() => setTemplatesOpen(true)}
+            onTemplates={() => setTemplatesOpen(true)}
+            onOpenHousehold={() => setTemplatesOpen(true)}
+            onOpenMeal={planV3Meal.onOpenMeal}
+            onAddToSlot={planV3Meal.onAddToSlot}
+            shoppingItemCount={shoppingItemCount}
+            servingCount={householdMemberCount}
+            onOpenShopping={() => router.push("/shopping" as Href)}
+          />
+        ) : null}
+        {/* Named plan slots switcher (Grace 2026-05-22: "drop the redundant
+            This week pill row") — gated behind >1 plan slot so multi-plan users
+            keep the switcher and single-plan users get a cleaner Plan tab.
+            Single-plan users create a new slot via Settings → Plan slots. */}
         {planSlots.length > 1 ? (
         <ScrollView
           horizontal
@@ -2863,7 +2862,7 @@ export default function PlannerScreen() {
               Shopping list CTA card further down (`/shopping`).
             - Regenerate reuses the existing `generatePlan` used by the
               empty-state Generate Plan button. */}
-        {plan && plan.length > 0 && planTargets && summaryScore && (
+        {!sloeV3Plan && plan && plan.length > 0 && planTargets && summaryScore && (
           <View
             style={[
               styles.summaryCard,
@@ -2967,16 +2966,14 @@ export default function PlannerScreen() {
         </ReAnimated.View>
 
         <ReAnimated.View style={planEntrance.style}>
-        {/* 2026-05-23 — Plan setup chip row (variant B).
-            Replaces the three-section inline setup card. Two borderless
-            tinted chips condense plan length+start and meal-toggle
-            settings; tapping a chip opens a focused bottom sheet.
-            Regenerate moves to a ghost text-link on the right so it
-            doesn't compete visually with the primary FAB. Day cards
-            stay primary on first scroll instead of being pushed below
-            a settings form. HTML prototype:
-            `/tmp/suppr-prototypes/plan-chip-variants.html` (B). */}
-        {plan && plan.length > 0 ? (() => {
+        {/* 2026-05-23 — Plan setup chip row (variant B). Two borderless tinted
+            chips condense plan length+start and meal-toggle settings; tapping a
+            chip opens a focused bottom sheet. Prototype:
+            `/tmp/suppr-prototypes/plan-chip-variants.html` (B). ENG-1225: hidden
+            under sloe_v3_plan — the v3 surface owns setup via its header adjust
+            action, and the "All meals" chip would clash with the v3 meal-filter
+            chips. */}
+        {!sloeV3Plan && plan && plan.length > 0 ? (() => {
           const startLabelForChip =
             startOffset === 0 ? "Today" : startOffset === 1 ? "Tomorrow" : "Next week";
           const lengthStartLabel = `${days} day${days > 1 ? "s" : ""} · ${startLabelForChip}`;
@@ -3326,8 +3323,10 @@ export default function PlannerScreen() {
             so taps still reach the underlying rows — by design we don't
             block interaction during regenerate; we just signal "new
             plan incoming". The cold-start path (no existing plan)
-            still shows the 3 SkeletonCards above. */}
-        {plan && (
+            still shows the 3 SkeletonCards above.
+            ENG-1225: the v3 Plan surface renders its own meal section, so the
+            legacy day-card stack is hidden under sloe_v3_plan. */}
+        {!sloeV3Plan && plan && (
           <View style={{ position: "relative", gap: Layout.planDayGap }}>
         {plan.map((dp, dayIdx) => {
           // Build-12 H-5 (TestFlight `AH8csBqtZsBJJr0uHgXyEcE`,
@@ -3447,10 +3446,10 @@ export default function PlannerScreen() {
               return (
                 <PlanDayMacroSummary
                   cells={[
-                    { label: "P", value: dp.totals.protein, target: planTargets.protein, color: MacroColors.protein },
-                    { label: "C", value: dp.totals.carbs, target: planTargets.carbs, color: MacroColors.carbs },
-                    { label: "F", value: dp.totals.fat, target: planTargets.fat, color: MacroColors.fat },
-                    { label: "Fi", value: dayFiber, target: planTargets.fiber, color: MacroColors.fiber },
+                    { label: "P", value: dp.totals.protein, target: planTargets.protein, color: mc.protein },
+                    { label: "C", value: dp.totals.carbs, target: planTargets.carbs, color: mc.carbs },
+                    { label: "F", value: dp.totals.fat, target: planTargets.fat, color: mc.fat },
+                    { label: "Fi", value: dayFiber, target: planTargets.fiber, color: mc.fiber },
                   ]}
                 />
               );
@@ -3996,7 +3995,7 @@ export default function PlannerScreen() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: MacroColors.fat + "12",
+                    backgroundColor: mc.fat + "12",
                   }}
                 />
               </Animated.View>

@@ -1692,6 +1692,45 @@ export type Database = {
           },
         ]
       }
+      recipe_reports: {
+        Row: {
+          description: string | null
+          id: string
+          reason: string
+          reporter_ip: string | null
+          reporter_user_agent: string | null
+          reviewed_at: string | null
+          reviewer_notes: string | null
+          status: string
+          submitted_at: string
+          suppr_recipe_id: string
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          reason: string
+          reporter_ip?: string | null
+          reporter_user_agent?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          submitted_at?: string
+          suppr_recipe_id: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          reason?: string
+          reporter_ip?: string | null
+          reporter_user_agent?: string | null
+          reviewed_at?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          submitted_at?: string
+          suppr_recipe_id?: string
+        }
+        Relationships: []
+      }
       recipe_steps: {
         Row: {
           created_at: string
@@ -2819,6 +2858,16 @@ export type Database = {
         Returns: undefined
       }
       tier_rank: { Args: { p_tier: string }; Returns: number }
+      top_creators_by_saves: {
+        Args: { p_limit?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          handle: string
+          id: string
+          saves: number
+        }[]
+      }
     }
     Enums: {
       recipe_content_origin: "first_party" | "imported_stub" | "claimed"
