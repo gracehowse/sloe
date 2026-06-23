@@ -84,8 +84,12 @@ export function PlanV3Surface({
     const i = weekDates.findIndex((d) => isSameDay(d, t));
     return i >= 0 ? i : 0;
   }, [weekDates, today]);
-  const [selectedIndex, setSelectedIndex] = useState(todayIndex);
-  const safeIndex = Math.min(selectedIndex, Math.max(weekDates.length - 1, 0));
+  // `null` until the user taps a day — until then the selection FOLLOWS today
+  // (todayIndex is recomputed once planStartDate loads, so we can't snapshot it
+  // into useState or it sticks on day 0; ENG-1225 Block 2 sim fix).
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const effectiveIndex = selectedIndex ?? todayIndex;
+  const safeIndex = Math.min(effectiveIndex, Math.max(weekDates.length - 1, 0));
 
   const days: PlanWeekStripDay[] = useMemo(
     () =>
