@@ -509,6 +509,20 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     }
   }, [mode, createInitialMethod, startScanner]);
 
+  // ENG-1225 #3 (import wedge) — the unified Import sheet routes a social /
+  // recipe URL to `/import?importUrl=<url>`; prefill the import field once on
+  // mount so the user lands on a ready-to-import URL (mobile `/import-shared?url=`
+  // parity). `importUrl` is the same field the URL-import branch already submits.
+  const importUrlFiredRef = useRef(false);
+  useEffect(() => {
+    if (importUrlFiredRef.current) return;
+    if (mode !== "import") return;
+    const prefill = searchParams.get("importUrl");
+    if (!prefill) return;
+    importUrlFiredRef.current = true;
+    setImportUrl(prefill);
+  }, [mode, searchParams]);
+
   // PR-01 (audit 2026-04-28): Base tier folded into Pro. Any legacy
   // `userTier === "base"` row keeps publish access here as a
   // grace-grant — they paid at some point. Free users still cannot
