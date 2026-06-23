@@ -306,6 +306,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "cook_ingredient_checklist_v1",
   "cook_multi_timers_v1",
   "cook_text_size_control_v1",
+  // ENG-1225 #3 — unified "import anything" sheet — web parity with iOS (already
+  // default-on there, analytics.ts). Off → the legacy Discover-card → /import nav
+  // (kill switch). Web twin: src/app/components/suppr/unified-import-sheet.tsx
+  // (live-flow SEE-verified). Closes the audit's web-import parity launch-blocker.
+  "sloe_v3_unified_import",
 ]);
 
 /**
