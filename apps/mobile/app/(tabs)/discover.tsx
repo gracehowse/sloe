@@ -41,6 +41,7 @@ import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAc
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { DiscoverLoadingSkeleton } from "@/components/discover/DiscoverLoadingSkeleton";
 import { DiscoverClusterCarousels } from "@/components/discover/DiscoverClusterCarousels";
+import { DiscoverQuickWeeknight } from "@/components/discover/DiscoverQuickWeeknight";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { IconBox } from "@/components/discover/IconBox";
 import { CreatorRail } from "@/components/discover/CreatorRail";
@@ -469,7 +470,6 @@ export default function DiscoverScreen() {
               2026-05-03 — failed remote URLs use the same fallback and
               collapse aspect ratio via `DiscoverHeroMedia`. */}
           <DiscoverHeroMedia item={item} />
-          {/* Gap-3 fix (2026-06-09): card body padding 14 → Spacing.md (16) — on-scale. */}
           <View style={{ padding: Spacing.md }}>
             {/* Fit-percent pill — primary-tinted, top-right of the
                 card body. Matches prototype treatment. */}
@@ -521,10 +521,8 @@ export default function DiscoverScreen() {
                 discover should display like this"). Was 60 lines of
                 inline duplicate; component owns the icon/colour/letter
                 grammar so any palette token shift cascades cleanly. */}
-            {/* Gap-3 fix (2026-06-09): marginTop 10 → Spacing.sm (8) — on-scale.
-                Gap-6 fix: iconSize bumped 11→13 + emphasiseProtein active so protein
-                reads unmistakably heavier at card scale. `proteinTextColor` = full
-                ink (`colors.text`) vs secondary for all other macros. */}
+            {/* iconSize 13 + emphasiseProtein + proteinTextColor = full ink so
+                protein reads unmistakably heavier at card scale (Gap-6). */}
             <MacroIconRow
               kcal={kcal > 0 ? kcal : null}
               protein={protein}
@@ -1052,18 +1050,23 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
+            {/* ENG-1225 Block 6 — v3 "Quick weeknight" no-photo quick-access
+                section ABOVE the cuisine clusters (default view; self-gating on
+                sloe_v3_discover_editorial + quick recipes). */}
+            {showClusterCarousels ? (
+              <DiscoverQuickWeeknight
+                recipes={recipes}
+                onPressRecipe={(r) => router.push(`/recipe/${r.id}`)}
+              />
+            ) : null}
             {showClusterCarousels ? (
               <DiscoverClusterCarousels recipes={recipes.filter((r) => isSeedRecipeId(r.id))} />
             ) : null}
-            {/* 2026-05-22 evening (Grace): editorial hero (overlay
-                title on top of full-bleed image) replaced with the
-                same MacroIconRow card style as the rest of the feed —
-                "everything should be like the bottom one". Single
-                consistent grammar across the whole Discover stream;
-                no special-case treatment for the first card. */}
-            {/* Gap-2 fix (2026-06-09): section headers Type.headline → Type.title
-                (24pt Newsreader serif) for editorial section-divider weight.
-                headers census 2026-06-10: ink colors.text → navPrimary. */}
+            {/* 2026-05-22 (Grace): editorial hero replaced with the same
+                MacroIconRow card style as the feed — "everything should be like
+                the bottom one"; one grammar across the Discover stream. Section
+                headers = Type.title (24pt serif) ink navPrimary (Gap-2/headers
+                census 2026-06-09/10). */}
             {displayFiltered.length > 0 ? (
             <>
             <Text
@@ -1075,15 +1078,12 @@ export default function DiscoverScreen() {
             >
               Recipe ideas
             </Text>
-            {/* Gap-3 fix (2026-06-09): hero-card vertical gap 12 → Spacing.md (16). */}
             <View style={{ gap: Spacing.md }}>
               {displayFiltered.slice(0, 3).map((r) => renderHeroCard(r))}
             </View>
 
             {displayFiltered.length > 3 ? (
               <>
-                {/* Gap-2 fix (2026-06-09): "More ideas" header Type.headline → Type.title.
-                    headers census 2026-06-10: ink colors.text → navPrimary. */}
                 <Text
                   style={{
                     ...Type.title,
