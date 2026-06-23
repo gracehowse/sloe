@@ -35,6 +35,7 @@ import {
 import { useTopCreators } from "./suppr/use-top-creators";
 import { DiscoverQuickWeeknight } from "./suppr/discover-quick-weeknight";
 import { DiscoverCollections } from "./suppr/discover-collections";
+import { UnifiedImportSheet } from "./suppr/unified-import-sheet";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // from the Discover hero card — see the comment on the card body.
@@ -406,30 +407,33 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   // nothing to reorder there). The card JSX is extracted to `importCard` so it
   // renders at exactly one position (no duplication, testID count unchanged).
   const importAboveCarousels = isFeatureEnabled("discover_import_above_carousels_v1");
+  // ENG-1225 #3 — import CTA opens the unified sheet when the wedge flag is on; flag-off = legacy /import navigate.
+  const unifiedImportEnabled = isFeatureEnabled("sloe_v3_unified_import");
+  const [unifiedImportOpen, setUnifiedImportOpen] = useState(false);
+  const openImport = useCallback(() => {
+    if (unifiedImportEnabled) {
+      setUnifiedImportOpen(true);
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", "import");
+    window.history.pushState({}, "", url.toString());
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, [unifiedImportEnabled]);
   const importCard = (
     <div className="md:hidden">
       {isFeatureEnabled("discover_import_hero_v1") ? (
-        // ENG-1087 — hero affordance (parity with mobile discover.tsx). Keeps
-        // the tinted-slab grammar (flat-card law) but raises the weight so the
-        // viral-hook import beats a settings row: stronger ~20% tint, a SOLID
-        // plum icon circle (white glyph), a serif headline title, and a filled
-        // "Paste link" pill in place of the passive chevron. The whole slab is
-        // the tap target → the import/paste view; the pill is the affordance.
+        // ENG-1087 — hero affordance (parity with mobile discover.tsx): the
+        // raised viral-hook import slab — solid plum icon, serif title, "Paste
+        // link" pill. Whole slab is the tap target (opens the unified sheet / view).
         <div
           role="button"
           tabIndex={0}
           data-testid="discover-import-cta-top"
-          onClick={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.set("view", "import");
-            window.history.pushState({}, "", url.toString());
-            window.dispatchEvent(new PopStateEvent("popstate"));
-          }}
+          onClick={openImport}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
           className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          // ENG-1094 (Grace): a confident lavender-plum accent — Discover's one
-          // deliberate accent — instead of the muddy flat
-          // --accent-primary-soft-strong dark-plum wash that read as grey.
+          // ENG-1094 (Grace): confident lavender-plum accent (`--import-hero-bg`).
           style={{ background: "var(--import-hero-bg)" }}
         >
           <span className="inline-flex items-center justify-center shrink-0 size-11 rounded-full bg-primary-solid text-white [&_svg]:size-5">
@@ -449,12 +453,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           role="button"
           tabIndex={0}
           data-testid="discover-import-cta-top"
-          onClick={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.set("view", "import");
-            window.history.pushState({}, "", url.toString());
-            window.dispatchEvent(new PopStateEvent("popstate"));
-          }}
+          onClick={openImport}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
           className="mx-4 mt-3 rounded-3xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           style={{ background: "var(--accent-primary-soft)" }}
@@ -474,6 +473,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
 
   return (
     <div className="max-w-lg mx-auto min-h-screen bg-background pb-12 md:max-w-6xl md:px-pm-5">
+      <UnifiedImportSheet open={unifiedImportOpen} onOpenChange={setUnifiedImportOpen} />
       {/* Title area — prototype treatment: BROWSE overline + large
           Discover title + round search-icon button on the right.
           Mobile parity: apps/mobile/app/(tabs)/discover.tsx.

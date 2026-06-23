@@ -255,7 +255,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [, setLoadingRecipe] = useState(false);
-  const [importUrl, setImportUrl] = useState("");
+  const [importUrl, setImportUrl] = useState(() => (mode === "import" ? searchParams.get("importUrl") ?? "" : "")); // ENG-1225 #3: prefill from ?importUrl=
   const [importBusy, setImportBusy] = useState(false);
   // Captured at URL-import time so the upsert persists `recipes.source_url` +
   // `recipes.source_name`. F-5 fix (`AI-CNKcmy7y`, 2026-04-19): previously the
@@ -508,20 +508,6 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       setTimeout(() => void startScanner(), 0);
     }
   }, [mode, createInitialMethod, startScanner]);
-
-  // ENG-1225 #3 (import wedge) — the unified Import sheet routes a social /
-  // recipe URL to `/import?importUrl=<url>`; prefill the import field once on
-  // mount so the user lands on a ready-to-import URL (mobile `/import-shared?url=`
-  // parity). `importUrl` is the same field the URL-import branch already submits.
-  const importUrlFiredRef = useRef(false);
-  useEffect(() => {
-    if (importUrlFiredRef.current) return;
-    if (mode !== "import") return;
-    const prefill = searchParams.get("importUrl");
-    if (!prefill) return;
-    importUrlFiredRef.current = true;
-    setImportUrl(prefill);
-  }, [mode, searchParams]);
 
   // PR-01 (audit 2026-04-28): Base tier folded into Pro. Any legacy
   // `userTier === "base"` row keeps publish access here as a
