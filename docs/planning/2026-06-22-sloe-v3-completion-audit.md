@@ -49,7 +49,13 @@ Tracker host-extraction refactor (plan-exit hygiene, not v3-pixel work).
    + one Import sheet. iOS-first. Largest remaining blocker.
 3. **MFP/CSV column-mapping + preview #7** (L, both) — the MFP-refugee trust moment.
 4. **Ramp + collapse the 5 cook-mode flags** (M, both) — entire v3 cook baseline is
-   built but dark-by-default. Pure ramp/verify/collapse, no new code.
+   built but dark-by-default. ~~Pure ramp/verify/collapse, no new code.~~
+   **CORRECTION (2026-06-22, on-device SEE):** NOT pure ramp — turning the flags on
+   makes ALL cook-mode step content invisible (`cook_swipe_steps_v1` /
+   `CookStepSwipeSurface` hides its children in `recipe/[id].tsx`'s inline cook
+   overlay). Flags reverted to default-OFF; fix tracked in **ENG-1230** (must land +
+   per-flag on-device validation before re-flipping). This is why the plan's original
+   "keep cook off" was right.
 5. **Collapse the `sloe_v3_ring` gate** (M, both) — make the jewel dial the single
    path (delete the legacy ring else-branches in the 3 heroes).
 
