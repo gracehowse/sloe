@@ -5,6 +5,7 @@ import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
 import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
 import { CookMiseEnPlace } from "@/components/cook/CookMiseEnPlace";
 import { CookIngredientChecklist } from "@/components/cook/CookIngredientChecklist";
+import { CookTimerPanel } from "@/components/cook/CookTimerPanel";
 import { formatMultiplier } from "@/components/today/PortionStepper";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
@@ -2302,22 +2303,13 @@ export default function RecipeDetailScreen() {
         />
       ) : null}
 
-      {/* Cook Mode Overlay — Modal so Android hardware-back dismisses
-          the overlay instead of navigating the router away from the
-          recipe screen entirely (audit 2026-04-30 modal-dismiss sweep).
-
-          Servings handoff (P0, 2026-05-01) — when the user has scaled
-          the recipe via the portion stepper (`logPortion`), the inline
-          step text still references the original quantities ("4 tbsp")
-          which makes the doubled batch under-seasoned. We compute
-          `cookScaleFactor = logPortion` (a 4-serving recipe at
-          `logPortion=2` is a doubled batch → scaleFactor 2) and pass
-          every step through `scaleStepText` before rendering. The
-          banner at the top names the actual serving count the user is
-          cooking (`recipe.servings × logPortion`) so the user can
-          confirm at a glance. Auto-log on Done already uses
-          `logPortion`, so calories logged match what was actually
-          cooked. */}
+      {/* Cook Mode Overlay — Modal so Android hardware-back dismisses the
+          overlay rather than routing away from the recipe (audit 2026-04-30
+          modal-dismiss sweep). Servings handoff (P0, 2026-05-01): when the
+          user scaled via the portion stepper (`logPortion`), every step runs
+          through `scaleStepText` (`cookScaleFactor = logPortion`) and the
+          top banner names the actual serving count. Auto-log on Done uses
+          `logPortion` too, so logged calories match what was cooked. */}
       {(() => {
         const cookScaleFactor = Number.isFinite(logPortion) && logPortion > 0 ? logPortion : 1;
         const cookViewServings = Math.max(
@@ -2330,14 +2322,11 @@ export default function RecipeDetailScreen() {
           cookScaleFactor !== 1
             ? scaleStepText(cleanedStep, cookScaleFactor)
             : cleanedStep;
-        // ENG-944 — "For this step" chips. Pure matcher against the
-        // recipe's resolved display ingredients; gated behind
-        // `cook_step_ingredients_v1` (default-OFF — flag-off yields []
-        // so nothing renders, byte-identical to today). Quantities run
-        // through `stepIngredientChipLabel(..., cookScaleFactor)` so the
-        // chips respect the active serving scale exactly like the step
-        // text. Matched off the RAW cleaned step so token matching is
-        // stable as the scale changes. Web parity: `CookMode.tsx`.
+        // ENG-944 — "For this step" chips. Pure matcher against the recipe's
+        // display ingredients; gated behind `cook_step_ingredients_v1`
+        // (default-OFF yields [] → nothing renders). Quantities scaled by
+        // `cookScaleFactor`; matched off the RAW cleaned step so tokens stay
+        // stable across scale changes. Web parity: `CookMode.tsx`.
         const stepChips = cookStepIngredientChips(
           isFeatureEnabled("cook_step_ingredients_v1"),
           cleanedStep,
@@ -2512,10 +2501,9 @@ export default function RecipeDetailScreen() {
                 <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
                   Step {cookStep + 1} of {instructionSteps.length}
                 </Text>
-                {/* ENG-949 — flag-ON: base 24 (matches the standalone /cook
-                    screen; the overlay used to read 22 and felt smaller)
-                    scaled by the per-user A−/A+ size, lineHeight ~1.4× so big
-                    sizes stay legible. Flag-OFF: the legacy 22 / 32 exactly. */}
+                {/* ENG-949 — flag-ON: base 24 (matches the /cook screen)
+                    scaled by the per-user A−/A+ size, lineHeight ~1.4×.
+                    Flag-OFF: the legacy 22 / 32 exactly. */}
                 <Text
                   style={{
                     fontSize: cookStepFontSize(
@@ -2578,6 +2566,18 @@ export default function RecipeDetailScreen() {
                     </View>
                   </View>
                 )}
+                {/* ENG-1230 parity fix — cook-mode step timers. This live
+                    overlay (the path "Start Cooking" opens) had ZERO timers;
+                    the orphaned `/cook` screen + web `CookMode.tsx` have them.
+                    `CookTimerPanel` owns the timer hook + pills + running
+                    strip, gated behind `cook_multi_timers_v1` (flag-off =
+                    nothing). Parsed off RAW `cleanedStep` (web parity). */}
+                <CookTimerPanel
+                  recipeId={recipeId ?? ""}
+                  stepIndex={cookStep}
+                  stepText={cleanedStep}
+                  enabled={isFeatureEnabled("cook_multi_timers_v1")}
+                />
                 </CookStepSwipeSurface>
               </View>
               <View style={{ flexDirection: "row", gap: Spacing.md }}>
