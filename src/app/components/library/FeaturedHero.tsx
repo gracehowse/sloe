@@ -67,7 +67,10 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
         )}
         <span
           className="absolute left-3 top-3 rounded-full px-[11px] py-[5px] text-[10px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-sm"
-          style={{ backgroundColor: "rgba(28,18,26,0.5)" }}
+          // a11y (2026-06-23): scrim 0.5 → 0.68 so the white "Tonight's pick"
+          // label clears AA (4.5:1) even over a LIGHT recipe photo (0.5 over
+          // white composited to #878187 ≈ 3.8:1 — fail).
+          style={{ backgroundColor: "rgba(28,18,26,0.68)" }}
         >
           Tonight&apos;s pick
         </span>

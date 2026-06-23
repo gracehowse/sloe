@@ -84,7 +84,14 @@
   --background-marketing: #FBF8F3; /* Oat — marketing / landing / paywall ONLY */
   --foreground: #221B26;
   --foreground-secondary: #655C6E;
-  --foreground-tertiary: #9B93A3;
+  /* a11y (2026-06-23): tertiary muted text darkened #9B93A3 → #6E6874. The old
+     light grey was 2.96:1 on white — failed WCAG AA 4.5:1 as small text (the
+     ~243 storybook addon-a11y color-contrast failures: labels, captions,
+     "+N more", sublabels). #6E6874 is 5.39 white / 4.94 card / 4.81 cream —
+     PASS, the lightest grey that clears AA on all three so the muted feel is
+     preserved. `--foreground-secondary` (#655C6E) already passed. The dark
+     theme keeps its own (lighter-on-dark) value. ENG-811 + root-cause-class. */
+  --foreground-tertiary: #6E6874;
   /** Brand-tinted heading ink — Sloe plum (#3B2A4D, the chrome hue). The
    *  Newsreader card titles (prototype `text-plum` in
    *  `docs/prototypes/stitch-sloe/today-*.html`) render in this, NOT clay.

@@ -79,6 +79,7 @@ const PRIMARY_SOLID = "#A0552E"; // --accent-primary-solid (clay text)
 const ACTIVITY_FILL = "#D6A24A"; // --activity (honey, fill-only)
 const ACTIVITY_SOLID = "#8A5A14"; // --activity-solid (honey text)
 const WARNING_SOLID = "#925812"; // --accent-warning-solid (amber text, 2026-06-23 darken)
+const FOREGROUND_TERTIARY = "#6E6874"; // --foreground-tertiary (muted text, 2026-06-23 darken from #9B93A3)
 const DARK_BRAND = "#A98CB8"; // --foreground-brand dark (text lift of plum)
 const DARK_ACTIVITY_SOLID = "#E0B25E"; // --activity-solid dark
 
@@ -97,6 +98,15 @@ describe("Sloe text tokens clear WCAG AA on their surfaces", () => {
       AA_NORMAL,
     ); // ~4.9
     expect(ratio(ACTIVITY_SOLID, WHITE)).toBeGreaterThanOrEqual(AA_NORMAL); // ~5.9
+  });
+
+  it("tertiary muted text passes AA-normal on white, card + cream", () => {
+    // The core muted/tertiary token (labels, captions, "+N more", sublabels).
+    // Darkened #9B93A3 → #6E6874 (2026-06-23) — the old grey was 2.96:1 (the
+    // ~243 storybook a11y failures). Guards against a regression back to light.
+    expect(ratio(FOREGROUND_TERTIARY, WHITE)).toBeGreaterThanOrEqual(AA_NORMAL); // ~5.4
+    expect(ratio(FOREGROUND_TERTIARY, CARD)).toBeGreaterThanOrEqual(AA_NORMAL); // ~4.9
+    expect(ratio(FOREGROUND_TERTIARY, CREAM)).toBeGreaterThanOrEqual(AA_NORMAL); // ~4.8
   });
 
   it("warning-solid (amber text) passes AA-normal on white, card + cream", () => {

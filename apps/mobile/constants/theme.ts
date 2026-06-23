@@ -355,7 +355,11 @@ export const Colors = {
   light: {
     text: '#221B26',                // aubergine ink (the warmth lives here)
     textSecondary: '#655C6E',
-    textTertiary: '#9B93A3',
+    // a11y (2026-06-23, web parity): darkened #9B93A3 → #6E6874 (old grey was
+    // 2.96:1 on white — failed AA 4.5:1 as small text). #6E6874 is 5.39 white /
+    // 4.81 cream — PASS, lightest grey that clears AA. Mirrors web
+    // `--foreground-tertiary`. textSecondary (#655C6E) already passed.
+    textTertiary: '#6E6874',
     // Sloe v3 surface model (2026-06-21, prototype docs/ux/redesign/v3). The
     // in-product ground returns to PURE WHITE; cream is marketing-only. v3
     // REVERSES the 2026-06-12 flat-card-on-cream grammar: white cards LIFT on
