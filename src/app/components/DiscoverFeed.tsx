@@ -142,6 +142,19 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   // Reels · Breakfast · Dinner · Dessert · Soup · Pasta · Chicken).
   // `Trending` + `From Reels` are Discover-only signals handled below.
   const [category, setCategory] = useState<RecipeCategoryId | "trending" | "from-reels">("all");
+  // ENG-1225 #3 — import CTA opens the unified sheet when the wedge flag is on; flag-off = legacy /import navigate.
+  const unifiedImportEnabled = isFeatureEnabled("sloe_v3_unified_import");
+  const [unifiedImportOpen, setUnifiedImportOpen] = useState(false);
+  const openImport = useCallback(() => {
+    if (unifiedImportEnabled) {
+      setUnifiedImportOpen(true);
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", "import");
+    window.history.pushState({}, "", url.toString());
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, [unifiedImportEnabled]);
   // Following feed scope is wired functionality (author/creator follow
   // graph) — preserved as a secondary toggle outside the category row.
   const [feedScope, setFeedScope] = useState<"forYou" | "following">("forYou");
@@ -407,19 +420,6 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   // nothing to reorder there). The card JSX is extracted to `importCard` so it
   // renders at exactly one position (no duplication, testID count unchanged).
   const importAboveCarousels = isFeatureEnabled("discover_import_above_carousels_v1");
-  // ENG-1225 #3 — import CTA opens the unified sheet when the wedge flag is on; flag-off = legacy /import navigate.
-  const unifiedImportEnabled = isFeatureEnabled("sloe_v3_unified_import");
-  const [unifiedImportOpen, setUnifiedImportOpen] = useState(false);
-  const openImport = useCallback(() => {
-    if (unifiedImportEnabled) {
-      setUnifiedImportOpen(true);
-      return;
-    }
-    const url = new URL(window.location.href);
-    url.searchParams.set("view", "import");
-    window.history.pushState({}, "", url.toString());
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  }, [unifiedImportEnabled]);
   const importCard = (
     <div className="md:hidden">
       {isFeatureEnabled("discover_import_hero_v1") ? (
