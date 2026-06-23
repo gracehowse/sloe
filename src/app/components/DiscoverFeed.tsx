@@ -34,6 +34,7 @@ import {
 } from "../../lib/discover/collections.ts";
 import { useTopCreators } from "./suppr/use-top-creators";
 import { DiscoverQuickWeeknight } from "./suppr/discover-quick-weeknight";
+import { DiscoverCollections } from "./suppr/discover-collections";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // from the Discover hero card — see the comment on the card body.
@@ -681,16 +682,15 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             Flag-off falls back to the old below-carousels position (line ~880). */}
         {importAboveCarousels ? importCard : null}
 
-        {/* ENG-1225 Block 6 — v3 "Quick weeknight" no-photo section above the
-            cuisine clusters (default view; self-gating on the flag + quick
-            recipes). Mirrors the mobile placement. */}
+        {/* ENG-1225 Block 6 — Quick weeknight + Collections above the clusters (flag-gated; mobile parity). */}
         {showClusterCarousels ? (
-          <DiscoverQuickWeeknight recipes={recipes} onPressRecipe={(r) => setSelectedRecipe(r)} />
+          <>
+            <DiscoverQuickWeeknight recipes={recipes} onPressRecipe={(r) => setSelectedRecipe(r)} />
+            <DiscoverCollections recipes={recipes} onSelectCategory={setCategory} />
+          </>
         ) : null}
-        {/* Wave 4 (2026-05-02) — cuisine cluster carousels (Mediterranean → Asian
-            → Latin → Comfort → Healthy bowls) when no search/filter narrows the
-            feed. Mobile parity: discover.tsx. The flat grid below still renders
-            community uploads (`nonSeedRecipes`). */}
+        {/* Wave 4 (2026-05-02) — cuisine cluster carousels when no search/filter
+            narrows the feed. Mobile parity: discover.tsx. */}
         {showClusterCarousels ? (
           <div data-testid="discover-cluster-carousels" className="mt-6 space-y-10">
             {SEED_CLUSTERS.map((cluster) => {

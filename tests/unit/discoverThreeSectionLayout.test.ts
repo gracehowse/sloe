@@ -86,7 +86,9 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
     });
 
     it("mobile renders More ideas as compact meal rows inside one card (not hero cards)", () => {
-      expect(MOBILE_SRC).toMatch(/renderMoreIdeaRow/);
+      // The compact More-ideas row was extracted to the DiscoverMoreIdeaRow
+      // component (ENG-1225 Block 6 pre-work); the host renders it per row.
+      expect(MOBILE_SRC).toMatch(/DiscoverMoreIdeaRow/);
       expect(MOBILE_SRC).not.toMatch(
         /More ideas[\s\S]{0,400}filtered\.slice\(2\)\.map\(\(r\) => renderHeroCard/,
       );
