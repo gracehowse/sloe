@@ -85,6 +85,9 @@ const baseProps = {
   onOpenHousehold: () => {},
   onOpenMeal: () => {},
   onAddToSlot: () => {},
+  shoppingItemCount: 17,
+  servingCount: 2,
+  onOpenShopping: () => {},
   today,
 };
 
@@ -110,6 +113,17 @@ describe("PlanV3Surface", () => {
     fireEvent.press(getByLabelText("W 17")); // empty day, index 2
     expect(getByText("Wednesday 17")).toBeTruthy();
     expect(getByText("Nothing planned yet")).toBeTruthy();
+  });
+
+  it("renders the shopping-list tool row (restored access) with item count", () => {
+    const onOpenShopping = vi.fn();
+    const { getByText, getByLabelText } = render(
+      <PlanV3Surface {...baseProps} onOpenShopping={onOpenShopping} />,
+    );
+    expect(getByText("Shopping list")).toBeTruthy();
+    expect(getByText("17 items · for 2")).toBeTruthy();
+    fireEvent.press(getByLabelText("Shopping list, 17 items · for 2"));
+    expect(onOpenShopping).toHaveBeenCalledTimes(1);
   });
 
   it("lists the selected day's slots under the default 'All' filter", () => {

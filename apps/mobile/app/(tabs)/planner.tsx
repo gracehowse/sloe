@@ -2656,10 +2656,9 @@ export default function PlannerScreen() {
       {/* Regenerate diff toast — extracted to its own component (ENG-1225
           Block 1) to free planner.tsx line-budget for the v3 Plan UI. */}
       <PlanRegenerateToast toast={regenerateToast} topInset={insets.top} />
-      {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default,
-          Shopping list as a sub-view). Tapping "Shopping" routes to
-          the existing `/shopping` screen which carries a mirroring
-          header so the user can return without losing their place. */}
+      {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default, Shopping as a
+          sub-view → `/shopping`). Hidden under sloe_v3_plan: the v3 header owns
+          generate/adjust/templates and PlanToolsV3 carries the Shopping row. */}
       {sloeV3Plan ? null : (
       <PlanTabChrome
         value="plan"
@@ -2711,6 +2710,9 @@ export default function PlannerScreen() {
             onOpenHousehold={() => setTemplatesOpen(true)}
             onOpenMeal={planV3Meal.onOpenMeal}
             onAddToSlot={planV3Meal.onAddToSlot}
+            shoppingItemCount={shoppingItemCount}
+            servingCount={householdMemberCount}
+            onOpenShopping={() => router.push("/shopping" as Href)}
           />
         ) : null}
         {/* Named plan slots switcher (Grace 2026-05-22: "drop the redundant

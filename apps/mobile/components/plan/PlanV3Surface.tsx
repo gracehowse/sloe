@@ -21,6 +21,7 @@ import {
   type PlanMealFilter,
 } from "./PlanMealFilterChipsV3";
 import { PlanMealSectionV3 } from "./PlanMealSectionV3";
+import { PlanToolsV3 } from "./PlanToolsV3";
 
 const WEEKDAY_LETTER = ["S", "M", "T", "W", "T", "F", "S"] as const;
 const WEEKDAY_LONG = [
@@ -63,6 +64,12 @@ export interface PlanV3SurfaceProps {
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   /** Add a meal to an empty slot (day index + slot index). */
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  /** Shopping-list item count (for the foot tool row). */
+  shoppingItemCount: number;
+  /** Household serving count (for the foot tool row). */
+  servingCount: number;
+  /** Open the shopping list (restores the access the legacy chrome carried). */
+  onOpenShopping: () => void;
   /** Today (for the week-strip highlight) — injected for deterministic tests. */
   today?: Date;
 }
@@ -88,6 +95,9 @@ export function PlanV3Surface({
   onOpenHousehold,
   onOpenMeal,
   onAddToSlot,
+  shoppingItemCount,
+  servingCount,
+  onOpenShopping,
   today,
 }: PlanV3SurfaceProps) {
   const [mealFilter, setMealFilter] = useState<PlanMealFilter>("All");
@@ -176,6 +186,11 @@ export function PlanV3Surface({
         filter={mealFilter}
         onOpenMeal={onOpenMeal}
         onAddToSlot={onAddToSlot}
+      />
+      <PlanToolsV3
+        shoppingItemCount={shoppingItemCount}
+        servingCount={servingCount}
+        onOpenShopping={onOpenShopping}
       />
     </>
   );
