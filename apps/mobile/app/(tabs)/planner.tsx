@@ -174,6 +174,7 @@ import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
 import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
+import { PlanRegenerateToast } from "@/components/plan/PlanRegenerateToast";
 import {
   type PlanSourceMode,
   DEFAULT_PLAN_SOURCE_MODE,
@@ -2612,66 +2613,9 @@ export default function PlannerScreen() {
       testID="screen-planner"
       style={[styles.container, { paddingTop: insets.top }]}
     >
-      {/* Group E Card 4 (premium-bar audit 2026-05-14): regenerate
-          diff toast. Absolutely positioned overlay below the status
-          bar so it doesn't compete for header space. Auto-dismisses
-          after 2.4s via the effect on `regenerateToast`. Hosts no
-          tap target — calm-reward posture matching
-          `FirstLogAcknowledgment`. */}
-      {regenerateToast?.visible ? (
-        <View
-          testID="planner-regenerate-toast"
-          accessibilityRole="alert"
-          accessibilityLabel={`Plan updated. ${regenerateToast.changedCount} meals changed.`}
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: insets.top + Spacing.sm,
-            left: Spacing.md,
-            right: Spacing.md,
-            zIndex: 1000,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: Spacing.sm,
-            paddingVertical: Spacing.sm,
-            paddingHorizontal: Spacing.md,
-            borderRadius: Radius.md,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: accent.primary + "40",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.12,
-            shadowRadius: 6,
-            elevation: 4,
-          }}
-        >
-          <View
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: Radius.full,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: accent.primary + "1A",
-            }}
-          >
-            <RefreshCw size={14} color={accent.primary} strokeWidth={2.25} />
-          </View>
-          <Text
-            style={{
-              flex: 1,
-              fontSize: 14,
-              fontWeight: "600",
-              color: colors.text,
-              letterSpacing: -0.1,
-            }}
-          >
-            Plan updated — {regenerateToast.changedCount}{" "}
-            {regenerateToast.changedCount === 1 ? "meal" : "meals"} changed
-          </Text>
-        </View>
-      ) : null}
+      {/* Regenerate diff toast — extracted to its own component (ENG-1225
+          Block 1) to free planner.tsx line-budget for the v3 Plan UI. */}
+      <PlanRegenerateToast toast={regenerateToast} topInset={insets.top} />
       {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default,
           Shopping list as a sub-view). Tapping "Shopping" routes to
           the existing `/shopping` screen which carries a mirroring
