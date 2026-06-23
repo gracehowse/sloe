@@ -176,6 +176,7 @@ import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
 import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
 import { PlanRegenerateToast } from "@/components/plan/PlanRegenerateToast";
 import { PlanV3Surface } from "@/components/plan/PlanV3Surface";
+import { usePlanV3MealActions } from "@/components/plan/usePlanV3MealActions";
 import { computePlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
 import {
   type PlanSourceMode,
@@ -1334,28 +1335,29 @@ export default function PlannerScreen() {
     });
   }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool, startOffset]);
 
-  // ENG-820 (Plan win-moment, Redesign — Design Direction 2026): one flag gates
-  // the whole Plan win layer — the state-aware headline tone + pulse, the 7/7
-  // success haptic, and the generate/move settle haptics. Flag OFF preserves
-  // today's flat headline + silent commits. Declared here (before the move
-  // handler) so callers below can read it without a TDZ hazard.
+  // ENG-1225 Block 3 — v3 Plan meal handlers (open → recipe detail; add → swap
+  // picker), lifted to a hook so the pinned planner stays lean.
+  const planV3Meal = usePlanV3MealActions({ plan, savedRecipes, discoverRecipes, swapMeal });
+
+  // ENG-820 (Plan win-moment): one flag gates the whole Plan win layer — the
+  // state-aware headline tone + pulse, the 7/7 success haptic, and generate/move
+  // settle haptics. OFF preserves the flat headline + silent commits. Declared
+  // here (before the move handler) so callers below read it without a TDZ hazard.
   const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
 
   // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-card-
-  // treatment-soft-elevation.md): every card sitting directly on the Plan page
-  // ground gets the SOFT lift so it separates from the #FFFFFF page like every
-  // other resting card (Today hero, Progress weight card, shopping group cards).
-  // Was the no-arg `flat` default — a page-ground summary slab read as an
-  // undifferentiated flat block next to the soft-lifted cards on Today/Progress.
-  // Spread onto the summary + setup card Views below (shadow on the OUTER node;
-  // these cards don't clip, so a single-node spread is iOS-safe).
+  // treatment-soft-elevation.md): every card directly on the Plan page ground
+  // gets the SOFT lift so it separates from the #FFFFFF page like every other
+  // resting card (Today hero, Progress weight card, shopping group cards). Was
+  // the no-arg `flat` default — a page-ground slab read as undifferentiated next
+  // to the soft-lifted cards. Spread onto the summary + setup card Views below
+  // (shadow on the OUTER node; single-node spread is iOS-safe, these don't clip).
   const cardElevation = useCardElevation({ variant: "soft" });
 
-  // Batch 3.10 mobile parity — move a meal between slots / days.
-  // Uses the shared `moveMealInPlan` helper. Two-way swap when destination
-  // is occupied; source becomes an empty placeholder when destination was
-  // empty. If the source is a parent-of-leftovers, caller has already
-  // confirmed (see long-press handler) and we run `markLeftoversOnSwap`
+  // Batch 3.10 mobile parity — move a meal between slots / days via the shared
+  // `moveMealInPlan` helper. Two-way swap when the destination is occupied; the
+  // source becomes an empty placeholder otherwise. A parent-of-leftovers source
+  // is caller-confirmed (long-press handler) and runs `markLeftoversOnSwap`
   // before the move so totals stay right.
   const handleMove = useCallback(
     (from: { day: number; slotIndex: number }, to: { day: number; slotIndex: number }) => {
@@ -1378,12 +1380,11 @@ export default function PlannerScreen() {
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
         // ENG-1150 — re-resolve per-row fibre on both affected days before
-        // persist so the day-total fibre cell follows the moved meal. The
-        // shared moveMealInPlan recomputes totals (fiber included), but mobile
-        // derives the displayed fibre from the meal rows via planMealFiberG, so
-        // the rows must carry a resolved fiberG. Idempotent enrich.
+        // persist so the day-total fibre cell follows the moved meal: mobile
+        // derives displayed fibre from the rows via planMealFiberG, so rows must
+        // carry a resolved fiberG (idempotent enrich; moveMealInPlan already
+        // recomputes totals). Fire-and-forget persist; UI already reflects it.
         const enriched = enrichPlanDaysFiber(next, recipeFiberPool);
-        // Fire-and-forget persist; UI already reflects the move.
         void persistPlan(enriched);
         return enriched;
       });
@@ -2708,17 +2709,14 @@ export default function PlannerScreen() {
             onAdjust={() => setTemplatesOpen(true)}
             onTemplates={() => setTemplatesOpen(true)}
             onOpenHousehold={() => setTemplatesOpen(true)}
+            onOpenMeal={planV3Meal.onOpenMeal}
+            onAddToSlot={planV3Meal.onAddToSlot}
           />
         ) : null}
-        {/* Named plan slots switcher — pre-2026-05-22 this rendered
-            unconditionally, which on a single-plan setup put a "This
-            week" pill right under the "This week" sub-tab and a
-            redundant "+ New" affordance with no obvious purpose.
-            Grace 2026-05-22: "drop the redundant This week pill row".
-            Gate behind >1 plan slot so multi-plan users keep the
-            switcher; single-plan users see a cleaner Plan tab.
-            Creating a new plan slot moves through Settings → Plan
-            slots when only one plan exists. */}
+        {/* Named plan slots switcher (Grace 2026-05-22: "drop the redundant
+            This week pill row") — gated behind >1 plan slot so multi-plan users
+            keep the switcher and single-plan users get a cleaner Plan tab.
+            Single-plan users create a new slot via Settings → Plan slots. */}
         {planSlots.length > 1 ? (
         <ScrollView
           horizontal

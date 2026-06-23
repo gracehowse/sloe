@@ -16,6 +16,11 @@ import {
   PlanHouseholdBannerV3,
   type PlanHouseholdBannerV3Props,
 } from "./PlanHouseholdBannerV3";
+import {
+  PlanMealFilterChipsV3,
+  type PlanMealFilter,
+} from "./PlanMealFilterChipsV3";
+import { PlanMealSectionV3 } from "./PlanMealSectionV3";
 
 const WEEKDAY_LETTER = ["S", "M", "T", "W", "T", "F", "S"] as const;
 const WEEKDAY_LONG = [
@@ -29,12 +34,13 @@ const WEEKDAY_LONG = [
 ] as const;
 
 /**
- * PlanV3Surface — the Sloe v3 Plan top section (ENG-1225 Block 2): header +
- * verdict, week-strip day selector, optional household banner, and the selected
- * day's calorie-band detail. Composed from the Plan v3 components; the host
- * (planner.tsx) passes the real week plan + targets + dates so this stays a thin
- * integration (keeps the pinned planner lean). The per-slot meal cards +
- * meal-filter across-week view are Block 3.
+ * PlanV3Surface — the Sloe v3 Plan surface (ENG-1225 Blocks 2–3): header +
+ * verdict, week-strip day selector, optional household banner, the selected
+ * day's calorie-band detail, the meal-filter chips, and the meal body (per-day
+ * slots under "All", across-week list under a specific slot). Composed from the
+ * Plan v3 components; the host (planner.tsx) passes the real week plan + targets
+ * + dates + meal handlers so this stays a thin integration (keeps the pinned
+ * planner lean).
  */
 export interface PlanV3SurfaceProps {
   /** The week plan (one entry per day), or null before a plan exists. */
@@ -53,6 +59,10 @@ export interface PlanV3SurfaceProps {
   onAdjust: () => void;
   onTemplates: () => void;
   onOpenHousehold: () => void;
+  /** Open an existing meal (day index + slot index into ALL_MEAL_SLOTS). */
+  onOpenMeal: (dayIndex: number, slotIndex: number) => void;
+  /** Add a meal to an empty slot (day index + slot index). */
+  onAddToSlot: (dayIndex: number, slotIndex: number) => void;
   /** Today (for the week-strip highlight) — injected for deterministic tests. */
   today?: Date;
 }
@@ -76,8 +86,11 @@ export function PlanV3Surface({
   onAdjust,
   onTemplates,
   onOpenHousehold,
+  onOpenMeal,
+  onAddToSlot,
   today,
 }: PlanV3SurfaceProps) {
+  const [mealFilter, setMealFilter] = useState<PlanMealFilter>("All");
   // Default the selected day to today (when it falls in the week), else day 0.
   const todayIndex = useMemo(() => {
     const t = today ?? new Date();
@@ -154,6 +167,15 @@ export function PlanV3Surface({
               }
             : null
         }
+      />
+      <PlanMealFilterChipsV3 selected={mealFilter} onSelect={setMealFilter} />
+      <PlanMealSectionV3
+        plan={plan}
+        selectedDayIndex={safeIndex}
+        weekDates={weekDates}
+        filter={mealFilter}
+        onOpenMeal={onOpenMeal}
+        onAddToSlot={onAddToSlot}
       />
     </>
   );

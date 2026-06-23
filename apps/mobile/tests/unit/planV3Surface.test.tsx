@@ -83,6 +83,8 @@ const baseProps = {
   onAdjust: () => {},
   onTemplates: () => {},
   onOpenHousehold: () => {},
+  onOpenMeal: () => {},
+  onAddToSlot: () => {},
   today,
 };
 
@@ -108,5 +110,27 @@ describe("PlanV3Surface", () => {
     fireEvent.press(getByLabelText("W 17")); // empty day, index 2
     expect(getByText("Wednesday 17")).toBeTruthy();
     expect(getByText("Nothing planned yet")).toBeTruthy();
+  });
+
+  it("lists the selected day's slots under the default 'All' filter", () => {
+    const { getByLabelText, getByText } = render(<PlanV3Surface {...baseProps} />);
+    // Thu 18 (fullDay) has 3 filled slots; the 4th (Snacks) is missing → empty.
+    expect(getByLabelText("Breakfast: Meal")).toBeTruthy();
+    expect(getByLabelText("Dinner: Meal")).toBeTruthy();
+    expect(getByText("Add snacks")).toBeTruthy();
+  });
+
+  it("switches to the across-week view when a specific slot is filtered", () => {
+    const { getByLabelText, getByText, getAllByText, queryByText } = render(
+      <PlanV3Surface {...baseProps} />,
+    );
+    fireEvent.press(getByLabelText("Dinner")); // the filter chip
+    // Across-week → every day's dinner under a day header.
+    expect(getByText("Monday 15")).toBeTruthy();
+    expect(getByText("Sunday 21")).toBeTruthy();
+    // The 3 empty days (Wed 17, Sat 20, Sun 21) → "Add dinner" rows.
+    expect(getAllByText("Add dinner")).toHaveLength(3);
+    // "Add snacks" only exists in the All view → gone now.
+    expect(queryByText("Add snacks")).toBeNull();
   });
 });
