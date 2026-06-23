@@ -255,7 +255,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [, setLoadingRecipe] = useState(false);
-  const [importUrl, setImportUrl] = useState("");
+  const [importUrl, setImportUrl] = useState(() => (mode === "import" ? searchParams.get("importUrl") ?? "" : "")); // ENG-1225 #3: prefill from ?importUrl=
   const [importBusy, setImportBusy] = useState(false);
   // Captured at URL-import time so the upsert persists `recipes.source_url` +
   // `recipes.source_name`. F-5 fix (`AI-CNKcmy7y`, 2026-04-19): previously the
