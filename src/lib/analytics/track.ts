@@ -161,10 +161,14 @@ function flagForceOverride(flag: string): boolean | null {
  * absent from every default-on set". A flag not in `REDESIGN_DEFAULT_ON`
  * and not live in PostHog resolves to `false` — the safe dark default.
  *
- * - `cook_step_ingredients_v1` (ENG-944) — renders the calm "For this step"
- *   ingredient chip row under each cook-mode instruction. DEFAULT-OFF;
- *   ramp via PostHog once visually validated on device. Mirror of the
- *   mobile note in `apps/mobile/lib/analytics.ts`.
+ * - `reveal-macro-tile-paired-pct` — onboarding reveal-step layout A/B.
+ *   DEFAULT-OFF *by design*: Grace ramps it in PostHog only after validating
+ *   in TestFlight, so it is deliberately excluded from the ENG-1225 flag-
+ *   collapse sweep. Mirror of the mobile note in `apps/mobile/lib/analytics.ts`.
+ *
+ * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
+ *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was fixed
+ *  — the v3 cook baseline is now default-on.)
  */
 
 /** Redesign 2026 flag set — the new design is the DEFAULT in every build
@@ -284,6 +288,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   //   Today meal nutrition detail (MealNutritionDialog + slot detail) — fixes
   //   an asymmetric parity break (mobile already live, web was OFF).
   "web_meal_nutrition_detail",
+  // ENG-1225 flag-collapse sweep (2026-06-22) — the v3 cook-mode baseline
+  // (audit launch-blocker #4). Built (ENG-944/946/947/948/949) but dark-by-
+  // default until this sweep; on-device SEE found a swipe-surface render bug
+  // (step body invisible), FIXED in ENG-1230 before flipping these on.
+  // Default-on now, off → pre-v3 cook (kill switch). Keep in sync with mobile.
+  "cook_step_ingredients_v1",
+  "cook_swipe_steps_v1",
+  "cook_ingredient_checklist_v1",
+  "cook_multi_timers_v1",
+  "cook_text_size_control_v1",
 ]);
 
 /**
