@@ -7,6 +7,11 @@
  * the supabase service-role client at the module boundary so these
  * tests don't touch the network.
  *
+ * Two-phase contract (ENG-1234): `?mode=preview` (the default — also what
+ * an absent/invalid `mode` resolves to) parses + returns a sample with NO
+ * insert and NO rate-limit consumption; `?mode=commit` re-parses + inserts
+ * and is the only path that touches the rate limiter or the DB.
+ *
  * Node environment so multipart `Request.formData()` round-trips
  * through undici's parser instead of jsdom's incomplete impl.
  */
@@ -42,8 +47,14 @@ const CSV_FIXTURE = [
   "2024-08-12,Dinner,Chicken,620,52,22,48,910,7",
 ].join("\n");
 
-function reqWithFile(body: FormData | null): Request {
-  return new Request("http://localhost/api/imports/mfp-csv", {
+function reqWithFile(
+  body: FormData | null,
+  mode?: "preview" | "commit",
+): Request {
+  const url = mode
+    ? `http://localhost/api/imports/mfp-csv?mode=${mode}`
+    : "http://localhost/api/imports/mfp-csv";
+  return new Request(url, {
     method: "POST",
     body: body ?? undefined,
   });
@@ -88,16 +99,16 @@ describe("POST /api/imports/mfp-csv", () => {
     });
   });
 
-  // Scenario 1: unauthenticated.
+  // Scenario 1: unauthenticated (checked before mode is even read).
   it("returns 401 when unauthenticated", async () => {
     mockUserId.mockResolvedValue(null);
-    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE)));
+    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE), "commit"));
     expect(res.status).toBe(401);
     expect((await res.json()).error).toBe("unauthorized");
   });
 
-  // Scenario 2: rate-limited.
-  it("returns 429 when rate-limited", async () => {
+  // Scenario 2: rate-limited — COMMITS only.
+  it("returns 429 when a commit is rate-limited", async () => {
     mockUserId.mockResolvedValue("u1");
     mockRateLimit.mockResolvedValue({
       ok: false,
@@ -106,7 +117,7 @@ describe("POST /api/imports/mfp-csv", () => {
       retryAfterSec: 60,
       ip: "1.1.1.1",
     });
-    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE)));
+    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE), "commit"));
     expect(res.status).toBe(429);
     expect(res.headers.get("Retry-After")).toBe("60");
     const json = await res.json();
@@ -119,7 +130,7 @@ describe("POST /api/imports/mfp-csv", () => {
     // No `Meal` / `Food` (MFP), no `Quantity` / `Units` (Lose It),
     // no `Day` / `Group` / `Food Name` (Cronometer). Detection fails.
     const garbage = "Calories,Carbs,Fat,Protein\n300,30,10,40";
-    const res = await POST(reqWithFile(csvForm(garbage)));
+    const res = await POST(reqWithFile(csvForm(garbage), "commit"));
     expect(res.status).toBe(422);
     const json = await res.json();
     expect(json.error).toBe("unknown_source");
@@ -136,21 +147,22 @@ describe("POST /api/imports/mfp-csv", () => {
     const big = "x".repeat(MFP_IMPORT_BYTE_CAP + 16);
     const fd = new FormData();
     fd.append("file", new Blob([big], { type: "text/csv" }), "huge.csv");
-    const res = await POST(reqWithFile(fd));
+    const res = await POST(reqWithFile(fd, "commit"));
     expect(res.status).toBe(413);
     expect((await res.json()).error).toBe("file_too_large");
   });
 
-  // Scenario 5: happy path — success.
-  it("returns 200 with imported count, sample, and adapter source=mfp", async () => {
+  // Scenario 5: happy path — commit success.
+  it("returns 200 with imported count, sample, and adapter source=mfp on commit", async () => {
     mockUserId.mockResolvedValue("u1");
     const stub = makeServiceRoleStub({ insertedPerBatch: 3 });
     mockServiceRole.mockReturnValue(stub);
 
-    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE)));
+    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE), "commit"));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.ok).toBe(true);
+    expect(json.mode).toBe("commit");
     expect(json.imported).toBe(3);
     expect(json.unmatched).toBe(0);
     expect(json.truncated).toBe(false);
@@ -188,7 +200,7 @@ describe("POST /api/imports/mfp-csv", () => {
     const stub = makeServiceRoleStub({ insertedPerBatch: 3 });
     mockServiceRole.mockReturnValue(stub);
 
-    await POST(reqWithFile(csvForm(CSV_FIXTURE)));
+    await POST(reqWithFile(csvForm(CSV_FIXTURE), "commit"));
     // The upsert call's second arg locks the dedup contract.
     const callArgs = (stub._upsert as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(callArgs[1]).toMatchObject({
@@ -208,11 +220,56 @@ describe("POST /api/imports/mfp-csv", () => {
     });
     mockServiceRole.mockReturnValue(stub);
 
-    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE)));
+    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE), "commit"));
     expect(res.status).toBe(500);
     const json = await res.json();
     expect(json.error).toBe("insert_failed");
     expect(json.imported).toBe(0);
+  });
+
+  // ── Preview mode (ENG-1234) ──────────────────────────────────────────
+
+  describe("preview mode (?mode=preview / default)", () => {
+    it("parses + returns the sample and total WITHOUT inserting", async () => {
+      mockUserId.mockResolvedValue("u1");
+      // No service-role stub needed — preview must never reach the DB.
+      const res = await POST(reqWithFile(csvForm(CSV_FIXTURE), "preview"));
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.ok).toBe(true);
+      expect(json.mode).toBe("preview");
+      expect(json.source).toBe("mfp");
+      expect(json.total).toBe(3);
+      expect(json.unmatched).toBe(0);
+      expect(json.truncated).toBe(false);
+      expect(json.sample).toHaveLength(3);
+      expect(json.sample[0]).toMatchObject({ meal: "breakfast", name: "Oats" });
+      // The DB layer was never touched.
+      expect(mockServiceRole).not.toHaveBeenCalled();
+    });
+
+    it("treats an absent mode as preview (fail-safe — no insert)", async () => {
+      mockUserId.mockResolvedValue("u1");
+      const res = await POST(reqWithFile(csvForm(CSV_FIXTURE)));
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.mode).toBe("preview");
+      expect(mockServiceRole).not.toHaveBeenCalled();
+    });
+
+    it("does NOT consume the rate limit on preview", async () => {
+      mockUserId.mockResolvedValue("u1");
+      await POST(reqWithFile(csvForm(CSV_FIXTURE), "preview"));
+      expect(mockRateLimit).not.toHaveBeenCalled();
+    });
+
+    it("still surfaces unknown_source on preview", async () => {
+      mockUserId.mockResolvedValue("u1");
+      const garbage = "Calories,Carbs,Fat,Protein\n300,30,10,40";
+      const res = await POST(reqWithFile(csvForm(garbage), "preview"));
+      expect(res.status).toBe(422);
+      expect((await res.json()).error).toBe("unknown_source");
+    });
   });
 
   // Bonus coverage — auxiliary failure modes we want pinned.
@@ -220,7 +277,7 @@ describe("POST /api/imports/mfp-csv", () => {
   it("returns 400 when no file is attached", async () => {
     mockUserId.mockResolvedValue("u1");
     const fd = new FormData();
-    const res = await POST(reqWithFile(fd));
+    const res = await POST(reqWithFile(fd, "commit"));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("missing_file");
   });
@@ -232,7 +289,7 @@ describe("POST /api/imports/mfp-csv", () => {
       "2024-08-12,Breakfast,Oats,,68,10,14",
       "2024-08-12,Lunch,Salad,,42,18,52",
     ].join("\n");
-    const res = await POST(reqWithFile(csvForm(noCal)));
+    const res = await POST(reqWithFile(csvForm(noCal), "commit"));
     expect(res.status).toBe(422);
     expect((await res.json()).error).toBe("no_valid_rows");
   });
@@ -240,7 +297,7 @@ describe("POST /api/imports/mfp-csv", () => {
   it("returns 503 when the service-role client is unavailable", async () => {
     mockUserId.mockResolvedValue("u1");
     mockServiceRole.mockReturnValue(null);
-    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE)));
+    const res = await POST(reqWithFile(csvForm(CSV_FIXTURE), "commit"));
     expect(res.status).toBe(503);
     expect((await res.json()).error).toBe("server_misconfigured");
   });
@@ -258,7 +315,7 @@ describe("POST /api/imports/mfp-csv", () => {
     const stub = makeServiceRoleStub({ insertedPerBatch: 2 });
     mockServiceRole.mockReturnValue(stub);
 
-    const res = await POST(reqWithFile(csvForm(mixed)));
+    const res = await POST(reqWithFile(csvForm(mixed), "commit"));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.imported).toBe(2);
@@ -274,7 +331,7 @@ describe("POST /api/imports/mfp-csv", () => {
       mockUserId.mockResolvedValue("u1");
       const stub = makeServiceRoleStub({ insertedPerBatch: 3 });
       mockServiceRole.mockReturnValue(stub);
-      const res = await POST(reqWithFile(csvForm(CSV_FIXTURE)));
+      const res = await POST(reqWithFile(csvForm(CSV_FIXTURE), "commit"));
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.source).toBe("mfp");
@@ -296,7 +353,7 @@ describe("POST /api/imports/mfp-csv", () => {
       ].join("\n");
       const stub = makeServiceRoleStub({ insertedPerBatch: 2 });
       mockServiceRole.mockReturnValue(stub);
-      const res = await POST(reqWithFile(csvForm(LOSEIT_CSV)));
+      const res = await POST(reqWithFile(csvForm(LOSEIT_CSV), "commit"));
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.source).toBe("lose-it");
@@ -319,7 +376,7 @@ describe("POST /api/imports/mfp-csv", () => {
       ].join("\n");
       const stub = makeServiceRoleStub({ insertedPerBatch: 2 });
       mockServiceRole.mockReturnValue(stub);
-      const res = await POST(reqWithFile(csvForm(CRONOMETER_CSV)));
+      const res = await POST(reqWithFile(csvForm(CRONOMETER_CSV), "commit"));
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.source).toBe("cronometer");

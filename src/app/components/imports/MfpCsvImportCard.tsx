@@ -12,19 +12,12 @@
  *   2. Settings -> Privacy & Security — same card so a user who skipped
  *      onboarding can import later.
  *
- * Behaviour:
- *   - File picker accepts `.csv` only. The `accept` attribute is just
- *     the visible filter; the API does the real validation (anyone can
- *     hand-edit the picker's accept list).
- *   - On upload: POST to `/api/imports/mfp-csv` with the file as the
- *     multipart `file` field, plus the user's bearer token.
- *   - States: idle -> uploading -> success | error. Error has a retry
- *     button that re-opens the picker — no silent drops.
- *   - Success copy: "Imported N meals from MyFitnessPal." (parity with
- *     mobile).
- *   - Analytics: `mfp_csv_import_started` on file pick,
- *     `_completed` / `_failed` on response. Same event names on
- *     mobile.
+ * Two-phase (ENG-1234): picking a file uploads to `?mode=preview`, which
+ * parses WITHOUT writing — the card then shows the detected source, the
+ * count, and a sample of the parsed rows (`<CsvImportPreview>`). Only when
+ * the user confirms does the card re-send the same file to `?mode=commit`
+ * to insert. The shared `useCsvImportFlow` hook owns the state machine +
+ * analytics so web and mobile drive an identical flow.
  *
  * Mobile mirror at `apps/mobile/components/imports/MfpCsvImportCard.tsx`.
  */
@@ -36,31 +29,11 @@ import { Button } from "@/app/components/ui/button";
 import { SupprCard } from "@/app/components/ui/suppr-card";
 import { supabase } from "@/lib/supabase/browserClient";
 import { AnalyticsEvents } from "@/lib/analytics/events";
+import type { AnalyticsEventName } from "@/lib/analytics/events";
 import { track } from "@/lib/analytics/track";
-
-type Phase =
-  | { kind: "idle" }
-  | { kind: "uploading"; fileName: string }
-  | {
-      kind: "success";
-      imported: number;
-      unmatched: number;
-      truncated: boolean;
-    }
-  | { kind: "error"; message: string };
-
-type ImportSuccess = {
-  ok: true;
-  imported: number;
-  unmatched: number;
-  truncated: boolean;
-};
-
-type ImportFailure = {
-  ok: false;
-  error: string;
-  message?: string;
-};
+import { useCsvImportFlow } from "@/lib/imports/useCsvImportFlow";
+import type { CsvUploadResult } from "@/lib/imports/useCsvImportFlow";
+import { CsvImportPreview } from "@/app/components/imports/CsvImportPreview";
 
 export function MfpCsvImportCard({
   surface = "onboarding",
@@ -73,97 +46,73 @@ export function MfpCsvImportCard({
    *  pre-selected next step. `null` keeps the generic multi-app copy. */
   highlightApp?: string | null;
 }) {
-  const [phase, setPhase] = React.useState<Phase>({ kind: "idle" });
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const flow = useCsvImportFlow({
+    surface,
+    platform: "web",
+    track: (event, props) => track(event as AnalyticsEventName, props),
+    events: {
+      started: AnalyticsEvents.mfp_csv_import_started,
+      previewed: AnalyticsEvents.mfp_csv_import_previewed,
+      completed: AnalyticsEvents.mfp_csv_import_completed,
+      failed: AnalyticsEvents.mfp_csv_import_failed,
+    },
+  });
+  const { state } = flow;
+
+  // Fire a success toast once, on the transition into the success state.
+  const importedOnce =
+    state.kind === "success" ? state.imported : null;
+  React.useEffect(() => {
+    if (importedOnce != null) {
+      toast.success(
+        `Imported ${importedOnce} meal${importedOnce === 1 ? "" : "s"}.`,
+      );
+    }
+  }, [importedOnce]);
 
   const handlePick = React.useCallback(() => {
     inputRef.current?.click();
   }, []);
 
   const handleFile = React.useCallback(
-    async (file: File) => {
-      track(AnalyticsEvents.mfp_csv_import_started, {
-        surface,
-        platform: "web",
-      });
-      setPhase({ kind: "uploading", fileName: file.name });
-
-      try {
+    (file: File) => {
+      // The uploader is reused by the hook for both the preview and the
+      // commit round-trip — it grabs a fresh bearer each call (the token
+      // can rotate between preview and confirm) and posts the same file
+      // with the right `?mode=`.
+      const uploader = async (
+        mode: "preview" | "commit",
+      ): Promise<CsvUploadResult> => {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
         if (!token) {
-          setPhase({
-            kind: "error",
-            message: "Sign in to import your history.",
-          });
-          track(AnalyticsEvents.mfp_csv_import_failed, {
-            error: "unauthorized",
+          // Resolve a synthetic auth failure rather than hitting the
+          // network — the hook surfaces it via the error state.
+          return {
+            httpOk: false,
             status: 401,
-            surface,
-            platform: "web",
-          });
-          return;
+            json: {
+              ok: false,
+              error: "unauthorized",
+              message: "Sign in to import your history.",
+            },
+          };
         }
-
         const form = new FormData();
         form.append("file", file);
-
-        const res = await fetch("/api/imports/mfp-csv", {
+        const res = await fetch(`/api/imports/mfp-csv?mode=${mode}`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
           body: form,
         });
-        const json = (await res.json()) as ImportSuccess | ImportFailure;
+        const json = await res.json();
+        return { httpOk: res.ok, status: res.status, json };
+      };
 
-        if (!res.ok || !json.ok) {
-          const message =
-            ("message" in json && json.message) ||
-            (res.status === 429
-              ? "Too many imports today. Try again tomorrow."
-              : res.status === 413
-                ? "File is too large. Split your export and try again."
-                : "Import failed. Try again or pick a different file.");
-          setPhase({ kind: "error", message });
-          track(AnalyticsEvents.mfp_csv_import_failed, {
-            error: "error" in json ? json.error : "unknown",
-            status: res.status,
-            surface,
-            platform: "web",
-          });
-          return;
-        }
-
-        setPhase({
-          kind: "success",
-          imported: json.imported,
-          unmatched: json.unmatched,
-          truncated: json.truncated,
-        });
-        track(AnalyticsEvents.mfp_csv_import_completed, {
-          imported: json.imported,
-          unmatched: json.unmatched,
-          truncated: json.truncated,
-          surface,
-          platform: "web",
-        });
-        toast.success(
-          `Imported ${json.imported} meal${json.imported === 1 ? "" : "s"}.`,
-        );
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Import failed.";
-        setPhase({ kind: "error", message });
-        track(AnalyticsEvents.mfp_csv_import_failed, {
-          error: "fetch_failed",
-          status: 0,
-          surface,
-          platform: "web",
-        });
-      } finally {
-        // Allow picking the same file again after a failed attempt.
-        if (inputRef.current) inputRef.current.value = "";
-      }
+      void flow.startPreview(file.name, uploader);
     },
-    [surface],
+    [flow],
   );
 
   // ENG-990 — lead with the user's app when they told us they're
@@ -182,9 +131,9 @@ export function MfpCsvImportCard({
       padding="lg"
       radius="xl"
       tone={
-        phase.kind === "success"
+        state.kind === "success"
           ? "success"
-          : highlighted && phase.kind === "idle"
+          : highlighted && state.kind === "idle"
             ? "primary"
             : "neutral"
       }
@@ -198,7 +147,9 @@ export function MfpCsvImportCard({
         data-testid="mfp-csv-file-input"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) void handleFile(f);
+          if (f) handleFile(f);
+          // Allow re-picking the same file after cancel/error.
+          if (inputRef.current) inputRef.current.value = "";
         }}
       />
       <div className="flex items-start gap-3">
@@ -213,7 +164,7 @@ export function MfpCsvImportCard({
             <h3 className="flex-1 text-sm font-bold text-foreground tracking-tight">
               {title}
             </h3>
-            {phase.kind === "success" ? (
+            {state.kind === "success" ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-success-soft)] px-2 py-0.5 text-[10px] font-bold text-success">
                 <Check className="size-2.5" />
                 Imported
@@ -224,7 +175,7 @@ export function MfpCsvImportCard({
             {body}
           </p>
 
-          {phase.kind === "idle" && (
+          {state.kind === "idle" && (
             <Button
               type="button"
               size="sm"
@@ -237,14 +188,27 @@ export function MfpCsvImportCard({
             </Button>
           )}
 
-          {phase.kind === "uploading" && (
+          {state.kind === "previewing" && (
             <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin text-primary" />
-              <span>Importing {phase.fileName}&hellip;</span>
+              <span>Reading {state.fileName}&hellip;</span>
             </div>
           )}
 
-          {phase.kind === "success" && (
+          {state.kind === "preview" && (
+            <CsvImportPreview
+              source={state.source}
+              total={state.total}
+              unmatched={state.unmatched}
+              truncated={state.truncated}
+              sample={state.sample}
+              committing={state.committing}
+              onConfirm={flow.confirm}
+              onCancel={flow.reset}
+            />
+          )}
+
+          {state.kind === "success" && (
             <div className="mt-3 flex items-start gap-2 text-xs text-success">
               <Check
                 className="size-3.5 mt-px shrink-0"
@@ -253,16 +217,16 @@ export function MfpCsvImportCard({
               />
               <div className="flex-1">
                 <div className="font-semibold">
-                  Imported {phase.imported} meal
-                  {phase.imported === 1 ? "" : "s"}
+                  Imported {state.imported} meal
+                  {state.imported === 1 ? "" : "s"}
                 </div>
-                {phase.unmatched > 0 && (
+                {state.unmatched > 0 && (
                   <div className="text-muted-foreground mt-0.5">
-                    {phase.unmatched} row{phase.unmatched === 1 ? "" : "s"}{" "}
+                    {state.unmatched} row{state.unmatched === 1 ? "" : "s"}{" "}
                     skipped (missing calories).
                   </div>
                 )}
-                {phase.truncated && (
+                {state.truncated && (
                   <div className="text-muted-foreground mt-0.5">
                     First 1000 rows imported — upload again for older history.
                   </div>
@@ -271,10 +235,10 @@ export function MfpCsvImportCard({
             </div>
           )}
 
-          {phase.kind === "error" && (
+          {state.kind === "error" && (
             <div className="mt-3">
               <div className="text-xs text-destructive mb-2" role="alert">
-                {phase.message}
+                {state.message}
               </div>
               <Button
                 type="button"
