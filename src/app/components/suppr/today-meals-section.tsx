@@ -538,11 +538,9 @@ export function TodayMealsSection({
               <div
                 className={`flex items-center gap-2.5 px-3.5 py-3 ${hasMeals && isOpen ? "border-b border-border" : ""}`}
               >
-                {/* Expand/add trigger is a real <button> wrapping ONLY the
-                    non-interactive icon + name + chips; the action pills +
-                    chevron below are SIBLINGS, not nested — so the row no
-                    longer trips axe `nested-interactive`. A native <button>
-                    gives Enter/Space activation for free. */}
+                {/* Expand/add trigger is a real <button> over the icon+name;
+                    the action pills are SIBLINGS (un-nested) so the row no
+                    longer trips axe `nested-interactive`. (ENG-1225) */}
                 <button
                   type="button"
                   data-testid={`today-slot-header-${sectionName}`}
