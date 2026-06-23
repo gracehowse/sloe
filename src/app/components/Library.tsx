@@ -6,6 +6,7 @@ import { RecipeDetail } from "./RecipeDetail";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { SupprButton } from "./suppr/suppr-button";
 import { SupprCard } from "./ui/suppr-card";
+import { LibraryShelvesHeader } from "./library/LibraryShelvesHeader";
 import { useRouter } from "next/navigation";
 import {
   LIBRARY_CATEGORY_PILLS,
@@ -272,12 +273,9 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
         </div>
 
         {/* Search and Filter */}
-        {/* Audit 2026-04-30 visual-qa P1 #10 — at md+, the prior
-            `flex gap-3` placed the search input and the pill row
-            side-by-side. When pills wrapped to two rows, the search
-            input stayed at one row, so the heights diverged and the
-            layout looked broken. Stack vertically at every breakpoint
-            now: search on row 1, filter pills on row 2. */}
+        {/* Audit 2026-04-30 visual-qa P1 #10 — stack search (row 1) above the
+            filter pills (row 2) at every breakpoint; the prior side-by-side
+            `flex` broke when pills wrapped to two rows. */}
         <div className="flex flex-col gap-3 mt-6">
           {/* Search field — Figma `527:2`: cream-card pill, line border,
               magnifier prefix. "Search your recipes" placeholder. */}
@@ -291,16 +289,11 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               className="w-full pl-11 pr-4 py-3 bg-card border border-border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
           </div>
-          {/* Category filter pills — ENG-921 / Figma `527:2`. The SINGLE
-              primary filter row: `All`(clay) · Breakfast · Lunch · Dinner ·
-              Dessert · Quick 30 · … Clay-fill active, cream-card +
-              line-border inactive, horizontal scroll. The old second
-              entry-kind pill row is gone (ENG-921 / Figma 527:2 polish
-              2026-06-07) — "Saved" is now expressed by the bookmark overlay
-              on the card, and the Saved/Imported narrowing rides the quiet
-              control on the count line below. Sort + entry-kind are NOT a
-              second filter row. Mobile parity:
-              `apps/mobile/app/(tabs)/library.tsx`. */}
+          {/* Category filter pills — ENG-921 / Figma `527:2`: the SINGLE primary
+              filter row (All clay-fill · meal types · Quick 30 · …), horizontal
+              scroll. The old entry-kind pill row is gone — "Saved" is the
+              bookmark overlay; Saved/Imported narrowing + sort ride the quiet
+              count-line controls. Mobile parity: (tabs)/library.tsx. */}
           <div
             data-testid="library-filter-pills"
             className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -534,10 +527,17 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
         </div>
       )}
 
+      {/* ENG-1225 Block 5 — v3 editorial shelves above the grid (All only,
+          behind sloe_v3_editorial_shelves). Self-gating; the shelf recipes
+          carry savedAt (from filteredRecipes) so the open cast is safe. */}
+      <LibraryShelvesHeader
+        filtered={filteredRecipes}
+        category={category}
+        onPressRecipe={(r) => setSelectedRecipe(r as RecipeCard & { savedAt: Date })}
+      />
       {/* Recipe grid — Sloe Figma `527:2` unified card layout (ENG-896).
-          One responsive grid at all breakpoints (2-col mobile-web,
-          3-col desktop). Square hero, bookmark overlay, macro row,
-          saves/time meta — parity with native mobile Library. */}
+          One responsive grid (2-col mobile-web, 3-col desktop). Square hero,
+          bookmark overlay, macro row, saves/time meta — mobile parity. */}
       {filteredRecipes.length > 0 && (
         <>
           <div

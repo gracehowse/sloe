@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { RecipeCard } from "@/lib/types";
 
@@ -91,9 +91,10 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     fontFamily: Type.label.fontFamily,
   },
-  body: { paddingVertical: Spacing.dense, paddingHorizontal: Spacing.md },
+  body: { paddingTop: Spacing.dense, paddingBottom: Spacing.md, paddingHorizontal: Spacing.md },
   kicker: { ...Type.label, marginBottom: 2 },
-  title: { ...Type.title, marginVertical: 2 },
+  // Serif 22/600 — matches the web twin + the prototype cf-title (21/600).
+  title: { fontFamily: FontFamily.serifSemibold, fontSize: 22, lineHeight: 26, letterSpacing: -0.2, marginVertical: 2 },
   meta: { ...Type.caption, fontVariant: ["tabular-nums"], marginTop: 2 },
 });
 

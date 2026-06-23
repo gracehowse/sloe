@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { RecipeCard } from "@/lib/types";
 
@@ -76,7 +76,10 @@ const styles = StyleSheet.create({
   imageWrap: { height: 128, width: "100%" },
   image: { height: 128, width: "100%" },
   body: { padding: Spacing.dense, gap: 4 },
-  name: { ...Type.label, textTransform: "none", letterSpacing: 0, fontSize: 14, lineHeight: 18 },
+  // ENG-1225 — name treatment matches the web twin (sans semibold 15/19). The
+  // prototype's serif-500 name is a system-wide recipe-card-grammar change
+  // (grid + shelves, both platforms) deferred to Grace — see the spawned task.
+  name: { fontFamily: FontFamily.sansSemibold, fontSize: 15, lineHeight: 19, letterSpacing: 0 },
   meta: { ...Type.caption, fontVariant: ["tabular-nums"] },
 });
 

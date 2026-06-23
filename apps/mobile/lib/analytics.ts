@@ -409,6 +409,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // always per 2026-06-10) so it has legacy parity with CalorieRing.
   // OFF → the legacy concentric CalorieRing (kill switch). Keep in sync w/ web.
   "sloe_v3_ring",
+  // ENG-1225 Block 5 — the v3 Cookbook editorial shelves (Tonight's pick hero +
+  // Fits-your-day / Quick / High-protein) above the Library grid on the All
+  // filter. Default-on; off → the flat grid only (kill switch). Keep in sync w/ web.
+  "sloe_v3_editorial_shelves",
   // ENG-1225 flag-collapse sweep (2026-06-22) — the v3 cook-mode baseline.
   // Built (ENG-944/946/947/948/949) but dark-by-default until this sweep; the
   // audit's launch-blocker #4. On-device SEE found a swipe-surface render bug

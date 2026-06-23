@@ -276,6 +276,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // mobile-web). Default-on; off → the legacy concentric DailyRing (kill switch).
   // Keep in sync with the mobile set in apps/mobile/lib/analytics.ts.
   "sloe_v3_ring",
+  // ENG-1225 Block 5 — the v3 Cookbook editorial shelves (Tonight's pick hero +
+  // Fits-your-day / Quick / High-protein) above the Library grid on the All
+  // filter. Default-on; off → the flat grid only (kill switch). Mobile + web.
+  "sloe_v3_editorial_shelves",
   // ENG-1225 flag-collapse sweep (2026-06-22, "turn everything on") — the v3
   // Progress refinements that were built but dark-by-default. Each default-on
   // now; off → the respective legacy path (kill switch).
