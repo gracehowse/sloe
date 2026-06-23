@@ -44,7 +44,7 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
       type="button"
       onClick={onPress}
       aria-label={`Tonight's pick: ${recipe.title}${meta ? `, ${meta}` : ""}`}
-      className="mt-3 block w-full overflow-hidden rounded-xl border text-left transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:bg-[var(--background-secondary)] active:scale-[0.99]"
+      className="mt-3 block w-full overflow-hidden rounded-[var(--radius-card-lg)] border text-left transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:bg-[var(--background-secondary)] active:scale-[0.99]"
       style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
     >
       <span

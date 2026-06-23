@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { RecipeCard } from "@/lib/types";
@@ -67,9 +68,13 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
 }
 
 const styles = StyleSheet.create({
+  // Framed featured card at the 24px warm-slab corner (`CARD_RADIUS`) — the
+  // prototype `.cook-feat` keeps its border + card fill (one page-ground hero,
+  // not a borderless repeating tile); only the radius moved 12→24 (Sloe v3,
+  // 2026-06-23) to match the grid + the prototype `--radius-card-lg`.
   card: {
     marginTop: Spacing.md,
-    borderRadius: Radius.xl,
+    borderRadius: CARD_RADIUS,
     borderWidth: 1,
     overflow: "hidden",
   },

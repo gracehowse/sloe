@@ -5,7 +5,7 @@
  * derivation, the card meta line, the shelf header, and the hero kicker/badge.
  */
 import { describe, expect, it, vi } from "vitest";
-import { Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { fireEvent, render } from "@testing-library/react-native";
 
 vi.mock("@/hooks/use-theme-colors", () => ({
@@ -90,6 +90,20 @@ describe("RecipeCardWide", () => {
       <RecipeCardWide recipe={rc("Mystery", { calories: 0 })} onPress={() => {}} />,
     );
     expect(getByText(/Nutrition pending/)).toBeTruthy();
+  });
+
+  // Borderless + serif card grammar (Sloe v3, ratified 2026-06-23): the card
+  // carries no border, and the name is the Newsreader serif (parity with the
+  // grid + the web twin). Guards against a regression back to the bordered/sans
+  // stopgap the Block 5 fidelity review flagged.
+  it("uses the borderless + serif name grammar", () => {
+    const { getByText, getByLabelText } = render(
+      <RecipeCardWide recipe={rc("Tahini bowl")} onPress={() => {}} />,
+    );
+    const nameStyle = StyleSheet.flatten(getByText("Tahini bowl").props.style);
+    expect(nameStyle.fontFamily).toMatch(/Newsreader/);
+    const cardStyle = StyleSheet.flatten(getByLabelText(/Tahini bowl/).props.style);
+    expect(cardStyle.borderWidth ?? 0).toBe(0);
   });
 });
 

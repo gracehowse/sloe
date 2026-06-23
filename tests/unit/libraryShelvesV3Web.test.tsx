@@ -73,6 +73,16 @@ describe("RecipeCardWide (web)", () => {
     render(<RecipeCardWide recipe={rc("Mystery", { calories: 0 })} onPress={() => {}} />);
     expect(screen.getByText(/Nutrition pending/)).toBeTruthy();
   });
+
+  // Borderless + serif card grammar (Sloe v3, ratified 2026-06-23): the name is
+  // the Newsreader serif (var(--font-headline)) and the card carries no border —
+  // parity with the mobile twin + the grid. Guards against a regression to the
+  // bordered/sans stopgap the Block 5 fidelity review flagged.
+  it("uses the borderless + serif name grammar", () => {
+    render(<RecipeCardWide recipe={rc("Tahini bowl")} onPress={() => {}} />);
+    expect(screen.getByText("Tahini bowl").className).toContain("var(--font-headline)");
+    expect(screen.getByLabelText(/Tahini bowl/).className).not.toMatch(/border/);
+  });
 });
 
 describe("EditorialShelf (web)", () => {

@@ -46,11 +46,13 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
       type="button"
       onClick={onPress}
       aria-label={`${recipe.title}, ${meta}`}
-      className="w-[188px] shrink-0 snap-start overflow-hidden rounded-xl border text-left transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:bg-[var(--background-secondary)] active:scale-[0.99]"
-      style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+      className="group w-[188px] shrink-0 snap-start rounded-[var(--radius-card-lg)] text-left transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.99]"
     >
+      {/* Borderless recipe-card grammar (Sloe v3, ratified 2026-06-23): only the
+          photo is a rounded 24px tile (`--radius-card-lg`); the card carries no
+          border or fill — parity with the mobile twin + the Library grid. */}
       <span
-        className="relative flex h-32 w-full items-center justify-center overflow-hidden"
+        className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-[var(--radius-card-lg)]"
         style={{ backgroundColor: "var(--background-secondary)" }}
       >
         {showImage ? (
@@ -58,7 +60,7 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
           <img
             src={recipe.image}
             alt=""
-            className="absolute inset-0 size-full object-cover"
+            className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
             onError={() => setBroken(true)}
           />
         ) : (
@@ -68,11 +70,11 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
           />
         )}
       </span>
-      <span className="block p-3">
-        <span className="line-clamp-2 block text-[15px] font-semibold leading-[18px] text-foreground">
+      <span className="block pt-2">
+        <span className="line-clamp-2 block font-[family-name:var(--font-headline)] text-[15px] font-medium leading-[18px] text-foreground">
           {recipe.title}
         </span>
-        <span className="mt-1 block truncate text-[11px] tabular-nums text-foreground-secondary">
+        <span className="mt-0.5 block truncate text-[11px] tabular-nums text-foreground-secondary">
           {meta}
         </span>
       </span>

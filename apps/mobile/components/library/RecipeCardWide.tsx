@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
-import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { FontFamily, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { RecipeCard } from "@/lib/types";
 
@@ -42,7 +43,7 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
       haptic="selection"
       accessibilityRole="button"
       accessibilityLabel={`${recipe.title}, ${meta}`}
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={styles.card}
     >
       <View style={styles.imageWrap}>
         <RecipeCardImage
@@ -67,19 +68,17 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    width: 188,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  imageWrap: { height: 128, width: "100%" },
+  // ENG-1225 — borderless recipe-card grammar (Sloe v3, ratified 2026-06-23):
+  // the card itself carries no border/background; only the photo is a rounded
+  // 24px tile (`CARD_RADIUS`, matching the Library grid + the prototype `.rcard`
+  // shape). Name + meta sit flush below on the page ground.
+  card: { width: 188 },
+  imageWrap: { height: 128, width: "100%", borderRadius: CARD_RADIUS, overflow: "hidden" },
   image: { height: 128, width: "100%" },
-  body: { padding: Spacing.dense, gap: 4 },
-  // ENG-1225 — name treatment matches the web twin (sans semibold 15/19). The
-  // prototype's serif-500 name is a system-wide recipe-card-grammar change
-  // (grid + shelves, both platforms) deferred to Grace — see the spawned task.
-  name: { fontFamily: FontFamily.sansSemibold, fontSize: 15, lineHeight: 19, letterSpacing: 0 },
+  body: { paddingTop: Spacing.sm, gap: 4 },
+  // Newsreader serif 15/500 — the prototype `.rcard-name` treatment, parity
+  // with the web twin (`var(--font-headline)` 15/medium) + the grid cards.
+  name: { fontFamily: FontFamily.serifMedium, fontSize: 15, lineHeight: 18, letterSpacing: -0.1 },
   meta: { ...Type.caption, fontVariant: ["tabular-nums"] },
 });
 
