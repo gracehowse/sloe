@@ -420,6 +420,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "cook_ingredient_checklist_v1", // mise-en-place ingredient checklist
   "cook_multi_timers_v1", // concurrent step timers
   "cook_text_size_control_v1", // cook-mode text-size control
+  // ENG-1225 Block 8 — Progress energy balance as an EQUATION (intake −
+  // maintenance = deficit/day) + "How maintenance works" explainer. Now built
+  // on mobile too (ProgressEnergyEquation), so it's a SHARED default-on flag
+  // (was web-only). Off → the legacy 3-cell triad (kill switch).
+  "sloe_v3_energy_equation",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in

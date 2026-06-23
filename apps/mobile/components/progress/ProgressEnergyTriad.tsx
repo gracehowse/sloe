@@ -3,6 +3,8 @@ import { Accent, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { ProgressEnergyEquation } from "./ProgressEnergyEquation";
 
 /**
  * ProgressEnergyTriad — Sloe Figma `492:2` AVG INTAKE / EST. TDEE / DEFICIT
@@ -56,6 +58,22 @@ export function ProgressEnergyTriad({
       ? Math.round(maintenanceKcal - avgIntakeKcal)
       : null;
   const isSurplus = deficitKcal != null && deficitKcal < 0;
+
+  // Sloe v3 (ENG-1225, Block 8): the prototype's Progress energy balance is an
+  // EQUATION (intake − maintenance = deficit/day) with a "How maintenance works"
+  // explainer, not a 3-cell triad (Sloe-App.html L5001-5018). Mirrors the web
+  // twin's flag gate; the legacy triad stays in the else until collapsed.
+  if (isFeatureEnabled("sloe_v3_energy_equation")) {
+    return (
+      <ProgressEnergyEquation
+        avgIntakeKcal={avgIntakeKcal}
+        maintenanceKcal={maintenanceKcal}
+        deficitKcal={deficitKcal}
+        isSurplus={isSurplus}
+        isAdaptive={isAdaptive}
+      />
+    );
+  }
 
   // headers census 2026-06-10: triad eyebrow → Type.label token.
   const eyebrow: TextStyle = { ...Type.label, color: dim };

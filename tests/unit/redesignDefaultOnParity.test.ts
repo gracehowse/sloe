@@ -46,7 +46,8 @@ const WEB_ONLY = new Set([
   "paywall_upgrade_dialog_sloe_v1",
   // ENG-1225 flag-collapse sweep (2026-06-22) — the v3 Progress refinements
   // are web-only paths; mobile has its own native Progress surfaces.
-  "sloe_v3_energy_equation",
+  // (`sloe_v3_energy_equation` graduated to SHARED in Block 8 once the mobile
+  //  ProgressEnergyEquation landed — see REDESIGN_DEFAULT_ON on both platforms.)
   "web_apple_health_card",
   "web_progress_weight_empty",
   // ENG-837/P5#15 — web per-meal/slot nutrition detail; mobile already ships
