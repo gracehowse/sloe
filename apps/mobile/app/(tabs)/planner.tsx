@@ -175,6 +175,8 @@ import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
 import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
 import { PlanRegenerateToast } from "@/components/plan/PlanRegenerateToast";
+import { PlanHeaderV3 } from "@/components/plan/PlanHeaderV3";
+import { computePlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
 import {
   type PlanSourceMode,
   DEFAULT_PLAN_SOURCE_MODE,
@@ -1451,6 +1453,33 @@ export default function PlannerScreen() {
     [plan, planTargets],
   );
 
+  // Sloe v3 (ENG-1225) — the v3 Plan header verdict (planning completeness, "N
+  // of 7 days land") + week-range overline, behind sloe_v3_plan. Each plan day's
+  // positional slots (ALL_MEAL_SLOTS[i]) map to the shared status helper.
+  const sloeV3Plan = isFeatureEnabled("sloe_v3_plan");
+  const planV3Verdict = useMemo(
+    () =>
+      computePlanWeekVerdict(
+        (plan ?? []).map((dp) =>
+          dp.meals.map((m, i) => ({
+            slot: ALL_MEAL_SLOTS[i] ?? "Snacks",
+            kcal: m.calories,
+            empty: m.isPlaceholder,
+          })),
+        ),
+      ),
+    [plan],
+  );
+  const planV3WeekLabel = useMemo(() => {
+    const start = planStartDate ? new Date(planStartDate) : new Date();
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const mon = (d: Date) => d.toLocaleDateString("en-GB", { month: "long" });
+    return start.getMonth() === end.getMonth()
+      ? `${start.getDate()}–${end.getDate()} ${mon(start)}`
+      : `${start.getDate()} ${mon(start)} – ${end.getDate()} ${mon(end)}`;
+  }, [planStartDate]);
+
   // ENG-1092 — render-scope PlannerTargets for the empty-slot "Aim ~X kcal"
   // line (same shape the swap handler builds). Drives `slotMacroTargets` per
   // day card; null when targets aren't set → the aim line simply doesn't render.
@@ -2655,6 +2684,15 @@ export default function PlannerScreen() {
       />
       <ScrollView testID="planner-hydrated" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <ReAnimated.View style={headerEntrance.style}>
+        {sloeV3Plan ? (
+          <PlanHeaderV3
+            dateRangeLabel={planV3WeekLabel}
+            verdict={planV3Verdict}
+            onGenerate={openGenerateMenu}
+            onAdjust={() => setTemplatesOpen(true)}
+            onTemplates={() => setTemplatesOpen(true)}
+          />
+        ) : null}
         {/* Named plan slots switcher — pre-2026-05-22 this rendered
             unconditionally, which on a single-plan setup put a "This
             week" pill right under the "This week" sub-tab and a
