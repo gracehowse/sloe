@@ -56,6 +56,14 @@ Tracker host-extraction refactor (plan-exit hygiene, not v3-pixel work).
    overlay). Flags reverted to default-OFF; fix tracked in **ENG-1230** (must land +
    per-flag on-device validation before re-flipping). This is why the plan's original
    "keep cook off" was right.
+   **UPDATE (2026-06-23):** two ENG-1230 facets now landed in code — (a) the
+   swipe-surface layout-collapse (the `flex: 1` step-body wrapper in
+   `recipe/[id].tsx`), and (b) the **missing-timers parity break**: the live inline
+   overlay had ZERO timers while `cook.tsx` + web `CookMode.tsx` both had them.
+   Timers are now ported into the overlay via `components/cook/CookTimerPanel.tsx`
+   (reuses `useCookRunningTimers` + `CookRunningTimerStrip` + `CookStepTimerPills`),
+   gated behind `cook_multi_timers_v1`. Code + tests green; **on-device SEE per flag
+   still owed before re-flipping** — the validation gate stands.
 5. **Collapse the `sloe_v3_ring` gate** (M, both) — make the jewel dial the single
    path (delete the legacy ring else-branches in the 3 heroes).
 
