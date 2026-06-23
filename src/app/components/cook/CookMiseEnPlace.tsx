@@ -37,7 +37,12 @@ export function CookMiseEnPlace({
           Tap each line as you add it — so you never wonder whether the salt went in.
         </p>
         <CookIngredientChecklist recipeId={recipeId} items={items} surface="mise" />
-        <SupprButton variant="primary" className="w-full mt-4" onClick={onContinueToSteps}>
+        <SupprButton
+          variant="primary"
+          className="w-full mt-4"
+          onClick={onContinueToSteps}
+          data-testid="cook-mise-continue"
+        >
           Start cooking
         </SupprButton>
       </div>

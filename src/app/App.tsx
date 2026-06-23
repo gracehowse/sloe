@@ -743,7 +743,11 @@ export default function App() {
           aria-label="Main navigation"
           className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] md:hidden"
         >
-          <div className="flex" role="tablist">
+          {/* Navigation, not a tablist: these switch top-level views (no
+              tabpanels), and the centred Log FAB is a non-tab child — so
+              `role="tablist"` here triggers axe `aria-required-children`.
+              Plain nav buttons + `aria-current="page"` is the correct pattern. */}
+          <div className="flex">
             {/* ENG-1044 — canonical primary-nav glyph set + order, locked
                 to the native iOS tab bar (Today=Calendar, Plan=BookOpen,
                 Recipes=Utensils, Progress=BarChart3). The order is
@@ -775,8 +779,6 @@ export default function App() {
                 <Fragment key={tab.primary}>
                   <button
                     type="button"
-                    role="tab"
-                    aria-selected={isActive}
                     aria-current={isActive ? "page" : undefined}
                     onClick={() => navigateToView(tab.defaultLeaf as View)}
                     className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${

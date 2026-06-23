@@ -29,6 +29,15 @@ test.describe("Cook mode", () => {
     // Sloe redesign renamed the cook-mode launch button "Cook" → "Start Cooking".
     await page.getByRole("button", { name: /start cooking/i }).first().click({ timeout: 20_000 });
 
+    // Cook mode now opens to the mise-en-place ingredient checklist first
+    // (cook_ingredient_checklist_v1, default-on, when the recipe has
+    // ingredients). Advance past it via its "Start cooking" CTA to reach the
+    // step instructions.
+    const miseContinue = page.getByTestId("cook-mise-continue");
+    if (await miseContinue.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await miseContinue.click();
+    }
+
     const stepText = page.locator(".leading-relaxed.text-foreground").first();
     await expect(stepText).toBeVisible({ timeout: 15_000 });
 
