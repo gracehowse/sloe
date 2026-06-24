@@ -422,6 +422,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // no-photo cards + Collections) above the cuisine clusters. Default-on; off →
   // the legacy feed without those sections (kill switch). Keep in sync w/ web.
   "sloe_v3_discover_editorial",
+  // ENG-1225 #14 — the v3 Discover creator plane (creator rail + Following
+  // feed; web twin adds the featured hero). RAMPED ON 2026-06-24 (ENG-1247,
+  // Grace's call); self-hides when the `creators` table is empty (seed fallback
+  // pre-launch), so it is safe on. Off → the legacy feed (kill switch). M+W.
+  "discover_creator_rail_v1",
   // ENG-1225 flag-collapse sweep (2026-06-22) — the v3 cook-mode baseline.
   // Built (ENG-944/946/947/948/949) but dark-by-default until this sweep; the
   // audit's launch-blocker #4. On-device SEE found a swipe-surface render bug
@@ -462,15 +467,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   single self-named fallback line. The WRITE path (snapshot capture) is
  *   always-on + defensive; this flag gates only the read/display so data can
  *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
- * - `discover_creator_rail_v1` (ENG-1225 #14) — the v3 Discover creator plane:
- *   the creator rail + mobile Following feed (web twin: rail + featured hero).
- *   Default OFF — ships dark pending Grace's SEE-approval on the sim, and falls
- *   back to a presentation-only SEED creator set while the `creators` table is
- *   empty pre-launch (real creators always win). Keep in sync with web.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "nutrition_entry_ingredients_v1",
-  "discover_creator_rail_v1",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

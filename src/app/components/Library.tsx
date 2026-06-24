@@ -6,6 +6,7 @@ import { RecipeDetail } from "./RecipeDetail";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { SupprButton } from "./suppr/suppr-button";
 import { SupprCard } from "./ui/suppr-card";
+import { LibraryDesktopHeader } from "./library/LibraryDesktopHeader";
 import { LibraryShelvesHeader } from "./library/LibraryShelvesHeader";
 import { useRouter } from "next/navigation";
 import {
@@ -240,37 +241,10 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
           mobile-web pill row is preserved so narrow-width parity with
           the mobile tab stays intact. */}
       <div className="mb-4">
-        <div className="hidden md:flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1
-              className="text-[24px] font-bold text-foreground -tracking-[0.02em]"
-              data-testid="library-desktop-title"
-            >
-              Library
-            </h1>
-            <p
-              className="text-[13px] text-muted-foreground mt-0.5 tabular-nums"
-              data-testid="library-desktop-subtitle"
-            >
-              {`${filteredRecipes.length} recipe${filteredRecipes.length === 1 ? "" : "s"} · sorted by ${sortLabel.toLowerCase()}`}
-            </p>
-          </div>
-          {/* ENG-1197 — desktop create entry (the redesign left web with none). */}
-          <button
-            type="button"
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set("view", "create");
-              window.history.pushState({}, "", url.toString());
-              window.dispatchEvent(new PopStateEvent("popstate"));
-            }}
-            className="shrink-0 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/60 transition-colors"
-            aria-label="Create a new recipe"
-          >
-            <Icons.create className="w-4 h-4" aria-hidden />
-            Create recipe
-          </button>
-        </div>
+        <LibraryDesktopHeader
+          recipeCount={filteredRecipes.length}
+          sortLabel={sortLabel}
+        />
 
         {/* Search and Filter */}
         {/* Audit 2026-04-30 visual-qa P1 #10 — stack search (row 1) above the

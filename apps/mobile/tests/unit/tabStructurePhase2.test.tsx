@@ -57,10 +57,12 @@ const setPathname = (p: string) => {
 };
 
 describe("RecipesSubTabHeader", () => {
-  it("highlights Library when on /library", () => {
+  // ENG-1247: the "Library" sub-tab is labelled "Cookbook" (the /library route
+  // is unchanged — only the user-facing label).
+  it("highlights Cookbook when on /library", () => {
     setPathname("/library");
     const { getByLabelText } = render(<RecipesSubTabHeader />);
-    expect(getByLabelText("Library").props.accessibilityState.selected).toBe(true);
+    expect(getByLabelText("Cookbook").props.accessibilityState.selected).toBe(true);
     expect(getByLabelText("Discover").props.accessibilityState.selected).toBe(false);
   });
 
@@ -68,10 +70,10 @@ describe("RecipesSubTabHeader", () => {
     setPathname("/discover");
     const { getByLabelText } = render(<RecipesSubTabHeader />);
     expect(getByLabelText("Discover").props.accessibilityState.selected).toBe(true);
-    expect(getByLabelText("Library").props.accessibilityState.selected).toBe(false);
+    expect(getByLabelText("Cookbook").props.accessibilityState.selected).toBe(false);
   });
 
-  it("calls router.replace('/(tabs)/discover') when Discover is tapped from Library", async () => {
+  it("calls router.replace('/(tabs)/discover') when Discover is tapped from Cookbook", async () => {
     setPathname("/library");
     const router = (await import("expo-router")).useRouter() as unknown as { replace: ReturnType<typeof vi.fn> };
     router.replace.mockClear();
@@ -85,7 +87,7 @@ describe("RecipesSubTabHeader", () => {
     const router = (await import("expo-router")).useRouter() as unknown as { replace: ReturnType<typeof vi.fn> };
     router.replace.mockClear();
     const { getByLabelText } = render(<RecipesSubTabHeader />);
-    fireEvent.press(getByLabelText("Library"));
+    fireEvent.press(getByLabelText("Cookbook"));
     expect(router.replace).not.toHaveBeenCalled();
   });
 });

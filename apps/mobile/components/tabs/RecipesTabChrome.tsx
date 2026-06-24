@@ -1,44 +1,64 @@
 import React from "react";
+import { Pressable, View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
+import { Link, Pencil } from "lucide-react-native";
 
 import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
 import { SubTabPill } from "@/components/ui/SubTabPill";
+import { IconSize, Spacing } from "@/constants/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export type RecipesTab = "library" | "discover";
 
 /**
- * Sticky Recipes header — Figma `527:2`/`528:2`: a constant serif
- * "Recipes" title (NOT the section name), then Library / Discover
- * underline tabs. The active SECTION is communicated by the underline
- * tab, so the overline + section-name-as-title (which read as
- * redundant shouting) are dropped. Titles stay pinned; list content
- * scrolls below. Web parity: `src/app/components/suppr/recipes-tab-chrome.tsx`.
- *
- * recipes.md §3.1 specifies "Your Recipes" as the Library tab title to
- * signal "personal cookbook, not a database." That possessive framing
- * belongs to the Library-sub surface; the SHARED chrome header cannot be
- * "Your Recipes" without misleading on the Discover tab. The current
- * "Recipes" title is the correct tab-level label; the Library-specific
- * editorial copy should live as a section eyebrow or count-line prefix
- * within library.tsx if the possessive framing is ever wanted.
- * intentionally "Recipes" — not a gap vs recipes.md §3.1.
+ * Sticky Recipes header — v3 prototype "Cook" tab (ENG-1247, 2026-06-24):
+ * an overline "Cook" + serif "Your kitchen" title with pencil (Create) + link
+ * (Import) icon actions, then the Cookbook / Discover underline tabs. The
+ * "Your kitchen" title + "Cook" overline sit ABOVE the sub-tabs (constant for
+ * both scopes), matching the prototype `.t-head` over `.seg-tabs`. Supersedes
+ * the 2026-06-08 generic "Recipes" no-overline treatment (Figma retired —
+ * the prototype is canonical). Web parity:
+ * `src/app/components/suppr/recipes-tab-chrome.tsx`.
  */
 export function RecipesTabChrome() {
   const router = useRouter();
   const pathname = usePathname();
+  const colors = useThemeColors();
 
   const activeId: RecipesTab = pathname?.startsWith("/discover") ? "discover" : "library";
 
   return (
     <ScreenSectionChrome
       testID="recipes-tab-chrome"
-      overline={null}
-      title="Recipes"
+      overline="Cook"
+      title="Your kitchen"
+      trailing={
+        <View style={{ flexDirection: "row", gap: Spacing.xs }}>
+          <Pressable
+            onPress={() => router.push("/create-recipe")}
+            accessibilityRole="button"
+            accessibilityLabel="Create recipe"
+            hitSlop={8}
+            style={{ padding: 6 }}
+          >
+            <Pencil size={IconSize.md} color={colors.navPrimary} strokeWidth={1.75} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/import-shared")}
+            accessibilityRole="button"
+            accessibilityLabel="Import recipe"
+            hitSlop={8}
+            style={{ padding: 6 }}
+          >
+            <Link size={IconSize.md} color={colors.navPrimary} strokeWidth={1.75} />
+          </Pressable>
+        </View>
+      }
     >
       <SubTabPill<RecipesTab>
         embedded
         items={[
-          { id: "library", label: "Library" },
+          { id: "library", label: "Cookbook" },
           { id: "discover", label: "Discover" },
         ]}
         activeId={activeId}
