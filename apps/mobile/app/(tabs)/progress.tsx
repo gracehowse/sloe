@@ -130,6 +130,7 @@ import {
 } from "@/lib/progress/weightTrend";
 import { weightDeltaTone } from "@/lib/progress/progressRangeChart";
 import { WeightChart } from "@/components/progress/WeightChart";
+import { WeightSparseState } from "@/components/progress/WeightSparseState";
 import { useWeightData } from "@/hooks/useWeightData";
 
 /* ── Helpers ── */
@@ -1361,11 +1362,13 @@ export default function ProgressScreen() {
             testID="progress-weight-card"
             style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20 }, cardElevation.shadowStyle]}
           >
-            {/* Section eyebrow — matches the "Daily Calories" / "Average Adherence"
-                cards (Sentence-Case source, rendered uppercase via style) so the
-                weight card is no longer the one card on Progress without a header. */}
-            {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
+            {/* Section eyebrow (Type.label, 2026-06-10 headers census) — matches
+                the other Progress cards' headers. */}
             <Text style={{ ...Type.label, color: accent.primarySolid, marginBottom: Spacing.sm }}>Weight</Text>
+            {/* ENG-1225 #22 — sparse "No weigh-ins yet" state (flag `progress_weight_empty`, web parity `web_progress_weight_empty`) replaces the broken "—" hero/chart/dashes-stat-row; WeightSparseState carries its own Log-weight CTA. */}
+            {Object.keys(weightKgByDay).length === 0 && isFeatureEnabled("progress_weight_empty") ? (
+              <WeightSparseState points={weightChartTrend.points} onLogWeight={() => setLogWeightOpen(true)} />
+            ) : (<>
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.dense }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ ...Type.display, fontSize: 30, lineHeight: 34, color: t.text, fontVariant: ["tabular-nums"] }}>
@@ -1426,14 +1429,10 @@ export default function ProgressScreen() {
                 {goalDateLabel ? ` · on track for ~${goalDateLabel}` : ""}
               </Text>
             ) : null}
-            {/* Canonical WeightChart (premium-audit P0-1, 2026-06-10):
-                plum line + hollow dots, right Y-axis ticks, dashed goal
-                line, range-aware X ticks, scrub-to-read pill, "you are
-                here" marker. Replaces the toy Sparkline; same component the
-                retired weight-tracker route mounted (Withings parity). Keyed
-                on the period (type + offset) so a period change remounts with
-                a fresh layout. The Trend/Scale toggle is label-only — the
-                chart always draws the points line + smoothed MA envelope. */}
+            {/* Canonical WeightChart (premium-audit P0-1): plum line + hollow
+                dots, Withings parity. Keyed on period so a period change
+                remounts. Trend/Scale toggle is label-only (always draws the MA
+                envelope). */}
             {weightChartTrend.points.length >= 2 ? (
               <View style={{ marginTop: Spacing.dense }}>
                 <WeightChart
@@ -1497,6 +1496,7 @@ export default function ProgressScreen() {
                 paddingHorizontal: Spacing.md,
               }}
             />
+            </>)}
             {Object.keys(weightKgByDay).length > 0 ? (
               <Pressable
                 onPress={() => setAllWeightDataOpen(true)}

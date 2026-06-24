@@ -65,6 +65,11 @@ const MOBILE_ONLY = new Set([
   // ENG-1225 Block 2 — the v3 Plan IA top section (PlanV3Surface) shipped
   // mobile-first; web Plan v3 is a later block, so this is mobile-only today.
   "sloe_v3_plan",
+  // ENG-1225 #22 — Progress weight "No weigh-ins yet" sparse state. Same
+  // feature as web's `web_progress_weight_empty` (WEB_ONLY above); the two
+  // platforms use platform-prefixed flag names, so each is listed as its own
+  // platform-only entry rather than a shared flag.
+  "progress_weight_empty",
 ]);
 
 /** Gate 1.5 redesign surfaces that must ship default-on on both platforms. */
