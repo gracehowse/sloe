@@ -229,7 +229,7 @@ export function AppleHealthCard({
               <div className="min-w-0">
                 <div className="text-[13px] text-muted-foreground">{row.label}</div>
                 {row.hint ? (
-                  <div className="text-[11px] text-muted-foreground/80">{row.hint}</div>
+                  <div className="text-[11px] text-muted-foreground">{row.hint}</div>
                 ) : null}
               </div>
             </div>

@@ -83,7 +83,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 12,
     left: 12,
-    backgroundColor: "rgba(28,18,26,0.5)",
+    // a11y (2026-06-23, web parity): scrim 0.5 → 0.68 so the white "Tonight's
+    // pick" label clears AA over a light recipe photo.
+    backgroundColor: "rgba(28,18,26,0.68)",
     paddingVertical: 5,
     paddingHorizontal: 11,
     borderRadius: Radius.full,
