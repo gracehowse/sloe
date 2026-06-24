@@ -1,21 +1,17 @@
 // @vitest-environment jsdom
 /**
- * Web `<DayStrip>` — minimal current-day indicator (2026-06-03, Grace's
- * feedback). Web twin of `apps/mobile/tests/unit/dayStripMinimalIndicator`.
+ * Web `<DayStrip>` — v3 prototype selected-cell indicator (ENG-1247,
+ * 2026-06-24). Web twin of `apps/mobile/tests/unit/dayStripMinimalIndicator`.
  *
- * The Today week strip used to mark the selected/today day with a clay FILLED
- * circle (`bg-primary text-primary-foreground` on a `w-[30px] h-[30px]
- * rounded-full` element) and a green check-icon inside a tinted circle for
- * logged days. Grace found the filled treatment clunky and asked for the
- * Julienne-minimal look: the active day = clay (`text-primary`) bold NUMBER
- * with a small clay DOT beneath, NO filled background. Logged days keep a sage
- * dot; the clay (selected) indicator wins on the both-case.
- *
+ * The v3 prototype `.day-cell.is-sel` fills the whole selected cell with plum
+ * (`bg-primary`) and inverts its day-letter / date / dot to white
+ * (`text-primary-foreground`). This supersedes the 2026-06-10 soft-tint pill.
  * Web + mobile share the `dayStripIndicator` decision so the two platforms
  * can't drift. This test pins the rendered web result:
- *   - the redesigned minimal dot test-ids are present
- *   - NO day tile carries the old filled-circle classes
- *   - the old green check icon path is gone (logged = sage dot, not a check)
+ *   - the minimal dot test-ids are present
+ *   - the SELECTED day tile carries the solid plum fill + white number
+ *   - a logged non-selected day renders a sage dot
+ *   - the week chevrons (prototype `.day-nav`) are present
  */
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -50,41 +46,33 @@ function renderStrip(opts?: { loggedKeys?: string[]; selectedDateKey?: string })
   );
 }
 
-describe("web DayStrip — minimal current-day indicator", () => {
+describe("web DayStrip — v3 selected-cell indicator", () => {
   it("renders minimal dot test-ids (the redesigned path is live)", () => {
     const { container } = renderStrip();
     const dots = container.querySelectorAll('[data-testid^="daystrip-dot-minimal-"]');
     expect(dots.length).toBeGreaterThan(0);
   });
 
-  it("never renders the SOLID filled-circle treatment (soft pill only, §7 2026-06-10)", () => {
+  it("fills the SELECTED day cell with plum + a white number (v3 `.is-sel`)", () => {
     const { container } = renderStrip();
-    // 2026-06-03 rejected the SOLID clay circle (`bg-primary` +
-    // `text-primary-foreground`); §7 (2026-06-10) added a SOFT-tint pill
-    // (`bg-primary-soft`) behind the selected number. The solid treatment
-    // must never return.
-    const html = container.innerHTML;
-    expect(html).not.toContain("w-[30px]");
-    expect(html).not.toContain("text-primary-foreground");
-    expect(html).toContain("bg-primary-soft");
-    // rounded-full now legitimately appears on the soft pill + the tiny
-    // status dots — but never with a SOLID bg-primary fill.
-    // No rounded-full element may carry a SOLID accent fill (the soft pill
-    // and transparent number-wrappers are fine; tiny status dots are fine).
-    const roundedEls = Array.from(container.querySelectorAll(".rounded-full"));
-    for (const el of roundedEls) {
-      const cls = el.className;
-      const solidAccent = /\bbg-primary\b/.test(cls) && !cls.includes("bg-primary-soft");
-      expect(solidAccent).toBe(false);
-    }
+    // The selected (today) day tile is the one cell carrying the solid plum
+    // fill (`bg-primary` without the `-soft` suffix) + the white on-accent
+    // number (`text-primary-foreground`).
+    const filled = Array.from(container.querySelectorAll("button")).filter(
+      (b) =>
+        /\bbg-primary\b/.test(b.className) &&
+        !b.className.includes("bg-primary-soft"),
+    );
+    expect(filled.length).toBe(1);
+    expect(filled[0]!.innerHTML).toContain("text-primary-foreground");
+    // the retired soft-tint pill must not return
+    expect(container.innerHTML).not.toContain("bg-primary-soft");
   });
 
-  it("today (selected) renders the soft pill and NO dot (§7 2026-06-10)", () => {
+  it("today (selected) renders no status dot — the fill carries selection", () => {
     const { container } = renderStrip();
-    // The pill carries selection; a dot under it would double-signal.
     const none = container.querySelectorAll('[data-testid="daystrip-dot-minimal-none"]');
     expect(none.length).toBeGreaterThanOrEqual(1);
-    expect(container.innerHTML).toContain("bg-primary-soft");
   });
 
   it("a logged non-selected day renders a sage dot, not a check icon", () => {
@@ -93,5 +81,11 @@ describe("web DayStrip — minimal current-day indicator", () => {
     const { container } = renderStrip({ loggedKeys: [dateKeyFromDate(yesterday)] });
     const sage = container.querySelectorAll('[data-testid="daystrip-dot-minimal-sage"]');
     expect(sage.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("exposes the week chevrons (prototype `.day-nav`)", () => {
+    const { container } = renderStrip();
+    expect(container.querySelector('button[aria-label="Previous week"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Next week"]')).not.toBeNull();
   });
 });

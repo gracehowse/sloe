@@ -57,7 +57,7 @@ import {
   CloudOff,
   X,
 } from "lucide-react-native";
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Layout } from "@/constants/layout";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
@@ -95,8 +95,8 @@ import {
   isBelowMealsPromptVisible,
 } from "@suppr/shared/today/belowMealsPromptSelection";
 import {
-  todayGreeting,
-  todayLongDateSubline,
+  todayDayName,
+  todayShortDate,
   todayPastDayGreetingLines,
 } from "@suppr/shared/copy/today";
 import {
@@ -423,25 +423,9 @@ export default function TrackerScreen() {
   // reference it in the temporal dead zone. Hydrated from profiles.tz_iana in
   // the profile-load effect below.
   const [profileTimeZone, setProfileTimeZone] = useState<string | null>(null);
-  // SLOE redesign (2026-06-03): the Today hero greeting uses the user's
-  // first name when a REAL one is available on the auth session's
-  // `user_metadata` (already loaded — no extra `profiles` read, which
-  // would touch the data-flow this re-skin must not change). We do NOT
-  // guess a name from the email local-part: a raw local-part like
-  // "gracemturner" reads worse than a clean, name-free "Good evening".
-  // So: real metadata name → "Morning, {first}"; otherwise → "Good
-  // morning" (handled by `todayGreeting` when name is undefined).
-  const greetingName = useMemo(() => {
-    const meta = (session?.user?.user_metadata ?? {}) as Record<string, unknown>;
-    const raw =
-      (typeof meta.full_name === "string" && meta.full_name) ||
-      (typeof meta.name === "string" && meta.name) ||
-      (typeof meta.first_name === "string" && meta.first_name) ||
-      (typeof meta.preferred_name === "string" && meta.preferred_name) ||
-      "";
-    const first = raw.trim().split(/\s+/)[0];
-    return first || undefined;
-  }, [session?.user?.user_metadata]);
+  // v3 redesign (ENG-1247, 2026-06-24): the Today hero is the serif DATE
+  // (day name + short date), not a time-of-day "Morning, {name}" greeting —
+  // so the first-name derivation the old greeting needed is gone.
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the Today CTAs:
   // the add-food submit, the offline pill (border + icon), Complete Day, and
@@ -5148,43 +5132,41 @@ export default function TrackerScreen() {
           </Pressable>
         </View>
 
-        {/* SLOE redesign (2026-06-03, `01 · Today` frame): the hero opens
-            with a centered Newsreader greeting + the long date, above the
-            week strip + ring. On day view we greet by time-of-day + first
-            name; on a historic day we show the day's date as the heading
-            so the section still anchors which day is in view. The greeting
-            revives the time-of-day opener the 2026-05-22 calm pass had
-            dropped — reinstated as the warm-coaching hero per the Sloe
-            direction. */}
+        {/* v3 serif date hero (ENG-1247, 2026-06-24, prototype `.t-greet`):
+            an eyebrow rule + a big Newsreader day name + a small date subline,
+            replacing the time-of-day greeting. The prototype's "DAY N" chip is
+            OMITTED — it's mock text with no honest data source (Grace's call).
+            On a historic day the eyebrow is hidden and the serif slot shows the
+            day's date so the section still anchors which day is in view. */}
         {viewMode === "day" ? (() => {
-          const { headline, subline } = isToday
-            ? {
-                headline: todayGreeting(new Date().getHours(), greetingName),
-                subline: todayLongDateSubline(selectedDate),
-              }
+          const heroLine = isToday
+            ? { headline: todayDayName(selectedDate), subline: todayShortDate(selectedDate) }
             : todayPastDayGreetingLines(selectedDate);
           return (
-          // Fresh-eyes §4 (2026-06-10): the centered two-line serif greeting
-          // block spent ~25% of the viewport on header moments. Compacted to
-          // ONE left-aligned sans context line (greeting · date) — the hero
-          // number is the page's display moment now, not the greeting.
-          // Rhythm sweep ENG-1032 (2026-06-11): self-margins dropped — the
-          // greeting is a header-cluster member; the scroll `gap` (8) owns
-          // both its seams (was margin+gap double-stacking, off-rhythm).
           <View>
-            <Text testID="today-hero-greeting" numberOfLines={1}>
-              <Text style={{ fontFamily: Type.body.fontFamily, fontSize: 14, fontWeight: "600", color: colors.text }}>
-                {headline}
-              </Text>
-              {subline ? (
-                <Text
-                  testID="today-hero-greeting-subline"
-                  style={{ fontFamily: Type.body.fontFamily, fontSize: 14, fontWeight: "400", color: colors.textSecondary }}
-                >
-                  {"  ·  " + subline}
+            {isToday ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.xs }}>
+                <Text style={{ fontFamily: FontFamily.sansBold, fontSize: 11, letterSpacing: 2, color: accent.primary }}>
+                  TODAY
                 </Text>
-              ) : null}
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+              </View>
+            ) : null}
+            <Text
+              testID="today-hero-greeting"
+              numberOfLines={1}
+              style={{ fontFamily: FontFamily.serifMedium, fontSize: 36, lineHeight: 40, letterSpacing: -0.5, color: colors.text }}
+            >
+              {heroLine.headline}
             </Text>
+            {heroLine.subline ? (
+              <Text
+                testID="today-hero-greeting-subline"
+                style={{ fontFamily: Type.body.fontFamily, fontSize: 13, color: colors.textTertiary, marginTop: Spacing.xs }}
+              >
+                {heroLine.subline}
+              </Text>
+            ) : null}
           </View>
           );
         })() : null}

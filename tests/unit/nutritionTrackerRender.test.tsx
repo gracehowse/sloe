@@ -182,25 +182,26 @@ describe("NutritionTracker render harness", { timeout: 20_000 }, () => {
     expect(screen.getByTestId("today-hero-desktop")).toBeInTheDocument();
   });
 
-  it("shows the today greeting with the first name from user_metadata.full_name", () => {
-    // The name comes from auth metadata (what the "Your name" Settings
-    // field writes), NOT profileDisplayName.
-    authMetadataState.current = { full_name: "Grace Turner" };
+  it("renders the v3 serif date hero (weekday name + short date), not a greeting", () => {
+    // ENG-1247 (2026-06-24): the Today hero is the serif DATE — a weekday name
+    // + a short-date subline — not a time-of-day "Afternoon, Grace" greeting.
     render(<NutritionTracker userTier="free" />);
-    expect(screen.getByTestId("today-hero-greeting")).toHaveTextContent(
-      "Afternoon, Grace",
-    );
+    const hero = screen.getByTestId("today-hero-greeting");
+    // every English weekday name ends in "day" (Wednesday/Tuesday/...)
+    expect(hero.textContent ?? "").toMatch(/day$/i);
+    expect(hero).not.toHaveTextContent("Afternoon");
+    // the short-date subline carries the day-of-month (27 May 2026 fixture)
+    expect(
+      screen.getByTestId("today-hero-greeting-subline").textContent ?? "",
+    ).toMatch(/May/);
   });
 
-  it("falls back to the name-free greeting when metadata has no name", () => {
-    // Clearing the name (empty `full_name`) → greeting drops the name.
-    // profileDisplayName is still "Grace" in the AppData mock, proving
-    // the greeting no longer sources the name from there.
-    authMetadataState.current = {};
+  it("the date hero is name-independent (no greeting, so metadata name never shows)", () => {
+    // The v3 hero dropped the personalised greeting entirely, so a name in
+    // auth metadata must NOT leak into the hero.
+    authMetadataState.current = { full_name: "Grace Turner" };
     render(<NutritionTracker userTier="free" />);
-    const greeting = screen.getByTestId("today-hero-greeting");
-    expect(greeting).toHaveTextContent("Good afternoon");
-    expect(greeting).not.toHaveTextContent("Grace");
+    expect(screen.getByTestId("today-hero-greeting")).not.toHaveTextContent("Grace");
   });
 
   it("shows hero stat labels once the user has logged kcal", () => {

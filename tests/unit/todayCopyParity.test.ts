@@ -38,6 +38,8 @@ import {
   todayBalanceHeadline,
   todayGreeting,
   todayLongDateSubline,
+  todayDayName,
+  todayShortDate,
   todayPastDayGreetingLines,
   TODAY_DATE_LOCALE,
   todayStatusChip,
@@ -213,6 +215,27 @@ describe("Sloe Today hero dates (todayLongDateSubline / todayPastDayGreetingLine
       headline: todayLongDateSubline(mon),
       subline: null,
     });
+  });
+});
+
+describe("Sloe v3 serif date hero (todayDayName / todayShortDate, ENG-1247)", () => {
+  it("formats the day NAME alone (the serif `.tg-day` slot)", () => {
+    const d = new Date(2026, 5, 4); // 4 June 2026 local
+    expect(todayDayName(d)).toBe(
+      d.toLocaleDateString("en-GB", { weekday: "long" }),
+    );
+    // every English weekday name ends in "day"
+    expect(todayDayName(d)).toMatch(/day$/i);
+  });
+
+  it("formats the short date WITHOUT the weekday (the `.tg-sub` slot)", () => {
+    const d = new Date(2026, 5, 4); // 4 June 2026 local
+    expect(todayShortDate(d)).toBe(
+      d.toLocaleDateString("en-GB", { day: "numeric", month: "long" }),
+    );
+    expect(todayShortDate(d)).toMatch(/4 June/);
+    // the weekday belongs to the serif day name, not the subline
+    expect(todayShortDate(d)).not.toMatch(/day/i);
   });
 });
 

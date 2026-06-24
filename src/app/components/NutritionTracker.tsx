@@ -37,9 +37,8 @@ import type { LoggedMeal, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
 import {
-  firstNameFromMetadata,
-  todayGreeting,
-  todayLongDateSubline,
+  todayDayName,
+  todayShortDate,
   todayPastDayGreetingLines,
 } from "../../lib/copy/today.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
@@ -762,7 +761,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // renders when `profiles.fasting_window != null` (Grace, 2026-05-07).
   const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const calendarInputRef = useRef<HTMLInputElement>(null);
-  const { authedUserId, authUserCreatedAt, authUserMetadata } = useAuthSession();
+  const { authedUserId, authUserCreatedAt } = useAuthSession();
   // ENG-805 — in-feed banner dismissal (web parity with mobile AsyncStorage gate).
   const [checkinBannerDismissed, setCheckinBannerDismissed] = useState<boolean | null>(
     null,
@@ -2571,23 +2570,15 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
-  // Today greeting name — read from the auth user's `user_metadata`
-  // (`full_name`, set by the "Your name" Settings field) via the shared
-  // `firstNameFromMetadata`, matching mobile's name-extraction precedence.
-  // We deliberately read auth metadata, NOT `profileDisplayName` (the
-  // `profiles.display_name` editor's domain), so the single canonical
-  // source is the one the Settings "Your name" field writes — set it on
-  // either platform and the greeting personalises on both.
-  //
-  const greetingName = firstNameFromMetadata(authUserMetadata) ?? null;
-  const hour = new Date().getHours();
-  const sloceHeroGreeting =
-    selectedDateKey === todayKey()
-      ? {
-          headline: todayGreeting(hour, greetingName),
-          subline: todayLongDateSubline(selectedDate),
-        }
-      : todayPastDayGreetingLines(selectedDate);
+  // v3 serif date hero (ENG-1247, 2026-06-24): the hero is the DATE (day name +
+  // short date), not a time-of-day greeting — so no name/hour derivation.
+  const isTodayHero = selectedDateKey === todayKey();
+  const sloceHeroGreeting = isTodayHero
+    ? {
+        headline: todayDayName(selectedDate),
+        subline: todayShortDate(selectedDate),
+      }
+    : todayPastDayGreetingLines(selectedDate);
 
   if (!nutritionJournalHydrated) {
     return <TodayLoadingSkeleton />;
@@ -2662,25 +2653,34 @@ export const NutritionTracker = memo(function NutritionTracker({
           }
         >
       {viewMode === "day" ? (
-        // Fresh-eyes §4 (web parity 2026-06-10, ENG-1022): the centred two-line
-        // serif greeting block spent ~25% of the header viewport on a non-action
-        // moment. Compacted to ONE left-aligned sans context line
-        // (greeting · date) — parity with mobile `today-hero-greeting`
-        // (apps/mobile/app/(tabs)/index.tsx). The ring number is the page's
-        // display moment now, not the greeting.
-        <p data-testid="today-hero-greeting" className="mt-1 text-sm">
-          <span className="font-semibold text-foreground">
-            {sloceHeroGreeting.headline}
-          </span>
-          {sloceHeroGreeting.subline ? (
-            <span
-              data-testid="today-hero-greeting-subline"
-              className="text-foreground-secondary"
-            >
-              {"  ·  " + sloceHeroGreeting.subline}
-            </span>
+        // v3 serif date hero (ENG-1247, prototype `.t-greet`): eyebrow rule +
+        // Newsreader day name + date subline (parity with mobile). The "DAY N"
+        // chip is omitted (mock, no honest source); the eyebrow hides on a past
+        // day (the serif slot shows the date instead).
+        <div className="mt-1">
+          {isTodayHero ? (
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+                Today
+              </span>
+              <span className="flex-1 h-px bg-border" />
+            </div>
           ) : null}
-        </p>
+          <p
+            data-testid="today-hero-greeting"
+            className="font-[family-name:var(--font-headline)] text-[36px] font-medium leading-[1.1] tracking-tight text-foreground"
+          >
+            {sloceHeroGreeting.headline}
+          </p>
+          {sloceHeroGreeting.subline ? (
+            <p
+              data-testid="today-hero-greeting-subline"
+              className="mt-1 text-[13px] text-foreground-tertiary"
+            >
+              {sloceHeroGreeting.subline}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <TodayDateHeader

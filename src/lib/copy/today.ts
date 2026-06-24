@@ -117,6 +117,27 @@ export function todayLongDateSubline(
   });
 }
 
+/** Day NAME alone for the v3 serif date hero (`.tg-day`), e.g. "Wednesday".
+ *  The v3 prototype splits the old combined "Wednesday, 4 June" subline into a
+ *  big serif day name + a small date subline ({@link todayShortDate}). Shared
+ *  web ↔ mobile so the two surfaces format identically. */
+export function todayDayName(
+  d: Date,
+  locale: string = TODAY_DATE_LOCALE,
+): string {
+  return d.toLocaleDateString(locale, { weekday: "long" });
+}
+
+/** Short date for the v3 serif hero subline (`.tg-sub`), e.g. "18 June" — the
+ *  date without the weekday (the serif {@link todayDayName} carries that).
+ *  Shared web ↔ mobile. */
+export function todayShortDate(
+  d: Date,
+  locale: string = TODAY_DATE_LOCALE,
+): string {
+  return d.toLocaleDateString(locale, { day: "numeric", month: "long" });
+}
+
 /** Headline + optional subline for a historic journal day (not today).
  *  Date-forward — no time-of-day greeting on past days. */
 export function todayPastDayGreetingLines(
