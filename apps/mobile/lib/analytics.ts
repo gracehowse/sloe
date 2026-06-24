@@ -340,6 +340,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // tiers, quieted washes, de-chromed meal log). Default-on; OFF → pre-ENG-1099
   // tracker. Rollback = remove from this set / PostHog off. (web twin same flag)
   "today_tracker_tier_v1",
+  // ENG-1225 #22 — Progress weight card "No weigh-ins yet" sparse state
+  // (WeightSparseState 0-branch) replaces the broken "—" hero/chart/dashes-row
+  // for never-logged users. Default-on; OFF → legacy dashes. Web parity twin is
+  // `web_progress_weight_empty` (WEB_ONLY name — see redesignDefaultOnParity).
+  "progress_weight_empty",
   // ENG-1131 / ENG-1193 — web Plan parity (move, templates, portion) + smart
   // suggestions (web + mobile). Default-on; keep in sync with track.ts.
   "plan_web_parity_v1",
