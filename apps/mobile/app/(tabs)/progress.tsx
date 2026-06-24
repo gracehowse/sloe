@@ -1478,13 +1478,13 @@ export default function ProgressScreen() {
                 </View>
               ))}
             </View>
-            {/* ＋ Log weight (centred) — the weight card's ONE primary action.
-                Compact footprint (Grace 2026-06-13: "feels like a very big
-                button"): tighter padding so it hugs the label instead of
-                dominating the card — the chart stays the hero. Still meets the
-                44pt touch target (12 vpad + Type.button label). */}
+            {/* ＋ Log weight (centred) — the weight card's calm action. v3
+                prototype (ENG-1247): a QUIET button (the app's `ghost` = the
+                retired bordered-secondary), not a filled primary — the chart
+                stays the hero. Compact footprint (Grace 2026-06-13: "feels like
+                a very big button"): tighter padding hugs the label. 44pt target. */}
             <SupprButton
-              variant="primary"
+              variant="ghost"
               testID="progress-log-weight"
               accessibilityLabel="Log weight"
               onPress={() => setLogWeightOpen(true)}

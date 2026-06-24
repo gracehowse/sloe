@@ -61,9 +61,11 @@ describe("Wave D (mobile) — Progress CTAs", () => {
     );
   });
 
-  it("'Log weight' is a SOLID primary (the weight card's ONE primary action)", () => {
+  it("'Log weight' is a QUIET ghost (v3 prototype — the chart stays the hero)", () => {
+    // ENG-1247: conformed from a filled primary to the app's `ghost` quiet
+    // button (the prototype's calm `btn--secondary` Log-weight action).
     expect(PROGRESS).toMatch(
-      /<SupprButton\s+variant="primary"\s+testID="progress-log-weight"[\s\S]{0,160}label="＋  Log weight"/,
+      /<SupprButton\s+variant="ghost"\s+testID="progress-log-weight"[\s\S]{0,160}label="＋  Log weight"/,
     );
   });
 

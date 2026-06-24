@@ -5,11 +5,12 @@
  * The Progress CTAs were migrated from raw outline pills
  * (`border-[1.5px] border-primary-solid text-primary-solid`) to the shared
  * `SupprButton` grammar, identically on web and mobile:
- *   - "Log weight" — the weight card's ONE primary action → `variant="primary"`:
- *     SOLID `bg-primary-solid` fill, white label, full pill, no border/shadow.
+ *   - "Log weight" — conformed to the v3 prototype's QUIET treatment
+ *     (`btn--secondary`) → `variant="ghost"` (ENG-1247): transparent, plum
+ *     label, no fill — the trend chart is the weight card's hero, not the
+ *     logging button.
  *   - inline-edit "Save" (Steps / Body fat, web-only — mobile has no equivalent
- *     inline-edit surface) → `variant="ghost"`: transparent, plum label, no
- *     border. Keeps "Log weight" as the surface's single primary.
+ *     inline-edit surface) → `variant="ghost"`: transparent, plum label, no border.
  *
  * Sanctioned NON-migrations (must stay as-is): the Calendar icon-only button
  * (`h-9 w-9`, no text label) and the hydration-stimulants quick-add preset
@@ -42,17 +43,17 @@ describe("Progress CTAs — solid primary / ghost (button system 2026-06-12)", (
     );
   });
 
-  it("web 'Log weight' is a SOLID primary (the weight card's one primary action)", () => {
+  it("web 'Log weight' is a QUIET ghost (v3 prototype — chart is the hero)", () => {
     expect(WEB).toMatch(
-      /<SupprButton\s+variant="primary"[\s\S]{0,260}saveTodayWeight\(\)[\s\S]{0,200}Log weight/,
+      /<SupprButton\s+variant="ghost"[\s\S]{0,260}saveTodayWeight\(\)[\s\S]{0,200}Log weight/,
     );
   });
 
-  it("mobile 'Log weight' is a SOLID primary with the same logical action", () => {
+  it("mobile 'Log weight' is a QUIET ghost with the same logical action", () => {
     expect(MOBILE).toMatch(
-      /<SupprButton\s+variant="primary"[\s\S]{0,320}Log weight/,
+      /<SupprButton\s+variant="ghost"[\s\S]{0,320}Log weight/,
     );
-    // Handler + testID preserved through the migration (treatment-only change).
+    // Handler + testID preserved through the treatment change.
     expect(MOBILE).toMatch(/testID="progress-log-weight"/);
     expect(MOBILE).toMatch(/setLogWeightOpen\(true\)/);
   });

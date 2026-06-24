@@ -118,13 +118,6 @@ import { getLatestHealthSnapshot } from "../../lib/health/healthSnapshots.ts";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
-// Sloe Figma 492:2 — calm header subtitle under the serif "Progress"
-// title. Deliberately DESCRIPTIVE (what the surface holds), not the
-// prototype's presumptuous "you're trending right where you want to be"
-// — that would read false on an off-track week and breaches the
-// no-unearned-encouragement trust posture. Mirrors mobile.
-const PROGRESS_HEADER_SUBTITLE = "Your weight, weekly recap, and adaptive maintenance.";
-
 function parseNumMap(raw: unknown): Record<string, number> {
   if (!raw || typeof raw !== "object") return {};
   const o = raw as Record<string, unknown>;
@@ -1081,21 +1074,17 @@ function ProgressDashboardContent() {
   const progressDesktopHeader = (
     <div className="hidden md:flex mb-6 items-start justify-between gap-3">
       <div>
+        {/* v3 prototype (ENG-1247, node 4946): "Your trends" overline above
+            the serif "Progress" title. Supersedes the Figma-era subtitle. */}
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary mb-1">
+          Your trends
+        </p>
         <h1
           data-testid="progress-header"
           className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
         >
           Progress
         </h1>
-        {/* Sloe Figma 492:2 — calm subtitle replaces the uppercase range
-            overline (the 7d/30d/90d/All pills below already carry the
-            range). */}
-        <p
-          data-testid="progress-subtitle"
-          className="text-sm text-muted-foreground mt-1"
-        >
-          {PROGRESS_HEADER_SUBTITLE}
-        </p>
       </div>
       {progressCalendarButton}
     </div>
@@ -1127,7 +1116,7 @@ function ProgressDashboardContent() {
 
     return (
       <>
-        <ProgressTabChrome subtitle={PROGRESS_HEADER_SUBTITLE} trailing={progressLoadingCalendar} />
+        <ProgressTabChrome overline="Your trends" trailing={progressLoadingCalendar} />
       <div
         className="product-shell py-pm-6"
         data-testid="progress-loading-skeleton"
@@ -1187,7 +1176,7 @@ function ProgressDashboardContent() {
 
   return (
     <>
-      <ProgressTabChrome subtitle={PROGRESS_HEADER_SUBTITLE} trailing={progressCalendarButton} />
+      <ProgressTabChrome overline="Your trends" trailing={progressCalendarButton} />
     <div className="product-shell py-pm-6">
       {progressDesktopHeader}
 
@@ -1483,8 +1472,11 @@ function ProgressDashboardContent() {
               step="0.1"
               aria-label="Log weight"
             />
+            {/* v3 prototype: Log weight is a QUIET button (the app's `ghost`
+                = the retired bordered-secondary), not a filled primary — the
+                weight card's calm action; the chart stays the hero. ENG-1247 */}
             <SupprButton
-              variant="primary"
+              variant="ghost"
               onClick={() => void saveTodayWeight()}
               data-testid="progress-log-weight"
               aria-label="Log weight"
@@ -2553,25 +2545,22 @@ function ProgressSuspenseFallback() {
 
   return (
     <>
-      <ProgressTabChrome subtitle={PROGRESS_HEADER_SUBTITLE} trailing={calendarPlaceholder} />
+      <ProgressTabChrome overline="Your trends" trailing={calendarPlaceholder} />
       <div
         className="hidden md:block product-shell py-pm-6"
         data-testid="progress-suspense-fallback"
       >
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary mb-1">
+              Your trends
+            </p>
             <h1
               data-testid="progress-header"
               className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
             >
               Progress
             </h1>
-            <p
-              data-testid="progress-subtitle"
-              className="text-sm text-muted-foreground mt-1"
-            >
-              {PROGRESS_HEADER_SUBTITLE}
-            </p>
           </div>
           {calendarPlaceholder}
         </div>
