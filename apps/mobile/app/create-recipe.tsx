@@ -36,6 +36,7 @@ import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/c
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
+import { consumePendingImportText } from "@suppr/shared/recipe-import/pendingImportText";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { supabase } from "@/lib/supabase";
 import { authedFetch } from "@/lib/authedFetch";
@@ -507,21 +508,20 @@ export default function CreateRecipeScreen() {
     void importRecipeFromPhoto();
   }, [params.autoPhoto, importRecipeFromPhoto, router]);
 
-  // ENG-1211 — the import "Paste text" tile routes here with `?autoPaste=1`.
-  // Open the paste-list modal on mount once, then clear the param so a
-  // back-nav doesn't re-open it. Mirrors the autoPhoto handshake above.
+  // ENG-1211 — `?autoPaste=1` opens the paste-list modal once on mount, then clears the param (mirrors autoPhoto).
   const autoPasteFiredRef = useRef(false);
   useEffect(() => {
     if (autoPasteFiredRef.current) return;
     if (params.autoPaste !== "1") return;
     autoPasteFiredRef.current = true;
     router.setParams({ autoPaste: undefined } as Record<string, undefined>);
+    // ENG-1245 #3 — prefill from the unified Import sheet (consumed once).
+    const pending = consumePendingImportText();
+    if (pending) setPasteDraft(pending);
     setPasteModalOpen(true);
   }, [params.autoPaste, router]);
 
-  // ENG-1211 — the import "Scan" tile routes here with `?autoBarcode=1`.
-  // Open the barcode scanner on mount once, then clear the param so a
-  // back-nav doesn't re-open it. Mirrors the autoPhoto handshake above.
+  // ENG-1211 — `?autoBarcode=1` opens the scanner once on mount, then clears the param (mirrors autoPhoto).
   const autoBarcodeFiredRef = useRef(false);
   useEffect(() => {
     if (autoBarcodeFiredRef.current) return;

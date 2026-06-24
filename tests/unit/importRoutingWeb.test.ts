@@ -4,13 +4,23 @@
  * it belongs in (or returns a hint when there's no destination yet). Pins the
  * routing so the single front door can't mis-route.
  */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { classifyImport } from "../../src/lib/recipe-import/classifyImport";
 import { routeImport } from "../../src/lib/recipe-import/importRoutingWeb";
+import {
+  consumePendingImportText,
+  setPendingImportText,
+} from "../../src/lib/recipe-import/pendingImportText";
 
 function router() {
   return { push: vi.fn() };
 }
+
+// The pending-import store is a module singleton — clear it between cases so a
+// recipe-text route in one test can't leak into the next.
+beforeEach(() => {
+  consumePendingImportText();
+});
 
 describe("routeImport (web)", () => {
   it("a social/recipe URL → /import with the prefilled importUrl", () => {
@@ -51,5 +61,41 @@ describe("routeImport (web)", () => {
     const r = router();
     expect(routeImport(classifyImport("  "), "  ", r)).toEqual({ routed: false });
     expect(r.push).not.toHaveBeenCalled();
+  });
+});
+
+describe("routeImport text threading (ENG-1225 #3)", () => {
+  it("recipe text is stashed for the create paste dialog to consume", () => {
+    const raw = "Tahini bowl\n2 tbsp tahini\n1 can chickpeas";
+    routeImport(classifyImport(raw), raw, router());
+    expect(consumePendingImportText()).toBe(raw);
+    // consumed → cleared, so a re-read returns null
+    expect(consumePendingImportText()).toBeNull();
+  });
+
+  it("plan text is stashed for the plan-import paste step to consume", () => {
+    const raw = "Monday\nBreakfast: eggs\nLunch: salad\nTuesday\nDinner: salmon";
+    routeImport(classifyImport(raw), raw, router());
+    expect(consumePendingImportText()).toBe(raw);
+    expect(consumePendingImportText()).toBeNull();
+  });
+
+  it("a URL/social route does NOT stash recipe text", () => {
+    const raw = "https://www.instagram.com/reel/Cabc/";
+    routeImport(classifyImport(raw), raw, router());
+    expect(consumePendingImportText()).toBeNull();
+  });
+});
+
+describe("pendingImportText store", () => {
+  it("set then consume returns once, then clears", () => {
+    setPendingImportText("hello");
+    expect(consumePendingImportText()).toBe("hello");
+    expect(consumePendingImportText()).toBeNull();
+  });
+
+  it("whitespace-only is treated as empty", () => {
+    setPendingImportText("   \n  ");
+    expect(consumePendingImportText()).toBeNull();
   });
 });

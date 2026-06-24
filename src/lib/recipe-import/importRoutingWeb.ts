@@ -1,4 +1,5 @@
 import type { ImportClassification } from "./classifyImport";
+import { setPendingImportText } from "./pendingImportText";
 
 /**
  * routeImport (web, ENG-1225 #3) — WEB twin of `apps/mobile/lib/importRouting.ts`.
@@ -12,9 +13,11 @@ import type { ImportClassification } from "./classifyImport";
  *
  * Web routes are URL-based (Next router + `RecipeUpload`'s `useSearchParams`), so
  * a social / recipe URL prefills the import field via `?importUrl=` (the web
- * analogue of mobile's `/import-shared?url=`). Pasted recipe/plan TEXT is not
- * yet threaded through (matches the iOS sheet — tracked follow-up): we open the
- * right flow and the user confirms the paste there.
+ * analogue of mobile's `/import-shared?url=`). Pasted RECIPE text is threaded
+ * via `setPendingImportText` (a transient store — text can be long, so not a URL
+ * param) and consumed at the destination on arrival, so the user doesn't
+ * re-paste: recipe text by RecipeUpload's paste dialog, plan text by
+ * `usePlanImport` on mount. (CSV still routes to the Settings hint — ENG-1245.)
  */
 export type ImportRouteResult = { routed: boolean; hint?: string };
 
@@ -32,9 +35,15 @@ export function routeImport(
       router.push(`/import?importUrl=${encodeURIComponent(c.url ?? raw.trim())}`);
       return { routed: true };
     case "plan-text":
+      // Thread the pasted plan text to the plan-import paste step (consumed
+      // once on mount) so the user doesn't re-paste it.
+      setPendingImportText(raw);
       router.push("/plan-import");
       return { routed: true };
     case "recipe-text":
+      // Thread the pasted recipe text to the create paste dialog (consumed once
+      // on arrival) so the user doesn't re-paste it.
+      setPendingImportText(raw);
       router.push("/create?autoPaste=1");
       return { routed: true };
     case "csv":

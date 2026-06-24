@@ -9,8 +9,9 @@
  * Reuses the SAME `/api/plan-import/parse` route and the SHARED
  * `commitPlanImport` pipeline the mobile flow calls — no fork.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { consumePendingImportText } from "../../../lib/recipe-import/pendingImportText.ts";
 import { useAppData } from "../../../context/AppDataContext.tsx";
 import { supabase } from "../../../lib/supabase/browserClient.ts";
 import { track } from "../../../lib/analytics/track.ts";
@@ -45,6 +46,13 @@ export function usePlanImport(onClose: () => void) {
 
   const [step, setStep] = useState<PlanImportStep>("paste");
   const [pasteText, setPasteText] = useState(MEAL_PREP_WEEK1_PASTE);
+  // ENG-1245 #3 — when the unified Import sheet routes a pasted meal plan here,
+  // consume the threaded text once on mount (replacing the sample) so the user
+  // doesn't re-paste. consume() clears, so a normal open keeps the sample.
+  useEffect(() => {
+    const pending = consumePendingImportText();
+    if (pending) setPasteText(pending);
+  }, []);
   const [planName, setPlanName] = useState(DEFAULT_PLAN_NAME);
   const [parseResult, setParseResult] = useState<PlanImportParseResult | null>(null);
   const [slots, setSlots] = useState<PlanImportCompiledSlot[]>([]);

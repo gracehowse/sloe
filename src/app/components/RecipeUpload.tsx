@@ -9,6 +9,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { useSearchParams } from "next/navigation";
 import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredientLine.ts";
+import { consumePendingImportText } from "../../lib/recipe-import/pendingImportText.ts";
 import { resolveStructuredIngredient } from "../../lib/recipe-ingredients/structuredIngredientsForVerify.ts";
 import { isStructuredSource } from "../../lib/nutrition/structuredSourceGate.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
@@ -482,23 +483,20 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
 
   useEffect(() => () => stopScanner(), [stopScanner]);
 
-  // ENG-1211 — when the create view is opened from an import method tile
-  // (`createInitialMethod`), auto-activate the promised affordance once on
-  // mount so each tile DELIVERS its method instead of dropping the user on a
-  // generic form. Ref-guarded so a re-render can't re-fire. Mobile parity:
-  // `/create-recipe?autoPaste=1` opens the paste-list modal and
-  // `?autoBarcode=1` opens the barcode scanner.
-  //   - `paste` → open the paste-ingredient-list dialog.
-  //   - `scan`  → open the barcode match picker on the first ingredient row
-  //     (always present — the create form seeds one empty row) and start the
-  //     camera scanner, reusing the existing scan→apply path rather than a
-  //     parallel one.
+  // ENG-1211 — opened from an import method tile (`createInitialMethod`),
+  // auto-activate the promised affordance once on mount (ref-guarded so a
+  // re-render can't re-fire). Mobile parity: `/create-recipe?autoPaste=1` /
+  // `?autoBarcode=1`. paste → paste-ingredient-list dialog; scan → barcode
+  // match picker on the first row (form seeds one) + camera scanner.
   const initialMethodFiredRef = useRef(false);
   useEffect(() => {
     if (initialMethodFiredRef.current) return;
     if (mode !== "create" || !createInitialMethod) return;
     initialMethodFiredRef.current = true;
     if (createInitialMethod === "paste") {
+      // ENG-1245 #3 — prefill from the unified Import sheet (consumed once).
+      const pending = consumePendingImportText();
+      if (pending) setPasteDraft(pending);
       setPasteDialogOpen(true);
     } else if (createInitialMethod === "scan") {
       setMatchPickerIdx(0);
