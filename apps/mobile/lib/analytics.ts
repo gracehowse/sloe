@@ -462,8 +462,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   single self-named fallback line. The WRITE path (snapshot capture) is
  *   always-on + defensive; this flag gates only the read/display so data can
  *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
+ * - `discover_creator_rail_v1` (ENG-1225 #14) — the v3 Discover creator plane:
+ *   the creator rail + mobile Following feed (web twin: rail + featured hero).
+ *   Default OFF — ships dark pending Grace's SEE-approval on the sim, and falls
+ *   back to a presentation-only SEED creator set while the `creators` table is
+ *   empty pre-launch (real creators always win). Keep in sync with web.
  */
-export const KNOWN_DEFAULT_OFF_FLAGS = ["nutrition_entry_ingredients_v1"] as const;
+export const KNOWN_DEFAULT_OFF_FLAGS = [
+  "nutrition_entry_ingredients_v1",
+  "discover_creator_rail_v1",
+] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of

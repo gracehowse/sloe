@@ -340,11 +340,18 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   change on a core surface, ramps via PostHog after Grace SEEs it. WEB-ONLY —
  *   mobile Settings is a separate native surface, so there is NO mobile mirror
  *   (mobile omits web-only default-off flags, like the landing hero).
+ * - `discover_creator_rail_v1` (ENG-1225 #14) — the v3 Discover creator plane:
+ *   the creator rail + web featured hero + mobile Following feed. Default OFF —
+ *   it ships dark pending Grace's SEE-approval on the sim, and it currently
+ *   falls back to a presentation-only SEED creator set (the `creators` table is
+ *   empty pre-launch). Real creators always win when they exist. Keep in sync
+ *   with mobile. Mirror surfaces: `DiscoverFeed.tsx` / `discover.tsx`.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "landing_hero_hybrid_v1",
   "nutrition_entry_ingredients_v1",
   "sloe_v3_settings",
+  "discover_creator_rail_v1",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
