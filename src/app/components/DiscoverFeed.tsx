@@ -35,6 +35,8 @@ import {
 import { useTopCreators } from "./suppr/use-top-creators";
 import { DiscoverQuickWeeknight } from "./suppr/discover-quick-weeknight";
 import { DiscoverCollections } from "./suppr/discover-collections";
+import { DiscoverFeaturedHero } from "./suppr/discover-featured-hero";
+import { DiscoverImportCard } from "./suppr/discover-import-card";
 import { UnifiedImportSheet } from "./suppr/unified-import-sheet";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
@@ -133,10 +135,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   });
   const [collections] = useState<CollectionRow[]>(() => loadCollections());
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
-  // ENG-1225 #14 — "top creators by saves" rail (v3 `.creator-rail`).
-  // Hidden today (the `creators` table is empty pre-launch); lights up
-  // automatically once creators exist. Mobile parity: discover.tsx.
-  const creatorRail = useTopCreators((c) => router.push(`/creator/${c.id}`));
+  // ENG-1225 #14 — v3 creator rail + featured hero behind the NEW default-OFF
+  // `discover_creator_rail_v1` (dark pending Grace's SEE; real creators win, else
+  // a seeded set when the `creators` table is empty). Mobile parity: discover.tsx.
+  const creatorRailEnabled = isFeatureEnabled("discover_creator_rail_v1");
+  const creatorRail = useTopCreators(
+    (c) => router.push(`/creator/${c.id}`),
+    creatorRailEnabled,
+  );
   // ENG-921 (2026-06-07) — CATEGORY filters per Figma `528:2`
   // (All · Trending · Quick 30 · Under 500 cal · High protein · From
   // Reels · Breakfast · Dinner · Dessert · Soup · Pasta · Chicken).
@@ -420,56 +426,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   // nothing to reorder there). The card JSX is extracted to `importCard` so it
   // renders at exactly one position (no duplication, testID count unchanged).
   const importAboveCarousels = isFeatureEnabled("discover_import_above_carousels_v1");
-  const importCard = (
-    <div className="md:hidden">
-      {isFeatureEnabled("discover_import_hero_v1") ? (
-        // ENG-1087 — hero affordance (parity with mobile discover.tsx): the
-        // raised viral-hook import slab — solid plum icon, serif title, "Paste
-        // link" pill. Whole slab is the tap target (opens the unified sheet / view).
-        <div
-          role="button"
-          tabIndex={0}
-          data-testid="discover-import-cta-top"
-          onClick={openImport}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          // ENG-1094 (Grace): confident lavender-plum accent (`--import-hero-bg`).
-          style={{ background: "var(--import-hero-bg)" }}
-        >
-          <span className="inline-flex items-center justify-center shrink-0 size-11 rounded-full bg-primary-solid text-white [&_svg]:size-5">
-            <Icons.import />
-          </span>
-          <div className="flex-1">
-            <p className="text-foreground" style={{ fontFamily: "var(--font-headline)", fontSize: "17px", lineHeight: "22px", fontWeight: 500, letterSpacing: "-0.1px" }}>Import from TikTok, Instagram &amp; YouTube</p>
-            <p className="text-[13px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
-          </div>
-          <span className="shrink-0 rounded-full bg-primary-solid px-3 py-1.5 text-[13px] font-semibold text-white">Paste link</span>
-        </div>
-      ) : (
-        // Legacy nav-row slab (flag-off / kill switch). Aubergine SOFT-TINT
-        // nudge card (Sloe treatment §10, ENG-1082) — a DELIBERATE tinted
-        // affordance, NOT a white recipe card. testID preserved for Maestro.
-        <div
-          role="button"
-          tabIndex={0}
-          data-testid="discover-import-cta-top"
-          onClick={openImport}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-3 rounded-3xl p-3.5 flex items-center gap-3 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          style={{ background: "var(--accent-primary-soft)" }}
-        >
-          <IconBox size="lg" tone="primary">
-            <Icons.import />
-          </IconBox>
-          <div className="flex-1">
-            <p className="text-[13px] font-semibold text-foreground">Import from TikTok, Instagram &amp; YouTube</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Paste a link or share from any app</p>
-          </div>
-          <Icons.forward className="w-4 h-4 text-muted-foreground" />
-        </div>
-      )}
-    </div>
-  );
+  // Import slab extracted to `DiscoverImportCard` (ENG-1225 #14 screen-budget);
+  // rendered at exactly one position so the testID count is unchanged.
+  const importCard = <DiscoverImportCard onOpenImport={openImport} />;
 
   return (
     <div className="max-w-lg mx-auto min-h-screen bg-background pb-12 md:max-w-6xl md:px-pm-5">
@@ -521,8 +480,15 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           ) : null}
         </div>
 
-        {/* Creator rail (ENG-1225 #14) — self-hides when empty. */}
+        {/* Creator rail + featured hero (ENG-1225 #14) — both self-gate on
+            `discover_creator_rail_v1` (hero also needs the default view; `md+`). */}
         <div className="mt-4 pl-4 pr-2 md:pl-0 md:pr-0">{creatorRail}</div>
+        <DiscoverFeaturedHero
+          recipes={recipes}
+          defaultView={showClusterCarousels}
+          onOpenRecipe={(r) => setSelectedRecipe(r)}
+          onOpenCreator={(creatorId) => router.push(`/creator/${creatorId}`)}
+        />
 
         {/* Category filter pills — ENG-921 / Figma `528:2`. "Following"
             leads as a secondary feed-scope toggle (wired follow-graph

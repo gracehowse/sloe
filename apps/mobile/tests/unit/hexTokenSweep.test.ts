@@ -50,6 +50,9 @@ const FILES_TO_GUARD = [
   "../../components/onboarding/steps/signup.tsx",
   "../../components/QuickAddPanel.tsx",
   "../../components/recipe/RecipeDetailHero.tsx",
+  // ENG-1225 #14 — the extracted Discover import slab + the v3 Following feed.
+  "../../components/discover/DiscoverImportCard.tsx",
+  "../../components/discover/FollowingFeed.tsx",
 ] as const;
 
 const BANNED_HEX_RE =

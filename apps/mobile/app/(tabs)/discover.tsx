@@ -11,7 +11,7 @@ import { consumeNewSocialRecipeUrlFromClipboard } from "@/lib/clipboardShareForw
 import { useDiscoverRecipes } from "@/lib/recipes";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
-import { Search, Utensils, Bookmark, Link as LinkIcon, ChevronRight } from "lucide-react-native";
+import { Search, Utensils, Bookmark, ChevronRight } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
@@ -47,6 +47,8 @@ import { DiscoverMoreIdeaRow } from "@/components/discover/DiscoverMoreIdeaRow";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { IconBox } from "@/components/discover/IconBox";
 import { CreatorRail } from "@/components/discover/CreatorRail";
+import { FollowingFeed } from "@/components/discover/FollowingFeed";
+import { DiscoverImportCard } from "@/components/discover/DiscoverImportCard";
 import { useTopCreators } from "@/hooks/useTopCreators";
 import { UnifiedImportSheet } from "@/components/import/UnifiedImportSheet";
 
@@ -131,8 +133,11 @@ export default function DiscoverScreen() {
   const userId = session?.user?.id ?? null;
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
-  // ENG-1225 #14 — "top creators by saves" rail (hidden until populated).
-  const topCreators = useTopCreators();
+  // ENG-1225 #14 — v3 creator rail + "Following" feed behind the NEW default-OFF
+  // `discover_creator_rail_v1` (dark pending Grace's SEE; real creators win, else
+  // a seeded set when the `creators` table is empty). Web parity: DiscoverFeed.tsx.
+  const creatorRailEnabled = isFeatureEnabled("discover_creator_rail_v1");
+  const topCreators = useTopCreators(creatorRailEnabled);
   const [unifiedImportOpen, setUnifiedImportOpen] = useState(false); // ENG-1225 #3
 
   // ENG-700 — after publishing from Library / recipe detail, Discover
@@ -788,87 +793,14 @@ export default function DiscoverScreen() {
             first thing the user sees on Discover, not buried beneath
             recipe rows. Mirrors Recime's import-link pattern. testID
             preserved for the Maestro 25_import_shared flow. */}
-        {importHero ? (
-          // ENG-1087 — hero affordance (raised weight: SOLID plum icon + filled
-          // "Paste link" pill, the whole slab taps through to import). ENG-1225
-          // #3: with `sloe_v3_unified_import` ON, the slab opens the unified
-          // "import anything" sheet instead of navigating; OFF keeps the legacy nav.
-          <Pressable
-            onPress={() => isFeatureEnabled("sloe_v3_unified_import") ? setUnifiedImportOpen(true) : router.push("/import-shared" as Href)}
-            accessibilityRole="button"
-            accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
-            testID="discover-import-cta"
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: Spacing.md,
-              padding: Spacing.md,
-              borderRadius: CARD_RADIUS,
-              // ENG-1094 (Grace): a confident lavender-plum accent — Discover's
-              // one deliberate accent — instead of the muddy flat ~20%
-              // `primarySoftStrong` wash that read as grey.
-              backgroundColor: colors.importHeroBg,
-              marginBottom: Spacing.md,
-            }}
-          >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: Radius.full,
-                backgroundColor: accent.primarySolid,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <LinkIcon size={20} color={Accent.primaryForeground} />
-            </View>
-            <View style={{ flex: 1, gap: 1 }}>
-              <Text style={{ ...Type.headline, color: colors.navPrimary }}>Import from TikTok, Instagram & YouTube</Text>
-              <Text style={{ ...Type.caption, color: colors.textSecondary }}>Paste a link or share from any app</Text>
-            </View>
-            <View
-              style={{
-                paddingHorizontal: Spacing.dense,
-                paddingVertical: Spacing.sm,
-                borderRadius: Radius.full,
-                backgroundColor: accent.primarySolid,
-              }}
-            >
-              <Text style={{ ...Type.caption, fontWeight: "600", color: Accent.primaryForeground }}>Paste link</Text>
-            </View>
-          </Pressable>
-        ) : (
-          /* Legacy nav-row slab (flag-off / kill switch). 2026-05-12 premium-bar
-             audit DC13 + ENG-1082: a DELIBERATE soft-tint affordance, NOT a
-             white recipe card, so it stands apart from the white feed cards
-             (Sloe treatment §10). testID preserved for the Maestro
-             25_import_shared flow. */
-          <Pressable
-            onPress={() => router.push("/import-shared" as Href)}
-            accessibilityRole="button"
-            accessibilityLabel="Import from TikTok, Instagram, YouTube or a website"
-            testID="discover-import-cta"
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: Spacing.md,
-              padding: Spacing.md,
-              borderRadius: CARD_RADIUS,
-              backgroundColor: accent.primarySoft,
-              marginBottom: Spacing.md,
-            }}
-          >
-            <IconBox color={t.accent} size={36}>
-              <LinkIcon size={18} color={t.accent} />
-            </IconBox>
-            <View style={{ flex: 1 }}>
-              <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>Import from TikTok, Instagram & YouTube</Text>
-              <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }}>Paste a link or share from any app</Text>
-            </View>
-            <ChevronRight size={16} color={colors.textTertiary} />
-          </Pressable>
-        )}
+        {/* Import slab extracted to `DiscoverImportCard` (ENG-1225 #14
+            screen-budget). `importHero` = `discover_import_hero_v1`. */}
+        <DiscoverImportCard
+          hero={importHero}
+          accentColor={t.accent}
+          onOpenUnified={() => setUnifiedImportOpen(true)}
+          onOpenLegacyImport={() => router.push("/import-shared" as Href)}
+        />
 
         {/* ── Prototype port (2026-04-20, screens-mobile.jsx
             `DiscoverScreen` lines 345–438): three stacked sections.
@@ -1038,6 +970,19 @@ export default function DiscoverScreen() {
             ) : null}
           </>
         )}
+
+        {/* Following feed (ENG-1225 #14) — v3 `.feed-card` creator post stack
+            behind `discover_creator_rail_v1`; default-view only (never fights a
+            query). Web twin: the featured hero. */}
+        {showClusterCarousels ? (
+          <FollowingFeed
+            enabled={creatorRailEnabled}
+            creators={topCreators}
+            recipes={recipes}
+            onPressRecipe={(r) => router.push(`/recipe/${r.id}`)}
+            onPressCreator={(creatorId) => router.push(`/creator/${creatorId}`)}
+          />
+        ) : null}
 
         {/* Bottom rail — jump-card to My Library. Import card moved
             up to be the permanent first card above the discovery

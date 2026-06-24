@@ -40,9 +40,16 @@ import { describe, expect, it } from "vitest";
 const ROOT = resolve(__dirname, "../..");
 const WEB_DISCOVER_PATH = resolve(ROOT, "src/app/components/DiscoverFeed.tsx");
 const MOBILE_DISCOVER_PATH = resolve(ROOT, "apps/mobile/app/(tabs)/discover.tsx");
+// ENG-1225 #14 — the import slab was extracted from the (pinned) host screens
+// into dedicated components to hold the screen-budget. The import-card MARKUP
+// assertions read these; the host files keep the POSITION/order assertions.
+const WEB_IMPORT_CARD_PATH = resolve(ROOT, "src/app/components/suppr/discover-import-card.tsx");
+const MOBILE_IMPORT_CARD_PATH = resolve(ROOT, "apps/mobile/components/discover/DiscoverImportCard.tsx");
 
 const WEB_SRC = readFileSync(WEB_DISCOVER_PATH, "utf8");
 const MOBILE_SRC = readFileSync(MOBILE_DISCOVER_PATH, "utf8");
+const WEB_IMPORT_CARD_SRC = readFileSync(WEB_IMPORT_CARD_PATH, "utf8");
+const MOBILE_IMPORT_CARD_SRC = readFileSync(MOBILE_IMPORT_CARD_PATH, "utf8");
 
 describe("Discover tab — three-section layout (2026-04-20 prototype port)", () => {
   describe("section headings", () => {
@@ -132,10 +139,10 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
     });
 
     it("mobile places the Import card as the FIRST surface above all recipe sections (2026-05-12 audit)", () => {
-      // Match the rendered strings, not the JSDoc comments at the top
-      // of the file. Section headings render inside a `<Text style=...>`
-      // tag so we anchor on the closing `>` from the opening tag.
-      const importIdx = MOBILE_SRC.indexOf('testID="discover-import-cta"');
+      // The import slab was extracted to `<DiscoverImportCard>` (ENG-1225 #14
+      // screen-budget); the host renders it as the first surface. Anchor on the
+      // component tag (not the testID, which now lives inside the component).
+      const importIdx = MOBILE_SRC.indexOf("<DiscoverImportCard");
       const matchesIdx = MOBILE_SRC.search(/>\s*Recipe ideas\s*</);
       const moreIdeasIdx = MOBILE_SRC.search(/>\s*More ideas\s*</);
       const libraryHeadingIdx = MOBILE_SRC.search(/>\s*My Library\s*</);
@@ -246,17 +253,18 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
     });
 
     it("mobile import banner is a token-sourced soft-tint affordance with NO border or off-token hex", () => {
-      expect(MOBILE_SRC).toMatch(/backgroundColor: accent\.primarySoft/);
+      // Markup now lives in the extracted `DiscoverImportCard` component.
+      expect(MOBILE_IMPORT_CARD_SRC).toMatch(/backgroundColor: accent\.primarySoft/);
       // The pre-fix off-token literal-hex fill + tint border are gone.
-      expect(MOBILE_SRC).not.toMatch(/backgroundColor: t\.accent \+ "08"/);
-      expect(MOBILE_SRC).not.toMatch(/borderColor: t\.accent \+ "22"/);
+      expect(MOBILE_IMPORT_CARD_SRC).not.toMatch(/backgroundColor: t\.accent \+ "08"/);
+      expect(MOBILE_IMPORT_CARD_SRC).not.toMatch(/borderColor: t\.accent \+ "22"/);
     });
 
     it("web import banner is a token-sourced soft-tint affordance with NO ring border", () => {
-      // Legacy (flag-off) path keeps the 12% soft-tint fill.
-      expect(WEB_SRC).toMatch(/background: "var\(--accent-primary-soft\)"/);
+      // Legacy (flag-off) path keeps the 12% soft-tint fill (extracted component).
+      expect(WEB_IMPORT_CARD_SRC).toMatch(/background: "var\(--accent-primary-soft\)"/);
       // Border ring dropped per the flat-surface law.
-      expect(WEB_SRC).not.toMatch(/borderColor: "var\(--accent-primary-ring\)"/);
+      expect(WEB_IMPORT_CARD_SRC).not.toMatch(/borderColor: "var\(--accent-primary-ring\)"/);
     });
   });
 
@@ -266,38 +274,41 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
   // tracked separately in ENG-1089). Source-structural, both platforms.
   describe("import card → hero affordance (ENG-1087, flag-gated)", () => {
     it("mobile gates the hero on `discover_import_hero_v1`, legacy nav row in the else", () => {
+      // Host still reads the flag (→ `importHero`); the hero/legacy branch moved
+      // into `DiscoverImportCard` (ENG-1225 #14 screen-budget).
       expect(MOBILE_SRC).toMatch(/isFeatureEnabled\("discover_import_hero_v1"\)/);
-      expect(MOBILE_SRC).toMatch(/importHero \? \(/);
+      expect(MOBILE_IMPORT_CARD_SRC).toMatch(/if \(hero\)/);
       // Two import-cta blocks now exist (hero + legacy); only one renders.
-      const ctas = MOBILE_SRC.match(/testID="discover-import-cta"/g) ?? [];
+      const ctas = MOBILE_IMPORT_CARD_SRC.match(/testID="discover-import-cta"/g) ?? [];
       expect(ctas.length).toBe(2);
     });
 
     it("mobile hero raises the weight: confident lavender-plum accent + solid plum icon + 'Paste link' pill (ENG-1094)", () => {
       // ENG-1094 (Grace): a confident lavender-plum accent (`importHeroBg`), not
       // the muddy flat ~20% `primarySoftStrong` dark-plum wash that read as grey.
-      expect(MOBILE_SRC).toMatch(/backgroundColor: colors\.importHeroBg/);
+      expect(MOBILE_IMPORT_CARD_SRC).toMatch(/backgroundColor: colors\.importHeroBg/);
       // Solid plum icon circle with a WHITE glyph (not the soft IconBox).
-      expect(MOBILE_SRC).toMatch(/backgroundColor: accent\.primarySolid,[\s\S]{0,160}<LinkIcon size=\{20\} color=\{Accent\.primaryForeground\}/);
+      expect(MOBILE_IMPORT_CARD_SRC).toMatch(/backgroundColor: accent\.primarySolid,[\s\S]{0,160}<LinkIcon size=\{20\} color=\{Accent\.primaryForeground\}/);
       // Serif headline title + filled "Paste link" pill replacing the chevron.
-      expect(MOBILE_SRC).toMatch(/\.\.\.Type\.headline[\s\S]{0,120}Import from TikTok/);
-      expect(MOBILE_SRC).toMatch(/Paste link/);
+      expect(MOBILE_IMPORT_CARD_SRC).toMatch(/\.\.\.Type\.headline[\s\S]{0,120}Import from TikTok/);
+      expect(MOBILE_IMPORT_CARD_SRC).toMatch(/Paste link/);
     });
 
     it("web gates the hero on `discover_import_hero_v1`, legacy nav row in the else", () => {
-      expect(WEB_SRC).toMatch(/isFeatureEnabled\("discover_import_hero_v1"\)/);
+      // The hero/legacy branch moved into `DiscoverImportCard`.
+      expect(WEB_IMPORT_CARD_SRC).toMatch(/isFeatureEnabled\("discover_import_hero_v1"\)/);
       // Two import-cta blocks now exist (hero + legacy); only one renders.
-      const ctas = WEB_SRC.match(/data-testid="discover-import-cta-top"/g) ?? [];
+      const ctas = WEB_IMPORT_CARD_SRC.match(/data-testid="discover-import-cta-top"/g) ?? [];
       expect(ctas.length).toBe(2);
     });
 
     it("web hero raises the weight: confident lavender-plum accent + solid plum icon + 'Paste link' pill (ENG-1094)", () => {
-      expect(WEB_SRC).toMatch(/background: "var\(--import-hero-bg\)"/);
+      expect(WEB_IMPORT_CARD_SRC).toMatch(/background: "var\(--import-hero-bg\)"/);
       // Solid plum icon circle (white glyph) instead of the soft IconBox.
-      expect(WEB_SRC).toMatch(/rounded-full bg-primary-solid text-white/);
+      expect(WEB_IMPORT_CARD_SRC).toMatch(/rounded-full bg-primary-solid text-white/);
       // Serif headline title + filled "Paste link" pill.
-      expect(WEB_SRC).toMatch(/fontFamily: "var\(--font-headline\)"[\s\S]{0,160}Import from TikTok/);
-      expect(WEB_SRC).toMatch(/bg-primary-solid px-3 py-1\.5[\s\S]{0,40}Paste link/);
+      expect(WEB_IMPORT_CARD_SRC).toMatch(/fontFamily: "var\(--font-headline\)"[\s\S]{0,160}Import from TikTok/);
+      expect(WEB_IMPORT_CARD_SRC).toMatch(/bg-primary-solid px-3 py-1\.5[\s\S]{0,40}Paste link/);
     });
   });
 });

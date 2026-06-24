@@ -55,11 +55,20 @@ triad in the else. Maintenance sage / deficit plum. Web-SEEn + tested. **Mobile
 equation parity owed** (next sim session). Adapt-row numbers omitted (no
 formula-baseline value — would be fabricated; explainer uses words).
 
-**#14 Discover creator rail — CONTENT-BLOCKED.** `creators` table is EMPTY
-(0 rows, 0 creators-with-recipes, verified via Supabase MCP). The rail can't be
-built without fabricating creators — it's a content/launch dependency, not a
-code task. The featured-editorial-hero half is buildable (recipes exist) but
-DiscoverFeed already has hero treatment (isHero idx===0) so the gap is marginal.
+**#14 Discover creator rail — BUILT FLAG-DARK (2026-06-23).** Creator rail (both
+platforms), web featured hero, and mobile Following feed shipped behind the NEW
+default-OFF flag `discover_creator_rail_v1` (NOT in `REDESIGN_DEFAULT_ON` — ships
+dark pending Grace's SEE-approval on the sim). The `creators` table is still
+EMPTY pre-launch, so the rail/feed fall back to a **presentation-only SEED set**
+(`src/lib/discover/seedCreators.ts`, grounded on the prototype `CREATORS`) so the
+surface is reviewable; **real creators always win** the moment they exist
+(`resolveCreatorRail`). New components: web `discover-featured-hero.tsx` +
+`discover-import-card.tsx` (extracted to hold the pinned-file budget); mobile
+`FollowingFeed.tsx` + `DiscoverImportCard.tsx`. **OPEN follow-up (track as
+Linear):** wire the rail/feed to REAL creator data — seed a `creators` table with
+launch-partner cooks + make `top_creators_by_saves` return rows, then retire the
+seed fixture in the flag's gate-removal sweep. The seed is the interim, not the
+endpoint.
 
 **SIM RESTORED + visual-test capability confirmed (2026-06-22).** `Sloe-Verify`
 (iOS 26.5) boots; dev client pre-installed; eyes (`simctl io screenshot`+Read) +

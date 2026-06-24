@@ -3,8 +3,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = resolve(__dirname, "../..");
-const discoverFeed = readFileSync(
-  resolve(ROOT, "src/app/components/DiscoverFeed.tsx"),
+// ENG-1225 #14 — the Discover import slab was extracted from the pinned
+// `DiscoverFeed.tsx` host into `discover-import-card.tsx` (screen-budget).
+const discoverImportCard = readFileSync(
+  resolve(ROOT, "src/app/components/suppr/discover-import-card.tsx"),
   "utf8",
 );
 const todayMealsSection = readFileSync(
@@ -14,7 +16,7 @@ const todayMealsSection = readFileSync(
 
 describe("ENG-1138 web focus-visible rings", () => {
   it("keeps both Discover import hero branches visibly keyboard-focusable", () => {
-    const importHeroBlocks = discoverFeed.match(
+    const importHeroBlocks = discoverImportCard.match(
       /data-testid="discover-import-cta-top"[\s\S]*?className="([^"]+)"/g,
     );
 

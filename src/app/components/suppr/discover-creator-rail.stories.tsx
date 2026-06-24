@@ -1,10 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { DiscoverCreatorRail } from "./discover-creator-rail";
+import { SEED_CREATOR_CHIPS } from "../../../lib/discover/seedCreators";
 
 /**
  * DiscoverCreatorRail — the "explore from" creator rail (ENG-1225 #14).
  * Mock creators show the layout (initial-on-plum-tint fallback + avatar photos);
  * the live rail is sourced from `top_creators_by_saves` and hides when empty.
+ * The `Seeded` story renders the SHARED seed fixture (`SEED_CREATOR_CHIPS`) —
+ * what `discover_creator_rail_v1` shows while the `creators` table is empty.
  */
 const meta = {
   title: "Suppr/DiscoverCreatorRail",
@@ -35,6 +38,11 @@ export const Fallbacks: Story = {
       { id: "f6", handle: "joe", displayName: "Joe Wicks", avatarUrl: null },
     ],
   },
+};
+
+export const Seeded: Story = {
+  name: "Seeded (discover_creator_rail_v1 fallback)",
+  args: { creators: [...SEED_CREATOR_CHIPS] },
 };
 
 export const Empty: Story = {

@@ -39,5 +39,30 @@ Net: of the 5 specced components, **2 build** (QuickWeeknight, Collections-parti
 
 I **kept the live personalised "Matches your day" hero** rather than replacing it with the prototype's "Trending this week" editorial hero, because the latter is generic and has no data pre-launch, and the personalised hero is the north-star "what to eat next" moment. If you want the editorial hero, the right version sources its featured pick from `displayFiltered[0]` (day-fit-ranked, so it stays personalised AND populated) rather than a hardcoded/empty "trending" query — flag it and I'll build that variant.
 
+## Update — creator plane built flag-dark (2026-06-23, ENG-1225 #14)
+
+The two surfaces this doc parked — the **editorial hero** (KEEP-LIVE, "flag it and
+I'll build that variant") and the **Following section** (DEFER, "if ever built:
+self-hiding like CreatorRail") — are now built behind a **separate** NEW
+default-OFF flag `discover_creator_rail_v1` (NOT `sloe_v3_discover_editorial`; NOT
+in `REDESIGN_DEFAULT_ON`). This does **not** override the calls above: the live
+personalised "Matches your day" hero is **untouched** and still leads the feed.
+The new web featured hero is an **additional** desktop-carded block (`md+`, top of
+Discover) that this doc flagged as acceptable-if-flagged; it sources its pick from
+the feed recipes (the first photo-bearing one), not a hollow "trending" query.
+
+The "no data pre-launch" objection is resolved without fabricating live data: the
+rail + Following feed fall back to a **presentation-only SEED set**
+(`src/lib/discover/seedCreators.ts`) shown ONLY when the flag is on AND the real
+`creators` table is empty — **real creators always win** (`resolveCreatorRail`).
+The seed exists so the surface is SEE-able for Grace's sim review; **wiring real
+creator data + retiring the seed is the tracked follow-up** (creator-platform
+window). Everything ships dark pending that SEE-approval.
+
+New files: web `src/app/components/suppr/discover-featured-hero.tsx` +
+`discover-import-card.tsx` (the import slab extracted to hold the pinned
+`DiscoverFeed.tsx` budget); mobile `apps/mobile/components/discover/FollowingFeed.tsx`
++ `DiscoverImportCard.tsx`; shared `src/lib/discover/seedCreators.ts`.
+
 ## Refs
-Prototype: `Sloe-App.html` L4213-4261 (mobile) + L7546-7576 (web), CSS L2442-2460 + L2534-2538. Live: `discover.tsx`, `DiscoverFeed.tsx`. Shared: `src/lib/recipes/recipeCategoryFilters.ts` (category pills), new `src/lib/discover/curatedCollections.ts`.
+Prototype: `Sloe-App.html` L4213-4261 (mobile) + L7546-7576 (web), CSS L2442-2460 + L2534-2538. Live: `discover.tsx`, `DiscoverFeed.tsx`. Shared: `src/lib/recipes/recipeCategoryFilters.ts` (category pills), `src/lib/discover/curatedCollections.ts`, `src/lib/discover/seedCreators.ts`.
