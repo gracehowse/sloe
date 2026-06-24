@@ -58,12 +58,14 @@ describe("DiscoverFeaturedHeroCard (presentation)", () => {
     expect(getByText("Trending this week")).not.toBeNull();
   });
 
-  it("opens the recipe when the card is activated", () => {
+  it("opens the recipe when the stretched card action is activated", () => {
+    // a11y (ENG-1225 #14): the card is a non-interactive container with a
+    // stretched <button> primary action (no nested-interactive). Activate that.
     const onOpenRecipe = vi.fn();
-    const { getByTestId } = render(
+    const { getByRole } = render(
       <DiscoverFeaturedHeroCard recipe={recipe} onOpenRecipe={onOpenRecipe} />,
     );
-    fireEvent.click(getByTestId("discover-featured-hero-card"));
+    fireEvent.click(getByRole("button", { name: /open recipe/i }));
     expect(onOpenRecipe).toHaveBeenCalledWith(recipe);
   });
 
