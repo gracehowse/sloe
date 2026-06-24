@@ -30,6 +30,15 @@ import { describe, expect, it } from "vitest";
 
 const SETTINGS_PATH = resolve(__dirname, "../../src/app/components/Settings.tsx");
 const SRC = readFileSync(SETTINGS_PATH, "utf8");
+// 2026-06-23 (ENG-1225 gap #24): the modal cluster — including the Erase
+// confirm dialog + its calm copy/ledger — moved to settings/SettingsDialogs.tsx
+// when Settings was split for the two-pane layout. The destructive-row BUTTONS
+// (the visual ladder) stay in Settings.tsx; only the dialog COPY relocated.
+const DIALOGS_PATH = resolve(
+  __dirname,
+  "../../src/app/components/settings/SettingsDialogs.tsx",
+);
+const DIALOGS_SRC = readFileSync(DIALOGS_PATH, "utf8");
 
 describe("Settings — destructive ladder colour tokens (P0-4)", () => {
   it("removes the legacy red-50 / red-950 Tailwind hardcodes", () => {
@@ -69,11 +78,13 @@ describe("Settings — destructive ladder colour tokens (P0-4)", () => {
 
 describe("Settings — Erase Everything confirm copy (P1-6, calm rewrite)", () => {
   it("title points at recovery, not shame", () => {
-    expect(SRC).toContain('title="Delete your data and start fresh?"');
+    expect(DIALOGS_SRC).toContain('title="Delete your data and start fresh?"');
   });
 
   it("body opens with the recovery path before the inventory", () => {
-    expect(SRC).toContain("You can re-import from your export file anytime.");
+    expect(DIALOGS_SRC).toContain(
+      "You can re-import from your export file anytime.",
+    );
   });
 
   it("body lists affected + kept categories as scannable bullets (2026-05-12 DC9 polish)", () => {
@@ -81,20 +92,21 @@ describe("Settings — Erase Everything confirm copy (P1-6, calm rewrite)", () =
     // ("Affects: food log, journal, library saves, …"). Linear's
     // pattern for destructive confirms is ✓/✗ bullets so the user
     // can verify at a glance which things go and which stay. The
-    // categories still all appear by label.
-    expect(SRC).toContain('label: "Food log"');
-    expect(SRC).toContain('label: "Daily journal"');
-    expect(SRC).toContain('label: "Library saves"');
-    expect(SRC).toContain('label: "Shopping lists"');
-    expect(SRC).toContain('label: "Imported recipes"');
-    expect(SRC).toContain('label: "Synced activity"');
-    expect(SRC).toContain('label: "Your account"');
-    expect(SRC).toContain('label: "Subscription"');
+    // categories still all appear by label (now in the ERASE_LEDGER
+    // array in SettingsDialogs.tsx).
+    expect(DIALOGS_SRC).toContain('label: "Food log"');
+    expect(DIALOGS_SRC).toContain('label: "Daily journal"');
+    expect(DIALOGS_SRC).toContain('label: "Library saves"');
+    expect(DIALOGS_SRC).toContain('label: "Shopping lists"');
+    expect(DIALOGS_SRC).toContain('label: "Imported recipes"');
+    expect(DIALOGS_SRC).toContain('label: "Synced activity"');
+    expect(DIALOGS_SRC).toContain('label: "Your account"');
+    expect(DIALOGS_SRC).toContain('label: "Subscription"');
   });
 
   it("retires the legacy shame-energy phrasing", () => {
-    expect(SRC).not.toContain('title="Erase everything?"');
-    expect(SRC).not.toContain(
+    expect(DIALOGS_SRC).not.toContain('title="Erase everything?"');
+    expect(DIALOGS_SRC).not.toContain(
       "This will permanently delete your food log, journal",
     );
   });
@@ -103,7 +115,7 @@ describe("Settings — Erase Everything confirm copy (P1-6, calm rewrite)", () =
     // Negative guard — the prior `description=` paragraph form
     // ("Affects: food log, journal, …") was replaced with structured
     // bullets in a JSX description.
-    expect(SRC).not.toContain(
+    expect(DIALOGS_SRC).not.toContain(
       'description="You can re-import from your export file anytime. Affects:',
     );
   });
@@ -111,7 +123,7 @@ describe("Settings — Erase Everything confirm copy (P1-6, calm rewrite)", () =
   it("confirm button label keeps the imperative 'Erase everything'", () => {
     // The button still has to say what it does — only the dialog title
     // / body softened. Mirrors mobile.
-    expect(SRC).toContain('confirmLabel="Erase everything"');
+    expect(DIALOGS_SRC).toContain('confirmLabel="Erase everything"');
   });
 });
 
