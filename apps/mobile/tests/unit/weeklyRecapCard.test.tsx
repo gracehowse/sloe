@@ -3,8 +3,9 @@
  * WeeklyRecapCard (mobile, ENG-1225 #4) — the react-native-svg mirror of the web
  * shareable recap card. react-native-svg renders its `Text`/`Rect` as Views in
  * the test renderer (no queryable text node), so we assert via the
- * accessibility label + element-type structure. The share path (toDataURL →
- * file → Share) is covered by `recapShare` separately.
+ * accessibility label + element-type structure. The share path's GUARD branches
+ * (off-iOS / rasterise-failed) are covered by `recapShare.test.ts`; the native
+ * file-write + Share glue is exercised on-device, not in node (see that file).
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";
