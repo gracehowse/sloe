@@ -58,10 +58,7 @@ export default function PlanImportScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  // Secondary accent (Frost flag → damson, else clay) for the primary CTA,
-  // active segmented + source tabs, parse spinner, and Save action. Threaded
-  // into the memoised StyleSheet via the dep array below. The success callout
-  // keeps `Accent.success` (sage).
+  // Secondary accent (Frost → damson, else clay) for CTAs/tabs/spinner/Save (success keeps sage).
   const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
@@ -84,19 +81,16 @@ export default function PlanImportScreen() {
 
   const apiBase = getSupprApiBase();
 
-  // ENG-742 — deep links must respect the same flag as the Plan entry points.
+  // ENG-742 — deep-link flag gate. ENG-1245 #3 — also consume plan text threaded
+  // from the unified Import sheet once (replacing the sample) so no re-paste.
   useEffect(() => {
     if (!isFeatureEnabled("plan_import_enabled")) {
       router.replace("/(tabs)/planner");
+      return;
     }
-  }, [router]);
-
-  // ENG-1245 #3 — consume meal-plan text threaded from the unified Import sheet
-  // once on mount (replacing the sample) so the user doesn't re-paste.
-  useEffect(() => {
     const pending = consumePendingImportText();
     if (pending) setPasteText(pending);
-  }, []);
+  }, [router]);
 
   const extractSourceText = useCallback(
     async (file: PickedFile, kind: "pdf" | "image"): Promise<string | null> => {
@@ -336,9 +330,7 @@ export default function PlanImportScreen() {
         root: { flex: 1, backgroundColor: colors.background },
         scroll: { padding: Spacing.lg, paddingBottom: insets.bottom + 48 },
         subtitle: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: Spacing.md },
-        // SLOE DS reskin (2026-06-07): cream `surface-card` slabs, 24px Sloe
-        // radius (Radius.xl * 2), serif headings. Presentation only — the
-        // paste / PDF / photo parse + plan-commit logic is untouched.
+        // SLOE DS reskin (2026-06-07): cream surface-card slabs, 24px radius, serif headings — presentation only.
         callout: {
           backgroundColor: Accent.success + "18",
           borderRadius: 16,
