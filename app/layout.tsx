@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter, Newsreader } from "next/font/google";
+import { Inter, Newsreader, Fraunces } from "next/font/google";
 import "../src/styles/index.css";
 import { Providers } from "./providers";
 import { DrOutageBanner } from "../src/app/components/ops/DrOutageBanner";
@@ -22,6 +22,18 @@ const newsreader = Newsreader({
   display: "swap",
   weight: ["300", "400", "500", "600"],
   variable: "--font-newsreader",
+});
+
+// Fraunces — the brand WORDMARK/logo ONLY. The v3 prototype LOCKS the
+// type-split (Fraunces = wordmark, Newsreader = every other serif role);
+// `.wordmark` is lowercase Fraunces at a light ~360 weight, so 300 Light is
+// the static match. Exposed as `--font-brand` and consumed by
+// `src/styles/theme.css` (`--font-brand`) + `suppr-mark.tsx`.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["300"],
+  variable: "--font-fraunces",
 });
 
 function resolveMetadataBase(): URL {
@@ -72,7 +84,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${newsreader.variable}`}
+      className={`${inter.variable} ${newsreader.variable} ${fraunces.variable}`}
       suppressHydrationWarning
     >
       <body className={inter.className}>

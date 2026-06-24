@@ -12,23 +12,25 @@ void React;
 
 /**
  * Sloe wordmark primitives (`suppr-mark.tsx`) — historical `Suppr*` export
- * names kept for call-site stability. Logo is "Sloe" (capital S) in Newsreader
- * semibold + plum (`--foreground-brand`), no plate glyph — casing + weight
- * match the canonical Figma `654:2` Today frame (updated 2026-06-08).
+ * names kept for call-site stability. Logo is the lowercase "sloe" in Fraunces
+ * Light + plum (`--foreground-brand`), no plate glyph — family + casing +
+ * weight match the v3 prototype's LOCKED Fraunces-only wordmark (supersedes the
+ * 2026-06-08 Newsreader-semibold Figma treatment; Figma retired 2026-06-24).
+ * The accessible name stays the proper-noun "Sloe".
  */
 
 describe("SupprMark (Sloe wordmark)", () => {
-  it("renders the Sloe wordmark with role=img and aria-label", () => {
+  it("renders the lowercase wordmark with role=img and the proper-noun aria-label", () => {
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
     expect(mark).toHaveAttribute("data-slot", "sloe-mark");
-    expect(mark.textContent).toBe("Sloe");
+    expect(mark.textContent).toBe("sloe");
   });
 
-  it("renders the wordmark in semibold (Figma 654:2)", () => {
+  it("renders the wordmark in Fraunces Light (prototype-locked)", () => {
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
-    expect(mark.className).toContain("font-semibold");
+    expect(mark.className).toContain("font-light");
   });
 
   it("scales font size at the 0.72 ratio (ENG-797 mobile parity)", () => {
@@ -37,10 +39,10 @@ describe("SupprMark (Sloe wordmark)", () => {
     expect(mark).toHaveStyle({ fontSize: "29px" });
   });
 
-  it("uses Newsreader + plum brand token classes", () => {
+  it("uses the Fraunces brand font + plum brand token classes", () => {
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
-    expect(mark.className).toContain("font-[family-name:var(--font-newsreader)]");
+    expect(mark.className).toContain("font-[family-name:var(--font-brand)]");
     expect(mark.className).toContain("text-foreground-brand");
   });
 });
@@ -55,7 +57,7 @@ describe("SupprPlateMark (deprecated alias)", () => {
 describe("SupprPlateWordmark (deprecated alias)", () => {
   it("composes the Sloe wordmark lockup", () => {
     render(<SupprPlateWordmark />);
-    expect(screen.getByText("Sloe")).toBeInTheDocument();
+    expect(screen.getByText("sloe")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Sloe" })).toBeInTheDocument();
   });
 });
@@ -63,7 +65,7 @@ describe("SupprPlateWordmark (deprecated alias)", () => {
 describe("SupprWordmark", () => {
   it("composes the Sloe wordmark in a wrapper", () => {
     render(<SupprWordmark />);
-    expect(screen.getByText("Sloe")).toBeInTheDocument();
+    expect(screen.getByText("sloe")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Sloe" })).toBeInTheDocument();
   });
 

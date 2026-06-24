@@ -215,7 +215,7 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     const mark = card?.querySelector('[data-slot="sloe-mark"]');
     expect(mark).not.toBeNull();
     expect(mark).toHaveAttribute("aria-label", "Sloe");
-    expect(mark?.textContent).toBe("Sloe");
+    expect(mark?.textContent).toBe("sloe");
   });
 
   it("does not gate the import-card mark behind design_system_brandmark", () => {

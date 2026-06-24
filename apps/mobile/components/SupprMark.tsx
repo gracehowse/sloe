@@ -6,13 +6,13 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 /**
  * Sloe brand mark — wordmark only.
  *
- * "Sloe" (capital S) in Newsreader semibold + plum (`MacroColors.calories`).
- * No berry glyph, no plate ring, no lockup. Casing + weight match the
- * canonical Figma `654:2` Today frame (`font-headline text-xl font-semibold
- * text-plum`) — updated 2026-06-08 from the earlier lowercase "sloe" / medium
- * treatment so every surface reads the wordmark identically (web parity:
- * `src/app/components/ui/suppr-mark.tsx`). Historical `Suppr*` export names
- * stay until a rename pass.
+ * Lowercase "sloe" in **Fraunces Light** + plum (scheme-resolved). No berry
+ * glyph, no plate ring, no lockup. Family + casing + weight match the v3
+ * prototype's LOCKED type-split (Fraunces = wordmark only; `.wordmark` =
+ * lowercase, light ~360). Supersedes the 2026-06-08 Newsreader-semibold
+ * capital-"Sloe" Figma treatment (Figma is no longer the source of truth —
+ * 2026-06-24). Web parity: `src/app/components/ui/suppr-mark.tsx`. Historical
+ * `Suppr*` export names stay until a rename pass.
  */
 
 export interface SupprMarkProps {
@@ -32,18 +32,20 @@ function SloeWordmarkText({ size = 28 }: { size?: number }) {
   const colors = useThemeColors();
   return (
     <Text
+      // Accessible name stays the proper-noun brand ("Sloe"); the lowercase
+      // is a purely visual wordmark treatment.
       accessibilityRole="image"
       accessibilityLabel="Sloe"
       style={{
-        fontFamily: FontFamily.serifSemibold,
+        fontFamily: FontFamily.brand,
         fontSize: sloeFontSize(size),
         color: colors.navPrimary,
-        fontWeight: "600",
-        letterSpacing: -0.4,
+        fontWeight: "300",
+        letterSpacing: sloeFontSize(size) * -0.01,
         includeFontPadding: false,
       }}
     >
-      Sloe
+      sloe
     </Text>
   );
 }

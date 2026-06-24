@@ -1,11 +1,12 @@
-/** Sloe wordmark for marketing + nav (no external assets). */
+/** Sloe wordmark for marketing + nav (no external assets). Lowercase "sloe"
+ *  in Fraunces Light per the v3 prototype's LOCKED Fraunces-only wordmark. */
 export function SupprLogoMark({ className = "" }: { className?: string }) {
   return (
     <span
       role="img"
       aria-label="Sloe"
-      className={`font-[family-name:var(--font-newsreader)] font-medium tracking-tight text-foreground-brand shrink-0 ${className}`}
-      style={{ fontSize: "inherit", lineHeight: 1, letterSpacing: "-0.02em" }}
+      className={`font-[family-name:var(--font-brand)] font-light tracking-tight text-foreground-brand shrink-0 lowercase ${className}`}
+      style={{ fontSize: "inherit", lineHeight: 1, letterSpacing: "-0.01em" }}
     >
       sloe
     </span>

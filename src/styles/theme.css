@@ -679,9 +679,12 @@
 @theme inline {
   /* Fonts — Sloe (Phase 0). Newsreader (serif, --font-newsreader) carries
      headlines + display + ring numerals; Inter (--font-inter) carries body +
-     labels. Both wired in `app/layout.tsx` via next/font/google. */
+     labels; Fraunces (--font-fraunces) is the brand WORDMARK only (the v3
+     prototype LOCKS this type-split). All wired in `app/layout.tsx` via
+     next/font/google. */
   --font-headline: var(--font-newsreader), Newsreader, Georgia, serif;
   --font-display: var(--font-newsreader), Newsreader, Georgia, serif;
+  --font-brand: var(--font-fraunces), Fraunces, Georgia, serif;
   --font-body: var(--font-inter), Inter, system-ui, sans-serif;
   --font-label: var(--font-inter), Inter, system-ui, sans-serif;
 

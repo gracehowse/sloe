@@ -45,6 +45,7 @@
     "test:dark-sweep": "bash ./scripts/run-dark-sweep.sh"
   },
   "dependencies": {
+    "@expo-google-fonts/fraunces": "^0.4.1",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/newsreader": "^0.4.1",
     "@expo/ngrok": "^4.1.3",

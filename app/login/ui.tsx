@@ -234,12 +234,12 @@ export function LoginClient({
             sync subtitle. */}
         <div className="text-center">
           <div
-            className="inline-flex items-center justify-center font-[family-name:var(--font-newsreader)] font-semibold tracking-tight text-foreground-brand"
+            className="inline-flex items-center justify-center font-[family-name:var(--font-brand)] font-light tracking-tight text-foreground-brand lowercase"
             style={{ fontSize: 30, letterSpacing: "-0.01em", lineHeight: 1 }}
             role="img"
             aria-label="Sloe"
           >
-            Sloe
+            sloe
           </div>
           <h1
             className="mt-7 font-[family-name:var(--font-newsreader)] font-medium text-foreground-brand"

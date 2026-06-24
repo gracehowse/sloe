@@ -254,12 +254,12 @@ describe("DesktopSidebar — collapse affordance", () => {
     expect(aside.getAttribute("data-collapsed")).toBe("true");
     expect(aside.style.width).toBe("64px");
     // Brand wordmark hides when collapsed (icon rail is single-col).
-    expect(screen.queryByText("Sloe")).toBeNull();
+    expect(screen.queryByText("sloe")).toBeNull();
 
     fireEvent.click(toggle);
     expect(aside.getAttribute("data-collapsed")).toBe("false");
     expect(aside.style.width).toBe("248px");
-    expect(screen.getByText("Sloe")).toBeDefined();
+    expect(screen.getByText("sloe")).toBeDefined();
   });
 
   it("persists the collapsed state to localStorage and rehydrates on remount", () => {
