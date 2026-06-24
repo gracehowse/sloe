@@ -27,6 +27,16 @@ import { describe, expect, it } from "vitest";
 
 const SETTINGS_PATH = resolve(__dirname, "../../src/app/components/Settings.tsx");
 const SRC = readFileSync(SETTINGS_PATH, "utf8");
+// 2026-06-23 (ENG-1225 gap #24): the modal cluster — including the Apple
+// Health explainer dialog — moved to settings/SettingsDialogs.tsx when
+// Settings was split for the two-pane layout. The Connections ROW (and its
+// `setAppleHealthInfoOpen(true)` trigger) stay in Settings.tsx; only the
+// explainer DIALOG content relocated.
+const DIALOGS_PATH = resolve(
+  __dirname,
+  "../../src/app/components/settings/SettingsDialogs.tsx",
+);
+const DIALOGS_SRC = readFileSync(DIALOGS_PATH, "utf8");
 
 describe("Settings — Connections section (ENG-1200 parity)", () => {
   it("renders a Connections section gated behind the rollout flag", () => {
@@ -60,12 +70,14 @@ describe("Settings — Connections section (ENG-1200 parity)", () => {
 
   it("Apple Health row is informational only and opens an honest explainer", () => {
     expect(SRC).toContain('data-testid="settings-apple-health-row"');
-    // Tapping opens the explainer dialog, not a connect action.
+    // Tapping opens the explainer dialog, not a connect action — the row +
+    // its trigger live in Settings.tsx; the dialog content is in
+    // SettingsDialogs.tsx.
     expect(SRC).toContain("setAppleHealthInfoOpen(true)");
-    expect(SRC).toContain('data-testid="settings-apple-health-info-dialog"');
+    expect(DIALOGS_SRC).toContain('data-testid="settings-apple-health-info-dialog"');
     // Honest copy: iOS-only, read-only on web.
-    expect(SRC).toContain("HealthKit is");
-    expect(SRC).toMatch(/iOS-only/);
+    expect(DIALOGS_SRC).toContain("HealthKit is");
+    expect(DIALOGS_SRC).toMatch(/iOS-only/);
   });
 
   it("Apple Health row wires no Switch / connect toggle (web cannot connect HealthKit)", () => {

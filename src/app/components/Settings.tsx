@@ -40,9 +40,8 @@ import { saveWeekStartDay } from "../../lib/nutrition/weekStartDayClient.ts";
 import type { NotificationPrefs } from "../../types/notifications.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
-import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
-import { ActivityLevelPickerDialog } from "./suppr/activity-level-picker-dialog";
-import { CancelExportPromptDialog } from "./suppr/cancel-export-prompt-dialog";
+import { SettingsDialogs } from "./settings/SettingsDialogs";
+import { SettingsTwoPaneShell, type SettingsPaneSection } from "./settings/SettingsTwoPaneShell";
 import { SupprButton } from "./suppr/suppr-button";
 import {
   ACTIVITY_SHORT_LABELS,
@@ -87,13 +86,6 @@ import {
   parseSharingStateJson,
   sharingStorageKey,
 } from "../../lib/household/sharingGridStorage.ts";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "./ui/dialog";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
@@ -819,42 +811,42 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         ? storedName
         : authEmail?.split("@")[0] ?? "Your profile";
 
-  return (
-    <div className="product-shell py-8">
-      {/* Header.
-          Audit 2026-04-30 P1-5 — Stripped the `bg-clip-text text-transparent`
-          combo (no gradient was set, so the text was being clipped against
-          a solid foreground for no reason). The cog icon also lost its
-          `bg-primary/30` background — it stuck out against the otherwise
-          neutral page chrome — and now sits on the same muted surface the
-          rest of the section headings use. */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          {/* Sloe DS (Figma 09 Settings `335:2`): the header glyph sits on
-              a plum-tinted plate (`--foreground-brand` at 10%), not the
-              neutral grey `bg-muted` box, so the icon reads in step with
-              the plum serif title rather than as orphaned grey chrome. */}
-          <div
-            className="p-2 rounded-xl"
-            style={{
-              backgroundColor:
-                "color-mix(in srgb, var(--foreground-brand) 10%, transparent)",
-            }}
-          >
-            <Icons.settings
-              className="w-5 h-5"
-              style={{ color: "var(--foreground-brand)" }}
-            />
-          </div>
-          <h1 className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">Settings</h1>
-        </div>
-        <p className="text-muted-foreground">Manage your account and preferences</p>
-      </div>
+  // Sloe v3 web Settings two-pane layout (gap #24). Flag-DARK: ON →
+  // SettingsTwoPaneShell (sticky left sub-nav + right panel); OFF → the
+  // legacy single-scroll stack below. The section content is identical
+  // in both paths — the shell is a layout/router wrapper that reuses the
+  // exact same `<SupprCard>` nodes, so no setting is dropped or added.
+  // Registered default-OFF in KNOWN_DEFAULT_OFF_FLAGS (web-only re-layout).
+  const twoPane = isFeatureEnabled("sloe_v3_settings");
 
-      {/* Profile header card — Group G IA Batch C (2026-04-29). Replaces
-          the standalone Profile sidebar entry with a tap-to-edit row at
-          the top of Settings. Avatar + display name + tier pill + "Edit
-          profile" link to /profile (the full editor). */}
+  // The page title block — rendered by the legacy stack; the two-pane
+  // shell renders its own equivalent header.
+  const titleBlock = (
+    <div className="mb-8">
+      <div className="flex items-center gap-3 mb-2">
+        {/* Sloe DS (Figma 09 Settings `335:2`): the header glyph sits on
+            a plum-tinted plate (`--foreground-brand` at 10%). */}
+        <div
+          className="p-2 rounded-xl"
+          style={{
+            backgroundColor:
+              "color-mix(in srgb, var(--foreground-brand) 10%, transparent)",
+          }}
+        >
+          <Icons.settings
+            className="w-5 h-5"
+            style={{ color: "var(--foreground-brand)" }}
+          />
+        </div>
+        <h1 className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">Settings</h1>
+      </div>
+      <p className="text-muted-foreground">Manage your account and preferences</p>
+    </div>
+  );
+
+  // Profile header card — Group G IA Batch C (2026-04-29). Avatar +
+  // display name + tier pill + "Edit profile" link to /profile.
+  const profileHeaderCard = (
       <SupprCard
         data-testid="settings-profile-header-card"
         padding="xl"
@@ -908,16 +900,12 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <Icons.forward className="w-4 h-4" aria-hidden />
         </Link>
       </SupprCard>
+  );
 
-      {/* Sloe Pro upsell banner — Sloe DS (Figma 09 Settings `335:2` /
-          `335:23`). Full-width soft peach/clay-tint rounded card: sparkle
-          + "Sloe Pro" (clay) on the left, "Manage" (clay) on the right.
-          Mirrors the mobile banner in
-          `apps/mobile/components/settings/SettingsBundleContent.tsx`. Free
-          users route to /pricing (web upgrade); Pro users route to
-          /account/billing (the Stripe portal shell). The detailed plan
-          state + manage/cancel flow still live in the "Your plan" card +
-          SubscriptionCard below — this banner is the at-a-glance entry. */}
+  // Sloe Pro upsell banner — Sloe DS (Figma 09 Settings `335:2`/`335:23`).
+  // Free users route to /pricing; Pro users route to /account/billing.
+  // Mirrors the mobile Pro banner in SettingsBundleContent.tsx.
+  const proBanner = (
       <Link
         href={userTier === "pro" ? "/account/billing" : "/pricing"}
         data-testid="settings-sloe-pro-banner"
@@ -948,8 +936,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           Manage
         </span>
       </Link>
+  );
 
-      {/* Current plan */}
+  // Current plan card.
+  const planCard = (
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
@@ -981,15 +971,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               flow itself is unchanged. */}
         </div>
       </SupprCard>
+  );
 
-      {/* Personal Section — the user's identity + personal preferences
-          group (name, email, display name, account actions). Renamed from
-          "Account" 2026-06-04 so the group name matches the mobile
-          "Personal" section in
-          `apps/mobile/components/settings/SettingsBundleContent.tsx`. The
-          "Your name" field is the first row here so the greeting-name
-          control sits naturally among the user's personal settings rather
-          than as a lone card. */}
+  // Personal section — name, email, display name, account actions.
+  // Renamed from "Account" 2026-06-04 to match mobile's "Personal" group.
+  const personalCard = (
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.user className="w-5 h-5 text-muted-foreground" />
@@ -1100,8 +1086,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           </div>
         </div>
       </SupprCard>
+  );
 
-      {/* Preferences */}
+  // Preferences card.
+  const preferencesCard = (
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.settings className="w-5 h-5 text-muted-foreground" />
@@ -1673,18 +1661,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           </div>
         </div>
       </SupprCard>
+  );
 
-      {/* Connections — device & people integrations (ENG-1200, mobile
-          parity). Mobile's `SettingsBundleContent` files Household under a
-          separate "People" group and Apple Health under "Connections"; web
-          groups BOTH under one Connections card per ENG-1200's explicit IA
-          call — the row-level treatment (labels, subtitles, nav targets,
-          icons) still matches mobile, which is what parity needs. Gated
-          behind `web_settings_connections_v1` so the old path (no section)
-          stays live until the flag ramps. Placed after Preferences / before
-          Notifications to mirror mobile's Display → Connections → Reminders
-          order. */}
-      {connectionsEnabled ? (
+  // Connections — device & people integrations (ENG-1200, mobile parity).
+  // Gated behind `web_settings_connections_v1`; null when the flag is off
+  // (so the two-pane nav hides the Connections section too). Mobile mirror:
+  // SettingsBundleContent.tsx.
+  const connectionsCard = connectionsEnabled ? (
         <SupprCard
           padding="lg"
           radius="xl"
@@ -1738,9 +1721,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             </button>
           </div>
         </SupprCard>
-      ) : null}
+      ) : null;
 
-      {/* Notifications */}
+  // Notifications card.
+  const notificationsCard = (
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.notifications className="w-5 h-5 text-muted-foreground" />
@@ -1828,22 +1812,14 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           </div>
         </div>
       </SupprCard>
+  );
 
-      {/* Subscription management (ENG-748 #11). Replaces the old
-          "hidden for now" stub. Self-contained card extracted to
-          `settings/SubscriptionCard.tsx` (Settings.tsx is already
-          1700+ lines — screen-size rule). Renders the 4 Stripe states
-          (active / trial / canceled-but-active / past-due), the IAP
-          App-Store copy for RevenueCat subscribers (NO web cancel
-          control), and a Free fallback. Only fetches the status route
-          for Pro users. The "Manage or cancel" CTA fires the SAME
-          cancel-export prompt → /account/billing → Stripe portal flow
-          the legacy button used, so the export-prompt interstitial is
-          unchanged. Web-only — mobile billing is IAP.
-          Flag-gated (ENG-748 #11) behind `web-subscription-card` — billing
-          surface ramps via PostHog after public-launch counsel + visual QA;
-          flag off → falls back to the prior hidden state (null). */}
-      {isFeatureEnabled("web-subscription-card") && userTier !== "free" ? (
+  // Subscription management (ENG-748 #11). Self-contained card; only shown
+  // for Pro users behind `web-subscription-card` (null otherwise). The
+  // "Manage or cancel" CTA fires the same cancel-export prompt flow. Web-
+  // only — mobile billing is IAP.
+  const subscriptionCard =
+    isFeatureEnabled("web-subscription-card") && userTier !== "free" ? (
         <SubscriptionCard
           userTier={userTier}
           onManageSubscription={() => {
@@ -1854,12 +1830,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             setCancelPromptOpen(true);
           }}
         />
-      ) : null}
+      ) : null;
 
-      {/* About — houses the "What's new in Suppr" link. F-0
-          (2026-04-19): single reliable entry point for testers to see
-          which of their feedback items shipped in the latest build.
-          Mirrors the mobile Settings "About" section. */}
+  // About — the "What's new in Suppr" link. Mirrors the mobile About group.
+  const aboutCard = (
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
@@ -1875,8 +1849,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           </Link>
         </div>
       </SupprCard>
+  );
 
-      {/* Promo code — de-emphasised; most users won't need this */}
+  // Promo code — de-emphasised; most users won't need this. The wrapper
+  // carries the `promoSectionRef` scroll-into-view target (header Upgrade).
+  const promoCard = (
       <div ref={promoSectionRef} className="scroll-mt-8">
       <SupprCard
         padding="lg"
@@ -1941,8 +1918,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         </div>
       </SupprCard>
       </div>
+  );
 
-      {/* Privacy */}
+  // Privacy & Security — exports, policy links, reset / erase / delete.
+  const privacyCard = (
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
           <Icons.shield className="w-5 h-5 text-muted-foreground" />
@@ -2137,210 +2116,187 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           </button>
         </div>
       </SupprCard>
+  );
 
-      {/* Cancel-flow export prompt (PR replaces #43, 2026-05-02).
-          Closes journey-architect P1 — surfaces the data-export prompt
-          AT the cancel touchpoint so users with active subscriptions
-          aren't routed to /account/billing without ever seeing the
-          option to take their data with them first. Equal-weight CTAs,
-          calm tone, no retention-via-friction. Mobile parity at
-          `apps/mobile/components/settings/CancelExportPromptSheet.tsx`. */}
-      <CancelExportPromptDialog
-        open={cancelPromptOpen}
-        exporting={cancelPromptExporting}
-        onDismiss={() => {
-          setCancelPromptOpen(false);
-          // State-reset on close: the next open starts from a clean
-          // exporting=false slate so a previous in-flight export
-          // doesn't leave the dialog disabled on the next render.
-          setCancelPromptExporting(false);
-        }}
-        onExport={() => {
-          track(AnalyticsEvents.cancel_export_chosen, {
-            source: "web",
-            tier: userTier,
-          });
-          setCancelPromptExporting(true);
-          // Dialog stays open after the CSV download fires so the
-          // user can still tap "Continue to manage" or dismiss.
-          // Don't auto-close on success.
-          void runCsvExport().finally(() => {
-            setCancelPromptExporting(false);
-          });
-        }}
-        onContinueToManage={() => {
-          track(AnalyticsEvents.cancel_proceeded, {
-            source: "web",
-            tier: userTier,
-          });
-          setCancelPromptOpen(false);
-          setCancelPromptExporting(false);
-          // Route to the existing /account/billing Stripe Customer
-          // Portal shell. Hard nav (not Link) because the user is
-          // committing to a destination outside the SPA shell.
-          if (typeof window !== "undefined") {
-            window.location.href = "/account/billing";
-          }
-        }}
-      />
-
-      {/* Themed destructive-confirm dialogs (audit M7, 2026-04-18).
-          Replace three native `window.confirm` calls. Account deletion
-          keeps its two-stage pattern so a careless tap cannot wipe the
-          account: first dialog warns about permanence, second dialog
-          reiterates what will be deleted. */}
-      {/* Activity level picker (build 10 fix E-2, 2026-04-19). */}
-      <ActivityLevelPickerDialog
-        open={activityPickerOpen}
-        onOpenChange={setActivityPickerOpen}
-        currentLevel={activityLevel ?? "sedentary"}
-        sex={profileSex}
-        weightKg={profileWeightKg}
-        heightCm={profileHeightCm}
-        age={profileAge}
-        goal={profileGoal}
-        planPace={profilePlanPace}
-        nutritionStrategy={profileNutritionStrategy}
-        onConfirm={handleActivityLevelConfirm}
-      />
-      {/* Apple Health explainer (ENG-1200). Honest, informational only —
-          web cannot connect HealthKit (iOS-only), so this dialog points
-          the user to the iOS app and is clear that web Health data is
-          read-only. No connect toggle, no fabricated state. */}
-      <Dialog open={appleHealthInfoOpen} onOpenChange={setAppleHealthInfoOpen}>
-        <DialogContent data-testid="settings-apple-health-info-dialog">
-          <DialogHeader>
-            <DialogTitle>Apple Health syncs from iOS</DialogTitle>
-            <DialogDescription>
-              Apple Health connects in the Suppr iOS app — HealthKit is
-              iOS-only, so there&rsquo;s nothing to connect here on the web.
-              Once it&rsquo;s connected on your iPhone, your steps, active
-              energy, and weight show up across Today and Progress here,
-              read-only.
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-      {/* P1-6 (audit 2026-04-30): Calmed the Erase confirm copy in
-          lockstep with the mobile rewrite. The previous block listed
-          every category in the body, which read as shame energy ("look
-          how much you'll lose"). The new copy points at the recovery
-          path (re-import from your export) and lists categories
-          lowercase if the user wants a reminder. */}
-      {/* 2026-05-12 (premium-bar audit DC9 polish): description was a
-          paragraph — comma-separated list, easy to skim past. Linear's
-          pattern for irreversible actions is scannable ✓/✗ bullets so
-          the user can verify at a glance "yes I'm OK with X going".
-          Mirror of mobile reset modal in SettingsBundleContent.tsx. */}
-      <DestructiveConfirmDialog
-        typeToConfirm="RESET"
-        open={eraseEverythingOpen}
-        onOpenChange={setEraseEverythingOpen}
-        title="Delete your data and start fresh?"
-        description={
-          <span className="block">
-            <span className="block text-xs text-muted-foreground mb-3">
-              You can re-import from your export file anytime.
-            </span>
-            <span className="block space-y-1.5 mt-1">
-              {[
-                { label: "Food log", kept: false },
-                { label: "Daily journal", kept: false },
-                { label: "Library saves", kept: false },
-                { label: "Shopping lists", kept: false },
-                { label: "Imported recipes", kept: false },
-                { label: "Synced activity", kept: false },
-                { label: "Your account", kept: true },
-                { label: "Subscription", kept: true },
-              ].map((row) => (
-                <span key={row.label} className="flex items-center gap-2.5 text-[13px]">
-                  <span
-                    className={`inline-block w-3.5 text-center font-bold ${
-                      row.kept ? "text-success" : "text-destructive"
-                    }`}
-                    aria-label={row.kept ? "Kept" : "Cleared"}
-                  >
-                    {row.kept ? "✓" : "✗"}
-                  </span>
-                  <span
-                    className={
-                      row.kept
-                        ? "text-foreground"
-                        : "text-muted-foreground line-through"
-                    }
-                  >
-                    {row.label}
-                  </span>
-                </span>
-              ))}
-            </span>
-          </span>
+  // All Settings modals/overlays — extracted to SettingsDialogs.tsx so the
+  // host stays under its line pin. Behaviour-identical (existing handlers,
+  // passed through). Rendered at the Settings root in BOTH layout paths
+  // (single-pane + two-pane) so dialogs are available regardless of which
+  // section is shown.
+  const dialogs = (
+    <SettingsDialogs
+      cancelPromptOpen={cancelPromptOpen}
+      cancelPromptExporting={cancelPromptExporting}
+      onCancelPromptDismiss={() => {
+        setCancelPromptOpen(false);
+        setCancelPromptExporting(false);
+      }}
+      onCancelPromptExport={() => {
+        track(AnalyticsEvents.cancel_export_chosen, { source: "web", tier: userTier });
+        setCancelPromptExporting(true);
+        // Dialog stays open after the CSV download fires so the user can
+        // still continue or dismiss. Don't auto-close on success.
+        void runCsvExport().finally(() => setCancelPromptExporting(false));
+      }}
+      onCancelPromptContinueToManage={() => {
+        track(AnalyticsEvents.cancel_proceeded, { source: "web", tier: userTier });
+        setCancelPromptOpen(false);
+        setCancelPromptExporting(false);
+        // Hard nav (not Link) — committing to a destination outside the SPA.
+        if (typeof window !== "undefined") {
+          window.location.href = "/account/billing";
         }
-        confirmLabel="Erase everything"
-        onConfirm={handleEraseEverything}
-      />
-      <DestructiveConfirmDialog
-        open={clearLocalOpen}
-        onOpenChange={setClearLocalOpen}
-        title="Delete local data & sign out?"
-        description="This will sign you out and remove Sloe data stored on this device."
-        confirmLabel="Delete & sign out"
-        onConfirm={async () => {
-          for (const k of LOCAL_CLEAR_KEYS) {
-            try {
-              localStorage.removeItem(k);
-            } catch {
-              /* ignore */
-            }
-          }
-          await signOut();
-          toast.success("Local data cleared. Signed out.");
-          window.location.href = "/login";
-        }}
-      />
-      <DestructiveConfirmDialog
-        open={accountDeletionStage === "first"}
-        onOpenChange={(o) => {
-          if (!o) setAccountDeletionStage("idle");
-        }}
-        title="Delete your account?"
-        description="This will permanently delete your account and all associated data. This action cannot be undone."
-        confirmLabel="Continue"
-        onConfirm={async () => {
-          setAccountDeletionStage("second");
-        }}
-      />
-      <DestructiveConfirmDialog
-        open={accountDeletionStage === "second"}
-        onOpenChange={(o) => {
-          if (!o) setAccountDeletionStage("idle");
-        }}
-        title="Are you sure?"
-        description="Your recipes, logs, meal plans, and profile will be permanently deleted."
-        confirmLabel="Delete account"
-        onConfirm={async () => {
+      }}
+      activityPickerOpen={activityPickerOpen}
+      onActivityPickerOpenChange={setActivityPickerOpen}
+      activityLevel={activityLevel}
+      profileSex={profileSex}
+      profileWeightKg={profileWeightKg}
+      profileHeightCm={profileHeightCm}
+      profileAge={profileAge}
+      profileGoal={profileGoal}
+      profilePlanPace={profilePlanPace}
+      profileNutritionStrategy={profileNutritionStrategy}
+      onActivityLevelConfirm={handleActivityLevelConfirm}
+      appleHealthInfoOpen={appleHealthInfoOpen}
+      onAppleHealthInfoOpenChange={setAppleHealthInfoOpen}
+      eraseEverythingOpen={eraseEverythingOpen}
+      onEraseEverythingOpenChange={setEraseEverythingOpen}
+      onEraseEverythingConfirm={handleEraseEverything}
+      clearLocalOpen={clearLocalOpen}
+      onClearLocalOpenChange={setClearLocalOpen}
+      onClearLocalConfirm={async () => {
+        for (const k of LOCAL_CLEAR_KEYS) {
           try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-            const res = await fetch("/api/account/delete", {
-              method: "DELETE",
-              headers: token ? { Authorization: `Bearer ${token}` } : {},
-            });
-            const json = await res.json();
-            if (json.ok) {
-              for (const k of LOCAL_CLEAR_KEYS) {
-                try { localStorage.removeItem(k); } catch { /* ignore */ }
-              }
-              toast.success("Account deleted.");
-              window.location.href = "/login";
-            } else {
-              toast.error(json.error || "Account deletion failed. Please try again.");
-            }
+            localStorage.removeItem(k);
           } catch {
-            toast.error("Account deletion failed. Please try again.");
+            /* ignore */
           }
-        }}
-      />
+        }
+        await signOut();
+        toast.success("Local data cleared. Signed out.");
+        window.location.href = "/login";
+      }}
+      accountDeletionStage={accountDeletionStage}
+      onAccountDeletionStageChange={setAccountDeletionStage}
+      onAccountDeleteConfirm={async () => {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+          const res = await fetch("/api/account/delete", {
+            method: "DELETE",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          const json = await res.json();
+          if (json.ok) {
+            for (const k of LOCAL_CLEAR_KEYS) {
+              try { localStorage.removeItem(k); } catch { /* ignore */ }
+            }
+            toast.success("Account deleted.");
+            window.location.href = "/login";
+          } else {
+            toast.error(json.error || "Account deletion failed. Please try again.");
+          }
+        } catch {
+          toast.error("Account deletion failed. Please try again.");
+        }
+      }}
+    />
+  );
+
+  // ── Sloe v3 two-pane layout (flag ON) ────────────────────────────────
+  // The shell reuses the EXACT same section cards as the legacy stack — it
+  // is a layout/router wrapper, not new settings. Sections group the same
+  // content the single-scroll page shows: Account (plan + personal +
+  // subscription + about + promo), Preferences, Connections (only when its
+  // own flag is on), Notifications, Privacy & data. Nothing is dropped or
+  // added. The header (profile card + Pro banner) reads as page identity,
+  // shown above the grid on every section.
+  if (twoPane) {
+    const sections: SettingsPaneSection[] = [
+      {
+        id: "account",
+        label: "Account & billing",
+        lead: "Your plan, personal details, and account actions.",
+        icon: "user",
+        content: (
+          <>
+            {planCard}
+            {personalCard}
+            {subscriptionCard}
+            {aboutCard}
+            {promoCard}
+          </>
+        ),
+      },
+      {
+        id: "preferences",
+        label: "Preferences",
+        lead: "How Sloe tracks, measures, and shows your day.",
+        icon: "settings",
+        content: preferencesCard,
+      },
+      // Connections section only appears when its own flag is on (the card
+      // is null otherwise) — no empty section in the nav.
+      ...(connectionsCard
+        ? [
+            {
+              id: "connections",
+              label: "Connections",
+              lead: "Your devices, apps, and household.",
+              icon: "link" as const,
+              content: connectionsCard,
+            },
+          ]
+        : []),
+      {
+        id: "notifications",
+        label: "Notifications",
+        lead: "Gentle nudges, never noise.",
+        icon: "notifications",
+        content: notificationsCard,
+      },
+      {
+        id: "privacy",
+        label: "Privacy & data",
+        lead: "Your log is yours. Take it or delete it, anytime.",
+        icon: "shield",
+        content: privacyCard,
+      },
+    ];
+
+    return (
+      <>
+        <SettingsTwoPaneShell
+          header={
+            <>
+              {profileHeaderCard}
+              {proBanner}
+            </>
+          }
+          sections={sections}
+        />
+        {dialogs}
+      </>
+    );
+  }
+
+  // ── Legacy single-scroll stack (flag OFF — unchanged) ────────────────
+  return (
+    <div className="product-shell py-8">
+      {titleBlock}
+      {profileHeaderCard}
+      {proBanner}
+      {planCard}
+      {personalCard}
+      {preferencesCard}
+      {connectionsCard}
+      {notificationsCard}
+      {subscriptionCard}
+      {aboutCard}
+      {promoCard}
+      {privacyCard}
+      {dialogs}
     </div>
   );
 });

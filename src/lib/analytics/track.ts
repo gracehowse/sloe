@@ -333,10 +333,18 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   single self-named fallback line. The WRITE path (snapshot capture) is
  *   always-on + defensive; this flag gates only the read/display so data can
  *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
+ * - `sloe_v3_settings` (ENG-1225 gap #24) — the v3 web Settings "two-pane"
+ *   layout: a sticky left sub-nav + a right panel that swaps to the selected
+ *   section. ON → `SettingsTwoPaneShell`; OFF → the legacy single-scroll stack.
+ *   Pure re-layout — no setting added/removed. Default OFF: a structural nav
+ *   change on a core surface, ramps via PostHog after Grace SEEs it. WEB-ONLY —
+ *   mobile Settings is a separate native surface, so there is NO mobile mirror
+ *   (mobile omits web-only default-off flags, like the landing hero).
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "landing_hero_hybrid_v1",
   "nutrition_entry_ingredients_v1",
+  "sloe_v3_settings",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

@@ -43,6 +43,17 @@
  * AppDataContext stack the full Settings tree depends on. The
  * SubscriptionCard's own render behaviour is pinned by
  * `tests/unit/subscriptionCard.test.tsx`.
+ *
+ *   - 2026-06-23 (ENG-1225 gap #24): the Settings return body was split
+ *     into named section `const` nodes so the v3 two-pane layout
+ *     (`SettingsTwoPaneShell`) can reuse the SAME cards as the legacy
+ *     single-scroll stack. The SubscriptionCard mount became the
+ *     `subscriptionCard` const; the modal cluster (including
+ *     `<CancelExportPromptDialog>`) moved into `settings/SettingsDialogs.tsx`
+ *     and is wired from Settings via the `dialogs` node's
+ *     `onCancelPromptContinueToManage` handler. The behaviour — flag gate,
+ *     tier gate, dialog-first manage path, hard nav to the portal — is
+ *     unchanged; the assertions below track the new source shape.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -50,13 +61,19 @@ import { describe, expect, it } from "vitest";
 
 const SETTINGS_PATH = resolve(__dirname, "../../src/app/components/Settings.tsx");
 const SRC = readFileSync(SETTINGS_PATH, "utf8");
+const DIALOGS_PATH = resolve(
+  __dirname,
+  "../../src/app/components/settings/SettingsDialogs.tsx",
+);
+const DIALOGS_SRC = readFileSync(DIALOGS_PATH, "utf8");
 
 describe("Settings — Manage subscription via SubscriptionCard → cancel-flow export prompt (ENG-748 #11)", () => {
   it("mounts <SubscriptionCard> flag-gated behind web-subscription-card AND gated on userTier !== 'free'", () => {
     // Flag gate first (visual changes ship behind isFeatureEnabled),
     // then the tier gate so free users never see it even at 100% ramp.
+    // (Now the `subscriptionCard` const — the gate is the const's value.)
     expect(SRC).toMatch(
-      /\{isFeatureEnabled\("web-subscription-card"\) && userTier !== "free" \? \(\s*<SubscriptionCard/,
+      /isFeatureEnabled\("web-subscription-card"\) && userTier !== "free" \? \(\s*<SubscriptionCard/,
     );
   });
 
@@ -82,20 +99,27 @@ describe("Settings — Manage subscription via SubscriptionCard → cancel-flow 
     expect(SRC).toMatch(/\{userTier === "free" && \(\s*<Link\s+href="\/pricing"/);
   });
 
-  it("the CancelExportPromptDialog is mounted once in the component", () => {
-    // Exactly one mount — guards against double-mount drift if a
-    // refactor copies the JSX and forgets to delete the original.
-    const matches = SRC.match(/<CancelExportPromptDialog\s/g);
-    expect(matches).not.toBeNull();
-    expect(matches!.length).toBe(1);
+  it("the CancelExportPromptDialog is mounted once, in SettingsDialogs", () => {
+    // The modal cluster moved to settings/SettingsDialogs.tsx. Exactly
+    // one mount there — guards against double-mount drift — and none left
+    // behind in Settings.tsx.
+    const dialogMatches = DIALOGS_SRC.match(/<CancelExportPromptDialog\s/g);
+    expect(dialogMatches).not.toBeNull();
+    expect(dialogMatches!.length).toBe(1);
+    expect(SRC).not.toMatch(/<CancelExportPromptDialog\s/);
+    // Settings wires the cluster exactly once via <SettingsDialogs>.
+    const wiring = SRC.match(/<SettingsDialogs\s/g);
+    expect(wiring).not.toBeNull();
+    expect(wiring!.length).toBe(1);
   });
 
-  it("the dialog's onContinueToManage routes to /account/billing via window.location.href", () => {
+  it("the continue-to-manage handler routes to /account/billing via window.location.href", () => {
     // Hard nav (not Link) because /account/billing is the
     // server-component Stripe Customer Portal shell — leaving the
-    // SPA shell is intentional.
+    // SPA shell is intentional. Settings passes the handler into the
+    // dialog cluster as `onCancelPromptContinueToManage`.
     expect(SRC).toMatch(
-      /onContinueToManage[\s\S]{0,800}?window\.location\.href\s*=\s*"\/account\/billing"/,
+      /onCancelPromptContinueToManage=\{[\s\S]{0,800}?window\.location\.href\s*=\s*"\/account\/billing"/,
     );
   });
 });
