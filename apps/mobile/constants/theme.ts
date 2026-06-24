@@ -42,6 +42,13 @@ export const Accent = {
    *  as a literal in `context/theme.tsx`'s DARK_ACCENT. Mirrors web `.dark`
    *  `--accent-primary`. (`primaryLight` dark = `purpleLight` #9A7BAA.) */
   primaryDark: '#7E5C92',
+  /** Sloe Deep (#241733) — the deep-plum brand GROUND for full-bleed brand
+   *  screens (onboarding welcome `.ob--brand`, paywall). White text + frost
+   *  accents sit on it. Mirrors web `--primary-deep`. (ENG-1247) */
+  primaryDeep: '#241733',
+  /** Frost (#c9c2d6) — soft lavender-grey for muted dividers + the brand-screen
+   *  italic tagline on the deep-plum ground. Mirrors web `--accent-frost`. */
+  frost: '#c9c2d6',
   /** Soft fill for selected pills / segmented active / nudge tint. Lifted-aubergine
    *  hue (12%) so the tint stays perceptible. Solid fill stays reserved for the FAB
    *  + conversion CTAs; everyday primaries are a deep-plum OUTLINE. */
