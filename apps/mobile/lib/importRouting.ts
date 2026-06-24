@@ -9,11 +9,11 @@ import { setPendingImportText } from "@suppr/shared/recipe-import/pendingImportT
  * returns a `hint` instead of navigating, so the sheet can explain rather than
  * dead-end.
  *
- * Pasted RECIPE text is threaded via `setPendingImportText` (a transient store —
- * text can be long, so not a route param) and consumed once by create-recipe's
- * paste modal on arrival, so the user doesn't re-paste. Plan-text threading is a
- * follow-up (ENG-1245): until `/plan-import` consumes the store, plan-text must
- * NOT set it (stale-leak), so it still opens the flow for a manual paste.
+ * Pasted RECIPE/PLAN text is threaded via `setPendingImportText` (a transient
+ * store — text can be long, so not a route param) and consumed once at the
+ * destination on arrival, so the user doesn't re-paste: recipe text by
+ * create-recipe's paste modal, plan text by the plan-import screen on mount.
+ * (CSV still routes to the Settings hint — ENG-1245.)
  */
 export type ImportRouteResult = { routed: boolean; hint?: string };
 
@@ -35,6 +35,9 @@ export function routeImport(
       router.push({ pathname: "/import-shared", params: { url: c.url ?? raw.trim() } });
       return { routed: true };
     case "plan-text":
+      // Thread the pasted plan text to the plan-import paste step (consumed
+      // once on mount) so the user doesn't re-paste it.
+      setPendingImportText(raw);
       router.push("/plan-import");
       return { routed: true };
     case "recipe-text":

@@ -25,6 +25,7 @@ import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { authedFetch } from "@/lib/authedFetch";
 import { commitPlanImport } from "@/lib/planImportCommit";
+import { consumePendingImportText } from "@suppr/shared/recipe-import/pendingImportText";
 import { setPendingImportDayPlan } from "@/lib/planImportPendingApply";
 import { rebalanceImportedPlanDays } from "@suppr/shared/planning/planImport/rebalanceImportedPlan";
 import { DEFAULT_PLANNER_BANDS } from "@suppr/nutrition-core/mealPlanAlgo";
@@ -89,6 +90,13 @@ export default function PlanImportScreen() {
       router.replace("/(tabs)/planner");
     }
   }, [router]);
+
+  // ENG-1245 #3 — consume meal-plan text threaded from the unified Import sheet
+  // once on mount (replacing the sample) so the user doesn't re-paste.
+  useEffect(() => {
+    const pending = consumePendingImportText();
+    if (pending) setPasteText(pending);
+  }, []);
 
   const extractSourceText = useCallback(
     async (file: PickedFile, kind: "pdf" | "image"): Promise<string | null> => {

@@ -67,9 +67,10 @@ describe("routeImport text threading (ENG-1225 #3)", () => {
     expect(consumePendingImportText()).toBeNull();
   });
 
-  it("plan text does NOT stash (no destination consumes it yet → no stale-leak)", () => {
+  it("plan text is stashed for the plan-import paste step to consume", () => {
     const raw = "Monday\nBreakfast: eggs\nLunch: salad\nTuesday\nDinner: salmon";
     routeImport(classifyImport(raw), raw, router());
+    expect(consumePendingImportText()).toBe(raw);
     expect(consumePendingImportText()).toBeNull();
   });
 

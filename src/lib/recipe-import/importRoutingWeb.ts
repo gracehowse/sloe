@@ -15,10 +15,9 @@ import { setPendingImportText } from "./pendingImportText";
  * a social / recipe URL prefills the import field via `?importUrl=` (the web
  * analogue of mobile's `/import-shared?url=`). Pasted RECIPE text is threaded
  * via `setPendingImportText` (a transient store — text can be long, so not a URL
- * param) and consumed by RecipeUpload's paste dialog on arrival, so the user
- * doesn't re-paste. Plan-text threading is a follow-up (ENG-1245): until
- * `/plan-import` consumes the store, plan-text must NOT set it (stale-leak), so
- * plan-text still opens the flow for a manual paste.
+ * param) and consumed at the destination on arrival, so the user doesn't
+ * re-paste: recipe text by RecipeUpload's paste dialog, plan text by
+ * `usePlanImport` on mount. (CSV still routes to the Settings hint — ENG-1245.)
  */
 export type ImportRouteResult = { routed: boolean; hint?: string };
 
@@ -36,6 +35,9 @@ export function routeImport(
       router.push(`/import?importUrl=${encodeURIComponent(c.url ?? raw.trim())}`);
       return { routed: true };
     case "plan-text":
+      // Thread the pasted plan text to the plan-import paste step (consumed
+      // once on mount) so the user doesn't re-paste it.
+      setPendingImportText(raw);
       router.push("/plan-import");
       return { routed: true };
     case "recipe-text":

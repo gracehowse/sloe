@@ -13,10 +13,10 @@
  * can never leak into a later, unrelated import. No React/hooks here, so this
  * shared module carries no cross-runtime dedupe risk.
  *
- * NOTE: only kinds whose destination actually consumes this may set it — today
- * that is `recipe-text` only. `plan-text` threading is a follow-up (ENG-1245);
- * until `/plan-import` consumes, it must NOT set this, or its text would leak
- * into the next recipe import.
+ * INVARIANT: only kinds whose destination actually consumes this may set it —
+ * today `recipe-text` (create paste dialog/modal) and `plan-text` (plan-import
+ * paste step). CSV routes to a hint, so it must NOT set this, or its text would
+ * leak into the next recipe/plan import.
  */
 let pendingImportText: string | null = null;
 
