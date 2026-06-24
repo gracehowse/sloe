@@ -100,19 +100,19 @@ export function DiscoverFeaturedHeroCard({
       aria-label="Trending this week"
     >
       <div
-        role="button"
-        tabIndex={0}
         data-testid="discover-featured-hero-card"
-        aria-label={`Open recipe: ${recipe.title}`}
-        onClick={() => onOpenRecipe(recipe)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpenRecipe(recipe);
-          }
-        }}
-        className="group grid cursor-pointer grid-cols-[1.05fr_1fr] overflow-hidden rounded-3xl bg-card shadow-md transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        className="group relative grid grid-cols-[1.05fr_1fr] overflow-hidden rounded-3xl bg-card shadow-md transition-shadow hover:shadow-lg focus-within:shadow-lg"
       >
+        {/* Stretched primary action — covers the whole card to open the recipe.
+            A real <button> (not a role="button" div), so keyboard + SR get a
+            proper control. The creator button below sits at a higher z-index, so
+            both are siblings — no nested-interactive a11y violation. */}
+        <button
+          type="button"
+          onClick={() => onOpenRecipe(recipe)}
+          aria-label={`Open recipe: ${recipe.title}`}
+          className="absolute inset-0 z-10 cursor-pointer rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        />
         <div className="relative min-h-[280px] overflow-hidden">
           <DiscoverRecipeImage
             id={recipe.id}
@@ -146,11 +146,8 @@ export function DiscoverFeaturedHeroCard({
               {creatorId && onOpenCreator ? (
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenCreator(creatorId);
-                  }}
-                  className="inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-full"
+                  onClick={() => onOpenCreator(creatorId)}
+                  className="relative z-20 inline-flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-full"
                 >
                   <span
                     className="inline-flex size-7 items-center justify-center rounded-full font-[family-name:var(--font-display)] text-[13px] text-white"
