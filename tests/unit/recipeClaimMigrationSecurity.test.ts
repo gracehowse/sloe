@@ -45,3 +45,74 @@ describe("ENG-870 recipe claim migration security", () => {
     }
   });
 });
+
+/**
+ * ENG-1243 — forward-fix migration. The base eng870 migration above is recorded
+ * APPLIED in schema_migrations, so `db push` skips it and its claim-RLS guards
+ * never reached the live DB (verified read-only 2026-06-23: live
+ * recipes_update_own/insert_own had NO claim guards). This new forward migration
+ * re-applies them as a fresh version so db push runs it.
+ *
+ * NOTE: these file-text assertions are necessary-but-NOT-sufficient — the base
+ * migration passed identical checks while prod stayed vulnerable. The authoritative
+ * gate is re-reading pg_policy on the live DB AFTER `supabase db push --linked`.
+ */
+describe("ENG-1243 recipe claim RLS forward-fix migration", () => {
+  const sql = read(
+    "supabase/migrations/20260702120300_eng870_recipe_claim_rls_forward_fix.sql",
+  );
+  const normalized = normalize(sql);
+
+  it("re-creates recipes_update_own with claim guards in BOTH using and with-check", () => {
+    const start = normalized.indexOf('CREATE POLICY "recipes_update_own"');
+    const end = normalized.indexOf('CREATE POLICY "recipes_insert_own"');
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+
+    const policy = normalized.slice(start, end);
+    const usingClause = policy.slice(
+      policy.indexOf("USING ("),
+      policy.indexOf("WITH CHECK"),
+    );
+    const withCheck = policy.slice(policy.indexOf("WITH CHECK"));
+
+    // The de-claim block lives in USING (can't even target a claimed row);
+    // the self-claim block lives in WITH CHECK (result must stay unclaimed).
+    for (const clause of [usingClause, withCheck]) {
+      expect(clause).toContain("content_origin <> 'claimed'");
+      expect(clause).toContain("claimed_by IS NULL");
+      expect(clause).toContain("claimed_at IS NULL");
+      expect(clause).toContain("claim_verification IS NULL");
+    }
+  });
+
+  it("re-creates recipes_insert_own with claim guards", () => {
+    const start = normalized.indexOf('CREATE POLICY "recipes_insert_own"');
+    expect(start).toBeGreaterThan(-1);
+    const policy = normalized.slice(start);
+    expect(policy).toContain("content_origin <> 'claimed'");
+    expect(policy).toContain("claimed_by IS NULL");
+    expect(policy).toContain("claimed_at IS NULL");
+    expect(policy).toContain("claim_verification IS NULL");
+  });
+
+  it("re-locks the recipe_claims audit log (RLS on + grants revoked)", () => {
+    // Adversarial-verify lens 3 (P0): live recipe_claims had RLS DISABLED and
+    // anon+authenticated holding full grants incl. DELETE/TRUNCATE — the same
+    // drift as the policies. The forward migration must re-secure it.
+    expect(normalized).toMatch(
+      /ALTER TABLE public\.recipe_claims ENABLE ROW LEVEL SECURITY/i,
+    );
+    expect(normalized).toMatch(
+      /REVOKE ALL ON TABLE public\.recipe_claims FROM anon, authenticated/i,
+    );
+  });
+
+  it("re-adds the recipes_claimed_requires_verified_claim CHECK constraint", () => {
+    expect(normalized).toContain("recipes_claimed_requires_verified_claim");
+    expect(normalized).toContain("content_origin <> 'claimed'");
+    expect(normalized).toContain(
+      "claim_verification->>'method' IN ('oauth_handle', 'bio_code', 'dns_meta')",
+    );
+  });
+});
