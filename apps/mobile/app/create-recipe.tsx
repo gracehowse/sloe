@@ -36,6 +36,7 @@ import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/c
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
+import { consumePendingImportText } from "@suppr/shared/recipe-import/pendingImportText";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { supabase } from "@/lib/supabase";
 import { authedFetch } from "@/lib/authedFetch";
@@ -516,6 +517,10 @@ export default function CreateRecipeScreen() {
     if (params.autoPaste !== "1") return;
     autoPasteFiredRef.current = true;
     router.setParams({ autoPaste: undefined } as Record<string, undefined>);
+    // ENG-1225 #3 — prefill with text threaded from the unified Import sheet
+    // (consumed once), so a routed recipe paste isn't re-typed.
+    const pending = consumePendingImportText();
+    if (pending) setPasteDraft(pending);
     setPasteModalOpen(true);
   }, [params.autoPaste, router]);
 

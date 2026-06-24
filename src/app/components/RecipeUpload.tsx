@@ -9,6 +9,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { useSearchParams } from "next/navigation";
 import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredientLine.ts";
+import { consumePendingImportText } from "../../lib/recipe-import/pendingImportText.ts";
 import { resolveStructuredIngredient } from "../../lib/recipe-ingredients/structuredIngredientsForVerify.ts";
 import { isStructuredSource } from "../../lib/nutrition/structuredSourceGate.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
@@ -499,6 +500,10 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     if (mode !== "create" || !createInitialMethod) return;
     initialMethodFiredRef.current = true;
     if (createInitialMethod === "paste") {
+      // ENG-1225 #3 — prefill with text threaded from the unified Import sheet
+      // (consumed once), so a routed recipe paste isn't re-typed.
+      const pending = consumePendingImportText();
+      if (pending) setPasteDraft(pending);
       setPasteDialogOpen(true);
     } else if (createInitialMethod === "scan") {
       setMatchPickerIdx(0);
