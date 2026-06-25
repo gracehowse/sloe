@@ -25,6 +25,28 @@ Worked autonomously after the audit (PR #609):
 - **A2b ConfirmFood 3-tile macro grid** — DECISION FOR GRACE. The prototype's P/C/F tile
   grid would regress the live card's richer micro table (Fibre/Sugar/Sodium). Held; options
   posted on ENG-1247 (recommend keep-richer or mix-and-match).
+
+### Adversarial review rework (PR #609, verdict needs-rework, 2026-06-25)
+
+A 4-lens skeptical review of the whole conform diff caught real debt — much from EARLIER
+sessions' conforms marked "shipped". Do NOT merge PR #609 until M1/M2/M4 land. Full detail
+on ENG-1247 + the review output.
+
+- **M1 — onboarding welcome landed MOBILE-ONLY** (web twin untouched, oat/green + FloatingPreview
+  tiles; mobile docstring falsely claims parity; orphaned `ONBOARDING_WELCOME_BODY_MOBILE`).
+  Build the web welcome to the prototype `.wob-*` spec (Sloe-App.html:2619-2640) OR tracked
+  deferral + docstring fix. TODO.
+- **M2 — Today greeting→serif-date dead code** (`todayGreeting` + `firstNameFromMetadata` +
+  `GREETING_NAME_METADATA_KEYS` zero live callers; lying Settings comments; stale
+  `greetingNameMetadata.test.ts` + `todayGreeting` describe block). Verified deletable. TODO.
+- **M3 — stale "Library" e2e** → "Your kitchen". ✅ DONE.
+- **M4 — DayStrip chevrons invented week-paging** (prototype chevrons open the calendar);
+  lost jump-to-today; pages into empty weeks. Needs Grace steer (gated on B29 CalendarPicker).
+  TODO.
+- **M5 — DayStrip chevrons + Recipes pencil/link icons `IconSize.md`(14) → `.lg`(18)**. TODO.
+- **S1–S6** (should-fix): mobile selected day-letter 70% white; mobile Recipes header ink
+  neutral-not-plum; mobile welcome tagline 17→on-ramp; 404 comment honesty (24px is right);
+  overlines 700→600; mobile welcome render test. TODO.
 - **A17 Billing Manage button → SupprButton** — DEFERRED. The card is gated on Stripe
   subscription status, which the Stripe-less local dev server can't produce, and Settings
   isn't in the CI visual suite — so the change is un-SEE-able anywhere available. Low value
