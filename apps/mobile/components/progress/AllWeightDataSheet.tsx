@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   iconSquare: {
     width: 32,
     height: 32,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.full,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -817,7 +817,7 @@ export function TodayMealsSection({
                                       );
                                     }
                                     return (
-                                      <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 shrink-0">
+                                      <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 shrink-0">
                                         <Icons.dinner className="h-4 w-4 text-primary" aria-hidden />
                                       </span>
                                     );

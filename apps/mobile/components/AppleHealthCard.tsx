@@ -2,6 +2,7 @@ import React from "react";
 import { Linking, Pressable, Text, View, ActivityIndicator } from "react-native";
 import { Footprints, Flame, HeartPulse, Scale } from "lucide-react-native";
 import { Accent, Radius } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -89,7 +90,7 @@ export function AppleHealthCard({
       accessibilityLabel="Apple Health"
       style={[{
         backgroundColor: cardElev.liftBg ?? t.card,
-        borderRadius: Radius.lg,
+        borderRadius: CARD_RADIUS,
         borderWidth: cardElev.useBorder ? 1 : 0,
         borderColor: t.border,
         padding: 16,
@@ -221,7 +222,7 @@ export function AppleHealthCard({
                 style={{
                   width: 28,
                   height: 28,
-                  borderRadius: 8,
+                  borderRadius: Radius.full,
                   backgroundColor: row.color + "1A",
                   alignItems: "center",
                   justifyContent: "center",

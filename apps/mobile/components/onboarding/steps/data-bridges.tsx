@@ -60,6 +60,7 @@ import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";
 import { appChoiceDisplayName } from "@suppr/shared/onboarding/appChoiceOptions";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 
 export function MobileDataBridgesStep() {
   const overline = useStepOverline();
@@ -282,8 +283,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
       if (outcome.ok) {
         set({ healthGranted: true, dataBridgeChosen: "apple-health" });
         track(AnalyticsEvents.onboarding_data_bridge_chosen, { option: "apple-health" });
-        // Best-effort first sync so the user sees their adaptive
-        // TDEE running on real data on day 1.
+        // Best-effort first sync — adaptive TDEE on real data day 1.
         if (userId) {
           try {
             await syncHealthData(userId);
@@ -520,7 +520,7 @@ function BridgeCard({
     <View
       style={{
         backgroundColor: colors.card,
-        borderRadius: 16,
+        borderRadius: CARD_RADIUS,
         padding: 16,
         marginBottom: 20, // Spacing.lg — breathable inter-card gap (was off-scale 12 = too tight, per Grace)
         borderWidth: 1,
@@ -534,7 +534,7 @@ function BridgeCard({
           style={{
             width: 36,
             height: 36,
-            borderRadius: 10,
+            borderRadius: Radius.full,
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: iconColor + "26",

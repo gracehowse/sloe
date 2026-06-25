@@ -82,7 +82,7 @@ export function PortionPickerWeb(props: PortionPickerWebProps) {
           type="button"
           aria-label="Decrease amount"
           onClick={() => bump(-step)}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-card text-foreground shadow-sm hover:bg-muted active:scale-95 transition"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-foreground shadow-sm hover:bg-muted active:scale-95 transition"
         >
           <span className="text-xl font-bold leading-none">−</span>
         </button>
@@ -136,7 +136,7 @@ export function PortionPickerWeb(props: PortionPickerWebProps) {
           type="button"
           aria-label="Increase amount"
           onClick={() => bump(step)}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-card text-foreground shadow-sm hover:bg-muted active:scale-95 transition"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-foreground shadow-sm hover:bg-muted active:scale-95 transition"
         >
           <span className="text-xl font-bold leading-none">+</span>
         </button>

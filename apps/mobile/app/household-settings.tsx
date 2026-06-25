@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { CARD_RADIUS, SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   View,
   Text,
@@ -475,7 +475,7 @@ export default function HouseholdSettingsScreen() {
             style={[
               cardElevation.shadowStyle ?? {},
               {
-                borderRadius: Radius.lg,
+                borderRadius: CARD_RADIUS,
                 borderWidth: cardElevation.useBorder ? 1 : 0,
                 borderColor: colors.cardBorder,
                 backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -514,14 +514,14 @@ export default function HouseholdSettingsScreen() {
                 style={[
                   cardElevation.shadowStyle ?? {},
                   {
-                    borderRadius: Radius.lg,
+                    borderRadius: CARD_RADIUS,
                     marginBottom: Spacing.md,
                   },
                 ]}
               >
                 <View
                   style={{
-                    borderRadius: Radius.lg,
+                    borderRadius: CARD_RADIUS,
                     borderWidth: 1,
                     borderColor: accent.primary + "33",
                     backgroundColor: accent.primary + "0d",
@@ -619,7 +619,7 @@ export default function HouseholdSettingsScreen() {
               <View style={[cardElevation.shadowStyle ?? {}, { borderRadius: Radius.lg }]}>
               <View
                 style={{
-                  borderRadius: Radius.lg,
+                  borderRadius: CARD_RADIUS,
                   borderWidth: cardElevation.useBorder ? 1 : 0,
                   borderColor: colors.cardBorder,
                   backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -743,7 +743,7 @@ export default function HouseholdSettingsScreen() {
               <View style={[cardElevation.shadowStyle ?? {}, { borderRadius: Radius.lg }]}>
               <View
                 style={{
-                  borderRadius: Radius.lg,
+                  borderRadius: CARD_RADIUS,
                   borderWidth: cardElevation.useBorder ? 1 : 0,
                   borderColor: colors.cardBorder,
                   backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -789,7 +789,7 @@ export default function HouseholdSettingsScreen() {
               <View style={[cardElevation.shadowStyle ?? {}, { borderRadius: Radius.lg }]}>
               <View
                 style={{
-                  borderRadius: Radius.lg,
+                  borderRadius: CARD_RADIUS,
                   borderWidth: cardElevation.useBorder ? 1 : 0,
                   borderColor: colors.cardBorder,
                   backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -870,7 +870,7 @@ export default function HouseholdSettingsScreen() {
               <View style={[cardElevation.shadowStyle ?? {}, { borderRadius: Radius.lg }]}>
               <View
                 style={{
-                  borderRadius: Radius.lg,
+                  borderRadius: CARD_RADIUS,
                   borderWidth: cardElevation.useBorder ? 1 : 0,
                   borderColor: colors.cardBorder,
                   backgroundColor: cardElevation.liftBg ?? colors.card,

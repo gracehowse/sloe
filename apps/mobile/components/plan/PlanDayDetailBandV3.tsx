@@ -44,7 +44,6 @@ export function PlanDayDetailBandV3({
     <SupprCard
       testID="plan-day-detail-band"
       lift="soft"
-      radius="lg"
       padding="lg"
       style={{ marginTop: Spacing.md }}
     >

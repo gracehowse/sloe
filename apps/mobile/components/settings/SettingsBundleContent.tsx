@@ -163,17 +163,17 @@ function IconBox({
   children: React.ReactNode;
 }) {
   const colors = useThemeColors();
-  // v3 prototype `.set-ic` (ENG-1247, 2026-06-24): every settings-row glyph
-  // sits in a 36px GREY ROUNDED-SQUARE (bg-secondary), not the earlier white
-  // circle (the Figma 335:2 treatment is retired). The plate reads as a quiet
-  // container; the glyph itself carries any semantic colour the caller passes
-  // (clay for nav rows, sage for Apple Health, red for delete).
+  // Settings-row glyphs sit in a 36px GREY CIRCLE (bg-secondary) — a quiet
+  // container; the glyph carries the semantic colour the caller passes (clay
+  // nav / sage Apple Health / red delete). Round-all-plates (Grace 2026-06-25)
+  // made it a full circle (Radius.full), overriding the v3 `.set-ic` square —
+  // do not re-square.
   return (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: Radius.xl,
+        borderRadius: Radius.full,
         backgroundColor: colors.backgroundSecondary,
         alignItems: "center",
         justifyContent: "center",
@@ -1857,7 +1857,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 12,
+                borderRadius: Radius.full,
                 backgroundColor: accent.primary + "22",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1917,7 +1917,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 12,
+                borderRadius: Radius.full,
                 backgroundColor: accent.primary + "18",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2757,7 +2757,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 style={{
                   width: 48,
                   height: 48,
-                  borderRadius: Radius.lg,
+                  borderRadius: Radius.full,
                   backgroundColor: t.amber + "18",
                   alignItems: "center",
                   justifyContent: "center",

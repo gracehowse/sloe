@@ -13,6 +13,7 @@ import { Accent, FontWeight, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 
 const STORAGE_KEY = "suppr-checklist-dismissed";
 
@@ -74,7 +75,7 @@ export default function FirstRunChecklist({
   const styles = useMemo(() => StyleSheet.create({
     card: {
       backgroundColor: cardElevation.liftBg ?? colors.card,
-      borderRadius: Radius.lg,
+      borderRadius: CARD_RADIUS,
       borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
       borderColor: colors.cardBorder,
       padding: Spacing.md,

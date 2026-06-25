@@ -826,7 +826,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         {/* Sloe DS (Figma 09 Settings `335:2`): the header glyph sits on
             a plum-tinted plate (`--foreground-brand` at 10%). */}
         <div
-          className="p-2 rounded-xl"
+          className="p-2 rounded-full"
           style={{
             backgroundColor:
               "color-mix(in srgb, var(--foreground-brand) 10%, transparent)",

@@ -11,7 +11,7 @@ import { cn } from "./utils";
  */
 
 const iconBoxVariants = cva(
-  "inline-flex items-center justify-center shrink-0 rounded-lg transition-pm",
+  "inline-flex items-center justify-center shrink-0 rounded-full transition-pm",
   {
     variants: {
       size: {

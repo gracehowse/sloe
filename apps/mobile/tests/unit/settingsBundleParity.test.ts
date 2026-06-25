@@ -284,17 +284,20 @@ describe("Settings — Figma `335:2` frame reskin", () => {
     expect(headingBody).not.toMatch(/color: colors\.navPrimary/);
   });
 
-  it("row icon plates are grey rounded squares (v3 prototype — ENG-1247)", () => {
+  it("row icon plates are grey CIRCLES (Grace 2026-06-25 — round-all-plates overrides the v3 .set-ic square)", () => {
     // Isolate the IconBox function body so the assertions don't bleed.
     const iconBoxBody =
       bundle.slice(bundle.indexOf("function IconBox")).split("\nfunction ")[0] ??
       "";
-    // ENG-1247: the v3 prototype renders row icons as soft grey rounded
-    // squares (backgroundSecondary fill, Radius.xl corner) — NOT the old
-    // white circle with a hairline ring, and NOT the colour-tinted square.
-    expect(iconBoxBody).toMatch(/borderRadius: Radius\.xl/);
+    // Grace 2026-06-25 ("they all need to be round … yes icons too"): every icon
+    // plate is now a FULL CIRCLE. This deliberately overrides the v3 prototype's
+    // `.set-ic` rounded-SQUARE grammar (the soft grey square the row icons used
+    // to render as). Fill stays the soft grey (backgroundSecondary); only the
+    // corner went from Radius.xl → Radius.full. Do NOT re-conform back to a
+    // square — see the round-corners commit + docs.
+    expect(iconBoxBody).toMatch(/borderRadius: Radius\.full/);
     expect(iconBoxBody).toMatch(/backgroundColor: colors\.backgroundSecondary/);
-    expect(iconBoxBody).not.toMatch(/borderRadius: size \/ 2/);
+    expect(iconBoxBody).not.toMatch(/borderRadius: Radius\.xl/);
     expect(iconBoxBody).not.toMatch(/borderColor: colors\.cardBorder/);
     expect(iconBoxBody).not.toMatch(/backgroundColor: color \+ "18"/);
   });

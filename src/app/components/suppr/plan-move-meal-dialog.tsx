@@ -121,7 +121,7 @@ export function PlanMoveMealDialog({
                   }`}
                 >
                   <span
-                    className="grid place-items-center shrink-0 rounded-lg bg-muted"
+                    className="grid place-items-center shrink-0 rounded-full bg-muted"
                     style={{ width: 28, height: 28 }}
                     aria-hidden
                   >

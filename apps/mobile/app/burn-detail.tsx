@@ -531,8 +531,8 @@ function BurnStatRow({
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}>
-        {/* v3 set-ic plate (ENG-1247 A3): 36px rounded-square (Radius.xl, the mobile set-ic radius), not a 40px circle. */}
-        <View style={{ width: 36, height: 36, borderRadius: Radius.xl, backgroundColor: iconBg, alignItems: "center", justifyContent: "center" }}>
+        {/* v3 set-ic plate (ENG-1247 A3): 36px icon plate, full-circle (Radius.full). */}
+        <View style={{ width: 36, height: 36, borderRadius: Radius.full, backgroundColor: iconBg, alignItems: "center", justifyContent: "center" }}>
           {icon}
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
