@@ -11,9 +11,9 @@
  *    (lead with the plain phrase, acronym secondary in parens) and that
  *    the gloss differs from the plain default.
  *
- * 2. RENDER-SITE WIRING — every one of the ~5 trust-moment render sites
- *    (web welcome bullet, web + mobile pace tile, web + mobile reveal
- *    BMR/TDEE/Mifflin) pulls the label from the shared constants behind
+ * 2. RENDER-SITE WIRING — every trust-moment render site
+ *    (web + mobile pace tile, web + mobile reveal BMR/TDEE/Mifflin) pulls
+ *    the label from the shared constants behind
  *    `isFeatureEnabled("onboarding_jargon_gloss_v1")`, never an inline
  *    string. Source-level pins so a regression that re-hardcodes a label
  *    or drops the flag gate breaks the build.
@@ -37,8 +37,6 @@ import {
   ONBOARDING_REVEAL_METHODOLOGY_PLAIN,
   ONBOARDING_REVEAL_TDEE_LABEL_GLOSS,
   ONBOARDING_REVEAL_TDEE_LABEL_PLAIN,
-  ONBOARDING_WELCOME_TDEE_BULLET_GLOSS,
-  ONBOARDING_WELCOME_TDEE_BULLET_PLAIN,
 } from "../../src/lib/onboarding/figmaCopy";
 
 const FLAG = "onboarding_jargon_gloss_v1";
@@ -50,12 +48,6 @@ const GLOSS_PLAIN_PAIRS: ReadonlyArray<{
   gloss: string;
   acronym: string;
 }> = [
-  {
-    name: "welcome TDEE bullet",
-    plain: ONBOARDING_WELCOME_TDEE_BULLET_PLAIN,
-    gloss: ONBOARDING_WELCOME_TDEE_BULLET_GLOSS,
-    acronym: "TDEE",
-  },
   {
     name: "pace vs-TDEE label",
     plain: ONBOARDING_PACE_VS_TDEE_LABEL_PLAIN,
@@ -129,13 +121,6 @@ describe("ENG-1187 — glossed copy shape (shared web ↔ mobile)", () => {
 
 describe("ENG-1187 — render sites pull shared constants behind the flag", () => {
   const sites: ReadonlyArray<{ path: string; constants: string[] }> = [
-    {
-      path: "src/app/components/onboarding/steps/welcome.tsx",
-      constants: [
-        "ONBOARDING_WELCOME_TDEE_BULLET_GLOSS",
-        "ONBOARDING_WELCOME_TDEE_BULLET_PLAIN",
-      ],
-    },
     {
       path: "src/app/components/onboarding/steps/pace.tsx",
       constants: [

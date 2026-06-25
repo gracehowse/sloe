@@ -67,8 +67,8 @@ export function MobileWelcomeStep() {
           style={{
             fontFamily: FontFamily.serifItalic,
             fontStyle: "italic",
-            fontSize: 17,
-            lineHeight: 24,
+            fontSize: 18,
+            lineHeight: 25,
             textAlign: "center",
             color: Accent.frost,
             marginTop: Spacing.md,

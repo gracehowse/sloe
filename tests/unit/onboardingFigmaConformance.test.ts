@@ -25,18 +25,22 @@ describe("ENG-895 — onboarding Figma conformance pins", () => {
     }
   });
 
-  it("web welcome hero uses Figma brand line + clay pill primary CTA", () => {
+  it("web welcome hero is the v3 deep-plum brand screen (ENG-1247)", () => {
+    // ENG-1247 M1: the welcome conformed from the Figma oat/body/checklist
+    // hero to the v3 prototype `.ob--brand` deep-plum brand screen (wordmark
+    // + tagline + CTA), mirroring mobile. Pinned in depth by
+    // onboardingWelcomeParity.test.ts; this keeps the brand-line + pill CTA.
     const welcome = readFileSync(
       resolve(ROOT, "src/app/components/onboarding/steps/welcome.tsx"),
       "utf8",
     );
     expect(welcome).toContain("Cook what you love.");
-    expect(welcome).toContain("Still");
-    expect(welcome).toContain("reach your goals.");
+    expect(welcome).toContain("Still reach your goals.");
     expect(welcome).toMatch(/rounded-full/);
     expect(welcome).toContain("Get started");
     expect(welcome).not.toContain("Get started — free");
-    expect(welcome).toContain("ONBOARDING_WELCOME_BODY_WEB");
+    expect(welcome).toMatch(/var\(--primary-deep\)/); // deep-plum brand ground
+    expect(welcome).toMatch(/>\s*sloe\s*</); // lowercase Fraunces wordmark
     expect(welcome).not.toMatch(/>\s*Suppr Club\s*</);
   });
 
