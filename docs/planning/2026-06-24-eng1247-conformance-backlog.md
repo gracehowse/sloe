@@ -6,6 +6,26 @@
 
 Across 72 surfaces the v3 reskin is in strong shape: the daily loop (Today ring + hero, MacroDetail, Nutrients, Hydration, VoiceLog), the Recipe/Cook spine (RecipeDetail, CookMode), Plan, Fasting, the import-detection grammar, and most danger/data flows (EraseEverything, Changelog) are conformed and web-mobile mirrored. The remaining work splits cleanly: ~18 mechanical conforms (serif kcal/overline headers, set-ic icon plates vs circles, single-primary-CTA + button-grammar fixes, community/legal copy, token snaps in PlanImport) that I can just implement, and ~29 structural calls for Grace where the live IA deliberately exceeds or diverges from the prototype. The two highest-stakes structural gaps are functional bugs, not aesthetics: the Plan header's Adjust glyph opens the wrong sheet (Templates) because no AdjustConstraints sheet exists, and How-maintenance-works to Why routes nowhere because AdaptiveTDEE has no UI. Five fully-designed prototype surfaces have no live equivalent at all (BatchCook, AdjustConstraints, AdaptiveTDEE, CalendarPicker, the morning Digest). A solid block of divergences is already decided and should not be re-litigated.
 
+## Progress log (live)
+
+Worked autonomously after the audit (PR #609):
+
+- **A15 Profile serif name** — DONE (web, pixel-verified in browser).
+- **A16 404/recipe-404 serif headline** — DONE (web; serif `.state__title`; kept the
+  deliberate copy + two-CTA recovery, rejecting the audit's "single primary" over-reach).
+- **A17 Billing Manage button → SupprButton** — DEFERRED. The card is gated on Stripe
+  subscription status, which the Stripe-less local dev server can't produce, and Settings
+  isn't in the CI visual suite — so the change is un-SEE-able anywhere available. Low value
+  (one button). Revisit when billing UI is verifiable on a Stripe-connected env. (NOT a
+  silent drop — implemented + reverted rather than ship blind.)
+- **A18 Settings version footer disclaimer** — NOT A GAP. "Nutrition data are estimates.
+  Not medical or dietetic advice." already renders on Today (`TodayAtAGlance:162`) and
+  Progress (`ProgressDashboard:2449`), the higher-traffic surfaces; the mobile version
+  string is internal-only by design. Conformed-by-equivalent.
+
+Learning banked: run the FULL gate (incl. `check:screen-budget`) before every PR-feeding
+push — a scoped `npm run lint` missed a pinned-file growth on A15 and reddened CI once.
+
 ## A. Cosmetic conforms — autonomous, decision-free (18)
 
 Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gated where structural). Ranked high→low.
