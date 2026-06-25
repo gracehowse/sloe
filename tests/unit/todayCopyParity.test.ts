@@ -36,7 +36,6 @@ import {
   netDetailFromKcal,
   todayRingSuffix,
   todayBalanceHeadline,
-  todayGreeting,
   todayLongDateSubline,
   todayDayName,
   todayShortDate,
@@ -154,35 +153,6 @@ describe("canonical Today copy module", () => {
     expect(MEAL_SLOT_HEADERS.lunch).toBe("Lunch");
     expect(MEAL_SLOT_HEADERS.dinner).toBe("Dinner");
     expect(MEAL_SLOT_HEADERS.snack).toBe("Snack");
-  });
-});
-
-describe("Sloe Today hero greeting (todayGreeting)", () => {
-  it("greets by time-of-day window", () => {
-    expect(todayGreeting(8)).toBe("Good morning");
-    expect(todayGreeting(13)).toBe("Good afternoon");
-    expect(todayGreeting(20)).toBe("Good evening");
-  });
-
-  it("includes a first name when provided", () => {
-    expect(todayGreeting(8, "Grace")).toBe("Morning, Grace");
-    expect(todayGreeting(13, "Grace")).toBe("Afternoon, Grace");
-    expect(todayGreeting(20, "Grace")).toBe("Evening, Grace");
-  });
-
-  it("falls back to the name-free greeting for empty / whitespace names", () => {
-    expect(todayGreeting(8, "")).toBe("Good morning");
-    expect(todayGreeting(8, "   ")).toBe("Good morning");
-    expect(todayGreeting(8, null)).toBe("Good morning");
-  });
-
-  it("uses the morning/afternoon/evening cut points (12 / 18)", () => {
-    expect(todayGreeting(0)).toBe("Good morning");
-    expect(todayGreeting(11)).toBe("Good morning");
-    expect(todayGreeting(12)).toBe("Good afternoon");
-    expect(todayGreeting(17)).toBe("Good afternoon");
-    expect(todayGreeting(18)).toBe("Good evening");
-    expect(todayGreeting(23)).toBe("Good evening");
   });
 });
 

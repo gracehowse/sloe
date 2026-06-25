@@ -36,71 +36,6 @@ export const RING_LABELS = {
 /** Back-compat alias — prefer `RING_LABELS.remaining`. */
 export const TODAY_RING_OVERLINE = RING_LABELS.remaining;
 
-/** Sloe Today hero greeting (redesign, 2026-06-03 — `01 · Today` frame).
- *  Renders "Morning, {name}" / "Afternoon, {name}" / "Evening, {name}"
- *  in Newsreader at the top of Today. `hour` is the local hour 0-23;
- *  `name` is optional — when absent (no display name available on the
- *  surface) the greeting falls back to the time-of-day word alone
- *  ("Good morning"), never a placeholder.
- *
- *  Shared so web + mobile read identically when web reaches Today
- *  parity. The time-of-day cut points match the standard greeting
- *  windows (morning < 12, afternoon < 18, else evening).
- *
- *  NOTE: this revives the time-of-day greeting that the 2026-05-22 calm
- *  pass dropped. The Sloe redesign reinstates it as the warm-coaching
- *  hero opener (project_lifesum_aesthetic_direction). */
-export function todayGreeting(hour: number, name?: string | null): string {
-  const part =
-    hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
-  const trimmed = name?.trim();
-  return trimmed ? `${part}, ${trimmed}` : `Good ${part.toLowerCase()}`;
-}
-
-/** Ordered `user_metadata` keys the Today greeting reads a display name
- *  from. Apple Sign-In writes `full_name` (FULL_NAME scope); the
- *  in-app "Your name" Settings field also writes `full_name` via
- *  `supabase.auth.updateUser({ data: { full_name } })`. The remaining
- *  keys are accepted as fallbacks for accounts whose name arrived via a
- *  different provider. Order = precedence. */
-export const GREETING_NAME_METADATA_KEYS = [
-  "full_name",
-  "name",
-  "first_name",
-  "preferred_name",
-] as const;
-
-/** Extract the first-name token for the Today greeting from a Supabase
- *  auth user's `user_metadata`. Reads the first non-empty value across
- *  {@link GREETING_NAME_METADATA_KEYS} (precedence order), then returns
- *  its first whitespace-delimited token — so "Grace Turner" → "Grace".
- *
- *  Returns `undefined` (never an empty string) when no usable name is
- *  present, so callers can pass the result straight to
- *  {@link todayGreeting} and get the name-free "Good morning" fallback.
- *
- *  We deliberately do NOT fall back to the email local-part: a raw
- *  local-part like "gracemturner" reads worse than a clean, name-free
- *  greeting (matches the mobile Today rationale in
- *  `apps/mobile/app/(tabs)/index.tsx`). Shared so web + mobile resolve
- *  the greeting name identically — pinned by
- *  `tests/unit/greetingNameMetadata.test.ts`. */
-export function firstNameFromMetadata(
-  metadata: Record<string, unknown> | null | undefined,
-): string | undefined {
-  const meta = metadata ?? {};
-  let raw = "";
-  for (const key of GREETING_NAME_METADATA_KEYS) {
-    const value = meta[key];
-    if (typeof value === "string" && value.trim()) {
-      raw = value;
-      break;
-    }
-  }
-  const first = raw.trim().split(/\s+/)[0];
-  return first || undefined;
-}
-
 /** Locale for Today hero date lines (British English). */
 export const TODAY_DATE_LOCALE = "en-GB" as const;
 
@@ -374,8 +309,7 @@ function mealPhraseForAim(slot: TodayMealSlot): string {
 
 /** ENG-939 — warm food-forward invitation when the day is completely
  *  unlogged. Time-aware meal wording; omits kcal so cold-open reads as
- *  welcome, not scoreboard. Greeting ("Good morning") is separate
- *  ({@link todayGreeting}). */
+ *  welcome, not scoreboard. */
 export function todayColdOpenCoachLine(hour: number): string {
   if (hour < 11) return "Fresh start — what's for breakfast?";
   if (hour < 15) return "Fresh start — what's for lunch?";

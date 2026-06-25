@@ -41,7 +41,7 @@ export function RecipesTabChrome() {
             hitSlop={8}
             style={{ padding: 6 }}
           >
-            <Pencil size={IconSize.md} color={colors.navPrimary} strokeWidth={1.75} />
+            <Pencil size={IconSize.lg} color={colors.navPrimary} strokeWidth={1.75} />
           </Pressable>
           <Pressable
             onPress={() => router.push("/import-shared")}
@@ -50,7 +50,7 @@ export function RecipesTabChrome() {
             hitSlop={8}
             style={{ padding: 6 }}
           >
-            <Link size={IconSize.md} color={colors.navPrimary} strokeWidth={1.75} />
+            <Link size={IconSize.lg} color={colors.navPrimary} strokeWidth={1.75} />
           </Pressable>
         </View>
       }

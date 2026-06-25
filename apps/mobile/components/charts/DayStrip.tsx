@@ -265,7 +265,7 @@ export default function DayStrip({
           hitSlop={8}
           style={{ padding: 6, opacity: prevDisabled ? 0.3 : 1 }}
         >
-          <ChevronLeft size={IconSize.md} color={secondaryColor} strokeWidth={2} />
+          <ChevronLeft size={IconSize.lg} color={secondaryColor} strokeWidth={2} />
         </Pressable>
         <View testID="daystrip-pager" style={{ flex: 1 }} onLayout={onPagerLayout}>
           {pagerW > 0 ? (
@@ -311,7 +311,7 @@ export default function DayStrip({
           hitSlop={8}
           style={{ padding: 6, opacity: nextDisabled ? 0.3 : 1 }}
         >
-          <ChevronRight size={IconSize.md} color={secondaryColor} strokeWidth={2} />
+          <ChevronRight size={IconSize.lg} color={secondaryColor} strokeWidth={2} />
         </Pressable>
         <Pressable
           onPress={onOpenCalendar}

@@ -9,12 +9,11 @@
 // unit-testable against a mocked client without rendering either screen.
 //
 // IMPORTANT: this writes the auth user's metadata via
-// `supabase.auth.updateUser`, NOT a `profiles` column. The Today
-// greeting reads `user_metadata` (`firstNameFromMetadata` in
-// `src/lib/copy/today.ts`), and writing entitlement-adjacent `profiles`
-// columns client-side risks the tier-lockdown trigger
-// (`feedback_persist_path_guardrails`). An empty/whitespace value is
-// written as "" so the greeting falls back to the time-of-day word.
+// `supabase.auth.updateUser`, NOT a `profiles` column. The display name is
+// read from `user_metadata` (the avatar initial + Profile identity), and
+// writing entitlement-adjacent `profiles` columns client-side risks the
+// tier-lockdown trigger (`feedback_persist_path_guardrails`). An
+// empty/whitespace value is written as "" to clear the name.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Minimal shape of the bits of the Supabase client this helper touches.
