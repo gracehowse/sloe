@@ -22,6 +22,12 @@ const checks = [
       path.join(repoRoot, "apps", "mobile", ".expo"),
       path.join(repoRoot, "apps", "mobile", "coverage"),
       path.join(repoRoot, "apps", "mobile", "tests"),
+      // Native build dir (gitignored). CocoaPods seeds it with header
+      // symlinks into node_modules that go dangling whenever a native dep
+      // bumps versions — and statSync follows them, crashing the whole gate.
+      // It holds no committed JS/TS, so there are no PostHog URLs to scan.
+      path.join(repoRoot, "apps", "mobile", "ios"),
+      path.join(repoRoot, "apps", "mobile", "android"),
     ],
   },
 ];
@@ -32,7 +38,14 @@ function* walk(dir, ignore) {
   if (ignore.some((entry) => resolved === entry || resolved.startsWith(`${entry}${path.sep}`))) return;
   for (const name of readdirSync(dir)) {
     const full = path.join(dir, name);
-    const st = statSync(full);
+    // Use lstat so a dangling symlink (e.g. stale CocoaPods header links)
+    // anywhere in the tree is skipped rather than crashing the scan.
+    let st;
+    try {
+      st = statSync(full);
+    } catch {
+      continue;
+    }
     if (st.isDirectory()) yield* walk(full, ignore);
     else if (textExt.has(path.extname(full))) yield full;
   }
