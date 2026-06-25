@@ -128,7 +128,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.dense,
   },
   dot: { width: 8, height: 8, borderRadius: Radius.full },
-  vHeadline: { ...Type.label, fontSize: 14, lineHeight: 18 },
+  // Sentence case — the prototype renders "On track — N of M days land" as a
+  // sentence, not an overline (Type.label defaults to uppercase). ENG-1247.
+  vHeadline: { ...Type.label, fontSize: 14, lineHeight: 18, textTransform: "none", letterSpacing: 0 },
   vSub: { ...Type.caption },
 });
 
