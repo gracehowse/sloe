@@ -121,9 +121,14 @@ describe("Today elevation — north star + macro tiles + hydration all soft", ()
     expect(HYDRATION).not.toContain(CARD_SLAB_FLAT);
   });
 
-  it("macro tiles lift soft (card-slab)", () => {
-    expect(MACRO_TILES).toContain("card-slab ");
-    expect(MACRO_TILES).not.toContain(CARD_SLAB_FLAT);
+  it("macro tiles are RECESSED grey, not lifted (Grace 2026-06-25, proto .macro-tile)", () => {
+    // Supersedes the 2026-06-09 "tiles lift soft" call. Once the cards lifted,
+    // white tiles on the white page were invisible; the prototype recesses them
+    // (cool grey `bg-secondary` + hairline, no shadow) so they read as set-down
+    // data wells. Mirrors mobile SupprCard size="tile". See the round-corners /
+    // recessed-tile commit.
+    expect(MACRO_TILES).toContain("bg-secondary");
+    expect(MACRO_TILES).not.toContain("card-slab ");
   });
 });
 

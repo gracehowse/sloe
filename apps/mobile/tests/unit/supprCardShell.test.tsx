@@ -31,6 +31,7 @@ const themeState: { resolved: "light" | "dark"; colors: Record<string, string> }
   colors: {
     card: "#F6F5F2",
     cardElevated: "#2A2730",
+    backgroundSecondary: "#F1F0F4",
     border: "#E8E2EC",
     northStarBgFrom: "rgba(59,42,77,0.08)",
     northStarBorder: "rgba(59,42,77,0.18)",
@@ -132,6 +133,20 @@ describe("<SupprCard> — the consolidated card shell", () => {
     );
     expect(flatten(getByTestId("tile").props.style).borderRadius).toBe(TILE_RADIUS);
     expect(TILE_RADIUS).toBe(24);
+  });
+
+  it("size='tile' (neutral) is RECESSED — grey backgroundSecondary fill, no white card lift (Grace 2026-06-25)", () => {
+    // The proto `.macro-tile` recesses tiles (grey + hairline) so they read as
+    // set-down data wells, not lifted white cards. Distinct from the white
+    // `card` fill — the fix for white-on-white-invisible tiles after the lift.
+    const { getByTestId } = render(
+      <SupprCard testID="rtile" size="tile">
+        <></>
+      </SupprCard>,
+    );
+    const outer = flatten(getByTestId("rtile").props.style);
+    expect(outer.backgroundColor).toBe("#F1F0F4");
+    expect(outer.backgroundColor).not.toBe("#F6F5F2");
   });
 
   it("size='inset' rounds to 12 (concentric inner corner, 2026-06-10 decision), draws a hairline, and carries NO drop shadow", () => {
