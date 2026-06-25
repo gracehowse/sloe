@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, FontWeight, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, FontFamily, FontWeight, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -73,6 +73,21 @@ const STANDARD_UNITS: FoodPortion[] = [
   { label: "cup", gramWeight: 236.59, amount: 1 },
   { label: "ml", gramWeight: 1, amount: 1 },
 ];
+
+/** v3 Verify chrome (ENG-1247 A7): chevron back + serif "Verify ingredients"
+ *  title (was a text "‹ Back" + uppercase letter-spaced "VERIFY"). Shared by the
+ *  loaded, load-error, and loading-skeleton render branches (was duplicated 3×). */
+function VerifyTopBar({ onBack, colors, accessibilityLabel = "Back" }: { onBack: () => void; colors: ReturnType<typeof useThemeColors>; accessibilityLabel?: string }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
+      <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={{ width: 40 }}>
+        <Ionicons name="chevron-back" size={26} color={colors.text} />
+      </Pressable>
+      <Text style={{ color: colors.text, fontFamily: FontFamily.serifSemibold, fontSize: 18 }}>Verify ingredients</Text>
+      <View style={{ width: 40 }} />
+    </View>
+  );
+}
 
 export default function VerifyScreen() {
   const { id, fixture } = useLocalSearchParams<{ id?: string; fixture?: string }>();
@@ -227,7 +242,6 @@ export default function VerifyScreen() {
     };
   }, [ingredients, recipe?.servings]);
 
-  const hasDirty = ingredients.some((i) => i.isDirty);
   const hasUnverified = ingredients.some(
     (i) => !i.isVerified || i.confidence < RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
   );
@@ -645,13 +659,6 @@ export default function VerifyScreen() {
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-    topBar: {
-      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-      borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
-    },
-    backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
-    topTitle: { color: accent.primary, fontSize: 13, fontWeight: "800", letterSpacing: 3 },
     scroll: { padding: Spacing.xl, paddingBottom: 120, gap: Spacing.sm },
     recipeName: { fontSize: 22, fontWeight: "700", color: colors.text },
     subtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md },
@@ -792,13 +799,7 @@ export default function VerifyScreen() {
   if (loadError) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </Pressable>
-          <Text style={styles.topTitle}>VERIFY</Text>
-          <View style={{ width: 50 }} />
-        </View>
+        <VerifyTopBar onBack={() => router.back()} colors={colors} />
         <View style={styles.centered}>
           <Text style={{ color: Accent.warningSolid, textAlign: "center", marginHorizontal: 24 }}>
             {loadError}
@@ -811,13 +812,7 @@ export default function VerifyScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={styles.backText}>‹ Back</Text>
-        </Pressable>
-        <Text style={styles.topTitle}>VERIFY</Text>
-        <View style={{ width: 50 }} />
-      </View>
+      <VerifyTopBar onBack={() => router.back()} colors={colors} />
 
       {isFixture ? (
         <View
@@ -975,25 +970,12 @@ export default function VerifyScreen() {
                     <Text style={styles.ingOriginal}>{`"${decodeEntities(ing.name)}"`}</Text>
                   )}
                   {showConfBar ? (
+                    // v3 ver-dot (ENG-1247 A7): a 9px confidence dot (high=success,
+                    // med=warning, low=destructive), not a percentage fill bar.
                     <View
-                      style={{
-                        marginTop: 6,
-                        height: 3,
-                        borderRadius: 2,
-                        backgroundColor: colors.border,
-                        overflow: "hidden",
-                      }}
+                      style={{ marginTop: 6, width: 9, height: 9, borderRadius: Radius.full, backgroundColor: confColor }}
                       accessibilityLabel={`Match confidence: ${Math.round(confPct * 100)} percent`}
-                    >
-                      <View
-                        style={{
-                          width: `${Math.round(confPct * 100)}%`,
-                          height: "100%",
-                          backgroundColor: confColor,
-                          borderRadius: 2,
-                        }}
-                      />
-                    </View>
+                    />
                   ) : null}
                 </View>
                 <Text style={styles.ingCals}>{rowCal}</Text>
@@ -1237,7 +1219,7 @@ export default function VerifyScreen() {
             <>
               <Ionicons name="checkmark-circle" size={20} color={colors.primaryForeground} />
               <Text style={styles.confirmBtnText}>
-                {hasDirty ? "Save Changes" : "Confirm All"}
+                Calculate nutrition
               </Text>
             </>
           )}
@@ -1464,18 +1446,7 @@ function VerifyLoadingSkeleton({
 
   return (
     <View style={[styles.container, { paddingTop: insetsTop }]}>
-      <View style={styles.topBar}>
-        <Pressable
-          onPress={onCancel}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Cancel and go back"
-        >
-          <Text style={styles.backText}>‹ Back</Text>
-        </Pressable>
-        <Text style={styles.topTitle}>VERIFY</Text>
-        <View style={{ width: 50 }} />
-      </View>
+      <VerifyTopBar onBack={onCancel} colors={colors} accessibilityLabel="Cancel and go back" />
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Recipe title skeleton — matches the recipeName/subtitle

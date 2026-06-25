@@ -105,9 +105,10 @@ Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gate
 - **Divergence:** Live renders plain bordered rows + an overline bullet list. Conform: whyn-hero big serif target number with kcal/day caption, grey set-ic rounded-square row icons, whyn-sum Maintenance highlight + whyn-result row, and a primary Keep-this-target CTA. Shared buildWhyThisNumber provides content.
 - **Files:** `src/app/components/suppr/why-this-number-dialog.tsx; apps/mobile/components/today/WhyThisNumberSheet.tsx`
 
-### A7. [MEDIUM · mobile] Verify (mobile) — serif title, chevron back, dot-not-bar confidence, flush card
+### A7. [MEDIUM · mobile] Verify (mobile) — serif title, chevron back, dot-not-bar confidence, flush card — ◑ MOSTLY DONE
 - **Divergence:** recipe/verify.tsx uses pre-v3 chrome: uppercase letter-spaced VERIFY (fontWeight 800/letterSpacing 3) not serif Verify-ingredients; a back text glyph not the chevron icon; per-row confidence as a coloured BAR not the ver-dot; bordered/tinted cards not the flush divided card; CTA Confirm-All/Save-Changes not Calculate-nutrition. Reskin only.
-- **Files:** `apps/mobile/app/recipe/verify.tsx:654,696,818,977-997,1240`
+- **Files:** `apps/mobile/app/recipe/verify.tsx`
+- **Done (2026-06-25):** extracted a shared `VerifyTopBar` (dedups the 3 duplicated header branches) with a chevron back + serif "Verify ingredients" title; per-row confidence BAR → 9px `ver-dot` (high=success/med=warning/low=destructive, in-place); CTA → "Calculate nutrition" (collapsed the live `hasDirty ? "Save Changes" : "Confirm All"` two-state — minor live→prototype divergence; the action is unchanged). SEEN on the iOS sim via the deterministic fixture deeplink `suppr:///recipe/verify?fixture=1`. Net −29 (re-pinned 1593→1564). **DEFERRED:** bordered cards → flush divided list — structural (interacts with the expanded-section connection + the alert-icon row); needs a careful collapsed+expanded SEE pass. The ver-dot also sits in-place (row-bottom) rather than leading the row as in the prototype — fold both into the flush-card pass.
 
 ### A8. [MEDIUM · mobile] MealEdit (mobile) — Full-nutrition expander + Swap/Copy rows + serif kcal-line
 - **Divergence:** TodayEditMealModal matches the spine but is missing the me-expand Full-nutrition section, the me-swap Swap-for-another-food row, and the me-swap Copy-to-another-meal row (sheets exist elsewhere — surface them inline). Also swap editable macro inputs + sans portion read-out for the serif kcal-line.
