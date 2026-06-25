@@ -112,9 +112,10 @@ Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gate
 - **Divergence:** TodayEditMealModal matches the spine but is missing the me-expand Full-nutrition section, the me-swap Swap-for-another-food row, and the me-swap Copy-to-another-meal row (sheets exist elsewhere — surface them inline). Also swap editable macro inputs + sans portion read-out for the serif kcal-line.
 - **Files:** `apps/mobile/components/today/TodayEditMealModal.tsx:350-423`
 
-### A9. [MEDIUM · web] GoPublic (web) — add the 2 missing attestations
+### A9. [MEDIUM · web] GoPublic (web) — add the 2 missing attestations — ✅ DONE
 - **Divergence:** GoPublicDialog is a single-checkbox AlertDialog; conform to the 3-attestation ver-row checklist by adding the honest-nutrition-estimate + photo-rights attestations with the disabled-until-all-ticked Publish CTA.
 - **Files:** `src/app/components/GoPublicDialog.tsx`
+- **Done (2026-06-25):** rewrote to the 3-attestation divided-card checklist (own / nutrition-is-an-estimate / photo-rights — prototype copy verbatim), Publish disabled until all three ticked, shared body+footer so the autoOpen + trigger paths can't drift. Render test `tests/unit/goPublicDialogAttestations.test.tsx` pins the gate. Both states SEEN in browser (disabled muted Publish → all-ticked plum-filled Publish, single-CTA canon held). Web-only by design (mobile is import-only).
 
 ### A10. [MEDIUM · both] PlanImport — overline labels + set-ic + on-scale radius + theme success-soft token
 - **Divergence:** Independent of the IA decision: replace hand-rolled labels with the overline token, snap off-scale radii (mobile 16, Radius.xl*2=24; web ad-hoc text-[11/13/28]) to the 4/6/8/12 scale + type ramp, and swap literal hex+opacity (Accent.success+18/40, accent.primary+12) for theme success-soft/primary-soft tokens.
