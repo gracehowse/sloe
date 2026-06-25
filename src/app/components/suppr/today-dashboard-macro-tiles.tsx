@@ -354,46 +354,41 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 {tile.targetText}
               </span>
             </div>
-            {/* ENG-1099: tier tile drops the bar + caption — the value colour
-                carries the over/under signal (recipe-strip pattern). Flag-off
-                keeps the pre-ENG-1099 bar + caption. */}
+            {/* Proto `.mtile` track: the COLORED progress bar ALWAYS shows — the
+                prototype's defining macro-tile element (colour + fill = progress).
+                Grace 2026-06-25: the bar-less tile read "flat". Un-strips ENG-1099's
+                bar removal; the caption text stays tier-gated (the prototype tile
+                has no caption row). */}
+            <div
+              className="mt-2 h-1 rounded-full overflow-hidden bg-border"
+            >
+              <div
+                className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
+                style={{
+                  width: `${tile.pct}%`,
+                  background: tile.fillVar,
+                  opacity: tile.label === "Sugar" || tile.label === "Sodium" ? 0.45 : 1,
+                }}
+              />
+            </div>
             {tierV1 ? null : (
-              <>
-                <div
-                  className="mt-2 h-1 rounded-full overflow-hidden bg-border"
-                >
-                  <div
-                    className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
-                    style={{
-                      width: `${tile.pct}%`,
-                      background: tile.fillVar,
-                      opacity: tile.label === "Sugar" || tile.label === "Sodium" ? 0.45 : 1,
-                    }}
-                  />
-                </div>
-                {/* Per-tile caption (audit gap 4, mobile parity) — "N g remaining"
-                    (sage) / "N g over" (amber) / muted "ref N" for reference-only
-                    macros. The at-a-glance "how much left" read today.md §3.3/§4
-                    calls the warm-coaching payoff. Reserve the row height even when
-                    suppressed (unlogged tile) so the grid stays even. */}
-                <span
-                  data-testid={`today-macro-tile-caption-${macroKey}`}
-                  className={`mt-1 block min-h-[14px] text-[11px] leading-[14px] tabular-nums ${
-                    tile.captionTone === "under"
-                      ? "text-success"
-                      : tile.captionTone === "over"
-                        ? ""
-                        : "text-foreground-tertiary"
-                  }`}
-                  style={
-                    tile.captionTone === "over"
-                      ? { color: "var(--accent-warning-solid)" }
-                      : undefined
-                  }
-                >
-                  {tile.caption}
-                </span>
-              </>
+              <span
+                data-testid={`today-macro-tile-caption-${macroKey}`}
+                className={`mt-1 block min-h-[14px] text-[11px] leading-[14px] tabular-nums ${
+                  tile.captionTone === "under"
+                    ? "text-success"
+                    : tile.captionTone === "over"
+                      ? ""
+                      : "text-foreground-tertiary"
+                }`}
+                style={
+                  tile.captionTone === "over"
+                    ? { color: "var(--accent-warning-solid)" }
+                    : undefined
+                }
+              >
+                {tile.caption}
+              </span>
             )}
           </>
         );

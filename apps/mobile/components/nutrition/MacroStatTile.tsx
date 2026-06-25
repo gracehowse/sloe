@@ -114,11 +114,9 @@ export function MacroStatTile({
       size="tile"
       padding="md"
       innerStyle={{
-        // ENG-1198: tier-V1 content is ~48pt (label row + value row) but the
-        // tile reserved 64pt with flex-start, leaving ~16pt of dead white under
-        // the value. Dropped 64 → 56 so the tile hugs its content. The
-        // non-tierV1 96 keeps the bar + caption rows and is unchanged.
-        minHeight: tierV1 ? 56 : 96,
+        // tier-V1 now shows the colored bar again (no caption row), so it needs
+        // room for label + value + bar (~72pt). Non-tierV1 keeps bar + caption (96).
+        minHeight: tierV1 ? 72 : 96,
         justifyContent: tierV1 ? "flex-start" : "space-between",
         gap: tierV1 ? Spacing.sm : 0,
       }}
@@ -168,47 +166,48 @@ export function MacroStatTile({
           {unit === "g" ? "g" : ` ${unit}`}
         </Text>
       </View>
-      {/* ENG-1099: tier tile drops the bar + caption — the value colour
-          carries the over/under signal (recipe-strip pattern). Flag-off keeps
-          the pre-ENG-1099 bar + caption. */}
+      {/* Proto `.mtile` track: the COLORED progress bar always shows — it is the
+          prototype's defining macro-tile element (colour + fill = the macro's
+          progress). Grace 2026-06-25: the bar-less tile read "flat". This
+          un-strips ENG-1099's bar removal; the value colour still carries the
+          over-signal, and the caption text stays tier-gated (the prototype tile
+          has no caption row). */}
+      <View
+        testID={`today-macro-tile-bar-${macroKey}`}
+        style={{
+          height: 4,
+          borderRadius: Radius.full,
+          backgroundColor: barTrackColor,
+          overflow: "hidden",
+          marginTop: Spacing.sm,
+        }}
+      >
+        <View
+          style={{
+            height: "100%",
+            width: `${pct}%`,
+            borderRadius: Radius.full,
+            backgroundColor: color,
+            opacity: referenceOnly ? 0.45 : 1,
+          }}
+        />
+      </View>
       {tierV1 ? null : (
-        <>
-          <View
-            testID={`today-macro-tile-bar-${macroKey}`}
-            style={{
-              height: 4,
-              borderRadius: Radius.full,
-              backgroundColor: barTrackColor,
-              overflow: "hidden",
-              marginTop: Spacing.sm,
-            }}
-          >
-            <View
-              style={{
-                height: "100%",
-                width: `${pct}%`,
-                borderRadius: Radius.full,
-                backgroundColor: color,
-                opacity: referenceOnly ? 0.45 : 1,
-              }}
-            />
-          </View>
-          <Text
-            testID={`today-macro-tile-caption-${macroKey}`}
-            style={{
-              ...Type.caption,
-              fontSize: 11,
-              lineHeight: 14,
-              color: captionColor,
-              marginTop: Spacing.xs,
-              minHeight: 14,
-              fontVariant: ["tabular-nums"],
-            }}
-            numberOfLines={1}
-          >
-            {captionText}
-          </Text>
-        </>
+        <Text
+          testID={`today-macro-tile-caption-${macroKey}`}
+          style={{
+            ...Type.caption,
+            fontSize: 11,
+            lineHeight: 14,
+            color: captionColor,
+            marginTop: Spacing.xs,
+            minHeight: 14,
+            fontVariant: ["tabular-nums"],
+          }}
+          numberOfLines={1}
+        >
+          {captionText}
+        </Text>
       )}
     </SupprCard>
   );
