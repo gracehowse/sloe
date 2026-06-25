@@ -48,11 +48,21 @@ on ENG-1247 + the review output.
   TODO.
 - **M5 — DayStrip chevrons + Recipes pencil/link icons `IconSize.md`(14) → `.lg`(18)** — ✅ DONE
   (56dfc591, sim-verified both surfaces).
-- **S-items** (should-fix): **S3** mobile welcome tagline 17→18 ✅ DONE (M1 commit). **S6** welcome
-  render test ✅ DONE (onboardingWelcomeParity). Remaining TODO: **S1** mobile selected day-letter
-  70% white (DayStrip); **S2** mobile Recipes header-action ink neutral-not-plum; **S4** 404 comment
-  honesty (24px is right — the prototype NotFound overrides `.state__title` to 24); **S5** editorial
-  overlines 700→600.
+- **S-items** (should-fix): **S1** day-letter 70% white ✅ (4628bce2). **S2** Recipes header ink
+  neutral ✅ (9780aada, sim-SEEN). **S3** mobile welcome tagline 17→18 ✅ (M1 commit). **S4** 404
+  comment honesty ✅ (4628bce2). **S6** welcome render test ✅ (onboardingWelcomeParity). **S5**
+  overlines 700→600 — DEFERRED with reason: `Type.label` is 700 and used by 63 files incl. the
+  Today hero overline (which the review says STAYS 700), so it needs a NEW 600-weight editorial-
+  overline token applied per-surface, not a blanket change — disproportionate for a sub-perceptible
+  weight should-fix. Revisit if a dedicated editorial-overline token is introduced.
+
+### Rework status (2026-06-25): AUTONOMOUS WORK COMPLETE
+
+Must-fixes M1/M2/M3/M5 ✅ + should-fixes S1/S2/S3/S4/S6 ✅ — all green on PR #609. Everything
+remaining is GRACE-GATED: **M4** (DayStrip chevron behaviour — options A/B on ENG-1247), **A2b**
+(ConfirmFood macro grid vs the richer live micro table), the **29 structural decisions + 5 feature
+builds** (section B/C above), and **S5** (pending an editorial-overline token). Plus a flagged
+infra bug: the `update-visual-baselines` workflow is broken (missing golden-user seeder).
 - **A17 Billing Manage button → SupprButton** — DEFERRED. The card is gated on Stripe
   subscription status, which the Stripe-less local dev server can't produce, and Settings
   isn't in the CI visual suite — so the change is un-SEE-able anywhere available. Low value
