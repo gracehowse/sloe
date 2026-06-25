@@ -129,7 +129,7 @@ function PortionStepperImpl({
 
 const s = StyleSheet.create({
   stepperRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
-  stepBtn: { width: 44, height: 44, borderRadius: Radius.md, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  stepBtn: { width: 44, height: 44, borderRadius: Radius.full, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   stepValue: { flex: 1, height: 44, borderWidth: 1, borderRadius: Radius.md, fontSize: 16, fontWeight: "700" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.xs, marginTop: Spacing.sm },
   // Chips census (2026-06-10): §7 family — fully round, hairline.

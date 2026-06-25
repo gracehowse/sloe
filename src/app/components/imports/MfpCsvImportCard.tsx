@@ -154,7 +154,7 @@ export function MfpCsvImportCard({
       />
       <div className="flex items-start gap-3">
         <span
-          className="size-9 shrink-0 rounded-lg bg-primary/15 text-primary grid place-items-center"
+          className="size-9 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center"
           aria-hidden
         >
           <FileSpreadsheet className="size-4" />
