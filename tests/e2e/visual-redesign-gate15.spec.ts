@@ -42,7 +42,10 @@ test.describe("Visual regression — Gate 1.5 onboarding (ENG-827)", () => {
       await seedConsent(page);
       await page.goto("/onboarding", { waitUntil: "domcontentloaded" });
       await dismissVisualOverlays(page);
-      await expect(page.getByRole("heading", { name: /Cook what you love/i })).toBeVisible({
+      // ENG-1247 M1: the welcome is now the deep-plum brand screen — the
+      // wordmark is the heading and the tagline is a <p>, so wait on the
+      // always-present "Get started" CTA instead of the former tagline heading.
+      await expect(page.getByRole("button", { name: /Get started/i })).toBeVisible({
         timeout: 20_000,
       });
       await stabilizeForScreenshot(page, 1500);
