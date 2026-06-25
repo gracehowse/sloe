@@ -2634,13 +2634,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         />
       </SettingsCard>
 
-      {/* Build — ENG-801. Dev-gated (`__DEV__` is false in release/TestFlight
-          builds) so the build row never ships to a user-facing surface. A stale
-          internal capture token (a one-off "F50" test-build marker) used to be
-          appended here — it carried no meaning to a tester and read as garbage
-          on the legitimate version string, so it was removed. The row now shows
-          ONLY the real `v{version} · build {n}` a tester needs to report
-          against. (Pinned by `settingsElevationAndMarker.test.ts`.) */}
+      {/* Build — ENG-801. Dev-gated (`__DEV__` false in release/TestFlight) so it never
+          ships to users. Shows `v{version} · build {n}`. Pinned by settingsElevationAndMarker.test. */}
       {__DEV__ ? (
         <>
           <SectionHeading title="Build" />
@@ -2703,6 +2698,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           Delete account
         </Text>
       </Pressable>
+
+      {/* v3 set-ver footer (ENG-1247 A18): nutrition-estimates disclaimer. Version dropped (web/mobile versions diverge — see web parity). */}
+      <Text testID="settings-estimates-footer" style={{ textAlign: "center", fontSize: 12, color: colors.textSecondary, marginTop: Spacing.md, paddingBottom: Spacing.md }}>
+        Nutrition values are estimates
+      </Text>
 
       {/* Sign Out lives in the parent /(tabs)/settings.tsx as a single
           neutral row beneath this bundle. Sign Out is reversible

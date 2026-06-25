@@ -1831,7 +1831,6 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         />
       ) : null;
 
-  // About — the "What's new in Suppr" link. Mirrors the mobile About group.
   const aboutCard = (
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-6">
@@ -1847,11 +1846,12 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             What&rsquo;s new in Sloe
           </Link>
         </div>
+        {/* v3 set-ver footer (ENG-1247 A18): the nutrition-estimates disclaimer. Version dropped — web/mobile app versions diverge (no honest shared string). Mobile parity: SettingsBundleContent. */}
+        <p className="mt-4 text-center text-xs text-muted-foreground">Nutrition values are estimates</p>
       </SupprCard>
   );
 
-  // Promo code — de-emphasised; most users won't need this. The wrapper
-  // carries the `promoSectionRef` scroll-into-view target (header Upgrade).
+  // Promo code — de-emphasised; wrapper carries `promoSectionRef` (header Upgrade scroll target).
   const promoCard = (
       <div ref={promoSectionRef} className="scroll-mt-8">
       <SupprCard

@@ -152,9 +152,10 @@ Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gate
 - **Divergence:** The manage/cancel control is a raw bg-foreground near-black slab instead of a SupprButton primary (aubergine). Off the one-filled-primary button canon. Mechanical swap.
 - **Files:** `src/app/components/settings/SubscriptionCard.tsx:278-285`
 
-### A18. [LOW · both] Settings version footer — add nutrition-values-are-estimates line
+### A18. [LOW · both] Settings version footer — add nutrition-values-are-estimates line — ✅ DONE
 - **Divergence:** Both omit the prototype's quiet set-ver footer pairing the version string with a nutrition-values-are-estimates disclaimer (web none; mobile only a bare v{version}/build{n} dev row). Add a one-line muted footer.
-- **Files:** `src/app/components/Settings.tsx; apps/mobile/components/settings/SettingsBundleContent.tsx:2643-2666`
+- **Files:** `src/app/components/Settings.tsx; apps/mobile/components/settings/SettingsBundleContent.tsx`
+- **Done (2026-06-25):** added the centred muted disclaimer "Nutrition values are estimates" — web in the About card (renders in both two-pane + legacy paths), mobile below the Delete-account affordance. SEEN both (web /settings authed drive; iOS sim Settings). Both files were at their screen-budget pin (2301 / 4075) so the additions were offset by condensing adjacent comments — net-neutral. **Minor divergence from prototype (noted for Grace, not blocking):** dropped the prototype's "Sloe v3.0 ·" version prefix — web (`package.json` 0.0.1) and mobile (`expoConfig.version`) versions diverge with no honest shared string, and the disclaimer is the compliance point. If a version IS wanted, decide the shared source.
 
 ## B. Structural decisions for Grace (29)
 

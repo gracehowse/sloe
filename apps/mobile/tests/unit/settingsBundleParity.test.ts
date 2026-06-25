@@ -103,6 +103,12 @@ describe("SettingsBundleContent — parity contract", () => {
     }
   });
 
+  it("shows the nutrition-values-are-estimates disclaimer (v3 set-ver footer, ENG-1247 A18)", () => {
+    // The compliance disclaimer must not silently regress from the bundle.
+    // (Web parity is pinned in tests/unit/settingsAboutDisclaimerWeb.test.ts.)
+    expect(bundle).toContain("Nutrition values are estimates");
+  });
+
   it("renders the core settings modals and keeps <Modal>/open-state parity", () => {
     // 2026-05-12 (premium-bar audit DC9): a 7th modal was added for
     // the type-RESET-to-confirm gate on Erase Everything. The Apple
