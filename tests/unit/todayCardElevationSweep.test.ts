@@ -121,9 +121,13 @@ describe("Today elevation — north star + macro tiles + hydration all soft", ()
     expect(HYDRATION).not.toContain(CARD_SLAB_FLAT);
   });
 
-  it("macro tiles lift soft (card-slab)", () => {
-    expect(MACRO_TILES).toContain("card-slab ");
-    expect(MACRO_TILES).not.toContain(CARD_SLAB_FLAT);
+  it("macro tiles are a hairline grid, NOT a lifted card (Grace 2026-06-25)", () => {
+    // The tiles variant conformed to the prototype's `.mtile`: a hairline-
+    // divided grid (no card fill, no lift) — top border on the grid, bottom
+    // border each cell. Supersedes the card-slab tile.
+    expect(MACRO_TILES).toContain("border-t border-border");
+    expect(MACRO_TILES).toContain("border-b border-border");
+    expect(MACRO_TILES).not.toContain("card-slab ");
   });
 });
 
@@ -144,8 +148,10 @@ describe("Today card fill — Sloe v3 white-ground elevation model", () => {
 });
 
 describe("Today card shape — 24px rounded-card on web", () => {
-  it("macro tiles use rounded-card (not 14px)", () => {
-    expect(MACRO_TILES).toContain("rounded-card");
+  it("macro tiles render as a borderless 2-col hairline grid (Grace 2026-06-25)", () => {
+    // The tile grid conformed to the prototype `.mtiles`: a 2-col grid divided
+    // by hairlines, no rounded card on the cells, no 14px tile.
+    expect(MACRO_TILES).toContain("grid grid-cols-2 border-t border-border");
     expect(MACRO_TILES).not.toContain("rounded-[14px]");
   });
 
