@@ -164,33 +164,18 @@ export function SupprCard({
   // Tiles + insets default to a tighter padding; cards to the airy `lg`.
   const pad = paddingValues[padding ?? (size === "card" ? "lg" : "md")];
 
-  // A neutral `tile` is RECESSED (proto `.macro-tile`): a cool grey
-  // `backgroundSecondary` slab + hairline, NO shadow — a data tile that sits
-  // DOWN into the page, the counterpoint to a lifted white card. Grace
-  // 2026-06-25: once the cards lifted, the white-on-white macro tiles were
-  // invisible; recessing them restores the two-tier surface hierarchy. Tinted
-  // tiles (success/warning/etc.) keep their own tint.
-  const isRecessedTile = size === "tile" && tone === "neutral" && !gradient;
-
   // The light soft-lift `card` drops the border (the shadow IS the separation —
   // no double edge). Dark keeps the hairline (no shadow there). An `inset`
   // sub-panel ALWAYS draws the hairline (it sits on a card, so it has no lift to
-  // separate it); a recessed tile draws it too (fill + hairline = separation).
-  // A flat caller (border=false) opts out entirely.
-  const showBorder = border && (isInset || isRecessedTile || elevation.useBorder);
+  // separate it). A flat caller (border=false) opts out entirely.
+  const showBorder = border && (isInset || elevation.useBorder);
   const tone_ = computeToneStyle(tone, gradient, colors);
   const fill = tone_.backgroundColor;
 
   // `inset` carries NO drop shadow (a card-on-card must not double-shadow) and no
-  // dark tonal lift — its hairline + fill are the separation. A recessed tile
-  // uses the cool `backgroundSecondary` fill (not the white card) so it reads as
-  // set-down, not lifted.
+  // dark tonal lift — its hairline + fill are the separation.
   const outerShadow = isInset ? undefined : elevation.shadowStyle;
-  const outerFill = isInset
-    ? fill
-    : isRecessedTile
-      ? colors.backgroundSecondary
-      : elevation.liftBg ?? fill;
+  const outerFill = isInset ? fill : elevation.liftBg ?? fill;
 
   return (
     <View

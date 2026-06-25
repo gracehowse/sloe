@@ -397,11 +397,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
             )}
           </>
         );
-        // Recessed tile (proto `.macro-tile`): cool grey `bg-secondary` + hairline,
-        // NO lift — the counterpoint to a lifted white card, so the tiles read as
-        // set-down data wells rather than blending into the white page (Grace
-        // 2026-06-25). Mirrors mobile SupprCard size="tile". Was `bg-card card-slab`.
-        const cardClass = `rounded-card bg-secondary border border-border p-4 flex flex-col ${
+        const cardClass = `rounded-card bg-card card-slab p-4 flex flex-col ${
           tierV1 ? "gap-2" : "justify-between min-h-24"
         }`;
         // ENG-848 — only macros that actually open a detail panel render as
