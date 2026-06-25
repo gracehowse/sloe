@@ -10,7 +10,6 @@ import {
   type MacroStatCaptionTone,
 } from "@suppr/nutrition-core/macroStatCaption";
 import { formatMacro } from "@suppr/nutrition-core/formatMacro";
-import { SupprCard } from "@/components/ui/SupprCard";
 
 export interface MacroStatTileProps {
   macroKey: string;
@@ -108,70 +107,51 @@ export function MacroStatTile({
       : textTertiaryColor;
   const valueWeight: "500" | "600" = overSignal ? "600" : "500";
 
+  // Proto `.mtile` cell (Grace 2026-06-25 full conform): NO card — a hairline-
+  // divided grid cell. Top row = colored icon (left) + value/goal + label; a
+  // full-width COLORED progress bar below. The dividing borders + the cell's
+  // horizontal padding come from the grid wrapper (`style`, from
+  // TodayDashboardMacroTiles); this owns the vertical padding + content.
   const body = (
-    <SupprCard
-      lift="flat"
-      size="tile"
-      padding="md"
-      innerStyle={{
-        // tier-V1 now shows the colored bar again (no caption row), so it needs
-        // room for label + value + bar (~72pt). Non-tierV1 keeps bar + caption (96).
-        minHeight: tierV1 ? 72 : 96,
-        justifyContent: tierV1 ? "flex-start" : "space-between",
-        gap: tierV1 ? Spacing.sm : 0,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: Spacing.sm,
-        }}
-      >
-        <Text
-          style={{
-            ...Type.caption,
-            fontSize: 12,
-            lineHeight: 16,
-            fontWeight: "500",
-            color: textSecondaryColor,
-          }}
-        >
-          {label}
-        </Text>
+    <View style={{ paddingVertical: 14 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}>
         <Icon size={18} color={color} strokeWidth={1.75} />
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
-        <Text
-          style={{
-            ...(tierV1 ? Type.heroValue : Type.title),
-            ...(tierV1 ? {} : { fontSize: 20, lineHeight: 24 }),
-            color: valueColor,
-            ...(tierV1 ? { fontWeight: valueWeight } : {}),
-            fontVariant: ["tabular-nums"],
-          }}
-          numberOfLines={1}
-        >
-          {value}
-          <Text style={{ ...Type.body, fontSize: 14, color: textSecondaryColor }}>
-            {unit === "g" ? "g" : ` ${unit}`}
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              ...Type.title,
+              fontSize: 18,
+              lineHeight: 22,
+              color: valueColor,
+              fontWeight: valueWeight,
+              fontVariant: ["tabular-nums"],
+            }}
+            numberOfLines={1}
+          >
+            {value}
+            <Text style={{ ...Type.body, fontSize: 13, color: textTertiaryColor }}>
+              {" / "}
+              {target}
+              {unit === "g" ? "g" : ` ${unit}`}
+            </Text>
           </Text>
-        </Text>
-        <Text
-          style={{ ...Type.caption, flexShrink: 1, color: textTertiaryColor }}
-          numberOfLines={1}
-        >
-          / {target}
-          {unit === "g" ? "g" : ` ${unit}`}
-        </Text>
+          <Text
+            style={{
+              ...Type.caption,
+              fontSize: 12,
+              lineHeight: 16,
+              color: textSecondaryColor,
+            }}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </View>
       </View>
-      {/* Proto `.mtile` track: the COLORED progress bar always shows — it is the
-          prototype's defining macro-tile element (colour + fill = the macro's
-          progress). Grace 2026-06-25: the bar-less tile read "flat". This
-          un-strips ENG-1099's bar removal; the value colour still carries the
-          over-signal, and the caption text stays tier-gated (the prototype tile
-          has no caption row). */}
+      {/* Proto `.mtile-track`: the COLORED progress bar (colour + fill = the
+          macro's progress) — the prototype's defining tile element, full-width
+          under the icon+value row. Caption stays tier-gated (the proto tile has
+          no caption row). */}
       <View
         testID={`today-macro-tile-bar-${macroKey}`}
         style={{
@@ -179,7 +159,7 @@ export function MacroStatTile({
           borderRadius: Radius.full,
           backgroundColor: barTrackColor,
           overflow: "hidden",
-          marginTop: Spacing.sm,
+          marginTop: 11,
         }}
       >
         <View
@@ -209,7 +189,7 @@ export function MacroStatTile({
           {captionText}
         </Text>
       )}
-    </SupprCard>
+    </View>
   );
 
   if (!onPress) {

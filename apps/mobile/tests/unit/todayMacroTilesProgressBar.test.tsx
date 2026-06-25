@@ -209,8 +209,10 @@ describe("TodayDashboardMacroTiles — serif zero softening (audit gap 8)", () =
         : (t.props.style as { fontVariant?: unknown; fontSize?: number } | undefined) ?? {};
       const firstChild = Array.isArray(t.props.children) ? t.props.children[0] : t.props.children;
       return (
+        // The `.mtile` value numeral (Grace 2026-06-25 hairline-grid conform)
+        // is fontSize 18 (was 20 before the icon-left restructure).
         Array.isArray((style as { fontVariant?: unknown }).fontVariant) &&
-        (style as { fontSize?: number }).fontSize === 20 &&
+        (style as { fontSize?: number }).fontSize === 18 &&
         typeof firstChild === "string"
       );
     });
