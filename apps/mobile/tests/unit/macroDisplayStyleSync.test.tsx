@@ -27,10 +27,10 @@ describe("useMacroDisplayStyle — cross-instance sync", () => {
     const settings = renderHook(() => useMacroDisplayStyle());
     const today = renderHook(() => useMacroDisplayStyle());
 
-    // Default is tiles (SLOE redesign 2026-06-03 — the Sloe `01 · Today`
-    // frame shows the 2×2 macro tile grid).
-    expect(settings.result.current[0]).toBe("tiles");
-    expect(today.result.current[0]).toBe("tiles");
+    // Default is rings (Sloe v3, Grace 2026-06-25 — the prototype's Today shows
+    // the colourful macro ring donuts by default).
+    expect(settings.result.current[0]).toBe("rings");
+    expect(today.result.current[0]).toBe("rings");
 
     // Settings flips to bars (the opt-in dense list).
     act(() => {

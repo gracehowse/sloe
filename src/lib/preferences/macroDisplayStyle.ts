@@ -43,14 +43,12 @@ export const MACRO_DISPLAY_OPTIONS: ReadonlyArray<{
   { value: "rings", label: "Rings" },
 ];
 
-// SLOE redesign (2026-06-03): default flipped back "bars" → "tiles".
-// The canonical Sloe `01 · Today` frame renders the 2×2 macro TILE grid
-// (Protein / Carbs / Fat / Fibre, each with a progress bar) below the
-// multi-ring hero — so tiles is the redesign default. The 2026-05-22 C1
-// bars default belonged to the single-ring layout that the Sloe
-// multi-ring supersedes. The `bars` treatment stays available in
-// Settings → Display for users who prefer the denser list.
-export const DEFAULT_MACRO_DISPLAY_STYLE: MacroDisplayStyle = "tiles";
+// Sloe v3 (Grace 2026-06-25): default → "rings". The v3 prototype's Today shows
+// the colourful macro RING donuts by default (Protein/Carbs/Fat, value in the
+// centre, a progress sweep in each macro's colour) — so rings is the canonical
+// out-of-box macro display. Tiles + bars stay available in Settings → Display.
+// (Earlier "tiles" default predated SEEing the prototype's rendered Today.)
+export const DEFAULT_MACRO_DISPLAY_STYLE: MacroDisplayStyle = "rings";
 
 export const MACRO_DISPLAY_STORAGE_KEY = "suppr.prefs.macro_display";
 
