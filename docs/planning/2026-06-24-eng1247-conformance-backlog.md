@@ -34,16 +34,30 @@ on ENG-1247 + the review output.
 
 - **M1 — onboarding welcome landed MOBILE-ONLY** (web twin untouched, oat/green + FloatingPreview
   tiles; mobile docstring falsely claims parity; orphaned `ONBOARDING_WELCOME_BODY_MOBILE`).
-  Build the web welcome to the prototype `.wob-*` spec (Sloe-App.html:2619-2640) OR tracked
-  deferral + docstring fix. TODO.
-- **M2 — Today greeting→serif-date dead code** (`todayGreeting` + `firstNameFromMetadata` +
-  `GREETING_NAME_METADATA_KEYS` zero live callers; lying Settings comments; stale
-  `greetingNameMetadata.test.ts` + `todayGreeting` describe block). Verified deletable. TODO.
-- **M3 — stale "Library" e2e** → "Your kitchen". ✅ DONE.
+  **TODO — next must-fix.** Precise plan (inspected 2026-06-25):
+  1. **Add web tokens first** (they don't exist yet — tokens-only): `--primary-deep` (#241733
+     "Sloe-Deep") + `--accent-frost` (#c9c2d6) + a `--primary-light` for the bloom, in
+     `src/styles/theme.css`. Fixed brand identity (same light/dark) — the screen doesn't theme-resolve.
+  2. **Rewrite `src/app/components/onboarding/steps/welcome.tsx` render** (414→~150 lines) to mirror
+     the mobile twin (`apps/mobile/components/onboarding/steps/welcome.tsx`, 162 lines) + prototype
+     `.wob-brand`: deep-plum ground, radial bloom (primary-light .42 → primary .12 → deep 0),
+     centered lowercase Fraunces "sloe" (`--font-brand`, ~56px, white) + italic serif tagline
+     ("Cook what you love. Still reach your goals.", frost), white "Get started" CTA (deep-plum
+     label), "I already have an account" → /login, trust footer (lock "Private by default" · clock
+     "About a minute"). Drop the success/macro-fat washes + FloatingPreview + eyebrow/body/checklist.
+     PRESERVE the contract: `useOnboarding()` go/displayIndex/displayTotal + the `onboarding_step_completed` track.
+  3. **Clean up orphans**: the figmaCopy welcome exports (`ONBOARDING_WELCOME_BODY_WEB/MOBILE/EYEBROW/
+     TDEE_*`) are now only consumed by the two welcome files — delete the ones the rewrite orphans.
+  4. Fix the mobile docstring's "Web twin" claim (it's now accurate once web lands). SEE web (mobile-web
+     + desktop viewports) + add S6's render test.
+- **M2 — Today greeting→serif-date dead code** — ✅ DONE (commit 56dfc591). Deleted the 3 dead helpers
+  + stale test + describe block; de-lied every comment. Verified zero refs, full gate green.
+- **M3 — stale "Library" e2e** → "Your kitchen". ✅ DONE (ffb6e5ce).
 - **M4 — DayStrip chevrons invented week-paging** (prototype chevrons open the calendar);
   lost jump-to-today; pages into empty weeks. Needs Grace steer (gated on B29 CalendarPicker).
   TODO.
-- **M5 — DayStrip chevrons + Recipes pencil/link icons `IconSize.md`(14) → `.lg`(18)**. TODO.
+- **M5 — DayStrip chevrons + Recipes pencil/link icons `IconSize.md`(14) → `.lg`(18)** — ✅ DONE
+  (56dfc591, sim-verified both surfaces).
 - **S1–S6** (should-fix): mobile selected day-letter 70% white; mobile Recipes header ink
   neutral-not-plum; mobile welcome tagline 17→on-ramp; 404 comment honesty (24px is right);
   overlines 700→600; mobile welcome render test. TODO.
