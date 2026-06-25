@@ -48,10 +48,19 @@ export function UnifiedImportSheet({
     }
   }, [visible]);
 
+  const classification = classifyImport(text);
+  const canImport = classification.kind !== "empty";
+  // v3 prototype detection-driven CTA (ENG-1247 A13): name what you're about to
+  // import ("Import recipe link") and guide the empty state ("Paste something to
+  // import"), instead of a flat "Import". Web parity: unified-import-sheet.tsx.
+  const ctaLabel = canImport
+    ? `Import ${classification.label.toLowerCase()}`
+    : "Paste something to import";
+
   const onImport = () => {
     // Adapt expo-router's strictly-typed `push` to the routing helper's generic
     // shape — the destinations are string-literal routes pinned by importRouting.test.
-    const result = routeImport(classifyImport(text), text, {
+    const result = routeImport(classification, text, {
       push: (t) => router.push(t as never),
     });
     if (result.routed) {
@@ -60,8 +69,6 @@ export function UnifiedImportSheet({
       setHint(result.hint ?? null);
     }
   };
-
-  const canImport = classifyImport(text).kind !== "empty";
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -86,7 +93,7 @@ export function UnifiedImportSheet({
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={{ ...Type.navTitle, color: colors.text }}>Import anything</Text>
+              <Text style={{ ...Type.navTitle, color: colors.text }}>Import</Text>
               <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={12}>
                 <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
               </Pressable>
@@ -138,7 +145,7 @@ export function UnifiedImportSheet({
 
             <SupprButton
               variant="primary"
-              label="Import"
+              label={ctaLabel}
               onPress={onImport}
               disabled={!canImport}
               accessibilityLabel="Import the pasted content"

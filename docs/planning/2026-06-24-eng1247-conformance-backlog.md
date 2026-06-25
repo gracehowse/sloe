@@ -129,9 +129,11 @@ Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gate
 - **Divergence:** Core scan/not-found/manual-entry exists; the gap is the crowdsource voice: not-found copy (add it once and it's saved for you and everyone after you), the Shared-anonymously note, and a success state (Thanks for improving Sloe for everyone) + Log-it-now CTA. Copy + one state.
 - **Files:** `src/app/components/suppr/today-barcode-dialog.tsx:252-314; apps/mobile/app/(tabs)/barcode.tsx:954-989`
 
-### A13. [LOW · web] ImportFlow input sheet (web) — bottom-sheet shape + detection-driven CTA copy
-- **Divergence:** Web renders a centered Dialog titled Import-anything with a fixed CTA Import; conform to the prototype + mobile twin: bottom-sheet, title Import, and a detection-driven CTA label (Import {label} / disabled Paste-something-to-import).
-- **Files:** `src/app/components/suppr/unified-import-sheet.tsx:51-86`
+### A13. [LOW · both] ImportFlow input sheet — title + detection-driven CTA copy — ✅ DONE (copy); shape DEFERRED
+- **Divergence:** Web rendered a centered Dialog titled Import-anything with a fixed CTA Import; conform to the prototype: title Import, and a detection-driven CTA label (Import {label} / disabled Paste-something-to-import).
+- **Files:** `src/app/components/suppr/unified-import-sheet.tsx`; `apps/mobile/components/import/UnifiedImportSheet.tsx`
+- **Done (2026-06-25):** title "Import anything"→"Import" + detection-driven CTA (`Import {label.toLowerCase()}` when detected / disabled "Paste something to import" when empty) on BOTH web + mobile (parity — the backlog's "mobile twin already conformed" was inaccurate; both still said "Import anything"/"Import", so they moved together off the canonical prototype `Sheet title="Import"` + CTA at Sloe-App.html:4625). Within the existing `sloe_v3_unified_import` flag — no new gate. Web render test updated (`unifiedImportSheetWeb.test.tsx`) + SEEN both states on web (Dialog) AND iOS sim (empty "Paste something to import" → detected "Import recipe link", matching the "Detected: Recipe link" chip).
+- **DEFERRED — needs Grace:** the prototype's web **bottom-sheet shape** (vs the current centered Dialog). On desktop web a full-width bottom sheet reads worse than a centered modal (the prototype is phone-shaped) — a responsive judgment, not a mechanical conform. Mobile is already a slide-up sheet. Decision: keep web Dialog, adopt a responsive bottom-sheet (sheet on mobile-web, dialog on desktop), or force bottom-sheet everywhere?
 
 ### A14. [LOW · both] Notifications — Today/Earlier overline grouping + toned notif-ic glyph plates
 - **Divergence:** Both ship a flat inbox: add Today/Earlier overline grouping and a leading toned notif-ic glyph plate per item; web title should also be serif font-headline (currently plain h1).

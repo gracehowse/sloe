@@ -38,8 +38,22 @@ describe("UnifiedImportSheet (web)", () => {
     expect(screen.getByText(/Settings/)).toBeTruthy();
   });
 
-  it("disables Import for empty input", () => {
+  it("disables Import for empty input with the guiding CTA label", () => {
     render(<UnifiedImportSheet open onOpenChange={() => {}} />);
-    expect((screen.getByTestId("unified-import-cta") as HTMLButtonElement).disabled).toBe(true);
+    const cta = screen.getByTestId("unified-import-cta") as HTMLButtonElement;
+    expect(cta.disabled).toBe(true);
+    expect(cta.textContent).toBe("Paste something to import");
+  });
+
+  it("names what will be imported in the CTA once something is detected (ENG-1247 A13)", () => {
+    render(<UnifiedImportSheet open onOpenChange={() => {}} />);
+    fireEvent.change(screen.getByTestId("unified-import-input"), {
+      target: { value: "https://www.instagram.com/reel/Cabc/" },
+    });
+    const cta = screen.getByTestId("unified-import-cta") as HTMLButtonElement;
+    expect(cta.disabled).toBe(false);
+    expect(cta.textContent?.toLowerCase()).toContain("import");
+    // The label echoes the detected classification, not a flat "Import".
+    expect(cta.textContent).not.toBe("Import");
   });
 });

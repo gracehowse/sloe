@@ -36,10 +36,18 @@ export function UnifiedImportSheet({ open, onOpenChange }: UnifiedImportSheetPro
     }
   }, [open]);
 
-  const canImport = classifyImport(text).kind !== "empty";
+  const classification = classifyImport(text);
+  const canImport = classification.kind !== "empty";
+  // v3 prototype detection-driven CTA (ENG-1247 A13): the label names what
+  // you're about to import ("Import recipe link") and the empty state guides
+  // ("Paste something to import"), instead of a flat "Import". Mirrors the
+  // prototype `det ? 'Import '+det.label.toLowerCase() : 'Paste something to import'`.
+  const ctaLabel = canImport
+    ? `Import ${classification.label.toLowerCase()}`
+    : "Paste something to import";
 
   const onImport = () => {
-    const result = routeImport(classifyImport(text), text, { push: (t) => router.push(t) });
+    const result = routeImport(classification, text, { push: (t) => router.push(t) });
     if (result.routed) {
       onOpenChange(false);
     } else {
@@ -51,7 +59,7 @@ export function UnifiedImportSheet({ open, onOpenChange }: UnifiedImportSheetPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-w-sm" data-testid="unified-import-sheet">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Import anything</DialogTitle>
+          <DialogTitle className="text-foreground">Import</DialogTitle>
           <DialogDescription className="text-muted-foreground">
             Paste a TikTok, Instagram or YouTube link, a recipe URL, a meal plan, an MFP export,
             or recipe text — we&apos;ll figure out what it is.
@@ -81,7 +89,7 @@ export function UnifiedImportSheet({ open, onOpenChange }: UnifiedImportSheetPro
           onClick={onImport}
           data-testid="unified-import-cta"
         >
-          Import
+          {ctaLabel}
         </SupprButton>
       </DialogContent>
     </Dialog>
