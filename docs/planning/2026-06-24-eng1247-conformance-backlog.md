@@ -152,10 +152,10 @@ Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gate
 - **Divergence:** The manage/cancel control is a raw bg-foreground near-black slab instead of a SupprButton primary (aubergine). Off the one-filled-primary button canon. Mechanical swap.
 - **Files:** `src/app/components/settings/SubscriptionCard.tsx:278-285`
 
-### A18. [LOW · both] Settings version footer — add nutrition-values-are-estimates line — ✅ DONE
-- **Divergence:** Both omit the prototype's quiet set-ver footer pairing the version string with a nutrition-values-are-estimates disclaimer (web none; mobile only a bare v{version}/build{n} dev row). Add a one-line muted footer.
+### A18. [LOW · both] Settings version footer — ❌ NOT A GAP (do not re-attempt)
+- **Divergence (original):** Both omit the prototype's quiet set-ver footer pairing the version string with a nutrition-values-are-estimates disclaimer. Add a one-line muted footer.
+- **Resolution:** This duplicates the **Rework-status "NOT A GAP" note above** — the fuller compliance disclaimer "Nutrition data are estimates. Not medical or dietetic advice." already renders on **Progress** (web `ProgressDashboard.tsx:2449` + mobile `progress.tsx:2144`); the mobile version string is internal-only by design. Conformed-by-equivalent. A 2026-06-25 attempt added a shorter "Nutrition values are estimates" footer to Settings (commit 424133a4) before this note was reconciled — **reverted** (b16e1637) as redundant + inconsistently-worded. If a Settings footer is genuinely wanted (prototype-literal), it's Grace's call, and it should reuse the canonical Progress wording.
 - **Files:** `src/app/components/Settings.tsx; apps/mobile/components/settings/SettingsBundleContent.tsx`
-- **Done (2026-06-25):** added the centred muted disclaimer "Nutrition values are estimates" — web in the About card (renders in both two-pane + legacy paths), mobile below the Delete-account affordance. SEEN both (web /settings authed drive; iOS sim Settings). Both files were at their screen-budget pin (2301 / 4075) so the additions were offset by condensing adjacent comments — net-neutral. **Minor divergence from prototype (noted for Grace, not blocking):** dropped the prototype's "Sloe v3.0 ·" version prefix — web (`package.json` 0.0.1) and mobile (`expoConfig.version`) versions diverge with no honest shared string, and the disclaimer is the compliance point. If a version IS wanted, decide the shared source.
 
 ## B. Structural decisions for Grace (29)
 
