@@ -163,22 +163,18 @@ function IconBox({
   children: React.ReactNode;
 }) {
   const colors = useThemeColors();
-  // Sloe DS (Figma 09 Settings `335:2`): every settings-row glyph sits
-  // in a WHITE circle with a hairline outline (not a colour-tinted
-  // rounded square). The circle reads as a quiet container; the glyph
-  // itself carries any semantic colour the caller passes (e.g. clay
-  // for nav rows, sage for Apple Health, red for delete). `color` is
-  // intentionally NOT used as a fill any more — the frame's plates are
-  // uniform white with a `cardBorder` ring.
+  // v3 prototype `.set-ic` (ENG-1247, 2026-06-24): every settings-row glyph
+  // sits in a 36px GREY ROUNDED-SQUARE (bg-secondary), not the earlier white
+  // circle (the Figma 335:2 treatment is retired). The plate reads as a quiet
+  // container; the glyph itself carries any semantic colour the caller passes
+  // (clay for nav rows, sage for Apple Health, red for delete).
   return (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: size / 2,
-        backgroundColor: colors.background,
-        borderWidth: 1,
-        borderColor: colors.cardBorder,
+        borderRadius: Radius.xl,
+        backgroundColor: colors.backgroundSecondary,
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -1624,7 +1620,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           </Text>
           <Text
             style={{ fontSize: 14, color: colors.textSecondary, marginTop: 2 }}
+            numberOfLines={1}
           >
+            {/* v3 prototype: "email · plan" (ENG-1247). */}
+            {session?.user?.email ? `${session.user.email} · ` : ""}
             {tierLabel === "Pro" ? "Pro plan" : "Free plan"}
           </Text>
         </View>
