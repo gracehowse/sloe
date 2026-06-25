@@ -13,6 +13,18 @@ Worked autonomously after the audit (PR #609):
 - **A15 Profile serif name** — DONE (web, pixel-verified in browser).
 - **A16 404/recipe-404 serif headline** — DONE (web; serif `.state__title`; kept the
   deliberate copy + two-CTA recovery, rejecting the audit's "single primary" over-reach).
+- **A6 WhyNumber serif target headline** — DONE (web + mobile, pixel-verified in browser +
+  sim). Serif numeral grammar; held at original size (combined headline string, not the
+  prototype's isolated big number). The richer prototype WhyNumber (set-ic breakdown rows,
+  adaptive "Keep this target" CTA) stays deferred — coupled to the AdaptiveTDEE decision +
+  needs Apple Health activity data.
+- **A2a ConfirmFood serving-chip green→plum** — DONE (web + mobile). Fixed a reserved-green
+  rule violation (active chip was success-green) → brand-plum, flag-gated. Confirm-card
+  pixel-SEE impractical locally (deep food-search flow); verified by typecheck + 8630 web +
+  3170 mobile tests + parity-confirmed token. Flagged for a device glance.
+- **A2b ConfirmFood 3-tile macro grid** — DECISION FOR GRACE. The prototype's P/C/F tile
+  grid would regress the live card's richer micro table (Fibre/Sugar/Sodium). Held; options
+  posted on ENG-1247 (recommend keep-richer or mix-and-match).
 - **A17 Billing Manage button → SupprButton** — DEFERRED. The card is gated on Stripe
   subscription status, which the Stripe-less local dev server can't produce, and Settings
   isn't in the CI visual suite — so the change is un-SEE-able anywhere available. Low value
