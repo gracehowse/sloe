@@ -41,7 +41,10 @@ export function RecipesTabChrome() {
             hitSlop={8}
             style={{ padding: 6 }}
           >
-            <Pencil size={IconSize.lg} color={colors.navPrimary} strokeWidth={1.75} />
+            {/* Neutral ink (not plum) — these quiet utilities defer to the serif
+                title; matches web `text-foreground-secondary` + the prototype
+                `.icon-btn` neutral `var(--fg)`. (ENG-1247 S2) */}
+            <Pencil size={IconSize.lg} color={colors.textSecondary} strokeWidth={1.75} />
           </Pressable>
           <Pressable
             onPress={() => router.push("/import-shared")}
@@ -50,7 +53,7 @@ export function RecipesTabChrome() {
             hitSlop={8}
             style={{ padding: 6 }}
           >
-            <Link size={IconSize.lg} color={colors.navPrimary} strokeWidth={1.75} />
+            <Link size={IconSize.lg} color={colors.textSecondary} strokeWidth={1.75} />
           </Pressable>
         </View>
       }
