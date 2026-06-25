@@ -1,5 +1,6 @@
 import { StyleSheet, type ViewStyle } from "react-native";
 
+import { Elevation } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useTheme } from "@/context/theme";
 
@@ -13,17 +14,20 @@ import { useTheme } from "@/context/theme";
  * Views) pick up the same treatment without each caller re-deriving the
  * variant + dark/light logic.
  *
- * FLAT is the default (2026-06-04 "flat slabs" sweep, commit 664df1cb). The
- * Sloe Figma `654:2` Today renders `#F6F5F2` cards AND tiles as borderless,
- * shadowless warm slabs — the card fill against the `#FFFFFF` page is the
- * separation. So the no-arg default (and the `SupprCard` `lift` default) is
- * `"flat"`, and `useTodayCardElevation()` is the named flat wrapper Today uses.
- *
- * SOFT is the opt-in for the few ELEVATED card surfaces that float off the
- * page rather than sit flush in a stack — the recipe-card grids/detail that
- * pass `{ variant: "soft" }` (Discover, Library, recipe detail) or a
- * `SupprCard` with `lift="soft"`. Soft adds the ambient drop shadow (light) /
+ * SOFT is the page-ground card treatment (Sloe v3, ENG-1222 P2 — decision:
+ * docs/decisions/2026-06-25-v3-card-lift-reversal.md). v3 reverses the
+ * 2026-06-12 flat-card decision: white resting cards LIFT off the white ground
+ * on `Elevation.cardSoft` ("elevation, not warmth") — a flat white card on a
+ * white page is invisible, so the lift IS the separation. The ~39 page-ground
+ * card surfaces across Today/Plan/Progress/Recipes pass `{ variant: "soft" }`
+ * (or `<SupprCard lift="soft">`). Soft adds the ambient drop shadow (light) /
  * tonal lift (dark); see Behaviour below.
+ *
+ * FLAT (the no-arg default, and `useTodayCardElevation()`) stays for the
+ * surfaces the prototype keeps recessed/flush: macro tiles (`size="tile"`,
+ * recessed `--bg-secondary` slab), inset card-on-card panels (`size="inset"`,
+ * no double-shadow), and the Today tracker-half cards still flat under
+ * `today_tracker_tier_v1` (ENG-1099).
  *
  * Why neither variant is flag-gated. The treatment USED to gate on
  * `design_system_elevation`, but that read is removed here for two reasons:
@@ -97,20 +101,21 @@ export function useCardElevation(
     };
   }
 
-  // FLAT-CARD SURFACES (Grace, 2026-06-12 — Withings grammar; decision:
-  // docs/decisions/2026-06-12-flat-card-surfaces.md). The soft-lift treatment
-  // is RETIRED: page-ground cards are flat white on the cream ground — zero
-  // shadow, zero border — separation comes from ground↔card contrast alone.
-  // Shipped UNGATED per Grace's standing elevation directive recorded above
-  // ("turn everything on; never flag-gate again") — the prior elevation flag
-  // only ever hid the design from the founder. `variant: "soft"` is kept as
-  // an accepted no-op so ~30 call sites + their tests need no signature churn;
-  // the dark tonal lift (`liftBg`) survives as fill-based separation (NOT a
-  // shadow/border), mirroring web `.dark .card-slab`'s `--card-elevated` fill.
+  // SOFT LIFT — Sloe v3 (ENG-1222 P2, 2026-06-25). v3 REVERSES the 2026-06-12
+  // flat-card decision (docs/decisions/2026-06-12-flat-card-surfaces.md, now
+  // superseded by docs/decisions/2026-06-25-v3-card-lift-reversal.md): page-
+  // ground resting cards LIFT off the white ground on a soft ambient shadow.
+  // A flat white card on a white page is invisible — the lift IS the separation
+  // (Grace, 2026-06-25: "the cards not being raised as in the prototype"). The
+  // prototype floats white cards on white via `--shadow-card`; web already
+  // mirrors this (`.card-slab*` → `--elev-card-soft`). This was the lone
+  // platform laggard: `soft` silently no-op'd in light, so all ~39 surfaces
+  // that already opt into soft rendered flat. Now real — UNGATED per Grace's
+  // standing elevation directive ("turn everything on; never flag-gate again").
   //
-  // NOTE (Sloe v3, ENG-1222): v3 reverses this to LIFTED white-on-white cards —
-  // but that is done in P2 (the de-carded Today rebuild), with the full
-  // elevation-test cluster updated together. Kept flat here until then.
+  // DARK keeps the tonal lift (`liftBg: cardElevated`) instead of a shadow — RN
+  // renders dark drop shadows poorly, so fill-based separation carries it (an
+  // accepted platform deviation from web's dark `--elev-card-soft`).
   if (isDark) {
     return {
       shadowStyle: undefined,
@@ -120,7 +125,7 @@ export function useCardElevation(
   }
 
   return {
-    shadowStyle: undefined,
+    shadowStyle: Elevation.cardSoft,
     useBorder: false,
     liftBg: undefined,
   };

@@ -13,20 +13,18 @@
  * Mirror: `apps/mobile/components/ui/SupprCard.tsx` (same prop names,
  * same variants, same UN-GATED elevation behaviour as mobile).
  *
- * ── Elevation model (Design Direction 2026 → FLAT-CARD, 2026-06-12) ──
- * Resting tier (`elevation="slab-flat"`, default) is a FLAT warm slab — no
- * shadow, no hairline; the `bg-card` fill on the page is the separation (the
- * Sloe Figma `654:2` look). The `card` tier is NO LONGER a soft-shadow lift:
- * the flat-card decision (`docs/decisions/2026-06-12-flat-card-surfaces.md`,
- * Withings grammar) flipped the `.card-slab` utility (`src/styles/theme.css`)
- * to FLAT — `box-shadow: none; border-width: 0`. So `card` now resolves flat
- * too: identical to `slab-flat` in LIGHT (flat `--card`, white-on-cream contrast
- * is the only separation); in DARK it takes the tonal `--card-elevated` fill
- * (the lone remaining differentiation — still no shadow, no hairline). The
- * internal `softSlab` flag name is historical; the tier is flat. Mirrors
- * `apps/mobile/hooks/useCardElevation.ts`, which the same decision flipped
- * soft→flat. `sheet` / `float` keep their shadows — they are TRANSIENT surfaces
- * (the one place elevation is still allowed); `none` has no elevation.
+ * ── Elevation model (Sloe v3 card-lift, 2026-06-25) ──
+ * Resting cards LIFT off the white ground on the soft ambient shadow
+ * (`--elev-card-soft`, the three-layer `--shadow-card` from the v3 prototype) —
+ * a flat white card on a white page is invisible, so the lift IS the
+ * separation. Decision: `docs/decisions/2026-06-25-v3-card-lift-reversal.md`
+ * (reverses the 2026-06-12 flat-card grammar). Both `.card-slab` (`card` tier)
+ * and `.card-slab-flat` (`slab-flat` tier, default) apply the soft shadow in
+ * `src/styles/theme.css`; in DARK they take the dark `--elev-card-soft` +
+ * tonal `--card-elevated` fill. Mirrors `apps/mobile/hooks/useCardElevation.ts`
+ * (mobile keeps a single-shadow equivalent — RN can't render layered shadows).
+ * Macro tiles + inset card-on-card panels stay flat/recessed; `sheet` / `float`
+ * are TRANSIENT surfaces with their own shadows; `none` has no elevation.
  *
  * Variants:
  *  - `tone`: `neutral` (default) / `primary` / `success` / `warning` / `magenta`
