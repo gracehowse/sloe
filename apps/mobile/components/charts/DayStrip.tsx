@@ -165,7 +165,10 @@ export default function DayStrip({
             { isSelected, isToday, hasLogs },
             { accent: accent.primary, sage: Accent.success, text: textColor, onAccent: accent.primaryForeground },
           );
-          const labelColor = selectedFill ? accent.primaryForeground : secondaryColor;
+          // Selected day-LETTER demoted to 70% white (prototype `.is-sel .dc-dow`
+          // rgba(255,255,255,.7) + web `text-primary-foreground/70`); the day
+          // NUMBER stays full white, so the letter doesn't read as loud. (ENG-1247 S1)
+          const labelColor = selectedFill ? accent.primaryForeground + "B3" : secondaryColor;
           return (
             <Pressable
               key={`${dateKeyFromDate(weekStart)}-${dk}`}
