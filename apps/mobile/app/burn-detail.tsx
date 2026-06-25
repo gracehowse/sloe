@@ -11,6 +11,7 @@ import { isFeatureEnabled } from "@/lib/analytics";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { BurnDetailLoadingSkeleton } from "@/components/burn/BurnDetailLoadingSkeleton";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -486,6 +487,8 @@ export default function BurnDetailScreen() {
                 </Text>
               </View>
             ) : null}
+            {/* v3 atde-cta (ENG-1247 A3): a primary Done CTA closes the screen, not back-nav only. */}
+            <SupprButton variant="primary" label="Done" onPress={() => router.back()} style={{ alignSelf: "stretch", marginTop: Spacing.lg }} />
           </>
         )}
       </ScrollView>
@@ -528,16 +531,8 @@ function BurnStatRow({
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}>
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: iconBg,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        {/* v3 set-ic plate (ENG-1247 A3): 36px rounded-square (Radius.xl, the mobile set-ic radius), not a 40px circle. */}
+        <View style={{ width: 36, height: 36, borderRadius: Radius.xl, backgroundColor: iconBg, alignItems: "center", justifyContent: "center" }}>
           {icon}
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
@@ -552,7 +547,7 @@ function BurnStatRow({
         </Text>
       </View>
       {stepsBar ? (
-        <View style={{ marginTop: Spacing.dense, marginLeft: 52, height: 6, borderRadius: 3, backgroundColor: borderColor, overflow: "hidden" }}>
+        <View style={{ marginTop: Spacing.dense, marginLeft: 48, height: 6, borderRadius: 3, backgroundColor: borderColor, overflow: "hidden" }}>
           <View style={{ height: "100%", width: `${stepsBar.pct}%`, borderRadius: 3, backgroundColor: stepsBar.color }} />
         </View>
       ) : null}

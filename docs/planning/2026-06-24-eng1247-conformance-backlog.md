@@ -88,9 +88,10 @@ Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gate
 - **Divergence:** Adopt the ConfirmFood grammar: active unit-chip PRIMARY-filled (not success-green tint), a 3-tile coloured-dot P/C/F macro-tile grid (live shows a plain key/value table), and a serif kcal-line (26px). Highest-frequency logging surface.
 - **Files:** `src/app/components/food-search/FoodSearchPanel.tsx:2144-2350; apps/mobile/components/food-search/FoodSearchPanel.tsx:2027-2160`
 
-### A3. [MEDIUM · mobile] BurnDetail (mobile) — set-ic row icons + Done CTA
+### A3. [MEDIUM · mobile] BurnDetail (mobile) — set-ic row icons + Done CTA — ✅ DONE
 - **Divergence:** Breakdown row icons are 40px circles (radius 20) not the 36px set-ic rounded-square (radius 10); and no primary Done CTA (back-nav only). Snap both to the prototype.
 - **Files:** `apps/mobile/app/burn-detail.tsx`
+- **Done (2026-06-25):** breakdown plates 40px circle (r20) → 36px rounded-square `Radius.xl` (the mobile set-ic radius — settings `IconBox`; the prototype's 10px is off the mobile 4/6/8/12 scale), steps-bar align offset 52→48, + a primary full-width "Done" CTA (`SupprButton`, the prototype `atde-cta`) → `router.back()`. SEEN on the iOS sim (deep-link `suppr:///burn-detail`): rounded-square plates + aubergine Done pill. Mobile-only (web BurnDetail is the B10 decision). Net-negative on the file (condensed the icon-plate style) — re-pinned 561→556. iconBg literals (`rgba(…)`) left as-is — outside the size+radius+CTA scope (separate token-discipline cleanup).
 
 ### A4. [MEDIUM · both] EntryDetail + MealDetail — serif kcal headline + overline meta + serif macro-total grid
 - **Divergence:** Same grammar gap on two adjacent surfaces: lead with an uppercase overline meta line and a serif ed-cal (40px) calorie number; for MealDetail also render the 4-cell serif md-totalgrid (P/C/F/Fibre). Live renders sans extrabold kcal + split-bar.
