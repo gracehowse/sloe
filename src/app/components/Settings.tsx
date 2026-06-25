@@ -870,13 +870,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <p className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand leading-tight truncate">
             {profileDisplayLabel}
           </p>
-          {/* Plan label — Sloe DS (Figma `335:2`) shows "Free plan" /
-              "Pro plan" under the name. Pro keeps the clay-tint pill (a
-              reward signal); Free reads as a quiet grey label. The
-              `profileTierLabel` source ("Pro" / "Free") is pinned by
-              settingsProfileHeaderCardParity.test.ts. Email gets its own
-              line with `truncate` so the dot-and-tld doesn't run under
-              the avatar (audit 2026-04-30 visual-qa P1 #9). */}
+          {/* Plan label — pinned by settingsProfileHeaderCardParity. Pro
+              keeps the clay-tint pill (reward signal); email gets its own
+              `truncate` line so the tld doesn't run under the avatar
+              (2026-04-30 visual-qa P1 #9). ENG-1247: kept two-line on web
+              (NOT the prototype's single "email · plan") — web's card has
+              an Edit-profile button, so a merged line truncates to
+              "gracemt…" (seen in sim 2026-06-24). Deliberate divergence. */}
           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide mt-1 ${
             userTier === "pro"
               ? "bg-primary/10 text-primary"
