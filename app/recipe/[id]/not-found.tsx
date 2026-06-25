@@ -24,7 +24,9 @@ export default function RecipeNotFound() {
           <UtensilsCrossed className="size-7 text-muted-foreground" strokeWidth={1.75} aria-hidden />
         </div>
         <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">404</p>
-        <h1 className="text-foreground mb-2 text-xl font-bold -tracking-[0.02em]">
+        {/* v3 prototype `.state__title` — serif (Newsreader) 24px semibold,
+            shared with the generic 404 shell. (ENG-1247) */}
+        <h1 className="text-foreground mb-2 font-[family-name:var(--font-headline)] text-2xl font-semibold">
           Recipe not found
         </h1>
         <p className="text-sm text-muted-foreground mb-6">

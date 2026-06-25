@@ -445,7 +445,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           {avatarInitial}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-foreground leading-tight truncate">
+          <p className="font-[family-name:var(--font-headline)] text-lg font-medium text-foreground leading-tight truncate">
             {displayName?.trim() ? displayName : "Your profile"}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">
