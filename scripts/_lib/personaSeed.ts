@@ -125,7 +125,8 @@ export type PersonaName =
   | "instagram-recipe-saver"
   | "lazy-partial-logger"
   | "watch-athlete"
-  | "cold-start-newcomer";
+  | "cold-start-newcomer"
+  | "data-rich-power-user";
 
 export type DayKind =
   /** A plausibly complete day (≥ ~1,000 kcal across ≥ 2 entries). */
@@ -369,6 +370,35 @@ export const PERSONAS: Record<PersonaName, PersonaDefinition> = {
       onboarding_completed: false,
     },
   },
+
+  "data-rich-power-user": {
+    name: "data-rich-power-user",
+    headline:
+      "Maxed-out everything account — a full month of complete logging, a dense near-daily weigh-in series, and a large imported-recipe library. The everything-populated state for visual + regression testing (Grace's data-rich test account, ENG-1247).",
+    historyDays: 28,
+    weighIns: 22, // weighs nearly every day
+    libraryRecipes: 16, // a deep saved/imported library (needs RECIPE_LIBRARY ≥ 16)
+    // 27 complete days back + a PARTIAL today, so the live Today screen shows a
+    // realistic mid-day ring (a breakfast logged, dinner still "could hit") and
+    // the history behind it is dense and complete.
+    dayKinds: ["partial", ...allFull(27)],
+    profile: {
+      goal: "cut",
+      activity_level: "moderate",
+      sex: "female",
+      age: 32,
+      height_cm: 167,
+      start_weight_kg: 74.0,
+      weight_trend_kg_per_day: -0.025, // ~0.18 kg/week, a clean steady deficit
+      goal_weight_kg: 66,
+      target_calories: 1900,
+      target_protein: 145,
+      target_carbs: 175,
+      target_fat: 63,
+      display_name: "Data-Rich Tester (persona)",
+      onboarding_completed: true,
+    },
+  },
 };
 
 export function getPersona(name: string): PersonaDefinition {
@@ -591,6 +621,18 @@ const RECIPE_LIBRARY: SeededRecipe[] = [
   { title: "Miso-butter salmon", calories: 560, protein: 42, carbs: 12, fat: 38, fiber_g: 2, servings: 2, cuisine: "Japanese", source_name: "Instagram Reel", meal_type: ["dinner"] },
   { title: "Protein banana bread", calories: 230, protein: 12, carbs: 30, fat: 7, fiber_g: 3, servings: 8, cuisine: "American", source_name: "TikTok", meal_type: ["snack"] },
   { title: "One-pan creamy tuscan gnocchi", calories: 590, protein: 22, carbs: 70, fat: 26, fiber_g: 5, servings: 3, cuisine: "Italian", source_name: "Instagram Reel", meal_type: ["dinner"] },
+  // Entries 10–18 extend the library so the data-rich persona can carry a deep
+  // (16-recipe) imported shelf. Sources span the real import surfaces — pasted
+  // links, cookbook scans, creator Reels — to exercise mixed provenance.
+  { title: "Korean beef bulgogi rice bowl", calories: 610, protein: 38, carbs: 66, fat: 22, fiber_g: 4, servings: 4, cuisine: "Korean", source_name: "Imported link", meal_type: ["dinner"] },
+  { title: "Lemon-herb roast chicken thighs", calories: 520, protein: 44, carbs: 8, fat: 34, fiber_g: 2, servings: 4, cuisine: "Mediterranean", source_name: "Cookbook PDF", meal_type: ["dinner"] },
+  { title: "Black bean & sweet potato tacos", calories: 470, protein: 16, carbs: 72, fat: 13, fiber_g: 14, servings: 3, cuisine: "Mexican", source_name: "Imported link", meal_type: ["lunch", "dinner"] },
+  { title: "Thai green curry with chickpeas", calories: 540, protein: 20, carbs: 58, fat: 26, fiber_g: 10, servings: 4, cuisine: "Thai", source_name: "Web import", meal_type: ["dinner"] },
+  { title: "Blueberry protein pancakes", calories: 390, protein: 30, carbs: 50, fat: 9, fiber_g: 5, servings: 2, cuisine: "American", source_name: "TikTok", meal_type: ["breakfast"] },
+  { title: "Halloumi & roasted veg traybake", calories: 480, protein: 24, carbs: 30, fat: 28, fiber_g: 8, servings: 3, cuisine: "Mediterranean", source_name: "Cookbook PDF", meal_type: ["dinner"] },
+  { title: "Peanut sesame noodle salad", calories: 520, protein: 18, carbs: 68, fat: 20, fiber_g: 6, servings: 3, cuisine: "Asian", source_name: "Imported link", meal_type: ["lunch"] },
+  { title: "Shakshuka with feta", calories: 360, protein: 20, carbs: 24, fat: 22, fiber_g: 6, servings: 2, cuisine: "Middle Eastern", source_name: "Instagram Reel", meal_type: ["breakfast", "dinner"] },
+  { title: "Turkey & spinach meatballs", calories: 430, protein: 40, carbs: 18, fat: 22, fiber_g: 3, servings: 4, cuisine: "Italian", source_name: "Web import", meal_type: ["dinner"] },
 ];
 
 /** The first N recipes from the library — deterministic per persona count. */
