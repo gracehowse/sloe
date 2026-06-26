@@ -174,16 +174,15 @@ export function SupprTabBar({
               {typeof label === "string" ? (
                 <Text
                   style={{
-                    // SLOE (2026-06-04) — match the Figma tab bar
-                    // (`_gen.mjs` tabBar): 10px, uppercase, tracked,
-                    // medium weight. Calmer than the prior 11pt/600
-                    // non-uppercase chrome; the active TODAY label reads
-                    // clay, the rest ink-faint, so the tab bar recedes
-                    // and the centre plum FAB owns the hierarchy.
+                    // Sloe v3 (ENG-1247): the v3 prototype `.tab` label is
+                    // sentence-case + untracked (Sloe-App.html L717 — 10.5px
+                    // semibold, no text-transform). The prior 2026-06-04
+                    // uppercase/tracked treatment matched the FIGMA, which is
+                    // dead — Grace (2026-06-24) made the v3 prototype canonical
+                    // and it supersedes the Figma. Matches the web mobile-web
+                    // nav (10px / medium / no-transform), so the platforms agree.
                     fontSize: 10,
                     fontWeight: "500",
-                    letterSpacing: 0.5,
-                    textTransform: "uppercase",
                     color: tintColor,
                   }}
                   numberOfLines={1}
