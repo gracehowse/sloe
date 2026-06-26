@@ -91,9 +91,8 @@ describe("Library — Imported plans chip (ENG-653)", () => {
 
   it("reveals one pill per distinct imported plan when Imported is active", () => {
     render(<Library userTier="free" />);
-    const cycle = screen.getByTestId("library-entrykind-cycle");
-    fireEvent.click(cycle); // → Saved
-    fireEvent.click(cycle); // → Imported
+    // ENG-1247: the provenance row replaces the cycle — tap Imported directly.
+    fireEvent.click(screen.getByTestId("library-provenance-imported"));
 
     const pills = screen.getByTestId("library-plan-import-pills");
     const buttons = within(pills).getAllByRole("button");
@@ -105,9 +104,8 @@ describe("Library — Imported plans chip (ENG-653)", () => {
 
   it("narrows the grid to one plan when its pill is tapped", () => {
     render(<Library userTier="free" />);
-    const cycle = screen.getByTestId("library-entrykind-cycle");
-    fireEvent.click(cycle); // Saved
-    fireEvent.click(cycle); // Imported
+    // ENG-1247: tap the provenance Imported chip directly (cycle is gone).
+    fireEvent.click(screen.getByTestId("library-provenance-imported"));
 
     // All three imported recipes before refining.
     expect(screen.getByTestId("library-count-line")).toHaveTextContent("3");

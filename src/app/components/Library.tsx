@@ -11,6 +11,7 @@ import { LibraryShelvesHeader } from "./library/LibraryShelvesHeader";
 import { useRouter } from "next/navigation";
 import {
   LIBRARY_CATEGORY_PILLS,
+  LIBRARY_PROVENANCE_PILLS,
   matchesRecipeCategory,
   type RecipeCategoryId,
 } from "../../lib/recipes/recipeCategoryFilters.ts";
@@ -142,21 +143,15 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
       onGoDiscover();
     }
   }, [savedRecipesForLibrary.length, onGoDiscover]);
-  // ENG-921 (2026-06-07, Grace) — CATEGORY filters per Figma `527:2`
-  // (All · Breakfast · Lunch · Dinner · Dessert · Quick 30 · Under 500
-  // cal · High protein · Soup · Pasta · Chicken · Salad), shared with
-  // mobile via `recipeCategoryFilters.ts`. The entry-kind buckets
-  // (Saved / Imported) are NOT lost — ENG-921 polish (2026-06-07) folds
-  // them into a single quiet segmented control in the header (above the
-  // category row) instead of a competing second pill row, so the user
-  // can still narrow by how a recipe entered their library.
+  // ENG-921 (Grace) — CATEGORY filters per Figma `527:2`, shared with mobile via
+  // `recipeCategoryFilters.ts`. ENG-1247 (Grace 2026-06-26 "Both rows") re-added
+  // the entry-kind buckets as the visible provenance row above the category row.
   const [category, setCategory] = useState<RecipeCategoryId>("all");
   // Secondary entry-kind filter — null = no entry-kind narrowing.
-  const [entryKind, setEntryKind] = useState<"saved" | "imported" | null>(null);
-  // ENG-653 — contextual "Imported plans" source pill. A refinement of the
-  // Imported entry-kind, mirroring the mobile Library's plan-import pills
-  // (`apps/mobile/app/(tabs)/library.tsx`). Holds a `plan-import:<source>`
-  // id or null. Only meaningful when `entryKind === "imported"`.
+  const [entryKind, setEntryKind] = useState<"saved" | "imported" | "created" | null>(null);
+  // ENG-653 — contextual "Imported plans" source pill (refines the Imported
+  // entry-kind; mobile parity). Holds a `plan-import:<source>` id or null;
+  // only meaningful when `entryKind === "imported"`.
   const [planImportPill, setPlanImportPill] = useState<string | null>(null);
   // Mobile parity: a cycle button switches the sort key between
   // Recent (default) / Calories / Protein. See
@@ -263,11 +258,39 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               className="w-full pl-11 pr-4 py-3 bg-card border border-border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
           </div>
-          {/* Category filter pills — ENG-921 / Figma `527:2`: the SINGLE primary
-              filter row (All clay-fill · meal types · Quick 30 · …), horizontal
-              scroll. The old entry-kind pill row is gone — "Saved" is the
-              bookmark overlay; Saved/Imported narrowing + sort ride the quiet
-              count-line controls. Mobile parity: (tabs)/library.tsx. */}
+          {/* Provenance row — v3 Cookbook (All/Saved/Created/Imported), ENG-1247
+              "Both rows" (Grace); writes `entryKind`. Mobile parity. */}
+          <div
+            data-testid="library-provenance-pills"
+            className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden mb-2"
+          >
+            {LIBRARY_PROVENANCE_PILLS.map((p) => {
+              const active = p.id === "all" ? entryKind === null : entryKind === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  data-testid={`library-provenance-${p.id}`}
+                  onClick={() => {
+                    setPlanImportPill(null);
+                    setEntryKind(p.id === "all" ? null : p.id);
+                  }}
+                  className={[
+                    "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                    active
+                      ? "bg-primary-soft text-primary-solid font-semibold"
+                      : "bg-card text-muted-foreground font-medium hover:bg-muted/60",
+                  ].join(" ")}
+                  aria-pressed={active}
+                  aria-label={`Source: ${p.label}`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Category pills — ENG-921/Figma 527:2 (meal types · Quick 30 · …); provenance is the row above (ENG-1247). */}
           <div
             data-testid="library-filter-pills"
             className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -283,12 +306,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   className={[
                     "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                    // Chip grammar (web parity 2026-06-10, ENG-1022): selected =
-                    // `bg-primary-soft` fill + `primary-solid` label +
-                    // `font-semibold`, NO ring/border; unselected = quiet
-                    // `bg-card` + muted label, NO border. The old
-                    // `border border-primary-solid` selected ring + the
-                    // unselected `border border-border` were the chip drift.
+                    // Chip grammar (ENG-1022): selected = bg-primary-soft + primary-solid label + font-semibold, no border; unselected = quiet bg-card + muted, no border. Shared with the provenance row above.
                     active
                       ? "bg-primary-soft text-primary-solid font-semibold"
                       : "bg-card text-muted-foreground font-medium hover:bg-muted/60",
@@ -355,24 +373,6 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                 : `${filteredRecipes.length} ${filteredRecipes.length === 1 ? "recipe" : "recipes"}`}
             </p>
             <div className="flex items-center gap-1.5 shrink-0">
-              {/* Entry-kind cycle (preserved per ENG-921): All → Saved →
-                  Imported → All. A quiet text control, NOT a pill row. */}
-              <button
-                type="button"
-                data-testid="library-entrykind-cycle"
-                onClick={() => {
-                  // ENG-653: leaving Imported drops any plan-import refinement.
-                  setPlanImportPill(null);
-                  setEntryKind((prev) =>
-                    prev === null ? "saved" : prev === "saved" ? "imported" : null,
-                  );
-                }}
-                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60 transition-colors whitespace-nowrap"
-                aria-label={`Showing ${entryKind ?? "all"} recipes, tap to change`}
-              >
-                <Icons.filter className="w-3 h-3" aria-hidden />
-                {entryKind === "saved" ? "Saved" : entryKind === "imported" ? "Imported" : "All"}
-              </button>
               {/* Sort cycle — mobile parity (`cycleSort`): Recent →
                   Calories → Protein → Recent. */}
               <button
