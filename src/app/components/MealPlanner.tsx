@@ -55,6 +55,7 @@ import {
 import { isFeatureEnabled, track } from "../../lib/analytics/track.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
+import { useHouseholdBanner } from "../../hooks/useHouseholdBanner.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { moveMealInPlan } from "../../lib/nutrition/leftoversPlanner.ts";
 import {
@@ -267,6 +268,7 @@ export const MealPlanner = memo(function MealPlanner({
   // Generate-from-library-only flow.
   const planImportEnabled = isFeatureEnabled("plan_import_enabled");
   const { authedUserId } = useAuthSession();
+  const householdBanner = useHouseholdBanner(authedUserId); // ENG-1247 — v3 Plan "Cooking for N" banner
   // ENG-1098 "Calm mode" — when on, quiet the per-slot "Aim ~X kcal" numbers
   // (the empty-slot rows still render; only the number is hidden). Client-side
   // display preference (no DB), shared key with mobile.
@@ -1068,6 +1070,7 @@ export const MealPlanner = memo(function MealPlanner({
           plan={plan}
           targetCalories={targetCalories}
           startOffset={startOffset}
+          household={householdBanner}
           onGenerate={handleRegenerate}
           onAdjust={() => setTemplatesOpen(true)}
           onOpenShopping={handleShoppingList}
@@ -1096,13 +1099,9 @@ export const MealPlanner = memo(function MealPlanner({
       </h1>
       </div>
 
-      {/* F2-L (audit 2026-04-28): household bar — mobile parity at
-          `apps/mobile/app/(tabs)/planner.tsx:1708 <HouseholdSummaryRow />`.
-          The web `HouseholdBar` is the existing simplified-vs-original
-          component (member-picker chips + Manage link); it self-hides
-          for solo users (`!data?.household || members.length === 0`),
-          so adding it unconditionally on the planner page costs nothing
-          for accounts without a household. */}
+      {/* F2-L (audit 2026-04-28): legacy household bar — v3-OFF path only (the
+          v3 surface uses the `household` banner prop, ENG-1247). Self-hides for
+          solo users. Mobile parity: planner.tsx `<HouseholdSummaryRow />`. */}
       <HouseholdBar />
 
       {/* F2-F (2026-04-28): week summary card. Mobile parity at planner.tsx

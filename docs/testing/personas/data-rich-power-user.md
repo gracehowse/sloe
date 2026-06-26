@@ -40,3 +40,16 @@ node --import tsx scripts/seed-persona.mts \
 `--reset` wipes only this account's persona-tagged rows first. The seeder
 refuses to run against any non-allowlisted email and hard-blocks the two real
 daily-driver accounts.
+
+### Plan + household (separate from the persona seeder)
+
+- **Meal plan:** `node scripts/seed-test-plan.mjs` — a current-week plan (7 days
+  × breakfast/lunch/dinner from the account's recipes), so the Plan tab tests
+  rich. Re-run any week to re-anchor.
+- **Household** (for the "Cooking for N · names" banner, ENG-1247): a one-off
+  seed gives `+test` a 3-member household — itself ("Grace") plus the existing
+  empty test accounts `+test2` ("Sam") + `+newaccount` ("Mia") as
+  `household_members`. The banner name resolves from `profiles.display_name`
+  first, falling back to `household_members.display_name`. To undo: delete the
+  `households` row owned by `+test` (cascades members) and null the three
+  `profiles.household_id`.

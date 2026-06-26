@@ -6,6 +6,7 @@ import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
 import { planCalendarDateForIndex } from "@/lib/planning/planDayLabel";
 import { computePlanWeekVerdict } from "@/lib/planning/planWeekStatus";
 import type { DayPlan } from "@/types/recipe";
+import type { HouseholdBannerData } from "../../../hooks/useHouseholdBanner";
 import { PlanV3Surface } from "./PlanV3Surface";
 import { PlanV3WebDashboard } from "./PlanV3WebDashboard";
 
@@ -37,6 +38,8 @@ export interface PlanV3ConnectedProps {
   onSwapSlot: (dayIndex: number, slotIndex: number) => void;
   shoppingItemCount?: number;
   servingCount?: number;
+  /** ENG-1247 — "Cooking for N · names" household banner; null hides it. */
+  household?: HouseholdBannerData | null;
 }
 
 export function PlanV3Connected({
@@ -49,6 +52,7 @@ export function PlanV3Connected({
   onSwapSlot,
   shoppingItemCount = 0,
   servingCount = 1,
+  household = null,
 }: PlanV3ConnectedProps) {
   const weekDates = React.useMemo(
     () => Array.from({ length: 7 }, (_, i) => planCalendarDateForIndex(i, startOffset)),
@@ -88,7 +92,7 @@ export function PlanV3Connected({
           weekDates={weekDates}
           weekLabel={weekLabel}
           verdict={verdict}
-          household={null}
+          household={household}
           onGenerate={onGenerate}
           onAdjust={onAdjust}
           onTemplates={onAdjust}
@@ -108,7 +112,7 @@ export function PlanV3Connected({
           weekDates={weekDates}
           weekLabel={weekLabel}
           verdict={verdict}
-          household={null}
+          household={household}
           onGenerate={onGenerate}
           onAdjust={onAdjust}
           onTemplates={onAdjust}

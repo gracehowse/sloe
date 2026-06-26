@@ -75,6 +75,7 @@ import ReAnimated, {
 import { SPRING_DEFAULT, SPRING_SNAPPY } from "@/lib/motion";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHaptics } from "@/hooks/useHaptics";
+import { useHouseholdBanner } from "@/hooks/useHouseholdBanner";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
@@ -519,12 +520,11 @@ export default function PlannerScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const householdBanner = useHouseholdBanner(userId); // ENG-1247 — v3 Plan "Cooking for N" banner
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
-  // Secondary accent (Frost flag → damson, else clay) for the today-card edge,
-  // generate/regenerate CTAs, refresh affordance, active controls, and link
-  // actions. Threaded into the memoised StyleSheet via the dep array below.
-  // Macros keep `MacroColors`; slots keep `SlotColors`; win keeps `Accent.win`;
-  // status keeps success/warning/destructive.
+  // Secondary accent (Frost flag → damson, else clay) for card edges, CTAs,
+  // refresh, active controls + links; threaded into the memoised StyleSheet.
+  // Macros/slots/win keep their own palettes (MacroColors/SlotColors/Accent.win).
   const accent = useAccent();
 
   const { recipes: discoverRecipes, loading: discoverLoading } = useDiscoverRecipes();
@@ -2703,7 +2703,7 @@ export default function PlannerScreen() {
             weekDates={planV3WeekDates}
             weekLabel={planV3WeekLabel}
             verdict={planV3Verdict}
-            household={null}
+            household={householdBanner}
             onGenerate={openGenerateMenu}
             onAdjust={() => setTemplatesOpen(true)}
             onTemplates={() => setTemplatesOpen(true)}
