@@ -1,5 +1,5 @@
 import { Text, View, type TextStyle } from "react-native";
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -78,10 +78,13 @@ export function ProgressEnergyTriad({
   // headers census 2026-06-10: triad eyebrow → Type.label token.
   const eyebrow: TextStyle = { ...Type.label, color: dim };
   const value: TextStyle = {
-    // 18 (on the ENG-119 type scale), matching the web twin
-    // (suppr/progress-energy-triad.tsx text-[18px]). Was off-scale 20.
-    fontSize: 18,
-    fontWeight: "700",
+    // Sloe v3 (ENG-1247): serif numerals (Newsreader) — parity with the web
+    // twin (now `font-headline` / 22) + the v3 `ProgressEnergyEquation` + every
+    // other Sloe numeral (ring / macro / daily-calories). Was the lone sans/700
+    // numeral. 22 is on the ENG-119 type scale; serif 500 is a loaded weight.
+    fontFamily: FontFamily.serifMedium,
+    fontSize: 22,
+    fontWeight: "500",
     fontVariant: ["tabular-nums"],
     marginTop: Spacing.xs,
   };

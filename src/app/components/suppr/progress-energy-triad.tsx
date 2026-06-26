@@ -98,13 +98,13 @@ export function ProgressEnergyTriad({
       className={["flex gap-2", className].filter(Boolean).join(" ")}
     >
       <Cell label="Avg intake" testId="progress-energy-avg-intake">
-        <p className="mt-1.5 text-[18px] font-bold tabular-nums text-foreground">
+        <p className="mt-1.5 font-[family-name:var(--font-headline)] text-[22px] font-medium tabular-nums text-foreground">
           {avgIntakeKcal != null ? avgIntakeKcal.toLocaleString() : "—"}
         </p>
       </Cell>
       <Cell label="Est. TDEE" testId="progress-energy-tdee">
         <p
-          className="mt-1.5 text-[18px] font-bold tabular-nums"
+          className="mt-1.5 font-[family-name:var(--font-headline)] text-[22px] font-medium tabular-nums"
           style={{ color: "var(--accent-success-solid)" }}
         >
           {maintenanceKcal != null && maintenanceKcal > 0
@@ -122,7 +122,7 @@ export function ProgressEnergyTriad({
       </Cell>
       <Cell label="Deficit" testId="progress-energy-deficit">
         <p
-          className="mt-1.5 text-[18px] font-bold tabular-nums"
+          className="mt-1.5 font-[family-name:var(--font-headline)] text-[22px] font-medium tabular-nums"
           style={{
             color: isSurplus
               ? "var(--accent-warning-solid)"
@@ -251,7 +251,7 @@ function EqTerm({
 }) {
   return (
     <div className="min-w-0 flex-1 text-center">
-      <p className="text-[18px] font-bold tabular-nums leading-none" style={color ? { color } : undefined}>
+      <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium tabular-nums leading-none" style={color ? { color } : undefined}>
         {value}
       </p>
       <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
