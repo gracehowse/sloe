@@ -259,7 +259,9 @@ describe("DesktopSidebar — collapse affordance", () => {
     fireEvent.click(toggle);
     expect(aside.getAttribute("data-collapsed")).toBe("false");
     expect(aside.style.width).toBe("248px");
-    expect(screen.getByText("sloe")).toBeDefined();
+    // 2026-06-04 wordmark→asset: the mark is a role="img" aria-label="Sloe"
+    // span (masked SVG), not the literal text "sloe".
+    expect(screen.getByRole("img", { name: "Sloe" })).toBeDefined();
   });
 
   it("persists the collapsed state to localStorage and rehydrates on remount", () => {

@@ -62,7 +62,7 @@ export function PlanWeekStripV3({
   onSelectDay,
 }: PlanWeekStripV3Props) {
   return (
-    <div className="mt-3 flex gap-1.5" role="tablist">
+    <div className="mt-4 flex gap-1.5" role="tablist">
       {days.map((d) => {
         const selected = d.key === selectedKey;
         return (

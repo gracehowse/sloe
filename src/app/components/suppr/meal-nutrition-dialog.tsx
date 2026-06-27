@@ -135,7 +135,7 @@ function MacroStat({
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: cssVar }} />
         <span className="text-[13px] font-semibold text-foreground">{label}</span>
       </div>
-      <p className="mt-1 text-[15px] font-bold tabular-nums text-foreground">
+      <p className="mt-1 text-[22px] font-headline tabular-nums text-foreground">
         {Math.round(grams * 10) / 10}g
       </p>
       {pct != null ? (
@@ -328,7 +328,7 @@ export function MealNutritionDialog({
                 ) : null}
                 <p
                   data-testid="meal-nutrition-kcal"
-                  className="mb-3 text-[28px] font-extrabold tabular-nums leading-none text-foreground"
+                  className="mb-3 text-[40px] font-headline tabular-nums leading-none text-foreground"
                 >
                   {Math.round(effectiveMeal.calories)} kcal
                 </p>

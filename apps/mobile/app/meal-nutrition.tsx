@@ -671,7 +671,7 @@ function MacroStat({
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
         <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>{label}</Text>
       </View>
-      <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginTop: 4 }}>{Math.round(grams * 10) / 10}g</Text>
+      <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 21, color: textColor, marginTop: 4 }}>{Math.round(grams * 10) / 10}g</Text>
       {pct != null ? (
         // e2e walk 2026-06-10: "{pct}% of kcal" is a neutral share-of-energy
         // stat, so it reads in `textSecondary` — NOT the macro hue. The Fat

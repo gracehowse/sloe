@@ -108,7 +108,7 @@ export function NotificationsCenter({ onOpenRecipe }: { onOpenRecipe: (recipeId:
             <div className="p-2 bg-primary rounded-xl shadow-lg shadow-primary/20">
               <Icons.notification className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-foreground">Notifications</h1>
+            <h1 className="font-headline text-foreground">Notifications</h1>
           </div>
           <p className="text-muted-foreground text-sm">
             {notificationsUnreadCount > 0 ? `${notificationsUnreadCount} unread` : "All caught up"}
