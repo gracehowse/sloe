@@ -159,9 +159,12 @@ describe("web in-app detail — full Figma 332:2 visual language (not just bound
   });
 
   it("body title is plum Newsreader serif at the Figma display scale (not sans bold)", () => {
+    // Indentation-robust slice: anchor on the body-title testid and walk back to
+    // the nearest `<h1` so it survives the ENG-1247 conditional-render wrap.
+    const titleTestIdx = WEB_SRC.indexOf('data-testid="recipe-body-title"');
     const h1Block = WEB_SRC.slice(
-      WEB_SRC.indexOf('<h1\n                className="text-foreground-brand'),
-      WEB_SRC.indexOf('data-testid="recipe-body-title"') + 80,
+      WEB_SRC.lastIndexOf("<h1", titleTestIdx),
+      titleTestIdx + 80,
     );
     expect(h1Block).toContain("var(--font-headline)");
     expect(h1Block).toContain("text-foreground-brand");

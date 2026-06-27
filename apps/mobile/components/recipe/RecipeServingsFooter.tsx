@@ -11,15 +11,23 @@
  * footer ground is the translucent near-white surface so `primarySolid`
  * reads at full AA contrast.
  *
+ * ENG-1247 (v3 conformance, flag `recipe_detail_v3_conformance`): when the
+ * `onLog` prop is supplied the bar consolidates the screen's commit actions —
+ * YIELD stepper · Cook Mode (outline SECONDARY) · Log (filled PRIMARY,
+ * dominant). Log is the single filled slab (one-filled-CTA rule); the prior
+ * top-row Log moves here (prototype sticky CTA, Sloe-App.html L4418–4421).
+ * Flag-OFF (`onLog` omitted) keeps the legacy stepper + Cook-Mode-outline bar.
+ *
  * The footer floats over a translucent white surface, safe-area aware.
  */
 import { Text, View } from "react-native";
-import { Minus, Plus, UtensilsCrossed } from "lucide-react-native";
+import { Minus, Plus, PlusCircle, UtensilsCrossed } from "lucide-react-native";
 
 import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { SupprButton } from "@/components/ui/SupprButton";
 
 export function RecipeServingsFooter({
   servings,
@@ -30,6 +38,8 @@ export function RecipeServingsFooter({
   onCookMode,
   bottomInset,
   haptic = "none",
+  onLog,
+  logging = false,
 }: {
   servings: number;
   canDecrease: boolean;
@@ -39,6 +49,11 @@ export function RecipeServingsFooter({
   onCookMode: () => void;
   bottomInset: number;
   haptic?: "confirm" | "none";
+  /** ENG-1247 — when set, render the filled Log primary (dominant) alongside
+   *  the outline Cook Mode. Omit (flag-OFF) for the legacy Cook-Mode-only bar. */
+  onLog?: () => void;
+  /** Log in-flight — disables + shows the SupprButton spinner. */
+  logging?: boolean;
 }) {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the Cook Mode CTA.
@@ -124,37 +139,65 @@ export function RecipeServingsFooter({
         </View>
       </View>
 
-      {/* Right — Cook Mode (aubergine OUTLINE, Sloe treatment §1). */}
-      <PressableScale
-        haptic={haptic}
-        onPress={onCookMode}
-        accessibilityRole="button"
-        accessibilityLabel="Start cook mode"
-        testID="recipe-cook-mode-cta"
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-          height: 52,
-          paddingHorizontal: 24,
-          borderRadius: Radius.full,
-          backgroundColor: "transparent",
-          borderWidth: 1.5,
-          borderColor: accent.primarySolid,
-        }}
-      >
-        <UtensilsCrossed size={18} color={accent.primarySolid} />
-        <Text
+      {/* Right — ENG-1247: Cook Mode (outline SECONDARY) + Log (filled PRIMARY,
+          dominant) when `onLog` is set; else the legacy lone Cook Mode pill.
+          Log is the single filled slab (one-filled-CTA rule). */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+        <PressableScale
+          haptic={haptic}
+          onPress={onCookMode}
+          accessibilityRole="button"
+          accessibilityLabel="Start cook mode"
+          testID="recipe-cook-mode-cta"
           style={{
-            fontFamily: FontFamily.sansSemibold,
-            fontSize: 15,
-            fontWeight: "700",
-            color: accent.primarySolid,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            height: 52,
+            paddingHorizontal: onLog ? Spacing.lg : 24,
+            borderRadius: Radius.full,
+            backgroundColor: "transparent",
+            borderWidth: 1.5,
+            borderColor: accent.primarySolid,
           }}
         >
-          Cook Mode
-        </Text>
-      </PressableScale>
+          <UtensilsCrossed size={18} color={accent.primarySolid} />
+          <Text
+            style={{
+              fontFamily: FontFamily.sansSemibold,
+              fontSize: 15,
+              fontWeight: "700",
+              color: accent.primarySolid,
+            }}
+          >
+            Cook Mode
+          </Text>
+        </PressableScale>
+
+        {onLog ? (
+          <SupprButton
+            variant="primary"
+            haptic={haptic}
+            onPress={onLog}
+            loading={logging}
+            accessibilityLabel="Log this recipe"
+            testID="recipe-footer-log-cta"
+            style={{ height: 52, paddingHorizontal: Spacing.lg, gap: Spacing.sm }}
+          >
+            <PlusCircle size={18} color="#fff" />
+            <Text
+              style={{
+                fontFamily: FontFamily.sansSemibold,
+                fontSize: 15,
+                fontWeight: "700",
+                color: "#fff",
+              }}
+            >
+              Log
+            </Text>
+          </SupprButton>
+        ) : null}
+      </View>
     </View>
   );
 }

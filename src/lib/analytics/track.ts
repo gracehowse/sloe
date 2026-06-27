@@ -352,6 +352,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   yesterday" row renders alone (the old path). Gates the new structure only;
  *   every action reuses an existing commit path. Keep in sync with mobile.
  *   Mirror surfaces: `suppr/log-sheet.tsx` / `today/LogSheet.tsx`.
+ * - `recipe_detail_v3_conformance` (ENG-1247) — the v3 recipe-detail prototype
+ *   pass: hero title OVERLAY (kicker + serif H1 + clock·flame·serves meta row)
+ *   when the recipe has a photo (no-photo falls back to the current title-below
+ *   layout), the editorial serif standfirst headnote, and the consolidated
+ *   sticky CTA bar (yield stepper · Cook Mode outline · Log filled primary). On
+ *   web this also adds the REAL Log-to-today CTA (web had only a fake "Marked as
+ *   made!" toast before). OFF → the current title-below + Cook/Log/Edit pill row.
+ *   Keep in sync with mobile. Mirror surfaces: `RecipeDetail.tsx` / `recipe/[id].tsx`.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "landing_hero_hybrid_v1",
@@ -359,6 +367,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "sloe_v3_settings",
   "discover_creator_rail_v1",
   "loghub_quick_actions_v1",
+  "recipe_detail_v3_conformance",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
