@@ -16,5 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
  */
 export function useTabBarClearance(): number {
   const insets = useSafeAreaInsets();
-  return 56 + Math.max(insets.bottom, 8);
+  // Floating pill (ENG-1247): bottom lift `max(inset,8)+12` + pill height ~56
+  // + breathing, so the last scroll row clears the pill's top edge.
+  return 80 + Math.max(insets.bottom, 8);
 }

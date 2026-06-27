@@ -8,6 +8,7 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 import { useAccent, useTheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { Radius } from "@/constants/theme";
 
 import { LogTabBarButton } from "./LogTabBarButton";
 
@@ -95,24 +96,61 @@ export function SupprTabBar({
   };
 
   return (
-    <BlurView
-      // ENG-1247 — frosted tab bar (v3 `.tabbar`: translucent + backdrop blur).
-      // The bar overlays scroll content (tabBarStyle position:absolute in
-      // `_layout`); the iOS chrome-material blur lets content show faintly
-      // through. Was a solid `colors.background` View.
-      intensity={100}
-      tint={resolved === "dark" ? "systemChromeMaterialDark" : "systemChromeMaterialLight"}
+    // ENG-1247 — the v3 `.tabbar` (Sloe-App.html L1697) is a FLOATING ROUNDED
+    // PILL, not an edge-to-edge square bar: inset 14px L/R, lifted off the
+    // bottom, fully rounded, 1px border + a soft warm shadow so it floats above
+    // content. The outer View is the react-navigation container (transparent,
+    // full-bleed); the pill sits at its bottom and the raised Log button
+    // protrudes from centre — so the pill must NOT clip (no `overflow:hidden`).
+    // The blur lets content show faintly through; the ~88% theme wash keeps the
+    // tabs legible + warm (a cold chrome material read as "un-updated").
+    //
+    // ⚠️ The root height MUST be a fixed pixel value matching the `_layout`
+    // tabBarStyle.height — NOT `flex:1` / `height:'100%'`. A non-deterministic
+    // custom-tab-bar height makes react-navigation re-measure + re-render the
+    // navigator on every layout pass, which thrashes the JS thread and STALLS
+    // the scenes' Reanimated entrance animations (`useEntranceAnimation`) — they
+    // never reach opacity 1, so screen content renders INVISIBLE (a grey void
+    // below the header). Keep this height in lockstep with `_layout`.
+    <View
+      pointerEvents="box-none"
       style={{
-        flexDirection: "row",
-        alignItems: "stretch",
-        borderTopColor: colors.border,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        height: 56 + Math.max(safeInsets.bottom, 8),
-        paddingBottom: Math.max(safeInsets.bottom, 8),
-        paddingTop: 8,
+        height: 88 + Math.max(safeInsets.bottom, 8),
+        justifyContent: "flex-end",
+        paddingHorizontal: 14,
+        paddingBottom: Math.max(safeInsets.bottom, 8) + 12,
       }}
     >
-      {visibleRoutes.map((route, visibleIndex) => {
+      <BlurView
+        intensity={resolved === "dark" ? 56 : 44}
+        tint={resolved === "dark" ? "dark" : "light"}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          borderRadius: Radius.full,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+          paddingVertical: 8,
+          paddingHorizontal: 8,
+          // soft warm float — v3 `box-shadow: 0 12px 30px rgba(36,23,51,.16)`.
+          shadowColor: "#241733",
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.16,
+          shadowRadius: 16,
+        }}
+      >
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: colors.background,
+              opacity: 0.88,
+              borderRadius: Radius.full,
+            },
+          ]}
+        />
+        {visibleRoutes.map((route, visibleIndex) => {
         const { options } = descriptors[route.key];
         const realIndex = state.routes.findIndex((r) => r.key === route.key);
         const isFocused = state.index === realIndex;
@@ -170,13 +208,23 @@ export function SupprTabBar({
                 gap: 2,
               }}
             >
-              {options.tabBarIcon
-                ? options.tabBarIcon({
-                    focused: isFocused,
-                    color: tintColor,
-                    size: 22,
-                  })
-                : null}
+              {/* v3 active-tab treatment (Sloe-App.html L723): the focused
+                  glyph lifts 1px and scales 1.06 so the active tab pops. */}
+              <View
+                style={
+                  isFocused
+                    ? { transform: [{ translateY: -1 }, { scale: 1.06 }] }
+                    : undefined
+                }
+              >
+                {options.tabBarIcon
+                  ? options.tabBarIcon({
+                      focused: isFocused,
+                      color: tintColor,
+                      size: 23,
+                    })
+                  : null}
+              </View>
               {typeof label === "string" ? (
                 <Text
                   style={{
@@ -187,8 +235,8 @@ export function SupprTabBar({
                     // dead — Grace (2026-06-24) made the v3 prototype canonical
                     // and it supersedes the Figma. Matches the web mobile-web
                     // nav (10px / medium / no-transform), so the platforms agree.
-                    fontSize: 10,
-                    fontWeight: "500",
+                    fontSize: 10.5,
+                    fontWeight: "600",
                     color: tintColor,
                   }}
                   numberOfLines={1}
@@ -203,7 +251,8 @@ export function SupprTabBar({
           </React.Fragment>
         );
       })}
-    </BlurView>
+      </BlurView>
+    </View>
   );
 }
 

@@ -136,9 +136,13 @@ export default function TabLayout() {
           bottom: 0,
           backgroundColor: 'transparent',
           borderTopWidth: 0,
-          height: 56 + Math.max(insets.bottom, 8),
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 8,
+          // Floating rounded pill (v3 `.tabbar` L1697): the container is
+          // full-bleed + transparent; `SupprTabBar` insets/lifts the pill and
+          // the raised Log button protrudes from its top, so leave generous
+          // height + no padding here (the pill owns its own inset/padding).
+          height: 88 + Math.max(insets.bottom, 8),
+          paddingBottom: 0,
+          paddingTop: 0,
         },
         tabBarLabelStyle: {
           fontSize: 10,
