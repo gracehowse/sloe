@@ -3,6 +3,7 @@ import {
   buildMealEntriesFromSavedMeal,
   dominantSavedMealSource,
   effectivePortionMultiplier,
+  selectUsualSavedMeal,
   summariseSavedMeal,
 } from "@/lib/nutrition/savedMealsLogic";
 import type { SavedMeal, SavedMealItem } from "@/lib/nutrition/savedMeals";
@@ -456,5 +457,101 @@ describe("dominantSavedMealSource (audit 2026-04-30 fix #B7)", () => {
     // The function tolerates `items: null` (some legacy fixtures).
     const malformed = { ...mkMeal({}), items: null as unknown as SavedMealItem[] };
     expect(dominantSavedMealSource(malformed)).toBe("manual");
+  });
+});
+
+describe("selectUsualSavedMeal (ENG-1247 — LogHub 'Log usual')", () => {
+  it("returns null for an empty / nullish list", () => {
+    expect(selectUsualSavedMeal([], "Breakfast")).toBeNull();
+    expect(selectUsualSavedMeal(null, "Breakfast")).toBeNull();
+    expect(selectUsualSavedMeal(undefined, "Breakfast")).toBeNull();
+  });
+
+  it("prefers a saved meal whose defaultMealSlot matches the active slot", () => {
+    const meals = [
+      mkMeal({ id: "lunch", name: "Work lunch", defaultMealSlot: "Lunch", logCount: 50 }),
+      mkMeal({ id: "bfast", name: "Usual breakfast", defaultMealSlot: "Breakfast", logCount: 3 }),
+    ];
+    // Lunch has far more logs, but the active slot is Breakfast — slot wins.
+    expect(selectUsualSavedMeal(meals, "Breakfast")?.id).toBe("bfast");
+  });
+
+  it("matches the slot case-insensitively", () => {
+    const meals = [
+      mkMeal({ id: "bfast", name: "Usual breakfast", defaultMealSlot: "Breakfast", logCount: 2 }),
+    ];
+    expect(selectUsualSavedMeal(meals, "breakfast")?.id).toBe("bfast");
+    expect(selectUsualSavedMeal(meals, "BREAKFAST")?.id).toBe("bfast");
+  });
+
+  it("within the matching slot, picks the highest logCount", () => {
+    const meals = [
+      mkMeal({ id: "a", name: "A", defaultMealSlot: "Breakfast", logCount: 4 }),
+      mkMeal({ id: "b", name: "B", defaultMealSlot: "Breakfast", logCount: 9 }),
+      mkMeal({ id: "c", name: "C", defaultMealSlot: "Breakfast", logCount: 1 }),
+    ];
+    expect(selectUsualSavedMeal(meals, "Breakfast")?.id).toBe("b");
+  });
+
+  it("breaks a logCount tie by the most-recent lastLoggedAt", () => {
+    const meals = [
+      mkMeal({
+        id: "older",
+        name: "Older",
+        defaultMealSlot: "Breakfast",
+        logCount: 5,
+        lastLoggedAt: "2026-06-01T08:00:00.000Z",
+      }),
+      mkMeal({
+        id: "newer",
+        name: "Newer",
+        defaultMealSlot: "Breakfast",
+        logCount: 5,
+        lastLoggedAt: "2026-06-20T08:00:00.000Z",
+      }),
+    ];
+    expect(selectUsualSavedMeal(meals, "Breakfast")?.id).toBe("newer");
+  });
+
+  it("treats a missing lastLoggedAt as losing a logCount tie to one with a timestamp", () => {
+    const meals = [
+      mkMeal({ id: "no-time", name: "No time", defaultMealSlot: "Breakfast", logCount: 5 }),
+      mkMeal({
+        id: "has-time",
+        name: "Has time",
+        defaultMealSlot: "Breakfast",
+        logCount: 5,
+        lastLoggedAt: "2026-06-20T08:00:00.000Z",
+      }),
+    ];
+    expect(selectUsualSavedMeal(meals, "Breakfast")?.id).toBe("has-time");
+  });
+
+  it("falls back to the overall highest-logCount meal when no slot matches", () => {
+    const meals = [
+      mkMeal({ id: "lunch", name: "Work lunch", defaultMealSlot: "Lunch", logCount: 12 }),
+      mkMeal({ id: "dinner", name: "Dinner", defaultMealSlot: "Dinner", logCount: 30 }),
+    ];
+    // Active slot Breakfast matches none → overall max logCount (dinner).
+    expect(selectUsualSavedMeal(meals, "Breakfast")?.id).toBe("dinner");
+  });
+
+  it("falls back to overall max for an empty / missing active slot", () => {
+    const meals = [
+      mkMeal({ id: "a", name: "A", defaultMealSlot: "Lunch", logCount: 2 }),
+      mkMeal({ id: "b", name: "B", defaultMealSlot: "Dinner", logCount: 8 }),
+    ];
+    expect(selectUsualSavedMeal(meals, "")?.id).toBe("b");
+    expect(selectUsualSavedMeal(meals, null)?.id).toBe("b");
+    expect(selectUsualSavedMeal(meals, undefined)?.id).toBe("b");
+  });
+
+  it("handles meals with no defaultMealSlot at all (untagged → fallback only)", () => {
+    const meals = [
+      mkMeal({ id: "x", name: "X", logCount: 1 }),
+      mkMeal({ id: "y", name: "Y", logCount: 7 }),
+    ];
+    // No meal matches a specific slot, so fallback to overall max.
+    expect(selectUsualSavedMeal(meals, "Breakfast")?.id).toBe("y");
   });
 });

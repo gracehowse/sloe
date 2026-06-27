@@ -7,6 +7,10 @@ import {
 } from "../../../lib/nutrition/barcodeFreePromise.ts";
 import { looksLikeMealDescription } from "../../../lib/nutrition/parseMealDescription.ts";
 import { LogSheetDescribeFlow } from "./log-sheet-describe-flow.tsx";
+import {
+  LogHubQuickActions,
+  type LogHubQuickActionsProps,
+} from "./log-hub-quick-actions.tsx";
 
 /**
  * LogSheet — canonical log-entry sheet (web), search-first.
@@ -344,6 +348,16 @@ export interface LogSheetProps {
    *  a row appears above the browse tabs. `onTap` fires when the user
    *  clicks it; host shows confirmation dialog + performs the copy. */
   copyYesterday?: { count: number; onTap: () => void } | null;
+  /** ENG-1247 — LogHub quick-action row (Log usual / Copy yesterday /
+   *  Duplicate day) rendered above the browse tabs, replacing the
+   *  standalone `copyYesterday` row. When provided, the row renders ONLY
+   *  the actions whose handlers are present (no dead buttons) and the
+   *  standalone copy-yesterday row is suppressed. The host flag-gates which
+   *  prop it threads: `loghub_quick_actions_v1` ON → `quickActions`; OFF →
+   *  `copyYesterday`. Presentation-only — reuses existing commit paths.
+   *  Mirror of the mobile `LogSheet` `quickActions` prop. Shape:
+   *  {@link LogHubQuickActionsProps}. */
+  quickActions?: LogHubQuickActionsProps | null;
   /** ENG-928 — slot-aware go-to foods above browse tabs (empty query). */
   goTos?: {
     entries: LogSheetGoToEntry[];
@@ -418,6 +432,7 @@ export function LogSheet({
   onAddManually,
   desktop,
   copyYesterday,
+  quickActions,
   slot,
   confirmation,
   goTos,
@@ -604,6 +619,7 @@ export function LogSheet({
               onBrowseTabChange={setBrowseTab}
               onAddManually={onAddManually}
               copyYesterday={copyYesterday}
+              quickActions={quickActions}
               goTos={goTos}
               basket={basket}
               showBarcodeFreePromise={showBarcodeFreePromise}
@@ -707,6 +723,7 @@ function DefaultComposition({
   onBrowseTabChange,
   onAddManually,
   copyYesterday,
+  quickActions,
   goTos,
   basket,
   showBarcodeFreePromise,
@@ -724,6 +741,7 @@ function DefaultComposition({
   onBrowseTabChange: (tab: BrowseTab) => void;
   onAddManually?: () => void;
   copyYesterday?: LogSheetProps["copyYesterday"];
+  quickActions?: LogSheetProps["quickActions"];
   goTos?: LogSheetProps["goTos"];
   basket?: LogSheetProps["basket"];
   showBarcodeFreePromise?: boolean;
@@ -943,7 +961,9 @@ function DefaultComposition({
         </div>
       ) : (
         <>
-          {copyYesterday && copyYesterday.count > 0 && (
+          {quickActions ? (
+            <LogHubQuickActions quickActions={quickActions} />
+          ) : copyYesterday && copyYesterday.count > 0 ? (
             <button
               type="button"
               data-testid="copy-yesterday-row"
@@ -989,7 +1009,7 @@ function DefaultComposition({
                 <path d="m9 18 6-6-6-6" />
               </svg>
             </button>
-          )}
+          ) : null}
 
           {/* Browse pill toggle — Go-tos / Recent / Library / Saved. Hidden
               when only one source is available; the available one
