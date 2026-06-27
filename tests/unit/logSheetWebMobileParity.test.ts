@@ -91,6 +91,28 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
     }
   });
 
+  it("both surfaces ship the ENG-1247 LogHub quick-action component", () => {
+    // The quick-action row lives in its own component file on each platform
+    // (extracted to hold the screen-line budget). Pin the row testID + the
+    // built `loghub-quick-${key}` ids + the three action keys.
+    const webHub = read("src/app/components/suppr/log-hub-quick-actions.tsx");
+    const mobileHub = read("apps/mobile/components/today/LogHubQuickActions.tsx");
+    for (const src of [webHub, mobileHub]) {
+      expect(src).toContain("loghub-quick-actions");
+      expect(src).toContain("loghub-quick-${key}");
+      for (const key of ['"log-usual"', '"copy-yesterday"', '"duplicate-day"']) {
+        expect(src).toContain(key);
+      }
+    }
+  });
+
+  it("both sheets render the LogHubQuickActions component above the browse tabs", () => {
+    // When `quickActions` is wired the legacy `copy-yesterday-row` must not
+    // also render — the action lives in the quick-action row instead.
+    expect(web).toMatch(/quickActions \?[\s\S]*?LogHubQuickActions/);
+    expect(mobile).toMatch(/quickActions \?[\s\S]*?LogHubQuickActions/);
+  });
+
   it("both surfaces share the inline-search test handles", () => {
     for (const id of ["log-sheet-search-row", "log-sheet-search-input"]) {
       expect(web).toContain(id);

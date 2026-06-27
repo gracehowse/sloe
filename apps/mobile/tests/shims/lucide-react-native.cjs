@@ -168,6 +168,7 @@ const ICON_NAMES = [
   "Square",
   "Star",
   "Sun",
+  "Sunrise",
   "Tag",
   "Target",
   "Timer",

@@ -193,6 +193,7 @@ import {
 } from "@suppr/shared/nutrition/savedMeals";
 import {
   buildMealEntriesFromSavedMeal,
+  selectUsualSavedMeal,
 } from "@suppr/shared/nutrition/savedMealsLogic";
 import {
   addFavorite,
@@ -6346,18 +6347,85 @@ export default function TrackerScreen() {
           setFabSheetOpen(false);
           setAddOpen(true);
         }}
-        copyYesterday={(() => {
-          // ENG-709: only show when viewing today and today has no
-          // meals yet (so the copy is actually useful, not additive
-          // noise on a day already started).
-          if (!isToday || mealsToday.length > 0) return null;
-          const count = getYesterdayMeals(byDay, dayKey).length;
-          if (count === 0) return null;
-          return {
-            count,
-            onTap: handleCopyYesterday,
-          };
-        })()}
+        copyYesterday={
+          // ENG-1247: when the LogHub quick-action row is on, the
+          // copy-yesterday action lives inside `quickActions` instead —
+          // suppress the standalone row to avoid shipping it twice.
+          isFeatureEnabled("loghub_quick_actions_v1")
+            ? null
+            : (() => {
+                // ENG-709: only show when viewing today and today has no
+                // meals yet (so the copy is actually useful, not additive
+                // noise on a day already started).
+                if (!isToday || mealsToday.length > 0) return null;
+                const count = getYesterdayMeals(byDay, dayKey).length;
+                if (count === 0) return null;
+                return {
+                  count,
+                  onTap: handleCopyYesterday,
+                };
+              })()
+        }
+        quickActions={
+          // ENG-1247 — v3 LogHub quick-action row (Log usual / Copy
+          // yesterday / Duplicate day). Each entry is omitted when its
+          // action isn't resolvable, so the row renders no dead buttons.
+          isFeatureEnabled("loghub_quick_actions_v1")
+            ? (() => {
+                // "Log usual" — top saved meal for the active slot
+                // (slot-match → max logCount → latest lastLoggedAt →
+                // overall fallback). Hidden when the user has 0 saved
+                // meals. Resolved against the live `activeMealSlot` so
+                // the label reflects any manual slot change.
+                const usual = selectUsualSavedMeal(hostSavedMeals, activeMealSlot);
+                const logUsual = usual
+                  ? {
+                      mealName: usual.name,
+                      onTap: () => {
+                        setFabSheetOpen(false);
+                        // Re-resolve at tap time against the current slot
+                        // so a slot change after render still logs the
+                        // right meal.
+                        const pick =
+                          selectUsualSavedMeal(hostSavedMeals, activeMealSlot) ?? usual;
+                        logSavedMealFromPanel(pick, activeMealSlot);
+                      },
+                    }
+                  : undefined;
+
+                // "Copy yesterday" — same gate as the legacy standalone
+                // row (today, empty so far, yesterday had meals).
+                const copyCount =
+                  isToday && mealsToday.length === 0
+                    ? getYesterdayMeals(byDay, dayKey).length
+                    : 0;
+                const copyYesterdayAction =
+                  copyCount > 0
+                    ? { count: copyCount, onTap: handleCopyYesterday }
+                    : undefined;
+
+                // "Duplicate day" — only when today has ≥1 logged meal.
+                const duplicateDayAction =
+                  mealsToday.length > 0
+                    ? {
+                        onTap: () => {
+                          setFabSheetOpen(false);
+                          setDuplicateDayOpen(true);
+                        },
+                      }
+                    : undefined;
+
+                if (!logUsual && !copyYesterdayAction && !duplicateDayAction) {
+                  return null;
+                }
+                return {
+                  ...(logUsual ? { logUsual } : {}),
+                  ...(copyYesterdayAction ? { copyYesterday: copyYesterdayAction } : {}),
+                  ...(duplicateDayAction ? { duplicateDay: duplicateDayAction } : {}),
+                };
+              })()
+            : null
+        }
       />
 
       {targetCelebration && (

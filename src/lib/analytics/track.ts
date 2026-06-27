@@ -346,12 +346,19 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   falls back to a presentation-only SEED creator set (the `creators` table is
  *   empty pre-launch). Real creators always win when they exist. Keep in sync
  *   with mobile. Mirror surfaces: `DiscoverFeed.tsx` / `discover.tsx`.
+ * - `loghub_quick_actions_v1` (ENG-1247) — the v3 LogHub quick-action row
+ *   (Log usual / Copy yesterday / Duplicate day) shown above the browse tabs
+ *   in the Log-a-meal sheet. Default OFF → the legacy standalone "Copy
+ *   yesterday" row renders alone (the old path). Gates the new structure only;
+ *   every action reuses an existing commit path. Keep in sync with mobile.
+ *   Mirror surfaces: `suppr/log-sheet.tsx` / `today/LogSheet.tsx`.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "landing_hero_hybrid_v1",
   "nutrition_entry_ingredients_v1",
   "sloe_v3_settings",
   "discover_creator_rail_v1",
+  "loghub_quick_actions_v1",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
