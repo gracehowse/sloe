@@ -126,7 +126,11 @@ export function SupprTabBar({
         tint={resolved === "dark" ? "dark" : "light"}
         style={{
           flexDirection: "row",
-          alignItems: "center",
+          // v3 `.tabbar` is `align-items: flex-end` — the tab glyphs + labels
+          // bottom-align, and the 56pt FAB (the tallest child) sets the pill
+          // height + sits CONTAINED, bottom-aligned, with the tabs (not raised
+          // out the top/bottom). ENG-1247.
+          alignItems: "flex-end",
           borderRadius: Radius.full,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,

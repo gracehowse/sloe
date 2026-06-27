@@ -28,7 +28,8 @@ import { useHaptics } from "@/hooks/useHaptics";
  *     aubergine review); everyday inline CTAs are an aubergine OUTLINE.
  *     (Supersedes the 2026-06-04 plum-FAB / clay-CTA split.)
  *   - Lucide `Plus` icon, 24pt, white, strokeWidth 2.5.
- *   - Raised 16pt above the tab bar fill line via `top: -16`.
+ *   - CONTAINED in the floating pill, bottom-aligned (v3 `.fab`: in-flow,
+ *     `margin-bottom: 2px`) — the pill grows to hold the 56pt circle. Not raised.
  *   - `Elevation.floatPrimary` glow, re-tinted to the plum nav primary so the
  *     drop-shadow matches the fill (floatPrimary's base shadowColor is clay).
  *
@@ -63,18 +64,21 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
     onPress();
   };
 
-  // The wrapping View takes a fixed slot width matching a normal tab
-  // so the four real tabs flow around it on equal-width terms. The
-  // raised button itself is absolutely positioned within the slot so
-  // it can overflow above the bar fill line without expanding the
-  // bar's height.
+  // The wrapping View is an equal-width slot (flex:1) matching a normal tab.
+  // The button is IN-FLOW + bottom-aligned (NOT raised/absolute) — the v3 `.fab`
+  // (Sloe-App.html L726) sits INSIDE the floating pill with `margin-bottom: 2px`,
+  // contained; the pill (`.tabbar` align-items:flex-end) grows to hold the 56pt
+  // circle. The old `top:-16` raise was calibrated for the legacy edge-to-edge
+  // bar; on the new slim floating pill it left the FAB hanging out the BOTTOM
+  // (the wrapper is zero-height when the child is absolute, so -16 from the row
+  // midline wasn't enough to clear the 56pt circle). ENG-1247.
   return (
     <View
       pointerEvents="box-none"
       style={{
         flex: 1,
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-end",
       }}
     >
       <Pressable
@@ -86,8 +90,7 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
         hitSlop={8}
         style={({ pressed }) => [
           {
-            position: "absolute",
-            top: -16,
+            marginBottom: 2,
             width: 56,
             height: 56,
             borderRadius: 28,
