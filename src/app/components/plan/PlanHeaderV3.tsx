@@ -43,7 +43,7 @@ function ActButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="flex h-[38px] w-[38px] items-center justify-center rounded-xl border border-border bg-[var(--background-secondary)] text-foreground transition-[background-color,transform] hover:bg-[var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95"
+      className="flex h-[38px] w-[38px] items-center justify-center rounded-xl border border-border bg-card shadow-sm text-foreground transition-[background-color,transform] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95"
     >
       {children}
     </button>
