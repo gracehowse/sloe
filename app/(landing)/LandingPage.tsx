@@ -59,10 +59,15 @@ export function LandingPage() {
 }
 
 function SloeWordmark({ className = "" }: { className?: string }) {
+  // The canonical splash logotype (public/sloe-wordmark.svg) rendered as a
+  // recolorable CSS mask — matches the app + splash exactly (ENG-1247). Empty
+  // element; the aria-label carries the proper-noun brand name.
   return (
-    <span className={`lp-wordmark ${className}`.trim()} aria-label="Sloe">
-      Sloe
-    </span>
+    <span
+      className={`lp-wordmark ${className}`.trim()}
+      role="img"
+      aria-label="Sloe"
+    />
   );
 }
 

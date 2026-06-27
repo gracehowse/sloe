@@ -24,14 +24,17 @@ describe("SupprMark — Sloe wordmark (ENG-797 retired)", () => {
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
     expect(mark).toHaveAttribute("data-slot", "sloe-mark");
-    expect(mark.textContent).toBe("sloe");
+    // ENG-1247: the wordmark is the splash logotype SVG as a CSS mask (no inline
+    // text or <svg> node) — only the asset matches the splash.
+    expect(mark.getAttribute("style")).toContain("sloe-wordmark.svg");
     expect(mark.querySelector("svg")).toBeNull();
   });
 
-  it("forwards the size prop via the 0.72 font-size ratio", () => {
+  it("forwards the size prop via the 0.72 ratio (height tracks it)", () => {
     render(<SupprMark size={48} />);
     const mark = screen.getByRole("img", { name: "Sloe" });
-    expect(mark).toHaveStyle({ fontSize: "35px" });
+    // sloeFontSize(48) = 35 → height round(35 * 1.15) = 40.
+    expect(mark).toHaveStyle({ height: "40px" });
   });
 });
 
@@ -46,7 +49,6 @@ describe("SupprPlateMark — deprecated alias", () => {
 describe("SupprPlateWordmark — deprecated alias", () => {
   it("composes the Sloe wordmark lockup", () => {
     render(<SupprPlateWordmark />);
-    expect(screen.getByText("sloe")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Sloe" })).toBeInTheDocument();
   });
 });

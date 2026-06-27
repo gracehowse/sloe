@@ -29,24 +29,35 @@ function SloeWordmarkText({
   slotName = "sloe-wordmark",
   ...props
 }: SloeWordmarkTextProps) {
+  // Render the canonical splash logotype SVG (public/sloe-wordmark.svg) as a
+  // recolorable CSS mask — `background: currentColor` so the brand ink (default
+  // text-foreground-brand, or a caller's text-* override on a dark surface)
+  // fills the mark. Only the asset matches the splash; a live Fraunces face
+  // can't reproduce its high-opsz stroke contrast (Grace 2026-06-26).
+  const fontSize = sloeFontSize(size);
+  const height = Math.round(fontSize * 1.15);
+  const width = Math.round(height / (1661 / 3088));
   return (
     <span
       role="img"
       aria-label="Sloe"
       data-slot={slotName}
-      className={cn(
-        "font-[family-name:var(--font-brand)] font-bold tracking-tight text-foreground-brand shrink-0 lowercase",
-        className,
-      )}
+      className={cn("inline-block shrink-0 align-middle text-foreground-brand", className)}
       style={{
-        fontSize: sloeFontSize(size),
-        lineHeight: 1,
-        letterSpacing: "-0.01em",
+        width,
+        height,
+        backgroundColor: "currentColor",
+        WebkitMaskImage: "url(/sloe-wordmark.svg)",
+        maskImage: "url(/sloe-wordmark.svg)",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
       }}
       {...props}
-    >
-      sloe
-    </span>
+    />
   );
 }
 

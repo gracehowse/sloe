@@ -24,28 +24,31 @@ describe("SupprMark (Sloe wordmark)", () => {
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
     expect(mark).toHaveAttribute("data-slot", "sloe-mark");
-    expect(mark.textContent).toBe("sloe");
+    expect(mark.getAttribute("style")).toContain("sloe-wordmark.svg");
   });
 
-  it("renders the wordmark in Fraunces Bold (matches the splash logotype)", () => {
-    // ENG-1247 (Grace 2026-06-26): the in-app mark read too thin next to the
-    // bold splash logo, so the wordmark is now Fraunces Bold (was ~360 light).
+  it("renders the splash logotype SVG as a recolorable mask (ENG-1247)", () => {
+    // ENG-1247 (Grace 2026-06-26): a live Fraunces font (even Bold) "looked
+    // nothing like" the splash, so the wordmark is now the canonical splash
+    // asset (public/sloe-wordmark.svg) masked + filled via currentColor.
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
-    expect(mark.className).toContain("font-bold");
+    expect(mark.getAttribute("style")).toContain("sloe-wordmark.svg");
+    expect(mark.getAttribute("style")?.toLowerCase()).toContain("currentcolor");
   });
 
-  it("scales font size at the 0.72 ratio (ENG-797 mobile parity)", () => {
+  it("scales by the 0.72 ratio — height tracks the mark size (ENG-797 parity)", () => {
     render(<SupprMark size={40} />);
     const mark = screen.getByRole("img", { name: "Sloe" });
-    expect(mark).toHaveStyle({ fontSize: "29px" });
+    // sloeFontSize(40) = 29 → height round(29 * 1.15) = 33.
+    expect(mark).toHaveStyle({ height: "33px" });
   });
 
-  it("uses the Fraunces brand font + plum brand token classes", () => {
+  it("fills from the brand-ink token via currentColor (recolorable on dark surfaces)", () => {
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
-    expect(mark.className).toContain("font-[family-name:var(--font-brand)]");
     expect(mark.className).toContain("text-foreground-brand");
+    expect(mark.getAttribute("style")?.toLowerCase()).toContain("currentcolor");
   });
 });
 
@@ -59,7 +62,6 @@ describe("SupprPlateMark (deprecated alias)", () => {
 describe("SupprPlateWordmark (deprecated alias)", () => {
   it("composes the Sloe wordmark lockup", () => {
     render(<SupprPlateWordmark />);
-    expect(screen.getByText("sloe")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Sloe" })).toBeInTheDocument();
   });
 });
@@ -67,7 +69,6 @@ describe("SupprPlateWordmark (deprecated alias)", () => {
 describe("SupprWordmark", () => {
   it("composes the Sloe wordmark in a wrapper", () => {
     render(<SupprWordmark />);
-    expect(screen.getByText("sloe")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Sloe" })).toBeInTheDocument();
   });
 
@@ -76,7 +77,8 @@ describe("SupprWordmark", () => {
     const { container: plate } = render(<SupprPlateWordmark size={28} />);
     const legacyWord = legacy.querySelector('[data-slot="sloe-wordmark"]');
     const plateWord = plate.querySelector('[data-slot="sloe-wordmark"]');
-    expect(legacyWord).toHaveStyle({ fontSize: "20px" });
-    expect(plateWord).toHaveStyle({ fontSize: "20px" });
+    // sloeFontSize(28) = 20 → height round(20 * 1.15) = 23.
+    expect(legacyWord).toHaveStyle({ height: "23px" });
+    expect(plateWord).toHaveStyle({ height: "23px" });
   });
 });

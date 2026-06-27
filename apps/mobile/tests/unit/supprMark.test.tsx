@@ -32,34 +32,32 @@ describe("SupprMark (mobile)", () => {
     expect(getByLabelText("Sloe")).toBeTruthy();
   });
 
-  it("renders the lowercase 'sloe' wordmark (no legacy 'S' glyph)", () => {
-    const { getByText, queryByText } = render(<SupprMark />);
-    expect(getByText("sloe")).toBeTruthy();
-    // No standalone 'S' glyph — the wordmark is the whole word.
-    expect(queryByText("S")).toBeNull();
+  it("renders the splash logotype asset, not a text glyph (ENG-1247)", () => {
+    const { getByLabelText, queryByText } = render(<SupprMark />);
+    expect(getByLabelText("Sloe")).toBeTruthy();
+    // The mark is the splash Image asset now — no rendered text glyph.
+    expect(queryByText("sloe")).toBeNull();
   });
 });
 
 describe("SupprPlateMark (mobile)", () => {
   it("is an alias that renders the Sloe wordmark (plate motif retired)", () => {
-    const { getByLabelText, getByText } = render(<SupprPlateMark />);
+    const { getByLabelText } = render(<SupprPlateMark />);
     expect(getByLabelText("Sloe")).toBeTruthy();
-    expect(getByText("sloe")).toBeTruthy();
   });
 });
 
 describe("SupprPlateWordmark (mobile)", () => {
   it("renders the Sloe wordmark", () => {
-    const { getByText } = render(<SupprPlateWordmark />);
-    expect(getByText("sloe")).toBeTruthy();
+    const { getAllByLabelText } = render(<SupprPlateWordmark />);
+    expect(getAllByLabelText("Sloe").length).toBeGreaterThanOrEqual(1);
   });
 });
 
 describe("SupprWordmark (mobile)", () => {
   it("renders the Sloe wordmark and exposes the brand label", () => {
-    const { getByText, getAllByLabelText } = render(<SupprWordmark />);
-    expect(getByText("sloe")).toBeTruthy();
-    // Wordmark wrapper + inner word both expose the "Sloe" label.
+    const { getAllByLabelText } = render(<SupprWordmark />);
+    // Wordmark wrapper + inner Image both expose the "Sloe" label.
     expect(getAllByLabelText("Sloe").length).toBeGreaterThanOrEqual(1);
   });
 });

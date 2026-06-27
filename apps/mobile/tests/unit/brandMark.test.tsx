@@ -79,7 +79,8 @@ describe("SupprPlateMark — always the Sloe wordmark (mobile, ENG-797)", () => 
   });
 
   it("composes the Sloe wordmark in the lockup", () => {
-    const { getByText } = render(<SupprPlateWordmark />);
-    expect(getByText("sloe")).toBeTruthy();
+    const { getAllByLabelText } = render(<SupprPlateWordmark />);
+    // ENG-1247: the wordmark is the splash logotype Image (no text glyph).
+    expect(getAllByLabelText("Sloe").length).toBeGreaterThanOrEqual(1);
   });
 });
