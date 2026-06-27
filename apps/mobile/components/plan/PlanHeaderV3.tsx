@@ -125,7 +125,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
-    ...Elevation.cardSoft,
+    // Subtle crisp lift (not the floaty page-card cardSoft) — matches the
+    // prototype `--shadow-card` + web `shadow-sm` on these 38px buttons.
+    ...Elevation.cardHairline,
   },
   verdict: {
     flexDirection: "row",

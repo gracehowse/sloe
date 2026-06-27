@@ -732,6 +732,20 @@ export const Elevation = {
     shadowOffset: { width: 0, height: 0 },
     elevation: 0,
   },
+  // Subtle small-surface lift — fills the gap between flat `card` and the heavy
+  // page-card `cardSoft` (radius 18). Mirrors the prototype's `--shadow-card`
+  // (`0 1px 3px rgba(36,23,51,.05)`) + web `shadow-sm`, for small interactive
+  // cards like the Plan-header action buttons where cardSoft reads as floaty.
+  // Opacity nudged 0.05 → 0.10 so it registers on RN's white-on-white, where a
+  // 5% halo is invisible (see the cardSoft edge-sampling note below). Tight
+  // radius (4) + low offset (1) keep it crisp, not a wide ambient halo.
+  cardHairline: {
+    shadowColor: '#221B26',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
   // ENG-795 (Redesign — Design Direction 2026): the soft-elevation variant
   // that SUPERSEDES the 2026-05-22 flat lock above, per the 2026-05-31
   // design-director review + approved prototypes. As of 2026-06-04 this is the
