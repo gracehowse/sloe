@@ -52,16 +52,15 @@ describe("ENG-1020 #6 — Plan week-date rendered once (web)", () => {
   });
 });
 
-describe("ENG-1020 #7 — '% of kcal' caption uses a neutral text token (web)", () => {
-  it("paints the caption in muted-foreground, not the macro/amber hue", () => {
-    // The caption line is "{kcal} kcal · {pct}% of kcal" in text-muted-foreground.
-    expect(MEAL_NUTRITION_DIALOG).toMatch(
-      /text-muted-foreground[^\n]*>\s*\n\s*\{Math\.round\(kcal\)\} kcal · \{pct\}% of kcal/,
-    );
-    // It must NOT be painted with the per-macro colour var (amber for fat).
-    expect(MEAL_NUTRITION_DIALOG).not.toMatch(
-      /% of kcal[\s\S]{0,40}(color:\s*cssVar|style=\{\{\s*color)/,
-    );
+describe("ENG-1020 #7 → ENG-1247 — per-macro '% of kcal' removed from meal-detail (web)", () => {
+  it("no longer renders an inline '% of kcal' caption (the v3 grid shows grams only)", () => {
+    // ENG-1247: the v3 `.md-totalgrid` replaced the per-macro grams+% rows. The
+    // share-of-energy detail moved to the tap-through MacroDetailPanel, so the
+    // dialog no longer paints a "% of kcal" caption at all — which also closes the
+    // ENG-1020 #7 amber-misread risk by removing the surface entirely.
+    expect(MEAL_NUTRITION_DIALOG).not.toMatch(/% of kcal/);
+    // The 4-cell grid is what renders the per-macro grams now.
+    expect(MEAL_NUTRITION_DIALOG).toMatch(/MacroTotalGrid/);
   });
 });
 

@@ -51,14 +51,15 @@ describe("ENG-1020 #6 — Plan week-date rendered once (mobile)", () => {
   });
 });
 
-describe("ENG-1020 #7 — '% of kcal' caption uses a neutral text token (mobile)", () => {
-  it("paints the caption in textSecondary, not the macro hue", () => {
-    // The caption "{pct}% of kcal" reads in the neutral secondary text colour.
-    expect(MEAL_NUTRITION).toMatch(
-      /color:\s*colors\.textSecondary\s*\}\}>\{pct\}% of kcal/,
-    );
-    // It must NOT be painted with the per-macro hue (`color`, amber for fat).
-    expect(MEAL_NUTRITION).not.toMatch(/color:\s*color\s*\}\}>\{pct\}% of kcal/);
+describe("ENG-1020 #7 → ENG-1247 — per-macro '% of kcal' removed from meal-detail (mobile)", () => {
+  it("no longer renders an inline '% of kcal' caption (the v3 grid shows grams only)", () => {
+    // ENG-1247: the v3 `.md-totalgrid` replaced the per-macro grams+% rows. The
+    // share-of-energy detail moved to the tap-through macro-detail screen, so the
+    // meal-detail no longer paints a "% of kcal" caption at all — which also
+    // closes the ENG-1020 #7 amber-misread risk by removing the surface entirely.
+    expect(MEAL_NUTRITION).not.toMatch(/% of kcal/);
+    // The 4-cell grid is what renders the per-macro grams now.
+    expect(MEAL_NUTRITION).toMatch(/MacroTotalGrid/);
   });
 });
 

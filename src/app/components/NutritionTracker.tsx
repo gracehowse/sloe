@@ -385,6 +385,19 @@ export const NutritionTracker = memo(function NutritionTracker({
     }
   }, [macroDetailFlagEnabled]);
 
+  // ENG-1247 — `.md-totalgrid` cell tap: close the dialog, open macro-detail.
+  // Undefined when the panel is off → cells render static (no dead tap, ENG-848).
+  const macroTapFromDialog = useCallback(
+    (closeDialog: () => void) =>
+      macroDetailFlagEnabled
+        ? (macro: string) => {
+            closeDialog();
+            openMacroDetail(macro);
+          }
+        : undefined,
+    [macroDetailFlagEnabled, openMacroDetail],
+  );
+
   const macroDetailMeals = useMemo<MacroMeal[]>(
     () =>
       mealsForSelectedDate.map((meal) => ({
@@ -3715,6 +3728,7 @@ export const NutritionTracker = memo(function NutritionTracker({
                 }
               : undefined
           }
+          onMacroTap={macroTapFromDialog(() => setMealNutritionTargetId(null))}
         />
       )}
 
@@ -3738,6 +3752,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           }
           open={slotNutritionTarget != null}
           onClose={() => setSlotNutritionTarget(null)}
+          onMacroTap={macroTapFromDialog(() => setSlotNutritionTarget(null))}
         />
       )}
 

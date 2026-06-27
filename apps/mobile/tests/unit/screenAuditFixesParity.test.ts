@@ -107,9 +107,13 @@ describe("F-82 — macro split gates on data confidence", () => {
     expect(SRC.mealNutrition).toMatch(/macroSplitIncompleteCopy/);
   });
 
-  it("MacroStat accepts pct: number | null so the % line can be suppressed", () => {
-    expect(SRC.mealNutrition).toMatch(/pct:\s*number\s*\|\s*null/);
-    expect(SRC.mealNutrition).toMatch(/pct\s*!=\s*null\s*\?/);
+  it("renders grams via the v3 grid with NO misleading '% of kcal' (ENG-1247)", () => {
+    // The F-82 protection is now structural: the per-macro "% of kcal" caption
+    // was removed entirely (it moved to the tap-through macro-detail). Incomplete
+    // data shows the explainer + the grams-only grid — never a percentage that
+    // could mislead. So the suppression is by construction, not a `pct` flag.
+    expect(SRC.mealNutrition).toMatch(/MacroTotalGrid/);
+    expect(SRC.mealNutrition).not.toMatch(/% of kcal/);
   });
 });
 

@@ -116,40 +116,52 @@ describe("MealNutritionDialog (web) — meal WITH data", () => {
     expect(screen.getByTestId("meal-nutrition-kcal")).toHaveTextContent("620 kcal");
   });
 
-  it("renders the macro split bar + per-macro grams and '% of kcal'", () => {
+  it("renders the macro split bar + the 4-cell .md-totalgrid (P/C/F/Fibre, no '% of kcal')", () => {
+    // ENG-1247 — the v3 `.md-totalgrid` replaces the per-macro grams+% rows with
+    // a 4-cell grid that ADDS Fibre, serif gram values, and no inline "% of kcal"
+    // (that detail moved to the tap-through MacroDetailPanel).
     render(<MealNutritionDialog meal={FULL_MEAL} open onClose={() => undefined} />);
     expect(screen.getByTestId("meal-nutrition-macro-bar")).toBeTruthy();
-    expect(screen.getByText("Protein")).toBeTruthy();
-    expect(screen.getByText("Carbs")).toBeTruthy();
-    expect(screen.getByText("Fat")).toBeTruthy();
-    expect(screen.getByText("42g")).toBeTruthy();
-    expect(screen.getByText("58g")).toBeTruthy();
-    // The "% of kcal" caption renders for a complete split.
-    expect(screen.getAllByText(/% of kcal/).length).toBe(3);
+    const grid = screen.getByTestId("meal-nutrition-macro-grid");
+    expect(within(grid).getByText("Protein")).toBeTruthy();
+    expect(within(grid).getByText("Carbs")).toBeTruthy();
+    expect(within(grid).getByText("Fat")).toBeTruthy();
+    // Fibre is the 4th cell — REAL data (fiberG 6), never the prototype's guess.
+    expect(within(grid).getByText("Fibre")).toBeTruthy();
+    // Grams render as the bare number (the "g" is a nested <small>, so the
+    // value span's direct text node is just the number).
+    expect(within(grid).getByText("42")).toBeTruthy();
+    expect(within(grid).getByText("58")).toBeTruthy();
+    expect(within(grid).getByText("21")).toBeTruthy();
+    expect(within(grid).getByText("6")).toBeTruthy();
+    // The per-macro "% of kcal" caption is gone (it lives in macro-detail now).
+    expect(screen.queryByText(/% of kcal/)).toBeNull();
   });
 
-  it("paints the '% of kcal' caption in neutral muted-foreground, NOT the macro hue (ENG-1020 #7)", () => {
-    // e2e walk 2026-06-10: the share-of-energy caption is a neutral stat. It
-    // must NOT inherit the macro hue — `--macro-fat` is amber (the over-budget
-    // signal), so the Fat caption used to read as a warning. All three render
-    // in muted-foreground with no inline macro-var colour.
+  it("makes each grid cell tappable into macro-detail when onMacroTap is wired", () => {
+    const onMacroTap = vi.fn();
+    render(
+      <MealNutritionDialog meal={FULL_MEAL} open onClose={() => undefined} onMacroTap={onMacroTap} />,
+    );
+    fireEvent.click(screen.getByLabelText(/Protein 42 grams/));
+    expect(onMacroTap).toHaveBeenCalledWith("protein");
+    fireEvent.click(screen.getByLabelText(/Fibre 6 grams/));
+    expect(onMacroTap).toHaveBeenCalledWith("fiber");
+  });
+
+  it("renders static (non-button) grid cells when onMacroTap is omitted (no dead taps)", () => {
     render(<MealNutritionDialog meal={FULL_MEAL} open onClose={() => undefined} />);
-    const captions = screen.getAllByText(/% of kcal/);
-    expect(captions.length).toBe(3);
-    for (const caption of captions) {
-      expect(caption.className).toMatch(/text-muted-foreground/);
-      // No inline macro-hue colour leaked back in.
-      expect(caption.getAttribute("style") ?? "").not.toMatch(/--macro-/);
-    }
+    const grid = screen.getByTestId("meal-nutrition-macro-grid");
+    expect(within(grid).queryByRole("button")).toBeNull();
   });
 
-  it("renders the macronutrient detail rows with published values (fibre first)", () => {
+  it("renders the micronutrient rows WITHOUT fibre (fibre now leads the macro grid, ENG-1247)", () => {
     render(<MealNutritionDialog meal={FULL_MEAL} open onClose={() => undefined} />);
     const list = screen.getByTestId("meal-nutrition-micros-list");
-    // Fibre injected as the first curated row.
-    expect(within(list).getByText("Fiber")).toBeTruthy();
-    expect(within(list).getByText("6g")).toBeTruthy();
-    // Published micros surface with formatted values.
+    // Fibre is NO LONGER in the micro table — it leads the macro grid instead,
+    // so it is never shown twice.
+    expect(within(list).queryByText("Fiber")).toBeNull();
+    // Published micros still surface with formatted values.
     expect(within(list).getByText("Sugar")).toBeTruthy();
     expect(within(list).getByText("12g")).toBeTruthy();
     expect(within(list).getByText("Sodium")).toBeTruthy();
@@ -166,8 +178,8 @@ describe("MealNutritionDialog (web) — meal WITH data", () => {
 
   it("shows the source-attributed published-count line", () => {
     render(<MealNutritionDialog meal={FULL_MEAL} open onClose={() => undefined} />);
-    // Fibre + sugar + sodium + iron = 4 populated fields, attributed to the source.
-    expect(screen.getByText(/4 of \d+ fields published by FatSecret/)).toBeTruthy();
+    // sugar + sodium + iron = 3 populated micro fields (fibre moved to the grid).
+    expect(screen.getByText(/3 of \d+ fields published by FatSecret/)).toBeTruthy();
   });
 
   it("renders nothing when open is false (additive — no surface when closed)", () => {
@@ -206,7 +218,8 @@ describe("MealNutritionDialog (web) — low-data / confidence state", () => {
     expect(
       screen.getByText(/Only fat reported — protein and carbs not published by source\./),
     ).toBeTruthy();
-    // No "% of kcal" captions in the incomplete state (grams only).
+    // The 4-cell grid still renders (grams only); no "% of kcal" anywhere.
+    expect(screen.getByTestId("meal-nutrition-macro-grid")).toBeTruthy();
     expect(screen.queryByText(/% of kcal/)).toBeNull();
   });
 
@@ -309,7 +322,7 @@ describe("MealNutritionDialog (web) — slot-aggregate mode (ENG-837)", () => {
     expect(screen.getByTestId("meal-nutrition-kcal")).toHaveTextContent("700 kcal");
   });
 
-  it("sums protein / carbs / fat grams across the slot (shared math — mobile parity)", () => {
+  it("sums protein / carbs / fat / fibre grams across the slot in the grid (shared math — mobile parity)", () => {
     render(
       <MealNutritionDialog
         meal={null}
@@ -318,9 +331,11 @@ describe("MealNutritionDialog (web) — slot-aggregate mode (ENG-837)", () => {
         onClose={() => undefined}
       />,
     );
-    expect(screen.getByText("45g")).toBeTruthy(); // protein 20+15+10
-    expect(screen.getByText("67g")).toBeTruthy(); // carbs   30+25+12
-    expect(screen.getByText("18g")).toBeTruthy(); // fat      8+ 6+ 4
+    const grid = screen.getByTestId("meal-nutrition-macro-grid");
+    expect(within(grid).getByText("45")).toBeTruthy(); // protein 20+15+10
+    expect(within(grid).getByText("67")).toBeTruthy(); // carbs   30+25+12
+    expect(within(grid).getByText("18")).toBeTruthy(); // fat      8+ 6+ 4
+    expect(within(grid).getByText("6")).toBeTruthy(); // fibre    3+ 2+ 1
   });
 
   it("renders the combined-macros caption naming the item count", () => {
@@ -337,7 +352,7 @@ describe("MealNutritionDialog (web) — slot-aggregate mode (ENG-837)", () => {
     );
   });
 
-  it("sums micros across the slot via the shared helper (fibre + sugar + sodium + iron)", () => {
+  it("sums micros across the slot via the shared helper (sugar + sodium + iron; fibre is in the grid)", () => {
     render(
       <MealNutritionDialog
         meal={null}
@@ -347,9 +362,9 @@ describe("MealNutritionDialog (web) — slot-aggregate mode (ENG-837)", () => {
       />,
     );
     const list = screen.getByTestId("meal-nutrition-micros-list");
-    // Fibre is summed from the per-entry column (3+2+1 = 6), injected first.
-    expect(within(list).getByText("Fiber")).toBeTruthy();
-    expect(within(list).getByText("6g")).toBeTruthy();
+    // Fibre is summed into the GRID (3+2+1 = 6), NOT the micro table.
+    expect(within(list).queryByText("Fiber")).toBeNull();
+    expect(within(screen.getByTestId("meal-nutrition-macro-grid")).getByText("6")).toBeTruthy();
     // Summed micros: sugar 5+4+2 = 11g, sodium 200+150 = 350mg, iron 1mg.
     expect(within(list).getByText("Sugar")).toBeTruthy();
     expect(within(list).getByText("11g")).toBeTruthy();
@@ -357,28 +372,10 @@ describe("MealNutritionDialog (web) — slot-aggregate mode (ENG-837)", () => {
     expect(within(list).getByText("350mg")).toBeTruthy();
     expect(within(list).getByText("Iron")).toBeTruthy();
     expect(within(list).getByText("1mg")).toBeTruthy();
-    // 4 populated fields, attributed to the slot's items (not a single source).
+    // 3 populated micro fields, attributed to the slot's items (not a single source).
     expect(
-      screen.getByText(/4 of \d+ fields published by your logged items in this slot/),
+      screen.getByText(/3 of \d+ fields published by your logged items in this slot/),
     ).toBeTruthy();
-  });
-
-  it("the aggregate macro percentages sum to exactly 100 (shared Hamilton split)", () => {
-    render(
-      <MealNutritionDialog
-        meal={null}
-        slotAggregate={{ slotLabel: "Breakfast", meals: SLOT_MEALS }}
-        open
-        onClose={() => undefined}
-      />,
-    );
-    const captions = screen.getAllByText(/% of kcal/);
-    expect(captions.length).toBe(3);
-    const pcts = captions.map((el) => {
-      const m = (el.textContent ?? "").match(/(\d+)% of kcal/);
-      return m ? Number(m[1]) : 0;
-    });
-    expect(pcts.reduce((a, b) => a + b, 0)).toBe(100);
   });
 
   it("never renders the Edit affordance in aggregate mode (no single entry to edit)", () => {
@@ -461,36 +458,6 @@ describe("MealNutritionDialog (web) — slot-aggregate mode (ENG-837)", () => {
     expect(screen.getByText("Salmon teriyaki bowl")).toBeTruthy();
     expect(screen.getByTestId("meal-nutrition-kcal")).toHaveTextContent("620 kcal");
     expect(screen.queryByTestId("meal-nutrition-aggregate-caption")).toBeNull();
-  });
-});
-
-describe("MealNutritionDialog (web) — Hamilton-rounding guarantee", () => {
-  beforeEach(() => {
-    flagFn.mockImplementation(() => false);
-    cleanup();
-  });
-
-  it("the three displayed macro percentages sum to exactly 100", () => {
-    // 33.4 / 33.4 / 14.84 is the canonical near-uniform split where naive
-    // per-macro Math.round yields 99. The shared macroCalorieSplit must fix it.
-    const meal: MealNutritionMeal = {
-      id: "m-even",
-      name: "Lunch",
-      recipeTitle: "Balanced plate",
-      calories: 401,
-      protein: 33.4,
-      carbs: 33.4,
-      fat: 14.84,
-      source: "USDA",
-    };
-    render(<MealNutritionDialog meal={meal} open onClose={() => undefined} />);
-    const captions = screen.getAllByText(/% of kcal/);
-    expect(captions.length).toBe(3);
-    const pcts = captions.map((el) => {
-      const match = (el.textContent ?? "").match(/(\d+)% of kcal/);
-      return match ? Number(match[1]) : 0;
-    });
-    expect(pcts.reduce((a, b) => a + b, 0)).toBe(100);
   });
 });
 
