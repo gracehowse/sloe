@@ -40,13 +40,14 @@ function ActButton({
   bg: string;
   children: React.ReactNode;
 }) {
+  const colors = useThemeColors();
   return (
     <PressableScale
       onPress={onPress}
       haptic="selection"
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={[styles.act, { backgroundColor: bg }]}
+      style={[styles.act, { backgroundColor: bg, borderColor: colors.border }]}
     >
       {children}
     </PressableScale>
@@ -114,9 +115,14 @@ const styles = StyleSheet.create({
   title: { ...Type.screenTitle, marginTop: 3 },
   acts: { flexDirection: "row", alignItems: "center", gap: 4 },
   act: {
+    // v3 `.planx-act`: rounded-square card button (radius 11), not a circle.
+    // Hairline border defines it on the recessed grey; the prototype's
+    // shadow-card / white-card lift is deferred (project flat-surface decision —
+    // Elevation.card is intentionally neutralised; cardSoft is too heavy here).
     width: 38,
     height: 38,
-    borderRadius: Radius.full,
+    borderRadius: Radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
