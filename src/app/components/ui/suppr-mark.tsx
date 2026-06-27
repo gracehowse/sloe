@@ -4,11 +4,11 @@ import { cn } from "./utils";
 /**
  * Sloe brand mark — wordmark only.
  *
- * The logo is the lowercase "sloe" wordmark in **Fraunces Light** + plum ink
- * (`--foreground-brand`). No berry glyph, no plate ring, no lockup. Casing +
- * weight + family match the v3 prototype's LOCKED type-split (Fraunces =
- * wordmark only; `.wordmark` = `text-transform: lowercase`, Fraunces ~360
- * light). Supersedes the 2026-06-08 Newsreader-semibold capital-"Sloe" Figma
+ * The logo is the lowercase "sloe" wordmark in **Fraunces Bold** + plum ink
+ * (`--foreground-brand`). No berry glyph, no plate ring, no lockup. Bold (700)
+ * matches the splash logotype (Grace 2026-06-26 — the mark read too thin next
+ * to the launch logo); supersedes the prior ~360 light. Replaces the
+ * 2026-06-08 Newsreader-semibold capital-"Sloe" Figma
  * treatment (Figma is no longer the source of truth — 2026-06-24). Mobile
  * parity: `apps/mobile/components/SloeHeaderWordmark.tsx`. Component names keep
  * the historical `Suppr*` exports so call-sites stay stable until a rename pass.
@@ -35,7 +35,7 @@ function SloeWordmarkText({
       aria-label="Sloe"
       data-slot={slotName}
       className={cn(
-        "font-[family-name:var(--font-brand)] font-light tracking-tight text-foreground-brand shrink-0 lowercase",
+        "font-[family-name:var(--font-brand)] font-bold tracking-tight text-foreground-brand shrink-0 lowercase",
         className,
       )}
       style={{

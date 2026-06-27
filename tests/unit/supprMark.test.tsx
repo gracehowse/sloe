@@ -27,10 +27,12 @@ describe("SupprMark (Sloe wordmark)", () => {
     expect(mark.textContent).toBe("sloe");
   });
 
-  it("renders the wordmark in Fraunces Light (prototype-locked)", () => {
+  it("renders the wordmark in Fraunces Bold (matches the splash logotype)", () => {
+    // ENG-1247 (Grace 2026-06-26): the in-app mark read too thin next to the
+    // bold splash logo, so the wordmark is now Fraunces Bold (was ~360 light).
     render(<SupprMark />);
     const mark = screen.getByRole("img", { name: "Sloe" });
-    expect(mark.className).toContain("font-light");
+    expect(mark.className).toContain("font-bold");
   });
 
   it("scales font size at the 0.72 ratio (ENG-797 mobile parity)", () => {

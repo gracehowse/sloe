@@ -42,9 +42,9 @@ export function SloeHeaderWordmark({
         Type.title,
         {
           fontFamily: FontFamily.brand,
-          // Static Fraunces Light carries weight 300 in the face itself; the
-          // explicit value keeps RN from synthesising a heavier fallback.
-          fontWeight: "300",
+          // Fraunces Bold (700) — matches the splash logotype (Grace
+          // 2026-06-26). Explicit value keeps RN from synthesising a fallback.
+          fontWeight: "700",
           fontSize,
           // Scale lineHeight with fontSize — `Type.title` hard-codes
           // lineHeight 28 (for its 24px size), which clips the serif's

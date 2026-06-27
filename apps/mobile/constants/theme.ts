@@ -551,10 +551,11 @@ export const FontFamily = {
    *  forward-looking nudge under the ring; matches the Figma 01 frame's
    *  italic "Room for dinner…" line). Real italic face, not synthesized. */
   serifItalic: 'Newsreader_400Regular_Italic',
-  /** Fraunces Light — the brand WORDMARK/logo ONLY (the lowercase "sloe"
-   *  mark). The v3 prototype LOCKS the type-split: Fraunces = wordmark,
-   *  Newsreader = every other serif role. Never use this for body/headlines. */
-  brand: 'Fraunces_300Light',
+  /** Fraunces Bold — the brand WORDMARK/logo ONLY (the lowercase "sloe"
+   *  mark). 700 Bold matches the splash logotype (Grace 2026-06-26 — the
+   *  in-app mark read too thin next to the launch logo); supersedes the prior
+   *  300 Light. Fraunces = wordmark; Newsreader = every other serif role. */
+  brand: 'Fraunces_700Bold',
   /** Inter (sans) — body, labels, captions. */
   sansRegular: 'Inter_400Regular',
   sansMedium: 'Inter_500Medium',

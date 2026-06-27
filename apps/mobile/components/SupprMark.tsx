@@ -40,7 +40,8 @@ function SloeWordmarkText({ size = 28 }: { size?: number }) {
         fontFamily: FontFamily.brand,
         fontSize: sloeFontSize(size),
         color: colors.navPrimary,
-        fontWeight: "300",
+        // Fraunces Bold (700) — matches the splash logotype (Grace 2026-06-26).
+        fontWeight: "700",
         letterSpacing: sloeFontSize(size) * -0.01,
         includeFontPadding: false,
       }}
