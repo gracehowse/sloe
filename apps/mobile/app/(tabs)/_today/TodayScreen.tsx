@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import * as Haptics from "expo-haptics";
 import { useToday } from "./useToday";
 import { useAccent } from "@/context/theme";
@@ -418,6 +419,8 @@ function formatMealTimeDisplay(
 export default function TrackerScreen() {
   const { router, params, insets, session, userId } = useToday();
   const householdMemberCount = useHouseholdMemberCount(userId);
+  // ENG-1247 — pad main scroll by frosted (absolute) tab bar height to clear it.
+  const tabBarHeight = useTabBarClearance();
   // ENG-1076 — declared here (above persistMealsImmediate /
   // persistMealUpdateImmediate) so their useCallback dependency arrays don't
   // reference it in the temporal dead zone. Hydrated from profiles.tz_iana in
@@ -5056,17 +5059,13 @@ export default function TrackerScreen() {
         onSkip={onPostOnbPushSkip}
         onEnable={onPostOnbPushEnable}
       />
-      {/* 2026-05-13 (TF feedback `AKmYHgZ7WA9uUUOSbjPtL2U` — "drag
-          down to sync functionality"): pull-to-refresh on Today
-          forces a HealthKit re-sync (steps + burn + weight) and
-          re-pulls profile basics so the user can pull-down to
-          force the data behind the ring to refresh on demand.
-          Mirrors MFP / Cal AI / Lose It pattern. The
-          `bypassThrottle: true` flag on `syncHealthDataThrottled`
-          skips the 60s cool-down so the manual gesture always
-          fires. */}
+      {/* 2026-05-13 (TF feedback `AKmYHgZ7WA9uUUOSbjPtL2U` — "drag down to
+          sync"): pull-to-refresh forces a HealthKit re-sync (steps + burn +
+          weight) + re-pulls profile basics. Mirrors MFP / Cal AI / Lose It.
+          `bypassThrottle: true` on `syncHealthDataThrottled` skips the 60s
+          cool-down so the manual gesture always fires. */}
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + Layout.screenPaddingBottom }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={

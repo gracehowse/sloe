@@ -1,4 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -123,11 +124,11 @@ function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
 export default function DiscoverScreen() {
   const accent = useAccent();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarClearance(); // ENG-1247 — pad scroll to clear frosted (absolute) tab bar.
   const router = useRouter();
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
-  // Seamless recipe slab: soft plum lift off the page in light, tonal lift +
-  // hairline in dark (RN renders shadows poorly on dark). Mirrors the Library
-  // card so the two recipe surfaces stay in lockstep across schemes.
+  // Recipe slab: soft plum lift in light, tonal lift + hairline in dark (RN
+  // shadows render poorly on dark). Mirrors Library so the two stay in lockstep.
   const cardElevation = useCardElevation({ variant: "soft" });
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
@@ -148,9 +149,8 @@ export default function DiscoverScreen() {
     }, [refresh]),
   );
 
-  // Shared with Library via `useLibrarySearchStore` so the query
-  // survives tab switches (ENG-53, 2026-05-16). Variable names kept
-  // so all downstream filter/search-debounce logic stays untouched.
+  // Shared with Library via `useLibrarySearchStore` so the query survives tab
+  // switches (ENG-53). Var names kept so downstream filter/debounce is untouched.
   const { query: search, setQuery: setSearch } = useLibrarySearchStore();
   // ENG-921 — category (Figma `528:2`) + Following feed-scope toggle.
   const [category, setCategory] = useState<RecipeCategoryId | "trending" | "from-reels">("all");
@@ -555,7 +555,7 @@ export default function DiscoverScreen() {
       <ScrollView
         testID="discover-hydrated"
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: tabBarHeight + 40 }}
         refreshControl={
           <RefreshControl
             refreshing={loading}

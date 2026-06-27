@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import {
@@ -171,6 +172,9 @@ const DEFAULT_TARGETS = { calories: NUTRITION_DEFAULTS.calories, protein: NUTRIT
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
+  // ENG-1247 — the frosted tab bar overlays scroll content (tabBarStyle
+  // position:absolute), so pad the scroll by the bar height to clear it.
+  const tabBarHeight = useTabBarClearance();
   const router = useRouter();
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the local accent
@@ -1064,7 +1068,7 @@ export default function ProgressScreen() {
   const progressScrollStyle = {
     paddingTop: Spacing.md,
     paddingHorizontal: Layout.screenPaddingX,
-    paddingBottom: insets.bottom + Spacing.xl,
+    paddingBottom: tabBarHeight + Spacing.xl,
     gap: Spacing.lg,  // 20px — consistent card rhythm (matches the entrance-wrapper gaps)
   };
 

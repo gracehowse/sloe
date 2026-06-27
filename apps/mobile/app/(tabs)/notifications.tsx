@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter } from "expo-router";
 
 import { useAuth } from "@/context/auth";
@@ -68,13 +69,12 @@ function formatStamp(iso: string): string {
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarClearance(); // ENG-1247 — pad scroll to clear frosted (absolute) tab bar.
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
   const colors = useThemeColors();
-  // Secondary accent (Frost flag → damson, else clay) for the active toggles,
-  // section accents, and CTAs. Threaded into the memoised StyleSheet via the
-  // dep array below.
+  // Secondary accent (Frost flag → damson, else clay) for toggles + CTAs.
   const accent = useAccent();
 
   const [loading, setLoading] = useState(true);
@@ -399,7 +399,7 @@ export default function NotificationsScreen() {
           data={items}
           keyExtractor={(n) => n.id}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: tabBarHeight + Spacing.xl }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

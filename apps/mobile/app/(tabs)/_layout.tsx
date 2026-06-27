@@ -124,10 +124,18 @@ export default function TabLayout() {
         // `useSafeAreaInsets`, but we keep these here as defensive
         // defaults in case any nested screen re-instantiates the
         // stock bar.
+        // ENG-1247 — the frosted bar OVERLAYS scroll content so the BlurView in
+        // SupprTabBar has content to blur (v3 `.tabbar`). `position: absolute`
+        // tells react-navigation not to inset the scene; transparent bg lets the
+        // blur carry the surface. Screens pad their scroll content by the bar
+        // height (`useTabBarClearance`).
         tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
           height: 56 + Math.max(insets.bottom, 8),
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,

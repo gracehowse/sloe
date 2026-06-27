@@ -1,5 +1,6 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -94,13 +95,18 @@ export function SupprTabBar({
   };
 
   return (
-    <View
+    <BlurView
+      // ENG-1247 — frosted tab bar (v3 `.tabbar`: translucent + backdrop blur).
+      // The bar overlays scroll content (tabBarStyle position:absolute in
+      // `_layout`); the iOS chrome-material blur lets content show faintly
+      // through. Was a solid `colors.background` View.
+      intensity={100}
+      tint={resolved === "dark" ? "systemChromeMaterialDark" : "systemChromeMaterialLight"}
       style={{
         flexDirection: "row",
         alignItems: "stretch",
-        backgroundColor: colors.background,
         borderTopColor: colors.border,
-        borderTopWidth: 1,
+        borderTopWidth: StyleSheet.hairlineWidth,
         height: 56 + Math.max(safeInsets.bottom, 8),
         paddingBottom: Math.max(safeInsets.bottom, 8),
         paddingTop: 8,
@@ -197,7 +203,7 @@ export function SupprTabBar({
           </React.Fragment>
         );
       })}
-    </View>
+    </BlurView>
   );
 }
 

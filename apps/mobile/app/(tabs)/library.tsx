@@ -13,6 +13,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Bookmark,
@@ -108,6 +109,7 @@ function formatTotalTime(card: RecipeCard): string | null {
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarClearance(); // ENG-1247 — pad scroll to clear frosted (absolute) tab bar.
   const router = useRouter();
   const { keep } = useLocalSearchParams<{ keep?: string }>();
   const keepLibraryTab = keep === "1";
@@ -116,8 +118,7 @@ export default function LibraryScreen() {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the category-pill
   // active fill, create FAB, Go-Public + empty-state CTAs, the saved-bookmark
-  // glyph, rating star, list spinner, and pull-to-refresh tint. Threaded into
-  // the memoised StyleSheet via the dep array below.
+  // glyph, rating star, list spinner, and pull-to-refresh tint.
   const accent = useAccent();
   // Discover/Library recipe cards are the Sloe Figma `527:2`/`528:2`
   // "seamless slab" cards: a `#F6F5F2` cream card lifted off the `#FFFFFF`
@@ -941,7 +942,7 @@ export default function LibraryScreen() {
           // 2-column photo grid — Figma `527:2`.
           numColumns={2}
           columnWrapperStyle={styles.columnWrap}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + Spacing.xl }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={accent.primary} />
           }
