@@ -61,10 +61,15 @@
 
 /* Typography */
 .lp-wordmark {
-  font-family: var(--font-headline);
+  /* ENG-1247 (Grace 2026-06-26) — unify the landing logo with the app + splash
+     wordmark: lowercase "sloe" in Fraunces Bold (was Newsreader 500 capital).
+     text-transform lowercases the proper-noun "Sloe" text node (kept for the
+     aria-label / copy). --font-brand = Fraunces; 700 is loaded in app/layout. */
+  font-family: var(--font-brand);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: -0.01em;
+  text-transform: lowercase;
   color: var(--lp-ink);
 }
 
