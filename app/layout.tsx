@@ -25,14 +25,15 @@ const newsreader = Newsreader({
 });
 
 // Fraunces — the brand WORDMARK/logo ONLY. The v3 prototype LOCKS the
-// type-split (Fraunces = wordmark, Newsreader = every other serif role);
-// `.wordmark` is lowercase Fraunces at a light ~360 weight, so 300 Light is
-// the static match. Exposed as `--font-brand` and consumed by
+// type-split (Fraunces = wordmark, Newsreader = every other serif role).
+// 700 Bold matches the splash logotype (Grace 2026-06-26 — the in-app mark read
+// too thin next to the launch logo; `suppr-mark.tsx` uses `font-bold`). 300
+// kept for any calm-weight use. Exposed as `--font-brand`, consumed by
 // `src/styles/theme.css` (`--font-brand`) + `suppr-mark.tsx`.
 const fraunces = Fraunces({
   subsets: ["latin"],
   display: "swap",
-  weight: ["300"],
+  weight: ["300", "700"],
   variable: "--font-fraunces",
 });
 
