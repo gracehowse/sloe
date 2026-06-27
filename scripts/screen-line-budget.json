@@ -9,7 +9,6 @@
   "apps/mobile/app/(tabs)/barcode.tsx": 1145,
   "apps/mobile/app/(tabs)/discover.tsx": 1025,
   "apps/mobile/app/(tabs)/library.tsx": 1165,
-  "apps/mobile/app/(tabs)/notifications.tsx": 422,
   "apps/mobile/app/(tabs)/planner.tsx": 4735,
   "apps/mobile/app/(tabs)/progress.tsx": 2375,
   "apps/mobile/app/burn-detail.tsx": 556,

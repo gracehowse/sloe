@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -16,9 +16,11 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { NotificationRow } from "@/components/notifications/NotificationRow";
 import { supabase } from "@/lib/supabase";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { partitionNotificationsByDay } from "@suppr/shared/notifications/notificationDisplay";
 
 // Monotonic counter so each realtime subscription gets a UNIQUE channel topic.
 // Without this, a Strict-Mode / Fast-Refresh remount (whose cleanup calls the
@@ -54,19 +56,6 @@ type InboxItem = {
   readAt: string | null;
 };
 
-function formatStamp(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch {
-    return "";
-  }
-}
-
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarClearance(); // ENG-1247 — pad scroll to clear frosted (absolute) tab bar.
@@ -98,49 +87,18 @@ export default function NotificationsScreen() {
         sub: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
         center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl, gap: Spacing.dense },
         err: { color: Accent.destructive, textAlign: "center", fontSize: 15 },
-        retry: {
-          marginTop: Spacing.sm,
-          paddingHorizontal: Spacing.lg,
-          paddingVertical: Spacing.dense,
-          borderRadius: Radius.md,
-          borderWidth: 1,
-          borderColor: accent.primary + "80",
-        },
+        retry: { marginTop: Spacing.sm, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.dense, borderRadius: Radius.md, borderWidth: 1, borderColor: accent.primary + "80" },
         retryText: { color: accent.primary, fontWeight: "700", fontSize: 15 },
-        btn: {
-          backgroundColor: colors.card,
-          paddingHorizontal: Spacing.dense,
-          paddingVertical: Spacing.sm,
-          borderRadius: Radius.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-        },
+        btn: { backgroundColor: colors.card, paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
         btnDisabled: { opacity: 0.4 },
         btnText: { color: colors.text, fontSize: 13, fontWeight: "600" },
-        empty: {
-          padding: Spacing.xl,
-          borderRadius: CARD_RADIUS,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
-          backgroundColor: colors.card,
-          gap: 8,
-          marginTop: Spacing.md,
-        },
+        empty: { padding: Spacing.xl, borderRadius: CARD_RADIUS, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, backgroundColor: colors.card, gap: 8, marginTop: Spacing.md },
         emptyTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
-        card: {
-          padding: Spacing.lg,
-          borderRadius: CARD_RADIUS,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
-          backgroundColor: colors.card,
-          marginTop: Spacing.sm,
-        },
-        cardTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
-        body: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
-        stamp: { color: colors.textTertiary, marginTop: 8, fontSize: 12 },
-        hint: { color: colors.textTertiary, marginTop: Spacing.sm, fontSize: 12 },
-        dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: accent.primary, marginTop: 6 },
-        dotSpacer: { width: 10, height: 10, marginTop: 6 },
+        // Sloe v3 (ENG-1247): overline section label + ONE flush divided card
+        // per group; each row is a `<NotificationRow>`.
+        overline: { ...Type.label, color: colors.textTertiary, marginTop: Spacing.md, marginBottom: Spacing.xs, marginHorizontal: 2 },
+        groupCard: { backgroundColor: colors.card, borderRadius: CARD_RADIUS, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, overflow: "hidden" },
+        rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
       }),
     [colors, accent],
   );
@@ -340,21 +298,32 @@ export default function NotificationsScreen() {
     [userId, router, markOneRead],
   );
 
-  const renderItem = useCallback(
-    ({ item: n }: { item: InboxItem }) => (
-      <Pressable onPress={() => void onNotificationPress(n)} style={styles.card}>
-        <View style={{ flexDirection: "row", gap: Spacing.sm }}>
-          {!n.readAt ? <View style={styles.dot} /> : <View style={styles.dotSpacer} />}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{n.title}</Text>
-            {n.body ? <Text style={styles.body}>{n.body}</Text> : null}
-            <Text style={styles.stamp}>{formatStamp(n.createdAt)}</Text>
-            {n.recipeId ? <Text style={styles.hint}>Tap to open recipe</Text> : null}
+  // Sloe v3 (ENG-1247): split into Today / Earlier by local calendar day —
+  // each non-empty group renders as ONE flush divided card.
+  const { today, earlier } = useMemo(() => partitionNotificationsByDay(items), [items]);
+
+  const renderGroup = useCallback(
+    (label: string, group: InboxItem[]) => {
+      if (group.length === 0) return null;
+      return (
+        <View key={label}>
+          <Text style={styles.overline}>{label}</Text>
+          <View style={styles.groupCard}>
+            {group.map((n, i) => (
+              <View key={n.id} style={i > 0 ? styles.rowDivider : undefined}>
+                <NotificationRow
+                  item={n}
+                  onPress={() => void onNotificationPress(n)}
+                  colors={colors}
+                  accent={accent}
+                />
+              </View>
+            ))}
           </View>
         </View>
-      </Pressable>
-    ),
-    [onNotificationPress, styles],
+      );
+    },
+    [onNotificationPress, styles, colors, accent],
   );
 
   return (
@@ -395,10 +364,7 @@ export default function NotificationsScreen() {
           </Pressable>
         </View>
       ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(n) => n.id}
-          renderItem={renderItem}
+        <ScrollView
           contentContainerStyle={{ paddingBottom: tabBarHeight + Spacing.xl }}
           refreshControl={
             <RefreshControl
@@ -407,15 +373,21 @@ export default function NotificationsScreen() {
               tintColor={accent.primary}
             />
           }
-          ListEmptyComponent={
+        >
+          {items.length === 0 ? (
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>Nothing here yet</Text>
               <Text style={styles.sub}>
                 {"Notifications about recipes you follow and weekly reports will appear here."}
               </Text>
             </View>
-          }
-        />
+          ) : (
+            <>
+              {renderGroup("Today", today)}
+              {renderGroup("Earlier", earlier)}
+            </>
+          )}
+        </ScrollView>
       )}
     </View>
   );
