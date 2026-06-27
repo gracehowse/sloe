@@ -1255,15 +1255,9 @@ function ProgressDashboardContent() {
         );
       })()}
 
-      {/* 3. AVERAGE ADHERENCE — big calorie-adherence % + on-target dot
-          streak + the four macro bars (Protein sage / Carbs clay / Fat
-          amber / Fibre teal). Every figure is real (range adherence +
-          weekStatsBundle macro adherence). The "up N%" week-over-week
-          trend chip stays hidden until the weekly aggregate stream lands
-          (documented data gap) — never invented.
-
-          On `trends_only` the lightweight direction tile still renders so
-          opt-out users keep a weight signal without absolute numbers. */}
+      {/* WEIGHT DIRECTION (trends_only) — opt-out users keep a lightweight
+          weight signal here (no absolute numbers). Average Adherence moved to
+          AFTER Daily Calories per the v3 prototype order (ENG-1247). */}
       {profileWeightSurfaceMode === "trends_only" && (
         <div className="mb-4">
           <WeightTrendOnlyCardWeb
@@ -1272,26 +1266,6 @@ function ProgressDashboardContent() {
           />
         </div>
       )}
-      <ProgressAverageAdherence
-        className="mb-4"
-        adherencePct={
-          // Parity with mobile (progress.tsx): don't claim an "average
-          // adherence" until the range holds a meaningful sample (≥3 logged
-          // days). A single stray day produced a confident headline next to
-          // the "building your story" gate — incoherent. Below threshold the
-          // card hides. (null → component returns null)
-          hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null
-        }
-        onTargetDays={weekStatsBundle.days.map(
-          (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
-        )}
-        macros={[
-          { name: "Protein", pct: macroRange.proteinPct, color: "var(--macro-protein)" },
-          { name: "Carbs", pct: macroRange.carbsPct, color: "var(--macro-carbs)" },
-          { name: "Fat", pct: macroRange.fatPct, color: "var(--macro-fat)" },
-          { name: "Fibre", pct: macroRange.fiberPct, color: "var(--macro-fiber)" },
-        ]}
-      />
 
       {/* 4. WEIGHT CARD (Sloe Figma 492:2) — Newsreader kg headline +
           "↓ N this week" + Trend/Scale segmented toggle, clay line chart
@@ -1598,6 +1572,26 @@ function ProgressDashboardContent() {
           </span>
         </div>
       </SupprCard>
+
+      {/* AVERAGE ADHERENCE — ENG-1247 (Grace 2026-06-26): the v3 prototype
+          places Adherence LAST (after Daily Calories), not above the Weight
+          hero. Big adherence % + on-target streak + four macro bars; every
+          figure is real. Parity with mobile progress.tsx. */}
+      <ProgressAverageAdherence
+        className="mb-4"
+        adherencePct={
+          hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null
+        }
+        onTargetDays={weekStatsBundle.days.map(
+          (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
+        )}
+        macros={[
+          { name: "Protein", pct: macroRange.proteinPct, color: "var(--macro-protein)" },
+          { name: "Carbs", pct: macroRange.carbsPct, color: "var(--macro-carbs)" },
+          { name: "Fat", pct: macroRange.fatPct, color: "var(--macro-fat)" },
+          { name: "Fibre", pct: macroRange.fiberPct, color: "var(--macro-fiber)" },
+        ]}
+      />
 
       {/* 7. ON-TARGET RIBBON — real count of on-target days this week. */}
       {(() => {

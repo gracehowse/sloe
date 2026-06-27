@@ -1283,34 +1283,7 @@ export default function ProgressScreen() {
       </ReAnimated.View>
 
       <ReAnimated.View style={[chartsEntrance.style, { gap: Spacing.lg }]}>
-      {/* 3. AVERAGE ADHERENCE — big calorie-adherence % + on-target dot
-          streak + four macro bars (Protein sage / Carbs clay / Fat amber /
-          Fibre teal). Every figure is real (range adherence + range macro
-          adherence). The "up N%" trend chip stays hidden until the weekly
-          aggregate stream lands (documented data gap) — never invented. */}
-      <ProgressAverageAdherence
-        adherencePct={
-          // Don't claim an "average adherence" until there's a meaningful
-          // sample in the range. A single stray logged day produced a
-          // confident headline (e.g. 109%) next to the "building your story /
-          // 0 days logged" gate — incoherent. Gate on the SAME 3-day
-          // sufficiency threshold, applied to the range's logged-day count
-          // (the figure is range-scoped). Below that the card hides and the
-          // story-gate carries the building state. (null → component returns null)
-          hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null
-        }
-        onTargetDays={weekStats.days.map(
-          (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
-        )}
-        macros={[
-          { name: "Protein", pct: macroRange.proteinPct, color: t.protein },
-          { name: "Carbs", pct: macroRange.carbsPct, color: t.carbs },
-          { name: "Fat", pct: macroRange.fatPct, color: t.fat },
-          { name: "Fibre", pct: macroRange.fiberPct, color: macro.fiber },
-        ]}
-      />
-
-      {/* 4. WEIGHT CARD (Sloe Figma 492:2) — serif kg headline + "↓ N this
+      {/* WEIGHT CARD (Sloe Figma 492:2) — serif kg headline + "↓ N this
           week" + Trend/Scale segmented toggle, clay sparkline, dashed goal
           line, START/CURRENT/GOAL/RATE stat row, "＋ Log weight" button,
           "View all measurements". The detailed Withings-style chart +
@@ -1627,7 +1600,29 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        {/* 7. ON-TARGET RIBBON — real count of on-target days this week. */}
+        {/* AVERAGE ADHERENCE — ENG-1247 (Grace 2026-06-26): the v3 prototype
+            places Adherence LAST (after Daily Calories), not hoisted above the
+            Weight hero. Big adherence % + on-target streak + four macro bars;
+            every figure is real (range adherence + range macro adherence). */}
+        <ProgressAverageAdherence
+          adherencePct={
+            // Gate on the 3-day sufficiency threshold (range-scoped) so a stray
+            // logged day can't show a confident headline next to the building
+            // state. null → the component returns null.
+            hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null
+          }
+          onTargetDays={weekStats.days.map(
+            (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
+          )}
+          macros={[
+            { name: "Protein", pct: macroRange.proteinPct, color: t.protein },
+            { name: "Carbs", pct: macroRange.carbsPct, color: t.carbs },
+            { name: "Fat", pct: macroRange.fatPct, color: t.fat },
+            { name: "Fibre", pct: macroRange.fiberPct, color: macro.fiber },
+          ]}
+        />
+
+        {/* ON-TARGET RIBBON — real count of on-target days this week. */}
         <ProgressOnTargetRibbon
           onTargetCount={weekStats.days.filter((d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories).length}
           subtitle="Your most consistent week this month."
