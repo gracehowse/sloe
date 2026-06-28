@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 
+import { assertOrigin } from "@/lib/api/assertOrigin";
 import {
   getAccessTokenFromRequest,
   createUserScopedClient,
 } from "@/lib/supabase/serverAnonClient";
 
 export async function POST(request: Request) {
+  // State-changing cookie-auth POST → CSRF-guard the origin (ENG-1137).
+  const originErr = assertOrigin(request);
+  if (originErr) return originErr;
+
   // The RPC's ownership check is `auth.uid()`, so it MUST run on a client that
   // carries the caller's JWT — not the service-role client (auth.uid() would be
   // NULL and the call would 400). Identity comes from the verified token only;
