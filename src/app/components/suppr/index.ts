@@ -101,7 +101,7 @@ export {
   TodayDashboardMacroTiles,
   type TodayDashboardMacroTilesProps,
 } from "./today-dashboard-macro-tiles";
-export { TodayQuickLogStrip, type TodayQuickLogStripProps } from "./today-quick-log-strip";
+export { TodayRecentsRow, type TodayRecentsRowProps } from "./today-recents-row";
 export {
   TodayMealsSection,
   type TodayMealsSectionProps,

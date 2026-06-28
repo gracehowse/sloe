@@ -32,7 +32,6 @@ const MEALS = read("src/app/components/suppr/today-meals-section.tsx");
 const NORTH_STAR = read("src/app/components/suppr/north-star-block.tsx");
 const HYDRATION = read("src/app/components/suppr/hydration-stimulants-card.tsx");
 const MACRO_TILES = read("src/app/components/suppr/today-dashboard-macro-tiles.tsx");
-const QUICK_LOG = read("src/app/components/suppr/today-quick-log-strip.tsx");
 const RIGHT_RAIL = read("src/app/components/suppr/today-desktop-right-rail.tsx");
 
 const IMPORT = 'import { SupprCard } from "../ui/suppr-card.tsx"';
@@ -155,10 +154,8 @@ describe("Today card shape — 24px rounded-card on web", () => {
     expect(MACRO_TILES).not.toContain("rounded-[14px]");
   });
 
-  it("quick-log chips use rounded-card (not rounded-xl)", () => {
-    expect(QUICK_LOG).toContain("rounded-card");
-    expect(QUICK_LOG).not.toMatch(/rounded-xl\s+bg-card/);
-  });
+  // quick-log chip radius test removed (ENG-1247): the TodayQuickLogStrip was
+  // dead code (never rendered) and is deleted; replaced by TodayRecentsRow.
 
   it("desktop right-rail slabs use rounded-card (not rounded-2xl)", () => {
     expect(RIGHT_RAIL).toContain("rounded-card");

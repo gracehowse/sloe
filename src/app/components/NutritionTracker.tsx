@@ -125,6 +125,7 @@ import {
 } from "./MacroDetailPanel";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
+import { TodayRecentsRow } from "./suppr/today-recents-row";
 import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
 import { ShareCommunityDialog } from "./suppr/ShareCommunityDialog";
 import {
@@ -2954,15 +2955,18 @@ export const NutritionTracker = memo(function NutritionTracker({
           point — matches the spec at
           docs/specs/2026-04-27-b4-today-screen-phase3.md and is
           revertable in 1 PostHog click without a deploy. */}
-      {/* Phase 2 / B1.2 (D-2026-04-27-15) — TodayQuickLogStrip
-          removed from Today's composition root. The canonical
-          logging-entry affordance is now the centered raised Plus
-          button in the mobile-web `<nav>` (App.tsx), which opens the
-          unified `<LogSheet>` via the `?openLog=1` URL param consumer
-          above (mirrors mobile `<SupprTabBar>` + `<LogTabBarButton>`,
-          commit `6633d2d`). The strip component file stays in the
-          tree for reference and tests but no production caller
-          renders it on Today. */}
+      {/* Quick add recents one-tap re-log chips (ENG-1247, v3 `.quickrow`) —
+          after macros; re-log via logHistoryItem; flag-gated. Replaces the dead
+          TodayQuickLogStrip (deleted — never rendered on Today; the method-
+          launchers live in the LogSheet, reached via "All" + the raised Plus
+          button). Web twin of mobile `TodayRecentsRow`. */}
+      {isFeatureEnabled("today_quickadd_recents_v3") ? (
+        <TodayRecentsRow
+          recents={computeRecentMeals(nutritionByDay, 50)}
+          onReLog={(item) => logHistoryItem(item, mealSlot)}
+          onOpenAll={() => setLogSheetOpen(true)}
+        />
+      ) : null}
 
       {/* TodayStreakInsightCard removed 2026-04-20 (Grace's call per
           Today alignment pass). Mobile removed same commit. Streak

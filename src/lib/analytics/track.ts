@@ -355,6 +355,10 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   // serif-medium numeral; OFF → the carded hero. Mobile twin: same flag in
   // apps/mobile/lib/analytics.ts. Ramps via PostHog once verified on both.
   "today_hero_decard_v3",
+  // ENG-1247 — Today "Quick add" recents one-tap re-log chips (v3 `.quickrow`).
+  // ON → recents-chip row after macros; OFF → no quick-add row. Mobile twin:
+  // same flag in apps/mobile/lib/analytics.ts.
+  "today_quickadd_recents_v3",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
