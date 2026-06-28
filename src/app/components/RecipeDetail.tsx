@@ -88,7 +88,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu.tsx";
-import { MoreVertical } from "lucide-react";
+import { Clock, Flame, MoreVertical, Utensils } from "lucide-react";
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import {
   composeRecipeMeta,
@@ -384,6 +384,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const winFeedback = isFeatureEnabled("redesign_winmoment");
   /** ENG-946 — tap-to-check ingredient checklist on the Ingredients tab. */
   const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
+  // RecipeDetail v3 (ENG-1247): the title block overlays the hero photo (kicker
+  // + serif h1 + meta) instead of below it. Flag-gated; web twin of mobile.
+  const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3");
   // Commit-CTA press payoff (web analog of the mobile confirm haptic). A subtle
   // active-state scale + a brief brightness lift on press, gated on
   // `redesign_winmoment`. Flag-off keeps the existing hover-only transition.
@@ -1797,6 +1800,48 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 </DropdownMenu>
               </div>
             </div>
+
+            {/* v3 (ENG-1247): bottom veil + title block OVERLAID on the hero
+                photo (prototype `.rd-title`) — kicker overline + serif h1 + meta
+                row, white over the photo. Web twin of mobile RecipeDetailHero. */}
+            {recipeDetailV3 ? (
+              <>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[180px] bg-gradient-to-t from-black/[0.62] to-transparent" />
+                <div className="pointer-events-none absolute inset-x-5 bottom-4 text-white">
+                  <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-white/80">
+                    {saved
+                      ? "From your cookbook"
+                      : dbMealType?.[0]
+                        ? dbMealType[0][0].toUpperCase() + dbMealType[0].slice(1)
+                        : "Fits your day"}
+                  </p>
+                  <h1
+                    className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-tight text-white"
+                    data-testid="recipe-hero-title"
+                  >
+                    {normaliseRecipeDisplayTitle(recipe.title)}
+                  </h1>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-4 text-[13px] text-white/95">
+                    {(dbPrepMin ?? 0) + (dbCookMin ?? 0) > 0 ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5" />
+                        {(dbPrepMin ?? 0) + (dbCookMin ?? 0)} min
+                      </span>
+                    ) : null}
+                    {recipe.calories != null ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Flame className="h-3.5 w-3.5" />
+                        {Math.round(recipe.calories)} kcal
+                      </span>
+                    ) : null}
+                    <span className="inline-flex items-center gap-1.5">
+                      <Utensils className="h-3.5 w-3.5" />
+                      Serves {servings}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
         );
       })()}
@@ -1935,18 +1980,22 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             : null;
           return (
             <div className="space-y-3" data-testid="recipe-title-block">
-              <h1
-                className="text-foreground-brand leading-tight"
-                style={{
-                  fontFamily: "var(--font-headline)",
-                  fontSize: "34px",
-                  lineHeight: "42px",
-                  fontWeight: 400,
-                }}
-                data-testid="recipe-body-title"
-              >
-                {normaliseRecipeDisplayTitle(recipe.title)}
-              </h1>
+              {/* v3 (ENG-1247): the title moved into the hero overlay (one h1
+                  lives there now); skip it here to avoid a duplicate heading. */}
+              {recipeDetailV3 ? null : (
+                <h1
+                  className="text-foreground-brand leading-tight"
+                  style={{
+                    fontFamily: "var(--font-headline)",
+                    fontSize: "34px",
+                    lineHeight: "42px",
+                    fontWeight: 400,
+                  }}
+                  data-testid="recipe-body-title"
+                >
+                  {normaliseRecipeDisplayTitle(recipe.title)}
+                </h1>
+              )}
               {bylineLabel ? (
                 <p className="text-sm text-muted-foreground" data-testid="recipe-attribution">
                   via{" "}
@@ -2487,6 +2536,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             cookMin: dbCookMin,
             ingredientCount: ingredients.length,
           });
+          // v3 (ENG-1247): the hero overlay carries the time/kcal/serves meta.
+          if (recipeDetailV3) return null;
           if (metaStats.length === 0) return null;
           return (
             <div
