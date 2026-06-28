@@ -109,6 +109,13 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      // ENG-1247 — set the tab scene container background to the app page colour
+      // directly (not only via the nav theme). The nav theme background applies
+      // at scene MOUNT and doesn't refresh on hot reload; sceneContainerStyle
+      // re-renders, so the bar-zone background stays the page colour (not the RN
+      // default grey) without needing a full process restart. This is what fixes
+      // the grey "block" behind the floating pill on every reload path.
+      sceneContainerStyle={{ backgroundColor: colors.background }}
       // 2026-04-30 (customer-lens): centered raised Log button replaces
       // the side `<LogFab>`. The custom `<SupprTabBar>` renders the
       // four primary tabs PLUS a 5th visual element (raised Plus
