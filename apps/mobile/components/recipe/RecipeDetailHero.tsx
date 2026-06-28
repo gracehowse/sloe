@@ -11,14 +11,38 @@
  */
 import { Pressable, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { Bookmark, ChevronLeft, MoreHorizontal, Share2 } from "lucide-react-native";
+import {
+  Bookmark,
+  ChevronLeft,
+  Clock,
+  Flame,
+  MoreHorizontal,
+  Share2,
+  UtensilsCrossed,
+} from "lucide-react-native";
 
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 
 /** Fixed hero height — Figma `332:2` §1 (375px). */
 export const RECIPE_HERO_HEIGHT = 375;
+
+/**
+ * ENG-1247 — v3 prototype hero title OVERLAY (Sloe-App.html RecipeDetail
+ * L4336–4341). When the recipe HAS a photo and the conformance flag is on, the
+ * kicker + serif H1 + clock·flame·serves meta row sit ON the hero under a
+ * bottom veil. When there is NO photo this is `null` and the title stays in the
+ * body title block (the placeholder must not carry the overlay).
+ */
+export type RecipeHeroOverlay = {
+  /** Cuisine, or "From your cookbook" (saved), else "Fits your day". */
+  kicker: string;
+  title: string;
+  timeMin: number | null;
+  kcal: number | null;
+  servings: number;
+};
 
 type RecipeDetailHeroProps = {
   recipeId: string;
@@ -35,6 +59,9 @@ type RecipeDetailHeroProps = {
   /** Owner-only overflow (edit / publish / delete). Hidden when absent. */
   onMore?: () => void;
   showSloeImageLabel?: boolean;
+  /** ENG-1247 — v3 hero title overlay. Rendered only when set AND a photo
+   *  shows (the host passes null on the no-photo fallback + flag-off). */
+  overlay?: RecipeHeroOverlay | null;
 };
 
 function HeroCircleButton({
@@ -81,8 +108,19 @@ export function RecipeDetailHero({
   onShare,
   onMore,
   showSloeImageLabel = false,
+  overlay = null,
 }: RecipeDetailHeroProps) {
   const showPhoto = Boolean(imageUrl) && !imageBroken;
+  // ENG-1247 — the title overlay only rides a real photo. On the placeholder
+  // fallback the title belongs in the body (per task: never force the overlay
+  // onto the tinted placeholder).
+  const showOverlay = showPhoto && overlay != null;
+  const heroMetaStyle = {
+    fontFamily: FontFamily.sansMedium,
+    fontSize: 13,
+    fontWeight: "500" as const,
+    color: "rgba(255,255,255,0.92)",
+  };
   return (
     <View
       style={{ width: "100%", height: RECIPE_HERO_HEIGHT, backgroundColor: Accent.primary }}
@@ -121,6 +159,86 @@ export function RecipeDetailHero({
             Sloe image
           </Text>
         </View>
+      ) : null}
+
+      {/* ENG-1247 — bottom veil + title overlay (prototype rd-veil + rd-title).
+          Only over a real photo; the kicker + serif H1 + clock·flame·serves
+          meta row sit at the foot of the hero. */}
+      {showOverlay ? (
+        <>
+          <Svg
+            style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 220 }}
+            width="100%"
+            height="100%"
+            preserveAspectRatio="none"
+            pointerEvents="none"
+          >
+            <Defs>
+              <LinearGradient id="recipe-hero-veil" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#000000" stopOpacity={0} />
+                <Stop offset="1" stopColor="#000000" stopOpacity={0.62} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#recipe-hero-veil)" />
+          </Svg>
+          <View
+            testID="recipe-hero-title-overlay"
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              left: Spacing.xl,
+              right: Spacing.xl,
+              bottom: Spacing.xl,
+              gap: Spacing.sm,
+            }}
+          >
+            <Text
+              testID="recipe-hero-kicker"
+              style={{
+                ...Type.statLabel,
+                color: "rgba(255,255,255,0.92)",
+              }}
+              numberOfLines={1}
+            >
+              {overlay!.kicker}
+            </Text>
+            <Text
+              testID="recipe-hero-overlay-title"
+              style={{
+                fontFamily: FontFamily.serifRegular,
+                fontSize: 30,
+                lineHeight: 36,
+                fontWeight: "400",
+                letterSpacing: -0.4,
+                color: Accent.primaryForeground,
+              }}
+            >
+              {overlay!.title}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: Spacing.md }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <Clock size={14} color="rgba(255,255,255,0.9)" />
+                <Text style={heroMetaStyle} numberOfLines={1}>
+                  {overlay!.timeMin != null ? `${overlay!.timeMin} min` : "—"}
+                </Text>
+              </View>
+              {overlay!.kcal != null ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Flame size={14} color="rgba(255,255,255,0.9)" />
+                  <Text style={heroMetaStyle} numberOfLines={1}>
+                    {overlay!.kcal} kcal
+                  </Text>
+                </View>
+              ) : null}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <UtensilsCrossed size={14} color="rgba(255,255,255,0.9)" />
+                <Text style={heroMetaStyle} numberOfLines={1}>
+                  Serves {overlay!.servings}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </>
       ) : null}
 
       {/* Top scrim — rgba(0,0,0,0.4) → transparent, ~88px under the controls. */}

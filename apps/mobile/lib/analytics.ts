@@ -472,11 +472,19 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   in the Log-a-meal sheet. OFF → the legacy standalone "Copy yesterday" row
  *   renders alone (the old path). Gates the new structure only; every action
  *   reuses an existing commit path. Keep in sync with web.
+ * - `recipe_detail_v3_conformance` (ENG-1247) — the v3 recipe-detail prototype
+ *   pass: hero title OVERLAY (kicker + serif H1 + clock·flame·serves meta row)
+ *   when the recipe has a photo (no-photo falls back to the current title-below
+ *   layout), the editorial serif standfirst headnote, and the consolidated
+ *   sticky CTA bar (yield stepper · Cook Mode outline · Log filled primary).
+ *   OFF → the current title-below + action-pill-Log + Cook-Mode-only footer.
+ *   Keep in sync with web.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "nutrition_entry_ingredients_v1",
   "discover_creator_rail_v1",
   "loghub_quick_actions_v1",
+  "recipe_detail_v3_conformance",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

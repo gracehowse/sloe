@@ -40,11 +40,16 @@ export function RecipeTitleBlock({
   attribution,
   verdict,
   onNavigate,
+  hideTitle = false,
 }: {
   title: string;
   attribution: Attribution | null;
   verdict: FitsYourDayVerdict | null;
   onNavigate: (route: string) => void;
+  /** ENG-1247 — when the v3 hero title overlay is showing (photo present), the
+   *  H1 lives on the hero; the body block then renders attribution + verdict
+   *  only, never a duplicate title. */
+  hideTitle?: boolean;
 }) {
   const colors = useThemeColors();
 
@@ -88,18 +93,20 @@ export function RecipeTitleBlock({
 
   return (
     <View style={{ gap: Spacing.dense }} testID="recipe-title-block">
-      <Text
-        style={{
-          fontFamily: FontFamily.serifRegular,
-          fontSize: 34,
-          lineHeight: 42,
-          fontWeight: "400",
-          letterSpacing: -0.4,
-          color: colors.navPrimary,
-        }}
-      >
-        {title}
-      </Text>
+      {hideTitle ? null : (
+        <Text
+          style={{
+            fontFamily: FontFamily.serifRegular,
+            fontSize: 34,
+            lineHeight: 42,
+            fontWeight: "400",
+            letterSpacing: -0.4,
+            color: colors.navPrimary,
+          }}
+        >
+          {title}
+        </Text>
+      )}
 
       {attribution ? (
         <Text
