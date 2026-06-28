@@ -5,6 +5,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react-native";
 import { TodayHeroRingGraphic } from "@/components/today/TodayHeroRingGraphic";
+import { TodayHeroStats } from "@/components/today/TodayHeroStats";
 import { Layout } from "@/constants/layout";
 import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -77,71 +78,6 @@ export interface TodayHeroRingProps {
   onPressStatusChip?: () => void;
   /** ENG-889 — coach line inside the hero card below stats (Figma `654:2`). */
   coachLine?: React.ReactNode;
-}
-
-interface StatProps {
-  label: string;
-  value: string;
-  valueColor: string;
-  labelColor?: string;
-  textSecondaryColor: string;
-  /** Sloe redesign: a hairline divider on the left of the 2nd/3rd cells
-   *  (`divide-x divide-line` in the `01 · Today` frame). */
-  dividerColor?: string;
-  testID?: string;
-}
-
-/**
- * Goal / Eaten / Bonus stat cell. SLOE redesign (2026-06-03, `01 · Today`
- * frame): label `text-[10px] uppercase` above a Newsreader (serif)
- * `text-xl` value, cells separated by a `divide-x divide-line` hairline.
- * The value colour still links each stat to its ring segment where it
- * carries meaning (Bonus → sage when positive, red when over).
- */
-function Stat({
-  label,
-  value,
-  valueColor,
-  labelColor,
-  textSecondaryColor,
-  dividerColor,
-  testID,
-}: StatProps) {
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
-  return (
-    <View
-      testID={testID}
-      style={{
-        flex: 1,
-        alignItems: "center",
-        gap: Spacing.xs,
-        paddingHorizontal: Spacing.sm,
-        // Sloe: hairline `divide-x divide-line`, not a 1pt (3px) rule.
-        borderLeftWidth: dividerColor ? StyleSheet.hairlineWidth : 0,
-        borderLeftColor: dividerColor,
-      }}
-    >
-      <Text
-        // 2026-06-16 (design-director): hero-ring metric label → Type.statLabel
-        // (600 / 0.5 tracking, not label's 700 / 0.88) so GOAL/EATEN/BONUS read
-        // as a calm section label, not shouty caps. Colour defaults to secondary
-        // (AA), never tertiary — see call sites.
-        style={{ ...Type.statLabel, color: labelColor ?? textSecondaryColor }}
-      >
-        {label}
-      </Text>
-      <Text
-        style={{
-          ...(tierV1 ? Type.statValue : { ...Type.title, fontSize: 19, lineHeight: 23 }),
-          color: valueColor,
-          fontVariant: ["tabular-nums"],
-        }}
-        numberOfLines={1}
-      >
-        {value}
-      </Text>
-    </View>
-  );
 }
 
 /**
@@ -230,6 +166,40 @@ function StatusChip({
 }
 
 
+/**
+ * RingStatusLine — the de-carded v3 hero's status indicator (ENG-1247): a
+ * centered dot + label BELOW the ring (prototype `.ring-status`), replacing the
+ * carded hero's chip-above-the-ring. Sage when under budget, red when over;
+ * hidden on empty days. Copy from the shared `todayStatusChip` helper (no drift).
+ */
+function RingStatusLine({
+  state,
+  overByKcal,
+  isDark,
+}: {
+  state: "empty" | "under" | "over";
+  overByKcal: number;
+  isDark: boolean;
+}) {
+  if (state === "empty") return null;
+  const color =
+    state === "over"
+      ? isDark
+        ? Accent.destructiveLight
+        : Accent.destructive
+      : isDark
+        ? Accent.successLight
+        : Accent.successSolid;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.xs }}>
+      <View style={{ width: 7, height: 7, borderRadius: Radius.full, backgroundColor: color }} />
+      <Text style={{ fontSize: 13, fontWeight: "600", color, letterSpacing: 0.1 }}>
+        {todayStatusChip(state, overByKcal)}
+      </Text>
+    </View>
+  );
+}
+
 function TodayHeroRingImpl({
   consumed,
   goal,
@@ -266,47 +236,35 @@ function TodayHeroRingImpl({
     : isOver
       ? "over"
       : "under";
-  return (
-    // Card chrome (fill #F6F5F2, radius 24, soft lift, hairline) is the shared
-    // <SupprCard> shell — no more hand-rolled per-card chrome (Grace 2026-06-04).
-    // Only the ring's inner layout (centred, gap) lives here via innerStyle.
-    //
-    // lift="soft" (audit gap 6, 2026-06-09): the hero is the single most
-    // important card on Today, yet it was explicitly `flat` — on the
-    // near-tonal #F6F5F2-on-#FFFFFF pairing that made the whole top of the
-    // screen read as one undifferentiated slab (Grace's "cards blend into the
-    // background" note). `soft` gives it the cardSoft plum penumbra so it
-    // separates from the page like every other resting card. Mirrors web
-    // `elevation="card"` on `today-hero-ring.tsx`.
-    <SupprCard
-      // ENG-1099 M2: flat-on-cream (recipe-screen grammar) when the tier flag is
-      // on — the ring is the hero by scale, not shadow; the unified 24 rhythm (M1)
-      // carries the separation. Flag-off keeps the 2026-06-09 soft lift.
-      lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"}
-      // padding md (was lg): the ring is centred in a card far wider than it, so
-      // 20pt side padding was wasted air; 16 tightens the hero without touching
-      // the ring (design-director 2026-06-16, "too much background" fix).
-      padding="md"
-      innerStyle={{ alignItems: "center", gap: Layout.todayScrollGap }}
-    >
-      {/* Chip (state) + Remaining/Consumed toggle — SLOE `01 · Today`
-          frame, sits above the ring inside the hero card. */}
-      <View
-        style={{
-          width: "100%",
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: Spacing.xs,
-        }}
-      >
-        <StatusChip
-          state={chipState}
-          overByKcal={overByKcal}
-          isDark={isDark}
-          onPress={onPressStatusChip}
-        />
-      </View>
+  // De-carded v3 hero (ENG-1247, flag today_hero_decard_v3, default OFF). The
+  // prototype `.ring-hero` is a BARE centered block — no card chrome — with the
+  // status line BELOW the ring. Validated on sim: the ring's scale carries the
+  // separation, so the audit-gap-6 "slab" concern doesn't manifest in the v3
+  // layout. Flag OFF keeps the carded hero (soft lift / tier-v1 flat) below.
+  const decard = isFeatureEnabled("today_hero_decard_v3");
+
+  const heroInner = (
+    <>
+      {/* Carded hero: status CHIP above the ring. De-carded v3 hero: the chip is
+          replaced by a centered RingStatusLine BELOW the ring (prototype). */}
+      {!decard ? (
+        <View
+          style={{
+            width: "100%",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: Spacing.xs,
+          }}
+        >
+          <StatusChip
+            state={chipState}
+            overByKcal={overByKcal}
+            isDark={isDark}
+            onPress={onPressStatusChip}
+          />
+        </View>
+      ) : null}
       <TodayHeroRingGraphic
         consumed={consumed}
         goal={goal}
@@ -320,74 +278,20 @@ function TodayHeroRingImpl({
         expanded={expanded}
         onToggleExpanded={onToggleExpanded}
       />
-      {/* Goal / Eaten / Bonus stats row — SLOE `01 · Today` frame.
-          2026-06-10 (Grace): renders on EMPTY days too — the empty page
-          should mirror populated days; Eaten 0 and Bonus +0 are honest
-          numbers, not noise. (Supersedes the calm-empty divergence.) */}
-      {goal > 0 ? (
-        <View
-          style={{
-            width: "100%",
-            flexDirection: "row",
-            // Was paddingTop md (16) + marginTop xs (4) = 20pt of white void
-            // between the ring and the hairline rule — the biggest empty pocket
-            // in the hero. Trimmed to 8 (design-director 2026-06-16).
-            paddingTop: Spacing.sm,
-            // Sloe: hairline `border-t border-line` above the stats row.
-            borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: borderColor,
-          }}
-        >
-          <Stat
-            label="Goal"
-            value={Math.round(goal).toLocaleString()}
-            valueColor={textColor}
-            labelColor={secondaryColor}
-            textSecondaryColor={secondaryColor}
-          />
-          <Stat
-            label="Eaten"
-            value={Math.round(consumed).toLocaleString()}
-            valueColor={textColor}
-            labelColor={secondaryColor}
-            textSecondaryColor={secondaryColor}
-            dividerColor={borderColor}
-          />
-          {/* 2026-06-10 (Grace): the right stat is ALWAYS Bonus — the
-              over amount already reads in the centre + the chip, and the
-              slot-switch hid the earned-burn number exactly when an
-              over-budget user most wants to see it. */}
-
-            <Stat
-              label="Bonus"
-              testID="today-ring-bonus"
-              value={
-                baseGoal && baseGoal < goal
-                  ? `+${Math.round(goal - baseGoal).toLocaleString()}`
-                  : "0"
-              }
-              // Sage (success) for earned headroom — matches the Sloe
-              // frame's `text-sage` bonus label + value.
-              labelColor={
-                baseGoal && baseGoal < goal
-                  ? isDark
-                    ? Accent.successLight
-                    : Accent.success
-                  : secondaryColor
-              }
-              valueColor={
-                baseGoal && baseGoal < goal
-                  ? isDark
-                    ? Accent.successLight
-                    : Accent.success
-                  : secondaryColor
-              }
-              textSecondaryColor={secondaryColor}
-              dividerColor={borderColor}
-            />
-
-        </View>
+      {decard ? (
+        <RingStatusLine state={chipState} overByKcal={overByKcal} isDark={isDark} />
       ) : null}
+      {/* Goal / Eaten / Bonus stats row (extracted → TodayHeroStats so the
+          carded + de-carded heroes share one source). */}
+      <TodayHeroStats
+        goal={goal}
+        consumed={consumed}
+        baseGoal={baseGoal}
+        textColor={textColor}
+        secondaryColor={secondaryColor}
+        borderColor={borderColor}
+        isDark={isDark}
+      />
       {coachLine}
       {/* Macro-rings toggle (audit gap 5) — a tap-accessible counterpart to
           the ring's long-press macro-rings gesture. The design system (§13)
@@ -450,6 +354,35 @@ function TodayHeroRingImpl({
         </Text>
       </Pressable>
       )}
+    </>
+  );
+
+  if (decard) {
+    // Bare centered hero — no card chrome; the page provides the horizontal
+    // padding, so the ring + stats span the full content width (prototype).
+    return (
+      <View
+        style={{
+          width: "100%",
+          alignItems: "center",
+          gap: Layout.todayScrollGap,
+          paddingVertical: Spacing.sm,
+        }}
+      >
+        {heroInner}
+      </View>
+    );
+  }
+
+  return (
+    // Carded hero (Grace 2026-06-04 shared <SupprCard>; lift soft = audit-gap-6
+    // separation, tier-v1 flat-on-cream). The flag-OFF path.
+    <SupprCard
+      lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"}
+      padding="md"
+      innerStyle={{ alignItems: "center", gap: Layout.todayScrollGap }}
+    >
+      {heroInner}
     </SupprCard>
   );
 }

@@ -470,6 +470,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "nutrition_entry_ingredients_v1",
+  // ENG-1247 — Today calorie hero de-card (v3 prototype conformance). ON →
+  // bare centered hero (no SupprCard chrome) + status line below the ring;
+  // OFF → the carded hero. Ramps via PostHog once verified + web parity lands.
+  // Web parity twin: same flag in `src/lib/analytics/track.ts`.
+  "today_hero_decard_v3",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
