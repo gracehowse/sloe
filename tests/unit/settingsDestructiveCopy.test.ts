@@ -127,6 +127,25 @@ describe("Settings — Erase Everything confirm copy (P1-6, calm rewrite)", () =
   });
 });
 
+describe("Settings — barcode contribution withdrawal", () => {
+  // The withdrawal UI was extracted into its own component (ENG-717 screen
+  // budget); Settings mounts it, the component owns the fetch/delete logic.
+  const BARCODE_SECTION_SRC = readFileSync(
+    resolve(__dirname, "../../src/app/components/settings/BarcodeContributionsSection.tsx"),
+    "utf8",
+  );
+  it("mounts the withdrawal section from Settings", () => {
+    expect(SRC).toContain("<BarcodeContributionsSection");
+  });
+  it("surfaces a managed withdrawal path in Privacy & Security", () => {
+    expect(BARCODE_SECTION_SRC).toContain("settings-barcode-contributions-row");
+    expect(BARCODE_SECTION_SRC).toContain("BARCODE_CONTRIBUTIONS_SETTINGS_LABEL");
+    expect(BARCODE_SECTION_SRC).toContain("/api/user-foods?mine=1&limit=25");
+    expect(BARCODE_SECTION_SRC).toContain('method: "DELETE"');
+    expect(BARCODE_SECTION_SRC).toMatch(/\/api\/user-foods\?id=/);
+  });
+});
+
 describe("Settings — page header (P1-5)", () => {
   it("strips the leftover bg-clip-text / text-transparent classes from the H1", () => {
     // `<h1 className="text-foreground bg-clip-text text-transparent">`

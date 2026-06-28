@@ -1155,7 +1155,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 sodium_mg: 0,
                 caffeine_mg: 0,
                 alcohol_g: 0,
-                is_verified: false,
                 allergens: [],
               }
             : {
@@ -1168,11 +1167,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
                 caffeine_mg: 0,
                 alcohol_g: 0,
-                is_verified: allRowsVerified,
                 allergens: inferredAllergens,
-                verified_at: new Date().toISOString(),
-                ...(overallConf != null ? { verified_confidence: overallConf } : {}),
-                verified_source: "auto_verify",
               };
 
           const rpcResult = await saveVerifiedIngredientsRpc(
