@@ -51,6 +51,7 @@
     "delete:seeded-recipes": "node --import tsx scripts/delete-seeded-recipes.ts",
     "check:migrations": "node --import tsx scripts/check-migration-drift.ts",
     "check:migrations:static": "node --import tsx scripts/check-migration-drift.ts --static",
+    "db:apply-eng-backlog": "bash scripts/apply-eng-backlog-migrations.sh",
     "db:types": "supabase gen types typescript --project-id fnfgxsignmuepshbebrl > src/lib/supabase/database.types.ts && cp src/lib/supabase/database.types.ts apps/mobile/lib/database.types.ts",
     "db:types:check": "diff -q src/lib/supabase/database.types.ts apps/mobile/lib/database.types.ts || (echo \"::error::Supabase type files have drifted. Run npm run db:types and commit both generated copies.\" && exit 1)",
     "verify:production-env": "node --import tsx scripts/verify-production-env.ts",
