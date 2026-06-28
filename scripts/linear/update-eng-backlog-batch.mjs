@@ -39,15 +39,11 @@ async function linearRequest(apiKey, query, variables) {
   return json.data;
 }
 
+const PR_URL = "https://github.com/gracehowse/Suppr/pull/613";
+
 const ISSUE_BY_NUMBER = `
   query IssueByNumber($n: Float!) {
-    issue(id: $n) { id identifier title state { id name type } }
-  }
-`;
-
-const ISSUE_SEARCH = `
-  query IssueSearch($filter: IssueFilter) {
-    issues(filter: $filter, first: 1) {
+    issues(filter: { number: { eq: $n }, team: { key: { eq: "ENG" } } }, first: 1) {
       nodes { id identifier title state { id name type } }
     }
   }
@@ -90,6 +86,8 @@ const UPDATES = [
     id: "ENG-1244",
     state: "In Review",
     body: `**Cursor delivery — recipes RLS (server-own \`is_verified\` + anon claim-column lock)**
+
+PR: ${PR_URL}
 
 - Migration: \`supabase/migrations/20260702120400_eng1244_recipe_is_verified_server_owned.sql\`
 - Trigger blocks client \`is_verified=true\`; publish policy no longer requires client-set verification
@@ -160,10 +158,12 @@ Per \`docs/decisions/2026-06-27-recipe-detail-v3-conformance.md\`, positive Cont
   {
     id: "ENG-1241",
     state: "In Review",
-    body: `**Cursor delivery — onboarding optional skippable upgrade step**
+    body: `**Partial — onboarding upgrade step (flag only in PR #613)**
 
-- New \`upgrade\` step in onboarding funnel behind \`onboarding_conversion_funnel_v1\` (default OFF)
-- Pro value + "Start trial" / "Continue free" — skippable, Today-first on skip`,
+PR: ${PR_URL}
+
+- Flag \`onboarding_conversion_funnel_v1\` registered (default OFF)
+- **Still open:** \`upgrade\` step UI + flow wiring in \`STEP_IDS\` (web + mobile)`,
   },
   {
     id: "ENG-1240",
@@ -175,11 +175,10 @@ Per \`docs/decisions/2026-06-27-recipe-detail-v3-conformance.md\`, positive Cont
   },
   {
     id: "ENG-1238",
-    state: "In Review",
-    body: `**Cursor delivery — Plan per-meal action sheet parity**
+    state: "Todo",
+    body: `**Not in PR #613 — v3 Plan action sheet still open**
 
-- v3 Plan meal long-press sheet: swap, portion, move, remove, lock, mark cooked
-- Web planner logs to plan-day \`date_key\` (not always today) when \`plan_web_parity_v1\` ON`,
+PR #613 did not touch this. Legacy mobile planner has the rich sheet; v3 \`PlanV3Surface\` / \`usePlanV3MealActions\` still only open recipe + add slot. Web planner "Log today" date-key bug (ENG-1132) also still open.`,
   },
   {
     id: "ENG-1237",
@@ -192,26 +191,20 @@ Per \`docs/decisions/2026-06-27-recipe-detail-v3-conformance.md\`, positive Cont
   {
     id: "ENG-1233",
     state: "In Review",
-    body: `**Cursor delivery — onboarding conversion funnel bundle**
+    body: `**Partial — onboarding conversion funnel**
 
-- Flag \`onboarding_conversion_funnel_v1\` bundles: skippable upgrade step (ENG-1241) + first-log chips step
-- Projection on reveal already shipped (ENG-964); funnel steps default OFF until ramp`,
+PR: ${PR_URL}
+
+- Projection on reveal already shipped (ENG-964)
+- Flag \`onboarding_conversion_funnel_v1\` added (default OFF)
+- **Still open:** bundled upgrade + first-log step UI (see ENG-1241)`,
   },
 ];
 
 async function resolveIssue(apiKey, identifier) {
   const n = Number(identifier.replace(/^ENG-/i, ""));
-  try {
-    const data = await linearRequest(apiKey, ISSUE_SEARCH, {
-      filter: { number: { eq: n } },
-    });
-    const issue = data.issues.nodes[0];
-    if (issue) return issue;
-  } catch {
-    /* fall through */
-  }
   const data = await linearRequest(apiKey, ISSUE_BY_NUMBER, { n });
-  return data.issue;
+  return data.issues.nodes[0] ?? null;
 }
 
 async function main() {
