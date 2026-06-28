@@ -8,7 +8,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 
 ## Progress log
 
-- 🔄 **Today calorie hero (de-card)** — mobile shipped `877eca91` (flag `today_hero_decard_v3`, default OFF): bare hero + `RingStatusLine` below ring + `TodayHeroStats` extraction; SEEN (empty + under-budget). **Remaining:** 56px serif-medium numeral + web parity (`today-hero-ring.tsx`), then ramp.
+- ✅ **Today calorie hero (de-card)** — DONE both platforms, flag `today_hero_decard_v3` (default OFF), ready to ramp. Mobile `877eca91` + web parity/numeral `16efd625`: bare hero (no card) + `RingStatusLine` below ring (sage under / red over) + 56px serif-medium numeral + `TodayHeroStats` extraction. SEEN on sim + web (empty + under-budget) — perfect parity, no slab.
 - ✅ **MealEdit serif kcal hero** — shipped `957e5da9` (both platforms); expander + copy-row confirmed keep-current dupes.
 
 
