@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -22,6 +22,9 @@ import {
   isSeedCreatorId,
   SEED_CREATORS,
 } from "@suppr/shared/discover/seedCreators";
+import { readCreatorFollowState, toggleCreatorFollow } from "@suppr/shared/discover/toggleCreatorFollow";
+import { useAuth } from "@/context/auth";
+import { supabase } from "@/lib/supabase";
 
 /**
  * FollowingFeed — the v3 mobile Discover "Following" section (ENG-1225 #14,
@@ -81,7 +84,15 @@ export function FollowingFeed({
   const colors = useThemeColors();
   const accent = useAccent();
   const cardElevation = useCardElevation({ variant: "soft" });
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
   const [followed, setFollowed] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!userId) return;
+    const realIds = creators.map((c) => c.id).filter((id) => !isSeedCreatorId(id));
+    void readCreatorFollowState(supabase, userId, realIds).then(setFollowed);
+  }, [userId, creators]);
 
   // Pair each creator with a recipe to feature: their own when we can resolve a
   // creatorId match, else the Nth feed recipe so every post shows a real card.
@@ -178,9 +189,23 @@ export function FollowingFeed({
                 </PressableScale>
                 <PressableScale
                   haptic="selection"
-                  onPress={() =>
-                    setFollowed((m) => ({ ...m, [creator.id]: !isFollowing }))
-                  }
+                  onPress={async () => {
+                    if (!canPersist || !userId) {
+                      setFollowed((m) => ({ ...m, [creator.id]: !isFollowing }));
+                      return;
+                    }
+                    const next = !isFollowing;
+                    setFollowed((m) => ({ ...m, [creator.id]: next }));
+                    const result = await toggleCreatorFollow(
+                      supabase,
+                      userId,
+                      creator.id,
+                      isFollowing,
+                    );
+                    if (!result.ok) {
+                      setFollowed((m) => ({ ...m, [creator.id]: isFollowing }));
+                    }
+                  }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isFollowing }}
                   accessibilityLabel={

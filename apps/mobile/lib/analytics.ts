@@ -485,6 +485,12 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "discover_creator_rail_v1",
   "loghub_quick_actions_v1",
   "recipe_detail_v3_conformance",
+  "barcode_community_contribution",
+  "onboarding_conversion_funnel_v1",
+  "coach_full_screen_v1",
+  "batch_cook_planner_v1",
+  "body_composition_trends_v1",
+  "referral_invite_pro_v1",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

@@ -20,6 +20,7 @@ import {
 import { inferNaturalServingFromName } from "@suppr/nutrition-core/inferNaturalServing";
 import { measureToGrams } from "@suppr/nutrition-core/measureToGrams";
 import { checkSubmissionPlausibility } from "@suppr/shared/foodCorrection/plausibility";
+import { readCommunityShareConsent } from "@suppr/shared/foodCorrection/communityShareConsent";
 import {
   effectiveMacros as effectiveIngredientMacros,
   recomputeRecipeTotals,
@@ -1754,6 +1755,11 @@ export async function submitFoodCorrection(opts: {
   servingSizeG?: number;
   userId: string;
 }): Promise<{ ok: boolean; error?: string; reasons?: string[] }> {
+  const consent = await readCommunityShareConsent(supabase, opts.userId);
+  if (!consent.consented) {
+    return { ok: false, error: "consent_required" };
+  }
+
   // F-138 Phase 2 — server-side plausibility gate. Catches typos and
   // unit errors before they pollute user_foods. Block-tier failures
   // surface to the form so the user can fix and re-submit; warn-tier

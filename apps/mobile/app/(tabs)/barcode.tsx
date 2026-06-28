@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useCameraPermissions } from "expo-camera";
 import { BarcodeCameraView } from "@/components/BarcodeCameraView";
+import { BarcodeShareOptIn, type BarcodeShareOptInEntry } from "@/components/barcode/BarcodeShareOptIn";
 // 2026-04-29: migrated from `@expo/vector-icons` (Ionicons) to
 // `lucide-react-native` per the team standardisation set
 // 2026-04-28 (Top-5 #4 in docs/ux/teardown-2026-04-28-daily-loop.md).
@@ -62,6 +63,7 @@ export default function BarcodeScreen() {
   // legible Verified/Estimated confidence chip + a blue commit CTA.
   // Old path (binary green tick + green CTA) stays alive in the else.
   const searchRedesign = isFeatureEnabled("redesign_search_results");
+  const communityShareEnabled = isFeatureEnabled("barcode_community_contribution");
 
   const [permission, requestPermission] = useCameraPermissions();
   const [last, setLast] = useState<string | null>(null);
@@ -81,6 +83,7 @@ export default function BarcodeScreen() {
   const [manualProtein, setManualProtein] = useState("");
   const [manualCarbs, setManualCarbs] = useState("");
   const [manualFat, setManualFat] = useState("");
+  const [shareEntry, setShareEntry] = useState<BarcodeShareOptInEntry | null>(null);
 
   // Audit/2026-04-30 — when the user has logged this exact barcode
   // before, surface "You usually log {n} g — using that" near the
@@ -365,14 +368,26 @@ export default function BarcodeScreen() {
         source: "Manual barcode entry",
         origin: "manual",
       });
-      // DC12 (2026-05-14, premium-bar audit) — specific log
-      // confirmation, see barcode commit above.
-      Alert.alert(`${manualName.trim()} logged`, "Added to today's tracker.", [
-        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); setRememberedPortion(null); } },
-        { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
-      ]);
+      // ENG-1250 — flag ON: offer explicit community-contribution opt-in after the
+      // private log. Flag OFF: existing confirmation alert.
+      if (communityShareEnabled && last) {
+        setManualMode(false);
+        setShareEntry({
+          barcode: last,
+          name: manualName.trim(),
+          calories: Math.round(cal),
+          protein: Math.round((Number(manualProtein) || 0) * 10) / 10,
+          carbs: Math.round((Number(manualCarbs) || 0) * 10) / 10,
+          fat: Math.round((Number(manualFat) || 0) * 10) / 10,
+        });
+      } else {
+        Alert.alert(`${manualName.trim()} logged`, "Added to today's tracker.", [
+          { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); setRememberedPortion(null); } },
+          { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
+        ]);
+      }
     }
-  }, [manualName, manualCalories, manualProtein, manualCarbs, manualFat, userId, router, last, mealSlot]);
+  }, [manualName, manualCalories, manualProtein, manualCarbs, manualFat, userId, router, last, mealSlot, communityShareEnabled]);
 
   const openCorrectionMode = useCallback(() => {
     if (!product) return;
@@ -424,8 +439,19 @@ export default function BarcodeScreen() {
     setError(null);
     setManualMode(false);
     setCorrectionMode(false);
+    setShareEntry(null);
     plausibilityOverrideRef.current = false;
   }, []);
+
+  const handleShareDone = useCallback(() => {
+    setShareEntry(null);
+    setManualName("");
+    setManualCalories("");
+    setManualProtein("");
+    setManualCarbs("");
+    setManualFat("");
+    resetScan();
+  }, [resetScan]);
 
   const styles = useMemo(
     () =>
@@ -1140,6 +1166,12 @@ export default function BarcodeScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       )}
+
+      {shareEntry && userId ? (
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.dark.background, padding: Spacing.lg, paddingTop: insets.top + Spacing.lg }]}>
+          <BarcodeShareOptIn entry={shareEntry} userId={userId} onDone={handleShareDone} />
+        </View>
+      ) : null}
     </View>
   );
 }

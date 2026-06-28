@@ -41,6 +41,8 @@ import type { NotificationPrefs } from "../../types/notifications.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { SettingsDialogs } from "./settings/SettingsDialogs";
+import { CommunityFoodShareConsentRow } from "./settings/CommunityFoodShareConsentRow";
+import { InviteFriendsRow } from "./settings/InviteFriendsRow";
 import { SettingsTwoPaneShell, type SettingsPaneSection } from "./settings/SettingsTwoPaneShell";
 import { SupprButton } from "./suppr/suppr-button";
 import {
@@ -138,6 +140,7 @@ const LOCAL_CLEAR_KEYS = [
 export const Settings = memo(function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
   const {
     signOut,
+    userId,
     profileDisplayName,
     redeemPromoCode,
     notificationPrefs,
@@ -1930,6 +1933,12 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         <p className="text-sm text-muted-foreground mb-4">
           Download your nutrition log in a spreadsheet-friendly CSV, or take a full JSON backup for developers and migrations.
         </p>
+        <div className="mb-4">
+          <CommunityFoodShareConsentRow userId={userId} />
+        </div>
+        <div className="mb-4">
+          <InviteFriendsRow userId={userId} />
+        </div>
         <div className="space-y-3">
           {/* G-6 (2026-04-19, TestFlight `AC4oDEnQ0SuPruUtCr_Lvyc`) —
               CSV is the primary, one-click path so regular users can
