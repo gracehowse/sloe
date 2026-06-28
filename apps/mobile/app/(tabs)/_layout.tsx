@@ -142,22 +142,23 @@ export default function TabLayout() {
         // `useSafeAreaInsets`, but we keep these here as defensive
         // defaults in case any nested screen re-instantiates the
         // stock bar.
-        // ENG-1247 — the frosted bar OVERLAYS scroll content so the BlurView in
-        // SupprTabBar has content to blur (v3 `.tabbar`). `position: absolute`
-        // tells react-navigation not to inset the scene; transparent bg lets the
-        // blur carry the surface. Screens pad their scroll content by the bar
-        // height (`useTabBarClearance`).
+        // ENG-1247 — the floating pill does NOT overlay scroll content. We
+        // dropped expo-blur (its iOS BlurView was buggy), so an overlaid bar gave
+        // no benefit and caused content cards to scroll directly behind the pill —
+        // a white card wider than the pill read as a "block behind the bar"
+        // (Grace flagged this repeatedly). Without `position: absolute`,
+        // react-navigation reserves the bar's height and insets the scene above
+        // it, so content always ends ABOVE the pill and the pill floats over a
+        // clean page-colour strip (the root nav-theme background is the page
+        // colour, so the strip behind the transparent pill is page-coloured, not
+        // the RN default grey). `useTabBarClearance` returns 0 to match (the
+        // navigator now owns the inset; manual padding would double it).
         tabBarStyle: {
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
           backgroundColor: 'transparent',
           borderTopWidth: 0,
-          // Floating rounded pill (v3 `.tabbar` L1697): the container is
-          // full-bleed + transparent; `SupprTabBar` insets/lifts the pill and
-          // the raised Log button protrudes from its top, so leave generous
-          // height + no padding here (the pill owns its own inset/padding).
+          // Floating rounded pill (v3 `.tabbar` L1697): `SupprTabBar` insets/lifts
+          // the pill inside this height; leave no padding here (the pill owns its
+          // own inset/padding).
           height: 88 + Math.max(insets.bottom, 8),
           paddingBottom: 0,
           paddingTop: 0,
