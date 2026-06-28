@@ -526,9 +526,19 @@ function RootLayoutInner() {
     );
   }
 
+  // ENG-1247 — react-navigation's raw DefaultTheme.colors.background is #F2F2F2
+  // (light grey); it paints the navigator SCENE, which showed through behind the
+  // transparent floating tab bar as a grey "block" under the pill (Grace flagged
+  // it repeatedly). Override the scene background to the app's own page colour so
+  // the floating pill sits on the real page, not a grey slab.
+  const navTheme =
+    resolved === 'dark'
+      ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: Colors.dark.background } }
+      : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: Colors.light.background } };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={resolved === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={navTheme}>
         <DrOutageBanner />
         <HandleSiriDeepLinks />
         <HandleWeeklyRecapPushOpen />

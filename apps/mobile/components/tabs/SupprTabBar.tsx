@@ -119,13 +119,11 @@ export function SupprTabBar({
         justifyContent: "flex-end",
         paddingHorizontal: 14,
         paddingBottom: Math.max(safeInsets.bottom, 8) + 12,
-        // Page-colored container. react-navigation renders a translucent grey
-        // system material behind the bar (NOT removable via
-        // tabBarStyle.backgroundColor:'transparent' or tabBarBackground:null with
-        // a custom tabBar) — it read as a full-width grey "block" behind the
-        // floating pill (Grace, ENG-1247). Painting the container the page colour
-        // covers it so the pill floats seamlessly on the page.
-        backgroundColor: colors.background,
+        // TRANSPARENT — the pill floats and the real page shows through the
+        // inset margins around/below it. (The grey "block" that used to show here
+        // was react-navigation's DefaultTheme scene background #F2F2F2; fixed at
+        // the source in app/_layout.tsx by overriding the nav theme background to
+        // the app page colour. ENG-1247.)
       }}
     >
       {/* ENG-1247 — shadow wrapper. Pins the pill height (72 = 56 FAB + 8·2
