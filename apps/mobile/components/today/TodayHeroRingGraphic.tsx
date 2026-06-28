@@ -30,6 +30,8 @@ export interface TodayHeroRingGraphicProps {
   fatPct: number;
   expanded: boolean;
   onToggleExpanded: () => void;
+  /** De-carded v3 hero (ENG-1247): 56px serif-medium centre numeral. */
+  numeralLarge?: boolean;
 }
 
 export function TodayHeroRingGraphic({
@@ -44,6 +46,7 @@ export function TodayHeroRingGraphic({
   fatPct,
   expanded,
   onToggleExpanded,
+  numeralLarge = false,
 }: TodayHeroRingGraphicProps) {
   if (isFeatureEnabled("sloe_v3_ring")) {
     // The jewel watch-dial does NOT use the legacy empty-state 0.72 shrink (it
@@ -54,6 +57,7 @@ export function TodayHeroRingGraphic({
         consumed={consumed}
         target={goal}
         size={Math.round(ringGeometry(false).SIZE * 1.15)}
+        numeralLarge={numeralLarge}
       />
     );
   }

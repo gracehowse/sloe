@@ -66,6 +66,9 @@ export interface CalorieRingDialProps {
    * dial's `hideCenter`.
    */
   hideCenter?: boolean;
+  /** De-carded v3 hero (ENG-1247): render the centre value as the 56px serif-
+   *  MEDIUM `.ring-big` numeral instead of the default 44/normal. */
+  numeralLarge?: boolean;
 }
 
 export function CalorieRingDial({
@@ -73,6 +76,7 @@ export function CalorieRingDial({
   target,
   size = BASE,
   hideCenter = false,
+  numeralLarge = false,
 }: CalorieRingDialProps) {
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;
@@ -203,7 +207,9 @@ export function CalorieRingDial({
       {hideCenter ? null : (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className="font-[family-name:var(--font-headline)] text-[44px] font-normal leading-none tabular-nums"
+            className={`font-[family-name:var(--font-headline)] leading-none tabular-nums ${
+              numeralLarge ? "text-[56px] font-medium" : "text-[44px] font-normal"
+            }`}
             style={isOver ? { color: "var(--accent-warning-solid)" } : undefined}
           >
             {animated.toLocaleString()}

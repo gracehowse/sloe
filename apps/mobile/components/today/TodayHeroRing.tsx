@@ -277,6 +277,7 @@ function TodayHeroRingImpl({
         fatPct={fatPct}
         expanded={expanded}
         onToggleExpanded={onToggleExpanded}
+        numeralLarge={decard}
       />
       {decard ? (
         <RingStatusLine state={chipState} overByKcal={overByKcal} isDark={isDark} />

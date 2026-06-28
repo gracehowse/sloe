@@ -103,6 +103,28 @@ function HeroStatusChip({
   );
 }
 
+/**
+ * RingStatusLine — the de-carded v3 hero's status indicator (ENG-1247): a
+ * centered dot + label BELOW the ring (prototype `.ring-status`), replacing the
+ * carded hero's chip-above-the-ring. Sage when under, red when over (Grace's
+ * calorie-colour rule — over=red, mirrors mobile); hidden on empty days. Copy
+ * from the shared `todayStatusChip` helper (no drift). Web twin of mobile
+ * `RingStatusLine` in `TodayHeroRing.tsx`.
+ */
+function RingStatusLine({ state }: { state: ChipState }) {
+  if (state === "empty") return null;
+  const colorClass = state === "over" ? "text-destructive-solid" : "text-success-solid";
+  return (
+    <div
+      data-testid="today-ring-status-line"
+      className={`flex items-center justify-center gap-1.5 ${colorClass}`}
+    >
+      <span className="inline-block h-[7px] w-[7px] rounded-full bg-current" />
+      <span className="text-[13px] font-semibold">{todayStatusChip(state)}</span>
+    </div>
+  );
+}
+
 function RingStatCell({
   label,
   value,
@@ -167,30 +189,30 @@ export function TodayHeroRing({
   const bonusKcal =
     baseGoal && baseGoal < target ? Math.round(target - baseGoal) : 0;
 
-  return (
-    <SupprCard
-      // elevation="card" (audit gap 6, 2026-06-09): the hero is the single
-      // most important card on Today, yet it was explicitly flat — on the
-      // near-tonal #F6F5F2-on-#FFFFFF pairing that made the whole top of the
-      // screen read as one undifferentiated slab. The soft `.card-slab` shadow
-      // separates it from the page like every other resting card. Mirrors
-      // mobile `lift="soft"` on `TodayHeroRing.tsx`.
-      elevation="card"
-      radius="lg"
-      padding="none"
-      className="flex flex-col items-center mb-3 px-4 py-3 gap-2"
-    >
-      {/* Header row: the status chip only. The Remaining/Consumed segmented
-          toggle is RETIRED (web ring parity 2026-06-10 — mobile ring wave): it
-          duplicated the Eaten stat below the ring. */}
-      <div className="flex w-full items-center justify-between gap-2">
-        <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
-      </div>
+  // De-carded v3 hero (ENG-1247, flag today_hero_decard_v3, default OFF). The
+  // prototype `.ring-hero` is a BARE centered block — no card chrome — with the
+  // status line BELOW the ring (the 'P2' de-card this file long flagged as
+  // planned). Validated on the mobile sim: the ring's scale carries the
+  // separation, so the audit-gap-6 "slab" concern doesn't manifest in the v3
+  // layout. Flag OFF keeps the carded hero below.
+  const decard = isFeatureEnabled("today_hero_decard_v3");
+
+  const heroInner = (
+    <>
+      {/* Carded hero: status CHIP above the ring. De-carded v3 hero: the chip is
+          replaced by a centered RingStatusLine BELOW the ring (prototype). The
+          Remaining/Consumed toggle stays retired (web ring parity 2026-06-10). */}
+      {!decard ? (
+        <div className="flex w-full items-center justify-between gap-2">
+          <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
+        </div>
+      ) : null}
       {v3Ring ? (
         <CalorieRingDial
           consumed={consumed}
           target={target}
           size={ringGeometry.size}
+          numeralLarge={decard}
         />
       ) : (
         <DailyRing
@@ -215,6 +237,7 @@ export function TodayHeroRing({
           commitPulse={commitPulse}
         />
       )}
+      {decard ? <RingStatusLine state={chipState} /> : null}
       {/* Goal / Eaten / Bonus stats row — renders on EMPTY days too (web ring
           parity 2026-06-10): the empty page mirrors a populated day, so Eaten 0
           and Bonus +0 are honest numbers, not noise. Gated on `target > 0`
@@ -259,6 +282,33 @@ export function TodayHeroRing({
       >
         {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
       </button>
+    </>
+  );
+
+  if (decard) {
+    // Bare centered hero — no card chrome; the page provides the horizontal
+    // padding so the ring + stats span the full content width (prototype).
+    return (
+      <div
+        data-testid="today-hero-decard"
+        className="flex flex-col items-center mb-3 gap-2"
+      >
+        {heroInner}
+      </div>
+    );
+  }
+
+  return (
+    // Carded hero (audit gap 6, 2026-06-09): elevation="card" soft slab so the
+    // near-tonal #F6F5F2-on-#FFFFFF hero separates from the page. The flag-OFF
+    // path; mirrors mobile `lift="soft"` on `TodayHeroRing.tsx`.
+    <SupprCard
+      elevation="card"
+      radius="lg"
+      padding="none"
+      className="flex flex-col items-center mb-3 px-4 py-3 gap-2"
+    >
+      {heroInner}
     </SupprCard>
   );
 }

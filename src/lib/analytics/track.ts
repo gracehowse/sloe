@@ -350,6 +350,11 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "landing_hero_hybrid_v1",
   "nutrition_entry_ingredients_v1",
   "sloe_v3_settings",
+  // ENG-1247 — Today calorie hero de-card (v3 prototype conformance). ON → bare
+  // centered hero (no SupprCard chrome) + status line below the ring + 56px
+  // serif-medium numeral; OFF → the carded hero. Mobile twin: same flag in
+  // apps/mobile/lib/analytics.ts. Ramps via PostHog once verified on both.
+  "today_hero_decard_v3",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
