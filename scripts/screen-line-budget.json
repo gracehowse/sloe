@@ -6,7 +6,7 @@
   "app/recipe/[id]/page.tsx": 492,
   "apps/mobile/app/_layout.tsx": 603,
   "apps/mobile/app/(tabs)/_today/TodayScreen.tsx": 6966,
-  "apps/mobile/app/(tabs)/barcode.tsx": 1145,
+  "apps/mobile/app/(tabs)/barcode.tsx": 1187,
   "apps/mobile/app/(tabs)/discover.tsx": 1025,
   "apps/mobile/app/(tabs)/library.tsx": 1165,
   "apps/mobile/app/(tabs)/planner.tsx": 4735,
