@@ -11,9 +11,9 @@
  */
 import { Pressable, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { Bookmark, ChevronLeft, MoreHorizontal, Share2 } from "lucide-react-native";
+import { Bookmark, ChevronLeft, Clock, Flame, MoreHorizontal, Share2, Utensils } from "lucide-react-native";
 
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 
@@ -35,6 +35,13 @@ type RecipeDetailHeroProps = {
   /** Owner-only overflow (edit / publish / delete). Hidden when absent. */
   onMore?: () => void;
   showSloeImageLabel?: boolean;
+  /** v3 (ENG-1247, flag recipe_detail_v3): overlay the title block on the hero
+   *  photo (prototype `.rd-title`) instead of below it. */
+  heroOverlay?: boolean;
+  kicker?: string;
+  metaTimeMin?: number | null;
+  metaKcal?: number | null;
+  metaServings?: number | null;
 };
 
 function HeroCircleButton({
@@ -81,6 +88,11 @@ export function RecipeDetailHero({
   onShare,
   onMore,
   showSloeImageLabel = false,
+  heroOverlay = false,
+  kicker,
+  metaTimeMin,
+  metaKcal,
+  metaServings,
 }: RecipeDetailHeroProps) {
   const showPhoto = Boolean(imageUrl) && !imageBroken;
   return (
@@ -178,6 +190,81 @@ export function RecipeDetailHero({
           ) : null}
         </View>
       </View>
+
+      {/* v3 (ENG-1247): bottom veil + title block OVERLAID on the hero photo
+          (prototype `.rd-veil` + `.rd-title`) — kicker overline + serif h1 +
+          meta row, white over the photo. Flag-gated by the host. */}
+      {heroOverlay ? (
+        <>
+          <Svg
+            style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 180 }}
+            width="100%"
+            height="100%"
+            preserveAspectRatio="none"
+            pointerEvents="none"
+          >
+            <Defs>
+              <LinearGradient id="recipe-hero-veil" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#000000" stopOpacity={0} />
+                <Stop offset="1" stopColor="#000000" stopOpacity={0.62} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#recipe-hero-veil)" />
+          </Svg>
+          <View pointerEvents="none" style={{ position: "absolute", left: 20, right: 20, bottom: 16 }}>
+            {kicker ? (
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "700",
+                  letterSpacing: 1.3,
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.82)",
+                  marginBottom: Spacing.xs,
+                }}
+              >
+                {kicker}
+              </Text>
+            ) : null}
+            <Text
+              style={{
+                fontFamily: FontFamily.serifMedium,
+                fontSize: 28,
+                lineHeight: 32,
+                fontWeight: "500",
+                letterSpacing: -0.3,
+                color: Accent.primaryForeground,
+              }}
+            >
+              {title}
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.md, marginTop: 10 }}>
+              {metaTimeMin != null ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Clock size={14} color="rgba(255,255,255,0.95)" />
+                  <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.95)" }}>{metaTimeMin} min</Text>
+                </View>
+              ) : null}
+              {metaKcal != null ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Flame size={14} color="rgba(255,255,255,0.95)" />
+                  <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.95)" }}>
+                    {Math.round(metaKcal)} kcal
+                  </Text>
+                </View>
+              ) : null}
+              {metaServings != null ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Utensils size={14} color="rgba(255,255,255,0.95)" />
+                  <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.95)" }}>
+                    Serves {metaServings}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }

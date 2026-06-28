@@ -40,11 +40,14 @@ export function RecipeTitleBlock({
   attribution,
   verdict,
   onNavigate,
+  hideTitle = false,
 }: {
   title: string;
   attribution: Attribution | null;
   verdict: FitsYourDayVerdict | null;
   onNavigate: (route: string) => void;
+  /** v3 (ENG-1247): the title moved into the hero overlay — skip it here. */
+  hideTitle?: boolean;
 }) {
   const colors = useThemeColors();
 
@@ -88,18 +91,20 @@ export function RecipeTitleBlock({
 
   return (
     <View style={{ gap: Spacing.dense }} testID="recipe-title-block">
-      <Text
-        style={{
-          fontFamily: FontFamily.serifRegular,
-          fontSize: 34,
-          lineHeight: 42,
-          fontWeight: "400",
-          letterSpacing: -0.4,
-          color: colors.navPrimary,
-        }}
-      >
-        {title}
-      </Text>
+      {hideTitle ? null : (
+        <Text
+          style={{
+            fontFamily: FontFamily.serifRegular,
+            fontSize: 34,
+            lineHeight: 42,
+            fontWeight: "400",
+            letterSpacing: -0.4,
+            color: colors.navPrimary,
+          }}
+        >
+          {title}
+        </Text>
+      )}
 
       {attribution ? (
         <Text

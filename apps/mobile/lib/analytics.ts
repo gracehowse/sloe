@@ -479,6 +479,11 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   // ON → recents-chip row after macros; OFF → no quick-add row (the launcher
   // strip was dead code). Web parity twin: same flag in track.ts.
   "today_quickadd_recents_v3",
+  // ENG-1247 — RecipeDetail v3 rebuild (the viral hook). Gates the whole
+  // recipe-detail conformance: hero title-overlay, drop-cap standfirst,
+  // borderless macro strip, sticky Cook/+Log CTA, serif method steps, review
+  // banner. ON → v3; OFF → the Figma-era layout. Web twin: same flag in track.ts.
+  "recipe_detail_v3",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

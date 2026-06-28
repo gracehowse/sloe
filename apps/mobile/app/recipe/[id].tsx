@@ -1957,6 +1957,17 @@ export default function RecipeDetailScreen() {
   const cleanDescription = sanitizeRecipeDescription(recipe.description);
   const allergenLine = formatContainsLine(normaliseAllergenIds(recipe.allergens ?? []));
 
+  // RecipeDetail v3 (ENG-1247): the title block overlays the hero photo
+  // (kicker + serif h1 + meta) instead of sitting below it. Flag-gated.
+  const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3");
+  const firstMealType = recipe.meal_type?.[0];
+  const heroKicker = saved
+    ? "From your cookbook"
+    : firstMealType
+      ? firstMealType[0].toUpperCase() + firstMealType.slice(1)
+      : "Fits your day";
+  const heroTotalTimeMin = (recipe.prep_time_min ?? 0) + (recipe.cook_time_min ?? 0) || null;
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -1978,6 +1989,11 @@ export default function RecipeDetailScreen() {
           onShare={handleShare}
           onMore={openRecipeOptions}
           showSloeImageLabel={isAiGeneratedHero}
+          heroOverlay={recipeDetailV3}
+          kicker={heroKicker}
+          metaTimeMin={heroTotalTimeMin}
+          metaKcal={recipe.calories ?? null}
+          metaServings={viewServings}
         />
 
         {isAiGeneratedHero ? <SloeImageNotice /> : null}
@@ -2000,6 +2016,7 @@ export default function RecipeDetailScreen() {
             attribution={attribution}
             verdict={fitVerdict}
             onNavigate={(route) => router.push(route as never)}
+            hideTitle={recipeDetailV3}
           />
 
           {/* Gluten estimate chip + persistent disclaimer (ENG-748). */}
@@ -2097,8 +2114,9 @@ export default function RecipeDetailScreen() {
           ) : null}
 
           {/* 5. Meta row — time · item count (rating + difficulty hidden: no
-              backing data). */}
-          <RecipeMetaRow stats={metaStats} />
+              backing data). v3 (ENG-1247): the hero overlay carries the
+              time/kcal/serves meta, so the below-hero row is suppressed. */}
+          {recipeDetailV3 ? null : <RecipeMetaRow stats={metaStats} />
 
           {/* Batch-total kcal line when the viewer has scaled away from yield. */}
           {(() => {
