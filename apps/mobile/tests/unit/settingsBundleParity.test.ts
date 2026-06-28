@@ -64,6 +64,9 @@ describe("SettingsBundleContent — parity contract", () => {
       // custom foods, etc. — counters lock-in anxiety per the
       // user-sentiment audit. See `docs/operations/data-export.md`.
       "settings-bundle-export-everything-row",
+      // barcode-contributions row testID lives in the extracted
+      // BarcodeContributionsSection (ENG-717 screen budget) — asserted
+      // separately below against that component file.
       "settings-bundle-help-row",
       "settings-bundle-privacy-row",
       "settings-bundle-terms-row",
@@ -150,6 +153,23 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(bundle).toMatch(/fetch\(`\$\{base\}\/api\/account\/delete`/);
     expect(bundle).toContain('method: "DELETE"');
     expect(bundle).toMatch(/Authorization:\s*`Bearer/);
+  });
+
+  it("surfaces barcode contribution withdrawal from Settings Account", () => {
+    // The withdrawal UI was extracted into BarcodeContributionsSection
+    // (ENG-717 screen budget); the bundle mounts it, the component owns the
+    // row testID + the RLS-scoped user_foods read/delete.
+    expect(bundle).toContain("<BarcodeContributionsSection userId={userId}");
+    const section = readFileSync(
+      resolve(__dirname, "../../components/settings/BarcodeContributionsSection.tsx"),
+      "utf8",
+    );
+    expect(section).toContain("BARCODE_CONTRIBUTIONS_SETTINGS_LABEL");
+    expect(section).toContain("settings-bundle-barcode-contributions-row");
+    expect(section).toContain("settings-bundle-barcode-contributions-list");
+    expect(section).toContain(".from(\"user_foods\")");
+    expect(section).toContain(".delete()");
+    expect(section).toContain(".eq(\"submitted_by\", userId)");
   });
 
   it("delete-account flow still requires typing 'delete' to confirm", () => {
@@ -284,21 +304,20 @@ describe("Settings — Figma `335:2` frame reskin", () => {
     expect(headingBody).not.toMatch(/color: colors\.navPrimary/);
   });
 
-  it("row icon plates are grey CIRCLES (Grace 2026-06-25 — round-all-plates overrides the v3 .set-ic square)", () => {
-    // Isolate the IconBox function body so the assertions don't bleed.
+  it("row icon plates are white circles with a hairline ring (circle-outline)", () => {
+    // IconBox was extracted into the shared SettingsRow module (ENG-717).
+    // Isolate its function body so the assertions don't bleed.
+    const rowModule = readFileSync(
+      resolve(__dirname, "../../components/settings/SettingsRow.tsx"),
+      "utf8",
+    );
     const iconBoxBody =
-      bundle.slice(bundle.indexOf("function IconBox")).split("\nfunction ")[0] ??
+      rowModule.slice(rowModule.indexOf("function IconBox")).split("\nexport function ")[0] ??
       "";
-    // Grace 2026-06-25 ("they all need to be round … yes icons too"): every icon
-    // plate is now a FULL CIRCLE. This deliberately overrides the v3 prototype's
-    // `.set-ic` rounded-SQUARE grammar (the soft grey square the row icons used
-    // to render as). Fill stays the soft grey (backgroundSecondary); only the
-    // corner went from Radius.xl → Radius.full. Do NOT re-conform back to a
-    // square — see the round-corners commit + docs.
-    expect(iconBoxBody).toMatch(/borderRadius: Radius\.full/);
-    expect(iconBoxBody).toMatch(/backgroundColor: colors\.backgroundSecondary/);
-    expect(iconBoxBody).not.toMatch(/borderRadius: Radius\.xl/);
-    expect(iconBoxBody).not.toMatch(/borderColor: colors\.cardBorder/);
+    // IconBox swapped the colour-tinted rounded square (color + "18") for a
+    // white circle (background + cardBorder ring) per the frame.
+    expect(iconBoxBody).toMatch(/borderRadius: size \/ 2/);
+    expect(iconBoxBody).toMatch(/borderColor: colors\.cardBorder/);
     expect(iconBoxBody).not.toMatch(/backgroundColor: color \+ "18"/);
   });
 

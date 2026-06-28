@@ -13,6 +13,7 @@ const PRIVACY_SECTIONS = [
   { id: "use", title: "How we use data" },
   { id: "ai", title: "AI, voice, and images" },
   { id: "imported", title: "Imported recipes" },
+  { id: "community-food-database", title: "Community food database" },
   { id: "subprocessors", title: "Sub-processors" },
   { id: "community-food-database", title: "Community food database" },
   { id: "transfers", title: "International transfers" },
@@ -32,8 +33,8 @@ export default function PrivacyPage() {
   return (
     <TrustPageLayout
       title="Privacy policy"
-      lastUpdated="April 2026"
-      version="v1.0"
+      lastUpdated="June 2026"
+      version="v1.1"
       subtitle="What we process, who we share it with, and your choices."
       sections={PRIVACY_SECTIONS}
       revisionPath="app/privacy/page.tsx"
@@ -131,6 +132,20 @@ export default function PrivacyPage() {
               /dmca
             </Link>
             . We&rsquo;ll remove within 7 business days.
+          </p>
+
+          <h2 id="community-food-database" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">
+            Community food database
+          </h2>
+          <p data-testid="privacy-community-food-database-disclosure">
+            When you correct or add a barcode product, Sloe stores the product
+            data with your account as the submitter so the community database
+            can be reviewed for quality and abuse. Other users may see the
+            product name, barcode, brand, nutrition values, verification status,
+            and community votes; they do not see your email or profile details.
+            You can remove products you shared from Settings &rarr; Privacy
+            &amp; Security &rarr; Barcode contributions on web, or Settings
+            &rarr; Account &rarr; Barcode contributions on mobile.
           </p>
 
           <h2 id="subprocessors" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Sub-processors</h2>
@@ -248,6 +263,10 @@ export default function PrivacyPage() {
             <li>
               <strong>Withdraw consent:</strong> You can sign out at any time and disable optional analytics or
               error reporting via your cookie preferences.
+            </li>
+            <li>
+              <strong>Barcode contributions:</strong> You can remove products you shared with the community food
+              database from Settings on web or mobile.
             </li>
             <li>
               <strong>Access and correction:</strong> You can view and update your personal data in your profile at

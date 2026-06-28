@@ -36,11 +36,7 @@ export type SaveVerifiedRecipeUpdate = {
   sodium_mg: number;
   caffeine_mg?: number;
   alcohol_g?: number;
-  is_verified: boolean;
   allergens?: unknown;
-  verified_at?: string;
-  verified_confidence?: number;
-  verified_source?: string;
 };
 
 export async function saveVerifiedIngredientsRpc(

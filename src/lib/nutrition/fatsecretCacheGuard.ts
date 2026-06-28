@@ -115,7 +115,9 @@ export function recipeAggregateHasFatSecret(rows: ScrubableRow[]): boolean {
 
 /**
  * Replacement aggregate columns when {@link recipeAggregateHasFatSecret}
- * returns true. Use this when writing the parent `recipes` row.
+ * returns true. Use this when writing the parent `recipes` nutrition totals.
+ * Recipe-level trust metadata is server-owned (ENG-1244) and intentionally
+ * omitted from this client-side aggregate scrub.
  */
 export const ZEROED_RECIPE_AGGREGATE = {
   calories: 0,
@@ -125,8 +127,4 @@ export const ZEROED_RECIPE_AGGREGATE = {
   fiber_g: 0,
   sugar_g: 0,
   sodium_mg: 0,
-  is_verified: false,
-  verified_source: null as string | null,
-  verified_confidence: null as number | null,
-  verified_at: null as string | null,
 } as const;

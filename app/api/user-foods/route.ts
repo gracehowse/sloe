@@ -21,9 +21,10 @@ type SubmitFoodRequest = {
 };
 
 /**
+ * GET /api/user-foods?mine=1
  * GET /api/user-foods?q=<query>&limit=10
  *
- * Search the Suppr custom food database.
+ * List my barcode contributions, or search the Suppr custom food database.
  */
 export async function GET(req: Request) {
   const userId = await getUserIdFromRequest(req);
@@ -35,15 +36,32 @@ export async function GET(req: Request) {
   if (serviceErr) return serviceErr;
 
   const url = new URL(req.url);
+  const mine = url.searchParams.get("mine") === "1";
   const query = url.searchParams.get("q")?.trim();
   const limit = Math.min(25, Math.max(1, Number(url.searchParams.get("limit")) || 10));
+
+  const supabase = createSupabaseServiceRoleClient();
+  if (!supabase) return NextResponse.json({ ok: false, error: "server_misconfigured" }, { status: 503 });
+
+  if (mine) {
+    const { data, error } = await supabase
+      .from("user_foods")
+      .select("id, barcode, name, brand, verification_status, upvotes, downvotes, created_at, updated_at")
+      .eq("submitted_by", userId)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: "list_failed", message: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, foods: data ?? [] });
+  }
 
   if (!query || query.length < 2) {
     return NextResponse.json({ ok: false, error: "query_too_short", message: "Search query must be at least 2 characters." }, { status: 400 });
   }
 
-  const supabase = createSupabaseServiceRoleClient();
-  if (!supabase) return NextResponse.json({ ok: false, error: "server_misconfigured" }, { status: 503 });
   const searchTerm = `%${query.replace(/[%_]/g, "\\$&")}%`;
 
   // Service-role: intentionally cross-tenant — user_foods is a shared community
@@ -173,4 +191,57 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: true, id: data?.id });
+}
+
+/**
+ * DELETE /api/user-foods?id=<contribution-id>
+ *
+ * Withdraw one of the caller's barcode contributions from the shared catalog.
+ */
+export async function DELETE(req: Request) {
+  const originErr = assertOrigin(req);
+  if (originErr) return originErr;
+
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
+  const serviceErr = misconfiguredServiceRoleResponse();
+  if (serviceErr) return serviceErr;
+
+  const url = new URL(req.url);
+  const id = url.searchParams.get("id")?.trim();
+  if (!id) {
+    return NextResponse.json({ ok: false, error: "missing_id" }, { status: 400 });
+  }
+
+  const supabase = createSupabaseServiceRoleClient();
+  if (!supabase) return NextResponse.json({ ok: false, error: "server_misconfigured" }, { status: 503 });
+
+  const { data: row, error: lookupError } = await supabase
+    .from("user_foods")
+    .select("id, submitted_by")
+    .eq("id", id)
+    .eq("submitted_by", userId)
+    .maybeSingle();
+
+  if (lookupError) {
+    return NextResponse.json({ ok: false, error: "lookup_failed", message: lookupError.message }, { status: 500 });
+  }
+  if (!row) {
+    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+  }
+
+  const { error } = await supabase
+    .from("user_foods")
+    .delete()
+    .eq("id", id)
+    .eq("submitted_by", userId);
+
+  if (error) {
+    return NextResponse.json({ ok: false, error: "delete_failed", message: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

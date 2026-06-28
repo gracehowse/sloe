@@ -91,7 +91,7 @@ describe("Bug 1 — verified state persists past manual verify", () => {
     expect(SRC.webRecipe).not.toMatch(/verified_source: "auto_verify"[\s\S]{0,400}?\.from\("recipes"\)\.update/);
     expect(SRC.webRecipe).toMatch(/inferAllergensFromIngredients/);
     expect(SRC.webRecipe).toMatch(/allRowsVerified/);
-    expect(SRC.webRecipe).toMatch(/verified_at: new Date\(\)\.toISOString\(\)/);
+    expect(SRC.webRecipe).not.toMatch(/verified_at: new Date\(\)\.toISOString\(\)/);
   });
 
   it("ENG-1108 save_verified_ingredients migration persists verify metadata atomically", () => {

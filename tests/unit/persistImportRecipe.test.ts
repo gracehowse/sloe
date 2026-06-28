@@ -80,7 +80,9 @@ describe("persistImportRecipe", () => {
       .value.insert.mock.calls[0][0];
     expect(insertCall.calories).toBe(420);
     expect(insertCall.content_origin).toBe("imported_stub");
-    expect(insertCall.is_verified).toBe(false);
+    // ENG-1244: is_verified is server-owned — the client no longer sends it on
+    // insert (the lockdown trigger would reject a client-set trust bit anyway).
+    expect(insertCall.is_verified).toBeUndefined();
   });
 
   it("returns mapped error when recipe insert fails", async () => {

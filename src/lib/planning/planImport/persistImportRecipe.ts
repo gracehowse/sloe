@@ -53,7 +53,6 @@ export async function persistImportRecipe(
       carbs: macros.carbs,
       fat: macros.fat,
       fiber_g: macros.fiberG,
-      is_verified: mode === "match" && recipe.confidence === "high",
     })
     .select("id")
     .single();

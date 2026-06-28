@@ -11,7 +11,7 @@ import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 import { macroStatCaption } from "../../../lib/nutrition/macroStatCaption";
 import { MACRO_ICONS } from "../../../lib/macroIconsLucide";
-import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
+import { MACRO_COLOR_VARS, macroTextColorVarFor } from "../../../lib/theme/macroColors";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { useCalmMode } from "../../../lib/preferences/useCalmMode";
 import { isMacroDetailSupported } from "../MacroDetailPanel";
@@ -316,7 +316,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
             ? { color: "var(--foreground-tertiary)" }
             : overSignal
               ? { color: "var(--accent-warning-solid)", fontWeight: 600 }
-              : { color: tile.fillVar };
+              : { color: macroTextColorVarFor(macroKey) };
         const content = (
           <>
             {/* Proto `.mtile`: colored icon on the LEFT, then value/goal + label.

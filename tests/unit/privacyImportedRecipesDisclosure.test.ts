@@ -61,3 +61,20 @@ describe("Privacy policy — imported-recipes disclosure", () => {
     );
   });
 });
+
+describe("Privacy policy — community food database withdrawal", () => {
+  const source = readFileSync(PRIVACY_PATH, "utf8");
+  const flat = source.replace(/\s+/g, " ");
+
+  it("adds a dedicated community food database section", () => {
+    expect(flat).toContain("Community food database");
+    expect(source).toContain('id="community-food-database"');
+  });
+
+  it("states what barcode contribution data is visible and how to remove it", () => {
+    expect(flat).toContain("product name, barcode, brand, nutrition values");
+    expect(flat).toContain("they do not see your email or profile details");
+    expect(flat).toContain("Settings &rarr; Privacy");
+    expect(flat).toContain("Barcode contributions");
+  });
+});

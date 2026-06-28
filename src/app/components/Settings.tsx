@@ -86,6 +86,7 @@ import {
   parseSharingStateJson,
   sharingStorageKey,
 } from "../../lib/household/sharingGridStorage.ts";
+import { BarcodeContributionsSection } from "./settings/BarcodeContributionsSection.tsx";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
@@ -2016,11 +2017,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             className="w-full text-left px-4 py-3 bg-muted/60 hover:bg-muted rounded-lg transition-all text-muted-foreground"
           >
             <p className="font-medium text-foreground">Export everything</p>
-            <p className="text-xs mt-0.5">
-              Yours forever. Take your data anywhere — recipes, meal log,
-              weights, plans. Downloads as a JSON file.
-            </p>
+            <p className="text-xs mt-0.5">Yours forever. Take your data anywhere — recipes, meal log, weights, plans. Downloads as a JSON file.</p>
           </button>
+          <BarcodeContributionsSection />
           {/* 2026-05-02 — MFP CSV bulk-import card. Closes the
               MFP-refugee history-bridge gap (P1 customer-lens). Mirrors
               the same card on mobile Settings (App section) and on

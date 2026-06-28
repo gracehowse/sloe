@@ -56,6 +56,7 @@
     "verify:production-env": "node --import tsx scripts/verify-production-env.ts",
     "verify:gate0:static": "vitest run --config vitest.unit.config.ts tests/unit/profilesInsertLockdown.test.ts",
     "verify:gate0:live": "node --import tsx scripts/verify-gate0-db.mts",
+    "verify:eng1244-live-rls": "node --import tsx scripts/verify-eng1244-live-rls.mts",
     "audit:reels": "AUDIT_TIKTOK_REELS=1 node --import tsx scripts/audit-tiktok-reels.ts",
     "audit:reels:check-streak": "node scripts/check-reel-audit-streak.mjs",
     "mobile:lint": "npm run lint --prefix apps/mobile",

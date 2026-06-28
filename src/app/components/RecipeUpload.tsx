@@ -1588,22 +1588,6 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             meal_type: [mealType],
             dietary,
             published: effectivePublished,
-            is_verified: aggregateScrub ? aggregateScrub.is_verified : verifiedOk,
-            verified_source: aggregateScrub
-              ? aggregateScrub.verified_source
-              : verifiedOk
-                ? "FatSecret"
-                : null,
-            verified_confidence: aggregateScrub
-              ? aggregateScrub.verified_confidence
-              : verifiedOk
-                ? verifiedTotals.minConfidence
-                : null,
-            verified_at: aggregateScrub
-              ? aggregateScrub.verified_at
-              : verifiedOk
-                ? new Date().toISOString()
-                : null,
             source_url: attributionUrl,
             source_name: attributionName,
             content_origin: attributionUrl ? "imported_stub" : "first_party",

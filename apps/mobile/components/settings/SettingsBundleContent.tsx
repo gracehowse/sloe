@@ -121,6 +121,8 @@ import {
   parseSharingStateJson,
   sharingStorageKey,
 } from "@suppr/shared/household/sharingGridStorage";
+import { IconBox, SettingsRow } from "./SettingsRow";
+import { BarcodeContributionsSection } from "./BarcodeContributionsSection";
 
 /**
  * SettingsBundleContent — shared body of the legacy "More" tab.
@@ -152,37 +154,6 @@ const HOUSEHOLD_ROW_TEST_ID = "settings-household-row";
  * Today / Recipes cards (Figma 09 Settings `335:2`).
  */
 const SETTINGS_CARD_RADIUS = CARD_RADIUS;
-
-function IconBox({
-  color,
-  size = 36,
-  children,
-}: {
-  color: string;
-  size?: number;
-  children: React.ReactNode;
-}) {
-  const colors = useThemeColors();
-  // Settings-row glyphs sit in a 36px GREY CIRCLE (bg-secondary) — a quiet
-  // container; the glyph carries the semantic colour the caller passes (clay
-  // nav / sage Apple Health / red delete). Round-all-plates (Grace 2026-06-25)
-  // made it a full circle (Radius.full), overriding the v3 `.set-ic` square —
-  // do not re-square.
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: Radius.full,
-        backgroundColor: colors.backgroundSecondary,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {children}
-    </View>
-  );
-}
 
 function SectionHeading({ title }: { title: string }) {
   const accent = useAccent();
@@ -401,88 +372,6 @@ function SegmentedRow({
         })}
       </View>
     </View>
-  );
-}
-
-function SettingsRow({
-  icon: Icon,
-  iconColor,
-  label,
-  sub,
-  badge,
-  isFirst,
-  testID,
-  onPress,
-}: {
-  icon: LucideIcon;
-  iconColor: string;
-  label: string;
-  sub?: string;
-  badge?: string;
-  isFirst?: boolean;
-  testID?: string;
-  onPress?: () => void;
-}) {
-  const colors = useThemeColors();
-  // P2-10 (2026-05-01) — tabular-nums on numeric sub copies. Things
-  // like "400 mg/day", "120 g/week", "build 47" align across rows
-  // when figures share the same advance width. Detection: any digit
-  // in the string. Pure-text subs (e.g. "Connected") fall through
-  // to the default proportional figures.
-  const subHasNumber = typeof sub === "string" && /\d/.test(sub);
-  return (
-    <Pressable
-      testID={testID}
-      onPress={onPress}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        borderTopWidth: isFirst ? 0 : 1,
-        borderTopColor: colors.cardBorder,
-      }}
-    >
-      <IconBox color={iconColor}>
-        <Icon size={18} color={iconColor} strokeWidth={1.75} />
-      </IconBox>
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            fontSize: 13,
-            fontWeight: "600",
-            color: colors.text,
-            lineHeight: 17,
-          }}
-        >
-          {label}
-        </Text>
-        {sub ? (
-          <Text
-            style={{
-              fontSize: 11,
-              color: colors.textSecondary,
-              marginTop: 2,
-              ...(subHasNumber
-                ? { fontVariant: ["tabular-nums"] as const }
-                : {}),
-            }}
-            numberOfLines={2}
-          >
-            {sub}
-          </Text>
-        ) : null}
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        {badge ? (
-          <Text style={{ fontSize: 11, color: colors.textTertiary }}>
-            {badge}
-          </Text>
-        ) : null}
-        <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
-      </View>
-    </Pressable>
   );
 }
 
@@ -2587,6 +2476,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             );
           }}
         />
+        <BarcodeContributionsSection userId={userId} />
         <SettingsRow
           testID="settings-bundle-help-row"
           icon={HelpCircle}
