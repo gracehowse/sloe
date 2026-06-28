@@ -227,9 +227,19 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
       path.resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
       "utf-8",
     );
-    expect(indexSrc).toMatch(/gradientIdSuffix="today-wordmark-header"/);
+    // The avatar + its Settings wiring moved into <TodayHeaderBar> (ENG-1247 —
+    // added the notifications bell); the host passes onOpenSettings, the header
+    // wires it to the avatar.
     expect(indexSrc).toMatch(
-      /router\.push\("\/\(tabs\)\/settings"\)[\s\S]{0,400}gradientIdSuffix="today-wordmark-header"/,
+      /onOpenSettings=\{\(\) => router\.push\("\/\(tabs\)\/settings"\)\}/,
+    );
+    const headerSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../components/today/TodayHeaderBar.tsx"),
+      "utf-8",
+    );
+    expect(headerSrc).toMatch(/gradientIdSuffix="today-wordmark-header"/);
+    expect(headerSrc).toMatch(
+      /onPress=\{onOpenSettings\}[\s\S]{0,400}gradientIdSuffix="today-wordmark-header"/,
     );
   });
 

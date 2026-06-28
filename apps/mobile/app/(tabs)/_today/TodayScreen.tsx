@@ -267,8 +267,7 @@ import { SavedMealPortionSheet } from "@/components/today/SavedMealPortionSheet"
 // (revert of PR #30). The Nutrients link in TodayDashboardMacroTiles
 // now opens the richer Cronometer-parity panel from PR #47.
 import { TodayDateHeader } from "@/components/today/TodayDateHeader";
-import { GradientAvatar } from "@/components/GradientAvatar";
-import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
+import { TodayHeaderBar } from "@/components/today/TodayHeaderBar";
 import { TodayMacroSection } from "@/components/today/TodayMacroSection";
 import { useMacroDisplayStyle } from "@/lib/macroDisplayStyle";
 import { FullNutrientPanelSheet } from "@/components/today/FullNutrientPanelSheet";
@@ -5102,34 +5101,12 @@ export default function TrackerScreen() {
             to the greeting/strip below. `marginTop: xs` stays: it pairs with
             the scroll `paddingTop: sm` as the top inset against the screen
             edge, not a margin+gap stack against another element. */}
-        <View
-          testID="today-hydrated"
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: Spacing.xs,
-          }}
-        >
-          <SloeHeaderWordmark testID="today-wordmark" />
-          <Pressable
-            onPress={() => router.push("/(tabs)/settings")}
-            accessibilityRole="button"
-            accessibilityLabel="Open settings"
-            hitSlop={8}
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <GradientAvatar
-              size={36}
-              initial={session?.user?.email?.[0]?.toUpperCase() ?? "U"}
-              fontSize={13}
-              gradientIdSuffix="today-wordmark-header"
-              // Figma `654:6` — damson fill + white initial (not the grey ink default).
-              fill={Accent.purple}
-              textColor={colors.primaryForeground}
-            />
-          </Pressable>
-        </View>
+        <TodayHeaderBar
+          userId={session?.user?.id ?? null}
+          avatarInitial={session?.user?.email?.[0]?.toUpperCase() ?? "U"}
+          onOpenSettings={() => router.push("/(tabs)/settings")}
+          onOpenNotifications={() => router.push("/(tabs)/notifications")}
+        />
 
         {/* v3 serif date hero (ENG-1247, 2026-06-24, prototype `.t-greet`):
             an eyebrow rule + a big Newsreader day name + a small date subline,
