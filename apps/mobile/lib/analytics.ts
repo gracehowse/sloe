@@ -475,6 +475,10 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   // OFF → the carded hero. Ramps via PostHog once verified + web parity lands.
   // Web parity twin: same flag in `src/lib/analytics/track.ts`.
   "today_hero_decard_v3",
+  // ENG-1247 — Today "Quick add" recents one-tap re-log chips (v3 `.quickrow`).
+  // ON → recents-chip row after macros; OFF → no quick-add row (the launcher
+  // strip was dead code). Web parity twin: same flag in track.ts.
+  "today_quickadd_recents_v3",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

@@ -170,13 +170,8 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
     },
   );
 
-  it("TodayQuickLogStrip chips use CARD_RADIUS", () => {
-    const src = readFileSync(
-      join(ROOT, "components/today/TodayQuickLogStrip.tsx"),
-      "utf8",
-    );
-    expect(src).toMatch(/borderRadius:\s*CARD_RADIUS/);
-  });
+  // TodayQuickLogStrip CARD_RADIUS test removed (ENG-1247): the launcher strip
+  // was dead code (never rendered) and is deleted; replaced by TodayRecentsRow.
 
   it("flat lift is the default; soft is the opt-in for elevated cards", () => {
     // The 2026-06-04 "flat slabs" sweep (commit 664df1cb) made FLAT the hook

@@ -271,7 +271,7 @@ import { TodayHeaderBar } from "@/components/today/TodayHeaderBar";
 import { TodayMacroSection } from "@/components/today/TodayMacroSection";
 import { useMacroDisplayStyle } from "@/lib/macroDisplayStyle";
 import { FullNutrientPanelSheet } from "@/components/today/FullNutrientPanelSheet";
-import { TodayQuickLogStrip } from "@/components/today/TodayQuickLogStrip";
+import { TodayRecentsRow } from "@/components/today/TodayRecentsRow";
 import { TodaySnapShortcut } from "@/components/today/TodaySnapShortcut";
 import { OnboardingNudgeBanner } from "@/components/today/onboarding-nudges";
 // Activation hook (audit 2026-04-30) — first-log toast + push explainer.
@@ -5490,6 +5490,16 @@ export default function TrackerScreen() {
                 `docs/decisions/2026-05-02-revert-today-ui-changes.md`. */}
           </>
         )}
+
+        {/* Quick add recents one-tap re-log chips (ENG-1247, v3 `.quickrow`) —
+            after macros; re-log reuses logHistoryItemToSlot; flag-gated. */}
+        {viewMode === "day" && isFeatureEnabled("today_quickadd_recents_v3") ? (
+          <TodayRecentsRow
+            recents={recentFoodsForSearch}
+            onReLog={(item) => void logHistoryItemToSlot(item, activeMealSlot)}
+            onOpenAll={() => setAddOpen(true)}
+          />
+        ) : null}
 
         {/* TodayStreakInsightCard removed 2026-04-20 — Grace's call
             per Today alignment pass. Streak logic still runs (powers
