@@ -8,6 +8,9 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 
 ## Progress log
 
+- ✅ **Today header bell** — mobile shipped `c0ca0cd3`: extracted `TodayHeaderBar` (wordmark + bell + avatar), bell → `(tabs)/notifications` with unread dot. Prototype conform + web↔mobile parity (web already had a bell). Header **calendar deliberately omitted** (week-strip owns it — Grace "add bell only"). SEEN on sim.
+- 🔄 **Today quick-add row** — DECIDED (product-lead, conf 9/10): adopt the prototype's **recents one-tap re-log chips**; method-launchers (Search/Voice/Snap/Scan) move into the FAB→LogSheet (already there). Header link "All" → LogSheet (keep-current label divergence). Data source `computeRecentMeals` already exists. **To build next** (both platforms). **OPEN:** free-tier Voice/Snap Pro-discovery home once launchers leave the Today body → flag to monetisation-architect/Grace before the PR lands.
+
 - ✅ **Today calorie hero (de-card)** — DONE both platforms, flag `today_hero_decard_v3` (default OFF), ready to ramp. Mobile `877eca91` + web parity/numeral `16efd625`: bare hero (no card) + `RingStatusLine` below ring (sage under / red over) + 56px serif-medium numeral + `TodayHeroStats` extraction. SEEN on sim + web (empty + under-budget) — perfect parity, no slab.
 - ✅ **MealEdit serif kcal hero** — shipped `957e5da9` (both platforms); expander + copy-row confirmed keep-current dupes.
 
