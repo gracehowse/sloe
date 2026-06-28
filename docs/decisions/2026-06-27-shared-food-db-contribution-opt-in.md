@@ -76,9 +76,37 @@ reasons instead.
   provenance-chip honesty on the *read* side (a `pending` community value must
   never render a "Verified" chip); web/mobile parity in the same feature change.
 
-## Status
+## Status — implemented on both platforms (flag OFF)
 
-- This change: privacy disclosure (P0-A) + this decision record.
-- Next change (ENG-1247): the opt-in feature on mobile `barcode.tsx` + web
-  `today-barcode-dialog.tsx` (parity, flag-gated), with the approved copy, then
-  re-run past the legal lens to convert BLOCK → PASS before ramp.
+- Privacy disclosure (P0-A) + this decision record: shipped `085ae726`.
+- Mobile opt-in (`apps/mobile/components/barcode/BarcodeShareOptIn.tsx` +
+  `barcode.tsx`): shipped `b618950d`, sim-verified.
+- Web opt-in (web `submitFoodCorrection` + `BarcodeShareOptIn` +
+  `ShareCommunityDialog` + NutritionTracker wiring): shipped `949da69c`,
+  pixel-verified. The web write is net-new and mirrors mobile (shared
+  plausibility, RLS-scoped `user_foods` upsert, pending-until-verified).
+- The feature is gated by `barcode_community_contribution`, default OFF on both.
+
+## Legal re-review — PASS, clear to ramp (2026-06-28)
+
+The legal lens re-reviewed all three P0s end-to-end and **lifted the BLOCK →
+PASS**: P0-A/B/C satisfied; the plausibility gate confirmed as one genuinely
+shared module (`metro.config` aliases `@suppr/shared` → `src/lib`); the RLS DELETE
+policy (`20260425100000…`) backs the "remove your version" promise at the row
+level. Two notes carried forward:
+
+- **MUST-FIX BEFORE RAMP (consent integrity):** the "remove any time from your
+  **saved items**" line (mobile + web success cards + the privacy section) must
+  point at a *reachable* surface where the user can find and delete their own
+  `user_foods` contribution. Either confirm "saved items" is that surface, rename
+  the copy to the real one, or add a "Remove this contribution" affordance on the
+  submitter's own provenance chip. **Do not ramp the flag until one is true and
+  the copy matches.** Tracked as a Linear must-fix under ENG-1247.
+- **Doc note:** `user_foods.submitted_by … on delete set null` (base migration)
+  intentionally leaves any promoted `verified_food_canonical` value intact-but-
+  orphaned on account deletion — by design, not a leak.
+
+**Fast-follows (post-ramp, Linear):** P1-A consent-audit record · P1-B
+erasure-from-canonical completeness (the promoted-value retraction case) · P1-C
+provenance-chip precision (a `pending` own-row should read "not yet confirmed",
+never "Verified").
