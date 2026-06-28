@@ -35,13 +35,17 @@ export interface PlanV3ConnectedProps {
   startOffset: number;
   onGenerate: () => void;
   onAdjust: () => void;
-  onTemplates: () => void;
-  onOpenHousehold: () => void;
-  onOpenShopping: () => void;
-  onOpenBatchCook: () => void;
-  batchCookSubtitle?: string;
-  /** Open the swap picker for (dayIndex, slotIndex) — powers open + add. */
+  /** Open the swap picker for (dayIndex, slotIndex) — powers add-to-slot. */
   onSwapSlot: (dayIndex: number, slotIndex: number) => void;
+  /** ENG-1238 — open recipe detail from a populated v3 card tap. Defaults to onSwapSlot. */
+  onOpenMeal?: (dayIndex: number, slotIndex: number) => void;
+  /** ENG-1238 — per-meal action sheet. */
+  onOpenMealOptions?: (dayIndex: number, slotIndex: number) => void;
+  onTemplates?: () => void;
+  onOpenHousehold?: () => void;
+  onOpenBatchCook?: () => void;
+  batchCookSubtitle?: string;
+  onOpenShopping: () => void;
   shoppingItemCount?: number;
   servingCount?: number;
   /** ENG-1247 — "Cooking for N · names" household banner; null hides it. */
@@ -61,12 +65,18 @@ export function PlanV3Connected({
   onOpenShopping,
   onOpenBatchCook,
   onSwapSlot,
+  onOpenMeal,
+  onOpenMealOptions,
   shoppingItemCount = 0,
   servingCount = 1,
   batchCookSubtitle = defaultBatchCookToolSubtitle(),
   household = null,
   nutritionByDay,
 }: PlanV3ConnectedProps) {
+  const openMeal = onOpenMeal ?? onSwapSlot;
+  const templates = onTemplates ?? onAdjust;
+  const openHousehold = onOpenHousehold ?? onAdjust;
+  const openBatchCook = onOpenBatchCook ?? (() => {});
   const weekDates = React.useMemo(
     () => Array.from({ length: 7 }, (_, i) => planCalendarDateForIndex(i, startOffset)),
     [startOffset],
@@ -108,14 +118,15 @@ export function PlanV3Connected({
           household={household}
           onGenerate={onGenerate}
           onAdjust={onAdjust}
-          onTemplates={onTemplates}
-          onOpenHousehold={onOpenHousehold}
-          onOpenMeal={onSwapSlot}
+          onTemplates={templates}
+          onOpenHousehold={openHousehold}
+          onOpenMeal={openMeal}
           onAddToSlot={onSwapSlot}
+          onOpenMealOptions={onOpenMealOptions}
           shoppingItemCount={shoppingItemCount}
           servingCount={servingCount}
           onOpenShopping={onOpenShopping}
-          onOpenBatchCook={onOpenBatchCook}
+          onOpenBatchCook={openBatchCook}
           batchCookSubtitle={batchCookSubtitle}
           nutritionByDay={nutritionByDay}
         />
@@ -131,14 +142,15 @@ export function PlanV3Connected({
           household={household}
           onGenerate={onGenerate}
           onAdjust={onAdjust}
-          onTemplates={onTemplates}
-          onOpenHousehold={onOpenHousehold}
-          onOpenMeal={onSwapSlot}
+          onTemplates={templates}
+          onOpenHousehold={openHousehold}
+          onOpenMeal={openMeal}
           onAddToSlot={onSwapSlot}
+          onOpenMealOptions={onOpenMealOptions}
           shoppingItemCount={shoppingItemCount}
           servingCount={servingCount}
           onOpenShopping={onOpenShopping}
-          onOpenBatchCook={onOpenBatchCook}
+          onOpenBatchCook={openBatchCook}
           batchCookSubtitle={batchCookSubtitle}
           nutritionByDay={nutritionByDay}
         />

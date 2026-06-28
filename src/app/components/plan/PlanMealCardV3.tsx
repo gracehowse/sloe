@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Flame, Lock, UtensilsCrossed } from "lucide-react";
+import { Check, Flame, Lock, MoreHorizontal, UtensilsCrossed } from "lucide-react";
 
 /**
  * PlanMealCardV3 — Sloe v3 Plan per-slot meal card.
@@ -24,6 +24,8 @@ export interface PlanMealCardV3Props {
   /** When the user logged this planned meal on that day (diary match). */
   isCooked?: boolean;
   onPress?: () => void;
+  /** ENG-1238 — per-meal action menu trigger. */
+  onOpenOptions?: () => void;
 }
 
 export function PlanMealCardV3({
@@ -35,21 +37,26 @@ export function PlanMealCardV3({
   note,
   isCooked,
   onPress,
+  onOpenOptions,
 }: PlanMealCardV3Props) {
   const [broken, setBroken] = React.useState(false);
   const showImage = Boolean(imageUrl) && !broken;
   return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={!onPress}
-      aria-label={`${slot}: ${name}`}
-      className={`mt-2 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 enabled:hover:bg-[var(--background-secondary)] enabled:active:scale-[0.99] disabled:cursor-default${isCooked ? " opacity-[0.72]" : ""}`}
+    <div
+      className="mt-2 flex w-full items-center gap-3 rounded-xl border p-3"
       style={{
         backgroundColor: "var(--card)",
         borderColor: "var(--border)",
       }}
     >
+      <button
+        type="button"
+        onClick={onPress}
+        disabled={!onPress}
+        aria-label={`${slot}: ${name}`}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 enabled:hover:opacity-95 enabled:active:scale-[0.99] disabled:cursor-default"
+        style={isCooked ? { opacity: 0.72 } : undefined}
+      >
       <span
         className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg"
         style={{ backgroundColor: "var(--background-secondary)" }}
@@ -72,7 +79,8 @@ export function PlanMealCardV3({
           <span
             className="absolute inset-0 flex items-center justify-center"
             style={{
-              backgroundColor: "color-mix(in srgb, var(--accent-success-solid) 82%, transparent)",
+              backgroundColor:
+                "color-mix(in srgb, var(--accent-success-solid) 82%, transparent)",
             }}
             aria-hidden
           >
@@ -97,9 +105,7 @@ export function PlanMealCardV3({
             {kcal ? `${kcal} kcal` : "—"}
           </span>
         </span>
-        <span
-          className={`mt-0.5 block truncate text-[13px] font-semibold text-foreground${isCooked ? " line-through decoration-[var(--border-strong)]" : ""}`}
-        >
+        <span className="mt-0.5 block truncate text-[13px] font-semibold text-foreground">
           {name}
         </span>
         {note === "batch" ? (
@@ -121,7 +127,19 @@ export function PlanMealCardV3({
           </span>
         ) : null}
       </span>
-    </button>
+      </button>
+      {onOpenOptions ? (
+        <button
+          type="button"
+          onClick={onOpenOptions}
+          aria-label={`${slot} meal options`}
+          data-testid="plan-card-opt"
+          className="shrink-0 rounded-lg p-2 text-foreground-tertiary hover:bg-[var(--background-secondary)]"
+        >
+          <MoreHorizontal className="size-[18px]" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 

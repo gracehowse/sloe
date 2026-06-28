@@ -49,6 +49,8 @@ export interface PlanMealSectionV3Props {
   filter: PlanMealFilter;
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  /** ENG-1238 — per-meal action menu trigger. */
+  onOpenMealOptions?: (dayIndex: number, slotIndex: number) => void;
   /** Diary rows keyed by date_key — powers cooked strike-through. */
   nutritionByDay?: PlanJournalByDay;
 }
@@ -60,6 +62,7 @@ export function PlanMealSectionV3({
   filter,
   onOpenMeal,
   onAddToSlot,
+  onOpenMealOptions,
   nutritionByDay,
 }: PlanMealSectionV3Props) {
   const renderSlot = (
@@ -87,6 +90,11 @@ export function PlanMealSectionV3({
           isLocked={meal.isLocked}
           isCooked={cooked}
           onPress={() => onOpenMeal(dayIndex, slotIndex)}
+          onOpenOptions={
+            onOpenMealOptions
+              ? () => onOpenMealOptions(dayIndex, slotIndex)
+              : undefined
+          }
         />
       );
     }

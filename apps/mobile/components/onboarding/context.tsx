@@ -22,12 +22,8 @@ import { isFeatureEnabled } from "@/lib/analytics";
  *  the step is auto-skipped in `go()` and dropped from `displayTotal`. */
 export const APP_CHOICE_FLAG = "onboarding-app-choice";
 
-/** ENG-963 — default-OFF feature flag gating the "What's bringing you
- *  here?" (`why-now`) step. Same flag name on web (see
- *  `src/app/components/onboarding/context.tsx#WHY_NOW_FLAG`). Same
- *  mechanism as `APP_CHOICE_FLAG`: when OFF the step is auto-skipped in
- *  `go()` and dropped from `displayTotal`. */
-export const WHY_NOW_FLAG = "onboarding-why-now";
+/** ENG-1233/1241 — conversion funnel (upgrade + first-log after data-bridges). */
+export const CONVERSION_FUNNEL_FLAG = "onboarding_conversion_funnel_v1";
 
 /**
  * Mobile OnboardingProvider — same shape as the web provider at
@@ -161,13 +157,9 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   const appChoiceEnabled = isFeatureEnabled(APP_CHOICE_FLAG);
   const appChoiceEnabledRef = React.useRef(appChoiceEnabled);
   appChoiceEnabledRef.current = appChoiceEnabled;
-
-  // ENG-963 — resolve the why-now flag once per render, same cold-safe
-  // posture as the app-choice flag (false when PostHog is cold → skip the
-  // step). Held in a ref so the stable `go()` callback reads the latest.
-  const whyNowEnabled = isFeatureEnabled(WHY_NOW_FLAG);
-  const whyNowEnabledRef = React.useRef(whyNowEnabled);
-  whyNowEnabledRef.current = whyNowEnabled;
+  const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
+  const conversionFunnelEnabledRef = React.useRef(conversionFunnelEnabled);
+  conversionFunnelEnabledRef.current = conversionFunnelEnabled;
 
   const set = React.useCallback<OnboardingContext["set"]>((patch) => {
     setState((prev) => ({
@@ -181,7 +173,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       ...prev,
       step: resolveNextStep(prev.step, delta, prev, {
         appChoiceEnabled: appChoiceEnabledRef.current,
-        whyNowEnabled: whyNowEnabledRef.current,
+        conversionFunnelEnabled: conversionFunnelEnabledRef.current,
       }),
     }));
   }, []);
@@ -213,7 +205,10 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   // helper drops the flag-hidden `app-choice` step from both the index
   // and the total. Welcome is "Step 1 of N" (its overline + top bar are
   // hidden). The refresh-plan adjustment below composes on top.
-  const base = displayPosition(state.step, { appChoiceEnabled, whyNowEnabled });
+  const base = displayPosition(state.step, {
+    appChoiceEnabled,
+    conversionFunnelEnabled,
+  });
 
   const value = React.useMemo<OnboardingContext>(
     () => ({

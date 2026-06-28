@@ -618,6 +618,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (web has no expo-image) — listed under MOBILE_ONLY in
   // tests/unit/redesignDefaultOnParity.test.ts, no web mirror entry.
   "expo_image_adoption_v1",
+  // ENG-1233/1241 — onboarding conversion funnel (upgrade + first-log steps).
+  "onboarding_conversion_funnel_v1",
 ]);
 
 /**

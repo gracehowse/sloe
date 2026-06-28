@@ -1,9 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
-import { Check, Flame, Lock, UtensilsCrossed } from "lucide-react-native";
+import { Flame, Lock, MoreHorizontal, UtensilsCrossed } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { SmartImage } from "@/components/ui/SmartImage";
-import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -22,9 +21,9 @@ export interface PlanMealCardV3Props {
   isLocked?: boolean;
   /** "batch" → a Batch chip; any other truthy string → a quiet queued note. */
   note?: string | null;
-  /** When the user logged this planned meal on that day (diary match). */
-  isCooked?: boolean;
   onPress?: () => void;
+  /** ENG-1238 — opens the per-meal action sheet (card tap still opens recipe). */
+  onOpenOptions?: () => void;
 }
 
 export function PlanMealCardV3({
@@ -34,69 +33,67 @@ export function PlanMealCardV3({
   imageUrl,
   isLocked,
   note,
-  isCooked,
   onPress,
+  onOpenOptions,
 }: PlanMealCardV3Props) {
   const colors = useThemeColors();
   return (
-    <PressableScale
-      onPress={onPress}
-      haptic="selection"
-      disabled={!onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${slot}: ${name}`}
-      style={[
-        styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-        isCooked ? styles.cooked : null,
-      ]}
+    <View
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
     >
-      <View style={[styles.thumb, { backgroundColor: colors.backgroundSecondary }]}>
-        {imageUrl ? (
-          <SmartImage source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} />
-        ) : (
-          <UtensilsCrossed size={18} color={colors.navPrimary} style={{ opacity: 0.55 }} />
-        )}
-        {isCooked ? (
-          <View style={[styles.cookedBadge, { backgroundColor: `${Accent.successSolid}D1` }]}>
-            <Check size={14} color="#fff" strokeWidth={2.5} />
-          </View>
-        ) : null}
-      </View>
-      <View style={styles.body}>
-        <View style={styles.topRow}>
-          <View style={styles.slotWrap}>
-            <Text style={[styles.slot, { color: colors.textTertiary }]}>{slot}</Text>
-            {isLocked ? (
-              <Lock size={10} color={colors.textTertiary} accessibilityLabel="Locked" />
-            ) : null}
-          </View>
-          <Text style={[styles.kcal, { color: colors.textTertiary }]}>
-            {kcal ? `${kcal} kcal` : "—"}
-          </Text>
+      <PressableScale
+        onPress={onPress}
+        haptic="selection"
+        disabled={!onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${slot}: ${name}`}
+        style={styles.mainPress}
+      >
+        <View style={[styles.thumb, { backgroundColor: colors.backgroundSecondary }]}>
+          {imageUrl ? (
+            <SmartImage source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} />
+          ) : (
+            <UtensilsCrossed size={18} color={colors.navPrimary} style={{ opacity: 0.55 }} />
+          )}
         </View>
-        <Text
-          style={[
-            styles.name,
-            { color: colors.text },
-            isCooked
-              ? { textDecorationLine: "line-through", textDecorationColor: colors.borderStrong }
-              : null,
-          ]}
-          numberOfLines={1}
-        >
-          {name}
-        </Text>
-        {note === "batch" ? (
-          <View style={styles.batch}>
-            <Flame size={12} color={Accent.warningSolid} />
-            <Text style={[styles.batchText, { color: Accent.warningSolid }]}>Batch</Text>
+        <View style={styles.body}>
+          <View style={styles.topRow}>
+            <View style={styles.slotWrap}>
+              <Text style={[styles.slot, { color: colors.textTertiary }]}>{slot}</Text>
+              {isLocked ? (
+                <Lock size={10} color={colors.textTertiary} accessibilityLabel="Locked" />
+              ) : null}
+            </View>
+            <Text style={[styles.kcal, { color: colors.textTertiary }]}>
+              {kcal ? `${kcal} kcal` : "—"}
+            </Text>
           </View>
-        ) : note ? (
-          <Text style={[styles.note, { color: colors.navPrimary }]}>{note}</Text>
-        ) : null}
-      </View>
-    </PressableScale>
+          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+            {name}
+          </Text>
+          {note === "batch" ? (
+            <View style={styles.batch}>
+              <Flame size={12} color={Accent.warningSolid} />
+              <Text style={[styles.batchText, { color: Accent.warningSolid }]}>Batch</Text>
+            </View>
+          ) : note ? (
+            <Text style={[styles.note, { color: colors.navPrimary }]}>{note}</Text>
+          ) : null}
+        </View>
+      </PressableScale>
+      {onOpenOptions ? (
+        <PressableScale
+          onPress={onOpenOptions}
+          haptic="selection"
+          accessibilityRole="button"
+          accessibilityLabel={`${slot} meal options`}
+          testID="plan-card-opt"
+          style={styles.optBtn}
+        >
+          <MoreHorizontal size={18} color={colors.textTertiary} />
+        </PressableScale>
+      ) : null}
+    </View>
   );
 }
 
@@ -105,22 +102,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.dense,
-    borderRadius: CARD_RADIUS,
+    borderRadius: Radius.xl,
     borderWidth: 1,
     padding: Spacing.dense,
     marginTop: Spacing.sm,
   },
-  cooked: { opacity: 0.72 },
+  mainPress: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.dense,
+    minWidth: 0,
+  },
   thumb: {
     width: 48,
     height: 48,
     borderRadius: Radius.lg,
     overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cookedBadge: {
-    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -138,6 +136,10 @@ const styles = StyleSheet.create({
   batch: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 },
   batchText: { ...Type.statLabel, fontSize: 10 },
   note: { ...Type.caption, fontSize: 11, marginTop: 3 },
+  optBtn: {
+    padding: Spacing.xs,
+    marginLeft: Spacing.xs,
+  },
 });
 
 export default PlanMealCardV3;

@@ -12,7 +12,7 @@ import { useAuthSession } from "@/context/AuthSessionContext";
 import { supabase } from "@/lib/supabase/browserClient";
 import { saveLocalProfile } from "@/lib/profile/profileStorage";
 import { type UserProfile } from "@/types/profile";
-import { APP_CHOICE_FLAG, WHY_NOW_FLAG, useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, useOnboarding } from "./context";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
@@ -29,7 +29,17 @@ import {
   saveResolvedSeeds,
 } from "@/lib/onboarding/onboardingSeedResolver";
 import { buildFirstWeekFromSeeds } from "@/lib/onboarding/onboardingFirstWeek";
-import { redeemPendingReferral, storePendingReferralFromLocation } from "@/lib/referrals/pendingReferral";
+
+/**
+ * Web flow shell — split layout with a narrative left column and an
+ * interactive card on the right. The Welcome step takes the whole
+ * canvas; every other step uses the split. Mobile (Stage D) uses a
+ * different shell.
+ *
+ * The route component (`app/onboarding/v2/page.tsx`) wraps this in
+ * `<OnboardingProvider>` so the shell stays unconditional and easy
+ * to mount inside the dev preview.
+ */
 
 export function WebFlow() {
   const { currentStepId, displayIndex, displayTotal, go, goTo, state, targets, warning } =
@@ -51,19 +61,35 @@ export function WebFlow() {
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
-  // Flag-gated steps (ENG-990 app-choice, ENG-963 why-now) are skipped by
-  // `go()` when their flag is OFF, but a persisted `step` pointing at one
-  // (reached while ON, then ramped to 0) would render it on remount. This
-  // single defensive effect advances past whichever flag-gated step is
-  // current while its flag is OFF; `isFeatureEnabled` is cold-safe (false →
-  // skip), so the live default keeps both steps hidden.
-  const flagGatedStepOff =
-    (currentStepId === "app-choice" && !isFeatureEnabled(APP_CHOICE_FLAG)) ||
-    (currentStepId === "why-now" && !isFeatureEnabled(WHY_NOW_FLAG));
+  // ENG-990 — the app-choice step is flag-gated. `go()` already skips it
+  // when the flag is OFF, but a user whose persisted `step` points at
+  // app-choice (e.g. they reached it while the flag was ON, then it was
+  // ramped back to 0) would render it directly on remount. This effect
+  // is the same defensive auto-skip the signup step uses for already-
+  // authed users: if we're on app-choice while the flag is OFF, advance
+  // past it. `isFeatureEnabled` is cold-safe (returns false → skip).
+  const isAppChoice = currentStepId === "app-choice";
   React.useEffect(() => {
-    if (flagGatedStepOff) go(1);
-  }, [flagGatedStepOff, go]);
-  const isTerminal = currentStepId === "data-bridges";
+    if (isAppChoice && !isFeatureEnabled(APP_CHOICE_FLAG)) {
+      go(1);
+    }
+  }, [isAppChoice, go]);
+  const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
+  const isUpgrade = currentStepId === "upgrade";
+  const isFirstLog = currentStepId === "first-log";
+  React.useEffect(() => {
+    if (
+      (isUpgrade || isFirstLog) &&
+      !conversionFunnelEnabled
+    ) {
+      go(isUpgrade ? 1 : -1);
+    }
+  }, [isUpgrade, isFirstLog, conversionFunnelEnabled, go]);
+  // Build-40 (2026-05-01): `data-bridges` is terminal when conversion
+  // funnel OFF. When ON, `first-log` is terminal (upgrade → first-log).
+  const isTerminal = conversionFunnelEnabled
+    ? currentStepId === "first-log"
+    : currentStepId === "data-bridges";
   const [completing, setCompleting] = React.useState(false);
   // completionStatus is set just before window.location.href fires —
   // useful for tests (the bounce navigates immediately so no UI
@@ -77,10 +103,6 @@ export function WebFlow() {
   // left paid users on their OLD target). Now we render this message and
   // keep the user on the step so they can retry.
   const [completionError, setCompletionError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    storePendingReferralFromLocation(window.location.search);
-  }, []);
 
   // Auto-skip the signup step when the visitor is already authed (e.g.
   // they came from /signin → /onboarding directly). The step renders
@@ -180,8 +202,6 @@ export function WebFlow() {
           return;
         }
 
-        const referralResult = await redeemPendingReferral(supabase as any);
-
         // Phase 5 / B2.3 — seed-and-plan flow per spec Surface F.
         // Best-effort: each step is independently observable so a
         // partial failure (resolve miss / plan-build fail) still
@@ -275,9 +295,6 @@ export function WebFlow() {
           // (`null` when the app-choice step was skipped / flag OFF).
           // Lets the funnel slice activation by chosen-app cohort.
           app_choice: state.appChoice,
-          why_now: state.whyNow, // ENG-963 — intent (null when skipped / flag OFF)
-          referral_redeemed: referralResult.redeemed,
-          referral_error: referralResult.error,
         });
         // WEB-01 (2026-04-28): clear persisted onboarding state on
         // successful completion. Without this, the next signup on the
@@ -511,7 +528,9 @@ export function WebFlow() {
                 // organic surfaces post-launch.
                 const terminalLabel = completing
                   ? "Building your plan…"
-                  : "Build my plan";
+                  : isFirstLog
+                    ? "Go to Today"
+                    : "Build my plan";
                 return (
                   <Button
                     size="lg"

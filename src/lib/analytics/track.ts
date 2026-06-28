@@ -436,6 +436,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (kill switch: remove here / PostHog). Web + mobile — keep in sync with
   // apps/mobile/lib/analytics.ts.
   "import_review_flagged_ingredients_v1",
+  // ENG-1233/1241 — onboarding conversion funnel (upgrade + first-log steps).
+  "onboarding_conversion_funnel_v1",
 ]);
 
 /**

@@ -39,6 +39,8 @@ import { DietStep } from "./diet";
 import { StrategyStep } from "./strategy";
 import { RevealStep } from "./reveal";
 import { DataBridgesStep } from "./data-bridges";
+import { UpgradeStep } from "./upgrade";
+import { FirstLogStep } from "./first-log";
 import { PermissionsStep } from "./permissions";
 import { ImportStep } from "./import";
 
@@ -65,6 +67,8 @@ export const STEP_COMPONENTS: Record<StepId, ComponentType<StepComponentProps>> 
   strategy: StrategyStep,
   reveal: RevealStep,
   "data-bridges": DataBridgesStep,
+  upgrade: UpgradeStep,
+  "first-log": FirstLogStep,
 };
 
 export {

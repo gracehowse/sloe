@@ -5,11 +5,7 @@ import {
   computePlanDayStatus,
   type PlanWeekVerdict,
 } from "@suppr/shared/planning/planWeekStatus";
-import {
-  countPlanDayCookedMeals,
-  journalEntriesForPlanDate,
-  type PlanJournalByDay,
-} from "@suppr/shared/planning/planCookedMeals";
+import type { DayPlan } from "@/lib/types";
 import { PlanHeaderV3 } from "./PlanHeaderV3";
 import {
   PlanWeekStripV3,
@@ -26,7 +22,6 @@ import {
 } from "./PlanMealFilterChipsV3";
 import { PlanMealSectionV3 } from "./PlanMealSectionV3";
 import { PlanToolsV3 } from "./PlanToolsV3";
-import type { DayPlan } from "@/lib/types";
 
 const WEEKDAY_LETTER = ["S", "M", "T", "W", "T", "F", "S"] as const;
 const WEEKDAY_LONG = [
@@ -69,19 +64,16 @@ export interface PlanV3SurfaceProps {
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   /** Add a meal to an empty slot (day index + slot index). */
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  /** ENG-1238 — per-meal action sheet trigger. */
+  onOpenMealOptions?: (dayIndex: number, slotIndex: number) => void;
   /** Shopping-list item count (for the foot tool row). */
   shoppingItemCount: number;
   /** Household serving count (for the foot tool row). */
   servingCount: number;
   /** Open the shopping list (restores the access the legacy chrome carried). */
   onOpenShopping: () => void;
-  /** Open batch cook (ENG-1255). */
-  onOpenBatchCook: () => void;
-  /** Subtitle for the batch-cook tool row. */
-  batchCookSubtitle: string;
   /** Today (for the week-strip highlight) — injected for deterministic tests. */
   today?: Date;
-  nutritionByDay?: PlanJournalByDay;
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -105,13 +97,11 @@ export function PlanV3Surface({
   onOpenHousehold,
   onOpenMeal,
   onAddToSlot,
+  onOpenMealOptions,
   shoppingItemCount,
   servingCount,
   onOpenShopping,
-  onOpenBatchCook,
-  batchCookSubtitle,
   today,
-  nutritionByDay,
 }: PlanV3SurfaceProps) {
   const [mealFilter, setMealFilter] = useState<PlanMealFilter>("All");
   // Default the selected day to today (when it falls in the week), else day 0.
@@ -157,18 +147,6 @@ export function PlanV3Surface({
   const plannedCount =
     selectedDay?.meals.filter((m) => !m.isPlaceholder).length ?? 0;
   const totals = selectedDay?.totals;
-  const cookedCount = useMemo(() => {
-    if (!selectedDay || !selectedDate) return 0;
-    const logged = journalEntriesForPlanDate(nutritionByDay, selectedDate);
-    return countPlanDayCookedMeals(
-      selectedDay.meals.map((m) => ({
-        recipeId: m.recipeId,
-        recipeTitle: m.recipeTitle || m.name,
-        isPlaceholder: m.isPlaceholder,
-      })),
-      logged,
-    );
-  }, [selectedDay, selectedDate, nutritionByDay]);
 
   return (
     <>
@@ -192,7 +170,7 @@ export function PlanV3Surface({
         dayTotalKcal={Math.round(totals?.calories ?? 0)}
         targetKcal={targetKcal}
         plannedCount={plannedCount}
-        cookedCount={cookedCount}
+        cookedCount={0}
         macros={
           totals
             ? {
@@ -211,13 +189,11 @@ export function PlanV3Surface({
         filter={mealFilter}
         onOpenMeal={onOpenMeal}
         onAddToSlot={onAddToSlot}
-        nutritionByDay={nutritionByDay}
+        onOpenMealOptions={onOpenMealOptions}
       />
       <PlanToolsV3
-        batchCookSubtitle={batchCookSubtitle}
         shoppingItemCount={shoppingItemCount}
         servingCount={servingCount}
-        onOpenBatchCook={onOpenBatchCook}
         onOpenShopping={onOpenShopping}
       />
     </>

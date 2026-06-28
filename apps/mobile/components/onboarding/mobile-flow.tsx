@@ -27,7 +27,7 @@ import {
   STEP_IDS,
   canAdvance as canAdvanceStep,
 } from "@/lib/onboarding";
-import { APP_CHOICE_FLAG, WHY_NOW_FLAG, useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 import { OnboardingSegmentedProgress } from "./OnboardingSegmentedProgress";
 
@@ -90,11 +90,13 @@ export function MobileFlow() {
   const isWelcome = currentStepId === "welcome";
   const [completing, setCompleting] = React.useState(false);
 
-  // Build-40 (2026-05-01): `data-bridges` is the new terminal step.
-  // Reveal advances on Continue → data-bridges; data-bridges fires
-  // the `handleComplete` write path on its "Build my plan" CTA. See
-  // `state.ts` STEP_IDS comment for rationale.
-  const isTerminal = currentStepId === "data-bridges";
+  // Build-40: `data-bridges` terminal when funnel OFF; `first-log` when ON.
+  const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
+  const isUpgrade = currentStepId === "upgrade";
+  const isFirstLog = currentStepId === "first-log";
+  const isTerminal = conversionFunnelEnabled
+    ? currentStepId === "first-log"
+    : currentStepId === "data-bridges";
   const isSignup = currentStepId === "signup";
 
   // MV-02 auto-skip (audit 2026-04-28): when an already-authed user
@@ -122,19 +124,26 @@ export function MobileFlow() {
     }
   }, [isWelcome, isRefreshPlan, go]);
 
-  // Flag-gated steps (ENG-990 app-choice, ENG-963 why-now) are skipped by
-  // `go()` when their flag is OFF; a persisted `step` pointing at one
-  // (reached while ON, then ramped to 0) would still render it on remount.
-  // This single defensive effect advances past whichever flag-gated step is
-  // current while its flag is OFF — and skips both on refresh-plan. Cold-safe.
-  const flagGatedStepOff =
-    isRefreshPlan === true
-      ? currentStepId === "app-choice" || currentStepId === "why-now"
-      : (currentStepId === "app-choice" && !isFeatureEnabled(APP_CHOICE_FLAG)) ||
-        (currentStepId === "why-now" && !isFeatureEnabled(WHY_NOW_FLAG));
+  // ENG-990 — the app-choice step is flag-gated. `go()` already skips it
+  // when the flag is OFF, but a user whose persisted AsyncStorage `step`
+  // points at app-choice (reached it while the flag was ON, then it was
+  // ramped back to 0) would render it directly on remount. Defensive
+  // auto-skip, same shape as the signup already-authed skip above.
+  // `isFeatureEnabled` is cold-safe (false → skip), and we also skip it
+  // on refresh-plan (a returning user resetting their plan has no app to
+  // switch from).
+  const isAppChoice = currentStepId === "app-choice";
   React.useEffect(() => {
-    if (flagGatedStepOff) go(1);
-  }, [flagGatedStepOff, go]);
+    if (isAppChoice && (!isFeatureEnabled(APP_CHOICE_FLAG) || isRefreshPlan === true)) {
+      go(1);
+    }
+  }, [isAppChoice, isRefreshPlan, go]);
+
+  React.useEffect(() => {
+    if ((isUpgrade || isFirstLog) && !conversionFunnelEnabled) {
+      go(isUpgrade ? 1 : -1);
+    }
+  }, [isUpgrade, isFirstLog, conversionFunnelEnabled, go]);
 
   // ENG-1 — fire onboarding_started once when a new user first sees the
   // Welcome step. Excluded for refresh-plan flow (isRefreshPlan is null
@@ -302,7 +311,6 @@ export function MobileFlow() {
           // ENG-990 — the app the user said they're switching from
           // (`null` when the app-choice step was skipped / flag OFF).
           app_choice: state.appChoice,
-          why_now: state.whyNow, // ENG-963 — intent (null when skipped / flag OFF)
         });
       } catch {
         /* analytics is fire-and-forget */
@@ -631,7 +639,9 @@ export function MobileFlow() {
               {isTerminal
                 ? isRefreshPlan === true
                   ? "Refresh my plan"
-                  : "Build my plan"
+                  : isFirstLog
+                    ? "Go to Today"
+                    : "Build my plan"
                 : "Continue"}
             </Text>
           )}

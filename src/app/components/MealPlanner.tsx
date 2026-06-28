@@ -55,9 +55,8 @@ import {
 import { isFeatureEnabled, track } from "../../lib/analytics/track.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
-import { useHouseholdBanner } from "../../hooks/useHouseholdBanner.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
-import { moveMealInPlan, markLeftoversOnSwap } from "../../lib/nutrition/leftoversPlanner.ts";
+import { moveMealInPlan } from "../../lib/nutrition/leftoversPlanner.ts";
 import {
   applyTemplateToWeek,
   buildTemplateFromWeek,
@@ -72,22 +71,7 @@ import { PlanMoveMealDialog } from "./suppr/plan-move-meal-dialog.tsx";
 import { PlanPortionDialog, planMealDisplayMultiplier } from "./suppr/plan-portion-dialog.tsx";
 import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog.tsx";
 import { PlanV3Connected } from "./plan/PlanV3Connected.tsx";
-import { BatchCookSheet } from "./plan/BatchCookSheet.tsx";
-import { ResetPlanSheet } from "./plan/ResetPlanSheet.tsx";
-import { useMealPlanRegenerate } from "./plan/useMealPlanRegenerate.ts";
-import { useMealSlotConfig } from "./plan/useMealSlotConfig.ts";
-import {
-  batchShoppingMultiplier,
-  defaultBatchCookToolSubtitle,
-  isBatchCookCandidate,
-  recipeTotalTimeMin,
-  type BatchCookRecipeCandidate,
-} from "../../lib/planning/batchCook.ts";
-import { filterShoppingItemsByPantry } from "../../lib/planning/pantryStaples.ts";
-import { generateShoppingListFromRecipeEntriesAsync } from "../../lib/planning/generateShoppingList.ts";
-import { buildPlanSwapEdit } from "../../lib/planning/planShoppingSyncHost.ts";
-import { upsertShoppingListJsonItems } from "../../lib/supabase/shoppingJsonFallback.ts";
-import { AdjustConstraintsSheet } from "./plan/AdjustConstraintsSheet.tsx";
+import { PlanMealActionDialog } from "./plan/PlanMealActionDialog.tsx";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions";
 import {
   DropdownMenu,
@@ -101,12 +85,6 @@ import {
   DEFAULT_PLAN_SOURCE_MODE,
   canGenerateFromSource,
 } from "../../lib/planning/planSource.ts";
-import {
-  DEFAULT_PLAN_ADJUST_CONSTRAINTS,
-  enabledSlotsForMealsPerDay,
-  mealsPerDayFromEnabledSlots,
-  type PlanAdjustConstraints,
-} from "../../lib/planning/planAdjustConstraints.ts";
 import { PlanSourceSelector } from "./PlanSourceSelector.tsx";
 import {
   DEFAULT_PLANNER_BANDS,
@@ -114,13 +92,12 @@ import {
   scaleMacros,
   slotMacroTargets,
 } from "../../lib/nutrition/mealPlanAlgo.ts";
-import { baseMacrosFromRecipe } from "../../lib/nutrition/coerceRecipeMacrosForPlanning.ts";
+import { coerceMacrosWhenCaloriesButNoGrams } from "../../lib/nutrition/coerceRecipeMacrosForPlanning.ts";
 import { planSlotAimKcal } from "../../lib/nutrition/mealSlotAim.ts";
 import {
   EmptyMealSlotAimLine,
   PlanAbsentMealSlotRow,
 } from "./suppr/empty-meal-slot-row.tsx";
-import { PlanAnchorBudgetBand } from "./suppr/plan-anchor-budget-band.tsx";
 import type { DayPlan } from "../../types/recipe.ts";
 
 interface MealPlannerProps {
@@ -160,15 +137,7 @@ const SLOT_ICONS: Record<SlotKey, LucideIcon> = {
   snacks: Cookie,
 };
 
-/** ENG-1278 — icon for any slot: classic map for named slots, neutral cutlery
- *  glyph for numbered-preset labels ("Meal 1" … "Meal N"). */
-function slotIconFor(slot: string): LucideIcon {
-  return SLOT_ICONS[slot.toLowerCase() as SlotKey] ?? UtensilsCrossed;
-}
-
-// ENG-1278 — `slot` widened to string so a numbered-preset slot label
-// ("Meal N") can drive a swap; classic slots still resolve their slot-fit pool.
-type SwapTarget = { day: number; slot: string; mealIndex: number };
+type SwapTarget = { day: number; slot: SlotKey; mealIndex: number };
 
 /** F2-E (2026-04-28) — tone → tailwind class for the day-total
  *  delta cells. Symmetric over/under bands per
@@ -244,7 +213,6 @@ export const MealPlanner = memo(function MealPlanner({
     setMealPlan,
     generateMealPlan,
     generateShoppingListFromPlan,
-    syncShoppingListForPlanEdit,
     savedRecipesForLibrary,
     discoverRecipes,
     nutritionTargets,
@@ -260,9 +228,6 @@ export const MealPlanner = memo(function MealPlanner({
     renameMealPlanSlot,
     deleteMealPlanSlot,
     toggleSaveRecipe,
-    setShoppingItems,
-    pantryStaples,
-    nutritionByDay,
   } = useAppData();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -297,15 +262,12 @@ export const MealPlanner = memo(function MealPlanner({
   // (label becomes "Refresh the rest" when ≥1 meal is locked). Off → the legacy
   // all-or-nothing Regenerate; no lock affordance.
   const mealLockEnabled = isFeatureEnabled("plan_meal_lock_v1");
-  // ENG-855 Mode B — distribute-around-anchor band (default-ON, ENG-1279).
-  const planDistributeAnchor = isFeatureEnabled("plan_distribute_anchor_v1");
   // ENG-696 / ENG-647 — "Import existing plan" entry point. Same flag the
   // mobile Plan tab + deep link gate on (`plan_import_enabled`). Off → the
   // Import affordance is hidden and the Plan surface keeps the
   // Generate-from-library-only flow.
   const planImportEnabled = isFeatureEnabled("plan_import_enabled");
   const { authedUserId } = useAuthSession();
-  const householdBanner = useHouseholdBanner(authedUserId); // ENG-1247 — v3 Plan "Cooking for N" banner
   // ENG-1098 "Calm mode" — when on, quiet the per-slot "Aim ~X kcal" numbers
   // (the empty-slot rows still render; only the number is hidden). Client-side
   // display preference (no DB), shared key with mobile.
@@ -351,28 +313,16 @@ export const MealPlanner = memo(function MealPlanner({
   const [enabledSlots, setEnabledSlots] = useState<Set<SlotKey>>(
     () => new Set<SlotKey>(SLOTS),
   );
-  // ENG-1177 — numbered meal-slot presets (4–6 "Meal N") drive plan generation
-  // directly; classic returns null and keeps the `enabledSlots` toggle. See hook.
-  const { numberedPresetSlots } = useMealSlotConfig(authedUserId);
-  // ENG-1278 — the day-card grid + empty-slot aims iterate the user's REAL
-  // configured slots (numbered preset labels, else classic four titles).
-  const daySlots = useMemo<string[]>(
-    () => numberedPresetSlots ?? SLOTS.map((s) => SLOT_TITLE[s]),
-    [numberedPresetSlots],
-  );
-  const [allowBatchLeftovers, setAllowBatchLeftovers] = useState(true);
-  const [planCalorieFloor, setPlanCalorieFloor] = useState(
-    DEFAULT_PLAN_ADJUST_CONSTRAINTS.calorieFloor,
-  );
-  const [adjustOpen, setAdjustOpen] = useState(false);
-  const [batchCookOpen, setBatchCookOpen] = useState(false);
-  const [batchCookSaving, setBatchCookSaving] = useState(false);
   const [moveFrom, setMoveFrom] = useState<{ day: number; slotIndex: number } | null>(
     null,
   );
   const [portionTarget, setPortionTarget] = useState<{
     day: number;
     mealIndex: number;
+  } | null>(null);
+  const [v3MealMenu, setV3MealMenu] = useState<{
+    dayIndex: number;
+    slotIndex: number;
   } | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
@@ -404,10 +354,12 @@ export const MealPlanner = memo(function MealPlanner({
     [mealPlan, targetCalories],
   );
 
-  // ENG-1092 / ENG-1278 — static per-slot aim keyed by lowercased slot.
-  // `slotMacroTargets` over the user's REAL `daySlots` (classic → dietitian
-  // ratio 25/30/35/10; numbered → even 1/N). null on optional Snacks / no
-  // target. Used for every empty slot (absent-slot card AND placeholder row).
+  // ENG-1092 ("Purposeful empties") — the static per-slot aim, keyed by
+  // canonical slot. `slotMacroTargets` over the four canonical SLOTS = the
+  // dietitian ratio (breakfast .25 / lunch .3 / dinner .35 / snack .1), the
+  // spec's Plan source. null on the optional Snacks slot or when no target is
+  // set. Used for every empty slot (absent-slot card AND placeholder row), so
+  // the dominant fresh-grid empty state reads its purpose, not "Empty slot".
   const canonicalSlotAim = useMemo<Record<string, number | null>>(() => {
     // ENG-1098: Calm mode → no aims at all (empty cells fall back to "Empty slot").
     if (!planAimEmptyOn || calmMode || !(nutritionTargets.calories > 0)) return {};
@@ -419,11 +371,11 @@ export const MealPlanner = memo(function MealPlanner({
       fiber: nutritionTargets.fiber ?? 28,
       ...DEFAULT_PLANNER_BANDS,
     };
-    const perSlot = slotMacroTargets(daySlots, targets);
+    const perSlot = slotMacroTargets([...SLOTS], targets);
     return Object.fromEntries(
-      daySlots.map((s, i) => [s.toLowerCase(), planSlotAimKcal(s, perSlot[i]!.calories)]),
+      SLOTS.map((s, i) => [s, planSlotAimKcal(s, perSlot[i]!.calories)]),
     );
-  }, [planAimEmptyOn, calmMode, nutritionTargets, daySlots]);
+  }, [planAimEmptyOn, calmMode, nutritionTargets]);
 
   // ENG-1020 (2026-06-13): the week-date moved off a page subtitle and onto
   // the summary card as a "{start} – {end} · Meal plan" eyebrow, mirroring
@@ -478,6 +430,9 @@ export const MealPlanner = memo(function MealPlanner({
     () => (mealPlan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
     [mealPlan],
   );
+  // ENG-956 — count locked meals across the plan; drives the "Refresh the
+  // rest" label + the keep-locked regenerate path. Always 0 when the flag is
+  // off (no lock affordance is rendered, so nothing can be locked).
   const lockedMealCount = useMemo(
     () =>
       mealLockEnabled
@@ -488,28 +443,6 @@ export const MealPlanner = memo(function MealPlanner({
         : 0,
     [mealLockEnabled, mealPlan],
   );
-  const {
-    resetPlan,
-    handleRegenerate,
-    requestRegenerate,
-    handleResetPlanConfirm,
-  } = useMealPlanRegenerate({
-    isFree,
-    planDays,
-    enabledSlots,
-    slots: SLOTS,
-    slotTitle: (key) => SLOT_TITLE[key as SlotKey],
-    slotsOverride: numberedPresetSlots,
-    mealLockEnabled,
-    lockedMealCount,
-    planSourceSelector,
-    planSource,
-    allowBatchLeftovers,
-    planHasRealMeals,
-    generateMealPlan,
-    generateShoppingListFromPlan,
-    setIsGenerating,
-  });
   // ENG-956 — the primary regenerate CTA's verb. "Refresh the rest" when ≥1
   // meal is locked (we keep those + re-roll the rest); otherwise the existing
   // Generate (empty plan) / Regenerate (populated plan) wording.
@@ -524,11 +457,15 @@ export const MealPlanner = memo(function MealPlanner({
     : null;
   const showSummaryCard = summary !== null && (mealPlan?.length ?? 0) > 0;
 
-  // ENG-820 (Plan win-moment) — behind `redesign_winmoment` the "Hits your
-  // targets N of 7" headline colours by tone (mobile parity): win → `--accent-win`
-  // (gold), progress → `--warning` (amber, never red), calm → `--muted-foreground`.
-  // Flag OFF keeps `text-foreground`. No haptic analog on web — colour + subtitle
-  // carry the payoff.
+  // ENG-820 (Plan win-moment, Redesign — Design Direction 2026) — make the
+  // "Hits your targets N of 7" headline state-aware, mirroring mobile
+  // `apps/mobile/app/(tabs)/planner.tsx`. Behind `redesign_winmoment` the
+  // headline colours by tone, kept distinct so the landmark reads as a win:
+  //   - win (every day lands)    → `--accent-win` (the reserved win gold)
+  //   - progress (some days land) → `--warning` (amber, never red)
+  //   - calm (no day lands yet)   → `--muted-foreground` (informative)
+  // Flag OFF keeps today's `text-foreground`. There is no haptic analog on web
+  // (no Haptics API); the colour shift + the subtitle carry the payoff.
   const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
   const summaryTone = planWeekHeadlineTone(summary);
   const summaryHeadlineColor = !winMomentsEnabled
@@ -571,6 +508,44 @@ export const MealPlanner = memo(function MealPlanner({
       return () => clearTimeout(t);
     }
   }, [winMomentsEnabled, summaryTone]);
+
+  const handleRegenerate = async () => {
+    setIsGenerating(true);
+    try {
+      // F2-B (2026-04-28): pass through the chosen plan length. The
+      // shared `generateMealPlan({ days })` API at `AppDataContext.tsx`
+      // already accepts the option; pre-fix the call was a no-arg
+      // invocation that defaulted to 1 day, which was the F2 root
+      // cause for "web Planner is ~30% of mobile's surface".
+      const days = isFree ? 1 : planDays;
+      // F2-H (2026-04-28): pass through the user's enabled-slot set.
+      // The shared `generatePlanFromLibrary` accepts `slots?: string[]`;
+      // we pass capitalised names ("Breakfast" etc.) so the algorithm's
+      // `recipeFitsMealSlot` lookup works. When all four slots are
+      // enabled we omit the option so the lib's default kicks in.
+      const slotsList: string[] = SLOTS.filter((s) => enabledSlots.has(s)).map(
+        (s) => SLOT_TITLE[s],
+      );
+      const useSlotOverride =
+        slotsList.length > 0 && slotsList.length < SLOTS.length;
+      // ENG-956 — when ≥1 meal is locked, ask the generator to keep the
+      // locked meals and re-roll only the unlocked slots ("Refresh the rest").
+      // The generator falls back to a full regenerate when nothing is locked.
+      const keepLocked = mealLockEnabled && lockedMealCount > 0;
+      await generateMealPlan({
+        days,
+        ...(useSlotOverride ? { slots: slotsList } : {}),
+        ...(planSourceSelector ? { source: planSource } : {}),
+        ...(keepLocked ? { keepLocked: true } : {}),
+      });
+      await generateShoppingListFromPlan();
+      if (!keepLocked) toast.success("Plan regenerated");
+    } catch {
+      toast.error("Could not regenerate plan. Save more recipes and try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   /** F2-H (2026-04-28) — toggle a slot in the enabled set. Disallows
    *  empty selection: at least one slot must remain enabled, since
@@ -935,8 +910,28 @@ export const MealPlanner = memo(function MealPlanner({
       setSwapFor(null);
       return;
     }
-    // ENG-957 — outgoing meal captured BEFORE the swap for the shopping re-sync.
-    const outgoing = mealPlan?.find((d) => d.day === swapFor.day)?.meals[swapFor.mealIndex];
+    const baseFromRecipe = (r: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      fiberG?: number;
+    }) => {
+      const c = coerceMacrosWhenCaloriesButNoGrams({
+        calories: r.calories,
+        protein: r.protein,
+        carbs: r.carbs,
+        fat: r.fat,
+        fiberG: r.fiberG,
+      });
+      return {
+        calories: c.calories,
+        protein: c.protein,
+        carbs: c.carbs,
+        fat: c.fat,
+        fiberG: c.fiberG ?? 0,
+      };
+    };
     const plannerTargets = {
       calories: nutritionTargets.calories,
       protein: nutritionTargets.protein,
@@ -947,15 +942,12 @@ export const MealPlanner = memo(function MealPlanner({
     };
     setMealPlan((prev) => {
       if (!prev) return prev;
-      const prevRid = (
-        prev.find((d) => d.day === swapFor.day)?.meals[swapFor.mealIndex] as { recipeId?: string } | undefined
-      )?.recipeId;
-      const swapped = prev.map((dp) => {
+      return prev.map((dp) => {
         if (dp.day !== swapFor.day) return dp;
         const baseRecipes = dp.meals.map((m, mi) => {
-          if (mi === swapFor.mealIndex) return baseMacrosFromRecipe(next);
+          if (mi === swapFor.mealIndex) return baseFromRecipe(next);
           const ref = pool.find((r) => r.id === m.recipeId);
-          if (ref) return baseMacrosFromRecipe(ref);
+          if (ref) return baseFromRecipe(ref);
           return {
             calories: m.calories,
             protein: m.protein,
@@ -1009,23 +1001,8 @@ export const MealPlanner = memo(function MealPlanner({
           ...(fit.residualProteinGap < 0 ? { residualProteinGap: fit.residualProteinGap } : {}),
         };
       });
-      // ENG-958 — clear the swapped-out recipe's downstream leftovers so they
-      // don't orphan (wrong shopping list + day totals). Web↔mobile parity: the
-      // mobile planner already runs markLeftoversOnSwap on swap.
-      const di = swapped.findIndex((d) => d.day === swapFor.day);
-      return markLeftoversOnSwap(swapped, {
-        dayIndex: di,
-        slot: swapFor.slot,
-        previousRecipeId: prevRid,
-      }).plan;
     });
     toast.success("Swapped meal");
-    // ENG-957 — re-sync the list to the swap (flag-gated, fire-and-forget).
-    const swapEdit = buildPlanSwapEdit(
-      { ...outgoing, servings: pool.find((r) => r.id === outgoing?.recipeId)?.servings },
-      { id: next.id, title: next.title, servings: next.servings },
-    );
-    if (swapEdit) void syncShoppingListForPlanEdit(swapEdit);
     setSwapFor(null);
   };
 
@@ -1047,9 +1024,7 @@ export const MealPlanner = memo(function MealPlanner({
       dinner: "Dinner",
       snacks: "Snacks",
     };
-    // ENG-1278 — numbered slots ("Meal N") have no classic slot-fit → full pool.
-    const slot = slotMap[swapFor.slot.toLowerCase() as SlotKey];
-    if (!slot) return pool;
+    const slot = slotMap[swapFor.slot];
     const fits = pool.filter((r) => recipeFitsMealSlot(r, slot));
     return fits.length > 0 ? fits : pool;
   }, [swapFor, discoverRecipes, savedRecipesForLibrary]);
@@ -1075,82 +1050,28 @@ export const MealPlanner = memo(function MealPlanner({
     return ids;
   }, [discoverRecipes, savedRecipesForLibrary]);
 
-  const batchCookCandidates = useMemo<BatchCookRecipeCandidate[]>(() => {
-    return savedRecipesForLibrary
-      .filter((r) =>
-        isBatchCookCandidate({
-          prepTimeMin: r.prepTimeMin ?? null,
-          cookTimeMin: r.cookTimeMin ?? null,
-        }),
-      )
-      .slice(0, 12)
-      .map((r) => ({
-        id: r.id,
-        title: r.title,
-        calories: r.calories ?? 0,
-        protein: r.protein ?? 0,
-        timeMin: recipeTotalTimeMin(r.prepTimeMin, r.cookTimeMin),
-        servings: r.servings ?? 1,
-        imageUrl: r.image ?? null,
-      }));
-  }, [savedRecipesForLibrary]);
-
-  const scaleBatchCookToShopping = useCallback(
-    async (recipe: BatchCookRecipeCandidate, portions: number) => {
-      if (!authedUserId) {
-        toast.error("Sign in to update your shopping list.");
-        return false;
-      }
-      const { data: ingredients, error } = await supabase
-        .from("recipe_ingredients")
-        .select("name, amount, unit, recipe_id")
-        .eq("recipe_id", recipe.id);
-      if (error || !ingredients?.length) {
-        toast.error("This recipe has no ingredient lines to scale yet.");
-        return false;
-      }
-      const multiplier = batchShoppingMultiplier(portions, recipe.servings);
-      const titleToId = (title: string) => (title === recipe.title ? recipe.id : null);
-      const ingredientsByRecipeId = new Map<
-        string,
-        Array<{ name: string; amount: string; unit: string }>
-      >([
-        [
-          recipe.id,
-          ingredients.map((ing) => ({
-            name: String(ing.name ?? ""),
-            amount: ing.amount != null ? String(ing.amount) : "",
-            unit: String(ing.unit ?? ""),
-          })),
-        ],
-      ]);
-      const generated = await generateShoppingListFromRecipeEntriesAsync({
-        entries: [{ title: recipe.title, multiplier }],
-        recipeTitleToId: titleToId,
-        fetchDbIngredients: async (recipeId) => ingredientsByRecipeId.get(recipeId) ?? [],
-        fetchDbIngredientsBatch: async () => ingredientsByRecipeId,
-      });
-      const filtered = filterShoppingItemsByPantry(generated, pantryStaples);
-      setShoppingItems(filtered);
-      const items = filtered.map((it) => ({
-        name: it.name,
-        amount: it.amount,
-        unit: it.unit,
-        category: it.category,
-        checked: false,
-      }));
-      const { error: upErr } = await upsertShoppingListJsonItems(supabase, authedUserId, items);
-      if (upErr) {
-        toast.error(upErr.message);
-        return false;
-      }
-      return true;
-    },
-    [authedUserId, pantryStaples, setShoppingItems],
-  );
-
   const plan = mealPlan ?? [];
   const isPlanEmpty = plan.length === 0 || plan.every((d) => d.meals.length === 0);
+
+  const openV3Meal = useCallback(
+    (dayIndex: number, slotIndex: number) => {
+      const dp = plan[dayIndex];
+      const meal = dp?.meals[slotIndex];
+      if (!meal || meal.isPlaceholder) {
+        if (dp) openSwap(dp.day, SLOTS[slotIndex] ?? "snacks", slotIndex);
+        return;
+      }
+      const recipeId = (meal as { recipeId?: string }).recipeId;
+      if (recipeId && onOpenRecipe) onOpenRecipe(recipeId);
+      else if (dp) openSwap(dp.day, SLOTS[slotIndex] ?? "snacks", slotIndex);
+    },
+    [plan, onOpenRecipe],
+  );
+
+  const openV3MealOptions = useCallback((dayIndex: number, slotIndex: number) => {
+    setV3MealMenu({ dayIndex, slotIndex });
+  }, []);
+
   const renderDayCount = plan.length > 0 ? plan.length : 7;
   const days: DayPlan[] = Array.from({ length: renderDayCount }, (_, i) => {
     return plan[i] ?? ({ day: i + 1, meals: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } } as DayPlan);
@@ -1164,60 +1085,6 @@ export const MealPlanner = memo(function MealPlanner({
       : renderDayCount <= 3
         ? "md:grid-cols-3"
         : "md:grid-cols-7";
-
-  const adjustInitial = useMemo<PlanAdjustConstraints>(
-    () => ({
-      source: planSource,
-      calorieFloor: planCalorieFloor,
-      mealsPerDay: mealsPerDayFromEnabledSlots(enabledSlots),
-      allowBatchLeftovers,
-    }),
-    [planSource, planCalorieFloor, enabledSlots, allowBatchLeftovers],
-  );
-
-  const handleAdjustSave = useCallback(
-    async (next: PlanAdjustConstraints) => {
-      setPlanSource(next.source);
-      setEnabledSlots(
-        enabledSlotsForMealsPerDay(next.mealsPerDay) as Set<SlotKey>,
-      );
-      setAllowBatchLeftovers(next.allowBatchLeftovers);
-      setPlanCalorieFloor(next.calorieFloor);
-      setAdjustOpen(false);
-      setIsGenerating(true);
-      try {
-        const days = isFree ? 1 : planDays;
-        const slotsList: string[] = SLOTS.filter((s) =>
-          enabledSlotsForMealsPerDay(next.mealsPerDay).has(s),
-        ).map((s) => SLOT_TITLE[s]);
-        // ENG-1177 — numbered preset overrides; else classic per-slot toggle.
-        const slotsOverride =
-          numberedPresetSlots ??
-          (slotsList.length > 0 && slotsList.length < SLOTS.length ? slotsList : null);
-        await generateMealPlan({
-          days,
-          ...(slotsOverride ? { slots: slotsOverride } : {}),
-          ...(planSourceSelector ? { source: next.source } : {}),
-          allowLeftovers: next.allowBatchLeftovers,
-          calorieFloorMin: next.calorieFloor,
-        });
-        await generateShoppingListFromPlan();
-        toast.success("Constraints saved — plan regenerated");
-      } catch {
-        toast.error("Could not regenerate plan. Save more recipes and try again.");
-      } finally {
-        setIsGenerating(false);
-      }
-    },
-    [
-      generateMealPlan,
-      generateShoppingListFromPlan,
-      isFree,
-      planDays,
-      planSourceSelector,
-      numberedPresetSlots,
-    ],
-  );
 
   return (
     <div className="product-shell py-pm-6 space-y-5">
@@ -1234,12 +1101,12 @@ export const MealPlanner = memo(function MealPlanner({
             window.location.assign("/home?view=household-settings");
           }}
           onOpenShopping={handleShoppingList}
-          onOpenBatchCook={() => setBatchCookOpen(true)}
-          batchCookSubtitle={defaultBatchCookToolSubtitle()}
-          nutritionByDay={nutritionByDay}
-          onSwapSlot={(day, slotIndex) =>
-            openSwap(day, SLOTS[slotIndex] ?? "snacks", slotIndex)
-          }
+          onSwapSlot={(dayIndex, slotIndex) => {
+            const dp = plan[dayIndex];
+            if (dp) openSwap(dp.day, SLOTS[slotIndex] ?? "snacks", slotIndex);
+          }}
+          onOpenMeal={openV3Meal}
+          onOpenMealOptions={openV3MealOptions}
         />
       ) : (
         <>
@@ -1262,9 +1129,13 @@ export const MealPlanner = memo(function MealPlanner({
       </h1>
       </div>
 
-      {/* F2-L (audit 2026-04-28): legacy household bar — v3-OFF path only (the
-          v3 surface uses the `household` banner prop, ENG-1247). Self-hides for
-          solo users. Mobile parity: planner.tsx `<HouseholdSummaryRow />`. */}
+      {/* F2-L (audit 2026-04-28): household bar — mobile parity at
+          `apps/mobile/app/(tabs)/planner.tsx:1708 <HouseholdSummaryRow />`.
+          The web `HouseholdBar` is the existing simplified-vs-original
+          component (member-picker chips + Manage link); it self-hides
+          for solo users (`!data?.household || members.length === 0`),
+          so adding it unconditionally on the planner page costs nothing
+          for accounts without a household. */}
       <HouseholdBar />
 
       {/* F2-F (2026-04-28): week summary card. Mobile parity at planner.tsx
@@ -1359,7 +1230,7 @@ export const MealPlanner = memo(function MealPlanner({
             <SupprButton
               variant="primary"
               loading={isGenerating}
-              onClick={requestRegenerate}
+              onClick={handleRegenerate}
             >
               <RefreshCw size={14} strokeWidth={2} />
               {/* DC12 parity (2026-06-13): "Regenerate" misreads in the
@@ -1551,10 +1422,11 @@ export const MealPlanner = memo(function MealPlanner({
         })}
       </div>
 
-      {/* F2-H (2026-04-28): slot toggles (mobile parity). Toggle off slots the
-          regenerator shouldn't fill (e.g. Snacks); ≥1 must stay enabled.
-          ENG-1278 — classic-only: numbered presets set slot count in Settings. */}
-      {numberedPresetSlots ? null : (
+      {/* F2-H (2026-04-28): slot toggles. Mobile parity at
+          `apps/mobile/app/(tabs)/planner.tsx:1775-1793`. Toggle off
+          slots you don't want the regenerator to fill (e.g. Snacks).
+          At least one slot must stay enabled — the toggle no-ops when
+          asked to disable the last one. */}
       <div
         data-testid="planner-slot-toggles-row"
         className="flex items-center gap-2 mb-3 flex-wrap"
@@ -1597,9 +1469,9 @@ export const MealPlanner = memo(function MealPlanner({
           );
         })}
       </div>
-      )}
 
-      {/* F2-D (2026-04-28): start-date picker (mobile parity). */}
+      {/* F2-D (2026-04-28): start-date picker. Mobile parity at
+          `apps/mobile/app/(tabs)/planner.tsx:1759-1774`. */}
       <div
         data-testid="planner-start-date-row"
         className="flex items-center gap-2 mb-4 flex-wrap"
@@ -1724,7 +1596,7 @@ export const MealPlanner = memo(function MealPlanner({
             variant="primary"
             loading={isGenerating}
             disabled={!sourceCanGenerate}
-            onClick={() => void handleRegenerate()}
+            onClick={handleRegenerate}
           >
             {isGenerating ? "Generating…" : "Generate meal plan"}
           </SupprButton>
@@ -1777,26 +1649,29 @@ export const MealPlanner = memo(function MealPlanner({
             (m) => !m.isPlaceholder && !!m.recipeTitle,
           );
           const renderTotals = dayTotalLine.hasTargets && dayHasRealMeal;
-          // F2-A (2026-04-28) / ENG-1278: bySlot indexes the user's REAL
-          // configured slots (classic four OR a numbered 4-/6-meal preset),
-          // keyed by lowercased label so both "Snacks" and "Meal 5" match. Pre-
-          // fix the grid dropped snack rows (F2-A) + every numbered meal (1278).
+          // F2-A (2026-04-28): bySlot now indexes all four canonical
+          // slots (Breakfast / Lunch / Dinner / Snacks) so the grid
+          // renders Snacks when the generated plan carries it. Pre-
+          // fix the web grid silently dropped any snack rows the
+          // sampler produced.
           const bySlot = new Map<
-            string,
+            SlotKey,
             { mealIndex: number; meal: DayPlan["meals"][number] } | null
           >();
-          for (const s of daySlots) bySlot.set(s.toLowerCase(), null);
+          for (const s of SLOTS) bySlot.set(s, null);
           dp.meals.forEach((m, i) => {
-            const key = String(m.name ?? "").toLowerCase();
+            const key = String(m.name ?? "").toLowerCase() as SlotKey;
             if (bySlot.has(key) && bySlot.get(key) == null) {
               bySlot.set(key, { mealIndex: i, meal: m });
             }
           });
           return (
-            // One-treatment soft lift (2026-06-09, one-card-treatment-soft-
-            // elevation.md): each per-day column sits on the page-ground grid →
-            // soft `.card-slab`; Today keeps tone="primary". Mobile renders Plan
-            // days as a continuous list — that layout divergence predates this.
+            // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-
+            // one-card-treatment-soft-elevation.md): each per-day kanban column
+            // sits on the page-ground grid → soft `.card-slab` like every
+            // resting card. Today keeps tone="primary" (soft shadow composes
+            // with the tint, border dropped). Mobile renders Plan days as a
+            // continuous list — that layout divergence predates this sweep.
             <SupprCard
               key={`day-${dp.day}`}
               elevation="card"
@@ -1826,11 +1701,16 @@ export const MealPlanner = memo(function MealPlanner({
                   </span>
                 ) : null}
               </div>
-              {/* F2-E (2026-04-28): day total vs goal — calories header + P/C/F
-                  delta chips (mobile parity). F2 follow-up #3 added a slim per-
-                  day progress bar (see 2026-04-28-plan-day-summary-strip-web-
-                  divergence.md); the mobile day-summary strip stays mobile-only
-                  (the web 7-column grid serves the same spatial function). */}
+              {/* F2-E (2026-04-28): day total vs goal — calories
+                  header + P/C/F delta chips. Mobile parity at
+                  `apps/mobile/app/(tabs)/planner.tsx:2053-2089`.
+                  F2 follow-up #3 (2026-04-28, see
+                  `docs/decisions/2026-04-28-plan-day-summary-strip-web-divergence.md`):
+                  added a slim per-day progress bar that ports the
+                  one signal the mobile day-summary strip carries
+                  beyond what the grid already shows. The strip
+                  itself stays mobile-only (web 7-column grid serves
+                  the same spatial function). */}
               {renderTotals ? (
                 <div
                   data-testid={`planner-day-totals-${dp.day}`}
@@ -1893,14 +1773,11 @@ export const MealPlanner = memo(function MealPlanner({
                   </div>
                 </div>
               ) : null}
-              {daySlots.map((slot) => {
-                // ENG-1278 — `slot` is the display label (classic title OR
-                // "Meal N"); lookups (bySlot, aim map) key by its lowercase form.
-                const slotKey = slot.toLowerCase();
-                const SlotIcon = slotIconFor(slot);
-                const entry = bySlot.get(slotKey);
+              {SLOTS.map((slot) => {
+                const SlotIcon = SLOT_ICONS[slot];
+                const entry = bySlot.get(slot);
                 if (!entry) {
-                  const emptyAim = canonicalSlotAim[slotKey] ?? null;
+                  const emptyAim = canonicalSlotAim[slot] ?? null;
                   return (
                     <PlanAbsentMealSlotRow
                       key={slot}
@@ -1916,33 +1793,45 @@ export const MealPlanner = memo(function MealPlanner({
                 });
                 // ENG-1092 — aim for this empty (placeholder) slot; null on the
                 // optional Snacks slot, no target, or a populated row.
-                const slotAim = isPlaceholder ? (canonicalSlotAim[slotKey] ?? null) : null;
+                const slotAim = isPlaceholder ? (canonicalSlotAim[slot] ?? null) : null;
                 const kcal = Math.round(Math.max(0, Number(meal.calories) || 0));
                 const prot = Math.round(Math.max(0, Number(meal.protein) || 0));
                 const recipeId = (meal as { recipeId?: string }).recipeId;
-                // Recipe-wave (2026-05-10) — a stale recipeId (set on the row
-                // but no longer in the library/discover pool) shows a "Recipe
-                // removed" badge below; placeholder rows (no recipeId) stay
-                // silent. ENG-766 — gate on a hydrated library (`size > 0`, the
-                // only loading proxy AppDataContext exposes) so a row never
-                // flashes the badge before the pool loads.
+                // Recipe-wave (2026-05-10) — detect a stale recipeId
+                // (set on the plan row but no longer in the library /
+                // discover pool). Surfaced as a "Recipe removed"
+                // badge below so the card explains itself instead of
+                // half-rendering. Placeholder rows (`isPlaceholder`)
+                // intentionally have no recipeId; that case stays
+                // silent.
+                // ENG-766 — gate on the library being hydrated (a non-empty
+                // known-id set) so a row never flashes "Recipe removed"
+                // before the recipe pool loads. AppDataContext exposes no
+                // loading flag, so `size > 0` is the hydrated proxy.
                 const recipeMissing = shouldShowRecipeRemovedBadge({
                   hasRecipe: Boolean(recipeId),
                   recipeId,
                   knownRecipeIds,
                   libraryLoaded: knownRecipeIds.size > 0,
                 });
-                // F2-E (2026-04-28): per-meal portion-multiplier badge. Hidden
-                // at 1× (silent default); display-only — post-portion macros are
-                // already baked into `meal.calories` (F30 fix), so it explains,
-                // doesn't multiply.
+                // F2-E (2026-04-28): per-meal portion-multiplier
+                // badge. Hidden at 1× (the silent default) so cards
+                // stay clean when no portion adjustment was made.
+                // The post-portion macros are already baked into
+                // `meal.calories` (per the F30 fix), so this badge
+                // is display-only — it explains, doesn't multiply.
                 const portionLabel = formatPortionMultiplier(
                   (meal as { portionMultiplier?: number }).portionMultiplier,
                 );
-                // F2-J (2026-04-28): leftover badge. `leftoversPlanner.ts` tags
-                // downstream slots (`leftoverOf` / `isLeftover`) when a recipe
-                // yields multiple servings; display-only so a leftover portion
-                // reads as a repeat, not an independent meal.
+                // F2-J (2026-04-28): leftover badge. The leftover
+                // distribution pass at `src/lib/nutrition/leftoversPlanner.ts`
+                // tags downstream slots with `leftoverOf: recipeId` and
+                // `isLeftover: true` when a recipe yields multiple
+                // servings. Display-only badge so the user sees that
+                // a slot is a leftover portion rather than a fresh
+                // cook. Data already exists in the plan JSON; pre-fix
+                // the web grid silently rendered leftovers as if they
+                // were independent meals.
                 const isLeftover = Boolean(
                   (meal as { isLeftover?: boolean }).isLeftover ||
                     (meal as { leftoverOf?: string }).leftoverOf,
@@ -2002,7 +1891,7 @@ export const MealPlanner = memo(function MealPlanner({
                         </p>
                         {portionLabel ? (
                           <span
-                            className="shrink-0 inline-flex items-center rounded-full bg-primary/15 text-primary-solid tabular-nums"
+                            className="shrink-0 inline-flex items-center rounded-full bg-primary/15 text-primary tabular-nums"
                             style={{
                               fontSize: 9,
                               fontWeight: 700,
@@ -2266,11 +2155,12 @@ export const MealPlanner = memo(function MealPlanner({
                   </div>
                 );
               })}
-              {/* F2-I (2026-04-28): "Add slot back" chips for any canonical slot
-                  missing from this day (mobile parity). ENG-1278 — classic-only:
-                  numbered presets manage their slot count in Settings, not via
-                  per-day chips, so the classic add-back is suppressed for them. */}
-              {numberedPresetSlots ? null : (() => {
+              {/* F2-I (2026-04-28): "Add slot back" chips for any
+                  canonical slot missing from this day. Mobile parity:
+                  `apps/mobile/app/(tabs)/planner.tsx:2451-2522`.
+                  Hidden when all four slots are present — keeps the
+                  card lean. */}
+              {(() => {
                 const presentLower = new Set(
                   dp.meals.map((m) => String(m.name ?? "").toLowerCase()),
                 );
@@ -2305,8 +2195,6 @@ export const MealPlanner = memo(function MealPlanner({
                   </div>
                 );
               })()}
-              {/* ENG-855 Mode B — distribute-around-anchor band (shared selector). */}
-              <PlanAnchorBudgetBand enabled={planDistributeAnchor} meals={dp.meals} targets={nutritionTargets} />
             </SupprCard>
           );
         })}
@@ -2407,7 +2295,7 @@ export const MealPlanner = memo(function MealPlanner({
           variant="primary"
           loading={isGenerating}
           disabled={!sourceCanGenerate}
-          onClick={requestRegenerate}
+          onClick={handleRegenerate}
         >
           <RefreshCw size={14} strokeWidth={2} />
           {/* DC12 (2026-05-14, premium-bar audit) — no-plan empty state uses
@@ -2680,54 +2568,79 @@ export const MealPlanner = memo(function MealPlanner({
           />
         </>
       ) : null}
-      {sloeV3Plan ? (
-        <AdjustConstraintsSheet
-          open={adjustOpen}
-          onOpenChange={setAdjustOpen}
-          initial={adjustInitial}
-          libraryCount={savedRecipesForLibrary.length}
-          discoverCount={discoverCount}
-          saving={isGenerating}
-          onSave={(next) => void handleAdjustSave(next)}
-        />
-      ) : null}
-      {sloeV3Plan ? (
-        <BatchCookSheet
-          open={batchCookOpen}
-          onOpenChange={setBatchCookOpen}
-          recipes={batchCookCandidates}
-          saving={batchCookSaving}
-          onSave={async (recipe, portions) => {
-            setBatchCookSaving(true);
-            try {
-              const ok = await scaleBatchCookToShopping(recipe, portions);
-              if (ok) {
-                toast.success("Shopping list scaled to your batch.");
-                setBatchCookOpen(false);
-                handleShoppingList();
-              }
-            } finally {
-              setBatchCookSaving(false);
-            }
-          }}
-          onCook={async (recipe, portions) => {
-            setBatchCookSaving(true);
-            try {
-              await scaleBatchCookToShopping(recipe, portions);
-            } finally {
-              setBatchCookSaving(false);
-            }
-            setBatchCookOpen(false);
-            onOpenRecipe?.(recipe.id);
-          }}
-        />
-      ) : null}
-      <ResetPlanSheet
-        open={resetPlan.open}
-        onOpenChange={resetPlan.setOpen}
-        loading={isGenerating}
-        onConfirm={handleResetPlanConfirm}
-      />
+      {v3MealMenu ? (() => {
+        const dp = plan[v3MealMenu.dayIndex];
+        const meal = dp?.meals[v3MealMenu.slotIndex];
+        if (!meal || !dp) return null;
+        const slot = SLOTS[v3MealMenu.slotIndex] ?? "snacks";
+        const recipeId = (meal as { recipeId?: string }).recipeId;
+        return (
+          <PlanMealActionDialog
+            open
+            meal={meal}
+            onClose={() => setV3MealMenu(null)}
+            onLogToday={() => {
+              handleLogToday(meal);
+              setV3MealMenu(null);
+            }}
+            onViewRecipe={() => {
+              if (recipeId) onOpenRecipe?.(recipeId);
+              setV3MealMenu(null);
+            }}
+            onSwap={() => {
+              openSwap(dp.day, slot, v3MealMenu.slotIndex);
+              setV3MealMenu(null);
+            }}
+            onChangePortion={() => {
+              setPortionTarget({ day: dp.day, mealIndex: v3MealMenu.slotIndex });
+              setV3MealMenu(null);
+            }}
+            onMove={() => {
+              setMoveFrom({ day: dp.day, slotIndex: v3MealMenu.slotIndex });
+              setV3MealMenu(null);
+            }}
+            onRemove={() => {
+              setMealPlan((prev) => {
+                if (!prev) return prev;
+                return prev.map((row, di) => {
+                  if (di !== v3MealMenu.dayIndex) return row;
+                  const meals = row.meals.map((m, mi) =>
+                    mi === v3MealMenu.slotIndex
+                      ? {
+                          ...m,
+                          recipeTitle: "",
+                          calories: 0,
+                          protein: 0,
+                          carbs: 0,
+                          fat: 0,
+                          isPlaceholder: true,
+                        }
+                      : m,
+                  );
+                  const totals = meals.reduce(
+                    (acc, m) => ({
+                      calories: acc.calories + (Number(m.calories) || 0),
+                      protein: acc.protein + (Number(m.protein) || 0),
+                      carbs: acc.carbs + (Number(m.carbs) || 0),
+                      fat: acc.fat + (Number(m.fat) || 0),
+                    }),
+                    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                  );
+                  return { ...row, meals, totals };
+                });
+              });
+              setV3MealMenu(null);
+              toast.success("Removed from plan");
+            }}
+            lockEnabled={mealLockEnabled}
+            isLocked={Boolean(meal.isLocked)}
+            onToggleLock={() => {
+              toggleMealLock(dp.day, v3MealMenu.slotIndex, slot);
+              setV3MealMenu(null);
+            }}
+          />
+        );
+      })() : null}
     </div>
   );
 });
