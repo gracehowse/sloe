@@ -4,7 +4,12 @@ Generated from the 14-agent forensic audit (workflow `sloe-v3-conformance-audit`
 
 **Totals:** 79 surfaces · 53 need work · 14 conformant · 7 keep-current · 5 net-new-absent (deferred). Diffs (excl. keep-current): 69 high · 105 med · 50 low.
 
-Status legend: ⬜ todo · ✅ done · 🔒 keep-current · 🆕 net-new (deferred)
+Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 🆕 net-new (deferred)
+
+## Progress log
+
+- 🔄 **Today calorie hero (de-card)** — mobile shipped `877eca91` (flag `today_hero_decard_v3`, default OFF): bare hero + `RingStatusLine` below ring + `TodayHeroStats` extraction; SEEN (empty + under-budget). **Remaining:** 56px serif-medium numeral + web parity (`today-hero-ring.tsx`), then ramp.
+- ✅ **MealEdit serif kcal hero** — shipped `957e5da9` (both platforms); expander + copy-row confirmed keep-current dupes.
 
 
 ## Cluster: import-flows
