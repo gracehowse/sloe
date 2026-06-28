@@ -14,6 +14,7 @@ const PRIVACY_SECTIONS = [
   { id: "ai", title: "AI, voice, and images" },
   { id: "imported", title: "Imported recipes" },
   { id: "subprocessors", title: "Sub-processors" },
+  { id: "community-food-database", title: "Community food database" },
   { id: "transfers", title: "International transfers" },
   { id: "legal-basis", title: "Legal basis (EU/UK)" },
   { id: "automated", title: "Automated processing" },
@@ -167,6 +168,28 @@ export default function PrivacyPage() {
               </tbody>
             </table>
           </div>
+          <h2 id="community-food-database" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Community food database</h2>
+          <p>
+            When you scan a barcode we can&rsquo;t find and enter the product&rsquo;s nutrition yourself, we offer you an
+            optional choice to contribute that entry to Sloe&rsquo;s shared food database so other people who scan the
+            same barcode can use it too. This is strictly opt-in: it only happens if you explicitly choose{" "}
+            <strong>&ldquo;Share it&rdquo;</strong> &mdash; never automatically, and never as part of logging food to
+            your own tracker.
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><strong>What&rsquo;s shared:</strong> only the food name and the nutrition values you entered (calories,
+              protein, carbs, fat, fibre, serving size) and the barcode. Your submission is linked to your account as
+              the submitter internally, but your identity is not shown to other users. Nothing else from your account is
+              shared.</li>
+            <li><strong>Purpose:</strong> a shared lookup so the next person who scans that barcode gets nutrition info
+              instead of a dead end.</li>
+            <li><strong>Visibility:</strong> your contribution is visible only to you until it is confirmed &mdash; once
+              enough independent submissions agree on the same values, it becomes the entry everyone sees when they scan
+              that barcode.</li>
+            <li><strong>Eligibility:</strong> you must be 16 or older to contribute to the shared database. Logging food
+              privately to your own tracker has no such restriction.</li>
+            <li><strong>Withdrawal:</strong> you can delete your own contributions at any time from your saved items.</li>
+          </ul>
           <h2 id="transfers" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">International transfers</h2>
           <p>
             Several sub-processors listed above are located in the United States (OpenAI, Stripe, Upstash, RevenueCat,
@@ -183,6 +206,8 @@ export default function PrivacyPage() {
             <li><strong>AI features, analytics, error reporting:</strong> our legitimate interests in improving and
               securing the service (you can opt out of analytics and error reporting; AI features are opt-in per
               action).</li>
+            <li><strong>Contributing to the shared food database:</strong> your consent (opt-in, 16+; you can withdraw
+              at any time by deleting your submission).</li>
             <li><strong>Marketing email (if any):</strong> your consent.</li>
             <li><strong>Legal and safety:</strong> compliance with legal obligations.</li>
           </ul>
