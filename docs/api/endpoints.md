@@ -641,9 +641,17 @@ Implementation: [app/api/edamam/food/route.ts](../../app/api/edamam/food/route.t
 
 **Auth:** Bearer. Service-role read of verified / community-visible `user_foods` rows. Min query length 2.
 
+### `GET /api/user-foods?mine=1&limit=`
+
+**Auth:** Bearer. Lists the caller's own barcode contributions for Settings withdrawal surfaces. Returns owner rows only (`submitted_by = auth.uid()`).
+
 ### `POST /api/user-foods`
 
 **Auth:** Bearer. Submit a new community food (barcode + macros); validation and plausibility checks.
+
+### `DELETE /api/user-foods?id=`
+
+**Auth:** Bearer + origin. Withdraw one caller-owned barcode contribution. The handler scopes lookup and delete by both `id` and `submitted_by` because it uses the service-role client.
 
 ### `POST /api/user-foods/vote`
 

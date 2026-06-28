@@ -88,7 +88,6 @@ import {
 import {
   flatMacroRowsFromVerifyJson,
   mergeVerifiedMacroRows,
-  overallConfidenceFromVerifyJson,
   perServingFromVerifyJson,
 } from "@suppr/nutrition-core/verifyRecipeResponse";
 import { structuredIngredientsForVerify } from "@suppr/shared/recipe-ingredients/structuredIngredientsForVerify";
@@ -640,8 +639,6 @@ export default function RecipeDetailScreen() {
           : prev,
       );
 
-      const overallConf = overallConfidenceFromVerifyJson(json);
-
       let persistHadError = false;
       if (opts.persist) {
         const { data: dbIngs } = await supabase
@@ -692,8 +689,10 @@ export default function RecipeDetailScreen() {
         }
 
         // T19 Path B — recipe aggregate is also a FatSecret cache when
-        // any line is FatSecret-sourced. Replace with zeros + verified=
-        // false in that case; otherwise persist the per-serving totals.
+        // any line is FatSecret-sourced. Replace with zeroed nutrition
+        // totals in that case; otherwise persist the per-serving totals.
+        // ENG-1244: recipe-level trust metadata is server-owned, so this
+        // client path only updates nutrition totals.
         const aggregateHasFs = recipeAggregateHasFatSecret(
           rows.map((r) => ({ source: r.source ?? null })),
         );
@@ -707,10 +706,6 @@ export default function RecipeDetailScreen() {
               fiber_g: perServing.fiberG != null ? Math.round(perServing.fiberG * 10) / 10 : 0,
               sugar_g: perServing.sugarG != null ? Math.round(perServing.sugarG * 10) / 10 : 0,
               sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
-              is_verified: true,
-              verified_at: new Date().toISOString(),
-              verified_confidence: overallConf,
-              verified_source: opts.verifiedSource,
             };
 
         const { error: recipeErr } = await supabase

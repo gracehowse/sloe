@@ -1971,7 +1971,6 @@ export async function saveVerifiedIngredients(
       sodium_mg: perServing.sodiumMg,
       caffeine_mg: perServing.caffeineMg,
       alcohol_g: perServing.alcoholG,
-      is_verified: allRowsVerified,
       allergens: inferredAllergens,
     },
     p_ingredient_updates: ingredientUpdates,

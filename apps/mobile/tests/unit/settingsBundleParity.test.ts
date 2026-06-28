@@ -64,6 +64,7 @@ describe("SettingsBundleContent — parity contract", () => {
       // custom foods, etc. — counters lock-in anxiety per the
       // user-sentiment audit. See `docs/operations/data-export.md`.
       "settings-bundle-export-everything-row",
+      "settings-bundle-barcode-contributions-row",
       "settings-bundle-help-row",
       "settings-bundle-privacy-row",
       "settings-bundle-terms-row",
@@ -151,6 +152,14 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(bundle).toMatch(/fetch\(`\$\{base\}\/api\/account\/delete`/);
     expect(bundle).toContain('method: "DELETE"');
     expect(bundle).toMatch(/Authorization:\s*`Bearer/);
+  });
+
+  it("surfaces barcode contribution withdrawal from Settings Account", () => {
+    expect(bundle).toContain("BARCODE_CONTRIBUTIONS_SETTINGS_LABEL");
+    expect(bundle).toContain("settings-bundle-barcode-contributions-list");
+    expect(bundle).toContain(".from(\"user_foods\")");
+    expect(bundle).toContain(".delete()");
+    expect(bundle).toContain(".eq(\"submitted_by\", userId)");
   });
 
   it("delete-account flow still requires typing 'delete' to confirm", () => {

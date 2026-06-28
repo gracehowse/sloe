@@ -127,6 +127,16 @@ describe("Settings — Erase Everything confirm copy (P1-6, calm rewrite)", () =
   });
 });
 
+describe("Settings — barcode contribution withdrawal", () => {
+  it("surfaces a managed withdrawal path in Privacy & Security", () => {
+    expect(SRC).toContain("settings-barcode-contributions-row");
+    expect(SRC).toContain("BARCODE_CONTRIBUTIONS_SETTINGS_LABEL");
+    expect(SRC).toContain("/api/user-foods?mine=1&limit=25");
+    expect(SRC).toContain('method: "DELETE"');
+    expect(SRC).toMatch(/\/api\/user-foods\?id=/);
+  });
+});
+
 describe("Settings — page header (P1-5)", () => {
   it("strips the leftover bg-clip-text / text-transparent classes from the H1", () => {
     // `<h1 className="text-foreground bg-clip-text text-transparent">`

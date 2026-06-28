@@ -180,7 +180,7 @@ describe("fatsecretCacheGuard.recipeAggregateHasFatSecret", () => {
 });
 
 describe("fatsecretCacheGuard.ZEROED_RECIPE_AGGREGATE", () => {
-  it("is the canonical zeroed shape for the recipes table", () => {
+  it("is the canonical zeroed nutrition shape for the recipes table", () => {
     expect(ZEROED_RECIPE_AGGREGATE.calories).toBe(0);
     expect(ZEROED_RECIPE_AGGREGATE.protein).toBe(0);
     expect(ZEROED_RECIPE_AGGREGATE.carbs).toBe(0);
@@ -188,9 +188,9 @@ describe("fatsecretCacheGuard.ZEROED_RECIPE_AGGREGATE", () => {
     expect(ZEROED_RECIPE_AGGREGATE.fiber_g).toBe(0);
     expect(ZEROED_RECIPE_AGGREGATE.sugar_g).toBe(0);
     expect(ZEROED_RECIPE_AGGREGATE.sodium_mg).toBe(0);
-    expect(ZEROED_RECIPE_AGGREGATE.is_verified).toBe(false);
-    expect(ZEROED_RECIPE_AGGREGATE.verified_source).toBeNull();
-    expect(ZEROED_RECIPE_AGGREGATE.verified_confidence).toBeNull();
-    expect(ZEROED_RECIPE_AGGREGATE.verified_at).toBeNull();
+    expect("is_verified" in ZEROED_RECIPE_AGGREGATE).toBe(false);
+    expect("verified_source" in ZEROED_RECIPE_AGGREGATE).toBe(false);
+    expect("verified_confidence" in ZEROED_RECIPE_AGGREGATE).toBe(false);
+    expect("verified_at" in ZEROED_RECIPE_AGGREGATE).toBe(false);
   });
 });
