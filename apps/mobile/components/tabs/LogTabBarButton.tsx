@@ -2,8 +2,8 @@ import React from "react";
 import { Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
 
-import { Accent, Elevation } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { TAB_BAR_METRICS } from "@/hooks/useTabBarClearance";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 
@@ -28,10 +28,9 @@ import { useHaptics } from "@/hooks/useHaptics";
  *     aubergine review); everyday inline CTAs are an aubergine OUTLINE.
  *     (Supersedes the 2026-06-04 plum-FAB / clay-CTA split.)
  *   - Lucide `Plus` icon, 24pt, white, strokeWidth 2.5.
- *   - CONTAINED in the floating pill, bottom-aligned (v3 `.fab`: in-flow,
- *     `margin-bottom: 2px`) — the pill grows to hold the 56pt circle. Not raised.
- *   - `Elevation.floatPrimary` glow, re-tinted to the plum nav primary so the
- *     drop-shadow matches the fill (floatPrimary's base shadowColor is clay).
+ *   - CONTAINED in the floating pill, centred in its slot (v3 `.fab`).
+ *     No drop-shadow on the FAB — a wide glow reads as a grey/plum block
+ *     behind the + when the bar zone is transparent (Grace 2026-06-28).
  *
  * Interaction:
  *   - Medium haptic on iOS (matches the legacy LogFab) — heavier than
@@ -76,13 +75,8 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
     <View
       pointerEvents="box-none"
       style={{
-        flex: 1,
-        // Stretch the slot to the FULL pill height (pill is pinned to 72pt in
-        // SupprTabBar) and CENTRE the 56pt circle in it. Bottom-aligning it left
-        // the FAB poking ~15% above the pill edge (ENG-1247, Grace flagged 3×);
-        // centred in the 56pt content box (72 − 8·2 padding) → contained with
-        // ~8pt of pill above and below.
-        alignSelf: "stretch",
+        width: TAB_BAR_METRICS.fabSlotWidth,
+        flexShrink: 0,
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -94,20 +88,15 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
         accessibilityHint="Opens the log sheet for searching foods, scanning barcodes, or quick logging"
         testID="today-log-fab"
         hitSlop={8}
-        style={({ pressed }) => [
-          {
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: accent.primary,
-            alignItems: "center",
-            justifyContent: "center",
-            transform: [{ scale: pressed ? 0.94 : 1 }],
-          },
-          Elevation.floatPrimary,
-          // Re-tint the glow to the aubergine accent fill.
-          { shadowColor: accent.primary },
-        ]}
+        style={({ pressed }) => ({
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: accent.primary,
+          alignItems: "center",
+          justifyContent: "center",
+          transform: [{ scale: pressed ? 0.94 : 1 }],
+        })}
       >
         <Plus size={24} color={colors.primaryForeground} strokeWidth={2.5} />
       </Pressable>

@@ -17,8 +17,7 @@
  *
  * Scope of this file:
  *   - <LogTabBarButton>: accessibility, testID continuity, onPress.
- *   - <SupprTabBar>: 5-slot layout (4 tabs + raised button between
- *     Recipes and Plan), tabPress emit, defaultPrevented respect,
+ *   - <SupprTabBar>: 4 tabs + centered raised Log button inside the pill,
  *     navigation.navigate on press, raised-button onPress routes
  *     Today with `?openLog=1`.
  */
@@ -187,8 +186,8 @@ describe("LogTabBarButton", () => {
     const style = flattenStyle(fab.props.style);
     expect(style.backgroundColor).toBe("#3B2A4D");
     expect(style.backgroundColor).not.toBe("#C8794E"); // not the clay tint
-    // Glow re-tinted to match the plum fill (floatPrimary's base is clay).
-    expect(style.shadowColor).toBe("#3B2A4D");
+    // No FAB glow — drop-shadow blooms into a block behind the transparent bar.
+    expect(style.shadowOpacity ?? 0).toBe(0);
   });
 });
 

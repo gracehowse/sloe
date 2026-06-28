@@ -1,15 +1,40 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 import { useAccent, useTheme } from "@/context/theme";
+import {
+  TAB_BAR_METRICS,
+  tabBarOuterHeight,
+} from "@/hooks/useTabBarClearance";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Radius } from "@/constants/theme";
 
 import { LogTabBarButton } from "./LogTabBarButton";
+
+/** Liquid-glass pill — IG/NC° reference: heavy blur, low wash, light rim, soft lift. */
+const TAB_BAR_GLASS = {
+  light: {
+    blurIntensity: 72,
+    tint: "systemUltraThinMaterialLight" as const,
+    washColor: "#FFFFFF",
+    washOpacity: 0.32,
+    borderColor: "rgba(255,255,255,0.78)",
+    shadowOpacity: 0.1,
+  },
+  dark: {
+    blurIntensity: 80,
+    tint: "systemUltraThinMaterialDark" as const,
+    washColor: "#1C1628",
+    washOpacity: 0.42,
+    borderColor: "rgba(255,255,255,0.14)",
+    shadowOpacity: 0.22,
+  },
+} as const;
 
 /**
  * SupprTabBar — custom bottom tab bar that renders the four primary
@@ -59,6 +84,10 @@ export function SupprTabBar({
   const activeTint = resolved === "dark" ? accent.primaryLight : accent.primary;
   const safeInsets = useSafeAreaInsets();
   const router = useRouter();
+  const isDark = resolved === "dark";
+  const glass = isDark ? TAB_BAR_GLASS.dark : TAB_BAR_GLASS.light;
+  const outerHeight = tabBarOuterHeight(safeInsets.bottom);
+  const bottomLift = safeInsets.bottom + TAB_BAR_METRICS.bottomGap;
 
   // Filter out hidden routes (`href: null` in `_layout.tsx`). Those
   // descriptors live in `state.routes` for routing purposes but we
@@ -95,183 +124,172 @@ export function SupprTabBar({
   };
 
   return (
-    // ENG-1247 — the v3 `.tabbar` (Sloe-App.html L1697) is a FLOATING ROUNDED
-    // PILL, not an edge-to-edge square bar: inset 14px L/R, lifted off the
-    // bottom, fully rounded, 1px border + a soft tight shadow so it floats above
-    // content. The outer View is the react-navigation container (transparent,
-    // full-bleed); the pill sits at its bottom. The pill is a SOLID surface
-    // (colors.card) — we deliberately dropped expo-blur: its native iOS BlurView
-    // ignored the rounded clip (frosted material rendered as a full-width SQUARE
-    // block behind the pill) and cached across hot reloads. A solid floating
-    // pill is the reliable, standard pattern.
+    // ENG-1247 — v3 `.tabbar` (Sloe-App.html L1697): floating rounded pill with
+    // frosted glass (`backdrop-filter: blur(18px)`) over scroll content. Outer
+    // host is transparent + absolutely positioned (custom tabBar bypasses RN's
+    // BottomTabBar wrapper — we must own overlay positioning or a grey strip
+    // appears). BlurView lives INSIDE an overflow:hidden clip so the frost
+    // never blooms into a full-width square (Grace flagged that repeatedly).
     //
-    // ⚠️ The root height MUST be a fixed pixel value matching the `_layout`
-    // tabBarStyle.height — NOT `flex:1` / `height:'100%'`. A non-deterministic
-    // custom-tab-bar height makes react-navigation re-measure + re-render the
-    // navigator on every layout pass, which thrashes the JS thread and STALLS
-    // the scenes' Reanimated entrance animations (`useEntranceAnimation`) — they
-    // never reach opacity 1, so screen content renders INVISIBLE (a grey void
-    // below the header). Keep this height in lockstep with `_layout`.
+    // ⚠️ Root height MUST match `_layout` tabBarStyle.height — NOT flex:1.
     <View
       pointerEvents="box-none"
       style={{
-        height: 88 + Math.max(safeInsets.bottom, 8),
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 40,
+        height: outerHeight,
         justifyContent: "flex-end",
-        paddingHorizontal: 16,
-        paddingBottom: Math.max(safeInsets.bottom, 8) + 10,
-        // TRANSPARENT — the pill floats and the real page shows through the
-        // inset margins around/below it. (The grey "block" that used to show here
-        // was react-navigation's DefaultTheme scene background #F2F2F2; fixed at
-        // the source in app/_layout.tsx by overriding the nav theme background to
-        // the app page colour. ENG-1247.)
+        paddingHorizontal: TAB_BAR_METRICS.sideInset,
+        paddingBottom: bottomLift,
+        backgroundColor: "transparent",
+        elevation: 0,
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        shadowOffset: { width: 0, height: 0 },
       }}
     >
-      {/* ENG-1247 — shadow wrapper. Pins the pill height (72 = 56 FAB + 8·2
-          padding; fits the outer View's 88+inset − (inset+12) = 76 budget) and
-          carries the float shadow. Separate from the clip layer below because the
-          clip uses overflow:hidden (rounds the corners), which would also clip
-          this shadow. */}
+      {/* Pill host — shadow lives here (pill-sized, inset 16px L/R) so it lifts
+          without blooming into a full-width grey slab. */}
       <View
         style={{
-          height: 72,
+          height: TAB_BAR_METRICS.pillHeight,
           borderRadius: Radius.full,
-          // CONTAINED float shadow. The pill is inset 16px L/R; the shadow blur
-          // radius MUST stay below that inset or it blooms past the pill into a
-          // full-width faint-grey panel that reads as a "block behind the bar"
-          // (Grace flagged this repeatedly, ENG-1247 — bounds-tinting confirmed
-          // the only thing rendering behind the pill was this shadow). radius 10
-          // < inset 16 keeps the drop tucked directly under the pill. Neutral
-          // near-black at low opacity reads as a clean lift, not a plum haze.
+          backgroundColor: "transparent",
           shadowColor: "#000000",
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.1,
+          shadowOpacity: glass.shadowOpacity,
           shadowRadius: 10,
         }}
       >
-      {/* Pill surface — solid colors.card, rounded, hairline border, overflow
-          hidden, and the flex row that lays out the 4 tabs + raised FAB. */}
-      <View
-        style={{
-          flex: 1,
-          flexDirection: "row",
-          // v3 floating pill — a clean SOLID surface on the page. Dropped
-          // expo-blur: its native BlurView ignored the rounded clip (rendered the
-          // frosted material as a full-width SQUARE block behind the pill) and
-          // cached across hot reloads — three separate bugs over many rounds
-          // (Grace, ENG-1247). A solid floating pill is the reliable, standard
-          // pattern; the FAB sits CONTAINED + centred (see LogTabBarButton).
-          alignItems: "flex-end",
-          backgroundColor: colors.card,
-          borderRadius: Radius.full,
-          overflow: "hidden",
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
-          paddingVertical: 8,
-          paddingHorizontal: 8,
-        }}
-      >
-        {visibleRoutes.map((route, visibleIndex) => {
-        const { options } = descriptors[route.key];
-        const realIndex = state.routes.findIndex((r) => r.key === route.key);
-        const isFocused = state.index === realIndex;
+        <View
+          style={{
+            flex: 1,
+            borderRadius: Radius.full,
+            overflow: "hidden",
+            borderWidth: 1,
+            borderColor: glass.borderColor,
+          }}
+        >
+          <BlurView
+            pointerEvents="none"
+            intensity={glass.blurIntensity}
+            tint={glass.tint}
+            experimentalBlurMethod={
+              Platform.OS === "android" ? "dimezisBlurView" : undefined
+            }
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: glass.washColor,
+                opacity: glass.washOpacity,
+              },
+            ]}
+          />
+          <View
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingVertical: TAB_BAR_METRICS.pillPaddingVertical,
+              paddingHorizontal: TAB_BAR_METRICS.pillPaddingHorizontal,
+              zIndex: 1,
+            }}
+          >
+            {visibleRoutes.map((route, visibleIndex) => {
+              const { options } = descriptors[route.key];
+              const realIndex = state.routes.findIndex((r) => r.key === route.key);
+              const isFocused = state.index === realIndex;
 
-        const onPress = () => {
-          if (process.env.EXPO_OS === "ios") {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-          // emit tabPress so per-screen listeners (e.g. the
-          // Recipes/You "return to default sub-tab" intercepts) fire
-          // exactly as they would with the stock tab bar.
-          const event = navigation.emit({
-            type: "tabPress",
-            target: route.key,
-            canPreventDefault: true,
-          });
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
-          }
-        };
-
-        const onLongPress = () => {
-          navigation.emit({ type: "tabLongPress", target: route.key });
-        };
-
-        const tintColor = isFocused ? activeTint : colors.tabIconDefault;
-        const label =
-          typeof options.tabBarLabel === "string"
-            ? options.tabBarLabel
-            : (options.title ?? route.name);
-        const accessibilityLabel =
-          options.tabBarAccessibilityLabel ??
-          (typeof label === "string" ? label : undefined);
-
-        // Inject the raised Log button between the 2nd and 3rd visible
-        // tab (i.e. between Recipes and Plan). Render the tab first,
-        // then the button, then the next tabs follow.
-        const showLogButtonAfterThis = visibleIndex === 1;
-
-        return (
-          <React.Fragment key={route.key}>
-            <Pressable
-              onPress={onPress}
-              onLongPress={onLongPress}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={accessibilityLabel}
-              testID={
-                (options as { tabBarButtonTestID?: string }).tabBarButtonTestID
-              }
-              style={{
-                flex: 1,
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 2,
-              }}
-            >
-              {/* v3 active-tab treatment (Sloe-App.html L723): the focused
-                  glyph lifts 1px and scales 1.06 so the active tab pops. */}
-              <View
-                style={
-                  isFocused
-                    ? { transform: [{ translateY: -1 }, { scale: 1.06 }] }
-                    : undefined
+              const onPress = () => {
+                if (process.env.EXPO_OS === "ios") {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }
-              >
-                {options.tabBarIcon
-                  ? options.tabBarIcon({
-                      focused: isFocused,
-                      color: tintColor,
-                      size: 23,
-                    })
-                  : null}
-              </View>
-              {typeof label === "string" ? (
-                <Text
-                  style={{
-                    // Sloe v3 (ENG-1247): the v3 prototype `.tab` label is
-                    // sentence-case + untracked (Sloe-App.html L717 — 10.5px
-                    // semibold, no text-transform). The prior 2026-06-04
-                    // uppercase/tracked treatment matched the FIGMA, which is
-                    // dead — Grace (2026-06-24) made the v3 prototype canonical
-                    // and it supersedes the Figma. Matches the web mobile-web
-                    // nav (10px / medium / no-transform), so the platforms agree.
-                    fontSize: 10.5,
-                    fontWeight: "600",
-                    color: tintColor,
-                  }}
-                  numberOfLines={1}
-                >
-                  {label}
-                </Text>
-              ) : null}
-            </Pressable>
-            {showLogButtonAfterThis ? (
-              <LogTabBarButton onPress={handleLogButtonPress} />
-            ) : null}
-          </React.Fragment>
-        );
-      })}
-      </View>
+                const event = navigation.emit({
+                  type: "tabPress",
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(route.name, route.params);
+                }
+              };
+
+              const onLongPress = () => {
+                navigation.emit({ type: "tabLongPress", target: route.key });
+              };
+
+              const tintColor = isFocused ? activeTint : colors.tabIconDefault;
+              const label =
+                typeof options.tabBarLabel === "string"
+                  ? options.tabBarLabel
+                  : (options.title ?? route.name);
+              const accessibilityLabel =
+                options.tabBarAccessibilityLabel ??
+                (typeof label === "string" ? label : undefined);
+
+              const showLogButtonAfterThis = visibleIndex === 1;
+
+              return (
+                <React.Fragment key={route.key}>
+                  <Pressable
+                    onPress={onPress}
+                    onLongPress={onLongPress}
+                    accessibilityRole="button"
+                    accessibilityState={isFocused ? { selected: true } : {}}
+                    accessibilityLabel={accessibilityLabel}
+                    testID={
+                      (options as { tabBarButtonTestID?: string }).tabBarButtonTestID
+                    }
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 2,
+                    }}
+                  >
+                    <View
+                      style={
+                        isFocused
+                          ? { transform: [{ translateY: -1 }, { scale: 1.06 }] }
+                          : undefined
+                      }
+                    >
+                      {options.tabBarIcon
+                        ? options.tabBarIcon({
+                            focused: isFocused,
+                            color: tintColor,
+                            size: 23,
+                          })
+                        : null}
+                    </View>
+                    {typeof label === "string" ? (
+                      <Text
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: "600",
+                          color: tintColor,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {label}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                  {showLogButtonAfterThis ? (
+                    <LogTabBarButton onPress={handleLogButtonPress} />
+                  ) : null}
+                </React.Fragment>
+              );
+            })}
+          </View>
+        </View>
       </View>
     </View>
   );

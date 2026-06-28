@@ -8,6 +8,7 @@ import { Calendar, BookOpen, Utensils, BarChart3 } from 'lucide-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { SupprTabBar } from '@/components/tabs/SupprTabBar';
+import { tabBarOuterHeight } from '@/hooks/useTabBarClearance';
 import { useAuth } from '@/context/auth';
 import { useAccent } from '@/context/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -142,29 +143,25 @@ export default function TabLayout() {
         // `useSafeAreaInsets`, but we keep these here as defensive
         // defaults in case any nested screen re-instantiates the
         // stock bar.
-        // ENG-1247 — the floating pill OVERLAYS scroll content and the bar zone is
-        // SEE-THROUGH: `position: absolute` takes the bar out of layout so the
-        // scene fills the whole screen and scroll content passes BEHIND the bar.
-        // Everything in the bar zone is transparent except the floating pill
-        // itself, so as you scroll you see the live content moving through the gaps
-        // around/above the pill (Grace's explicit ask 2026-06-28: "behind the bar
-        // needs to be fully empty … you see whatever is there in the scroll … see
-        // through"). Nothing here may paint an opaque background: `backgroundColor`
-        // transparent + `tabBarBackground: () => null` above + the transparent
-        // `SupprTabBar` container keep the zone empty. Screens pad their scroll by
-        // the bar height (`useTabBarClearance`) so the LAST row can still scroll
-        // clear of the pill.
+        // ENG-1247 — overlay positioning lives on `<SupprTabBar>` itself because
+        // custom `tabBar` bypasses react-navigation's BottomTabBar (so these
+        // styles are NOT applied to our renderer — kept here only for
+        // `getTabBarHeight()` / layout math).
         tabBarStyle: {
           position: 'absolute',
           left: 0,
           right: 0,
           bottom: 0,
           backgroundColor: 'transparent',
+          elevation: 0,
+          shadowOpacity: 0,
+          shadowRadius: 0,
+          shadowOffset: { width: 0, height: 0 },
           borderTopWidth: 0,
           // Floating rounded pill (v3 `.tabbar` L1697): `SupprTabBar` insets/lifts
           // the pill inside this height; leave no padding here (the pill owns its
           // own inset/padding).
-          height: 88 + Math.max(insets.bottom, 8),
+          height: tabBarOuterHeight(insets.bottom),
           paddingBottom: 0,
           paddingTop: 0,
         },
