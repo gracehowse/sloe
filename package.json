@@ -77,6 +77,8 @@
     "linear:sync-status:dry-run": "node scripts/linear/sync-project-and-initiative-status.mjs --dry-run",
     "linear:sync-status-updates": "node scripts/linear/sync-status-updates.mjs",
     "linear:sync-status-updates:dry-run": "node scripts/linear/sync-status-updates.mjs --dry-run",
+    "linear:update-eng-backlog-batch": "node scripts/linear/update-eng-backlog-batch.mjs",
+    "linear:update-eng-backlog-batch:dry-run": "node scripts/linear/update-eng-backlog-batch.mjs --dry-run",
     "sync:agent-docs": "node scripts/sync-agent-docs.mjs",
     "backfill:fatsecret": "node scripts/backfill-fatsecret-premier.mjs",
     "mobile:dev": "npm run start --prefix apps/mobile",
