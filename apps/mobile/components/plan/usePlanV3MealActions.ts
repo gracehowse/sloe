@@ -18,8 +18,10 @@ export interface UsePlanV3MealActionsArgs {
   plan: DayPlan[] | null;
   savedRecipes: PlanV3PoolRecipe[];
   discoverRecipes: PlanV3PoolRecipe[];
-  /** The planner's swap picker — also serves as "add a recipe to this slot". */
+  /** Open the swap picker for (dayIndex, slotIndex). */
   swapMeal: (dayIndex: number, mealIndex: number, slotName: string) => void;
+  /** ENG-1238 — open the legacy row action sheet for a populated meal. */
+  openMealMenu?: (dayIndex: number, slotIndex: number) => void;
 }
 
 /**
@@ -35,6 +37,7 @@ export function usePlanV3MealActions({
   savedRecipes,
   discoverRecipes,
   swapMeal,
+  openMealMenu,
 }: UsePlanV3MealActionsArgs) {
   const router = useRouter();
 
@@ -61,7 +64,19 @@ export function usePlanV3MealActions({
     [plan, savedRecipes, discoverRecipes, router, swapMeal],
   );
 
-  return { onOpenMeal, onAddToSlot };
+  const onOpenMealOptions = useCallback(
+    (dayIndex: number, slotIndex: number) => {
+      const meal = plan?.[dayIndex]?.meals[slotIndex];
+      if (!meal || meal.isPlaceholder) {
+        swapMeal(dayIndex, slotIndex, slotNameForIndex(slotIndex));
+        return;
+      }
+      openMealMenu?.(dayIndex, slotIndex);
+    },
+    [plan, openMealMenu, swapMeal],
+  );
+
+  return { onOpenMeal, onAddToSlot, onOpenMealOptions };
 }
 
 export default usePlanV3MealActions;

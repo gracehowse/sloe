@@ -47,8 +47,8 @@ const baseState = (
 });
 
 describe("onboarding v2 — step ordering", () => {
-  it("ships exactly 14 steps in the documented order (Build-40 data-bridges + ENG-990 app-choice)", () => {
-    expect(TOTAL_STEPS).toBe(14);
+  it("ships exactly 16 steps in the documented order (conversion funnel + data-bridges + app-choice)", () => {
+    expect(TOTAL_STEPS).toBe(16);
     expect(STEP_IDS).toEqual([
       "welcome",
       "app-choice",
@@ -64,6 +64,8 @@ describe("onboarding v2 — step ordering", () => {
       "reveal",
       "signup",
       "data-bridges",
+      "upgrade",
+      "first-log",
     ]);
   });
 
@@ -162,6 +164,65 @@ describe("onboarding v2 — resolveNextStep app-choice flag gate (ENG-990)", () 
   });
 });
 
+describe("onboarding v2 — resolveNextStep conversion-funnel gate (ENG-1233 / ENG-1241)", () => {
+  const DATA_BRIDGES = STEP_IDS.indexOf("data-bridges");
+  const UPGRADE = STEP_IDS.indexOf("upgrade");
+  const FIRST_LOG = STEP_IDS.indexOf("first-log");
+
+  it("skips upgrade + first-log when the flag is OFF — data-bridges stays terminal", () => {
+    const next = resolveNextStep(DATA_BRIDGES, +1, baseState(), {
+      conversionFunnelEnabled: false,
+    });
+    expect(STEP_IDS[next]).toBe("data-bridges");
+  });
+
+  it("lands on upgrade when the flag is ON (forward from data-bridges)", () => {
+    const next = resolveNextStep(DATA_BRIDGES, +1, baseState(), {
+      conversionFunnelEnabled: true,
+    });
+    expect(STEP_IDS[next]).toBe("upgrade");
+  });
+
+  it("lands on first-log after upgrade when the flag is ON", () => {
+    const next = resolveNextStep(UPGRADE, +1, baseState(), {
+      conversionFunnelEnabled: true,
+    });
+    expect(STEP_IDS[next]).toBe("first-log");
+  });
+
+  it("skips conversion-funnel steps on backward navigation when flag OFF", () => {
+    const prev = resolveNextStep(FIRST_LOG, -1, baseState(), {
+      conversionFunnelEnabled: false,
+    });
+    expect(STEP_IDS[prev]).toBe("data-bridges");
+  });
+});
+
+describe("onboarding v2 — displayPosition conversion-funnel (ENG-1233 / ENG-1241)", () => {
+  const funnelOn = { appChoiceEnabled: true, conversionFunnelEnabled: true };
+
+  it("excludes upgrade + first-log from the total when the flag is OFF", () => {
+    const { total } = displayPosition(0, {
+      ...funnelOn,
+      conversionFunnelEnabled: false,
+    });
+    expect(total).toBe(TOTAL_STEPS - 2);
+  });
+
+  it("includes upgrade + first-log when the flag is ON", () => {
+    const { total } = displayPosition(0, funnelOn);
+    expect(total).toBe(TOTAL_STEPS);
+  });
+
+  it("hides both funnel steps and app-choice when both flags are OFF", () => {
+    const { total } = displayPosition(0, {
+      appChoiceEnabled: false,
+      conversionFunnelEnabled: false,
+    });
+    expect(total).toBe(TOTAL_STEPS - 3);
+  });
+});
+
 describe("onboarding v2 — signup after reveal (ENG-962)", () => {
   it("places signup immediately after reveal and before data-bridges", () => {
     const reveal = STEP_IDS.indexOf("reveal");
@@ -187,13 +248,21 @@ describe("onboarding v2 — signup after reveal (ENG-962)", () => {
 });
 
 describe("onboarding v2 — displayPosition counts only visible steps (ENG-990)", () => {
+  const funnelOn = { conversionFunnelEnabled: true };
+
   it("excludes app-choice from the total when the flag is OFF", () => {
-    const { total } = displayPosition(0, { appChoiceEnabled: false });
+    const { total } = displayPosition(0, {
+      ...funnelOn,
+      appChoiceEnabled: false,
+    });
     expect(total).toBe(TOTAL_STEPS - 1);
   });
 
   it("includes app-choice in the total when the flag is ON", () => {
-    const { total } = displayPosition(0, { appChoiceEnabled: true });
+    const { total } = displayPosition(0, {
+      ...funnelOn,
+      appChoiceEnabled: true,
+    });
     expect(total).toBe(TOTAL_STEPS);
   });
 
@@ -201,23 +270,36 @@ describe("onboarding v2 — displayPosition counts only visible steps (ENG-990)"
     // goal is raw index 2, but with app-choice hidden it's the 2nd
     // visible step → display index 2 (welcome is 1).
     const goal = STEP_IDS.indexOf("goal");
-    const off = displayPosition(goal, { appChoiceEnabled: false });
+    const off = displayPosition(goal, {
+      ...funnelOn,
+      appChoiceEnabled: false,
+    });
     expect(off.index).toBe(2);
     // With the flag ON, goal is the 3rd visible step → index 3.
-    const on = displayPosition(goal, { appChoiceEnabled: true });
+    const on = displayPosition(goal, {
+      ...funnelOn,
+      appChoiceEnabled: true,
+    });
     expect(on.index).toBe(3);
   });
 
   it("signup display index reflects post-reveal position (ENG-962)", () => {
     const signup = STEP_IDS.indexOf("signup");
-    const off = displayPosition(signup, { appChoiceEnabled: false });
+    const off = displayPosition(signup, {
+      ...funnelOn,
+      appChoiceEnabled: false,
+    });
     // welcome + 11 body/reveal steps before signup (app-choice hidden).
     expect(off.index).toBe(12);
   });
 
   it("welcome is always 'Step 1' in both flag states", () => {
-    expect(displayPosition(0, { appChoiceEnabled: false }).index).toBe(1);
-    expect(displayPosition(0, { appChoiceEnabled: true }).index).toBe(1);
+    expect(
+      displayPosition(0, { ...funnelOn, appChoiceEnabled: false }).index,
+    ).toBe(1);
+    expect(
+      displayPosition(0, { ...funnelOn, appChoiceEnabled: true }).index,
+    ).toBe(1);
   });
 });
 

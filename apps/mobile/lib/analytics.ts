@@ -443,6 +443,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // Mobile-only for now (web Plan v3 is a later block). Off → the legacy Plan
   // header/chrome (kill switch). Per-slot cards + meal-filter = Block 3.
   "sloe_v3_plan",
+  // ENG-1233/1241 — onboarding conversion funnel (upgrade + first-log steps).
+  "onboarding_conversion_funnel_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in

@@ -36,6 +36,8 @@ import { MobileDietStep } from "./diet";
 import { MobileStrategyStep } from "./strategy";
 import { MobileRevealStep } from "./reveal";
 import { MobileDataBridgesStep } from "./data-bridges";
+import { UpgradeStep } from "./upgrade";
+import { FirstLogStep } from "./first-log";
 import { MobilePermissionsStep } from "./permissions";
 import { MobileImportStep } from "./import";
 
@@ -61,6 +63,8 @@ export const MOBILE_STEP_COMPONENTS: Record<
   strategy: MobileStrategyStep,
   reveal: MobileRevealStep,
   "data-bridges": MobileDataBridgesStep,
+  upgrade: UpgradeStep,
+  "first-log": FirstLogStep,
 };
 
 export {

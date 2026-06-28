@@ -27,7 +27,7 @@ import {
   STEP_IDS,
   canAdvance as canAdvanceStep,
 } from "@/lib/onboarding";
-import { APP_CHOICE_FLAG, useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 import { OnboardingSegmentedProgress } from "./OnboardingSegmentedProgress";
 
@@ -90,11 +90,13 @@ export function MobileFlow() {
   const isWelcome = currentStepId === "welcome";
   const [completing, setCompleting] = React.useState(false);
 
-  // Build-40 (2026-05-01): `data-bridges` is the new terminal step.
-  // Reveal advances on Continue → data-bridges; data-bridges fires
-  // the `handleComplete` write path on its "Build my plan" CTA. See
-  // `state.ts` STEP_IDS comment for rationale.
-  const isTerminal = currentStepId === "data-bridges";
+  // Build-40: `data-bridges` terminal when funnel OFF; `first-log` when ON.
+  const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
+  const isUpgrade = currentStepId === "upgrade";
+  const isFirstLog = currentStepId === "first-log";
+  const isTerminal = conversionFunnelEnabled
+    ? currentStepId === "first-log"
+    : currentStepId === "data-bridges";
   const isSignup = currentStepId === "signup";
 
   // MV-02 auto-skip (audit 2026-04-28): when an already-authed user
@@ -136,6 +138,12 @@ export function MobileFlow() {
       go(1);
     }
   }, [isAppChoice, isRefreshPlan, go]);
+
+  React.useEffect(() => {
+    if ((isUpgrade || isFirstLog) && !conversionFunnelEnabled) {
+      go(isUpgrade ? 1 : -1);
+    }
+  }, [isUpgrade, isFirstLog, conversionFunnelEnabled, go]);
 
   // ENG-1 — fire onboarding_started once when a new user first sees the
   // Welcome step. Excluded for refresh-plan flow (isRefreshPlan is null
@@ -631,7 +639,9 @@ export function MobileFlow() {
               {isTerminal
                 ? isRefreshPlan === true
                   ? "Refresh my plan"
-                  : "Build my plan"
+                  : isFirstLog
+                    ? "Go to Today"
+                    : "Build my plan"
                 : "Continue"}
             </Text>
           )}

@@ -44,6 +44,7 @@ export interface PlanMealSectionV3Props {
   filter: PlanMealFilter;
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  onOpenMealOptions?: (dayIndex: number, slotIndex: number) => void;
 }
 
 export function PlanMealSectionV3({
@@ -53,6 +54,7 @@ export function PlanMealSectionV3({
   filter,
   onOpenMeal,
   onAddToSlot,
+  onOpenMealOptions,
 }: PlanMealSectionV3Props) {
   const renderSlot = (
     dayIndex: number,
@@ -68,6 +70,11 @@ export function PlanMealSectionV3({
           kcal={Math.round(meal.calories)}
           isLocked={meal.isLocked}
           onPress={() => onOpenMeal(dayIndex, slotIndex)}
+          onOpenOptions={
+            onOpenMealOptions
+              ? () => onOpenMealOptions(dayIndex, slotIndex)
+              : undefined
+          }
         />
       );
     }

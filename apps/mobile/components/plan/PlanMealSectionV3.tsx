@@ -41,6 +41,8 @@ export interface PlanMealSectionV3Props {
   filter: PlanMealFilter;
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  /** ENG-1238 — per-meal action sheet (⋯ on populated cards). */
+  onOpenMealOptions?: (dayIndex: number, slotIndex: number) => void;
 }
 
 export function PlanMealSectionV3({
@@ -50,6 +52,7 @@ export function PlanMealSectionV3({
   filter,
   onOpenMeal,
   onAddToSlot,
+  onOpenMealOptions,
 }: PlanMealSectionV3Props) {
   const colors = useThemeColors();
 
@@ -63,6 +66,11 @@ export function PlanMealSectionV3({
           kcal={Math.round(meal.calories)}
           isLocked={meal.isLocked}
           onPress={() => onOpenMeal(dayIndex, slotIndex)}
+          onOpenOptions={
+            onOpenMealOptions
+              ? () => onOpenMealOptions(dayIndex, slotIndex)
+              : undefined
+          }
         />
       );
     }

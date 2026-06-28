@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Flame, Lock, UtensilsCrossed } from "lucide-react";
+import { Flame, Lock, MoreHorizontal, UtensilsCrossed } from "lucide-react";
 
 /**
  * PlanMealCardV3 — Sloe v3 Plan per-slot meal card.
@@ -22,6 +22,8 @@ export interface PlanMealCardV3Props {
   /** "batch" → a Batch chip; any other truthy string → a quiet queued note. */
   note?: string | null;
   onPress?: () => void;
+  /** ENG-1238 — per-meal action menu trigger. */
+  onOpenOptions?: () => void;
 }
 
 export function PlanMealCardV3({
@@ -32,21 +34,25 @@ export function PlanMealCardV3({
   isLocked,
   note,
   onPress,
+  onOpenOptions,
 }: PlanMealCardV3Props) {
   const [broken, setBroken] = React.useState(false);
   const showImage = Boolean(imageUrl) && !broken;
   return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={!onPress}
-      aria-label={`${slot}: ${name}`}
-      className="mt-2 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 enabled:hover:bg-[var(--background-secondary)] enabled:active:scale-[0.99] disabled:cursor-default"
+    <div
+      className="mt-2 flex w-full items-center gap-3 rounded-xl border p-3"
       style={{
         backgroundColor: "var(--card)",
         borderColor: "var(--border)",
       }}
     >
+      <button
+        type="button"
+        onClick={onPress}
+        disabled={!onPress}
+        aria-label={`${slot}: ${name}`}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 enabled:hover:opacity-95 enabled:active:scale-[0.99] disabled:cursor-default"
+      >
       <span
         className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg"
         style={{ backgroundColor: "var(--background-secondary)" }}
@@ -105,7 +111,19 @@ export function PlanMealCardV3({
           </span>
         ) : null}
       </span>
-    </button>
+      </button>
+      {onOpenOptions ? (
+        <button
+          type="button"
+          onClick={onOpenOptions}
+          aria-label={`${slot} meal options`}
+          data-testid="plan-card-opt"
+          className="shrink-0 rounded-lg p-2 text-foreground-tertiary hover:bg-[var(--background-secondary)]"
+        >
+          <MoreHorizontal className="size-[18px]" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 

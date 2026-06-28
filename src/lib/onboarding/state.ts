@@ -89,7 +89,9 @@ export const STEP_IDS = [
   "strategy", // 11 — macro split (parity with legacy nutrition_strategy)
   "reveal", // 12 — aha: show targets before account (ENG-962)
   "signup", // 13 — account after the reveal magic moment (ENG-962)
-  "data-bridges", // 14 — terminal: bring your data with you (Build-40)
+  "data-bridges", // 14 — bring your data with you (Build-40)
+  "upgrade", // 15 — optional skippable Pro trial decision (ENG-1241) — auto-skipped when `onboarding_conversion_funnel_v1` is OFF
+  "first-log", // 16 — guided first-win log prompt (ENG-1233) — terminal when conversion funnel ON
 ] as const;
 
 export type StepId = (typeof STEP_IDS)[number];
@@ -110,6 +112,8 @@ export const STEP_LABELS: Record<StepId, string> = {
   strategy: "Macro style",
   reveal: "Your targets",
   "data-bridges": "Bring your data",
+  upgrade: "Try Pro",
+  "first-log": "First log",
 };
 
 export const TOTAL_STEPS = STEP_IDS.length;
@@ -179,6 +183,22 @@ export type DataBridgeOption =
   | "recipe"
   | "skip"
   | null;
+
+/**
+ * ENG-1241 — trial decision on the conversion-funnel upgrade step.
+ *   - "trial"  — user tapped Start trial (routes to paywall; may complete onboarding)
+ *   - "free"   — user chose Continue on Free
+ *   - null     — hasn't answered / step skipped (flag OFF)
+ */
+export type TrialChoice = "trial" | "free" | null;
+
+/**
+ * ENG-1233 — guided first-log chip on the conversion-funnel terminal step.
+ *   - "breakfast" | "coffee" | "search" — chip tapped
+ *   - "skip"     — advanced without logging
+ *   - null       — hasn't answered / step skipped (flag OFF)
+ */
+export type FirstLogChoice = "breakfast" | "coffee" | "search" | "skip" | null;
 
 /** The whole onboarding state. Flat by design — easier to persist
  *  across tabs/refreshes and easier to round-trip through analytics. */
@@ -275,6 +295,10 @@ export interface OnboardingState {
    * yet answered.
    */
   appChoice: AppChoice;
+  /** ENG-1241 — Pro trial vs free decision when conversion funnel is ON. */
+  trialChoice: TrialChoice;
+  /** ENG-1233 — first-log chip choice when conversion funnel is ON. */
+  firstLogChoice: FirstLogChoice;
 }
 
 /** Default pace per goal — applied when the user hasn't dragged the
@@ -363,6 +387,8 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
   manualTargetsFatG: null,
   dataBridgeChosen: null,
   appChoice: null,
+  trialChoice: null,
+  firstLogChoice: null,
 };
 
 /** Options that change which steps `resolveNextStep` skips. Kept as an
@@ -375,9 +401,14 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
  *  ramps) the `app-choice` step is auto-skipped on both forward and
  *  back navigation, exactly like the pace auto-skip — so the step is
  *  invisible until the flag turns on. Defaults to `false` (skip) so any
- *  caller that doesn't thread the flag keeps the pre-ENG-990 flow. */
+ *  caller that doesn't thread the flag keeps the pre-ENG-990 flow.
+ *
+ *  ENG-1233/1241 — `conversionFunnelEnabled` gates the post-data-bridges
+ *  `upgrade` + `first-log` steps behind `onboarding_conversion_funnel_v1`.
+ *  When OFF, `data-bridges` remains the terminal step (legacy path). */
 export interface ResolveStepOptions {
   appChoiceEnabled?: boolean;
+  conversionFunnelEnabled?: boolean;
 }
 
 /** Resolve the step index a navigation should land on, accounting for
@@ -397,22 +428,40 @@ export function resolveNextStep(
 ): number {
   let next = current + delta;
   const dir = delta > 0 ? 1 : -1;
-  // Loop because skips can chain (e.g. app-choice is adjacent to no
-  // other skip today, but keeping the loop means a future adjacent skip
-  // pair can't strand the user on a hidden step). Bounded by TOTAL_STEPS.
-  for (let guard = 0; guard < TOTAL_STEPS; guard++) {
-    const id = STEP_IDS[next];
+
+  const shouldSkip = (index: number): boolean => {
+    if (index < 0 || index >= TOTAL_STEPS) return true;
+    const id = STEP_IDS[index];
     const skipPace =
       (state.goal === "maintain" || state.weightSkipped) && id === "pace";
     const skipAppChoice =
       options?.appChoiceEnabled !== true && id === "app-choice";
-    if (skipPace || skipAppChoice) {
-      next += dir;
-      continue;
-    }
-    break;
+    const skipConversionFunnel =
+      options?.conversionFunnelEnabled !== true &&
+      (id === "upgrade" || id === "first-log");
+    return skipPace || skipAppChoice || skipConversionFunnel;
+  };
+
+  // Loop because skips can chain (e.g. app-choice is adjacent to no
+  // other skip today, but keeping the loop means a future adjacent skip
+  // pair can't strand the user on a hidden step). Bounded by TOTAL_STEPS.
+  for (let guard = 0; guard < TOTAL_STEPS; guard++) {
+    if (next < 0 || next >= TOTAL_STEPS) break;
+    if (!shouldSkip(next)) break;
+    next += dir;
   }
-  return Math.max(0, Math.min(TOTAL_STEPS - 1, next));
+
+  // Overshot because trailing steps are all skipped (e.g. forward from
+  // `data-bridges` when the conversion funnel is OFF) — stay put.
+  if (next < 0 || next >= TOTAL_STEPS || shouldSkip(next)) {
+    if (dir > 0) return current;
+    for (let i = Math.max(0, Math.min(next, TOTAL_STEPS - 1)); i >= 0; i--) {
+      if (!shouldSkip(i)) return i;
+    }
+    return current;
+  }
+
+  return next;
 }
 
 /**
@@ -420,11 +469,10 @@ export function resolveNextStep(
  * that are actually *visible* for this flow, and the total visible count.
  *
  * The progress bar and "Step N of M" overline must count only the steps
- * the user can reach. Today the sole conditionally-hidden step is
- * `app-choice` (gated by `onboarding-app-choice`). When the flag is OFF
- * it sits at index 1 and every later step's display position is one less
- * than its raw index. Centralised here so web + mobile compute identical
- * numbers and a flag flip can never desync the bar from the flow.
+ * the user can reach. Conditionally-hidden steps:
+ *  - `app-choice` (gated by `onboarding-app-choice`)
+ *  - `upgrade` + `first-log` (gated by `onboarding_conversion_funnel_v1`, ENG-1233/1241)
+ * When a flag is OFF the step is removed from the count.
  *
  * Note: the pace auto-skip (maintain / weightSkipped) is intentionally
  * NOT discounted here — it has always been counted in the displayed
@@ -436,10 +484,17 @@ export function displayPosition(
   options?: ResolveStepOptions,
 ): { index: number; total: number } {
   const hideAppChoice = options?.appChoiceEnabled !== true;
+  const hideConversionFunnel = options?.conversionFunnelEnabled !== true;
   let total = 0;
   let index = 1;
   for (let i = 0; i < TOTAL_STEPS; i++) {
     if (hideAppChoice && STEP_IDS[i] === "app-choice") continue;
+    if (
+      hideConversionFunnel &&
+      (STEP_IDS[i] === "upgrade" || STEP_IDS[i] === "first-log")
+    ) {
+      continue;
+    }
     total++;
     if (i < stepIndex) index++;
   }
@@ -553,11 +608,14 @@ export function canAdvance(
       // lands on `signup`; `data-bridges` remains terminal after auth.
       return true;
     case "data-bridges":
-      // Build-40 (2026-05-01) — terminal step. Every card is
-      // independently optional; "skip" is a valid first-class choice
-      // (see DataBridgeOption). Advance is always permitted so the
-      // user can land on Today after Reveal even if they haven't
-      // touched a single bridge card.
+      // Build-40 (2026-05-01) — terminal when conversion funnel OFF.
+      // When funnel ON, advance continues to upgrade → first-log.
+      return true;
+    case "upgrade":
+      // ENG-1241 — skippable; Continue on Free or Start trial both valid.
+      return true;
+    case "first-log":
+      // ENG-1233 — terminal when funnel ON; skip or chip tap both valid.
       return true;
     default:
       return true;

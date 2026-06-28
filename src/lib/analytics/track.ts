@@ -311,6 +311,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (kill switch). Web twin: src/app/components/suppr/unified-import-sheet.tsx
   // (live-flow SEE-verified). Closes the audit's web-import parity launch-blocker.
   "sloe_v3_unified_import",
+  // ENG-1233/1241 — onboarding conversion funnel (upgrade + first-log steps).
+  "onboarding_conversion_funnel_v1",
 ]);
 
 /**

@@ -12,7 +12,7 @@ import { useAuthSession } from "@/context/AuthSessionContext";
 import { supabase } from "@/lib/supabase/browserClient";
 import { saveLocalProfile } from "@/lib/profile/profileStorage";
 import { type UserProfile } from "@/types/profile";
-import { APP_CHOICE_FLAG, useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, useOnboarding } from "./context";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
@@ -74,11 +74,22 @@ export function WebFlow() {
       go(1);
     }
   }, [isAppChoice, go]);
-  // Build-40 (2026-05-01): `data-bridges` is the new terminal step.
-  // Reveal advances on Continue; data-bridges fires the
-  // `handleComplete` write path on its "Build my plan" CTA. See
-  // `state.ts` STEP_IDS comment for the customer-lens audit drivers.
-  const isTerminal = currentStepId === "data-bridges";
+  const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
+  const isUpgrade = currentStepId === "upgrade";
+  const isFirstLog = currentStepId === "first-log";
+  React.useEffect(() => {
+    if (
+      (isUpgrade || isFirstLog) &&
+      !conversionFunnelEnabled
+    ) {
+      go(isUpgrade ? 1 : -1);
+    }
+  }, [isUpgrade, isFirstLog, conversionFunnelEnabled, go]);
+  // Build-40 (2026-05-01): `data-bridges` is terminal when conversion
+  // funnel OFF. When ON, `first-log` is terminal (upgrade → first-log).
+  const isTerminal = conversionFunnelEnabled
+    ? currentStepId === "first-log"
+    : currentStepId === "data-bridges";
   const [completing, setCompleting] = React.useState(false);
   // completionStatus is set just before window.location.href fires —
   // useful for tests (the bounce navigates immediately so no UI
@@ -517,7 +528,9 @@ export function WebFlow() {
                 // organic surfaces post-launch.
                 const terminalLabel = completing
                   ? "Building your plan…"
-                  : "Build my plan";
+                  : isFirstLog
+                    ? "Go to Today"
+                    : "Build my plan";
                 return (
                   <Button
                     size="lg"

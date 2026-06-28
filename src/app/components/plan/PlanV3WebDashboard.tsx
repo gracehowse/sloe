@@ -53,6 +53,7 @@ export interface PlanV3WebDashboardProps {
   onOpenHousehold: () => void;
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  onOpenMealOptions?: (dayIndex: number, slotIndex: number) => void;
   shoppingItemCount: number;
   servingCount: number;
   onOpenShopping: () => void;
@@ -210,6 +211,7 @@ export function PlanV3WebDashboard({
   onOpenHousehold,
   onOpenMeal,
   onAddToSlot,
+  onOpenMealOptions,
   shoppingItemCount,
   servingCount,
   onOpenShopping,
@@ -260,6 +262,11 @@ export function PlanV3WebDashboard({
                         kcal={Math.round(meal.calories)}
                         isLocked={meal.isLocked}
                         onPress={() => onOpenMeal(dayIndex, slotIndex)}
+                        onOpenOptions={
+                          onOpenMealOptions
+                            ? () => onOpenMealOptions(dayIndex, slotIndex)
+                            : undefined
+                        }
                       />
                     );
                   }

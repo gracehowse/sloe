@@ -33,8 +33,12 @@ export interface PlanV3ConnectedProps {
   onGenerate: () => void;
   onAdjust: () => void;
   onOpenShopping: () => void;
-  /** Open the swap picker for (dayIndex, slotIndex) — powers open + add. */
+  /** Open the swap picker for (dayIndex, slotIndex) — powers add-to-slot. */
   onSwapSlot: (dayIndex: number, slotIndex: number) => void;
+  /** ENG-1238 — open recipe detail from a populated v3 card tap. */
+  onOpenMeal: (dayIndex: number, slotIndex: number) => void;
+  /** ENG-1238 — per-meal action sheet. */
+  onOpenMealOptions: (dayIndex: number, slotIndex: number) => void;
   shoppingItemCount?: number;
   servingCount?: number;
 }
@@ -47,6 +51,8 @@ export function PlanV3Connected({
   onAdjust,
   onOpenShopping,
   onSwapSlot,
+  onOpenMeal,
+  onOpenMealOptions,
   shoppingItemCount = 0,
   servingCount = 1,
 }: PlanV3ConnectedProps) {
@@ -93,8 +99,9 @@ export function PlanV3Connected({
           onAdjust={onAdjust}
           onTemplates={onAdjust}
           onOpenHousehold={onAdjust}
-          onOpenMeal={onSwapSlot}
+          onOpenMeal={onOpenMeal}
           onAddToSlot={onSwapSlot}
+          onOpenMealOptions={onOpenMealOptions}
           shoppingItemCount={shoppingItemCount}
           servingCount={servingCount}
           onOpenShopping={onOpenShopping}
@@ -113,8 +120,9 @@ export function PlanV3Connected({
           onAdjust={onAdjust}
           onTemplates={onAdjust}
           onOpenHousehold={onAdjust}
-          onOpenMeal={onSwapSlot}
+          onOpenMeal={onOpenMeal}
           onAddToSlot={onSwapSlot}
+          onOpenMealOptions={onOpenMealOptions}
           shoppingItemCount={shoppingItemCount}
           servingCount={servingCount}
           onOpenShopping={onOpenShopping}

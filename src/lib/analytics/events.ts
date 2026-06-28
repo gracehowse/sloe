@@ -789,6 +789,12 @@ export const AnalyticsEvents = {
    *  `onboarding_completed` also carries the final `app_choice` for
    *  funnel slicing (chosen-app → activation). */
   onboarding_app_choice: "onboarding_app_choice",
+  /** ENG-1241 — trial vs free on the conversion-funnel upgrade step.
+   *  Payload: { choice: "trial" | "free", platform: "web" | "mobile" } */
+  onboarding_trial_choice: "onboarding_trial_choice",
+  /** ENG-1233 — guided first-log chip on the conversion-funnel terminal step.
+   *  Payload: { choice: "breakfast" | "coffee" | "search" | "skip", platform } */
+  onboarding_first_log_prompt: "onboarding_first_log_prompt",
   /** 2026-05-02 — user picked an MFP CSV file in the importer card.
    *  Closes the MFP-refugee history-bridge gap (P1 customer-lens).
    *  Fires once per file pick on both web and mobile.

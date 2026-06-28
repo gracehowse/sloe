@@ -71,6 +71,7 @@ import { PlanMoveMealDialog } from "./suppr/plan-move-meal-dialog.tsx";
 import { PlanPortionDialog, planMealDisplayMultiplier } from "./suppr/plan-portion-dialog.tsx";
 import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog.tsx";
 import { PlanV3Connected } from "./plan/PlanV3Connected.tsx";
+import { PlanMealActionDialog } from "./plan/PlanMealActionDialog.tsx";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions";
 import {
   DropdownMenu,
@@ -318,6 +319,10 @@ export const MealPlanner = memo(function MealPlanner({
   const [portionTarget, setPortionTarget] = useState<{
     day: number;
     mealIndex: number;
+  } | null>(null);
+  const [v3MealMenu, setV3MealMenu] = useState<{
+    dayIndex: number;
+    slotIndex: number;
   } | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
@@ -1047,6 +1052,26 @@ export const MealPlanner = memo(function MealPlanner({
 
   const plan = mealPlan ?? [];
   const isPlanEmpty = plan.length === 0 || plan.every((d) => d.meals.length === 0);
+
+  const openV3Meal = useCallback(
+    (dayIndex: number, slotIndex: number) => {
+      const dp = plan[dayIndex];
+      const meal = dp?.meals[slotIndex];
+      if (!meal || meal.isPlaceholder) {
+        if (dp) openSwap(dp.day, SLOTS[slotIndex] ?? "snacks", slotIndex);
+        return;
+      }
+      const recipeId = (meal as { recipeId?: string }).recipeId;
+      if (recipeId && onOpenRecipe) onOpenRecipe(recipeId);
+      else if (dp) openSwap(dp.day, SLOTS[slotIndex] ?? "snacks", slotIndex);
+    },
+    [plan, onOpenRecipe],
+  );
+
+  const openV3MealOptions = useCallback((dayIndex: number, slotIndex: number) => {
+    setV3MealMenu({ dayIndex, slotIndex });
+  }, []);
+
   const renderDayCount = plan.length > 0 ? plan.length : 7;
   const days: DayPlan[] = Array.from({ length: renderDayCount }, (_, i) => {
     return plan[i] ?? ({ day: i + 1, meals: [], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } } as DayPlan);
@@ -1071,9 +1096,12 @@ export const MealPlanner = memo(function MealPlanner({
           onGenerate={handleRegenerate}
           onAdjust={() => setTemplatesOpen(true)}
           onOpenShopping={handleShoppingList}
-          onSwapSlot={(day, slotIndex) =>
-            openSwap(day, SLOTS[slotIndex] ?? "snacks", slotIndex)
-          }
+          onSwapSlot={(dayIndex, slotIndex) => {
+            const dp = plan[dayIndex];
+            if (dp) openSwap(dp.day, SLOTS[slotIndex] ?? "snacks", slotIndex);
+          }}
+          onOpenMeal={openV3Meal}
+          onOpenMealOptions={openV3MealOptions}
         />
       ) : (
         <>
@@ -2535,6 +2563,79 @@ export const MealPlanner = memo(function MealPlanner({
           />
         </>
       ) : null}
+      {v3MealMenu ? (() => {
+        const dp = plan[v3MealMenu.dayIndex];
+        const meal = dp?.meals[v3MealMenu.slotIndex];
+        if (!meal || !dp) return null;
+        const slot = SLOTS[v3MealMenu.slotIndex] ?? "snacks";
+        const recipeId = (meal as { recipeId?: string }).recipeId;
+        return (
+          <PlanMealActionDialog
+            open
+            meal={meal}
+            onClose={() => setV3MealMenu(null)}
+            onLogToday={() => {
+              handleLogToday(meal);
+              setV3MealMenu(null);
+            }}
+            onViewRecipe={() => {
+              if (recipeId) onOpenRecipe?.(recipeId);
+              setV3MealMenu(null);
+            }}
+            onSwap={() => {
+              openSwap(dp.day, slot, v3MealMenu.slotIndex);
+              setV3MealMenu(null);
+            }}
+            onChangePortion={() => {
+              setPortionTarget({ day: dp.day, mealIndex: v3MealMenu.slotIndex });
+              setV3MealMenu(null);
+            }}
+            onMove={() => {
+              setMoveFrom({ day: dp.day, slotIndex: v3MealMenu.slotIndex });
+              setV3MealMenu(null);
+            }}
+            onRemove={() => {
+              setMealPlan((prev) => {
+                if (!prev) return prev;
+                return prev.map((row, di) => {
+                  if (di !== v3MealMenu.dayIndex) return row;
+                  const meals = row.meals.map((m, mi) =>
+                    mi === v3MealMenu.slotIndex
+                      ? {
+                          ...m,
+                          recipeTitle: "",
+                          calories: 0,
+                          protein: 0,
+                          carbs: 0,
+                          fat: 0,
+                          isPlaceholder: true,
+                        }
+                      : m,
+                  );
+                  const totals = meals.reduce(
+                    (acc, m) => ({
+                      calories: acc.calories + (Number(m.calories) || 0),
+                      protein: acc.protein + (Number(m.protein) || 0),
+                      carbs: acc.carbs + (Number(m.carbs) || 0),
+                      fat: acc.fat + (Number(m.fat) || 0),
+                    }),
+                    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                  );
+                  return { ...row, meals, totals };
+                });
+              });
+              setV3MealMenu(null);
+              toast.success("Removed from plan");
+            }}
+            lockEnabled={mealLockEnabled}
+            isLocked={Boolean(meal.isLocked)}
+            onToggleLock={() => {
+              toggleMealLock(dp.day, v3MealMenu.slotIndex, slot);
+              setV3MealMenu(null);
+            }}
+          />
+        );
+      })() : null}
     </div>
   );
 });

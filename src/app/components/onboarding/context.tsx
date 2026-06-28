@@ -26,6 +26,9 @@ import { isFeatureEnabled } from "@/lib/analytics/track";
  *  flag ramps in PostHog. Same flag name on web + mobile. */
 export const APP_CHOICE_FLAG = "onboarding-app-choice";
 
+/** ENG-1233/1241 — conversion funnel (upgrade + first-log after data-bridges). */
+export const CONVERSION_FUNNEL_FLAG = "onboarding_conversion_funnel_v1";
+
 /**
  * OnboardingProvider — single source of state for the v2 onboarding
  * flow on web. Exposes the same hook-shaped API the mobile flow will
@@ -163,6 +166,9 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   const appChoiceEnabled = isFeatureEnabled(APP_CHOICE_FLAG);
   const appChoiceEnabledRef = React.useRef(appChoiceEnabled);
   appChoiceEnabledRef.current = appChoiceEnabled;
+  const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
+  const conversionFunnelEnabledRef = React.useRef(conversionFunnelEnabled);
+  conversionFunnelEnabledRef.current = conversionFunnelEnabled;
 
   const set = React.useCallback<OnboardingContext["set"]>((patch) => {
     setState((prev) => ({
@@ -176,6 +182,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       ...prev,
       step: resolveNextStep(prev.step, delta, prev, {
         appChoiceEnabled: appChoiceEnabledRef.current,
+        conversionFunnelEnabled: conversionFunnelEnabledRef.current,
       }),
     }));
   }, []);
@@ -210,7 +217,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   // the bar from the flow.
   const { index: displayIndex, total: displayTotal } = displayPosition(
     state.step,
-    { appChoiceEnabled },
+    { appChoiceEnabled, conversionFunnelEnabled },
   );
 
   const value = React.useMemo<OnboardingContext>(
