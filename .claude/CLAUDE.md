@@ -183,35 +183,13 @@ Common reasons local-vs-CI diverge:
   may have more. Check `.github/workflows/ci.yml` for the canonical
   env set.
   
-## Notion mirroring — non-negotiable
+## Notion mirroring — discontinued (2026-06-28)
 
-Grace runs a Notion workspace ("Suppr HQ") that mirrors the operating view of Suppr. The repo is the canonical source of truth for code, docs, decisions, and the roadmap. Notion holds the higher-level operating layer: working task list, decisions log, roadmap state, content calendar, vendors, runway.
-
-**When you ship a feature, resolve a decision, or change roadmap state in this repo, mirror the change to Notion in the SAME turn.** Don't wait for Grace to ask.
-
-Notion workspace anchors:
-
-- Suppr HQ home: https://www.notion.so/34859b415030817a8232d802fc9acc78
-- Company: https://www.notion.so/34859b415030810491ccc8a4d52a319e
-- Product & engineering: https://www.notion.so/34859b41503081e084d3f710df3918b3
-- Growth & marketing: https://www.notion.so/34859b41503081b19a6afac92503ce68
-- Operations & finance: https://www.notion.so/34859b415030817eb0ddd934d8b86287
-- Tasks DB: https://www.notion.so/55ab62d91aa9488796ad84a0f14672a3 (data source `collection://a10d55ea-64fe-4468-8a92-65c2b5e6d6df`)
-- Decisions log DB: https://www.notion.so/731ee63201584879b311a69cea4dc523 (data source `collection://ffbda5f6-6d65-4b18-8d3f-94c6f0a8837c`)
-- Roadmap DB: https://www.notion.so/6d5e815b6a4c404d845d8a48f19ae673 (data source `collection://c6e2c4f1-5b3b-4c3f-8dff-7c026a453749`)
-- Content calendar DB: https://www.notion.so/312e13d7cb01432d9452b7cc3cd05e35 (data source `collection://8968ab9f-c355-4e2d-beb5-e8afe4cd9998`)
-- Vendors & subscriptions DB: https://www.notion.so/073c8f08a5464316a74b91da49cf74af (data source `collection://f9fd3f22-ffda-4687-88b1-b32368a3f57b`)
-
-Mirror rules:
-
-- New file in `docs/decisions/` → add a row to the Decisions log with title, date, area, status (Resolved unless explicitly tentative), one-line summary, and the GitHub blob URL to the repo file.
-- Phase/state change or new item in `docs/product-roadmap.md` → add or update the matching Roadmap row. Keep state values in `{Shipped, In progress, Open, Deferred}`.
-- Feature fully shipped (implementation + tests + docs + cross-platform review) → mark matching Roadmap row as Shipped and close any matching open Tasks (Status → Done).
-- New paid vendor or subprocessor added to the stack → add to Vendors & subscriptions with category, plan, monthly cost (£), renewal, critical?, URL.
-- New marketing asset drafted/published → add to Content calendar with channel, status, publish date, asset link.
-- **Never duplicate verbose repo docs into Notion.** Link back to repo paths (e.g. `docs/decisions/...`) as the source of truth.
-
-If the Notion MCP isn't connected in a session, do the repo work as normal and list the pending Notion mirror actions at the end of the response so Grace can re-run them when connected.
+**Do not mirror anything to Notion.** Grace's call (2026-06-28): the repo and
+Linear are the canonical sources of truth; the Notion operating layer is no
+longer maintained. Do not add decision-log rows, roadmap updates, task syncs,
+vendor/content rows, or any "pending Notion mirror" notes. The prior
+"mirror in the same turn" rule is void.
 
 ## Linear updates — non-negotiable
 
