@@ -1,6 +1,5 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -98,12 +97,13 @@ export function SupprTabBar({
   return (
     // ENG-1247 — the v3 `.tabbar` (Sloe-App.html L1697) is a FLOATING ROUNDED
     // PILL, not an edge-to-edge square bar: inset 14px L/R, lifted off the
-    // bottom, fully rounded, 1px border + a soft warm shadow so it floats above
+    // bottom, fully rounded, 1px border + a soft tight shadow so it floats above
     // content. The outer View is the react-navigation container (transparent,
-    // full-bleed); the pill sits at its bottom and the raised Log button
-    // protrudes from centre — so the pill must NOT clip (no `overflow:hidden`).
-    // The blur lets content show faintly through; the ~88% theme wash keeps the
-    // tabs legible + warm (a cold chrome material read as "un-updated").
+    // full-bleed); the pill sits at its bottom. The pill is a SOLID surface
+    // (colors.card) — we deliberately dropped expo-blur: its native iOS BlurView
+    // ignored the rounded clip (frosted material rendered as a full-width SQUARE
+    // block behind the pill) and cached across hot reloads. A solid floating
+    // pill is the reliable, standard pattern.
     //
     // ⚠️ The root height MUST be a fixed pixel value matching the `_layout`
     // tabBarStyle.height — NOT `flex:1` / `height:'100%'`. A non-deterministic
@@ -121,41 +121,39 @@ export function SupprTabBar({
         paddingBottom: Math.max(safeInsets.bottom, 8) + 12,
       }}
     >
-      {/* ENG-1247 — the pill height (72pt) is pinned on a PLAIN View, NOT the
-          BlurView. A plain View re-measures reliably on hot reload; expo-blur's
-          BlurView caches its mount-time height and does NOT re-measure, so an
-          explicit height on the BlurView left the 56pt FAB bisected by the pill
-          edge after any hot reload (Grace flagged it repeatedly while the dev
-          sim only hot-reloaded). The plain View owns layout; the BlurView fills
-          it via flex:1. 72 = 56 FAB + 8·2 padding; fits the outer View's
-          88+inset − (inset+12) = 76 budget. */}
+      {/* ENG-1247 — shadow wrapper. Pins the pill height (72 = 56 FAB + 8·2
+          padding; fits the outer View's 88+inset − (inset+12) = 76 budget) and
+          carries the float shadow. Separate from the clip layer below because the
+          clip uses overflow:hidden (rounds the corners), which would also clip
+          this shadow. */}
       <View
         style={{
           height: 72,
           borderRadius: Radius.full,
-          // soft warm float — the shadow lives on the PLAIN wrapper, not the
-          // BlurView, because the BlurView now uses overflow:hidden (to clip the
-          // blur to the rounded pill) and overflow:hidden would clip its own
-          // shadow too. v3 `box-shadow: 0 12px 30px rgba(36,23,51,.16)`.
+          // soft, TIGHT float shadow on the plain wrapper. Kept small in spread
+          // (radius 12, offset 6) so it reads as a clean drop under the pill and
+          // does NOT bloom into a full-width halo/"block" behind it (the pill is
+          // only inset 14, so a wide shadow reaches the screen edges). ENG-1247.
           shadowColor: "#241733",
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.16,
-          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.12,
+          shadowRadius: 12,
         }}
       >
-      {/* CLIP layer — borderRadius + overflow:hidden on a PARENT View, NOT on the
-          BlurView itself. expo-blur's native blur on iOS ignores its OWN
-          overflow, so the blur rendered as a SQUARE around the rounded pill
-          ("rounded bar inside a square box", Grace flagged it, ENG-1247). A
-          parent View with overflow:hidden clips the absolute-fill BlurView to the
-          rounded pill. This View also owns the flex row + border + padding. */}
+      {/* Pill surface — solid colors.card, rounded, hairline border, overflow
+          hidden, and the flex row that lays out the 4 tabs + raised FAB. */}
       <View
         style={{
           flex: 1,
           flexDirection: "row",
-          // v3 `.tabbar` is `align-items: flex-end`; the 56pt FAB sits CONTAINED,
-          // centred in the 72pt pill (see LogTabBarButton). ENG-1247.
+          // v3 floating pill — a clean SOLID surface on the page. Dropped
+          // expo-blur: its native BlurView ignored the rounded clip (rendered the
+          // frosted material as a full-width SQUARE block behind the pill) and
+          // cached across hot reloads — three separate bugs over many rounds
+          // (Grace, ENG-1247). A solid floating pill is the reliable, standard
+          // pattern; the FAB sits CONTAINED + centred (see LogTabBarButton).
           alignItems: "flex-end",
+          backgroundColor: colors.card,
           borderRadius: Radius.full,
           overflow: "hidden",
           borderWidth: StyleSheet.hairlineWidth,
@@ -164,23 +162,6 @@ export function SupprTabBar({
           paddingHorizontal: 8,
         }}
       >
-        <BlurView
-          pointerEvents="none"
-          intensity={resolved === "dark" ? 56 : 44}
-          tint={resolved === "dark" ? "dark" : "light"}
-          style={StyleSheet.absoluteFill}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: colors.background,
-              opacity: 0.88,
-              borderRadius: Radius.full,
-            },
-          ]}
-        />
         {visibleRoutes.map((route, visibleIndex) => {
         const { options } = descriptors[route.key];
         const realIndex = state.routes.findIndex((r) => r.key === route.key);
