@@ -60,7 +60,7 @@
   "apps/mobile/components/today/NorthStarBlock.tsx": 842,
   "apps/mobile/components/today/onboarding-nudges/OnboardingNudgeBanner.tsx": 453,
   "apps/mobile/components/today/TodayActivityBonusCard.tsx": 749,
-  "apps/mobile/components/today/TodayEditMealModal.tsx": 745,
+  "apps/mobile/components/today/TodayEditMealModal.tsx": 712,
   "apps/mobile/components/today/TodayHeroRing.tsx": 459,
   "apps/mobile/components/today/TodayMealsSection.tsx": 1705,
   "apps/mobile/components/today/TodayWeekView.tsx": 643,
