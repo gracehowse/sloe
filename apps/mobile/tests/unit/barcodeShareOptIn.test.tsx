@@ -21,7 +21,7 @@ vi.mock("@/lib/verifyRecipe", () => ({
 // "supabaseUrl is required" on import. The consent write is shared-module logic
 // tested elsewhere; here it just needs to succeed so the share flow proceeds.
 vi.mock("@/lib/supabase", () => ({ supabase: {} }));
-const setCommunityShareConsent = vi.fn(async () => ({ ok: true }));
+const setCommunityShareConsent = vi.fn();
 vi.mock("@suppr/shared/foodCorrection/communityShareConsent", () => ({
   setCommunityShareConsent: (...args: unknown[]) => setCommunityShareConsent(...args),
 }));
@@ -42,7 +42,13 @@ const ENTRY = {
 };
 
 describe("BarcodeShareOptIn", () => {
-  beforeEach(() => submitFoodCorrection.mockReset());
+  beforeEach(() => {
+    submitFoodCorrection.mockReset();
+    setCommunityShareConsent.mockReset();
+    // Consent write succeeds by default so the share flow reaches the submit;
+    // the consent gate itself is covered in the shared-module tests.
+    setCommunityShareConsent.mockResolvedValue({ ok: true });
+  });
 
   it("renders the legal-reviewed opt-in copy", () => {
     const { getByText } = render(<BarcodeShareOptIn entry={ENTRY} userId="u1" onDone={() => {}} />);
