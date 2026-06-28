@@ -117,8 +117,8 @@ export function SupprTabBar({
       style={{
         height: 88 + Math.max(safeInsets.bottom, 8),
         justifyContent: "flex-end",
-        paddingHorizontal: 14,
-        paddingBottom: Math.max(safeInsets.bottom, 8) + 12,
+        paddingHorizontal: 16,
+        paddingBottom: Math.max(safeInsets.bottom, 8) + 10,
         // TRANSPARENT — the pill floats and the real page shows through the
         // inset margins around/below it. (The grey "block" that used to show here
         // was react-navigation's DefaultTheme scene background #F2F2F2; fixed at
@@ -135,14 +135,17 @@ export function SupprTabBar({
         style={{
           height: 72,
           borderRadius: Radius.full,
-          // soft, TIGHT float shadow on the plain wrapper. Kept small in spread
-          // (radius 12, offset 6) so it reads as a clean drop under the pill and
-          // does NOT bloom into a full-width halo/"block" behind it (the pill is
-          // only inset 14, so a wide shadow reaches the screen edges). ENG-1247.
-          shadowColor: "#241733",
-          shadowOffset: { width: 0, height: 6 },
+          // CONTAINED float shadow. The pill is inset 16px L/R; the shadow blur
+          // radius MUST stay below that inset or it blooms past the pill into a
+          // full-width faint-grey panel that reads as a "block behind the bar"
+          // (Grace flagged this repeatedly, ENG-1247 — bounds-tinting confirmed
+          // the only thing rendering behind the pill was this shadow). radius 10
+          // < inset 16 keeps the drop tucked directly under the pill. Neutral
+          // near-black at low opacity reads as a clean lift, not a plum haze.
+          shadowColor: "#000000",
+          shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.1,
-          shadowRadius: 12,
+          shadowRadius: 10,
         }}
       >
       {/* Pill surface — solid colors.card, rounded, hairline border, overflow
