@@ -74,7 +74,7 @@
   "src/app/components/Library.tsx": 695,
   "src/app/components/MacroDetailPanel.tsx": 480,
   "src/app/components/MealPlanner.tsx": 2539,
-  "src/app/components/NutritionTracker.tsx": 4193,
+  "src/app/components/NutritionTracker.tsx": 4229,
   "src/app/components/onboarding/steps/reveal.tsx": 507,
   "src/app/components/onboarding/web-flow.tsx": 561,
   "src/app/components/Profile.tsx": 1279,

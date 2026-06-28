@@ -126,6 +126,11 @@ import {
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
+import { ShareCommunityDialog } from "./suppr/ShareCommunityDialog";
+import {
+  submitFoodCorrection,
+  type FoodCorrectionInput,
+} from "../../lib/foodCorrection/submitFoodCorrection";
 import { EditMealDialog } from "./suppr/edit-meal-dialog";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
@@ -351,6 +356,10 @@ export const NutritionTracker = memo(function NutritionTracker({
   // screen mode.
   const [slotNutritionTarget, setSlotNutritionTarget] = useState<string | null>(null);
   const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
+  // ENG-1247 — community-contribution opt-in: set after a not-found barcode is
+  // saved as a private custom food (when `barcode_community_contribution` is on)
+  // to open the share dialog. null = closed.
+  const [shareCommunityInput, setShareCommunityInput] = useState<FoodCorrectionInput | null>(null);
   const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
   // ENG-751 — persisted AI/photo/voice per-item snapshot rows for the open
   // day's entries. Gated by the display flag; flag-OFF leaves this empty so the
@@ -3640,12 +3649,39 @@ export const NutritionTracker = memo(function NutritionTracker({
               /* analytics noop */
             }
             toast.success("Custom food saved. Scan again to log it.");
+            // ENG-1247 — offer the community-contribution opt-in (flag-gated,
+            // barcode only). The private custom food is already saved above; this
+            // is the explicit, separate opt-in to ALSO share it to user_foods.
+            if (isFeatureEnabled("barcode_community_contribution") && payload.barcode) {
+              setShareCommunityInput({
+                barcode: payload.barcode,
+                name: payload.name,
+                calories: payload.calories,
+                protein: payload.protein,
+                carbs: payload.carbs,
+                fat: payload.fat,
+                fiberG: payload.fiber,
+                sugarG: payload.sugarG,
+                sodiumMg: payload.sodiumMg,
+                saturatedFatG: payload.saturatedFatG,
+                servingSizeG: payload.baseGrams,
+              });
+            }
           } catch (err) {
             toast.error(
               err instanceof Error ? err.message : "Couldn't save custom food",
             );
           }
         }}
+      />
+
+      {/* ENG-1247 — community-contribution opt-in, opened after a not-found
+          barcode is saved as a custom food (flag-gated). Writes to user_foods
+          via the web submitFoodCorrection with the authed client + RLS. */}
+      <ShareCommunityDialog
+        input={shareCommunityInput}
+        onShare={(input) => submitFoodCorrection(supabase, authedUserId ?? "", input)}
+        onClose={() => setShareCommunityInput(null)}
       />
 
       {/* Batch 5.13 — Voice log (Pro). Shared review/edit flow. */}
