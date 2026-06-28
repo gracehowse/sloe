@@ -120,6 +120,14 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: accent.primary,
         tabBarInactiveTintColor: colors.tabIconDefault,
+        // ENG-1247 — kill the default tab-bar BACKGROUND layer. On iOS,
+        // react-navigation/expo-router renders a translucent system material
+        // behind the bar; it's a SEPARATE layer from `tabBarStyle.backgroundColor`
+        // (so `backgroundColor:'transparent'` does NOT remove it). It was the
+        // full-width grey "block" behind our floating pill — surviving every
+        // SupprTabBar change because it isn't ours. `() => null` removes it so the
+        // pill floats over the page cleanly.
+        tabBarBackground: () => null,
         // The custom tab bar reads its own height/padding from
         // `useSafeAreaInsets`, but we keep these here as defensive
         // defaults in case any nested screen re-instantiates the
