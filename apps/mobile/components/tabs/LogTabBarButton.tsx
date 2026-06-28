@@ -77,8 +77,14 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
       pointerEvents="box-none"
       style={{
         flex: 1,
+        // Stretch the slot to the FULL pill height (pill is pinned to 72pt in
+        // SupprTabBar) and CENTRE the 56pt circle in it. Bottom-aligning it left
+        // the FAB poking ~15% above the pill edge (ENG-1247, Grace flagged 3×);
+        // centred in the 56pt content box (72 − 8·2 padding) → contained with
+        // ~8pt of pill above and below.
+        alignSelf: "stretch",
         alignItems: "center",
-        justifyContent: "flex-end",
+        justifyContent: "center",
       }}
     >
       <Pressable
@@ -90,7 +96,6 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
         hitSlop={8}
         style={({ pressed }) => [
           {
-            marginBottom: 2,
             width: 56,
             height: 56,
             borderRadius: 28,

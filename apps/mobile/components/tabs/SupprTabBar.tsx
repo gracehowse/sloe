@@ -127,10 +127,17 @@ export function SupprTabBar({
         style={{
           flexDirection: "row",
           // v3 `.tabbar` is `align-items: flex-end` — the tab glyphs + labels
-          // bottom-align, and the 56pt FAB (the tallest child) sets the pill
-          // height + sits CONTAINED, bottom-aligned, with the tabs (not raised
-          // out the top/bottom). ENG-1247.
+          // bottom-align, and the 56pt FAB sits CONTAINED, bottom-aligned with
+          // the tabs (not raised out the top/bottom). ENG-1247.
           alignItems: "flex-end",
+          // EXPLICIT height — `expo-blur`'s native BlurView does NOT flex-grow to
+          // its tallest child the way a plain View does, so it collapsed toward
+          // the tab-glyph height (~54pt) and the bottom-aligned 56pt FAB
+          // overflowed the top (~10pt) → the "+ bisected by the pill edge" bug
+          // (ENG-1247, Grace flagged 3×). Pin the pill to fully contain the FAB:
+          // 56 (FAB) + 8+8 (paddingVertical) = 72. Fits the outer View's
+          // available space (88+inset − (inset+12) = 76).
+          height: 72,
           borderRadius: Radius.full,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
