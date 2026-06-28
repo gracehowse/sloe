@@ -4,8 +4,8 @@
  * Reference: `docs/ux/redesign/v3/Sloe-App.html` `RecipeDetail` (hero title
  * overlay L4336–4341, standfirst L4353, sticky CTA L4418–4421).
  *
- * The v3 conformance pass ships behind the default-OFF flag
- * `recipe_detail_v3_conformance` (old path alive in the `else`). The screen +
+ * The v3 conformance pass ships behind `recipe_detail_v3_conformance`
+ * (default-ON in REDESIGN_DEFAULT_ON; legacy path alive in the `else`). The screen +
  * its extracted components are 2k+ LOC wired to Supabase / expo-router / cook
  * mode, so — following the `recipeDetailV3SourcePins.test.ts` idiom — we pin the
  * structural contract via source-string assertions against the screen AND its
@@ -27,10 +27,10 @@ const SERVINGS_FOOTER = read("../../components/recipe/RecipeServingsFooter.tsx")
 const ANALYTICS = read("../../lib/analytics.ts");
 
 describe("ENG-1247 — flag registration (mobile)", () => {
-  it("registers recipe_detail_v3_conformance as a known default-OFF flag", () => {
+  it("registers recipe_detail_v3_conformance in REDESIGN_DEFAULT_ON", () => {
     const block = ANALYTICS.slice(
-      ANALYTICS.indexOf("export const KNOWN_DEFAULT_OFF_FLAGS"),
-      ANALYTICS.indexOf("] as const", ANALYTICS.indexOf("KNOWN_DEFAULT_OFF_FLAGS")),
+      ANALYTICS.indexOf("REDESIGN_DEFAULT_ON = new Set<string>(["),
+      ANALYTICS.indexOf("]);", ANALYTICS.indexOf("REDESIGN_DEFAULT_ON")),
     );
     expect(block).toContain('"recipe_detail_v3_conformance"');
   });

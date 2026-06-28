@@ -40,6 +40,9 @@ const GATE_15_FLAGS = [
   "card_cohesion_white_v1",
   "log_sheet_nl_text_v1",
   "log-sheet-slot-selector",
+  "recipe_detail_v3_conformance",
+  "discover_creator_rail_v1",
+  "coach_full_screen_v1",
 ] as const;
 
 describe("redesign flags are un-gated (web)", () => {

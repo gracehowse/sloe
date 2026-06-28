@@ -443,6 +443,25 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // Mobile-only for now (web Plan v3 is a later block). Off → the legacy Plan
   // header/chrome (kill switch). Per-slot cards + meal-filter = Block 3.
   "sloe_v3_plan",
+  // ENG-1225 #14 / ENG-1239 — v3 Discover creator plane (rail + Following feed).
+  // Default-on; off → legacy feed without creator surfaces.
+  "discover_creator_rail_v1",
+  // ENG-1247 — LogHub quick-action row. Default-on; off → standalone Copy yesterday.
+  "loghub_quick_actions_v1",
+  // ENG-1247 — v3 recipe-detail prototype pass. Default-on; off → legacy layout.
+  "recipe_detail_v3_conformance",
+  // ENG-1250/1251 — barcode community food share opt-in. Default-on; off → hidden.
+  "barcode_community_contribution",
+  // ENG-1233 — onboarding conversion funnel. Default-on; off → legacy onboarding.
+  "onboarding_conversion_funnel_v1",
+  // ENG-1240 — full-screen Coach surface. Default-on; off → redirect / hide route.
+  "coach_full_screen_v1",
+  // ENG-1242 — batch cook planner sheet. Default-on; off → no sheet.
+  "batch_cook_planner_v1",
+  // ENG-1237 — body composition trends card. Default-on; off → hidden.
+  "body_composition_trends_v1",
+  // ENG-1236 — referral / invite-for-Pro loop. Default-on; off → hidden.
+  "referral_invite_pro_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
@@ -462,35 +481,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   single self-named fallback line. The WRITE path (snapshot capture) is
  *   always-on + defensive; this flag gates only the read/display so data can
  *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
- * - `discover_creator_rail_v1` (ENG-1225 #14) — the v3 Discover creator plane:
- *   the creator rail + mobile Following feed (web twin: rail + featured hero).
- *   Default OFF — ships dark pending Grace's SEE-approval on the sim, and falls
- *   back to a presentation-only SEED creator set while the `creators` table is
- *   empty pre-launch (real creators always win). Keep in sync with web.
- * - `loghub_quick_actions_v1` (ENG-1247) — the v3 LogHub quick-action row
- *   (Log usual / Copy yesterday / Duplicate day) shown above the browse tabs
- *   in the Log-a-meal sheet. OFF → the legacy standalone "Copy yesterday" row
- *   renders alone (the old path). Gates the new structure only; every action
- *   reuses an existing commit path. Keep in sync with web.
- * - `recipe_detail_v3_conformance` (ENG-1247) — the v3 recipe-detail prototype
- *   pass: hero title OVERLAY (kicker + serif H1 + clock·flame·serves meta row)
- *   when the recipe has a photo (no-photo falls back to the current title-below
- *   layout), the editorial serif standfirst headnote, and the consolidated
- *   sticky CTA bar (yield stepper · Cook Mode outline · Log filled primary).
- *   OFF → the current title-below + action-pill-Log + Cook-Mode-only footer.
- *   Keep in sync with web.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "nutrition_entry_ingredients_v1",
-  "discover_creator_rail_v1",
-  "loghub_quick_actions_v1",
-  "recipe_detail_v3_conformance",
-  "barcode_community_contribution",
-  "onboarding_conversion_funnel_v1",
-  "coach_full_screen_v1",
-  "batch_cook_planner_v1",
-  "body_composition_trends_v1",
-  "referral_invite_pro_v1",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

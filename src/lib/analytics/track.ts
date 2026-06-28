@@ -311,6 +311,29 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (kill switch). Web twin: src/app/components/suppr/unified-import-sheet.tsx
   // (live-flow SEE-verified). Closes the audit's web-import parity launch-blocker.
   "sloe_v3_unified_import",
+  // ENG-1225 #14 / ENG-1239 — v3 Discover creator plane (rail + featured hero +
+  // Following feed). Default-on; off → legacy feed without creator surfaces.
+  "discover_creator_rail_v1",
+  // ENG-1247 — LogHub quick-action row (Log usual / Copy yesterday / Duplicate day).
+  // Default-on; off → standalone "Copy yesterday" row only.
+  "loghub_quick_actions_v1",
+  // ENG-1247 — v3 recipe-detail prototype pass (hero overlay + standfirst + sticky CTA).
+  // Default-on; off → title-below + legacy action-pill row.
+  "recipe_detail_v3_conformance",
+  // ENG-1250/1251 — barcode community food share opt-in + consent withdrawal.
+  // Default-on; off → no community contribution path.
+  "barcode_community_contribution",
+  // ENG-1233 — onboarding conversion funnel (skippable upgrade + first-log steps).
+  // Default-on; off → legacy onboarding path.
+  "onboarding_conversion_funnel_v1",
+  // ENG-1240 — full-screen Coach surface. Default-on; off → redirect / hide route.
+  "coach_full_screen_v1",
+  // ENG-1242 — batch cook scale + portion into planner. Default-on; off → no sheet.
+  "batch_cook_planner_v1",
+  // ENG-1237 — body composition trends card (Pro-gated). Default-on; off → hidden.
+  "body_composition_trends_v1",
+  // ENG-1236 — referral / invite-for-Pro loop in Settings. Default-on; off → hidden.
+  "referral_invite_pro_v1",
 ]);
 
 /**
@@ -340,40 +363,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   change on a core surface, ramps via PostHog after Grace SEEs it. WEB-ONLY —
  *   mobile Settings is a separate native surface, so there is NO mobile mirror
  *   (mobile omits web-only default-off flags, like the landing hero).
- * - `discover_creator_rail_v1` (ENG-1225 #14) — the v3 Discover creator plane:
- *   the creator rail + web featured hero + mobile Following feed. Default OFF —
- *   it ships dark pending Grace's SEE-approval on the sim, and it currently
- *   falls back to a presentation-only SEED creator set (the `creators` table is
- *   empty pre-launch). Real creators always win when they exist. Keep in sync
- *   with mobile. Mirror surfaces: `DiscoverFeed.tsx` / `discover.tsx`.
- * - `loghub_quick_actions_v1` (ENG-1247) — the v3 LogHub quick-action row
- *   (Log usual / Copy yesterday / Duplicate day) shown above the browse tabs
- *   in the Log-a-meal sheet. Default OFF → the legacy standalone "Copy
- *   yesterday" row renders alone (the old path). Gates the new structure only;
- *   every action reuses an existing commit path. Keep in sync with mobile.
- *   Mirror surfaces: `suppr/log-sheet.tsx` / `today/LogSheet.tsx`.
- * - `recipe_detail_v3_conformance` (ENG-1247) — the v3 recipe-detail prototype
- *   pass: hero title OVERLAY (kicker + serif H1 + clock·flame·serves meta row)
- *   when the recipe has a photo (no-photo falls back to the current title-below
- *   layout), the editorial serif standfirst headnote, and the consolidated
- *   sticky CTA bar (yield stepper · Cook Mode outline · Log filled primary). On
- *   web this also adds the REAL Log-to-today CTA (web had only a fake "Marked as
- *   made!" toast before). OFF → the current title-below + Cook/Log/Edit pill row.
- *   Keep in sync with mobile. Mirror surfaces: `RecipeDetail.tsx` / `recipe/[id].tsx`.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "landing_hero_hybrid_v1",
   "nutrition_entry_ingredients_v1",
   "sloe_v3_settings",
-  "discover_creator_rail_v1",
-  "loghub_quick_actions_v1",
-  "recipe_detail_v3_conformance",
-  "barcode_community_contribution",
-  "onboarding_conversion_funnel_v1",
-  "coach_full_screen_v1",
-  "batch_cook_planner_v1",
-  "body_composition_trends_v1",
-  "referral_invite_pro_v1",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

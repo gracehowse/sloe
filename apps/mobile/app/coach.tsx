@@ -1,4 +1,4 @@
-import { Redirect, Stack, useRouter, type Href } from "expo-router";
+import { Stack, useRouter, type Href } from "expo-router";
 import { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -6,7 +6,6 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { Spacing, Type } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { isFeatureEnabled } from "@/lib/analytics";
 import { useCoach } from "@/lib/useCoach";
 import { useSavedLibraryRecipes } from "@/lib/recipes";
 
@@ -16,10 +15,6 @@ export default function CoachScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const { recipes } = useSavedLibraryRecipes(userId);
-
-  if (!isFeatureEnabled("coach_full_screen_v1")) {
-    return <Redirect href="/(tabs)" />;
-  }
 
   const library = useMemo(
     () =>

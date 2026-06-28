@@ -3,9 +3,7 @@
 import Link from "next/link";
 
 import { useAppData } from "@/context/AppDataContext";
-import { isFeatureEnabled } from "@/lib/analytics/track";
 import { useCoach } from "@/lib/today/useCoach";
-import { redirect } from "next/navigation";
 
 const COACH_CHIPS = [
   "What should I eat next?",
@@ -14,10 +12,6 @@ const COACH_CHIPS = [
 ] as const;
 
 export default function CoachPage() {
-  if (!isFeatureEnabled("coach_full_screen_v1")) {
-    redirect("/");
-  }
-
   const { savedRecipesForLibrary, nutritionTargets, mealsForSelectedDate } = useAppData();
 
   const totals = mealsForSelectedDate.reduce(
