@@ -129,10 +129,27 @@ export function SupprTabBar({
           sim only hot-reloaded). The plain View owns layout; the BlurView fills
           it via flex:1. 72 = 56 FAB + 8·2 padding; fits the outer View's
           88+inset − (inset+12) = 76 budget. */}
-      <View style={{ height: 72 }}>
-      <BlurView
-        intensity={resolved === "dark" ? 56 : 44}
-        tint={resolved === "dark" ? "dark" : "light"}
+      <View
+        style={{
+          height: 72,
+          borderRadius: Radius.full,
+          // soft warm float — the shadow lives on the PLAIN wrapper, not the
+          // BlurView, because the BlurView now uses overflow:hidden (to clip the
+          // blur to the rounded pill) and overflow:hidden would clip its own
+          // shadow too. v3 `box-shadow: 0 12px 30px rgba(36,23,51,.16)`.
+          shadowColor: "#241733",
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.16,
+          shadowRadius: 16,
+        }}
+      >
+      {/* CLIP layer — borderRadius + overflow:hidden on a PARENT View, NOT on the
+          BlurView itself. expo-blur's native blur on iOS ignores its OWN
+          overflow, so the blur rendered as a SQUARE around the rounded pill
+          ("rounded bar inside a square box", Grace flagged it, ENG-1247). A
+          parent View with overflow:hidden clips the absolute-fill BlurView to the
+          rounded pill. This View also owns the flex row + border + padding. */}
+      <View
         style={{
           flex: 1,
           flexDirection: "row",
@@ -140,17 +157,19 @@ export function SupprTabBar({
           // centred in the 72pt pill (see LogTabBarButton). ENG-1247.
           alignItems: "flex-end",
           borderRadius: Radius.full,
+          overflow: "hidden",
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
           paddingVertical: 8,
           paddingHorizontal: 8,
-          // soft warm float — v3 `box-shadow: 0 12px 30px rgba(36,23,51,.16)`.
-          shadowColor: "#241733",
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.16,
-          shadowRadius: 16,
         }}
       >
+        <BlurView
+          pointerEvents="none"
+          intensity={resolved === "dark" ? 56 : 44}
+          tint={resolved === "dark" ? "dark" : "light"}
+          style={StyleSheet.absoluteFill}
+        />
         <View
           pointerEvents="none"
           style={[
@@ -263,7 +282,7 @@ export function SupprTabBar({
           </React.Fragment>
         );
       })}
-      </BlurView>
+      </View>
       </View>
     </View>
   );
