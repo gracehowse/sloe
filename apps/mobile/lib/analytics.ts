@@ -467,23 +467,36 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   single self-named fallback line. The WRITE path (snapshot capture) is
  *   always-on + defensive; this flag gates only the read/display so data can
  *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
+ * - `discover_creator_rail_v1` (ENG-1225 #14) — the v3 Discover creator plane:
+ *   the creator rail + mobile Following feed (web twin: rail + featured hero).
+ *   Default OFF — ships dark pending Grace's SEE-approval on the sim, and falls
+ *   back to a presentation-only SEED creator set while the `creators` table is
+ *   empty pre-launch (real creators always win). Keep in sync with web.
+ * - `loghub_quick_actions_v1` (ENG-1247) — the v3 LogHub quick-action row
+ *   (Log usual / Copy yesterday / Duplicate day) shown above the browse tabs
+ *   in the Log-a-meal sheet. OFF → the legacy standalone "Copy yesterday" row
+ *   renders alone (the old path). Gates the new structure only; every action
+ *   reuses an existing commit path. Keep in sync with web.
+ * - `recipe_detail_v3_conformance` (ENG-1247) — the v3 recipe-detail prototype
+ *   pass: hero title OVERLAY (kicker + serif H1 + clock·flame·serves meta row)
+ *   when the recipe has a photo (no-photo falls back to the current title-below
+ *   layout), the editorial serif standfirst headnote, and the consolidated
+ *   sticky CTA bar (yield stepper · Cook Mode outline · Log filled primary).
+ *   OFF → the current title-below + action-pill-Log + Cook-Mode-only footer.
+ *   Keep in sync with web.
+ * - `today_hero_decard_v3` (ENG-1247) — Today calorie hero de-card. ON → bare
+ *   centered hero + status line below the ring; OFF → carded hero. Web twin:
+ *   same flag in `src/lib/analytics/track.ts`.
+ * - `today_quickadd_recents_v3` (ENG-1247) — Today quick-add recents chips.
+ *   ON → recents row after macros; OFF → no row. Web twin: same flag in track.ts.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "nutrition_entry_ingredients_v1",
-  // ENG-1247 — Today calorie hero de-card (v3 prototype conformance). ON →
-  // bare centered hero (no SupprCard chrome) + status line below the ring;
-  // OFF → the carded hero. Ramps via PostHog once verified + web parity lands.
-  // Web parity twin: same flag in `src/lib/analytics/track.ts`.
+  "discover_creator_rail_v1",
+  "loghub_quick_actions_v1",
+  "recipe_detail_v3_conformance",
   "today_hero_decard_v3",
-  // ENG-1247 — Today "Quick add" recents one-tap re-log chips (v3 `.quickrow`).
-  // ON → recents-chip row after macros; OFF → no quick-add row (the launcher
-  // strip was dead code). Web parity twin: same flag in track.ts.
   "today_quickadd_recents_v3",
-  // ENG-1247 — RecipeDetail v3 rebuild (the viral hook). Gates the whole
-  // recipe-detail conformance: hero title-overlay, drop-cap standfirst,
-  // borderless macro strip, sticky Cook/+Log CTA, serif method steps, review
-  // banner. ON → v3; OFF → the Figma-era layout. Web twin: same flag in track.ts.
-  "recipe_detail_v3",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

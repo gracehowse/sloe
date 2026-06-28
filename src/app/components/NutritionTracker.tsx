@@ -161,7 +161,7 @@ import { normaliseMealSlot } from "../../lib/nutrition/mealSlots";
 import { newId } from "../../context/appData/persistence";
 import { isHealthImportFallbackTitle } from "../../lib/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap";
-import { buildMealEntriesFromSavedMeal } from "../../lib/nutrition/savedMealsLogic";
+import { buildMealEntriesFromSavedMeal, selectUsualSavedMeal } from "../../lib/nutrition/savedMealsLogic";
 import {
   toBreakdownIngredientRow,
   toBreakdownSnapshotRow,
@@ -4220,12 +4220,74 @@ export const NutritionTracker = memo(function NutritionTracker({
           setLogSheetOpen(false);
           setAddOpen(true);
         }}
-        copyYesterday={(() => {
-          if (selectedDateKey !== todayKey() || mealsForSelectedDate.length > 0) return null;
-          const count = (nutritionByDay[previousDayKey(selectedDateKey)] ?? []).length;
-          if (count === 0) return null;
-          return { count, onTap: handleCopyYesterday };
-        })()}
+        copyYesterday={
+          // ENG-1247: when the LogHub quick-action row is on, copy-yesterday
+          // lives inside `quickActions` instead — suppress the standalone
+          // row so the action never ships twice.
+          isFeatureEnabled("loghub_quick_actions_v1")
+            ? null
+            : (() => {
+                if (selectedDateKey !== todayKey() || mealsForSelectedDate.length > 0) return null;
+                const count = (nutritionByDay[previousDayKey(selectedDateKey)] ?? []).length;
+                if (count === 0) return null;
+                return { count, onTap: handleCopyYesterday };
+              })()
+        }
+        quickActions={
+          // ENG-1247 — v3 LogHub quick-action row (Log usual / Copy
+          // yesterday / Duplicate day). Each entry is omitted when its
+          // action isn't resolvable, so the row renders no dead buttons.
+          // Mirror of the mobile wiring in `(tabs)/_today/TodayScreen.tsx`.
+          isFeatureEnabled("loghub_quick_actions_v1")
+            ? (() => {
+                const isToday = selectedDateKey === todayKey();
+                // "Log usual" — top saved meal for the active slot
+                // (slot-match → max logCount → latest lastLoggedAt →
+                // overall fallback). Hidden when there are 0 saved meals.
+                const usual = selectUsualSavedMeal(hostSavedMeals, mealSlot);
+                const logUsual = usual
+                  ? {
+                      mealName: usual.name,
+                      onTap: () => {
+                        setLogSheetOpen(false);
+                        const pick = selectUsualSavedMeal(hostSavedMeals, mealSlot) ?? usual;
+                        logSavedMeal(pick, mealSlot);
+                      },
+                    }
+                  : undefined;
+
+                // "Copy yesterday" — same gate as the legacy row.
+                const copyCount =
+                  isToday && mealsForSelectedDate.length === 0
+                    ? (nutritionByDay[previousDayKey(selectedDateKey)] ?? []).length
+                    : 0;
+                const copyYesterdayAction =
+                  copyCount > 0
+                    ? { count: copyCount, onTap: handleCopyYesterday }
+                    : undefined;
+
+                // "Duplicate day" — only when today has ≥1 logged meal.
+                const duplicateDayAction =
+                  mealsForSelectedDate.length > 0
+                    ? {
+                        onTap: () => {
+                          setLogSheetOpen(false);
+                          setDuplicateDayOpen(true);
+                        },
+                      }
+                    : undefined;
+
+                if (!logUsual && !copyYesterdayAction && !duplicateDayAction) {
+                  return null;
+                }
+                return {
+                  ...(logUsual ? { logUsual } : {}),
+                  ...(copyYesterdayAction ? { copyYesterday: copyYesterdayAction } : {}),
+                  ...(duplicateDayAction ? { duplicateDay: duplicateDayAction } : {}),
+                };
+              })()
+            : null
+        }
       />
 
     </div>

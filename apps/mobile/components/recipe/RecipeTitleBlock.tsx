@@ -46,7 +46,9 @@ export function RecipeTitleBlock({
   attribution: Attribution | null;
   verdict: FitsYourDayVerdict | null;
   onNavigate: (route: string) => void;
-  /** v3 (ENG-1247): the title moved into the hero overlay — skip it here. */
+  /** ENG-1247 — when the v3 hero title overlay is showing (photo present), the
+   *  H1 lives on the hero; the body block then renders attribution + verdict
+   *  only, never a duplicate title. */
   hideTitle?: boolean;
 }) {
   const colors = useThemeColors();

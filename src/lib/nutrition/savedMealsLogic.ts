@@ -86,6 +86,70 @@ export function dominantSavedMealSource(meal: SavedMeal): SourceDotSource {
   return bestKey;
 }
 
+/**
+ * Pick the user's "usual" saved meal for a given meal slot — the meal the
+ * LogHub "Log usual" quick action commits (ENG-1247).
+ *
+ * Selection rules (in order):
+ *  1. Restrict to saved meals whose `defaultMealSlot` matches `activeSlot`
+ *     (case-insensitive). Among those, pick the highest `logCount`.
+ *  2. Tie-break by the most-recent `lastLoggedAt` (a missing timestamp
+ *     loses to any present one). A final tie falls to array order, which
+ *     `listSavedMeals` already sorts most-recently-logged-then-newest, so
+ *     the result is stable across renders.
+ *  3. If NO saved meal matches the slot, fall back to the overall
+ *     highest-`logCount` saved meal (same tie-break), so the action is
+ *     still useful for a user who hasn't tagged a default slot.
+ *  4. Empty list → `null`. Callers hide the "Log usual" button on `null`.
+ *
+ * Pure function — no I/O, no Date access, no React. The caller commits the
+ * returned meal via its existing saved-meal log path
+ * (`logSavedMealFromPanel` mobile / `logSavedMeal` web).
+ */
+export function selectUsualSavedMeal(
+  meals: readonly SavedMeal[] | null | undefined,
+  activeSlot: string | null | undefined,
+): SavedMeal | null {
+  const list = Array.isArray(meals) ? meals.filter(Boolean) : [];
+  if (list.length === 0) return null;
+
+  // Most-logged wins; ties break to most-recently-logged. A meal with no
+  // `lastLoggedAt` is treated as logged at epoch 0 so it always loses a
+  // tie to one that has a timestamp.
+  const better = (candidate: SavedMeal, current: SavedMeal | null): boolean => {
+    if (!current) return true;
+    const cCount = safeNonNegative(candidate.logCount);
+    const curCount = safeNonNegative(current.logCount);
+    if (cCount !== curCount) return cCount > curCount;
+    const cTime = Date.parse(candidate.lastLoggedAt ?? "");
+    const curTime = Date.parse(current.lastLoggedAt ?? "");
+    const cMs = Number.isFinite(cTime) ? cTime : 0;
+    const curMs = Number.isFinite(curTime) ? curTime : 0;
+    return cMs > curMs;
+  };
+
+  const wantSlot =
+    typeof activeSlot === "string" ? activeSlot.trim().toLowerCase() : "";
+
+  // Pass 1 — slot matches only.
+  let best: SavedMeal | null = null;
+  if (wantSlot) {
+    for (const meal of list) {
+      const slot = (meal.defaultMealSlot ?? "").toLowerCase();
+      if (slot !== wantSlot) continue;
+      if (better(meal, best)) best = meal;
+    }
+    if (best) return best;
+  }
+
+  // Pass 2 — overall fallback (no slot match, or no slot requested).
+  best = null;
+  for (const meal of list) {
+    if (better(meal, best)) best = meal;
+  }
+  return best;
+}
+
 /** Effective portion multiplier — always > 0. Missing / zero / negative
  * values fall back to 1 so "no explicit scaling" === "one portion". */
 export function effectivePortionMultiplier(item: SavedMealItem): number {

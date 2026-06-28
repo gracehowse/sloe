@@ -141,6 +141,7 @@ import {
 } from "../../lib/recipe/recipeDetailLayout";
 import { RecipeDetailHero } from "../../components/recipe/RecipeDetailHero";
 import { RecipeTitleBlock } from "../../components/recipe/RecipeTitleBlock";
+import { RecipeStandfirst } from "../../components/recipe/RecipeStandfirst";
 import { RecipeActionPills } from "../../components/recipe/RecipeActionPills";
 import { RecipeMacroStrip } from "../../components/recipe/RecipeMacroStrip";
 import { RecipeMetaRow } from "../../components/recipe/RecipeMetaRow";
@@ -272,6 +273,17 @@ export default function RecipeDetailScreen() {
   // ENG-819 — quiet confirm haptic on the recipe-detail commit CTAs, behind
   // `redesign_winmoment` (haptic-only; the frame layout is the one prod path).
   const winMomentFeedback = isFeatureEnabled("redesign_winmoment");
+  // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON →
+  // hero title OVERLAY (when a photo shows), the serif standfirst headnote,
+  // and the consolidated sticky CTA bar (yield · Cook Mode · Log filled). The
+  // legacy title-below + Log-in-action-pills + Cook-Mode-only footer stays in
+  // the `else`. Web twin: `src/app/components/RecipeDetail.tsx`.
+  // Carve-out: the "Fits your day" verdict banner is NOT touched by this pass —
+  // it keeps its tri-state SOLID treatment per
+  // `docs/decisions/2026-06-13-fits-your-day-verdict-banner.md` (the prototype's
+  // chip lacks the over-budget state). The standfirst's coloured "fits" line in
+  // the prototype is intentionally dropped in favour of the existing banner.
+  const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3_conformance");
   // ENG-949 — in-cook A−/A+ text-size control, behind a flag (default-OFF).
   // Flag-off keeps the overlay byte-identical and skips re-applying a
   // previously-persisted size, so flipping it off is a clean revert.
@@ -1887,6 +1899,25 @@ export default function RecipeDetailScreen() {
     ingredientCount: ingredientsForIngredientsTab.length,
   });
 
+  // ENG-1247 — v3 hero title OVERLAY. Only when the flag is ON AND a real photo
+  // shows (the placeholder fallback never carries the overlay — the title then
+  // lives in the body block). Kicker: "From your cookbook" when saved, else the
+  // honest "Fits your day" (no `cuisine` field exists in the recipe pipeline —
+  // we do not fake one). Time = total prep+cook when known.
+  const heroShowsPhoto = Boolean(heroImageUrl) && !heroImageBroken;
+  const heroOverlayActive = recipeDetailV3 && heroShowsPhoto;
+  const heroTotalTimeMin =
+    (recipe.prep_time_min ?? 0) + (recipe.cook_time_min ?? 0) || null;
+  const heroOverlay = heroOverlayActive
+    ? {
+        kicker: saved ? "From your cookbook" : "Fits your day",
+        title: displayTitle,
+        timeMin: heroTotalTimeMin,
+        kcal: Math.round(macros.calories) > 0 ? Math.round(macros.calories) : null,
+        servings: viewServings,
+      }
+    : null;
+
   // Macro strip cells (Figma §4) — CAL / PRO / CARB(/NET) / FAT, per-macro
   // coloured downstream. Net-carbs lens swaps the carb column.
   const fiberG = macros.fiber_g ?? 0;
@@ -1957,17 +1988,6 @@ export default function RecipeDetailScreen() {
   const cleanDescription = sanitizeRecipeDescription(recipe.description);
   const allergenLine = formatContainsLine(normaliseAllergenIds(recipe.allergens ?? []));
 
-  // RecipeDetail v3 (ENG-1247): the title block overlays the hero photo
-  // (kicker + serif h1 + meta) instead of sitting below it. Flag-gated.
-  const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3");
-  const firstMealType = recipe.meal_type?.[0];
-  const heroKicker = saved
-    ? "From your cookbook"
-    : firstMealType
-      ? firstMealType[0].toUpperCase() + firstMealType.slice(1)
-      : "Fits your day";
-  const heroTotalTimeMin = (recipe.prep_time_min ?? 0) + (recipe.cook_time_min ?? 0) || null;
-
   return (
     <View style={styles.container}>
       <ScrollView
@@ -1989,11 +2009,7 @@ export default function RecipeDetailScreen() {
           onShare={handleShare}
           onMore={openRecipeOptions}
           showSloeImageLabel={isAiGeneratedHero}
-          heroOverlay={recipeDetailV3}
-          kicker={heroKicker}
-          metaTimeMin={heroTotalTimeMin}
-          metaKcal={recipe.calories ?? null}
-          metaServings={viewServings}
+          overlay={heroOverlay}
         />
 
         {isAiGeneratedHero ? <SloeImageNotice /> : null}
@@ -2010,14 +2026,26 @@ export default function RecipeDetailScreen() {
         ) : null}
 
         <View style={styles.body}>
-          {/* 2. Title block — title, attribution, fits-your-day chip. */}
+          {/* 2. Title block — title, attribution, fits-your-day chip. ENG-1247:
+              when the v3 hero overlay shows the title, hide the body H1 so it
+              isn't duplicated (attribution + verdict still render here). */}
           <RecipeTitleBlock
             title={displayTitle}
             attribution={attribution}
             verdict={fitVerdict}
             onNavigate={(route) => router.push(route as never)}
-            hideTitle={recipeDetailV3}
+            hideTitle={heroOverlayActive}
           />
+
+          {/* ENG-1247 — editorial serif standfirst headnote (prototype
+              rd-standfirst). Uses the recipe description, with a graceful
+              fallback. Flag-gated; not part of the legacy layout. */}
+          {recipeDetailV3 ? (
+            <RecipeStandfirst
+              text={cleanDescription ? decodeEntities(cleanDescription) : null}
+              proteinG={macros.protein}
+            />
+          ) : null}
 
           {/* Gluten estimate chip + persistent disclaimer (ENG-748). */}
           {(() => {
@@ -2036,10 +2064,12 @@ export default function RecipeDetailScreen() {
             );
           })()}
 
-          {/* 3. Action pills — Log (dominant) / Edit. Cook entry deduped to
-              the single floating Cook Mode pill in the footer (premium-audit
-              2026-06-09, gap 1); Ask pill omitted: no coach handler exists —
-              net-new Figma 185:2. */}
+          {/* 3. Action pills — flag-OFF: Log (dominant) + Edit. ENG-1247 flag-ON:
+              Log moves to the sticky CTA bar, so this row collapses to the
+              owner-only Edit pill (and renders nothing for non-owners). Cook
+              entry deduped to the floating Cook Mode pill in the footer
+              (premium-audit 2026-06-09, gap 1); Ask pill omitted — no coach
+              handler exists (net-new Figma 185:2). */}
           <RecipeActionPills
             onLog={() => void addRecipeToTodayJournal()}
             logging={loggingJournal}
@@ -2049,6 +2079,7 @@ export default function RecipeDetailScreen() {
                 : undefined
             }
             haptic={winMomentFeedback ? "confirm" : "none"}
+            showLog={!recipeDetailV3}
           />
 
           {/* 4. Macro card — per-macro coloured values. */}
@@ -2635,10 +2666,12 @@ export default function RecipeDetailScreen() {
       })()}
 
       {/* 8. Sticky footer — yield + servings stepper (left) + Cook Mode (right).
-          (Figma 332:2 §8.) Replaces the old "Log all · kcal" footer: Log moved
-          up into the action-pill row. The stepper here is the canonical
-          servings control (ingredient amounts + batch totals scale off it).
-          Hidden during cook mode (the overlay owns the bottom of the screen). */}
+          (Figma 332:2 §8.) ENG-1247 flag-ON: the bar also carries the filled
+          Log primary (Cook Mode drops to outline secondary) so it is the one
+          consolidated commit bar (prototype sticky CTA). Flag-OFF keeps Log in
+          the action-pill row above. The stepper here is the canonical servings
+          control (ingredient amounts + batch totals scale off it). Hidden
+          during cook mode (the overlay owns the bottom of the screen). */}
       {recipe && !cookMode ? (
         <RecipeServingsFooter
           servings={viewServings}
@@ -2649,6 +2682,8 @@ export default function RecipeDetailScreen() {
           onCookMode={openCookMode}
           bottomInset={insets.bottom}
           haptic={winMomentFeedback ? "confirm" : "none"}
+          onLog={recipeDetailV3 ? () => void addRecipeToTodayJournal() : undefined}
+          logging={loggingJournal}
         />
       ) : null}
     </View>

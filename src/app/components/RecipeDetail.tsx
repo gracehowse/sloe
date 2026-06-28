@@ -88,7 +88,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu.tsx";
-import { Clock, Flame, MoreVertical, Utensils } from "lucide-react";
+import { MoreVertical } from "lucide-react";
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import {
   composeRecipeMeta,
@@ -104,6 +104,14 @@ import {
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 import { sanitizeRecipeDescription } from "../../lib/recipes/sanitizeRecipeDescription.ts";
 import { formatMacroValue } from "../../lib/nutrition/formatMacro.ts";
+// ENG-1247 — real "Log to today" from the recipe-detail CTA (web parity with
+// mobile `addRecipeToTodayJournal`). The web Log button previously fired only a
+// fake "Marked as made!" toast; it now routes through the shared planned-meal
+// log path (coercion guard + micros) exactly like the LogSheet Library pick.
+import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
+import { journalSlotFromMealTypes } from "../../lib/nutrition/recipeJournalSlot.ts";
+import { dateKeyFromDate } from "../../lib/datetime/dateKey.ts";
+import { normalizeRecipeTitle } from "../../lib/recipes/normalizeRecipeTitle.ts";
 // GW-08 (audit 2026-04-28): `computeRecipeFitPercent` import dropped
 // when the always-85% pill was removed from this screen. Helper is
 // still callable from web Library card where targets are real.
@@ -323,6 +331,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     notificationPrefs,
     nutritionTargets,
     netCarbsLensEnabled,
+    // ENG-1247 — real journal write for the Log-to-today CTA (web parity).
+    addLoggedMealForDate,
   } = useAppData();
   const saved = isRecipeSaved(recipe.id);
   // PR1 (Paprika parity, 2026-05-02): the viewing-servings stepper
@@ -384,9 +394,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const winFeedback = isFeatureEnabled("redesign_winmoment");
   /** ENG-946 — tap-to-check ingredient checklist on the Ingredients tab. */
   const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
-  // RecipeDetail v3 (ENG-1247): the title block overlays the hero photo (kicker
-  // + serif h1 + meta) instead of below it. Flag-gated; web twin of mobile.
-  const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3");
+  // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON →
+  // hero title OVERLAY (when a photo shows), the serif standfirst headnote, and
+  // the consolidated sticky CTA bar (yield · Cook Mode outline · Log filled).
+  // ON also gives the web Log button a REAL journal write (it fired a fake
+  // "Marked as made!" toast before). Mobile twin: `apps/mobile/app/recipe/[id].tsx`.
+  // Carve-out: the "Fits your day" verdict banner is NOT touched by this pass —
+  // it keeps its tri-state SOLID treatment per
+  // `docs/decisions/2026-06-13-fits-your-day-verdict-banner.md` (the prototype's
+  // chip lacks the over-budget state).
+  const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3_conformance");
+  const [loggingRecipe, setLoggingRecipe] = useState(false);
   // Commit-CTA press payoff (web analog of the mobile confirm haptic). A subtle
   // active-state scale + a brief brightness lift on press, gated on
   // `redesign_winmoment`. Flag-off keeps the existing hover-only transition.
@@ -1321,6 +1339,88 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     sodiumMg: Math.round(((ingredientTotal.sodiumMg || displayRecipe.sodiumMg || 0) * servings) / baseServings),
   };
 
+  // ENG-1247 — does a REAL hero photo resolve? (Same ladder the hero IIFE
+  // uses.) The v3 hero title overlay only rides a real photo; on the
+  // placeholder fallback the title stays in the body block. Shared here so the
+  // hero overlay + the body title-block `hideTitle` agree.
+  const heroHasPhoto = (() => {
+    const effectiveImage = heroPreviewUrl ?? dbImageUrl ?? recipe.image;
+    const hasRealImage =
+      typeof effectiveImage === "string" &&
+      effectiveImage !== "" &&
+      effectiveImage !== DEFAULT_UPLOADED_RECIPE_IMAGE;
+    const ladderSrc = pickHeroImageUrl({
+      image_url: hasRealImage ? effectiveImage : null,
+      source_url: recipe.sourceUrl ?? null,
+    });
+    return Boolean(ladderSrc ?? (hasRealImage ? effectiveImage : null));
+  })();
+  const heroOverlayActive = recipeDetailV3 && heroHasPhoto;
+
+  // ENG-1247 — REAL "Log to today" (web parity with mobile
+  // `addRecipeToTodayJournal`). Routes through the shared planned-meal log path
+  // so the macro-coercion guard (P0-3 / T4) fires identically to the LogSheet
+  // Library pick + the planner row → Log: a recipe with kcal but no
+  // ingredient-resolved P/C/F is refused with a Verify prompt rather than
+  // logging a fabricated split. Macros/micros are scaled to the viewing
+  // servings (the stepper), so what you log matches what you're looking at.
+  const logRecipeToToday = async () => {
+    if (loggingRecipe) return; // no double-submit
+    const kcal = Math.round(scaledMacros.calories);
+    if (kcal <= 0 && scaledMacros.protein <= 0 && scaledMacros.carbs <= 0 && scaledMacros.fat <= 0) {
+      if (typeof window !== "undefined") {
+        window.alert(
+          "Calories not yet computed.\n\nOpen the recipe and tap Verify to match ingredients before logging it.",
+        );
+      }
+      return;
+    }
+    setLoggingRecipe(true);
+    try {
+      const microsRes = await fetchPlannedMealMicros(
+        supabase as unknown as SupabaseLike,
+        recipe.id,
+        servings,
+      );
+      if (microsRes.macrosAreCoerced) {
+        if (typeof window !== "undefined") {
+          window.alert(
+            "Verify this recipe first.\n\nThis recipe has calories but no ingredient macros yet. Logging now would save estimated values. Open the recipe and tap Verify to match ingredients for accurate nutrition.",
+          );
+        }
+        return;
+      }
+      const slot = journalSlotFromMealTypes(
+        Array.isArray(recipe.mealSlots) ? (recipe.mealSlots as string[]) : null,
+      );
+      const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      addLoggedMealForDate(
+        dateKeyFromDate(new Date()),
+        {
+          name: slot,
+          recipeTitle: normalizeRecipeTitle(recipe.title),
+          time: timeLabel,
+          calories: kcal,
+          protein: scaledMacros.protein,
+          carbs: scaledMacros.carbs,
+          fat: scaledMacros.fat,
+          ...(microsRes.fiberG != null ? { fiberG: microsRes.fiberG } : {}),
+          ...(Object.keys(microsRes.micros).length > 0 ? { micros: microsRes.micros } : {}),
+          source: "Recipe",
+          recipeId: recipe.id,
+        },
+        "recipe",
+      );
+      try {
+        toast.success(`Logged ${normaliseRecipeDisplayTitle(recipe.title)} to ${slot}.`);
+      } catch {
+        /* toast availability is not a blocker for the journal write */
+      }
+    } finally {
+      setLoggingRecipe(false);
+    }
+  };
+
   // True when any ingredient in this recipe was matched against the
   // FatSecret database — drives the attribution badge per FatSecret ToS.
   const hasFatSecretIngredients = useMemo(
@@ -1729,6 +1829,54 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             ) : null}
             {/* Top scrim — rgba(0,0,0,0.4) → transparent. */}
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
+            {/* ENG-1247 — bottom veil + title OVERLAY (prototype rd-veil +
+                rd-title, Sloe-App.html L4336–4341). Only over a real photo, so
+                gate on `heroSrc`; kicker + serif H1 + clock·flame·serves meta. */}
+            {recipeDetailV3 && heroSrc ? (
+              <>
+                <div
+                  className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/70 via-black/25 to-transparent pointer-events-none"
+                  aria-hidden
+                />
+                <div
+                  className="absolute inset-x-0 bottom-0 px-6 pb-6 flex flex-col gap-2 pointer-events-none"
+                  data-testid="recipe-hero-title-overlay"
+                >
+                  <span
+                    className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/90"
+                    data-testid="recipe-hero-kicker"
+                  >
+                    {saved ? "From your cookbook" : "Fits your day"}
+                  </span>
+                  <h1
+                    className="text-white leading-tight"
+                    style={{ fontFamily: "var(--font-headline)", fontSize: "30px", lineHeight: "36px", fontWeight: 400 }}
+                    data-testid="recipe-hero-overlay-title"
+                  >
+                    {normaliseRecipeDisplayTitle(recipe.title)}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-4 text-[13px] font-medium text-white/90">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Icons.timer className="w-3.5 h-3.5" aria-hidden />
+                      {(() => {
+                        const total = (dbPrepMin ?? 0) + (dbCookMin ?? 0);
+                        return total > 0 ? `${total} min` : "—";
+                      })()}
+                    </span>
+                    {Math.round(scaledMacros.calories) > 0 ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Icons.calories className="w-3.5 h-3.5" aria-hidden />
+                        {Math.round(scaledMacros.calories)} kcal
+                      </span>
+                    ) : null}
+                    <span className="inline-flex items-center gap-1.5">
+                      <Icons.dinner className="w-3.5 h-3.5" aria-hidden />
+                      Serves {servings}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : null}
             {/* Overlaid controls. */}
             <div className="absolute inset-x-0 top-0 px-4 h-14 flex items-center justify-between">
               <button
@@ -1800,48 +1948,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 </DropdownMenu>
               </div>
             </div>
-
-            {/* v3 (ENG-1247): bottom veil + title block OVERLAID on the hero
-                photo (prototype `.rd-title`) — kicker overline + serif h1 + meta
-                row, white over the photo. Web twin of mobile RecipeDetailHero. */}
-            {recipeDetailV3 ? (
-              <>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[180px] bg-gradient-to-t from-black/[0.62] to-transparent" />
-                <div className="pointer-events-none absolute inset-x-5 bottom-4 text-white">
-                  <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.12em] text-white/80">
-                    {saved
-                      ? "From your cookbook"
-                      : dbMealType?.[0]
-                        ? dbMealType[0][0].toUpperCase() + dbMealType[0].slice(1)
-                        : "Fits your day"}
-                  </p>
-                  <h1
-                    className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-tight text-white"
-                    data-testid="recipe-hero-title"
-                  >
-                    {normaliseRecipeDisplayTitle(recipe.title)}
-                  </h1>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-4 text-[13px] text-white/95">
-                    {(dbPrepMin ?? 0) + (dbCookMin ?? 0) > 0 ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5" />
-                        {(dbPrepMin ?? 0) + (dbCookMin ?? 0)} min
-                      </span>
-                    ) : null}
-                    {recipe.calories != null ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Flame className="h-3.5 w-3.5" />
-                        {Math.round(recipe.calories)} kcal
-                      </span>
-                    ) : null}
-                    <span className="inline-flex items-center gap-1.5">
-                      <Utensils className="h-3.5 w-3.5" />
-                      Serves {servings}
-                    </span>
-                  </div>
-                </div>
-              </>
-            ) : null}
           </div>
         );
       })()}
@@ -1980,9 +2086,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             : null;
           return (
             <div className="space-y-3" data-testid="recipe-title-block">
-              {/* v3 (ENG-1247): the title moved into the hero overlay (one h1
-                  lives there now); skip it here to avoid a duplicate heading. */}
-              {recipeDetailV3 ? null : (
+              {/* ENG-1247 — when the v3 hero overlay shows the title, hide the
+                  body H1 so it isn't duplicated (attribution + verdict stay). */}
+              {heroOverlayActive ? null : (
                 <h1
                   className="text-foreground-brand leading-tight"
                   style={{
@@ -2103,44 +2209,88 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           );
         })()}
 
-        {/* 3. Action pills — Start Cooking / Log (web "I Made This") / Edit.
+        {/* ENG-1247 — editorial serif standfirst headnote (prototype
+            rd-standfirst, Sloe-App.html L4353). Uses the recipe description with
+            a graceful protein-anchored fallback so the slot never reads empty.
+            Flag-gated; not part of the legacy layout. */}
+        {recipeDetailV3 ? (
+          <p
+            data-testid="recipe-standfirst"
+            className="leading-relaxed text-foreground-secondary"
+            style={{ fontFamily: "var(--font-headline)", fontSize: "17px", lineHeight: "26px" }}
+          >
+            {(() => {
+              // Catalog/seed recipes hydrate `dbDescription` too (the seed
+              // short description), so the single source covers both.
+              const desc = dbDescription ? sanitizeRecipeDescription(dbDescription) : null;
+              if (desc && desc.trim().length > 0) return desc.trim();
+              const p = Math.round(scaledMacros.protein);
+              return p > 0
+                ? `A clean ${p}g of protein that sits comfortably inside what's left of today — quick enough for a weeknight, good enough to want again.`
+                : "Quick enough for a weeknight, good enough to want again — and it sits comfortably inside what's left of your day.";
+            })()}
+          </p>
+        ) : null}
+
+        {/* 3. Action pills.
+            Flag-OFF (legacy): Start Cooking (outline) / Log (cream) / Edit.
+            ENG-1247 flag-ON: Cook + Log move to the consolidated sticky CTA bar
+            at the foot of the page, so this row collapses to the owner-only Edit
+            pill (rendered nothing for non-owners). The web Log is also now a
+            REAL journal write (was a fake "Marked as made!" toast).
             Ask omitted: no AI-coach handler exists (net-new Figma 185:2). */}
-        <div className="flex gap-3" data-testid="recipe-action-pills">
-          <button
-            type="button"
-            onClick={() => setCookModeOpen(true)}
-            disabled={instructionSteps.length === 0}
-            data-testid="recipe-action-start-cooking"
-            // Aubergine OUTLINE (Sloe treatment §1): transparent ground + 1.5px
-            // aubergine border + aubergine label, not a filled slab. The
-            // everyday primary is an outline; fill is reserved for conversion
-            // CTAs + the FAB.
-            className={`flex-[1.6] flex items-center justify-center gap-2 h-11 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-bold hover:bg-primary/5 transition-all disabled:opacity-50 ${commitCtaPayoffClass}`}
-          >
-            <Icons.cook className="w-4 h-4" />
-            Start Cooking
-          </button>
-          <button
-            type="button"
-            onClick={() => toast.success("Marked as made!")}
-            data-testid="recipe-action-log"
-            className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-background-secondary border border-border text-foreground text-sm font-semibold hover:bg-muted transition-all ${commitCtaPayoffClass}`}
-          >
-            <Icons.check className="w-4 h-4" />
-            Log
-          </button>
-          {isMyRecipe && !isCatalogRecipe ? (
+        {recipeDetailV3 ? (
+          isMyRecipe && !isCatalogRecipe ? (
+            <div className="flex gap-3" data-testid="recipe-action-pills">
+              <button
+                type="button"
+                onClick={() => setRecipeEditOpen(true)}
+                data-testid="recipe-action-edit"
+                className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-background-secondary border border-border text-foreground text-sm font-semibold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all"
+              >
+                <Icons.edit className="w-4 h-4" />
+                Edit
+              </button>
+            </div>
+          ) : null
+        ) : (
+          <div className="flex gap-3" data-testid="recipe-action-pills">
             <button
               type="button"
-              onClick={() => setRecipeEditOpen(true)}
-              data-testid="recipe-action-edit"
-              className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-background-secondary border border-border text-foreground text-sm font-semibold hover:bg-muted transition-all"
+              onClick={() => setCookModeOpen(true)}
+              disabled={instructionSteps.length === 0}
+              data-testid="recipe-action-start-cooking"
+              // Aubergine OUTLINE (Sloe treatment §1): transparent ground + 1.5px
+              // aubergine border + aubergine label, not a filled slab. The
+              // everyday primary is an outline; fill is reserved for conversion
+              // CTAs + the FAB.
+              className={`flex-[1.6] flex items-center justify-center gap-2 h-11 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-bold hover:bg-primary/5 transition-all disabled:opacity-50 ${commitCtaPayoffClass}`}
             >
-              <Icons.edit className="w-4 h-4" />
-              Edit
+              <Icons.cook className="w-4 h-4" />
+              Start Cooking
             </button>
-          ) : null}
-        </div>
+            <button
+              type="button"
+              onClick={() => toast.success("Marked as made!")}
+              data-testid="recipe-action-log"
+              className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-background-secondary border border-border text-foreground text-sm font-semibold hover:bg-muted transition-all ${commitCtaPayoffClass}`}
+            >
+              <Icons.check className="w-4 h-4" />
+              Log
+            </button>
+            {isMyRecipe && !isCatalogRecipe ? (
+              <button
+                type="button"
+                onClick={() => setRecipeEditOpen(true)}
+                data-testid="recipe-action-edit"
+                className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-background-secondary border border-border text-foreground text-sm font-semibold hover:bg-muted transition-all"
+              >
+                <Icons.edit className="w-4 h-4" />
+                Edit
+              </button>
+            ) : null}
+          </div>
+        )}
 
         {/* 2026-04-20 prototype port — tag pill row directly under
             the hero. Mobile parity (2026-04-30 ui-product-designer
@@ -2341,7 +2491,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             aligned with mobile to "Servings to view" so the
             cross-platform copy stays in sync. PR1 (Paprika parity,
             2026-05-02). */}
-        {/* Design Direction 2026 — servings stepper routed through SupprCard. */}
+        {/* Design Direction 2026 — servings stepper routed through SupprCard.
+            ENG-1247: when the v3 sticky CTA bar is on, the canonical servings
+            stepper lives in that bar (YIELD), so this mid-body card is hidden to
+            avoid a duplicate control. Flag-OFF keeps it here. */}
+        {recipeDetailV3 ? null : (
         <SupprCard
           padding="lg"
           radius="xl"
@@ -2382,6 +2536,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             </button>
           </div>
         </SupprCard>
+        )}
 
         {/* 2026-05-01 v3 redesign — the bordered "Calories per portion"
             hero card that lived here is gone. kcal moved to the
@@ -2536,8 +2691,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             cookMin: dbCookMin,
             ingredientCount: ingredients.length,
           });
-          // v3 (ENG-1247): the hero overlay carries the time/kcal/serves meta.
-          if (recipeDetailV3) return null;
           if (metaStats.length === 0) return null;
           return (
             <div
@@ -3067,6 +3220,84 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           onSave={(ov) => handleOverrideSave(overrideIndex, ov)}
           onReset={() => handleOverrideReset(overrideIndex)}
         />
+      ) : null}
+
+      {/* ENG-1247 — consolidated sticky CTA bar (prototype sticky CTA,
+          Sloe-App.html L4418–4421). YIELD stepper (left) · Cook Mode (outline
+          SECONDARY) · Log (filled PRIMARY, dominant). Log is the single filled
+          slab (one-filled-CTA rule). Flag-gated; flag-OFF keeps the in-row
+          Cook/Log pills + the mid-body servings card. */}
+      {recipeDetailV3 ? (
+        <div
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-sm"
+          data-testid="recipe-detail-sticky-footer"
+        >
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 px-6 py-3">
+            {/* Left — yield + servings stepper (canonical servings control). */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Yield
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleViewServingsStep(-1)}
+                  disabled={servings <= RECIPE_VIEW_SERVINGS_MIN}
+                  aria-label="Decrease servings"
+                  data-testid="recipe-footer-servings-decrement"
+                  className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  −
+                </button>
+                <span
+                  className="min-w-6 text-center tabular-nums text-foreground-brand"
+                  style={{ fontFamily: "var(--font-headline)", fontSize: "20px", fontWeight: 400 }}
+                  role="status"
+                  aria-live="polite"
+                  aria-label={`${servings} servings`}
+                  data-testid="recipe-footer-servings-value"
+                >
+                  {servings}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleViewServingsStep(1)}
+                  disabled={servings >= RECIPE_VIEW_SERVINGS_MAX}
+                  aria-label="Increase servings"
+                  data-testid="recipe-footer-servings-increment"
+                  className="w-8 h-8 rounded-lg bg-muted border border-border hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* Right — Cook Mode (outline secondary) + Log (filled primary). */}
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setCookModeOpen(true)}
+                disabled={instructionSteps.length === 0}
+                data-testid="recipe-cook-mode-cta"
+                className={`flex items-center justify-center gap-2 h-12 px-5 rounded-full bg-transparent border-[1.5px] border-primary-solid text-primary-solid text-sm font-bold hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all disabled:opacity-50 ${commitCtaPayoffClass}`}
+              >
+                <Icons.cook className="w-4 h-4" />
+                Cook Mode
+              </button>
+              <button
+                type="button"
+                onClick={() => void logRecipeToToday()}
+                disabled={loggingRecipe}
+                data-testid="recipe-footer-log-cta"
+                aria-busy={loggingRecipe}
+                className={`flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all disabled:opacity-60 ${commitCtaPayoffClass}`}
+              >
+                <Icons.add className="w-4 h-4" />
+                {loggingRecipe ? "Logging…" : "Log"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

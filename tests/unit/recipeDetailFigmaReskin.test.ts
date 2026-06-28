@@ -159,15 +159,12 @@ describe("web in-app detail — full Figma 332:2 visual language (not just bound
   });
 
   it("body title is plum Newsreader serif at the Figma display scale (not sans bold)", () => {
-    // Indentation-robust anchor: the below-hero title is now flag-gated for v3
-    // (`{recipeDetailV3 ? null : (<h1 …>)}` — the hero overlay carries the title
-    // when recipe_detail_v3 is on), which deepened the h1's indent. Slice from
-    // the `<h1` immediately preceding the body-title testid so the pin survives
-    // the wrapper while still asserting the flag-OFF title is plum serif 34px.
-    const bodyTitleIdx = WEB_SRC.indexOf('data-testid="recipe-body-title"');
+    // Indentation-robust slice: anchor on the body-title testid and walk back to
+    // the nearest `<h1` so it survives the ENG-1247 conditional-render wrap.
+    const titleTestIdx = WEB_SRC.indexOf('data-testid="recipe-body-title"');
     const h1Block = WEB_SRC.slice(
-      WEB_SRC.lastIndexOf("<h1", bodyTitleIdx),
-      bodyTitleIdx + 80,
+      WEB_SRC.lastIndexOf("<h1", titleTestIdx),
+      titleTestIdx + 80,
     );
     expect(h1Block).toContain("var(--font-headline)");
     expect(h1Block).toContain("text-foreground-brand");
