@@ -8,6 +8,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
+// FollowingFeed imports the real `@/lib/supabase` (eager client at module load)
+// — stub it so the suite doesn't throw "supabaseUrl is required" on import. The
+// tests render with no session (userId null), so the follow graph is never hit.
+vi.mock("@/lib/supabase", () => ({ supabase: {} }));
+// `@/context/auth` pulls in the HealthKit/expo-constants chain at module load;
+// the feed only needs `useAuth`, and these tests run signed-out.
+vi.mock("@/context/auth", () => ({ useAuth: () => ({ session: null, loading: true }) }));
+
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({
     text: "#221B26",

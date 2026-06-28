@@ -11,10 +11,15 @@ LANGUAGE plpgsql
 SET search_path = public
 AS $$
 BEGIN
-  IF current_setting('request.jwt.claim.role', true) = 'service_role' THEN
+  -- Bypass writers, matching the tier-lockdown pattern (ENG-1043, see
+  -- redeem_promo_code / profiles_tier_column_lockdown): service_role for direct
+  -- server writes, OR an in-transaction `app.tier_writer = 'on'` GUC set only by
+  -- a SECURITY DEFINER RPC. Note auth.role() is NOT 'service_role' inside a
+  -- definer, which is exactly why mark_recipe_macros_official sets the GUC.
+  IF auth.role() = 'service_role' THEN
     RETURN NEW;
   END IF;
-  IF current_setting('app.tier_writer', true) = '1' THEN
+  IF coalesce(current_setting('app.tier_writer', true), '') = 'on' THEN
     RETURN NEW;
   END IF;
 

@@ -45,6 +45,11 @@ BEGIN
     'attestation', true
   );
 
+  -- is_verified is server-owned (ENG-1244 trigger). This definer's auth.role()
+  -- is NOT 'service_role', so set the in-transaction tier_writer GUC to allow
+  -- the verified write through the guard (same pattern as redeem_promo_code).
+  perform set_config('app.tier_writer', 'on', true);
+
   UPDATE public.recipes
   SET
     content_origin = 'claimed',
@@ -56,23 +61,34 @@ BEGIN
     verified_at = now()
   WHERE id = p_recipe_id;
 
-  INSERT INTO public.recipe_claims (
-    claimant_id,
-    recipe_id,
-    source_url,
-    status,
-    verification,
-    attested_at,
-    verified_at
-  ) VALUES (
-    v_uid,
-    p_recipe_id,
-    trim(p_source_url),
-    'verified',
-    v_verification,
-    now(),
-    now()
-  );
+  -- Idempotent audit row: one verified claim per (recipe, claimant). A retry /
+  -- double-tap must not duplicate the takedown-traceability record.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.recipe_claims
+    WHERE recipe_id = p_recipe_id
+      AND claimant_id = v_uid
+      AND status = 'verified'
+  ) THEN
+    INSERT INTO public.recipe_claims (
+      claimant_id,
+      recipe_id,
+      source_url,
+      status,
+      verification,
+      attested_at,
+      verified_at
+    ) VALUES (
+      v_uid,
+      p_recipe_id,
+      trim(p_source_url),
+      'verified',
+      v_verification,
+      now(),
+      now()
+    );
+  END IF;
+
+  perform set_config('app.tier_writer', 'off', true);
 END;
 $$;
 

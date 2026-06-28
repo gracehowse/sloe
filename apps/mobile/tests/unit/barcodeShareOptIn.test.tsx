@@ -16,6 +16,15 @@ const submitFoodCorrection = vi.fn();
 vi.mock("@/lib/verifyRecipe", () => ({
   submitFoodCorrection: (...args: unknown[]) => submitFoodCorrection(...args),
 }));
+// The component imports the real `@/lib/supabase`, which eagerly creates a
+// Supabase client at module load — stub it so the suite doesn't throw
+// "supabaseUrl is required" on import. The consent write is shared-module logic
+// tested elsewhere; here it just needs to succeed so the share flow proceeds.
+vi.mock("@/lib/supabase", () => ({ supabase: {} }));
+const setCommunityShareConsent = vi.fn(async () => ({ ok: true }));
+vi.mock("@suppr/shared/foodCorrection/communityShareConsent", () => ({
+  setCommunityShareConsent: (...args: unknown[]) => setCommunityShareConsent(...args),
+}));
 vi.mock("@/lib/supprWeb", () => ({ getSupprWebBase: () => "https://getsloe.com" }));
 vi.mock("@/context/theme", () => ({
   useAccent: () => ({ primary: "#5B3B6E", primaryForeground: "#FFFFFF", success: "#5E7C5A" }),
@@ -58,10 +67,12 @@ describe("BarcodeShareOptIn", () => {
       <BarcodeShareOptIn entry={ENTRY} userId="u1" onDone={() => {}} />,
     );
     fireEvent.press(getByLabelText("Share it"));
+    // The share handler awaits the consent write before submitting, so wait for
+    // the success card to appear before asserting the submission fired.
+    expect(await findByText(/Saved .* thank you/)).toBeTruthy();
     expect(submitFoodCorrection).toHaveBeenCalledWith(
       expect.objectContaining({ barcode: ENTRY.barcode, name: ENTRY.name, calories: 200, userId: "u1" }),
     );
-    expect(await findByText(/Saved .* thank you/)).toBeTruthy();
     // honest: pending-until-verified, not "everyone sees it now"
     expect(getByText(/it becomes the entry everyone sees/)).toBeTruthy();
   });
