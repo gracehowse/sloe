@@ -88,7 +88,7 @@ After Grace adds custom states, migrate: Todo+`ready-for-agent` → **Ready for 
 
 | Owner | Current focus (2026-06-18) | Others must avoid |
 |-------|---------------------------|-------------------|
-| **Cursor** | ENG-889 L5 dark or next Core-5 partial | — |
+| **Cursor** | ENG-896/898 partials; ENG-1139 web Discover PressableScale | — |
 | **Codex** | Batch-4 maintenance **Done** (#471); pick next `label:agent/codex` + `ready-for-agent` | — |
 | **Claude** | Planning / doc sync / triage (`label:agent/claude` only) | — |
 

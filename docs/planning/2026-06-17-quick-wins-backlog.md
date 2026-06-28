@@ -1,13 +1,13 @@
 # Quick-wins burn-down — 2026-06-17
 
-**Last updated:** 2026-06-18 (visual verify pass: iOS paywall trust + coach-in-hero; public subpage snapshots re-run)  
+**Last updated:** 2026-06-28 (Cursor backlog audit — Linear MCP unavailable in cloud; repo audit vs `main`)  
 **Strategy shift (Grace, 2026-06-17):** stop strict gate-order sequencing; burn
 down small, agent-buildable, in-repo items in batches. Prefer S/M effort (≤2h),
 no Grace-ops/legal/Supabase-dashboard, no schema migrations. Commit + push +
 watch CI per batch; Linear comment + state on each closed item.
 
-**Current branch:** `main` (#483 + #487 merged 2026-06-18).  
-**In flight:** ENG-986 macro SSOT slim PR (`agent/cursor/eng-986-macro-ssot-slim`).
+**Current branch:** `main`.  
+**In flight:** none (2026-06-28 audit). Prior `agent/cursor/eng-986-macro-ssot-slim` landed on `main` via `src/lib/macroIcons.ts`.
 
 ## Merge history (reference)
 
@@ -90,9 +90,22 @@ individual partial rows only.
 
 ### Batch 3 — what's left
 
-1. **ENG-889** — populated-account screenshot wall (L5 dark ✅ 2026-06-18; web populated after dev restart).
-2. **ENG-896** — recipe card geometry / L6 dark / S7 empty (L2 Library skeleton ✅ #483+).
-3. **ENG-898** — action sheet 2×2 tile grid (Pro lock ✅ #483+); review / caption web parity.
+1. **ENG-889** — populated-account screenshot wall (L5 dark ✅ 2026-06-18; web populated after dev restart). TD3/TD4 unit-pinned on `main`.
+2. **ENG-896** — L6 dark (`530:2`) still open; S7 empty + recipe grid geometry ✅ on `main` (`libraryDesktopPrototypePort.test.ts`).
+3. **ENG-898** — caption preview web+mobile escape hatches ✅; `import_caption_preview_v1` remains default-OFF pending ramp.
+
+### 2026-06-28 — Cursor backlog audit (cloud agent)
+
+Linear MCP is **not authenticated** in Cursor Cloud Agents (OAuth redirect URI not registered for `https://www.cursor.com/agents/mcp/oauth/callback`). Work was triaged from repo docs (`delegate:Cursor` / `label:agent/cursor` filter) cross-checked against `main`:
+
+| ENG | Doc status | `main` reality (2026-06-28) |
+|-----|------------|------------------------------|
+| ENG-805 | Reopened Todo | **Done** — cold-open suppressed; `weeklyCheckinColdOpenSuppression.test.ts` |
+| ENG-915 | Reopened Todo | **Done** — web auth chooser progressive disclosure; `authChooserFigma.test.ts` |
+| ENG-986 / ENG-1147 | In PR | **Done** — `macroIcons.ts` + `discoverRecipeCardA11y.test.ts` |
+| ENG-1189 | Open | **Done** — `adaptiveDataProgress.test.ts` |
+| ENG-1100 | In flight | **Done** (#472+#475) |
+| ENG-1139 | Open | **In PR** — web Discover recipe cards → `PressableScale` |
 
 ## Triage table — batch 4 (maintenance / hygiene)
 
@@ -101,7 +114,7 @@ individual partial rows only.
 | **ENG-1168** | Silent-deferral re-sweep | **Done** (#471) | Linear Done 2026-06-18 |
 | **ENG-848** | Web `MacroDetailPanel` wire-or-delete | **Done** (#471) | Wired via default-on `web_macro_detail_panel`; see `docs/technical/components.md` |
 | **ENG-1090** | Storybook `EEXIST` copyDir flake | **Done** (#471) | Linear Done 2026-06-18 |
-| ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | **In PR** (slim batch 5) | `src/lib/macroIcons.ts` + platform lucide maps |
+| ENG-1147 / ENG-986 | Shared macro-icon mapping SSOT | **Done** on `main` | `src/lib/macroIcons.ts` + lucide maps; `discoverRecipeCardA11y.test.ts` |
 | ENG-1096 / ENG-984 | Dead TodayMealsFigmaLayout / eat-again banner | **Done** | Both components deleted 2026-06-17; pinned in `todayMealsSectionTd4.test.ts` + `todayAboveMealsCap.test.ts` |
 
 **Removed from queue (was stale):** ENG-1100 empty-slot extract / partial-day rows — shipped #472+#475, Linear **Done**.

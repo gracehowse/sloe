@@ -38,6 +38,7 @@ import { DiscoverCollections } from "./suppr/discover-collections";
 import { DiscoverFeaturedHero } from "./suppr/discover-featured-hero";
 import { DiscoverImportCard } from "./suppr/discover-import-card";
 import { UnifiedImportSheet } from "./suppr/unified-import-sheet";
+import { PressableScale } from "./ui/pressable-scale";
 // Phase 4 / B3.X — trust posture sweep (D-2026-04-27-16).
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` dropped
 // from the Discover hero card — see the comment on the card body.
@@ -680,9 +681,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                           recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
                         const isHero = idx === 0;
                         return (
-                          <button
+                          <PressableScale
                             key={`cluster-${recipe.id}`}
-                            type="button"
+                            haptic="confirm"
                             onClick={() => setSelectedRecipe(recipe)}
                             aria-label={recipeCardAccessibilityLabel({
                               title: recipe.title,
@@ -732,7 +733,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                                 </div>
                               </div>
                             </div>
-                          </button>
+                          </PressableScale>
                         );
                       })}
                     </div>
@@ -885,9 +886,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 void computeRecipeFitPercent;
                 void nutritionTargets;
                 return (
-                  <button
+                  <PressableScale
                     key={recipe.id}
-                    type="button"
+                    haptic="confirm"
                     id={`discover-post-${recipe.id}`}
                     onClick={() => setSelectedRecipe(recipe)}
                     aria-label={recipeCardAccessibilityLabel({
@@ -965,7 +966,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         </div>
                       </div>
                     </div>
-                  </button>
+                  </PressableScale>
                 );
               })}
             </div>
@@ -984,9 +985,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     const carbs = Math.round(recipe.carbs);
                     const byline = displayAttribution({ creatorName: recipe.creatorName });
                     return (
-                      <button
+                      <PressableScale
                         key={recipe.id}
-                        type="button"
+                        haptic="confirm"
                         id={`discover-post-${recipe.id}`}
                         onClick={() => setSelectedRecipe(recipe)}
                         aria-label={recipeCardAccessibilityLabel({
@@ -1031,7 +1032,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                           <span className="font-semibold text-foreground">{kcal}</span>
                           {` · ${protein}P · ${carbs}C`}
                         </span>
-                      </button>
+                      </PressableScale>
                     );
                   })}
                 </SupprCard>
