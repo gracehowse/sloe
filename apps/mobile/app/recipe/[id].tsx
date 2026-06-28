@@ -2116,7 +2116,7 @@ export default function RecipeDetailScreen() {
           {/* 5. Meta row — time · item count (rating + difficulty hidden: no
               backing data). v3 (ENG-1247): the hero overlay carries the
               time/kcal/serves meta, so the below-hero row is suppressed. */}
-          {recipeDetailV3 ? null : <RecipeMetaRow stats={metaStats} />
+          {recipeDetailV3 ? null : <RecipeMetaRow stats={metaStats} />}
 
           {/* Batch-total kcal line when the viewer has scaled away from yield. */}
           {(() => {
