@@ -121,23 +121,24 @@ export function SupprTabBar({
         paddingBottom: Math.max(safeInsets.bottom, 8) + 12,
       }}
     >
+      {/* ENG-1247 — the pill height (72pt) is pinned on a PLAIN View, NOT the
+          BlurView. A plain View re-measures reliably on hot reload; expo-blur's
+          BlurView caches its mount-time height and does NOT re-measure, so an
+          explicit height on the BlurView left the 56pt FAB bisected by the pill
+          edge after any hot reload (Grace flagged it repeatedly while the dev
+          sim only hot-reloaded). The plain View owns layout; the BlurView fills
+          it via flex:1. 72 = 56 FAB + 8·2 padding; fits the outer View's
+          88+inset − (inset+12) = 76 budget. */}
+      <View style={{ height: 72 }}>
       <BlurView
         intensity={resolved === "dark" ? 56 : 44}
         tint={resolved === "dark" ? "dark" : "light"}
         style={{
+          flex: 1,
           flexDirection: "row",
-          // v3 `.tabbar` is `align-items: flex-end` — the tab glyphs + labels
-          // bottom-align, and the 56pt FAB sits CONTAINED, bottom-aligned with
-          // the tabs (not raised out the top/bottom). ENG-1247.
+          // v3 `.tabbar` is `align-items: flex-end`; the 56pt FAB sits CONTAINED,
+          // centred in the 72pt pill (see LogTabBarButton). ENG-1247.
           alignItems: "flex-end",
-          // EXPLICIT height — `expo-blur`'s native BlurView does NOT flex-grow to
-          // its tallest child the way a plain View does, so it collapsed toward
-          // the tab-glyph height (~54pt) and the bottom-aligned 56pt FAB
-          // overflowed the top (~10pt) → the "+ bisected by the pill edge" bug
-          // (ENG-1247, Grace flagged 3×). Pin the pill to fully contain the FAB:
-          // 56 (FAB) + 8+8 (paddingVertical) = 72. Fits the outer View's
-          // available space (88+inset − (inset+12) = 76).
-          height: 72,
           borderRadius: Radius.full,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
@@ -263,6 +264,7 @@ export function SupprTabBar({
         );
       })}
       </BlurView>
+      </View>
     </View>
   );
 }
