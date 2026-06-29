@@ -338,12 +338,18 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
 ]);
 
 /**
- * Default-OFF flags — registered for discoverability only. Empty as of
- * 2026-06-29: every shipped flag is in `REDESIGN_DEFAULT_ON`; PostHog is the
- * kill switch via `isFeatureDisabled`. Keep the export so tooling/tests can
- * still find the registry. Mobile omits web-only flags (landing hero).
+ * Default-OFF flags — registered for discoverability only. A flag here is
+ * NOT in `REDESIGN_DEFAULT_ON`, so `isFeatureEnabled` resolves it `false`
+ * until PostHog ramps it. Keep in sync with the same block in
+ * `apps/mobile/lib/analytics.ts`.
+ *
+ * - `logsheet_ai_method_tooltip` (ENG-1252) — first-session inline tooltip
+ *   ("AI logging — available with Pro.") under the locked Voice / Snap chip
+ *   in the LogSheet `InputModeRow`, for free-tier users on their first ~3
+ *   sessions. DEFAULT-OFF *by design*: ship dark, ramp via PostHog (NOT in
+ *   `REDESIGN_DEFAULT_ON`). Gate logic: `src/lib/today/aiMethodTooltip.ts`.
  */
-export const KNOWN_DEFAULT_OFF_FLAGS = [] as const;
+export const KNOWN_DEFAULT_OFF_FLAGS = ["logsheet_ai_method_tooltip"] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
   const forced = flagForceOverride(flag);

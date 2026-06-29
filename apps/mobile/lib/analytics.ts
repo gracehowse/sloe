@@ -475,11 +475,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  * so `isFeatureEnabled` resolves them false until PostHog ramps them). Keep this
  * list in sync with the same block in `src/lib/analytics/track.ts`.
  *
-/**
- * DEFAULT-OFF flags — empty as of 2026-06-29 (all shipped flags default-on).
- * Keep in sync with `src/lib/analytics/track.ts`.
+ * - `logsheet_ai_method_tooltip` (ENG-1252) — first-session inline tooltip
+ *   ("AI logging — available with Pro.") under the locked Voice / Snap chip
+ *   in the LogSheet `InputModeRow`, for free-tier users on their first ~3
+ *   sessions. DEFAULT-OFF *by design*: ship dark, ramp via PostHog (NOT in
+ *   `REDESIGN_DEFAULT_ON`). Gate logic: `@suppr/shared/today/aiMethodTooltip`.
  */
-export const KNOWN_DEFAULT_OFF_FLAGS = [] as const;
+export const KNOWN_DEFAULT_OFF_FLAGS = ["logsheet_ai_method_tooltip"] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of
