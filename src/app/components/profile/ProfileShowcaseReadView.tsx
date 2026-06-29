@@ -40,7 +40,7 @@ export function ProfileShowcaseReadView({
       <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 card-slab">
         <div
           aria-hidden
-          className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-muted font-[family-name:var(--font-headline)] text-[32px] text-primary"
+          className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-muted font-[family-name:var(--font-headline)] text-[28px] text-primary"
         >
           {monogramInitial}
         </div>
