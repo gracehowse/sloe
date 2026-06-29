@@ -25,12 +25,13 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { authedFetch } from "@/lib/authedFetch";
 import { getSupprApiBase } from "@/lib/supprWeb";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { AnalyticsEventName } from "@suppr/shared/analytics/events";
 import { useCsvImportFlow } from "@suppr/shared/imports/useCsvImportFlow";
 import type { CsvUploadResult } from "@suppr/shared/imports/useCsvImportFlow";
 import { CsvImportPreview } from "@/components/imports/CsvImportPreview";
+import { NamedTrackerReassuranceStrip } from "@/components/imports/NamedTrackerReassuranceStrip";
 
 /**
  * Minimal asset shape from `expo-document-picker.getDocumentAsync`.
@@ -141,6 +142,8 @@ export function MobileMfpCsvImportCard({
   // from one we can import. `highlightApp` is `null` on the generic Settings
   // surface and when no importable app was chosen.
   const highlighted = highlightApp != null;
+  const reassuranceStrip =
+    isFeatureEnabled("mfp_tracker_reassurance_v1") && !highlighted && state.kind === "idle";
   const title = highlighted
     ? `Bring your ${highlightApp} history`
     : "Import from another app";
@@ -228,6 +231,8 @@ export function MobileMfpCsvImportCard({
           >
             {body}
           </Text>
+
+          {reassuranceStrip ? <NamedTrackerReassuranceStrip /> : null}
 
           {state.kind === "idle" && (
             <Pressable
