@@ -73,10 +73,12 @@ import {
 } from "../../lib/nutrition/pendingUsualMealSave.ts";
 import { Digest } from "./suppr/digest.tsx";
 import { resolveDigestHeadline } from "../../lib/nutrition/digest.ts";
-import { isFeatureEnabled, track } from "../../lib/analytics/track.ts";
-import { AnalyticsEvents } from "../../lib/analytics/events.ts";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
-import { isNewWeightLow } from "../../lib/nutrition/weightWinMoment.ts";
+import { WeightPlateauInsight } from "./progress/WeightPlateauInsight.tsx";
+import { WeightMilestoneMoment } from "./progress/WeightMilestoneMoment.tsx";
+import { useWeightCelebration } from "./progress/useWeightCelebration.ts";
+import { resolveWeightSaveCelebration } from "../../lib/nutrition/weightWinMoment.ts";
 import { formatRecapForShare } from "../../lib/nutrition/weeklyRecap.ts";
 import {
   formatMaintenanceRecapLine,
@@ -230,15 +232,17 @@ function ProgressDashboardContent() {
   const [weightInput, setWeightInput] = useState("");
   const [stepsInput, setStepsInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
-  // ENG-824 (Redesign — Design Direction 2026, 2026-05-31 design-director
-  // review): the reserved weight win-moment, web analog of the mobile
-  // success-haptic. Web has no haptics, so the landmark surfaces as a brief
-  // green ring-stroke colour pulse on the weight number plus the reserved
-  // `WinMomentPlayer`. `weightWinActive` mounts the player; `weightPulse`
-  // tints the latest-weight figure for ~200ms. Both gated behind
-  // `redesign_winmoment`; flag-off keeps the silent save.
-  const [weightWinActive, setWeightWinActive] = useState(false);
-  const [weightPulse, setWeightPulse] = useState(false);
+  // ENG-824 / ENG-952 — weight-save celebration state + side-effects (loud
+  // new-all-time-low player + pulse; quiet milestone player), extracted to
+  // `useWeightCelebration`. `fireCelebration` runs the matching tier on a save.
+  const {
+    weightWinActive,
+    setWeightWinActive,
+    weightPulse,
+    milestoneWinOrdinal,
+    setMilestoneWinOrdinal,
+    fireCelebration,
+  } = useWeightCelebration();
   // ENG-1030 — Apple Health range grammar. Replaces the `7d/30d/90d/All`
   // relative-window picker with the calendar-anchored period model
   // (D/W/M/6M/Y + horizontal paging). Default = current week, matching
@@ -606,39 +610,28 @@ function ProgressDashboardContent() {
     if (!Number.isFinite(v) || v <= 0) return;
     const kg = profileMeasurementSystem === "imperial" ? v / 2.20462 : v;
     const tk = todayKey();
-    // ENG-824 — detect the new-all-time-low landmark against the PRE-save map
-    // (excluding today's key so re-saving today doesn't compare to itself).
-    // Gated behind `redesign_winmoment`; flag-off keeps the silent save.
-    const winMomentEnabled = isFeatureEnabled("redesign_winmoment");
-    const newLow =
-      winMomentEnabled &&
-      isNewWeightLow({ savedKg: kg, priorByDay: weightKgByDay, targetDateKey: tk });
+    // ENG-824 / ENG-952 — resolve the celebration tier against the PRE-save map
+    // (excluding today's key so re-saving today doesn't compare to itself). The
+    // loud new-all-time-low owns precedence over the quieter milestone tier;
+    // the shared resolver keeps that decision identical to mobile. Each tier is
+    // flag-gated (`redesign_winmoment` / `progress_milestone_celebration_v1`);
+    // flag-off keeps the silent save.
+    const celebration = resolveWeightSaveCelebration({
+      savedKg: kg,
+      priorByDay: weightKgByDay,
+      targetDateKey: tk,
+      goalKg: goalWeightKg,
+      winMomentEnabled: isFeatureEnabled("redesign_winmoment"),
+      milestoneEnabled: isFeatureEnabled("progress_milestone_celebration_v1"),
+    });
     const nextMap = pruneWeightKgByDay({ ...weightKgByDay, [tk]: kg });
     setWeightKgByDay(nextMap);
     setWeightKg(kg);
     setWeightInput("");
-    if (newLow) {
-      // Web analog of the mobile success haptic: the reserved celebration +
-      // a brief green colour pulse on the latest-weight figure. Reduced-motion
-      // users still get the player (it is its own loud beat) but no pulse.
-      setWeightWinActive(true);
-      const prefersReducedMotion =
-        typeof window !== "undefined" &&
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (!prefersReducedMotion) {
-        setWeightPulse(true);
-        window.setTimeout(() => setWeightPulse(false), 200);
-      }
-      try {
-        track(AnalyticsEvents.weight_new_low_win_moment_shown, { platform: "web" });
-      } catch {
-        /* analytics fire-and-forget */
-      }
-    }
+    fireCelebration(celebration); // ENG-824/952 — loud new-low or quiet milestone; no-op when "none".
     if (!authedUserId) return;
     await persistWeightKgByDay({ supabase, userId: authedUserId, weightKgByDay: nextMap, weightKg: kg });
-  }, [weightInput, profileMeasurementSystem, weightKgByDay, authedUserId]);
+  }, [weightInput, profileMeasurementSystem, weightKgByDay, goalWeightKg, authedUserId, fireCelebration]);
 
   const saveTodaySteps = useCallback(async () => {
     const v = Math.round(Number.parseFloat(stepsInput.replace(",", ".")));
@@ -1309,6 +1302,11 @@ function ProgressDashboardContent() {
               testID="progress-weight-win-moment"
             />
           ) : null}
+          {/* ENG-952 — the QUIETER milestone tier (extracted overlay). */}
+          <WeightMilestoneMoment
+            ordinal={milestoneWinOrdinal}
+            onComplete={() => setMilestoneWinOrdinal(null)}
+          />
           {/* Section eyebrow — parity with mobile (progress.tsx) + the web
               "Daily Calories" / "Average Adherence" cards, so the weight card
               is no longer the only Progress card without a header. */}
@@ -1427,6 +1425,8 @@ function ProgressDashboardContent() {
               </ResponsiveContainer>
             </div>
           )}
+          {/* ENG-954 — calm plateau insight (extracted component). */}
+          <WeightPlateauInsight plateauInsight={weightTrend.plateauInsight} />
           {/* START / CURRENT / GOAL / RATE stat row (extracted, ENG-1225 #22) */}
           <WeightStatRow
             start={startKg != null ? formatWeight(startKg) : "—"}

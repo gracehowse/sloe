@@ -339,6 +339,65 @@ describe("computeWeightTrend", () => {
   });
 });
 
+// ENG-954 — confirm the plateau insight reaches mobile through the
+// `@suppr/shared/progress/weightTrend` re-export (mobile consumes the SAME
+// function as web, so a genuine plateau reframes identically on both surfaces).
+describe("computeWeightTrend — plateauInsight via mobile re-export (ENG-954)", () => {
+  function genuinePlateauPoints(): WeightPoint[] {
+    const pts: WeightPoint[] = [];
+    for (let i = 0; i < 20; i++) {
+      const d = new Date(BASE_ISO + "T12:00:00");
+      d.setDate(d.getDate() - (19 - i));
+      const kg = i < 9 ? 80.0 - i * 0.25 : 78.0 + (i % 2 === 0 ? 0.05 : -0.05);
+      pts.push({ dateISO: d.toISOString().slice(0, 10), kg: Math.round(kg * 100) / 100 });
+    }
+    return pts;
+  }
+
+  it("fires on a genuine plateau (flat recent stretch + long trend still toward goal)", () => {
+    const r = computeWeightTrend(genuinePlateauPoints(), "1m", 72, BASE_ISO);
+    expect(r.plateauInsight).not.toBeNull();
+    expect(r.plateauInsight!.longTrendTowardGoal).toBe(true);
+    expect(r.plateauInsight!.line).toMatch(/held flat for \d+ days/);
+  });
+
+  it("returns null when the long trend is also flat", () => {
+    const pts: WeightPoint[] = [];
+    for (let i = 0; i < 20; i++) {
+      const d = new Date(BASE_ISO + "T12:00:00");
+      d.setDate(d.getDate() - (19 - i));
+      pts.push({ dateISO: d.toISOString().slice(0, 10), kg: 78.0 + (i % 2 === 0 ? 0.05 : -0.05) });
+    }
+    expect(computeWeightTrend(pts, "1m", 72, BASE_ISO).plateauInsight).toBeNull();
+  });
+
+  it("stays silent for a flat stretch shorter than the 7-day floor (no overstated span)", () => {
+    // Mobile parity for the web regression pin: a long downtrend then only a
+    // 2-CALENDAR-DAY flat blip must NOT fire (the genuine span is below the
+    // PLATEAU_MIN_FLAT_DAYS floor) — and never render a false "held flat for 7
+    // days" claim. Both surfaces share `computeWeightTrend`, so they suppress
+    // the short blip identically.
+    const pts: WeightPoint[] = [];
+    for (let i = 0; i < 9; i++) {
+      const d = new Date(BASE_ISO + "T12:00:00");
+      d.setDate(d.getDate() - (13 - i));
+      pts.push({ dateISO: d.toISOString().slice(0, 10), kg: Math.round((80 - i * 0.25) * 100) / 100 });
+    }
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(BASE_ISO + "T12:00:00");
+      d.setDate(d.getDate() - (2 - i));
+      pts.push({ dateISO: d.toISOString().slice(0, 10), kg: 78.0 + (i % 2 === 0 ? 0.05 : -0.05) });
+    }
+    expect(computeWeightTrend(pts, "1m", 72, BASE_ISO).plateauInsight).toBeNull();
+  });
+
+  it("reports the real flat-day span consistently in the copy", () => {
+    const ins = computeWeightTrend(genuinePlateauPoints(), "1m", 72, BASE_ISO).plateauInsight!;
+    expect(ins.flatDays).toBeGreaterThanOrEqual(7);
+    expect(ins.line).toContain(`held flat for ${ins.flatDays} days`);
+  });
+});
+
 describe("weightKgByDayToPoints", () => {
   it("converts record to sorted WeightPoint array", () => {
     const record = { "2026-04-20": 72.0, "2026-04-22": 72.4, "2026-04-21": 72.2 };
