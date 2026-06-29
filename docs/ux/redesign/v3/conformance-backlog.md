@@ -2,13 +2,20 @@
 
 Generated from the 14-agent forensic audit (workflow `sloe-v3-conformance-audit`). Canonical source: `docs/ux/redesign/v3/Sloe-App.html`. Drive to 100%: each surface → conform web+mobile in parity → SEE on sim + web → gate → commit → tick here.
 
-**Totals:** 79 surfaces · 53 need work · 14 conformant · 7 keep-current · 5 net-new-absent (deferred). Diffs (excl. keep-current): 69 high · 105 med · 50 low.
+**Totals:** 79 surfaces · 21 need work · 21 conformant · 33 keep-current · 1 net-new build · 3 in progress. §B/§D ratified 2026-06-28 — see registry below.
+
+**Completion framing (2026-06-28):** Launch-critical daily-loop + recipe spine conforms ship behind default-OFF flags on `main` (PR #609). §B (29) + §D (18) ratified 2026-06-28; remaining ⬜ = autonomous §A + explicit builds (B15–B16, B18, B21, B26, B28). See `docs/decisions/2026-06-28-eng1247-conformance-completion-status.md`.
 
 Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 🆕 net-new (deferred)
 
 ## Progress log
 
-- 🔄 **RecipeDetail (Recipes — viral hook)** — IN PROGRESS, flag `recipe_detail_v3` (default OFF). **(1) Hero overlay ✅ SHIPPED BOTH PLATFORMS** — mobile `288a1c97`, web `34f1d9c8`: kicker overline + serif h1 + meta row (clock/flame/utensils) overlaid on the hero over a veil; mobile `RecipeTitleBlock.hideTitle` + below-hero `RecipeMetaRow` suppressed, web below-hero `recipe-body-title` h1 + meta-row IIFE suppressed. SEEN both platforms, both flag states (sim + authed web Discover→recipe via web-drive: flag-on = veil + "FITS YOUR DAY" kicker + serif title + "15 min · 380 kcal · Serves 2"; flag-off = bare hero). **NEXT: (2) drop-cap standfirst.** Then macro strip, sticky CTA, method steps, review banner — one piece per iteration. _(Sequencing: Grace 2026-06-28 "finish conformance first, then assess" — the senior-designer pass comes AFTER conformance; the `docs/ux/2026-06-28-senior-designer-direction-brief.md` is premature.)_ Remaining pieces (prototype L4315-4427): **(1) hero overlay** — move kicker (overline) + serif h1 (31/500 white) + meta row (clock/flame/utensils) INTO the hero over a bottom veil (today the hero is photo+frosted-controls only; title lives in `RecipeTitleBlock` below → add a `hideTitle` path); **(2) drop-cap standfirst** (`.rd-standfirst`, `::first-letter initial-letter:2` plum — RN fakes the drop-cap); **(3) borderless macro strip**; **(4) sticky 'Cook this'/+Log CTA**; **(5) serif method steps + '{n} steps · {time} min'**; **(6) import review banner**. KEEP-CURRENT 🔒: the solid 'Fits your day' verdict banner + the footer servings stepper (audit). Mobile: `apps/mobile/app/recipe/[id].tsx` + `components/recipe/{RecipeDetailHero,RecipeTitleBlock,...}`; web: `src/app/components/RecipeDetail.tsx`. **Coordination note (2026-06-28):** Cursor is actively iterating the tab bar on this shared branch (commit `65966d55` + live uncommitted TEMP `cyan/orange BOUNDS-TINT` debug in `_layout.tsx`) — don't stage `_layout.tsx`; let it settle for clean sim SEEs.
+- 🔄 **RecipeDetail (Recipes — viral hook)** — flag `recipe_detail_v3_conformance` (default OFF). **Shipped:** hero overlay, standfirst, borderless macros, sticky Cook/Log, v3 method steps + step-count note, import review banner (2026-06-28). **Flag backlog only:** CookMode dark aubergine theme — not a standalone ⬜ surface; ships with the same flag ramp. **🔒 keep-current:** solid Fits-your-day verdict banner (ENG-1085), footer yield stepper, image-tile ingredient grid.
+- ✅ **Plan AdjustConstraints (B1)** — DONE (2026-06-28): sheet web+mobile + sliders button; leftovers toggle; **calorie floor wired into mealPlanAlgo (`calorieFloorMin`, ENG-1254)**.
+- ✅ **BatchCook (B3 minimal v1, ENG-1255)** — DONE (2026-06-28): `batch-cook` route (mobile) + `BatchCookSheet` (web) + PlanTools 2-up row; scales shopping list to batch portions. **🔒 out of scope (Grace B3):** assign-portions day×meal planner + fridge pip tracker — not minimal v1; do not chase as conformance gap.
+- ✅ **ConfirmFood P/C/F mix (A2b, ENG-1257)** — DONE (2026-06-28): 3-tile P/C/F row + serif kcal line in FoodSearchPanel preview; micro table kept below (web + mobile).
+- 🔄 **Profile showcase (B6, ENG-1256)** — **mobile only:** `ProfileShowcaseReadView` behind `profile_showcase_v1` (default OFF). **Web read showcase:** follow-up only; legacy `Profile.tsx` editor remains canonical on web.
+- ✅ **Notifications** — DONE (grouping + toned plates shipped earlier; audit residual = header chrome 🔒keep). Today/Earlier overline groups + 38px toned `.notif-ic` plates on web + mobile.
 
 - ✅ **Today header bell** — mobile shipped `c0ca0cd3`: extracted `TodayHeaderBar` (wordmark + bell + avatar), bell → `(tabs)/notifications` with unread dot. Prototype conform + web↔mobile parity (web already had a bell). Header **calendar deliberately omitted** (week-strip owns it — Grace "add bell only"). SEEN on sim.
 - ✅ **Today quick-add recents row** — DONE both platforms, flag `today_quickadd_recents_v3` (default OFF), ready to ramp. Mobile `6de0ac5a` + web `d218f3c2`: `TodayRecentsRow` (recents one-tap re-log chips + "All"→LogSheet + empty state), reuses `logHistoryItemToSlot`/`logHistoryItem`; deleted the dead `TodayQuickLogStrip` (the audit's phantom "launcher strip") both platforms. SEEN on sim + web. Also fixed a peer's `_layout.tsx` v7 `sceneContainerStyle`→`sceneStyle` typecheck regression. Fast-follow ENG-1252 (LogSheet AI tooltip). _(Original resolution below.)_ **Phantom audit finding corrected:** the "Search/Voice/Snap/Scan launcher strip" (`TodayQuickLogStrip`) the audit flagged is **dead code — not rendered** on either platform (`canonicalTodayPhase2` already pins it out; confirmed in code + my Today SEEs). So this is **ADD** the prototype's recents row (net-new on Today) + delete the dead strip, not "replace".
@@ -17,13 +24,59 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **Monetisation RESOLVED (monetisation-architect, conf 8/10):** AI-logging (Voice/Snap) Pro-discovery stays in the LogSheet (option c); removing the dead launcher strip is clean housekeeping (no flag, no conversion loss — it was already gone). **Fast-follow (separate Linear issue, NOT ENG-1247):** a first-session (1–3) AI-method tooltip inside `LogSheet.InputModeRow`, flag `logsheet_ai_method_tooltip`; watch `ai_paywall_sheet_viewed` (roll back if it drops >30% WoW).
 
 - ✅ **Today calorie hero (de-card)** — DONE both platforms, flag `today_hero_decard_v3` (default OFF), ready to ramp. Mobile `877eca91` + web parity/numeral `16efd625`: bare hero (no card) + `RingStatusLine` below ring (sage under / red over) + 56px serif-medium numeral + `TodayHeroStats` extraction. SEEN on sim + web (empty + under-budget) — perfect parity, no slab.
+- ✅ **Bulk 🔒 registry** — all ratified §B/§D rows marked 🔒 or ✅ in surface headers + resolution table below (2026-06-28).
+
 - ✅ **MealEdit serif kcal hero** — shipped `957e5da9` (both platforms); expander + copy-row confirmed keep-current dupes.
+
+## §B/§D ratified resolutions (2026-06-28)
+
+Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning backlog §D. Every row below is **resolved** for 100% tally (✅ shipped · 🔒 keep-current · 🆕 scoped build).
+
+| Ref | Surfaces marked 🔒/✅ | Outcome |
+|-----|----------------------|---------|
+| B1 | PlanHead | ✅ AdjustConstraints sheet + sliders button |
+| B2 | AdaptiveTDEE, Progress | 🔒 inline adaptive; fix dead Why links |
+| B3 | BatchCook, Plan tools | ✅ minimal v1 (scaling + shopping); 🔒 assign-portions + fridge pips beyond Grace scope |
+| B4, §D4 | LogHub, SearchView, FoodRow, ConfirmFood inline | 🔒 search-first logging IA |
+| B5 | Targets | 🔒 dashboard + delegated edit |
+| B6 | Profile | 🔄 mobile read showcase (`profile_showcase_v1`); web showcase follow-up |
+| B7 | Household, Plan household banner | 🔒 sharing grid |
+| B8 | Paywall, ProLock | 🔒 Figma 284:2 canonical |
+| B9 | Coach | 🔒 distributed coach; no unified screen |
+| B10 | BurnDetail | 🔒 web inline panel |
+| B12 | CreateRecipe (both) | 🔒 keep live source set |
+| B13 | ScanLabel | 🔒 OCR in custom-food; standalone deferred |
+| B14 | Meal action sheet | 🔒 web host-surface meal editing |
+| B17, §D6 | ImportFlow | 🔒 route-out pipeline; B15 clear still builds |
+| B19, §D7 | MfpImport | 🔒 Settings-embedded CSV + auto mapping |
+| B20 | GoPublic | 🔒 mobile attestation (already marked) |
+| B22 | Digest | 🔒 weekly recap on Progress |
+| B24 | PlanTemplates | 🔒 tabbed dialog (already marked) |
+| B25 | DataExport | 🔒 two direct export buttons |
+| B27 | Billing | 🔒 storefront-owned billing |
+| B29 | Plan week strip | ✅ no CalendarPicker (already marked) |
+| §D1 | WinMoment | 🔒 gold ring + transient player |
+| §D2 | Calorie hero, Macros | ✅/🔒 Goal/Eaten/Bonus; macro toggle |
+| §D3 | Today header | 🔒 bell only; week strip owns calendar |
+| §D5 | ReportRecipe | 🔒 legal reason set (already marked) |
+| §D10 | Settings | 🔒 web card IA carve-out |
+| §D11 | HealthSync | 🔒 iOS-only (already marked) |
+| §D12 | Net energy / Progress energy | 🔒 no fabricated adapt row |
+| §D13 | RecipeDetail web | 🔒 single RecipeDetail.tsx (tabs 🔒) |
+| §D14 | Fasting | 🔒 richer production surface |
+| §D15 | Changelog | 🔒 asymmetric entry points |
+| §D16 | Plan tools smart suggestions | 🔒 honest real-data nudges |
+| §D17 | Grocery | 🔒 no Tesco/Ocado fiction (already marked) |
+| §D18 | EraseEverything, DeleteAccount dialog | 🔒 web dialog IA (B26 sheet still builds) |
+
+**Still ⬜ (not keep-current):** autonomous §A cosmetic (Nutrients sort, Hydration sheet, CompleteDay, onboarding tokens, etc.) + explicit builds B15–B16, B18, B21, B26, B28 (ResetPlan 🆕), CreatorProfile, WeeklyRecap detail rows. **Flag backlog (not ⬜):** RecipeDetail CookMode dark theme (`recipe_detail_v3_conformance`). **Out of scope (not ⬜):** BatchCook assign-portions planner (Grace B3 minimal v1).
+
 
 
 ## Cluster: import-flows
 
 
-### ⬜ ImportFlow (unified import sheet — paste link → detect → preview/multi/mfp/fail) — H5 M1 L2
+### 🔒 ImportFlow — route-out paste sheet (§D6; B15 clear btn still builds)
 - proto: `4515-4631 (+CSS L817-820, L1286-1294, L2141-2142, L2199)`
 - mobile: apps/mobile/components/import/UnifiedImportSheet.tsx; apps/mobile/components/import/ImportDetectedChip.tsx; apps/mobile/components/import/ImportLoadingSkeleton.tsx; apps/mobile/lib/importRouting.ts
 - web: src/app/components/suppr/unified-import-sheet.tsx; src/app/components/suppr/import-detected-chip.tsx; src/lib/recipe-import/classifyImport.ts; src/lib/recipe-import/importRoutingWeb.ts
@@ -38,7 +91,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[HIGH 🔒keep?]** loading / single / multi / fail phases: proto = import-spin spinner + skeleton block; single-recipe import-preview (96px ip-photo + serif ip-name + review-banner warning card + detected-ingredients list with ver-dot confidence); multi-recipe exp-check picker list with 'Add N recipes' CTA; fail state with 'Try another' / 'Paste manually'. · app = both · _Routing out to dedicated, more-capable result surfaces is arguably better than a mock in-sheet preview — but it means none of the prototype's loading/single/multi/fail structure exists here; needs Grace's call on whether in-sheet preview is required for conformance._
   - **[MED]** Detection-driven CTA: proto = Docked pushed-cta: disabled when !det; label 'Import {label.toLowerCase()}' with sparkles icon, else 'Paste something to import'. · app = both · _CTA label logic conforms; missing the sparkles leading icon and the docked footer treatment._
 
-### ⬜ MfpImport (CSV refugee: source grid → detecting → column mapping → table preview) — H3 M1 L2
+### 🔒 MfpImport — Settings-embedded CSV (§D7; B18 MFP strip still builds)
 - proto: `5791-5872 (+CSS L857-885, L2068)`
 - mobile: apps/mobile/components/imports/MfpCsvImportCard.tsx; apps/mobile/components/imports/CsvImportPreview.tsx
 - web: src/app/components/imports/MfpCsvImportCard.tsx; src/app/components/imports/CsvImportPreview.tsx; src/lib/imports/useCsvImportFlow.ts
@@ -78,7 +131,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Title + intro: proto = Title 'Complete today'; intro 'Lock in Wednesday and we'll fold it into your trend. Here's how today lands.' · app = Title 'Day logged!' / 'Day complete'; no intro insight line · _Title and lead copy differ._
   - **[LOW]** Hero check circle: proto = No standalone check circle — the cd-stats + chart carry the surface · app = 80px primary-soft circle with a 40px check icon as the hero · _App adds a hero check the prototype omits._
 
-### ⬜ WinMoment — H3 M0 L1
+### 🔒 WinMoment — gold ring + transient player (§D1)
 - proto: `6802-6829`
 - mobile: apps/mobile/components/ui/WinMomentPlayer.tsx
 - web: src/app/components/ui/win-moment-player.tsx
@@ -116,7 +169,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Title + Save CTA: proto = Sheet title 'Hydration & stimulants'; bottom 'Save' btn--primary btn--block btn--lg; toast 'Hydration saved.' · app = Two card titles 'Hydration' / 'Stimulants'; no Save CTA (chips commit immediately) · _Single combined sheet + explicit Save vs two auto-committing cards._
   - **[LOW]** Insight footer copy: proto = 'Rows you don't use stay hidden — add only what you want to see. Nothing here counts against your calorie ring unless you log it as a drink.' · app = No equivalent insight paragraph in the cards · _Explanatory insight line missing._
 
-### ⬜ Notifications — H0 M2 L2
+### ✅ Notifications — H0 M2 L2 (core grouping + plates; header chrome 🔒keep)
 - proto: `5469-5498`
 - mobile: apps/mobile/app/(tabs)/notifications.tsx + apps/mobile/components/notifications/NotificationRow.tsx
 - web: src/app/components/NotificationsCenter.tsx
@@ -130,11 +183,11 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: settings-profile
 
 
-### ⬜ Profile — H3 M2 L0
+### 🔄 Profile — mobile read showcase only (B6, ENG-1256); web follow-up
 - proto: `5405-5466 (Profile fn); CSS L1245-1258(prof-head/prof-avatar/prof-name/prof-stats/prof-stat-v/prof-stat-l/prof-streak/streak-dots/mile-ic),524-539(segmented)`
-- mobile: apps/mobile/app/profile.tsx
-- web: src/app/components/Profile.tsx
-- _Prototype Profile is a display/identity screen: an Established/First-day demo segmented, centered 84px prof-avatar + serif name + 'Cooking since March · Free plan', a 3-stat row (Days logged 84 / Recipes 26 / Cooked 96 with hairline dividers), a streak card with 14 streak-dots (on/freeze states) + freeze tokens + best, a 'Your recipes' rgrid, and a 'Milestones' divided card. Both apps instead render a profile EDITOR (sex/age/height/weight/goal via GoalPaceEditorSheet) with only a 2-stat strip — Recipes + Streak (mobile: 'Recipes saved' + 'Day streak'; web: 'Recipes' + streak). No 3-stat row, no streak-dots, no milestones, no Your-recipes grid, no Cooked/Days-logged stats._
+- mobile: `apps/mobile/app/profile.tsx`, `apps/mobile/components/profile/ProfileShowcaseReadView.tsx` (flag `profile_showcase_v1`, default OFF)
+- web: `src/app/components/Profile.tsx` — **legacy editor remains canonical**; read showcase not built
+- _B6 ratified read showcase + Settings editor split. **Mobile:** showcase read view behind flag; editing moves to Settings when flag on. **Web:** follow-up only — still ships profile editor on `Profile.tsx`; parity gap is intentional until web showcase lands._
   - **[HIGH]** 3-stat strip: proto = prof-stats: Days logged / Recipes / Cooked, serif numerals, 1px hairline ::before dividers · app = Both apps show only 2 stats (Recipes + Streak). 'Days logged' and 'Cooked' absent · _Stat set and count differ._
   - **[HIGH]** Streak-dots card: proto = prof-streak card: 'Current streak' overline + flame success pill '12 days', 14 streak-dots (on/freeze/empty), '2 freeze tokens left' / 'Best: 31 days' · app = Streak surfaced as a single number tile; no 14-dot visual, no freeze-tokens/best line on this surface · _Distinctive streak-dots visualization missing from Profile._
   - **[HIGH]** Milestones card: proto = Divided card: '100-day cook' / 'First 5kg' / 'Recipe author' with mile-ic (is-done success) + check/'2 to go' · app = Absent on both · _net-new prototype block with no app equivalent._
@@ -142,7 +195,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Identity header: proto = centered 84px prof-avatar gradient, serif prof-name, 'Cooking since March · Free plan' subline · app = Editorial identity card (mobile §3.2) / web header — avatar+name present but layout/subline copy differ, plus an editor entry row the prototype lacks · _Header present but not the centered display-only treatment + 'Cooking since' tenure copy._
   - **[LOW 🔒keep?]** Profile editing capability: proto = none (display only; Established/First-day is a demo toggle) · app = Both apps let you edit sex/age/height/weight/goal/pace via sheets · _keepCurrentCandidate — editing is net-new capability the product needs; the demo segmented in the prototype is not a real feature._
 
-### ⬜ Targets — H2 M3 L0
+### 🔒 Targets — dashboard + delegated edit (B5)
 - proto: `5142-5174 (Targets fn); CSS L524-539(segmented),539(field-label),1945-1948(tg-edit/tg-num/tg-step),2307-2308(tg-row/tg-v)`
 - mobile: apps/mobile/app/targets.tsx
 - web: src/app/components/Targets.tsx
@@ -154,7 +207,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Reset goals & targets row: proto = set-row refresh icon under 'Recalculate' label, 'Reset goals & targets / Re-answer the questions and recalculate from scratch' → resetOnboarding · app = Mobile has Recalculate ghost CTA (L753) that re-runs adaptive recompute, NOT an onboarding-reset row with that copy · _Different action (recompute vs re-answer onboarding) and different copy/affordance._
   - **[LOW 🔒keep?]** Save changes CTA + offline error note: proto = Sticky pushed-cta 'Save changes' btn--primary btn--lg; lowconf-note destructive 'Couldn't save — you're offline' on error · app = Apps autosave / use sheets; no single sticky 'Save changes' bar with the offline retry note · _Different save model._
 
-### ⬜ Settings — H2 M1 L0
+### 🔒 Settings — web card IA carve-out; mobile set-ic (§D10)
 - proto: `5100-5141 (Settings fn); CSS L350,524-539,606,1628(avatar-lg),2298-2308(set-profile/set-name/pro-band/pglow/pro-h/pro-p/set-row/set-ic/set-ver),2403-2408`
 - mobile: apps/mobile/app/(tabs)/settings.tsx + apps/mobile/components/settings/SettingsBundleContent.tsx
 - web: src/app/components/Settings.tsx + src/app/components/settings/SettingsTwoPaneShell.tsx
@@ -166,7 +219,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[LOW 🔒keep?]** Sign out treatment: proto = .btn--tertiary btn--block ghost, destructive-coloured text, marginTop 16 · app = Mobile: neutral bordered card row with LogOut icon, text NOT destructive (deliberate — comment: red reserved for irreversible) · _keepCurrentCandidate — mobile intentionally makes Sign Out neutral (reversible action) vs prototype's destructive-red text._
   - **[LOW 🔒keep?]** Settings search: proto = none · app = Mobile has a pinned search field + settingsSearchIndex; prototype has no search · _keepCurrentCandidate — net-new capability (Wave-2 audit-vs-competitors), Grace-blessed._
 
-### ⬜ Changelog — H0 M1 L1
+### 🔒 Changelog — asymmetric entry points (§D15)
 - proto: `6594-6615 (Changelog fn); CSS L1046-1053(chlog/chlog-head/chlog-v/chlog-new/chlog-date/chlog-list/chlog-dot)`
 - mobile: apps/mobile/app/whats-new.tsx
 - web: (web changelog surface not separately located — likely within Settings/help; not confirmed present)
@@ -179,7 +232,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: account-data
 
 
-### ⬜ DataExport — H3 M2 L0
+### 🔒 DataExport — two direct export buttons (B25)
 - proto: `5909-5939`
 - mobile: apps/mobile/components/settings/SettingsBundleContent.tsx (export rows, CSV/JSON flow ~L889-896)
 - web: src/app/components/Settings.tsx (Privacy & Security section, ~L1922-2010; CSV button ~L1940 + 'Export everything' button data-testid=settings-export-everything-button ~L1960)
@@ -201,7 +254,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Step 3 type-to-confirm: proto = input typed 'DELETE' (centered, letterSpacing .2em, weight 700); Delete button turns destructive bg only when match · app = Mobile: Alert.prompt typed 'delete' (lowercased compare). Web: ConfirmDialog (no typed gate visible in description block). · _App has a typed-confirm on mobile but via native prompt, not the styled centered input; web delete may lack the typed gate the erase path has._
   - **[MED]** Footer CTAs: proto = 'Keep my account' outline + 'Continue'/'Delete forever' · app = Native Alert button labels ('Cancel' / 'I want to delete' / 'Delete account')
 
-### ⬜ EraseEverything — H1 M2 L0
+### 🔒 EraseEverything — web dialog IA (§D18)
 - proto: `6618-6641`
 - mobile: apps/mobile/components/settings/SettingsBundleContent.tsx (reset/erase combined Modal ~L2714-2900, erase-confirm-input typed 'RESET' ~L3030-3073)
 - web: src/app/components/settings/SettingsDialogs.tsx (TypeToConfirmDialog typeToConfirm='RESET', title 'Delete your data and start fresh?' ~L200-210; ERASE_LEDGER ~L81-98)
@@ -329,7 +382,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: household-batch-coach-fasting
 
 
-### ⬜ Household — H3 M4 L0
+### 🔒 Household — sharing grid + presets (B7)
 - proto: `5585-5648`
 - mobile: apps/mobile/app/household-settings.tsx
 - web: src/app/components/HouseholdSettingsPage.tsx
@@ -344,7 +397,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED 🔒keep?]** 7×4 sharing grid + named presets + privacy share-targets: proto = Not present in prototype household screen · app = App adds a full day×meal sharing grid, sharing presets (radio list), a member legend, and a per-member privacy 'share targets' toggle · _Net-new app capability — richer, legally-gated sharing model; keep, but reconcile with prototype's simpler servings/eating-in surface_
   - **[LOW 🔒keep?]** Owner avatar styling (.hh-av.is-owner): proto = Owner avatar filled plum with white initial; member avatars neutral; a 'you' inline pill · app = Member avatars use householdMemberAccent palette (per-index colors), a 'You' pill on self row · _Different but reasonable identity treatment_
 
-### ⬜ Fasting — H1 M0 L0
+### 🔒 Fasting — richer live surface (§D14)
 - proto: `5499-5537`
 - mobile: apps/mobile/app/fasting.tsx
 - web: src/app/components/FastingTimer.tsx
@@ -356,14 +409,15 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[LOW 🔒keep?]** Active center sub-line copy: proto = 'of 16:00 goal' under the 13:24 elapsed numeral; stage chip is the overline 'Elapsed' · app = 'elapsed · X:XX left' sub-line; a flame stage chip (e.g. 'Fat burning') above the numeral · _App's countdown framing is a reasonable improvement_
   - **[LOW 🔒keep?]** Start/End times: proto = A .spread row 'Started 8:06pm' / 'Ends 12:06pm' below the End-fast button · app = A Started/Goal two-column card slab above the End button (parity both platforms) · _Same info, card treatment instead of inline spread_
 
-### 🆕 BatchCook
+### ✅ BatchCook — minimal v1 (ENG-1255; B3 Grace scope)
 - proto: `5651-5726`
-- mobile: (none found)
-- web: (none found)
-- _No app equivalent on web OR mobile. Searched routes, components, and copy strings ('Cook once', 'eat all week', 'Batch cook', 'batch size', 'Cook the batch') — zero matches outside the prototype. The prototype BatchCook is a full screen: an empty/intro state ('Cook once, eat all week' + a 'Good for batching' recipe list), then a chosen state with a hero, a Batch-size −/+ stepper, batch-meta (kcal each · protein · min once), an 'Assign portions' day×meal slot checklist gated to the batch size, a fridge 'After cooking' pip tracker (.batch-track/.bt-pip), a 'Shopping list scaled to N portions' note, and Save-plan / Cook-the-batch CTAs. Entirely unbuilt._
-  - **[HIGH]** Entire BatchCook screen: proto = Full two-phase batch-cooking flow (intro recipe-picker → assign-portions planner with fridge pip tracker, scaled shopping note, Save/Cook CTAs) · app = Does not exist on web or mobile · _Net-new prototype-only screen; no route, component, or copy exists. Needs a build decision._
+- mobile: `apps/mobile/app/batch-cook.tsx`, `apps/mobile/components/plan/BatchCookSurface.tsx`
+- web: `src/app/components/plan/BatchCookSheet.tsx` (via `MealPlanner.tsx` / `PlanToolsV3.tsx`)
+- _Grace B3 (2026-06-28) ratified **minimal v1 only:** recipe picker → batch-size stepper → scaled shopping list → Save/Cook. Shipped web+mobile (ENG-1255). The prototype's second-phase **assign-portions** day×meal checklist and **fridge pip tracker** are intentionally **out of scope** — not a conformance gap; file separately if product wants full batch planner (historical deferral ENG-1225)._
+  - **[HIGH 🔒keep] Assign portions + fridge pip tracker:** proto = day×meal slot checklist gated to batch size + `.batch-track` / `.bt-pip` "After cooking" tracker · app = not built · _Beyond Grace minimal v1 (B3); do not re-litigate under ENG-1247._
+  - **[HIGH ✅] Core minimal flow:** proto intro picker + batch stepper + scaled shopping note + Save/Cook CTAs · app = shipped minimal v1 (recipe pick, portion stepper, scaled list, save/cook) · _B3 satisfied for launch conformance tally._
 
-### 🆕 Coach
+### 🔒 Coach — distributed pieces; unified screen superseded (B9, ENG-923)
 - proto: `5727-5765`
 - mobile: (none found)
 - web: (none found)
@@ -373,7 +427,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: recipe-cook-detail
 
 
-### ⬜ RecipeDetail — H4 M3 L2
+### 🔄 RecipeDetail — flag path partial (`recipe_detail_v3_conformance`)
 - proto: `4315-4427`
 - mobile: apps/mobile/app/recipe/[id].tsx + apps/mobile/components/recipe/{RecipeDetailHero,RecipeTitleBlock,RecipeMacroStrip,RecipeMethodSteps,RecipeServingsFooter,RecipeIngredientGrid,RecipeActionPills}.tsx
 - web: src/app/components/RecipeDetail.tsx
@@ -391,11 +445,11 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[HIGH]** Sticky CTA bar: proto = .pushed-cta — gradient-fade bar (transparent→bg) holding [.btn--primary 'Cook this' filled, flex:1, utensils] + [.btn--outline square 54px '+Log']. Primary action = Cook this (filled); log is the secondary square. · app = RecipeServingsFooter — solid translucent-white bar (border-top) holding [Yield + servings stepper] left and a single OUTLINE 'Cook Mode' pill right. No filled 'Cook this', no square '+Log' in the footer. Log/Edit live in a separate mid-body RecipeActionPills row the prototype lacks. Primary CTA is an outline, contradicting the prototype's filled 'Cook this'.
   - **[MED]** Import 'needs review' banner: proto = .review-banner (warning-soft, .rb-ic 40px warning plate, alertTri) 'Imported from TikTok — nutrition needs review' + btn--primary 'Verify ingredients'; when conf==='review' the body collapses to just this banner. · app = A verify path exists (recipe/verify.tsx, auto-verify note) but the prototype's distinct top-of-body review-banner card (warning plate + collapse-to-banner behaviour) is not reproduced in this exact treatment.
 
-### ⬜ CookMode — H1 M3 L2
+### 🔄 CookMode — dark theme on flag backlog (`recipe_detail_v3_conformance`)
 - proto: `4428-4514`
 - mobile: apps/mobile/app/recipe/[id].tsx (inline Cook Mode modal ~L2336-2620) + apps/mobile/components/cook/{CookMiseEnPlace,CookStepSwipeSurface,CookStepTimerPills,CookRunningTimerStrip,CookStepPageIndicator,CookTimerPanel}.tsx
 - web: src/app/components/CookMode.tsx
-- _Cook Mode has strong FEATURE parity (mise-en-place checklist, step counter, progress bar, per-step ingredient chips, multi-timer pills, swipe nav, A-/A+ text-size control) but the wrong VISUAL THEME. The prototype Cook Mode is a full-screen IMMERSIVE AUBERGINE surface (--primary-deep) with frost (--accent-frost) accents and serif step text; both web and mobile render a LIGHT (bg-background / colors.background) theme with primary-tinted accents and sans step text. The headline divergence is the entire colour world. Web<->mobile are consistent with each other but both wrong vs the prototype._
+- _Feature parity is strong (mise-en-place, timers, swipe nav, step chips). **Remaining v3 conform work is visual only** and tracked under **`recipe_detail_v3_conformance`** alongside RecipeDetail — not a separate ⬜ audit row for ENG-1247 closure. Prototype = immersive aubergine (`--primary-deep`) + frost accents + serif step text; live = light theme both platforms (web↔mobile matched)._
   - **[HIGH]** Cook Mode surface theme: proto = .cookmode { background: var(--primary-deep); color:#efe9f2 } — dark aubergine immersive screen. cm-top labels #cabfd6, progress bar i in --accent-frost, timer/pill/chip surfaces white@8-14% on the dark ground. · app = Web root 'fixed inset-0 bg-background text-foreground' (light); mobile root backgroundColor: colors.background (light) with header 'COOK MODE' in accent.primary. Light theme throughout — no aubergine immersion; accents are bg-primary/10 + accent.primary rather than frost-on-deep.
   - **[MED]** Step text type: proto = .cm-step — serif (var(--font-serif)) 28px/1.25, A-/A+ steps through SIZES [23,28,34]. .cm-recipe is serif italic 14px in --accent-frost above it. · app = Step text renders sans on both platforms. No serif step body, no serif-italic recipe-name line in frost above the step.
   - **[MED]** Mise en place phase: proto = cm-mise: serif h (.cm-mise-h 23px white) + sub 'Get everything to hand before you start — N of M ready.' + .cm-check rows (24px frost checkbox, strike-through on check) on the dark ground; primary is .btn--onbrand 'Start cooking' (frost bg, deep text). · app = CookMiseEnPlace exists (flag cook_ingredient_checklist_v1) with checklist + continue button, but on a light surface; checkbox/strike-through and the frost 'Start cooking' onbrand button are not the prototype's dark-ground treatment.
@@ -423,7 +477,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Name type: proto = creator-name serif 22px/600 · app = Mobile displayName 22px weight 700 sans (not serif)
   - **[LOW 🔒keep?]** Verified tick: proto = Not shown (prototype uses handle·spec) · app = App adds a verified checkmark-circle — net-new capability · _Verified badge is a real trust signal the prototype omits; keep_
 
-### ⬜ CreateRecipe — source picker ("pick" mode) — H1 M6 L0
+### 🔒 CreateRecipe — source picker (B12; keep live set)
 - proto: `5334-5356 (pick), CSS 1237-1242, 1238`
 - mobile: apps/mobile/components/recipe/CreateRecipeActionSheetGrid.tsx
 - web: src/app/components/RecipeUpload.tsx
@@ -437,7 +491,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Extra affordances not in prototype: proto = Four equal tiles, nothing else · app = Adds Pro-lock badge on photo, 'Coming soon' chip on PDF, and a separate 'Or write from scratch' chevron row below a divider
   - **[HIGH]** Web equivalent: proto = 2×2 source grid before the form · app = web
 
-### ⬜ CreateRecipe — manual form — H0 M4 L1
+### 🔒 CreateRecipe — manual form (B12; keep live fields)
 - proto: `5357-5401, CSS 1227-1236, 2139, 2143, 2035, 2068`
 - mobile: apps/mobile/components/recipe/CreateRecipeWizard.tsx (apps/mobile/app/recipe/create.tsx)
 - web: src/app/components/RecipeUpload.tsx
@@ -475,7 +529,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: plan-grocery
 
 
-### ⬜ Plan household banner (plan-hh2) — H1 M2 L1
+### 🔒 Plan household banner (B7)
 - proto: `4736-4743`
 - mobile: apps/mobile/components/plan/PlanHouseholdBannerV3.tsx
 - web: src/app/components/plan/PlanHouseholdBannerV3.tsx
@@ -494,7 +548,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Recipe name typography: proto = .plan-card-name font-serif, 16px, fw-medium, 2-line clamp · app = sans, 13px(web)/14px(mobile) semibold, 1-line truncate (Type.label / text-[13px])
   - **[MED]** Cooked state: proto = .plan-card.is-cooked opacity .72 + strike-through name + .plan-cooked-badge green check over thumb · app = not rendered (no cooked tracking wired)
 
-### ⬜ PlanHead / PlanHeaderV3 — H1 M0 L2
+### ✅ PlanHead / PlanHeaderV3 — B1 AdjustConstraints shipped
 - proto: `4707-4721, 4882-4886`
 - mobile: apps/mobile/components/plan/PlanHeaderV3.tsx
 - web: src/app/components/plan/PlanHeaderV3.tsx
@@ -503,7 +557,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[LOW]** Header title font size: proto = .planx-title font-size 30px serif medium · app = mobile Type.screenTitle (matches ~30) but web h2 is text-[28px]
   - **[LOW]** Action-button row gap + icon color: proto = .planx-acts gap 7px; .planx-act color var(--fg-secondary) · app = gap 4px (web gap-1 / mobile gap:4); icon color foreground/text not fg-secondary
 
-### ⬜ Plan tools / 'This week' section (plan-tools) — H1 M0 L1
+### ✅ Plan tools / 'This week' section — BatchCook ENG-1255 + shopping (§D16 smart data 🔒)
 - proto: `4802-4827`
 - mobile: apps/mobile/components/plan/PlanToolsV3.tsx
 - web: src/app/components/plan/PlanToolsV3.tsx
@@ -580,7 +634,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: today-core
 
 
-### ⬜ Calorie hero (ring-hero + RingHero + cal-row + guide-line) — H1 M2 L1
+### ✅ Calorie hero — de-card + Goal/Eaten/Bonus IA (§D2 ring toggle 🔒)
 - proto: `3570-3601 (Today hero block); RingHero 2980-3275 (canonical 'arc'/'segments'); CSS 1426-1487, 2391-2400`
 - mobile: apps/mobile/components/today/TodayHero.tsx; apps/mobile/components/today/TodayHeroRing.tsx; apps/mobile/components/today/TodayHeroRingGraphic.tsx; apps/mobile/components/charts/CalorieRingDial.tsx
 - web: src/app/components/suppr/today-hero-ring.tsx; src/app/components/suppr/today-hero-stats.tsx; src/app/components/suppr/calorie-ring-dial.tsx
@@ -593,7 +647,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[LOW 🔒keep?]** GOAL / EATEN / BONUS stat order: proto = Eaten / Goal / Activity (L3583-3589) · app = Goal / Eaten / Bonus on both surfaces · _Grace-confirmed global keep-current exception. Not a gap._
   - **[LOW]** Coach guide-line: proto = .guide-line chip ('<icon> <bold head> · sub', frost-mist fill, success/warning glyph) below stats (L3592-3600, CSS 1482-1487) · app = coachLine slot rendered below stats via TodayDeficitInsight ('Room for {meal}…'), flag today_coach_in_hero_v1 (TodayScreen L5371-5380; TodayHeroRing L391) · _Present and positioned correctly on both surfaces. Verify the chip styling (frost-mist fill + glyph) matches .guide-line; content source differs (TodayDeficitInsight) but the slot conforms._
 
-### ⬜ Today header (t-head + t-greet) — H1 M0 L0
+### 🔒 Today header — no day-chip / calendar in header (§D3)
 - proto: `3537-3550 (t-head + t-greet); CSS 1402-1409`
 - mobile: apps/mobile/app/(tabs)/_today/TodayScreen.tsx (L5105-5171); apps/mobile/components/today/TodayBrandBar.tsx; apps/mobile/components/today/TodayDateHeader.tsx
 - web: src/app/components/suppr/today-brand-bar.tsx; src/app/components/NutritionTracker.tsx
@@ -602,7 +656,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[LOW 🔒keep?]** Avatar fill + initial: proto = .avatar shows 'G' initial · app = GradientAvatar size 36, damson fill, white initial (mobile); parity on web · _App uses the live user initial + brand damson fill — richer/honest vs the static mock 'G'. Keep._
   - **[LOW 🔒keep?]** 'Day N' chip in greeting eyebrow: proto = .t-daychip 'Day 12' sits in the eyebrow next to 'Today' (L3547) · app = Omitted on both surfaces · _Deliberately omitted — mock text with no honest data source (Grace's call, documented in TodayScreen L5134-5138). Not a gap._
 
-### ⬜ Quick add row (quickrow / qchip) — H1 M0 L0
+### ✅ Quick add row — recents chips (`today_quickadd_recents_v3`)
 - proto: `3620-3628 (Quick add header + quickrow); CSS 1658-1662`
 - mobile: apps/mobile/components/today/TodayQuickLogStrip.tsx; QuickAddPanel (inside TodayMealsSection)
 - web: src/app/components/suppr/today-quick-log-strip.tsx
@@ -679,7 +733,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: progress-trends
 
 
-### ⬜ Progress — H1 M4 L1
+### 🔒 Progress — D/W/M/6M/Y periods + Weight in-tab (§D8–9; B2 inline adaptive)
 - proto: `4935-5099 (Progress); CSS prog-* L2249-2286, recap L2218-2222, trendline L2243`
 - mobile: apps/mobile/app/(tabs)/progress.tsx (+ apps/mobile/components/progress/ProgressEnergyTriad.tsx, ProgressEnergyEquation.tsx, ProgressAverageAdherence.tsx, ProgressOnTargetRibbon.tsx, apps/mobile/components/today/ProgressHeadline.tsx, ProgressStoryGate.tsx)
 - web: src/app/components/ProgressDashboard.tsx (+ src/app/components/suppr/progress-energy-triad.tsx, progress-average-adherence.tsx, progress-ontarget-ribbon.tsx, progress-headline.tsx, progress-period-control.tsx)
@@ -695,7 +749,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** On-target ribbon icon: proto = L5047 prog-win: sparkles glyph in a 34px accent-frost-mist rounded(10) plate, body 'N on-target days this week. Your most consistent week this month.' · app = ProgressOnTargetRibbon uses an Award (medal) icon in a 40px FULL-radius circle tinted sourceAi (damson), not the sparkles-in-frost-mist-square. Copy matches. · _Icon (Award vs sparkles), plate shape (full circle vs radius-10 square), tint (damson vs frost-mist) and size (40 vs 34) all diverge._
   - **[LOW 🔒keep?]** Average adherence — over-target macro qualifier + headline: proto = Adherence card has overall serif .prog-adh-big % + per-macro rows (label / pct / track-fill). · app = Matches structurally; ADDS an over-110% inverted headline ('11% over', amber via adherence_over_display flag) and a '· over' macro qualifier not in the prototype. · _Anti-shame / honest-overshoot additions (audit P1-3). Keep — strictly more correct than the prototype's raw >100%._
 
-### ⬜ Digest — H1 M2 L0
+### 🔒 Digest — weekly on Progress supersedes daily screen (B22)
 - proto: `6023-6050; CSS dg-* L1112-1123, coach-digest/narr L845-847`
 - mobile: apps/mobile/components/Digest.tsx (+ apps/mobile/components/progress/DigestStoryCard.tsx)
 - web: src/app/components/suppr/digest.tsx (+ digest-blended.tsx, digest-story-card.tsx)
@@ -704,14 +758,14 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** dg-chips action pills (Log breakfast / See dinner): proto = L6032-6035: two frost-mist pills with plus/utensils icons that open log + recipe. · app = Absent — the embedded week digest exposes share/dismiss/save-combo actions, not the daily Log-breakfast / See-dinner chips. · _Net-new daily-action chips missing._
   - **[MED]** 'One thing for today' coach card: proto = L6042-6045: card.coach-digest with overline 'One thing for today' + serif coach-narr advice line. · app = Absent in the embedded week digest. · _The single-focus coaching card is prototype-only._
 
-### 🆕 AdaptiveTDEE
+### 🔒 AdaptiveTDEE — inline explainer only; no full screen (B2)
 - proto: `5875-5906; CSS atde-* L888-891, at-row L2293-2295`
 - mobile: (none — only lib/refreshAdaptiveTdee.ts engine; no screen/route)
 - web: (none)
 - _The prototype's full-screen 'Adaptive target' explainer (pushed view) has NO app equivalent on either platform. It is a strikethrough-old → success-new hero (atde-hero: 34px line-through fg-tertiary → 48px success), a coach quote, a 'Why it changed' divided card of 4 set-rows (Weight trend / Logged intake / Activity / The maths), a 6-week target trendline, and two CTAs ('Keep adapting automatically' / 'Set a fixed target instead'). The Progress Maintenance card surfaces adaptive vs formula inline, but the dedicated reasoning screen the prototype's 'Why?' link opens to (open('adaptive')) does not exist. The prototype Progress energy-explainer at-row even links to it (L5016 onClick open('adaptive')) — a dangling target in the app._
   - **[HIGH]** Adaptive target reasoning screen: proto = Full pushed screen: atde-hero old→new, coach quote, 4-row 'Why it changed' card, 6-week target trendline, keep-adapting / fixed-target CTAs. · app = absent · _Net-new prototype screen. The energy-balance 'Why?' / at-row CTA in the Progress prototype routes here; app has no destination._
 
-### ⬜ BurnDetail — H0 M1 L1
+### 🔒 BurnDetail — web inline panel; mobile screen (B10)
 - proto: `6644-6697; CSS burn-* L910-936, set-row L2303-2305`
 - mobile: apps/mobile/app/burn-detail.tsx (+ apps/mobile/components/burn/BurnDetailLoadingSkeleton.tsx)
 - web: src/app/components/BurnDetailPanel.tsx
@@ -731,7 +785,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: log-search-confirm
 
 
-### ⬜ LogHub (Add to today sheet) — H2 M1 L1
+### 🔒 LogHub — search-first IA (B4, §D4)
 - proto: `3768-3812`
 - mobile: apps/mobile/components/today/LogSheet.tsx
 - web: src/app/components/suppr/log-sheet.tsx; src/app/components/suppr/today-add-meal-dialog.tsx
@@ -743,7 +797,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Saved-tab routine rows + 'Routine' pill + save-row: proto = Saved tab renders ROUTINES with a .routine-pill ('Routine' uppercase chip, accent-frost-mist) inline in meal-name, plus a dashed .loghub-saverow 'Save a meal as a routine' footer (L3798-3807, CSS L2044-2046) · app = both · _Routine concept + 'Routine' pill + dashed save-row are prototype-specific and absent; app uses a plain ghost-button CTA instead of the dashed .loghub-saverow._
   - **[LOW 🔒keep?]** Search row affordance: proto = Tap-to-open readonly search that pushes to SearchView (L3781). Placeholder 'Search foods, e.g. yoghurt' · app = both · _App's inline search (no second screen) is the documented 2026-04-30 search-first improvement — keep. Placeholder copy differs ('…e.g. yoghurt' vs '…or scan')._
 
-### ⬜ ConfirmFood (portion + slot) — H0 M3 L1
+### ✅ ConfirmFood — P/C/F tiles + micro table (ENG-1257, A2b)
 - proto: `3862-3911`
 - mobile: apps/mobile/components/food-search/FoodSearchPanel.tsx; apps/mobile/components/food-log/ServingStepper.tsx
 - web: src/app/components/food-search/FoodSearchPanel.tsx (inline portion preview)
@@ -755,7 +809,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** lowconf-note + trust-cue: proto = If conf==='low': amber .lowconf-note 'Nutrition is estimated. You can edit any value.'; if src==='photo': success .trust-cue 'You corrected this before…' (L3881-3882) · app = both · _Verify the low-confidence estimated-nutrition note (amber, warning-soft) and photo trust-cue render in the confirm card._
   - **[LOW]** Confirm-head (icon + name + source/Conf): proto = confirm-head: 44px meal-ic + confirm-name (16px/600) + meal-sub 'sourceChip · srcLabel + Conf dot' (L3874-3880) · app = both · _Verify the confirm header composition (icon plate + name + source/confidence sub)._
 
-### ⬜ FoodRow — H0 M3 L0
+### 🔒 FoodRow — search-first browse rows (B4)
 - proto: `3813-3828`
 - mobile: apps/mobile/components/food-search/FoodSearchPanel.tsx (and LogSheet BrowseRow apps/mobile/components/today/LogSheet.tsx)
 - web: src/app/components/food-search/FoodSearchPanel.tsx
@@ -764,7 +818,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED]** Per-row add button (.addbtn) with done-state: proto = Round 34px filled-primary add button on every row; on press flips icon plus→check and bg primary→success (.addbtn.is-done L2060-2061, FoodRow L3825) · app = both · _The prototype's signature one-tap round add button with the success-green check morph is missing from browse rows._
   - **[MED]** .meal-ic icon plate: proto = 36px square, radius 11, bg-secondary, primary-tinted source icon (L1669) · app = both · _Icon-plate treatment (rounded grey plate w/ source glyph) differs from the app's source-dot/thumbnail approach._
 
-### ⬜ SearchView — H0 M2 L0
+### 🔒 SearchView — inline search supersedes pushed screen (B4, §D4)
 - proto: `3831-3859`
 - mobile: apps/mobile/components/food-search/FoodSearchPanel.tsx; apps/mobile/components/today/LogSheet.tsx
 - web: src/app/components/food-search/FoodSearchPanel.tsx; src/app/components/suppr/log-sheet.tsx
@@ -777,7 +831,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: billing-paywall
 
 
-### ⬜ Billing — H1 M1 L0
+### 🔒 Billing — storefront-owned canonical (B27)
 - proto: `5176-5228`
 - mobile: (none - mobile billing is delegated entirely to Apple Subscriptions; no in-app Billing screen exists)
 - web: src/app/components/settings/SubscriptionCard.tsx + src/app/components/settings/SettingsDialogs.tsx + /account/billing (Stripe Customer Portal shell)
@@ -789,7 +843,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[MED 🔒keep?]** Payment + management rows: proto = card--flush divide with Apple Pay row (card +Update), Restore purchases row, Billing history row (chevR). · app = Web: no payment-method row, no restore (Stripe portal owns it), no billing-history row - all folded into the single "Manage or cancel subscription" button -> portal. Mobile restore lives only on the paywall. · _Stripe Customer Portal owns payment method, invoices, and cancellation (legal P0 - single managed path, no retention wall). Prototype's separate rows are demo-only. Keep-current._
   - **[LOW 🔒keep?]** Cancel control: proto = btn--tertiary block, destructive-coloured "Cancel subscription" (only when active). · app = Web: full-width SOLID bg-foreground "Manage or cancel subscription" button (legal P0 CC-5 requires equal-or-greater weight). Not a tertiary destructive ghost. · _Legal P0 mandates the cancel control have equal-or-greater visual weight than keep/upgrade - a tertiary ghost would violate it. App's solid button is correct over the prototype's ghost._
 
-### ⬜ ProLock — H1 M1 L0
+### 🔒 ProLock — Figma 284:2 paywall canonical (B8)
 - proto: `4007-4099`
 - mobile: apps/mobile/components/AiPaywallSheet.tsx (gate) + apps/mobile/components/PhotoLogSheet.tsx + VoiceLogSheet.tsx (capture->analyse->review)
 - web: src/app/components/suppr/ai-paywall-dialog.tsx (gate) + photo-log-dialog.tsx + log-sheet-describe-flow.tsx
@@ -812,7 +866,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
   - **[LOW]** Bottom CTA: proto = pushed-cta: btn--primary btn--block btn--lg with check glyph "Calculate nutrition". · app = Mobile footer: confirmBtn (accent.primary, Radius.md) with checkmark-circle + "Calculate nutrition", PLUS a per-serving kcal label above it. Copy + icon match; footer also carries the totals label (extra). · _CTA copy/icon conformant; app adds a per-serving summary line above it._
   - **[MED 🔒keep?]** Web standalone Verify: proto = Verify is a discrete pushed screen. · app = Web has no standalone Verify screen - verification runs inline inside RecipeDetail via /api/nutrition/verify-recipe. · _Web verify is embedded in the recipe detail rather than a separate route. Likely a deliberate web IA choice, but no web surface matches the prototype Verify screen 1:1 - flag for a parity decision._
 
-### ⬜ Paywall — H0 M2 L2
+### 🔒 Paywall — Figma 284:2; v3 Paywall non-canonical (B8)
 - proto: `5275-5307`
 - mobile: apps/mobile/app/paywall.tsx + apps/mobile/components/paywall/{PaywallHero,PaywallValueGrid,PaywallComparison,PaywallPlanSelector,PaywallCta,PaywallTrustStrip,PaywallNoPaymentChip,PaywallPersonalisedPlanCard}.tsx
 - web: src/app/components/suppr/upgrade-paywall-dialog.tsx (in-app upsell) + app/pricing/page.tsx (route paywall)
@@ -828,7 +882,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 ## Cluster: scan-barcode
 
 
-### 🆕 ScanLabel (nutrition-label OCR capture)
+### 🔒 ScanLabel — OCR in custom-food; standalone deferred (B13, ENG-1004)
 - proto: `3914-3954`
 - mobile: apps/mobile/app/(tabs)/barcode.tsx (no ScanLabel path — only barcode scan + manual entry)
 - web: src/app/components/suppr/today-barcode-dialog.tsx (manual entry only); no camera/OCR surface anywhere in src/app

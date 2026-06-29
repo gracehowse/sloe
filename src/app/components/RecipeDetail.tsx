@@ -14,6 +14,8 @@ import {
   type RecipeEditDialogSavePayload,
 } from "./suppr/recipe-edit-dialog.tsx";
 import { CookMode } from "./CookMode.tsx";
+import { RecipeImportReviewBanner } from "./recipe/RecipeImportReviewBanner.tsx";
+import { recipeIngredientsNeedReview } from "../../lib/nutrition/recipeImportReview.ts";
 import { carbsLabel, netCarbsForRow } from "../../lib/nutrition/netCarbs.ts";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { classifyConfidence } from "../../lib/nutrition/aiLogging";
@@ -1025,6 +1027,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       .map((s) => s.trim())
       .filter(Boolean);
   }, [dbInstructionsText]);
+
+  const recipeNeedsImportReview = useMemo(
+    () => recipeIngredientsNeedReview(ingredients),
+    [ingredients],
+  );
 
   const baseServings = dbServings ?? recipe.servings;
   const ingredientsHaveNutrition = useMemo(
@@ -2208,15 +2215,19 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             rd-standfirst, Sloe-App.html L4353). Uses the recipe description with
             a graceful protein-anchored fallback so the slot never reads empty.
             Flag-gated; not part of the legacy layout. */}
-        {recipeDetailV3 ? (
+        {recipeDetailV3 && recipeNeedsImportReview ? (
+          <RecipeImportReviewBanner
+            sourceName={recipe.sourceName}
+            sourceUrl={recipe.sourceUrl}
+            onVerify={() => setActiveTab("ingredients")}
+          />
+        ) : recipeDetailV3 ? (
           <p
             data-testid="recipe-standfirst"
             className="leading-relaxed text-foreground-secondary"
             style={{ fontFamily: "var(--font-headline)", fontSize: "17px", lineHeight: "26px" }}
           >
             {(() => {
-              // Catalog/seed recipes hydrate `dbDescription` too (the seed
-              // short description), so the single source covers both.
               const desc = dbDescription ? sanitizeRecipeDescription(dbDescription) : null;
               if (desc && desc.trim().length > 0) return desc.trim();
               const p = Math.round(scaledMacros.protein);
@@ -2612,8 +2623,12 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               data-testid="recipe-macros-grid"
               role="list"
               aria-label="Nutrition per serving"
-              className="grid grid-cols-4 rounded-2xl"
-              style={whiteSlabStyle}
+              className={`grid grid-cols-4 ${
+                recipeDetailV3
+                  ? "border-y border-border py-4"
+                  : "rounded-2xl"
+              }`}
+              style={recipeDetailV3 ? undefined : whiteSlabStyle}
             >
               {macroStrip.map((m, idx) => (
                 <div
@@ -2989,9 +3004,42 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
         {/* Steps Tab */}
         {activeTab === "steps" && (
-          <div className="rounded-2xl p-5 space-y-4" style={whiteSlabStyle}>
+          <div
+            className={recipeDetailV3 ? "space-y-3" : "rounded-2xl p-5 space-y-4"}
+            style={recipeDetailV3 ? undefined : whiteSlabStyle}
+          >
+            {recipeDetailV3 ? (
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">
+                  Method
+                </h3>
+                <span className="text-xs text-foreground-tertiary">
+                  {instructionSteps.length} steps
+                  {(dbPrepMin ?? 0) + (dbCookMin ?? 0) > 0
+                    ? ` · ${(dbPrepMin ?? 0) + (dbCookMin ?? 0)} min`
+                    : ""}
+                </span>
+              </div>
+            ) : null}
             {instructionSteps.length === 0 ? (
               <p className="text-muted-foreground text-sm">No instructions yet.</p>
+            ) : recipeDetailV3 ? (
+              <ol className="list-none m-0 p-0">
+                {instructionSteps.map((step, index) => (
+                  <li
+                    key={index}
+                    className="flex gap-4 border-b border-border py-3.5 last:border-b-0"
+                  >
+                    <span
+                      className="w-[30px] shrink-0 text-[26px] font-medium leading-none tabular-nums"
+                      style={{ fontFamily: "var(--font-headline)", color: "var(--accent-primary-soft)" }}
+                    >
+                      {index + 1}
+                    </span>
+                    <p className="m-0 flex-1 pt-0.5 text-[15px] leading-relaxed text-foreground">{step}</p>
+                  </li>
+                ))}
+              </ol>
             ) : (
               instructionSteps.map((step, index) => (
                 <div key={index} className="flex gap-3">

@@ -21,6 +21,7 @@ import {
 } from "../../../lib/nutrition/macroSplitConfidence";
 import { macroCalorieSplit } from "../../../lib/nutrition/macroCalorieSplit";
 import { formatNutritionSourceLabel } from "../../../lib/nutrition/sourceLabel";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 import { MacroTotalGrid, type MacroTotalCell, type MacroTotalKey } from "./MacroTotalGrid";
 
 /**
@@ -210,6 +211,15 @@ export function MealNutritionDialog({
     [effectiveMeal],
   );
 
+  const sectionA = isFeatureEnabled("eng1247_section_a_v1");
+  const metaLine = effectiveMeal
+    ? isSlotAggregate
+      ? `${slotItems?.length ?? 0} item${(slotItems?.length ?? 0) !== 1 ? "s" : ""} in this slot`
+      : `${[effectiveMeal.name, effectiveMeal.time].filter(Boolean).join(" · ")}${
+          effectiveMeal.source ? ` · ${formatNutritionSourceLabel(effectiveMeal.source)}` : ""
+        }`
+    : "";
+
   const portion = effectiveMeal?.portionMultiplier ?? 1;
   // Hide the "Portion ×1" line when the multiplier is the default — it adds no
   // info (mobile parity). Never shown in aggregate mode (no single portion).
@@ -295,13 +305,15 @@ export function MealNutritionDialog({
                   ? slotAggregate?.slotLabel?.trim() || "Slot nutrition"
                   : effectiveMeal.recipeTitle?.trim() || "Meal nutrition"}
               </DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                {isSlotAggregate
-                  ? `${slotItems?.length ?? 0} item${(slotItems?.length ?? 0) !== 1 ? "s" : ""} in this slot`
-                  : `${[effectiveMeal.name, effectiveMeal.time].filter(Boolean).join(" · ")}${
-                      effectiveMeal.source ? ` · ${formatNutritionSourceLabel(effectiveMeal.source)}` : ""
-                    }`}
-              </DialogDescription>
+              {sectionA && metaLine ? (
+                <p className="section-label mt-1" data-testid="meal-nutrition-meta-overline">
+                  {metaLine}
+                </p>
+              ) : (
+                <DialogDescription className="text-muted-foreground">
+                  {metaLine}
+                </DialogDescription>
+              )}
             </DialogHeader>
 
             <div className="pt-1">
@@ -340,20 +352,22 @@ export function MealNutritionDialog({
                   </div>
                 ) : (
                   <>
-                    <div
-                      data-testid="meal-nutrition-macro-bar"
-                      className="mb-3 flex h-2.5 overflow-hidden rounded-full"
-                    >
-                      {splitConfidence.state === "complete" ? (
-                        <>
-                          <div style={{ flex: Math.max(split.proteinPct, 1), backgroundColor: MACRO_VARS.protein }} />
-                          <div style={{ flex: Math.max(split.carbsPct, 1), backgroundColor: MACRO_VARS.carbs }} />
-                          <div style={{ flex: Math.max(split.fatPct, 1), backgroundColor: MACRO_VARS.fat }} />
-                        </>
-                      ) : (
-                        <div style={{ flex: 1, backgroundColor: "var(--border)" }} />
-                      )}
-                    </div>
+                    {!sectionA ? (
+                      <div
+                        data-testid="meal-nutrition-macro-bar"
+                        className="mb-3 flex h-2.5 overflow-hidden rounded-full"
+                      >
+                        {splitConfidence.state === "complete" ? (
+                          <>
+                            <div style={{ flex: Math.max(split.proteinPct, 1), backgroundColor: MACRO_VARS.protein }} />
+                            <div style={{ flex: Math.max(split.carbsPct, 1), backgroundColor: MACRO_VARS.carbs }} />
+                            <div style={{ flex: Math.max(split.fatPct, 1), backgroundColor: MACRO_VARS.fat }} />
+                          </>
+                        ) : (
+                          <div style={{ flex: 1, backgroundColor: "var(--border)" }} />
+                        )}
+                      </div>
+                    ) : null}
                     <MacroTotalGrid cells={macroCells} onMacroTap={onMacroTap} />
                   </>
                 )}

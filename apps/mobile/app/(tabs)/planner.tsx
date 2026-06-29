@@ -178,6 +178,7 @@ import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
 import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
 import { PlanRegenerateToast } from "@/components/plan/PlanRegenerateToast";
 import { PlanV3Surface } from "@/components/plan/PlanV3Surface";
+import { AdjustConstraintsSheet } from "@/components/plan/AdjustConstraintsSheet";
 import { usePlanV3MealActions } from "@/components/plan/usePlanV3MealActions";
 import { computePlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
 import {
@@ -186,6 +187,13 @@ import {
   selectPlanPool,
   canGenerateFromSource,
 } from "@suppr/shared/planning/planSource";
+import { defaultBatchCookToolSubtitle } from "@suppr/shared/planning/batchCook";
+import {
+  DEFAULT_PLAN_ADJUST_CONSTRAINTS,
+  enabledSlotsForMealsPerDay,
+  mealsPerDayFromEnabledSlots,
+  type PlanAdjustConstraints,
+} from "@suppr/shared/planning/planAdjustConstraints";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
 import { CARD_RADIUS, SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { SwapMealSheet, type SwapCandidate } from "@/components/SwapMealSheet";
@@ -821,6 +829,11 @@ export default function PlannerScreen() {
     fiber: number;
   } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
+  const [allowBatchLeftovers, setAllowBatchLeftovers] = useState(true);
+  const [planCalorieFloor, setPlanCalorieFloor] = useState(
+    DEFAULT_PLAN_ADJUST_CONSTRAINTS.calorieFloor,
+  );
+  const [adjustOpen, setAdjustOpen] = useState(false);
   const [shoppingItemCount, setShoppingItemCount] = useState(0);
 
   // Household-aware shopping (Honeydew parity, 2026-04-30) — resolved
@@ -2322,6 +2335,7 @@ export default function PlannerScreen() {
         fiber: resolved.fiber,
         calorieBandPct: DEFAULT_PLANNER_BANDS.calorieBandPct,
         carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
+        calorieFloorMin: planCalorieFloor,
       };
       if (__DEV__) console.log("[planner] targets:", targets);
 
@@ -2497,7 +2511,7 @@ export default function PlannerScreen() {
       // ENG-956 — skip the leftover redistribution in keep-locked mode: it
       // re-samples downstream slots from a fresh whole-week view and would
       // overwrite the locked rows we just preserved.
-      if (!keepLockedActive && Object.keys(recipesByRef).length > 0) {
+      if (!keepLockedActive && allowBatchLeftovers && Object.keys(recipesByRef).length > 0) {
         const { plan: distributed, parentCount, leftoverCount } = distributeLeftovers(
           stripped as DayPlan[],
           recipesByRef,
@@ -2598,7 +2612,29 @@ export default function PlannerScreen() {
     } finally {
       setGenerating(false);
     }
-  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled]);
+  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor]);
+
+  const adjustInitial = useMemo<PlanAdjustConstraints>(
+    () => ({
+      source: planSource,
+      calorieFloor: planCalorieFloor,
+      mealsPerDay: mealsPerDayFromEnabledSlots(enabledSlots),
+      allowBatchLeftovers,
+    }),
+    [planSource, planCalorieFloor, enabledSlots, allowBatchLeftovers],
+  );
+
+  const handleAdjustSave = useCallback(
+    (next: PlanAdjustConstraints) => {
+      setPlanSource(next.source);
+      setEnabledSlots(enabledSlotsForMealsPerDay(next.mealsPerDay));
+      setAllowBatchLeftovers(next.allowBatchLeftovers);
+      setPlanCalorieFloor(next.calorieFloor);
+      setAdjustOpen(false);
+      void generatePlan();
+    },
+    [generatePlan],
+  );
 
   const openGenerateMenu = useCallback(() => {
     if (generating) return;
@@ -2705,7 +2741,7 @@ export default function PlannerScreen() {
             verdict={planV3Verdict}
             household={householdBanner}
             onGenerate={openGenerateMenu}
-            onAdjust={() => setTemplatesOpen(true)}
+            onAdjust={() => setAdjustOpen(true)}
             onTemplates={() => setTemplatesOpen(true)}
             onOpenHousehold={() => setTemplatesOpen(true)}
             onOpenMeal={planV3Meal.onOpenMeal}
@@ -2713,6 +2749,8 @@ export default function PlannerScreen() {
             shoppingItemCount={shoppingItemCount}
             servingCount={householdMemberCount}
             onOpenShopping={() => router.push("/shopping" as Href)}
+            onOpenBatchCook={() => router.push("/batch-cook" as Href)}
+            batchCookSubtitle={defaultBatchCookToolSubtitle()}
           />
         ) : null}
         {/* Named plan slots switcher (Grace 2026-05-22: "drop the redundant
@@ -4024,6 +4062,16 @@ export default function PlannerScreen() {
             parity. */}
         </ReAnimated.View>
       </ScrollView>
+      {sloeV3Plan ? (
+        <AdjustConstraintsSheet
+          visible={adjustOpen}
+          onClose={() => setAdjustOpen(false)}
+          initial={adjustInitial}
+          libraryCount={savedRecipes.length}
+          discoverCount={discoverCount}
+          onSave={handleAdjustSave}
+        />
+      ) : null}
       <PlanTemplatesSheet
         visible={templatesOpen}
         onClose={() => setTemplatesOpen(false)}

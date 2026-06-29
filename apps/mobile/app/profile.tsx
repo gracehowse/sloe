@@ -45,6 +45,7 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { recordGoalHistory } from "@suppr/nutrition-core/goalHistory";
 import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
 import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
+import { ProfileShowcaseReadView } from "@/components/profile/ProfileShowcaseReadView";
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
@@ -74,6 +75,7 @@ export default function ProfileScreen() {
   // destination is itself gated by the existing `goal_editor` flag (matches
   // `targets.tsx` / web `Targets.tsx`): sheet when on, interim note when off.
   const settingsRedesignV2 = isFeatureEnabled("settings_redesign_v2");
+  const profileShowcaseV1 = isFeatureEnabled("profile_showcase_v1");
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
 
   const [loading, setLoading] = useState(true);
@@ -87,6 +89,7 @@ export default function ProfileScreen() {
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
   const [streak, setStreak] = useState(0);
   const [recipeCount, setRecipeCount] = useState(0);
+  const [daysLogged, setDaysLogged] = useState(0);
   // §3.7 body-stats entry row → GoalPaceEditorSheet (weight/height/goal/pace).
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   const joinedLabel = useMemo(() => {
@@ -465,6 +468,7 @@ export default function ProfileScreen() {
             ? budgetMaxRaw
             : 3;
         setStreak(computeProtectedStreak(byDay as never, ledger, budgetMax).streakLength);
+        setDaysLogged(Object.keys(byDay).length);
       } catch {
         setStreak(0);
       }
@@ -679,7 +683,21 @@ export default function ProfileScreen() {
     >
       <PushScreenHeader title="Profile" onBack={goBack} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-
+        {profileShowcaseV1 ? (
+          <ProfileShowcaseReadView
+            displayName={displayName}
+            joinedLabel={joinedLabel}
+            monogramInitial={monogramInitial}
+            recipeCount={recipeCount}
+            streakDays={streak}
+            daysLogged={daysLogged}
+            calories={calories}
+            protein={protein}
+            carbs={carbs}
+            fat={fat}
+          />
+        ) : (
+        <>
         {/* §3.2 identity card + stats strip (settings.md). Net-new editorial
             block — the warm human anchor that was missing (gaps #1, #12). Gated
             behind `settings_redesign_v2`; old layout (straight to Daily Targets)
@@ -960,6 +978,8 @@ export default function ProfileScreen() {
             </Pressable>
           ) : null}
         </View>
+        </>
+        )}
       </ScrollView>
 
       {/* §3.7 — GoalPaceEditorSheet is the mobile body-stats edit path. On save,

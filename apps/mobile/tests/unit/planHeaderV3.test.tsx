@@ -2,7 +2,7 @@
 /**
  * PlanHeaderV3 (ENG-1225, v3 Plan IA) — the Plan header + week-verdict row.
  * Pins the prototype contract (Sloe-App.html Plan ~L4707-4721): date overline +
- * "Your plan" title, three action buttons, and a verdict row driven by
+ * "Your plan" title, two action buttons (generate / templates), and a verdict row driven by
  * `computePlanWeekVerdict` (completeness, not calorie accuracy).
  */
 import { describe, expect, it, vi } from "vitest";
@@ -77,7 +77,7 @@ describe("PlanHeaderV3", () => {
     expect(queryByText(/days land/)).toBeNull();
   });
 
-  it("exposes the three action buttons and fires their handlers", () => {
+  it("exposes the action buttons and fires their handlers", () => {
     const onGenerate = vi.fn();
     const onAdjust = vi.fn();
     const onTemplates = vi.fn();
@@ -92,7 +92,7 @@ describe("PlanHeaderV3", () => {
     );
     fireEvent.press(getByLabelText("Generate week"));
     fireEvent.press(getByLabelText("Adjust constraints"));
-    fireEvent.press(getByLabelText("Plan templates"));
+    fireEvent.press(getByLabelText("Templates"));
     expect(onGenerate).toHaveBeenCalledTimes(1);
     expect(onAdjust).toHaveBeenCalledTimes(1);
     expect(onTemplates).toHaveBeenCalledTimes(1);

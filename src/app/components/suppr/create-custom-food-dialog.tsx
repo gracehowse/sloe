@@ -39,8 +39,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, Camera, ChevronDown, ChevronUp, Loader2, Plus, X } from "lucide-react";
-import { track } from "../../../lib/analytics/track";
+import { track, isFeatureEnabled } from "../../../lib/analytics/track";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
+import { COMPLETE_DAY_V3_COPY } from "../../../lib/completeDayV3";
 import {
   Dialog,
   DialogContent,
@@ -1036,6 +1037,11 @@ export function CreateCustomFoodDialog({
                       Enter a valid 8, 12, 13, or 14-digit barcode, or leave blank.
                     </p>
                   )}
+                  {isFeatureEnabled("eng1247_section_a_v1") && barcode.trim() ? (
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      {COMPLETE_DAY_V3_COPY.sharedAnonymouslyNote}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             )}

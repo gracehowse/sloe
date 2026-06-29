@@ -2,7 +2,7 @@
 /**
  * PlanHeaderV3 (ENG-1225, v3 Plan IA) — WEB parity twin of the mobile header.
  * Pins the prototype contract (Sloe-App.html Plan ~L4707-4721): date overline +
- * "Your plan" title, three action buttons, and a verdict row driven by
+ * "Your plan" title, two action buttons (generate / templates), and a verdict row driven by
  * `computePlanWeekVerdict` (completeness, not calorie accuracy). Mirrors
  * `apps/mobile/tests/unit/planHeaderV3.test.tsx`.
  */
@@ -66,7 +66,7 @@ describe("PlanHeaderV3 (web)", () => {
     expect(queryByText(/days land/)).toBeNull();
   });
 
-  it("exposes the three action buttons and fires their handlers", () => {
+  it("exposes the action buttons and fires their handlers", () => {
     const onGenerate = vi.fn();
     const onAdjust = vi.fn();
     const onTemplates = vi.fn();
@@ -81,7 +81,7 @@ describe("PlanHeaderV3 (web)", () => {
     );
     fireEvent.click(getByLabelText("Generate week"));
     fireEvent.click(getByLabelText("Adjust constraints"));
-    fireEvent.click(getByLabelText("Plan templates"));
+    fireEvent.click(getByLabelText("Templates"));
     expect(onGenerate).toHaveBeenCalledTimes(1);
     expect(onAdjust).toHaveBeenCalledTimes(1);
     expect(onTemplates).toHaveBeenCalledTimes(1);

@@ -75,7 +75,7 @@ export function PlanHeaderV3({
           <ActButton label="Adjust constraints" onClick={onAdjust}>
             <SlidersHorizontal className="size-[17px]" strokeWidth={1.9} />
           </ActButton>
-          <ActButton label="Plan templates" onClick={onTemplates}>
+          <ActButton label="Templates" onClick={onTemplates}>
             <Bookmark className="size-4" strokeWidth={1.9} />
           </ActButton>
         </div>

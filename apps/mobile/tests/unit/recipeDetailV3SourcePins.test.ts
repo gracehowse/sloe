@@ -92,7 +92,7 @@ describe("mobile recipe-detail — kcal lives in the macro strip CAL column (ENG
     // macro is > 0 the strip is replaced by `recipe-nutrition-pending`.
     expect(SRC).toMatch(/const hasNutrition =/);
     expect(SRC).toMatch(/if\s*\(\s*!hasNutrition\s*\)\s*\{/);
-    expect(SRC).toMatch(/return <RecipeMacroStrip cells=\{macroCells\} \/>;/);
+    expect(SRC).toMatch(/return <RecipeMacroStrip cells=\{macroCells\} variant=\{recipeDetailV3 \? "borderless" : "slab"\} \/>;/);
   });
 
   it("the macro-strip label uses the canonical Type.label eyebrow token", () => {

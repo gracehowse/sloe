@@ -71,6 +71,8 @@ export interface PlannerTargets {
   calorieBandPct: number;
   /** ±% around carb, fat, and fibre day targets. */
   carbFatBandPct: number;
+  /** ENG-1254 — minimum daily kcal floor from Adjust constraints. */
+  calorieFloorMin?: number;
 }
 
 /**

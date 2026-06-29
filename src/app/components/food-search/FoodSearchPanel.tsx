@@ -112,6 +112,7 @@ import {
 import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion, buildUsdaPreviewFields } from "@/lib/nutrition/foodSearchCore";
 import { toast } from "sonner";
 import { foodSearchPreviewExtraMicroRows } from "@/lib/nutrition/foodSearchPreviewNutrition";
+import { ConfirmFoodMacroPreview } from "./ConfirmFoodMacroPreview";
 import {
   foodSearchRankScore,
   splitBestMatches,
@@ -2235,15 +2236,17 @@ export function FoodSearchPanel({
             </div>
           </div>
 
-          {/* Nutrition */}
+          {/* Nutrition — ENG-1257 mix: 3-tile P/C/F row + richer micro table below */}
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Nutrition</p>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <ConfirmFoodMacroPreview
+              calories={scaled.calories}
+              proteinG={scaled.protein}
+              carbsG={scaled.carbs}
+              fatG={scaled.fat}
+            />
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
               {[
-                ["Calories", `${scaled.calories} kcal`],
-                ["Protein", `${scaled.protein}g`],
-                ["Carbs", `${scaled.carbs}g`],
-                ["Fat", `${scaled.fat}g`],
                 ...(scaled.fiberG > 0 ? [["Fibre", `${scaled.fiberG}g`]] : []),
                 ...(scaled.sugarG > 0 ? [["Sugar", `${scaled.sugarG}g`]] : []),
                 ...(scaled.sodiumMg > 0 ? [["Sodium", `${scaled.sodiumMg}mg`]] : []),

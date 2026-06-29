@@ -22,9 +22,7 @@ Worked autonomously after the audit (PR #609):
   rule violation (active chip was success-green) → brand-plum, flag-gated. Confirm-card
   pixel-SEE impractical locally (deep food-search flow); verified by typecheck + 8630 web +
   3170 mobile tests + parity-confirmed token. Flagged for a device glance.
-- **A2b ConfirmFood 3-tile macro grid** — DECISION FOR GRACE. The prototype's P/C/F tile
-  grid would regress the live card's richer micro table (Fibre/Sugar/Sodium). Held; options
-  posted on ENG-1247 (recommend keep-richer or mix-and-match).
+- **A2b ConfirmFood 3-tile macro grid** — ✅ DONE (2026-06-28, ENG-1257, Grace mix). 3-tile P/C/F row + serif kcal line; richer micro table kept below (web + mobile).
 
 ### Adversarial review rework (PR #609, verdict needs-rework, 2026-06-25)
 
@@ -59,10 +57,9 @@ on ENG-1247 + the review output.
 ### Rework status (2026-06-25): AUTONOMOUS WORK COMPLETE
 
 Must-fixes M1/M2/M3/M5 ✅ + should-fixes S1/S2/S3/S4/S6 ✅ — all green on PR #609. Everything
-remaining is GRACE-GATED: **M4** (DayStrip chevron behaviour — options A/B on ENG-1247), **A2b**
-(ConfirmFood macro grid vs the richer live micro table), the **29 structural decisions + 5 feature
-builds** (section B/C above), and **S5** (pending an editorial-overline token). Plus a flagged
-infra bug: the `update-visual-baselines` workflow is broken (missing golden-user seeder).
+remaining is **22 autonomous ⬜ surfaces** + explicit builds (B15–B16, B18, B21, B26, B28): **M4**
+(DayStrip chevron — B29 week strip sufficient), and **S5** (pending an editorial-overline token).
+§B (29) + §D (18) ratified 2026-06-28 — 🔒 registry in `docs/ux/redesign/v3/conformance-backlog.md`.
 - **A17 Billing Manage button → SupprButton** — DEFERRED. The card is gated on Stripe
   subscription status, which the Stripe-less local dev server can't produce, and Settings
   isn't in the CI visual suite — so the change is un-SEE-able anywhere available. Low value
@@ -80,12 +77,13 @@ push — a scoped `npm run lint` missed a pinned-file growth on A15 and reddened
 
 Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gated where structural). Ranked high→low.
 
-### A1. [HIGH · both] Plan header — Adjust glyph opens Templates (wrong sheet)
-- **Divergence:** PlanHeaderV3 sliders/Adjust button is wired to open the PlanTemplates sheet on both platforms. Until the AdjustConstraints sheet exists, the glyph should not silently alias to Templates — relabel or point at the correct destination.
-- **Files:** `src/app/components/MealPlanner.tsx:1072; apps/mobile/app/(tabs)/planner.tsx:2708`
+### A1. [HIGH · both] Plan header — AdjustConstraints sheet — ✅ DONE (2026-06-28, Grace B1=A)
+- **Resolution:** Built the v3 `AdjustConstraintsSheet` (plan from / calorie floor / meals per day / leftovers toggle + Save & regenerate) on web + mobile; restored the sliders header button wired to the sheet (no longer aliases Templates). Shared state helpers in `src/lib/planning/planAdjustConstraints.ts`. Leftover toggle gates `distributeLeftovers` on mobile + `generateMealPlan({ allowLeftovers })` on web. Calorie-floor algo hook tracked as ENG-1254 (UI ships now).
+- **Files:** `apps/mobile/components/plan/AdjustConstraintsSheet.tsx`; `src/app/components/plan/AdjustConstraintsSheet.tsx`; `apps/mobile/components/plan/PlanHeaderV3.tsx`; `src/app/components/plan/PlanHeaderV3.tsx`; `apps/mobile/app/(tabs)/planner.tsx`; `src/app/components/MealPlanner.tsx`; `src/context/AppDataContext.tsx`
 
-### A2. [HIGH · both] ConfirmFood — portion/slot confirm card grammar
+### A2. [HIGH · both] ConfirmFood — portion/slot confirm card grammar — ✅ A2a+A2b DONE
 - **Divergence:** Adopt the ConfirmFood grammar: active unit-chip PRIMARY-filled (not success-green tint), a 3-tile coloured-dot P/C/F macro-tile grid (live shows a plain key/value table), and a serif kcal-line (26px). Highest-frequency logging surface.
+- **Done:** A2a plum chip (2026-06-25); A2b mix — 3-tile P/C/F + serif kcal + micro table below (ENG-1257, 2026-06-28).
 - **Files:** `src/app/components/food-search/FoodSearchPanel.tsx:2144-2350; apps/mobile/components/food-search/FoodSearchPanel.tsx:2027-2160`
 
 ### A3. [MEDIUM · mobile] BurnDetail (mobile) — set-ic row icons + Done CTA — ✅ DONE
@@ -93,13 +91,15 @@ Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gate
 - **Files:** `apps/mobile/app/burn-detail.tsx`
 - **Done (2026-06-25):** breakdown plates 40px circle (r20) → 36px rounded-square `Radius.xl` (the mobile set-ic radius — settings `IconBox`; the prototype's 10px is off the mobile 4/6/8/12 scale), steps-bar align offset 52→48, + a primary full-width "Done" CTA (`SupprButton`, the prototype `atde-cta`) → `router.back()`. SEEN on the iOS sim (deep-link `suppr:///burn-detail`): rounded-square plates + aubergine Done pill. Mobile-only (web BurnDetail is the B10 decision). Net-negative on the file (condensed the icon-plate style) — re-pinned 561→556. iconBg literals (`rgba(…)`) left as-is — outside the size+radius+CTA scope (separate token-discipline cleanup).
 
-### A4. [MEDIUM · both] EntryDetail + MealDetail — serif kcal headline + overline meta + serif macro-total grid
+### A4. [MEDIUM · both] EntryDetail + MealDetail — serif kcal headline + overline meta + serif macro-total grid — ✅ DONE (flag `eng1247_section_a_v1`)
 - **Divergence:** Same grammar gap on two adjacent surfaces: lead with an uppercase overline meta line and a serif ed-cal (40px) calorie number; for MealDetail also render the 4-cell serif md-totalgrid (P/C/F/Fibre). Live renders sans extrabold kcal + split-bar.
 - **Files:** `src/app/components/suppr/meal-nutrition-dialog.tsx:306-460; apps/mobile/app/meal-nutrition.tsx:348-604`
+- **Done (2026-06-28):** overline meta (`section-label` / `metaOverline`); macro split bar hidden when flag ON (grid-only); existing 40px serif kcal + `MacroTotalGrid` retained. Default-OFF `eng1247_section_a_v1`.
 
-### A5. [MEDIUM · both] CompleteDay — restore 3-stat row + weight-projection trendline + coach quote
+### A5. [MEDIUM · both] CompleteDay — restore 3-stat row + weight-projection trendline + coach quote — ✅ DONE (flag `eng1247_section_a_v1`)
 - **Divergence:** Live ships a leaner Day-logged modal. Add back the 3-stat row (kcal eaten / vs target / protein), the Weight-projection card with the SVG trendline + now-to-6wks endpoints, and the coach quote. projectWeight logic is already shared.
 - **Files:** `src/app/components/suppr/today-complete-day-dialog.tsx; apps/mobile/components/today/TodayCompleteDayModal.tsx`
+- **Done (2026-06-28):** shared `completeDayV3.ts` + `CompleteDayV3Section` (web + mobile); stat trio, SVG trendline, coach quote. WinMoment handoff intentionally deferred — kept "View my progress" CTA. Default-OFF flag.
 
 ### A6. [MEDIUM · both] WhyNumber — set-ic breakdown rows + serif hero target + coach quote + Keep-this-target CTA
 - **Divergence:** Live renders plain bordered rows + an overline bullet list. Conform: whyn-hero big serif target number with kcal/day caption, grey set-ic rounded-square row icons, whyn-sum Maintenance highlight + whyn-result row, and a primary Keep-this-target CTA. Shared buildWhyThisNumber provides content.
@@ -110,27 +110,30 @@ Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gate
 - **Files:** `apps/mobile/app/recipe/verify.tsx`
 - **Done (2026-06-25):** extracted a shared `VerifyTopBar` (dedups the 3 duplicated header branches) with a chevron back + serif "Verify ingredients" title; per-row confidence BAR → 9px `ver-dot` (high=success/med=warning/low=destructive, in-place); CTA → "Calculate nutrition" (collapsed the live `hasDirty ? "Save Changes" : "Confirm All"` two-state — minor live→prototype divergence; the action is unchanged). SEEN on the iOS sim via the deterministic fixture deeplink `suppr:///recipe/verify?fixture=1`. Net −29 (re-pinned 1593→1564). **DEFERRED:** bordered cards → flush divided list — structural (interacts with the expanded-section connection + the alert-icon row); needs a careful collapsed+expanded SEE pass. The ver-dot also sits in-place (row-bottom) rather than leading the row as in the prototype — fold both into the flush-card pass.
 
-### A8. [MEDIUM · mobile] MealEdit (mobile) — Full-nutrition expander + Swap/Copy rows + serif kcal-line
+### A8. [MEDIUM · mobile] MealEdit (mobile) — Full-nutrition expander + Swap/Copy rows + serif kcal-line — ✅ DONE (flag `eng1247_section_a_v1`)
 - **Divergence:** TodayEditMealModal matches the spine but is missing the me-expand Full-nutrition section, the me-swap Swap-for-another-food row, and the me-swap Copy-to-another-meal row (sheets exist elsewhere — surface them inline). Also swap editable macro inputs + sans portion read-out for the serif kcal-line.
 - **Files:** `apps/mobile/components/today/TodayEditMealModal.tsx:350-423`
+- **Done (2026-06-28):** Full nutrition / Swap / Copy rows with set-ic-style icons when flag ON; wired from `TodayScreen`. Full-nutrition navigates out (inline expander deferred). Default-OFF flag.
 
 ### A9. [MEDIUM · web] GoPublic (web) — add the 2 missing attestations — ✅ DONE
 - **Divergence:** GoPublicDialog is a single-checkbox AlertDialog; conform to the 3-attestation ver-row checklist by adding the honest-nutrition-estimate + photo-rights attestations with the disabled-until-all-ticked Publish CTA.
 - **Files:** `src/app/components/GoPublicDialog.tsx`
 - **Done (2026-06-25):** rewrote to the 3-attestation divided-card checklist (own / nutrition-is-an-estimate / photo-rights — prototype copy verbatim), Publish disabled until all three ticked, shared body+footer so the autoOpen + trigger paths can't drift. Render test `tests/unit/goPublicDialogAttestations.test.tsx` pins the gate. Both states SEEN in browser (disabled muted Publish → all-ticked plum-filled Publish, single-CTA canon held). Web-only by design (mobile is import-only).
 
-### A10. [MEDIUM · both] PlanImport — overline labels + set-ic + on-scale radius + theme success-soft token
+### A10. [MEDIUM · both] PlanImport — overline labels + set-ic + on-scale radius + theme success-soft token — ✅ DONE
 - **Divergence:** Independent of the IA decision: replace hand-rolled labels with the overline token, snap off-scale radii (mobile 16, Radius.xl*2=24; web ad-hoc text-[11/13/28]) to the 4/6/8/12 scale + type ramp, and swap literal hex+opacity (Accent.success+18/40, accent.primary+12) for theme success-soft/primary-soft tokens.
 - **Files:** `src/app/components/PlanImport.tsx:102-134; apps/mobile/app/plan-import.tsx:334-344,581-586`
+- **Done (2026-06-28):** web callout → `bg-success-soft` + `section-label`; mobile → `Type.label`/`Type.caption`, `Radius.lg`/`Radius.xl`, theme success tokens. No flag (token discipline only).
 
 ### A11. [MEDIUM · both] Grocery — v3 sheet chrome — ⚠️ NEEDS GRACE (partly deliberate divergence, not a blanket conform)
 - **Divergence:** Neither shopping list speaks the v3 Grocery grammar. Keep the richer live data/household logic but adopt overline category headers, the gr-tools share/clear icon cluster, a gr-progress Progress N/total row, gr-check tick checkboxes, and the from-N-recipes subtitle. Tesco/Ocado stays absent.
 - **On inspection (2026-06-25):** the audit overstated this — the live web `ShoppingList` already carries much of the v3 grammar with **documented DELIBERATE divergences** (its header comment, lines 39-57): the **share button is deferred on purpose** ("until web share format is designed"), the live keeps an **accessible progress BAR** (`role="progressbar"` + `aria-valuenow`) rather than the prototype's plain "Progress N/total" *text* row, the subtitle reads "from this week's plan" (vs prototype "from N recipes"), and categories render as a 3-column card grid (vs the prototype's overline list). So blanket-conforming would OVERRIDE design decisions. **Grace's calls before implementing:** (1) downgrade the accessible progress bar to a text row? (2) ship the share/clear cluster now or keep it deferred until the web-share format exists? (3) subtitle copy "from N recipes" vs "from this week's plan"? (4) category overline-list vs the card grid? The genuinely-clean bits (gr-check checkbox styling, overline *header* tokenisation) can proceed once (4) is settled. Also: SEE needs a generated meal plan (no fixture) on both platforms; both files are at-pin (extraction).
 - **Files:** `src/app/components/ShoppingList.tsx; apps/mobile/app/shopping.tsx`
 
-### A12. [LOW · both] Barcode — community-contribution copy + Saved confirmation state
+### A12. [LOW · both] Barcode — community-contribution copy + Saved confirmation state — ✅ DONE (flag `eng1247_section_a_v1`)
 - **Divergence:** Core scan/not-found/manual-entry exists; the gap is the crowdsource voice: not-found copy (add it once and it's saved for you and everyone after you), the Shared-anonymously note, and a success state (Thanks for improving Sloe for everyone) + Log-it-now CTA. Copy + one state.
 - **Files:** `src/app/components/suppr/today-barcode-dialog.tsx:252-314; apps/mobile/app/(tabs)/barcode.tsx:954-989`
+- **Done (2026-06-28):** v3 not-found title/body; manual-entry bc-chip + shared-anonymously note; mobile saved-ack overlay + web `BarcodeSavedAckDialog` after community opt-in; create-custom-food barcode note; toast uses saved title when flag ON. Default-OFF flag.
 
 ### A13. [LOW · both] ImportFlow input sheet — title + detection-driven CTA copy — ✅ DONE (copy); shape DEFERRED
 - **Divergence:** Web rendered a centered Dialog titled Import-anything with a fixed CTA Import; conform to the prototype: title Import, and a detection-driven CTA label (Import {label} / disabled Paste-something-to-import).
@@ -138,9 +141,10 @@ Mechanical conforms I implement directly (web+mobile parity, SEE each, flag-gate
 - **Done (2026-06-25):** title "Import anything"→"Import" + detection-driven CTA (`Import {label.toLowerCase()}` when detected / disabled "Paste something to import" when empty) on BOTH web + mobile (parity — the backlog's "mobile twin already conformed" was inaccurate; both still said "Import anything"/"Import", so they moved together off the canonical prototype `Sheet title="Import"` + CTA at Sloe-App.html:4625). Within the existing `sloe_v3_unified_import` flag — no new gate. Web render test updated (`unifiedImportSheetWeb.test.tsx`) + SEEN both states on web (Dialog) AND iOS sim (empty "Paste something to import" → detected "Import recipe link", matching the "Detected: Recipe link" chip).
 - **DEFERRED — needs Grace:** the prototype's web **bottom-sheet shape** (vs the current centered Dialog). On desktop web a full-width bottom sheet reads worse than a centered modal (the prototype is phone-shaped) — a responsive judgment, not a mechanical conform. Mobile is already a slide-up sheet. Decision: keep web Dialog, adopt a responsive bottom-sheet (sheet on mobile-web, dialog on desktop), or force bottom-sheet everywhere?
 
-### A14. [LOW · both] Notifications — Today/Earlier overline grouping + toned notif-ic glyph plates
-- **Divergence:** Both ship a flat inbox: add Today/Earlier overline grouping and a leading toned notif-ic glyph plate per item; web title should also be serif font-headline (currently plain h1).
-- **Files:** `src/app/components/NotificationsCenter.tsx:27; apps/mobile/app/(tabs)/notifications.tsx:343-356`
+### A14. [LOW · both] Notifications — Today/Earlier overline grouping + toned notif-ic glyph plates — ✅ DONE
+- **Divergence:** Both shipped a flat inbox: add Today/Earlier overline grouping and a leading toned notif-ic glyph plate per item; web title should also be serif font-headline (currently plain h1).
+- **Done:** `partitionNotificationsByDay` + Today/Earlier groups + 38px toned plates on web (`NotificationsCenter.tsx`) and mobile (`notifications.tsx` + `NotificationRow.tsx`). Web H1 uses `font-headline`. Residual header chrome (web icon-plate H1, Clear button, bordered Mark-all) flagged 🔒keep in cluster audit — not blocking.
+- **Files:** `src/app/components/NotificationsCenter.tsx`; `apps/mobile/app/(tabs)/notifications.tsx`
 
 ### A15. [LOW · web] Profile (web) — serif identity name
 - **Divergence:** Web Profile name renders text-base font-bold SANS; swap to font-headline serif to match the prototype + already-conformed mobile (identityName Type.title serif).

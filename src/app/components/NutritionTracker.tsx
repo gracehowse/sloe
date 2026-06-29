@@ -128,6 +128,8 @@ import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayRecentsRow } from "./suppr/today-recents-row";
 import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
 import { ShareCommunityDialog } from "./suppr/ShareCommunityDialog";
+import { BarcodeSavedAckDialog } from "./suppr/BarcodeSavedAckDialog";
+import { COMPLETE_DAY_V3_COPY } from "../../lib/completeDayV3";
 import {
   submitFoodCorrection,
   type FoodCorrectionInput,
@@ -361,6 +363,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // saved as a private custom food (when `barcode_community_contribution` is on)
   // to open the share dialog. null = closed.
   const [shareCommunityInput, setShareCommunityInput] = useState<FoodCorrectionInput | null>(null);
+  const [barcodeSavedAckName, setBarcodeSavedAckName] = useState<string | null>(null);
   const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
   // ENG-751 — persisted AI/photo/voice per-item snapshot rows for the open
   // day's entries. Gated by the display flag; flag-OFF leaves this empty so the
@@ -3408,6 +3411,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         profileWeightKg={profileWeightKg}
         todayCalories={totals.calories}
         targetCalories={normalizeMacroTargets(nutritionTargets).calories}
+        todayProteinG={totals.protein}
+        proteinTargetG={normalizeMacroTargets(nutritionTargets).protein}
         maintenanceTdeeKcal={profileMaintenanceTdee}
         profileGoal={profileGoal}
         profileMeasurementSystem={profileMeasurementSystem}
@@ -3652,7 +3657,11 @@ export const NutritionTracker = memo(function NutritionTracker({
             } catch {
               /* analytics noop */
             }
-            toast.success("Custom food saved. Scan again to log it.");
+            toast.success(
+              isFeatureEnabled("eng1247_section_a_v1")
+                ? COMPLETE_DAY_V3_COPY.savedTitle
+                : "Custom food saved. Scan again to log it.",
+            );
             // ENG-1247 — offer the community-contribution opt-in (flag-gated,
             // barcode only). The private custom food is already saved above; this
             // is the explicit, separate opt-in to ALSO share it to user_foods.
@@ -3685,8 +3694,21 @@ export const NutritionTracker = memo(function NutritionTracker({
       <ShareCommunityDialog
         input={shareCommunityInput}
         onShare={(input) => submitFoodCorrection(supabase, authedUserId ?? "", input)}
-        onClose={() => setShareCommunityInput(null)}
+        onClose={() => {
+          if (isFeatureEnabled("eng1247_section_a_v1") && shareCommunityInput?.name) {
+            setBarcodeSavedAckName(shareCommunityInput.name);
+          }
+          setShareCommunityInput(null);
+        }}
       />
+
+      {isFeatureEnabled("eng1247_section_a_v1") && barcodeSavedAckName ? (
+        <BarcodeSavedAckDialog
+          open
+          productName={barcodeSavedAckName}
+          onLogNow={() => setBarcodeSavedAckName(null)}
+        />
+      ) : null}
 
       {/* Batch 5.13 — Voice log (Pro). Shared review/edit flow. */}
       <VoiceLogDialog

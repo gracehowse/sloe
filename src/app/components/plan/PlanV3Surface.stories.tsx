@@ -121,6 +121,8 @@ const meta = {
     shoppingItemCount: 23,
     servingCount: 2,
     onOpenShopping: noop,
+    onOpenBatchCook: noop,
+    batchCookSubtitle: "Cook once · scale shopping",
     today,
   },
 } satisfies Meta<typeof PlanV3Surface>;

@@ -5946,6 +5946,8 @@ export default function TrackerScreen() {
         profileWeightKg={profileWeightKg}
         todayCalories={totals.calories}
         targetCalories={effectiveCalorieGoal}
+        todayProteinG={totals.protein}
+        proteinTargetG={effectiveMacroTargets.protein}
         maintenanceTdeeKcal={profileMaintenanceTdeeKcal}
         profileGoal={profileGoal}
         onViewProgress={() => {
@@ -5956,6 +5958,7 @@ export default function TrackerScreen() {
         textColor={colors.text}
         textSecondaryColor={colors.textSecondary}
         textTertiaryColor={colors.textTertiary}
+        borderColor={colors.border}
       />
 
       {/* Phase 3 / B2.1 (D-2026-04-27-15) — canonical Log button +
@@ -6495,6 +6498,31 @@ export default function TrackerScreen() {
           }
         }}
         onClose={() => setEditingMeal(null)}
+        onOpenFullNutrition={
+          editingMeal
+            ? () => {
+                const mealId = editingMeal.id;
+                setEditingMeal(null);
+                router.push(`/meal-nutrition?id=${encodeURIComponent(mealId)}` as const);
+              }
+            : undefined
+        }
+        onSwapFood={
+          editingMeal
+            ? () => {
+                setEditingMeal(null);
+                setSearchOpen(true);
+              }
+            : undefined
+        }
+        onCopyMeal={
+          editingMeal
+            ? () => {
+                setCopyMealTargetId(editingMeal.id);
+                setEditingMeal(null);
+              }
+            : undefined
+        }
         styles={styles}
         cardColor={colors.card}
         borderColor={colors.border}

@@ -45,6 +45,7 @@ import { clampRememberedToServingOptions, getRememberedPortion, recordPortion } 
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { ServingStepper } from "@/components/food-log/ServingStepper";
 import { fallbackSlotFromTimeOfDay } from "@suppr/nutrition-core/recipeJournalSlot";
+import { COMPLETE_DAY_V3_COPY } from "@suppr/shared/completeDayV3";
 
 export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
@@ -81,7 +82,9 @@ export default function BarcodeScreen() {
   // not-found barcode is logged PRIVATELY, offer the explicit opt-in to share it
   // to the shared food DB. Never automatic; the private log stands regardless.
   const communityShareEnabled = isFeatureEnabled("barcode_community_contribution");
+  const sectionA = isFeatureEnabled("eng1247_section_a_v1");
   const [shareEntry, setShareEntry] = useState<BarcodeShareOptInEntry | null>(null);
+  const [savedAck, setSavedAck] = useState<{ name: string; kcal: number } | null>(null);
   const [manualName, setManualName] = useState("");
   const [manualCalories, setManualCalories] = useState("");
   const [manualProtein, setManualProtein] = useState("");
@@ -169,7 +172,11 @@ export default function BarcodeScreen() {
         }
       } else {
         setRememberedPortion(null);
-        setError("Product not found. Try a different barcode or enter it manually.");
+        setError(
+          sectionA
+            ? COMPLETE_DAY_V3_COPY.barcodeNotFoundBody
+            : "Product not found. Try a different barcode or enter it manually.",
+        );
       }
     },
     // `last` removed 2026-04-29: the callback only reads `lastRef.current`
@@ -449,14 +456,17 @@ export default function BarcodeScreen() {
   // ENG-1247 — conclude the community opt-in: clear the share + manual state and
   // return to the scanner (the private log already stands).
   const handleShareDone = useCallback(() => {
+    if (sectionA && shareEntry) {
+      setSavedAck({ name: shareEntry.name, kcal: shareEntry.calories });
+    }
     setShareEntry(null);
     setManualName("");
     setManualCalories("");
     setManualProtein("");
     setManualCarbs("");
     setManualFat("");
-    resetScan();
-  }, [resetScan]);
+    if (!sectionA) resetScan();
+  }, [resetScan, sectionA, shareEntry]);
 
   const styles = useMemo(
     () =>
@@ -663,6 +673,7 @@ export default function BarcodeScreen() {
         },
         secondaryBtnText: { color: colors.primaryForeground, fontWeight: "600", fontSize: 14 },
         errorIcon: { marginBottom: Spacing.xs },
+        errorTitle: { ...Type.headline, fontSize: 18, textAlign: "center", marginBottom: Spacing.xs },
         errorText: { color: Colors.dark.textSecondary, fontSize: 14, textAlign: "center", maxWidth: 260 },
         retryBtn: {
           borderWidth: cardElevation.useBorder ? 1 : 0,
@@ -707,6 +718,19 @@ export default function BarcodeScreen() {
         // Gap #4: replace marginTop:-4 negative hack with gap token on
         // the parent container (gap: Spacing.md already set on manualOverlay).
         manualSub: { color: Colors.dark.textSecondary, fontSize: 13 },
+        bcChip: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: Spacing.sm,
+          alignSelf: "flex-start",
+          backgroundColor: colors.card,
+          borderRadius: Radius.full,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.sm,
+          borderWidth: cardElevation.useBorder ? 1 : 0,
+          borderColor: colors.border,
+        },
+        bcChipText: { ...Type.body, color: colors.text, fontVariant: ["tabular-nums"] },
         manualInput: {
           // Gap #10: token-based input bg.
           backgroundColor: Colors.dark.inputBg,
@@ -985,6 +1009,9 @@ export default function BarcodeScreen() {
         {error && !manualMode && (
           <>
             <AlertCircle size={32} color={Accent.destructive} style={styles.errorIcon} strokeWidth={2} />
+            {sectionA ? (
+              <Text style={[styles.errorTitle, { color: colors.text }]}>{COMPLETE_DAY_V3_COPY.barcodeNotFoundTitle}</Text>
+            ) : null}
             <Text style={styles.errorText}>{error}</Text>
             <Pressable style={styles.retryBtn} onPress={resetScan} accessibilityLabel="Try scanning again">
               <Text style={styles.retryBtnText}>Try again</Text>
@@ -1019,6 +1046,12 @@ export default function BarcodeScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.manualOverlay}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: tabBarHeight + Spacing.xxxl }}>
             <Text style={styles.manualTitle}>Add Item Manually</Text>
+            {sectionA && last ? (
+              <View style={styles.bcChip}>
+                <ScanLine size={15} color={accent.primary} />
+                <Text style={styles.bcChipText}>{last}</Text>
+              </View>
+            ) : null}
             <Text style={styles.manualSub}>
               {last ? `Barcode: ${last}` : "Enter the nutrition info from the label"}
             </Text>
@@ -1083,6 +1116,11 @@ export default function BarcodeScreen() {
                 onChangeText={setManualFat}
               />
             </View>
+            {sectionA ? (
+              <Text style={[Type.caption, { color: colors.textSecondary, lineHeight: 18 }]}>
+                {COMPLETE_DAY_V3_COPY.sharedAnonymouslyNote}
+              </Text>
+            ) : null}
             <Pressable
               style={[
                 styles.logBtn,
@@ -1116,6 +1154,41 @@ export default function BarcodeScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       )}
+
+      {savedAck && sectionA ? (
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.manualOverlay}>
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: Spacing.xl, gap: Spacing.md }}>
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: Radius.full,
+                backgroundColor: Accent.success + "1F",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Check size={28} color={Accent.successSolid} strokeWidth={2.5} />
+            </View>
+            <Text style={[Type.headline, { color: colors.text, textAlign: "center" }]} testID="barcode-saved-title">
+              {COMPLETE_DAY_V3_COPY.savedTitle}
+            </Text>
+            <Text style={[Type.body, { color: colors.textSecondary, textAlign: "center", lineHeight: 22 }]}>
+              {COMPLETE_DAY_V3_COPY.savedThanks(savedAck.name)}
+            </Text>
+            <Pressable
+              style={[styles.logBtn, { width: "100%", marginTop: Spacing.md, backgroundColor: accent.primary }]}
+              onPress={() => {
+                setSavedAck(null);
+                resetScan();
+              }}
+              accessibilityLabel="Log it now"
+            >
+              <Text style={styles.logBtnText}>Log it now</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      ) : null}
 
       {/* Correction overlay */}
       {correctionMode && (

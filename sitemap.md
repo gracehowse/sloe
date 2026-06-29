@@ -95,6 +95,7 @@ under `apps/mobile/app/`.
 | Nutrition sources | `nutrition-sources.tsx` | `suppr:///nutrition-sources` | Data-source attribution |
 | Household | `household-settings.tsx` | `suppr:///household-settings` | Household members / servings |
 | Shopping list | `shopping.tsx` | `suppr:///shopping` (or Plan → Shop) | — |
+| Batch cook | `batch-cook.tsx` | `suppr:///batch-cook` (or Plan → Batch cook) | — |
 | Profile | `profile.tsx` | `suppr:///profile` | — |
 | Import (shared link) | `import-shared.tsx` | `suppr:///import-shared?url=<url>` (share-sheet / clipboard) | `url`, `captionText`; IG/TikTok/YouTube/Pinterest → recipe |
 | Import (meal plan) | `plan-import.tsx` | `suppr:///plan-import` | Document/photo plan import |
