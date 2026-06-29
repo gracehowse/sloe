@@ -316,6 +316,18 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (kill switch). Web twin: src/app/components/suppr/unified-import-sheet.tsx
   // (live-flow SEE-verified). Closes the audit's web-import parity launch-blocker.
   "sloe_v3_unified_import",
+  // ENG-1247 flag-collapse (2026-06-29, Grace) — conformance batch default-on;
+  // PostHog remains the kill switch via isFeatureDisabled. Keep in sync w/ mobile.
+  "loghub_quick_actions_v1",
+  "recipe_detail_v3_conformance",
+  "profile_showcase_v1",
+  "mfp_tracker_reassurance_v1",
+  "today_hero_decard_v3",
+  "today_quickadd_recents_v3",
+  "eng1247_section_a_v1",
+  "weekly_recap_detail_v1",
+  // ENG-1225 #24 — web Settings two-pane layout (WEB-ONLY).
+  "sloe_v3_settings",
 ]);
 
 /**
@@ -338,53 +350,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   single self-named fallback line. The WRITE path (snapshot capture) is
  *   always-on + defensive; this flag gates only the read/display so data can
  *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
- * - `sloe_v3_settings` (ENG-1225 gap #24) — the v3 web Settings "two-pane"
- *   layout: a sticky left sub-nav + a right panel that swaps to the selected
- *   section. ON → `SettingsTwoPaneShell`; OFF → the legacy single-scroll stack.
- *   Pure re-layout — no setting added/removed. Default OFF: a structural nav
- *   change on a core surface, ramps via PostHog after Grace SEEs it. WEB-ONLY —
- *   mobile Settings is a separate native surface, so there is NO mobile mirror
- *   (mobile omits web-only default-off flags, like the landing hero).
- * - `discover_creator_rail_v1` (ENG-1225 #14) — the v3 Discover creator plane:
- *   the creator rail + web featured hero + mobile Following feed. Default OFF —
- *   it ships dark pending Grace's SEE-approval on the sim, and it currently
- *   falls back to a presentation-only SEED creator set (the `creators` table is
- *   empty pre-launch). Real creators always win when they exist. Keep in sync
- *   with mobile. Mirror surfaces: `DiscoverFeed.tsx` / `discover.tsx`.
- * - `loghub_quick_actions_v1` (ENG-1247) — the v3 LogHub quick-action row
- *   (Log usual / Copy yesterday / Duplicate day) shown above the browse tabs
- *   in the Log-a-meal sheet. Default OFF → the legacy standalone "Copy
- *   yesterday" row renders alone (the old path). Gates the new structure only;
- *   every action reuses an existing commit path. Keep in sync with mobile.
- *   Mirror surfaces: `suppr/log-sheet.tsx` / `today/LogSheet.tsx`.
- * - `recipe_detail_v3_conformance` (ENG-1247) — the v3 recipe-detail prototype
- *   pass: hero title OVERLAY (kicker + serif H1 + clock·flame·serves meta row)
- *   when the recipe has a photo (no-photo falls back to the current title-below
- *   layout), the editorial serif standfirst headnote, and the consolidated
- *   sticky CTA bar (yield stepper · Cook Mode outline · Log filled primary). On
- *   web this also adds the REAL Log-to-today CTA (web had only a fake "Marked as
- *   made!" toast before). OFF → the current title-below + Cook/Log/Edit pill row.
- *   Keep in sync with mobile. Mirror surfaces: `RecipeDetail.tsx` / `recipe/[id].tsx`.
- * - `today_hero_decard_v3` (ENG-1247) — Today calorie hero de-card. ON → bare
- *   centered hero + status line below the ring; OFF → carded hero. Mobile twin:
- *   same flag in `apps/mobile/lib/analytics.ts`.
- * - `today_quickadd_recents_v3` (ENG-1247) — Today quick-add recents chips.
- *   ON → recents row after macros; OFF → no row. Mobile twin: same flag in
- *   apps/mobile/lib/analytics.ts.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "landing_hero_hybrid_v1",
   "nutrition_entry_ingredients_v1",
-  "sloe_v3_settings",
-  "discover_creator_rail_v1",
-  "loghub_quick_actions_v1",
-  "recipe_detail_v3_conformance",
-  "profile_showcase_v1",
-  "mfp_tracker_reassurance_v1",
-  "today_hero_decard_v3",
-  "today_quickadd_recents_v3",
-  "eng1247_section_a_v1",
-  "mfp_tracker_reassurance_v1",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

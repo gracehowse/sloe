@@ -53,6 +53,8 @@ const WEB_ONLY = new Set([
   // ENG-837/P5#15 — web per-meal/slot nutrition detail; mobile already ships
   // the native `meal-nutrition` route, so this flag is web-only by design.
   "web_meal_nutrition_detail",
+  // ENG-1225 #24 — web Settings two-pane layout (mobile Settings is native).
+  "sloe_v3_settings",
 ]);
 
 const MOBILE_ONLY = new Set([

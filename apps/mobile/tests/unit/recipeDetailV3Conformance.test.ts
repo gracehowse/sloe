@@ -27,10 +27,10 @@ const SERVINGS_FOOTER = read("../../components/recipe/RecipeServingsFooter.tsx")
 const ANALYTICS = read("../../lib/analytics.ts");
 
 describe("ENG-1247 — flag registration (mobile)", () => {
-  it("registers recipe_detail_v3_conformance as a known default-OFF flag", () => {
+  it("registers recipe_detail_v3_conformance as default-ON", () => {
     const block = ANALYTICS.slice(
-      ANALYTICS.indexOf("export const KNOWN_DEFAULT_OFF_FLAGS"),
-      ANALYTICS.indexOf("] as const", ANALYTICS.indexOf("KNOWN_DEFAULT_OFF_FLAGS")),
+      ANALYTICS.indexOf("REDESIGN_DEFAULT_ON"),
+      ANALYTICS.indexOf("]);", ANALYTICS.indexOf("REDESIGN_DEFAULT_ON")),
     );
     expect(block).toContain('"recipe_detail_v3_conformance"');
   });

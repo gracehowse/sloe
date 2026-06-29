@@ -4,7 +4,8 @@
  * Reference: `docs/ux/redesign/v3/Sloe-App.html` `RecipeDetail` (hero title
  * overlay L4336–4341, standfirst L4353, sticky CTA L4418–4421).
  *
- * The v3 conformance pass ships behind the default-OFF flag
+ * The v3 conformance pass ships behind `recipe_detail_v3_conformance`
+ * (default-ON since 2026-06-29; PostHog kill switch via isFeatureDisabled).
  * `recipe_detail_v3_conformance` (old path alive in the `else`). `RecipeDetail`
  * is a 3k-line component wired to Supabase + a dozen dialogs; mounting it for an
  * isolated assertion would be a mock sandbox, so — following the
@@ -26,10 +27,10 @@ const WEB_TRACK = readFileSync(
 );
 
 describe("ENG-1247 — flag registration (web)", () => {
-  it("registers recipe_detail_v3_conformance as a known default-OFF flag", () => {
+  it("registers recipe_detail_v3_conformance as default-ON", () => {
     const block = WEB_TRACK.slice(
-      WEB_TRACK.indexOf("export const KNOWN_DEFAULT_OFF_FLAGS"),
-      WEB_TRACK.indexOf("] as const", WEB_TRACK.indexOf("KNOWN_DEFAULT_OFF_FLAGS")),
+      WEB_TRACK.indexOf("REDESIGN_DEFAULT_ON"),
+      WEB_TRACK.indexOf("]);", WEB_TRACK.indexOf("REDESIGN_DEFAULT_ON")),
     );
     expect(block).toContain('"recipe_detail_v3_conformance"');
   });

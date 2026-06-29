@@ -31,11 +31,11 @@ const BARCODE_MOBILE = read("apps/mobile/app/(tabs)/barcode.tsx");
 const BARCODE_SAVED_WEB = read("src/app/components/suppr/BarcodeSavedAckDialog.tsx");
 
 describe("ENG-1247 §A — flag registration", () => {
-  it("registers eng1247_section_a_v1 as default-OFF on web + mobile", () => {
+  it("registers eng1247_section_a_v1 as default-ON on web + mobile", () => {
     for (const src of [WEB_TRACK, MOBILE_ANALYTICS]) {
       const block = src.slice(
-        src.indexOf("KNOWN_DEFAULT_OFF_FLAGS"),
-        src.indexOf("] as const", src.indexOf("KNOWN_DEFAULT_OFF_FLAGS")),
+        src.indexOf("REDESIGN_DEFAULT_ON"),
+        src.indexOf("]);", src.indexOf("REDESIGN_DEFAULT_ON")),
       );
       expect(block).toContain('"eng1247_section_a_v1"');
     }
