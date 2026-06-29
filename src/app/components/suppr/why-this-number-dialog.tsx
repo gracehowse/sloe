@@ -56,8 +56,13 @@ export function WhyThisNumberDialog({
 
         {/* Headline */}
         <div>
+          {/* v3 prototype `.whyn-big` — serif (Newsreader) numeral grammar,
+              was sans `font-bold`. Size held at the original text-2xl: the
+              live headline is one combined string ("Today's target: N kcal"),
+              not the prototype's isolated big number, so a hero bump just
+              wraps awkwardly. (ENG-1247) */}
           <p
-            className="text-2xl font-bold tabular-nums -tracking-[0.02em] text-foreground"
+            className="font-[family-name:var(--font-headline)] text-2xl font-semibold tabular-nums -tracking-[0.02em] text-foreground"
             data-testid="why-this-number-target-headline"
           >
             {result.targetHeadline}

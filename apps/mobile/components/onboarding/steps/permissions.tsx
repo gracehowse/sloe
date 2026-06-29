@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -11,6 +11,7 @@ import {
   markNotificationsPromptDismissed,
   registerExpoPushTokenForUser,
 } from "@/lib/expoPushToken";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
@@ -176,7 +177,7 @@ function PermissionCard({
     <View
       style={{
         backgroundColor: colors.card,
-        borderRadius: 14,
+        borderRadius: CARD_RADIUS,
         padding: 16,
         marginBottom: Spacing.dense,
         borderWidth: 1,
@@ -190,7 +191,7 @@ function PermissionCard({
           style={{
             width: 40,
             height: 40,
-            borderRadius: 12,
+            borderRadius: Radius.full,
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: iconColor + "26",

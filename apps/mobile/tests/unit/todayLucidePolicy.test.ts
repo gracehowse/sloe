@@ -10,7 +10,7 @@ const TODAY_LUCIDE_ONLY = [
   "components/today/TodayDateHeader.tsx",
   "components/today/TodayMealsSection.tsx",
   "components/today/TodayAddFoodForm.tsx",
-  "components/today/TodayQuickLogStrip.tsx",
+  "components/today/TodayRecentsRow.tsx",
 ] as const;
 
 describe("Today components — lucide-only (ENG-583)", () => {

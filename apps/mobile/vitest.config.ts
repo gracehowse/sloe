@@ -201,6 +201,10 @@ export default defineConfig({
       // ENG-685 — `expo-image` loads native SDWebImage bindings at import time;
       // shim re-exports the RN host Image so SmartImage render tests collect.
       { find: /^expo-image$/, replacement: path.resolve(__dirname, "./tests/shims/expo-image.tsx") },
+      // ENG-1247 — `expo-blur` ships `build/BlurView.js` with JSX inside a
+      // node_modules `.js` file, which vite import-analysis rejects; shim
+      // re-exports the RN host View so the frosted-tab-bar render test collects.
+      { find: /^expo-blur$/, replacement: path.resolve(__dirname, "./tests/shims/expo-blur.tsx") },
       { find: /^expo-constants$/, replacement: path.resolve(__dirname, "./tests/shims/expo-constants.ts") },
       // 2026-05-02 (MFP CSV import) — `expo-document-picker` ships
       // native bindings that don't survive vitest's vmThreads pool.

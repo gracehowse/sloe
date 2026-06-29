@@ -11,7 +11,7 @@ import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
 import { macroStatCaption } from "../../../lib/nutrition/macroStatCaption";
 import { MACRO_ICONS } from "../../../lib/macroIconsLucide";
-import { MACRO_COLOR_VARS } from "../../../lib/theme/macroColors";
+import { MACRO_COLOR_VARS, macroTextColorVarFor } from "../../../lib/theme/macroColors";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { useCalmMode } from "../../../lib/preferences/useCalmMode";
 import { isMacroDetailSupported } from "../MacroDetailPanel";
@@ -301,8 +301,8 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
 
   return (
     <div className="mb-3">
-    <div className="grid grid-cols-2 gap-3 max-w-[480px]">
-      {trackedMacros.map((macroKey) => {
+    <div className="grid grid-cols-2 border-t border-border max-w-[480px]">
+      {trackedMacros.map((macroKey, idx) => {
         const tile = buildMacroTile(macroKey, props);
         if (!tile) return null;
         const { Icon } = tile;
@@ -316,89 +316,85 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
             ? { color: "var(--foreground-tertiary)" }
             : overSignal
               ? { color: "var(--accent-warning-solid)", fontWeight: 600 }
-              : { color: tile.fillVar };
+              : { color: macroTextColorVarFor(macroKey) };
         const content = (
           <>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-foreground-secondary">
-                {tile.label}
-              </span>
+            {/* Proto `.mtile`: colored icon on the LEFT, then value/goal + label.
+                (Grace 2026-06-25 hairline-grid conform; mobile parity.) */}
+            <div className="flex items-center gap-3">
               <Icon
                 size={18}
                 strokeWidth={1.75}
                 style={{ color: tile.fillVar }}
                 aria-hidden
+                className="shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline min-w-0 gap-1">
+                  {/* soften the value while it's a zero — full ink only with data. */}
+                  <span
+                    className={`font-[family-name:var(--font-headline)] text-xl font-normal tabular-nums tracking-tight shrink-0 ${
+                      tile.hasValue ? "text-foreground" : "text-foreground-tertiary"
+                    }`}
+                    style={tierValueStyle}
+                  >
+                    {tile.valueText}
+                  </span>
+                  <span className="text-xs text-foreground-tertiary truncate">
+                    {tile.targetText}
+                  </span>
+                </div>
+                <span className="block text-xs font-medium text-foreground-secondary">
+                  {tile.label}
+                </span>
+              </div>
+            </div>
+            {/* Proto `.mtile` track: the COLORED progress bar ALWAYS shows — the
+                prototype's defining macro-tile element (colour + fill = progress).
+                Grace 2026-06-25: the bar-less tile read "flat". Un-strips ENG-1099's
+                bar removal; the caption text stays tier-gated (the prototype tile
+                has no caption row). */}
+            <div
+              className="mt-2 h-1 rounded-full overflow-hidden bg-border"
+            >
+              <div
+                className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
+                style={{
+                  width: `${tile.pct}%`,
+                  background: tile.fillVar,
+                  opacity: tile.label === "Sugar" || tile.label === "Sodium" ? 0.45 : 1,
+                }}
               />
             </div>
-            {/* Prototype port (2026-04-20, mobile parity): value
-                bumped from 18pt → 22pt per mobile's ui-critic fix so
-                the number carries visual weight equal to the label
-                above it. Target label gets `truncate` / overflow-hidden
-                via `min-w-0` on the flex container so long imperial
-                targets (e.g. "/ 1,200 ml" or "/ 2,300 mg") don't
-                wrap to a second line. */}
-            <div className="flex items-baseline min-w-0 gap-1">
-              {/* gap 8 — soften the serif value while it's a zero so the
-                  editorial numeral only earns its full ink weight when there's
-                  data (mobile parity). Muted (`text-foreground-tertiary`) until
-                  the macro has a logged value. */}
-              <span
-                className={`font-[family-name:var(--font-headline)] text-xl font-normal tabular-nums tracking-tight shrink-0 ${
-                  tile.hasValue ? "text-foreground" : "text-foreground-tertiary"
-                }`}
-                style={tierValueStyle}
-              >
-                {tile.valueText}
-              </span>
-              <span className="text-xs text-foreground-tertiary truncate">
-                {tile.targetText}
-              </span>
-            </div>
-            {/* ENG-1099: tier tile drops the bar + caption — the value colour
-                carries the over/under signal (recipe-strip pattern). Flag-off
-                keeps the pre-ENG-1099 bar + caption. */}
             {tierV1 ? null : (
-              <>
-                <div
-                  className="mt-2 h-1 rounded-full overflow-hidden bg-border"
-                >
-                  <div
-                    className="h-full rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
-                    style={{
-                      width: `${tile.pct}%`,
-                      background: tile.fillVar,
-                      opacity: tile.label === "Sugar" || tile.label === "Sodium" ? 0.45 : 1,
-                    }}
-                  />
-                </div>
-                {/* Per-tile caption (audit gap 4, mobile parity) — "N g remaining"
-                    (sage) / "N g over" (amber) / muted "ref N" for reference-only
-                    macros. The at-a-glance "how much left" read today.md §3.3/§4
-                    calls the warm-coaching payoff. Reserve the row height even when
-                    suppressed (unlogged tile) so the grid stays even. */}
-                <span
-                  data-testid={`today-macro-tile-caption-${macroKey}`}
-                  className={`mt-1 block min-h-[14px] text-[11px] leading-[14px] tabular-nums ${
-                    tile.captionTone === "under"
-                      ? "text-success"
-                      : tile.captionTone === "over"
-                        ? ""
-                        : "text-foreground-tertiary"
-                  }`}
-                  style={
-                    tile.captionTone === "over"
-                      ? { color: "var(--accent-warning-solid)" }
-                      : undefined
-                  }
-                >
-                  {tile.caption}
-                </span>
-              </>
+              <span
+                data-testid={`today-macro-tile-caption-${macroKey}`}
+                className={`mt-1 block min-h-[14px] text-[11px] leading-[14px] tabular-nums ${
+                  tile.captionTone === "under"
+                    ? "text-success"
+                    : tile.captionTone === "over"
+                      ? ""
+                      : "text-foreground-tertiary"
+                }`}
+                style={
+                  tile.captionTone === "over"
+                    ? { color: "var(--accent-warning-solid)" }
+                    : undefined
+                }
+              >
+                {tile.caption}
+              </span>
             )}
           </>
         );
-        const cardClass = `rounded-card bg-card card-slab p-4 flex flex-col ${
-          tierV1 ? "gap-2" : "justify-between min-h-24"
+        // Proto `.mtile` hairline cell (Grace 2026-06-25): NO card — a grid cell
+        // divided by hairlines (bottom on every cell, right on the left column
+        // when it has a neighbour). Asymmetric x-padding pushes content off the
+        // central divider. Replaces the old lifted rounded-tile look.
+        const isLeftCol = idx % 2 === 0;
+        const hasRight = idx + 1 < trackedMacros.length;
+        const cellClass = `flex flex-col py-3.5 border-b border-border ${
+          isLeftCol ? `pl-1 pr-4${hasRight ? " border-r border-border" : ""}` : "pl-4 pr-1"
         }`;
         // ENG-848 — only macros that actually open a detail panel render as
         // interactive buttons. Reference-only tiles (sugar/sodium/water) have
@@ -412,7 +408,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
               key={macroKey}
               type="button"
               onClick={() => onPressMacro(macroKey)}
-              className={`${cardClass} text-left transition-colors hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary active:bg-muted/60`}
+              className={`${cellClass} text-left transition-colors hover:bg-muted/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary active:bg-muted/30`}
               aria-label={`Open ${tile.label} breakdown`}
               data-testid={`today-macro-tile-${macroKey}`}
             >
@@ -423,7 +419,7 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         return (
           <div
             key={macroKey}
-            className={cardClass}
+            className={cellClass}
             data-testid={`today-macro-tile-${macroKey}`}
           >
             {content}

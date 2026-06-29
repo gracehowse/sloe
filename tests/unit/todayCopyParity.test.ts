@@ -36,8 +36,9 @@ import {
   netDetailFromKcal,
   todayRingSuffix,
   todayBalanceHeadline,
-  todayGreeting,
   todayLongDateSubline,
+  todayDayName,
+  todayShortDate,
   todayPastDayGreetingLines,
   TODAY_DATE_LOCALE,
   todayStatusChip,
@@ -155,35 +156,6 @@ describe("canonical Today copy module", () => {
   });
 });
 
-describe("Sloe Today hero greeting (todayGreeting)", () => {
-  it("greets by time-of-day window", () => {
-    expect(todayGreeting(8)).toBe("Good morning");
-    expect(todayGreeting(13)).toBe("Good afternoon");
-    expect(todayGreeting(20)).toBe("Good evening");
-  });
-
-  it("includes a first name when provided", () => {
-    expect(todayGreeting(8, "Grace")).toBe("Morning, Grace");
-    expect(todayGreeting(13, "Grace")).toBe("Afternoon, Grace");
-    expect(todayGreeting(20, "Grace")).toBe("Evening, Grace");
-  });
-
-  it("falls back to the name-free greeting for empty / whitespace names", () => {
-    expect(todayGreeting(8, "")).toBe("Good morning");
-    expect(todayGreeting(8, "   ")).toBe("Good morning");
-    expect(todayGreeting(8, null)).toBe("Good morning");
-  });
-
-  it("uses the morning/afternoon/evening cut points (12 / 18)", () => {
-    expect(todayGreeting(0)).toBe("Good morning");
-    expect(todayGreeting(11)).toBe("Good morning");
-    expect(todayGreeting(12)).toBe("Good afternoon");
-    expect(todayGreeting(17)).toBe("Good afternoon");
-    expect(todayGreeting(18)).toBe("Good evening");
-    expect(todayGreeting(23)).toBe("Good evening");
-  });
-});
-
 describe("Sloe Today hero dates (todayLongDateSubline / todayPastDayGreetingLines)", () => {
   it("formats the today subline in British English", () => {
     const d = new Date(2026, 5, 4); // 4 June 2026 local
@@ -213,6 +185,27 @@ describe("Sloe Today hero dates (todayLongDateSubline / todayPastDayGreetingLine
       headline: todayLongDateSubline(mon),
       subline: null,
     });
+  });
+});
+
+describe("Sloe v3 serif date hero (todayDayName / todayShortDate, ENG-1247)", () => {
+  it("formats the day NAME alone (the serif `.tg-day` slot)", () => {
+    const d = new Date(2026, 5, 4); // 4 June 2026 local
+    expect(todayDayName(d)).toBe(
+      d.toLocaleDateString("en-GB", { weekday: "long" }),
+    );
+    // every English weekday name ends in "day"
+    expect(todayDayName(d)).toMatch(/day$/i);
+  });
+
+  it("formats the short date WITHOUT the weekday (the `.tg-sub` slot)", () => {
+    const d = new Date(2026, 5, 4); // 4 June 2026 local
+    expect(todayShortDate(d)).toBe(
+      d.toLocaleDateString("en-GB", { day: "numeric", month: "long" }),
+    );
+    expect(todayShortDate(d)).toMatch(/4 June/);
+    // the weekday belongs to the serif day name, not the subline
+    expect(todayShortDate(d)).not.toMatch(/day/i);
   });
 });
 

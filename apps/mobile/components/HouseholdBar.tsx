@@ -21,6 +21,7 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Radius } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useAccent } from "@/context/theme";
 import {
   getMyHousehold,
@@ -119,7 +120,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.cardBorder,
-        borderRadius: Radius.lg,
+        borderRadius: CARD_RADIUS,
       }}
     >
       <View

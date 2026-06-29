@@ -21,6 +21,7 @@ import {
   type ImageStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
@@ -75,6 +76,7 @@ import ReAnimated, {
 import { SPRING_DEFAULT, SPRING_SNAPPY } from "@/lib/motion";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHaptics } from "@/hooks/useHaptics";
+import { useHouseholdBanner } from "@/hooks/useHouseholdBanner";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
@@ -513,18 +515,17 @@ function planMealPortionMeta(meal: PlanMeal, pool: PlanRecipeRef[]): { displayMu
 
 export default function PlannerScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarClearance(); // ENG-1247 — pad scroll to clear frosted (absolute) tab bar.
   // ENG-956 — canonical haptics vehicle (ENG-1016 commit-rebalance) for the
   // per-meal lock toggle, routed through the hook rather than a fresh raw call.
   const haptics = useHaptics();
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const householdBanner = useHouseholdBanner(userId); // ENG-1247 — v3 Plan "Cooking for N" banner
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
-  // Secondary accent (Frost flag → damson, else clay) for the today-card edge,
-  // generate/regenerate CTAs, refresh affordance, active controls, and link
-  // actions. Threaded into the memoised StyleSheet via the dep array below.
-  // Macros keep `MacroColors`; slots keep `SlotColors`; win keeps `Accent.win`;
-  // status keeps success/warning/destructive.
+  // Secondary accent (Frost flag → damson, else clay) for card edges, CTAs,
+  // refresh, controls + links. Macros/slots/win keep their own palettes.
   const accent = useAccent();
 
   const { recipes: discoverRecipes, loading: discoverLoading } = useDiscoverRecipes();
@@ -540,11 +541,10 @@ export default function PlannerScreen() {
         id: r.id,
         title: r.title,
         calories: Number(r.calories) || 0,
-        // Wave-2 (2026-04-30): recipe hero image surfaces in the day-
-        // card meal rows so a 7-day plan reads visually instead of as
-        // a wall of slot icons. `r.image` is mapped from `image_url`
-        // by `useDiscoverRecipes` / `useSavedLibraryRecipes`; falls
-        // back to a deterministic default when the source has none.
+        // Wave-2 (2026-04-30): recipe hero image surfaces in the day-card meal
+        // rows so a 7-day plan reads visually, not as a wall of slot icons.
+        // `r.image` is mapped from `image_url` by `useDiscoverRecipes` /
+        // `useSavedLibraryRecipes`; falls back to a deterministic default.
         image: (r as { image?: string | null }).image ?? null,
       })),
     [savedRecipes, discoverRecipes],
@@ -2694,7 +2694,7 @@ export default function PlannerScreen() {
         }
       />
       )}
-      <ScrollView testID="planner-hydrated" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView testID="planner-hydrated" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + Layout.screenPaddingBottom }]} keyboardShouldPersistTaps="handled">
         <ReAnimated.View style={headerEntrance.style}>
         {sloeV3Plan ? (
           <PlanV3Surface
@@ -2703,7 +2703,7 @@ export default function PlannerScreen() {
             weekDates={planV3WeekDates}
             weekLabel={planV3WeekLabel}
             verdict={planV3Verdict}
-            household={null}
+            household={householdBanner}
             onGenerate={openGenerateMenu}
             onAdjust={() => setTemplatesOpen(true)}
             onTemplates={() => setTemplatesOpen(true)}

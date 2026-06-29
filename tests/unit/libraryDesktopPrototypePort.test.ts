@@ -99,13 +99,13 @@ describe("Library — Sloe Figma 527:2 grid (ENG-896)", () => {
         expect(SRC).not.toMatch(/MoreHorizontal/);
       });
 
-      it("folds the entry-kind narrowing into a quiet control, not a second pill row", () => {
-        // The old full-width entry-kind segmented control
-        // (`library-entry-kind-segment`) is gone; the narrowing now rides
-        // a single quiet cycle control on the count line.
+      it("surfaces a provenance row above the category row (ENG-1247 'Both rows')", () => {
+        // ENG-1247 (Grace 2026-06-26) reverses the ENG-921 single-row polish:
+        // the v3 Cookbook shows a provenance row (All/Saved/Created/Imported)
+        // ABOVE the category row; the old quiet count-line cycle is gone.
         expect(SRC).not.toMatch(/data-testid="library-entry-kind-segment"/);
-        expect(SRC).toMatch(/data-testid="library-entrykind-cycle"/);
-        // The single primary filter row (categories) is still present.
+        expect(SRC).not.toMatch(/data-testid="library-entrykind-cycle"/);
+        expect(SRC).toMatch(/data-testid="library-provenance-pills"/);
         expect(SRC).toMatch(/data-testid="library-filter-pills"/);
       });
 
@@ -138,12 +138,13 @@ describe("Library — Sloe Figma 527:2 grid (ENG-896)", () => {
         expect(MOBILE_SRC).toMatch(/toggleCardSave/);
       });
 
-      it("folds entry-kind into a quiet count-line control, not a second segmented row", () => {
-        // The old full-width `segment` / `segmentItem` styled control is
-        // gone; the quiet cycle control writes the same `secondary` state.
+      it("surfaces a provenance row (ENG-1247 'Both rows'), not the old quiet cycle", () => {
+        // ENG-1247 reverses ENG-921: the entry-kind buckets are a visible
+        // provenance row writing the same `secondary` state; the cycle is gone.
         expect(MOBILE_SRC).not.toMatch(/styles\.segmentItem\b/);
-        expect(MOBILE_SRC).toMatch(/library-entrykind-cycle/);
-        expect(MOBILE_SRC).toMatch(/cycleEntryKind/);
+        expect(MOBILE_SRC).not.toMatch(/cycleEntryKind/);
+        expect(MOBILE_SRC).toMatch(/LIBRARY_PROVENANCE_PILLS/);
+        expect(MOBILE_SRC).toMatch(/library-provenance-/);
       });
     });
   });

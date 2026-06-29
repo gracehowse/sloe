@@ -332,19 +332,19 @@ export default function PlanImportScreen() {
         subtitle: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: Spacing.md },
         // SLOE DS reskin (2026-06-07): cream surface-card slabs, 24px radius, serif headings — presentation only.
         callout: {
-          backgroundColor: Accent.success + "18",
-          borderRadius: 16,
+          backgroundColor: Accent.primarySoft,
+          borderRadius: Radius.xl,
           padding: Spacing.lg,
           marginBottom: Spacing.md,
           borderWidth: 1,
-          borderColor: Accent.success + "40",
+          borderColor: Accent.primarySoftStrong,
         },
         calloutTitle: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 6 },
         calloutItem: { fontSize: 13, color: colors.textSecondary, marginBottom: 4 },
         label: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, marginBottom: 6, marginTop: Spacing.sm },
         input: {
           backgroundColor: colors.card,
-          borderRadius: 16,
+          borderRadius: Radius.xl,
           borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.lg,
@@ -355,7 +355,7 @@ export default function PlanImportScreen() {
         },
         textInput: {
           backgroundColor: colors.card,
-          borderRadius: 16,
+          borderRadius: Radius.xl,
           borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.lg,
@@ -364,7 +364,7 @@ export default function PlanImportScreen() {
         },
         primaryBtn: {
           backgroundColor: accent.primary,
-          borderRadius: 16,
+          borderRadius: Radius.xl,
           paddingVertical: 16,
           alignItems: "center",
           marginTop: Spacing.lg,

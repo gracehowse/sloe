@@ -110,6 +110,26 @@ export const DISCOVER_CATEGORY_PILLS: ReadonlyArray<DiscoverCategoryPill> = [
   { id: "chicken", label: "Chicken" },
 ] as const;
 
+/**
+ * Provenance row — the v3 prototype's Cookbook filter set (All / Saved /
+ * Created / Imported). ENG-1247 (Grace, 2026-06-26 "Both rows") re-surfaces the
+ * entry-kind buckets as a visible SECOND pill row above the category row,
+ * knowingly reversing the ENG-921 "fold into a quiet cycle, not a competing
+ * second row" polish (the Figma it matched is dead; the v3 prototype is
+ * canonical). The classification stays `classifyLibraryEntry`
+ * (`libraryEntryKind.ts`); `all` is the no-op reset. Shared web + mobile.
+ */
+export type RecipeProvenanceId = "all" | "saved" | "created" | "imported";
+
+export type RecipeProvenancePill = { id: RecipeProvenanceId; label: string };
+
+export const LIBRARY_PROVENANCE_PILLS: ReadonlyArray<RecipeProvenancePill> = [
+  { id: "all", label: "All" },
+  { id: "saved", label: "Saved" },
+  { id: "created", label: "Created" },
+  { id: "imported", label: "Imported" },
+] as const;
+
 /** `≤ UNDER_500_KCAL` kcal per serving qualifies for "Under 500 cal". */
 export const UNDER_500_KCAL = 500;
 

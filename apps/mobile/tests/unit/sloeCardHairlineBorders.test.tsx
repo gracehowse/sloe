@@ -147,8 +147,10 @@ describe("TodayActivityBonusCard — Figma TD1 sibling page-ground slabs", () =>
 });
 
 describe("Sloe structural dividers — hairline, not a 1pt rule (still hand-rolled inside cards)", () => {
-  it("TodayHeroRing stats-row top-divider + per-cell divide-x are hairline", () => {
-    const src = read("components/today/TodayHeroRing.tsx");
+  it("TodayHeroStats stats-row top-divider + per-cell divide-x are hairline", () => {
+    // Extracted from TodayHeroRing → TodayHeroStats (ENG-1247) so the carded +
+    // de-carded heroes share one stats source.
+    const src = read("components/today/TodayHeroStats.tsx");
     expect(src).toMatch(/borderTopWidth:\s*StyleSheet\.hairlineWidth/);
     expect(src).not.toMatch(/borderTopWidth:\s*1,/);
     expect(src).toMatch(

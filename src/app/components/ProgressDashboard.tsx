@@ -118,13 +118,6 @@ import { getLatestHealthSnapshot } from "../../lib/health/healthSnapshots.ts";
 
 const PACES: PlanPace[] = ["relaxed", "steady", "accelerated", "vigorous"];
 
-// Sloe Figma 492:2 — calm header subtitle under the serif "Progress"
-// title. Deliberately DESCRIPTIVE (what the surface holds), not the
-// prototype's presumptuous "you're trending right where you want to be"
-// — that would read false on an off-track week and breaches the
-// no-unearned-encouragement trust posture. Mirrors mobile.
-const PROGRESS_HEADER_SUBTITLE = "Your weight, weekly recap, and adaptive maintenance.";
-
 function parseNumMap(raw: unknown): Record<string, number> {
   if (!raw || typeof raw !== "object") return {};
   const o = raw as Record<string, unknown>;
@@ -1081,21 +1074,17 @@ function ProgressDashboardContent() {
   const progressDesktopHeader = (
     <div className="hidden md:flex mb-6 items-start justify-between gap-3">
       <div>
+        {/* v3 prototype (ENG-1247, node 4946): "Your trends" overline above
+            the serif "Progress" title. Supersedes the Figma-era subtitle. */}
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary mb-1">
+          Your trends
+        </p>
         <h1
           data-testid="progress-header"
           className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
         >
           Progress
         </h1>
-        {/* Sloe Figma 492:2 — calm subtitle replaces the uppercase range
-            overline (the 7d/30d/90d/All pills below already carry the
-            range). */}
-        <p
-          data-testid="progress-subtitle"
-          className="text-sm text-muted-foreground mt-1"
-        >
-          {PROGRESS_HEADER_SUBTITLE}
-        </p>
       </div>
       {progressCalendarButton}
     </div>
@@ -1127,7 +1116,7 @@ function ProgressDashboardContent() {
 
     return (
       <>
-        <ProgressTabChrome subtitle={PROGRESS_HEADER_SUBTITLE} trailing={progressLoadingCalendar} />
+        <ProgressTabChrome overline="Your trends" trailing={progressLoadingCalendar} />
       <div
         className="product-shell py-pm-6"
         data-testid="progress-loading-skeleton"
@@ -1187,7 +1176,7 @@ function ProgressDashboardContent() {
 
   return (
     <>
-      <ProgressTabChrome subtitle={PROGRESS_HEADER_SUBTITLE} trailing={progressCalendarButton} />
+      <ProgressTabChrome overline="Your trends" trailing={progressCalendarButton} />
     <div className="product-shell py-pm-6">
       {progressDesktopHeader}
 
@@ -1266,15 +1255,9 @@ function ProgressDashboardContent() {
         );
       })()}
 
-      {/* 3. AVERAGE ADHERENCE — big calorie-adherence % + on-target dot
-          streak + the four macro bars (Protein sage / Carbs clay / Fat
-          amber / Fibre teal). Every figure is real (range adherence +
-          weekStatsBundle macro adherence). The "up N%" week-over-week
-          trend chip stays hidden until the weekly aggregate stream lands
-          (documented data gap) — never invented.
-
-          On `trends_only` the lightweight direction tile still renders so
-          opt-out users keep a weight signal without absolute numbers. */}
+      {/* WEIGHT DIRECTION (trends_only) — opt-out users keep a lightweight
+          weight signal here (no absolute numbers). Average Adherence moved to
+          AFTER Daily Calories per the v3 prototype order (ENG-1247). */}
       {profileWeightSurfaceMode === "trends_only" && (
         <div className="mb-4">
           <WeightTrendOnlyCardWeb
@@ -1283,26 +1266,6 @@ function ProgressDashboardContent() {
           />
         </div>
       )}
-      <ProgressAverageAdherence
-        className="mb-4"
-        adherencePct={
-          // Parity with mobile (progress.tsx): don't claim an "average
-          // adherence" until the range holds a meaningful sample (≥3 logged
-          // days). A single stray day produced a confident headline next to
-          // the "building your story" gate — incoherent. Below threshold the
-          // card hides. (null → component returns null)
-          hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null
-        }
-        onTargetDays={weekStatsBundle.days.map(
-          (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
-        )}
-        macros={[
-          { name: "Protein", pct: macroRange.proteinPct, color: "var(--macro-protein)" },
-          { name: "Carbs", pct: macroRange.carbsPct, color: "var(--macro-carbs)" },
-          { name: "Fat", pct: macroRange.fatPct, color: "var(--macro-fat)" },
-          { name: "Fibre", pct: macroRange.fiberPct, color: "var(--macro-fiber)" },
-        ]}
-      />
 
       {/* 4. WEIGHT CARD (Sloe Figma 492:2) — Newsreader kg headline +
           "↓ N this week" + Trend/Scale segmented toggle, clay line chart
@@ -1483,8 +1446,11 @@ function ProgressDashboardContent() {
               step="0.1"
               aria-label="Log weight"
             />
+            {/* v3 prototype: Log weight is a QUIET button (the app's `ghost`
+                = the retired bordered-secondary), not a filled primary — the
+                weight card's calm action; the chart stays the hero. ENG-1247 */}
             <SupprButton
-              variant="primary"
+              variant="ghost"
               onClick={() => void saveTodayWeight()}
               data-testid="progress-log-weight"
               aria-label="Log weight"
@@ -1606,6 +1572,26 @@ function ProgressDashboardContent() {
           </span>
         </div>
       </SupprCard>
+
+      {/* AVERAGE ADHERENCE — ENG-1247 (Grace 2026-06-26): the v3 prototype
+          places Adherence LAST (after Daily Calories), not above the Weight
+          hero. Big adherence % + on-target streak + four macro bars; every
+          figure is real. Parity with mobile progress.tsx. */}
+      <ProgressAverageAdherence
+        className="mb-4"
+        adherencePct={
+          hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null
+        }
+        onTargetDays={weekStatsBundle.days.map(
+          (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
+        )}
+        macros={[
+          { name: "Protein", pct: macroRange.proteinPct, color: "var(--macro-protein)" },
+          { name: "Carbs", pct: macroRange.carbsPct, color: "var(--macro-carbs)" },
+          { name: "Fat", pct: macroRange.fatPct, color: "var(--macro-fat)" },
+          { name: "Fibre", pct: macroRange.fiberPct, color: "var(--macro-fiber)" },
+        ]}
+      />
 
       {/* 7. ON-TARGET RIBBON — real count of on-target days this week. */}
       {(() => {
@@ -2553,25 +2539,22 @@ function ProgressSuspenseFallback() {
 
   return (
     <>
-      <ProgressTabChrome subtitle={PROGRESS_HEADER_SUBTITLE} trailing={calendarPlaceholder} />
+      <ProgressTabChrome overline="Your trends" trailing={calendarPlaceholder} />
       <div
         className="hidden md:block product-shell py-pm-6"
         data-testid="progress-suspense-fallback"
       >
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary mb-1">
+              Your trends
+            </p>
             <h1
               data-testid="progress-header"
               className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
             >
               Progress
             </h1>
-            <p
-              data-testid="progress-subtitle"
-              className="text-sm text-muted-foreground mt-1"
-            >
-              {PROGRESS_HEADER_SUBTITLE}
-            </p>
           </div>
           {calendarPlaceholder}
         </div>

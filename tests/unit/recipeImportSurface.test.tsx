@@ -215,7 +215,9 @@ describe("/import surface — RecipeUpload mode=\"import\" (ENG-669)", () => {
     const mark = card?.querySelector('[data-slot="sloe-mark"]');
     expect(mark).not.toBeNull();
     expect(mark).toHaveAttribute("aria-label", "Sloe");
-    expect(mark?.textContent).toBe("Sloe");
+    // 2026-06-04 wordmark→asset: the mark is a masked-SVG span (no literal
+    // "sloe" text); verify it renders the canonical wordmark asset.
+    expect(mark?.getAttribute("style")).toContain("sloe-wordmark.svg");
   });
 
   it("does not gate the import-card mark behind design_system_brandmark", () => {

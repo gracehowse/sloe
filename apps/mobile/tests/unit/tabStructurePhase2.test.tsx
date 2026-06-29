@@ -57,10 +57,12 @@ const setPathname = (p: string) => {
 };
 
 describe("RecipesSubTabHeader", () => {
-  it("highlights Library when on /library", () => {
+  // ENG-1247: the "Library" sub-tab is labelled "Cookbook" (the /library route
+  // is unchanged — only the user-facing label).
+  it("highlights Cookbook when on /library", () => {
     setPathname("/library");
     const { getByLabelText } = render(<RecipesSubTabHeader />);
-    expect(getByLabelText("Library").props.accessibilityState.selected).toBe(true);
+    expect(getByLabelText("Cookbook").props.accessibilityState.selected).toBe(true);
     expect(getByLabelText("Discover").props.accessibilityState.selected).toBe(false);
   });
 
@@ -68,10 +70,10 @@ describe("RecipesSubTabHeader", () => {
     setPathname("/discover");
     const { getByLabelText } = render(<RecipesSubTabHeader />);
     expect(getByLabelText("Discover").props.accessibilityState.selected).toBe(true);
-    expect(getByLabelText("Library").props.accessibilityState.selected).toBe(false);
+    expect(getByLabelText("Cookbook").props.accessibilityState.selected).toBe(false);
   });
 
-  it("calls router.replace('/(tabs)/discover') when Discover is tapped from Library", async () => {
+  it("calls router.replace('/(tabs)/discover') when Discover is tapped from Cookbook", async () => {
     setPathname("/library");
     const router = (await import("expo-router")).useRouter() as unknown as { replace: ReturnType<typeof vi.fn> };
     router.replace.mockClear();
@@ -85,7 +87,7 @@ describe("RecipesSubTabHeader", () => {
     const router = (await import("expo-router")).useRouter() as unknown as { replace: ReturnType<typeof vi.fn> };
     router.replace.mockClear();
     const { getByLabelText } = render(<RecipesSubTabHeader />);
-    fireEvent.press(getByLabelText("Library"));
+    fireEvent.press(getByLabelText("Cookbook"));
     expect(router.replace).not.toHaveBeenCalled();
   });
 });
@@ -225,9 +227,19 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
       path.resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
       "utf-8",
     );
-    expect(indexSrc).toMatch(/gradientIdSuffix="today-wordmark-header"/);
+    // The avatar + its Settings wiring moved into <TodayHeaderBar> (ENG-1247 —
+    // added the notifications bell); the host passes onOpenSettings, the header
+    // wires it to the avatar.
     expect(indexSrc).toMatch(
-      /router\.push\("\/\(tabs\)\/settings"\)[\s\S]{0,400}gradientIdSuffix="today-wordmark-header"/,
+      /onOpenSettings=\{\(\) => router\.push\("\/\(tabs\)\/settings"\)\}/,
+    );
+    const headerSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../components/today/TodayHeaderBar.tsx"),
+      "utf-8",
+    );
+    expect(headerSrc).toMatch(/gradientIdSuffix="today-wordmark-header"/);
+    expect(headerSrc).toMatch(
+      /onPress=\{onOpenSettings\}[\s\S]{0,400}gradientIdSuffix="today-wordmark-header"/,
     );
   });
 

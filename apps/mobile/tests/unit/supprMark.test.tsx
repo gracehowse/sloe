@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 /**
- * Mobile `SupprMark` render test — the Sloe wordmark. The logo is "Sloe"
- * (capital S) in Newsreader semibold + plum, matching the canonical Figma
- * `654:2` Today frame (updated 2026-06-08 from the earlier lowercase "sloe");
- * the berry glyph, plate ring, and legacy 'S' are retired.
+ * Mobile `SupprMark` render test — the Sloe wordmark. The logo is the lowercase
+ * "sloe" in Fraunces Light + plum, per the v3 prototype's LOCKED Fraunces-only
+ * wordmark (supersedes the 2026-06-08 Newsreader-semibold capital treatment;
+ * Figma retired 2026-06-24). The berry glyph, plate ring, and legacy 'S' are
+ * retired.
  *
  * Mirrors the web test at `tests/unit/supprMark.test.tsx`. Locks in the
  * cross-platform invariant: both surfaces render the brand mark with the
- * SAME accessibility label ("Sloe") and the SAME "Sloe" word, so a
- * side-by-side parity check on the about / sign-in screens reads identically.
- * The `Suppr*` export names are kept until a rename pass (the component file
- * documents this); the rendered brand is "Sloe" on both.
+ * SAME proper-noun accessibility label ("Sloe") and the SAME lowercase "sloe"
+ * word, so a side-by-side parity check on the about / sign-in screens reads
+ * identically. The `Suppr*` export names are kept until a rename pass (the
+ * component file documents this); the rendered brand is "sloe" on both.
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";
@@ -31,34 +32,32 @@ describe("SupprMark (mobile)", () => {
     expect(getByLabelText("Sloe")).toBeTruthy();
   });
 
-  it("renders the 'Sloe' wordmark (capital S, no legacy 'S' glyph)", () => {
-    const { getByText, queryByText } = render(<SupprMark />);
-    expect(getByText("Sloe")).toBeTruthy();
-    // No standalone 'S' glyph — the wordmark is the whole word.
-    expect(queryByText("S")).toBeNull();
+  it("renders the splash logotype asset, not a text glyph (ENG-1247)", () => {
+    const { getByLabelText, queryByText } = render(<SupprMark />);
+    expect(getByLabelText("Sloe")).toBeTruthy();
+    // The mark is the splash Image asset now — no rendered text glyph.
+    expect(queryByText("sloe")).toBeNull();
   });
 });
 
 describe("SupprPlateMark (mobile)", () => {
   it("is an alias that renders the Sloe wordmark (plate motif retired)", () => {
-    const { getByLabelText, getByText } = render(<SupprPlateMark />);
+    const { getByLabelText } = render(<SupprPlateMark />);
     expect(getByLabelText("Sloe")).toBeTruthy();
-    expect(getByText("Sloe")).toBeTruthy();
   });
 });
 
 describe("SupprPlateWordmark (mobile)", () => {
   it("renders the Sloe wordmark", () => {
-    const { getByText } = render(<SupprPlateWordmark />);
-    expect(getByText("Sloe")).toBeTruthy();
+    const { getAllByLabelText } = render(<SupprPlateWordmark />);
+    expect(getAllByLabelText("Sloe").length).toBeGreaterThanOrEqual(1);
   });
 });
 
 describe("SupprWordmark (mobile)", () => {
   it("renders the Sloe wordmark and exposes the brand label", () => {
-    const { getByText, getAllByLabelText } = render(<SupprWordmark />);
-    expect(getByText("Sloe")).toBeTruthy();
-    // Wordmark wrapper + inner word both expose the "Sloe" label.
+    const { getAllByLabelText } = render(<SupprWordmark />);
+    // Wordmark wrapper + inner Image both expose the "Sloe" label.
     expect(getAllByLabelText("Sloe").length).toBeGreaterThanOrEqual(1);
   });
 });

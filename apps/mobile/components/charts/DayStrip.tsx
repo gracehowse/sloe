@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, LayoutChangeEvent, Pressable, Text, View } from "react-native";
-import { Calendar, Snowflake } from "lucide-react-native";
+import { Calendar, ChevronLeft, ChevronRight, Snowflake } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -73,6 +73,13 @@ export default function DayStrip({
   const weekStarts = useMemo(() => enumerateWeekStartsInJournalRange(weekStartDay), [weekStartDay]);
   const selectedDk = dateKeyFromDate(selectedDate);
   const todayDk = dateKeyFromDate(new Date());
+  // The week the pager is currently SHOWING (v3 prototype `.day-nav` chevrons,
+  // ENG-1247). Distinct from the selected day's week so the chevrons can browse
+  // future weeks (whose days are out-of-range/disabled) without moving the
+  // selection — repeated chevron taps step from here, not from `selectedDate`.
+  const [viewWeekIdx, setViewWeekIdx] = useState(() =>
+    weekIndexContaining(selectedDate, weekStarts),
+  );
 
   // Sloe redesign (2026-06-08) — single-letter weekday labels to match the
   // canonical Figma `654:2` Today frame (`S M T W T F S`), replacing the
@@ -98,16 +105,26 @@ export default function DayStrip({
     if (pagerW <= 0) return;
     const idx = weekIndexContaining(selectedDate, weekStarts);
     scrollToWeekIndex(idx, false);
+    setViewWeekIdx(idx);
   }, [selectedDate, weekStarts, pagerW, scrollToWeekIndex]);
+
+  /** Step the VIEWED week via the prototype `.day-nav` chevrons (ENG-1247).
+   *  Scrolls the pager only — selection is unchanged until the user taps a day
+   *  (matching the prototype, which lets you browse past/future weeks). */
+  const goViewWeek = useCallback(
+    (delta: number) => {
+      const next = Math.max(0, Math.min(weekStarts.length - 1, viewWeekIdx + delta));
+      if (next === viewWeekIdx) return;
+      setViewWeekIdx(next);
+      scrollToWeekIndex(next, true);
+    },
+    [viewWeekIdx, weekStarts.length, scrollToWeekIndex],
+  );
 
   const onPagerLayout = useCallback((e: LayoutChangeEvent) => {
     const w = Math.round(e.nativeEvent.layout.width);
     if (w > 0 && w !== pagerW) setPagerW(w);
   }, [pagerW]);
-
-  const handleToday = useCallback(() => {
-    onSelectDate(clampJournalDate(new Date()));
-  }, [onSelectDate]);
 
   const handleMomentumEnd = useCallback(
     (e: { nativeEvent: { contentOffset: { x: number } } }) => {
@@ -117,6 +134,7 @@ export default function DayStrip({
       if (pagerW <= 0) return;
       const idx = Math.round(e.nativeEvent.contentOffset.x / pagerW);
       const clamped = Math.max(0, Math.min(weekStarts.length - 1, idx));
+      setViewWeekIdx(clamped);
       const newWeekStart = weekStarts[clamped];
       if (!newWeekStart) return;
       const col = dayIndexInWeek(selectedDate, weekStartDay);
@@ -137,16 +155,20 @@ export default function DayStrip({
           const hasLogs = loggedDays.has(dk);
           const isProtected = protectedDateKeys?.has(dk) ?? false;
           const outOfRange = date.getTime() < min.getTime() || date.getTime() > max.getTime();
-          // SLOE redesign — minimal current-day treatment (2026-06-03,
-          // Grace's feedback: the filled clay pill read as clunky). The design
-          // rule (clay number + clay dot for the active day, sage dot for
-          // logged days, NO filled background, clay precedence on the both-
-          // case) lives in the pure `dayStripIndicator` helper so the
-          // component and its unit test share one source of truth.
-          const { dotKind, dotColor, numberColor, isActive, pillColor, showsPill } = dayStripIndicatorStyle(
+          // v3 prototype `.day-cell` treatment (ENG-1247, 2026-06-24): the
+          // SELECTED day fills the whole cell with plum + white letter/date/dot
+          // (the prototype's `.is-sel` — supersedes the 2026-06-10 soft-tint
+          // pill); today-not-selected = accent number; logged = sage dot. The
+          // state→treatment rule lives in the pure `dayStripIndicator` helper so
+          // the component and its unit test share one source of truth.
+          const { dotKind, dotColor, numberColor, isActive, selectedFill, cellBg } = dayStripIndicatorStyle(
             { isSelected, isToday, hasLogs },
-            { clay: accent.primary, sage: Accent.success, text: textColor, soft: accent.primarySoft },
+            { accent: accent.primary, sage: Accent.success, text: textColor, onAccent: accent.primaryForeground },
           );
+          // Selected day-LETTER demoted to 70% white (prototype `.is-sel .dc-dow`
+          // rgba(255,255,255,.7) + web `text-primary-foreground/70`); the day
+          // NUMBER stays full white, so the letter doesn't read as loud. (ENG-1247 S1)
+          const labelColor = selectedFill ? accent.primaryForeground + "B3" : secondaryColor;
           return (
             <Pressable
               key={`${dateKeyFromDate(weekStart)}-${dk}`}
@@ -158,23 +180,23 @@ export default function DayStrip({
                 gap: Spacing.xs,
                 paddingVertical: 8,
                 marginHorizontal: 1,
+                // v3 `.is-sel`: the WHOLE cell fills plum (Radius.xl=12, the
+                // on-scale neighbour of the prototype's 14px).
+                borderRadius: Radius.xl,
+                backgroundColor: cellBg,
                 opacity: outOfRange ? 0.35 : 1,
               }}
             >
               <Text
                 // headers census 2026-06-10: day-axis label → Type.label (11px;
                 // census kept the canonical step over a private 10px density size).
-                style={{ ...Type.label, color: secondaryColor }}
+                style={{ ...Type.label, color: labelColor }}
               >
                 {label}
               </Text>
               <View
                 style={{
                   position: "relative",
-                  // §7 (2026-06-10): soft-tint pill carries selection — see
-                  // dayStripIndicator.ts for the treatment history.
-                  backgroundColor: showsPill ? pillColor : "transparent",
-                  borderRadius: Radius.full,
                   minWidth: 28,
                   height: 28,
                   alignItems: "center",
@@ -186,7 +208,7 @@ export default function DayStrip({
                     ...Type.headline,
                     fontSize: 16,
                     lineHeight: 20,
-                    fontWeight: isActive ? "700" : "600",
+                    fontWeight: isActive || selectedFill ? "700" : "600",
                     color: numberColor,
                     fontVariant: ["tabular-nums"],
                   }}
@@ -229,25 +251,25 @@ export default function DayStrip({
     [pagerW, dowLabels, selectedDk, todayDk, loggedDays, protectedDateKeys, min, max, textColor, secondaryColor, onSelectDate, accent],
   );
 
-  // 2026-05-12 (premium-bar audit, Today header upgrade): only render
-  // the "Jump to today" pill when the selected date is NOT today. On
-  // the default load the pill duplicated the h1 "Today" — visually
-  // redundant and the user is already where they'd jump to.
-  const showJumpToToday = selectedDk !== todayDk;
+  // v3 prototype `.day-strip` (ENG-1247): ‹ › week chevrons flank the pager;
+  // the far-date calendar icon stays (the prototype delegates that to its top
+  // bar, which the app doesn't have). The old "Jump to today" pill is dropped —
+  // the chevrons + calendar cover navigation and the prototype has no such pill.
+  const prevDisabled = viewWeekIdx <= 0;
+  const nextDisabled = viewWeekIdx >= weekStarts.length - 1;
   return (
     <View style={{ gap: Spacing.xs }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-        {showJumpToToday ? (
-          <Pressable
-            onPress={handleToday}
-            accessibilityRole="button"
-            accessibilityLabel="Jump to today"
-            hitSlop={8}
-            style={{ paddingVertical: 8, paddingHorizontal: 4 }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primary }}>Today</Text>
-          </Pressable>
-        ) : null}
+        <Pressable
+          onPress={() => goViewWeek(-1)}
+          disabled={prevDisabled}
+          accessibilityRole="button"
+          accessibilityLabel="Previous week"
+          hitSlop={8}
+          style={{ padding: 6, opacity: prevDisabled ? 0.3 : 1 }}
+        >
+          <ChevronLeft size={IconSize.lg} color={secondaryColor} strokeWidth={2} />
+        </Pressable>
         <View testID="daystrip-pager" style={{ flex: 1 }} onLayout={onPagerLayout}>
           {pagerW > 0 ? (
             <FlatList<Date>
@@ -284,6 +306,16 @@ export default function DayStrip({
             <View style={{ height: 56 }} />
           )}
         </View>
+        <Pressable
+          onPress={() => goViewWeek(1)}
+          disabled={nextDisabled}
+          accessibilityRole="button"
+          accessibilityLabel="Next week"
+          hitSlop={8}
+          style={{ padding: 6, opacity: nextDisabled ? 0.3 : 1 }}
+        >
+          <ChevronRight size={IconSize.lg} color={secondaryColor} strokeWidth={2} />
+        </Pressable>
         <Pressable
           onPress={onOpenCalendar}
           accessibilityRole="button"

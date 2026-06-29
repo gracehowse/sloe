@@ -28,7 +28,11 @@ export default function NotFound() {
           <FileQuestion className="size-7 text-muted-foreground" strokeWidth={1.75} aria-hidden />
         </div>
         <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">404</p>
-        <h1 className="text-foreground mb-2 text-xl font-bold -tracking-[0.02em]">
+        {/* v3 prototype serif (Newsreader) state title — the NotFound screen
+            overrides `.state__title` (base 18px) to 24px semibold, matched
+            here (text-2xl). Was sans `text-xl font-bold`. Copy + two-CTA
+            recovery kept deliberately (2026-05-12 / 2026-05-13 audits). (ENG-1247) */}
+        <h1 className="text-foreground mb-2 font-[family-name:var(--font-headline)] text-2xl font-semibold">
           We couldn&apos;t find that page
         </h1>
         {/* 2026-05-12 (premium-bar audit copy fix): old copy assumed the

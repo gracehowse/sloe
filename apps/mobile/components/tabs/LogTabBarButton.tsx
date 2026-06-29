@@ -2,8 +2,8 @@ import React from "react";
 import { Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
 
-import { Accent, Elevation } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { TAB_BAR_METRICS } from "@/hooks/useTabBarClearance";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 
@@ -28,9 +28,9 @@ import { useHaptics } from "@/hooks/useHaptics";
  *     aubergine review); everyday inline CTAs are an aubergine OUTLINE.
  *     (Supersedes the 2026-06-04 plum-FAB / clay-CTA split.)
  *   - Lucide `Plus` icon, 24pt, white, strokeWidth 2.5.
- *   - Raised 16pt above the tab bar fill line via `top: -16`.
- *   - `Elevation.floatPrimary` glow, re-tinted to the plum nav primary so the
- *     drop-shadow matches the fill (floatPrimary's base shadowColor is clay).
+ *   - CONTAINED in the floating pill, centred in its slot (v3 `.fab`).
+ *     No drop-shadow on the FAB — a wide glow reads as a grey/plum block
+ *     behind the + when the bar zone is transparent (Grace 2026-06-28).
  *
  * Interaction:
  *   - Medium haptic on iOS (matches the legacy LogFab) — heavier than
@@ -63,16 +63,20 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
     onPress();
   };
 
-  // The wrapping View takes a fixed slot width matching a normal tab
-  // so the four real tabs flow around it on equal-width terms. The
-  // raised button itself is absolutely positioned within the slot so
-  // it can overflow above the bar fill line without expanding the
-  // bar's height.
+  // The wrapping View is an equal-width slot (flex:1) matching a normal tab.
+  // The button is IN-FLOW + bottom-aligned (NOT raised/absolute) — the v3 `.fab`
+  // (Sloe-App.html L726) sits INSIDE the floating pill with `margin-bottom: 2px`,
+  // contained; the pill (`.tabbar` align-items:flex-end) grows to hold the 56pt
+  // circle. The old `top:-16` raise was calibrated for the legacy edge-to-edge
+  // bar; on the new slim floating pill it left the FAB hanging out the BOTTOM
+  // (the wrapper is zero-height when the child is absolute, so -16 from the row
+  // midline wasn't enough to clear the 56pt circle). ENG-1247.
   return (
     <View
       pointerEvents="box-none"
       style={{
-        flex: 1,
+        width: TAB_BAR_METRICS.fabSlotWidth,
+        flexShrink: 0,
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -84,22 +88,15 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
         accessibilityHint="Opens the log sheet for searching foods, scanning barcodes, or quick logging"
         testID="today-log-fab"
         hitSlop={8}
-        style={({ pressed }) => [
-          {
-            position: "absolute",
-            top: -16,
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: accent.primary,
-            alignItems: "center",
-            justifyContent: "center",
-            transform: [{ scale: pressed ? 0.94 : 1 }],
-          },
-          Elevation.floatPrimary,
-          // Re-tint the glow to the aubergine accent fill.
-          { shadowColor: accent.primary },
-        ]}
+        style={({ pressed }) => ({
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: accent.primary,
+          alignItems: "center",
+          justifyContent: "center",
+          transform: [{ scale: pressed ? 0.94 : 1 }],
+        })}
       >
         <Plus size={24} color={colors.primaryForeground} strokeWidth={2.5} />
       </Pressable>

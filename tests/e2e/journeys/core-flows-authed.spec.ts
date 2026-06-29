@@ -34,9 +34,10 @@ test.describe("Authenticated flows", () => {
       page.getByRole("tab", { name }).or(page.getByRole("button", { name }));
     await nav(/recipes|discover/i).first().click({ force: true });
     // The "Recipes" sidebar nav lands on /library when the account has saved
-    // recipes (heading "Library") and on /discover when it's empty (heading
-    // "Discover"). Both are the recipes surface — accept either.
-    await expect(page.getByRole("heading", { name: /^(Library|Discover)$/i }).first()).toBeVisible();
+    // recipes (heading "Your kitchen" — the v3 editorial Cookbook header,
+    // ENG-1247) and on /discover when it's empty (heading "Discover"). Both
+    // are the recipes surface — accept either.
+    await expect(page.getByRole("heading", { name: /^(Your kitchen|Discover)$/i }).first()).toBeVisible();
     await nav(/plan/i).first().click({ force: true });
     await expect(page.getByRole("heading", { name: /Meal plan(?:ner)?/i })).toBeVisible();
     await nav(/progress/i).first().click({ force: true });

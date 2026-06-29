@@ -21,6 +21,7 @@ import {
 } from "../../../lib/nutrition/macroSplitConfidence";
 import { macroCalorieSplit } from "../../../lib/nutrition/macroCalorieSplit";
 import { formatNutritionSourceLabel } from "../../../lib/nutrition/sourceLabel";
+import { MacroTotalGrid, type MacroTotalCell, type MacroTotalKey } from "./MacroTotalGrid";
 
 /**
  * MealNutritionDialog — web per-meal AND per-slot nutrition-detail surface.
@@ -43,11 +44,13 @@ import { formatNutritionSourceLabel } from "../../../lib/nutrition/sourceLabel";
  *  - meta line (slot name · time · source for a single meal; slot label · item
  *    count for an aggregate) + optional portion line (single-meal, ≠1 only)
  *  - total kcal headline (summed across the slot in aggregate mode)
- *  - macro calorie-split bar + per-macro grams / kcal / "% of kcal", gated on
- *    `macroSplitConfidence` (shared): `complete` draws the bar + %, `single_macro`
- *    shows the incomplete-data explainer + grams only, `empty` draws a neutral bar
- *  - a "Vitamins, minerals & more" micro table (fibre injected as the first row),
- *    with the same source-attributed empty / populated copy as mobile (aggregate
+ *  - macro calorie-split bar + the v3 4-cell `.md-totalgrid` (Protein / Carbs /
+ *    Fat / Fibre — grams only, each cell tappable into macro-detail), gated on
+ *    `macroSplitConfidence` (shared): `complete` draws the bar + grid,
+ *    `single_macro` shows the incomplete-data explainer + grid, `empty` a neutral bar
+ *  - a "Vitamins, minerals & more" micro table (vitamins/minerals only — fibre
+ *    now leads the grid, not this table), with the same source-attributed empty /
+ *    populated copy as mobile (aggregate
  *    mode attributes to "your logged items in this slot")
  *
  * The slot sum reuses the SAME shared helpers mobile uses for the slot total —
@@ -107,50 +110,20 @@ export interface MealNutritionDialogProps {
    * there is no single entry to edit).
    */
   onEdit?: (mealId: string) => void;
+  /**
+   * Open the day's macro-detail breakdown when a `.md-totalgrid` cell is tapped
+   * (ENG-1247). When omitted the cells render as static (no dead taps). The host
+   * (`NutritionTracker`) closes this dialog then opens `MacroDetailPanel`.
+   */
+  onMacroTap?: (macro: MacroTotalKey) => void;
 }
 
 const MACRO_VARS = {
   protein: "var(--macro-protein)",
   carbs: "var(--macro-carbs)",
   fat: "var(--macro-fat)",
+  fiber: "var(--macro-fiber)",
 } as const;
-
-function MacroStat({
-  label,
-  grams,
-  kcal,
-  pct,
-  cssVar,
-}: {
-  label: string;
-  grams: number;
-  kcal: number;
-  /** `null` suppresses the "% of kcal" + kcal line for incomplete-data rows. */
-  pct: number | null;
-  cssVar: string;
-}) {
-  return (
-    <div className="flex-1">
-      <div className="flex items-center gap-1.5">
-        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: cssVar }} />
-        <span className="text-[13px] font-semibold text-foreground">{label}</span>
-      </div>
-      <p className="mt-1 text-[15px] font-bold tabular-nums text-foreground">
-        {Math.round(grams * 10) / 10}g
-      </p>
-      {pct != null ? (
-        // e2e walk 2026-06-10 (mobile parity): the "% of kcal" line is a
-        // neutral share-of-energy stat → muted-foreground, NOT the macro hue.
-        // `--macro-fat` is amber (the over-budget signal), so painting this
-        // caption in `cssVar` made a neutral stat read as a warning. The macro
-        // hue stays on the dot + grams; this caption is informational text.
-        <p className="text-xs tabular-nums text-muted-foreground">
-          {Math.round(kcal)} kcal · {pct}% of kcal
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 export function MealNutritionDialog({
   meal,
@@ -158,6 +131,7 @@ export function MealNutritionDialog({
   onClose,
   slotAggregate,
   onEdit,
+  onMacroTap,
 }: MealNutritionDialogProps) {
   const isSlotAggregate = slotAggregate != null;
   const slotItems = slotAggregate?.meals ?? null;
@@ -193,17 +167,27 @@ export function MealNutritionDialog({
 
   const fiberDisplay = effectiveMeal ? mealContributedFiberG(effectiveMeal) : 0;
 
-  // Fibre leads the micro table (mobile parity — MICRO_LINES puts fiberG first).
-  // Inject the resolved fibre value into the micros payload so the shared helper
-  // surfaces it as the first row.
-  const microRows = useMemo(
-    () =>
-      listMicroNutrientsCompleteDisplay({
-        ...(effectiveMeal?.micros ?? {}),
-        fiberG: fiberDisplay > 0 ? fiberDisplay : (effectiveMeal?.micros?.fiberG ?? 0),
-      }),
-    [effectiveMeal?.micros, fiberDisplay],
-  );
+  // ENG-1247 (v3 `.md-totalgrid`): Fibre now leads the 4-cell macro grid (real
+  // `mealContributedFiberG`, not the prototype's `carbs × 0.13` guess), so it no
+  // longer belongs in the "Vitamins, minerals & more" table — strip `fiberG`
+  // here so it is never shown twice. The grid is its single home.
+  const microRows = useMemo(() => {
+    const micros = { ...(effectiveMeal?.micros ?? {}) };
+    delete micros.fiberG;
+    return listMicroNutrientsCompleteDisplay(micros);
+  }, [effectiveMeal?.micros]);
+
+  // v3 `.md-totalgrid` cells — Protein / Carbs / Fat / Fibre. Fibre is REAL
+  // (`fiberDisplay`), never a guess. Tapping a cell opens that macro's day
+  // breakdown via `onMacroTap` (host wires `MacroDetailPanel`).
+  const macroCells: MacroTotalCell[] = effectiveMeal
+    ? [
+        { key: "protein", label: "Protein", grams: effectiveMeal.protein, cssVar: MACRO_VARS.protein },
+        { key: "carbs", label: "Carbs", grams: effectiveMeal.carbs, cssVar: MACRO_VARS.carbs },
+        { key: "fat", label: "Fat", grams: effectiveMeal.fat, cssVar: MACRO_VARS.fat },
+        { key: "fiber", label: "Fibre", grams: fiberDisplay, cssVar: MACRO_VARS.fiber },
+      ]
+    : [];
 
   const split = useMemo(
     () =>
@@ -328,7 +312,7 @@ export function MealNutritionDialog({
                 ) : null}
                 <p
                   data-testid="meal-nutrition-kcal"
-                  className="mb-3 text-[28px] font-extrabold tabular-nums leading-none text-foreground"
+                  className="mb-3 text-[40px] font-headline tabular-nums leading-none text-foreground"
                 >
                   {Math.round(effectiveMeal.calories)} kcal
                 </p>
@@ -346,17 +330,13 @@ export function MealNutritionDialog({
                 ) : null}
 
                 {splitConfidence.state === "single_macro" ? (
-                  // F-82 — incomplete-data state. Skip the misleading bar +
-                  // "% of kcal" labels and explain what's missing.
+                  // F-82 — incomplete-data state. Skip the misleading split bar
+                  // and explain what's missing; the grams grid still renders.
                   <div data-testid="meal-nutrition-incomplete" className="mb-3">
                     <p className="mb-3 text-[13px] leading-[18px] text-muted-foreground">
                       {macroSplitIncompleteCopy(splitConfidence.presentMacro)}
                     </p>
-                    <div className="flex justify-between gap-2">
-                      <MacroStat label="Protein" grams={effectiveMeal.protein} kcal={split.proteinKcal} pct={null} cssVar={MACRO_VARS.protein} />
-                      <MacroStat label="Carbs" grams={effectiveMeal.carbs} kcal={split.carbsKcal} pct={null} cssVar={MACRO_VARS.carbs} />
-                      <MacroStat label="Fat" grams={effectiveMeal.fat} kcal={split.fatKcal} pct={null} cssVar={MACRO_VARS.fat} />
-                    </div>
+                    <MacroTotalGrid cells={macroCells} onMacroTap={onMacroTap} />
                   </div>
                 ) : (
                   <>
@@ -374,29 +354,7 @@ export function MealNutritionDialog({
                         <div style={{ flex: 1, backgroundColor: "var(--border)" }} />
                       )}
                     </div>
-                    <div className="flex justify-between gap-2">
-                      <MacroStat
-                        label="Protein"
-                        grams={effectiveMeal.protein}
-                        kcal={split.proteinKcal}
-                        pct={splitConfidence.state === "complete" ? split.proteinPct : null}
-                        cssVar={MACRO_VARS.protein}
-                      />
-                      <MacroStat
-                        label="Carbs"
-                        grams={effectiveMeal.carbs}
-                        kcal={split.carbsKcal}
-                        pct={splitConfidence.state === "complete" ? split.carbsPct : null}
-                        cssVar={MACRO_VARS.carbs}
-                      />
-                      <MacroStat
-                        label="Fat"
-                        grams={effectiveMeal.fat}
-                        kcal={split.fatKcal}
-                        pct={splitConfidence.state === "complete" ? split.fatPct : null}
-                        cssVar={MACRO_VARS.fat}
-                      />
-                    </div>
+                    <MacroTotalGrid cells={macroCells} onMacroTap={onMacroTap} />
                   </>
                 )}
               </div>

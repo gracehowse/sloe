@@ -145,6 +145,13 @@
   --primary-foreground: var(--accent-primary-foreground);
   --primary-solid: var(--accent-primary-solid);
   --primary-soft: var(--accent-primary-soft);
+  /** Sloe-Deep onboarding brand screen (ENG-1247) — the fixed deep-plum
+   *  welcome ground + radial bloom + frost text. A fixed brand identity
+   *  (same in light + dark; the screen does not theme-resolve), mirroring
+   *  the mobile `Accent.primaryDeep / primaryLight / frost`. */
+  --primary-deep: #241733;
+  --primary-light: #5B3B6E;
+  --accent-frost: #c9c2d6;
   --secondary: var(--background-secondary);
   --secondary-foreground: var(--foreground);
   --muted: #EBEAF1;              /* v3 frost-grey — chips / pressed fill */
@@ -679,9 +686,12 @@
 @theme inline {
   /* Fonts — Sloe (Phase 0). Newsreader (serif, --font-newsreader) carries
      headlines + display + ring numerals; Inter (--font-inter) carries body +
-     labels. Both wired in `app/layout.tsx` via next/font/google. */
+     labels; Fraunces (--font-fraunces) is the brand WORDMARK only (the v3
+     prototype LOCKS this type-split). All wired in `app/layout.tsx` via
+     next/font/google. */
   --font-headline: var(--font-newsreader), Newsreader, Georgia, serif;
   --font-display: var(--font-newsreader), Newsreader, Georgia, serif;
+  --font-brand: var(--font-fraunces), Fraunces, Georgia, serif;
   --font-body: var(--font-inter), Inter, system-ui, sans-serif;
   --font-label: var(--font-inter), Inter, system-ui, sans-serif;
 

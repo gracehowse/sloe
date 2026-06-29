@@ -213,26 +213,43 @@ export function EditMealDialog({
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
-            {(
-              [
-                ["Calories", calories, setCalories, "edit-meal-kcal"],
-                ["Protein (g)", protein, setProtein, "edit-meal-protein"],
-                ["Carbs (g)", carbs, setCarbs, "edit-meal-carbs"],
-                ["Fat (g)", fat, setFat, "edit-meal-fat"],
-              ] as const
-            ).map(([label, value, setter, testId]) => (
-              <label key={testId} className="block space-y-1">
-                <span className="text-xs font-medium text-muted-foreground">{label}</span>
+          {/* Serif kcal hero (headline metric) over the protein/carbs/fat
+              triple — mirrors the v3 prototype MealEdit hierarchy (ENG-1247)
+              while keeping every value directly editable (parity with mobile). */}
+          <div className="space-y-3">
+            <label className="block space-y-1">
+              <span className="text-xs font-medium text-muted-foreground">Calories</span>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3">
                 <input
-                  data-testid={testId}
+                  data-testid="edit-meal-kcal"
                   type="number"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  value={value}
-                  onChange={(e) => setter(e.target.value)}
+                  className="w-full bg-transparent py-2 font-headline text-[28px] outline-none"
+                  value={calories}
+                  onChange={(e) => setCalories(e.target.value)}
                 />
-              </label>
-            ))}
+                <span className="text-xs text-muted-foreground">kcal</span>
+              </div>
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {(
+                [
+                  ["Protein (g)", protein, setProtein, "edit-meal-protein"],
+                  ["Carbs (g)", carbs, setCarbs, "edit-meal-carbs"],
+                  ["Fat (g)", fat, setFat, "edit-meal-fat"],
+                ] as const
+              ).map(([label, value, setter, testId]) => (
+                <label key={testId} className="block space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">{label}</span>
+                  <input
+                    data-testid={testId}
+                    type="number"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    value={value}
+                    onChange={(e) => setter(e.target.value)}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
 
           {editableEatenAt ? (

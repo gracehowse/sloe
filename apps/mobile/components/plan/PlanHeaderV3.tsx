@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Bookmark, Sparkles, SlidersHorizontal } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Elevation, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { PlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
 
@@ -40,13 +40,14 @@ function ActButton({
   bg: string;
   children: React.ReactNode;
 }) {
+  const colors = useThemeColors();
   return (
     <PressableScale
       onPress={onPress}
       haptic="selection"
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={[styles.act, { backgroundColor: bg }]}
+      style={[styles.act, { backgroundColor: bg, borderColor: colors.border }]}
     >
       {children}
     </PressableScale>
@@ -71,13 +72,13 @@ export function PlanHeaderV3({
           <Text style={[styles.title, { color: colors.text }]}>Your plan</Text>
         </View>
         <View style={styles.acts}>
-          <ActButton label="Generate week" onPress={onGenerate} bg={colors.backgroundSecondary}>
+          <ActButton label="Generate week" onPress={onGenerate} bg={colors.card}>
             <Sparkles size={17} color={colors.text} strokeWidth={1.9} />
           </ActButton>
-          <ActButton label="Adjust constraints" onPress={onAdjust} bg={colors.backgroundSecondary}>
+          <ActButton label="Adjust constraints" onPress={onAdjust} bg={colors.card}>
             <SlidersHorizontal size={17} color={colors.text} strokeWidth={1.9} />
           </ActButton>
-          <ActButton label="Plan templates" onPress={onTemplates} bg={colors.backgroundSecondary}>
+          <ActButton label="Plan templates" onPress={onTemplates} bg={colors.card}>
             <Bookmark size={16} color={colors.text} strokeWidth={1.9} />
           </ActButton>
         </View>
@@ -114,11 +115,19 @@ const styles = StyleSheet.create({
   title: { ...Type.screenTitle, marginTop: 3 },
   acts: { flexDirection: "row", alignItems: "center", gap: 4 },
   act: {
+    // v3 `.planx-act`: rounded-square WHITE CARD button (radius 11) with a 1px
+    // border + soft lift — not a circle, not flat. Grace's call (2026-06-27)
+    // to override the flat-surface default for these buttons so they match the
+    // prototype's white-card + shadow-card treatment. (Card bg passed in `bg`.)
     width: 38,
     height: 38,
-    borderRadius: Radius.full,
+    borderRadius: Radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
+    // Subtle crisp lift (not the floaty page-card cardSoft) — matches the
+    // prototype `--shadow-card` + web `shadow-sm` on these 38px buttons.
+    ...Elevation.cardHairline,
   },
   verdict: {
     flexDirection: "row",
@@ -128,7 +137,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.dense,
   },
   dot: { width: 8, height: 8, borderRadius: Radius.full },
-  vHeadline: { ...Type.label, fontSize: 14, lineHeight: 18 },
+  // Sentence case — the prototype renders "On track — N of M days land" as a
+  // sentence, not an overline (Type.label defaults to uppercase). ENG-1247.
+  vHeadline: { ...Type.label, fontSize: 14, lineHeight: 18, textTransform: "none", letterSpacing: 0 },
   vSub: { ...Type.caption },
 });
 

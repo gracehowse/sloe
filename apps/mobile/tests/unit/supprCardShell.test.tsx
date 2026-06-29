@@ -79,10 +79,12 @@ describe("<SupprCard> — the consolidated card shell", () => {
     expect(flatten(outer.props.children.props.style).borderWidth).toBe(0);
   });
 
-  it("lift='soft' renders FLAT — fill + radius on the OUTER node, no shadow (flat-card surfaces 2026-06-12)", () => {
-    // Flat-card surfaces (docs/decisions/2026-06-12-flat-card-surfaces.md):
-    // the soft lift is RETIRED; `lift="soft"` is an accepted no-op. Separation
-    // is the card fill against the ground alone — zero shadow.
+  it("lift='soft' LIFTS — fill + radius + soft ambient shadow on the OUTER node (Sloe v3 card lift, ENG-1222 P2)", () => {
+    // Sloe v3 (docs/decisions/2026-06-25-v3-card-lift-reversal.md) reverses the
+    // 2026-06-12 flat decision: page-ground cards LIFT off the white ground on
+    // Elevation.cardSoft — a flat white card on a white page is invisible (the
+    // lift IS the separation). The shadow rides the OUTER node (iOS clips it
+    // under the inner overflow:hidden).
     themeState.resolved = "light";
     const { getByTestId } = render(
       <SupprCard testID="card-x" lift="soft">
@@ -96,14 +98,16 @@ describe("<SupprCard> — the consolidated card shell", () => {
     // The canonical card radius (24).
     expect(style.borderRadius).toBe(CARD_RADIUS);
     expect(CARD_RADIUS).toBe(24);
-    // FLAT: no drop shadow on the outer node.
-    expect(style.shadowOpacity).toBeUndefined();
+    // LIFTED: the cardSoft ambient shadow on the outer node (plum ink, 16%).
+    expect(style.shadowOpacity).toBe(0.16);
+    expect(String(style.shadowColor).toLowerCase()).toBe("#221b26");
+    expect(style.shadowRadius).toBe(18);
   });
 
   it("clips on a SEPARATE inner node (the iOS clip fix), which has NO shadow", () => {
-    // Flat-card surfaces: there is no resting shadow to clip, but the
-    // outer/inner split is retained so any future lift (e.g. a sanctioned
-    // overlay) rides the outer wrapper, never the inner `overflow:hidden` node.
+    // The soft lift rides the OUTER wrapper; the inner `overflow:hidden` clip
+    // node must never carry the shadow or iOS swallows it under the clip. This
+    // outer/inner split is the whole point of the shared shell.
     themeState.resolved = "light";
     const { getByTestId } = render(
       <SupprCard testID="card-clip" lift="soft">

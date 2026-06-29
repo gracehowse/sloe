@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronRight, X } from "lucide-react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import {
   buildWhyThisNumber,
@@ -105,10 +105,13 @@ function WhyThisNumberSheetImpl({
 
           {/* Headline */}
           <View style={{ paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
+            {/* v3 prototype `.whyn-big` — serif (Newsreader) numeral grammar,
+                was sans fontWeight 700. Size held (combined headline string,
+                not the prototype's isolated big number). (ENG-1247) */}
             <Text
               style={{
                 fontSize: 22,
-                fontWeight: "700",
+                fontFamily: FontFamily.serifSemibold,
                 color: textColor,
                 letterSpacing: -0.4,
                 fontVariant: ["tabular-nums"],

@@ -44,6 +44,7 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import {
   Radius,
   Spacing,
@@ -298,11 +299,11 @@ function buildStyles(
     // `Elevation.cardSoft` at the render site + an always-on hairline): light →
     // shadow only, dark → tonal lift + hairline (one-card-treatment, 2026-06-09).
     headerCardOuter: {
-      borderRadius: Radius.lg,
+      borderRadius: CARD_RADIUS,
       ...(cardElevation.shadowStyle ?? {}),
     },
     headerCard: {
-      borderRadius: Radius.lg,
+      borderRadius: CARD_RADIUS,
       borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -370,11 +371,11 @@ function buildStyles(
     },
     // Outer wrapper for elevation (same pattern as headerCardOuter)
     sectionCardOuter: {
-      borderRadius: Radius.lg,
+      borderRadius: CARD_RADIUS,
       ...(cardElevation.shadowStyle ?? {}),
     },
     sectionCard: {
-      borderRadius: Radius.lg,
+      borderRadius: CARD_RADIUS,
       borderWidth: cardElevation.useBorder ? 1 : 0,
       borderColor: colors.border,
       backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -383,8 +384,7 @@ function buildStyles(
     itemRow: {
       flexDirection: "row",
       alignItems: "flex-start",
-      // On-scale: Spacing.md (16) for comfortable reading rhythm
-      // (up from raw 12 which was off the 4pt grid).
+      // On-scale: Spacing.md (16) — reading rhythm (was off-grid raw 12).
       paddingVertical: Spacing.md,
       paddingHorizontal: Spacing.lg,
       // On-scale: Spacing.sm (8) replaces raw 10.

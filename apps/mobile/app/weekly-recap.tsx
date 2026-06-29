@@ -72,8 +72,9 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 import { supabase } from "@/lib/supabase";
-import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useAccent } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import {
@@ -689,10 +690,7 @@ export default function WeeklyRecapScreen() {
   );
 
   // Card — primary card treatment per design system §5 + §6.1:
-  //   - Radius.xl (12pt) instead of Radius.lg (8pt) — closer to the spec's
-  //     intended 16pt primary-card radius (Radius token caps at xl:12; a 16pt
-  //     literal would require a theme edit which is locked). Moving from 8→12
-  //     is the maximum safe token step. See deferred ENG gap for full 16pt.
+  //   - CARD_RADIUS (24pt) — the canonical card corner shared from SupprCard.
   //   - Elevation.cardSoft on the OUTER wrapper (RN overflow:hidden clips iOS
   //     shadows, so the shadow wrapper must be separate from the overflow:hidden
   //     inner). Inner wrapper carries border + clip.
@@ -703,7 +701,7 @@ export default function WeeklyRecapScreen() {
       style={[
         cardElevation.shadowStyle ?? {},
         {
-          borderRadius: Radius.xl,
+          borderRadius: CARD_RADIUS,
           marginBottom: Spacing.xl,
         },
       ]}
@@ -712,7 +710,7 @@ export default function WeeklyRecapScreen() {
         testID={testID}
         style={{
           backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.xl,
+          borderRadius: CARD_RADIUS,
           // Light soft-lift drops the hairline (shadow is the separation); dark keeps it.
           borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.cardBorder,

@@ -90,10 +90,9 @@ describe("SettingsBundleContent — parity contract", () => {
       "settings-manage-subscription-row",
       "settings-bundle-promo-code-input",
       "settings-bundle-promo-code-apply",
-      // "Your name" field — personalises the Today greeting. Writes
+      // "Your name" field — sets the display name (avatar + Profile). Writes
       // `user_metadata.full_name` via the shared `saveDisplayName`
-      // (`src/lib/account/displayName.ts`); the greeting reads it back
-      // via `firstNameFromMetadata`. Web mirror in
+      // (`src/lib/account/displayName.ts`). Web mirror in
       // `src/app/components/Settings.tsx`. 2026-06-04: relocated under a
       // "Personal" section heading (was a lone "Your name" card) so it
       // groups with the user's personal settings — testIDs preserved;

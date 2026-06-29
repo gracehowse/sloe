@@ -263,4 +263,31 @@ describe("TodayEditMealModal V2 — ENG-813 redesign", () => {
     expect(onApplyPortionMultiplier).toHaveBeenCalledWith(2);
     expect(H.impactAsync).not.toHaveBeenCalled();
   });
+
+  // ENG-1247 — the serif kcal hero + protein/carbs/fat triple. Grace's scope:
+  // adopt the prototype's calories-headline hierarchy but KEEP every value a
+  // direct input (never regress to display-only tiles). This guards that the
+  // four nutrition fields render and that editing any of them stays wired.
+  it("renders all four nutrition fields and keeps every value editable", () => {
+    flagFn.mockReturnValue(true);
+    const onEditKcalChange = vi.fn();
+    const onEditProteinChange = vi.fn();
+    const onEditCarbsChange = vi.fn();
+    const onEditFatChange = vi.fn();
+    const { getByLabelText } = renderModal({
+      onEditKcalChange,
+      onEditProteinChange,
+      onEditCarbsChange,
+      onEditFatChange,
+    });
+    // The kcal hero shows the current value and is still a real input.
+    expect(getByLabelText("Calories").props.value).toBe("540");
+    expect(getByLabelText("Protein").props.value).toBe("38");
+    expect(getByLabelText("Carbs").props.value).toBe("52");
+    expect(getByLabelText("Fat").props.value).toBe("18");
+    fireEvent.changeText(getByLabelText("Calories"), "600");
+    expect(onEditKcalChange).toHaveBeenCalledWith("600");
+    fireEvent.changeText(getByLabelText("Protein"), "40");
+    expect(onEditProteinChange).toHaveBeenCalledWith("40");
+  });
 });

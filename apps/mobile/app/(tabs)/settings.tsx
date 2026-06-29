@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LogOut, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
@@ -53,6 +54,8 @@ import { filterSettingsIndex } from "@/lib/settingsSearchIndex";
  */
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  // ENG-1247 — frosted tab bar overlays scroll content; pad to clear it.
+  const tabBarHeight = useTabBarClearance();
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
@@ -145,7 +148,7 @@ export default function SettingsScreen() {
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + Spacing.xl }]}
       >
         {/* Search — sticks at the top of the ScrollView. The bundle
             owns its own section structure and is hidden when the

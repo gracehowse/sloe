@@ -42,6 +42,10 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
   // User intent is detected via wheel/touch/pointer on the scroller.
   const userScrollRef = useRef(false);
   const [pagerW, setPagerW] = useState(0);
+  // The week the pager is currently SHOWING (v3 prototype `.day-nav` chevrons,
+  // ENG-1247) — distinct from the selected day's week so the chevrons can
+  // browse weeks without moving the selection. Synced to `weekIdx` below.
+  const [viewWeekIdx, setViewWeekIdx] = useState(0);
   const { min, max } = useMemo(() => journalRangeBounds(), []);
   const weekStarts = useMemo(() => enumerateWeekStartsInJournalRange(weekStartDay), [weekStartDay]);
   const selectedDk = selectedDateKey;
@@ -92,7 +96,20 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
   useEffect(() => {
     if (pagerW <= 0) return;
     scrollToWeekIndex(weekIdx, "instant");
+    setViewWeekIdx(weekIdx);
   }, [weekIdx, pagerW, scrollToWeekIndex, selectedDk]);
+
+  /** Step the VIEWED week via the prototype `.day-nav` chevrons (ENG-1247).
+   *  Scrolls the pager only — selection is unchanged until the user taps a day. */
+  const goViewWeek = useCallback(
+    (delta: number) => {
+      const next = Math.max(0, Math.min(weekStarts.length - 1, viewWeekIdx + delta));
+      if (next === viewWeekIdx) return;
+      setViewWeekIdx(next);
+      scrollToWeekIndex(next, "smooth");
+    },
+    [viewWeekIdx, weekStarts.length, scrollToWeekIndex],
+  );
 
   const handleScrollEnd = useCallback(() => {
     // Ignore settles from programmatic scrolls (see userScrollRef above).
@@ -102,6 +119,7 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
     if (!el || pagerW <= 0) return;
     const idx = Math.round(el.scrollLeft / pagerW);
     const clamped = Math.max(0, Math.min(weekStarts.length - 1, idx));
+    setViewWeekIdx(clamped);
     const newWeekStart = weekStarts[clamped];
     if (!newWeekStart) return;
     const col = dayIndexInWeek(parseDateKey(selectedDk), weekStartDay);
@@ -139,19 +157,22 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
     };
   }, [handleScrollEnd]);
 
-  const handleToday = useCallback(() => {
-    onSelectDateKey(dateKeyFromDate(clampJournalDate(new Date())));
-  }, [onSelectDateKey]);
-
+  // v3 prototype `.day-strip` (ENG-1247): ‹ › week chevrons flank the pager;
+  // the calendar icon stays for far-date jumps. The old "Today" jump button is
+  // dropped — chevrons + calendar cover navigation and the prototype has none.
+  const prevDisabled = viewWeekIdx <= 0;
+  const nextDisabled = viewWeekIdx >= weekStarts.length - 1;
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={handleToday}
-          className="shrink-0 py-2 px-1 text-sm font-bold text-primary hover:opacity-80"
+          onClick={() => goViewWeek(-1)}
+          disabled={prevDisabled}
+          aria-label="Previous week"
+          className="shrink-0 p-1.5 rounded-lg text-foreground-tertiary hover:text-foreground-secondary hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent"
         >
-          Today
+          <Icons.back className="w-[18px] h-[18px]" />
         </button>
         <div ref={rowRef} className="flex-1 min-w-0">
           <div
@@ -172,23 +193,20 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                   const hasLogs = loggedDays.has(dk);
                   const isProtected = protectedDateKeys?.has(dk) ?? false;
                   const outOfRange = date.getTime() < min.getTime() || date.getTime() > max.getTime();
-                  // Minimal current-day treatment (2026-06-03, Grace's
-                  // feedback — the filled clay circle read as clunky). Web
-                  // parity with mobile `DayStrip`: the active day is a clay
-                  // (`text-primary`) bold NUMBER with a small clay DOT beneath,
-                  // NO filled background. Logged days carry a sage dot; the
-                  // clay (selected) indicator takes precedence on the both-case.
-                  // The state→treatment rule is shared via `dayStripIndicator`.
-                  // §7 (2026-06-10): soft-tint pill carries selection — see
-                  // dayStripIndicator.ts for the treatment history.
-                  const { dotKind, isActive, showsPill } = dayStripIndicator({
+                  // v3 prototype `.day-cell` treatment (ENG-1247, 2026-06-24):
+                  // the SELECTED day fills the whole cell with plum + white
+                  // letter/date/dot (the prototype `.is-sel` — supersedes the
+                  // 2026-06-10 soft-tint pill); today-not-selected = accent
+                  // number; logged = sage dot. Shared with mobile via
+                  // `dayStripIndicator` so the two surfaces can't drift.
+                  const { dotKind, isActive, selectedFill } = dayStripIndicator({
                     isSelected,
                     isToday,
                     hasLogs,
                   });
                   const dotClass =
-                    dotKind === "clay"
-                      ? "bg-primary"
+                    dotKind === "onAccent"
+                      ? "bg-primary-foreground"
                       : dotKind === "sage"
                         ? "bg-success"
                         : "bg-transparent";
@@ -200,21 +218,22 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                       onClick={() => onSelectDateKey(dateKeyFromDate(clampJournalDate(date)))}
                       aria-label={isProtected ? `Freeze used on ${dk}` : undefined}
                       data-testid={`daystrip-dot-minimal-${dotKind}`}
-                      className={`flex-1 flex flex-col items-center gap-1.5 py-2 ${outOfRange ? "opacity-35" : ""}`}
+                      className={`flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl ${selectedFill ? "bg-primary" : ""} ${outOfRange ? "opacity-35" : ""}`}
                     >
-                      <span className="text-[10px] font-semibold uppercase tracking-wide leading-none text-foreground-tertiary">
+                      <span
+                        className={`text-[10px] font-semibold uppercase tracking-wide leading-none ${selectedFill ? "text-primary-foreground/70" : "text-foreground-tertiary"}`}
+                      >
                         {label}
                       </span>
-                      <div
-                        className={[
-                          "relative flex items-center justify-center min-w-7 h-7 rounded-full",
-                          showsPill ? "bg-primary-soft" : "bg-transparent",
-                        ].join(" ")}
-                      >
+                      <div className="relative flex items-center justify-center min-w-7 h-7">
                         <span
                           className={[
                             "font-[family-name:var(--font-headline)] text-sm tabular-nums leading-none",
-                            isActive ? "font-semibold text-primary" : "font-normal text-foreground",
+                            selectedFill
+                              ? "font-bold text-primary-foreground"
+                              : isActive
+                                ? "font-semibold text-primary"
+                                : "font-normal text-foreground",
                           ].join(" ")}
                         >
                           {date.getDate()}
@@ -237,6 +256,15 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
             ))}
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => goViewWeek(1)}
+          disabled={nextDisabled}
+          aria-label="Next week"
+          className="shrink-0 p-1.5 rounded-lg text-foreground-tertiary hover:text-foreground-secondary hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent"
+        >
+          <Icons.forward className="w-[18px] h-[18px]" />
+        </button>
         <button
           type="button"
           onClick={onOpenCalendar}

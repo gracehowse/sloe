@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
-import { Type } from "@/constants/theme";
+import { FontFamily, Type } from "@/constants/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -86,6 +86,9 @@ export interface CalorieRingDialProps {
    * count-up still runs but is hidden, which is fine (cheap, keeps the API flat).
    */
   hideCenter?: boolean;
+  /** De-carded v3 hero (ENG-1247): render the centre value as the 56px serif-
+   *  MEDIUM `.ring-big` numeral instead of the default 48/400. */
+  numeralLarge?: boolean;
 }
 
 export function CalorieRingDial({
@@ -93,6 +96,7 @@ export function CalorieRingDial({
   target,
   size = BASE,
   hideCenter = false,
+  numeralLarge = false,
 }: CalorieRingDialProps) {
   const colors = useThemeColors();
   const reduce = useReduceMotion();
@@ -200,6 +204,7 @@ export function CalorieRingDial({
           <Text
             style={[
               styles.value,
+              numeralLarge ? styles.valueLarge : null,
               isOver ? { color: colors.overBudgetFg } : { color: colors.text },
             ]}
           >
@@ -222,6 +227,12 @@ const styles = StyleSheet.create({
   },
   value: {
     ...Type.ringValue,
+  },
+  // De-carded v3 hero (ENG-1247): the prototype `.ring-big` is 56px serif-MEDIUM.
+  valueLarge: {
+    ...Type.ringValueLg,
+    fontFamily: FontFamily.serifMedium,
+    fontWeight: "500" as const,
   },
   label: {
     ...Type.statLabel,

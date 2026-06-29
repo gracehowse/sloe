@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useCameraPermissions } from "expo-camera";
 import { BarcodeCameraView } from "@/components/BarcodeCameraView";
+import { BarcodeShareOptIn, type BarcodeShareOptInEntry } from "@/components/barcode/BarcodeShareOptIn";
 // 2026-04-29: migrated from `@expo/vector-icons` (Ionicons) to
 // `lucide-react-native` per the team standardisation set
 // 2026-04-28 (Top-5 #4 in docs/ux/teardown-2026-04-28-daily-loop.md).
@@ -22,6 +23,7 @@ import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 // alert-circle → AlertCircle.
 import { AlertCircle, Camera, Check, PlusCircle, ScanLine, X } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter, type Href } from "expo-router";
 
 import { barcodeConfidenceTier, lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
@@ -46,20 +48,19 @@ import { fallbackSlotFromTimeOfDay } from "@suppr/nutrition-core/recipeJournalSl
 
 export default function BarcodeScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarClearance(); // ENG-1247 — pad scroll to clear frosted (absolute) tab bar.
   const router = useRouter();
   const colors = useThemeColors();
-  // Secondary accent (Frost flag → damson, else clay) for this screen's CTAs,
-  // scan-frame, preset/retry/manual chips, and serving hint. Threaded into the
-  // `styles` useMemo (deps below). The Log/Use button keeps `Accent.success`
-  // (green commit) and the error icon keeps `Accent.destructive`.
+  // Secondary accent (Frost flag → damson, else clay) for CTAs, scan-frame,
+  // preset/retry/manual chips, and serving hint. Log/Use keeps `Accent.success`
+  // (green commit); the error icon keeps `Accent.destructive`.
   const accent = useAccent();
   const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
-  // Search-results redesign (2026-05-31): when on, the barcode result
-  // adopts the same logging language as the food-search redesign — a
-  // legible Verified/Estimated confidence chip + a blue commit CTA.
+  // Search-results redesign (2026-05-31): when on, the barcode result adopts the
+  // food-search language — Verified/Estimated confidence chip + blue commit CTA.
   // Old path (binary green tick + green CTA) stays alive in the else.
   const searchRedesign = isFeatureEnabled("redesign_search_results");
 
@@ -76,6 +77,11 @@ export default function BarcodeScreen() {
   const [gramsInput, setGramsInput] = useState("100");
   const [logging, setLogging] = useState(false);
   const [manualMode, setManualMode] = useState(false);
+  // ENG-1247 — opt-in community contribution (flag-gated, default off). After a
+  // not-found barcode is logged PRIVATELY, offer the explicit opt-in to share it
+  // to the shared food DB. Never automatic; the private log stands regardless.
+  const communityShareEnabled = isFeatureEnabled("barcode_community_contribution");
+  const [shareEntry, setShareEntry] = useState<BarcodeShareOptInEntry | null>(null);
   const [manualName, setManualName] = useState("");
   const [manualCalories, setManualCalories] = useState("");
   const [manualProtein, setManualProtein] = useState("");
@@ -365,14 +371,27 @@ export default function BarcodeScreen() {
         source: "Manual barcode entry",
         origin: "manual",
       });
-      // DC12 (2026-05-14, premium-bar audit) — specific log
-      // confirmation, see barcode commit above.
-      Alert.alert(`${manualName.trim()} logged`, "Added to today's tracker.", [
-        { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); setRememberedPortion(null); } },
-        { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
-      ]);
+      // ENG-1247 — flag ON: offer the explicit community-contribution opt-in (the
+      // private log already happened above). Flag OFF: the existing confirmation.
+      if (communityShareEnabled && last) {
+        setManualMode(false);
+        setShareEntry({
+          barcode: last,
+          name: manualName.trim(),
+          calories: Math.round(cal),
+          protein: Math.round((Number(manualProtein) || 0) * 10) / 10,
+          carbs: Math.round((Number(manualCarbs) || 0) * 10) / 10,
+          fat: Math.round((Number(manualFat) || 0) * 10) / 10,
+        });
+      } else {
+        // DC12 (2026-05-14, premium-bar audit) — specific log confirmation.
+        Alert.alert(`${manualName.trim()} logged`, "Added to today's tracker.", [
+          { text: "Scan another", onPress: () => { lastRef.current = null; setLast(null); setProduct(null); setError(null); setManualMode(false); setManualName(""); setManualCalories(""); setManualProtein(""); setManualCarbs(""); setManualFat(""); setRememberedPortion(null); } },
+          { text: "Go to tracker", onPress: () => router.push("/(tabs)/index" as Href) },
+        ]);
+      }
     }
-  }, [manualName, manualCalories, manualProtein, manualCarbs, manualFat, userId, router, last, mealSlot]);
+  }, [manualName, manualCalories, manualProtein, manualCarbs, manualFat, userId, router, last, mealSlot, communityShareEnabled]);
 
   const openCorrectionMode = useCallback(() => {
     if (!product) return;
@@ -426,6 +445,18 @@ export default function BarcodeScreen() {
     setCorrectionMode(false);
     plausibilityOverrideRef.current = false;
   }, []);
+
+  // ENG-1247 — conclude the community opt-in: clear the share + manual state and
+  // return to the scanner (the private log already stands).
+  const handleShareDone = useCallback(() => {
+    setShareEntry(null);
+    setManualName("");
+    setManualCalories("");
+    setManualProtein("");
+    setManualCarbs("");
+    setManualFat("");
+    resetScan();
+  }, [resetScan]);
 
   const styles = useMemo(
     () =>
@@ -986,7 +1017,7 @@ export default function BarcodeScreen() {
       {/* Manual entry overlay */}
       {manualMode && (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.manualOverlay}>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: insets.bottom + Spacing.xxxl }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: tabBarHeight + Spacing.xxxl }}>
             <Text style={styles.manualTitle}>Add Item Manually</Text>
             <Text style={styles.manualSub}>
               {last ? `Barcode: ${last}` : "Enter the nutrition info from the label"}
@@ -1075,10 +1106,21 @@ export default function BarcodeScreen() {
         </KeyboardAvoidingView>
       )}
 
+      {/* ENG-1247 — community-contribution opt-in. Shown after a not-found
+          barcode has been logged PRIVATELY (handleManualLog), when the
+          `barcode_community_contribution` flag is on. Never automatic. */}
+      {shareEntry && userId && (
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.manualOverlay}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: tabBarHeight + Spacing.xxxl }}>
+            <BarcodeShareOptIn entry={shareEntry} userId={userId} onDone={handleShareDone} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
+
       {/* Correction overlay */}
       {correctionMode && (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.corrOverlay}>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: insets.bottom + Spacing.xxxl }}>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: Spacing.md, paddingBottom: tabBarHeight + Spacing.xxxl }}>
             <Text style={styles.corrTitle}>Correct Nutrition Info</Text>
             <Text style={styles.corrSub}>
               {last ? `Barcode: ${last}` : "Update the nutrition data for this product"}

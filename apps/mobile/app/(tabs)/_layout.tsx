@@ -8,6 +8,7 @@ import { Calendar, BookOpen, Utensils, BarChart3 } from 'lucide-react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { SupprTabBar } from '@/components/tabs/SupprTabBar';
+import { tabBarOuterHeight } from '@/hooks/useTabBarClearance';
 import { useAuth } from '@/context/auth';
 import { useAccent } from '@/context/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -109,6 +110,13 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      // ENG-1247 — set the tab scene container background to the app page colour
+      // directly (not only via the nav theme). The nav theme background applies
+      // at scene MOUNT and doesn't refresh on hot reload; the v7
+      // `screenOptions.sceneStyle` (below) re-renders, so the bar-zone background
+      // stays the page colour (not the RN default grey) without a full process
+      // restart. Fixes the grey "block" behind the floating pill. (v7 renamed
+      // the old top-level `sceneContainerStyle` prop → `screenOptions.sceneStyle`.)
       // 2026-04-30 (customer-lens): centered raised Log button replaces
       // the side `<LogFab>`. The custom `<SupprTabBar>` renders the
       // four primary tabs PLUS a 5th visual element (raised Plus
@@ -118,19 +126,44 @@ export default function TabLayout() {
       // Today consumes the param to open the canonical `<LogSheet>`.
       tabBar={(props) => <SupprTabBar {...props} />}
       screenOptions={{
+        // v7 home for the page-colour scene background (was the top-level
+        // `sceneContainerStyle` prop, removed in react-navigation 7).
+        sceneStyle: { backgroundColor: colors.background },
         tabBarActiveTintColor: accent.primary,
         tabBarInactiveTintColor: colors.tabIconDefault,
+        // ENG-1247 — kill the default tab-bar BACKGROUND layer. On iOS,
+        // react-navigation/expo-router renders a translucent system material
+        // behind the bar; it's a SEPARATE layer from `tabBarStyle.backgroundColor`
+        // (so `backgroundColor:'transparent'` does NOT remove it). It was the
+        // full-width grey "block" behind our floating pill — surviving every
+        // SupprTabBar change because it isn't ours. `() => null` removes it so the
+        // pill floats over the page cleanly.
+        tabBarBackground: () => null,
         // The custom tab bar reads its own height/padding from
         // `useSafeAreaInsets`, but we keep these here as defensive
         // defaults in case any nested screen re-instantiates the
         // stock bar.
+        // ENG-1247 — overlay positioning lives on `<SupprTabBar>` itself because
+        // custom `tabBar` bypasses react-navigation's BottomTabBar (so these
+        // styles are NOT applied to our renderer — kept here only for
+        // `getTabBarHeight()` / layout math).
         tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 56 + Math.max(insets.bottom, 8),
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 8,
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'transparent',
+          elevation: 0,
+          shadowOpacity: 0,
+          shadowRadius: 0,
+          shadowOffset: { width: 0, height: 0 },
+          borderTopWidth: 0,
+          // Floating rounded pill (v3 `.tabbar` L1697): `SupprTabBar` insets/lifts
+          // the pill inside this height; leave no padding here (the pill owns its
+          // own inset/padding).
+          height: tabBarOuterHeight(insets.bottom),
+          paddingBottom: 0,
+          paddingTop: 0,
         },
         tabBarLabelStyle: {
           fontSize: 10,

@@ -7,6 +7,7 @@ import { Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { NUTRITION_SOURCES } from "@suppr/shared/landing/nutritionSources";
 
 /**
@@ -90,7 +91,7 @@ export default function NutritionSourcesScreen() {
         intro: { fontSize: 14, lineHeight: 22, color: colors.textSecondary },
         card: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.lg,
+          borderRadius: CARD_RADIUS,
           borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: colors.border,
           padding: Spacing.lg,

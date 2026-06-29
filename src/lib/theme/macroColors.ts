@@ -44,6 +44,20 @@ export const MACRO_COLOR_VARS = {
   water: "var(--macro-water)",
 } as const;
 
+/** AA-safe text colours for macro values on light card/white surfaces (ENG-1109).
+ *  Icons and progress fills keep {@link MACRO_COLOR_VARS}; tier-v1 value ink uses
+ *  `-solid` where the fill hue fails 4.5:1 on white. */
+export const MACRO_TEXT_COLOR_VARS = {
+  calories: "var(--macro-calories)",
+  protein: "var(--macro-protein-solid)",
+  carbs: "var(--macro-carbs-solid)",
+  fat: "var(--macro-fat-solid)",
+  fiber: "var(--macro-fiber-solid)",
+  sugar: "var(--macro-sugar)",
+  sodium: "var(--macro-sodium)",
+  water: "var(--macro-water)",
+} as const;
+
 export type MacroColorKey = keyof typeof MACRO_COLORS_LIGHT;
 
 /** Resolve a tracked-macro key to its canonical CSS variable. */
@@ -52,4 +66,12 @@ export function macroColorVarFor(key: string): string {
     return MACRO_COLOR_VARS[key as MacroColorKey];
   }
   return MACRO_COLOR_VARS.protein;
+}
+
+/** AA-safe value ink for tier-v1 macro tiles (Storybook a11y + ENG-1109). */
+export function macroTextColorVarFor(key: string): string {
+  if (key in MACRO_TEXT_COLOR_VARS) {
+    return MACRO_TEXT_COLOR_VARS[key as MacroColorKey];
+  }
+  return MACRO_TEXT_COLOR_VARS.protein;
 }

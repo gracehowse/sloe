@@ -3,6 +3,7 @@ import { Flame, Lock, UtensilsCrossed } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.dense,
-    borderRadius: Radius.xl,
+    borderRadius: CARD_RADIUS,
     borderWidth: 1,
     padding: Spacing.dense,
     marginTop: Spacing.sm,

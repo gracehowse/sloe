@@ -315,7 +315,7 @@ export function HouseholdCard() {
             re-pulls /household state. */}
         <ReceivedInvitesBanner onAccepted={load} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: t.accent + "18", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 28, height: 28, borderRadius: Radius.full, backgroundColor: t.accent + "18", alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="people-outline" size={14} color={t.accent} />
           </View>
           <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Household Meals</Text>
@@ -384,7 +384,7 @@ export function HouseholdCard() {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: t.accent + "18", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 28, height: 28, borderRadius: Radius.full, backgroundColor: t.accent + "18", alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="people-outline" size={14} color={t.accent} />
           </View>
           <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>{data.household.name}</Text>

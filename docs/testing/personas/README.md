@@ -37,11 +37,15 @@ structured findings.
 | [lazy-partial-logger](./lazy-partial-logger.md) | Logs breakfast, forgets the rest | 28 days incl. 7 partial + 3 empty | the real series that dragged adaptive TDEE to 1,314 |
 | [watch-athlete](./watch-athlete.md) | Apple Watch, trains 5×/week, high variable burn | 21 full days, 10 weigh-ins, high target | TDEE methodology survey (wearable cohort) |
 | [cold-start-newcomer](./cold-start-newcomer.md) | Brand-new account, no history, not onboarded | empty | first-impression / onboarding-completion KPI |
+| [data-rich-power-user](./data-rich-power-user.md) | Maxed-out everything account for manual + visual testing | 27 full days + a partial today, 22 weigh-ins, 16 imported recipes | the everything-populated state (ENG-1247) |
 
-Each file is the **input** a persona-session agent reads. The roster is
-deliberately small and high-contrast — five users who stress five different
-surfaces (complete-diary trust, recipe→plan loop, sparse-data trust, activity
-responsiveness, empty-state).
+The first five are **input** files a persona-session agent reads — a
+deliberately small, high-contrast set stressing five surfaces (complete-diary
+trust, recipe→plan loop, sparse-data trust, activity responsiveness,
+empty-state). The sixth, **data-rich-power-user**, is not a behavioural session
+persona: it's a kitchen-sink account that maxes every dimension at once, for
+eyeballing the everything-populated state on web + sim (Grace's standing
+test account).
 
 ## How a session runs (the loop)
 

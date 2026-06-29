@@ -37,9 +37,8 @@ import type { LoggedMeal, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { fetchPlannedMealMicros, type SupabaseLike } from "../../lib/planning/plannedMealMicros.ts";
 import {
-  firstNameFromMetadata,
-  todayGreeting,
-  todayLongDateSubline,
+  todayDayName,
+  todayShortDate,
   todayPastDayGreetingLines,
 } from "../../lib/copy/today.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
@@ -126,7 +125,13 @@ import {
 } from "./MacroDetailPanel";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
+import { TodayRecentsRow } from "./suppr/today-recents-row";
 import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
+import { ShareCommunityDialog } from "./suppr/ShareCommunityDialog";
+import {
+  submitFoodCorrection,
+  type FoodCorrectionInput,
+} from "../../lib/foodCorrection/submitFoodCorrection";
 import { EditMealDialog } from "./suppr/edit-meal-dialog";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
@@ -352,6 +357,10 @@ export const NutritionTracker = memo(function NutritionTracker({
   // screen mode.
   const [slotNutritionTarget, setSlotNutritionTarget] = useState<string | null>(null);
   const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
+  // ENG-1247 — community-contribution opt-in: set after a not-found barcode is
+  // saved as a private custom food (when `barcode_community_contribution` is on)
+  // to open the share dialog. null = closed.
+  const [shareCommunityInput, setShareCommunityInput] = useState<FoodCorrectionInput | null>(null);
   const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
   // ENG-751 — persisted AI/photo/voice per-item snapshot rows for the open
   // day's entries. Gated by the display flag; flag-OFF leaves this empty so the
@@ -385,6 +394,19 @@ export const NutritionTracker = memo(function NutritionTracker({
       setMacroDetailTarget(macro);
     }
   }, [macroDetailFlagEnabled]);
+
+  // ENG-1247 — `.md-totalgrid` cell tap: close the dialog, open macro-detail.
+  // Undefined when the panel is off → cells render static (no dead tap, ENG-848).
+  const macroTapFromDialog = useCallback(
+    (closeDialog: () => void) =>
+      macroDetailFlagEnabled
+        ? (macro: string) => {
+            closeDialog();
+            openMacroDetail(macro);
+          }
+        : undefined,
+    [macroDetailFlagEnabled, openMacroDetail],
+  );
 
   const macroDetailMeals = useMemo<MacroMeal[]>(
     () =>
@@ -762,7 +784,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   // renders when `profiles.fasting_window != null` (Grace, 2026-05-07).
   const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const calendarInputRef = useRef<HTMLInputElement>(null);
-  const { authedUserId, authUserCreatedAt, authUserMetadata } = useAuthSession();
+  const { authedUserId, authUserCreatedAt } = useAuthSession();
   // ENG-805 — in-feed banner dismissal (web parity with mobile AsyncStorage gate).
   const [checkinBannerDismissed, setCheckinBannerDismissed] = useState<boolean | null>(
     null,
@@ -2571,23 +2593,15 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   const avatarLetter = (profileDisplayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U").toUpperCase();
 
-  // Today greeting name — read from the auth user's `user_metadata`
-  // (`full_name`, set by the "Your name" Settings field) via the shared
-  // `firstNameFromMetadata`, matching mobile's name-extraction precedence.
-  // We deliberately read auth metadata, NOT `profileDisplayName` (the
-  // `profiles.display_name` editor's domain), so the single canonical
-  // source is the one the Settings "Your name" field writes — set it on
-  // either platform and the greeting personalises on both.
-  //
-  const greetingName = firstNameFromMetadata(authUserMetadata) ?? null;
-  const hour = new Date().getHours();
-  const sloceHeroGreeting =
-    selectedDateKey === todayKey()
-      ? {
-          headline: todayGreeting(hour, greetingName),
-          subline: todayLongDateSubline(selectedDate),
-        }
-      : todayPastDayGreetingLines(selectedDate);
+  // v3 serif date hero (ENG-1247, 2026-06-24): the hero is the DATE (day name +
+  // short date), not a time-of-day greeting — so no name/hour derivation.
+  const isTodayHero = selectedDateKey === todayKey();
+  const sloceHeroGreeting = isTodayHero
+    ? {
+        headline: todayDayName(selectedDate),
+        subline: todayShortDate(selectedDate),
+      }
+    : todayPastDayGreetingLines(selectedDate);
 
   if (!nutritionJournalHydrated) {
     return <TodayLoadingSkeleton />;
@@ -2662,25 +2676,34 @@ export const NutritionTracker = memo(function NutritionTracker({
           }
         >
       {viewMode === "day" ? (
-        // Fresh-eyes §4 (web parity 2026-06-10, ENG-1022): the centred two-line
-        // serif greeting block spent ~25% of the header viewport on a non-action
-        // moment. Compacted to ONE left-aligned sans context line
-        // (greeting · date) — parity with mobile `today-hero-greeting`
-        // (apps/mobile/app/(tabs)/index.tsx). The ring number is the page's
-        // display moment now, not the greeting.
-        <p data-testid="today-hero-greeting" className="mt-1 text-sm">
-          <span className="font-semibold text-foreground">
-            {sloceHeroGreeting.headline}
-          </span>
-          {sloceHeroGreeting.subline ? (
-            <span
-              data-testid="today-hero-greeting-subline"
-              className="text-foreground-secondary"
-            >
-              {"  ·  " + sloceHeroGreeting.subline}
-            </span>
+        // v3 serif date hero (ENG-1247, prototype `.t-greet`): eyebrow rule +
+        // Newsreader day name + date subline (parity with mobile). The "DAY N"
+        // chip is omitted (mock, no honest source); the eyebrow hides on a past
+        // day (the serif slot shows the date instead).
+        <div className="mt-1">
+          {isTodayHero ? (
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+                Today
+              </span>
+              <span className="flex-1 h-px bg-border" />
+            </div>
           ) : null}
-        </p>
+          <p
+            data-testid="today-hero-greeting"
+            className="font-[family-name:var(--font-headline)] text-[36px] font-medium leading-[1.1] tracking-tight text-foreground"
+          >
+            {sloceHeroGreeting.headline}
+          </p>
+          {sloceHeroGreeting.subline ? (
+            <p
+              data-testid="today-hero-greeting-subline"
+              className="mt-1 text-[13px] text-foreground-tertiary"
+            >
+              {sloceHeroGreeting.subline}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <TodayDateHeader
@@ -2932,15 +2955,18 @@ export const NutritionTracker = memo(function NutritionTracker({
           point — matches the spec at
           docs/specs/2026-04-27-b4-today-screen-phase3.md and is
           revertable in 1 PostHog click without a deploy. */}
-      {/* Phase 2 / B1.2 (D-2026-04-27-15) — TodayQuickLogStrip
-          removed from Today's composition root. The canonical
-          logging-entry affordance is now the centered raised Plus
-          button in the mobile-web `<nav>` (App.tsx), which opens the
-          unified `<LogSheet>` via the `?openLog=1` URL param consumer
-          above (mirrors mobile `<SupprTabBar>` + `<LogTabBarButton>`,
-          commit `6633d2d`). The strip component file stays in the
-          tree for reference and tests but no production caller
-          renders it on Today. */}
+      {/* Quick add recents one-tap re-log chips (ENG-1247, v3 `.quickrow`) —
+          after macros; re-log via logHistoryItem; flag-gated. Replaces the dead
+          TodayQuickLogStrip (deleted — never rendered on Today; the method-
+          launchers live in the LogSheet, reached via "All" + the raised Plus
+          button). Web twin of mobile `TodayRecentsRow`. */}
+      {isFeatureEnabled("today_quickadd_recents_v3") ? (
+        <TodayRecentsRow
+          recents={computeRecentMeals(nutritionByDay, 50)}
+          onReLog={(item) => logHistoryItem(item, mealSlot)}
+          onOpenAll={() => setLogSheetOpen(true)}
+        />
+      ) : null}
 
       {/* TodayStreakInsightCard removed 2026-04-20 (Grace's call per
           Today alignment pass). Mobile removed same commit. Streak
@@ -3627,12 +3653,39 @@ export const NutritionTracker = memo(function NutritionTracker({
               /* analytics noop */
             }
             toast.success("Custom food saved. Scan again to log it.");
+            // ENG-1247 — offer the community-contribution opt-in (flag-gated,
+            // barcode only). The private custom food is already saved above; this
+            // is the explicit, separate opt-in to ALSO share it to user_foods.
+            if (isFeatureEnabled("barcode_community_contribution") && payload.barcode) {
+              setShareCommunityInput({
+                barcode: payload.barcode,
+                name: payload.name,
+                calories: payload.calories,
+                protein: payload.protein,
+                carbs: payload.carbs,
+                fat: payload.fat,
+                fiberG: payload.fiber,
+                sugarG: payload.sugarG,
+                sodiumMg: payload.sodiumMg,
+                saturatedFatG: payload.saturatedFatG,
+                servingSizeG: payload.baseGrams,
+              });
+            }
           } catch (err) {
             toast.error(
               err instanceof Error ? err.message : "Couldn't save custom food",
             );
           }
         }}
+      />
+
+      {/* ENG-1247 — community-contribution opt-in, opened after a not-found
+          barcode is saved as a custom food (flag-gated). Writes to user_foods
+          via the web submitFoodCorrection with the authed client + RLS. */}
+      <ShareCommunityDialog
+        input={shareCommunityInput}
+        onShare={(input) => submitFoodCorrection(supabase, authedUserId ?? "", input)}
+        onClose={() => setShareCommunityInput(null)}
       />
 
       {/* Batch 5.13 — Voice log (Pro). Shared review/edit flow. */}
@@ -3715,6 +3768,7 @@ export const NutritionTracker = memo(function NutritionTracker({
                 }
               : undefined
           }
+          onMacroTap={macroTapFromDialog(() => setMealNutritionTargetId(null))}
         />
       )}
 
@@ -3738,6 +3792,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           }
           open={slotNutritionTarget != null}
           onClose={() => setSlotNutritionTarget(null)}
+          onMacroTap={macroTapFromDialog(() => setSlotNutritionTarget(null))}
         />
       )}
 

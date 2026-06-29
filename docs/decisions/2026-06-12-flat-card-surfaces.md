@@ -1,7 +1,11 @@
 # Flat-card surfaces (Withings grammar)
 
+> ⚠️ **SUPERSEDED 2026-06-25** by [`2026-06-25-v3-card-lift-reversal.md`](./2026-06-25-v3-card-lift-reversal.md).
+> The v3 prototype (now canonical) floats page-ground cards on a soft shadow;
+> the flat-slab grammar below is historical. Macro tiles + insets stay flat.
+
 **Date:** 2026-06-12
-**Status:** Resolved — **Grace approved the red-line 2026-06-12** ("go for the flat cards")
+**Status:** Superseded by the 2026-06-25 v3 card-lift reversal (was: Resolved — Grace approved the red-line 2026-06-12 "go for the flat cards")
 **Area:** Design system — card elevation, both platforms
 **Supersedes:** the soft-lift half of `docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md` (ENG-1005). The 2026-06-09 cream-ground/white-card material inversion **stays**.
 **Linear:** ENG-1078 (implementation guide on the issue) · converges with TF57 F-160/F-166/F-176/F-177 (ENG-1064/1065 residuals)

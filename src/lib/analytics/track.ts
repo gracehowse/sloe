@@ -284,6 +284,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // no-photo cards + Collections). Default-on; off → the legacy feed without
   // those sections (kill switch). Mobile + web.
   "sloe_v3_discover_editorial",
+  // ENG-1225 #14 — the v3 Discover creator plane (creator rail + web featured
+  // hero + mobile Following feed). RAMPED ON 2026-06-24 (ENG-1247, Grace's
+  // call); self-hides when the `creators` table is empty (seed fallback
+  // pre-launch), so it is safe on. Off → the legacy feed (kill switch). M+W.
+  "discover_creator_rail_v1",
   // ENG-1225 flag-collapse sweep (2026-06-22, "turn everything on") — the v3
   // Progress refinements that were built but dark-by-default. Each default-on
   // now; off → the respective legacy path (kill switch).
@@ -360,6 +365,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   web this also adds the REAL Log-to-today CTA (web had only a fake "Marked as
  *   made!" toast before). OFF → the current title-below + Cook/Log/Edit pill row.
  *   Keep in sync with mobile. Mirror surfaces: `RecipeDetail.tsx` / `recipe/[id].tsx`.
+ * - `today_hero_decard_v3` (ENG-1247) — Today calorie hero de-card. ON → bare
+ *   centered hero + status line below the ring; OFF → carded hero. Mobile twin:
+ *   same flag in `apps/mobile/lib/analytics.ts`.
+ * - `today_quickadd_recents_v3` (ENG-1247) — Today quick-add recents chips.
+ *   ON → recents row after macros; OFF → no row. Mobile twin: same flag in
+ *   apps/mobile/lib/analytics.ts.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "landing_hero_hybrid_v1",
@@ -368,6 +379,8 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "discover_creator_rail_v1",
   "loghub_quick_actions_v1",
   "recipe_detail_v3_conformance",
+  "today_hero_decard_v3",
+  "today_quickadd_recents_v3",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

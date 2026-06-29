@@ -422,6 +422,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // no-photo cards + Collections) above the cuisine clusters. Default-on; off →
   // the legacy feed without those sections (kill switch). Keep in sync w/ web.
   "sloe_v3_discover_editorial",
+  // ENG-1225 #14 — the v3 Discover creator plane (creator rail + Following
+  // feed; web twin adds the featured hero). RAMPED ON 2026-06-24 (ENG-1247,
+  // Grace's call); self-hides when the `creators` table is empty (seed fallback
+  // pre-launch), so it is safe on. Off → the legacy feed (kill switch). M+W.
+  "discover_creator_rail_v1",
   // ENG-1225 flag-collapse sweep (2026-06-22) — the v3 cook-mode baseline.
   // Built (ENG-944/946/947/948/949) but dark-by-default until this sweep; the
   // audit's launch-blocker #4. On-device SEE found a swipe-surface render bug
@@ -479,12 +484,19 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   sticky CTA bar (yield stepper · Cook Mode outline · Log filled primary).
  *   OFF → the current title-below + action-pill-Log + Cook-Mode-only footer.
  *   Keep in sync with web.
+ * - `today_hero_decard_v3` (ENG-1247) — Today calorie hero de-card. ON → bare
+ *   centered hero + status line below the ring; OFF → carded hero. Web twin:
+ *   same flag in `src/lib/analytics/track.ts`.
+ * - `today_quickadd_recents_v3` (ENG-1247) — Today quick-add recents chips.
+ *   ON → recents row after macros; OFF → no row. Web twin: same flag in track.ts.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "nutrition_entry_ingredients_v1",
   "discover_creator_rail_v1",
   "loghub_quick_actions_v1",
   "recipe_detail_v3_conformance",
+  "today_hero_decard_v3",
+  "today_quickadd_recents_v3",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

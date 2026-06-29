@@ -14,6 +14,7 @@ import { formatNutritionSourceLabel } from "@/lib/sourceLabel";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
 import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { MacroTotalGrid, type MacroTotalCell } from "@/components/meal/MacroTotalGrid";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
@@ -199,20 +200,15 @@ export default function MealNutritionScreen() {
   }, [load]);
 
   const fiberDisplay = meal ? mealContributedFiberG(meal) : 0;
-  // Audit 2026-05-05 (Grace): Fiber moved from the macro-summary card
-  // extras row into the "Vitamins, minerals & more" table where it
-  // belongs alongside the rest of the per-entry breakdown. Inject the
-  // resolved fiber value into the micros payload so the shared helper
-  // surfaces it as the first row (`MICRO_LINES` puts `fiberG` first).
-  // Falls back to "—" when zero, same as every other curated row.
-  const microRows = useMemo(
-    () =>
-      listMicroNutrientsCompleteDisplay({
-        ...(meal?.micros ?? {}),
-        fiberG: fiberDisplay > 0 ? fiberDisplay : (meal?.micros?.fiberG ?? 0),
-      }),
-    [meal?.micros, fiberDisplay],
-  );
+  // ENG-1247 (v3 `.md-totalgrid`): Fibre now leads the 4-cell macro grid above
+  // (real `mealContributedFiberG`, not the prototype's `carbs × 0.13` guess), so
+  // it no longer belongs in the "Vitamins, minerals & more" table — strip
+  // `fiberG` here so it is never shown twice. The grid is its single home.
+  const microRows = useMemo(() => {
+    const micros = { ...(meal?.micros ?? {}) };
+    delete micros.fiberG;
+    return listMicroNutrientsCompleteDisplay(micros);
+  }, [meal?.micros]);
   const split = useMemo(
     () => (meal ? macroCalorieSplit(meal) : { proteinPct: 0, carbsPct: 0, fatPct: 0, proteinKcal: 0, carbsKcal: 0, fatKcal: 0 }),
     [meal],
@@ -234,6 +230,19 @@ export default function MealNutritionScreen() {
         : ({ state: "empty" } as const),
     [meal],
   );
+
+  // v3 `.md-totalgrid` cells — Protein / Carbs / Fat / Fibre. Fibre is REAL
+  // (`fiberDisplay`), never the prototype's `carbs × 0.13` guess. Tapping a cell
+  // opens that macro's day breakdown (`/macro-detail`, date below).
+  const navDateKey = dateKey || dateFromParams || dateKeyFromDate(new Date());
+  const macroCells: MacroTotalCell[] = meal
+    ? [
+        { key: "protein", label: "Protein", grams: meal.protein, color: mc.protein },
+        { key: "carbs", label: "Carbs", grams: meal.carbs, color: mc.carbs },
+        { key: "fat", label: "Fat", grams: meal.fat, color: mc.fat },
+        { key: "fiber", label: "Fibre", grams: fiberDisplay, color: mc.fiber },
+      ]
+    : [];
 
   const openEditOnToday = useCallback(() => {
     if (!meal || !dateKey || meal.id === "__slot_aggregate__") return;
@@ -542,11 +551,7 @@ export default function MealNutritionScreen() {
             <Text style={[styles.incompleteMacroCopy, { color: colors.textSecondary }]}>
               {macroSplitIncompleteCopy(splitConfidence.presentMacro)}
             </Text>
-            <View style={styles.macroGrid}>
-              <MacroStat label="Protein" grams={meal.protein} pct={null} color={mc.protein} textColor={colors.text} />
-              <MacroStat label="Carbs" grams={meal.carbs} pct={null} color={mc.carbs} textColor={colors.text} />
-              <MacroStat label="Fat" grams={meal.fat} pct={null} color={mc.fat} textColor={colors.text} />
-            </View>
+            <MacroTotalGrid cells={macroCells} dateKey={navDateKey} />
           </View>
         ) : (
           <>
@@ -562,11 +567,7 @@ export default function MealNutritionScreen() {
               )}
             </View>
 
-            <View style={styles.macroGrid}>
-              <MacroStat label="Protein" grams={meal.protein} pct={split.proteinPct} color={mc.protein} textColor={colors.text} />
-              <MacroStat label="Carbs" grams={meal.carbs} pct={split.carbsPct} color={mc.carbs} textColor={colors.text} />
-              <MacroStat label="Fat" grams={meal.fat} pct={split.fatPct} color={mc.fat} textColor={colors.text} />
-            </View>
+            <MacroTotalGrid cells={macroCells} dateKey={navDateKey} />
           </>
         )}
 
@@ -650,40 +651,6 @@ export default function MealNutritionScreen() {
   );
 }
 
-function MacroStat({
-  label,
-  grams,
-  pct,
-  color,
-  textColor,
-}: {
-  label: string;
-  grams: number;
-  /** F-82 — `null` suppresses the "X% of macro calories" line for incomplete-data rows. */
-  pct: number | null;
-  color: string;
-  textColor: string;
-}) {
-  const colors = useThemeColors();
-  return (
-    <View style={styles.macroCell}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-        <Text style={{ fontSize: 13, fontWeight: "600", color: textColor }}>{label}</Text>
-      </View>
-      <Text style={{ fontSize: 15, fontWeight: "700", color: textColor, marginTop: 4 }}>{Math.round(grams * 10) / 10}g</Text>
-      {pct != null ? (
-        // e2e walk 2026-06-10: "{pct}% of kcal" is a neutral share-of-energy
-        // stat, so it reads in `textSecondary` — NOT the macro hue. The Fat
-        // macro hue is amber (`MacroColors.fat`), so painting this caption in
-        // `color` made a neutral stat read as the over-budget signal. The macro
-        // hue stays on the dot + grams; the caption is informational text.
-        <Text style={{ fontSize: 12, color: colors.textSecondary }}>{pct}% of kcal</Text>
-      ) : null}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   // Error / empty screens: the in-screen `PushScreenHeader` sits at the top,
@@ -702,8 +669,6 @@ const styles = StyleSheet.create({
   kcal: { fontFamily: FontFamily.serifRegular, fontSize: 28, fontVariant: ["tabular-nums"], marginBottom: Spacing.md },
   macroBar: { flexDirection: "row", height: 10, borderRadius: 5, overflow: "hidden", marginBottom: Spacing.md },
   macroSeg: { minWidth: 2 },
-  macroGrid: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
-  macroCell: { flex: 1 },
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
   sectionSub: { fontSize: 12, lineHeight: 17, marginBottom: Spacing.sm },
   microRow: {

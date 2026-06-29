@@ -221,7 +221,7 @@ export function AppleHealthCard({
           >
             <div className="flex items-center gap-[10px] min-w-0">
               <span
-                className={`inline-flex items-center justify-center size-7 rounded-lg ${row.iconClass}`}
+                className={`inline-flex items-center justify-center size-7 rounded-full ${row.iconClass}`}
                 aria-hidden
               >
                 {row.icon}

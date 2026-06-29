@@ -32,7 +32,6 @@ const MEALS = read("src/app/components/suppr/today-meals-section.tsx");
 const NORTH_STAR = read("src/app/components/suppr/north-star-block.tsx");
 const HYDRATION = read("src/app/components/suppr/hydration-stimulants-card.tsx");
 const MACRO_TILES = read("src/app/components/suppr/today-dashboard-macro-tiles.tsx");
-const QUICK_LOG = read("src/app/components/suppr/today-quick-log-strip.tsx");
 const RIGHT_RAIL = read("src/app/components/suppr/today-desktop-right-rail.tsx");
 
 const IMPORT = 'import { SupprCard } from "../ui/suppr-card.tsx"';
@@ -121,9 +120,13 @@ describe("Today elevation — north star + macro tiles + hydration all soft", ()
     expect(HYDRATION).not.toContain(CARD_SLAB_FLAT);
   });
 
-  it("macro tiles lift soft (card-slab)", () => {
-    expect(MACRO_TILES).toContain("card-slab ");
-    expect(MACRO_TILES).not.toContain(CARD_SLAB_FLAT);
+  it("macro tiles are a hairline grid, NOT a lifted card (Grace 2026-06-25)", () => {
+    // The tiles variant conformed to the prototype's `.mtile`: a hairline-
+    // divided grid (no card fill, no lift) — top border on the grid, bottom
+    // border each cell. Supersedes the card-slab tile.
+    expect(MACRO_TILES).toContain("border-t border-border");
+    expect(MACRO_TILES).toContain("border-b border-border");
+    expect(MACRO_TILES).not.toContain("card-slab ");
   });
 });
 
@@ -144,15 +147,15 @@ describe("Today card fill — Sloe v3 white-ground elevation model", () => {
 });
 
 describe("Today card shape — 24px rounded-card on web", () => {
-  it("macro tiles use rounded-card (not 14px)", () => {
-    expect(MACRO_TILES).toContain("rounded-card");
+  it("macro tiles render as a borderless 2-col hairline grid (Grace 2026-06-25)", () => {
+    // The tile grid conformed to the prototype `.mtiles`: a 2-col grid divided
+    // by hairlines, no rounded card on the cells, no 14px tile.
+    expect(MACRO_TILES).toContain("grid grid-cols-2 border-t border-border");
     expect(MACRO_TILES).not.toContain("rounded-[14px]");
   });
 
-  it("quick-log chips use rounded-card (not rounded-xl)", () => {
-    expect(QUICK_LOG).toContain("rounded-card");
-    expect(QUICK_LOG).not.toMatch(/rounded-xl\s+bg-card/);
-  });
+  // quick-log chip radius test removed (ENG-1247): the TodayQuickLogStrip was
+  // dead code (never rendered) and is deleted; replaced by TodayRecentsRow.
 
   it("desktop right-rail slabs use rounded-card (not rounded-2xl)", () => {
     expect(RIGHT_RAIL).toContain("rounded-card");

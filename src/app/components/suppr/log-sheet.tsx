@@ -668,7 +668,7 @@ function LoggedConfirmation({
           card sits FLAT on the sheet ground — the retired soft lift
           (`--elev-card-soft`) and the hairline are both dropped; the card fill
           is the separation, matching `.card-slab`. */}
-      <div className="mt-4 flex w-full items-center gap-3 rounded-xl bg-card px-4 py-3 text-left">
+      <div className="mt-4 flex w-full items-center gap-3 rounded-[var(--radius-card-lg)] bg-card px-4 py-3 text-left">
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold text-foreground">{title}</p>
           <div className="mt-1 flex items-center gap-1.5">

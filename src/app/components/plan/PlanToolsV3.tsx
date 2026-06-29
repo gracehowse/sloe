@@ -44,7 +44,7 @@ export function PlanToolsV3({
         }}
       >
         <span
-          className="flex size-11 shrink-0 items-center justify-center rounded-lg"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: "var(--accent-primary-soft)" }}
         >
           <ShoppingCart

@@ -230,16 +230,20 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     // greeting; the week strip (rendered via <TodayDateHeader
     // stripOnly>) owns day-selection. Pin both halves so a future
     // sweep can't silently revert to the chevron date-nav header.
-    expect(indexSrc).toContain(
+    // The header row (wordmark + notifications bell + avatar) was extracted to
+    // <TodayHeaderBar> (ENG-1247 — added the bell + closed the web parity gap);
+    // the host renders it, and the header details live there now.
+    expect(indexSrc).toMatch(/<TodayHeaderBar\s/);
+    const headerSrc = fs.readFileSync(
+      path.resolve(__dirname, "../../components/today/TodayHeaderBar.tsx"),
+      "utf-8",
+    );
+    expect(headerSrc).toContain(
       'import { GradientAvatar } from "@/components/GradientAvatar"',
     );
-    // The wordmark text + its testID.
-    expect(indexSrc).toMatch(/testID="today-wordmark"/);
-    expect(indexSrc).toContain("SloeHeaderWordmark");
-    // The avatar in the wordmark header routes to Settings.
-    expect(indexSrc).toMatch(
-      /gradientIdSuffix="today-wordmark-header"/,
-    );
+    expect(headerSrc).toMatch(/testID="today-wordmark"/);
+    expect(headerSrc).toContain("SloeHeaderWordmark");
+    expect(headerSrc).toMatch(/gradientIdSuffix="today-wordmark-header"/);
     // The date header is now stripOnly (week strip only).
     expect(indexSrc).toMatch(/<TodayDateHeader\s+stripOnly/);
   });

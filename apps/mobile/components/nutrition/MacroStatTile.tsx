@@ -10,7 +10,6 @@ import {
   type MacroStatCaptionTone,
 } from "@suppr/nutrition-core/macroStatCaption";
 import { formatMacro } from "@suppr/nutrition-core/formatMacro";
-import { SupprCard } from "@/components/ui/SupprCard";
 
 export interface MacroStatTileProps {
   macroKey: string;
@@ -108,109 +107,89 @@ export function MacroStatTile({
       : textTertiaryColor;
   const valueWeight: "500" | "600" = overSignal ? "600" : "500";
 
+  // Proto `.mtile` cell (Grace 2026-06-25 full conform): NO card — a hairline-
+  // divided grid cell. Top row = colored icon (left) + value/goal + label; a
+  // full-width COLORED progress bar below. The dividing borders + the cell's
+  // horizontal padding come from the grid wrapper (`style`, from
+  // TodayDashboardMacroTiles); this owns the vertical padding + content.
   const body = (
-    <SupprCard
-      lift="flat"
-      size="tile"
-      padding="md"
-      innerStyle={{
-        // ENG-1198: tier-V1 content is ~48pt (label row + value row) but the
-        // tile reserved 64pt with flex-start, leaving ~16pt of dead white under
-        // the value. Dropped 64 → 56 so the tile hugs its content. The
-        // non-tierV1 96 keeps the bar + caption rows and is unchanged.
-        minHeight: tierV1 ? 56 : 96,
-        justifyContent: tierV1 ? "flex-start" : "space-between",
-        gap: tierV1 ? Spacing.sm : 0,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: Spacing.sm,
-        }}
-      >
-        <Text
-          style={{
-            ...Type.caption,
-            fontSize: 12,
-            lineHeight: 16,
-            fontWeight: "500",
-            color: textSecondaryColor,
-          }}
-        >
-          {label}
-        </Text>
+    <View style={{ paddingVertical: 14 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}>
         <Icon size={18} color={color} strokeWidth={1.75} />
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
-        <Text
-          style={{
-            ...(tierV1 ? Type.heroValue : Type.title),
-            ...(tierV1 ? {} : { fontSize: 20, lineHeight: 24 }),
-            color: valueColor,
-            ...(tierV1 ? { fontWeight: valueWeight } : {}),
-            fontVariant: ["tabular-nums"],
-          }}
-          numberOfLines={1}
-        >
-          {value}
-          <Text style={{ ...Type.body, fontSize: 14, color: textSecondaryColor }}>
-            {unit === "g" ? "g" : ` ${unit}`}
-          </Text>
-        </Text>
-        <Text
-          style={{ ...Type.caption, flexShrink: 1, color: textTertiaryColor }}
-          numberOfLines={1}
-        >
-          / {target}
-          {unit === "g" ? "g" : ` ${unit}`}
-        </Text>
-      </View>
-      {/* ENG-1099: tier tile drops the bar + caption — the value colour
-          carries the over/under signal (recipe-strip pattern). Flag-off keeps
-          the pre-ENG-1099 bar + caption. */}
-      {tierV1 ? null : (
-        <>
-          <View
-            testID={`today-macro-tile-bar-${macroKey}`}
-            style={{
-              height: 4,
-              borderRadius: Radius.full,
-              backgroundColor: barTrackColor,
-              overflow: "hidden",
-              marginTop: Spacing.sm,
-            }}
-          >
-            <View
-              style={{
-                height: "100%",
-                width: `${pct}%`,
-                borderRadius: Radius.full,
-                backgroundColor: color,
-                opacity: referenceOnly ? 0.45 : 1,
-              }}
-            />
-          </View>
+        <View style={{ flex: 1 }}>
           <Text
-            testID={`today-macro-tile-caption-${macroKey}`}
             style={{
-              ...Type.caption,
-              fontSize: 11,
-              lineHeight: 14,
-              color: captionColor,
-              marginTop: Spacing.xs,
-              minHeight: 14,
+              ...Type.title,
+              fontSize: 18,
+              lineHeight: 22,
+              color: valueColor,
+              fontWeight: valueWeight,
               fontVariant: ["tabular-nums"],
             }}
             numberOfLines={1}
           >
-            {captionText}
+            {value}
+            <Text style={{ ...Type.body, fontSize: 13, color: textTertiaryColor }}>
+              {" / "}
+              {target}
+              {unit === "g" ? "g" : ` ${unit}`}
+            </Text>
           </Text>
-        </>
+          <Text
+            style={{
+              ...Type.caption,
+              fontSize: 12,
+              lineHeight: 16,
+              color: textSecondaryColor,
+            }}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </View>
+      </View>
+      {/* Proto `.mtile-track`: the COLORED progress bar (colour + fill = the
+          macro's progress) — the prototype's defining tile element, full-width
+          under the icon+value row. Caption stays tier-gated (the proto tile has
+          no caption row). */}
+      <View
+        testID={`today-macro-tile-bar-${macroKey}`}
+        style={{
+          height: 4,
+          borderRadius: Radius.full,
+          backgroundColor: barTrackColor,
+          overflow: "hidden",
+          marginTop: 11,
+        }}
+      >
+        <View
+          style={{
+            height: "100%",
+            width: `${pct}%`,
+            borderRadius: Radius.full,
+            backgroundColor: color,
+            opacity: referenceOnly ? 0.45 : 1,
+          }}
+        />
+      </View>
+      {tierV1 ? null : (
+        <Text
+          testID={`today-macro-tile-caption-${macroKey}`}
+          style={{
+            ...Type.caption,
+            fontSize: 11,
+            lineHeight: 14,
+            color: captionColor,
+            marginTop: Spacing.xs,
+            minHeight: 14,
+            fontVariant: ["tabular-nums"],
+          }}
+          numberOfLines={1}
+        >
+          {captionText}
+        </Text>
       )}
-    </SupprCard>
+    </View>
   );
 
   if (!onPress) {

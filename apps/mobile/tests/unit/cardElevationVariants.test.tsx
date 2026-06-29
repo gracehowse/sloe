@@ -94,30 +94,31 @@ describe("useCardElevation — FLAT is the default", () => {
   });
 });
 
-describe("useCardElevation — SOFT is the opt-in for elevated cards", () => {
-  // The recipe-card surfaces (Discover, Library, recipe detail) pass
-  // FLAT-CARD SURFACES (Grace, 2026-06-12 — Withings grammar; decision:
-  // docs/decisions/2026-06-12-flat-card-surfaces.md). The soft lift is
-  // RETIRED: `variant: "soft"` is an accepted no-op in light, and in dark it
-  // keeps ONLY the tonal fill (no shadow, no hairline). These pins guard the
-  // new treatment so the lift can never silently return.
-  it("SOFT in LIGHT renders FLAT — zero shadow, zero border (flat-cards 2026-06-12)", () => {
+describe("useCardElevation — SOFT lifts page-ground cards (Sloe v3, ENG-1222 P2)", () => {
+  // Sloe v3 (2026-06-25) REVERSES the 2026-06-12 flat-card decision (superseded
+  // by docs/decisions/2026-06-25-v3-card-lift-reversal.md): page-ground resting
+  // cards LIFT off the white ground on the soft ambient shadow — a flat white
+  // card on a white page is invisible (Grace: "the cards not being raised as in
+  // the prototype"). `variant: "soft"` is now REAL in light (the ~39 surfaces
+  // that already opt in were silently rendering flat before this). Dark keeps
+  // the tonal fill (RN renders dark drop shadows poorly).
+  it("SOFT in LIGHT lifts on the cardSoft ambient shadow (no border)", () => {
     themeState.resolved = "light";
     const { result } = renderHook(() => useCardElevation({ variant: "soft" }));
-    // Separation is ground↔card contrast alone — the Withings grammar.
-    expect(result.current.shadowStyle).toBeUndefined();
+    // The lift IS the separation on white-on-white — no hairline (no double edge).
+    expect(result.current.shadowStyle).toBe(Elevation.cardSoft);
     expect(result.current.useBorder).toBe(false);
     expect(result.current.liftBg).toBeUndefined();
   });
 
-  it("FLAT treatment is NOT flag-gated (renders flags-cold)", () => {
+  it("SOFT lift is NOT flag-gated (lifts flags-cold)", () => {
     // No flag is mocked ON here — the global `@/lib/analytics` shim resolves
-    // every flag OFF / cold. Flat must STILL be returned: per Grace's standing
+    // every flag OFF / cold. The lift must STILL render: per Grace's standing
     // elevation directive ("turn everything on; never flag-gate again"), the
-    // treatment is unconditional — a cold flag can never resurrect the lift.
+    // treatment is unconditional — a cold flag can never suppress it.
     themeState.resolved = "light";
     const { result } = renderHook(() => useCardElevation({ variant: "soft" }));
-    expect(result.current.shadowStyle).toBeUndefined();
+    expect(result.current.shadowStyle).toBe(Elevation.cardSoft);
   });
 
   it("SOFT in DARK keeps ONLY the tonal fill — no shadow, no hairline (flat-cards)", () => {

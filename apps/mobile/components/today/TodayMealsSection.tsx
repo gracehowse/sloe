@@ -785,17 +785,11 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
   // flagged in the handoff, not silently resolved here.
   return (
     <View>
-      {/* Sloe TD4 · Meal log (Figma 481:2 / today-meallog.html) — the meals
-          list re-skin (Today re-skin unit 2, 2026-06-03). The pre-TD4 layout
-          was ONE outer card containing every slot, divided by hairlines. TD4
-          makes each slot its OWN card (warm-grey `card` surface, `line`
-          hairline border, rounded), so the slots read as four discrete
-          objects you can scan + act on independently — the MyFitnessPal /
-          Lifesum grammar the dossier benchmarks. The optional `Your usuals`
-          quick-add panel + `Duplicate day` row (both gated OFF on Today's
-          main scroll since 2026-05-23, props kept wired) keep their own
-          wrapper card above the slot cards so a future "logging section" can
-          still surface them. */}
+      {/* Meal log. Grace 2026-06-25 reverted TD4's per-slot cards back to the
+          prototype's ONE outer card with hairline-divided slots (the pre-TD4
+          `card--flush divide` layout). The optional `Your usuals` quick-add +
+          `Duplicate day` row keep their own wrapper card above (gated OFF on
+          Today's main scroll since 2026-05-23, props kept wired). */}
       {(showQuickAdd || (mealsTodayCount > 0 && showDuplicateDayInline)) && (
         // Card chrome is the shared <SupprCard> shell (fill, radius, soft lift on
         // an outer wrapper, corner-clip — the iOS clip fix lives in the shell, so
@@ -875,6 +869,9 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
           )}
         </SupprCard>
       )}
+      {/* Proto `card card--flush divide`: ONE raised outer card holding the meal
+          slots as divided rows (Grace 2026-06-25, reverses TD4 / ENG-1099). */}
+      <SupprCard lift="soft" padding="none" style={{ marginBottom: Spacing.sm }}>
       {slots.map((slot, slotIndex) => {
           const meals = mealGroups[slot] ?? [];
           const slotCals = Math.round(meals.reduce((a, m) => a + m.calories, 0));
@@ -916,15 +913,17 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                 // to separate them — the gap tightens to the pre-inversion rhythm
                 // (`Spacing.sm` 8, was `Spacing.dense` 12) so the four slots read as
                 // a tight grouped block, not floating slabs.
-                marginBottom: Spacing.sm,
-                // ENG-1092: empty slots read at full opacity once they carry an
-                // "Aim ~X kcal" purpose line (matches web); the 0.55 dim made
-                // empties look disabled. Flag-off keeps the legacy dim.
+                // Proto `.card--flush divide` (Grace 2026-06-25, reverses TD4 /
+                // ENG-1099): a divided ROW inside the outer card — hairline
+                // between slots, none after the last.
+                borderBottomWidth: slotIndex < slots.length - 1 ? StyleSheet.hairlineWidth : 0,
+                borderBottomColor: cardBorderColor + "60",
+                // ENG-1092: empties stay full-opacity once they carry an "Aim ~X kcal" line.
                 opacity: hasMeals || aimEmptyOn ? 1 : 0.55,
               }}
             >
-              {/* Per-slot card sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
-              <SupprCard lift={tierV1 ? "flat" : "soft"} padding="none">
+              {/* divided ROW (no per-slot card) inside the outer card */}
+              <View>
               <View
                 testID={`today-slot-header-${slot}`}
                 style={{
@@ -1530,10 +1529,11 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                   </TodayAddFoodPressable>
                 </View>
               )}
-              </SupprCard>
+              </View>
             </ReAnimated.View>
           );
       })}
+      </SupprCard>{/* /one outer meal-section card */}
 
       {/* Ship M1 — usual-meal picker for slots with 2+ matches.
           Audit P1 #12 (2026-04-30): show 3 by default + a "Show all"

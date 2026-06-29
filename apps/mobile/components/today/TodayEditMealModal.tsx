@@ -27,6 +27,7 @@ import {
   Spacing,
   Type,
 } from "@/constants/theme";
+import { MealEditMacroFields } from "@/components/today/MealEditMacroFields";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -214,13 +215,16 @@ function EditEntryV2(props: TodayEditMealModalProps) {
     onApplyPortionMultiplier(next);
   };
 
-  const macroFields = [
-    { key: "calories", label: "Calories", unit: "kcal", color: mc.calories, value: editKcal, onChange: onEditKcalChange },
+  // Calories is the headline metric (serif hero, still editable); protein/carbs/
+  // fat are the secondary triple. This mirrors the v3 prototype's MealEdit
+  // hierarchy (ENG-1247) while keeping every value directly correctable — the
+  // app deliberately keeps inputs rather than the prototype's display-only tiles.
+  const kcalField = { label: "Calories", unit: "kcal", color: mc.calories, value: editKcal, onChange: onEditKcalChange };
+  const macroTriple = [
     { key: "protein", label: "Protein", unit: "g", color: mc.protein, value: editProtein, onChange: onEditProteinChange },
     { key: "carbs", label: "Carbs", unit: "g", color: mc.carbs, value: editCarbs, onChange: onEditCarbsChange },
     { key: "fat", label: "Fat", unit: "g", color: mc.fat, value: editFat, onChange: onEditFatChange },
   ] as const;
-  const macroRows = [macroFields.slice(0, 2), macroFields.slice(2, 4)];
 
   return (
     <Modal
@@ -361,41 +365,19 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                 testIDPrefix="edit-entry-portion"
               />
 
-              {/* NUTRITION — labelled, dotted, unit-suffixed 2×2 grid. */}
+              {/* NUTRITION — serif kcal hero (headline metric) over the
+                  protein/carbs/fat triple. Every value stays editable. */}
               <Text style={[Type.label, v2.sectionLabel, v2.sectionSpaced, { color: colors.textTertiary }]}>Nutrition</Text>
-              <View style={v2.macroGrid}>
-                {macroRows.map((row, i) => (
-                  <View key={i} style={v2.macroRowWrap}>
-                    {row.map((m) => (
-                      <View key={m.key} style={v2.macroCell}>
-                        <View style={v2.macroLabelRow}>
-                          <View style={[v2.macroDot, { backgroundColor: m.color }]} />
-                          <Text style={[Type.caption, { color: colors.textSecondary }]}>{m.label}</Text>
-                        </View>
-                        <View
-                          style={[
-                            v2.macroInputWrap,
-                            {
-                              backgroundColor: card.liftBg ?? colors.inputBg,
-                              borderColor: colors.border,
-                              borderWidth: card.useBorder ? 1 : 0,
-                            },
-                          ]}
-                        >
-                          <TextInput
-                            style={[v2.macroInput, { color: colors.text }]}
-                            keyboardType="numeric"
-                            value={m.value}
-                            onChangeText={m.onChange}
-                            accessibilityLabel={m.label}
-                          />
-                          <Text style={[Type.caption, { color: colors.textTertiary }]}>{m.unit}</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                ))}
-              </View>
+              <MealEditMacroFields
+                kcal={kcalField}
+                macros={macroTriple}
+                textColor={colors.text}
+                labelColor={colors.textSecondary}
+                unitColor={colors.textTertiary}
+                fieldBg={card.liftBg ?? colors.inputBg}
+                borderColor={colors.border}
+                useBorder={card.useBorder}
+              />
               <Text style={[Type.caption, v2.estimateNote, { color: colors.textTertiary }]}>
                 Estimated values — edit any to correct.
               </Text>
@@ -472,21 +454,6 @@ const v2 = StyleSheet.create({
   },
   slotRow: { flexDirection: "row", gap: Spacing.xs },
   slotPill: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  macroGrid: { gap: Spacing.sm },
-  macroRowWrap: { flexDirection: "row", gap: Spacing.sm },
-  macroCell: { flex: 1 },
-  macroLabelRow: { flexDirection: "row", alignItems: "center", gap: Spacing.xs, marginBottom: Spacing.xs },
-  macroDot: { width: 8, height: 8, borderRadius: 4 },
-  macroInputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    // borderWidth driven by `useCardElevation().useBorder` inline (ENG-813).
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    height: 48,
-    gap: Spacing.xs,
-  },
-  macroInput: { flex: 1, fontSize: 17, fontWeight: "700" },
   estimateNote: { marginTop: Spacing.sm },
   footer: {
     flexDirection: "row",

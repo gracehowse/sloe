@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
@@ -9,7 +9,6 @@ import {
   Gauge,
   type LucideIcon,
 } from "lucide-react-native";
-import { Layout } from "@/constants/layout";
 import { Colors, Spacing, Type } from "@/constants/theme";
 import { MacroStatTile } from "@/components/nutrition/MacroStatTile";
 import { macroColorFor } from "@/lib/macroColors";
@@ -182,8 +181,19 @@ function TodayDashboardMacroTilesImpl({
           </Pressable>
         </View>
       ) : null}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Layout.macroTileGridGap }}>
-      {trackedMacros.map((macro) => {
+      {/* Proto `.mtiles` hairline grid (Grace 2026-06-25): a 2-col grid divided
+          by hairlines — top border on the grid, bottom border each cell, right
+          border on the left column. No card fill, no gap (the dividers + cell
+          padding are the structure). */}
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: barTrackColor,
+        }}
+      >
+      {trackedMacros.map((macro, idx) => {
         const def = macroMap[macro];
         if (!def) return null;
 
@@ -218,10 +228,22 @@ function TodayDashboardMacroTilesImpl({
             onPress={interactive ? () => onPressMacro(macro) : undefined}
             testID={`today-macro-tile-${macro}`}
             style={{
-              width: "48%",
-              maxWidth: "48%",
+              width: "50%",
               flexGrow: 0,
               flexShrink: 0,
+              // hairline cell dividers (proto `.mtile`): bottom on every cell,
+              // right on the left column (when it has a neighbour). Asymmetric
+              // horizontal padding pushes content off the central divider.
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: barTrackColor,
+              ...(idx % 2 === 0 && idx + 1 < trackedMacros.length
+                ? {
+                    borderRightWidth: StyleSheet.hairlineWidth,
+                    borderRightColor: barTrackColor,
+                  }
+                : {}),
+              paddingLeft: idx % 2 === 0 ? Spacing.xs : Spacing.md,
+              paddingRight: idx % 2 === 0 ? Spacing.md : Spacing.xs,
             }}
           />
         );

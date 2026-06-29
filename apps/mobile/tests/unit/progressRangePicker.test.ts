@@ -39,16 +39,17 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
   const webChromeSrc = read("src/app/components/suppr/progress-tab-chrome.tsx");
   const webPeriodSrc = read("src/app/components/suppr/progress-period-control.tsx");
 
-  it("mobile header omits the range overline (the period control carries time context)", () => {
+  it("mobile header shows the 'Your trends' brand overline (not the retired range overline)", () => {
     // ENG-1030 — the period model defaults to the current week (DEFAULT_PERIOD
-    // = { type: "W", offset: 0 }). The retired `LAST N DAYS` overline stays
-    // gone; the period label ("15–21 Jun") is the time context now.
+    // = { type: "W", offset: 0 }). The retired `LAST N DAYS` RANGE overline
+    // stays gone; the period label ("15–21 Jun") is the time context. ENG-1247
+    // adds the v3 prototype "Your trends" brand eyebrow above the title.
     expect(mobileSrc).toMatch(/const \[period, setPeriod\] = useState<ProgressPeriod>\(DEFAULT_PERIOD\)/);
     expect(mobileSrc).not.toContain("LAST 30 DAYS");
     expect(mobileSrc).not.toContain("LAST 7 DAYS");
     expect(mobileSrc).not.toContain("ALL TIME");
     expect(mobileSrc).not.toContain("Weekly report");
-    expect(mobileChromeSrc).toContain("overline={null}");
+    expect(mobileChromeSrc).toContain('overline="Your trends"');
     expect(mobileChromeSrc).toContain('titleTestID="progress-header"');
     // headers census 2026-06-10: chrome title on the canonical Type.title token.
     expect(mobileSectionSrc).toMatch(/title:\s*\{\s*\.\.\.Type\.title,\s*color:\s*colors\.navPrimary\s*\}/);
@@ -125,13 +126,14 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
     );
   });
 
-  it("web header shows the calm subtitle, not the retired range overline", () => {
+  it("web header shows the 'Your trends' overline, not the retired range overline", () => {
     expect(webSrc).toMatch(/const \[period, setPeriod\] = useState<ProgressPeriod>\(DEFAULT_PERIOD\)/);
     expect(webSrc).not.toContain("LAST 7 DAYS");
     expect(webSrc).not.toContain("LAST 90 DAYS");
     expect(webSrc).not.toContain("ALL TIME");
     expect(webSrc).not.toContain("Weekly report");
-    expect(webChromeSrc).toContain('data-testid="progress-subtitle"');
+    // ENG-1247 — the mobile-web chrome carries the v3 "Your trends" overline.
+    expect(webChromeSrc).toContain('data-testid="progress-overline"');
     expect(webChromeSrc).toContain('data-testid="progress-header"');
     expect(webChromeSrc).toMatch(/text-\[28px\]/);
     expect(webChromeSrc).toMatch(/font-\[family-name:var\(--font-headline\)\]/);

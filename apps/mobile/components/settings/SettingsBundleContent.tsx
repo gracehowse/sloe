@@ -640,14 +640,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     };
   }, [userId]);
 
-  // "Your name" — personalises the Today greeting ("Morning, Grace").
-  // Source of truth is the Supabase auth user's
-  // `user_metadata.full_name`; the greeting (`apps/mobile/app/(tabs)/index.tsx`)
-  // reads it via `firstNameFromMetadata`. We pre-fill the input from the
-  // CURRENT metadata (full name, not just the first token, so the user can
-  // edit "Grace Turner" rather than losing the surname) and write back on
-  // commit via `supabase.auth.updateUser`. Allowing an empty value clears
-  // the name so the greeting falls back to "Good morning".
+  // "Your name" — your display name (the avatar initial + Profile identity).
+  // Source of truth is the Supabase auth user's `user_metadata.full_name`.
+  // We pre-fill the input from the CURRENT metadata (full name, not just the
+  // first token, so the user can edit "Grace Turner" rather than losing the
+  // surname) and write back on commit via `supabase.auth.updateUser`.
+  // Allowing an empty value clears the name. (Today shows a serif date hero
+  // now, not a name greeting — ENG-1247.)
   const metadataFullName = (() => {
     const meta = (session?.user?.user_metadata ?? {}) as Record<
       string,
@@ -678,12 +677,12 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   /**
    * Persist the display name to the auth user's `user_metadata.full_name`
    * (NOT a `profiles` column — the tier-lockdown trigger rejects rows that
-   * touch entitlement columns, and the greeting reads metadata anyway).
-   * Trims input; an empty/whitespace value clears the name so the greeting
-   * falls back to "Good morning". After a successful write we force a
-   * session refresh so the Today greeting re-renders without an app
-   * restart (the auth context's `onAuthStateChange` re-emits the session).
-   * No-ops when the trimmed value already matches what's stored.
+   * touch entitlement columns, and the display name lives in metadata anyway).
+   * Trims input; an empty/whitespace value clears the name. After a
+   * successful write we force a session refresh so the avatar / Profile
+   * re-render without an app restart (the auth context's `onAuthStateChange`
+   * re-emits the session). No-ops when the trimmed value already matches
+   * what's stored.
    */
   const handleSaveName = useCallback(async () => {
     if (!userId) return;
@@ -704,15 +703,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       // whether a write happened.
       setNameInput(result.value);
       if (result.changed) {
-        // Refresh the in-memory session so the greeting picks up the new
-        // metadata immediately. `getSession()` re-reads from local storage
+        // Refresh the in-memory session so the avatar / Profile pick up the
+        // new metadata immediately. `getSession()` re-reads from local storage
         // (which updateUser has already written), and the auth context's
-        // listener fans the fresh session out to Today.
+        // listener fans the fresh session out.
         try {
           await supabase.auth.getSession();
         } catch {
           // Non-fatal: updateUser fired USER_UPDATED which the auth context
-          // also listens for, so the greeting still refreshes.
+          // also listens for, so the session still refreshes.
         }
       }
     } finally {
@@ -1437,10 +1436,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     .toString()
     .toUpperCase();
   const displayName =
-    // Prefer the name the user actually set (the same metadata the Today
-    // greeting + "Your name" field resolve, via metadataFullName) before
-    // falling back to the email local-part — otherwise the header showed an
-    // ugly lowercase handle ("gracemturner") while the greeting said "Grace".
+    // Prefer the name the user actually set (the same `user_metadata` the
+    // "Your name" field writes, via metadataFullName) before falling back to
+    // the email local-part — otherwise the header showed an ugly lowercase
+    // handle ("gracemturner") instead of "Grace".
     session?.user?.user_metadata?.display_name ||
     metadataFullName ||
     session?.user?.email?.split("@")[0] ||
@@ -1509,7 +1508,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           </Text>
           <Text
             style={{ fontSize: 14, color: colors.textSecondary, marginTop: 2 }}
+            numberOfLines={1}
           >
+            {/* v3 prototype: "email · plan" (ENG-1247). */}
+            {session?.user?.email ? `${session.user.email} · ` : ""}
             {tierLabel === "Pro" ? "Pro plan" : "Free plan"}
           </Text>
         </View>
@@ -1643,11 +1645,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
       {/* Personal — the user's identity + personal preferences group.
           Sits at the top of the list (identity comes first). The "Your
-          name" field below personalises the Today greeting: it writes the
-          auth user's `user_metadata.full_name` via
-          `supabase.auth.updateUser`, and the greeting on Today reads it
-          back through `firstNameFromMetadata`. Empty clears the name →
-          greeting falls back to "Good morning". Web mirror is the
+          name" field below sets the display name (avatar + Profile): it
+          writes the auth user's `user_metadata.full_name` via
+          `supabase.auth.updateUser`. Empty clears it. (Today shows a serif
+          date hero now, not a name greeting — ENG-1247.) Web mirror is the
           "Personal" card in `src/app/components/Settings.tsx` (the name
           field is the first row). Grace 2026-06-04: the name belongs
           inside a general Personal settings group, not a lone "Your name"
@@ -1745,7 +1746,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 12,
+                borderRadius: Radius.full,
                 backgroundColor: accent.primary + "22",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1805,7 +1806,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 12,
+                borderRadius: Radius.full,
                 backgroundColor: accent.primary + "18",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2646,7 +2647,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 style={{
                   width: 48,
                   height: 48,
-                  borderRadius: Radius.lg,
+                  borderRadius: Radius.full,
                   backgroundColor: t.amber + "18",
                   alignItems: "center",
                   justifyContent: "center",

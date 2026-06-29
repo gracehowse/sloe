@@ -5,6 +5,7 @@ import {
   dismissVisualOverlays,
   forceRedesignVisualFlagsOn,
   freezeVisualClock,
+  seedConsent,
   stabilizeForScreenshot,
 } from "./utils/visual";
 
@@ -47,6 +48,12 @@ test.describe("Visual regression — public subpages", () => {
     for (const vp of viewports) {
       test(`${screen.name} ${vp.name}`, async ({ page }) => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
+        // Seed consent BEFORE goto so the CookieConsent banner never mounts —
+        // race-free vs. clicking "Accept all" after load, which lost to the
+        // banner's mount `useEffect` and left the transient bottom strip in the
+        // shot (the deterministic privacy/terms mobile diff that blocked
+        // ENG-1247; the other visual specs already seed this — ENG-1191).
+        await seedConsent(page);
         await page.goto(screen.path, { waitUntil: "domcontentloaded" });
         await dismissVisualOverlays(page);
         await stabilizeForScreenshot(page);
@@ -75,6 +82,7 @@ test.describe("Visual regression — authenticated subpages", () => {
     for (const vp of viewports) {
       test(`${screen.name} ${vp.name}`, async ({ page }) => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
+        await seedConsent(page);
         await page.goto(screen.path, { waitUntil: "domcontentloaded" });
         await dismissVisualOverlays(page);
         await stabilizeForScreenshot(page);

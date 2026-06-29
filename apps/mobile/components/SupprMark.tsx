@@ -1,19 +1,22 @@
 import * as React from "react";
-import { Text, View, ViewStyle, StyleProp } from "react-native";
-import { FontFamily } from "@/constants/theme";
+import { Image, View, ViewStyle, StyleProp } from "react-native";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
  * Sloe brand mark — wordmark only.
  *
- * "Sloe" (capital S) in Newsreader semibold + plum (`MacroColors.calories`).
- * No berry glyph, no plate ring, no lockup. Casing + weight match the
- * canonical Figma `654:2` Today frame (`font-headline text-xl font-semibold
- * text-plum`) — updated 2026-06-08 from the earlier lowercase "sloe" / medium
- * treatment so every surface reads the wordmark identically (web parity:
- * `src/app/components/ui/suppr-mark.tsx`). Historical `Suppr*` export names
- * stay until a rename pass.
+ * Renders the **canonical splash logotype asset** (`splash-icon.png`, the
+ * high-optical-size Fraunces "sloe"), re-tinted to scheme-resolved plum — NOT a
+ * live font. A static Fraunces face can't reproduce the splash's dramatic
+ * stroke contrast, so only the asset truly matches it (Grace 2026-06-26 — a
+ * font-weight match still "looked nothing like" the splash). Web parity:
+ * `src/app/components/ui/suppr-mark.tsx`. Historical `Suppr*` export names stay
+ * until a rename pass.
  */
+
+const SLOE_WORDMARK = require("@/assets/images/splash-icon.png");
+/** Intrinsic aspect of the wordmark asset (3088×1661 → height / width). */
+const WORDMARK_ASPECT = 1661 / 3088;
 
 export interface SupprMarkProps {
   size?: number;
@@ -28,23 +31,19 @@ function sloeFontSize(size: number) {
 }
 
 function SloeWordmarkText({ size = 28 }: { size?: number }) {
-  // ENG-1010: scheme-resolved plum (static plum near-vanishes on dark).
   const colors = useThemeColors();
+  const height = Math.round(sloeFontSize(size) * 1.15);
+  const width = Math.round(height / WORDMARK_ASPECT);
   return (
-    <Text
+    <Image
       accessibilityRole="image"
       accessibilityLabel="Sloe"
-      style={{
-        fontFamily: FontFamily.serifSemibold,
-        fontSize: sloeFontSize(size),
-        color: colors.navPrimary,
-        fontWeight: "600",
-        letterSpacing: -0.4,
-        includeFontPadding: false,
-      }}
-    >
-      Sloe
-    </Text>
+      source={SLOE_WORDMARK}
+      // Asset ships plum; re-tint to scheme-resolved nav ink (ENG-1010).
+      tintColor={colors.navPrimary}
+      resizeMode="contain"
+      style={{ width, height }}
+    />
   );
 }
 

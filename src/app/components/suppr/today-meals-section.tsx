@@ -482,7 +482,10 @@ export function TodayMealsSection({
           tightens to the pre-inversion rhythm (`gap-2` 8px, was `gap-3` 12px) so
           the four slots read as one tight grouped block (mobile `Spacing.sm` parity). */}
       <div className="flex flex-col gap-2">
-        {slotsToRender.map(({ name: sectionName, meals: sectionMeals }) => {
+        {/* Proto `card card--flush divide` (Grace 2026-06-25, reverses TD4 /
+            ENG-1099): ONE raised card holding the slots as hairline-divided rows. */}
+        <SupprCard elevation="card" radius="lg" padding="none" className="overflow-hidden">
+        {slotsToRender.map(({ name: sectionName, meals: sectionMeals }, slotIdx) => {
           const hasMeals = sectionMeals.length > 0;
           const isOpen = !collapsedSlots.has(sectionName);
           const slotCals = Math.round(sectionMeals.reduce((sum, m) => sum + m.calories, 0));
@@ -517,22 +520,14 @@ export function TodayMealsSection({
           const extraSavedCount = slotSavedMeals.length - 1;
 
           return (
-            <SupprCard
+            <div
               key={sectionName}
-              // One-treatment elevation (Grace 2026-06-09): each meal-slot card
-              // sits on the page ground → soft lift (`elevation="card"`). Was
-              // slab-flat.
-              elevation="card"
-              radius="lg"
-              padding="none"
               data-testid={`today-slot-${sectionName}`}
-              // ENG-1095: every slot row reads at full opacity — empty or
-              // populated — matching mobile's crisp per-slot rows (the MFP/
-              // Lifesum "all slots always visible" pattern). The "+" affordance
-              // + absence of macro chips already distinguishes an empty slot;
-              // the old `opacity-55` dim never actually shipped (empty slots
-              // weren't rendered pre-ENG-1095) and isn't on mobile.
-              className="overflow-hidden"
+              // Proto `.card--flush divide`: divided ROW inside the outer card
+              // (no per-slot card) — hairline between slots, none after the last.
+              className={`overflow-hidden ${
+                slotIdx < slotsToRender.length - 1 ? "border-b border-border" : ""
+              }`}
             >
               {/* Meal header row — TD4: Newsreader slot name + macro chips */}
               <div
@@ -817,7 +812,7 @@ export function TodayMealsSection({
                                       );
                                     }
                                     return (
-                                      <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 shrink-0">
+                                      <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 shrink-0">
                                         <Icons.dinner className="h-4 w-4 text-primary" aria-hidden />
                                       </span>
                                     );
@@ -1034,9 +1029,10 @@ export function TodayMealsSection({
                   </div>
                 </div>
               )}
-            </SupprCard>
+            </div>
           );
         })}
+        </SupprCard>{/* /one outer meal-section card */}
       </div>
 
       {!allSlotsOn && mealsForSelectedDate.length === 0 ? (

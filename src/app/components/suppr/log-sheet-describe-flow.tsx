@@ -127,7 +127,7 @@ export function LogSheetDescribeFlow({
         <p className="mb-2 text-[11px] text-muted-foreground">
           Review parsed items — edit or remove before logging.
         </p>
-        <div className="mb-2 rounded-xl border border-border bg-card p-3 text-sm">
+        <div className="mb-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-sm">
           <div className="font-medium">{items.length} item{items.length === 1 ? "" : "s"}</div>
           <div className="text-muted-foreground">
             ~{Math.round(totals.calories)} kcal · {Math.round(totals.protein)}p {Math.round(totals.carbs)}c{" "}
@@ -220,7 +220,7 @@ export function LogSheetDescribeFlow({
   return (
     <div
       data-testid="log-sheet-describe"
-      className="mx-3 mt-2 space-y-2 rounded-xl border border-border bg-card p-3"
+      className="mx-3 mt-2 space-y-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3"
     >
       <div className="flex items-center gap-2">
         <PencilLine className="size-4 text-primary" aria-hidden />

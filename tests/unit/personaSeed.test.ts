@@ -88,16 +88,34 @@ describe("classifyEmail — account allowlist (safety-critical)", () => {
 });
 
 describe("persona roster integrity", () => {
-  it("exposes all five named personas", () => {
+  it("exposes all six named personas", () => {
     expect(ALL_PERSONAS.sort()).toEqual(
       [
         "cold-start-newcomer",
+        "data-rich-power-user",
         "instagram-recipe-saver",
         "lazy-partial-logger",
         "mfp-refugee-power-logger",
         "watch-athlete",
       ].sort(),
     );
+  });
+
+  it("the data-rich-power-user maxes every dimension (Grace's test account)", () => {
+    const p = PERSONAS["data-rich-power-user"];
+    // A full month of history, a dense weigh-in series, and the deepest library.
+    expect(p.historyDays).toBe(28);
+    expect(p.weighIns).toBe(22);
+    expect(p.libraryRecipes).toBe(16);
+    expect(p.profile.onboarding_completed).toBe(true);
+    // Today (offset 0) is partial so the live ring shows a mid-day state; the
+    // rest of the window is complete.
+    expect(p.dayKinds[0]).toBe("partial");
+    expect(p.dayKinds.filter((k) => k === "full")).toHaveLength(27);
+    // The library must actually be able to supply 16 distinct recipes.
+    expect(shapeRecipes(p)).toHaveLength(16);
+    const titles = new Set(shapeRecipes(p).map((r) => r.title));
+    expect(titles.size).toBe(16); // no duplicates
   });
 
   it("every persona's dayKinds length matches historyDays", () => {

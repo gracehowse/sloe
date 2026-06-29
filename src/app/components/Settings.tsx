@@ -669,15 +669,14 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     else toast.success("Password reset email sent — check your inbox.");
   }, [authEmail]);
 
-  // "Your name" — personalises the Today greeting ("Good morning, Grace").
+  // "Your name" — your display name (the avatar initial + Profile identity).
   // Mirrors the mobile Settings field
   // (`apps/mobile/components/settings/SettingsBundleContent.tsx`): the
   // source of truth is the Supabase auth user's `user_metadata.full_name`
   // (NOT `profiles.display_name` — that stays the Profile editor's domain,
   // and writing entitlement-adjacent profile columns risks the
-  // tier-lockdown trigger). The Today greeting reads it back via
-  // `firstNameFromMetadata`. An empty value clears the name so the greeting
-  // falls back to the time-of-day word alone.
+  // tier-lockdown trigger). An empty value clears the name. (The Today hero
+  // shows a serif date now, not a name greeting — ENG-1247.)
   const [nameInput, setNameInput] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
   // The name as currently stored in auth metadata — drives the "no change"
@@ -714,9 +713,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       setStoredName(result.value);
       setNameInput(result.value);
       if (result.changed) {
-        // Refresh the in-memory session so any Today greeting reading
-        // `user_metadata` re-renders without a reload. `getSession()`
-        // re-emits via the auth context's onAuthStateChange listener.
+        // Refresh the in-memory session so anything reading the display name
+        // from `user_metadata` (avatar / Profile) re-renders without a reload.
+        // `getSession()` re-emits via the auth context's onAuthStateChange listener.
         try {
           await supabase.auth.getSession();
         } catch {
@@ -804,7 +803,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const cohesionWhite = isFeatureEnabled("card_cohesion_white_v1");
   const profileDisplayLabel =
     // Prefer the name the user set (profileDisplayName, then the resolved
-    // storedName — same metadata the greeting + "Your name" field use) before
+    // storedName — same `user_metadata` the "Your name" field writes) before
     // the email local-part, so the header isn't an ugly lowercase handle.
     profileDisplayName?.trim()?.length
       ? profileDisplayName
@@ -828,7 +827,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         {/* Sloe DS (Figma 09 Settings `335:2`): the header glyph sits on
             a plum-tinted plate (`--foreground-brand` at 10%). */}
         <div
-          className="p-2 rounded-xl"
+          className="p-2 rounded-full"
           style={{
             backgroundColor:
               "color-mix(in srgb, var(--foreground-brand) 10%, transparent)",
@@ -871,13 +870,13 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <p className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand leading-tight truncate">
             {profileDisplayLabel}
           </p>
-          {/* Plan label — Sloe DS (Figma `335:2`) shows "Free plan" /
-              "Pro plan" under the name. Pro keeps the clay-tint pill (a
-              reward signal); Free reads as a quiet grey label. The
-              `profileTierLabel` source ("Pro" / "Free") is pinned by
-              settingsProfileHeaderCardParity.test.ts. Email gets its own
-              line with `truncate` so the dot-and-tld doesn't run under
-              the avatar (audit 2026-04-30 visual-qa P1 #9). */}
+          {/* Plan label — pinned by settingsProfileHeaderCardParity. Pro
+              keeps the clay-tint pill (reward signal); email gets its own
+              `truncate` line so the tld doesn't run under the avatar
+              (2026-04-30 visual-qa P1 #9). ENG-1247: kept two-line on web
+              (NOT the prototype's single "email · plan") — web's card has
+              an Edit-profile button, so a merged line truncates to
+              "gracemt…" (seen in sim 2026-06-24). Deliberate divergence. */}
           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide mt-1 ${
             userTier === "pro"
               ? "bg-primary/10 text-primary"
@@ -983,11 +982,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <h3 className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand">Personal</h3>
         </div>
         <div className="space-y-4">
-          {/* Your name — personalises the Today greeting. Writes the auth
-              user's `user_metadata.full_name` via `supabase.auth.updateUser`;
-              Today reads it back through `firstNameFromMetadata`. Empty
-              clears the name → greeting falls back to "Good morning". Mobile
-              mirror in `apps/mobile/components/settings/SettingsBundleContent.tsx`. */}
+          {/* Your name — sets your display name (the avatar initial + Profile
+              identity). Writes the auth user's `user_metadata.full_name` via
+              `supabase.auth.updateUser`; empty clears it. (Today shows a serif
+              date hero now, not a greeting — ENG-1247.) Mobile mirror in
+              `apps/mobile/components/settings/SettingsBundleContent.tsx`. */}
           <div>
             <label
               htmlFor="settings-name-input"

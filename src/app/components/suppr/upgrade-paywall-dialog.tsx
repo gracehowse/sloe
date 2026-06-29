@@ -473,7 +473,7 @@ export function UpgradePaywallDialog({
               >
                 <span
                   aria-hidden
-                  className="shrink-0 w-9 h-9 rounded-[10px] grid place-items-center"
+                  className="shrink-0 w-9 h-9 rounded-full grid place-items-center"
                   style={{
                     background: "color-mix(in oklab, var(--primary) 15%, transparent)",
                     color: "var(--primary)",

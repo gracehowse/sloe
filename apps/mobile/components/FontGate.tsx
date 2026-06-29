@@ -16,13 +16,18 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+// Fraunces — wordmark/logo ONLY (prototype type-split is LOCKED: Fraunces =
+// wordmark, Newsreader = in-app serif). 700 Bold matches the bold splash
+// logotype (Grace 2026-06-26 — the in-app mark read too thin next to the launch
+// logo). Light kept loaded for any calm-weight use.
+import { Fraunces_300Light, Fraunces_700Bold } from "@expo-google-fonts/fraunces";
 
 function hideNativeSplash(): void {
   void SplashScreen.hideAsync().catch(() => {});
 }
 
 /**
- * Loads Newsreader + Inter for branded UI.
+ * Loads Newsreader + Inter + Fraunces (wordmark) for branded UI.
  *
  * 2026-06-10 (Grace's first-boot report): the non-blocking gate let the
  * login screen paint SYSTEM fonts for several seconds on a slow dev-tunnel
@@ -51,6 +56,8 @@ export function FontGate({ children }: { children: React.ReactNode }) {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Fraunces_300Light,
+    Fraunces_700Bold,
   });
 
   useLayoutEffect(() => {

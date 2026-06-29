@@ -2180,7 +2180,7 @@ export function FoodSearchPanel({
                   })}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                     preview.chosenPortion.label === p.label
-                      ? "border-success bg-success/15 text-success"
+                      ? (isFeatureEnabled("design_system_colours") ? "border-primary bg-primary/15 text-primary" : "border-success bg-success/15 text-success")
                       : "border-border text-muted-foreground hover:border-border/80"
                   }`}
                 >

@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native"
 import { ChevronDown, ChevronRight } from "lucide-react-native";
 
 import { SupprCard } from "@/components/ui/SupprCard";
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -157,10 +157,17 @@ const styles = StyleSheet.create({
   },
   term: { flex: 1, minWidth: 0, alignItems: "center" },
   termValue: {
-    fontSize: 18,
-    fontWeight: "700",
+    // Sloe v3 (ENG-1247): serif numerals (Newsreader) like every other Sloe
+    // numeral — ring / macro / the sibling daily-calories avg — and the v3
+    // prototype `.prog-bal-v` (serif, medium). Was the lone sans/700 equation
+    // row. 22 is on the type ramp (the prototype's 25 is off-ramp and risks the
+    // 3-term row overflowing on narrow phones); serif weight 500 is a loaded
+    // Newsreader weight (400/500/600).
+    fontFamily: FontFamily.serifMedium,
+    fontSize: 22,
+    fontWeight: "500",
     fontVariant: ["tabular-nums"],
-    lineHeight: 18,
+    lineHeight: 26,
   },
   termLabel: { ...Type.statLabel, fontSize: 10, marginTop: 4 },
   op: { fontSize: 18, fontWeight: "300", paddingBottom: 12 },

@@ -445,7 +445,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           {avatarInitial}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-foreground leading-tight truncate">
+          <p className="font-[family-name:var(--font-headline)] text-lg font-medium text-foreground leading-tight truncate">
             {displayName?.trim() ? displayName : "Your profile"}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">
@@ -493,7 +493,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           className="w-full flex items-center gap-3 mb-4 p-3.5 rounded-xl border bg-primary/10 border-primary/30 hover:bg-primary/15 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           aria-label="Upgrade to Pro"
         >
-          <span className="grid place-items-center w-9 h-9 rounded-lg bg-primary/20 shrink-0">
+          <span className="grid place-items-center w-9 h-9 rounded-full bg-primary/20 shrink-0">
             <Icons.premium className="h-4 w-4 text-primary" aria-hidden />
           </span>
           <span className="flex-1 min-w-0">
@@ -531,7 +531,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
               data-testid="profile-household-row"
               className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
             >
-              <IconBox tone="primary" size="md" className="rounded-[10px]">
+              <IconBox tone="primary" size="md" className="rounded-full">
                 <Icons.users className="w-4 h-4" />
               </IconBox>
               <div className="flex-1 min-w-0">
@@ -563,7 +563,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             aria-label="Edit your daily targets"
             className="w-full text-left flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
           >
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.calories className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -585,7 +585,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             href="/home?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.layoutGrid className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -604,7 +604,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             href="/home?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.plan className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -621,7 +621,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             href="/home?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.energy className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -638,7 +638,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             href="/home?view=settings"
             className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
           >
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.water className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -654,7 +654,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Preferences Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.dinner className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -668,7 +668,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           <div
             className="flex items-center gap-4 px-4 py-3 border-b border-border opacity-60"
           >
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.link className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -679,7 +679,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Notifications Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.time className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -691,7 +691,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Export Data Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.import className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -703,7 +703,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Help Row — matches mobile */}
           <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="primary" size="md" className="rounded-[10px]">
+            <IconBox tone="primary" size="md" className="rounded-full">
               <Icons.info className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -721,7 +721,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
         <div className="bg-card rounded-xl border border-border overflow-hidden card-slab">
           {/* Published Recipes Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="success" size="md" className="rounded-[10px]">
+            <IconBox tone="success" size="md" className="rounded-full">
               <Icons.edit className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -733,7 +733,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Analytics Row */}
           <div className="flex items-center gap-4 px-4 py-3 border-b border-border hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="success" size="md" className="rounded-[10px]">
+            <IconBox tone="success" size="md" className="rounded-full">
               <Icons.progress className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
@@ -745,7 +745,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
           {/* Publish New Row */}
           <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
-            <IconBox tone="success" size="md" className="rounded-[10px]">
+            <IconBox tone="success" size="md" className="rounded-full">
               <Icons.add className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">

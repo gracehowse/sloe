@@ -42,6 +42,13 @@ export const Accent = {
    *  as a literal in `context/theme.tsx`'s DARK_ACCENT. Mirrors web `.dark`
    *  `--accent-primary`. (`primaryLight` dark = `purpleLight` #9A7BAA.) */
   primaryDark: '#7E5C92',
+  /** Sloe Deep (#241733) — the deep-plum brand GROUND for full-bleed brand
+   *  screens (onboarding welcome `.ob--brand`, paywall). White text + frost
+   *  accents sit on it. Mirrors web `--primary-deep`. (ENG-1247) */
+  primaryDeep: '#241733',
+  /** Frost (#c9c2d6) — soft lavender-grey for muted dividers + the brand-screen
+   *  italic tagline on the deep-plum ground. Mirrors web `--accent-frost`. */
+  frost: '#c9c2d6',
   /** Soft fill for selected pills / segmented active / nudge tint. Lifted-aubergine
    *  hue (12%) so the tint stays perceptible. Solid fill stays reserved for the FAB
    *  + conversion CTAs; everyday primaries are a deep-plum OUTLINE. */
@@ -544,6 +551,11 @@ export const FontFamily = {
    *  forward-looking nudge under the ring; matches the Figma 01 frame's
    *  italic "Room for dinner…" line). Real italic face, not synthesized. */
   serifItalic: 'Newsreader_400Regular_Italic',
+  /** Fraunces Bold — the brand WORDMARK/logo ONLY (the lowercase "sloe"
+   *  mark). 700 Bold matches the splash logotype (Grace 2026-06-26 — the
+   *  in-app mark read too thin next to the launch logo); supersedes the prior
+   *  300 Light. Fraunces = wordmark; Newsreader = every other serif role. */
+  brand: 'Fraunces_700Bold',
   /** Inter (sans) — body, labels, captions. */
   sansRegular: 'Inter_400Regular',
   sansMedium: 'Inter_500Medium',
@@ -719,6 +731,20 @@ export const Elevation = {
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 0 },
     elevation: 0,
+  },
+  // Subtle small-surface lift — fills the gap between flat `card` and the heavy
+  // page-card `cardSoft` (radius 18). Mirrors the prototype's `--shadow-card`
+  // (`0 1px 3px rgba(36,23,51,.05)`) + web `shadow-sm`, for small interactive
+  // cards like the Plan-header action buttons where cardSoft reads as floaty.
+  // Opacity nudged 0.05 → 0.10 so it registers on RN's white-on-white, where a
+  // 5% halo is invisible (see the cardSoft edge-sampling note below). Tight
+  // radius (4) + low offset (1) keep it crisp, not a wide ambient halo.
+  cardHairline: {
+    shadowColor: '#221B26',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
   // ENG-795 (Redesign — Design Direction 2026): the soft-elevation variant
   // that SUPERSEDES the 2026-05-22 flat lock above, per the 2026-05-31

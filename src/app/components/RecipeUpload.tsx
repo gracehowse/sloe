@@ -1759,7 +1759,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       <div className="mb-8">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary rounded-xl">
+            <div className="p-2 bg-primary rounded-full">
               {mode === "import" ? (
                 <Icons.import className="w-5 h-5 text-white" />
               ) : (

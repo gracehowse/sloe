@@ -34,11 +34,13 @@ describe("auth chooser — Figma 296:2 (web)", () => {
     expect(SRC).toMatch(/view === "chooser" \?/);
   });
 
-  it('renders the "Sloe" serif wordmark', () => {
+  it('renders the lowercase "sloe" Fraunces wordmark', () => {
     expect(SRC).toMatch(/aria-label="Sloe"/);
-    expect(SRC).toMatch(/font-\[family-name:var\(--font-newsreader\)\]/);
-    // The visible wordmark glyph is the capitalised "Sloe".
-    expect(SRC).toMatch(/>\s*Sloe\s*</);
+    // Wordmark = the prototype-locked Fraunces brand font (the positioning
+    // headline still uses Newsreader, so assert the brand font specifically).
+    expect(SRC).toMatch(/font-\[family-name:var\(--font-brand\)\]/);
+    // The visible wordmark glyph is the lowercase "sloe".
+    expect(SRC).toMatch(/>\s*sloe\s*</);
   });
 
   it("renders the two-line positioning headline with an italic Still", () => {

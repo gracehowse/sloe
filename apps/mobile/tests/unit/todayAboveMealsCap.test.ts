@@ -128,8 +128,9 @@ describe("Today branding row (mobile)", () => {
   // standalone <TodayBrandBar> component (the wordmark is a lightweight
   // inline row, not that retired block).
   it("renders the Sloe wordmark header (intentional, SLOE redesign 2026-06-03)", () => {
-    expect(HOST_SRC).toMatch(/<SloeHeaderWordmark[\s/]/);
-    expect(HOST_SRC).toMatch(/testID="today-wordmark"/);
+    // The wordmark header (+ the ENG-1247 notifications bell) is rendered via
+    // <TodayHeaderBar>; the wordmark/avatar details live in its own test.
+    expect(HOST_SRC).toMatch(/<TodayHeaderBar[\s/]/);
   });
 
   it("does not use the legacy standalone <TodayBrandBar> block", () => {

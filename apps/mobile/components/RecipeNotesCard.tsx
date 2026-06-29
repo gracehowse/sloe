@@ -267,7 +267,7 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
         lastCookedText: { fontSize: 11, color: colors.textTertiary },
         signinPrompt: {
           backgroundColor: colors.card,
-          borderRadius: Radius.lg,
+          borderRadius: CARD_RADIUS,
           borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.lg,

@@ -20,6 +20,7 @@ import {
 } from "lucide-react-native";
 import { Accent, Elevation, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useAccent } from "@/context/theme";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -148,8 +149,7 @@ export default function HealthSyncScreen() {
   // F-57 follow-up (Build 41, 2026-05-01) — persistent error state
   // with recovery affordances. Previously a connect/sync failure left
   // the user with only a dismissed Alert + a one-line "Sync failed"
-  // text. Grace re-flagged "same apple health error message" on
-  // TestFlight `ALlGgnDVP-rzqUojRWknayY` (2026-04-23) — same message,
+  // text. Grace re-flagged "same apple health error message" on TestFlight `ALlGgnDVP-rzqUojRWknayY` (2026-04-23) — same message,
   // no obvious next step. We now show an inline banner with two
   // affordances: "Try again" (re-runs whichever flow failed) and
   // "Open iOS Settings" (deep-links to Settings → Privacy → Health
@@ -734,14 +734,14 @@ export default function HealthSyncScreen() {
         cardShadowWrapper: {
           marginHorizontal: Spacing.xl,
           marginBottom: Spacing.md,
-          borderRadius: Radius.xl,
+          borderRadius: CARD_RADIUS,
           // Soft lift via the elevation system (light → cardSoft shadow; dark →
           // no shadow, the inner card carries the tonal lift + hairline instead).
           ...(cardElevation.shadowStyle ?? {}),
         },
         card: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
-          borderRadius: Radius.xl,
+          borderRadius: CARD_RADIUS,
           // Light soft-lift drops the hairline (the shadow is the separation);
           // dark soft-lift keeps it (no shadow there). Driven by `useBorder`.
           borderWidth: cardElevation.useBorder ? 1 : 0,

@@ -1933,12 +1933,12 @@ export default function FoodSearchPanel({
                     style={{
                       paddingHorizontal: Spacing.dense, paddingVertical: 8,
                       borderRadius: Radius.md, borderWidth: 1,
-                      borderColor: isActive ? Accent.success : colors.border,
-                      backgroundColor: isActive ? Accent.success + "15" : "transparent",
+                      borderColor: isActive ? commitCtaColor : colors.border,
+                      backgroundColor: isActive ? commitCtaColor + "15" : "transparent",
                       minWidth: 50, alignItems: "center",
                     }}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: isActive ? "700" : "500", color: isActive ? Accent.success : colors.text }}>
+                    <Text style={{ fontSize: 13, fontWeight: isActive ? "700" : "500", color: isActive ? commitCtaColor : colors.text }}>
                       {p.label}
                     </Text>
                     {p.gramWeight !== 1 && p.gramWeight > 0 && (

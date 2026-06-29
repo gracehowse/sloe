@@ -61,11 +61,25 @@
 
 /* Typography */
 .lp-wordmark {
-  font-family: var(--font-headline);
-  font-size: 24px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  /* ENG-1247 (Grace 2026-06-26) — the landing logo IS the canonical splash
+     logotype now (public/sloe-wordmark.svg), rendered as a recolorable CSS mask
+     so it matches the app + splash exactly (a live Fraunces font couldn't). The
+     mask is filled by `currentColor`, so the footer variant just changes
+     `color`. Height tracks the prior 24px wordmark; width follows the asset
+     aspect (3088×1661). */
+  display: inline-block;
+  width: 52px;
+  height: 28px;
   color: var(--lp-ink);
+  background-color: currentColor;
+  -webkit-mask-image: url(/sloe-wordmark.svg);
+  mask-image: url(/sloe-wordmark.svg);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: left center;
+  mask-position: left center;
 }
 
 .lp-wordmark-footer {

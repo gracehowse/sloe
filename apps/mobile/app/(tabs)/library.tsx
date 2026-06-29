@@ -13,6 +13,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Bookmark,
@@ -39,6 +40,7 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import type { RecipeCard } from "@/lib/types";
 import {
   LIBRARY_CATEGORY_PILLS,
+  LIBRARY_PROVENANCE_PILLS,
   matchesRecipeCategory,
   type RecipeCategoryId,
 } from "@suppr/shared/recipes/recipeCategoryFilters";
@@ -107,6 +109,7 @@ function formatTotalTime(card: RecipeCard): string | null {
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarClearance(); // ENG-1247 — pad scroll to clear frosted (absolute) tab bar.
   const router = useRouter();
   const { keep } = useLocalSearchParams<{ keep?: string }>();
   const keepLibraryTab = keep === "1";
@@ -115,8 +118,7 @@ export default function LibraryScreen() {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the category-pill
   // active fill, create FAB, Go-Public + empty-state CTAs, the saved-bookmark
-  // glyph, rating star, list spinner, and pull-to-refresh tint. Threaded into
-  // the memoised StyleSheet via the dep array below.
+  // glyph, rating star, list spinner, and pull-to-refresh tint.
   const accent = useAccent();
   // Discover/Library recipe cards are the Sloe Figma `527:2`/`528:2`
   // "seamless slab" cards: a `#F6F5F2` cream card lifted off the `#FFFFFF`
@@ -212,29 +214,8 @@ export default function LibraryScreen() {
     );
   }, []);
 
-  // Entry-kind narrowing (preserved per ENG-921): the quiet control on the
-  // count line cycles All → Saved → Imported → All. It writes the same
-  // `secondary` state the old segmented control did, so the filter logic in
-  // `filtered` is unchanged — just re-presented as a calm control instead
-  // of a competing second pill row. Plan-import sub-filters still resolve
-  // through `secondary` (they're a refinement of Imported).
-  const cycleEntryKind = useCallback(() => {
-    setSecondary((prev) => {
-      // Any plan-import refinement counts as "Imported" for the cycle.
-      const atImported = prev === "imported" || prev?.startsWith("plan-import:") === true;
-      if (prev === null) return "saved";
-      if (prev === "saved") return "imported";
-      if (atImported) return null;
-      return null;
-    });
-  }, []);
+  // Entry-kind is a visible provenance row now (ENG-1247); count flags Saved.
   const entryFilterIsSaved = secondary === "saved";
-  const entryKindLabel =
-    secondary === "saved"
-      ? "Saved"
-      : secondary === "imported" || secondary?.startsWith("plan-import:")
-        ? "Imported"
-        : "All";
 
   const importPlanPills = useMemo(
     () => planImportFilterLabels(savedRecipes.map((r) => r.sourceName)),
@@ -961,7 +942,7 @@ export default function LibraryScreen() {
           // 2-column photo grid — Figma `527:2`.
           numColumns={2}
           columnWrapperStyle={styles.columnWrap}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + Spacing.xl }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={accent.primary} />
           }
@@ -983,6 +964,36 @@ export default function LibraryScreen() {
                   />
                 </View>
               </View>
+              {/* Provenance row — v3 Cookbook (All/Saved/Created/Imported),
+                  ENG-1247 "Both rows" (Grace). Writes `secondary`; web parity. */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScrollStyle}
+                contentContainerStyle={styles.filterScroll}
+              >
+                {LIBRARY_PROVENANCE_PILLS.map((p) => {
+                  const active = p.id === "all" ? secondary === null : secondary === p.id;
+                  return (
+                    <Pressable
+                      key={p.id}
+                      testID={`library-provenance-${p.id}`}
+                      onPress={() => setSecondary(p.id === "all" ? null : p.id)}
+                      style={[styles.filterPill, active && styles.categoryPillActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={`Source: ${p.label}`}
+                    >
+                      <Text
+                        style={[styles.filterPillText, active && styles.categoryPillTextActive]}
+                        maxFontSizeMultiplier={1.2}
+                      >
+                        {p.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
               {/* Category filter pills — ENG-921 / Figma `527:2` (web parity:
                   Library.tsx). Clay-fill active, line-border inactive. */}
               <ScrollView
@@ -1067,17 +1078,6 @@ export default function LibraryScreen() {
                       : `${filtered.length} ${filtered.length === 1 ? "recipe" : "recipes"}`}
                   </Text>
                   <View style={styles.countControls}>
-                    <Pressable
-                      testID="library-entrykind-cycle"
-                      onPress={cycleEntryKind}
-                      style={styles.quietControl}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Showing ${entryKindLabel.toLowerCase()} recipes, tap to change`}
-                    >
-                      <Text style={styles.quietControlText} maxFontSizeMultiplier={1.2}>
-                        {entryKindLabel}
-                      </Text>
-                    </Pressable>
                     <Pressable
                       onPress={openSortSheet}
                       style={styles.quietControl}
