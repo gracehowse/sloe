@@ -88,6 +88,8 @@ const baseProps = {
   shoppingItemCount: 17,
   servingCount: 2,
   onOpenShopping: () => {},
+  onOpenBatchCook: () => {},
+  batchCookSubtitle: "Cook once · scale shopping",
   today,
 };
 

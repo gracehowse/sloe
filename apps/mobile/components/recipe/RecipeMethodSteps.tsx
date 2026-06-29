@@ -2,35 +2,86 @@
  * Recipe detail — method section (Figma `332:2`, section 7). Web parity:
  * the method section in `src/app/components/RecipeDetail.tsx`.
  *
- * "Method" (serif 24px) heading, then numbered steps. Each step is a row: a
- * big serif faint-grey number (`01`, `02`, …) beside a column with an optional
- * title and the step paragraph (Inter 16px, line-height 26). When a step has no
- * distinct leading sentence/title we render the paragraph only — never a fake
- * title.
- *
- * Step body renders in PRIMARY ink (`colors.text`), not `textSecondary`
- * (premium-audit 2026-06-09, gap 3 — method steps are the read-while-cooking
- * content and must carry full reading contrast; the faint serif index stays
- * `textTertiary` for hierarchy). Web parity: web Steps tab already uses
- * `text-foreground` (`RecipeDetail.tsx`).
+ * ENG-1247 v3 variant (`variant="v3"`): prototype `.rd-steps` — frost serif
+ * index, border-bottom dividers, optional step-count note beside the heading.
  */
 import { Text, View } from "react-native";
 
-import { FontFamily, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
-export function RecipeMethodSteps({ steps }: { steps: string[] }) {
+export function RecipeMethodSteps({
+  steps,
+  variant = "legacy",
+  stepCountNote,
+}: {
+  steps: string[];
+  variant?: "legacy" | "v3";
+  stepCountNote?: string | null;
+}) {
   const colors = useThemeColors();
   if (steps.length === 0) return null;
+
+  if (variant === "v3") {
+    return (
+      <View style={{ gap: Spacing.sm }} testID="recipe-method-section">
+        <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
+          <Text style={{ ...Type.title, color: colors.navPrimary }}>Method</Text>
+          {stepCountNote ? (
+            <Text style={{ ...Type.caption, color: colors.textTertiary }}>{stepCountNote}</Text>
+          ) : null}
+        </View>
+        <View>
+          {steps.map((step, i) => (
+            <View
+              key={i}
+              style={{
+                flexDirection: "row",
+                gap: Spacing.lg,
+                paddingVertical: 14,
+                borderBottomWidth: i < steps.length - 1 ? 1 : 0,
+                borderBottomColor: colors.border,
+              }}
+              testID={`recipe-method-step-${i}`}
+            >
+              <Text
+                style={{
+                  fontFamily: FontFamily.serifRegular,
+                  fontSize: 24,
+                  lineHeight: 26,
+                  fontWeight: "500",
+                  color: Accent.primarySoft,
+                  width: 30,
+                  fontVariant: ["tabular-nums"],
+                }}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              >
+                {i + 1}
+              </Text>
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: FontFamily.sansRegular,
+                  fontSize: 15,
+                  lineHeight: 23,
+                  color: colors.text,
+                  paddingTop: 2,
+                }}
+                accessibilityLabel={`Step ${i + 1}. ${step}`}
+              >
+                {step}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={{ gap: 24 }} testID="recipe-method-section">
-      <Text
-        // headers census 2026-06-10: section header → Type.title token (same
-        // plumbing swap as RecipeIngredientGrid).
-        style={{ ...Type.title, color: colors.navPrimary }}
-      >
-        Method
-      </Text>
+      <Text style={{ ...Type.title, color: colors.navPrimary }}>Method</Text>
       <View style={{ gap: Spacing.xl }}>
         {steps.map((step, i) => (
           <View key={i} style={{ flexDirection: "row", gap: 16 }} testID={`recipe-method-step-${i}`}>

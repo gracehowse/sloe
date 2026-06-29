@@ -136,6 +136,7 @@ import { shouldShowBarcodeFallbackHint } from "@suppr/nutrition-core/foodSearchL
 import { formatMacroTrailer } from "@suppr/nutrition-core/macroFormat";
 import { portionEqualsLabel } from "@suppr/nutrition-core/portionEqualsLabel";
 import { resolveInitialPortion, buildPortions, customFoodToHit, isPerServingPortion, buildUsdaPreviewFields } from "@suppr/nutrition-core/foodSearchCore";
+import { ConfirmFoodMacroPreview } from "./ConfirmFoodMacroPreview";
 import { foodSearchPreviewExtraMicroRows } from "@suppr/nutrition-core/foodSearchPreviewNutrition";
 import { foodSearchPreviewPlausibilityWarning } from "@suppr/nutrition-core/portionPicker";
 import {
@@ -2022,12 +2023,14 @@ export default function FoodSearchPanel({
           <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, marginTop: Spacing.xs }}>
             NUTRITION
           </Text>
-          <View style={{ gap: Spacing.sm }}>
+          <ConfirmFoodMacroPreview
+            calories={previewMacros.calories}
+            proteinG={previewMacros.protein}
+            carbsG={previewMacros.carbs}
+            fatG={previewMacros.fat}
+          />
+          <View style={{ gap: Spacing.sm, marginTop: Spacing.sm }}>
             {[
-              ["Calories", `${previewMacros.calories} kcal`],
-              ["Protein", `${previewMacros.protein} g`],
-              ["Carbohydrates", `${previewMacros.carbs} g`],
-              ["Fat", `${previewMacros.fat} g`],
               ...(previewMacros.fiberG > 0 ? [["Fibre", `${previewMacros.fiberG} g`]] : []),
               ...(previewMacros.sugarG > 0 ? [["Sugar", `${previewMacros.sugarG} g`]] : []),
               ...(previewMacros.sodiumMg > 0 ? [["Sodium", `${previewMacros.sodiumMg} mg`]] : []),

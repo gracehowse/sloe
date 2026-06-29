@@ -13,7 +13,8 @@ import { slotLineItemLabels } from "@/lib/mealNutritionLabels";
 import { formatNutritionSourceLabel } from "@/lib/sourceLabel";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { MacroTotalGrid, type MacroTotalCell } from "@/components/meal/MacroTotalGrid";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
@@ -331,6 +332,7 @@ export default function MealNutritionScreen() {
   const showPortionLine = !isSlotAggregate && Math.abs(portion - 1) > 0.001;
 
   const slotDateLabel = formatDateLabel(dateKey ?? dateFromParams ?? "");
+  const sectionA = isFeatureEnabled("eng1247_section_a_v1");
 
   // ENG-825 — resting-card treatment via the shared `useCardElevation`
   // hook (replaces the two hand-rolled `borderWidth: 1` cards below).
@@ -529,7 +531,13 @@ export default function MealNutritionScreen() {
       <View style={[styles.card, cardSurfaceStyle]}>
         {!isSlotAggregate ? (
           <>
-            <Text style={[styles.meta, { color: colors.textTertiary }]}>
+            <Text
+              style={[
+                sectionA ? styles.metaOverline : styles.meta,
+                { color: colors.textTertiary },
+              ]}
+              testID="meal-nutrition-meta-overline"
+            >
               {[meal.name, meal.time].filter(Boolean).join(" · ")}
               {meal.source ? ` · ${formatNutritionSourceLabel(meal.source)}` : ""}
             </Text>
@@ -555,17 +563,19 @@ export default function MealNutritionScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.macroBar}>
-              {splitConfidence.state === "complete" ? (
-                <>
-                  <View style={[styles.macroSeg, { flex: Math.max(split.proteinPct, 1), backgroundColor: mc.protein }]} />
-                  <View style={[styles.macroSeg, { flex: Math.max(split.carbsPct, 1), backgroundColor: mc.carbs }]} />
-                  <View style={[styles.macroSeg, { flex: Math.max(split.fatPct, 1), backgroundColor: mc.fat }]} />
-                </>
-              ) : (
-                <View style={[styles.macroSeg, { flex: 1, backgroundColor: colors.cardBorder }]} />
-              )}
-            </View>
+            {!sectionA ? (
+              <View style={styles.macroBar}>
+                {splitConfidence.state === "complete" ? (
+                  <>
+                    <View style={[styles.macroSeg, { flex: Math.max(split.proteinPct, 1), backgroundColor: mc.protein }]} />
+                    <View style={[styles.macroSeg, { flex: Math.max(split.carbsPct, 1), backgroundColor: mc.carbs }]} />
+                    <View style={[styles.macroSeg, { flex: Math.max(split.fatPct, 1), backgroundColor: mc.fat }]} />
+                  </>
+                ) : (
+                  <View style={[styles.macroSeg, { flex: 1, backgroundColor: colors.cardBorder }]} />
+                )}
+              </View>
+            ) : null}
 
             <MacroTotalGrid cells={macroCells} dateKey={navDateKey} />
           </>
@@ -662,6 +672,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   meta: { fontSize: 12, marginBottom: 4 },
+  metaOverline: { ...Type.label, textTransform: "uppercase", marginBottom: 4 },
   portion: { fontSize: 13, marginBottom: Spacing.sm },
   // SLOE Phase 0: the big standalone meal-kcal hero reads in Newsreader serif
   // (the design system reserves big numerals for serif). Family carries the

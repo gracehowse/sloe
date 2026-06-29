@@ -136,13 +136,12 @@ describe("web recipe-detail — macro summary is the ENG-920 flat Figma 332:2 st
   });
 
   it("the strip uses `grid grid-cols-4` so all four columns share width", () => {
-    expect(SRC).toMatch(
-      /data-testid="recipe-macros-grid"[\s\S]{0,200}className="[^"]*grid\s+grid-cols-4[^"]*"/,
-    );
+    const gridIdx = SRC.indexOf('data-testid="recipe-macros-grid"');
+    expect(gridIdx).toBeGreaterThan(0);
+    const gridBlock = SRC.slice(gridIdx, gridIdx + 400);
+    expect(gridBlock).toMatch(/grid\s+grid-cols-4/);
     // The legacy flex-wrap tile layout must NOT come back.
-    expect(SRC).not.toMatch(
-      /data-testid="recipe-macros-grid"[\s\S]{0,200}className="[^"]*flex\s+flex-wrap[^"]*"/,
-    );
+    expect(gridBlock).not.toMatch(/flex\s+flex-wrap/);
   });
 
   it("tiles no longer carry the `max-w-[48%]` half-row constraint", () => {
@@ -268,7 +267,11 @@ describe("web recipe-detail — ENG-818/819 elevation + commit-CTA payoff", () =
     // FLAT: no soft-lift shadow; true-white card fill for separation.
     expect(SRC).not.toMatch(/boxShadow: "var\(--elev-card-soft\)"/);
     expect(SRC).toMatch(/whiteSlabStyle[\s\S]{0,120}backgroundColor: "var\(--card\)"/);
-    expect(SRC).toMatch(/rounded-2xl p-5 space-y-4" style=\{whiteSlabStyle\}/);
+    // Legacy path: flat white slab card. V3 path: borderless strip — whiteSlabStyle on other sections.
+    expect(
+      /rounded-2xl p-5 space-y-4" style=\{whiteSlabStyle\}/.test(SRC) ||
+        /recipeDetailV3 \? undefined : whiteSlabStyle/.test(SRC),
+    ).toBe(true);
   });
 
   it("commit CTAs carry the `redesign_winmoment`-gated press payoff class", () => {

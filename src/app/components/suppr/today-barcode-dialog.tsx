@@ -32,6 +32,8 @@ import {
 } from "../../../lib/nutrition/portionPicker";
 import { PortionPickerWeb } from "./portion-picker";
 import { formatMacro } from "../../../lib/nutrition/formatMacro";
+import { isFeatureEnabled } from "@/lib/analytics/track";
+import { COMPLETE_DAY_V3_COPY } from "@/lib/completeDayV3";
 
 function scaleBarcodePreview(p: OffProductMacros, grams: number) {
   if (p.macrosPerServing && p.servingNoMass) {
@@ -242,6 +244,8 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
     onAddAsCustomFood,
   } = props;
 
+  const sectionA = isFeatureEnabled("eng1247_section_a_v1");
+
   React.useEffect(() => {
     if (!open) plausibilityOverrideRef.current = false;
   }, [open]);
@@ -271,9 +275,13 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
           // branch.
           <>
             <DialogHeader>
-              <DialogTitle className="text-foreground">{"We don't have this product yet."}</DialogTitle>
+              <DialogTitle className="text-foreground">
+                {sectionA ? COMPLETE_DAY_V3_COPY.barcodeNotFoundTitle : "We don't have this product yet."}
+              </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                Add it to your library so the next scan recognises it.
+                {sectionA
+                  ? `${barcodeValue ? `${barcodeValue} isn't in our database yet. ` : ""}${COMPLETE_DAY_V3_COPY.barcodeNotFoundBody}`
+                  : "Add it to your library so the next scan recognises it."}
               </DialogDescription>
             </DialogHeader>
             {/*

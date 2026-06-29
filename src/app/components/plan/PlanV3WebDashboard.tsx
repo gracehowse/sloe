@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ShoppingCart, Sparkles } from "lucide-react";
+import { Flame, ShoppingCart, Sparkles } from "lucide-react";
 
 import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
 import type { PlanWeekVerdict } from "@/lib/planning/planWeekStatus";
@@ -56,6 +56,8 @@ export interface PlanV3WebDashboardProps {
   shoppingItemCount: number;
   servingCount: number;
   onOpenShopping: () => void;
+  onOpenBatchCook: () => void;
+  batchCookSubtitle: string;
 }
 
 type WeekStat = { value: string; label: string };
@@ -157,6 +159,37 @@ function InsightCard({
   );
 }
 
+function BatchCookCard({
+  subtitle,
+  onOpenBatchCook,
+}: {
+  subtitle: string;
+  onOpenBatchCook: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2">
+        <span
+          className="grid size-7 shrink-0 place-items-center rounded-full"
+          style={{ backgroundColor: "var(--background-secondary)" }}
+          aria-hidden
+        >
+          <Flame className="size-3.5 text-foreground" strokeWidth={1.9} />
+        </span>
+        <h3 className="text-[13px] font-semibold text-foreground">Batch cook</h3>
+      </div>
+      <p className="mt-2 text-[11px] text-foreground-tertiary">{subtitle}</p>
+      <button
+        type="button"
+        onClick={onOpenBatchCook}
+        className="mt-3 h-9 w-full rounded-full border border-border bg-card text-[13px] font-semibold text-foreground transition-[background-color] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      >
+        Plan a batch
+      </button>
+    </div>
+  );
+}
+
 function ShoppingCard({
   itemCount,
   servingCount,
@@ -213,6 +246,8 @@ export function PlanV3WebDashboard({
   shoppingItemCount,
   servingCount,
   onOpenShopping,
+  onOpenBatchCook,
+  batchCookSubtitle,
 }: PlanV3WebDashboardProps) {
   const stats = useWeekStats(plan, targetKcal);
   const openDays = useOpenSlots(plan, weekDates);
@@ -281,6 +316,7 @@ export function PlanV3WebDashboard({
           {openDays.length > 0 ? (
             <InsightCard openDays={openDays} onGenerate={onGenerate} />
           ) : null}
+          <BatchCookCard subtitle={batchCookSubtitle} onOpenBatchCook={onOpenBatchCook} />
           <ShoppingCard
             itemCount={shoppingItemCount}
             servingCount={servingCount}

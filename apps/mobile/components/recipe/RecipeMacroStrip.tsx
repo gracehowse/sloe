@@ -41,20 +41,38 @@ function macroValueColor(
   return macroColorFor(key, isDark);
 }
 
-export function RecipeMacroStrip({ cells }: { cells: RecipeMacroCell[] }) {
+export function RecipeMacroStrip({
+  cells,
+  variant = "slab",
+}: {
+  cells: RecipeMacroCell[];
+  /** v3 conformance (ENG-1247): borderless `.rd-macros` strip — top/bottom hairlines, no card slab. */
+  variant?: "slab" | "borderless";
+}) {
   const colors = useThemeColors();
   const isDark = useResolvedScheme() === "dark";
+  const isBorderless = variant === "borderless";
   return (
     <View
       testID="recipe-macros-grid"
       accessibilityLabel="Nutrition per serving"
       style={{
         flexDirection: "row",
-        borderRadius: 16,
-        backgroundColor: colors.backgroundSecondary,
-        borderWidth: 1,
-        borderColor: colors.cardBorder,
-        paddingVertical: Spacing.lg,
+        ...(isBorderless
+          ? {
+              paddingTop: Spacing.lg,
+              paddingBottom: Spacing.xs,
+              borderTopWidth: 1,
+              borderBottomWidth: 1,
+              borderColor: colors.border,
+            }
+          : {
+              borderRadius: 16,
+              backgroundColor: colors.backgroundSecondary,
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
+              paddingVertical: Spacing.lg,
+            }),
       }}
     >
       {cells.map((cell, idx) => (

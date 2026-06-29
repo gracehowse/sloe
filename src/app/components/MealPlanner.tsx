@@ -72,6 +72,18 @@ import { PlanMoveMealDialog } from "./suppr/plan-move-meal-dialog.tsx";
 import { PlanPortionDialog, planMealDisplayMultiplier } from "./suppr/plan-portion-dialog.tsx";
 import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog.tsx";
 import { PlanV3Connected } from "./plan/PlanV3Connected.tsx";
+import { BatchCookSheet } from "./plan/BatchCookSheet.tsx";
+import {
+  batchShoppingMultiplier,
+  defaultBatchCookToolSubtitle,
+  isBatchCookCandidate,
+  recipeTotalTimeMin,
+  type BatchCookRecipeCandidate,
+} from "../../lib/planning/batchCook.ts";
+import { filterShoppingItemsByPantry } from "../../lib/planning/pantryStaples.ts";
+import { generateShoppingListFromRecipeEntriesAsync } from "../../lib/planning/generateShoppingList.ts";
+import { upsertShoppingListJsonItems } from "../../lib/supabase/shoppingJsonFallback.ts";
+import { AdjustConstraintsSheet } from "./plan/AdjustConstraintsSheet.tsx";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions";
 import {
   DropdownMenu,
@@ -85,6 +97,12 @@ import {
   DEFAULT_PLAN_SOURCE_MODE,
   canGenerateFromSource,
 } from "../../lib/planning/planSource.ts";
+import {
+  DEFAULT_PLAN_ADJUST_CONSTRAINTS,
+  enabledSlotsForMealsPerDay,
+  mealsPerDayFromEnabledSlots,
+  type PlanAdjustConstraints,
+} from "../../lib/planning/planAdjustConstraints.ts";
 import { PlanSourceSelector } from "./PlanSourceSelector.tsx";
 import {
   DEFAULT_PLANNER_BANDS,
@@ -228,6 +246,8 @@ export const MealPlanner = memo(function MealPlanner({
     renameMealPlanSlot,
     deleteMealPlanSlot,
     toggleSaveRecipe,
+    setShoppingItems,
+    pantryStaples,
   } = useAppData();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -314,6 +334,13 @@ export const MealPlanner = memo(function MealPlanner({
   const [enabledSlots, setEnabledSlots] = useState<Set<SlotKey>>(
     () => new Set<SlotKey>(SLOTS),
   );
+  const [allowBatchLeftovers, setAllowBatchLeftovers] = useState(true);
+  const [planCalorieFloor, setPlanCalorieFloor] = useState(
+    DEFAULT_PLAN_ADJUST_CONSTRAINTS.calorieFloor,
+  );
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [batchCookOpen, setBatchCookOpen] = useState(false);
+  const [batchCookSaving, setBatchCookSaving] = useState(false);
   const [moveFrom, setMoveFrom] = useState<{ day: number; slotIndex: number } | null>(
     null,
   );
@@ -534,6 +561,7 @@ export const MealPlanner = memo(function MealPlanner({
         ...(useSlotOverride ? { slots: slotsList } : {}),
         ...(planSourceSelector ? { source: planSource } : {}),
         ...(keepLocked ? { keepLocked: true } : {}),
+        allowLeftovers: allowBatchLeftovers,
       });
       await generateShoppingListFromPlan();
       if (!keepLocked) toast.success("Plan regenerated");
@@ -1047,6 +1075,80 @@ export const MealPlanner = memo(function MealPlanner({
     return ids;
   }, [discoverRecipes, savedRecipesForLibrary]);
 
+  const batchCookCandidates = useMemo<BatchCookRecipeCandidate[]>(() => {
+    return savedRecipesForLibrary
+      .filter((r) =>
+        isBatchCookCandidate({
+          prepTimeMin: r.prepTimeMin ?? null,
+          cookTimeMin: r.cookTimeMin ?? null,
+        }),
+      )
+      .slice(0, 12)
+      .map((r) => ({
+        id: r.id,
+        title: r.title,
+        calories: r.calories ?? 0,
+        protein: r.protein ?? 0,
+        timeMin: recipeTotalTimeMin(r.prepTimeMin, r.cookTimeMin),
+        servings: r.servings ?? 1,
+        imageUrl: r.image ?? null,
+      }));
+  }, [savedRecipesForLibrary]);
+
+  const scaleBatchCookToShopping = useCallback(
+    async (recipe: BatchCookRecipeCandidate, portions: number) => {
+      if (!authedUserId) {
+        toast.error("Sign in to update your shopping list.");
+        return false;
+      }
+      const { data: ingredients, error } = await supabase
+        .from("recipe_ingredients")
+        .select("name, amount, unit, recipe_id")
+        .eq("recipe_id", recipe.id);
+      if (error || !ingredients?.length) {
+        toast.error("This recipe has no ingredient lines to scale yet.");
+        return false;
+      }
+      const multiplier = batchShoppingMultiplier(portions, recipe.servings);
+      const titleToId = (title: string) => (title === recipe.title ? recipe.id : null);
+      const ingredientsByRecipeId = new Map<
+        string,
+        Array<{ name: string; amount: string; unit: string }>
+      >([
+        [
+          recipe.id,
+          ingredients.map((ing) => ({
+            name: String(ing.name ?? ""),
+            amount: ing.amount != null ? String(ing.amount) : "",
+            unit: String(ing.unit ?? ""),
+          })),
+        ],
+      ]);
+      const generated = await generateShoppingListFromRecipeEntriesAsync({
+        entries: [{ title: recipe.title, multiplier }],
+        recipeTitleToId: titleToId,
+        fetchDbIngredients: async (recipeId) => ingredientsByRecipeId.get(recipeId) ?? [],
+        fetchDbIngredientsBatch: async () => ingredientsByRecipeId,
+      });
+      const filtered = filterShoppingItemsByPantry(generated, pantryStaples);
+      setShoppingItems(filtered);
+      const items = filtered.map((it) => ({
+        name: it.name,
+        amount: it.amount,
+        unit: it.unit,
+        category: it.category,
+        checked: false,
+      }));
+      const { error: upErr } = await upsertShoppingListJsonItems(supabase, authedUserId, items);
+      if (upErr) {
+        toast.error(upErr.message);
+        return false;
+      }
+      return true;
+    },
+    [authedUserId, pantryStaples, setShoppingItems],
+  );
+
   const plan = mealPlan ?? [];
   const isPlanEmpty = plan.length === 0 || plan.every((d) => d.meals.length === 0);
   const renderDayCount = plan.length > 0 ? plan.length : 7;
@@ -1063,6 +1165,57 @@ export const MealPlanner = memo(function MealPlanner({
         ? "md:grid-cols-3"
         : "md:grid-cols-7";
 
+  const adjustInitial = useMemo<PlanAdjustConstraints>(
+    () => ({
+      source: planSource,
+      calorieFloor: planCalorieFloor,
+      mealsPerDay: mealsPerDayFromEnabledSlots(enabledSlots),
+      allowBatchLeftovers,
+    }),
+    [planSource, planCalorieFloor, enabledSlots, allowBatchLeftovers],
+  );
+
+  const handleAdjustSave = useCallback(
+    async (next: PlanAdjustConstraints) => {
+      setPlanSource(next.source);
+      setEnabledSlots(
+        enabledSlotsForMealsPerDay(next.mealsPerDay) as Set<SlotKey>,
+      );
+      setAllowBatchLeftovers(next.allowBatchLeftovers);
+      setPlanCalorieFloor(next.calorieFloor);
+      setAdjustOpen(false);
+      setIsGenerating(true);
+      try {
+        const days = isFree ? 1 : planDays;
+        const slotsList: string[] = SLOTS.filter((s) =>
+          enabledSlotsForMealsPerDay(next.mealsPerDay).has(s),
+        ).map((s) => SLOT_TITLE[s]);
+        const useSlotOverride =
+          slotsList.length > 0 && slotsList.length < SLOTS.length;
+        await generateMealPlan({
+          days,
+          ...(useSlotOverride ? { slots: slotsList } : {}),
+          ...(planSourceSelector ? { source: next.source } : {}),
+          allowLeftovers: next.allowBatchLeftovers,
+          calorieFloorMin: next.calorieFloor,
+        });
+        await generateShoppingListFromPlan();
+        toast.success("Constraints saved — plan regenerated");
+      } catch {
+        toast.error("Could not regenerate plan. Save more recipes and try again.");
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [
+      generateMealPlan,
+      generateShoppingListFromPlan,
+      isFree,
+      planDays,
+      planSourceSelector,
+    ],
+  );
+
   return (
     <div className="product-shell py-pm-6 space-y-5">
       {sloeV3Plan ? (
@@ -1072,8 +1225,12 @@ export const MealPlanner = memo(function MealPlanner({
           startOffset={startOffset}
           household={householdBanner}
           onGenerate={handleRegenerate}
-          onAdjust={() => setTemplatesOpen(true)}
+          onAdjust={() => setAdjustOpen(true)}
+          onTemplates={() => setTemplatesOpen(true)}
+          onOpenHousehold={() => setTemplatesOpen(true)}
           onOpenShopping={handleShoppingList}
+          onOpenBatchCook={() => setBatchCookOpen(true)}
+          batchCookSubtitle={defaultBatchCookToolSubtitle()}
           onSwapSlot={(day, slotIndex) =>
             openSwap(day, SLOTS[slotIndex] ?? "snacks", slotIndex)
           }
@@ -2533,6 +2690,48 @@ export const MealPlanner = memo(function MealPlanner({
             }}
           />
         </>
+      ) : null}
+      {sloeV3Plan ? (
+        <AdjustConstraintsSheet
+          open={adjustOpen}
+          onOpenChange={setAdjustOpen}
+          initial={adjustInitial}
+          libraryCount={savedRecipesForLibrary.length}
+          discoverCount={discoverCount}
+          saving={isGenerating}
+          onSave={(next) => void handleAdjustSave(next)}
+        />
+      ) : null}
+      {sloeV3Plan ? (
+        <BatchCookSheet
+          open={batchCookOpen}
+          onOpenChange={setBatchCookOpen}
+          recipes={batchCookCandidates}
+          saving={batchCookSaving}
+          onSave={async (recipe, portions) => {
+            setBatchCookSaving(true);
+            try {
+              const ok = await scaleBatchCookToShopping(recipe, portions);
+              if (ok) {
+                toast.success("Shopping list scaled to your batch.");
+                setBatchCookOpen(false);
+                handleShoppingList();
+              }
+            } finally {
+              setBatchCookSaving(false);
+            }
+          }}
+          onCook={async (recipe, portions) => {
+            setBatchCookSaving(true);
+            try {
+              await scaleBatchCookToShopping(recipe, portions);
+            } finally {
+              setBatchCookSaving(false);
+            }
+            setBatchCookOpen(false);
+            onOpenRecipe?.(recipe.id);
+          }}
+        />
       ) : null}
     </div>
   );

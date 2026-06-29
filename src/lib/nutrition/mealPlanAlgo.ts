@@ -109,6 +109,8 @@ export type PlannerTargets = {
   calorieBandPct: number;
   /** ±% band for carbs, fat, and fibre day targets. */
   carbFatBandPct: number;
+  /** ENG-1254 — minimum daily kcal floor from Adjust constraints. */
+  calorieFloorMin?: number;
 };
 
 export type PlannerSlotConfig = {
@@ -322,7 +324,9 @@ function dayFitStatus(
   const calLo = targets.calories * 0.95;
   const calHi = targets.calories * 1.05;
   const proOk = s.protein >= proLo && s.protein <= proHi;
-  const calOk = s.calories >= calLo && s.calories <= calHi;
+  const floor = targets.calorieFloorMin ?? 0;
+  const calFloorOk = floor <= 0 || s.calories >= floor * 0.95;
+  const calOk = s.calories >= calLo && s.calories <= calHi && calFloorOk;
   const carbOk = Math.abs(s.carbs - targets.carbs) <= macroBandTolerance(targets.carbs, macroBand);
   const fatOk = Math.abs(s.fat - targets.fat) <= macroBandTolerance(targets.fat, macroBand);
   const fiberOk =
@@ -361,6 +365,10 @@ function scoreMealSet(
   // Calorie scoring — tighter band, overshooting penalised more than undershooting
   const calDiff = sum.calories - targets.calories;
   const calBand = targets.calories * (targets.calorieBandPct / 100);
+  const floor = targets.calorieFloorMin ?? 0;
+  if (floor > 0 && sum.calories < floor) {
+    e += (floor - sum.calories) * 5;
+  }
   if (Math.abs(calDiff) <= calBand) {
     e += Math.abs(calDiff) * 0.05;
   } else if (calDiff > 0) {

@@ -149,6 +149,8 @@ import {
   type RecipeGridIngredient,
 } from "../../components/recipe/RecipeIngredientGrid";
 import { RecipeMethodSteps } from "../../components/recipe/RecipeMethodSteps";
+import { RecipeImportReviewBanner } from "../../components/recipe/RecipeImportReviewBanner";
+import { recipeIngredientsNeedReview } from "@suppr/shared/nutrition/recipeImportReview";
 import { RecipeServingsFooter } from "../../components/recipe/RecipeServingsFooter";
 import {
   IngredientInfoSheet,
@@ -1572,6 +1574,11 @@ export default function RecipeDetailScreen() {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const recipeNeedsImportReview = useMemo(
+    () => recipeIngredientsNeedReview(ingredients),
+    [ingredients],
+  );
+
   const styles = useMemo(() => StyleSheet.create({
     // Figma 332:2 — warm cream editorial page (`#F6F5F2`). White slab cards lift
     // off this cream base. Mirrors the public-share page.
@@ -2035,7 +2042,13 @@ export default function RecipeDetailScreen() {
           {/* ENG-1247 — editorial serif standfirst headnote (prototype
               rd-standfirst). Uses the recipe description, with a graceful
               fallback. Flag-gated; not part of the legacy layout. */}
-          {recipeDetailV3 ? (
+          {recipeDetailV3 && recipeNeedsImportReview ? (
+            <RecipeImportReviewBanner
+              sourceName={recipe.source_name}
+              sourceUrl={recipe.source_url}
+              onVerify={() => router.push(`/recipe/verify?id=${recipeId}` as never)}
+            />
+          ) : recipeDetailV3 ? (
             <RecipeStandfirst
               text={cleanDescription ? decodeEntities(cleanDescription) : null}
               proteinG={macros.protein}
@@ -2104,7 +2117,8 @@ export default function RecipeDetailScreen() {
                 </View>
               );
             }
-            return <RecipeMacroStrip cells={macroCells} />;
+            if (recipeDetailV3 && recipeNeedsImportReview) return null;
+            return <RecipeMacroStrip cells={macroCells} variant={recipeDetailV3 ? "borderless" : "slab"} />;
           })()}
 
           {/* Tracked-micro overflow chips (fibre / sugar / sodium). */}
@@ -2233,9 +2247,19 @@ export default function RecipeDetailScreen() {
           ) : null}
 
           {/* 7. Method — numbered serif steps. */}
+          {!(recipeDetailV3 && recipeNeedsImportReview) ? (
           <RecipeMethodSteps
+            variant={recipeDetailV3 ? "v3" : "legacy"}
+            stepCountNote={
+              recipeDetailV3 && heroTotalTimeMin
+                ? `${instructionSteps.length} steps · ${heroTotalTimeMin} min`
+                : recipeDetailV3
+                  ? `${instructionSteps.length} steps`
+                  : null
+            }
             steps={instructionSteps.map((s) => s.replace(/^\d+[\.\)\-]\s*/, ""))}
           />
+          ) : null}
 
           {/* Personal notes + rating. */}
           <RecipeNotesCard recipeId={recipeId} userId={userId} colors={colors} />

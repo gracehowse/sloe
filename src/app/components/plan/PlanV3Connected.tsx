@@ -9,6 +9,7 @@ import type { DayPlan } from "@/types/recipe";
 import type { HouseholdBannerData } from "../../../hooks/useHouseholdBanner";
 import { PlanV3Surface } from "./PlanV3Surface";
 import { PlanV3WebDashboard } from "./PlanV3WebDashboard";
+import { defaultBatchCookToolSubtitle } from "@/lib/planning/batchCook";
 
 /**
  * PlanV3Connected — adapts the web `MealPlanner` host's raw plan data + handlers
@@ -33,7 +34,11 @@ export interface PlanV3ConnectedProps {
   startOffset: number;
   onGenerate: () => void;
   onAdjust: () => void;
+  onTemplates: () => void;
+  onOpenHousehold: () => void;
   onOpenShopping: () => void;
+  onOpenBatchCook: () => void;
+  batchCookSubtitle?: string;
   /** Open the swap picker for (dayIndex, slotIndex) — powers open + add. */
   onSwapSlot: (dayIndex: number, slotIndex: number) => void;
   shoppingItemCount?: number;
@@ -48,10 +53,14 @@ export function PlanV3Connected({
   startOffset,
   onGenerate,
   onAdjust,
+  onTemplates,
+  onOpenHousehold,
   onOpenShopping,
+  onOpenBatchCook,
   onSwapSlot,
   shoppingItemCount = 0,
   servingCount = 1,
+  batchCookSubtitle = defaultBatchCookToolSubtitle(),
   household = null,
 }: PlanV3ConnectedProps) {
   const weekDates = React.useMemo(
@@ -95,13 +104,15 @@ export function PlanV3Connected({
           household={household}
           onGenerate={onGenerate}
           onAdjust={onAdjust}
-          onTemplates={onAdjust}
-          onOpenHousehold={onAdjust}
+          onTemplates={onTemplates}
+          onOpenHousehold={onOpenHousehold}
           onOpenMeal={onSwapSlot}
           onAddToSlot={onSwapSlot}
           shoppingItemCount={shoppingItemCount}
           servingCount={servingCount}
           onOpenShopping={onOpenShopping}
+          onOpenBatchCook={onOpenBatchCook}
+          batchCookSubtitle={batchCookSubtitle}
         />
       </div>
       {/* lg+: the desktop two-column dashboard (prototype WebPlan). */}
@@ -115,13 +126,15 @@ export function PlanV3Connected({
           household={household}
           onGenerate={onGenerate}
           onAdjust={onAdjust}
-          onTemplates={onAdjust}
-          onOpenHousehold={onAdjust}
+          onTemplates={onTemplates}
+          onOpenHousehold={onOpenHousehold}
           onOpenMeal={onSwapSlot}
           onAddToSlot={onSwapSlot}
           shoppingItemCount={shoppingItemCount}
           servingCount={servingCount}
           onOpenShopping={onOpenShopping}
+          onOpenBatchCook={onOpenBatchCook}
+          batchCookSubtitle={batchCookSubtitle}
         />
       </div>
     </>

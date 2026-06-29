@@ -71,6 +71,8 @@ export interface PlanV3SurfaceProps {
   servingCount: number;
   /** Open the shopping list (restores the access the legacy chrome carried). */
   onOpenShopping: () => void;
+  onOpenBatchCook: () => void;
+  batchCookSubtitle: string;
   /** Today (for the week-strip highlight) — injected for deterministic tests. */
   today?: Date;
 }
@@ -99,6 +101,8 @@ export function PlanV3Surface({
   shoppingItemCount,
   servingCount,
   onOpenShopping,
+  onOpenBatchCook,
+  batchCookSubtitle,
   today,
 }: PlanV3SurfaceProps) {
   const [mealFilter, setMealFilter] = React.useState<PlanMealFilter>("All");
@@ -189,8 +193,10 @@ export function PlanV3Surface({
         onAddToSlot={onAddToSlot}
       />
       <PlanToolsV3
+        batchCookSubtitle={batchCookSubtitle}
         shoppingItemCount={shoppingItemCount}
         servingCount={servingCount}
+        onOpenBatchCook={onOpenBatchCook}
         onOpenShopping={onOpenShopping}
       />
     </>

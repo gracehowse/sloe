@@ -99,19 +99,19 @@ export function PlanImport({ onClose }: PlanImportProps) {
         kcal figure so Sloe can verify the numbers.
       </p>
 
-      <div className="bg-primary-soft/40 border border-primary-soft rounded-[var(--radius-card-lg)] p-5 space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary-solid">
+      <div className="bg-success-soft border border-success-soft/60 rounded-[var(--radius-card)] p-5 space-y-1">
+        <p className="section-label text-success-solid">
           What works
         </p>
-        <p className="text-[13px] text-muted-foreground">Meal-prep paste — batch recipes with ingredients</p>
-        <p className="text-[13px] text-muted-foreground">Coach plan — schedule + recipe appendix</p>
-        <p className="text-[13px] text-muted-foreground">Program copy — week grid + recipe kcal panels</p>
+        <p className="text-sm text-muted-foreground">Meal-prep paste — batch recipes with ingredients</p>
+        <p className="text-sm text-muted-foreground">Coach plan — schedule + recipe appendix</p>
+        <p className="text-sm text-muted-foreground">Program copy — week grid + recipe kcal panels</p>
       </div>
 
       <div className="space-y-2">
         <label
           htmlFor="plan-import-paste-field"
-          className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+          className="section-label"
         >
           Plan + recipes
         </label>
@@ -129,7 +129,7 @@ export function PlanImport({ onClose }: PlanImportProps) {
       <div className="space-y-2">
         <label
           htmlFor="plan-import-name-paste"
-          className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+          className="section-label"
         >
           Plan name
         </label>

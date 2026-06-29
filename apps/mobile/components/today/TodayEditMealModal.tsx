@@ -17,7 +17,7 @@ import {
 import * as Haptics from "expo-haptics";
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X } from "lucide-react-native";
+import { X, ChevronRight, Shuffle, Copy } from "lucide-react-native";
 import {
   Accent,
   Elevation,
@@ -85,6 +85,12 @@ export interface TodayEditMealModalProps {
   onSave: () => void;
   onDelete: () => void;
   onClose: () => void;
+  /** ENG-1247 §A8 — meal nutrition detail from edit sheet. */
+  onOpenFullNutrition?: () => void;
+  /** ENG-1247 §A8 — swap entry via food search. */
+  onSwapFood?: () => void;
+  /** ENG-1247 §A8 — copy entry to another day/meal. */
+  onCopyMeal?: () => void;
   styles: Record<string, any>;
   cardColor: string;
   borderColor: string;
@@ -188,6 +194,9 @@ function EditEntryV2(props: TodayEditMealModalProps) {
     editEatenAtEnabled,
     editEatenAtTime,
     onEditEatenAtTimeChange,
+    onOpenFullNutrition,
+    onSwapFood,
+    onCopyMeal,
   } = props;
 
   // ENG-813 (Redesign — Design Direction 2026): element→sheet morph on open
@@ -196,6 +205,7 @@ function EditEntryV2(props: TodayEditMealModalProps) {
   // inputs both stay alive in the flag-off path.
   const open = !!editingMeal;
   const motionEnabled = isFeatureEnabled("redesign_motion");
+  const sectionA = isFeatureEnabled("eng1247_section_a_v1");
   const { sheetStyle } = useSheetMorph(open && motionEnabled);
 
   const portionNum = parsePortion(editPortion);
@@ -381,6 +391,50 @@ function EditEntryV2(props: TodayEditMealModalProps) {
               <Text style={[Type.caption, v2.estimateNote, { color: colors.textTertiary }]}>
                 Estimated values — edit any to correct.
               </Text>
+
+              {sectionA ? (
+                <View style={{ marginTop: Spacing.lg }}>
+                  {onOpenFullNutrition ? (
+                    <Pressable
+                      onPress={onOpenFullNutrition}
+                      accessibilityRole="button"
+                      accessibilityLabel="Full nutrition"
+                      style={[v2.meActionRow, { borderTopColor: colors.border, borderBottomColor: colors.border }]}
+                    >
+                      <Text style={[Type.body, { color: colors.text, flex: 1 }]}>Full nutrition</Text>
+                      <ChevronRight size={IconSize.md} color={colors.textTertiary} />
+                    </Pressable>
+                  ) : null}
+                  {onSwapFood ? (
+                    <Pressable
+                      onPress={onSwapFood}
+                      accessibilityRole="button"
+                      accessibilityLabel="Swap for another food"
+                      style={v2.meActionRow}
+                    >
+                      <View style={[v2.meActionIcon, { backgroundColor: colors.card }]}>
+                        <Shuffle size={IconSize.sm} color={accent.primary} />
+                      </View>
+                      <Text style={[Type.body, { color: colors.text, flex: 1, textAlign: "left" }]}>Swap for another food</Text>
+                      <ChevronRight size={IconSize.md} color={colors.textTertiary} />
+                    </Pressable>
+                  ) : null}
+                  {onCopyMeal ? (
+                    <Pressable
+                      onPress={onCopyMeal}
+                      accessibilityRole="button"
+                      accessibilityLabel="Copy to another meal or day"
+                      style={[v2.meActionRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
+                    >
+                      <View style={[v2.meActionIcon, { backgroundColor: colors.card }]}>
+                        <Copy size={IconSize.sm} color={accent.primary} />
+                      </View>
+                      <Text style={[Type.body, { color: colors.text, flex: 1, textAlign: "left" }]}>Copy to another meal or day</Text>
+                      <ChevronRight size={IconSize.md} color={colors.textTertiary} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
             </ScrollView>
 
             {/* Sticky footer — destructive-left / primary-right (blue per
@@ -455,6 +509,21 @@ const v2 = StyleSheet.create({
   slotRow: { flexDirection: "row", gap: Spacing.xs },
   slotPill: { flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   estimateNote: { marginTop: Spacing.sm },
+  meActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  meActionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   footer: {
     flexDirection: "row",
     gap: Spacing.sm,

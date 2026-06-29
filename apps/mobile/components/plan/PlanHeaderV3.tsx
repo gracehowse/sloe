@@ -78,7 +78,7 @@ export function PlanHeaderV3({
           <ActButton label="Adjust constraints" onPress={onAdjust} bg={colors.card}>
             <SlidersHorizontal size={17} color={colors.text} strokeWidth={1.9} />
           </ActButton>
-          <ActButton label="Plan templates" onPress={onTemplates} bg={colors.card}>
+          <ActButton label="Templates" onPress={onTemplates} bg={colors.card}>
             <Bookmark size={16} color={colors.text} strokeWidth={1.9} />
           </ActButton>
         </View>

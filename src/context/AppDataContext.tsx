@@ -144,6 +144,10 @@ interface AppDataContextValue {
      * to all four canonical slots when omitted.
      */
     slots?: string[];
+    source?: PlanSourceMode;
+    keepLocked?: boolean;
+    allowLeftovers?: boolean;
+    calorieFloorMin?: number;
   }) => Promise<void>;
   generateShoppingListFromPlan: () => Promise<void>;
   /** True when the list was built from the planner and the meal plan (or portions) has changed since. */
@@ -1184,6 +1188,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
        * runs. The MealPlanner passes this only under `plan_meal_lock_v1`.
        */
       keepLocked?: boolean;
+      /** ENG-1247 / B1 — skip leftover distribution when false (Adjust constraints). */
+      allowLeftovers?: boolean;
+      /** ENG-1254 — daily calorie floor from Adjust constraints. */
+      calorieFloorMin?: number;
     }) => {
       const { generatePlanFromLibrary, regeneratePlanKeepingLocked } = await import(
         "../lib/planning/generateMealPlan.ts"
@@ -1199,6 +1207,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           fiber: o.fiber ?? nutritionTargets.fiber,
           calorieBandPct: o.calorieBandPct ?? DEFAULT_PLANNER_BANDS.calorieBandPct,
           carbFatBandPct: o.carbFatBandPct ?? DEFAULT_PLANNER_BANDS.carbFatBandPct,
+          calorieFloorMin: o.calorieFloorMin ?? options?.calorieFloorMin,
         };
         const days = options?.days ?? 1;
         const savedRecipes = savedRecipesForPlanning({
@@ -1319,7 +1328,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             recipesByRef[r.id] = { servings: r.servings };
           }
         }
-        const { plan, leftoverCount } = distributeLeftovers(rawPlan, recipesByRef);
+        const allowLeftovers = options?.allowLeftovers !== false;
+        const { plan, leftoverCount } =
+          allowLeftovers && Object.keys(recipesByRef).length > 0
+            ? distributeLeftovers(rawPlan, recipesByRef)
+            : { plan: rawPlan, leftoverCount: 0 };
         const generateDurationMs = Date.now() - generateStartMs;
         setMealPlan(plan);
         if (leftoverCount > 0) {

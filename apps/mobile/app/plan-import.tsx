@@ -332,16 +332,16 @@ export default function PlanImportScreen() {
         subtitle: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: Spacing.md },
         // SLOE DS reskin (2026-06-07): cream surface-card slabs, 24px radius, serif headings — presentation only.
         callout: {
-          backgroundColor: Accent.primarySoft,
+          backgroundColor: Accent.success + "1F",
           borderRadius: Radius.xl,
           padding: Spacing.lg,
           marginBottom: Spacing.md,
           borderWidth: 1,
-          borderColor: Accent.primarySoftStrong,
+          borderColor: Accent.success + "40",
         },
-        calloutTitle: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 6 },
-        calloutItem: { fontSize: 13, color: colors.textSecondary, marginBottom: 4 },
-        label: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, marginBottom: 6, marginTop: Spacing.sm },
+        calloutTitle: { ...Type.label, color: Accent.successSolid, marginBottom: 6 },
+        calloutItem: { ...Type.caption, color: colors.textSecondary, marginBottom: 4 },
+        label: { ...Type.label, color: colors.textTertiary, marginBottom: 6, marginTop: Spacing.sm },
         input: {
           backgroundColor: colors.card,
           borderRadius: Radius.xl,
@@ -374,26 +374,26 @@ export default function PlanImportScreen() {
         segBtn: {
           flex: 1,
           padding: Spacing.md,
-          borderRadius: 14,
+          borderRadius: Radius.lg,
           borderWidth: 1,
           borderColor: colors.border,
           backgroundColor: colors.card,
         },
-        segBtnActive: { borderColor: accent.primary, backgroundColor: accent.primary + "12" },
+        segBtnActive: { borderColor: accent.primary, backgroundColor: Accent.primarySoft },
         sourceTabs: { flexDirection: "row", gap: 8, marginBottom: Spacing.md },
         sourceTab: {
           flex: 1,
           paddingVertical: 12,
-          borderRadius: 14,
+          borderRadius: Radius.lg,
           borderWidth: 1,
           borderColor: colors.border,
           alignItems: "center",
           backgroundColor: colors.card,
         },
-        sourceTabActive: { borderColor: accent.primary, backgroundColor: accent.primary + "12" },
+        sourceTabActive: { borderColor: accent.primary, backgroundColor: Accent.primarySoft },
         uploadZone: {
           backgroundColor: colors.card,
-          borderRadius: Radius.xl * 2,
+          borderRadius: Radius.xl,
           borderWidth: 1,
           borderColor: colors.border,
           borderStyle: "dashed",
@@ -405,7 +405,7 @@ export default function PlanImportScreen() {
         uploadHint: { fontSize: 12, color: colors.textSecondary, marginTop: 6, textAlign: "center", lineHeight: 18 },
         assessment: {
           backgroundColor: colors.card,
-          borderRadius: Radius.xl * 2,
+          borderRadius: Radius.xl,
           padding: Spacing.lg,
           marginBottom: Spacing.md,
           borderWidth: 1,
@@ -537,7 +537,7 @@ export default function PlanImportScreen() {
             onPress={() => !committing && setActivateOpen(false)}
           >
             <Pressable
-              style={{ backgroundColor: colors.card, borderRadius: Radius.xl * 2, padding: Spacing.xl }}
+              style={{ backgroundColor: colors.card, borderRadius: Radius.xl, padding: Spacing.xl }}
               onPress={() => {}}
             >
               <Text style={{ ...Type.title, color: colors.navPrimary, marginBottom: 8 }}>

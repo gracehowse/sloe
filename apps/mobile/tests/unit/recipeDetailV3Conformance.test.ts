@@ -105,6 +105,14 @@ describe("ENG-1247 — consolidated sticky CTA bar (mobile)", () => {
   });
 });
 
+describe("ENG-1247 — borderless macro strip (mobile)", () => {
+  it("passes the v3 borderless variant to RecipeMacroStrip when the flag is ON", () => {
+    expect(SCREEN).toContain(
+      'variant={recipeDetailV3 ? "borderless" : "slab"}',
+    );
+  });
+});
+
 describe("ENG-1247 — RecipeActionPills collapses to owner Edit-only in v3", () => {
   it("the screen passes showLog={!recipeDetailV3} so Log leaves the action row", () => {
     expect(SCREEN).toContain("showLog={!recipeDetailV3}");

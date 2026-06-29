@@ -149,6 +149,18 @@ describe("ENG-1247 — web Log gap-fill (REAL journal write, not a fake toast)",
   });
 });
 
+describe("ENG-1247 — borderless macro strip (web)", () => {
+  it("uses the v3 borderless rd-macros treatment when the flag is ON", () => {
+    const block = WEB_SRC.slice(
+      WEB_SRC.indexOf('data-testid="recipe-macros-grid"'),
+      WEB_SRC.indexOf('data-testid="recipe-macros-grid"') + 500,
+    );
+    expect(block).toContain("recipeDetailV3");
+    expect(block).toContain("border-y border-border");
+    expect(block).toContain("recipeDetailV3 ? undefined : whiteSlabStyle");
+  });
+});
+
 describe("ENG-1247 — no fakes / honest data", () => {
   it("does not invent a cuisine kicker (no cuisine field exists in the pipeline)", () => {
     // The kicker is the honest saved/Fits-your-day pair — never a fabricated
