@@ -78,7 +78,7 @@ Linear → **Done** (comment + commit SHA on each when merged).
 | `2211f18c` | ENG-1121 | FatSecretBadge on food-search results panel (Wave 3) |
 | `62e367f5` | ENG-1129, ENG-983 | Cook servings confirm close-out + shopping dedupe/aisle-sort at generation |
 | `5f8b09f1` | ENG-1131 | Web Plan smart suggestions behind plan_web_parity_v1 |
-| `a77a34eb` | ENG-978, ENG-979 | Shareable import-success card + creator credit in share text (web + mobile) |
+| `a77a34eb` | ENG-978, ENG-979 | Shareable import-success card + creator credit in share text (web + mobile). Creator-credit + macro-line + profile-URL gating + full message assembly now branch-covered in `tests/unit/buildRecipeShareCard.test.ts` (22 cases incl. the `, estimated` suffix gate and "Suppr Kitchen"→"Sloe Kitchen" brand remap). |
 | `3d0353ab` | ENG-972 | NL describe meal logging inside Log sheet (web + mobile) |
 | `b1496047` | ENG-971 | AI paywall photo_log copy parity (web matched mobile honest cap wording) |
 | `95a83070` | ENG-827, 900, 980, 962, 966, 970, 1137 (+895/889/901/896/965 partial) | **Gate 1.5A–C bulk:** onboarding chrome, Sloe brand sweep, log-a-meal Figma, save-first import, signup-after-reveal, paywall honesty (web+mobile), `assertOrigin` CSRF, visual-regression goldens, `REDESIGN_DEFAULT_ON` parity tests |
