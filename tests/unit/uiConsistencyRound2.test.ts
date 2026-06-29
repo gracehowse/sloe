@@ -160,8 +160,14 @@ describe("Round 2 — destructive action escalation", () => {
     expect(SRC).toMatch(/testID="settings-bundle-delete-account-row"/);
     // The ghost-button-inside-the-modal pattern is gone.
     expect(SRC).not.toContain("Delete my account permanently");
-    // The new flow's "type delete" confirmation must be present.
-    expect(SRC).toMatch(/Type 'delete' to confirm/);
+    // ENG-1260 (2026-06-29): the typed-confirm gate moved into
+    // `useDeleteAccountSheet` (the legacy fallback path behind the new 3-step
+    // DeleteAccountSheet). The contract — a typed 'delete' confirmation — is
+    // unchanged, just relocated out of the bundle.
+    const DELETE_HOOK = read(
+      "apps/mobile/components/settings/useDeleteAccountSheet.ts",
+    );
+    expect(DELETE_HOOK).toMatch(/Type 'delete' to confirm/);
   });
 });
 
