@@ -2279,7 +2279,25 @@ export const NutritionTracker = memo(function NutritionTracker({
   ]);
 
   // ENG-1225 #20 — weekly recap opened by the Today StreakPip.
-  const weeklyRecap = useWeeklyRecap(weekData.days, weekData.label, targets.calories);
+  const weeklyRecapMeals = useMemo(
+    () =>
+      weekData.days.flatMap((d) =>
+        (nutritionByDay[d.key] ?? []).map((m) => ({
+          recipeTitle: m.recipeTitle,
+          name: m.name,
+        })),
+      ),
+    [nutritionByDay, weekData.days],
+  );
+  const weeklyRecap = useWeeklyRecap(weekData.days, weekData.label, targets.calories, {
+    weightStartKg: null,
+    weightEndKg: null,
+    weighInsInWindow: 0,
+    streakDays: protectedStreakLength,
+    meals: weeklyRecapMeals,
+    avgProteinG: weekData.weekAvg.protein,
+    daysLogged: weekData.loggedDaysInWeek,
+  });
   // Burn data for the selected day
   const dayWorkouts = workoutsByDay[selectedDateKey] ?? [];
   const basalBurnKcal = basalBurnByDay[selectedDateKey] ?? 0;

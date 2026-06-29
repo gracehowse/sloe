@@ -383,6 +383,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "today_hero_decard_v3",
   "today_quickadd_recents_v3",
   "eng1247_section_a_v1",
+  "weekly_recap_detail_v1",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
