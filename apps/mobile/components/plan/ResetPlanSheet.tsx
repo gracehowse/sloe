@@ -122,9 +122,13 @@ export function ResetPlanSheet({
           ) : null}
 
           <View style={styles.footer}>
-            <SupprButton variant="ghost" style={styles.footerBtn} disabled={loading} onPress={onClose}>
-              {copy.cancel}
-            </SupprButton>
+            <SupprButton
+              variant="ghost"
+              style={styles.footerBtn}
+              disabled={loading}
+              onPress={onClose}
+              label={copy.cancel}
+            />
             <SupprButton
               variant="primary"
               style={styles.footerBtn}

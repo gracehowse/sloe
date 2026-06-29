@@ -137,9 +137,12 @@ export function DeleteAccountSheet({
               <Text style={[styles.sub, styles.center, { color: colors.textSecondary }]}>
                 {copy.step2.body}
               </Text>
-              <SupprButton variant="ghost" onPress={onExportFirst} style={styles.exportBtn}>
-                {copy.step2.exportFirst}
-              </SupprButton>
+              <SupprButton
+                variant="ghost"
+                onPress={onExportFirst}
+                style={styles.exportBtn}
+                label={copy.step2.exportFirst}
+              />
               <View style={[styles.card, { borderColor: colors.border, marginTop: Spacing.lg }]}>
                 {loadingLedger ? (
                   <Text style={[styles.sub, { padding: Spacing.lg, color: colors.textSecondary }]}>
@@ -185,17 +188,20 @@ export function DeleteAccountSheet({
           ) : null}
 
           <View style={styles.footer}>
-            <SupprButton variant="ghost" style={styles.footerBtn} disabled={deleting} onPress={onClose}>
-              {copy.keepAccount}
-            </SupprButton>
+            <SupprButton
+              variant="ghost"
+              style={styles.footerBtn}
+              disabled={deleting}
+              onPress={onClose}
+              label={copy.keepAccount}
+            />
             {step < 3 ? (
               <SupprButton
                 variant="primary"
                 style={styles.footerBtn}
                 onPress={() => setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s))}
-              >
-                {copy.continue}
-              </SupprButton>
+                label={copy.continue}
+              />
             ) : (
               <SupprButton
                 variant="primary"
@@ -207,9 +213,8 @@ export function DeleteAccountSheet({
                 loading={deleting}
                 onPress={() => onDeleteForever(reason)}
                 testID="delete-account-confirm"
-              >
-                {copy.deleteForever}
-              </SupprButton>
+                label={copy.deleteForever}
+              />
             )}
           </View>
         </Pressable>
