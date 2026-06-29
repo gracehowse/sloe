@@ -86,7 +86,7 @@ export function WhyNumberV3Section({
           <p className="text-[15px] font-semibold">{WHY_NUMBER_V3_COPY.yourTarget}</p>
           <p className="text-xs opacity-80">{buildWhyNumberResultSubtitle(result.lines)}</p>
         </div>
-        <span className="font-[family-name:var(--font-headline)] text-[34px] font-medium tabular-nums leading-none">
+        <span className="font-[family-name:var(--font-headline)] text-4xl font-medium tabular-nums leading-none">
           {formatWhyNumberHeroKcal(targetCalories)}
         </span>
       </div>

@@ -762,7 +762,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
   /** ENG-1247 — immersive aubergine cook shell when RecipeDetail v3 ships. */
   const cookV3 = isFeatureEnabled("recipe_detail_v3_conformance");
   const stepTextClass = cookV3
-    ? "font-[family-name:var(--font-headline)] text-2xl sm:text-[38px] font-medium leading-snug text-[#efe9f2] text-center max-w-[18ch] mx-auto"
+    ? "font-[family-name:var(--font-headline)] text-2xl sm:text-4xl font-medium leading-snug text-[#efe9f2] text-center max-w-[18ch] mx-auto"
     : "text-2xl sm:text-3xl leading-relaxed text-foreground";
 
   /**
