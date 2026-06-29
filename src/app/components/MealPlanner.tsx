@@ -73,6 +73,8 @@ import { PlanPortionDialog, planMealDisplayMultiplier } from "./suppr/plan-porti
 import { PlanTemplatesDialog } from "./suppr/plan-templates-dialog.tsx";
 import { PlanV3Connected } from "./plan/PlanV3Connected.tsx";
 import { BatchCookSheet } from "./plan/BatchCookSheet.tsx";
+import { ResetPlanSheet } from "./plan/ResetPlanSheet.tsx";
+import { useMealPlanRegenerate } from "./plan/useMealPlanRegenerate.ts";
 import {
   batchShoppingMultiplier,
   defaultBatchCookToolSubtitle,
@@ -454,9 +456,6 @@ export const MealPlanner = memo(function MealPlanner({
     () => (mealPlan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
     [mealPlan],
   );
-  // ENG-956 — count locked meals across the plan; drives the "Refresh the
-  // rest" label + the keep-locked regenerate path. Always 0 when the flag is
-  // off (no lock affordance is rendered, so nothing can be locked).
   const lockedMealCount = useMemo(
     () =>
       mealLockEnabled
@@ -467,6 +466,27 @@ export const MealPlanner = memo(function MealPlanner({
         : 0,
     [mealLockEnabled, mealPlan],
   );
+  const {
+    resetPlan,
+    handleRegenerate,
+    requestRegenerate,
+    handleResetPlanConfirm,
+  } = useMealPlanRegenerate({
+    isFree,
+    planDays,
+    enabledSlots,
+    slots: SLOTS,
+    slotTitle: (key) => SLOT_TITLE[key as SlotKey],
+    mealLockEnabled,
+    lockedMealCount,
+    planSourceSelector,
+    planSource,
+    allowBatchLeftovers,
+    planHasRealMeals,
+    generateMealPlan,
+    generateShoppingListFromPlan,
+    setIsGenerating,
+  });
   // ENG-956 — the primary regenerate CTA's verb. "Refresh the rest" when ≥1
   // meal is locked (we keep those + re-roll the rest); otherwise the existing
   // Generate (empty plan) / Regenerate (populated plan) wording.
@@ -532,45 +552,6 @@ export const MealPlanner = memo(function MealPlanner({
       return () => clearTimeout(t);
     }
   }, [winMomentsEnabled, summaryTone]);
-
-  const handleRegenerate = async () => {
-    setIsGenerating(true);
-    try {
-      // F2-B (2026-04-28): pass through the chosen plan length. The
-      // shared `generateMealPlan({ days })` API at `AppDataContext.tsx`
-      // already accepts the option; pre-fix the call was a no-arg
-      // invocation that defaulted to 1 day, which was the F2 root
-      // cause for "web Planner is ~30% of mobile's surface".
-      const days = isFree ? 1 : planDays;
-      // F2-H (2026-04-28): pass through the user's enabled-slot set.
-      // The shared `generatePlanFromLibrary` accepts `slots?: string[]`;
-      // we pass capitalised names ("Breakfast" etc.) so the algorithm's
-      // `recipeFitsMealSlot` lookup works. When all four slots are
-      // enabled we omit the option so the lib's default kicks in.
-      const slotsList: string[] = SLOTS.filter((s) => enabledSlots.has(s)).map(
-        (s) => SLOT_TITLE[s],
-      );
-      const useSlotOverride =
-        slotsList.length > 0 && slotsList.length < SLOTS.length;
-      // ENG-956 — when ≥1 meal is locked, ask the generator to keep the
-      // locked meals and re-roll only the unlocked slots ("Refresh the rest").
-      // The generator falls back to a full regenerate when nothing is locked.
-      const keepLocked = mealLockEnabled && lockedMealCount > 0;
-      await generateMealPlan({
-        days,
-        ...(useSlotOverride ? { slots: slotsList } : {}),
-        ...(planSourceSelector ? { source: planSource } : {}),
-        ...(keepLocked ? { keepLocked: true } : {}),
-        allowLeftovers: allowBatchLeftovers,
-      });
-      await generateShoppingListFromPlan();
-      if (!keepLocked) toast.success("Plan regenerated");
-    } catch {
-      toast.error("Could not regenerate plan. Save more recipes and try again.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   /** F2-H (2026-04-28) — toggle a slot in the enabled set. Disallows
    *  empty selection: at least one slot must remain enabled, since
@@ -1224,7 +1205,7 @@ export const MealPlanner = memo(function MealPlanner({
           targetCalories={targetCalories}
           startOffset={startOffset}
           household={householdBanner}
-          onGenerate={handleRegenerate}
+          onGenerate={requestRegenerate}
           onAdjust={() => setAdjustOpen(true)}
           onTemplates={() => setTemplatesOpen(true)}
           onOpenHousehold={() => setTemplatesOpen(true)}
@@ -1353,7 +1334,7 @@ export const MealPlanner = memo(function MealPlanner({
             <SupprButton
               variant="primary"
               loading={isGenerating}
-              onClick={handleRegenerate}
+              onClick={requestRegenerate}
             >
               <RefreshCw size={14} strokeWidth={2} />
               {/* DC12 parity (2026-06-13): "Regenerate" misreads in the
@@ -1719,7 +1700,7 @@ export const MealPlanner = memo(function MealPlanner({
             variant="primary"
             loading={isGenerating}
             disabled={!sourceCanGenerate}
-            onClick={handleRegenerate}
+            onClick={() => void handleRegenerate()}
           >
             {isGenerating ? "Generating…" : "Generate meal plan"}
           </SupprButton>
@@ -2418,7 +2399,7 @@ export const MealPlanner = memo(function MealPlanner({
           variant="primary"
           loading={isGenerating}
           disabled={!sourceCanGenerate}
-          onClick={handleRegenerate}
+          onClick={() => void handleRegenerate()}
         >
           <RefreshCw size={14} strokeWidth={2} />
           {/* DC12 (2026-05-14, premium-bar audit) — no-plan empty state uses
@@ -2733,6 +2714,12 @@ export const MealPlanner = memo(function MealPlanner({
           }}
         />
       ) : null}
+      <ResetPlanSheet
+        open={resetPlan.open}
+        onOpenChange={resetPlan.setOpen}
+        loading={isGenerating}
+        onConfirm={handleResetPlanConfirm}
+      />
     </div>
   );
 });

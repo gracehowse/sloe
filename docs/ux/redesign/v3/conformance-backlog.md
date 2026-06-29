@@ -67,9 +67,9 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 | §D15 | Changelog | 🔒 asymmetric entry points |
 | §D16 | Plan tools smart suggestions | 🔒 honest real-data nudges |
 | §D17 | Grocery | 🔒 no Tesco/Ocado fiction (already marked) |
-| §D18 | EraseEverything, DeleteAccount dialog | 🔒 web dialog IA (B26 sheet still builds) |
+| §D18 | EraseEverything, DeleteAccount dialog | 🔒 web dialog IA; DeleteAccount sheet ✅ B26 |
 
-**Still ⬜ (not keep-current):** autonomous §A cosmetic (Nutrients sort, Hydration sheet, CompleteDay, onboarding tokens, etc.) + explicit builds B15–B16, B18, B21, B26, B28 (ResetPlan 🆕), CreatorProfile, WeeklyRecap detail rows. **Flag backlog (not ⬜):** RecipeDetail CookMode dark theme (`recipe_detail_v3_conformance`). **Out of scope (not ⬜):** BatchCook assign-portions planner (Grace B3 minimal v1).
+**Still ⬜ (not keep-current):** autonomous §A cosmetic (Nutrients sort, Hydration sheet, CompleteDay, onboarding tokens, etc.) + explicit builds B15–B16, B18, B21, CreatorProfile, WeeklyRecap detail rows. **Shipped 2026-06-29:** B26 DeleteAccount 3-step sheet (`delete_account_sheet_v1`), B28 ResetPlan keep/clear sheet (`reset_plan_confirm_v1`) — web + mobile, default-on. **Flag backlog (not ⬜):** RecipeDetail CookMode dark theme (`recipe_detail_v3_conformance`). **Out of scope (not ⬜):** BatchCook assign-portions planner (Grace B3 minimal v1).
 
 
 
@@ -243,10 +243,11 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
   - **[MED]** Footer meta (exp-foot): proto = 'N of 4 selected - GDPR-ready, machine-readable' with info icon, centered 12px fg-tertiary · app = Absent
   - **[MED]** Primary CTA copy: proto = 'Prepare export' (with chevD icon) then 'Download .zip' · app = 'Export nutrition log (CSV)' / 'Export everything' button labels
 
-### ⬜ DeleteAccount — H3 M2 L0
+### ✅ DeleteAccount — H3 M2 L0 (ENG-1260 / B26, `delete_account_sheet_v1`, 2026-06-29)
 - proto: `5942-5982`
-- mobile: apps/mobile/components/settings/SettingsBundleContent.tsx (handleDeleteAccount ~L1096-1150, centered 'Delete account' clay text affordance ~L2691-2705)
-- web: src/app/components/settings/SettingsDialogs.tsx (ConfirmDialog 'Delete your account?' ~L229-242, wired from Settings.tsx)
+- mobile: `apps/mobile/components/settings/DeleteAccountSheet.tsx` + `SettingsBundleContent.tsx` (flag-gated; legacy Alert chain in `else`)
+- web: `src/app/components/settings/DeleteAccountSheet.tsx` + `Settings.tsx` (flag-gated; legacy `SettingsDialogs` two-stage in `else`)
+- shared: `src/lib/settings/deleteAccountFlow.ts`, `fetchDeleteAccountLedger.ts`, `executeAccountDelete.ts`
 - _Prototype DeleteAccount is a 3-step Sheet (height 80%) with a del-steps progress bar (3 segments, destructive fill). Step 1: 'Why are you leaving?' del-stephd + 5 reason radios (ver-row + radio-dot) [Taking a break/Found another app/Privacy concerns/Too expensive/Other]. Step 2: del-warn circle (alertTri) + 'This can't be undone' + 'Export my data first' outline button + a set-row ledger of what's removed (418 diary entries / 26 recipes / 90 days weight / household membership) with destructive x icons. Step 3: type DELETE input (centered, letter-spaced, bold). Footer is a 2-button row: 'Keep my account' outline + 'Continue'/'Delete forever' (turns destructive when DELETE typed). The app has NONE of this multi-step structure. Mobile uses a native Alert chain (explainer Alert -> Alert.prompt type 'delete'); web uses a single ConfirmDialog with a one-line description. No reason capture, no progress steps, no removal ledger, no inline 'export first' affordance, no del-warn/del-step/ver-row/radio-dot visual language._
   - **[HIGH]** Container + structure: proto = Sheet height 80%, 3-step wizard with del-steps progress indicator · app = Mobile: native Alert + Alert.prompt chain. Web: single ConfirmDialog modal. No wizard, no steps bar.
   - **[HIGH]** Step 1 reason capture (ver-row + radio-dot): proto = 5 single-select reason radios under 'Why are you leaving?' serif heading · app = Absent on both platforms — no leaving-reason capture
@@ -566,9 +567,11 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
   - **[LOW]** Tool icon box radius: proto = .plan-tool-ic border-radius 11 · app = rounded-full (web) / Radius.full (mobile) 44px circle
   - **[LOW 🔒keep?]** Shopping subtitle copy: proto = '{17 + (servings-1)*6} items · for {servings}' · app = '{count} items · for {N}' or 'Build your basket · for N' when 0 — close; count source differs (real list count, acceptable) · _App uses the real shopping count — better than the prototype's hardcoded formula._
 
-### 🆕 ResetPlan sheet
+### ✅ ResetPlan sheet (ENG-1261 / B28, `reset_plan_confirm_v1`, 2026-06-29)
 - proto: `6441-6467`
-- _Prototype ResetPlan is a sheet with insight copy, two radio rows (Keep what I've logged / Clear and start fresh) using .ver-row + .radio-dot, a destructive lowconf-note when 'clear' is selected, and a Cancel / 'Reset plan' (refresh icon) two-button pushed CTA. No app equivalent exists — searched src/, app/, apps/mobile/ for 'Reset this week', 'Keep what I've logged', 'Clear and start fresh', ResetPlan: zero matches on web and mobile. The closest behaviour (regenerate week) exists but without the keep-vs-clear choice or the reset sheet UI._
+- mobile: `apps/mobile/components/plan/ResetPlanSheet.tsx` + `planner.tsx` (`requestLibraryGenerate` when plan has real meals)
+- web: `src/app/components/plan/ResetPlanSheet.tsx` + `MealPlanner.tsx` (`requestRegenerate` when plan has real meals)
+- shared: `src/lib/planning/resetPlanSheet.ts`
   - **[HIGH]** Reset-plan sheet: proto = keep/clear radio sheet + destructive note + Cancel/Reset CTA (L6441-6467) · app = absent on web and mobile; only a plain regenerate exists · _No keep-logged-vs-clear-and-rebuild choice anywhere; regenerate is destructive-by-default with no opt-out UI._
 
 ### ⬜ Plan day-detail band (plan-day) — H0 M1 L0

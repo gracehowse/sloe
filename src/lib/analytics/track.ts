@@ -335,6 +335,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "nutrition_entry_ingredients_v1",
   // ENG-956 — per-meal lock + "Refresh the rest" partial regenerate.
   "plan_meal_lock_v1",
+  // ENG-1261 / B28 — keep vs clear reset-plan sheet before regenerate.
+  "reset_plan_confirm_v1",
+  // ENG-1260 / B26 — 3-step delete-account sheet (reason + ledger + type DELETE).
+  "delete_account_sheet_v1",
 ]);
 
 /**

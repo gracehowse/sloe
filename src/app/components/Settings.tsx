@@ -40,6 +40,8 @@ import { saveWeekStartDay } from "../../lib/nutrition/weekStartDayClient.ts";
 import type { NotificationPrefs } from "../../types/notifications.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { useAuthSession } from "../../context/AuthSessionContext.tsx";
+import { useSettingsDeleteAccountLayer } from "./settings/useSettingsDeleteAccountLayer";
 import { SettingsDialogs } from "./settings/SettingsDialogs";
 import { SettingsTwoPaneShell, type SettingsPaneSection } from "./settings/SettingsTwoPaneShell";
 import { SupprButton } from "./suppr/suppr-button";
@@ -156,6 +158,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     pantryStaples,
     savePantryStaples,
   } = useAppData();
+  const { authedUserId } = useAuthSession();
   const { theme, setTheme } = useTheme();
   // Macro display style — `tiles` (default) vs `bars` (Cronometer/Lose
   // It-style list). Pref persisted via localStorage on web; mobile
@@ -181,7 +184,6 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     "idle" | "first" | "second"
   >("idle");
   // 2026-04-30 (#15): Reset/Erase parity with mobile. Two destructive
-  // actions kept distinct from the account deletion below: "Reset
   // targets" is inline (set defaults, stay in app), "Erase everything"
   // wipes server data + sends the user through onboarding again.
   // Mobile equivalent in `apps/mobile/components/settings/SettingsBundleContent.tsx`.
@@ -773,6 +775,12 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       toast.error("Could not build CSV export.");
     }
   }, []);
+
+  const deleteAccountLayer = useSettingsDeleteAccountLayer(
+    authedUserId,
+    LOCAL_CLEAR_KEYS,
+    runCsvExport,
+  );
 
   // PR-01 (audit 2026-04-28): Base tier excised from user-facing
   // surfaces. Internal `userTier === "base"` rows still exist as a
@@ -2103,7 +2111,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           </button>
           <button
             type="button"
-            onClick={() => setAccountDeletionStage("first")}
+            onClick={() =>
+              deleteAccountLayer.enabled
+                ? deleteAccountLayer.openDeleteFlow()
+                : setAccountDeletionStage("first")
+            }
             data-testid="settings-delete-account-button"
             className="w-full text-left px-4 py-3 bg-destructive/10 hover:bg-destructive/15 rounded-lg transition-all text-destructive border border-destructive/30"
           >
@@ -2177,28 +2189,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       }}
       accountDeletionStage={accountDeletionStage}
       onAccountDeletionStageChange={setAccountDeletionStage}
-      onAccountDeleteConfirm={async () => {
-        try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const token = sessionData?.session?.access_token;
-          const res = await fetch("/api/account/delete", {
-            method: "DELETE",
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-          const json = await res.json();
-          if (json.ok) {
-            for (const k of LOCAL_CLEAR_KEYS) {
-              try { localStorage.removeItem(k); } catch { /* ignore */ }
-            }
-            toast.success("Account deleted.");
-            window.location.href = "/login";
-          } else {
-            toast.error(json.error || "Account deletion failed. Please try again.");
-          }
-        } catch {
-          toast.error("Account deletion failed. Please try again.");
-        }
-      }}
+      onAccountDeleteConfirm={() => void deleteAccountLayer.deleteForever(null)}
     />
   );
 
@@ -2275,6 +2266,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           sections={sections}
         />
         {dialogs}
+        {deleteAccountLayer.overlay}
       </>
     );
   }
@@ -2295,6 +2287,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       {promoCard}
       {privacyCard}
       {dialogs}
+      {deleteAccountLayer.overlay}
     </div>
   );
 });
