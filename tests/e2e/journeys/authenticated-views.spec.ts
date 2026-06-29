@@ -75,6 +75,19 @@ test.describe("Authenticated app view matrix", () => {
     await test.step("Settings", async () => {
       await gotoView("/settings");
       await expect(page.getByRole("heading", { name: /^Settings$/i })).toBeVisible();
+      // Sloe v3 (`sloe_v3_settings`, default-on) re-lays Settings as a
+      // two-pane shell: at md+ only the active section's panel renders, and
+      // the privacy-policy link lives in the "Privacy & data" section
+      // (id: "privacy"), NOT the default-selected "Account & billing" pane.
+      // Select that pane first so the link is reachable. The nav is present
+      // only in the two-pane shell (`settings-pane-nav-privacy`); the legacy
+      // single-scroll flag-off path renders every section at once, so guard
+      // the click. The test still verifies the privacy link is reachable in
+      // Settings either way.
+      const privacyNav = page.getByTestId("settings-pane-nav-privacy");
+      if (await privacyNav.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await privacyNav.click();
+      }
       await expect(page.getByRole("link", { name: /privacy policy/i })).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
