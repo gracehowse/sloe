@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
 import { supabase } from "../../lib/supabase/browserClient.ts";
@@ -35,6 +36,7 @@ import {
   parseSharingStateJson,
   sharingStorageKey,
 } from "../../lib/household/sharingGridStorage.ts";
+import { ProfileShowcaseReadView } from "./profile/ProfileShowcaseReadView.tsx";
 
 interface ProfileProps {
   userTier: "free" | "base" | "pro";
@@ -120,6 +122,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
   // either flag state. The fibre input stays on the manual editor (ENG-846 —
   // out of scope here; the dialog routes there via `onCustomiseMacros`).
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
+  const profileShowcaseV1 = isFeatureEnabled("profile_showcase_v1");
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
 
   /** Reveal + arm the in-page manual Macro Calculator editor. Used as the
@@ -402,6 +405,37 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
         return `Joined ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
       })()
     : "Joined recently";
+
+  if (profileShowcaseV1) {
+    return (
+      <div className="product-shell py-pm-5" data-testid="screen-profile-showcase">
+        <div className="mb-4 flex items-center gap-2">
+          <Link
+            href="/settings"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+          >
+            <Icons.back className="h-4 w-4" aria-hidden />
+            Settings
+          </Link>
+        </div>
+        <h1 className="mb-4 font-[family-name:var(--font-headline)] text-2xl font-medium text-foreground">
+          Profile
+        </h1>
+        <ProfileShowcaseReadView
+          displayName={displayName?.trim() ?? ""}
+          joinedLabel={joinedAt ? joinedLabel : null}
+          monogramInitial={avatarInitial}
+          recipeCount={recipeCount}
+          streakDays={streakDays}
+          daysLogged={loggingStats.daysWithLogs}
+          calories={String(displayTargets.calories)}
+          protein={String(displayTargets.protein)}
+          carbs={String(displayTargets.carbs)}
+          fat={String(displayTargets.fat)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="product-shell py-pm-5">
