@@ -36,7 +36,7 @@ export function ConfirmFoodMacroPreview({
       </div>
       <p className="text-sm text-foreground">
         <span
-          className="text-[26px] font-medium tabular-nums"
+          className="text-[24px] font-medium tabular-nums"
           style={{ fontFamily: "var(--font-headline)" }}
         >
           {calories}

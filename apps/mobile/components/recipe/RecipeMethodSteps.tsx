@@ -47,7 +47,7 @@ export function RecipeMethodSteps({
               <Text
                 style={{
                   fontFamily: FontFamily.serifRegular,
-                  fontSize: 26,
+                  fontSize: 24,
                   lineHeight: 26,
                   fontWeight: "500",
                   color: Accent.primarySoft,

@@ -49,7 +49,7 @@ function ToolButton({
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[12px] font-semibold text-foreground">{title}</span>
+        <span className="block text-[11px] font-semibold text-foreground">{title}</span>
         <span className="mt-px block truncate text-[10px] tabular-nums text-foreground-tertiary">
           {subtitle}
         </span>

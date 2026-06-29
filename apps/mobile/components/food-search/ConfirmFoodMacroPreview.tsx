@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   kcalLine: { fontSize: 14 },
   kcalValue: {
     fontFamily: Type.title.fontFamily,
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "500",
     fontVariant: ["tabular-nums"],
   },

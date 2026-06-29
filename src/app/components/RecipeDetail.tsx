@@ -3031,7 +3031,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                     className="flex gap-4 border-b border-border py-3.5 last:border-b-0"
                   >
                     <span
-                      className="w-[30px] shrink-0 text-[26px] font-medium leading-none tabular-nums"
+                      className="w-[30px] shrink-0 text-[24px] font-medium leading-none tabular-nums"
                       style={{ fontFamily: "var(--font-headline)", color: "var(--accent-primary-soft)" }}
                     >
                       {index + 1}
