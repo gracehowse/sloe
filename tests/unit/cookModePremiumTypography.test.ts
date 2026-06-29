@@ -12,9 +12,9 @@ const COOK = readFileSync(
 );
 
 describe("ENG-605 cook mode premium typography", () => {
-  it("uses large editorial step text (24px) on mobile", () => {
-    expect(COOK).toMatch(/stepText:\s*\{[^}]*fontSize:\s*24/s);
-    expect(COOK).toMatch(/lineHeight:\s*34/);
+  it("uses large editorial step text on mobile (24px legacy, 38px v3 conform)", () => {
+    expect(COOK).toMatch(/stepText:\s*\{[^}]*fontSize:\s*cookV3\s*\?\s*38\s*:\s*24/s);
+    expect(COOK).toMatch(/lineHeight:\s*cookV3\s*\?\s*46\s*:\s*34/);
   });
 
   it("drops the redundant in-body step number chip (header owns step count)", () => {

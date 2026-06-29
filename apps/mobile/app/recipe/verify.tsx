@@ -927,7 +927,7 @@ export default function VerifyScreen() {
         {hasUnverified && (
           <View style={styles.reviewBanner} testID="verify-import-review-banner">
             <View style={styles.reviewBannerIcon}>
-              <Ionicons name="alert-circle" size={20} color="#fff" />
+              <Ionicons name="alert-circle" size={20} color={colors.primaryForeground} />
             </View>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
