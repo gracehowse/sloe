@@ -71,20 +71,11 @@ owns the `<em>` emphasis span.
 
 The variant is selected at render time by `isFeatureEnabled("landing_hero_hybrid_v1")`:
 
-- **OFF (default, production)** → `HERO_CURRENT` (the shipped recipe-first hero).
-- **ON** → `HERO_HYBRID`.
+- **ON (production, default since 2026-06-29)** → `HERO_HYBRID`.
+- **OFF** → `HERO_CURRENT` (PostHog / `isFeatureDisabled` kill switch).
 
-The flag is **default OFF**: it is deliberately NOT in `REDESIGN_DEFAULT_ON` in
-`src/lib/analytics/track.ts`. It's documented in the `DEFAULT_OFF_FLAGS` set in
-that file (documentation only — not read at runtime). Meaning-changing copy on
-the highest-traffic conversion surface ramps via the PostHog dashboard, and only
-after brand/copy sign-off.
-
-> **Pending sign-off:** the exact `HERO_HYBRID` wording is a faithful first
-> draft of D-07 and is **awaiting brand-manager + copy-reviewer sign-off
-> (Grace)** before the flag ramps past 0%. Tweak the `HERO_HYBRID` strings in
-> `sloeLandingContent.ts` — the parity test pins the rendered hero to those
-> constants, so the test follows the copy automatically.
+Registered in `REDESIGN_DEFAULT_ON` in `src/lib/analytics/track.ts`. D-07 HYBRID
+copy signed off by Grace 2026-06-29.
 
 ### Tests
 
@@ -98,9 +89,9 @@ D-07 HYBRID)"*) mocks `isFeatureEnabled` and asserts:
 - neither variant introduces a forbidden new claim (guarding the emphasis-only
   intent of D-07).
 
-When the flag has held 100% for two weeks with no regression, remove the gate
+When the hybrid hero has held with no regression for two weeks, remove the gate
 and `HERO_CURRENT` in a follow-up cleanup PR (and drop `landing_hero_hybrid_v1`
-from `DEFAULT_OFF_FLAGS`).
+from `REDESIGN_DEFAULT_ON`).
 
 ## Known monetisation gaps (product decisions needed)
 

@@ -27,10 +27,9 @@ import { join } from "node:path";
 
 /**
  * ENG-1204 — control `isFeatureEnabled("landing_hero_hybrid_v1")` per test
- * so we can assert BOTH hero variants (flag OFF = current hero, flag ON =
- * hybrid hero) without touching PostHog. Every other `track` export stays
- * real via `importOriginal`. Default is OFF, matching production: the flag
- * is deliberately NOT in `REDESIGN_DEFAULT_ON`.
+ * so we can assert BOTH hero variants. Default follows the real registry:
+ * `landing_hero_hybrid_v1` is default-ON (REDESIGN_DEFAULT_ON). The flag-OFF
+ * test opts out explicitly.
  */
 const { isFeatureEnabledMock, realFlagImpl } = vi.hoisted(() => {
   const realFlagImpl = { current: (_flag: string) => false };
@@ -79,20 +78,17 @@ import {
 } from "../../src/lib/landing/sloeLandingContent";
 
 beforeEach(() => {
-  // Reset to production defaults via the REAL registry: landing_hero_hybrid_v1
-  // stays OFF (not in REDESIGN_DEFAULT_ON), paywall_free_mfp_wins_v1 stays ON.
-  // The hybrid-on test opts in explicitly.
   isFeatureEnabledMock.mockReset();
   isFeatureEnabledMock.mockImplementation((flag: string) => realFlagImpl.current(flag));
 });
 
 describe("landing page — Sloe editorial parity", () => {
-  it("renders the Sloe hero headline from Figma LP1", () => {
+  it("renders the Sloe hero headline (D-07 HYBRID, production default)", () => {
     const { container } = render(<LandingPage />);
     const text = container.textContent ?? "";
-    expect(text).toContain("Cook what you love.");
-    expect(text).toContain("Still");
-    expect(text).toContain("reach your goals.");
+    expect(text).toContain(HERO_HYBRID.headline.pre.trim());
+    expect(text).toContain(HERO_HYBRID.headline.em);
+    expect(text).toContain(HERO_HYBRID.headline.post.trim());
   });
 
   it("uses Sloe branding (not legacy Suppr nav mark)", () => {
@@ -124,21 +120,19 @@ describe("landing page — hero positioning flag (ENG-1204, D-07 HYBRID)", () =>
     };
   }
 
-  it("flag OFF (default) renders the current recipe-first hero", () => {
-    // isFeatureEnabledMock defaults to false in beforeEach.
+  it("flag OFF renders the legacy recipe-first hero (kill switch)", () => {
+    isFeatureEnabledMock.mockImplementation((flag: string) =>
+      flag === "landing_hero_hybrid_v1" ? false : realFlagImpl.current(flag),
+    );
     const { headline, lead } = heroText();
     expect(headline).toContain(HERO_CURRENT.headline.pre.trim());
     expect(headline).toContain(HERO_CURRENT.headline.em);
     expect(headline).toContain(HERO_CURRENT.headline.post.trim());
     expect(lead).toBe(HERO_CURRENT.lead);
-    // The hybrid headline must NOT appear on the flag-off path.
     expect(headline).not.toContain(HERO_HYBRID.headline.pre.trim());
   });
 
-  it("flag ON renders the hybrid tracker/coaching headline + import wedge line", () => {
-    isFeatureEnabledMock.mockImplementation(
-      (flag: string) => flag === "landing_hero_hybrid_v1",
-    );
+  it("flag ON (default) renders the hybrid tracker/coaching headline + import wedge line", () => {
     const { headline, lead } = heroText();
     // Headline leads with the tracker + "what to eat next" coaching promise.
     expect(headline).toContain(HERO_HYBRID.headline.pre.trim());

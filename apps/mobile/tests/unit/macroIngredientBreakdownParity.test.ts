@@ -102,7 +102,7 @@ describe("nutrition_entry_ingredients snapshot — web↔mobile wiring (ENG-751)
     }
   });
 
-  it("both platforms register the flag default-OFF (NOT in REDESIGN_DEFAULT_ON)", () => {
+  it("both platforms register the flag default-ON (REDESIGN_DEFAULT_ON)", () => {
     const webFlags = readFileSync(
       resolve(__dirname, "../../../../src/lib/analytics/track.ts"),
       "utf8",
@@ -112,15 +112,12 @@ describe("nutrition_entry_ingredients snapshot — web↔mobile wiring (ENG-751)
       "utf8",
     );
     for (const src of [webFlags, mobileFlags]) {
-      expect(src).toMatch(/KNOWN_DEFAULT_OFF_FLAGS/);
+      expect(src).toMatch(/REDESIGN_DEFAULT_ON/);
       expect(src).toMatch(/nutrition_entry_ingredients_v1/);
-      // Must NOT be a member of the default-on set. Slice from the set name to
-      // its closing `]);` only (excludes the trailing default-OFF doc comment,
-      // which legitimately names the flag).
       const setStart = src.indexOf("REDESIGN_DEFAULT_ON");
       const setEnd = src.indexOf("]);", setStart);
       const defaultOnSet = src.slice(setStart, setEnd);
-      expect(defaultOnSet).not.toMatch(/nutrition_entry_ingredients_v1/);
+      expect(defaultOnSet).toMatch(/nutrition_entry_ingredients_v1/);
     }
   });
 });

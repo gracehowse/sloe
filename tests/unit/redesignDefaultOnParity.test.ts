@@ -55,6 +55,8 @@ const WEB_ONLY = new Set([
   "web_meal_nutrition_detail",
   // ENG-1225 #24 — web Settings two-pane layout (mobile Settings is native).
   "sloe_v3_settings",
+  // ENG-1204 / D-07 — landing hero HYBRID (web-only).
+  "landing_hero_hybrid_v1",
 ]);
 
 const MOBILE_ONLY = new Set([

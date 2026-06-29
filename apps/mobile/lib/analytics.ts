@@ -458,6 +458,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "today_quickadd_recents_v3",
   "eng1247_section_a_v1",
   "weekly_recap_detail_v1",
+  // ENG-751 — macro-detail per-ingredient display from snapshot rows.
+  "nutrition_entry_ingredients_v1",
+  // ENG-956 — per-meal lock + "Refresh the rest" partial regenerate.
+  "plan_meal_lock_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
@@ -471,16 +475,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  * so `isFeatureEnabled` resolves them false until PostHog ramps them). Keep this
  * list in sync with the same block in `src/lib/analytics/track.ts`.
  *
- * - `nutrition_entry_ingredients_v1` (ENG-751) — DISPLAY gate for splitting AI/
- *   photo/voice meals into per-item lines in the macro-detail "By ingredient"
- *   view from the persisted `nutrition_entry_ingredients` snapshot. OFF → today's
- *   single self-named fallback line. The WRITE path (snapshot capture) is
- *   always-on + defensive; this flag gates only the read/display so data can
- *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
+/**
+ * DEFAULT-OFF flags — empty as of 2026-06-29 (all shipped flags default-on).
+ * Keep in sync with `src/lib/analytics/track.ts`.
  */
-export const KNOWN_DEFAULT_OFF_FLAGS = [
-  "nutrition_entry_ingredients_v1",
-] as const;
+export const KNOWN_DEFAULT_OFF_FLAGS = [] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of

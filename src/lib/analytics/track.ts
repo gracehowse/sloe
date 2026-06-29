@@ -328,33 +328,22 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "weekly_recap_detail_v1",
   // ENG-1225 #24 — web Settings two-pane layout (WEB-ONLY).
   "sloe_v3_settings",
+  // ENG-1204 / D-07 — landing hero HYBRID positioning (WEB-ONLY). Signed off
+  // 2026-06-29 (Grace); off → recipe-first HERO_CURRENT kill switch.
+  "landing_hero_hybrid_v1",
+  // ENG-751 — macro-detail per-ingredient display from snapshot rows.
+  "nutrition_entry_ingredients_v1",
+  // ENG-956 — per-meal lock + "Refresh the rest" partial regenerate.
+  "plan_meal_lock_v1",
 ]);
 
 /**
- * Default-OFF flags — registered for discoverability only. They are
- * deliberately NOT in `REDESIGN_DEFAULT_ON`, so `isFeatureEnabled` resolves
- * them via PostHog and defaults to `false` when PostHog is cold. Listing them
- * keeps "is this flag known / on purpose off?" answerable in one place (the
- * list is not read at runtime — membership has no effect). Keep in sync with
- * the same block in `apps/mobile/lib/analytics.ts` (mobile omits web-only
- * flags like the landing hero).
- *
- * - `landing_hero_hybrid_v1` (ENG-1204) — landing hero → HYBRID positioning
- *   (D-07). ON swaps the recipe-first hero for the tracker/coaching headline +
- *   import wedge line; OFF keeps the shipped recipe-first hero. Default OFF:
- *   meaning-changing copy on the top conversion surface, ramps via PostHog only
- *   after brand/copy sign-off (Grace). (web-only — no mobile landing surface.)
- * - `nutrition_entry_ingredients_v1` (ENG-751) — DISPLAY gate for splitting AI/
- *   photo/voice meals into per-item lines in the macro-detail "By ingredient"
- *   view from the persisted `nutrition_entry_ingredients` snapshot. OFF → today's
- *   single self-named fallback line. The WRITE path (snapshot capture) is
- *   always-on + defensive; this flag gates only the read/display so data can
- *   backfill while dark. Constant: `NUTRITION_ENTRY_INGREDIENTS_FLAG`.
+ * Default-OFF flags — registered for discoverability only. Empty as of
+ * 2026-06-29: every shipped flag is in `REDESIGN_DEFAULT_ON`; PostHog is the
+ * kill switch via `isFeatureDisabled`. Keep the export so tooling/tests can
+ * still find the registry. Mobile omits web-only flags (landing hero).
  */
-export const KNOWN_DEFAULT_OFF_FLAGS = [
-  "landing_hero_hybrid_v1",
-  "nutrition_entry_ingredients_v1",
-] as const;
+export const KNOWN_DEFAULT_OFF_FLAGS = [] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
   const forced = flagForceOverride(flag);

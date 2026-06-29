@@ -74,9 +74,9 @@ Users can reorder meals without regenerating the plan.
 Eat-This-Much-style "lock the ones you like, reroll the rest". Lets a user keep
 the meals they're happy with and regenerate only the ones they're not.
 
-**Flag:** `plan_meal_lock_v1` — **default-OFF** (not in either platform's
-`REDESIGN_DEFAULT_ON` registry; ramp via PostHog). Off → the legacy
-all-or-nothing Regenerate, no lock affordance.
+**Flag:** `plan_meal_lock_v1` — **default-ON** (`REDESIGN_DEFAULT_ON` on web +
+mobile; off via PostHog kill switch). Off → the legacy all-or-nothing
+Regenerate, no lock affordance.
 
 **Affordance:**
 - Each populated, non-leftover meal row carries a **quiet lock glyph** (lucide

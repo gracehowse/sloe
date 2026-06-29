@@ -10,8 +10,7 @@
  *   2. The Regenerate label flips to "Refresh the rest" when ≥1 meal is locked.
  *   3. Web and mobile share the flag key, the microcopy, and the events
  *      (`plan_meal_lock_toggled`, `plan_regenerated_partial`).
- *   4. The flag is default-OFF — it is NOT in either platform's
- *      REDESIGN_DEFAULT_ON registry.
+ *   4. The flag is default-ON (REDESIGN_DEFAULT_ON) — PostHog kill switch only.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -70,9 +69,7 @@ describe("ENG-956 — per-meal lock flag gating", () => {
     expect(MOBILE).toMatch(/lockedMealCount > 0/);
   });
 
-  it("is default-OFF — NOT in either REDESIGN_DEFAULT_ON registry", () => {
-    // The default-on set is a literal `new Set([...])`; the flag must not be
-    // a member, or it would resolve ON in every build.
+  it("is default-ON — in both platforms' REDESIGN_DEFAULT_ON registry", () => {
     const webDefaultOn = WEB_TRACK.slice(
       WEB_TRACK.indexOf("REDESIGN_DEFAULT_ON = new Set"),
       WEB_TRACK.indexOf("export function isFeatureEnabled"),
@@ -81,8 +78,8 @@ describe("ENG-956 — per-meal lock flag gating", () => {
       MOBILE_ANALYTICS.indexOf("REDESIGN_DEFAULT_ON = new Set"),
       MOBILE_ANALYTICS.indexOf("export function isFeatureEnabled"),
     );
-    expect(webDefaultOn).not.toContain(FLAG);
-    expect(mobileDefaultOn).not.toContain(FLAG);
+    expect(webDefaultOn).toContain(FLAG);
+    expect(mobileDefaultOn).toContain(FLAG);
   });
 
   it("declares the shared lock + partial-regen events in the taxonomy", () => {

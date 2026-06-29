@@ -111,10 +111,9 @@ export const LANDING_PRO_FEATURES = [
  * component owns the markup. `eyebrow` and `lead` are plain strings.
  *
  * Two variants, selected at render time by the `landing_hero_hybrid_v1`
- * feature flag (default OFF — see `src/lib/analytics/track.ts`):
+ * feature flag (default ON — see `src/lib/analytics/track.ts`):
  *
- *   - `HERO_CURRENT` — the shipped recipe-first hero (the flag-off path;
- *     stays live until the hybrid flag has ramped to 100%).
+ *   - `HERO_CURRENT` — the recipe-first hero (kill-switch / flag-off path).
  *   - `HERO_HYBRID` — resolves DECISION D-07 (Grace 2026-05-25: HYBRID).
  *     Leads with the macro-tracker + "what to eat next" coaching promise
  *     (the canon spine) as the headline, and keeps the Reel/TikTok import
@@ -122,8 +121,8 @@ export const LANDING_PRO_FEATURES = [
  *     emphasis, NOT a new product claim — both variants assert only what
  *     the landing already promises.
  *
- * NOTE: exact wording is pending brand-manager + copy-reviewer sign-off
- * (Grace) before the flag ramps past 0% — see ENG-1204.
+ * NOTE: D-07 HYBRID copy signed off 2026-06-29 (Grace) — `landing_hero_hybrid_v1`
+ * is default-ON on web; off → `HERO_CURRENT` kill switch.
  */
 export type HeroHeadline = {
   /** Leading H1 fragment, rendered before the emphasised `<em>`. */
