@@ -9,6 +9,9 @@ import {
   recapSvgToPngBlob,
   type WeeklyRecapCardProps,
 } from "./weekly-recap-card";
+import { WeeklyRecapDetailRows } from "./WeeklyRecapDetailRows";
+import type { WeeklyRecapDetailRow } from "../../../lib/nutrition-core/weeklyRecapDetailRows";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 /**
  * WeeklyRecapDialog — the web recap destination (ENG-1225 #20). Hosts the
@@ -20,12 +23,14 @@ export interface WeeklyRecapDialogProps
   extends Omit<WeeklyRecapCardProps, "ratio" | "width" | "className"> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  detailRows?: WeeklyRecapDetailRow[];
 }
 
 export function WeeklyRecapDialog({
   open,
   onOpenChange,
   onTargetDays,
+  detailRows = [],
   ...card
 }: WeeklyRecapDialogProps) {
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -94,6 +99,9 @@ export function WeeklyRecapDialog({
           <div ref={cardRef} className="overflow-hidden rounded-2xl shadow-lg">
             <WeeklyRecapCard onTargetDays={onTargetDays} {...card} ratio="portrait" width={280} />
           </div>
+          {isFeatureEnabled("weekly_recap_detail_v1") && detailRows.length > 0 ? (
+            <WeeklyRecapDetailRows rows={detailRows} />
+          ) : null}
           <div className="flex w-full gap-2">
             <Button
               variant="outline"

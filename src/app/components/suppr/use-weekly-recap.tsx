@@ -6,6 +6,11 @@ import {
   deriveWeeklyRecapStats,
   type RecapWeekDayTotals as RecapWeekDay,
 } from "../../../lib/nutrition-core/weeklyRecapStats";
+import {
+  deriveWeeklyRecapDetailRows,
+  type WeeklyRecapDetailInput,
+} from "../../../lib/nutrition-core/weeklyRecapDetailRows";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 /**
  * useWeeklyRecap — derives the shareable recap stats from the Today week strip
@@ -19,14 +24,23 @@ export function useWeeklyRecap(
   days: RecapWeekDay[],
   weekLabel: string,
   targetCalories: number,
+  detailInput?: Omit<WeeklyRecapDetailInput, "daysLogged"> & { daysLogged?: number },
 ): { trigger: () => void; dialog: React.ReactNode } {
   const [open, setOpen] = React.useState(false);
 
   // Shared derivation (ENG-1225 #4) — web + mobile compute identical stats.
-  const { dailyCalories, onTargetDays, narrative } = deriveWeeklyRecapStats(
+  const { dailyCalories, onTargetDays, narrative, loggedDays } = deriveWeeklyRecapStats(
     days,
     targetCalories,
   );
+
+  const detailRows = React.useMemo(() => {
+    if (!isFeatureEnabled("weekly_recap_detail_v1") || !detailInput) return [];
+    return deriveWeeklyRecapDetailRows({
+      ...detailInput,
+      daysLogged: detailInput.daysLogged ?? loggedDays,
+    });
+  }, [detailInput, loggedDays]);
 
   const dialog = (
     <WeeklyRecapDialog
@@ -37,6 +51,7 @@ export function useWeeklyRecap(
       dailyCalories={dailyCalories}
       targetCalories={Math.round(targetCalories)}
       narrative={narrative}
+      detailRows={detailRows}
     />
   );
 

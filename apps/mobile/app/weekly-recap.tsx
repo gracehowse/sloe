@@ -61,6 +61,7 @@ import {
 } from "react-native";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { WeeklyRecapShareButton } from "@/components/recap/WeeklyRecapShareButton";
+import { WeeklyRecapDetailRows } from "@/components/recap/WeeklyRecapDetailRows";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostHogMaskView } from "posthog-react-native";
@@ -89,6 +90,7 @@ import {
   formatWeekLabel,
   weekKeyFor,
 } from "@/lib/weeklyRecap";
+import { deriveWeeklyRecapDetailRows } from "@suppr/shared/nutrition-core/weeklyRecapDetailRows";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -111,7 +113,7 @@ import {
 } from "@/lib/lastWeekTdee";
 import { calculateTDEE } from "@/lib/calcTargets";
 import { GoalPaceRetuneSheet } from "@/components/recap/GoalPaceRetuneSheet";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { Sex, NutritionStrategy } from "@suppr/nutrition-core/tdee";
 
@@ -520,6 +522,30 @@ export default function WeeklyRecapScreen() {
     };
   }, [bodyStats, weekStats.days]);
 
+  const recapDetailRows = useMemo(() => {
+    if (!isFeatureEnabled("weekly_recap_detail_v1")) return [];
+    const weekKeys = new Set(weekStats.days.map((d) => d.key));
+    const meals = Object.entries(byDay).flatMap(([key, list]) =>
+      weekKeys.has(key) ? list : [],
+    );
+    return deriveWeeklyRecapDetailRows({
+      weightStartKg: weeklyWeightStats.startKg,
+      weightEndKg: weeklyWeightStats.endKg,
+      weighInsInWindow: weeklyWeightStats.weighIns,
+      streakDays,
+      meals,
+      avgProteinG: avgProteinHitDays,
+      daysLogged,
+    });
+  }, [
+    byDay,
+    weekStats.days,
+    weeklyWeightStats,
+    streakDays,
+    avgProteinHitDays,
+    daysLogged,
+  ]);
+
   const weeklyIntakeKcal = useMemo(
     () => weekStats.days.reduce((s, d) => s + (d.calories ?? 0), 0),
     [weekStats.days],
@@ -774,6 +800,12 @@ export default function WeeklyRecapScreen() {
 
       {/* Shareable weekly-recap card (ENG-1225 #4, web parity) — the viral artifact. */}
       {daysLogged > 0 ? <View style={{ marginBottom: Spacing.xl }}><WeeklyRecapShareButton weekLabel={weekLabel} days={weekStats.days.map((d) => ({ totals: { calories: d.calories } }))} targetCalories={targets.calories} /></View> : null}
+
+      {recapDetailRows.length > 0 ? (
+        <View style={{ marginBottom: Spacing.xl }}>
+          <WeeklyRecapDetailRows rows={recapDetailRows} />
+        </View>
+      ) : null}
 
       {/* Weekly Check-in — TDEE delta + goal-pace re-tune (MacroFactor
           parity, 2026-04-30). Shown above the existing recap rollups
