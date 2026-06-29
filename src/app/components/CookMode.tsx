@@ -759,6 +759,12 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
     return () => window.removeEventListener("keydown", handler);
   }, [goNext, goPrev, onExit]);
 
+  /** ENG-1247 — immersive aubergine cook shell when RecipeDetail v3 ships. */
+  const cookV3 = isFeatureEnabled("recipe_detail_v3_conformance");
+  const stepTextClass = cookV3
+    ? "font-[family-name:var(--font-headline)] text-2xl sm:text-[38px] font-medium leading-snug text-[#efe9f2] text-center max-w-[18ch] mx-auto"
+    : "text-2xl sm:text-3xl leading-relaxed text-foreground";
+
   /**
    * Render the current step text with each timer-like phrase replaced
    * by a tappable pill. Offsets come from `parseTimersInStep`, which
@@ -781,11 +787,8 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       // Scaled mode — pill buttons live below the paragraph because
       // offsets in the rewritten text aren't safe to index against.
       return (
-        <div
-          className="text-2xl sm:text-3xl leading-relaxed text-foreground"
-          style={stepFontStyle}
-        >
-          <p>{currentStepText}</p>
+        <div style={stepFontStyle}>
+          <p className={stepTextClass}>{currentStepText}</p>
           {stepTimers.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2 justify-center">
               {stepTimers.map((t, i) => {
@@ -812,7 +815,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
     if (stepTimers.length === 0) {
       return (
         <p
-          className="text-2xl sm:text-3xl leading-relaxed text-foreground"
+          className={stepTextClass}
           style={stepFontStyle}
         >
           {currentStepCleaned}
@@ -847,13 +850,13 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
     }
     return (
       <p
-        className="text-2xl sm:text-3xl leading-relaxed text-foreground"
+        className={stepTextClass}
         style={stepFontStyle}
       >
         {nodes}
       </p>
     );
-  }, [currentStepCleaned, currentStepText, scaleFactor, stepTimers, startTimer, textScale]);
+  }, [currentStepCleaned, currentStepText, scaleFactor, stepTimers, startTimer, textScale, stepTextClass]);
 
   /** Recime parity (2026-04-30): tap "Watch original" → opens the
    *  source video URL in a new tab and emits the analytics event with
@@ -881,19 +884,35 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
     }
   }, [watchOriginalUrl, recipe.id]);
 
+  const shellClass = cookV3
+    ? "fixed inset-0 z-50 bg-[var(--primary-deep)] text-[#efe9f2] flex flex-col"
+    : "fixed inset-0 z-50 bg-background text-foreground flex flex-col";
+
   return (
-    <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col">
+    <div className={shellClass} data-testid={cookV3 ? "cook-mode-v3" : "cook-mode"}>
       {/* Header — uses theme tokens so light/dark both stay readable */}
-      <div className="shrink-0 px-4 py-3 border-b border-border flex items-center justify-between">
+      <div
+        className={`shrink-0 px-4 py-3 border-b flex items-center justify-between ${
+          cookV3 ? "border-white/10" : "border-border"
+        }`}
+      >
         <button
           type="button"
           onClick={onExit}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-muted-foreground hover:bg-muted/60 transition-colors text-sm font-medium"
+          className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl transition-colors text-sm font-medium ${
+            cookV3
+              ? "text-white/70 hover:bg-white/10"
+              : "text-muted-foreground hover:bg-muted/60"
+          }`}
         >
           <Icons.back className="w-4 h-4" />
           Exit Cook Mode
         </button>
-        <h2 className="text-sm font-semibold text-foreground truncate max-w-[40%]">
+        <h2
+          className={`text-sm font-semibold truncate max-w-[40%] ${
+            cookV3 ? "font-[family-name:var(--font-headline)] italic text-[var(--accent-frost)]" : "text-foreground"
+          }`}
+        >
           {recipe.title}
         </h2>
         <div className="flex items-center gap-2">
@@ -1049,7 +1068,11 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               )}
               {/* Step Counter */}
               <div className="mb-6">
-                <span className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                <span
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold ${
+                    cookV3 ? "bg-white/12 text-white/80" : "bg-primary/10 text-primary"
+                  }`}
+                >
                   Step {currentStep + 1} of {totalSteps}
                 </span>
               </div>
@@ -1061,11 +1084,15 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                     <div
                       key={i}
                       className={`h-1 flex-1 rounded-full transition-all ${
-                        i < currentStep
-                          ? "bg-primary"
-                          : i === currentStep
+                        cookV3
+                          ? i <= currentStep
+                            ? "bg-white"
+                            : "bg-white/15"
+                          : i < currentStep
                             ? "bg-primary"
-                            : "bg-muted"
+                            : i === currentStep
+                              ? "bg-primary"
+                              : "bg-muted"
                       }`}
                     />
                   ))}

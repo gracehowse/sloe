@@ -2401,11 +2401,16 @@ export default function RecipeDetailScreen() {
           ingredientsForIngredientsTab,
           cookScaleFactor,
         );
+        const cookV3Shell = recipeDetailV3;
+        const cookBg = cookV3Shell ? Accent.primaryDeep : colors.background;
+        const cookTextPrimary = cookV3Shell ? "#efe9f2" : colors.text;
+        const cookTextMuted = cookV3Shell ? Accent.frost : colors.textSecondary;
         return (
           <Modal
             visible={cookMode && instructionSteps.length > 0}
             animationType="slide"
             presentationStyle="fullScreen"
+            testID={cookV3Shell ? "cook-mode-v3" : "cook-mode"}
             onRequestClose={() => {
               setCookMode(false);
               setCookStep(0);
@@ -2432,10 +2437,10 @@ export default function RecipeDetailScreen() {
                 onContinueToSteps={() => setCookPhase("steps")}
               />
             ) : (
-            <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
+            <View style={{ flex: 1, backgroundColor: cookBg, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
               <View style={{ flex: 1 /* ENG-1230: CookStepSwipeSurface wraps the step body in a flex:1 view that collapses in a non-flex parent — this group must provide flex height. */ }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: cookV3Shell ? cookTextMuted : accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                     {/* Recime parity (2026-04-30): "Watch original" pill —
                         only renders when `recipe.source_url` is set so the
@@ -2529,7 +2534,7 @@ export default function RecipeDetailScreen() {
                       accessibilityLabel="Exit cook mode"
                       hitSlop={12}
                     >
-                      <X size={28} color={colors.textSecondary} strokeWidth={2.25} />
+                      <X size={28} color={cookTextMuted} strokeWidth={2.25} />
                     </Pressable>
                   </View>
                 </View>
@@ -2566,7 +2571,7 @@ export default function RecipeDetailScreen() {
                   stepCount={instructionSteps.length}
                   onStepIndexChange={(index) => changeCookStep(index, "swipe")}
                 >
-                <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
+                <Text style={{ fontSize: 14, color: cookTextMuted, marginBottom: 8 }}>
                   Step {cookStep + 1} of {instructionSteps.length}
                 </Text>
                 {/* ENG-949 — flag-ON: base 24 (matches the /cook screen)
@@ -2574,15 +2579,23 @@ export default function RecipeDetailScreen() {
                     Flag-OFF: the legacy 22 / 32 exactly. */}
                 <Text
                   style={{
-                    fontSize: cookStepFontSize(
-                      cookTextSizeControlEnabled ? 24 : 22,
-                      cookTextScale,
-                    ),
-                    fontWeight: "600",
-                    color: colors.text,
-                    lineHeight: cookTextSizeControlEnabled
-                      ? Math.round(cookStepFontSize(24, cookTextScale) * 1.4)
-                      : 32,
+                    fontSize: cookV3Shell
+                      ? cookStepFontSize(38, cookTextScale)
+                      : cookStepFontSize(
+                          cookTextSizeControlEnabled ? 24 : 22,
+                          cookTextScale,
+                        ),
+                    fontWeight: cookV3Shell ? "500" : "600",
+                    fontFamily: cookV3Shell ? FontFamily.serifSemibold : undefined,
+                    color: cookTextPrimary,
+                    lineHeight: cookV3Shell
+                      ? Math.round(cookStepFontSize(38, cookTextScale) * 1.2)
+                      : cookTextSizeControlEnabled
+                        ? Math.round(cookStepFontSize(24, cookTextScale) * 1.4)
+                        : 32,
+                    textAlign: "center",
+                    maxWidth: cookV3Shell ? 280 : undefined,
+                    alignSelf: cookV3Shell ? "center" : undefined,
                   }}
                 >
                   {scaledStep}

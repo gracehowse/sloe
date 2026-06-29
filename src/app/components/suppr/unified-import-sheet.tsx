@@ -8,6 +8,7 @@ import { classifyImport } from "../../../lib/recipe-import/classifyImport";
 import { routeImport } from "../../../lib/recipe-import/importRoutingWeb";
 import { ImportDetectedChip } from "./import-detected-chip";
 import { SupprButton } from "./suppr-button";
+import { X } from "lucide-react";
 
 /**
  * UnifiedImportSheet (web, ENG-1225 #3) — WEB twin of
@@ -65,19 +66,35 @@ export function UnifiedImportSheet({ open, onOpenChange }: UnifiedImportSheetPro
             or recipe text — we&apos;ll figure out what it is.
           </DialogDescription>
         </DialogHeader>
-        <textarea
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (hint) setHint(null);
-          }}
-          rows={4}
-          autoFocus
-          data-testid="unified-import-input"
-          aria-label="Paste a link, plan, export, or recipe"
-          placeholder="Paste here…"
-          className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        />
+        <div className="relative">
+          <textarea
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              if (hint) setHint(null);
+            }}
+            rows={4}
+            autoFocus
+            data-testid="unified-import-input"
+            aria-label="Paste a link, plan, export, or recipe"
+            placeholder="Paste here…"
+            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          />
+          {text.trim().length > 0 ? (
+            <button
+              type="button"
+              data-testid="unified-import-clear"
+              aria-label="Clear pasted text"
+              onClick={() => {
+                setText("");
+                if (hint) setHint(null);
+              }}
+              className="absolute right-2 top-2 inline-flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          ) : null}
+        </div>
         <div className="min-h-[28px]">
           <ImportDetectedChip input={text} />
         </div>

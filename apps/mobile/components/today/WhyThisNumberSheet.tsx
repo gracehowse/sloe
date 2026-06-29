@@ -10,6 +10,8 @@ import {
   buildWhyThisNumber,
   type WhyThisNumberInput,
 } from "@suppr/nutrition-core/whyThisNumber";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { WhyNumberV3Section } from "@/components/today/WhyNumberV3Section";
 
 /**
  * WhyThisNumberSheet — "Why this number?" tap-to-explain sheet for the
@@ -61,6 +63,7 @@ function WhyThisNumberSheetImpl({
   const accent = useAccent();
   const insets = useSafeAreaInsets();
   const result = buildWhyThisNumber(input);
+  const sectionA = isFeatureEnabled("eng1247_section_a_v1");
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -103,6 +106,31 @@ function WhyThisNumberSheetImpl({
             </Pressable>
           </View>
 
+          {sectionA ? (
+            <View style={{ paddingHorizontal: Spacing.lg }}>
+              <WhyNumberV3Section
+                targetCalories={input.targetCalories}
+                result={result}
+                confidence={input.confidence}
+                loggingDays={input.loggingDays}
+                textColor={textColor}
+                textSecondaryColor={textSecondaryColor}
+                textTertiaryColor={textTertiaryColor}
+                borderColor={cardBorderColor}
+                cardColor={cardColor}
+                onKeepTarget={onClose}
+                onAdjustTarget={
+                  onPressAdjustTarget
+                    ? () => {
+                        onClose();
+                        onPressAdjustTarget();
+                      }
+                    : undefined
+                }
+              />
+            </View>
+          ) : (
+            <>
           {/* Headline */}
           <View style={{ paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
             {/* v3 prototype `.whyn-big` — serif (Newsreader) numeral grammar,
@@ -288,6 +316,8 @@ function WhyThisNumberSheetImpl({
               <ChevronRight size={18} color={accent.primary} strokeWidth={2.25} />
             </Pressable>
           ) : null}
+            </>
+          )}
         </View>
       </View>
     </Modal>
