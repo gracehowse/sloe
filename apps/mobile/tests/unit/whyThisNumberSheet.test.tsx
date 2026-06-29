@@ -3,24 +3,31 @@
  * WhyThisNumberSheet (mobile) — pin the "why is my target X kcal?"
  * sheet rendering + Adjust target CTA.
  *
- * Coverage:
- *  - Headline reflects the target.
- *  - 3 breakdown rows render with the canonical labels (TDEE / Goal /
- *    Result) using the shared `buildWhyThisNumber` helper.
- *  - "Adjust target" CTA closes the sheet AND fires the host handler
- *    (host typically routes to the weekly check-in).
- *  - When `onPressAdjustTarget` is omitted, the CTA is suppressed.
- *  - Early-estimate qualifier renders when loggingDays < 14.
+ * ENG-1247 §A6 flipped `eng1247_section_a_v1` default-ON (ENG-1264 red
+ * main): the sheet now renders the v3 `WhyNumberV3Section` by default
+ * (hero kcal + "How it adds up" rows + result card + confidence card),
+ * not the legacy headline/breakdown/story-beats body. The first block
+ * asserts that now-default v3 surface; the second block forces the flag
+ * OFF to keep guarding the legacy body (the PostHog kill-switch path).
  *
  * Web parity pinned by `tests/unit/whyThisNumberDialog.test.tsx`.
  */
 import * as React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
 
+import { isFeatureEnabled } from "@/lib/analytics";
 import { WhyThisNumberSheet } from "../../components/today/WhyThisNumberSheet";
 
 void React;
+
+// Default ON (the shipped default). Per-test the legacy block forces it OFF.
+// `vi.mock` is hoisted above these imports by vitest regardless of position.
+vi.mock("@/lib/analytics", () => ({
+  isFeatureEnabled: vi.fn(() => true),
+}));
+
+const flagFn = vi.mocked(isFeatureEnabled);
 
 const BASE_PROPS = {
   visible: true,
@@ -39,7 +46,79 @@ const BASE_PROPS = {
   textTertiaryColor: "#888",
 };
 
-describe("WhyThisNumberSheet", () => {
+// ── v3 default surface (eng1247_section_a_v1 ON — the shipped default) ──────
+describe("WhyThisNumberSheet — v3 default surface", () => {
+  beforeEach(() => {
+    flagFn.mockReturnValue(true);
+  });
+
+  it("renders the v3 section with the hero kcal target", () => {
+    const { getByTestId } = render(<WhyThisNumberSheet {...BASE_PROPS} />);
+    expect(getByTestId("why-number-v3-section")).toBeTruthy();
+    expect(getByTestId("why-number-hero-kcal").props.children).toBe("1,800");
+  });
+
+  it("renders the two 'How it adds up' rows (TDEE + goal)", () => {
+    const { getByTestId } = render(<WhyThisNumberSheet {...BASE_PROPS} />);
+    expect(getByTestId("why-number-v3-row-tdee")).toBeTruthy();
+    expect(getByTestId("why-number-v3-row-goal")).toBeTruthy();
+  });
+
+  it("renders the result card with the target restated", () => {
+    const { getByTestId } = render(<WhyThisNumberSheet {...BASE_PROPS} />);
+    expect(getByTestId("why-number-result-card")).toBeTruthy();
+  });
+
+  it("does not render when visible=false", () => {
+    const { queryByTestId } = render(
+      <WhyThisNumberSheet {...BASE_PROPS} visible={false} />,
+    );
+    expect(queryByTestId("why-number-v3-section")).toBeNull();
+  });
+
+  it("renders the 'Keep this target' primary CTA that closes the sheet", () => {
+    const onClose = vi.fn();
+    const { getByTestId } = render(
+      <WhyThisNumberSheet {...BASE_PROPS} onClose={onClose} />,
+    );
+    fireEvent.press(getByTestId("why-number-keep-target"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders 'Adjust target' CTA only when onPressAdjustTarget is provided", () => {
+    const { queryByTestId } = render(<WhyThisNumberSheet {...BASE_PROPS} />);
+    expect(queryByTestId("why-this-number-adjust-target")).toBeNull();
+    const { getByTestId } = render(
+      <WhyThisNumberSheet {...BASE_PROPS} onPressAdjustTarget={vi.fn()} />,
+    );
+    expect(getByTestId("why-this-number-adjust-target")).toBeTruthy();
+  });
+
+  it("Adjust target tap closes sheet AND fires handler", () => {
+    const onClose = vi.fn();
+    const onPressAdjustTarget = vi.fn();
+    const { getByTestId } = render(
+      <WhyThisNumberSheet
+        {...BASE_PROPS}
+        onClose={onClose}
+        onPressAdjustTarget={onPressAdjustTarget}
+      />,
+    );
+    fireEvent.press(getByTestId("why-this-number-adjust-target"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onPressAdjustTarget).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Legacy body (eng1247_section_a_v1 forced OFF — PostHog kill-switch path) ─
+// Forced OFF deliberately: guards the pre-v3 sheet body (headline + breakdown
+// rows + "How we work this out" story beats) that stays live behind the kill
+// switch. Do not delete — these protect the rollback.
+describe("WhyThisNumberSheet — legacy body (flag forced OFF)", () => {
+  beforeEach(() => {
+    flagFn.mockReturnValue(false);
+  });
+
   it("renders the target headline", () => {
     const { getByTestId } = render(<WhyThisNumberSheet {...BASE_PROPS} />);
     expect(getByTestId("why-this-number-target-headline").props.children).toBe(
