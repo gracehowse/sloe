@@ -1,6 +1,6 @@
 "use client";
 
-import { confirmFoodMacroTiles } from "@suppr/nutrition-core/confirmFoodMacroPreview";
+import { confirmFoodMacroTiles } from "@/lib/nutrition-core/confirmFoodMacroPreview";
 
 export interface ConfirmFoodMacroPreviewProps {
   calories: number;
