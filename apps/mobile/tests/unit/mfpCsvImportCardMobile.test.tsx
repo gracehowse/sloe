@@ -64,6 +64,7 @@ vi.mock("@/lib/supprWeb", () => ({
 
 vi.mock("@/lib/analytics", () => ({
   track: trackMock,
+  isFeatureEnabled: () => false,
 }));
 
 vi.mock("expo-document-picker", () => ({

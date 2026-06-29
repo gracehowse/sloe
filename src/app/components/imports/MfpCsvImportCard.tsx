@@ -30,10 +30,11 @@ import { SupprCard } from "@/app/components/ui/suppr-card";
 import { supabase } from "@/lib/supabase/browserClient";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import type { AnalyticsEventName } from "@/lib/analytics/events";
-import { track } from "@/lib/analytics/track";
+import { track, isFeatureEnabled } from "@/lib/analytics/track";
 import { useCsvImportFlow } from "@/lib/imports/useCsvImportFlow";
 import type { CsvUploadResult } from "@/lib/imports/useCsvImportFlow";
 import { CsvImportPreview } from "@/app/components/imports/CsvImportPreview";
+import { NamedTrackerReassuranceStrip } from "@/app/components/imports/NamedTrackerReassuranceStrip";
 
 export function MfpCsvImportCard({
   surface = "onboarding",
@@ -119,6 +120,8 @@ export function MfpCsvImportCard({
   // switching from one we can import. `highlightApp` is `null` on the
   // generic Settings surface and when no importable app was chosen.
   const highlighted = highlightApp != null;
+  const reassuranceStrip =
+    isFeatureEnabled("mfp_tracker_reassurance_v1") && !highlighted && state.kind === "idle";
   const title = highlighted
     ? `Bring your ${highlightApp} history`
     : "Import from another app";
@@ -174,6 +177,8 @@ export function MfpCsvImportCard({
           <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
             {body}
           </p>
+
+          {reassuranceStrip ? <NamedTrackerReassuranceStrip /> : null}
 
           {state.kind === "idle" && (
             <Button
