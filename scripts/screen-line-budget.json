@@ -76,7 +76,7 @@
   "src/app/components/NutritionTracker.tsx": 4317,
   "src/app/components/onboarding/steps/reveal.tsx": 507,
   "src/app/components/onboarding/web-flow.tsx": 561,
-  "src/app/components/Profile.tsx": 1279,
+  "src/app/components/Profile.tsx": 1313,
   "src/app/components/ProgressDashboard.tsx": 2572,
   "src/app/components/RecipeDetail.tsx": 3347,
   "src/app/components/RecipeUpload.tsx": 2995,

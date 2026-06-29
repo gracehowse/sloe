@@ -14,7 +14,7 @@ Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 
 - ✅ **Plan AdjustConstraints (B1)** — DONE (2026-06-28): sheet web+mobile + sliders button; leftovers toggle; **calorie floor wired into mealPlanAlgo (`calorieFloorMin`, ENG-1254)**.
 - ✅ **BatchCook (B3 minimal v1, ENG-1255)** — DONE (2026-06-28): `batch-cook` route (mobile) + `BatchCookSheet` (web) + PlanTools 2-up row; scales shopping list to batch portions. **🔒 out of scope (Grace B3):** assign-portions day×meal planner + fridge pip tracker — not minimal v1; do not chase as conformance gap.
 - ✅ **ConfirmFood P/C/F mix (A2b, ENG-1257)** — DONE (2026-06-28): 3-tile P/C/F row + serif kcal line in FoodSearchPanel preview; micro table kept below (web + mobile).
-- 🔄 **Profile showcase (B6, ENG-1256)** — **mobile only:** `ProfileShowcaseReadView` behind `profile_showcase_v1` (default OFF). **Web read showcase:** follow-up only; legacy `Profile.tsx` editor remains canonical on web.
+- 🔄 **Profile showcase (B6, ENG-1256)** — **mobile + web read showcase** behind `profile_showcase_v1` (default OFF). Legacy `Profile.tsx` editor remains on flag-off path.
 - ✅ **Notifications** — DONE (grouping + toned plates shipped earlier; audit residual = header chrome 🔒keep). Today/Earlier overline groups + 38px toned `.notif-ic` plates on web + mobile.
 
 - ✅ **Today header bell** — mobile shipped `c0ca0cd3`: extracted `TodayHeaderBar` (wordmark + bell + avatar), bell → `(tabs)/notifications` with unread dot. Prototype conform + web↔mobile parity (web already had a bell). Header **calendar deliberately omitted** (week-strip owns it — Grace "add bell only"). SEEN on sim.
