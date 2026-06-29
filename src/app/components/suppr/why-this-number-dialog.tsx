@@ -13,6 +13,8 @@ import {
   buildWhyThisNumber,
   type WhyThisNumberInput,
 } from "../../../lib/nutrition/whyThisNumber";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
+import { WhyNumberV3Section } from "./WhyNumberV3Section";
 
 /**
  * WhyThisNumberDialog — "Why this number?" tap-to-explain for the
@@ -40,6 +42,7 @@ export function WhyThisNumberDialog({
   ...input
 }: WhyThisNumberDialogProps) {
   const result = buildWhyThisNumber(input);
+  const sectionA = isFeatureEnabled("eng1247_section_a_v1");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,6 +57,24 @@ export function WhyThisNumberDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {sectionA ? (
+          <WhyNumberV3Section
+            targetCalories={input.targetCalories}
+            result={result}
+            confidence={input.confidence}
+            loggingDays={input.loggingDays}
+            onKeepTarget={() => onOpenChange(false)}
+            onAdjustTarget={
+              onAdjustTarget
+                ? () => {
+                    onOpenChange(false);
+                    onAdjustTarget();
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <>
         {/* Headline */}
         <div>
           {/* v3 prototype `.whyn-big` — serif (Newsreader) numeral grammar,
@@ -148,6 +169,8 @@ export function WhyThisNumberDialog({
             <ChevronRight size={18} strokeWidth={2.25} className="text-primary" />
           </button>
         ) : null}
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

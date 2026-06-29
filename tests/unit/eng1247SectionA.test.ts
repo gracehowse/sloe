@@ -109,6 +109,53 @@ describe("ENG-1247 §A8 — MealEdit mobile expander rows", () => {
   });
 });
 
+describe("ENG-1247 §A6 — WhyNumber v3 section", () => {
+  const WHY_WEB = read("src/app/components/suppr/why-this-number-dialog.tsx");
+  const WHY_MOBILE = read("apps/mobile/components/today/WhyThisNumberSheet.tsx");
+  const WHY_V3_WEB = read("src/app/components/suppr/WhyNumberV3Section.tsx");
+  const WHY_V3_MOBILE = read("apps/mobile/components/today/WhyNumberV3Section.tsx");
+  const WHY_LIB = read("src/lib/whyNumberV3.ts");
+
+  it("gates v3 grammar behind eng1247_section_a_v1 on web + mobile", () => {
+    expect(WHY_WEB).toContain('isFeatureEnabled("eng1247_section_a_v1")');
+    expect(WHY_WEB).toContain("WhyNumberV3Section");
+    expect(WHY_MOBILE).toContain('isFeatureEnabled("eng1247_section_a_v1")');
+    expect(WHY_MOBILE).toContain("WhyNumberV3Section");
+  });
+
+  it("ships Keep this target CTA + serif hero in v3 section", () => {
+    expect(WHY_LIB).toContain("keepThisTarget");
+    expect(WHY_V3_WEB).toContain("why-number-keep-target");
+    expect(WHY_V3_MOBILE).toContain("why-number-keep-target");
+    expect(WHY_V3_WEB).toContain("why-number-hero-kcal");
+  });
+});
+
+describe("ENG-1247 §A7 — Verify flush list + leading ver-dot", () => {
+  const VERIFY = read("apps/mobile/app/recipe/verify.tsx");
+
+  it("uses flush divided ingredient list with leading ver-dot", () => {
+    expect(VERIFY).toContain("verify-ingredient-flush-list");
+    expect(VERIFY).toContain("verify-ingredient-ver-dot");
+    expect(VERIFY).toContain("ingRowDivider");
+  });
+});
+
+describe("ENG-1247 B15–B16 — ImportFlow affordances", () => {
+  const IMPORT_WEB = read("src/app/components/suppr/unified-import-sheet.tsx");
+  const IMPORT_MOBILE = read("apps/mobile/components/import/UnifiedImportSheet.tsx");
+
+  it("adds clear (×) on multiline paste when text is present", () => {
+    expect(IMPORT_WEB).toContain("unified-import-clear");
+    expect(IMPORT_MOBILE).toContain("unified-import-clear");
+  });
+
+  it("verify review banner uses import review grammar (B16)", () => {
+    expect(read("apps/mobile/app/recipe/verify.tsx")).toContain("verify-import-review-banner");
+    expect(read("apps/mobile/app/recipe/verify.tsx")).toContain("importReviewBannerCopy");
+  });
+});
+
 describe("ENG-1247 §A12 — Barcode community copy + saved state", () => {
   it("web not-found + saved ack dialog use v3 copy when flag is on", () => {
     expect(BARCODE_WEB).toContain("COMPLETE_DAY_V3_COPY.barcodeNotFoundTitle");

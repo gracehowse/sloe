@@ -1011,8 +1011,10 @@ export default function CookModeScreen() {
     }
   }, [recipeId, title, addedToRegulars, userId, scale]);
 
+  const cookV3 = isFeatureEnabled("recipe_detail_v3_conformance");
+
   const styles = useMemo(() => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: cookV3 ? Accent.primaryDeep : colors.background },
     centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: Spacing.md, padding: Spacing.xxl },
     errorText: { color: colors.text, fontSize: 16 },
     emptyHeading: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
@@ -1029,8 +1031,8 @@ export default function CookModeScreen() {
     // in `Accent.destructive` (red) which made users hesitate. Reserve
     // red for true destructive actions; use the standard text colour
     // here so Exit reads as "go back" rather than "discard cook".
-    headerExit: { color: colors.text, fontSize: 16, fontWeight: "600" },
-    headerCounter: { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
+    headerExit: { color: cookV3 ? "#efe9f2" : colors.text, fontSize: 16, fontWeight: "600" },
+    headerCounter: { color: cookV3 ? Accent.frost : colors.textSecondary, fontSize: 14, fontWeight: "500" },
 
     /** Recime parity (2026-04-30) — "Watch original" ghost pill in the
      *  cook-screen header. Only rendered when `watchOriginalUrl` is
@@ -1051,12 +1053,12 @@ export default function CookModeScreen() {
 
     progressBar: {
       height: 3,
-      backgroundColor: colors.border,
+      backgroundColor: cookV3 ? "rgba(255,255,255,0.15)" : colors.border,
       width: "100%",
     },
     progressBarFilled: {
       height: 3,
-      backgroundColor: accent.primary,
+      backgroundColor: cookV3 ? "#fff" : accent.primary,
     },
 
     stepContainer: {
@@ -1071,12 +1073,15 @@ export default function CookModeScreen() {
     },
 
     stepText: {
-      fontSize: 24,
-      fontWeight: "600",
-      color: colors.text,
+      fontSize: cookV3 ? 38 : 24,
+      fontWeight: cookV3 ? "500" : "600",
+      fontFamily: cookV3 ? FontFamily.serifSemibold : undefined,
+      color: cookV3 ? "#efe9f2" : colors.text,
       textAlign: "center",
-      lineHeight: 34,
-      letterSpacing: -0.3,
+      lineHeight: cookV3 ? 46 : 34,
+      letterSpacing: cookV3 ? 0 : -0.3,
+      maxWidth: cookV3 ? 280 : undefined,
+      alignSelf: cookV3 ? "center" : undefined,
     },
 
     /** Recipe-scale segmented control (Paprika parity, 2026-04-30).
@@ -1379,7 +1384,7 @@ export default function CookModeScreen() {
       lineHeight: 15,
       marginTop: 2,
     },
-  }), [colors, accent]);
+  }), [colors, accent, cookV3]);
 
   if (steps.length === 0) {
     // Audit 2026-05-04 #37: previously this state had no top app bar

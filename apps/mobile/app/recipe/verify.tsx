@@ -46,6 +46,7 @@ import AddIngredientSheet, {
 } from "@/components/AddIngredientSheet";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
 import Badge from "@/components/Badge";
+import { importReviewBannerCopy } from "@suppr/shared/nutrition/recipeImportReview";
 import {
   effectiveMacros,
   hasOverride,
@@ -699,14 +700,47 @@ export default function VerifyScreen() {
     totalValue: { fontSize: 20, fontWeight: "800", fontVariant: ["tabular-nums"] },
     totalKey: { fontSize: 11, color: colors.textTertiary, fontWeight: "600" },
 
-    // Ingredient row — Recime-style
+    // Ingredient list — flush divided card (ENG-1247 A7)
+    ingList: {
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      overflow: "hidden",
+      marginTop: Spacing.sm,
+    },
     ingRow: {
       flexDirection: "row", alignItems: "center",
-      backgroundColor: colors.card, borderRadius: Radius.md,
-      borderWidth: 1, borderColor: colors.border,
-      padding: Spacing.lg, marginTop: Spacing.sm,
+      padding: Spacing.lg,
     },
-    ingRowNeedsReview: { borderColor: Accent.warning + "60" },
+    ingRowDivider: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    ingRowNeedsReview: { backgroundColor: Accent.warning + "0D" },
+    verDot: {
+      width: 9,
+      height: 9,
+      borderRadius: Radius.full,
+      marginRight: Spacing.sm,
+      flexShrink: 0,
+    },
+    reviewBanner: {
+      flexDirection: "row",
+      gap: Spacing.md,
+      backgroundColor: Accent.warning + "22",
+      borderRadius: Radius.xl,
+      padding: Spacing.lg,
+      marginBottom: Spacing.md,
+    },
+    reviewBannerIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 11,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: Accent.warningSolid,
+    },
     ingContent: { flex: 1, gap: 2 },
     ingMatchedName: { fontSize: 15, fontWeight: "600", color: colors.text },
     ingDetail: { fontSize: 13, color: colors.textSecondary },
@@ -835,11 +869,6 @@ export default function VerifyScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.recipeName} numberOfLines={2}>{recipe?.title ?? "Recipe"}</Text>
-        {hasUnverified && (
-          <Text style={styles.subtitle}>
-            Some ingredients need review — tap to check the match
-          </Text>
-        )}
 
         {(() => {
           if (!captionClaim) return null;
@@ -895,7 +924,24 @@ export default function VerifyScreen() {
           </View>
         </View>
 
+        {hasUnverified && (
+          <View style={styles.reviewBanner} testID="verify-import-review-banner">
+            <View style={styles.reviewBannerIcon}>
+              <Ionicons name="alert-circle" size={20} color={colors.primaryForeground} />
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
+                {importReviewBannerCopy({}).title}
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+                {importReviewBannerCopy({}).body}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Ingredient list */}
+        <View style={styles.ingList} testID="verify-ingredient-flush-list">
         {ingredients.map((ing, i) => {
           const expanded = expandedIndex === i;
           const needsReview =
@@ -937,12 +983,20 @@ export default function VerifyScreen() {
             <View key={ing.id}>
               {/* Collapsed row */}
               <Pressable
-                style={[styles.ingRow, needsReview && !rowHasOverride && styles.ingRowNeedsReview]}
+                style={[
+                  styles.ingRow,
+                  i > 0 ? styles.ingRowDivider : null,
+                  needsReview && !rowHasOverride ? styles.ingRowNeedsReview : null,
+                ]}
                 onPress={() => setExpandedIndex(expanded ? null : i)}
               >
-                {needsReview && !rowHasOverride && (
-                  <Ionicons name="alert-circle" size={18} color={Accent.warningSolid} style={{ marginRight: Spacing.sm }} />
-                )}
+                {showConfBar ? (
+                  <View
+                    style={[styles.verDot, { backgroundColor: confColor }]}
+                    accessibilityLabel={`Match confidence: ${Math.round(confPct * 100)} percent`}
+                    testID={`verify-ingredient-ver-dot-${i}`}
+                  />
+                ) : null}
                 <View style={styles.ingContent}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                     <Text style={styles.ingMatchedName} numberOfLines={1}>{displayName}</Text>
@@ -969,14 +1023,6 @@ export default function VerifyScreen() {
                   {ing.matchedName && ing.matchedName !== ing.name && (
                     <Text style={styles.ingOriginal}>{`"${decodeEntities(ing.name)}"`}</Text>
                   )}
-                  {showConfBar ? (
-                    // v3 ver-dot (ENG-1247 A7): a 9px confidence dot (high=success,
-                    // med=warning, low=destructive), not a percentage fill bar.
-                    <View
-                      style={{ marginTop: 6, width: 9, height: 9, borderRadius: Radius.full, backgroundColor: confColor }}
-                      accessibilityLabel={`Match confidence: ${Math.round(confPct * 100)} percent`}
-                    />
-                  ) : null}
                 </View>
                 <Text style={styles.ingCals}>{rowCal}</Text>
                 <Pressable
@@ -1179,6 +1225,7 @@ export default function VerifyScreen() {
             </View>
           );
         })}
+        </View>
 
         {/* Batch 2.7 — Add ingredient row at the bottom of the list. */}
         <Pressable

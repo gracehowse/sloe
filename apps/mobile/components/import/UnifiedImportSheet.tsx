@@ -104,6 +104,7 @@ export function UnifiedImportSheet({
             </Text>
 
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <View style={{ position: "relative" }}>
               <TextInput
                 value={text}
                 onChangeText={(t) => {
@@ -125,12 +126,38 @@ export function UnifiedImportSheet({
                   borderRadius: Radius.md,
                   paddingHorizontal: Spacing.dense,
                   paddingVertical: Spacing.sm,
+                  paddingRight: text.trim().length > 0 ? Spacing.xxl : Spacing.dense,
                   color: colors.text,
                   backgroundColor: colors.background,
                   textAlignVertical: "top",
                   ...Type.body,
                 }}
               />
+              {text.trim().length > 0 ? (
+                <Pressable
+                  onPress={() => {
+                    setText("");
+                    if (hint) setHint(null);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear pasted text"
+                  testID="unified-import-clear"
+                  hitSlop={8}
+                  style={{
+                    position: "absolute",
+                    right: Spacing.sm,
+                    top: Spacing.sm,
+                    width: 32,
+                    height: 32,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: Radius.full,
+                  }}
+                >
+                  <X size={IconSize.md} color={colors.textSecondary} strokeWidth={2.25} />
+                </Pressable>
+              ) : null}
+            </View>
 
               <View style={{ marginTop: Spacing.sm, minHeight: 28, justifyContent: "center" }}>
                 <ImportDetectedChip input={text} />

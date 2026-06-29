@@ -26,8 +26,10 @@ What **is** complete for launch:
 - ~~MealEdit mobile expander rows (A8)~~ ✅ 2026-06-28
 - ~~PlanImport token snaps (A10)~~ ✅ 2026-06-28
 - ~~Barcode copy (A12)~~ ✅ 2026-06-28
-- **A6 WhyNumber** — next autonomous batch
-- RecipeDetail flag path: method steps + import banner ✅; **CookMode dark theme** on `recipe_detail_v3_conformance` flag backlog (not ⬜)
+- ~~**A6 WhyNumber** — serif hero, set-ic rows, Keep-this-target CTA (`eng1247_section_a_v1`)~~ ✅ 2026-06-28
+- ~~**A7 Verify flush list** — leading ver-dot + divided card (mobile)~~ ✅ 2026-06-28
+- ~~**CookMode dark theme** — `recipe_detail_v3_conformance` (web + mobile inline + `/cook`)~~ ✅ 2026-06-28
+- ~~**B15–B16 ImportFlow** — paste clear (×) + verify review-banner / ver-dot grammar~~ ✅ 2026-06-28
 
 ### Grace-gated (§B — ratified 2026-06-28)
 
@@ -42,7 +44,7 @@ Coach, AdaptiveTDEE, ScanLabel → **🔒 keep-current / deferred** (not net-new
 | Tier | Criterion | State |
 |------|-----------|-------|
 | **L0 Launch** | Today + Recipes + Log critical path conforms behind flags; no lying affordances (Plan Adjust fix) | ✅ Shipped on `main`; ramp flags in PostHog |
-| **L1 Autonomous** | Section A cosmetic backlog cleared or explicitly deferred | 🔄 A6 + A7 flush pass remain |
+| **L1 Autonomous** | Section A cosmetic backlog cleared or explicitly deferred | ✅ A6 + A7 closed 2026-06-28 |
 | **L2 Structural** | Grace ratifies §B options; 🔒 keep-current recorded in backlog | ✅ Ratified 2026-06-28; registry in `conformance-backlog.md` |
 | **L3 Full audit** | All 79 surfaces ✅ or 🔒 with rationale | 🔄 21 ✅ · 33 🔒 · 21 ⬜ · 3 🔄 · 1 🆕 (2026-06-28 tally) |
 
@@ -54,11 +56,11 @@ These are **not** open ENG-1247 ⬜ rows:
 |------|--------|
 | **BatchCook assign-portions planner** | 🔒 Out of scope — beyond Grace B3 minimal v1 (ENG-1255 ships scaling + shopping only). Historical deferral ENG-1225 if product wants full planner later. |
 | **Web Profile read showcase** | Follow-up — B6 mobile showcase ships behind `profile_showcase_v1`; web keeps legacy `Profile.tsx` editor until parity work lands. |
-| **CookMode dark aubergine theme** | Flag backlog — tracked under `recipe_detail_v3_conformance` with RecipeDetail; not a separate conformance surface. |
+| **CookMode dark aubergine theme** | ✅ Shipped behind `recipe_detail_v3_conformance` (2026-06-28). |
 
 ## Next actions
 
-1. ~~**Ship follow-ups:** ENG-1255 BatchCook; ENG-1257 ConfirmFood; RecipeDetail method/banner~~ — ✅ Done 2026-06-28 branch. **Open:** ENG-1256 web Profile showcase; CookMode dark with flag ramp.
+1. ~~**Ship follow-ups:** ENG-1255 BatchCook; ENG-1257 ConfirmFood; RecipeDetail method/banner; A6/A7; CookMode dark; B15–B16~~ — ✅ Done 2026-06-28. **Open:** ENG-1256 web Profile showcase.
 2. ~~**Mark 🔒** every ratified keep-current row~~ — ✅ Done 2026-06-28.
 3. **Close remaining ⬜:** autonomous §A + B15–B16, B18, B21, B26, B28 builds; ramp flags after two-week hold.
 
@@ -74,4 +76,4 @@ Recorded in `docs/decisions/2026-06-28-eng1247-section-b-ratified.md`: B1 build 
 - `recipe_detail_v3_conformance` (RecipeDetail + CookMode dark backlog)
 - `profile_showcase_v1` (mobile read showcase only)
 - `sloe_v3_plan` (Plan tab v3 surface)
-- `eng1247_section_a_v1` (CompleteDay, MealDetail, MealEdit rows, Barcode copy)
+- `eng1247_section_a_v1` (CompleteDay, MealDetail, MealEdit rows, Barcode copy, **WhyNumber A6**)
