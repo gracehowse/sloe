@@ -77,6 +77,7 @@ import { SPRING_DEFAULT, SPRING_SNAPPY } from "@/lib/motion";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useHouseholdBanner } from "@/hooks/useHouseholdBanner";
+import { usePlanWeekJournal } from "@/hooks/usePlanWeekJournal";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
@@ -1509,6 +1510,7 @@ export default function PlannerScreen() {
       return d;
     });
   }, [planStartDate]);
+  const planWeekJournal = usePlanWeekJournal(userId, planV3WeekDates);
 
   // ENG-1092 — render-scope PlannerTargets for the empty-slot "Aim ~X kcal"
   // line (same shape the swap handler builds). Drives `slotMacroTargets` per
@@ -2739,6 +2741,7 @@ export default function PlannerScreen() {
             onOpenShopping={() => router.push("/shopping" as Href)}
             onOpenBatchCook={() => router.push("/batch-cook" as Href)}
             batchCookSubtitle={defaultBatchCookToolSubtitle()}
+            nutritionByDay={planWeekJournal}
           />
         ) : null}
         {/* Named plan slots switcher (Grace 2026-05-22: "drop the redundant

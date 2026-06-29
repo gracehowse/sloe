@@ -7,6 +7,7 @@ import { planCalendarDateForIndex } from "@/lib/planning/planDayLabel";
 import { computePlanWeekVerdict } from "@/lib/planning/planWeekStatus";
 import type { DayPlan } from "@/types/recipe";
 import type { HouseholdBannerData } from "../../../hooks/useHouseholdBanner";
+import type { PlanJournalByDay } from "@/lib/planning/planCookedMeals";
 import { PlanV3Surface } from "./PlanV3Surface";
 import { PlanV3WebDashboard } from "./PlanV3WebDashboard";
 import { defaultBatchCookToolSubtitle } from "@/lib/planning/batchCook";
@@ -45,6 +46,8 @@ export interface PlanV3ConnectedProps {
   servingCount?: number;
   /** ENG-1247 — "Cooking for N · names" household banner; null hides it. */
   household?: HouseholdBannerData | null;
+  /** Diary rows keyed by date_key — plan cooked strike-through. */
+  nutritionByDay?: PlanJournalByDay;
 }
 
 export function PlanV3Connected({
@@ -62,6 +65,7 @@ export function PlanV3Connected({
   servingCount = 1,
   batchCookSubtitle = defaultBatchCookToolSubtitle(),
   household = null,
+  nutritionByDay,
 }: PlanV3ConnectedProps) {
   const weekDates = React.useMemo(
     () => Array.from({ length: 7 }, (_, i) => planCalendarDateForIndex(i, startOffset)),
@@ -113,6 +117,7 @@ export function PlanV3Connected({
           onOpenShopping={onOpenShopping}
           onOpenBatchCook={onOpenBatchCook}
           batchCookSubtitle={batchCookSubtitle}
+          nutritionByDay={nutritionByDay}
         />
       </div>
       {/* lg+: the desktop two-column dashboard (prototype WebPlan). */}
@@ -135,6 +140,7 @@ export function PlanV3Connected({
           onOpenShopping={onOpenShopping}
           onOpenBatchCook={onOpenBatchCook}
           batchCookSubtitle={batchCookSubtitle}
+          nutritionByDay={nutritionByDay}
         />
       </div>
     </>

@@ -5,6 +5,11 @@ import { Flame, ShoppingCart, Sparkles } from "lucide-react";
 
 import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
 import type { PlanWeekVerdict } from "@/lib/planning/planWeekStatus";
+import {
+  isPlanMealCooked,
+  journalEntriesForPlanDate,
+  type PlanJournalByDay,
+} from "@/lib/planning/planCookedMeals";
 import type { DayPlan } from "@/types/recipe";
 import { PlanHeaderV3 } from "./PlanHeaderV3";
 import { PlanMealCardV3 } from "./PlanMealCardV3";
@@ -58,6 +63,7 @@ export interface PlanV3WebDashboardProps {
   onOpenShopping: () => void;
   onOpenBatchCook: () => void;
   batchCookSubtitle: string;
+  nutritionByDay?: PlanJournalByDay;
 }
 
 type WeekStat = { value: string; label: string };
@@ -248,6 +254,7 @@ export function PlanV3WebDashboard({
   onOpenShopping,
   onOpenBatchCook,
   batchCookSubtitle,
+  nutritionByDay,
 }: PlanV3WebDashboardProps) {
   const stats = useWeekStats(plan, targetKcal);
   const openDays = useOpenSlots(plan, weekDates);
@@ -286,7 +293,16 @@ export function PlanV3WebDashboard({
                 </div>
                 {ALL_MEAL_SLOTS.map((slot, slotIndex) => {
                   const meal = day?.meals[slotIndex];
+                  const logged = journalEntriesForPlanDate(nutritionByDay, date);
                   if (meal && !meal.isPlaceholder) {
+                    const cooked = isPlanMealCooked(
+                      {
+                        recipeId: meal.recipeId,
+                        recipeTitle: meal.recipeTitle || meal.name,
+                        isPlaceholder: meal.isPlaceholder,
+                      },
+                      logged,
+                    );
                     return (
                       <PlanMealCardV3
                         key={slot}
@@ -294,6 +310,7 @@ export function PlanV3WebDashboard({
                         name={meal.recipeTitle || meal.name}
                         kcal={Math.round(meal.calories)}
                         isLocked={meal.isLocked}
+                        isCooked={cooked}
                         onPress={() => onOpenMeal(dayIndex, slotIndex)}
                       />
                     );

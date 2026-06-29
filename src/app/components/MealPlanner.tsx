@@ -250,6 +250,7 @@ export const MealPlanner = memo(function MealPlanner({
     toggleSaveRecipe,
     setShoppingItems,
     pantryStaples,
+    nutritionByDay,
   } = useAppData();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1212,6 +1213,7 @@ export const MealPlanner = memo(function MealPlanner({
           onOpenShopping={handleShoppingList}
           onOpenBatchCook={() => setBatchCookOpen(true)}
           batchCookSubtitle={defaultBatchCookToolSubtitle()}
+          nutritionByDay={nutritionByDay}
           onSwapSlot={(day, slotIndex) =>
             openSwap(day, SLOTS[slotIndex] ?? "snacks", slotIndex)
           }
