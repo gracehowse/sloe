@@ -23,6 +23,10 @@ const MOBILE_TODAY_MEALS = readFileSync(
   resolve(ROOT, "apps/mobile/components/today/TodayMealsSection.tsx"),
   "utf8",
 );
+const MACRO_COLORS_TS = readFileSync(
+  resolve(ROOT, "src/lib/theme/macroColors.ts"),
+  "utf8",
+);
 
 const AA_NORMAL = 4.5;
 
@@ -109,6 +113,18 @@ function readMobileMacroSolid(key: string): string {
   return m![1].toLowerCase();
 }
 
+/** Read a `key: '#hex'` entry scoped to the `MacroColorsDark` literal (ENG-1217).
+ *  The light `MacroColors` literal appears first, so an unscoped match would
+ *  return the light value — scope to the dark block. */
+function readMobileMacroDark(key: string): string {
+  const start = MOBILE_THEME.indexOf("export const MacroColorsDark");
+  expect(start, "MacroColorsDark literal").toBeGreaterThanOrEqual(0);
+  const slice = MOBILE_THEME.slice(start, start + 1200);
+  const m = slice.match(new RegExp(`${key}:\\s*'([^']+)'`));
+  expect(m, `MacroColorsDark.${key}`).not.toBeNull();
+  return m![1].toLowerCase();
+}
+
 describe("ENG-1109 — macro -solid tokens clear WCAG AA on light surfaces", () => {
   const light = block(":root");
   const card = hexToRgb(readCssVar(light, "card"));
@@ -138,6 +154,75 @@ describe("ENG-1109 — macro -solid tokens clear WCAG AA on light surfaces", () 
     expect(ratio(readCssVar(light, "macro-carbs"), card)).toBeLessThan(AA_NORMAL);
     expect(ratio(readCssVar(light, "macro-fat"), card)).toBeLessThan(AA_NORMAL);
     expect(ratio(readCssVar(light, "macro-protein"), card)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it("sodium/water fills fail AA as text on white — why ENG-1217 added their -solid", () => {
+    // The clay (#C8794E) and muted-teal (#5A8A99) fills only clear ~3.3–3.8:1 as
+    // small text. Before ENG-1217 the tile value read the bare fill var and
+    // failed AA when tier-v1 coloured the value; the darkened `-solid` fixes it.
+    expect(ratio(readCssVar(light, "macro-sodium"), white)).toBeLessThan(AA_NORMAL);
+    expect(ratio(readCssVar(light, "macro-water"), white)).toBeLessThan(AA_NORMAL);
+    expect(ratio(readCssVar(light, "macro-sodium-solid"), white)).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(ratio(readCssVar(light, "macro-water-solid"), white)).toBeGreaterThanOrEqual(AA_NORMAL);
+    // Sugar (damson) already passed as fill, so its `-solid` equals the fill.
+    expect(readCssVar(light, "macro-sugar-solid")).toBe(readCssVar(light, "macro-sugar"));
+    expect(ratio(readCssVar(light, "macro-sugar-solid"), white)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+});
+
+describe("ENG-1217 — macro tile value -solid tokens clear WCAG AA on the DARK card", () => {
+  const dark = block(".dark");
+  const card = hexToRgb(readCssVar(dark, "card"));
+  // Every macro the Today tiles render reads its value ink off a `-solid`
+  // (`MACRO_TEXT_COLOR_VARS`). In `.dark` the OLED-lifted fills double as the
+  // `-solid`, so the value ink resolves these eight hues on the dark card.
+  const darkSolids = [
+    "macro-protein-solid",
+    "macro-carbs-solid",
+    "macro-fat-solid",
+    "macro-fiber-solid",
+    "macro-sugar-solid",
+    "macro-sodium-solid",
+    "macro-water-solid",
+  ] as const;
+
+  it.each(darkSolids)("%s passes AA-normal on the dark card", (token) => {
+    expect(ratio(readCssVar(dark, token), card)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it("calories value hue passes AA on the dark card (ring identity, no -solid)", () => {
+    // Calories has no `-solid` (it's the ring, not a tile value), but the sage
+    // lift must still clear AA wherever it is rendered as text in dark.
+    expect(ratio(readCssVar(dark, "macro-calories"), card)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+});
+
+describe("ENG-1217 — web .dark macro hues mirror mobile MacroColorsDark (parity)", () => {
+  const dark = block(".dark");
+
+  // The core five were already pinned by crossPlatformThemeTokens; ENG-1217
+  // realigned the secondary three (sugar/sodium/water) that had drifted from
+  // mobile. All eight must match so the Today macro tile renders the same value
+  // ink, icon, and fill on both platforms in dark.
+  const pairs: Array<[string, string]> = [
+    ["macro-protein", "protein"],
+    ["macro-carbs", "carbs"],
+    ["macro-fat", "fat"],
+    ["macro-fiber", "fiber"],
+    ["macro-calories", "calories"],
+    ["macro-sugar", "sugar"],
+    ["macro-sodium", "sodium"],
+    ["macro-water", "water"],
+  ];
+
+  it.each(pairs)("web .dark --%s equals mobile MacroColorsDark.%s", (cssName, mobileKey) => {
+    expect(readCssVar(dark, cssName)).toBe(readMobileMacroDark(mobileKey));
+  });
+
+  it("dark -solid equals the dark fill for every macro (dark -solid pattern)", () => {
+    for (const key of ["protein", "carbs", "fat", "fiber", "sugar", "sodium", "water"]) {
+      expect(readCssVar(dark, `macro-${key}-solid`)).toBe(readCssVar(dark, `macro-${key}`));
+    }
   });
 });
 
@@ -178,5 +263,19 @@ describe("ENG-1109 — Today call sites use AA-safe tokens", () => {
     expect(TODAY_MEALS).toMatch(/ENG-1109/);
     expect(TODAY_MEALS).toContain("text-foreground-secondary");
     expect(TODAY_MEALS).not.toMatch(/slotPillClassName[\s\S]*text-slot-breakfast/);
+  });
+
+  it("ENG-1217 — every macro tile value routes through a -solid token", () => {
+    // The Today macro tile value ink reads `macroTextColorVarFor` →
+    // `MACRO_TEXT_COLOR_VARS`. After ENG-1217 sugar/sodium/water join
+    // protein/carbs/fat/fiber on `-solid` so the value is AA-safe in BOTH
+    // schemes (the cascade resolves `:root` vs `.dark`). Calories is the ring
+    // identity (no tile), so it keeps the bare hue.
+    for (const key of ["protein", "carbs", "fat", "fiber", "sugar", "sodium", "water"]) {
+      expect(
+        MACRO_COLORS_TS,
+        `MACRO_TEXT_COLOR_VARS.${key} should use var(--macro-${key}-solid)`,
+      ).toMatch(new RegExp(`${key}:\\s*"var\\(--macro-${key}-solid\\)"`));
+    }
   });
 });
