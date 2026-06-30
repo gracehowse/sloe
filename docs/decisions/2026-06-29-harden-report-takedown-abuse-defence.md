@@ -102,9 +102,13 @@ single `no-ip` bucket, which doesn't break the flow.
 - **Add a two-tier (per-user AND per-IP) limiter on recipe-report.** Rejected for
   now, consistent with the P0-6 decision: the single per-(user, IP) bucket
   already closes both the rotation-bypass and shared-NAT-starvation modes.
-- **Persist `reporter_user_id` on `recipe_reports`.** Out of scope here (needs a
-  schema migration + `db:types` regen). Genuinely useful for reviewer triage —
-  tracked as a follow-up, not silently added.
+- **Persist `reporter_user_id` on `recipe_reports`.** Out of scope for the
+  ENG-1226 abuse-defence change (needed a schema migration + `db:types` regen).
+  Genuinely useful for reviewer triage — delivered as the follow-up **ENG-1267
+  Part 2** (migration `20260702120600_recipe_reports_reporter_user_id.sql`; the
+  route now sets `reporter_user_id: userId` on insert). ENG-1267 Part 1
+  (Cloudflare Turnstile on `/api/dmca-takedown`) remains founder-gated on
+  Cloudflare infra — see "Remaining" below.
 
 ## Tests
 

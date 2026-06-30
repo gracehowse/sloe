@@ -1699,6 +1699,7 @@ export type Database = {
           reason: string
           reporter_ip: string | null
           reporter_user_agent: string | null
+          reporter_user_id: string | null
           reviewed_at: string | null
           reviewer_notes: string | null
           status: string
@@ -1711,6 +1712,7 @@ export type Database = {
           reason: string
           reporter_ip?: string | null
           reporter_user_agent?: string | null
+          reporter_user_id?: string | null
           reviewed_at?: string | null
           reviewer_notes?: string | null
           status?: string
@@ -1723,6 +1725,7 @@ export type Database = {
           reason?: string
           reporter_ip?: string | null
           reporter_user_agent?: string | null
+          reporter_user_id?: string | null
           reviewed_at?: string | null
           reviewer_notes?: string | null
           status?: string

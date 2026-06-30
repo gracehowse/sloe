@@ -137,6 +137,7 @@ export async function POST(req: Request) {
     suppr_recipe_id: recipeId,
     reason,
     description,
+    reporter_user_id: userId,
     reporter_ip: reporterIp,
     reporter_user_agent: reporterUserAgent,
   });
