@@ -404,7 +404,7 @@ The implementation rules above are partially enforced at lint time — a prevent
 
 ### What's enforced today
 
-**Mobile, scoped to the Today component tree** (`app/(tabs)/index.tsx`, `components/today/**`, `components/charts/CalorieRing.tsx`) — `no-restricted-syntax` flags raw numeric/string literals on:
+**Mobile, scoped to the Today component tree** (`app/(tabs)/index.tsx`, `components/today/**`) — `no-restricted-syntax` flags raw numeric/string literals on:
 
 | Style property | Token to use | Why |
 |---|---|---|
@@ -422,12 +422,16 @@ Severity: **`warn`**. The today/ tree carries a baseline of legacy literals (~45
 above ALSO runs (selector-only, no style-literal rules) on the rest of the
 ENG-1013 target screen tree: `app/(tabs)/planner.tsx`, `library.tsx`,
 `discover.tsx`, `progress.tsx`, `barcode.tsx`, `recipes.tsx`, `more.tsx`,
-`notifications.tsx`, `settings.tsx`, and `app/recipe/[id].tsx`. That tree was
-migrated to a **verified zero raw-hex baseline**, so the guard holds at `warn`
-and a new hex shows up loudly. `CalorieRing.tsx` keeps the style-literal guard
-but is held OUT of the hex lane — its plum overflow-ramp `to`-stops
-(`#A589B5` / `#7A5890`) have no matching token yet (a deferred CalorieRing
-colour-token decision, not a guess to make here).
+`notifications.tsx`, `settings.tsx`, `app/recipe/[id].tsx`, and
+`components/charts/CalorieRing.tsx`. That tree was migrated to a **verified zero
+raw-hex baseline**, so the guard holds at `warn` and a new hex shows up loudly.
+`CalorieRing.tsx` joined the hex lane in **ENG-1269**: its plum overflow-ramp
+`to`-stops (`#A589B5` dark / `#7A5890` light) were tokenised as
+`Colors.dark.ringOverflowTo` / `Colors.light.ringOverflowTo` (value-equal), and
+its `from`-stops + win-glow reuse `Colors.dark.navPrimary` / `Accent.primaryLight`
+/ `Accent.primarySolidDark` / `Accent.primaryDark`. With zero raw hexes remaining
+the file dropped its bespoke style-literal-only carve-out and is now held to the
+no-raw-hex rule like the rest of the lane.
 
 **Mobile, all files** — `no-restricted-imports` flags `@expo/vector-icons` Ionicons imports as **`warn`**. Lucide is canonical (Top-5 #4 decision); ~64 legacy Ionicons usages migrate opportunistically.
 

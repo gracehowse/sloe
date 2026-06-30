@@ -435,9 +435,9 @@ export default function CalorieRing({
   // two-tone ring. Comps (Apple/Klima/Zero) keep the wrap within a whisper
   // of the base tone — the CAP GLOW carries the signal, not hue distance.
   // Ramp tightened: the lap ends ~1.5 shades up, not 4.
-  const overflowFrom = isDark ? "#815E91" : "#5B3B6E";
-  const overflowTo = isDark ? "#A589B5" : "#7A5890";
-  const winGlowColor = isDark ? "#C4ACD0" : "#7E5C92";
+  const overflowFrom = isDark ? Colors.dark.navPrimary : Accent.primaryLight;
+  const overflowTo = isDark ? Colors.dark.ringOverflowTo : Colors.light.ringOverflowTo;
+  const winGlowColor = isDark ? Accent.primarySolidDark : Accent.primaryDark;
   const mainCirc = CIRC(R);
 
   const progress = useSharedValue(0);
