@@ -440,6 +440,11 @@ export const Colors = {
      *  to the 100%-opacity fill arc. Macro tracks use a tint of their OWN hue
      *  (in CalorieRing/SkiaRingArcs), not this. ↔ web --ring-track-bold. */
     ringTrackBold: 'rgba(59, 42, 77, 0.24)',
+    /** CalorieRing overflow-ramp `to`-stop (light) — the "~1.5 shades up" wrap
+     *  tone the lap ends on (2026-06-10 round 3). The `from`-stop reuses
+     *  `Accent.primaryLight`; this `to`-stop had no token so it lived as a raw
+     *  hex in CalorieRing — tokenised in ENG-1269 (value-equal). */
+    ringOverflowTo: '#7A5890',
     /** Sloe v3 jewel watch-dial — graduation ticks + state gradient stops +
      *  luminous gem core. ↔ web theme.css `--ring-{tick,under,over,empty,cap-core}`. */
     ringTick: 'rgba(59, 42, 77, 0.20)',
@@ -493,6 +498,11 @@ export const Colors = {
     /** Bold ring track (dark) — lifted plum #815E91 at 22% so the unfilled ring
      *  reads on the dark card. ↔ web .dark --ring-track-bold. */
     ringTrackBold: 'rgba(129, 94, 145, 0.34)',
+    /** CalorieRing overflow-ramp `to`-stop (dark) — the "~1.5 shades up" wrap
+     *  tone the lap ends on (2026-06-10 round 3). The `from`-stop reuses
+     *  `Colors.dark.navPrimary`; this `to`-stop had no token so it lived as a
+     *  raw hex in CalorieRing — tokenised in ENG-1269 (value-equal). */
+    ringOverflowTo: '#A589B5',
     /** Sloe v3 jewel watch-dial (dark) — brighter so the gem reads luminous on
      *  Nocturne. ↔ web .dark `--ring-{tick,under,over,empty,cap-core}`. */
     ringTick: 'rgba(201, 194, 214, 0.24)',

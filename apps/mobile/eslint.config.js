@@ -134,29 +134,17 @@ module.exports = defineConfig([
       ],
     },
   },
-  // CalorieRing keeps the style-literal guard but is held OUT of the
-  // raw-hex lane (and out of the ENG-1013 target tree — it's
-  // `components/charts/`, not a screen): its plum overflow-ramp
-  // `to`-stops (#A589B5 / #7A5890, the "~1.5 shades up" wrap tone) have
-  // no matching theme token, so adding the hex guard here would either
-  // red on a real unmapped value or force an invented token, which
-  // ENG-1013 forbids. Naming a token for those two ramp stops is a
-  // CalorieRing-specific colour decision, deferred to the colour-token
-  // owner; until then this stays style-literals only.
-  {
-    files: ['components/charts/CalorieRing.tsx'],
-    rules: {
-      'no-restricted-syntax': ['warn', ...SUPPR_RESTRICTED_STYLE_LITERALS],
-    },
-  },
   // ENG-811 mobile raw-hex lane — the rest of the ENG-1013 target screen
-  // tree (the census-named tabs + recipe detail). These files carry the
-  // full legacy baseline of style-literal warnings that we are NOT
-  // surfacing yet (that scope-expansion is a separate cleanup), so this
-  // block runs ONLY the raw-hex selector. Disjoint from the today block
+  // tree (the census-named tabs + recipe detail) plus CalorieRing. These
+  // files carry the full legacy baseline of style-literal warnings that we
+  // are NOT surfacing yet (that scope-expansion is a separate cleanup), so
+  // this block runs ONLY the raw-hex selector. Disjoint from the today block
   // above (no `index.tsx` / `components/today/**` overlap), so the two
   // `no-restricted-syntax` entries never clobber each other under flat
   // config's last-match-wins semantics. Verified zero-violation baseline.
+  // CalorieRing joined the lane in ENG-1269: its plum overflow-ramp `to`-stops
+  // (#A589B5 / #7A5890) were tokenised (`Colors.*.ringOverflowTo`, value-equal)
+  // so the file now holds zero raw hexes and is held to the no-raw-hex rule.
   {
     files: [
       'app/(tabs)/planner.tsx',
@@ -169,6 +157,7 @@ module.exports = defineConfig([
       'app/(tabs)/notifications.tsx',
       'app/(tabs)/settings.tsx',
       'app/recipe/[id].tsx',
+      'components/charts/CalorieRing.tsx',
     ],
     rules: {
       'no-restricted-syntax': ['warn', ...SUPPR_RAW_HEX_SYNTAX],

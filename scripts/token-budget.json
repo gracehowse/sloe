@@ -48,7 +48,6 @@
     "apps/mobile/components/AppLaunchScreen.tsx": 2,
     "apps/mobile/components/Badge.tsx": 2,
     "apps/mobile/components/BarcodeScannerModal.tsx": 1,
-    "apps/mobile/components/charts/CalorieRing.tsx": 6,
     "apps/mobile/components/charts/DayStrip.tsx": 2,
     "apps/mobile/components/CreateCustomFoodSheet.tsx": 1,
     "apps/mobile/components/Digest.tsx": 2,
