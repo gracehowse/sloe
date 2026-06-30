@@ -59,9 +59,17 @@ export async function POST(req: Request) {
   // works in vitest (where `next/headers` requires a request scope) and
   // matches how `rateLimit` extracts IP from headers internally.
   const h = req.headers;
-  // IP-based rate limit only — the endpoint is anonymous on purpose.
-  // Conservative budget (5 per hour per IP). Real takedown agents file
+  // IP-based rate limit only — the endpoint is anonymous on purpose (takedowns
+  // come from non-users; we must NOT auth-gate it). The IP is the
+  // platform-injected, non-forgeable client IP via `getTrustedClientIp`
+  // (ENG-1226 part 1), so a leftmost-`x-forwarded-for` rotation can't bypass
+  // the cap. Conservative budget (5 per hour per IP). Real takedown agents file
   // notices much less frequently than this.
+  //
+  // deferred: see ENG-1226 — a stronger second factor for this anonymous
+  // endpoint (Cloudflare Turnstile / CAPTCHA) needs Cloudflare infra + keys
+  // only Grace can provision, so it is NOT built here. Until then, the trusted
+  // per-IP cap above is the abuse defence for the public takedown form.
   const rl = await rateLimit({
     keyPrefix: "api:dmca-takedown",
     limit: 5,

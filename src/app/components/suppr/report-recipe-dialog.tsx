@@ -118,8 +118,15 @@ export function ReportRecipeDialog({
     if (!reason) return;
     setPhase("sending");
     try {
+      // ENG-1226: `/api/recipe-report` now requires an authenticated session.
+      // This is a same-origin request, so the Supabase auth cookie (managed by
+      // `@supabase/ssr`) rides automatically — `credentials: "same-origin"` is
+      // the browser default but stated here so the auth contract is explicit
+      // and isn't accidentally dropped. (Mobile attaches a Bearer token via
+      // `authedFetch` for parity.)
       const res = await fetch("/api/recipe-report", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipeId,

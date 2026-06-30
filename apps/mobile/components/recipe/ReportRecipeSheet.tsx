@@ -38,6 +38,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { getSupprApiBase } from "@/lib/supprWeb";
+import { authedFetch } from "@/lib/authedFetch";
 
 const SUPPORT_EMAIL = "support@getsloe.com";
 
@@ -125,7 +126,12 @@ export function ReportRecipeSheet({
     if (!reason) return;
     setPhase("sending");
     try {
-      const res = await fetch(`${getSupprApiBase()}/api/recipe-report`, {
+      // ENG-1226: `/api/recipe-report` now requires an authenticated session.
+      // `authedFetch` attaches the Supabase access token as `Authorization:
+      // Bearer …` (mobile stores its session in AsyncStorage, not cookies, so
+      // the token won't ride the request otherwise). The sheet only opens from
+      // the signed-in recipe-detail screen, so the user always has a session.
+      const res = await authedFetch(`${getSupprApiBase()}/api/recipe-report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

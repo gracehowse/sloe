@@ -98,3 +98,25 @@ When both prerequisites land:
 - Push migration `20260505010000_dmca_takedowns.sql` via `supabase db push --linked` (NOT MCP).
 - Set `IG_TT_IMPORT_ENABLED=true` in Vercel production.
 - Smoke-test by sharing an Instagram post to Suppr from a TestFlight build.
+
+## Abuse hardening on the report + takedown queues (ENG-1226, 2026-06-29)
+
+security-reviewer (2026-06-22) flagged that the reviewer-queue endpoints
+(`/api/recipe-report`, `/api/dmca-takedown`) derived the per-IP rate-limit key
+and the `reporter_ip` audit from the client-forgeable leftmost
+`x-forwarded-for` hop — an attacker could rotate it to bypass the cap and flood
+the human queue. Hardened in two parts:
+
+1. **Trusted client IP** (`getTrustedClientIp`) — both routes + the rate limiter
+   now use the platform-injected `x-vercel-forwarded-for` / `x-real-ip` (Vercel
+   overwrites these; not client-forgeable), falling back to the rightmost
+   `x-forwarded-for` hop only for self-host/dev. The forgeable leftmost is never
+   read.
+2. **Auth gate on `/api/recipe-report`** — it only renders for signed-in users,
+   so it now requires a Supabase session (401 otherwise) and keys the limit per
+   (user, trusted IP). The DMCA endpoint stays anonymous by design (non-users
+   file takedowns); its stronger second factor (Cloudflare Turnstile) is
+   deferred on infra Grace must provision.
+
+Full rationale + the Vercel spoofing-safety argument:
+`docs/decisions/2026-06-29-harden-report-takedown-abuse-defence.md`.
