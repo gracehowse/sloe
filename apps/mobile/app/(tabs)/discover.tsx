@@ -478,7 +478,8 @@ export default function DiscoverScreen() {
                 Text so the visual treatment is unchanged; non-curated
                 rows render as plain Text (no creatorId → no link). */}
             {item.creatorId ? (
-              <Pressable
+              <PressableScale
+                haptic="selection"
                 onPress={(e) => {
                   e.stopPropagation?.();
                   router.push(`/creator/${item.creatorId}`);
@@ -486,13 +487,10 @@ export default function DiscoverScreen() {
                 hitSlop={6}
                 style={{ marginTop: 4 }}
               >
-                <Text
-                  style={{ ...Type.caption, color: colors.textSecondary, textDecorationLine: "underline" }}
-                  numberOfLines={1}
-                >
+                <Text style={{ ...Type.caption, color: colors.textSecondary, textDecorationLine: "underline" }} numberOfLines={1}>
                   {displayAttribution({ creatorName: item.creatorName, source: item.source })}
                 </Text>
-              </Pressable>
+              </PressableScale>
             ) : (
               <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 4 }} numberOfLines={1}>
                 {displayAttribution({ creatorName: item.creatorName, source: item.source })}
@@ -745,8 +743,9 @@ export default function DiscoverScreen() {
               contentContainerStyle={{ gap: 8 }}
             >
               {eatingOut.map((m) => (
-                <Pressable
+                <PressableScale
                   key={m.foodId}
+                  haptic="selection"
                   // D3 fix (audit 2026-04-28): mobile previously
                   // pushed `?search=m.label` into the Today route
                   // params; web navigated to Today with no context.
@@ -781,7 +780,7 @@ export default function DiscoverScreen() {
                     {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
                   </Text>
                   <Text style={{ ...Type.caption, color: colors.textTertiary, marginTop: Spacing.xs }}>per 100 g</Text>
-                </Pressable>
+                </PressableScale>
               ))}
             </ScrollView>
           </View>
