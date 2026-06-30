@@ -12,7 +12,10 @@ import {
 import { fetchDeleteAccountLedger } from "@suppr/shared/settings/fetchDeleteAccountLedger";
 import { executeAccountDelete } from "@suppr/shared/settings/executeAccountDelete";
 
-export function useDeleteAccountSheet(userId: string | null, runExportCsv: () => void) {
+// ENG-1262: `runExport` is the COMPLETE server-authoritative archive
+// (`exportEverythingToFile` → `/api/export/me`), not a meal-log-only CSV —
+// the user must get a full copy before permanent deletion (GDPR Art. 20).
+export function useDeleteAccountSheet(userId: string | null, runExport: () => void) {
   const enabled = isFeatureEnabled(DELETE_ACCOUNT_SHEET_FLAG);
   const [open, setOpen] = useState(false);
   const [ledger, setLedger] = useState<DeleteAccountLedgerRow[]>([]);
@@ -122,6 +125,6 @@ export function useDeleteAccountSheet(userId: string | null, runExportCsv: () =>
     deleting,
     handleDeleteAccount,
     deleteForever,
-    exportFirst: runExportCsv,
+    exportFirst: runExport,
   };
 }

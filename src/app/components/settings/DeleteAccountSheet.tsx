@@ -18,6 +18,10 @@ export interface DeleteAccountSheetProps {
   ledger: DeleteAccountLedgerRow[];
   loadingLedger?: boolean;
   deleting?: boolean;
+  /** ENG-1262 — true while the complete server export is in flight; the
+   *  "Download a copy first" button disables + shows progress so it can't be
+   *  double-submitted before the (heavy, rate-limited) export resolves. */
+  exportingFirst?: boolean;
   onExportFirst: () => void;
   onDeleteForever: (reason: DeleteAccountLeaveReason | null) => void;
 }
@@ -45,6 +49,7 @@ export function DeleteAccountSheet({
   ledger,
   loadingLedger = false,
   deleting = false,
+  exportingFirst = false,
   onExportFirst,
   onDeleteForever,
 }: DeleteAccountSheetProps) {
@@ -124,7 +129,14 @@ export function DeleteAccountSheet({
               </div>
               <p className="mt-4 text-center font-serif text-xl text-foreground">{copy.step2.heading}</p>
               <p className="mt-2 text-center text-sm text-muted-foreground">{copy.step2.body}</p>
-              <SupprButton variant="ghost" className="mt-4 w-full" onClick={onExportFirst}>
+              <SupprButton
+                variant="ghost"
+                className="mt-4 w-full"
+                loading={exportingFirst}
+                disabled={exportingFirst}
+                onClick={onExportFirst}
+                data-testid="delete-account-export-first"
+              >
                 {copy.step2.exportFirst}
               </SupprButton>
               <div className="mt-4 overflow-hidden rounded-xl border border-border">

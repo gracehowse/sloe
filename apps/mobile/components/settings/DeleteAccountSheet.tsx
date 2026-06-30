@@ -27,6 +27,10 @@ export interface DeleteAccountSheetProps {
   ledger: DeleteAccountLedgerRow[];
   loadingLedger?: boolean;
   deleting?: boolean;
+  /** ENG-1262 — true while the complete server export is in flight; the
+   *  "Download a copy first" button disables + shows progress so it can't be
+   *  double-submitted before the (heavy, rate-limited) export resolves. */
+  exportingFirst?: boolean;
   onExportFirst: () => void;
   onDeleteForever: (reason: DeleteAccountLeaveReason | null) => void;
 }
@@ -54,6 +58,7 @@ export function DeleteAccountSheet({
   ledger,
   loadingLedger = false,
   deleting = false,
+  exportingFirst = false,
   onExportFirst,
   onDeleteForever,
 }: DeleteAccountSheetProps) {
@@ -141,6 +146,9 @@ export function DeleteAccountSheet({
                 variant="ghost"
                 onPress={onExportFirst}
                 style={styles.exportBtn}
+                loading={exportingFirst}
+                disabled={exportingFirst}
+                testID="delete-account-export-first"
                 label={copy.step2.exportFirst}
               />
               <View style={[styles.card, { borderColor: colors.border, marginTop: Spacing.lg }]}>

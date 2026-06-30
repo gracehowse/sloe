@@ -231,4 +231,184 @@ describe("GET /api/export/me", () => {
       userId: "user-789",
     });
   });
+
+  // ENG-1262 (data-export surface): prove per-user row isolation. Every
+  // table read MUST be filtered by the authenticated caller's id; passing a
+  // different authed user must NOT surface another user's rows. We build a
+  // filter-aware fake client that only returns a row when the `.eq(...)`
+  // matches the row's owner column — so if the route ever dropped the
+  // `.eq(userId)` (or used the wrong column), the assertion fails.
+  describe("per-user isolation (no cross-user leakage)", () => {
+    /** Filter-aware thenable: records every `.eq(col, val)` and resolves to
+     *  only the fixture rows whose owner column matches ALL recorded filters. */
+    function isolatedChain(
+      rows: Record<string, unknown>[],
+      filters: Array<[string, unknown]>,
+    ) {
+
+      const ownerCols = [
+        "user_id",
+        "id",
+        "author_id",
+        "recipe_id",
+        "plan_day_id",
+        "saved_meal_id",
+      ];
+      const apply = () =>
+        rows.filter((r) =>
+          filters.every(([col, val]) => {
+            // Only enforce ownership columns; ignore window / status filters
+            // (date_key, captured_at, is_active) which aren't ownership scoping.
+            if (ownerCols.includes(col)) return r[col] === val;
+            return true;
+          }),
+        );
+
+
+      const p: any = Promise.resolve({ data: apply(), error: null });
+      p.eq = (col: string, val: unknown) =>
+        isolatedChain(rows, [...filters, [col, val]]);
+      p.in = (col: string, vals: unknown[]) =>
+        isolatedChain(
+          rows.filter((r) => (vals as unknown[]).includes(r[col])),
+          filters,
+        );
+      p.gte = () => isolatedChain(rows, filters);
+      p.order = () => isolatedChain(rows, filters);
+      p.maybeSingle = () => {
+        const matched = apply();
+        return Promise.resolve({ data: matched[0] ?? null, error: null });
+      };
+      return p;
+    }
+
+    function isolatedClient(
+      rowsByTable: Record<string, Record<string, unknown>[]>,
+    ) {
+      return {
+        from: vi.fn((table: string) => ({
+          select: vi.fn(() => isolatedChain(rowsByTable[table] ?? [], [])),
+        })),
+      };
+    }
+
+    // Two users' data live in the SAME tables. Only the authed user's rows
+    // should ever appear in the payload.
+    const rowsByTable: Record<string, Record<string, unknown>[]> = {
+      profiles: [
+        { id: "owner", display_name: "Owner" },
+        { id: "intruder", display_name: "Intruder" },
+      ],
+      recipes: [
+        { id: "r-own", author_id: "owner", title: "Owner pasta" },
+        { id: "r-other", author_id: "intruder", title: "Intruder cake" },
+      ],
+      saves: [
+        { id: "sv-own", user_id: "owner" },
+        { id: "sv-other", user_id: "intruder" },
+      ],
+      nutrition_entries: [
+        { id: "n-own", user_id: "owner", calories: 100 },
+        { id: "n-other", user_id: "intruder", calories: 999 },
+      ],
+      health_snapshots: [
+        { id: "h-own", user_id: "owner", weight_kg: 70 },
+        { id: "h-other", user_id: "intruder", weight_kg: 50 },
+      ],
+      user_custom_foods: [
+        { id: "cf-own", user_id: "owner" },
+        { id: "cf-other", user_id: "intruder" },
+      ],
+      meal_plan_days: [
+        { id: "d-own", user_id: "owner" },
+        { id: "d-other", user_id: "intruder" },
+      ],
+      meal_plan_meals: [
+        { id: "m-own", plan_day_id: "d-own" },
+        { id: "m-other", plan_day_id: "d-other" },
+      ],
+      shopping_items: [
+        { id: "sh-own", user_id: "owner", is_active: true },
+        { id: "sh-other", user_id: "intruder", is_active: true },
+      ],
+      user_saved_meals: [
+        { id: "sm-own", user_id: "owner" },
+        { id: "sm-other", user_id: "intruder" },
+      ],
+      user_saved_meal_items: [
+        { id: "smi-own", saved_meal_id: "sm-own" },
+        { id: "smi-other", saved_meal_id: "sm-other" },
+      ],
+      user_recipe_notes: [
+        { id: "rn-own", user_id: "owner" },
+        { id: "rn-other", user_id: "intruder" },
+      ],
+      recipe_ingredients: [
+        { id: "ing-own", recipe_id: "r-own" },
+        { id: "ing-other", recipe_id: "r-other" },
+      ],
+    };
+
+    it("returns ONLY the authed user's rows, never another user's", async () => {
+      mockGetUserId.mockResolvedValue("owner");
+      mockCreateServiceClient.mockReturnValue(
+        isolatedClient(rowsByTable) as never,
+      );
+
+      const res = await GET(mockRequest());
+      expect(res.status).toBe(200);
+      const body = await res.json();
+
+      // Profile is the owner's, never the intruder's.
+      expect(body.profile?.id).toBe("owner");
+      // The whole serialized payload must not contain ANY intruder marker.
+      expect(JSON.stringify(body)).not.toContain("intruder");
+      expect(JSON.stringify(body)).not.toContain("-other");
+
+      // Every section contains only owner-scoped ids.
+      expect(body.recipes.map((r: { id: string }) => r.id)).toEqual(["r-own"]);
+      expect(body.recipeIngredients.map((r: { id: string }) => r.id)).toEqual([
+        "ing-own",
+      ]);
+      expect(body.saves.map((r: { id: string }) => r.id)).toEqual(["sv-own"]);
+      expect(body.mealLog.map((r: { id: string }) => r.id)).toEqual(["n-own"]);
+      expect(body.weightHistory.map((r: { id: string }) => r.id)).toEqual([
+        "h-own",
+      ]);
+      expect(body.customFoods.map((r: { id: string }) => r.id)).toEqual([
+        "cf-own",
+      ]);
+      expect(body.planDays.map((r: { id: string }) => r.id)).toEqual(["d-own"]);
+      expect(body.planMeals.map((r: { id: string }) => r.id)).toEqual(["m-own"]);
+      expect(body.shopping.map((r: { id: string }) => r.id)).toEqual(["sh-own"]);
+      expect(body.savedMeals.map((r: { id: string }) => r.id)).toEqual([
+        "sm-own",
+      ]);
+      expect(body.savedMealItems.map((r: { id: string }) => r.id)).toEqual([
+        "smi-own",
+      ]);
+      expect(body.recipeNotes.map((r: { id: string }) => r.id)).toEqual([
+        "rn-own",
+      ]);
+    });
+
+    it("swapping the authed user swaps the rows (proves the filter is the userId)", async () => {
+      mockGetUserId.mockResolvedValue("intruder");
+      mockCreateServiceClient.mockReturnValue(
+        isolatedClient(rowsByTable) as never,
+      );
+
+      const res = await GET(mockRequest());
+      expect(res.status).toBe(200);
+      const body = await res.json();
+
+      expect(body.profile?.id).toBe("intruder");
+      expect(JSON.stringify(body)).not.toContain("r-own");
+      expect(body.recipes.map((r: { id: string }) => r.id)).toEqual(["r-other"]);
+      expect(body.mealLog.map((r: { id: string }) => r.id)).toEqual(["n-other"]);
+      expect(body.weightHistory.map((r: { id: string }) => r.id)).toEqual([
+        "h-other",
+      ]);
+    });
+  });
 });
