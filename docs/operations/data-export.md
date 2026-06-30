@@ -42,6 +42,7 @@ A single JSON blob with the following keys:
 | `savedMeals`          | `user_saved_meals`       | all       |
 | `savedMealItems`      | `user_saved_meal_items`  | for own saved meals |
 | `recipeNotes`         | `user_recipe_notes`      | all       |
+| `householdMemberships`| `household_members` (own `user_id`) | all       |
 
 Plus the meta fields:
 
@@ -93,6 +94,14 @@ exporting `[]` ever since. Plan data is fully represented by `planDays`
 
 Additive new keys are NOT a breaking change — existing consumers
 ignore unknown fields.
+
+**`householdMemberships` added (2026-06-30, ENG-1271):** additive key —
+the user's own `household_members` rows, filtered on `user_id` (never
+`household_id`, which would leak co-members' rows). This closed a gap with
+the delete-cascade ledger (`app/api/account/delete/route.ts`), which already
+listed `household_members.user_id` as cascade-deleted on account deletion —
+the export now portably returns what the delete flow removes. No
+`schemaVersion` bump (additive).
 
 ## Rate limit
 
