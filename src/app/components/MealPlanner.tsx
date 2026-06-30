@@ -75,6 +75,7 @@ import { PlanV3Connected } from "./plan/PlanV3Connected.tsx";
 import { BatchCookSheet } from "./plan/BatchCookSheet.tsx";
 import { ResetPlanSheet } from "./plan/ResetPlanSheet.tsx";
 import { useMealPlanRegenerate } from "./plan/useMealPlanRegenerate.ts";
+import { useMealSlotConfig } from "./plan/useMealSlotConfig.ts";
 import {
   batchShoppingMultiplier,
   defaultBatchCookToolSubtitle,
@@ -337,6 +338,9 @@ export const MealPlanner = memo(function MealPlanner({
   const [enabledSlots, setEnabledSlots] = useState<Set<SlotKey>>(
     () => new Set<SlotKey>(SLOTS),
   );
+  // ENG-1177 — numbered meal-slot presets (4–6 "Meal N") drive plan generation
+  // directly; classic returns null and keeps the `enabledSlots` toggle. See hook.
+  const { numberedPresetSlots } = useMealSlotConfig(authedUserId);
   const [allowBatchLeftovers, setAllowBatchLeftovers] = useState(true);
   const [planCalorieFloor, setPlanCalorieFloor] = useState(
     DEFAULT_PLAN_ADJUST_CONSTRAINTS.calorieFloor,
@@ -478,6 +482,7 @@ export const MealPlanner = memo(function MealPlanner({
     enabledSlots,
     slots: SLOTS,
     slotTitle: (key) => SLOT_TITLE[key as SlotKey],
+    slotsOverride: numberedPresetSlots,
     mealLockEnabled,
     lockedMealCount,
     planSourceSelector,
@@ -502,15 +507,11 @@ export const MealPlanner = memo(function MealPlanner({
     : null;
   const showSummaryCard = summary !== null && (mealPlan?.length ?? 0) > 0;
 
-  // ENG-820 (Plan win-moment, Redesign — Design Direction 2026) — make the
-  // "Hits your targets N of 7" headline state-aware, mirroring mobile
-  // `apps/mobile/app/(tabs)/planner.tsx`. Behind `redesign_winmoment` the
-  // headline colours by tone, kept distinct so the landmark reads as a win:
-  //   - win (every day lands)    → `--accent-win` (the reserved win gold)
-  //   - progress (some days land) → `--warning` (amber, never red)
-  //   - calm (no day lands yet)   → `--muted-foreground` (informative)
-  // Flag OFF keeps today's `text-foreground`. There is no haptic analog on web
-  // (no Haptics API); the colour shift + the subtitle carry the payoff.
+  // ENG-820 (Plan win-moment) — behind `redesign_winmoment` the "Hits your
+  // targets N of 7" headline colours by tone (mobile parity): win → `--accent-win`
+  // (gold), progress → `--warning` (amber, never red), calm → `--muted-foreground`.
+  // Flag OFF keeps `text-foreground`. No haptic analog on web — colour + subtitle
+  // carry the payoff.
   const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
   const summaryTone = planWeekHeadlineTone(summary);
   const summaryHeadlineColor = !winMomentsEnabled
@@ -1172,11 +1173,13 @@ export const MealPlanner = memo(function MealPlanner({
         const slotsList: string[] = SLOTS.filter((s) =>
           enabledSlotsForMealsPerDay(next.mealsPerDay).has(s),
         ).map((s) => SLOT_TITLE[s]);
-        const useSlotOverride =
-          slotsList.length > 0 && slotsList.length < SLOTS.length;
+        // ENG-1177 — numbered preset overrides; else classic per-slot toggle.
+        const slotsOverride =
+          numberedPresetSlots ??
+          (slotsList.length > 0 && slotsList.length < SLOTS.length ? slotsList : null);
         await generateMealPlan({
           days,
-          ...(useSlotOverride ? { slots: slotsList } : {}),
+          ...(slotsOverride ? { slots: slotsOverride } : {}),
           ...(planSourceSelector ? { source: next.source } : {}),
           allowLeftovers: next.allowBatchLeftovers,
           calorieFloorMin: next.calorieFloor,
@@ -1195,6 +1198,7 @@ export const MealPlanner = memo(function MealPlanner({
       isFree,
       planDays,
       planSourceSelector,
+      numberedPresetSlots,
     ],
   );
 
@@ -1903,17 +1907,12 @@ export const MealPlanner = memo(function MealPlanner({
                 const kcal = Math.round(Math.max(0, Number(meal.calories) || 0));
                 const prot = Math.round(Math.max(0, Number(meal.protein) || 0));
                 const recipeId = (meal as { recipeId?: string }).recipeId;
-                // Recipe-wave (2026-05-10) — detect a stale recipeId
-                // (set on the plan row but no longer in the library /
-                // discover pool). Surfaced as a "Recipe removed"
-                // badge below so the card explains itself instead of
-                // half-rendering. Placeholder rows (`isPlaceholder`)
-                // intentionally have no recipeId; that case stays
-                // silent.
-                // ENG-766 — gate on the library being hydrated (a non-empty
-                // known-id set) so a row never flashes "Recipe removed"
-                // before the recipe pool loads. AppDataContext exposes no
-                // loading flag, so `size > 0` is the hydrated proxy.
+                // Recipe-wave (2026-05-10) — a stale recipeId (set on the row
+                // but no longer in the library/discover pool) shows a "Recipe
+                // removed" badge below; placeholder rows (no recipeId) stay
+                // silent. ENG-766 — gate on a hydrated library (`size > 0`, the
+                // only loading proxy AppDataContext exposes) so a row never
+                // flashes the badge before the pool loads.
                 const recipeMissing = shouldShowRecipeRemovedBadge({
                   hasRecipe: Boolean(recipeId),
                   recipeId,
