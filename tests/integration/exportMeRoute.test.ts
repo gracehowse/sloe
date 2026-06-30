@@ -139,6 +139,9 @@ describe("GET /api/export/me", () => {
     const savedMealItemRows = [{ id: "smi1", saved_meal_id: "sm1" }];
     const recipeNoteRows = [{ id: "rn1", recipe_id: "r1", note: "delicious" }];
     const saveRows = [{ id: "sv1", user_id: "user-123", recipe_id: "r1" }];
+    const householdMembershipRows = [
+      { id: "hm1", user_id: "user-123", household_id: "hh1", role: "owner" },
+    ];
 
     const client = fakeClient({
       profiles: profileRow,
@@ -154,6 +157,7 @@ describe("GET /api/export/me", () => {
       user_saved_meal_items: savedMealItemRows,
       user_recipe_notes: recipeNoteRows,
       recipe_ingredients: ingredientRows,
+      household_members: householdMembershipRows,
     });
     mockCreateServiceClient.mockReturnValue(client as never);
 
@@ -186,6 +190,7 @@ describe("GET /api/export/me", () => {
     expect(body.savedMeals).toEqual(savedMealRows);
     expect(body.savedMealItems).toEqual(savedMealItemRows);
     expect(body.recipeNotes).toEqual(recipeNoteRows);
+    expect(body.householdMemberships).toEqual(householdMembershipRows);
   });
 
   it("degrades gracefully when an optional table is missing", async () => {
@@ -347,6 +352,13 @@ describe("GET /api/export/me", () => {
         { id: "ing-own", recipe_id: "r-own" },
         { id: "ing-other", recipe_id: "r-other" },
       ],
+      // Two memberships in the SAME table, scoped by `user_id`. The export
+      // MUST filter on `user_id` (never `household_id`) — otherwise a shared
+      // household would leak the co-member's row into this user's export.
+      household_members: [
+        { id: "hm-own", user_id: "owner" },
+        { id: "hm-other", user_id: "intruder" },
+      ],
     };
 
     it("returns ONLY the authed user's rows, never another user's", async () => {
@@ -390,6 +402,11 @@ describe("GET /api/export/me", () => {
       expect(body.recipeNotes.map((r: { id: string }) => r.id)).toEqual([
         "rn-own",
       ]);
+      // Household memberships are scoped to the authed caller — the
+      // co-member ("hm-other", user_id: intruder) must NOT appear.
+      expect(
+        body.householdMemberships.map((r: { id: string }) => r.id),
+      ).toEqual(["hm-own"]);
     });
 
     it("swapping the authed user swaps the rows (proves the filter is the userId)", async () => {
@@ -409,6 +426,11 @@ describe("GET /api/export/me", () => {
       expect(body.weightHistory.map((r: { id: string }) => r.id)).toEqual([
         "h-other",
       ]);
+      // Swapping the authed user swaps the household membership row too —
+      // proves the export filters on the caller's `user_id`, not household_id.
+      expect(
+        body.householdMemberships.map((r: { id: string }) => r.id),
+      ).toEqual(["hm-other"]);
     });
   });
 });

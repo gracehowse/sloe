@@ -69,6 +69,7 @@ type ExportPayload = {
   savedMeals: unknown[];
   savedMealItems: unknown[];
   recipeNotes: unknown[];
+  householdMemberships: unknown[];
 };
 
 function dateKeyDaysAgo(days: number): string {
@@ -163,6 +164,7 @@ export async function GET(req: Request) {
       shoppingRes,
       savedMealsRes,
       recipeNotesRes,
+      householdMembershipsRes,
     ] = await Promise.all([
       sb.from("profiles").select("*").eq("id", userId).maybeSingle(),
       sb.from("recipes").select("*").eq("author_id", userId),
@@ -188,6 +190,11 @@ export async function GET(req: Request) {
         .eq("is_active", true),
       sb.from("user_saved_meals").select("*").eq("user_id", userId),
       sb.from("user_recipe_notes").select("*").eq("user_id", userId),
+      // The caller's OWN household memberships only — filter on `user_id`,
+      // NEVER `household_id` (that would surface co-members' rows and leak
+      // other users' data). Matches the delete-cascade ledger
+      // (account/delete/route.ts) which lists household_members.user_id.
+      sb.from("household_members").select("*").eq("user_id", userId),
     ]);
 
     // Unwrap each. Missing-table errors degrade to empty array; any
@@ -228,6 +235,11 @@ export async function GET(req: Request) {
     const recipeNotes = unwrap<unknown[]>(
       recipeNotesRes,
       "recipeNotes",
+      [],
+    );
+    const householdMemberships = unwrap<unknown[]>(
+      householdMembershipsRes,
+      "householdMemberships",
       [],
     );
 
@@ -292,6 +304,7 @@ export async function GET(req: Request) {
       savedMeals,
       savedMealItems,
       recipeNotes,
+      householdMemberships,
     };
 
     const body = JSON.stringify(payload, null, 2);
