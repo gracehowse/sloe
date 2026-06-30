@@ -131,15 +131,15 @@ jobs:
           PLAYWRIGHT_SKIP_WEB_SERVER: "1"
         run: |
           set -euo pipefail
-          # Visual projects from playwright.config.ts on the rescue branch:
-          #   setup-visual → chromium-visual (golden-account authed visual specs)
-          #   chromium     (public-shell visual specs, no auth)
+          # Visual projects from playwright.config.ts (main):
+          #   setup → chromium-authed (golden-account authed visual specs)
+          #   chromium          (public-shell visual specs, no auth)
           # --update-snapshots writes any missing/changed PNGs without failing.
           if [ -n "${{ github.event.inputs.spec }}" ]; then
             echo "Limiting update to: ${{ github.event.inputs.spec }}"
             npx playwright test "${{ github.event.inputs.spec }}" \
               --project=chromium \
-              --project=chromium-visual \
+              --project=chromium-authed \
               --update-snapshots
           else
             echo "Updating all visual specs."
@@ -152,7 +152,7 @@ jobs:
               tests/e2e/visual-redesign-gate15.spec.ts \
               tests/e2e/visual-redesign-gate15-authed.spec.ts \
               --project=chromium \
-              --project=chromium-visual \
+              --project=chromium-authed \
               --update-snapshots
           fi
 
