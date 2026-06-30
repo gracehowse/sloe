@@ -7,9 +7,7 @@ import { useRouter } from "expo-router";
 import {
   BarChart3,
   ArrowRight,
-  ChevronDown,
   ChevronRight,
-  ChevronUp,
   Flag,
   Scale,
   TrendingDown,
@@ -49,7 +47,7 @@ import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
 import { resolveMaintenance , formatMaintenanceRecapLine } from "@suppr/nutrition-core/resolveMaintenance";
 import { computeAdaptiveDataProgressFromMeals } from "@suppr/nutrition-core/adaptiveDataProgress";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/nutrition-core/measuredTdee";
-import { buildMaintenanceChain } from "@suppr/nutrition-core/maintenanceChain";
+import { MaintenanceExplainer } from "@/components/progress/MaintenanceExplainer";
 import type { PlanPace } from "@suppr/nutrition-core/tdee";
 import {
   coerceMeasurementSystem,
@@ -132,6 +130,7 @@ import { weightDeltaTone } from "@/lib/progress/progressRangeChart";
 import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightSparseState } from "@/components/progress/WeightSparseState";
 import { WeightPlateauInsight } from "@/components/progress/WeightPlateauInsight";
+import { ExpenditureTrendCard } from "@/components/progress/ExpenditureTrendCard";
 import { useWeightCelebration } from "@/components/progress/useWeightCelebration";
 import { useWeightData } from "@/hooks/useWeightData";
 
@@ -842,9 +841,13 @@ export default function ProgressScreen() {
   // paint; default-false keeps the terse trend verdict. Web parity: same flag
   // gates ProgressDashboard's identical line. Resolved with digest-blend below.
   const [plateauInsightEnabled, setPlateauInsightEnabled] = useState(false);
+  // ENG-953 — calm Expenditure trend card (default-OFF). Same deferred-read
+  // pattern as the plateau flag; the card renders nothing until ramped.
+  const [expenditureCardEnabled, setExpenditureCardEnabled] = useState(false);
   useEffect(() => {
     setDigestBlendEnabled(isFeatureEnabled("progress_digest_blend"));
     setPlateauInsightEnabled(isFeatureEnabled("progress_plateau_insight_v1"));
+    setExpenditureCardEnabled(isFeatureEnabled("expenditure_trend_card"));
   }, []);
   const digestBlendVisible =
     digestBlendEnabled &&
@@ -1816,68 +1819,29 @@ export default function ProgressScreen() {
               </View>
             )}
 
-            {(() => {
-              const chain = buildMaintenanceChain(
-                {
-                  sex: profileSexState as any,
-                  weight_kg: latestWeightKg ?? 70,
-                  height_cm: profileHeightCmState,
-                  age: profileAgeState,
-                  activity_level: profileActivityLevelState as any,
-                },
-                resolved,
-                planPace,
-                userGoal,
-                targets.calories,
-              );
-              if (!chain) return null;
-              return (
-                <View style={{ marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: t.border }}>
-                  <Pressable
-                    onPress={() => setMaintenanceExplainerOpen((v) => !v)}
-                    accessibilityRole="button"
-                    accessibilityLabel={maintenanceExplainerOpen ? "Hide explanation" : "Show how this works"}
-                    accessibilityState={{ expanded: maintenanceExplainerOpen }}
-                    hitSlop={8}
-                    style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: t.accentSolid }}>
-                      {maintenanceExplainerOpen ? "Hide" : "How this works"}
-                    </Text>
-                    {maintenanceExplainerOpen ? (
-                      <ChevronUp size={14} color={t.accentSolid} strokeWidth={1.75} />
-                    ) : (
-                      <ChevronDown size={14} color={t.accentSolid} strokeWidth={1.75} />
-                    )}
-                  </Pressable>
-                  {maintenanceExplainerOpen && (
-                    <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
-                      {chain.steps.map((step, i) => {
-                        const isSummary = step.kind === "summary" || step.kind === "weeklyLoss";
-                        return (
-                          <View
-                            key={`${step.kind}-${i}`}
-                            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: Spacing.dense }}
-                          >
-                            <Text style={{ flex: 1, fontSize: 12, lineHeight: 17, color: isSummary ? t.sub : t.text, fontWeight: step.emphasis ? "700" : "500" }}>
-                              {step.label}
-                            </Text>
-                            {step.value ? (
-                              <Text style={{ fontSize: 12, color: step.emphasis ? t.text : t.sub, fontWeight: step.emphasis ? "700" : "500", fontVariant: ["tabular-nums"] }}>
-                                {step.value}
-                              </Text>
-                            ) : null}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-              );
-            })()}
+            {/* G-4 — "How this works" expandable. Extracted to
+                `MaintenanceExplainer` (ENG-953 touch) to keep this screen under
+                budget; same chain, same collapsed default, no new DB reads. */}
+            <MaintenanceExplainer
+              sex={profileSexState}
+              weightKg={latestWeightKg ?? null}
+              heightCm={profileHeightCmState}
+              age={profileAgeState}
+              activityLevel={profileActivityLevelState}
+              resolved={resolved}
+              planPace={planPace}
+              userGoal={userGoal}
+              goalCalories={targets.calories}
+              open={maintenanceExplainerOpen}
+              onToggle={() => setMaintenanceExplainerOpen((v) => !v)}
+              colors={{ accentSolid: t.accentSolid, text: t.text, sub: t.sub, border: t.border }}
+            />
           </View>
           );
         })()}
+
+        {/* ENG-953 — calm "Expenditure" trend card (gated on default-OFF `expenditure_trend_card`; parity: web `ExpenditureTrendCard`). */}
+        <ExpenditureTrendCard enabled={expenditureCardEnabled} adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
 
         {/* PROJECTED WEIGHT (trajectory) card — flag-gated feature kept. */}
         {trajectoryBoxEnabled && weightSurfaceMode === "show" ? (

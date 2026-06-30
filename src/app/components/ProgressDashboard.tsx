@@ -23,7 +23,7 @@ import { avgCaloriesOverRecentLoggedDays, calcGoalTimeline, computeWeightJourney
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { computeAdaptiveDataProgressFromMeals } from "../../lib/nutrition/adaptiveDataProgress.ts";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
-import { buildMaintenanceChain } from "../../lib/nutrition/maintenanceChain.ts";
+import { MaintenanceExplainer } from "./progress/MaintenanceExplainer.tsx";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
@@ -105,6 +105,7 @@ import { ProgressStoryGate } from "./suppr/progress-story-gate.tsx";
 import { ProgressAverageAdherence } from "./suppr/progress-average-adherence.tsx";
 import { ProgressEnergyTriad } from "./suppr/progress-energy-triad.tsx";
 import { ProgressOnTargetRibbon } from "./suppr/progress-ontarget-ribbon.tsx";
+import { ExpenditureTrendCard } from "./suppr/expenditure-trend-card.tsx";
 import { hasEnoughDataForStory } from "../../lib/nutrition/progressStoryGate.ts";
 import { DigestStoryCard } from "./suppr/digest-story-card.tsx";
 import { TrajectoryCard } from "./suppr/trajectory-card.tsx";
@@ -2138,72 +2139,23 @@ function ProgressDashboardContent() {
             )}
           </p>
 
-          {/* G-4 (2026-04-19, TestFlight `ALcwMFPjfmJvyBLjs4CRt1k`) —
-              "How this works" expandable. Shows the chain from BMR →
-              Maintenance → Calorie goal → projected weekly loss so the
-              user can see how every number in the app is derived. No
-              new DB reads; numbers come from the same state the card
-              already uses. */}
-          {(() => {
-            const chain = buildMaintenanceChain(
-              {
-                sex: profileSexCached,
-                weight_kg: weightKg ?? 70,
-                height_cm: profileHeightCmCached,
-                age: profileAgeCached,
-                activity_level: profileActivityLevelCached,
-              },
-              resolved,
-              planPace,
-              userGoal,
-              targets.calories,
-            );
-            if (!chain) return null;
-            return (
-              <div className="mt-3 pt-3 border-t border-border" data-testid="maintenance-explainer">
-                <button
-                  type="button"
-                  onClick={() => setMaintenanceExplainerOpen((v) => !v)}
-                  aria-expanded={maintenanceExplainerOpen}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-primary-solid hover:underline"
-                >
-                  <span>{maintenanceExplainerOpen ? "Hide" : "How this works"}</span>
-                  <span aria-hidden="true" className="text-[10px]">
-                    {maintenanceExplainerOpen ? "▴" : "▾"}
-                  </span>
-                </button>
-                {maintenanceExplainerOpen && (
-                  <dl className="mt-3 space-y-1.5">
-                    {chain.steps.map((step, i) => (
-                      <div
-                        key={`${step.kind}-${i}`}
-                        className="flex items-baseline justify-between gap-3 text-xs"
-                      >
-                        <dt
-                          className={
-                            step.kind === "summary" || step.kind === "weeklyLoss"
-                              ? "text-muted-foreground leading-snug"
-                              : step.emphasis
-                              ? "font-semibold text-foreground"
-                              : "text-foreground"
-                          }
-                        >
-                          {step.label}
-                        </dt>
-                        {step.value && (
-                          <dd
-                            className={`tabular-nums ${step.emphasis ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-                          >
-                            {step.value}
-                          </dd>
-                        )}
-                      </div>
-                    ))}
-                  </dl>
-                )}
-              </div>
-            );
-          })()}
+          {/* G-4 — "How this works" expandable (BMR → Maintenance → Calorie
+              goal → projected loss). Extracted to `MaintenanceExplainer`
+              (ENG-953 touch) to keep this screen under budget; same chain,
+              same collapsed default, same testid, no new DB reads. */}
+          <MaintenanceExplainer
+            sex={profileSexCached}
+            weightKg={weightKg ?? null}
+            heightCm={profileHeightCmCached}
+            age={profileAgeCached}
+            activityLevel={profileActivityLevelCached}
+            resolved={resolved}
+            planPace={planPace}
+            userGoal={userGoal}
+            goalCalories={targets.calories}
+            open={maintenanceExplainerOpen}
+            onToggle={() => setMaintenanceExplainerOpen((v) => !v)}
+          />
 
           {/* Data progress for non-adaptive users.
               ENG-1189 — counts + targets now come from the shared
@@ -2241,6 +2193,9 @@ function ProgressDashboardContent() {
         </SupprCard>
         );
       })()}
+
+      {/* ENG-953 — calm "Expenditure" trend card (self-gates on default-OFF `expenditure_trend_card`; parity: mobile `ExpenditureTrendCard`). */}
+      <ExpenditureTrendCard adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
 
       {/* WEIGHT TRACKING card — RELOCATED to frame position 4 above
           (Sloe Figma 492:2: Newsreader headline + Trend/Scale toggle +
