@@ -15,4 +15,12 @@ describe("Discover — PressableScale haptic rebalance (ENG-1016)", () => {
     expect(SRC).toMatch(/import \{ PressableScale \}/);
     expect(SRC).toMatch(/PressableScale[\s\S]{0,80}haptic="confirm"[\s\S]{0,120}router\.push\(`\/recipe\//);
   });
+
+  it("ENG-1139: creator byline routes through PressableScale (selection haptic)", () => {
+    expect(SRC).toMatch(/PressableScale[\s\S]{0,80}haptic="selection"[\s\S]{0,200}router\.push\(`\/creator\//);
+  });
+
+  it("ENG-1139: eating-out shortcut rows use PressableScale (selection haptic)", () => {
+    expect(SRC).toMatch(/eatingOut\.map[\s\S]{0,160}PressableScale[\s\S]{0,80}haptic="selection"/);
+  });
 });

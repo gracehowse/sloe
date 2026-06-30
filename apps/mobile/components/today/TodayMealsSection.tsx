@@ -1236,6 +1236,8 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                   <MealRowSwipeable mealId={m.id} onDeleteMeal={onDeleteMeal}>
                     <TodayMealRowPressable
                       tierV1={tierV1}
+                      accessibilityRole="button"
+                      accessibilityLabel={m.recipeTitle}
                       onPress={() => onPressMeal(m.id)}
                       onLongPress={() => {
                         if (brandedSheets) {
@@ -1249,12 +1251,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                           { text: "Cancel", style: "cancel" },
                           { text: "Edit", onPress: () => onLongPressEdit(m) },
                           { text: "Copy to another day", onPress: () => onRequestCopyMeal(m.id) },
-                          {
-                            text: "Share meal",
-                            onPress: () => {
-                              void shareMeal(m);
-                            },
-                          },
+                          { text: "Share meal", onPress: () => void shareMeal(m) },
                           { text: "Delete", style: "destructive", onPress: () => onDeleteMeal(m.id) },
                         ]);
                       }}

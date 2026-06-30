@@ -56,6 +56,12 @@ describe("Today cohesion — TodayMealsSection ENG-1099 M5", () => {
     expect(src).toMatch(/TodayLogUsualPressable/);
     expect(src).toMatch(/PressableScale haptic="selection"/);
   });
+
+  it("ENG-1139: meal rows expose accessibilityRole + recipe-title label for VoiceOver", () => {
+    expect(src).toMatch(
+      /TodayMealRowPressable[\s\S]{0,200}accessibilityRole="button"[\s\S]{0,80}accessibilityLabel=\{m\.recipeTitle\}/,
+    );
+  });
 });
 
 describe("Today cohesion — TodayHeroRing ENG-1099 RC-3", () => {
