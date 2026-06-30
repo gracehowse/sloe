@@ -104,8 +104,13 @@ describe("Daily-loop haptics — LOG WEIGHT", () => {
   });
 
   it("the weigh-in haptic stays gated so the flag-off path is silent", () => {
+    // ENG-952 added the quieter milestone tier, which also fires a (soft Light)
+    // haptic — so the gate now covers BOTH flags. The flag-off path (neither
+    // `redesign_winmoment` nor `progress_milestone_celebration_v1` on) is still
+    // silent: no haptic fires unless one of the two tiers is enabled.
     expect(LOG_WEIGHT).toContain('isFeatureEnabled("redesign_winmoment")');
-    expect(LOG_WEIGHT).toContain("if (winMomentEnabled) {");
+    expect(LOG_WEIGHT).toContain('isFeatureEnabled("progress_milestone_celebration_v1")');
+    expect(LOG_WEIGHT).toContain("if (winMomentEnabled || milestoneEnabled) {");
   });
 });
 
