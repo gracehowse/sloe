@@ -104,8 +104,15 @@ When in doubt, pick the ticket with **`label:agent/codex`** only — not Cursor-
 | `agent/codex` | Codex owns implementation |
 | `agent/claude` | Claude session — triage, review, planning (no delegate) |
 | `qa-finding` | QA-discovered issue; **must** go through Claude triage before implementer assignment |
-| `ready-for-agent` | Queued for pickup (Todo); remove when In Progress |
+| `ready-for-agent` | Queued for pickup (Todo); remove when In Progress — **Engineering team only** |
+| `grace-only` | **Growth team** — Grace-only human work; agents must not pick up |
 
 ## Grace-only (never auto-assign to agents)
 
-Ops, legal, dashboard, Supabase migrations, credentials, metrics gates, device-only TestFlight — tickets labeled or described as **Grace only**, **grace-only**, or requiring external accounts.
+**Team:** Growth (`GROW`) + label **`grace-only`**.
+
+Ops, legal filings, vendor dashboard toggles, Vercel/Supabase/Sentry/RC env UI, credentials vault, metrics gates Grace runs manually, device-only TestFlight coordination — tickets on **Growth** with `grace-only`, or ENG issues described as **Grace only** / **grace-only** (re-home to GROW when found).
+
+**Routing:** `docs/planning/linear-team-routing.md` · Decision: `docs/decisions/2026-06-18-linear-team-routing-by-executability.md`
+
+Agents work **`team:Engineering`** only (plus `ready-for-agent` / delegate filters above).

@@ -8,6 +8,8 @@ Linear does not let you invent workspace members via API. Agent identities are e
 
 **Pickup & delivery rules:** `docs/planning/linear-agent-workflow.md` (branch naming, Todo + `ready-for-agent`, In Review = PR open).
 
+**Team routing (2026-06-18):** `docs/planning/linear-team-routing.md` — **Engineering** = merged-to-main work; **Growth** = Grace-only (`grace-only`). Agents pick up **`team:Engineering`** only.
+
 ## Role matrix (Grace, 2026-06-18)
 
 | | Claude | Cursor | Codex |
@@ -74,7 +76,8 @@ Filter: `label:agent/claude`, `label:agent/cursor`, `label:agent/codex`.
 | `agent/claude` | Claude Code / Claude web sessions |
 | `agent/codex` | Codex sessions |
 | `qa-finding` | QA-discovered; route to Claude triage before assigning Cursor/Codex |
-| `ready-for-agent` | Queued for agent pickup (Todo); remove when In Progress |
+| `ready-for-agent` | Queued for agent pickup (Todo); remove when In Progress — **Engineering team only** |
+| `grace-only` | **Growth team** — Grace-only; agents must not pick up |
 
 Labels work in custom views, triage rules, and Insights immediately — no admin install.
 
