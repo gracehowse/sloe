@@ -104,6 +104,7 @@ import {
 } from "@suppr/nutrition-core/foodSearchHeadline";
 import {
   projectRemaining,
+  portionFitHintForPreview,
   type MacroConsumed,
   type MacroTargets,
 } from "@suppr/nutrition-core/remainingMacros";
@@ -1283,6 +1284,17 @@ export default function FoodSearchPanel({
     });
   }, [macroTargets, macroConsumed, previewMacros]);
 
+  // ENG-854 — "how much of THIS fits what's left?" body-neutral line.
+  // Default-OFF flag; all math + copy live in `portionFitHintForPreview`
+  // (no fabricated gram number when confidence is low). Mirrors web.
+  const portionFitHintText = useMemo(
+    () =>
+      isFeatureEnabled("portion_fit_hint_v1")
+        ? portionFitHintForPreview(macroTargets, macroConsumed, preview)
+        : null,
+    [macroTargets, macroConsumed, preview],
+  );
+
   const lastFitKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!preview || !fitHint || !previewMacros) {
@@ -2055,19 +2067,9 @@ export default function FoodSearchPanel({
               accessible
               accessibilityRole="summary"
               accessibilityLabel="Projected remaining macros after logging this portion"
-              style={{
-                marginTop: Spacing.sm,
-                paddingHorizontal: Spacing.md,
-                paddingVertical: Spacing.sm,
-                borderRadius: Radius.md,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.background,
-              }}
+              style={{ marginTop: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background }}
             >
-              <Text style={{ fontSize: 10, fontWeight: "700", letterSpacing: 0.8, color: colors.textTertiary, marginBottom: 4, textTransform: "uppercase" }}>
-                If you log this
-              </Text>
+              <Text style={{ fontSize: 10, fontWeight: "700", letterSpacing: 0.8, color: colors.textTertiary, marginBottom: 4, textTransform: "uppercase" }}>If you log this</Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: Spacing.dense, rowGap: 4 }}>
                 {[
                   { label: "kcal", value: fitHint.calories, delta: fitHint.deltas.calories, over: fitHint.overCalories, unit: "" as string },
@@ -2079,14 +2081,7 @@ export default function FoodSearchPanel({
                     : []),
                 ].map((m) => (
                   <View key={m.label} style={{ flexDirection: "row", alignItems: "baseline", gap: 2 }}>
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        fontWeight: "700",
-                        fontVariant: ["tabular-nums"],
-                        color: m.over ? Accent.destructive : colors.text,
-                      }}
-                    >
+                    <Text style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], color: m.over ? Accent.destructive : colors.text }}>
                       {m.over ? `+${Math.abs(m.delta)}` : m.value}{m.unit}
                     </Text>
                     <Text style={{ fontSize: 11, color: colors.textSecondary }}>{m.label}</Text>
@@ -2094,6 +2089,11 @@ export default function FoodSearchPanel({
                   </View>
                 ))}
               </View>
+              {portionFitHintText ? (
+                <Text accessibilityLabel={portionFitHintText} style={{ fontSize: 12, color: colors.textSecondary, marginTop: Spacing.sm }}>
+                  {portionFitHintText}
+                </Text>
+              ) : null}
             </View>
           ) : null}
           {previewEatenAtEnabled ? (

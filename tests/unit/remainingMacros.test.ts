@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   computeRemaining,
   projectRemaining,
+  solvePortionToFit,
+  portionFitHintCopy,
+  portionFitHintForPreview,
   type MacroTargets,
   type MacroConsumed,
+  type PortionMacroBasis,
+  type SolvePortionResult,
 } from "@/lib/nutrition/remainingMacros";
 
 const targets: MacroTargets = {
@@ -284,5 +289,336 @@ describe("projectRemaining", () => {
     expect(Number.isInteger(result.carbs)).toBe(true);
     expect(Number.isInteger(result.fat)).toBe(true);
     expect(Number.isInteger(result.fiber ?? 0)).toBe(true);
+  });
+});
+
+describe("solvePortionToFit (ENG-854)", () => {
+  // 2000 kcal / 150 P / 200 C / 65 F target. A generic per-100g food at
+  // 100 kcal / 5 P / 12 C / 3 F per 100 g.
+  const per100gBasis: PortionMacroBasis = {
+    calories: 100,
+    protein: 5,
+    carbs: 12,
+    fat: 3,
+  };
+
+  it("solves the largest gram portion for a per-100g food bound by calories", () => {
+    // Nothing logged → 2000 kcal headroom. 100 kcal/100g → 2000g fits on
+    // calories. Protein cap: 150/0.05 = 3000g; carbs: 200/0.12 = 1666g;
+    // fat: 65/0.03 = 2166g. Carbs is the tightest at 1666g — so carbs binds,
+    // NOT calories. Verify the binding-macro detection picks carbs.
+    const result = solvePortionToFit(
+      targets,
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      per100gBasis,
+      { kind: "per100g", gramWeight: 1 },
+      "verified",
+    );
+    expect(result.kind).toBe("quantified");
+    if (result.kind !== "quantified") throw new Error("expected quantified");
+    expect(result.binding).toBe("carbs");
+    // floor(200 / 0.12) = floor(1666.6) = 1666 g
+    expect(result.quantity).toBe(1666);
+    expect(result.unit).toBe("g");
+    expect(result.none).toBe(false);
+  });
+
+  it("binds on calories when calories floor first (default binding)", () => {
+    // A calorie-dense, low-macro food: 500 kcal, 1 P, 1 C, 1 F per 100 g.
+    // Calories cap with 1000 kcal left: 1000/5 = 200g. Macro caps are huge
+    // (200/0.01 = 20000g etc). Calories binds.
+    const result = solvePortionToFit(
+      targets,
+      { calories: 1000, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      { calories: 500, protein: 1, carbs: 1, fat: 1 },
+      { kind: "per100g", gramWeight: 1 },
+      "verified",
+    );
+    expect(result.kind).toBe("quantified");
+    if (result.kind !== "quantified") throw new Error("expected quantified");
+    expect(result.binding).toBe("calories");
+    // floor(1000 / 5) = 200 g
+    expect(result.quantity).toBe(200);
+    // kcal in the solved portion: 5 kcal/g × 200 g = 1000 kcal.
+    expect(result.calories).toBe(1000);
+  });
+
+  it("binds on calories on a tie (calories wins ties — common-case copy)", () => {
+    // Construct a basis where calories and protein cap at the same quantity.
+    // Per 100g: 100 kcal, 10 P. Remaining: 1000 kcal, 100 P.
+    // calories cap: 1000/1 = 1000g; protein cap: 100/0.1 = 1000g. Tie → calories.
+    const result = solvePortionToFit(
+      targets,
+      { calories: 1000, protein: 50, carbs: 0, fat: 0, fiber: 0 },
+      { calories: 100, protein: 10, carbs: 0, fat: 0 },
+      { kind: "per100g", gramWeight: 1 },
+      "verified",
+    );
+    expect(result.kind).toBe("quantified");
+    if (result.kind !== "quantified") throw new Error("expected quantified");
+    expect(result.binding).toBe("calories");
+  });
+
+  it("never lets projected remaining go negative — floors the quantity down", () => {
+    // 540 kcal left, food is 250 kcal per 100g. 540/2.5 = 216g exactly fits.
+    // Confirm logging the solved portion keeps every macro remaining ≥ 0.
+    const remainingTargets: MacroTargets = { calories: 2000, protein: 150, carbs: 200, fat: 65 };
+    const consumed: MacroConsumed = { calories: 1460, protein: 100, carbs: 150, fat: 50 };
+    const basis: PortionMacroBasis = { calories: 250, protein: 10, carbs: 30, fat: 8 };
+    const result = solvePortionToFit(
+      remainingTargets,
+      consumed,
+      basis,
+      { kind: "per100g", gramWeight: 1 },
+      "verified",
+    );
+    expect(result.kind).toBe("quantified");
+    if (result.kind !== "quantified") throw new Error("expected quantified");
+    // Project the solved portion forward and assert NO macro goes negative.
+    const grams = result.quantity;
+    const projected = projectRemaining(remainingTargets, consumed, {
+      calories: (basis.calories * grams) / 100,
+      protein: (basis.protein * grams) / 100,
+      carbs: (basis.carbs * grams) / 100,
+      fat: (basis.fat * grams) / 100,
+    });
+    expect(projected.overCalories).toBe(false);
+    expect(projected.overProtein).toBe(false);
+    expect(projected.overCarbs).toBe(false);
+    expect(projected.overFat).toBe(false);
+    expect(projected.deltas.calories).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns none=true with quantity 0 when even a sliver overshoots", () => {
+    // Already over on calories (consumed 2100 > 2000) — nothing fits.
+    const result = solvePortionToFit(
+      targets,
+      { calories: 2100, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      per100gBasis,
+      { kind: "per100g", gramWeight: 1 },
+      "verified",
+    );
+    expect(result.kind).toBe("quantified");
+    if (result.kind !== "quantified") throw new Error("expected quantified");
+    expect(result.quantity).toBe(0);
+    expect(result.none).toBe(true);
+    expect(result.binding).toBe("calories");
+  });
+
+  it("solves per-UNIT foods in unit quantities, not grams", () => {
+    // A per-serving food: 200 kcal, 8 P, 25 C, 6 F per serving. Per-unit
+    // basis, but WITH a real gram weight so it's not forced qualitative.
+    const result = solvePortionToFit(
+      targets,
+      { calories: 1400, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      { calories: 200, protein: 8, carbs: 25, fat: 6 },
+      { kind: "perUnit", gramWeight: 150 },
+      "verified",
+    );
+    expect(result.kind).toBe("quantified");
+    if (result.kind !== "quantified") throw new Error("expected quantified");
+    expect(result.unit).toBe("unit");
+    // 600 kcal left / 200 kcal per serving = 3.0 servings; carbs cap
+    // 200/25 = 8, protein 150/8 = 18.75, fat 65/6 = 10.8 → calories binds at 3.
+    expect(result.quantity).toBe(3);
+    expect(result.binding).toBe("calories");
+  });
+
+  it("per-unit quantity keeps 0.1 granularity (floors, never rounds up)", () => {
+    // 250 kcal left, 100 kcal per serving → 2.5 servings. Floor to 2.5.
+    const result = solvePortionToFit(
+      targets,
+      { calories: 1750, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      { calories: 100, protein: 1, carbs: 1, fat: 1 },
+      { kind: "perUnit", gramWeight: 50 },
+      "verified",
+    );
+    expect(result.kind).toBe("quantified");
+    if (result.kind !== "quantified") throw new Error("expected quantified");
+    // 250/100 = 2.5 exactly → 2.5 servings.
+    expect(result.quantity).toBe(2.5);
+  });
+
+  describe("NUTRITION-TRUST: low confidence → qualitative, never a fake number", () => {
+    it("returns qualitative (no quantity field) when gramWeight is 0", () => {
+      const result = solvePortionToFit(
+        targets,
+        { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        per100gBasis,
+        { kind: "perUnit", gramWeight: 0 }, // no metric grounding
+        "verified", // even with "verified" tier, no grounding forces qualitative
+      );
+      expect(result.kind).toBe("qualitative");
+      if (result.kind !== "qualitative") throw new Error("expected qualitative");
+      expect(result.reason).toBe("no-grounding");
+      // The result must NOT carry any fabricated gram/serving number.
+      expect((result as Record<string, unknown>).quantity).toBeUndefined();
+      // Binding is still computed so copy can say "limited by …".
+      expect(["calories", "protein", "carbs", "fat", "fiber"]).toContain(result.binding);
+    });
+
+    it("returns qualitative when the confidence tier is 'estimated'", () => {
+      const result = solvePortionToFit(
+        targets,
+        { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        per100gBasis,
+        { kind: "per100g", gramWeight: 1 }, // grounded…
+        "estimated", // …but low confidence in the count-to-weight match
+      );
+      expect(result.kind).toBe("qualitative");
+      if (result.kind !== "qualitative") throw new Error("expected qualitative");
+      expect(result.reason).toBe("low-confidence");
+      expect((result as Record<string, unknown>).quantity).toBeUndefined();
+    });
+
+    it("returns qualitative when the confidence tier is 'low'", () => {
+      const result = solvePortionToFit(
+        targets,
+        { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        per100gBasis,
+        { kind: "per100g", gramWeight: 1 },
+        "low",
+      );
+      expect(result.kind).toBe("qualitative");
+    });
+  });
+
+  it("only constrains on fiber when the user actually tracks it", () => {
+    // Fiber-heavy food. With a fiber target (28g) and 0 consumed, the fiber
+    // cap can bind; without a fiber target it must be ignored entirely.
+    const fiberBasis: PortionMacroBasis = { calories: 50, protein: 2, carbs: 10, fat: 0, fiber: 14 };
+    const withFiber = solvePortionToFit(
+      { calories: 2000, protein: 150, carbs: 200, fat: 65, fiber: 28 },
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      fiberBasis,
+      { kind: "per100g", gramWeight: 1 },
+      "verified",
+    );
+    expect(withFiber.kind).toBe("quantified");
+    if (withFiber.kind !== "quantified") throw new Error("expected quantified");
+    // fiber cap: 28 / 0.14 ≈ 199.999 (float) → floor 199g; carbs: 200/0.1 =
+    // 2000g; cal: 2000/0.5 = 4000g. Fiber is tightest → binds. The floor
+    // (never round UP past the budget) is the safe direction.
+    expect(withFiber.binding).toBe("fiber");
+    expect(withFiber.quantity).toBe(199);
+
+    const noFiber = solvePortionToFit(
+      { calories: 2000, protein: 150, carbs: 200, fat: 65 }, // no fiber target
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      fiberBasis,
+      { kind: "per100g", gramWeight: 1 },
+      "verified",
+    );
+    expect(noFiber.kind).toBe("quantified");
+    if (noFiber.kind !== "quantified") throw new Error("expected quantified");
+    // Without a fiber target, carbs (2000g) binds — fiber ignored.
+    expect(noFiber.binding).toBe("carbs");
+  });
+});
+
+describe("portionFitHintCopy (ENG-854)", () => {
+  it("returns null for a null result", () => {
+    expect(portionFitHintCopy(null, 500)).toBeNull();
+  });
+
+  it("calories-bound quantified result reads body-neutral with remaining kcal", () => {
+    const result: SolvePortionResult = {
+      kind: "quantified",
+      quantity: 220,
+      unit: "g",
+      binding: "calories",
+      calories: 540,
+      none: false,
+    };
+    expect(portionFitHintCopy(result, 540)).toBe("A 220 g serving fits your remaining 540 kcal.");
+  });
+
+  it("macro-bound quantified result names the binding macro, no kcal claim", () => {
+    const result: SolvePortionResult = {
+      kind: "quantified",
+      quantity: 2,
+      unit: "unit",
+      binding: "carbs",
+      calories: 300,
+      none: false,
+    };
+    expect(portionFitHintCopy(result, 800)).toBe("About 2 servings fits — limited by carbs.");
+  });
+
+  it("singular serving for quantity 1", () => {
+    const result: SolvePortionResult = {
+      kind: "quantified",
+      quantity: 1,
+      unit: "unit",
+      binding: "protein",
+      calories: 200,
+      none: false,
+    };
+    expect(portionFitHintCopy(result, 600)).toBe("About 1 serving fits — limited by protein.");
+  });
+
+  it("none-fits result is permission-giving, not shaming", () => {
+    const result: SolvePortionResult = {
+      kind: "quantified",
+      quantity: 0,
+      unit: "g",
+      binding: "calories",
+      calories: 0,
+      none: true,
+    };
+    expect(portionFitHintCopy(result, 0)).toBe("This doesn't fit what's left today — but it's your call.");
+  });
+
+  it("qualitative result NEVER prints a gram or serving number", () => {
+    const result: SolvePortionResult = { kind: "qualitative", binding: "calories", reason: "no-grounding" };
+    const copy = portionFitHintCopy(result, 540);
+    expect(copy).toBe("This can fit — adjust the amount to match what's left.");
+    // Hard guard: the qualitative copy contains no digit at all.
+    expect(copy && /\d/.test(copy)).toBe(false);
+  });
+});
+
+describe("portionFitHintForPreview (ENG-854)", () => {
+  it("returns null when targets/consumed/preview are missing", () => {
+    expect(portionFitHintForPreview(undefined, { calories: 0, protein: 0, carbs: 0, fat: 0 }, null)).toBeNull();
+    expect(portionFitHintForPreview(targets, undefined, null)).toBeNull();
+    expect(portionFitHintForPreview(targets, { calories: 0, protein: 0, carbs: 0, fat: 0 }, null)).toBeNull();
+  });
+
+  it("per-100g grounded preview produces a concrete gram hint", () => {
+    const copy = portionFitHintForPreview(
+      { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+      { calories: 1460, protein: 100, carbs: 150, fat: 50 }, // 540 kcal left
+      {
+        macrosPer100g: { calories: 250, protein: 10, carbs: 5, fat: 8 },
+        chosenPortion: { gramWeight: 1 },
+      },
+    );
+    // 540 kcal left, 2.5 kcal/g → 216g on calories; carbs 50/0.05=1000g;
+    // fat 15/0.08=187g binds. Either way the copy is concrete + grounded.
+    expect(copy).toBeTruthy();
+    expect(copy && /\d/.test(copy)).toBe(true);
+  });
+
+  it("per-SERVING preview (gramWeight 0) stays qualitative — no fake count", () => {
+    const copy = portionFitHintForPreview(
+      { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+      { calories: 1460, protein: 100, carbs: 150, fat: 50 },
+      {
+        macrosPer100g: null,
+        macrosPerServing: { calories: 200, protein: 8, carbs: 25, fat: 6 },
+        chosenPortion: { gramWeight: 0 }, // FatSecret count serving, no grounding
+      },
+    );
+    expect(copy).toBe("This can fit — adjust the amount to match what's left.");
+  });
+
+  it("returns null when neither basis is available", () => {
+    const copy = portionFitHintForPreview(
+      targets,
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      { macrosPer100g: null, chosenPortion: { gramWeight: 1 } },
+    );
+    expect(copy).toBeNull();
   });
 });

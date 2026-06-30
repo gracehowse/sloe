@@ -67,6 +67,7 @@ import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import { sanitizeMicrosPer100g, optionalSanitizedMicrosPer100g } from "@/lib/nutrition/microPlausibility";
 import {
   projectRemaining,
+  portionFitHintForPreview,
   type MacroConsumed,
   type MacroTargets,
 } from "@/lib/nutrition/remainingMacros";
@@ -1782,15 +1783,25 @@ export function FoodSearchPanel({
 
   const fitHint = useMemo(() => {
     if (!macroTargets || !macroConsumed || !scaled) return null;
-    const projection = projectRemaining(macroTargets, macroConsumed, {
+    return projectRemaining(macroTargets, macroConsumed, {
       calories: scaled.calories,
       protein: scaled.protein,
       carbs: scaled.carbs,
       fat: scaled.fat,
       fiber: scaled.fiberG,
     });
-    return projection;
   }, [macroTargets, macroConsumed, scaled]);
+
+  // ENG-854 — "how much of THIS fits what's left?" body-neutral line.
+  // Default-OFF flag; all math + copy live in `portionFitHintForPreview`
+  // (no fabricated gram number when count-to-weight confidence is low).
+  const portionFitHintText = useMemo(
+    () =>
+      isFeatureEnabled("portion_fit_hint_v1")
+        ? portionFitHintForPreview(macroTargets, macroConsumed, preview)
+        : null,
+    [macroTargets, macroConsumed, preview],
+  );
 
   // Fire `fit_this_in_previewed` once per distinct (food, qty, unit).
   const lastFitKeyRef = useRef<string | null>(null);
@@ -2281,14 +2292,8 @@ export function FoodSearchPanel({
           ) : null}
 
           {fitHint && (
-            <div
-              className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs"
-              role="status"
-              aria-label="Projected remaining macros after logging this portion"
-            >
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                If you log this
-              </div>
+            <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs" role="status" aria-label="Projected remaining macros after logging this portion">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">If you log this</div>
               <div className="flex flex-wrap gap-x-3 gap-y-1 tabular-nums">
                 {[
                   { label: "kcal", value: fitHint.calories, delta: fitHint.deltas.calories, over: fitHint.overCalories },
@@ -2300,22 +2305,17 @@ export function FoodSearchPanel({
                     : []),
                 ].map((m) => (
                   <span key={m.label} className="flex items-baseline gap-0.5">
-                    <span
-                      className="font-semibold"
-                      style={{ color: m.over ? "var(--destructive)" : "var(--foreground)" }}
-                    >
-                      {m.over ? `+${Math.abs(m.delta)}` : m.value}
-                      {m.unit ? m.unit : ""}
+                    <span className="font-semibold" style={{ color: m.over ? "var(--destructive)" : "var(--foreground)" }}>
+                      {m.over ? `+${Math.abs(m.delta)}` : m.value}{m.unit ? m.unit : ""}
                     </span>
-                    <span className="text-muted-foreground">
-                      {m.label}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {m.over ? " over" : " left"}
-                    </span>
+                    <span className="text-muted-foreground">{m.label}</span>
+                    <span className="text-muted-foreground">{m.over ? " over" : " left"}</span>
                   </span>
                 ))}
               </div>
+              {portionFitHintText ? (
+                <p className="mt-2 text-xs text-muted-foreground" data-testid="food-search-portion-fit-hint">{portionFitHintText}</p>
+              ) : null}
             </div>
           )}
 

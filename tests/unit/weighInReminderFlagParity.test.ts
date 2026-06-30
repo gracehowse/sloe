@@ -46,4 +46,10 @@ describe("KNOWN_DEFAULT_OFF_FLAGS web ↔ mobile parity (ENG-955)", () => {
     expect(web.has("weigh_in_reminder_v1"), "web").toBe(true);
     expect(mobile.has("weigh_in_reminder_v1"), "mobile").toBe(true);
   });
+
+  // ENG-854 — portion-fit hint gate must be registered default-OFF on both.
+  it("registers portion_fit_hint_v1 on BOTH platforms (ENG-854)", () => {
+    expect(web.has("portion_fit_hint_v1"), "web").toBe(true);
+    expect(mobile.has("portion_fit_hint_v1"), "mobile").toBe(true);
+  });
 });
