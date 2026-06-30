@@ -198,7 +198,7 @@ export function DeleteAccountSheet({
           <View style={styles.footer}>
             <SupprButton
               variant="ghost"
-              style={styles.footerBtn}
+              style={styles.footerBtnGhost}
               disabled={deleting}
               onPress={onClose}
               label={copy.keepAccount}
@@ -308,4 +308,8 @@ const styles = StyleSheet.create({
   },
   footer: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.lg },
   footerBtn: { flex: 1 },
+  // Ghost cancel ("Keep my account") sizes to its content so the longer label
+  // isn't truncated at a forced 50% width; the primary CTA (flex:1) fills the
+  // rest. (ENG-1260 footer truncation fix.)
+  footerBtnGhost: { flexShrink: 0 },
 });

@@ -69,12 +69,12 @@ describe("MealPlanner CTAs — solid primary / ghost (cohesion wave 2026-06-13)"
     // The generate verb flips with plan state; pin the primary wrapping it.
     // ENG-956: "Refresh the rest" supersedes the verb when ≥1 meal is locked,
     // else the existing "Regenerate week" / "Generate my plan" flip stands.
-    // ENG-1261: the bottom-row primary calls `handleRegenerate` directly
-    // (wrapped in `() => void …`). NOTE: unlike the summary-card primary it
-    // does NOT route through the ResetPlan `requestRegenerate` gate — flagged
-    // for review (see PR #625 / ENG-1261). Pin the current solid-primary shape.
+    // ENG-1261 (2026-06-29 follow-up): the bottom-row primary now routes through
+    // `requestRegenerate` — the ResetPlan keep/clear gate — matching the
+    // summary-card CTA, so BOTH regenerate entry points gate before rebuilding a
+    // populated plan (product-lead + customer-lens verdict: P1 data-safety).
     expect(PLANNER).toMatch(
-      /<SupprButton\s+variant="primary"\s+loading=\{isGenerating\}\s+disabled=\{!sourceCanGenerate\}\s+onClick=\{\(\) => void handleRegenerate\(\)\}[\s\S]{0,700}lockedMealCount > 0[\s\S]{0,160}plan\.length > 0\s*\n?\s*\?\s*"Regenerate week"\s*\n?\s*:\s*"Generate my plan"/,
+      /<SupprButton\s+variant="primary"\s+loading=\{isGenerating\}\s+disabled=\{!sourceCanGenerate\}\s+onClick=\{requestRegenerate\}[\s\S]{0,700}lockedMealCount > 0[\s\S]{0,160}plan\.length > 0\s*\n?\s*\?\s*"Regenerate week"\s*\n?\s*:\s*"Generate my plan"/,
     );
     // The empty-state generate (above) carries the same primary trio but a
     // testid; this row's primary is the one without it. Both are solid.
