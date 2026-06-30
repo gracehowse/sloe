@@ -9,6 +9,14 @@ import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { PERSONA_FORBIDDEN_EMAILS } from "./_lib/personaSeed.ts";
+import { WebSocket as WsWebSocket } from "ws";
+
+// Node 20 (the CI runner for update-visual-baselines.yml) has no global
+// WebSocket. @supabase/supabase-js constructs a realtime client that probes
+// for one at createClient() time — even though this seed only performs admin
+// REST writes — and throws "Node.js 20 detected without native WebSocket
+// support". Polyfill it so the seed step runs. (ENG-1265)
+(globalThis as { WebSocket?: unknown }).WebSocket ??= WsWebSocket;
 
 const DEFAULT_EMAIL = "gracehowse+visualgolden@outlook.com";
 
