@@ -9,10 +9,12 @@
 
 | Team | Slug | Owns |
 |---|---|---|
-| **Engineering** | `ENG` | Everything product/eng/infra/ops/legal/finance/product-decision. Default catch-all. |
-| **Growth** | `GROW` | Content, social, SEO, referral, viral plan, MFP-refugee playbook, launch. |
+| **Engineering** | `ENG` | **Will produce a PR** — features, bugs, polish, tests, repo docs, infra-as-code (CI, scripts, verify-production-env). Legal/compliance UI+copy in code (counsel approves). Product decisions stay ENG with `needs/decision` until Grace resolves, then child issues get `ready-for-agent`. |
+| **Growth** | `GROW` | **Grace-only; no PR** — vendor dashboard clicks, filings, counsel/CPA, creator outreach, filming, content calendar execution, beta/ratings campaigns, PostHog/Sentry dashboard alerts. Label: `grace-only`. |
 
-> Why not 3 teams: free tier caps at 2. Product/ops/finance/legal don't have enough volume on their own to justify their own team. They live under ENG with labels.
+> **Routing rule (2026-06-18):** AC = "Grace clicks vendor UI" or "Grace talks to counsel" → **GROW**. AC = "merged to main" → **ENG**. Full spec: `docs/decisions/2026-06-18-linear-team-routing-by-executability.md`.
+
+> Why not 3 teams: free tier caps at 2. The old "ENG catch-all for ops/legal/finance" split collapsed everything onto Engineering; executability routing fixes agent mispicks without adding a third team.
 
 ### Workflow states
 
