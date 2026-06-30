@@ -1,8 +1,8 @@
 # TikTok + Instagram virality plan — Suppr
 
 **Owner:** Grace
-**Last updated:** 2026-05-11
-**Status:** Strategy locked. Pre-push polish phase (target push start: 2026-07-01).
+**Last updated:** 2026-06-29
+**Status:** Strategy locked. Pre-push polish phase (target push start: 2026-07-01). Hooks re-pointed onto the revised differentiation wedge (downstream of ENG-1112 — see "Competitor reality" below).
 **Why this doc exists:** Suppr's path to 1M users runs almost entirely through TikTok + Instagram virality. This doc is the operating plan — magic moments, format, cadence, KPIs, polish prerequisites, and decision triggers. Mirror summary lives in Notion → Growth & marketing → "Viral growth strategy" (linked back to this file).
 
 ---
@@ -15,7 +15,8 @@
 - **Pricing locked.** Free + Base (£3.99/mo, £29.99/yr) + Pro (£7.99/mo, £59.99/yr). See `docs/decisions/2026-04-19-pricing-v1.md`.
 - **iOS-only.** Cuts global TAM by ~60% (Android is 70% of phones worldwide). 1M users on iOS-only is harder but doable.
 - **TestFlight today, App Store launch pending.** Grace is the only tester (per `project_solo_tester.md` memory).
-- **Competitor reality (per `project_competitor_set_and_mfp_exodus.md`):** MFP mass-exodus 2026-05-03 is a once-in-a-cycle tailwind. Capturing refugees is the priority.
+- **Competitor reality (per `docs/competitor-set-and-mfp-exodus-2026-05-03.md`, refreshed downstream of ENG-1112):** MFP mass-exodus 2026-05-03 is a once-in-a-cycle tailwind; capturing refugees is the priority. **But the picture shifted:** MyFitnessPal *acquired Cal AI* (deal closed Dec 2025, announced 2 Mar 2026), and AI photo logging is now **paywalled on both** — MFP Premium ($19.99/mo) and Cal AI ($9.99/mo after trial). Cal AI was pulled from the App Store (Apr 2026) over paywall dark patterns. So "we have AI photo / we're more accurate than Cal AI" is **no longer the wedge**.
+- **The revised wedge (single source of truth: `docs/competitor-set-and-mfp-exodus-2026-05-03.md` → "Where Suppr leads"):** Suppr gives you **attributed Reel/recipe import → make-it-fit-your-macros**, **adaptive TDEE**, and **honest estimated-nutrition** — on **free, with no ads and no barcode/photo paywall**. The lead is not "we have AI photo"; it's **"we don't paywall the basics, and we turn the Reel you saw into a meal that fits your day."** Accuracy/honesty stays in the mix as *secondary* support (the confidence meter), not the headline.
 
 ## What 1M users actually takes
 
@@ -46,8 +47,9 @@ Ordered by virality potential, not by product priority.
 **Why it wins:**
 - Native to the platform — viewers literally save recipes on TikTok already.
 - The share-loop is built in: viewers come BACK to TikTok to find more recipes.
-- **Uniquely Suppr's.** Cal AI can't do it (no recipe layer). MacroFactor doesn't do it. MFP's import is broken/legacy.
-- Aspirational + practical: "I want to eat what creators eat without doing math."
+- **The payoff is "make it fit your day," not just "here's the recipe."** Import parses the Reel into ingredients + macros, then fits it to the user's targets — the one move no recipe app and no tracker does end-to-end.
+- **Uniquely Suppr's, and free.** Cal AI can't do it (no recipe layer — and it's now MFP-owned and paywalled). MacroFactor doesn't do it. MFP's import is broken/legacy. Suppr does it on the free tier.
+- Aspirational + practical: "I want to eat what creators eat without doing the math — and without paying $20/mo."
 
 **Saturation:** Low. Nobody owns this corner.
 
@@ -61,27 +63,29 @@ Ordered by virality potential, not by product priority.
 
 **Why it works:**
 - Fast, novel, low effort. Most apps still type or photograph.
-- Strong against MFP (typing) and Cal AI (photo): "Did you really take a photo of every ingredient?"
+- Strong against MFP (typing) and photo-log apps (now a paywalled $10–20/mo flow): "Did you really photograph every ingredient?" Voice log is on Suppr's free tier.
 - Demonstrates AI capability without saying "AI" (which audiences are increasingly tired of).
 
 **Saturation:** Low. Voice logging exists in MyFitnessPal but is poorly surfaced.
 
 **Risk:** End-to-end latency must be <3 seconds. **Polish blocker.**
 
-### 3. Photo log — **the accuracy-showdown bet**
+### 3. Photo log — **the no-paywall bet** (accuracy/honesty as the rider)
 
-**Hook:** "Cal AI said 1,200. Suppr said 850. Let's see what's actually in this."
+**Lead hook:** "Cal AI and MyFitnessPal now charge you to scan a meal. Suppr does it for free."
 
-**Demo:** Same meal photo into Cal AI and Suppr side-by-side. Show differences. Calorie-count and macro-mix. Cut to a manual weigh-out.
+**Secondary hook (the honesty rider):** "And here's the part they hide — Suppr shows you how *confident* the estimate is. Cal AI just states a number."
+
+**Demo:** Photograph a meal in Suppr → macros + the confidence meter, on the free tier. Optional B-roll: the MFP / Cal AI paywall screen ("$19.99/mo" / "$9.99/mo after trial") that gates the same action. Optional rider: a manual weigh-out to show Suppr's estimate lands in the honest range.
 
 **Why it works:**
-- Confrontational, comparison-based — TikTok audiences love accuracy showdowns.
-- Cal AI is the leader; positioning Suppr as more honest = stealing the niche.
-- Repeatable content format (one head-to-head per video, 30 videos in the can).
+- **The wedge moved.** Since MFP *acquired* Cal AI (Mar 2026), AI photo logging is paywalled on both — MFP Premium ($19.99/mo) and Cal AI ($9.99/mo after trial), and Cal AI was pulled from the App Store (Apr 2026) over paywall dark patterns. "Free vs a $20/mo wall" is cleaner and more defensible than "we're more accurate."
+- **Honesty is the secondary differentiator, not the headline.** Suppr is the only one *showing* uncertainty (the 4-segment confidence meter). Lead with free; close with honest.
+- Repeatable content format (one "they paywall this, we don't" per video).
 
-**Saturation:** High — Cal AI owns the photo-log content turf. Accuracy-fight content can break through.
+**Saturation:** Medium. The accuracy-showdown turf is crowded and now awkward (the former "leader" is paywalled and delisted); the "no-paywall on the basics" angle is wide open.
 
-**Risk:** If Suppr's photo log is actually less accurate, this content backfires. **Polish blocker.**
+**Risk:** Don't over-claim accuracy — lead with the paywall fact (verifiable) and frame accuracy as "honest estimate + visible confidence," not "we beat Cal AI." Photo-log quality still has to clear the table-stakes bar (see Phase 0). **Polish blocker (quality, not superiority).**
 
 ### 4. Onboarding speed-run — **the MFP-refugee bet**
 
@@ -155,7 +159,7 @@ Ordered by virality potential, not by product priority.
 Pour viral fuel on a leaky bucket and you waste it. Lock these before pushing:
 
 - [ ] **Recipe import reliability ≥ 90%.** Feed 100 random TikTok food Reels through import. Log success rate. Fix the failures.
-- [ ] **Photo log accuracy ≥ Cal AI on benchmark dataset.** Build 20-meal benchmark set with manually-weighed ground truth. Test both apps. Suppr must match or exceed.
+- [ ] **Photo log clears the table-stakes quality bar (honest estimate + visible confidence).** Build a 20-meal benchmark with manually-weighed ground truth; Suppr's estimates must land in a credible range and the confidence meter must read honestly. This is now a *quality gate*, not the differentiator — the wedge is "free, no paywall" + the import-→-fit loop, not "more accurate than Cal AI" (which is MFP-owned, paywalled, and App-Store-delisted post-acquisition). (ENG-6)
 - [ ] **Voice log latency <3s end-to-end.** Measure from tap-mic to confirmation. Currently unknown.
 - [ ] **Onboarding completion ≥ 60%.** Instrument and measure. If below, redesign before push.
 - [ ] **App Store rating ≥ 4.6.** Currently unknown (Grace is sole tester). Need wider beta first.
@@ -205,14 +209,14 @@ Pour viral fuel on a leaky bucket and you waste it. Lock these before pushing:
 
 Hooks live or die in the first 1.5 seconds. Test these. Iterate. Steal what works from each other.
 
-### Recipe import hooks
+### Recipe import hooks (lead hook: import the Reel → fit your macros)
 
-1. "I saved this recipe on TikTok. Watch what happens." (demo-first)
-2. "Stop screenshotting recipes. Watch this." (anti-pattern)
-3. "Every recipe I save on TikTok now does this." (volume implied)
+1. "I saved this recipe on TikTok. Watch it become a meal that fits my day." (demo-first, fit-your-macros)
+2. "Stop screenshotting recipes. Watch this one snap to my macros." (anti-pattern)
+3. "Every recipe I save on TikTok now fits straight into my targets." (volume + fit)
 4. "Cooking influencers don't want you to know about this." (curiosity)
-5. "TikTok recipes never tell you the calories. This fixes that." (problem-stated)
-6. "MyFitnessPal can't do this. I built something that can." (competitor frame)
+5. "TikTok recipes never tell you the calories. This imports them — and fits them to your day." (problem-stated)
+6. "MyFitnessPal can't do this, and here it's free. I built something that can." (competitor frame)
 
 ### Voice log hooks
 
@@ -222,12 +226,22 @@ Hooks live or die in the first 1.5 seconds. Test these. Iterate. Steal what work
 4. "I told my phone what I had for lunch. Look."
 5. "MFP takes me 2 minutes per meal. This took 4 seconds."
 
-### Photo log hooks
+### Photo log hooks (lead: no paywall · rider: honesty)
 
-1. "Cal AI said 1,200 calories. Suppr said 850. Who's right?"
-2. "AI calorie apps are wildly wrong. Let me show you."
-3. "I weighed every ingredient. Then I checked what the AI said."
-4. "Calorie scanning apps are mostly vibes. Here's the proof."
+1. "MyFitnessPal and Cal AI now charge ~$20/mo to scan a meal. Watch me do it for free." (lead — no-paywall)
+2. "They paywalled the photo scan. So here's one that's free." (lead — no-paywall)
+3. "Every calorie app gives you a number. Mine tells you how sure it is." (rider — honesty)
+4. "AI calorie scans are mostly vibes — so we show you the confidence, not just the number." (rider — honesty)
+5. "I weighed every ingredient, then checked what the AI said." (rider — honesty)
+
+### No-paywall hooks (lead: we don't paywall the basics)
+
+The cleanest post-acquisition wedge: the category leaders now gate photo scan, barcode, and AI behind ~$20/mo. Suppr keeps the basics free.
+
+1. "The big calorie apps now paywall photo scan, barcode, and AI. Here's what's free." (category frame)
+2. "MyFitnessPal charges $19.99/mo for what Suppr gives you free." (direct)
+3. "No ads. No barcode paywall. No $20/mo to scan a meal. That's the whole pitch." (clean)
+4. "I'm a solo dev — and I refuse to paywall the basics. Here's the free tier." (founder + values)
 
 ### Onboarding speed-run hooks
 
@@ -676,7 +690,7 @@ Build this once in Phase 0 (cheap):
 | App Store rating drops below 4.3 | Medium | High | Beta-test with 50+ users before App Store launch |
 | MFP exodus already over by time we push | Medium | Medium | Push Reddit playbook now (not waiting for July) |
 | Burnout (solo, content + product) | High | High | Pre-batch content; hard switch to content-focus July 1 |
-| Cal AI/MFP copies recipe import | Low (12 mo) | Medium | Build moat: more cuisines, better UI, recipe-creator partnerships |
+| MFP (now incl. Cal AI) copies recipe-import-→-fit-macros | Low (12 mo) | Medium | Moat = the free import-→-fit-your-macros loop + attributed creator links; deepen cuisines, UI, recipe-creator partnerships. They paywall the basics — staying free-on-the-basics is itself a moat. |
 | Apple rejects app | Low | Critical | Phase 0 includes App Store review checklist |
 | Viral hit happens before polish done | Medium | High | DO NOT post real content until Phase 0 complete |
 | FTC/ASA disclosure compliance | Medium | Medium | All sponsored posts use #ad; all health claims qualified |
@@ -795,7 +809,7 @@ Every other Saturday, batch 14 days of content. 4 hours total.
 
 1. **What's the actual recipe-import success rate on TikTok Reels?** (Test 100 Reels, log result.)
 2. **What's voice-log latency end-to-end on iPhone 13/14/15?** (Measure in TestFlight.)
-3. **Is photo-log accuracy ≥ Cal AI on 20-meal benchmark?** (Build benchmark, test, iterate.)
+3. **Does photo-log accuracy clear the table-stakes quality bar (honest estimate + visible confidence)?** (Build the 20-meal weighed benchmark, test, iterate — ENG-6, Done. This is now a quality gate, not the differentiator: the wedge is "free + no paywall" + the import-→-fit loop, since Cal AI is MFP-owned, paywalled, and delisted.)
 4. **What's onboarding completion rate?** (Instrument with PostHog, measure on 50-person beta.)
 5. **Is referral mechanic spec'd and shipped?** (Use spec above; engineering 1–2 weeks.)
 6. **Is Apple SBP enrolled?** (App Store Connect → Agreements, Tax, Banking.)
@@ -818,7 +832,7 @@ Every other Saturday, batch 14 days of content. 4 hours total.
 ## TL;DR — what to do this week
 
 1. **Test recipe import on 100 TikTok food Reels.** Log success rate. 4 hours.
-2. **Build photo-log benchmark set** (20 meals, manually weighed). Test vs Cal AI. 6 hours.
+2. **Build photo-log benchmark set** (20 meals, manually weighed) to clear the table-stakes quality bar — honest estimate + visible confidence (ENG-6). Note: the hook is now "free, no $20/mo paywall," not "more accurate than Cal AI." 6 hours.
 3. **Measure onboarding completion** on existing TestFlight data via PostHog. 1 hour.
 4. **Enrol Apple Small Business Program** in App Store Connect. 30 minutes.
 5. **Draft 28 hook ideas** using the library above. 2 hours.
