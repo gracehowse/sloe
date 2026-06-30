@@ -289,3 +289,86 @@ export function measureToGramsDetailed(input: MeasureInput): MeasureResult {
 export function measureToGrams(input: MeasureInput): number {
   return measureToGramsDetailed(input).grams;
 }
+
+/**
+ * Weight / volume units that convert to grams deterministically (mass) or with
+ * a well-defined density (volume). These never fall back to a guessed weight.
+ */
+const HIGH_CONFIDENCE_WEIGHT_UNITS = new Set([
+  "g",
+  "kg",
+  "oz",
+  "lb",
+  "ml",
+  "l",
+  "fl oz",
+  "floz",
+  "tbsp",
+  "tsp",
+]);
+
+/**
+ * ENG-943 — confidence read on a measure → grams conversion, for the shopping-
+ * list count-to-weight normaliser. We must NEVER aggregate a count ("2 onions")
+ * into a weight row ("400 g onions") on a guessed per-piece weight; the
+ * generator only cross-converts when this returns `"high"`.
+ *
+ * `"high"` — the unit is a mass/volume unit, OR an explicit egg, OR a count/size
+ *   of a food with a known food-specific per-piece weight
+ *   (`foodSpecificCountGramsEach`), OR a recognised discrete unit in
+ *   `COUNT_WEIGHT_G` / the tin/pack branches — AND the conversion did not fall
+ *   back to a defaulted cup density.
+ * `"low"` — a bare count / size word with no food-specific rule (the generic
+ *   80/110/180 g fallback), an unrecognised unit, or a cup/mug converted with a
+ *   defaulted density. The caller keeps the count and weight as separate rows in
+ *   this case (never guesses a weight on a low-confidence read).
+ */
+export function measureToGramsConfidence(input: MeasureInput): "high" | "low" {
+  const name = input.name.trim().toLowerCase();
+  const u = input.unit.trim().toLowerCase();
+
+  // Defaulted cup density is explicitly a low-confidence conversion.
+  const detailed = measureToGramsDetailed(input);
+  if (detailed.densityDefaulted) return "low";
+
+  // Mass + well-defined volume units convert deterministically.
+  if (HIGH_CONFIDENCE_WEIGHT_UNITS.has(u)) return "high";
+
+  // Egg size/count is well-characterised (per-egg weights by size).
+  if (/\begg(?:s)?\b/.test(name)) return "high";
+
+  // A count / size word is only high-confidence with a food-specific per-piece
+  // weight — otherwise it lands on the generic 80/110/180 g guess.
+  if (
+    u === "count" ||
+    u === "" ||
+    u === "each" ||
+    u === "small" ||
+    u === "medium" ||
+    u === "large"
+  ) {
+    return foodSpecificCountGramsEach(name) != null ? "high" : "low";
+  }
+
+  // Recognised discrete units (clove, slice, rasher, stalk, …) have
+  // characterised per-piece weights in COUNT_WEIGHT_G; tins/cans/packs resolve
+  // via the contextual tin/pack branches.
+  if (COUNT_WEIGHT_G[u] != null) return "high";
+  if (
+    u === "tin" ||
+    u === "can" ||
+    u === "pack" ||
+    u === "clove" ||
+    u === "sprig" ||
+    u === "rasher" ||
+    u === "slice" ||
+    u === "stalk" ||
+    u === "leaf" ||
+    u === "pinch"
+  ) {
+    return "high";
+  }
+
+  // Unrecognised unit → name-based heuristic guess → low confidence.
+  return "low";
+}

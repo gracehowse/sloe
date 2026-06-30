@@ -149,6 +149,7 @@ import {
   type RecipeGridIngredient,
 } from "../../components/recipe/RecipeIngredientGrid";
 import { RecipeMethodSteps } from "../../components/recipe/RecipeMethodSteps";
+import { AddToShoppingListButton } from "../../components/recipe/AddToShoppingListButton";
 import { RecipeImportReviewBanner } from "../../components/recipe/RecipeImportReviewBanner";
 import { recipeIngredientsNeedReview } from "@suppr/shared/nutrition/recipeImportReview";
 import { RecipeServingsFooter } from "../../components/recipe/RecipeServingsFooter";
@@ -274,16 +275,12 @@ export default function RecipeDetailScreen() {
   // ENG-819 — quiet confirm haptic on the recipe-detail commit CTAs, behind
   // `redesign_winmoment` (haptic-only; the frame layout is the one prod path).
   const winMomentFeedback = isFeatureEnabled("redesign_winmoment");
-  // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON →
-  // hero title OVERLAY (when a photo shows), the serif standfirst headnote,
-  // and the consolidated sticky CTA bar (yield · Cook Mode · Log filled). The
-  // legacy title-below + Log-in-action-pills + Cook-Mode-only footer stays in
-  // the `else`. Web twin: `src/app/components/RecipeDetail.tsx`.
-  // Carve-out: the "Fits your day" verdict banner is NOT touched by this pass —
-  // it keeps its tri-state SOLID treatment per
-  // `docs/decisions/2026-06-13-fits-your-day-verdict-banner.md` (the prototype's
-  // chip lacks the over-budget state). The standfirst's coloured "fits" line in
-  // the prototype is intentionally dropped in favour of the existing banner.
+  // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON → hero
+  // title OVERLAY, serif standfirst headnote, consolidated sticky CTA bar
+  // (yield · Cook Mode · Log filled); legacy title-below + Log-in-pills +
+  // Cook-only footer stays in the `else`. Web twin: `RecipeDetail.tsx`.
+  // Carve-out: "Fits your day" verdict banner keeps its tri-state SOLID
+  // treatment (docs/decisions/2026-06-13-fits-your-day-verdict-banner.md).
   const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3_conformance");
   // ENG-949 — in-cook A−/A+ text-size control, behind a flag (default-OFF).
   // Flag-off keeps the overlay byte-identical and skips re-applying a
@@ -295,6 +292,8 @@ export default function RecipeDetailScreen() {
   /** ENG-946 — tap-to-check ingredient checklist + optional mise en place
    *  in the cook overlay. Default-OFF for byte-identical revert. */
   const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
+  /** ENG-943 — "Add to shopping list" action (default-ON). */
+  const recipeShoppingListEnabled = isFeatureEnabled("recipe_shopping_list_v1");
 
   const recipeId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : "";
   const [loading, setLoading] = useState(true);
@@ -1430,28 +1429,12 @@ export default function RecipeDetailScreen() {
     void addRecipeToTodayJournal();
   }, [autoLog, recipe, userId, addRecipeToTodayJournal]);
 
-  // Hero image fallback ladder (Recime parity, 2026-04-30):
-  //   1) recipe.image_url
-  //   2) YouTube thumbnail derived from source_url (when source_url
-  //      itself is a YouTube watch / shorts URL — common for recipes
-  //      imported from YT video pages)
-  //   3) DEFAULT_IMAGE (stock Unsplash) as the recipe-detail-screen
-  //      ultimate fallback. The deterministic gradient renderer is
-  //      reserved for Discover / Library cards where it reads as a
-  //      "no photo" cue; on the recipe detail hero a flat gradient
-  //      with no glyph would feel broken — keep the photo-shaped
-  //      placeholder here.
-  // Existing legacy upgrade (hqdefault → maxresdefault) is preserved
-  // for cached image_url values that came in at a lower resolution.
-  // See `src/lib/recipes/heroImageFallback.ts` for the helper.
-  // Audit C1 (2026-05-05): when no real image is available, return
-  // null so the hero renders the deterministic `RecipeHeroFallback`
-  // gradient at half height (140pt) instead of the 280pt Unsplash
-  // stock photo. The stock photo of stranger food was reading as
-  // "empty hero" for ~40% of the screen and was Grace's primary
-  // recipe-detail complaint. The gradient + a small glyph signals
-  // "no photo" honestly without lying with stock imagery, and
-  // matches the pattern Library cards already use.
+  // Hero image fallback ladder (Recime parity): image_url → YouTube thumbnail
+  // (when source_url is a YT watch/shorts URL) → null. Legacy hqdefault →
+  // maxresdefault upgrade preserved for low-res cached urls; helper in
+  // `src/lib/recipes/heroImageFallback.ts`. Audit C1 (2026-05-05): with no real
+  // image, return null so the hero renders the deterministic `RecipeHeroFallback`
+  // gradient (140pt) — the 280pt Unsplash stock photo read as an empty hero.
   const heroImageUrl = useMemo<string | null>(() => {
     const picked = pickHeroImageUrl({
       image_url: recipe?.image_url,
@@ -2073,11 +2056,9 @@ export default function RecipeDetailScreen() {
           })()}
 
           {/* 3. Action pills — flag-OFF: Log (dominant) + Edit. ENG-1247 flag-ON:
-              Log moves to the sticky CTA bar, so this row collapses to the
-              owner-only Edit pill (and renders nothing for non-owners). Cook
-              entry deduped to the floating Cook Mode pill in the footer
-              (premium-audit 2026-06-09, gap 1); Ask pill omitted — no coach
-              handler exists (net-new Figma 185:2). */}
+              Log moves to the sticky CTA bar so this row is the owner-only Edit
+              pill (nothing for non-owners). Cook entry deduped to the footer
+              Cook Mode pill; Ask pill omitted (no coach handler). */}
           <RecipeActionPills
             onLog={() => void addRecipeToTodayJournal()}
             logging={loggingJournal}
@@ -2244,6 +2225,22 @@ export default function RecipeDetailScreen() {
           {/* FatSecret attribution (ToS) when any line is FatSecret-sourced. */}
           {hasFatSecretIngredients ? (
             <FatSecretBadge variant="text" style={{ marginLeft: 4 }} testID="fatsecret-badge-ingredients" />
+          ) : null}
+
+          {/* ENG-943 — Add this recipe's ingredients to the shopping list
+              (default-ON `recipe_shopping_list_v1`; OFF → plan-only list). */}
+          {recipeShoppingListEnabled && ingredientsForIngredientsTab.length > 0 ? (
+            <AddToShoppingListButton
+              recipeId={recipeId}
+              recipeTitle={recipe?.title ?? "Recipe"}
+              userId={userId}
+              multiplier={viewMultiplier}
+              ingredients={ingredientsForIngredientsTab.map((ing) => ({
+                name: ing.name,
+                amount: ing.amount != null ? String(ing.amount) : "",
+                unit: ing.unit ?? "",
+              }))}
+            />
           ) : null}
 
           {/* 7. Method — numbered serif steps. */}
@@ -2698,12 +2695,10 @@ export default function RecipeDetailScreen() {
       })()}
 
       {/* 8. Sticky footer — yield + servings stepper (left) + Cook Mode (right).
-          (Figma 332:2 §8.) ENG-1247 flag-ON: the bar also carries the filled
-          Log primary (Cook Mode drops to outline secondary) so it is the one
-          consolidated commit bar (prototype sticky CTA). Flag-OFF keeps Log in
-          the action-pill row above. The stepper here is the canonical servings
-          control (ingredient amounts + batch totals scale off it). Hidden
-          during cook mode (the overlay owns the bottom of the screen). */}
+          ENG-1247 flag-ON: the bar also carries the filled Log primary (Cook
+          Mode → outline) as the one consolidated commit bar; flag-OFF keeps Log
+          in the action-pill row above. The stepper is the canonical servings
+          control. Hidden during cook mode (the overlay owns the bottom). */}
       {recipe && !cookMode ? (
         <RecipeServingsFooter
           servings={viewServings}

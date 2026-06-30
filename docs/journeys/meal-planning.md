@@ -59,6 +59,42 @@ Each day shows:
   → Navigates to /shopping
 ```
 
+## Add to Shopping List from a Recipe (ENG-943)
+
+The shopping list also fills **directly from a single recipe**, not just the
+plan. The recipe detail surface (web `RecipeDetail`, mobile `recipe/[id]`)
+carries an **"Add to shopping list"** action below the ingredient grid.
+
+**Flag:** `recipe_shopping_list_v1` — **default-ON** (`REDESIGN_DEFAULT_ON` on
+web + mobile; PostHog kill switch). Off → the action is hidden and the list
+stays plan-only.
+
+```
+"Add to shopping list" button:
+  → Parses the recipe's ingredient lines (scaled by the servings stepper)
+  → Reads the user's LIVE shopping_items for their scope (solo / household)
+  → Merges in memory (shared appendRecipeToShoppingList):
+      • same ingredient + unit → sum quantity, append source
+      • count vs weight, same ingredient → fold to grams ONLY at high
+        confidence (measureToGramsConfidence); else keep separate rows
+        (never guesses a weight on a low-confidence conversion)
+  → Persists ONLY the delta: UPDATE merged rows (preserves `checked`),
+    INSERT new rows (never delete-and-replace — won't clobber checked
+    rows or a household-mate's items)
+  → Calm "building your list" toast/alert ("Added 3 ingredients — merged
+    2 you already had"); no health claims (lists are ingredients)
+```
+
+Unlike Step 4's plan generation (full delete-and-replace), this **appends and
+merges** so a recipe never wipes a list the user is mid-shop on. Logic is the
+shared, pure `src/lib/planning/appendRecipeToShoppingList.ts` +
+`appendRecipeToShoppingListClient.ts` (imported by mobile via `@suppr/shared`).
+
+Analytics: `recipe_shopping_list_added` fires with
+`{ recipeId, ingredientCount, addedCount, mergedCount, platform }`.
+
+Decision: [`docs/decisions/2026-06-30-recipe-to-shopping-list.md`](../decisions/2026-06-30-recipe-to-shopping-list.md).
+
 ## Named Plan Slots
 Users can create, rename, and switch between multiple named plans (e.g. "This week", "Cut phase", "Bulk phase"). The active plan syncs to Supabase; **all other named slots live only in localStorage**. Switching devices or clearing browser data loses inactive slots. See [Data Schema — Client-only Data](../data/schema.md#client-only-data-localstorage) for details.
 

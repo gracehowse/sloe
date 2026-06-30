@@ -73,6 +73,7 @@ import { saveVerifiedIngredientsRpc } from "../../lib/nutrition/saveVerifiedIngr
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { CookIngredientChecklist } from "./cook/CookIngredientChecklist.tsx";
+import { AddToShoppingListAction } from "./recipe/AddToShoppingListAction.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -335,16 +336,17 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     netCarbsLensEnabled,
     // ENG-1247 — real journal write for the Log-to-today CTA (web parity).
     addLoggedMealForDate,
+    // ENG-943 — shopping-list append (user scope + local list mirror).
+    userId: appUserId,
+    activeHouseholdId,
+    setShoppingItems,
   } = useAppData();
   const saved = isRecipeSaved(recipe.id);
-  // PR1 (Paprika parity, 2026-05-02): the viewing-servings stepper
-  // is the canonical "how many portions am I looking at" state.
-  // Bounds (1..99) + the deep-link `initialServings` honouring live
-  // in the shared `recipeViewScale.ts` so mobile uses the exact same
-  // contract. The stepper deals only in whole portions — fractional
-  // cook-mode multipliers (0.5x / 1x / 1.5x / 2x / 4x) live in
-  // `recipeScale.ts` and are composed on top inside the CookMode
-  // component (PR #72).
+  // PR1 (Paprika parity): the viewing-servings stepper is the canonical "how
+  // many portions am I viewing" state. Bounds + deep-link `initialServings`
+  // honouring live in shared `recipeViewScale.ts` (mobile uses the same
+  // contract). Whole portions only — fractional cook-mode multipliers live in
+  // `recipeScale.ts`, composed on top inside CookMode.
   const [servings, setServings] = useState<number>(() =>
     initialViewServings({
       baseServings: recipe.servings,
@@ -396,15 +398,13 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const winFeedback = isFeatureEnabled("redesign_winmoment");
   /** ENG-946 — tap-to-check ingredient checklist on the Ingredients tab. */
   const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
-  // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON →
-  // hero title OVERLAY (when a photo shows), the serif standfirst headnote, and
-  // the consolidated sticky CTA bar (yield · Cook Mode outline · Log filled).
-  // ON also gives the web Log button a REAL journal write (it fired a fake
-  // "Marked as made!" toast before). Mobile twin: `apps/mobile/app/recipe/[id].tsx`.
-  // Carve-out: the "Fits your day" verdict banner is NOT touched by this pass —
-  // it keeps its tri-state SOLID treatment per
-  // `docs/decisions/2026-06-13-fits-your-day-verdict-banner.md` (the prototype's
-  // chip lacks the over-budget state).
+  /** ENG-943 — "Add to shopping list" action (default-ON). */
+  const recipeShoppingListEnabled = isFeatureEnabled("recipe_shopping_list_v1");
+  // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON → hero
+  // title OVERLAY, serif standfirst headnote, consolidated sticky CTA bar
+  // (yield · Cook Mode outline · Log filled), and a REAL journal write on Log.
+  // Carve-out: "Fits your day" verdict banner keeps its tri-state SOLID
+  // treatment (docs/decisions/2026-06-13-fits-your-day-verdict-banner.md).
   const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3_conformance");
   const [loggingRecipe, setLoggingRecipe] = useState(false);
   // Commit-CTA press payoff (web analog of the mobile confirm haptic). A subtle
@@ -414,32 +414,18 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     ? "transition-all duration-200 active:scale-[0.97] active:brightness-110"
     : "";
 
-  // Figma 332:2 — the in-app detail page is now warm cream
-  // (`background-secondary`), so resting detail cards become clean WHITE
-  // slabs (inverting page↔card is what makes the slabs read as distinct
-  // editorial blocks, matching the mobile detail + the public-share frame).
-  // `--background` is white in light, the elevated tier in dark.
-  //
   // Flat-card surfaces (2026-06-12, Withings grammar — decision:
-  // docs/decisions/2026-06-12-flat-card-surfaces.md): the soft `--elev-card-soft`
-  // lift is RETIRED here (this slab applied the token inline, bypassing the
-  // `.card-slab` primitive the CORE flattened). Separation is now a true-white
-  // `--card` slab against the warm `--background-secondary` page — zero shadow —
-  // mirroring mobile flat. (Was `--background` cream, which on the
-  // `--background-secondary` page reads as ~no separation once the shadow is
-  // gone; `--card` white restores the white-on-cream contrast the decision
-  // specifies.)
+  // docs/decisions/2026-06-12-flat-card-surfaces.md): resting detail cards are
+  // true-white `--card` slabs on the warm `--background-secondary` page — zero
+  // shadow — mirroring mobile flat (the soft `--elev-card-soft` lift is retired).
   const whiteSlabStyle: React.CSSProperties = {
     backgroundColor: "var(--card)",
   };
 
-  // Audit gap #3 (Wave 4, 2026-05-02) — static seed recipes have no
-  // Supabase backing row; treat them like a catalogue entry so the
-  // existing catalogue-only short-circuits in this component (DB
-  // fetches + saves) all skip cleanly. The seed's ingredients +
-  // instructions are hydrated into the dbIngredients / dbInstructionsText
-  // state below so the existing render paths (Steps tab + Ingredients
-  // tab) work without a second branch in the JSX.
+  // Audit gap #3 (Wave 4) — static seed recipes have no Supabase backing row;
+  // treat them like a catalogue entry so the DB fetch/save short-circuits skip
+  // cleanly. Seed ingredients + instructions hydrate into dbIngredients /
+  // dbInstructionsText so the Steps + Ingredients tabs render with no extra branch.
   const isCatalogRecipe = isSeedRecipeId(recipe.id);
   const seedRecipe = isCatalogRecipe ? findSeedRecipeById(recipe.id) : null;
   const [publishedOverride, setPublishedOverride] = useState<boolean | null>(null);
@@ -1297,16 +1283,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     [ingredients, baseServings],
   );
 
-  // Top-of-recipe "portions to view" macros — prefer live ingredient totals
-  // (per-serving) scaled by the viewer's chosen portion count when we have
-  // ingredient rows with real nutrition data; else fall back to the
-  // persisted recipe per-serving macros scaled the same way.
-  //
-  // Seed/catalog recipes hydrate ingredient rows with 0 macros (the
-  // per-ingredient pipeline hasn't matched them), so the live totals would
-  // be all-zero despite the recipe itself having valid kcalPerPortion /
-  // proteinG / carbsG / fatG. Guard: only prefer live ingredient totals
-  // when at least one macro is non-zero OR when there are no ingredients.
+  // Top-of-recipe "portions to view" macros — prefer live per-serving
+  // ingredient totals scaled by the chosen portion count when we have real
+  // nutrition rows; else fall back to the persisted per-serving macros. Seed/
+  // catalog rows hydrate with 0 macros, so only prefer live totals when ≥1 macro
+  // is non-zero (or there are no ingredients).
   const liveHasNutrition =
     !isCatalogRecipe &&
     ingredients.length > 0 &&
@@ -2999,6 +2980,23 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             className="mt-3"
             data-testid="fatsecret-badge-ingredients"
           />
+          {/* ENG-943 — Add this recipe's ingredients to the shopping list
+              (default-ON `recipe_shopping_list_v1`; OFF → plan-only list). */}
+          {recipeShoppingListEnabled && ingredients.length > 0 ? (
+            <AddToShoppingListAction
+              recipeId={String(recipe.id)}
+              recipeTitle={recipe.title}
+              userId={appUserId}
+              activeHouseholdId={activeHouseholdId}
+              multiplier={baseServings > 0 ? servings / baseServings : 1}
+              setShoppingItems={setShoppingItems}
+              ingredients={ingredients.map((ing) => ({
+                name: String(ing.name ?? ""),
+                amount: ing.amount != null ? String(ing.amount) : "",
+                unit: ing.unit != null ? String(ing.unit) : "",
+              }))}
+            />
+          ) : null}
           </>
         )}
 
