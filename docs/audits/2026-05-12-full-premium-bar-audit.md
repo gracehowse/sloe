@@ -7,7 +7,7 @@ screenshot_sources:
   - apps/mobile/screenshots/latest/ (247 PNGs — light + dark, web desktop + mobile-web, mobile native)
   - docs/testflight-feedback/data/screenshots/ (201 JPGs from real beta users, 183 batch dirs — used for live-signal cross-check)
 reference_set:
-  canonical_eight: MyFitnessPal, Lose It!, Cronometer, MacroFactor, Cal AI, Paprika, Recime, Honeydew
+  canonical_eight: MyFitnessPal, Lose It!, Cronometer, MacroFactor, Cal AI, Paprika, Recime, Honeydew  # Cal AI acquired by MyFitnessPal Mar 2026 (closed Dec 2025) — now standalone-inside-MFP, photo logging paywalled; no longer an independent competitor (ENG-1112). Per-feature Cal-AI comparables below left as historical audit prose.
   per_feature_comparables_used:
     weight_chart: Withings (priority), Apple Health, Oura, Strava, MacroFactor
     food_log: MyFitnessPal (logging speed), MacroFactor (macro spine), Cal AI (photo log), Cronometer (data density)

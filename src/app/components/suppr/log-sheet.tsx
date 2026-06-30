@@ -58,17 +58,13 @@ import {
 import * as React from "react";
 import {
   BookmarkCheck,
-  Camera,
   Check,
   Clock,
   History,
-  Mic,
-  PencilLine,
   Plus,
   ScanBarcode,
   Search,
   X,
-  type LucideIcon,
 } from "lucide-react";
 
 import { Drawer as DrawerPrimitive } from "vaul";
@@ -90,6 +86,7 @@ import type { MacroConsumed, MacroTargets } from "@/lib/nutrition/remainingMacro
 import { isPremiumMotionV1Enabled } from "@/lib/preferences/premiumMotionWeb";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 import { sheetTransition } from "@/lib/motion";
+import { InputModeRow } from "./log-sheet-input-mode-row";
 
 /** Re-exported for hosts that want the inline-search payload type. */
 export type LogSheetInlineSelectedFood = InlineSelectedFood;
@@ -336,6 +333,16 @@ export interface LogSheetProps {
     /** @deprecated */ shutterSlot?: React.ReactNode;
     /** @deprecated */ state?: LogSheetTabState;
   };
+  /**
+   * ENG-1252 — when true, render a one-line discoverability tooltip
+   * ("AI logging — available with Pro.") under the LOCKED Voice / Snap
+   * chip in `InputModeRow`. The host owns the gate (flag
+   * `logsheet_ai_method_tooltip` ON × free tier × first ~3 sessions) via
+   * `@/lib/today/aiMethodTooltip`; the sheet stays tier-agnostic and only
+   * renders the bubble under chips it's already showing as locked.
+   * Undefined / false → no tooltip (byte-identical to before). Mirror of
+   * the mobile `aiMethodTooltipVisible`. */
+  aiMethodTooltipVisible?: boolean;
   /** "Or add manually →" footer link. Host typically wires this to
    *  open the manual quick-add form. When undefined the footer is
    *  hidden. */
@@ -429,6 +436,7 @@ export function LogSheet({
   library,
   voice,
   photo,
+  aiMethodTooltipVisible = false,
   onAddManually,
   desktop,
   copyYesterday,
@@ -615,6 +623,7 @@ export function LogSheet({
               library={library}
               voice={voice}
               photo={photo}
+              aiMethodTooltipVisible={aiMethodTooltipVisible}
               browseTab={browseTab}
               onBrowseTabChange={setBrowseTab}
               onAddManually={onAddManually}
@@ -719,6 +728,7 @@ function DefaultComposition({
   library,
   voice,
   photo,
+  aiMethodTooltipVisible,
   browseTab,
   onBrowseTabChange,
   onAddManually,
@@ -737,6 +747,7 @@ function DefaultComposition({
   library: LogSheetProps["library"];
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
+  aiMethodTooltipVisible?: boolean;
   browseTab: BrowseTab;
   onBrowseTabChange: (tab: BrowseTab) => void;
   onAddManually?: () => void;
@@ -879,6 +890,7 @@ function DefaultComposition({
           barcode={barcode}
           voice={voice}
           photo={photo}
+          aiMethodTooltipVisible={aiMethodTooltipVisible}
           onQuickAdd={onAddManually}
         />
       </div>
@@ -1169,86 +1181,6 @@ function LogSheetBasketBar({ basket }: { basket: NonNullable<LogSheetProps["bask
         onClick={basket.onCommit}
         className="shrink-0"
       />
-    </div>
-  );
-}
-
-/* -------------------------- Input mode row (Figma 336:2) -------------------------- */
-
-function InputModeRow({
-  barcode,
-  voice,
-  photo,
-  onQuickAdd,
-}: {
-  barcode: LogSheetProps["barcode"];
-  voice: LogSheetProps["voice"];
-  photo: LogSheetProps["photo"];
-  onQuickAdd?: () => void;
-}) {
-  const modes: Array<{
-    key: "scan" | "voice" | "photo" | "quick";
-    label: string;
-    Icon: LucideIcon;
-    onClick?: () => void;
-    locked?: boolean;
-  }> = [
-    {
-      key: "scan",
-      label: "Scan",
-      Icon: ScanBarcode,
-      onClick: barcode?.onOpen,
-    },
-    {
-      key: "voice",
-      label: "Voice",
-      Icon: Mic,
-      onClick: voice?.onStart,
-      locked: voice?.locked ?? false,
-    },
-    {
-      key: "photo",
-      label: "Photo",
-      Icon: Camera,
-      onClick: photo?.onCapture,
-      locked: photo?.locked ?? false,
-    },
-    {
-      key: "quick",
-      label: "Quick add",
-      Icon: PencilLine,
-      onClick: onQuickAdd,
-    },
-  ];
-  return (
-    <div
-      className="mt-5 flex justify-between px-1"
-      data-testid="log-sheet-input-mode-row"
-    >
-      {modes.map(({ key, label, Icon, onClick, locked }) =>
-        onClick ? (
-          <div key={key} className="flex flex-col items-center gap-2">
-            <button
-              type="button"
-              aria-label={locked ? `${label} (Pro)` : label}
-              onClick={onClick}
-              className={cn(
-                "relative grid size-14 place-items-center rounded-full border border-border bg-card text-primary-solid",
-                "hover:bg-card/80 transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              )}
-            >
-              <Icon width={22} height={22} aria-hidden />
-              {locked ? (
-                <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[8px] font-bold leading-none text-primary-foreground">
-                  PRO
-                </span>
-              ) : null}
-            </button>
-            <span className="text-[11px] text-muted-foreground">{label}</span>
-          </div>
-        ) : null,
-      )}
     </div>
   );
 }

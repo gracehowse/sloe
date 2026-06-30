@@ -21,11 +21,48 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = resolve(__dirname, "../..");
-const MOBILE_METRIC = readFileSync(resolve(ROOT, "apps/mobile/app/progress-metric.tsx"), "utf8");
-const WEB_METRIC = readFileSync(resolve(ROOT, "src/app/components/ProgressMetricDetail.tsx"), "utf8");
-const MOBILE_PROGRESS = readFileSync(resolve(ROOT, "apps/mobile/app/(tabs)/progress.tsx"), "utf8");
-const WEB_PROGRESS = readFileSync(resolve(ROOT, "src/app/components/ProgressDashboard.tsx"), "utf8");
-const MOBILE_SHEET = readFileSync(resolve(ROOT, "apps/mobile/components/progress/LogWeightSheet.tsx"), "utf8");
+const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
+
+const MOBILE_METRIC = read("apps/mobile/app/progress-metric.tsx");
+const WEB_METRIC = read("src/app/components/ProgressMetricDetail.tsx");
+const MOBILE_PROGRESS = read("apps/mobile/app/(tabs)/progress.tsx");
+const WEB_PROGRESS = read("src/app/components/ProgressDashboard.tsx");
+const MOBILE_SHEET = read("apps/mobile/components/progress/LogWeightSheet.tsx");
+
+// ENG-952/954 extracted the weight win-moment / celebration wiring out of the
+// host screens into shared per-platform celebration modules (composition-root
+// pattern, to keep the screens under the line budget):
+//   - web:    src/app/components/progress/useWeightCelebration.ts (state +
+//             analytics) + WeightMilestoneMoment.tsx (quiet-tier overlay); the
+//             reserved new-low WinMomentPlayer still mounts in ProgressDashboard.
+//   - mobile: apps/mobile/components/progress/useWeightCelebration.ts (state +
+//             analytics) + WeightCelebrationOverlays.tsx (both overlays).
+// The new-low DETECTION moved from the raw `isNewWeightLow` primitive to the
+// shared `resolveWeightSaveCelebration` resolver (which is built on
+// `isNewWeightLow`) — both platforms now call the resolver.
+//
+// These per-platform "all the source where the win-moment now lives" strings
+// let the parity asserts below follow the symbols to their new files without
+// weakening intent: each check still proves BOTH platforms detect a new low via
+// the shared detector, mount the reserved WinMomentPlayer with the
+// `progress-weight-win-moment` testid, and emit `weight_new_low_win_moment_shown`
+// with the correct platform tag.
+const WEB_CELEBRATION = read("src/app/components/progress/useWeightCelebration.ts");
+const WEB_MILESTONE_MOMENT = read("src/app/components/progress/WeightMilestoneMoment.tsx");
+const MOBILE_CELEBRATION = read("apps/mobile/components/progress/useWeightCelebration.ts");
+const MOBILE_OVERLAYS = read("apps/mobile/components/progress/WeightCelebrationOverlays.tsx");
+const SHARED_WIN_MOMENT = read("src/lib/nutrition/weightWinMoment.ts");
+
+// Combined per-platform win-moment surface = host screen + its extracted
+// celebration modules. The weight-entry sheet (mobile) resolves the tier, so it
+// joins the mobile bundle too.
+const WEB_WIN_MOMENT_SRC = [WEB_PROGRESS, WEB_CELEBRATION, WEB_MILESTONE_MOMENT].join("\n");
+const MOBILE_WIN_MOMENT_SRC = [
+  MOBILE_PROGRESS,
+  MOBILE_SHEET,
+  MOBILE_CELEBRATION,
+  MOBILE_OVERLAYS,
+].join("\n");
 
 describe("ENG-822 — metric-detail soft elevation (both platforms)", () => {
   it("mobile metric-detail uses the flag-aware useCardElevation hook", () => {
@@ -86,8 +123,17 @@ describe("ENG-824 — weight win-moment parity (both platforms)", () => {
   });
 
   it("both platforms detect the landmark via the shared isNewWeightLow", () => {
-    expect(MOBILE_SHEET).toContain("isNewWeightLow");
-    expect(WEB_PROGRESS).toContain("isNewWeightLow");
+    // ENG-952/954 — the raw `isNewWeightLow` primitive is now consumed through
+    // the shared `resolveWeightSaveCelebration` resolver (which is built on
+    // `isNewWeightLow`). Both platforms call that one shared resolver, so the
+    // new-low decision can never diverge: web in `ProgressDashboard`, mobile in
+    // the weight-entry `LogWeightSheet`.
+    expect(WEB_PROGRESS).toContain("resolveWeightSaveCelebration");
+    expect(MOBILE_SHEET).toContain("resolveWeightSaveCelebration");
+    // …and the shared resolver still derives the landmark from `isNewWeightLow`,
+    // so this stays an assertion about the SAME detector both surfaces use.
+    expect(SHARED_WIN_MOMENT).toContain("export function isNewWeightLow");
+    expect(SHARED_WIN_MOMENT).toContain("isNewWeightLow({");
   });
 
   it("mobile fires the loud success haptic only on a new low, quiet confirm otherwise", () => {
@@ -98,17 +144,25 @@ describe("ENG-824 — weight win-moment parity (both platforms)", () => {
   });
 
   it("both platforms mount the reserved WinMomentPlayer on a new low", () => {
-    expect(MOBILE_PROGRESS).toContain("WinMomentPlayer");
-    expect(MOBILE_PROGRESS).toContain("progress-weight-win-moment");
-    expect(WEB_PROGRESS).toContain("WinMomentPlayer");
-    expect(WEB_PROGRESS).toContain("progress-weight-win-moment");
+    // ENG-952/954 — mobile's overlays moved into `WeightCelebrationOverlays`;
+    // web's reserved new-low player still mounts in `ProgressDashboard`. Assert
+    // against the combined per-platform win-moment surface so the check follows
+    // the symbols to wherever they now live.
+    expect(MOBILE_WIN_MOMENT_SRC).toContain("WinMomentPlayer");
+    expect(MOBILE_WIN_MOMENT_SRC).toContain("progress-weight-win-moment");
+    expect(WEB_WIN_MOMENT_SRC).toContain("WinMomentPlayer");
+    expect(WEB_WIN_MOMENT_SRC).toContain("progress-weight-win-moment");
   });
 
   it("both platforms emit the same cross-platform shown event (no weight value in payload)", () => {
-    expect(MOBILE_PROGRESS).toContain("weight_new_low_win_moment_shown");
-    expect(WEB_PROGRESS).toContain("weight_new_low_win_moment_shown");
+    // ENG-952/954 — the analytics fire moved into each platform's extracted
+    // `useWeightCelebration` hook. Assert against the combined per-platform
+    // win-moment surface so the event name + platform-only payload guard still
+    // hold wherever the symbols now live.
+    expect(MOBILE_WIN_MOMENT_SRC).toContain("weight_new_low_win_moment_shown");
+    expect(WEB_WIN_MOMENT_SRC).toContain("weight_new_low_win_moment_shown");
     // HIGH-class PHI guard: the payload carries only the platform.
-    expect(MOBILE_PROGRESS).toContain('{ platform: "ios" }');
-    expect(WEB_PROGRESS).toContain('{ platform: "web" }');
+    expect(MOBILE_WIN_MOMENT_SRC).toContain('{ platform: "ios" }');
+    expect(WEB_WIN_MOMENT_SRC).toContain('{ platform: "web" }');
   });
 });

@@ -3,6 +3,8 @@
 Date: 2026-04-17
 Scope: Exhaustive atomic-feature enumeration across ~30 competitors (tracking, recipe, creator, fasting, metabolic, adjacent UX), calibrated against the current Suppr codebase (`apps/web`, `apps/mobile`). Ranked for inclusion.
 
+> **Note (added 2026-06-20, ENG-1112):** this catalog predates the acquisition. **MyFitnessPal acquired Cal AI** (deal closed Dec 2025, announced 2 Mar 2026). Cal AI remains a standalone app integrated with MFP's ~20M-food DB; its photo logging is now paywalled (trial → $9.99/mo). The "Cal AI" rows below are retained as historical feature data — **Cal AI is no longer an independent competitor.** Canonical differentiation statement: `docs/competitor-set-and-mfp-exodus-2026-05-03.md`.
+
 **Calibration basis (Suppr current state, from repo scan):**
 - Mobile tabs: Today / Discover / Plan / Progress / Profile (+ hidden Library, Search, Barcode, Notifications, Settings)
 - Mobile screens present: `fasting.tsx`, `weight-tracker.tsx`, `health-sync.tsx`, `cook.tsx`, `paywall.tsx`, `onboarding.tsx`, `import-shared.tsx`, `macro-detail.tsx`, `burn-detail.tsx`, `meal-nutrition.tsx`, `nutrition-sources.tsx`, `progress-metric.tsx`, `create-recipe.tsx`, `recipe/[id]`, `recipe/verify`, `notifications-prompt`
@@ -26,8 +28,8 @@ Scope: Exhaustive atomic-feature enumeration across ~30 competitors (tracking, r
 | L2 | Barcode scan via watch | LoseIt | Hands-free scan | Weekly | MISSING | L | LATER | 2 |
 | L3 | Manual food search (text) | All | Core entry path | Daily | HAVE | — | — | — |
 | L4 | Branded/restaurant search | MFP, LoseIt, FatSecret | Eating out | Weekly | PARTIAL | M | NOW | 4 |
-| L5 | AI photo logging (single food) | MFP, LoseIt, Crono, MacroF, Yazio, Cal AI, PlateLens, SnapCalorie | "Just snap it" | Daily | MISSING | L | NOW (Pro) | 5 |
-| L6 | AI photo logging (multi-item plate) | Cal AI, PlateLens, MacroF | Full plate snap | Daily | MISSING | L | LATER | 4 |
+| L5 | AI photo logging (single food) | MFP, LoseIt, Crono, MacroF, Yazio, Cal AI (acq. MFP 2026), PlateLens, SnapCalorie | "Just snap it" | Daily | MISSING | L | NOW (Pro) | 5 |
+| L6 | AI photo logging (multi-item plate) | Cal AI (acq. MFP 2026), PlateLens, MacroF | Full plate snap | Daily | MISSING | L | LATER | 4 |
 | L7 | Voice logging (natural language) | MFP, LoseIt, FatSecret, FoodNoms | "200g chicken and rice" | Daily | PARTIAL (hint) | M | NOW | 5 |
 | L8 | Quick-add calories only | MFP, LoseIt, Crono | Log without searching | Weekly | PARTIAL | S | NOW | 4 |
 | L9 | Quick-add macros only (no food) | MFP, MacroF | Post-hoc adjust | Weekly | MISSING | S | NOW | 4 |
@@ -65,7 +67,7 @@ Scope: Exhaustive atomic-feature enumeration across ~30 competitors (tracking, r
 | L41 | "Scan receipt" for grocery/restaurant | FoodNoms | Bulk post-shop log | Monthly | MISSING | L | SKIP | 1 |
 | L42 | Restaurant menu scan/OCR | None mainstream | Menu-board OCR | Rare | MISSING | L | SKIP | 1 |
 | L43 | Paste label text → macros | MacroF | Nutrition label OCR | Weekly | MISSING | M | LATER | 3 |
-| L44 | Nutrition label photo OCR | Cal AI, SnapCalorie | Packaged no-barcode | Weekly | MISSING | L | LATER | 3 |
+| L44 | Nutrition label photo OCR | Cal AI (acq. MFP 2026), SnapCalorie | Packaged no-barcode | Weekly | MISSING | L | LATER | 3 |
 | L45 | Pending meal queue (log later) | LoseIt "save for later" | Log mid-meal guilt | Weekly | MISSING | S | LATER | 2 |
 | L46 | Offline log with auto-sync | MFP, MacroF | Gym basement, plane | Daily | PARTIAL | M | NOW | 4 |
 | L47 | Search autocomplete with recent bias | MFP, Crono | Faster repeat search | Daily | PARTIAL | S | NOW | 4 |

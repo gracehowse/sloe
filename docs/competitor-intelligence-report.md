@@ -36,7 +36,7 @@
 |-----|-------|---------|
 | PlateLens | AI photo tracking | 94.3% food ID accuracy, ±1.2% portion error, 9.7/10 rating |
 | SnapCalorie | AI photo + voice | Free AI scanning, depth estimation |
-| Cal AI | AI photo calorie counter | Photo-first, growing fast |
+| Cal AI | AI photo calorie counter | **Acquired by MyFitnessPal** — deal closed Dec 2025, announced 2 Mar 2026. Now a standalone app integrated with MFP's food DB; photo logging is hard-paywalled (3-day trial → $9.99/mo or $29.99/yr). **Pulled from the App Store Apr 2026** over deceptive paywall design. No longer an independent disruptor — fold into the MyFitnessPal profile (§2.1). |
 | Nibby | Minimal AI tracker | No account required, instant start |
 
 ---
@@ -58,7 +58,9 @@
 
 **What's free:** Basic calorie/macro logging, exercise logging, community forums, limited nutrition insights.
 
-**What's paywalled:** Barcode scanner (since Oct 2022), custom macro goals, ad-free, voice logging, meal scan (AI photo), intermittent fasting, detailed nutrient dashboards, meal planner (Premium+ only with 1,500+ recipes), grocery list sync.
+**What's paywalled:** Barcode scanner (since Oct 2022), custom macro goals, ad-free, voice logging, meal scan (AI photo), recipe-URL import, intermittent fasting, detailed nutrient dashboards, meal planner (Premium+ only with 1,500+ recipes), grocery list sync.
+
+> **Cal AI acquisition (announced 2 Mar 2026, deal closed Dec 2025).** MyFitnessPal acquired Cal AI (both are Francisco Partners portfolio assets). Cal AI stays a standalone app — founders + ~7 staff retained — but is already integrated with MFP's ~20M-food DB, so MFP now has **Cal-AI-grade AI photo logging**. Critically, it is **paywalled, not free**: in May 2026 MFP moved meal-scan (AI photo), barcode, recipe-URL import, voice logging, and custom macro goals behind Premium ($19.99/mo) / Premium+ ($24.99/mo). For an MFP refugee the AI-photo gap did **not** close — it moved behind a ~$20/mo wall, which *reinforces* the paywall grievance rather than neutralising it.
 
 **Strengths:**
 - Unmatched database size (14M+ foods) — best coverage for ethnic cuisines, restaurant foods, obscure brands
@@ -66,9 +68,9 @@
 - Massive brand recognition and network effects
 - Active community forums
 
-**Weaknesses:**
-- Database accuracy is terrible — studies show 37% of popular entries have significant calorie errors; searching "chicken breast" yields 200+ conflicting results (120-400 cal)
-- Barcode scanning paywalled (was free for a decade, moved behind paywall in 2022 — massive user backlash)
+**Weaknesses:** *(post-acquisition, these are the durable, still-true switching reasons — the Cal AI deal added paywalled AI photo logging, not a better free tier, so it does not retire any of these)*
+- Database accuracy is terrible — studies show 37% of popular entries have significant calorie errors; searching "chicken breast" yields 200+ conflicting results (120-400 cal) — crowdsourced-DB inaccuracy, unchanged by the acquisition
+- Barcode scanning paywalled (was free for a decade, moved behind paywall in 2022 — massive user backlash); AI photo, recipe-URL import and voice logging joined the paywall in May 2026
 - Intrusive ads on free tier ("ads every time I log a meal")
 - Recent UI redesigns criticized as laggy and harder to use
 - Premium pricing perceived as expensive ($79.99/yr) vs competitors
@@ -549,7 +551,7 @@
 | **Barcode scanner** | Paid | **Free** | Free | Free | Free | Paid | Yes | Yes |
 | **AI photo logging** | Paid | Paid | Paid | Basic | Paid | Paid | No | No |
 | **Voice logging** | Paid | Paid | No | No | Paid | No | No | No |
-| **Recipe import (URL)** | No | No | **Yes** | No | No | No | No | No |
+| **Recipe import (URL)** | Paid | No | **Yes** | No | No | No | No | No |
 | **Recipe builder** | Yes | Basic | **Yes** | Basic | Basic | Yes | No | Yes |
 | **Meal planning** | Paid+ | No | No | No | Paid | Paid | No | No |
 | **Meal plan generation** | No | No | No | No | No | Basic | No | No |
@@ -567,6 +569,8 @@
 | **Ad-free (free tier)** | No | No | Mostly | Yes | No | No | N/A | N/A |
 | **Dark mode** | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | **Web app** | Yes | Yes | **Yes** | No | Yes | Yes | No | No |
+
+> **Post-acquisition note (Cal AI → MyFitnessPal, Mar 2026).** MFP's **AI photo logging = Paid** is correct and load-bearing: the Cal AI acquisition gave MFP Cal-AI-grade photo logging but it sits behind Premium ($19.99/mo) / Premium+ ($24.99/mo), not on the free tier. The same May-2026 paywall move also put **recipe-URL import** behind the wall for MFP (the "Recipe import (URL)" row above predates this; MFP is now Paid, not No). Net: MFP's free tier did not gain AI photo or recipe import — the capabilities moved behind a ~$20/mo wall.
 
 ---
 

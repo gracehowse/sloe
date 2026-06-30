@@ -276,10 +276,13 @@
   --macro-fiber-solid: #466046;                   /* 6.95:1 — AA PASS */
   --macro-fiber-soft: rgba(94, 124, 90, 0.12);
   --macro-sugar: #6A4B7A;                          /* damson — 7.24:1 as text, AA PASS */
+  --macro-sugar-solid: #6A4B7A;                    /* 7.24:1 on white — AA PASS (== fill) */
   --macro-sugar-soft: rgba(106, 75, 122, 0.12);
-  --macro-sodium: #C8794E;                         /* clay */
+  --macro-sodium: #C8794E;                         /* clay (fill only — 3.33:1 as text) */
+  --macro-sodium-solid: #A76541;                   /* ENG-1217: darkened clay — 4.58:1, AA PASS */
   --macro-sodium-soft: rgba(200, 121, 78, 0.08);
-  --macro-water: #5A8A99;                          /* muted teal */
+  --macro-water: #5A8A99;                          /* muted teal (fill only — 3.80:1 as text) */
+  --macro-water-solid: #517C8A;                    /* ENG-1217: darkened teal — 4.56:1, AA PASS */
   --macro-water-soft: rgba(90, 138, 153, 0.12);
 
   /** Meal-slot tints — Sloe palette (dossier D-4).
@@ -540,7 +543,11 @@
    *  protein → lilac, carbs → amber-light, fat → rose-light (NEW), fiber +
    *  calories → sage-light, sugar → damson-light, sodium → clay-light,
    *  water → muted-teal-light. Lifted fills clear AA as text on the dark card,
-   *  so `-solid` == fill here (dark `-solid` pattern). */
+   *  so `-solid` == fill here (dark `-solid` pattern).
+   *  ENG-1217: all eight dark hues mirror mobile `MacroColorsDark`
+   *  value-for-value and clear WCAG AA (4.5:1) as small text on the dark card
+   *  `#211A2A` — measured by `tests/unit/eng1109MacroContrastCensus.test.ts`
+   *  (dark sweep) and pinned to mobile by `crossPlatformThemeTokens.test.ts`. */
   --macro-protein: #B9A7CC;
   --macro-protein-solid: #B9A7CC;
   --macro-protein-soft: rgba(185, 167, 204, 0.16);
@@ -556,12 +563,22 @@
   --macro-fiber: #7FA078;
   --macro-fiber-solid: #7FA078;
   --macro-fiber-soft: rgba(127, 160, 120, 0.16);
-  --macro-sugar: #B196CB;
-  --macro-sugar-soft: rgba(177, 150, 203, 0.16);
-  --macro-sodium: #D58A5E;
-  --macro-sodium-soft: rgba(213, 138, 94, 0.16);
-  --macro-water: #6FA6B5;
-  --macro-water-soft: rgba(111, 166, 181, 0.16);
+  /** ENG-1217: sugar/sodium/water previously kept the v3-prototype dark hues
+   *  (#B196CB / #D58A5E / #6FA6B5) which had drifted from mobile
+   *  `MacroColorsDark` (#A98BC0 / #D89A6E / #7FAAB8) — a web↔mobile parity gap
+   *  on the Today macro tile value/icon/fill. Realigned to mobile; both old and
+   *  new clear AA on the dark card, so this is a pure parity correction. Now
+   *  carry explicit `-solid` tokens (== base, the dark `-solid` pattern) so the
+   *  tile value ink resolves an AA-safe colour in dark like the core five. */
+  --macro-sugar: #A98BC0;
+  --macro-sugar-solid: #A98BC0;
+  --macro-sugar-soft: rgba(169, 139, 192, 0.16);
+  --macro-sodium: #D89A6E;
+  --macro-sodium-solid: #D89A6E;
+  --macro-sodium-soft: rgba(216, 154, 110, 0.16);
+  --macro-water: #7FAAB8;
+  --macro-water-solid: #7FAAB8;
+  --macro-water-soft: rgba(127, 170, 184, 0.16);
 
   /** Meal-slot tints — Sloe dark, OLED-lifted (dossier D-4). */
   --slot-breakfast: #D6A24A;         /* amber-light  */
@@ -762,10 +779,13 @@
   --color-macro-fiber-solid: var(--macro-fiber-solid);
   --color-macro-sugar: var(--macro-sugar);
   --color-macro-sugar-soft: var(--macro-sugar-soft);
+  --color-macro-sugar-solid: var(--macro-sugar-solid);
   --color-macro-sodium: var(--macro-sodium);
   --color-macro-sodium-soft: var(--macro-sodium-soft);
+  --color-macro-sodium-solid: var(--macro-sodium-solid);
   --color-macro-water: var(--macro-water);
   --color-macro-water-soft: var(--macro-water-soft);
+  --color-macro-water-solid: var(--macro-water-solid);
 
   /* Meal-slot tints — ui-critic P2 #10 (2026-05-01) */
   --color-slot-breakfast: var(--slot-breakfast);

@@ -24,6 +24,12 @@ function read(p: string): string {
 
 const WEB_LOG_SHEET = "src/app/components/suppr/log-sheet.tsx";
 const MOBILE_LOG_SHEET = "apps/mobile/components/today/LogSheet.tsx";
+// ENG-1252 — the input-mode chip row (Scan / Voice / Photo / Quick add + the
+// AI-method tooltip) lives in its own component file on each platform,
+// extracted to hold the screen-line budget. Mirror of the LogHubQuickActions
+// extraction below.
+const WEB_INPUT_MODE_ROW = "src/app/components/suppr/log-sheet-input-mode-row.tsx";
+const MOBILE_INPUT_MODE_ROW = "apps/mobile/components/today/LogSheetInputModeRow.tsx";
 const WEB_DESCRIBE_FLOW = "src/app/components/suppr/log-sheet-describe-flow.tsx";
 const MOBILE_DESCRIBE_FLOW = "apps/mobile/components/today/LogSheetDescribeFlow.tsx";
 const WEB_TODAY_MEALS_SECTION =
@@ -75,19 +81,19 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
       );
       return m ? ["scan", "voice", "photo"] : [];
     }
-    expect(iconOrder(web)).toEqual(["scan", "voice", "photo"]);
-    expect(iconOrder(mobile)).toEqual(["scan", "voice", "photo"]);
+    expect(iconOrder(read(WEB_INPUT_MODE_ROW))).toEqual(["scan", "voice", "photo"]);
+    expect(iconOrder(read(MOBILE_INPUT_MODE_ROW))).toEqual(["scan", "voice", "photo"]);
   });
 
   it("both surfaces ship the Figma input-mode row test handle", () => {
-    expect(web).toContain("log-sheet-input-mode-row");
-    expect(mobile).toContain("log-sheet-input-mode-row");
+    expect(read(WEB_INPUT_MODE_ROW)).toContain("log-sheet-input-mode-row");
+    expect(read(MOBILE_INPUT_MODE_ROW)).toContain("log-sheet-input-mode-row");
   });
 
   it("both surfaces label scan / voice / photo modes for accessibility", () => {
     for (const label of ["Scan", "Voice", "Photo"]) {
-      expect(web).toContain(label);
-      expect(mobile).toContain(label);
+      expect(read(WEB_INPUT_MODE_ROW)).toContain(label);
+      expect(read(MOBILE_INPUT_MODE_ROW)).toContain(label);
     }
   });
 
@@ -144,13 +150,32 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
   });
 
   it("both surfaces ship Quick add in the input-mode row", () => {
-    expect(web).toContain("Quick add");
-    expect(mobile).toContain("Quick add");
+    expect(read(WEB_INPUT_MODE_ROW)).toContain("Quick add");
+    expect(read(MOBILE_INPUT_MODE_ROW)).toContain("Quick add");
   });
 
   it("both surfaces ship the daily-progress footer test handle", () => {
     expect(web).toContain("log-sheet-daily-progress");
     expect(mobile).toContain("log-sheet-daily-progress");
+  });
+
+  it("both sheets thread the ENG-1252 `aiMethodTooltipVisible` host-gated prop", () => {
+    // The LogSheet shells own the prop and pass it down to the input-mode row.
+    for (const src of [web, mobile]) {
+      expect(src).toMatch(/aiMethodTooltipVisible\??:/);
+      expect(src).toContain("aiMethodTooltipVisible={aiMethodTooltipVisible}");
+    }
+  });
+
+  it("both input-mode rows render the ENG-1252 tooltip (testID + shared copy constant)", () => {
+    // The rendered bubble lives in the extracted row component on each
+    // platform. Pin the testID + the shared copy constant (single source so
+    // web ↔ mobile tooltip text can never drift).
+    for (const src of [read(WEB_INPUT_MODE_ROW), read(MOBILE_INPUT_MODE_ROW)]) {
+      expect(src).toMatch(/aiMethodTooltipVisible\??:/);
+      expect(src).toContain("log-sheet-ai-method-tooltip");
+      expect(src).toContain("AI_METHOD_TOOLTIP_TEXT");
+    }
   });
 });
 

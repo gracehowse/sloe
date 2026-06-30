@@ -44,18 +44,24 @@ export const MACRO_COLOR_VARS = {
   water: "var(--macro-water)",
 } as const;
 
-/** AA-safe text colours for macro values on light card/white surfaces (ENG-1109).
- *  Icons and progress fills keep {@link MACRO_COLOR_VARS}; tier-v1 value ink uses
- *  `-solid` where the fill hue fails 4.5:1 on white. */
+/** AA-safe text colours for macro values on the card surface, light AND dark
+ *  (ENG-1109 light; ENG-1217 dark). Icons and progress fills keep
+ *  {@link MACRO_COLOR_VARS}; tile-value ink reads the `-solid` token, which the
+ *  cascade resolves per `:root` / `.dark`. Every macro now routes through a
+ *  `-solid`: protein/carbs/fat/fiber were already darkened on white; sugar
+ *  already passed as fill so its `-solid` == fill; sodium/water gained darkened
+ *  `-solid`s on white (their fills only clear ~3.3–3.8:1 as text — ENG-1217).
+ *  In `.dark` every `-solid` equals the OLED-lifted fill and clears AA on the
+ *  dark card — measured by `tests/unit/eng1109MacroContrastCensus.test.ts`. */
 export const MACRO_TEXT_COLOR_VARS = {
   calories: "var(--macro-calories)",
   protein: "var(--macro-protein-solid)",
   carbs: "var(--macro-carbs-solid)",
   fat: "var(--macro-fat-solid)",
   fiber: "var(--macro-fiber-solid)",
-  sugar: "var(--macro-sugar)",
-  sodium: "var(--macro-sodium)",
-  water: "var(--macro-water)",
+  sugar: "var(--macro-sugar-solid)",
+  sodium: "var(--macro-sodium-solid)",
+  water: "var(--macro-water-solid)",
 } as const;
 
 export type MacroColorKey = keyof typeof MACRO_COLORS_LIGHT;

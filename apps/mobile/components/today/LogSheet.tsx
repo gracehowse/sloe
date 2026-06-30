@@ -15,14 +15,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   BookmarkCheck,
-  Camera,
   Check,
   ChevronRight,
   Clock,
   Copy,
   History,
-  Mic,
-  PencilLine,
   Plus,
   ScanBarcode,
   Search,
@@ -54,6 +51,7 @@ import {
 } from "@suppr/nutrition-core/barcodeFreePromise";
 import { looksLikeMealDescription } from "@suppr/nutrition-core/parseMealDescription";
 import { LogSheetDescribeFlow } from "@/components/today/LogSheetDescribeFlow";
+import { LogSheetInputModeRow } from "@/components/today/LogSheetInputModeRow";
 import {
   LogHubQuickActions,
   type LogHubQuickActionsProps,
@@ -364,6 +362,12 @@ export interface LogSheetProps {
     /** @deprecated */ shutterSlot?: React.ReactNode;
     /** @deprecated */ state?: LogSheetTabState;
   };
+  /**
+   * ENG-1252 — host-gated discoverability tooltip ("AI logging — available
+   * with Pro.") under the LOCKED Voice / Snap chip in `InputModeRow`. The
+   * sheet stays tier-agnostic, rendering the bubble only under a chip it
+   * already shows as locked. Gate: `@suppr/shared/today/aiMethodTooltip`. */
+  aiMethodTooltipVisible?: boolean;
   /** "Or add manually →" footer link. Host typically wires this to
    *  open the manual quick-add form. When undefined the footer is
    *  hidden. */
@@ -456,6 +460,7 @@ function LogSheetImpl({
   library,
   voice,
   photo,
+  aiMethodTooltipVisible = false,
   onAddManually,
   copyYesterday,
   quickActions,
@@ -614,6 +619,7 @@ function LogSheetImpl({
                 library={library}
                 voice={voice}
                 photo={photo}
+                aiMethodTooltipVisible={aiMethodTooltipVisible}
                 browseTab={browseTab}
                 onBrowseTabChange={setBrowseTab}
                 onAddManually={onAddManually}
@@ -739,6 +745,7 @@ function DefaultComposition({
   library,
   voice,
   photo,
+  aiMethodTooltipVisible,
   browseTab,
   onBrowseTabChange,
   onAddManually,
@@ -757,6 +764,7 @@ function DefaultComposition({
   library: LogSheetProps["library"];
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
+  aiMethodTooltipVisible?: boolean;
   browseTab: BrowseTab;
   onBrowseTabChange: (tab: BrowseTab) => void;
   onAddManually?: () => void;
@@ -886,10 +894,11 @@ function DefaultComposition({
             ) : null}
           </Pressable>
         )}
-        <InputModeRow
+        <LogSheetInputModeRow
           barcode={barcode}
           voice={voice}
           photo={photo}
+          aiMethodTooltipVisible={aiMethodTooltipVisible}
           onQuickAdd={onAddManually}
         />
       </View>
@@ -1320,93 +1329,6 @@ function BrowseAndFooter({
         />
       ) : null}
     </>
-  );
-}
-
-/* -------------------------- Input mode row (Figma 336:2) -------------------------- */
-
-function InputModeRow({
-  barcode,
-  voice,
-  photo,
-  onQuickAdd,
-}: {
-  barcode: LogSheetProps["barcode"];
-  voice: LogSheetProps["voice"];
-  photo: LogSheetProps["photo"];
-  onQuickAdd?: () => void;
-}) {
-  const colors = useThemeColors();
-  const accent = useAccent();
-  const modes: {
-    key: "scan" | "voice" | "photo" | "quick";
-    label: string;
-    Icon: typeof Search;
-    onPress?: () => void;
-    locked?: boolean;
-  }[] = [
-    {
-      key: "scan",
-      label: "Scan",
-      Icon: ScanBarcode,
-      onPress: barcode?.onOpen,
-    },
-    {
-      key: "voice",
-      label: "Voice",
-      Icon: Mic,
-      onPress: voice?.onStart,
-      locked: voice?.locked ?? false,
-    },
-    {
-      key: "photo",
-      label: "Photo",
-      Icon: Camera,
-      onPress: photo?.onCapture,
-      locked: photo?.locked ?? false,
-    },
-    {
-      key: "quick",
-      label: "Quick add",
-      Icon: PencilLine,
-      onPress: onQuickAdd,
-    },
-  ];
-  return (
-    <View style={styles.inputModeRow} testID="log-sheet-input-mode-row">
-      {modes.map(({ key, label, Icon, onPress, locked }) =>
-        onPress ? (
-          <View key={key} style={styles.inputModeCell}>
-            <Pressable
-              onPress={() => {
-                if (process.env.EXPO_OS === "ios") {
-                  void Haptics.selectionAsync();
-                }
-                onPress();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={locked ? `${label} (Pro)` : label}
-              style={({ pressed }) => [
-                styles.inputModeButton,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}
-            >
-              <Icon size={22} color={accent.primary} strokeWidth={2} />
-              {locked ? (
-                <View style={styles.proBadge}>
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </View>
-              ) : null}
-            </Pressable>
-            <Text style={[styles.inputModeLabel, { color: colors.textSecondary }]}>{label}</Text>
-          </View>
-        ) : null,
-      )}
-    </View>
   );
 }
 
@@ -2006,45 +1928,6 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: Radius.full,
     borderWidth: StyleSheet.hairlineWidth,
-  },
-  inputModeRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.xs,
-  },
-  inputModeCell: {
-    alignItems: "center",
-    gap: Spacing.sm,
-    flex: 1,
-  },
-  inputModeButton: {
-    width: 56,
-    height: 56,
-    borderRadius: Radius.full,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  inputModeLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  proBadge: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    backgroundColor: Accent.primary,
-    borderRadius: Radius.full,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  proBadgeText: {
-    color: "#fff",
-    fontSize: 8,
-    fontWeight: "700",
-    letterSpacing: 0.2,
   },
   browseTabRow: {
     flexDirection: "row",

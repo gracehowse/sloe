@@ -20,7 +20,8 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { kgToLb, lbToKg } from "@suppr/shared/units/imperial";
-import { isNewWeightLow } from "@suppr/nutrition-core/weightWinMoment";
+import { resolveWeightSaveCelebration } from "@suppr/nutrition-core/weightWinMoment";
+import { isoTodayKey, editDateLabel } from "./logWeightSheetDates";
 
 /**
  * Weight chart consolidation Phase 1 (2026-05-11, B6 / F-132).
@@ -37,39 +38,6 @@ import { isNewWeightLow } from "@suppr/nutrition-core/weightWinMoment";
  * adaptive-TDEE refresh on persist, the same 400-day JSONB prune.
  */
 
-function isoTodayKey(): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-/** Human label for an edit target, e.g. "5 May 2026". */
-function editDateLabel(dateISO: string): string {
-  const d = new Date(dateISO + "T00:00:00");
-  return d.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-/**
- * Newest entry date in the by-day map, or null when empty. Used to decide
- * whether an edit should also update the scalar `weight_kg` ("latest weight"):
- * editing the most-recent weigh-in updates it; editing an older one must not
- * clobber the current weight.
- */
-function newestDateKey(map: Record<string, number>): string | null {
-  const keys = Object.entries(map)
-    .filter(([, kg]) => Number.isFinite(kg) && kg > 0)
-    .map(([k]) => k)
-    .sort()
-    .reverse();
-  return keys[0] ?? null;
-}
-
 export interface LogWeightSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -77,6 +45,12 @@ export interface LogWeightSheetProps {
   isImperial: boolean;
   weightKgByDay: Record<string, number>;
   weightKg: number | null;
+  /**
+   * ENG-952 — the user's goal weight (kg), or null when no goal is set.
+   * Drives the milestone-crossing detection (the quieter second celebration
+   * tier). Milestones are undefined without a goal, so a null goal never fires.
+   */
+  goalKg?: number | null;
   /**
    * ENG-748 #9 (2026-05-27) — edit-in-place target. When set, the sheet
    * edits the existing weigh-in on that date (value changes, date kept)
@@ -101,6 +75,15 @@ export interface LogWeightSheetProps {
      * `redesign_winmoment` is off, so the flag-off path stays inert.
      */
     isNewLow: boolean;
+    /**
+     * ENG-952 — the just-saved weigh-in crossed into a new milestone band (1–9)
+     * between the journey start and goal, and was NOT a new all-time low. The
+     * parent uses this to fire the QUIETER second celebration tier. `null` when
+     * no milestone was crossed, when the save was a new low (the loud tier owns
+     * that beat), or when `progress_milestone_celebration_v1` is off — so the
+     * flag-off path stays inert.
+     */
+    milestoneCrossed: number | null;
   }) => void;
 }
 
@@ -111,6 +94,7 @@ export function LogWeightSheet({
   isImperial,
   weightKgByDay,
   weightKg,
+  goalKg,
   editDate,
   onSaveWeight,
   onSaved,
@@ -150,18 +134,25 @@ export function LogWeightSheet({
     const kg = isImperial ? lbToKg(v) : v;
     // ENG-748 #9 — write to the edited date when editing, else today's key.
     const targetKey = editDate ?? isoTodayKey();
-    // ENG-824 (Redesign — Design Direction 2026): detect the new-all-time-low
-    // landmark BEFORE the write, judging the saved kg against the prior map
-    // (excluding the date being written so an edit isn't compared to itself).
-    // Gated behind `redesign_winmoment`; flag-off keeps the silent save.
+    // ENG-824 / ENG-952 — resolve the celebration tier BEFORE the write,
+    // judging the saved kg against the prior map (excluding the date being
+    // written so an edit isn't compared to itself). The loud new-all-time-low
+    // owns precedence over the quieter milestone tier; the shared resolver keeps
+    // that decision identical to web. Each tier is flag-gated
+    // (`redesign_winmoment` / `progress_milestone_celebration_v1`); flag-off
+    // keeps the silent save.
     const winMomentEnabled = isFeatureEnabled("redesign_winmoment");
-    const newLow =
-      winMomentEnabled &&
-      isNewWeightLow({
-        savedKg: kg,
-        priorByDay: weightKgByDay,
-        targetDateKey: targetKey,
-      });
+    const milestoneEnabled = isFeatureEnabled("progress_milestone_celebration_v1");
+    const celebration = resolveWeightSaveCelebration({
+      savedKg: kg,
+      priorByDay: weightKgByDay,
+      targetDateKey: targetKey,
+      goalKg: goalKg ?? null,
+      winMomentEnabled,
+      milestoneEnabled,
+    });
+    const newLow = celebration.isNewLow;
+    const milestoneCrossed = celebration.milestoneOrdinal;
     setSaving(true);
     let saved: {
       weightKgByDay: Record<string, number>;
@@ -182,11 +173,16 @@ export function LogWeightSheet({
     // notification is RESERVED for the new-low landmark (the parent plays the
     // WinMomentPlayer on the same beat). Both behind `redesign_winmoment`;
     // flag-off fires neither, preserving today's silent weigh-in.
-    if (winMomentEnabled) {
+    if (winMomentEnabled || milestoneEnabled) {
       if (newLow) {
+        // Loud landmark — the reserved success notification.
         void Haptics.notificationAsync(
           Haptics.NotificationFeedbackType.Success,
         );
+      } else if (milestoneCrossed != null) {
+        // ENG-952 — quieter milestone tier: a soft Light tap, not the loud
+        // Success notification reserved for a new all-time low.
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       } else {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
@@ -195,6 +191,7 @@ export function LogWeightSheet({
       weightKgByDay: saved.weightKgByDay,
       weightKg: saved.weightKg,
       isNewLow: newLow,
+      milestoneCrossed,
     });
     onClose();
   }, [
@@ -202,6 +199,7 @@ export function LogWeightSheet({
     isImperial,
     userId,
     weightKgByDay,
+    goalKg,
     editDate,
     isEditing,
     onSaveWeight,

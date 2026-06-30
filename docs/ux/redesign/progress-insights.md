@@ -1019,6 +1019,8 @@ Every feature, data point, chart, insight, and gating mechanism from the functio
 - [x] `progress_digest_blend` (blended digest) — PRESERVED
 - [x] `progress_trajectory_box` (trajectory card) — PRESERVED
 - [x] `redesign_winmoment` (weight win-moment) — PRESERVED
+- [x] `progress_plateau_insight_v1` (ENG-954 calm plateau line on the weight chart) — SHIPPED, default-OFF
+- [x] `progress_milestone_celebration_v1` (ENG-952 quiet two-tier milestone celebration on weigh-in) — SHIPPED, default-OFF
 
 **Total preserved: 67 functional items.** Zero removals. Improvements are additive only.
 
@@ -1040,6 +1042,8 @@ These are flagged as additive — they deepen functionality, do not simplify it,
 10. **Share card** (flag `progress_share_card`) — new renderer; uses existing data only.
 11. **Freeze earn-mechanic visibility** — additive display of the `earnFreezeIfMilestone` 7-day-crossing logic that already runs silently.
 12. **Mobile ProgressMetricDetail parity** — closing the documented web-only gap (roadmap item, not in this spec — requires separate ENG issue).
+13. **Calm plateau insight** (ENG-954, flag `progress_plateau_insight_v1`, default-OFF) — `computeWeightTrend(...).plateauInsight` in `src/lib/progress/weightTrend.ts` (re-exported to mobile via `@suppr/shared/progress/weightTrend`). Detects a flat RECENT stretch (≤ `PLATEAU_FLAT_THRESHOLD_KG` = 0.4 kg drift over the trailing window, ≥ `PLATEAU_MIN_FLAT_DAYS` = 7 days) sitting on a LONGER trend still meaningfully moving toward goal (|Δ| ≥ `PLATEAU_MOVING_THRESHOLD_KG` = 0.8 kg). Returns a body-neutral reframe line ("held flat for N days; that's normal — your trend is still down X kg") — the calm-coaching counter to Withings' "flat = no progress" failure mode. Returns `null` when the long trend is also flat, the flat span swallows the whole range, points are too few, or the long trend moves AWAY from goal (suppress-when-it-would-be-dishonest). Same condition web ↔ mobile.
+14. **Quiet milestone celebration** (ENG-952, flag `progress_milestone_celebration_v1`, default-OFF) — `computeWeightMilestone` in `src/lib/nutrition/weightWinMoment.ts` (imported on mobile via `@suppr/nutrition-core/weightWinMoment`). Divides the start→goal span into `MILESTONE_COUNT` = 10 evenly spaced thresholds (Happy Scale parity) and fires a RESTRAINED celebration (a soft Light haptic on mobile, not the loud Success notification) when a save crosses into a new milestone band the most recent prior weigh-in had not reached. Suppressed: the goal milestone itself (index 10 — owned by the loud new-all-time-low moment), the first ever weigh-in (no prior band to cross), a re-save inside the same band, no goal set, and start→goal spans below `MILESTONE_MIN_SPAN_KG` = 1 kg (sub-noise). The quiet tier only fires when the save is NOT also a new all-time low. Same thresholds web ↔ mobile.
 
 ---
 

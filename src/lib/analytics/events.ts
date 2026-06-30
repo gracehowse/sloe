@@ -733,6 +733,17 @@ export const AnalyticsEvents = {
    * is HIGH-class PHI — the payload carries NO weight value, only the
    * platform. */
   weight_new_low_win_moment_shown: "weight_new_low_win_moment_shown",
+  /** The QUIETER second celebration tier (ENG-952) — a save crossed one of the
+   * 10 Happy-Scale-style milestones between the journey start and the goal
+   * weight (a new milestone band the prior weigh-in had not reached). Distinct
+   * from `weight_new_low_win_moment_shown` (the reserved LOUD new-all-time-low
+   * moment): the milestone tier fires only when the save is NOT a new low, so
+   * the two never double-fire. Gated behind `progress_milestone_celebration_v1`.
+   * Body-weight is HIGH-class PHI — the payload carries the milestone ORDINAL
+   * (1–9) and platform, never the weight value. Same name web ↔ mobile so the
+   * milestone-celebration rate is one cross-platform funnel. Payload:
+   * `{ platform: "ios" | "web", milestone: number }`. */
+  weight_milestone_win_moment_shown: "weight_milestone_win_moment_shown",
   /** Onboarding v2 pace step — the soft-warn safety-floor banner
    *  surfaced to the user (`acted: "shown"`) or the user advanced
    *  despite it (`acted: "advanced"`).

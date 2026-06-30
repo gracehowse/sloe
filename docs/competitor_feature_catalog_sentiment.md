@@ -3,6 +3,8 @@
 Date: 2026-04-17
 Scope: Every feature area across MyFitnessPal, Cronometer, Lose It!, MacroFactor, Yazio, Lifesum, FatSecret, Carb Manager, Noom, WeightWatchers, Eat This Much, PlateJoy (now defunct), Mealime, Paprika, Samsung Food (Whisk), Copy Me That, Plan to Eat, AnyList, Yummly (defunct), AllRecipes, NYT Cooking, BBC Good Food, Zero, Fastic, Lumen, Ultrahuman, Fitbod, Strong, MyNetDiary, Foodnoms, Moderation, MealBoard, Listonic.
 
+> **Note (added 2026-06-20, ENG-1112):** this catalog predates the acquisition. **MyFitnessPal acquired Cal AI** (deal closed Dec 2025, announced 2 Mar 2026); Cal AI is now a standalone app inside MFP with paywalled photo logging, **no longer an independent competitor.** Cal-AI references below are retained as historical sentiment data. Canonical differentiation statement: `docs/competitor-set-and-mfp-exodus-2026-05-03.md`.
+
 Legend:
 - Criticality: Daily / Weekly / Edge
 - Effort: Cheap (days) / Medium (weeks) / Heavy (months or external data)
@@ -153,7 +155,7 @@ Legend:
 - Criticality: Weekly. Effort: Medium.
 
 ### 1.29 AI Meal Photo Recognition
-- Competitors: MacroFactor, Yazio, SnapCalorie, Cal AI, Fastic, Carb Manager Premium
+- Competitors: MacroFactor, Yazio, SnapCalorie, Cal AI (acq. MFP 2026), Fastic, Carb Manager Premium
 - Sentiment: Mixed. Loved for speed, hated for 16% error rate (SnapCalorie). App Store reviewers: "describe the exact same food, get vastly different results." Power users distrust; casual users love.
 - Criticality: Daily for new users, weekly for power. Effort: Heavy.
 
@@ -1950,7 +1952,7 @@ Legend:
 - MFP ads: "REMOVE ADS THAT HAVE SOUND… it's so annoying I'm looking for a different app" (MFP community forum 10872193).
 - MFP premium + ads: "Pay for premium but seeing ads??" (forum 10911270).
 - MFP copy removal: "Copy Previous Day's meals has disappeared from the Android app" (forum 10914258).
-- Cronometer accuracy: "the most accurate database because it relies on verified sources like the USDA National Nutrient Database" (Cal AI comparison).
+- Cronometer accuracy: "the most accurate database because it relies on verified sources like the USDA National Nutrient Database" (Cal AI comparison — Cal AI acquired by MyFitnessPal, Mar 2026).
 - Cronometer 1-star: "manual text search takes 45+ seconds per meal" (App Store 1-star).
 - Cronometer redesign: "dark mode not being dark enough (appearing as dull gray)… list spacing is way bigger so they end up scrolling forever" (App Store 2024).
 - MacroFactor supportive framing: "you'll never see warnings, red numbers, or shaming when you go over your calorie or macro targets" (MacroFactor marketing, echoed in r/loseit reviews).
@@ -2038,7 +2040,7 @@ Legend:
 - [MFP Community: Ads with sound](https://community.myfitnesspal.com/en/discussion/10872193/remove-ads-that-have-sound)
 - [MFP Community: Premium ads](https://community.myfitnesspal.com/en/discussion/10911270/pay-for-premium-but-seeing-ads)
 - [MFP Community: Siri Shortcuts request](https://community.myfitnesspal.com/en/discussion/10892050/siri-shortcuts-integration-for-easy-food-entry-in-myfitnesspal)
-- [MacroFactor vs MFP vs Cronometer — Cal AI](https://www.calai.app/blog/macrofactor-vs-cronometer)
+- [MacroFactor vs MFP vs Cronometer — Cal AI](https://www.calai.app/blog/macrofactor-vs-cronometer) *(Cal AI acquired by MyFitnessPal, Mar 2026)*
 - [MacroFactor v3 Expenditure Algorithm](https://macrofactor.com/expenditure-v3/)
 - [MacroFactor help: Carb cycling stance](https://help.macrofactorapp.com/en/articles/30-does-macrofactor-support-refeeds-diet-breaks-or-carb-cycling)
 - [Cronometer Reviews — Calorie-Trackers](https://calorie-trackers.com/reviews/cronometer/)

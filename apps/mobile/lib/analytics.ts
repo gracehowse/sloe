@@ -479,11 +479,21 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  * so `isFeatureEnabled` resolves them false until PostHog ramps them). Keep this
  * list in sync with the same block in `src/lib/analytics/track.ts`.
  *
-/**
- * DEFAULT-OFF flags — empty as of 2026-06-29 (all shipped flags default-on).
- * Keep in sync with `src/lib/analytics/track.ts`.
+ * - `logsheet_ai_method_tooltip` (ENG-1252) — first-session inline tooltip
+ *   ("AI logging — available with Pro.") under the locked Voice / Snap chip
+ *   in the LogSheet `InputModeRow`, free-tier, first ~3 sessions. Gate logic:
+ *   `@suppr/shared/today/aiMethodTooltip`.
+ * - `progress_plateau_insight_v1` (ENG-954) — calm, de-shaming plateau insight
+ *   line on the weight chart (flat recent stretch + still-toward-goal long
+ *   trend). Web + mobile.
+ * - `progress_milestone_celebration_v1` (ENG-952) — quiet two-tier milestone
+ *   celebration crossing the 10 Happy-Scale-style milestones. Web + mobile.
  */
-export const KNOWN_DEFAULT_OFF_FLAGS = [] as const;
+export const KNOWN_DEFAULT_OFF_FLAGS = [
+  "logsheet_ai_method_tooltip",
+  "progress_plateau_insight_v1",
+  "progress_milestone_celebration_v1",
+] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
  *  the client isn't initialised or the flag is unloaded. Mirror of
