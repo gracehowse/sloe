@@ -134,7 +134,18 @@ export function SupprButton({
           color={labelColor}
         />
       ) : children ? (
-        children
+        // Primitive children (a bare string/number passed as
+        // `<SupprButton>{copy.foo}</SupprButton>`) must be wrapped in <Text> or
+        // RN throws "Text strings must be rendered within a <Text> component".
+        // Wrap them with the same label style + colour as the `label`-prop path
+        // so appearance is identical; element children pass through unchanged.
+        typeof children === "string" || typeof children === "number" ? (
+          <Text style={[styles.label, { color: labelColor }]} numberOfLines={1}>
+            {children}
+          </Text>
+        ) : (
+          children
+        )
       ) : (
         <Text style={[styles.label, { color: labelColor }]} numberOfLines={1}>
           {label}
