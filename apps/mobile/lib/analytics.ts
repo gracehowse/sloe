@@ -498,6 +498,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   Math: `solvePortionToFit` in `@suppr/nutrition-core/remainingMacros`;
  *   low count-to-weight confidence (gramWeight 0 / estimated tier) →
  *   qualitative fallback, never a fabricated gram number. Web + mobile.
+ * - `expenditure_trend_card` (ENG-953) — net-new calm "Expenditure" trend card
+ *   on Progress, under the Maintenance card. Reuses `adaptive_tdee` /
+ *   `adaptive_tdee_confidence` / `adaptive_tdee_updated_at` (+ `measured_tdee`)
+ *   already in screen state — recomputes nothing. Soft-confidence copy
+ *   ("burning about ~X kcal/day lately" / "still learning your pattern").
+ *   Web + mobile. Copy logic: `@suppr/shared/progress/expenditureTrend`.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
@@ -505,6 +511,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "progress_milestone_celebration_v1",
   "weigh_in_reminder_v1",
   "portion_fit_hint_v1",
+  "expenditure_trend_card",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
