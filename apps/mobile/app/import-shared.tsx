@@ -1429,7 +1429,7 @@ export default function ImportSharedScreen() {
     successCreditLine: {
       fontSize: 14,
       fontWeight: "600",
-      color: accent.primary,
+      color: accent.primarySolid,
       textAlign: "center",
     },
     libraryChip: {
@@ -1498,7 +1498,7 @@ export default function ImportSharedScreen() {
       marginTop: Spacing.xs,
     },
     outlineBtnPressed: { backgroundColor: accent.primary + "12" },
-    outlineBtnText: { color: accent.primary, fontWeight: "700", fontSize: 15 },
+    outlineBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 15 },
 
     textLinkBtn: {
       flexDirection: "row",
@@ -1507,7 +1507,7 @@ export default function ImportSharedScreen() {
       gap: 8,
       paddingVertical: Spacing.md,
     },
-    textLinkLabel: { color: accent.primary, fontWeight: "600", fontSize: 15 },
+    textLinkLabel: { color: accent.primarySolid, fontWeight: "600", fontSize: 15 },
 
     // Inline platform hint (gap #13) — calm advisory note, NOT a clay box.
     // Design-system §6.2 'recovery / note' variant: white-on-card fill +
@@ -1628,7 +1628,7 @@ export default function ImportSharedScreen() {
     },
     tertiaryLabel: {
       ...Type.body,
-      color: accent.primary,
+      color: accent.primarySolid,
     },
     // Pro pill on the photo affordance (gap #3) — amber lock + "(Pro)" so the
     // gate is visible before the tap. Amber background tint keeps the amber
@@ -2254,7 +2254,7 @@ export default function ImportSharedScreen() {
                     backgroundColor: accent.primary + "18",
                   }}
                 >
-                  <Text style={{ color: accent.primary, fontWeight: "800", fontSize: 14 }}>Done</Text>
+                  <Text style={{ color: accent.primarySolid, fontWeight: "800", fontSize: 14 }}>Done</Text>
                 </Pressable>
               </View>
             )}

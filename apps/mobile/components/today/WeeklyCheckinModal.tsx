@@ -239,7 +239,7 @@ function WeeklyCheckinModalImpl({
                   {
                     fontFamily: FontFamily.serifRegular,
                     fontSize: 22,
-                    color: accent.primary,
+                    color: accent.primarySolid,
                   },
                   tabularStyle,
                 ]}

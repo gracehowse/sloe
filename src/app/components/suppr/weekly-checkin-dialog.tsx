@@ -103,7 +103,7 @@ export function WeeklyCheckinDialog({
                 Newsreader serif display face; the struck-out prior value +
                 `kcal/day` unit stay sans. Mirrors mobile WeeklyCheckinModal. */}
             <span
-              className="font-[family-name:var(--font-headline)] text-2xl font-medium text-primary"
+              className="font-[family-name:var(--font-headline)] text-2xl font-medium text-primary-solid"
               style={{ fontVariantNumeric: "tabular-nums" }}
               aria-label={`Suggested ${content.suggestedTargetKcal} kilocalories per day`}
             >

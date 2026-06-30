@@ -488,7 +488,7 @@ export function QuickAddPanel({
       <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border">
         <div>
           <p className="text-[13px] font-semibold text-foreground">Quick add</p>
-          <p className="text-[11px] text-muted-foreground">Logging to <span className="text-primary font-medium">{activeSlot}</span></p>
+          <p className="text-[11px] text-muted-foreground">Logging to <span className="text-primary-solid font-medium">{activeSlot}</span></p>
         </div>
       </div>
       <div className="flex items-center gap-1 px-3.5 py-2 border-b border-border" role="tablist" aria-label="Quick add tabs">

@@ -83,7 +83,7 @@ export function ImportLoadingSkeleton({
       >
         <ActivityIndicator size="small" color={accent.primary} />
         <Text
-          style={{ flex: 1, fontSize: 13, fontWeight: "600", color: accent.primary }}
+          style={{ flex: 1, fontSize: 13, fontWeight: "600", color: accent.primarySolid }}
           accessibilityLiveRegion="polite"
           testID="import-status-narration"
         >

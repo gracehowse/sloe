@@ -595,7 +595,7 @@ export default function ShoppingListScreen() {
     progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     progressLabel: { ...Type.body, fontWeight: "600", color: colors.text },
     // Gap 11: hero serif numeral for the progress count (DS §2.3.3).
-    progressCount: { ...Type.heroValue, fontSize: 22, color: accent.primary, fontVariant: ["tabular-nums"] },
+    progressCount: { ...Type.heroValue, fontSize: 22, color: accent.primarySolid, fontVariant: ["tabular-nums"] },
     progressTrack: { height: 6, backgroundColor: colors.inputBg, borderRadius: 3, overflow: "hidden" },
     progressFill: { height: 6, backgroundColor: accent.primary, borderRadius: 3 },
 

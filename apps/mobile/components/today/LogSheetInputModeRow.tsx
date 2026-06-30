@@ -115,7 +115,7 @@ export function LogSheetInputModeRow({
             {key === tooltipKey ? (
               <Text
                 testID="log-sheet-ai-method-tooltip"
-                style={[styles.aiMethodTooltip, { color: accent.primary }]}
+                style={[styles.aiMethodTooltip, { color: accent.primarySolid }]}
               >
                 {AI_METHOD_TOOLTIP_TEXT}
               </Text>

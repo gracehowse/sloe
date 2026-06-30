@@ -163,7 +163,7 @@ export function WhyThisNumberDialog({
             }}
             className="flex items-center justify-between rounded-lg px-4 py-3 bg-primary/15 hover:bg-primary/25 transition-colors"
           >
-            <span className="text-sm font-bold text-primary">
+            <span className="text-sm font-bold text-primary-solid">
               Adjust target
             </span>
             <ChevronRight size={18} strokeWidth={2.25} className="text-primary" />

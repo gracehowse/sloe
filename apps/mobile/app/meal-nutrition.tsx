@@ -374,7 +374,7 @@ export default function MealNutritionScreen() {
                 style={{
                   fontSize: 16,
                   fontWeight: "800",
-                  color: accent.primary,
+                  color: accent.primarySolid,
                   fontVariant: ["tabular-nums"],
                 }}
               >
@@ -396,7 +396,7 @@ export default function MealNutritionScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Edit this meal"
               >
-                <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primary }}>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: accent.primarySolid }}>
                   Edit
                 </Text>
               </Pressable>
@@ -475,7 +475,7 @@ export default function MealNutritionScreen() {
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: accent.primary,
+                      color: accent.primarySolid,
                       fontVariant: ["tabular-nums"],
                     }}
                   >

@@ -412,7 +412,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
         <div className="mb-4 flex items-center gap-2">
           <Link
             href="/settings"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-primary-solid hover:text-primary-solid/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
           >
             <Icons.back className="h-4 w-4" aria-hidden />
             Settings
@@ -503,7 +503,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           `apps/mobile/app/(tabs)/more.tsx`. Recipes + Streak stay. */}
       <div className="flex gap-2 mb-4">
         <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border card-slab">
-          <p className="text-lg font-bold text-primary tabular-nums">{recipeCount}</p>
+          <p className="text-lg font-bold text-primary-solid tabular-nums">{recipeCount}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Recipes</p>
         </div>
         <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border card-slab">

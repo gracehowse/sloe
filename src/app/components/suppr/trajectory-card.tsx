@@ -87,7 +87,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
                 the `kg` unit stays sans. Mirrors mobile TrajectoryCard. */}
             <span
               data-testid="trajectory-hero-kg"
-              className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tracking-[-0.5px] text-primary tabular-nums ph-mask"
+              className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none tracking-[-0.5px] text-primary-solid tabular-nums ph-mask"
             >
               {state.projectedKg}
               <span className="font-sans text-base font-semibold"> kg</span>

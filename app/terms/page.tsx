@@ -40,7 +40,7 @@ export default function TermsPage() {
           <p>
             &ldquo;Sloe&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; and
             &ldquo;our&rdquo; refer to the team operating the Sloe recipe and nutrition service at{" "}
-            <Link href="/" className="text-primary underline">getsloe.com</Link>{" "}
+            <Link href="/" className="text-primary-solid underline">getsloe.com</Link>{" "}
             and the Sloe mobile app. By creating an account, signing in, or continuing to use Sloe you agree to these
             terms. If you do not agree, do not use the service.
           </p>
@@ -51,7 +51,7 @@ export default function TermsPage() {
             logging) rely on third-party models; see the{" "}
             <Link
               href="/privacy"
-              className="text-primary underline underline-offset-2 font-medium hover:brightness-95"
+              className="text-primary-solid underline underline-offset-2 font-medium hover:brightness-95"
             >
               Privacy policy
             </Link>{" "}
@@ -85,7 +85,7 @@ export default function TermsPage() {
           <p>
             To use most of Sloe you need an account. You agree to provide accurate information, to keep your sign-in
             credentials confidential, and to tell us promptly at{" "}
-            <a href={`mailto:legal@suppr.app`} className="text-primary underline">legal@suppr.app</a>{" "}
+            <a href={`mailto:legal@suppr.app`} className="text-primary-solid underline">legal@suppr.app</a>{" "}
             if you believe your account has been compromised. You are responsible for activity that happens under your account. We
             may suspend accounts showing signs of unauthorised use, fraud, or abuse.
           </p>
@@ -100,7 +100,7 @@ export default function TermsPage() {
             derivative versions of Your Content (for example resized images, parsed ingredient lists, derived macro
             totals, translations, AI-derived matches) and to sub-licence those acts to our sub-processors listed in
             the{" "}
-            <Link href="/privacy" className="text-primary underline">Privacy policy</Link>{" "}
+            <Link href="/privacy" className="text-primary-solid underline">Privacy policy</Link>{" "}
             (Supabase, Vercel, OpenAI, Stripe, Apple, and others) strictly for the purpose of operating Sloe for you.
             This licence lasts for as long as Your Content is stored in Sloe and ends when you delete it or close
             your account. If you publish a recipe to the community feed, the licence extends for as long as that
@@ -140,7 +140,7 @@ export default function TermsPage() {
             of the Digital Millennium Copyright Act (DMCA) and, for UK and EU users, the equivalent notice-and-action
             process under the UK Online Safety Act and the EU Digital Services Act. If you believe content on Sloe
             infringes your copyright, please see our{" "}
-            <Link href="/dmca" className="text-primary underline">DMCA / takedown page</Link>{" "}
+            <Link href="/dmca" className="text-primary-solid underline">DMCA / takedown page</Link>{" "}
             for how to submit a notice. We may terminate the accounts of users who repeatedly infringe.
           </p>
           <h2 id="subscriptions" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Subscriptions</h2>
@@ -166,7 +166,7 @@ export default function TermsPage() {
               your billing period, email{" "}
               <a
                 href={`mailto:${supportEmail}`}
-                className="text-primary underline underline-offset-2 font-medium hover:brightness-95"
+                className="text-primary-solid underline underline-offset-2 font-medium hover:brightness-95"
               >{supportEmail}</a>{" "}and we&rsquo;ll process a refund manually via Stripe. Mobile purchases made through
               the Apple App Store or Google Play are governed by the respective store&rsquo;s refund policy &mdash;
               please use Apple&rsquo;s &ldquo;Report a Problem&rdquo; or Google Play&rsquo;s refund flow for those.
@@ -183,7 +183,7 @@ export default function TermsPage() {
             we create, is owned by Sloe and protected by copyright, trademark, and other laws. Third-party food-database content
             surfaced through Sloe (for example USDA FoodData Central, Open Food Facts, Edamam, FatSecret) remains the property of
             the respective rights-holders and is shown under their published licences &mdash; see{" "}
-            <Link href="/licences" className="text-primary underline">licences</Link>{" "}
+            <Link href="/licences" className="text-primary-solid underline">licences</Link>{" "}
             for details. You may not copy, distribute, or create derivative works from the Sloe codebase or branded assets except as
             expressly permitted.
           </p>
@@ -211,7 +211,7 @@ export default function TermsPage() {
             <strong>you are asked to expressly consent to performance beginning before the 14-day period ends and to acknowledge
             that, by doing so, you lose the right to withdraw once performance has begun in full</strong>. If you purchased a
             subscription and wish to exercise a withdrawal right before performance has begun, email{" "}
-            <a href={`mailto:legal@suppr.app`} className="text-primary underline">legal@suppr.app</a>{" "}
+            <a href={`mailto:legal@suppr.app`} className="text-primary-solid underline">legal@suppr.app</a>{" "}
             within 14 days of purchase. This right is separate from, and additional to, the voluntary 7-day refund policy above,
             and it does not apply to in-app purchases made through the Apple App Store or Google Play (which are governed by the
             respective store&rsquo;s policy).
@@ -225,9 +225,9 @@ export default function TermsPage() {
           <h2 id="contact" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
           <p>
             Legal notices, DMCA / IP complaints, and questions about these terms:{" "}
-            <a href={`mailto:legal@suppr.app`} className="text-primary underline">legal@suppr.app</a>.
+            <a href={`mailto:legal@suppr.app`} className="text-primary-solid underline">legal@suppr.app</a>.
             General support:{" "}
-            <a href={`mailto:${supportEmail}`} className="text-primary underline">{supportEmail}</a>.
+            <a href={`mailto:${supportEmail}`} className="text-primary-solid underline">{supportEmail}</a>.
           </p>
         </div>
     </TrustPageLayout>

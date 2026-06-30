@@ -138,7 +138,7 @@ export function PlanMoveMealDialog({
                     </span>
                   </span>
                   {r.isSource ? (
-                    <span className="text-[11px] font-bold tracking-wide text-primary shrink-0">
+                    <span className="text-[11px] font-bold tracking-wide text-primary-solid shrink-0">
                       FROM
                     </span>
                   ) : null}

@@ -1234,7 +1234,7 @@ export default function CookModeScreen() {
     timerDisplay: {
       fontSize: 38,
       fontWeight: "700",
-      color: accent.primary,
+      color: accent.primarySolid,
       fontVariant: ["tabular-nums"],
       fontFamily: "Menlo",
     },

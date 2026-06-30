@@ -595,7 +595,7 @@ export default function PhotoLogSheet({
                     }}
                   >
                     <Camera size={IconSize.base} color={accent.primary} strokeWidth={2.25} />
-                    <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary }}>Camera</Text>
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primarySolid }}>Camera</Text>
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"

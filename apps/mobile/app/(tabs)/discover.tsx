@@ -865,7 +865,7 @@ export default function DiscoverScreen() {
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <Text style={{ ...Type.caption, fontWeight: '600', color: accent.primary }}>
+                  <Text style={{ ...Type.caption, fontWeight: '600', color: accent.primarySolid }}>
                     Retry
                   </Text>
                 </Pressable>

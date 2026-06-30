@@ -153,7 +153,7 @@ export function AppleHealthCard({
             onPress={onRetry}
             style={{ alignSelf: "flex-start" }}
           >
-            <Text style={{ fontSize: 13, color: accent.primary, fontWeight: "600" }}>Retry</Text>
+            <Text style={{ fontSize: 13, color: accent.primarySolid, fontWeight: "600" }}>Retry</Text>
           </Pressable>
         ) : null}
       </View>,
@@ -265,7 +265,7 @@ export function AppleHealthCard({
                 // still reach Settings manually.
               });
             }}
-            style={{ color: accent.primary, fontWeight: "600" }}
+            style={{ color: accent.primarySolid, fontWeight: "600" }}
           >
             Open Settings
           </Text>

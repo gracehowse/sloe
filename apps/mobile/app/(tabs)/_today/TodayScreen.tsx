@@ -5095,7 +5095,7 @@ export default function TrackerScreen() {
           <View>
             {isToday ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.xs }}>
-                <Text style={{ fontFamily: FontFamily.sansBold, fontSize: 11, letterSpacing: 2, color: accent.primary }}>
+                <Text style={{ fontFamily: FontFamily.sansBold, fontSize: 11, letterSpacing: 2, color: accent.primarySolid }}>
                   TODAY
                 </Text>
                 <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
@@ -6663,7 +6663,7 @@ export default function TrackerScreen() {
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md }}>
             <View>
               <Text style={{ ...Type.headline, color: colors.text }}>Quick add</Text>
-              <Text style={{ ...Type.caption, color: accent.primary, fontWeight: "600", marginTop: 2 }}>
+              <Text style={{ ...Type.caption, color: accent.primarySolid, fontWeight: "600", marginTop: 2 }}>
                 Logging to {activeMealSlot}
               </Text>
             </View>

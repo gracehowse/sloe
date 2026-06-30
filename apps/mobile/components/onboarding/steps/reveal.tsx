@@ -749,7 +749,7 @@ function RevealShowTheMaths({
           style={{
             fontSize: 12,
             fontWeight: "600",
-            color: accent.primary,
+            color: accent.primarySolid,
             letterSpacing: 0.1,
           }}
         >

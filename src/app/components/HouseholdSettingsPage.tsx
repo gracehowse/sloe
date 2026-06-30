@@ -356,7 +356,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
           </p>
           <a
             href="/home?view=plan"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-solid hover:underline"
           >
             Open Plan
             <Icons.forward className="w-3.5 h-3.5" aria-hidden />
@@ -441,7 +441,7 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
           <button
             type="button"
             onClick={() => setInviteDialogOpen(true)}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary-solid hover:underline"
             data-testid="household-settings-add"
             aria-label="Invite a household member"
           >

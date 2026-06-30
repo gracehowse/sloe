@@ -2680,7 +2680,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         <div className="mt-1">
           {isTodayHero ? (
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary-solid">
                 Today
               </span>
               <span className="flex-1 h-px bg-border" />
@@ -3296,7 +3296,7 @@ export const NutritionTracker = memo(function NutritionTracker({
               <button
                 type="button"
                 onClick={() => setHydrationManualExpanded(true)}
-                className="text-xs font-semibold text-primary hover:underline focus:outline-none focus:underline"
+                className="text-xs font-semibold text-primary-solid hover:underline focus:outline-none focus:underline"
                 aria-expanded={false}
                 aria-controls="today-hydration-card"
               >

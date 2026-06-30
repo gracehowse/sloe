@@ -65,7 +65,7 @@ export function NotificationsBell({
                 {onOpenAll ? (
                   <button
                     type="button"
-                    className="text-xs font-semibold text-primary hover:underline"
+                    className="text-xs font-semibold text-primary-solid hover:underline"
                     onClick={() => {
                       setOpen(false);
                       onOpenAll();

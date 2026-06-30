@@ -49,7 +49,7 @@ export function ImportLoadingSkeleton({
           className="size-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent"
           aria-hidden
         />
-        <p className="text-sm font-semibold text-primary" data-testid="import-status-narration">
+        <p className="text-sm font-semibold text-primary-solid" data-testid="import-status-narration">
           {stages[stageIdx]}
         </p>
       </div>

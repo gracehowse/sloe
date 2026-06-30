@@ -895,7 +895,7 @@ export default function CreateRecipeWizard() {
         stepIndex: {
           fontSize: 12,
           fontWeight: "700",
-          color: accent.primary,
+          color: accent.primarySolid,
           letterSpacing: 1,
           flex: 1,
         },

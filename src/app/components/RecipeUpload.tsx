@@ -2333,7 +2333,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         <div className="bg-primary/10 rounded-xl p-4 mb-6 border border-primary/30">
           <div className="flex items-start gap-2">
             <Icons.alert className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-primary">
+            <p className="text-sm text-primary-solid">
               Nutrition is <span className="font-medium">estimated live</span> below from names, amounts, and units (same
               logic as save). Use <span className="font-medium">Re-split lines</span> after import to fix{" "}
               <code className="text-xs bg-primary/10 px-1 rounded">500g…</code>,{" "}

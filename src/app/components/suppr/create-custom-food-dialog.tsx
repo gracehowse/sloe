@@ -695,7 +695,7 @@ export function CreateCustomFoodDialog({
                 onClick={() => setServingGramsText(formatNumber(volumeConversion.grams))}
                 data-testid="custom-food-volume-convert"
                 aria-label={`Convert ${volumeConversion.unitLabel} to ${volumeConversion.grams} grams`}
-                className="flex items-center gap-1 text-sm font-medium text-primary hover:underline self-start py-1"
+                className="flex items-center gap-1 text-sm font-medium text-primary-solid hover:underline self-start py-1"
               >
                 <ArrowLeftRight className="w-4 h-4" />
                 Convert {volumeConversion.unitLabel} → {formatNumber(volumeConversion.grams)} g
@@ -773,7 +773,7 @@ export function CreateCustomFoodDialog({
               }
               data-testid="custom-food-add-serving"
               aria-label="Add another serving"
-              className="flex items-center gap-1 text-sm font-medium text-primary hover:underline self-start py-1"
+              className="flex items-center gap-1 text-sm font-medium text-primary-solid hover:underline self-start py-1"
             >
               <Plus className="w-4 h-4" />
               Add another serving

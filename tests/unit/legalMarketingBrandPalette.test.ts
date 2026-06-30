@@ -46,8 +46,12 @@ describe("ENG-1219 — legal/marketing pages use the plum brand token, not viole
   it("text links + CTAs route through the primary brand token", () => {
     // Spot-check the load-bearing swaps so a future edit that drops the
     // token (e.g. reverting to a literal hex) breaks here.
+    // ENG-1273 (2026-06-29): the on-card billing links route through the
+    // AA-safe `text-primary-solid` ink — bare `text-primary` (the OLED-lifted
+    // #7E5C92 fill) reads only ~3.5:1 on the dark page (AA FAIL). Still a
+    // primary-brand token (the guard's real intent: not violet, not a hex).
     const billing = read("app/account/billing/BillingUnavailableFallback.tsx");
-    expect(billing).toMatch(/text-primary underline underline-offset-2/);
+    expect(billing).toMatch(/text-primary-solid underline underline-offset-2/);
 
     const dmcaForm = read("app/dmca/_form/DmcaTakedownForm.tsx");
     expect(dmcaForm).toMatch(/bg-primary text-primary-foreground/);

@@ -227,7 +227,7 @@ function ImportDone({ source }: { source: ImportSource }) {
         </div>
         <div className="grid grid-cols-4 gap-2 border-t border-border pt-3.5">
           <MiniStat n="620" u="kcal" c="text-success" />
-          <MiniStat n="48" u="P g" c="text-primary" />
+          <MiniStat n="48" u="P g" c="text-primary-solid" />
           <MiniStat n="52" u="C g" c="text-warning-solid" />
           <MiniStat n="22" u="F g" c="text-macro-fat" />
         </div>

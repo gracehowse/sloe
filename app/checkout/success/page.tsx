@@ -118,7 +118,7 @@ export default async function CheckoutSuccessPage({
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-emerald-500" aria-hidden="true" />
             <p className="text-sm text-foreground">
               <span className="font-semibold">Cancel anytime in-app.</span>{" "}
-              <Link href="/account/billing" className="text-primary underline underline-offset-2">
+              <Link href="/account/billing" className="text-primary-solid underline underline-offset-2">
                 Manage subscription
               </Link>{" "}
               opens the Stripe customer portal — you cancel directly, never
@@ -169,7 +169,7 @@ export default async function CheckoutSuccessPage({
           Questions? Email{" "}
           <a
             href="mailto:support@getsloe.com"
-            className="text-primary underline underline-offset-2"
+            className="text-primary-solid underline underline-offset-2"
           >
             support@getsloe.com
           </a>

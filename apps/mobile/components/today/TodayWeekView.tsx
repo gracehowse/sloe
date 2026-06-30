@@ -403,7 +403,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
             <Text style={{ fontSize: 11, color: textSecondaryColor }}>Total kcal</Text>
           </View>
           <View style={{ alignItems: "center" }}>
-            <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: accent.primary, fontVariant: ["tabular-nums"] }}>
+            <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: accent.primarySolid, fontVariant: ["tabular-nums"] }}>
               {Math.round(weekAvg.calories)}
             </Text>
             <Text style={{ fontSize: 11, color: textSecondaryColor }}>Daily avg</Text>

@@ -27,7 +27,7 @@ export function NamedTrackerReassuranceStrip({
             accessibilityLabel={item.label}
           >
             <View style={[styles.mark, { backgroundColor: accent.primarySoft }]}>
-              <Text style={[styles.markText, { color: accent.primary }]}>{item.mark}</Text>
+              <Text style={[styles.markText, { color: accent.primarySolid }]}>{item.mark}</Text>
             </View>
             <Text style={[styles.label, { color: colors.text }]} numberOfLines={1}>
               {item.label}

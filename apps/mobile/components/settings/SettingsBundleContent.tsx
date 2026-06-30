@@ -3593,7 +3593,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               onPress={() => setPantryPickerOpen(false)}
               style={{ marginTop: Spacing.lg, alignSelf: "center" }}
             >
-              <Text style={{ fontSize: 15, fontWeight: "600", color: accent.primary }}>Done</Text>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: accent.primarySolid }}>Done</Text>
             </Pressable>
           </View>
         </View>

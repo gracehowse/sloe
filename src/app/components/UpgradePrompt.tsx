@@ -69,7 +69,7 @@ export function UpgradePrompt({ feature, requiredTier, currentTier, onUpgrade, o
             </button>
             <a
               href="/pricing"
-              className="text-sm font-medium text-primary hover:underline"
+              className="text-sm font-medium text-primary-solid hover:underline"
             >
               Compare plans
             </a>

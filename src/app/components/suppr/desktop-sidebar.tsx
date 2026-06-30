@@ -519,7 +519,7 @@ function SidebarUpgradeSlot({
           border: "1px solid var(--north-star-border)",
         }}
       >
-        <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+        <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary-solid">
           <Icons.sparkles className="h-3 w-3" aria-hidden />
           Free plan
         </div>

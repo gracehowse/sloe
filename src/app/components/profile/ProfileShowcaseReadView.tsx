@@ -40,7 +40,7 @@ export function ProfileShowcaseReadView({
       <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 card-slab">
         <div
           aria-hidden
-          className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-muted font-[family-name:var(--font-headline)] text-[28px] text-primary"
+          className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-muted font-[family-name:var(--font-headline)] text-[28px] text-primary-solid"
         >
           {monogramInitial}
         </div>
@@ -73,7 +73,7 @@ export function ProfileShowcaseReadView({
         </p>
         <Link
           href="/settings"
-          className="mt-2 flex items-center justify-between rounded-lg py-1 text-sm font-semibold text-primary transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-2 flex items-center justify-between rounded-lg py-1 text-sm font-semibold text-primary-solid transition-colors hover:text-primary-solid/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Edit goals and targets in Settings"
         >
           <span>Edit in Settings</span>

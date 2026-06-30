@@ -419,7 +419,7 @@ export function DigestBlended(props: DigestProps) {
             </Text>
             {onAdjustPace ? (
               <Pressable onPress={onAdjustPace} testID="digest-adjust-pace" hitSlop={8}>
-                <Text style={{ fontSize: 11.5, fontWeight: "600", color: accent.primary }}>Adjust pace →</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: "600", color: accent.primarySolid }}>Adjust pace →</Text>
               </Pressable>
             ) : null}
           </View>

@@ -89,7 +89,7 @@ export function CsvImportPreview({
                 style={{
                   fontSize: 10,
                   fontWeight: "700",
-                  color: accent.primary,
+                  color: accent.primarySolid,
                   textTransform: "uppercase",
                   letterSpacing: 0.3,
                 }}

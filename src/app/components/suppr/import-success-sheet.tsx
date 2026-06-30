@@ -49,7 +49,7 @@ export function ImportSuccessSheet({
         <p className="mt-2 text-[15px] font-semibold text-muted-foreground">{macroLine}</p>
       ) : null}
       {creditLine ? (
-        <p className="mt-1 text-sm font-semibold text-primary">{creditLine}</p>
+        <p className="mt-1 text-sm font-semibold text-primary-solid">{creditLine}</p>
       ) : null}
       <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--accent-success)_21%,transparent)] bg-[color-mix(in_srgb,var(--accent-success)_8%,transparent)] px-4 py-2.5 text-sm font-semibold text-[var(--accent-success)]">
         <Icons.saved className="h-[18px] w-[18px]" aria-hidden />

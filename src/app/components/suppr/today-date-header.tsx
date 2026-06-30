@@ -123,7 +123,7 @@ export function TodayDateHeader({
                   onSelectDateKey(todayKey());
                   onViewModeChange("day");
                 }}
-                className="text-[11px] font-semibold text-primary hover:opacity-80 mt-0.5"
+                className="text-[11px] font-semibold text-primary-solid hover:opacity-80 mt-0.5"
               >
                 Jump to today
               </button>

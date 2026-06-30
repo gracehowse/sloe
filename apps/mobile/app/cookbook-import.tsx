@@ -520,7 +520,7 @@ export default function CookbookImportScreen() {
         bannerUpgradeBtnText: {
           fontFamily: FontFamily.sansSemibold,
           fontSize: 14,
-          color: accent.primary,
+          color: accent.primarySolid,
           marginTop: Spacing.xs,
         },
         reviewFooter: {
@@ -601,7 +601,7 @@ export default function CookbookImportScreen() {
                 <Text
                   style={{
                     fontFamily: FontFamily.sansSemibold,
-                    color: accent.primary,
+                    color: accent.primarySolid,
                     fontSize: 15,
                   }}
                 >

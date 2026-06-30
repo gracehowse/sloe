@@ -78,7 +78,7 @@ export function ProgressStoryGate({
     >
       {/* Sloe Figma 492:2 — sparkle glyph by the clay eyebrow, matching the
           live THIS WEEK headline so the slot reads identically pre/post-unlock. */}
-      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid">
         <Icons.sparkles className="h-3.5 w-3.5" aria-hidden />
         {placeholder.eyebrow}
       </p>

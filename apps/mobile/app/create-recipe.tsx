@@ -887,7 +887,7 @@ export default function CreateRecipeScreen() {
       gap: Spacing.sm, paddingVertical: Spacing.md, borderRadius: Radius.xl,
       borderWidth: 1.5, borderColor: accent.primary + "50", borderStyle: "dashed" as const,
     },
-    addBtnText: { color: accent.primary, fontWeight: "600", fontSize: 14 },
+    addBtnText: { color: accent.primarySolid, fontWeight: "600", fontSize: 14 },
 
     // Totals
     totalsCard: {

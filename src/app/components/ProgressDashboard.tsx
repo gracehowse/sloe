@@ -1877,7 +1877,7 @@ function ProgressDashboardContent() {
             <p className="text-[13px] font-semibold tabular-nums text-foreground truncate">
               {`${streakDays} day${streakDays === 1 ? "" : "s"}`}
               {freezesAvailable > 0 ? (
-                <span className="ml-1.5 text-[11px] font-normal text-primary">
+                <span className="ml-1.5 text-[11px] font-normal text-primary-solid">
                   {`· ${freezesAvailable} freeze${freezesAvailable === 1 ? "" : "s"}`}
                 </span>
               ) : null}
@@ -2340,7 +2340,7 @@ function ProgressDashboardContent() {
               {timeline.daysToGoal != null ? (
                 <p className="text-right">
                   {/* SLOE Phase 0: days-to-goal hero numeral in serif; label stays sans. */}
-                  <span className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-primary tabular-nums">{timeline.daysToGoal}</span>
+                  <span className="font-[family-name:var(--font-headline)] text-[22px] font-medium text-primary-solid tabular-nums">{timeline.daysToGoal}</span>
                   <span className="text-xs text-muted-foreground ml-1">days to goal</span>
                 </p>
               ) : timeline.cappedAtMaxDays ? (
@@ -2409,7 +2409,7 @@ function ProgressDashboardContent() {
                     {/* Deficit is what drives the projection — show it so the
                         user can see why the estimate moves at this rate. */}
                     Last 7 days averaged {avgRecentCals.toLocaleString()} kcal/day — {deficitLabel}. On that trend you&apos;d reach{" "}
-                    <span className="font-bold text-primary ph-mask">{formatWeight(dailyProjection.projectedWeightKg)}</span> in ~{dailyProjection.projectionWeeks} weeks.
+                    <span className="font-bold text-primary-solid ph-mask">{formatWeight(dailyProjection.projectedWeightKg)}</span> in ~{dailyProjection.projectionWeeks} weeks.
                   </p>
                 </div>
               );

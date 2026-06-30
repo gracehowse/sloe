@@ -699,7 +699,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => navigateToView("library")}
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors md:hidden"
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary-solid hover:bg-muted/80 transition-colors md:hidden"
               aria-label="Recipe library"
               title="Library"
             >

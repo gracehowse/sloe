@@ -586,7 +586,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   title={m.label}
                 >
                   {m.brand ? (
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-primary mb-1 truncate">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-primary-solid mb-1 truncate">
                       {m.brand}
                     </p>
                   ) : null}
@@ -1015,7 +1015,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               <span
                                 role="link"
                                 tabIndex={0}
-                                className="hover:text-primary hover:underline cursor-pointer"
+                                className="hover:text-primary-solid hover:underline cursor-pointer"
                                 onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                               >

@@ -112,7 +112,7 @@ export function TodayCompleteDayDialog({
                 <p className="text-lg font-bold text-foreground leading-relaxed mb-2 px-4">
                   {"At today's pace, your projected weight in "}
                   {prediction.projectionWeeks} weeks is{" "}
-                  <span className="text-primary">{projectedLabel}</span>.
+                  <span className="text-primary-solid">{projectedLabel}</span>.
                 </p>
                 <p className="text-xs text-muted-foreground mb-6 px-4">
                   This is a rough estimate based on net calories for this day. Actual results may vary.
