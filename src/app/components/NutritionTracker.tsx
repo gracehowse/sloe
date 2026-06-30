@@ -16,6 +16,7 @@ import {
   foodSelectionToMealMacros,
 } from "../../lib/nutrition/foodSelectionToMeal.ts";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
+import { useAiMethodTooltip } from "../../lib/today/useAiMethodTooltip.ts";
 // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
 // 2026-05-02 — rebuild of #26). Web parity of the mobile modal.
 import {
@@ -278,6 +279,8 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [macroDisplayStyle] = useMacroDisplayStyle();
   const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const todaySectionBreakClass = tierV1 ? "" : "mt-10";
+  // ENG-1252 — first-session AI-method discoverability tooltip gate.
+  const aiMethodTooltipVisible = useAiMethodTooltip(userTier);
   const {
     nutritionTargets,
     setNutritionTargets,
@@ -4242,17 +4245,14 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
         photo={{
           onCapture: () => {
-            // 2026-05-02 — photo-log opens for any tier. The dialog's
-            // own free-taster line + 403 handoff route to the
-            // AiPaywallDialog when the user exhausts their weekly
-            // quota.
+            // 2026-05-02 — photo-log opens for any tier; the dialog's free-taster
+            // line + 403 handoff route to the AiPaywallDialog on quota exhaustion.
             setLogSheetOpen(false);
             setPhotoLogOpen(true);
           },
-          // Lock badge removed (2026-05-02) — photo-log is no longer
-          // Pro-only at the entry point.
           locked: false,
         }}
+        aiMethodTooltipVisible={aiMethodTooltipVisible}
         onAddManually={() => {
           // Footer "Or add manually" → close LogSheet, open the
           // TodayAddMealDialog (web's quick-add dialog). Mirrors the

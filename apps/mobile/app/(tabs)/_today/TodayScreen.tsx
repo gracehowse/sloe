@@ -209,6 +209,7 @@ import {
   shouldShowUsualMealHint,
   USUAL_MEAL_HINT_STORAGE_KEY,
 } from "@suppr/shared/nutrition/usualMealHint";
+import { useAiMethodTooltip } from "@/lib/useAiMethodTooltip";
 import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   parsePendingUsualMealSave,
@@ -1111,6 +1112,9 @@ export default function TrackerScreen() {
       cancelled = true;
     };
   }, []);
+
+  // ENG-1252 — first-session AI-method discoverability tooltip gate.
+  const aiMethodTooltipVisible = useAiMethodTooltip(userTier);
 
   /**
    * Phase 5 (2026-04-30) — AI-first-log tooltip gate. Replaces the
@@ -6283,11 +6287,9 @@ export default function TrackerScreen() {
         }
         voice={{
           onStart: () => {
-            // Close the unified LogSheet and route to the dedicated
-            // voice flow. Free + base tier users see the AI paywall
-            // sheet via the AiPaywallSheet wired below; this onStart
-            // fires regardless and the host decides which sheet to
-            // open.
+            // Close the LogSheet and route to the voice flow; free + base
+            // see the AiPaywallSheet (wired below) — onStart fires regardless
+            // and the host decides which sheet to open.
             setFabSheetOpen(false);
             if (userTier === "pro") {
               setVoiceLogOpen(true);
@@ -6295,22 +6297,20 @@ export default function TrackerScreen() {
               setAiPaywall({ open: true, feature: "voice_log" });
             }
           },
-          // Pro-gated — surface the lock badge for free + base tiers
-          // so the user sees the gate before tapping.
+          // Pro-gated — surface the lock badge for free + base tiers.
           locked: userTier !== "pro",
         }}
         photo={{
           onCapture: () => {
-            // 2026-05-02 — photo-log opens for any tier. The sheet's
-            // own free-taster line + 403 handoff route to the
-            // AiPaywallSheet when the user exhausts their weekly
-            // quota.
+            // 2026-05-02 — photo-log opens for any tier; the sheet's free-taster
+            // line + 403 handoff route to the AiPaywallSheet on quota exhaustion.
             setFabSheetOpen(false);
             setPhotoLogOpen(true);
           },
           // Lock badge removed (2026-05-02).
           locked: false,
         }}
+        aiMethodTooltipVisible={aiMethodTooltipVisible}
         onAddManually={() => {
           // Footer "Or add manually" link → escape hatch into the
           // manual quick-add form (TodayAddFoodForm). Host owns the
