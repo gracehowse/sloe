@@ -35,6 +35,13 @@ describe("AnalyticsEvents registry", () => {
     expect(AnalyticsEvents.onboarding_app_choice).toBe("onboarding_app_choice");
   });
 
+  it("registers onboarding_why_now (ENG-963 intent capture)", () => {
+    // ENG-963 — the optional "What's bringing you here?" step emits this on
+    // both platforms with an identical payload. A rename would break the
+    // intent → activation funnel slice.
+    expect(AnalyticsEvents.onboarding_why_now).toBe("onboarding_why_now");
+  });
+
   it("registers the MFP CSV import funnel events (ENG-1234 preview→commit)", () => {
     // The two-phase MFP-refugee import funnel: started → previewed →
     // completed (or failed). A rename to any of these breaks the

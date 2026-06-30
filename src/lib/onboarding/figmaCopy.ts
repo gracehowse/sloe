@@ -50,3 +50,26 @@ export const ONBOARDING_REVEAL_METHODOLOGY_PLAIN =
   "Values are estimates based on the Mifflin-St Jeor equation. Sloe will re-calibrate your TDEE from your logged intake and activity data over the first ~2 weeks.";
 export const ONBOARDING_REVEAL_METHODOLOGY_GLOSS =
   "Values are estimates based on the Mifflin-St Jeor equation — a standard formula for estimating the calories you burn. Sloe will re-calibrate from your logged intake and activity data over the first ~2 weeks.";
+
+/**
+ * ENG-963 (2026-06-30) — reveal-step reflection of the optional `why-now`
+ * intent ("What's bringing you here?"). When the user picked an intent, the
+ * reveal step echoes it back in one calm line so the plan feels built around
+ * THEM ("a plan built around feeling better day to day"). Sourced here so the
+ * copy is shared web ↔ mobile and never inlined at a call site — and
+ * body-neutral throughout (no health claims, no outcome promises).
+ *
+ * Keyed by the non-null `WhyNow` ids in `whyNowOptions.ts`. The reveal step
+ * renders nothing when `whyNow` is `null` (skipped / flag OFF), so there is
+ * no `null` entry — the consumer guards on a non-null id before indexing.
+ */
+export const ONBOARDING_REVEAL_WHY_NOW_REFLECTION: Record<
+  "feel-better" | "stronger" | "habit" | "event" | "curious",
+  string
+> = {
+  "feel-better": "A plan built around feeling better day to day.",
+  stronger: "A plan built around getting stronger.",
+  habit: "A plan built around a steady, sustainable habit.",
+  event: "A plan built around what you've got coming up.",
+  curious: "A plan you can explore at your own pace.",
+};

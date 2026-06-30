@@ -26,6 +26,13 @@ import { isFeatureEnabled } from "@/lib/analytics/track";
  *  flag ramps in PostHog. Same flag name on web + mobile. */
 export const APP_CHOICE_FLAG = "onboarding-app-choice";
 
+/** ENG-963 — default-OFF feature flag gating the "What's bringing you
+ *  here?" (`why-now`) step. Same mechanism as `APP_CHOICE_FLAG`: when OFF
+ *  the step is auto-skipped in `go()` and dropped from `displayTotal`, so
+ *  the live flow + step counter are unchanged until the flag ramps in
+ *  PostHog. Same flag name on web + mobile. */
+export const WHY_NOW_FLAG = "onboarding-why-now";
+
 /**
  * OnboardingProvider — single source of state for the v2 onboarding
  * flow on web. Exposes the same hook-shaped API the mobile flow will
@@ -164,6 +171,14 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   const appChoiceEnabledRef = React.useRef(appChoiceEnabled);
   appChoiceEnabledRef.current = appChoiceEnabled;
 
+  // ENG-963 — resolve the why-now flag once per render, same cold-safe
+  // posture as the app-choice flag (false when PostHog is cold/missing →
+  // skip the step). Held in a ref so the stable `go()` callback reads the
+  // latest value.
+  const whyNowEnabled = isFeatureEnabled(WHY_NOW_FLAG);
+  const whyNowEnabledRef = React.useRef(whyNowEnabled);
+  whyNowEnabledRef.current = whyNowEnabled;
+
   const set = React.useCallback<OnboardingContext["set"]>((patch) => {
     setState((prev) => ({
       ...prev,
@@ -176,6 +191,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       ...prev,
       step: resolveNextStep(prev.step, delta, prev, {
         appChoiceEnabled: appChoiceEnabledRef.current,
+        whyNowEnabled: whyNowEnabledRef.current,
       }),
     }));
   }, []);
@@ -210,7 +226,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   // the bar from the flow.
   const { index: displayIndex, total: displayTotal } = displayPosition(
     state.step,
-    { appChoiceEnabled },
+    { appChoiceEnabled, whyNowEnabled },
   );
 
   const value = React.useMemo<OnboardingContext>(

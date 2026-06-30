@@ -49,6 +49,15 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
     head: "What's the plan?",
     body: "You can change this anytime. Real goals shift, and Sloe adapts with them — your targets recalculate automatically.",
   },
+  // ENG-963 — the optional "What's bringing you here?" intent step. A calm,
+  // body-neutral aside; the pick is never required (footer Continue always
+  // advances). Flag-gated behind `onboarding-why-now` — when OFF this step
+  // never renders, so this narrative block is dormant until the flag ramps.
+  "why-now": {
+    eyebrow: "Why now",
+    head: "What's bringing\nyou here?",
+    body: "Optional, and there's no wrong answer. It just helps us keep your plan encouraging — skip it if you'd rather.",
+  },
   sex: {
     eyebrow: "Metabolism",
     head: "A quick detail\nabout you.",

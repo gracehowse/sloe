@@ -815,6 +815,20 @@ export const AnalyticsEvents = {
    *  `onboarding_completed` also carries the final `app_choice` for
    *  funnel slicing (chosen-app → activation). */
   onboarding_app_choice: "onboarding_app_choice",
+  /** ENG-963 (2026-06-30) — user picked an intent on the optional
+   *  "What's bringing you here?" onboarding step (the `why-now` step,
+   *  placed after `goal`, gated behind the default-OFF `onboarding-why-now`
+   *  flag). A calm, body-neutral intent capture that lets the reveal step
+   *  reflect the user's reason back ("a plan built around feeling better
+   *  day to day") and lets the funnel slice activation by motivation.
+   *  Fires once per tap on either platform with an identical payload:
+   *    {
+   *      reason: "feel-better" | "stronger" | "habit" | "event" | "curious",
+   *      platform: "web" | "ios"
+   *    }
+   *  `onboarding_completed` also carries the final `why_now` for
+   *  funnel slicing (intent → activation). No PII; no health claims. */
+  onboarding_why_now: "onboarding_why_now",
   /** 2026-05-02 — user picked an MFP CSV file in the importer card.
    *  Closes the MFP-refugee history-bridge gap (P1 customer-lens).
    *  Fires once per file pick on both web and mobile.
