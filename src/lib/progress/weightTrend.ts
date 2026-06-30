@@ -77,6 +77,43 @@ export type WeightTrendResult = {
    * because each point is an aggregate, not an individual weigh-in.
    */
   bucket: "daily" | "weekly" | "monthly";
+  /**
+   * ENG-954 — calm, de-shaming plateau interpretation. `null` when the
+   * data does not read as a plateau; otherwise a reassuring line the chart
+   * renders to reframe a stall as normal physiology rather than a flat
+   * "Holding steady." verdict. See {@link computePlateauInsight}.
+   *
+   * Withings' 2025 redesign drew criticism that flat stretches read as "no
+   * progress" and "could cause harm if people feel they are not making
+   * progress". The canonical failure mode of weight charts. This is the
+   * calm-coaching counter: when the recent window is flat BUT the longer
+   * trend is still moving toward goal, say so — "Your weight's held flat for
+   * 10 days. That's normal — your 6-week trend is still down 1.8 kg."
+   * Body-neutral, no health-claim, no prescription.
+   */
+  plateauInsight: PlateauInsight | null;
+};
+
+/**
+ * ENG-954 — the derived plateau read. Present (non-null on
+ * `WeightTrendResult.plateauInsight`) only when the data genuinely reads as a
+ * plateau: a flat RECENT stretch while the LONGER trend is still moving toward
+ * goal. The caller renders `line` verbatim; the structured fields let it tone
+ * the copy (e.g. a softer line when there is no goal) without re-deriving.
+ */
+export type PlateauInsight = {
+  /** Number of recent calendar days the weight has held roughly flat. */
+  flatDays: number;
+  /**
+   * Signed kg change over the FULL selected range (negative = down). The
+   * reassurance hangs on this still moving toward goal.
+   */
+  longTrendDeltaKg: number;
+  /** `true` when the long trend moves toward the goal (or, with no goal, is
+   *  simply non-flat). Drives whether the line is reassuring vs neutral. */
+  longTrendTowardGoal: boolean;
+  /** Ready-to-render, body-neutral line. */
+  line: string;
 };
 
 const RANGE_DAYS: Record<WeightRange, number> = {
@@ -397,6 +434,115 @@ function bucketPoints(
   return out;
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+ * ENG-954 — plateau interpretation.
+ *
+ * A plateau is the moment users most need context, not a flat verdict. We
+ * detect it as: a flat RECENT stretch (the trailing window's first→last MA
+ * barely moved) WHILE the LONGER trend over the full selected range is still
+ * meaningfully moving (ideally toward goal). When both hold, the chart can
+ * reframe the stall — "held flat for N days; your trend is still down X kg".
+ *
+ * Thresholds (kg) are tuned so daily water/glycogen noise doesn't read as
+ * either a plateau or as long-term movement:
+ *   - recent window is "flat" when |Δ| over its span < FLAT_THRESHOLD_KG
+ *   - long trend is "moving" when |Δ| over the full range ≥ MOVING_THRESHOLD_KG
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/** Recent-window |Δ| below this (kg) reads as flat. Exported so tests assert
+ *  against the real threshold rather than a hardcoded magic number. */
+export const PLATEAU_FLAT_THRESHOLD_KG = 0.4;
+/** Full-range |Δ| at/above this (kg) reads as a real long-term move. */
+export const PLATEAU_MOVING_THRESHOLD_KG = 0.8;
+/** Minimum recent-flat span (calendar days) before we call it a plateau —
+ *  a 2-day flat stretch is noise, not a plateau worth reframing. */
+export const PLATEAU_MIN_FLAT_DAYS = 7;
+
+function formatKg(kg: number): string {
+  return (Math.round(Math.abs(kg) * 10) / 10).toFixed(1);
+}
+
+/**
+ * Derive the plateau read from the bucketed points + the full-range MA.
+ * Returns `null` unless the data genuinely reads as a flat recent stretch on
+ * top of a still-moving longer trend.
+ *
+ * `points` / `movingAvg` are the already-bucketed series for the selected
+ * range (so on a 1Y view the "recent window" is the trailing months, which is
+ * the right grain — a plateau is relative to the chart the user is looking
+ * at). `goalKg` lets the line lean into "still heading toward your goal".
+ */
+function computePlateauInsight(
+  points: WeightPoint[],
+  movingAvg: (number | null)[],
+  goalKg: number | null,
+): PlateauInsight | null {
+  // Need a few points to read both a recent stretch AND a longer trend.
+  if (points.length < 4) return null;
+  const validMA = movingAvg.filter((v): v is number => v !== null);
+  if (validMA.length < 4) return null;
+
+  // Long trend over the full range (MA endpoints — smoother than raw).
+  const longDelta = validMA[validMA.length - 1]! - validMA[0]!;
+  if (Math.abs(longDelta) < PLATEAU_MOVING_THRESHOLD_KG) return null;
+
+  // Recent stretch: walk back from the latest point while the weight stays
+  // within the flat band of the latest value. The flat span is the calendar
+  // distance from the latest point back to the earliest point still in-band.
+  const latest = points[points.length - 1]!;
+  const latestKg = latest.kg;
+  const latestTime = isoToDate(latest.dateISO).getTime();
+  let flatStartTime = latestTime;
+  let flatCount = 1;
+  for (let i = points.length - 2; i >= 0; i--) {
+    const p = points[i]!;
+    if (Math.abs(p.kg - latestKg) > PLATEAU_FLAT_THRESHOLD_KG) break;
+    flatStartTime = isoToDate(p.dateISO).getTime();
+    flatCount++;
+  }
+  // A plateau must be a flat stretch, not just the single latest point, and it
+  // must NOT swallow the whole range (else there's no "longer trend" to
+  // contrast — the long-trend check above already guards the magnitude, this
+  // guards the shape).
+  if (flatCount < 2 || flatCount >= points.length) return null;
+
+  // The ACTUAL flat span in calendar days — never floored, so the rendered
+  // copy ("held flat for N days") states a duration the data genuinely
+  // supports. A flat stretch shorter than the minimum is a blip, not a
+  // plateau worth reframing → stay silent. (Flooring this to the minimum, as
+  // an earlier draft did, both defeated this guard — `Math.max(7, …)` can
+  // never be < 7 — and made the line claim "7 days" for a 2-day stretch.)
+  const flatDays = Math.round((latestTime - flatStartTime) / 86400000);
+  if (flatDays < PLATEAU_MIN_FLAT_DAYS) return null;
+
+  // Is the long trend heading toward the goal? With a loss goal (goal < now)
+  // a downward long delta is toward-goal; with a gain goal, upward is. With no
+  // goal, any meaningful movement counts as "progress" for the reassurance.
+  let towardGoal: boolean;
+  if (goalKg != null) {
+    const goalIsLower = goalKg < latestKg;
+    towardGoal = (goalIsLower && longDelta < 0) || (!goalIsLower && longDelta > 0);
+  } else {
+    towardGoal = true;
+  }
+
+  // Only reframe when the longer trend is still PROGRESSING. A flat recent
+  // stretch sitting on a long trend moving AWAY from goal is not a reassuring
+  // plateau — surfacing a "still on track" line there would be dishonest, so
+  // we stay silent and let the existing trend copy carry the (neutral) verdict.
+  if (!towardGoal) return null;
+
+  const dirWord = longDelta < 0 ? "down" : "up";
+  const line = `Your weight's held flat for ${flatDays} days. That's normal — your trend is still ${dirWord} ${formatKg(longDelta)} kg. Plateaus are part of it.`;
+
+  return {
+    flatDays,
+    longTrendDeltaKg: Math.round(longDelta * 100) / 100,
+    longTrendTowardGoal: towardGoal,
+    line,
+  };
+}
+
 /**
  * Main entry point. Pass all available weight records; this function
  * filters to the selected range, dedupes same-day entries, buckets
@@ -461,6 +607,7 @@ export function computeWeightTrend(
   );
   const sinceLabel = computeSinceLabel(bucketed, range);
   const periodRangeLabel = computePeriodRangeLabel(bucketed, bucket, range, now);
+  const plateauInsight = computePlateauInsight(bucketed, movingAvg, goalKg);
 
   const daysSinceLatest =
     filtered.length > 0
@@ -482,6 +629,7 @@ export function computeWeightTrend(
     periodRangeLabel,
     daysSinceLatest,
     bucket,
+    plateauInsight,
   };
 }
 

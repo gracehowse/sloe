@@ -103,9 +103,8 @@ import {
 import { formatRecapForShare } from "@/lib/weeklyRecap";
 import { resolveDigestHeadline } from "@suppr/nutrition-core/digest";
 import type { DigestBlendedExtras } from "@suppr/nutrition-core/digest";
-import { isFeatureEnabled, track } from "@/lib/analytics";
-import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { WinMomentPlayer, type WinMomentCelebration } from "@/components/ui/WinMomentPlayer";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { WeightCelebrationOverlays } from "@/components/progress/WeightCelebrationOverlays";
 import { Digest, type DigestUsualMeal } from "@/components/Digest";
 import { HouseholdBar } from "@/components/HouseholdBar";
 // Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
@@ -132,6 +131,8 @@ import {
 import { weightDeltaTone } from "@/lib/progress/progressRangeChart";
 import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightSparseState } from "@/components/progress/WeightSparseState";
+import { WeightPlateauInsight } from "@/components/progress/WeightPlateauInsight";
+import { useWeightCelebration } from "@/components/progress/useWeightCelebration";
 import { useWeightData } from "@/hooks/useWeightData";
 
 /* ── Helpers ── */
@@ -304,13 +305,16 @@ export default function ProgressScreen() {
   // header. Long-press a row to edit or delete that entry.
   const [allWeightDataOpen, setAllWeightDataOpen] = useState(false);
 
-  // ENG-824 (Redesign — Design Direction 2026): the reserved weight
-  // win-moment. Set to a celebration when a saved weigh-in is a new
-  // all-time low; the WinMomentPlayer overlay plays it once then clears.
-  // The LogWeightSheet owns the `redesign_winmoment` gate + the success
-  // haptic; this only mounts the (lazy) Lottie celebration.
-  const [weightWinCelebration, setWeightWinCelebration] =
-    useState<WinMomentCelebration | null>(null);
+  // ENG-824 / ENG-952 — weight-save celebration state + `onSaved` handler,
+  // extracted to `useWeightCelebration`. Web parity: same-named hook in
+  // ProgressDashboard.
+  const {
+    weightWinCelebration,
+    milestoneWinOrdinal,
+    handleSaved: handleWeightSaved,
+    clearWeightWin,
+    clearMilestone,
+  } = useWeightCelebration();
 
   // H-4 (build 12, 2026-04-19, TestFlight `AEb7NcjnvK`): defer the
   // heavy below-the-fold blocks (daily-calories chart, maintenance
@@ -834,8 +838,13 @@ export default function ProgressScreen() {
   // `recap.daysLogged > 0` (real data) + the seen-state — NO Sat→Tue
   // window (approved spec).
   const [digestBlendEnabled, setDigestBlendEnabled] = useState(false);
+  // ENG-954 — calm plateau insight flag. PostHog flags resolve after first
+  // paint; default-false keeps the terse trend verdict. Web parity: same flag
+  // gates ProgressDashboard's identical line. Resolved with digest-blend below.
+  const [plateauInsightEnabled, setPlateauInsightEnabled] = useState(false);
   useEffect(() => {
     setDigestBlendEnabled(isFeatureEnabled("progress_digest_blend"));
+    setPlateauInsightEnabled(isFeatureEnabled("progress_plateau_insight_v1"));
   }, []);
   const digestBlendVisible =
     digestBlendEnabled &&
@@ -1438,6 +1447,13 @@ export default function ProgressScreen() {
                 />
               </View>
             ) : null}
+            {/* ENG-954 — calm plateau insight (extracted); web parity. */}
+            <WeightPlateauInsight
+              enabled={plateauInsightEnabled}
+              line={weightChartTrend.plateauInsight?.line}
+              dimColor={t.dim}
+              elevatedColor={t.elevated}
+            />
             {/* START / CURRENT / GOAL / RATE stat row */}
             <View style={{ flexDirection: "row", marginTop: Spacing.dense, paddingTop: Spacing.dense, borderTopWidth: 1, borderTopColor: t.border }}>
               {([
@@ -2154,24 +2170,12 @@ export default function ProgressScreen() {
       isImperial={measurementSystem === "imperial"}
       weightKgByDay={weightKgByDay}
       weightKg={weightKg}
+      goalKg={goalWeightKg}
       editDate={editWeightDate}
       onSaveWeight={(kg, dateKey) =>
         editWeightDate ? editWeight(kg, dateKey) : logWeight(kg, dateKey)
       }
-      onSaved={({ isNewLow }) => {
-        // ENG-824 — a new all-time low is the single weight landmark worth
-        // the reserved celebration. The sheet already fired the loud success
-        // haptic (gated on `redesign_winmoment`); mount the Lottie + emit the
-        // shown event. `isNewLow` is only ever true when the flag is on.
-        if (isNewLow) {
-          setWeightWinCelebration("goal-hit");
-          try {
-            track(AnalyticsEvents.weight_new_low_win_moment_shown, { platform: "ios" });
-          } catch {
-            /* analytics fire-and-forget */
-          }
-        }
-      }}
+      onSaved={handleWeightSaved}
     />
     <AllWeightDataSheet
       visible={allWeightDataOpen}
@@ -2199,17 +2203,13 @@ export default function ProgressScreen() {
       textSecondaryColor={colors.textSecondary}
       borderColor={colors.border}
     />
-    {/* ENG-824 — reserved weight win-moment overlay. Mounted only while a
-        celebration is active (new all-time low); plays once then unmounts.
-        Full-bleed + pointerEvents none so it never blocks the Progress UI. */}
-    {weightWinCelebration ? (
-      <WinMomentPlayer
-        celebration={weightWinCelebration}
-        fullBleed
-        onComplete={() => setWeightWinCelebration(null)}
-        testID="progress-weight-win-moment"
-      />
-    ) : null}
+    {/* ENG-824 / ENG-952 — weight-save celebration overlays (extracted). */}
+    <WeightCelebrationOverlays
+      weightWinCelebration={weightWinCelebration}
+      onWeightWinComplete={clearWeightWin}
+      milestoneWinOrdinal={milestoneWinOrdinal}
+      onMilestoneComplete={clearMilestone}
+    />
     </View>
   );
 }

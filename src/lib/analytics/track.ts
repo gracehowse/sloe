@@ -340,16 +340,25 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
 /**
  * Default-OFF flags — registered for discoverability only. A flag here is
  * NOT in `REDESIGN_DEFAULT_ON`, so `isFeatureEnabled` resolves it `false`
- * until PostHog ramps it. Keep in sync with the same block in
+ * until PostHog ramps it (the safe dark default for a NEW surface not yet
+ * validated in sim). Keep in sync with the same block in
  * `apps/mobile/lib/analytics.ts`.
  *
  * - `logsheet_ai_method_tooltip` (ENG-1252) — first-session inline tooltip
  *   ("AI logging — available with Pro.") under the locked Voice / Snap chip
- *   in the LogSheet `InputModeRow`, for free-tier users on their first ~3
- *   sessions. DEFAULT-OFF *by design*: ship dark, ramp via PostHog (NOT in
- *   `REDESIGN_DEFAULT_ON`). Gate logic: `src/lib/today/aiMethodTooltip.ts`.
+ *   in the LogSheet `InputModeRow`, free-tier, first ~3 sessions. Gate logic:
+ *   `src/lib/today/aiMethodTooltip.ts`.
+ * - `progress_plateau_insight_v1` (ENG-954) — calm, de-shaming plateau insight
+ *   line on the weight chart (flat recent stretch + still-toward-goal long
+ *   trend → reassuring interpretive line). Web + mobile.
+ * - `progress_milestone_celebration_v1` (ENG-952) — quiet two-tier milestone
+ *   celebration crossing the 10 Happy-Scale-style milestones. Web + mobile.
  */
-export const KNOWN_DEFAULT_OFF_FLAGS = ["logsheet_ai_method_tooltip"] as const;
+export const KNOWN_DEFAULT_OFF_FLAGS = [
+  "logsheet_ai_method_tooltip",
+  "progress_plateau_insight_v1",
+  "progress_milestone_celebration_v1",
+] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
   const forced = flagForceOverride(flag);

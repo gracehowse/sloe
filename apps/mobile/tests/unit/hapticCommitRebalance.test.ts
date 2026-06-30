@@ -118,8 +118,13 @@ describe("Haptic commit-rebalance — raw expo-haptics ratchet (ENG-1016)", () =
   // Recorded ceiling after ENG-1016's consolidation pass. Census on main was
   // ~112; this pass removed 8 scattered Today log haptics → 104. ENG-947 adds
   // one raw selection haptic in `changeCookStep` (recipe cook overlay step nav
-  // previously had none) → 105. Route further commit taps through primitives.
-  const RAW_HAPTIC_CEILING = 105;
+  // previously had none) → 105. ENG-952 adds the quieter weight-milestone tier:
+  // a soft `impactAsync(Light)` in `LogWeightSheet`, co-located with the
+  // reserved new-low `notificationAsync(Success)` so all weight-save haptic
+  // weights resolve in one tier block (deliberately a softer Light, NOT the
+  // Medium commit weight, so it stays a raw call rather than routing through
+  // `useHaptics().confirm()`) → 106. Route further COMMIT taps through primitives.
+  const RAW_HAPTIC_CEILING = 106;
 
   it("does not grow the number of raw Haptics call-sites in production code", () => {
     const count = countRawHapticCallSites();

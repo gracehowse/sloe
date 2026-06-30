@@ -6,6 +6,8 @@ import { describe, it, expect } from "vitest";
 import {
   computeWeightTrend,
   weightKgByDayToPoints,
+  PLATEAU_MOVING_THRESHOLD_KG,
+  PLATEAU_MIN_FLAT_DAYS,
   type WeightRange,
   type WeightPoint,
 } from "@/lib/progress/weightTrend";
@@ -340,6 +342,153 @@ describe("computeWeightTrend", () => {
       pts.push({ dateISO: d, kg: 70 + Math.sin(i / 100) });
     }
     expect(() => computeWeightTrend(pts, "all", null, "2026-04-22")).not.toThrow();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// ENG-954 — calm plateau insight (`computeWeightTrend(...).plateauInsight`).
+//
+// The insight is RESERVED for the genuine plateau read: a flat RECENT stretch
+// (≤ PLATEAU_FLAT_THRESHOLD_KG = 0.4 kg drift) sitting on a LONGER trend that is
+// still meaningfully moving (≥ PLATEAU_MOVING_THRESHOLD_KG = 0.8 kg over the
+// range) toward the goal. Every other shape — long trend also flat, the flat
+// span swallowing the whole range, too few points, a long trend moving AWAY
+// from goal — must return null so the chart never surfaces a dishonest
+// "you're still on track" line. These tests pin those exact conditions; web +
+// mobile share the function so they reframe a plateau identically.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * 20-day daily series: 9 days falling ~0.25 kg/day (80.0 → 78.0), then 11 days
+ * holding flat at ~78.0 (±0.05 kg noise). Long trend ≈ −1.8 kg (well past the
+ * 0.8 kg moving floor); recent ~12-day stretch sits inside the 0.4 kg flat band
+ * without swallowing the whole range. This is the canonical genuine plateau.
+ */
+function genuinePlateauPoints(): WeightPoint[] {
+  const pts: WeightPoint[] = [];
+  for (let i = 0; i < 20; i++) {
+    const d = new Date(BASE_ISO + "T12:00:00");
+    d.setDate(d.getDate() - (19 - i));
+    const kg = i < 9 ? 80.0 - i * 0.25 : 78.0 + (i % 2 === 0 ? 0.05 : -0.05);
+    pts.push({ dateISO: d.toISOString().slice(0, 10), kg: Math.round(kg * 100) / 100 });
+  }
+  return pts;
+}
+
+/** Rising mirror of the genuine plateau: 9 days climbing 76.0 → 78.0, then flat
+ *  at ~78.0. Long trend ≈ +1.7 kg. Used to flip the goal direction. */
+function risingThenFlatPoints(): WeightPoint[] {
+  const pts: WeightPoint[] = [];
+  for (let i = 0; i < 20; i++) {
+    const d = new Date(BASE_ISO + "T12:00:00");
+    d.setDate(d.getDate() - (19 - i));
+    const kg = i < 9 ? 76.0 + i * 0.25 : 78.0 + (i % 2 === 0 ? 0.05 : -0.05);
+    pts.push({ dateISO: d.toISOString().slice(0, 10), kg: Math.round(kg * 100) / 100 });
+  }
+  return pts;
+}
+
+describe("computeWeightTrend — plateauInsight (ENG-954)", () => {
+  it("fires on a genuine plateau: flat recent stretch + long trend still toward a lower goal", () => {
+    const r = computeWeightTrend(genuinePlateauPoints(), "1m", 72, BASE_ISO);
+    expect(r.plateauInsight).not.toBeNull();
+    const ins = r.plateauInsight!;
+    // Long trend is still down (toward the lower goal) by ~1.8 kg.
+    expect(ins.longTrendDeltaKg).toBeLessThanOrEqual(-PLATEAU_MOVING_THRESHOLD_KG);
+    expect(ins.longTrendTowardGoal).toBe(true);
+    // The flat stretch is the trailing ~12 days, at least the 7-day floor.
+    expect(ins.flatDays).toBeGreaterThanOrEqual(7);
+    // Body-neutral, reassuring copy — no health claim, no prescription.
+    expect(ins.line).toMatch(/held flat for \d+ days/);
+    expect(ins.line).toMatch(/normal/);
+    expect(ins.line).toMatch(/down/);
+  });
+
+  it("no-goal branch still fires (any meaningful long move counts as progress)", () => {
+    const r = computeWeightTrend(genuinePlateauPoints(), "1m", null, BASE_ISO);
+    expect(r.plateauInsight).not.toBeNull();
+    expect(r.plateauInsight!.longTrendTowardGoal).toBe(true);
+  });
+
+  it("fires for a gain goal when the long trend rises toward the higher goal", () => {
+    const r = computeWeightTrend(risingThenFlatPoints(), "1m", 82, BASE_ISO);
+    expect(r.plateauInsight).not.toBeNull();
+    expect(r.plateauInsight!.longTrendDeltaKg).toBeGreaterThanOrEqual(PLATEAU_MOVING_THRESHOLD_KG);
+    expect(r.plateauInsight!.line).toMatch(/up/);
+  });
+
+  it("NOT a plateau when the long trend is also flat (no movement to contrast)", () => {
+    // Whole 20-day window holds at ~78 — recent flat AND long-trend flat, so
+    // there is nothing reassuring to surface. |longDelta| < 0.8 kg → null.
+    const pts: WeightPoint[] = [];
+    for (let i = 0; i < 20; i++) {
+      const d = new Date(BASE_ISO + "T12:00:00");
+      d.setDate(d.getDate() - (19 - i));
+      pts.push({ dateISO: d.toISOString().slice(0, 10), kg: 78.0 + (i % 2 === 0 ? 0.05 : -0.05) });
+    }
+    expect(computeWeightTrend(pts, "1m", 72, BASE_ISO).plateauInsight).toBeNull();
+  });
+
+  it("NOT a plateau when the flat span swallows the WHOLE range", () => {
+    // 12 daily points all within the 0.4 kg flat band of the latest: the
+    // backward walk never breaks, so flatCount === points.length → null
+    // (there is no longer trend to contrast the flat stretch against).
+    const pts: WeightPoint[] = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(BASE_ISO + "T12:00:00");
+      d.setDate(d.getDate() - (11 - i));
+      pts.push({ dateISO: d.toISOString().slice(0, 10), kg: 78.0 + (i % 2 === 0 ? 0.1 : -0.1) });
+    }
+    expect(computeWeightTrend(pts, "1m", 72, BASE_ISO).plateauInsight).toBeNull();
+  });
+
+  it("NOT a plateau with too few points (needs ≥4 points and ≥4 MA values)", () => {
+    const pts: WeightPoint[] = [];
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(BASE_ISO + "T12:00:00");
+      d.setDate(d.getDate() - (2 - i));
+      pts.push({ dateISO: d.toISOString().slice(0, 10), kg: 78.0 });
+    }
+    expect(computeWeightTrend(pts, "1m", 72, BASE_ISO).plateauInsight).toBeNull();
+  });
+
+  it("stays silent when the long trend moves AWAY from goal (would be dishonest reassurance)", () => {
+    // Rising long trend (76 → 78) then flat, but the goal is LOWER (loss) —
+    // the user is drifting away from goal, so a "still on track" line would
+    // mislead. Suppress it; the neutral trend copy carries the verdict.
+    const r = computeWeightTrend(risingThenFlatPoints(), "1m", 72, BASE_ISO);
+    expect(r.plateauInsight).toBeNull();
+  });
+
+  it("stays silent for a flat stretch SHORTER than PLATEAU_MIN_FLAT_DAYS — and never overstates the span", () => {
+    // Long downtrend (80 → 78 over 9 days) then only a 2-CALENDAR-DAY flat
+    // stretch (3 points on the trailing 3 days). The genuine flat span (2 days)
+    // is below the 7-day plateau floor, so this must NOT fire. Regression pin:
+    // an earlier draft floored `flatDays` to `Math.max(PLATEAU_MIN_FLAT_DAYS,
+    // span)`, which (a) defeated the `< PLATEAU_MIN_FLAT_DAYS` guard entirely
+    // and (b) rendered "held flat for 7 days" for a 2-day blip — a false
+    // duration claim. The fix gates on the REAL span, so a short blip is silent.
+    const pts: WeightPoint[] = [];
+    for (let i = 0; i < 9; i++) {
+      const d = new Date(BASE_ISO + "T12:00:00");
+      d.setDate(d.getDate() - (13 - i));
+      pts.push({ dateISO: d.toISOString().slice(0, 10), kg: Math.round((80 - i * 0.25) * 100) / 100 });
+    }
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(BASE_ISO + "T12:00:00");
+      d.setDate(d.getDate() - (2 - i));
+      pts.push({ dateISO: d.toISOString().slice(0, 10), kg: 78.0 + (i % 2 === 0 ? 0.05 : -0.05) });
+    }
+    expect(computeWeightTrend(pts, "1m", 72, BASE_ISO).plateauInsight).toBeNull();
+  });
+
+  it("reports the REAL flat-day span in the copy (not a floored placeholder)", () => {
+    // The genuine plateau's flat stretch is the trailing ~10 calendar days, so
+    // the rendered figure must reflect the measured span — and crucially must
+    // equal the number stated in the copy line. Pins data↔copy consistency.
+    const ins = computeWeightTrend(genuinePlateauPoints(), "1m", 72, BASE_ISO).plateauInsight!;
+    expect(ins.flatDays).toBeGreaterThanOrEqual(PLATEAU_MIN_FLAT_DAYS);
+    expect(ins.line).toContain(`held flat for ${ins.flatDays} days`);
   });
 });
 
