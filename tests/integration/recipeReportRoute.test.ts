@@ -89,6 +89,8 @@ describe("POST /api/recipe-report", () => {
         suppr_recipe_id: "r_abc",
         reason: "unsafe",
         description: "raw chicken step",
+        // ENG-1267: the authed reporter is attributed on the persisted row.
+        reporter_user_id: "user_123",
       }),
     );
   });
