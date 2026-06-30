@@ -291,6 +291,22 @@ Success screen with two CTAs:
   → "Review ingredients" → navigates to verify screen
 ```
 
+**Magic moment (ENG-728, `import_magic_moment`, default-OFF).** When the flag
+is ON and the user has NOT requested reduced motion, the success sheet arrives
+with a subtle fade + scale settle and a one-shot CALM `log-confirm`
+`WinMomentPlayer` overlay (the quiet gold "Logged" beat — the loud `goal-hit`
+tier stays reserved for the daily calorie-ring landmark). The overlay plays
+once, then unmounts. Reduce-motion (`AccessibilityInfo.isReduceMotionEnabled`
+on mobile / `prefers-reduced-motion` on web) → the sheet appears instantly with
+no overlay. Flag OFF (the shipped default) → zero visual change.
+
+- Mobile: `apps/mobile/components/import/ImportSuccessCelebration.tsx` wraps the
+  success sheet inside `apps/mobile/app/import-shared.tsx`.
+- Web: gate + overlay live in `src/app/components/suppr/import-success-sheet.tsx`
+  (rendered from `RecipeUpload`'s `mode === "import"` success branch).
+- Flag registered in `KNOWN_DEFAULT_OFF_FLAGS` in both `src/lib/analytics/track.ts`
+  and `apps/mobile/lib/analytics.ts`.
+
 ## Edge Cases
 - **Pinterest URLs** — resolved to actual recipe source via redirect following
 - **Instagram/TikTok** — parsed via OpenAI caption extraction (requires API key)
