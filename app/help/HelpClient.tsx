@@ -58,6 +58,30 @@ function buildSections(email: string): Section[] {
       ),
     },
     {
+      id: "importing-recipes",
+      title: "How recipe import works",
+      searchBlob:
+        "import recipe personal copy cookbook private default facts ingredients steps link back source bot supprbot identified honest",
+      body: (
+        <>
+          <p>
+            When you import a recipe, Sloe makes a personal copy in your own cookbook &mdash; like saving to your notes
+            or printing for your kitchen. Imports are always started by you, never automatic, and are private by
+            default. We capture the facts (ingredients, steps, times, our nutrition estimates) and link back to the
+            original; we don&rsquo;t copy the original article&rsquo;s writing or photos, and we don&rsquo;t
+            bulk-collect recipes.
+          </p>
+          <p className="mt-3">
+            When we read a public web page, we identify ourselves honestly as Sloe&rsquo;s importer &mdash; an
+            identified, rate-limited fetcher (<code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">SupprBot</code>)
+            that links to a public bot page, respects access controls, and takes only the facts. See the{" "}
+            <Link href="/terms" className="text-violet-600 dark:text-violet-400 underline">Terms of service</Link>{" "}
+            for the full posture.
+          </p>
+        </>
+      ),
+    },
+    {
       id: "sources",
       title: "Nutrition data sources",
       searchBlob:

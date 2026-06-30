@@ -13,6 +13,7 @@ const TERMS_SECTIONS = [
   { id: "eligibility", title: "Eligibility" },
   { id: "account", title: "Account & security" },
   { id: "your-content", title: "Your content licence" },
+  { id: "importing-recipes", title: "Importing recipes" },
   { id: "acceptable-use", title: "Acceptable use" },
   { id: "copyright", title: "Copyright / DMCA" },
   { id: "subscriptions", title: "Subscriptions" },
@@ -108,6 +109,15 @@ export default function TermsPage() {
           </p>
           <p>
             We do not claim ownership of Your Content, we do not use it to train AI models, and we do not sell it.
+          </p>
+          <h2 id="importing-recipes" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Importing recipes</h2>
+          <p>
+            When you import a recipe, Sloe makes a personal copy in your own cookbook &mdash; like saving to your notes
+            or printing for your kitchen. Imports are always started by you, never automatic, and are private by
+            default. We capture the facts (ingredients, steps, times, our nutrition estimates) and link back to the
+            original; we don&rsquo;t copy the original article&rsquo;s writing or photos, and we don&rsquo;t
+            bulk-collect recipes. When we read a public web page, we identify ourselves honestly as Sloe&rsquo;s
+            importer.
           </p>
           <h2 id="acceptable-use" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Acceptable use</h2>
           <p>You agree not to:</p>
