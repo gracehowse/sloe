@@ -83,6 +83,42 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
     expect(blob).toContain("Sloe is a personal tracking tool");
   });
 
+  // ENG-1218 — the Adaptive TDEE how-it-works step must promise the bar at
+  // which the feature actually SURFACES (MEDIUM confidence: 14 days / 5
+  // weigh-ins), not the MIN_* compute floor (7 / 3). The floor is the earliest
+  // the engine can run; `refreshAdaptiveTdee` skips low confidence and
+  // `resolveMaintenance` rejects it, so a user never sees an estimate before
+  // medium. Pin the rendered numbers to the engine constants (imported, not
+  // hardcoded) so a silent revert to the floor breaks loudly.
+  it("Adaptive TDEE step promises the MEDIUM surface threshold, not the MIN floor", async () => {
+    const { HOW_IT_WORKS } = await import("../../src/lib/landing/content");
+    const {
+      MEDIUM_CONFIDENCE_LOGGING_DAYS,
+      MEDIUM_CONFIDENCE_WEIGH_INS,
+      MIN_LOGGING_DAYS,
+      MIN_WEIGH_INS,
+    } = await import("../../src/lib/nutrition/adaptiveTdee");
+
+    const tdeeStep = HOW_IT_WORKS.find((s) => s.body.includes("Adaptive TDEE"));
+    expect(tdeeStep).toBeDefined();
+    const body = tdeeStep!.body;
+
+    // Renders the surface threshold (14 days / 5 times).
+    expect(body).toContain(
+      `logged ${MEDIUM_CONFIDENCE_LOGGING_DAYS} days and weighed in ${MEDIUM_CONFIDENCE_WEIGH_INS} times`,
+    );
+
+    // The fixture is only meaningful if the floor and the surface bar differ —
+    // guard against the engine constants being changed to collapse them.
+    expect(MEDIUM_CONFIDENCE_LOGGING_DAYS).toBeGreaterThan(MIN_LOGGING_DAYS);
+    expect(MEDIUM_CONFIDENCE_WEIGH_INS).toBeGreaterThan(MIN_WEIGH_INS);
+
+    // Must NOT quote the compute floor (the stale pre-ENG-1218 claim).
+    expect(body).not.toContain(
+      `logged ${MIN_LOGGING_DAYS} days and weighed in ${MIN_WEIGH_INS} times`,
+    );
+  });
+
   // Parity review D1–D4 (2026-06-12): four user-visible surfaces the first
   // sweep missed — pinned so they can never regress to "Suppr".
   it("welcome notification title says Sloe (D1)", () => {
