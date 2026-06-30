@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/layout";
 import { Accent, Radius, Spacing, StimulantColors, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useMacroColors } from "@/lib/macroColors";
@@ -337,7 +338,14 @@ function Chip({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const color = tones(useMacroColors().colors.water)[tone];
+  const accent = useAccent();
+  const waterTone = useMacroColors().colors.water;
+  // ENG-1275 — the alcohol chip TONE is the amber `Accent.warning` fill, which
+  // reads only 2.61:1 as TEXT on the chip's frost-mist `backgroundSecondary` in
+  // light (AA FAIL). Route alcohol LABEL ink to the scheme-resolved
+  // `alcoholSolid` (#9C5228 light / #D6A24A dark — web --stimulant-alcohol-solid
+  // twin, the ENG-1266 fix's mobile mirror). Water/caffeine tones read fine.
+  const labelColor = tone === "alcohol" ? accent.alcoholSolid : tones(waterTone)[tone];
   return (
     <Pressable
       accessibilityRole="button"
@@ -355,7 +363,7 @@ function Chip({
         borderColor: colors.border,
       }}
     >
-      <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color }}>
+      <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color: labelColor }}>
         {label}
       </Text>
     </Pressable>

@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Flame, Snowflake } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import Badge from "@/components/Badge";
 
 /**
@@ -29,6 +30,10 @@ function TodayStreakInsightCardImpl({
   textColor,
   textSecondaryColor,
 }: TodayStreakInsightCardProps) {
+  // ENG-1275 — scheme-resolved `-solid` TEXT inks. The success/cyan FILLS
+  // (icon, soft tints, borders) stay on the raw `Accent` hue; only the small
+  // TEXT routes to the AA-safe `-solid`, which lifts in dark via `useAccent()`.
+  const accent = useAccent();
   if (streakDays <= 0) return null;
   return (
     <View
@@ -56,7 +61,7 @@ function TodayStreakInsightCardImpl({
         <Flame size={18} color={Accent.success} strokeWidth={1.75} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 12, fontWeight: "600", color: Accent.success }}>
+        <Text style={{ fontSize: 12, fontWeight: "600", color: accent.successSolid }}>
           {streakDays}-day logging streak
         </Text>
         <Text style={{ fontSize: 11, color: textSecondaryColor, marginTop: 1 }}>
@@ -105,7 +110,9 @@ function TodayStreakInsightCardImpl({
             >
               <Text
                 // headers census 2026-06-10: pressable eyebrow-grammar label → Type.label.
-                style={{ ...Type.label, color: Accent.cyan }}
+                // ENG-1275: ghost-link TEXT reads cyanSolid (raw cyan = 4.14:1
+                // light / 2.98:1 dark on its tint, AA FAIL); cyanSolid clears AA.
+                style={{ ...Type.label, color: accent.cyanSolid }}
               >
                 Got it
               </Text>
