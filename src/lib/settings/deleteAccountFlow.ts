@@ -25,11 +25,12 @@ export const DELETE_ACCOUNT_COPY = {
   step2: {
     heading: "This can't be undone",
     body: "Deleting your account permanently removes your diary, recipes, plans and history. Want a copy first?",
-    // Legal review (ENG-1260, 2026-06-29): "Export my data first" overstated
-    // completeness — the export is best-effort, not a guaranteed full archive.
-    // "Download a copy first" is the honest framing until a server-side export
-    // endpoint lands (see ENG follow-up). Deliberate divergence from the v3
-    // prototype's wording for data-rights correctness on a destructive flow.
+    // ENG-1262 (2026-06-29): this button now runs the COMPLETE
+    // server-authoritative archive (`/api/export/me` — profile, recipes,
+    // meal log, weights, plans, custom foods, saved meals, notes), replacing
+    // the meal-log-only CSV the ENG-1260 interim hedge wrapped. "Download a
+    // copy first" stays — it's accurate, low-friction wording for a download
+    // affordance on a destructive flow, and now backed by a full archive.
     exportFirst: "Download a copy first",
   },
   step3: {

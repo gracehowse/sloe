@@ -34,6 +34,12 @@ import {
   nutritionLogToCsv,
   nutritionLogCsvFilename,
 } from "../../lib/export/nutritionLogToCsv.ts";
+// ENG-1262 — shared "Export everything" client helper. The standalone Settings
+// row AND the DeleteAccount "Download a copy first" action both call this so
+// the COMPLETE server-authoritative archive (`/api/export/me`) is the single
+// export path — no inlined, drifting copies, and no partial CSV before a
+// permanent account deletion.
+import { downloadSupprExport } from "../../lib/client/exportEverythingWeb.ts";
 import { normalizeWeekSummaryMode } from "../../lib/nutrition/weekSummaryWindow.ts";
 import type { WeightSurfaceMode } from "../../lib/nutrition/weightSurfaceMode.ts";
 import { saveWeekStartDay } from "../../lib/nutrition/weekStartDayClient.ts";
@@ -776,10 +782,30 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     }
   }, []);
 
+  /**
+   * Full server-authoritative export (`/api/export/me`). Used by the
+   * standalone "Export everything" Settings row AND the DeleteAccount
+   * "Download a copy first" action so the user always gets the COMPLETE
+   * archive — recipes, meal log, weights, plans, custom foods, profile —
+   * not the meal-log-only CSV. Before ENG-1262 the delete flow handed users
+   * the partial CSV right before permanent deletion (a GDPR Art. 20 gap).
+   * Returns the structured result so callers can branch on the spinner /
+   * toast; the shared helper never throws.
+   */
+  const runFullExport = useCallback(async () => {
+    const result = await downloadSupprExport(supabase);
+    if (result.ok) {
+      toast.success("Download started.");
+    } else {
+      toast.error(result.message);
+    }
+    return result;
+  }, []);
+
   const deleteAccountLayer = useSettingsDeleteAccountLayer(
     authedUserId,
     LOCAL_CLEAR_KEYS,
-    runCsvExport,
+    runFullExport,
   );
 
   // PR-01 (audit 2026-04-28): Base tier excised from user-facing
@@ -1968,59 +1994,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             type="button"
             data-testid="settings-export-everything-button"
             onClick={() => {
-              void (async () => {
-                try {
-                  const { data: session } = await supabase.auth.getSession();
-                  const token = session.session?.access_token;
-                  if (!token) {
-                    toast.error("Sign in to export your data.");
-                    return;
-                  }
-                  const res = await fetch("/api/export/me", {
-                    method: "GET",
-                    headers: { Authorization: `Bearer ${token}` },
-                  });
-                  if (res.status === 429) {
-                    toast.error(
-                      "You can export once per minute. Try again in a moment.",
-                    );
-                    return;
-                  }
-                  if (res.status === 401) {
-                    toast.error("Your session expired. Sign in again.");
-                    return;
-                  }
-                  if (!res.ok) {
-                    let detail = `Export failed (${res.status}).`;
-                    try {
-                      const body = (await res.json()) as { message?: string };
-                      if (body.message) detail = body.message;
-                    } catch {
-                      // Body wasn't JSON — keep the generic message.
-                    }
-                    toast.error(detail);
-                    return;
-                  }
-                  const blob = await res.blob();
-                  const filenameMatch = /filename="([^"]+)"/.exec(
-                    res.headers.get("content-disposition") ?? "",
-                  );
-                  const filename =
-                    filenameMatch?.[1] ??
-                    `suppr-export-${new Date().toISOString().slice(0, 10)}.json`;
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = filename;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                  toast.success("Download started.");
-                } catch {
-                  toast.error("Could not build export.");
-                }
-              })();
+              void runFullExport();
             }}
             className="w-full text-left px-4 py-3 bg-muted/60 hover:bg-muted rounded-lg transition-all text-muted-foreground"
           >

@@ -991,10 +991,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         }
         return;
       }
-      // Hand the file to the iOS share sheet. `Share.share({ url })`
-      // accepts a `file://` URI on iOS and opens the native
-      // UIActivityViewController — Save to Files / AirDrop / Mail
-      // / Messages all surface from there.
+      // Hand the file to the iOS share sheet: `Share.share({ url })` accepts a
+      // `file://` URI and opens UIActivityViewController (Files/AirDrop/Mail).
       try {
         await Share.share({
           url: result.fileUri,
@@ -1123,8 +1121,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     }
   }, [userId, exportingCsv]);
 
+  // ENG-1262: export-first = COMPLETE archive (runExportEverything → /api/export/me), not the meal-log CSV; exportingEverything drives the button's loading state.
   const deleteAccount = useDeleteAccountSheet(userId, () => {
-    void runExportCsv();
+    void runExportEverything();
   });
 
   /**
@@ -3888,6 +3887,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         ledger={deleteAccount.ledger}
         loadingLedger={deleteAccount.loadingLedger}
         deleting={deleteAccount.deleting}
+        exportingFirst={exportingEverything}
         onExportFirst={deleteAccount.exportFirst}
         onDeleteForever={deleteAccount.deleteForever}
       />

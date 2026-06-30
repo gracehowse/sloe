@@ -186,19 +186,54 @@ TestFlight today). When Android joins the platform list, swap
 `Share.share` for `expo-sharing`'s `Sharing.shareAsync` to abstract
 the platform.
 
+## Delete-flow "Download a copy first" (ENG-1262)
+
+The DeleteAccount 3-step sheet (`DeleteAccountSheet`, ENG-1260) shows a
+**"Download a copy first"** button at step 2, immediately before permanent
+account deletion. As of ENG-1262 that button runs the **same complete
+`/api/export/me` archive** described above — on both platforms:
+
+| Platform | Export-first path |
+|----------|-------------------|
+| Web      | `downloadSupprExport(supabase)` (`src/lib/client/exportEverythingWeb.ts`) → blob download |
+| Mobile   | `exportEverythingToFile(userId)` (`apps/mobile/lib/exportEverything.ts`) → cache write → iOS share sheet |
+
+Before ENG-1262 the export-first action ran the **meal-log-only CSV**
+(`runCsvExport` / `runExportCsv`) — handing the user a partial archive right
+before deleting the authoritative server copy (a GDPR Art. 20 portability gap).
+The button now disables + shows a spinner while the heavy, rate-limited export
+is in flight (`exportingFirst`), so it can't be double-submitted.
+
+The CSV path is unchanged and still available as the curated meal-log subset at
+Settings → "Export nutrition log (CSV)".
+
+The web "Export everything" Settings row and the delete-flow export-first action
+both call the shared `downloadSupprExport` helper, so there is exactly one
+complete-archive code path on web (no inlined, drifting copies).
+
 ## Files
 
 - Server endpoint: `app/api/export/me/route.ts`
+- Web client helper: `src/lib/client/exportEverythingWeb.ts`
+  (`downloadSupprExport` — shared by the Settings row + delete-flow export-first)
 - Mobile helper: `apps/mobile/lib/exportEverything.ts`
 - Mobile UI: `apps/mobile/components/settings/SettingsBundleContent.tsx`
   (search `settings-bundle-export-everything-row`)
 - Web UI: `src/app/components/Settings.tsx` (search
   `settings-export-everything-button`)
+- Delete-flow export-first: `src/app/components/settings/DeleteAccountSheet.tsx`
+  + `apps/mobile/components/settings/DeleteAccountSheet.tsx` (search
+  `delete-account-export-first`)
 - Tests:
-  - `tests/integration/exportMeRoute.test.ts`
+  - `tests/integration/exportMeRoute.test.ts` (incl. per-user isolation,
+    ENG-1262)
   - `tests/unit/settingsExportEverythingWeb.test.ts`
+  - `tests/unit/exportEverythingWeb.test.ts` (web helper, ENG-1262)
+  - `tests/unit/deleteAccountExportFirstWiring.test.ts` (web wiring, ENG-1262)
   - `apps/mobile/tests/unit/exportEverything.test.ts`
   - `apps/mobile/tests/unit/settingsExportEverythingRow.test.ts`
+  - `apps/mobile/tests/unit/deleteAccountExportFirstWiring.test.ts`
+    (mobile wiring, ENG-1262)
 
 ## Related
 
