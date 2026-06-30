@@ -1285,7 +1285,7 @@ export default function FoodSearchPanel({
   }, [macroTargets, macroConsumed, previewMacros]);
 
   // ENG-854 — "how much of THIS fits what's left?" body-neutral line.
-  // Default-OFF flag; all math + copy live in `portionFitHintForPreview`
+  // Default-ON flag (ENG-1279); all math + copy live in `portionFitHintForPreview`
   // (no fabricated gram number when confidence is low). Mirrors web.
   const portionFitHintText = useMemo(
     () =>

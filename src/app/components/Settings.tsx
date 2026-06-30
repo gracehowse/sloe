@@ -1802,8 +1802,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             setEnabled={setWeeklyRecapPushEnabled}
             weekStartDay={weekStartDay}
           />
-          {/* ENG-955 — gentle, opt-in weigh-in reminder (default-OFF flag
-              `weigh_in_reminder_v1`; renders null until ramp). Mobile parity:
+          {/* ENG-955 — gentle, opt-in weigh-in reminder (`weigh_in_reminder_v1`,
+              default-ON since 2026-06-30 ENG-1279). Mobile parity:
               WeighInReminderRow. Self-contained to respect the screen budget. */}
           <WeighInReminderControl />
         </div>

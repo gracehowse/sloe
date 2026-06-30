@@ -841,8 +841,8 @@ export default function ProgressScreen() {
   // paint; default-false keeps the terse trend verdict. Web parity: same flag
   // gates ProgressDashboard's identical line. Resolved with digest-blend below.
   const [plateauInsightEnabled, setPlateauInsightEnabled] = useState(false);
-  // ENG-953 — calm Expenditure trend card (default-OFF). Same deferred-read
-  // pattern as the plateau flag; the card renders nothing until ramped.
+  // ENG-953 — calm Expenditure trend card (default-ON, ENG-1279). Same
+  // deferred read-once-on-mount pattern as the plateau flag.
   const [expenditureCardEnabled, setExpenditureCardEnabled] = useState(false);
   useEffect(() => {
     setDigestBlendEnabled(isFeatureEnabled("progress_digest_blend"));
