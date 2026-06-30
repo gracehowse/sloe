@@ -3,6 +3,7 @@ import { Pressable, Text, View, type ViewStyle, type StyleProp } from "react-nat
 import { Flame, Shield } from "lucide-react-native";
 
 import { Accent } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -89,18 +90,26 @@ function StreakPipImpl({
   freezeProtected = false,
 }: StreakPipProps) {
   const colors = useThemeColors();
+  const accent = useAccent();
   const safeDays = Number.isFinite(days) && days >= 0 ? Math.floor(days) : 0;
   const active = safeDays >= 2;
   // DC8 freeze-shield variant takes precedence over the active/inactive
   // tone so the user reads "freeze covered for you" instead of
   // "fired up today".
   const isMilestone = [7, 14, 21, 30, 60, 90, 100, 365].includes(safeDays);
+  // ENG-828 — the ACTIVE pip ink reads the AA-safe `accent.primarySolid`, not
+  // the bare `colors.tint` (#5B3B6E). On dark, #5B3B6E text on its own 14% tint
+  // was only 1.77:1 (AA FAIL); primarySolid (#C4ACD0 dark) clears 7.8:1. In
+  // light this resolves to #3B2A4D (11.4:1) — which also converges mobile to
+  // web's active-streak ink (web `streak-pip.tsx` active = `text-primary-solid`
+  // = #3B2A4D), closing a pre-existing light shade divergence. The fill stays
+  // a plum tint.
   const fg = freezeProtected
     ? colors.textSecondary
     : isMilestone
       ? Accent.warning
       : active
-        ? colors.tint
+        ? accent.primarySolid
         : colors.textSecondary;
   const bg = freezeProtected
     ? colors.cardBorder

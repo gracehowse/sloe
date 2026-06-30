@@ -167,10 +167,15 @@ export function PortionPicker(props: PortionPickerProps) {
               paddingVertical: 3,
             }}
           >
-            <Text style={{ fontSize: 11.5, fontWeight: "700", color: accent.primary, letterSpacing: 0.1 }}>
+            {/* ENG-828 — fill stays the primary hue tint, but the unit label +
+                chevron ink read the AA-safe `primarySolid`: on dark the bare
+                fill #7E5C92 is only ~2.8:1 on its own 10% tint (AA FAIL);
+                primarySolid (#C4ACD0 dark) clears 7.4:1. Twin of web
+                portion-picker `text-primary` → `text-primary-solid`. */}
+            <Text style={{ fontSize: 11.5, fontWeight: "700", color: accent.primarySolid, letterSpacing: 0.1 }}>
               {unitLabel(value)}
             </Text>
-            <Text style={{ fontSize: 10, color: accent.primary, opacity: 0.7, transform: [{ rotate: "90deg" }] }}>›</Text>
+            <Text style={{ fontSize: 10, color: accent.primarySolid, opacity: 0.7, transform: [{ rotate: "90deg" }] }}>›</Text>
           </Pressable>
         </View>
 
@@ -237,7 +242,9 @@ export function PortionPicker(props: PortionPickerProps) {
                     style={{
                       fontSize: 12.5,
                       fontWeight: "600",
-                      color: isActive ? accent.primary : colors.text,
+                      // ENG-828 — active chip ink = AA-safe primarySolid on its
+                      // own tint (twin of web portion-picker chip).
+                      color: isActive ? accent.primarySolid : colors.text,
                     }}
                   >
                     {chip.label}
@@ -328,10 +335,12 @@ function UnitPickerModal(props: {
                   backgroundColor: isActive ? `${accent.primary}1a` : "transparent",
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: isActive ? "700" : "500", color: isActive ? accent.primary : colors.text }}>
+                {/* ENG-828 — selected unit-row ink reads AA-safe primarySolid
+                    on the soft tint (twin of web portion-picker unit list). */}
+                <Text style={{ fontSize: 14, fontWeight: isActive ? "700" : "500", color: isActive ? accent.primarySolid : colors.text }}>
                   {unitLabelFor(u)}
                 </Text>
-                <Text style={{ fontSize: 11.5, color: isActive ? accent.primary : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
+                <Text style={{ fontSize: 11.5, color: isActive ? accent.primarySolid : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
                   {unitMeta(u)}
                 </Text>
               </Pressable>

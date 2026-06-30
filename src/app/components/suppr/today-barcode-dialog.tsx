@@ -530,7 +530,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                                 <span
                                   data-testid={`barcode-confidence-${tier}`}
                                   className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold tracking-wide ${
-                                    tier === "verified" ? "bg-primary/10 text-primary" : ""
+                                    tier === "verified" ? "bg-primary/10 text-primary-solid" : ""
                                   }`}
                                   style={
                                     tier === "verified"

@@ -901,7 +901,7 @@ function DefaultComposition({
             type="button"
             data-testid="log-sheet-loud-barcode-cta"
             onClick={() => barcode.onOpen?.()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary/10 px-4 py-3 text-[15px] font-semibold text-primary hover:bg-primary/15 transition-colors"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary/10 px-4 py-3 text-[15px] font-semibold text-primary-solid hover:bg-primary/15 transition-colors"
           >
             <ScanBarcode width={18} height={18} className="shrink-0" aria-hidden />
             <span>{BARCODE_LOUD_CTA_LABEL}</span>
@@ -943,7 +943,7 @@ function DefaultComposition({
             <button
               type="button"
               data-testid="log-sheet-describe-from-search"
-              className="mx-3 mb-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-left text-[13px] font-semibold text-primary hover:bg-primary/15"
+              className="mx-3 mb-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-left text-[13px] font-semibold text-primary-solid hover:bg-primary/15"
               onClick={() => {
                 setDescribeSeedText(query.trim());
                 setQuery("");

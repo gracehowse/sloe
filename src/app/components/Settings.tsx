@@ -815,7 +815,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   const tierLabels: Record<string, { name: string; color: string }> = {
     free: { name: "Free", color: "bg-muted text-muted-foreground" },
     base: { name: "Free", color: "bg-muted text-muted-foreground" },
-    pro: { name: "Pro", color: "bg-primary/10 text-primary" },
+    pro: { name: "Pro", color: "bg-primary/10 text-primary-solid" },
   };
   const currentTier = tierLabels[userTier] ?? tierLabels.free;
 
@@ -913,7 +913,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               "gracemt…" (seen in sim 2026-06-24). Deliberate divergence. */}
           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide mt-1 ${
             userTier === "pro"
-              ? "bg-primary/10 text-primary"
+              ? "bg-primary/10 text-primary-solid"
               : "bg-muted text-muted-foreground"
           }`}>
             {profileTierLabel} plan
@@ -1662,7 +1662,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                   }}
                   className={`px-4 py-2 rounded-lg border-2 transition-all capitalize ${
                     dietary.includes(diet.id)
-                      ? "border-primary bg-primary/10 text-primary"
+                      ? "border-primary bg-primary/10 text-primary-solid"
                       : "border-border hover:border-primary/30 text-foreground"
                   }`}
                 >

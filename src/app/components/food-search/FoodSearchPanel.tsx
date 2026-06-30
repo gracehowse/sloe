@@ -2003,7 +2003,7 @@ export function FoodSearchPanel({
                 <span
                   data-testid={`food-search-confidence-${tier}`}
                   className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold tracking-wide ${
-                    tier === "verified" ? "bg-primary/10 text-primary" : ""
+                    tier === "verified" ? "bg-primary/10 text-primary-solid" : ""
                   }`}
                   // ENG P5 parity (gap #11): the Estimated chip must NOT reuse
                   // the over-budget `--warning` orange — that exact token paints
@@ -2181,7 +2181,7 @@ export function FoodSearchPanel({
                   })}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                     preview.chosenPortion.label === p.label
-                      ? (isFeatureEnabled("design_system_colours") ? "border-primary bg-primary/15 text-primary" : "border-success bg-success/15 text-success")
+                      ? (isFeatureEnabled("design_system_colours") ? "border-primary bg-primary/15 text-primary-solid" : "border-success bg-success/15 text-success")
                       : "border-border text-muted-foreground hover:border-border/80"
                   }`}
                 >
@@ -2805,7 +2805,7 @@ export function FoodSearchPanel({
                 }}
                 aria-label={`Add "${query}" as a custom food`}
                 data-testid="food-search-no-result-add-custom"
-                className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg border border-primary bg-primary/10 text-sm font-bold text-primary hover:bg-primary/15 transition-colors"
+                className="w-full flex items-center gap-2 justify-center py-2.5 rounded-lg border border-primary bg-primary/10 text-sm font-bold text-primary-solid hover:bg-primary/15 transition-colors"
               >
                 <span aria-hidden="true" className="text-base leading-none">+</span>
                 Add as custom food
@@ -2868,7 +2868,7 @@ export function FoodSearchPanel({
               setCreateOpen(true);
             }}
             aria-label="Create a new custom food"
-            className="mt-3 w-full flex items-center gap-2 justify-center py-3 rounded-lg border border-dashed border-border text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+            className="mt-3 w-full flex items-center gap-2 justify-center py-3 rounded-lg border border-dashed border-border text-sm font-medium text-primary-solid hover:bg-primary/5 transition-colors"
           >
             <span aria-hidden="true" className="text-base leading-none">+</span>
             Create custom food

@@ -604,7 +604,7 @@ export function QuickAddPanel({
                 <button
                   type="button"
                   onClick={() => onLog(row)}
-                  className="size-7 inline-flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20"
+                  className="size-7 inline-flex items-center justify-center rounded-lg bg-primary/10 text-primary-solid hover:bg-primary/20"
                   aria-label={`Log ${row.recipeTitle} to ${activeSlot}`}
                   title={`Log to ${activeSlot}`}
                 >

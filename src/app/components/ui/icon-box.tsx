@@ -21,7 +21,7 @@ const iconBoxVariants = cva(
         xl: "size-14 [&_svg]:size-6",
       },
       tone: {
-        primary: "bg-primary/10 text-primary",
+        primary: "bg-primary/10 text-primary-solid",
         success: "bg-success-soft text-success",
         warning: "bg-warning-soft text-warning-solid",
         destructive: "bg-destructive/10 text-destructive",

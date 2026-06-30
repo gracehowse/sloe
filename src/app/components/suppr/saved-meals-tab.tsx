@@ -161,7 +161,7 @@ export function SavedMealsTab({
               type="button"
               onClick={() => onLog(meal)}
               disabled={pending || summary.itemCount === 0}
-              className={`size-7 inline-flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 ${
+              className={`size-7 inline-flex items-center justify-center rounded-lg bg-primary/10 text-primary-solid hover:bg-primary/20 ${
                 pending ? "opacity-60 cursor-not-allowed" : ""
               }`}
               aria-label={`Log ${meal.name} to ${slotLabel}`}

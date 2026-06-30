@@ -114,7 +114,7 @@ function ManualTargetsCard() {
   return (
     <BridgeCard
       icon={<Calculator className="size-4" />}
-      iconClassName="text-primary bg-primary/15"
+      iconClassName="text-primary-solid bg-primary/15"
       title="I already know my targets"
       body="Paste them in — we'll use these instead of the BMR estimate. You can re-calibrate any time in Settings."
     >

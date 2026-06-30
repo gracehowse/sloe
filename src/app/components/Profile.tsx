@@ -489,7 +489,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
         <span
           className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide ${
             userTier === "pro"
-              ? "bg-primary/15 text-primary"
+              ? "bg-primary/15 text-primary-solid"
               : "bg-muted text-muted-foreground"
           }`}
         >

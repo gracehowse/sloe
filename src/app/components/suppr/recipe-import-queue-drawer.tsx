@@ -62,7 +62,7 @@ export function RecipeImportQueueDrawer({ queue, onOpenRecipe }: Props) {
           <span
             className={cn(
               "flex size-7 items-center justify-center rounded-lg",
-              hasActivity ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+              hasActivity ? "bg-primary/10 text-primary-solid" : "bg-muted text-muted-foreground",
             )}
             aria-hidden
           >

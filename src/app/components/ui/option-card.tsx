@@ -75,7 +75,7 @@ function OptionCard({
                   "rounded-md",
                   compact ? "size-9" : "size-11",
                   selected
-                    ? "bg-primary/15 text-primary"
+                    ? "bg-primary/15 text-primary-solid"
                     : "bg-muted text-muted-foreground",
                 ),
           )}

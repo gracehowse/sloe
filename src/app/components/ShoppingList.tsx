@@ -441,7 +441,7 @@ export const ShoppingList = memo(function ShoppingList({
                         onClick={() => void markGroupAsStaple(group)}
                         aria-label={`Always have ${rowLabel} — hide from future shopping lists`}
                         data-testid={`shopping-row-staple-${group.key}`}
-                        className="shrink-0 size-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="shrink-0 size-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-primary-solid hover:bg-primary/10 transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <Package width={14} height={14} aria-hidden />
                       </button>

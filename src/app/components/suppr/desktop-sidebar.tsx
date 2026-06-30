@@ -622,7 +622,7 @@ function SubTabSidebarItem({
       <span className="flex-1 text-left">{sub.label}</span>
       {badge.show ? (
         <span
-          className={`min-w-[1.25rem] rounded-full bg-primary/15 text-[10px] font-bold text-primary text-center leading-5 ${
+          className={`min-w-[1.25rem] rounded-full bg-primary/15 text-[10px] font-bold text-primary-solid text-center leading-5 ${
             badge.label === "•" ? "px-1.5" : "px-1.5 tabular-nums"
           }`}
           aria-label={badge.label === "•" ? "Has unchecked items" : `${badge.label} unchecked`}

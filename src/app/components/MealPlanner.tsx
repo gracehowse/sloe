@@ -1997,7 +1997,7 @@ export const MealPlanner = memo(function MealPlanner({
                         </p>
                         {portionLabel ? (
                           <span
-                            className="shrink-0 inline-flex items-center rounded-full bg-primary/15 text-primary tabular-nums"
+                            className="shrink-0 inline-flex items-center rounded-full bg-primary/15 text-primary-solid tabular-nums"
                             style={{
                               fontSize: 9,
                               fontWeight: 700,

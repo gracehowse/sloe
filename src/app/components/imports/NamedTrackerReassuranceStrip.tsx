@@ -24,7 +24,7 @@ export function NamedTrackerReassuranceStrip({
           >
             <span
               aria-hidden
-              className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary"
+              className="flex size-5 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary-solid"
             >
               {item.mark}
             </span>

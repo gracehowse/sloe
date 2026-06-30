@@ -966,7 +966,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
             onClick={() => setShowIngredients(!showIngredients)}
             className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
               showIngredients
-                ? "bg-primary/10 text-primary"
+                ? "bg-primary/10 text-primary-solid"
                 : "text-muted-foreground hover:bg-muted/60"
             }`}
           >
@@ -991,7 +991,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${
                 t.done
                   ? "bg-success/15 text-success border border-success/30"
-                  : "bg-primary/10 text-primary border border-primary/25"
+                  : "bg-primary/10 text-primary-solid border border-primary/25"
               }`}
             >
               <span className="tabular-nums">{formatTimer(t.remainingSeconds)}</span>
@@ -1061,7 +1061,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                 <div
                   role="status"
                   aria-label={`Recipe scaled for ${servings} servings`}
-                  className="mb-4 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold tracking-wide"
+                  className="mb-4 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30 text-primary-solid text-xs font-semibold tracking-wide"
                 >
                   Scaled for {servings} serving{servings !== 1 ? "s" : ""}
                 </div>
@@ -1070,7 +1070,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               <div className="mb-6">
                 <span
                   className={`px-4 py-1.5 rounded-full text-sm font-semibold ${
-                    cookV3 ? "bg-white/12 text-white/80" : "bg-primary/10 text-primary"
+                    cookV3 ? "bg-white/12 text-white/80" : "bg-primary/10 text-primary-solid"
                   }`}
                 >
                   Step {currentStep + 1} of {totalSteps}
