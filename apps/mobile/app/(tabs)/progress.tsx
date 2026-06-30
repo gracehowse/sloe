@@ -1840,7 +1840,7 @@ export default function ProgressScreen() {
           );
         })()}
 
-        {/* ENG-953 — calm "Expenditure" trend card (gated on default-OFF `expenditure_trend_card`; parity: web `ExpenditureTrendCard`). */}
+        {/* ENG-953 — calm "Expenditure" trend card (gated on default-ON `expenditure_trend_card`; parity: web `ExpenditureTrendCard`). */}
         <ExpenditureTrendCard enabled={expenditureCardEnabled} adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
 
         {/* PROJECTED WEIGHT (trajectory) card — flag-gated feature kept. */}

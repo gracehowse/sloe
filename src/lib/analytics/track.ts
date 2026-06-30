@@ -339,6 +339,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "reset_plan_confirm_v1",
   // ENG-1260 / B26 — 3-step delete-account sheet (reason + ledger + type DELETE).
   "delete_account_sheet_v1",
+  // ENG-953 — calm "Expenditure" trend card on Progress, under Maintenance.
+  // FLIPPED DEFAULT-ON 2026-06-30 (Grace, "always flag on" for beta-window
+  // growth builds — the solo tester should see her own features, not dark
+  // flags). Off → the card hides and the collapsed "How this works" expandable
+  // stays the live path (kill switch: remove here / PostHog). Web + mobile.
+  "expenditure_trend_card",
 ]);
 
 /**
@@ -367,12 +373,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   Math: `solvePortionToFit` in `@suppr/shared/nutrition/remainingMacros`;
  *   low count-to-weight confidence (gramWeight 0 / estimated tier) →
  *   qualitative fallback, never a fabricated gram number. Web + mobile.
- * - `expenditure_trend_card` (ENG-953) — net-new calm "Expenditure" trend card
- *   on Progress, under the Maintenance card. Reuses `adaptive_tdee` /
- *   `adaptive_tdee_confidence` / `adaptive_tdee_updated_at` (+ `measured_tdee`)
- *   already in screen state — recomputes nothing. Soft-confidence copy
- *   ("burning about ~X kcal/day lately" / "still learning your pattern").
- *   Web + mobile. Copy logic: `src/lib/progress/expenditureTrend.ts`.
+ *
+ * `expenditure_trend_card` (ENG-953) moved to `REDESIGN_DEFAULT_ON` (default-ON)
+ * on 2026-06-30 — see its entry there.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
@@ -380,7 +383,6 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "progress_milestone_celebration_v1",
   "weigh_in_reminder_v1",
   "portion_fit_hint_v1",
-  "expenditure_trend_card",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

@@ -21,10 +21,11 @@ import {
  * comes from the shared `buildExpenditureTrendCopy` helper so web and mobile
  * can never drift.
  *
- * Renders nothing when the flag is off (the screen passes `enabled`, resolved
- * from `expenditure_trend_card`, default-OFF) — flag-off ships ZERO visual
- * change, and the Maintenance card's "How this works" expandable above stays
- * the live path.
+ * The screen passes `enabled`, resolved from `expenditure_trend_card`
+ * (default-ON since 2026-06-30 — Grace's "always flag on" for beta-window
+ * growth builds). On by default; if the flag is removed from
+ * `REDESIGN_DEFAULT_ON` (or PostHog kills it) the card hides and the
+ * Maintenance card's "How this works" expandable above returns.
  *
  * Body-neutral, soft-confidence: "burning about ~X kcal/day lately" when we
  * have a confident read, "still learning your pattern" otherwise. Never a

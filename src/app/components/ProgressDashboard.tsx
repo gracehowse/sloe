@@ -2194,7 +2194,7 @@ function ProgressDashboardContent() {
         );
       })()}
 
-      {/* ENG-953 — calm "Expenditure" trend card (self-gates on default-OFF `expenditure_trend_card`; parity: mobile `ExpenditureTrendCard`). */}
+      {/* ENG-953 — calm "Expenditure" trend card (self-gates on default-ON `expenditure_trend_card`; parity: mobile `ExpenditureTrendCard`). */}
       <ExpenditureTrendCard adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
 
       {/* WEIGHT TRACKING card — RELOCATED to frame position 4 above

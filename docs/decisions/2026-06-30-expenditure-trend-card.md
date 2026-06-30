@@ -14,11 +14,16 @@ Ship a **net-new calm "Expenditure" trend card** on the Progress tab (web +
 mobile), sitting directly under the Maintenance card. It surfaces the energy
 the body is using as a soft, sentence-led read — never a bro-dashboard number.
 
-Gated behind a **new default-OFF flag `expenditure_trend_card`**, registered in
-`KNOWN_DEFAULT_OFF_FLAGS` on **both** `src/lib/analytics/track.ts` and
-`apps/mobile/lib/analytics.ts`. Flag-off ships **zero visual change** — the
-existing collapsed "How this works" expandable under the Maintenance card stays
-the live path in the `else`.
+Gated behind `expenditure_trend_card`, **default-ON** (in `REDESIGN_DEFAULT_ON`
+on **both** `src/lib/analytics/track.ts` and `apps/mobile/lib/analytics.ts`).
+The card renders by default; the `else` (collapsed "How this works" expandable
+under the Maintenance card) is the kill switch — removing the flag from the
+default-on set, or a PostHog kill, returns it.
+
+> **Flipped default-ON 2026-06-30** (Grace, "always flag on" for beta-window
+> growth builds — the solo tester should see her own features, not dark flags).
+> Originally shipped default-OFF; the flip is a one-line move between the two
+> flag sets on each platform, with no behaviour change to the card itself.
 
 ### Reuses data already in state — recomputes nothing
 
@@ -79,11 +84,12 @@ softness without crowding the Maintenance card's existing derivation chain.
 
 ## Validation status
 
-Flag-off is mergeable headless (zero visual change). The **flag-ON pixels have
-NOT yet been visually verified** in the iOS simulator or the web app — that
-glance must happen before the flag ramps in PostHog. Headless gates
-(typecheck / vitest / mobile typecheck / mobile vitest / screen-budget) are
-green.
+Default-ON since 2026-06-30. **Web pixels visually verified** with the card live
+on the Progress dashboard (driven in `web-drive`, card present + legible). **Mobile
+pixels** rely on Grace's on-device / TestFlight check (the iOS-sim glance is the
+gated path) — the card is a by-construction mirror of the web component sharing
+one copy helper, and the mobile build is green on typecheck + vitest. Headless
+gates (typecheck / vitest / mobile typecheck / mobile vitest / screen-budget) green.
 
 ## Files
 
