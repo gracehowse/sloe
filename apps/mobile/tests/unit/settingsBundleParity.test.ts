@@ -141,7 +141,17 @@ describe("SettingsBundleContent — parity contract", () => {
     // gate-2 pantry, …) doesn't require hand-bumping a magic number. Still
     // catches real drift: an orphan <Modal> with no open-state, or a
     // set<X>(Picker|Modal|Confirm)Open with no matching <Modal>.
-    const modalCount = (bundle.match(/<Modal\b/g) ?? []).length;
+    //
+    // ENG-955: the weekly-recap picker's <Modal> was extracted into the
+    // <WeeklyRecapPushPicker> child component (to fit the screen budget when
+    // the weigh-in reminder row landed). The bundle still owns its open-state
+    // setter and mounts the child, so an extracted picker counts toward the
+    // modal total via its mounted component tag, not an inline <Modal>.
+    const inlineModalCount = (bundle.match(/<Modal\b/g) ?? []).length;
+    const extractedPickerCount = (
+      bundle.match(/<WeeklyRecapPushPicker\b/g) ?? []
+    ).length;
+    const modalCount = inlineModalCount + extractedPickerCount;
     const modalSetters = new Set(
       bundle.match(/set[A-Za-z]+(?:Picker|Modal|Confirm)Open\b/g) ?? [],
     );

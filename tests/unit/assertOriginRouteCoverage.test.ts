@@ -10,6 +10,9 @@ const EXEMPT_POST_ROUTES = new Set([
   "app/api/stripe/webhook/route.ts",
   "app/api/revenuecat/webhook/route.ts",
   "app/api/push/weekly-recap/route.ts",
+  // ENG-955 — server-to-server cron, X-Cron-Secret auth (not cookie-auth /
+  // browser-facing), mirrors the weekly-recap exemption above.
+  "app/api/push/weigh-in-reminder/route.ts",
 ]);
 
 function collectRouteFiles(dir: string, acc: string[] = []): string[] {

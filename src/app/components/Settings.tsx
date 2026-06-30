@@ -49,6 +49,8 @@ import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { useSettingsDeleteAccountLayer } from "./settings/useSettingsDeleteAccountLayer";
 import { SettingsDialogs } from "./settings/SettingsDialogs";
+import { WeighInReminderControl } from "./settings/WeighInReminderControl";
+import { WeeklyRecapToggle } from "./settings/WeeklyRecapToggle";
 import { SettingsTwoPaneShell, type SettingsPaneSection } from "./settings/SettingsTwoPaneShell";
 import { SupprButton } from "./suppr/suppr-button";
 import {
@@ -1791,59 +1793,19 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
                 </div>
               );
             })}
-          {/* Weekly recap push (Batch 4.11 toggle — H6 audit fix, 2026-04-18).
-            * Controls `profiles.weekly_recap_push_enabled`. On mobile the
-            * Progress-visit scheduler reads the same column and cancels /
-            * reinstalls the local WEEKLY push accordingly. Web has no push
-            * yet so the toggle only controls the mobile behaviour — still
-            * surfaced on web so the user can opt out from any device. */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <label
-                htmlFor="weekly-recap-push-toggle"
-                className="block text-foreground cursor-pointer"
-              >
-                Weekly recap
-              </label>
-              <p className="text-xs text-muted-foreground mt-1">
-                {weekStartDay === "monday"
-                  ? "Sunday 18:00 (respects your week start)."
-                  : "Saturday 18:00 (respects your week start)."}
-              </p>
-            </div>
-            <Switch
-              id="weekly-recap-push-toggle"
-              aria-label="Weekly recap push notifications"
-              checked={weeklyRecapPushEnabled}
-              onCheckedChange={(next) => {
-                const previous = weeklyRecapPushEnabled;
-                if (previous === next) return;
-                setWeeklyRecapPushEnabled(next);
-                void (async () => {
-                  const { data: session } = await supabase.auth.getSession();
-                  const uid = session.session?.user.id;
-                  if (!uid) {
-                    // No session — revert and surface the problem.
-                    setWeeklyRecapPushEnabled(previous);
-                    toast.error("Sign in to change this preference.");
-                    return;
-                  }
-                  const { error } = await supabase
-                    .from("profiles")
-                    .update({ weekly_recap_push_enabled: next })
-                    .eq("id", uid);
-                  if (error) {
-                    setWeeklyRecapPushEnabled(previous);
-                    toast.error("Failed to save preference");
-                    return;
-                  }
-                  track(AnalyticsEvents.weekly_recap_push_enabled_toggled, {
-                    enabled: next,
-                  });
-                })();
-              }}
-            />
-          </div>
+          {/* Weekly recap push toggle — extracted to WeeklyRecapToggle
+              (ENG-955) so the new weigh-in reminder control fits the screen
+              budget. Controls `profiles.weekly_recap_push_enabled`; behaviour
+              + testIDs unchanged. */}
+          <WeeklyRecapToggle
+            enabled={weeklyRecapPushEnabled}
+            setEnabled={setWeeklyRecapPushEnabled}
+            weekStartDay={weekStartDay}
+          />
+          {/* ENG-955 — gentle, opt-in weigh-in reminder (default-OFF flag
+              `weigh_in_reminder_v1`; renders null until ramp). Mobile parity:
+              WeighInReminderRow. Self-contained to respect the screen budget. */}
+          <WeighInReminderControl />
         </div>
       </SupprCard>
   );

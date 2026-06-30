@@ -488,11 +488,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   trend). Web + mobile.
  * - `progress_milestone_celebration_v1` (ENG-952) — quiet two-tier milestone
  *   celebration crossing the 10 Happy-Scale-style milestones. Web + mobile.
+ * - `weigh_in_reminder_v1` (ENG-955) — gentle, opt-in weekly weigh-in reminder
+ *   push + Settings toggle + cadence picker. Gates the whole feature surface;
+ *   the cron (`/api/push/weigh-in-reminder`) only nudges users who toggled it
+ *   ON, and the toggle UI only renders when this flag is enabled. Web + mobile.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
   "progress_plateau_insight_v1",
   "progress_milestone_celebration_v1",
+  "weigh_in_reminder_v1",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

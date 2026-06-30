@@ -6,6 +6,10 @@
       "schedule": "0 23 * * *"
     },
     {
+      "path": "/api/push/weigh-in-reminder",
+      "schedule": "0 * * * *"
+    },
+    {
       "path": "/api/cron/supabase-advisor-check",
       "schedule": "0 6 * * *"
     }
