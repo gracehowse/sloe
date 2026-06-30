@@ -20,8 +20,9 @@ the UI:
 
 1. **Opt-in only.** Nobody gets a reminder unless they toggled it ON in
    Settings. The whole feature (cron behaviour + the toggle UI) is gated
-   behind the default-OFF `weigh_in_reminder_v1` flag, so nothing ships until
-   the ramp.
+   behind the `weigh_in_reminder_v1` flag (default-ON since 2026-06-30,
+   ENG-1279 "always flag on"), so the Settings toggle surfaces by default —
+   reminders still only fire for users who opted in.
 2. **Skip if already logged this period.** If the user already weighed in
    during the current 7-day period, the reminder is suppressed — a nudge never
    lands on top of a fresh weigh-in.
@@ -70,9 +71,9 @@ as a rule.
 
 ## Open follow-ups
 
-- The Settings toggle UI still needs SIM (mobile) + web visual verification
-  with `weigh_in_reminder_v1` forced ON before the flag ramps — flag-off ships
-  no visual change, so this lands as a SIM follow-on, not a blocker.
+- The Settings toggle UI is now **default-ON** (2026-06-30, ENG-1279). Web
+  verified; the mobile Settings toggle still wants a SIM / on-device confirm
+  (Grace) — parity is by-construction, so this is a confirm, not a blocker.
 - At ramp scale the opt-in filter could move from an in-memory gate to a
   generated boolean column + `.eq` filter; for the beta opt-in cohort the
   in-memory gate over a non-null `notification_prefs` is correct and cheap.

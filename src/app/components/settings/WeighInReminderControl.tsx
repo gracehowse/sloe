@@ -21,8 +21,8 @@ import {
  *
  * Self-contained: owns its state + persistence so it can mount inside the
  * Settings Notifications card without growing that file's pinned screen
- * budget. Gated by the default-OFF `weigh_in_reminder_v1` flag — renders
- * `null` until the ramp, so nothing ships visually before SIM/web sign-off.
+ * budget. Gated by `weigh_in_reminder_v1` (default-ON since 2026-06-30,
+ * ENG-1279) — renders the control by default; the flag is the kill switch.
  *
  * Persists to the freeform `profiles.notification_prefs` JSONB under the
  * `weighInReminder` key (`{ enabled, weekday, hour }`); the eligibility +

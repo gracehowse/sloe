@@ -2311,8 +2311,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }
           onPress={() => setWeeklyRecapPushPickerOpen(true)}
         />
-        {/* ENG-955 — gentle, opt-in weigh-in reminder (default-OFF flag
-            `weigh_in_reminder_v1`; renders null until ramp). Self-contained
+        {/* ENG-955 — gentle, opt-in weigh-in reminder (`weigh_in_reminder_v1`,
+            default-ON since 2026-06-30 ENG-1279). Self-contained
             so the picker doesn't grow this file's pinned screen budget. */}
         <WeighInReminderRow userId={userId} />
       </SettingsCard>

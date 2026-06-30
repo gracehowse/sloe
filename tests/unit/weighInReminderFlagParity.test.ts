@@ -1,11 +1,12 @@
 /**
- * ENG-955 — `KNOWN_DEFAULT_OFF_FLAGS` web ↔ mobile parity, and registration
- * of the `weigh_in_reminder_v1` gate on BOTH platforms.
- *
- * The two SSOT lists in `src/lib/analytics/track.ts` and
- * `apps/mobile/lib/analytics.ts` must stay in sync (mirror of the
- * REDESIGN_DEFAULT_ON parity test). A default-OFF flag missing from one side
- * would let the gated surface ship blind on that platform.
+ * ENG-1279 "always flag on" — the beta-window growth flags flipped DEFAULT-ON
+ * (2026-06-30, Grace): `weigh_in_reminder_v1` (ENG-955), `portion_fit_hint_v1`
+ * (ENG-854), `progress_plateau_insight_v1` (ENG-954). Each must be registered
+ * in `REDESIGN_DEFAULT_ON` on BOTH `src/lib/analytics/track.ts` and
+ * `apps/mobile/lib/analytics.ts` — a flag on one side only would render on one
+ * platform and stay dark on the other. None may also appear in
+ * `KNOWN_DEFAULT_OFF_FLAGS` (a flag belongs to exactly one default set), and
+ * the two default-OFF lists must stay identical (web ↔ mobile SSOT parity).
  */
 
 import { readFileSync } from "node:fs";
@@ -19,37 +20,47 @@ const MOBILE_ANALYTICS = readFileSync(
   "utf8",
 );
 
-/** Parse `"flag_name"` entries from a `KNOWN_DEFAULT_OFF_FLAGS = [...] as const` block. */
-function parseDefaultOff(src: string): Set<string> {
-  const start = src.indexOf("KNOWN_DEFAULT_OFF_FLAGS = [");
-  expect(start, "KNOWN_DEFAULT_OFF_FLAGS block").toBeGreaterThanOrEqual(0);
-  const open = src.indexOf("[", start);
-  const close = src.indexOf("]", open);
-  expect(close).toBeGreaterThan(open);
-  const body = src.slice(open + 1, close);
+/** Collect `"flag"` tokens from the block between `marker` and the first `close`. */
+function parseBlock(src: string, marker: string, close: string): Set<string> {
+  const start = src.indexOf(marker);
+  expect(start, `${marker} block`).toBeGreaterThanOrEqual(0);
+  const end = src.indexOf(close, start);
+  expect(end, `${marker} close`).toBeGreaterThan(start);
   const flags = new Set<string>();
-  for (const m of body.matchAll(/"([a-z0-9_-]+)"/g)) {
+  for (const m of src.slice(start + marker.length, end).matchAll(/"([a-z0-9_-]+)"/g)) {
     flags.add(m[1]);
   }
   return flags;
 }
 
-describe("KNOWN_DEFAULT_OFF_FLAGS web ↔ mobile parity (ENG-955)", () => {
-  const web = parseDefaultOff(WEB_TRACK);
-  const mobile = parseDefaultOff(MOBILE_ANALYTICS);
+const parseOn = (src: string) =>
+  parseBlock(src, "REDESIGN_DEFAULT_ON = new Set<string>([", "]);");
+const parseOff = (src: string) =>
+  parseBlock(src, "KNOWN_DEFAULT_OFF_FLAGS = [", "] as const;");
 
-  it("the two lists are identical", () => {
-    expect([...web].sort()).toEqual([...mobile].sort());
+const FLIPPED_ON = [
+  "weigh_in_reminder_v1",
+  "portion_fit_hint_v1",
+  "progress_plateau_insight_v1",
+] as const;
+
+describe('growth flags flipped DEFAULT-ON ("always flag on", ENG-1279)', () => {
+  const webOn = parseOn(WEB_TRACK);
+  const mobileOn = parseOn(MOBILE_ANALYTICS);
+  const webOff = parseOff(WEB_TRACK);
+  const mobileOff = parseOff(MOBILE_ANALYTICS);
+
+  it.each(FLIPPED_ON)("%s is registered DEFAULT-ON on both platforms", (flag) => {
+    expect(webOn.has(flag), `web REDESIGN_DEFAULT_ON: ${flag}`).toBe(true);
+    expect(mobileOn.has(flag), `mobile REDESIGN_DEFAULT_ON: ${flag}`).toBe(true);
   });
 
-  it("registers weigh_in_reminder_v1 on BOTH platforms", () => {
-    expect(web.has("weigh_in_reminder_v1"), "web").toBe(true);
-    expect(mobile.has("weigh_in_reminder_v1"), "mobile").toBe(true);
+  it.each(FLIPPED_ON)("%s is NOT in either default-OFF list", (flag) => {
+    expect(webOff.has(flag), `web KNOWN_DEFAULT_OFF_FLAGS: ${flag}`).toBe(false);
+    expect(mobileOff.has(flag), `mobile KNOWN_DEFAULT_OFF_FLAGS: ${flag}`).toBe(false);
   });
 
-  // ENG-854 — portion-fit hint gate must be registered default-OFF on both.
-  it("registers portion_fit_hint_v1 on BOTH platforms (ENG-854)", () => {
-    expect(web.has("portion_fit_hint_v1"), "web").toBe(true);
-    expect(mobile.has("portion_fit_hint_v1"), "mobile").toBe(true);
+  it("the two default-OFF lists remain identical (web ↔ mobile)", () => {
+    expect([...webOff].sort()).toEqual([...mobileOff].sort());
   });
 });

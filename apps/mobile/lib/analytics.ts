@@ -471,6 +471,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // growth builds). Off → the card hides and the Maintenance "How this works"
   // expandable stays the live path (kill switch: remove here / PostHog). M+W.
   "expenditure_trend_card",
+  // ENG-1279 "always flag on" batch (2026-06-30, Grace) — beta-window growth
+  // builds flipped default-ON so the solo tester sees them; each keeps its
+  // legacy/empty else as the kill switch (remove here / PostHog). Web + mobile.
+  "progress_plateau_insight_v1", // ENG-954 — calm plateau insight line
+  "weigh_in_reminder_v1",        // ENG-955 — opt-in weigh-in reminder Settings surface
+  "portion_fit_hint_v1",         // ENG-854 — portion-fit hint in food-search preview
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
@@ -488,31 +494,17 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   ("AI logging — available with Pro.") under the locked Voice / Snap chip
  *   in the LogSheet `InputModeRow`, free-tier, first ~3 sessions. Gate logic:
  *   `@suppr/shared/today/aiMethodTooltip`.
- * - `progress_plateau_insight_v1` (ENG-954) — calm, de-shaming plateau insight
- *   line on the weight chart (flat recent stretch + still-toward-goal long
- *   trend). Web + mobile.
  * - `progress_milestone_celebration_v1` (ENG-952) — quiet two-tier milestone
  *   celebration crossing the 10 Happy-Scale-style milestones. Web + mobile.
- * - `weigh_in_reminder_v1` (ENG-955) — gentle, opt-in weekly weigh-in reminder
- *   push + Settings toggle + cadence picker. Gates the whole feature surface;
- *   the cron (`/api/push/weigh-in-reminder`) only nudges users who toggled it
- *   ON, and the toggle UI only renders when this flag is enabled. Web + mobile.
- * - `portion_fit_hint_v1` (ENG-854) — body-neutral "how much of THIS fits
- *   what's left today" line in the food-search preview's `fitHint` block
- *   ("a 220 g serving fits your remaining 540 kcal" / "limited by carbs").
- *   Math: `solvePortionToFit` in `@suppr/nutrition-core/remainingMacros`;
- *   low count-to-weight confidence (gramWeight 0 / estimated tier) →
- *   qualitative fallback, never a fabricated gram number. Web + mobile.
  *
- * `expenditure_trend_card` (ENG-953) moved to `REDESIGN_DEFAULT_ON` (default-ON)
- * on 2026-06-30 — see its entry there.
+ * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
+ * `expenditure_trend_card` (ENG-953, 2026-06-30); and the "always flag on"
+ * batch (ENG-1279, 2026-06-30): `progress_plateau_insight_v1` (ENG-954),
+ * `weigh_in_reminder_v1` (ENG-955), `portion_fit_hint_v1` (ENG-854).
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
-  "progress_plateau_insight_v1",
   "progress_milestone_celebration_v1",
-  "weigh_in_reminder_v1",
-  "portion_fit_hint_v1",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

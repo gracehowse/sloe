@@ -36,7 +36,7 @@ Canonical implementation paths live under `app/api/**/route.ts`. Detail for heav
 | `/api/user-foods` | GET, POST | Bearer | Community custom foods search / submit |
 | `/api/user-foods/vote` | POST | Bearer | Vote on pending food |
 | `/api/push/weekly-recap` | POST | `X-Cron-Secret` | Cron fan-out to Expo push (mobile) + Web Push (browser) |
-| `/api/push/weigh-in-reminder` | POST | `X-Cron-Secret` | ENG-955 hourly cron — gentle, opt-in weigh-in reminder (anti-nag); default-OFF `weigh_in_reminder_v1` |
+| `/api/push/weigh-in-reminder` | POST | `X-Cron-Secret` | ENG-955 hourly cron — gentle, opt-in weigh-in reminder (anti-nag); default-ON `weigh_in_reminder_v1` (ENG-1279) |
 
 ## Recipe Import
 
@@ -385,7 +385,7 @@ Mirrors the weekly-recap delivery rail (same `X-Cron-Secret` auth, same
 service-role select, same Expo + Web Push fan-out, same DeviceNotRegistered
 / dead-endpoint cleanup, same 5000-row cap, same structured log line) but
 fires a calm, trend-framed nudge instead of the recap. **Gated behind the
-default-OFF `weigh_in_reminder_v1` flag** — the cron only ever pushes users
+`weigh_in_reminder_v1` flag (default-ON since 2026-06-30, ENG-1279)** — the cron only ever pushes users
 who toggled the feature ON in Settings, and the toggle UI only renders when
 the flag is enabled.
 

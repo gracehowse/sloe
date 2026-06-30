@@ -26,9 +26,9 @@ import {
  * Self-contained surface (owns state + persistence) so it can mount in the
  * Reminders card of `SettingsBundleContent` without growing that legacy file's
  * pinned screen budget; the modal layout lives in `WeighInReminderPicker`.
- * Gated by the default-OFF `weigh_in_reminder_v1` flag — returns `null` when
- * the flag is off, so nothing ships visually until the ramp (see the
- * SIM-verification note in the ENG-955 report).
+ * Gated by `weigh_in_reminder_v1` (default-ON since 2026-06-30, ENG-1279) —
+ * renders the row by default; the flag is the kill switch (on-device confirm
+ * pending per the ENG-955 report).
  *
  * Persists to the freeform `profiles.notification_prefs` JSONB under the
  * `weighInReminder` key (`{ enabled, weekday, hour }`) — no schema column for
