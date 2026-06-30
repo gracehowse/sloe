@@ -126,7 +126,9 @@ Pinned by `tests/unit/recipeImportSurface.test.tsx` (web behavioural),
 ```
 User opens Import screen
   → App checks: router params → deep link → clipboard (3 retry attempts at 450ms/600ms/1100ms)
-  → If URL found, auto-start import
+  → If ONE URL found, auto-start import
+  → If MORE than one URL found (paste/share blob), enqueue one job per link
+    (ENG-981, see "Multi-link URL import" below)
   → If no URL, show manual paste input
 ```
 
@@ -229,6 +231,41 @@ dedupe).
 Distinct from the server-side `recipe_import_pipeline_stage` (which traces
 extraction internals for nutrition-debug) — the v2 events measure the
 front-end *experience* (time-at-stage, cancel points, batch size).
+
+#### Multi-link URL import (`import-progress-v2`, ENG-981, 2026-06-30)
+
+The URL-share path mirrors the bulk-photo fan-out. When a paste / share /
+deep link / clipboard blob resolves to **more than one** link, each link
+enqueues its own `url` job into the same scheduler — one drawer row + live
+progress + cancel/retry per link, links importing concurrently across slots,
+and the **most-recently-finished** populating the review form (last-wins,
+identical to the single-URL and bulk-photo paths). A **single** link (or the
+queue UX OFF) takes the unchanged single-URL path.
+
+- **Mobile** (`apps/mobile/app/import-shared.tsx`): the manual-paste submit,
+  clipboard auto-detect, router/share params, and warm deep links all resolve
+  via the multi-aware resolvers and route through `runImportMany`.
+- **Web** (`src/app/components/RecipeUpload.tsx`): `runImportFromUrl` extracts
+  every link from the URL input and fans out one job per link (single link
+  keeps the caption-preview + raw-fallback behaviour).
+
+Shared, drift-proof pieces (`src/lib/recipes/urlImportJob.ts`, imported by
+mobile via `@suppr/shared/recipes/urlImportJob`):
+- `extractAllHttpUrls(text)` — pulls EVERY link out of a blob: global
+  `http(s)` match + the scheme-less known-host forms the mobile share path
+  recognises (`instagram.com/...`, `tiktok.com/...`, etc.), normalised to
+  `https://`, trailing punctuation stripped, de-duped (first-seen order), and
+  **capped at `BULK_PHOTO_IMPORT_MAX` (12)** so one paste can't fan out an
+  unbounded number of paid imports.
+- `buildUrlImportJob(url, { fetchRecipe, land, titleOf })` — the one-URL-per-job
+  `EnqueueSpec` (id, host seed title, `extracting → fetch → organizing →
+  setTitle → land` run) shared verbatim by both platforms; deterministic id via
+  `importJobIdForUrl` keeps a repeated link a scheduler no-op.
+
+No feature flag — multi-link extends an existing affordance whose queue UI
+already exists (per the visual/structural-change flag carve-out: "extends an
+existing affordance"). Pinned by `tests/unit/urlImportJob.test.ts` (web) and
+`apps/mobile/tests/unit/resolveImportUrl.test.ts` (mobile).
 
 ### Step 3: Review & Tag (NEW)
 ```
