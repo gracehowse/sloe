@@ -81,7 +81,6 @@ export * from "../nutrition/mergeJournalByDay";
 export * from "../nutrition/microNutrientDisplay";
 export * from "../nutrition/microPlausibility";
 export * from "../nutrition/milestone30Day";
-export * from "../nutrition/missedYesterday";
 export * from "../nutrition/netCarbs";
 export * from "../nutrition/netEnergyBalance";
 export * from "../nutrition/northStarSuggestion";

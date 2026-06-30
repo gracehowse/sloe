@@ -61,10 +61,6 @@ import {
 } from "../../lib/nutrition/streakFreeze.ts";
 import { didStreakReset } from "../../lib/nutrition/streakReset.ts";
 import {
-  MISSED_YESTERDAY_COPY,
-  shouldShowMissedYesterday,
-} from "../../lib/nutrition/missedYesterday.ts";
-import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
 } from "../../lib/nutrition/weekSummaryWindow.ts";
@@ -714,29 +710,6 @@ export const NutritionTracker = memo(function NutritionTracker({
       setActivityBudgetDiscoverDismissed(false);
     }
   }, []);
-  /**
-   * DC12 (2026-05-14, premium-bar audit) — web parity for the
-   * mobile "missed-day" supportive banner. Renders only when the
-   * user is on today's view, has prior history, logged nothing
-   * yesterday, and it's not the first day of a fresh week (the
-   * weekly-checkin nudge already covers Mon/Sun). Same voice rule
-   * as mobile (no CTA, calm sub-line, no destructive tone).
-   * Mobile companion lives in `apps/mobile/app/(tabs)/index.tsx`.
-   */
-  const missedYesterdayVisible = useMemo(() => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yKey = dateKeyFromDate(yesterday);
-    const mealsYesterday = nutritionByDay[yKey] ?? [];
-    return shouldShowMissedYesterday({
-      isToday: selectedDateKey === todayKey(),
-      hasAnyJournalHistory: loggedDays.size > 0,
-      mealsYesterdayCount: mealsYesterday.length,
-      mealsTodayCount: mealsForSelectedDate.length,
-      todayDayOfWeek: new Date().getDay(),
-      weekStartDay,
-    });
-  }, [selectedDateKey, loggedDays, nutritionByDay, weekStartDay, mealsForSelectedDate.length]);
   // Batch 4.11 — streak freeze state. Ledger is loaded from `profiles`
   // alongside `week_start_day`; budget defaults to 3.
   const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
@@ -2752,11 +2725,6 @@ export const NutritionTracker = memo(function NutritionTracker({
         onStreakPress={weeklyRecap.trigger}
       />
       {weeklyRecap.dialog}
-      {missedYesterdayVisible && (
-        <p data-testid="today-missed-yesterday-copy" className="mt-0.5 px-3 text-center text-xs text-muted-foreground">
-          {MISSED_YESTERDAY_COPY}
-        </p>
-      )}
 
       {viewMode === "week" && (
         <TodayWeekView
