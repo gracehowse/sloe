@@ -29,7 +29,7 @@ export function BillingUnavailableFallback() {
           Manage your billing by emailing{" "}
           <a
             href="mailto:support@getsloe.com"
-            className="text-violet-600 dark:text-violet-400 underline underline-offset-2"
+            className="text-primary underline underline-offset-2"
           >
             support@getsloe.com
           </a>
@@ -44,7 +44,7 @@ export function BillingUnavailableFallback() {
         <p className="mt-4 text-sm">
           <a
             href="/terms#refunds"
-            className="text-violet-600 dark:text-violet-400 underline underline-offset-2"
+            className="text-primary underline underline-offset-2"
           >
             7-day refund policy
           </a>
