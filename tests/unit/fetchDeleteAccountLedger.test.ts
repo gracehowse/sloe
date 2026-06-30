@@ -10,6 +10,14 @@ import { fetchDeleteAccountLedger } from "@/lib/settings/fetchDeleteAccountLedge
  * WHOLE ledger to null — so the live sheet showed an empty "nothing will be
  * removed" list on an irreversible flow.
  *
+ * ENG-1263 — the red-✕ "removed" recipes row must count ONLY what is hard-
+ * deleted: saved recipes (`saves`) + UNPUBLISHED authored drafts
+ * (`recipes WHERE author_id = user AND published = false`). Published authored
+ * recipes survive de-attributed (`author_id = null`) and must NOT be counted
+ * here — bundling them over-promised deletion. So the recipes query MUST carry
+ * BOTH `.eq("author_id", user)` AND `.eq("published", false)`; a revert that
+ * drops the published filter would over-count and these tests fail.
+ *
  * These tests pin each query against a fake client whose schema mirrors the
  * generated `database.types.ts`: querying a NON-EXISTENT column raises a
  * Postgres-shaped error (code 42703), and filtering by the WRONG existing
@@ -55,6 +63,14 @@ const TABLE_SCHEMA: Record<
 
 type Seed = {
   counts: Record<string, number>; // table -> exact row count for USER_ID
+  // Authored recipes split by `published` (ENG-1263). The ledger must count
+  // ONLY unpublished drafts; published authored recipes survive de-attributed.
+  // `counts.recipes`, when present, is the UNPUBLISHED-draft count the
+  // author_id+published=false query should resolve to. `publishedRecipes` is
+  // the count the fake would return if the published filter were dropped — set
+  // it > 0 to prove the published filter is actually applied (a revert that
+  // dropped `.eq("published", false)` would surface this larger number).
+  publishedRecipes?: number;
   weightKgByDay: Record<string, number> | null;
   householdId: string | null;
 };
@@ -80,8 +96,11 @@ function makeFakeClient(seed: Seed) {
     const schema = TABLE_SCHEMA[table];
     let selectColumns: string[] = [];
     let head = false;
-    let filterColumn: string | null = null;
-    let filterValue: unknown = null;
+    // Chained `.eq()` filters accumulate (PostgREST ANDs them together).
+    const filters: Array<{ column: string; value: unknown }> = [];
+
+    const filterFor = (column: string): { value: unknown } | undefined =>
+      filters.find((f) => f.column === column);
 
     // Any referenced column not in the table's schema → unknown-column error,
     // surfaced on the resolved query (PostgREST behaviour).
@@ -90,19 +109,31 @@ function makeFakeClient(seed: Seed) {
       for (const col of selectColumns) {
         if (!schema.columns.has(col)) return unknownColumnError(table, col);
       }
-      if (filterColumn && !schema.columns.has(filterColumn)) {
-        return unknownColumnError(table, filterColumn);
+      for (const f of filters) {
+        if (!schema.columns.has(f.column)) return unknownColumnError(table, f.column);
       }
       return null;
     };
 
     const rowCountForFilter = (): number => {
       if (!schema) return 0;
-      // Only the owner column, matched to USER_ID, returns the seeded count.
-      if (filterColumn === schema.ownerColumn && filterValue === USER_ID) {
-        return seed.counts[table] ?? 0;
+      const owner = filterFor(schema.ownerColumn);
+      // The owner column must be matched to USER_ID to return any seeded rows.
+      if (!owner || owner.value !== USER_ID) return 0;
+
+      // recipes: the ledger counts UNPUBLISHED authored drafts only (ENG-1263).
+      // Honour the `published` filter — only `published = false` returns the
+      // seeded draft count; a query that DROPPED the published filter would
+      // (incorrectly) return drafts + published, surfacing `publishedRecipes`.
+      if (table === "recipes") {
+        const published = filterFor("published");
+        const drafts = seed.counts.recipes ?? 0;
+        const publishedCount = seed.publishedRecipes ?? 0;
+        if (!published) return drafts + publishedCount; // no published filter → over-counts
+        return published.value === false ? drafts : publishedCount;
       }
-      return 0;
+
+      return seed.counts[table] ?? 0;
     };
 
     const resolveCount = () => {
@@ -118,9 +149,8 @@ function makeFakeClient(seed: Seed) {
         return api;
       },
       eq(column: string, value: unknown) {
-        filterColumn = column;
-        filterValue = value;
-        calls.push({ table, filterColumn });
+        filters.push({ column, value });
+        calls.push({ table, filterColumn: column });
         // Count queries (head:true) resolve on `eq`; single-row reads chain to
         // `.maybeSingle()` instead, so only resolve here when a count was asked.
         return api;
@@ -128,7 +158,8 @@ function makeFakeClient(seed: Seed) {
       maybeSingle() {
         const error = columnError();
         if (error) return Promise.resolve({ data: null, error });
-        if (filterColumn !== schema?.ownerColumn || filterValue !== USER_ID) {
+        const owner = filterFor(schema?.ownerColumn ?? "");
+        if (!owner || owner.value !== USER_ID) {
           return Promise.resolve({ data: null, error: null });
         }
         return Promise.resolve({
@@ -169,10 +200,11 @@ describe("fetchDeleteAccountLedger — owner columns (ENG-1270)", () => {
     const { client } = makeFakeClient({
       counts: {
         nutrition_entries: 128,
-        recipes: 7, // authored
-        saves: 5, // saved
+        recipes: 7, // unpublished authored DRAFTS (hard-deleted)
+        saves: 5, // saved (hard-deleted)
         household_members: 1,
       },
+      publishedRecipes: 11, // published authored recipes — survive, NOT counted
       weightKgByDay: { "2026-06-01": 70, "2026-06-02": 69.8, "2026-06-03": 69.6 },
       householdId: "household-1",
     });
@@ -182,8 +214,11 @@ describe("fetchDeleteAccountLedger — owner columns (ENG-1270)", () => {
 
     // Diary: nutrition_entries.user_id
     expect(byId.diary).toBe("128 diary entries");
-    // Recipes: authored (recipes.author_id = 7) + saved (saves.user_id = 5) = 12
-    expect(byId.recipes).toBe("12 saved & created recipes");
+    // Recipes REMOVED: unpublished drafts (recipes.author_id + published=false
+    // = 7) + saved (saves.user_id = 5) = 12. The 11 PUBLISHED authored recipes
+    // are de-attributed, not deleted → excluded. If the published filter were
+    // dropped, the count would (wrongly) be 7 + 11 + 5 = 23.
+    expect(byId.recipes).toBe("12 saved recipes & drafts");
     // Weight: profiles.weight_kg_by_day has 3 keys
     expect(byId.weight).toBe("3 days of weight history");
     // Household: membership row + profile household_id
@@ -203,11 +238,32 @@ describe("fetchDeleteAccountLedger — owner columns (ENG-1270)", () => {
     const rows = await fetchDeleteAccountLedger(client, USER_ID);
     const recipesRow = rows.find((r) => r.id === "recipes");
 
-    // 9 authored + 0 saved = 9. If the filter regressed to `user_id`, the fake
+    // 9 drafts + 0 saved = 9. If the filter regressed to `user_id`, the fake
     // would raise 42703 → count null → "9" would never appear.
-    expect(recipesRow?.label).toBe("9 saved & created recipes");
+    expect(recipesRow?.label).toBe("9 saved recipes & drafts");
     expect(calls).toContainEqual({ table: "recipes", filterColumn: "author_id" });
     expect(calls).not.toContainEqual({ table: "recipes", filterColumn: "user_id" });
+  });
+
+  it("EXCLUDES published authored recipes from the removed count (ENG-1263)", async () => {
+    // The user has only published authored recipes (no drafts) + a couple of
+    // saves. Published recipes survive de-attributed, so the removed count must
+    // be the saves alone — NOT saves + published.
+    const { client, calls } = makeFakeClient({
+      counts: { nutrition_entries: 0, recipes: 0, saves: 2, household_members: 0 },
+      publishedRecipes: 40, // many published recipes — none should be counted
+      weightKgByDay: {},
+      householdId: null,
+    });
+
+    const rows = await fetchDeleteAccountLedger(client, USER_ID);
+    const recipesRow = rows.find((r) => r.id === "recipes");
+
+    // 0 drafts + 2 saved = 2. A revert that dropped `.eq("published", false)`
+    // would surface 0 + 40 + 2 = 42 and this assertion would fail.
+    expect(recipesRow?.label).toBe("2 saved recipes & drafts");
+    // The recipes query MUST carry the published filter.
+    expect(calls).toContainEqual({ table: "recipes", filterColumn: "published" });
   });
 
   it("reads weight history from weight_kg_by_day (revert to weight_by_day reads 0)", async () => {
@@ -250,7 +306,7 @@ describe("fetchDeleteAccountLedger — owner columns (ENG-1270)", () => {
       const byId = Object.fromEntries(rows.map((r) => [r.id, r.label]));
 
       // Both recipe sources failed → the row degrades to its generic label…
-      expect(byId.recipes).toBe("Saved & created recipes"); // generic / unknown
+      expect(byId.recipes).toBe("Saved recipes & drafts"); // generic / unknown
       // …but the other rows still carry their live counts (not blanked).
       expect(byId.diary).toBe("50 diary entries");
       expect(byId.weight).toBe("1 day of weight history");
@@ -279,8 +335,8 @@ describe("fetchDeleteAccountLedger — owner columns (ENG-1270)", () => {
       const { client } = makeFakeClient(seed);
       const rows = await fetchDeleteAccountLedger(client, USER_ID);
       const recipesRow = rows.find((r) => r.id === "recipes");
-      // 0 (authored, failed) + 6 (saved) = 6.
-      expect(recipesRow?.label).toBe("6 saved & created recipes");
+      // 0 (drafts, failed) + 6 (saved) = 6.
+      expect(recipesRow?.label).toBe("6 saved recipes & drafts");
       expect(errorSpy).toHaveBeenCalled();
     } finally {
       TABLE_SCHEMA.recipes = originalRecipes;

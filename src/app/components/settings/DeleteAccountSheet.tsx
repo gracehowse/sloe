@@ -7,6 +7,7 @@ import { SupprButton } from "../suppr/suppr-button";
 import {
   DELETE_ACCOUNT_CONFIRM_TOKEN,
   DELETE_ACCOUNT_COPY,
+  DELETE_ACCOUNT_DEATTRIBUTION_NOTE,
   DELETE_ACCOUNT_LEAVE_REASONS,
   type DeleteAccountLedgerRow,
   type DeleteAccountLeaveReason,
@@ -156,6 +157,14 @@ export function DeleteAccountSheet({
                   ))
                 )}
               </div>
+              {/* ENG-1263: honest carve-out — published recipes survive
+                  de-attributed; they are NOT in the removed ledger above. */}
+              <p
+                className="mt-3 text-xs leading-relaxed text-muted-foreground"
+                data-testid="delete-account-deattribution-note"
+              >
+                {DELETE_ACCOUNT_DEATTRIBUTION_NOTE}
+              </p>
             </>
           ) : null}
 

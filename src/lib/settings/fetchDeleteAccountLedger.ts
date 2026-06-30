@@ -7,11 +7,21 @@
  * the WHOLE ledger to null — gutting the informed-consent step on an
  * irreversible flow. Owner columns verified 2026-06-29:
  *   - nutrition_entries → `user_id`
- *   - recipes (created/authored) → `author_id` (NOT `user_id` — no such column)
+ *   - recipes (created/authored) → `author_id` (NOT `user_id` — no such column);
+ *     visibility column is `published: boolean`
  *   - saves (saved recipes) → `user_id`
  *   - profiles → `id`; weight history JSONB is `weight_kg_by_day` (NOT
  *     `weight_by_day` — no such column); household via `household_id`
  *   - household_members → `user_id`
+ *
+ * De-conflation (ENG-1263): the red-✕ "removed" recipes row must count ONLY
+ * what is hard-deleted — saved recipes (`saves`) + UNPUBLISHED authored drafts
+ * (`recipes WHERE author_id = user AND published = false`). Published authored
+ * recipes survive de-attributed (`author_id = null`; delete route step 4) so
+ * they must NOT appear as a removed row — they're disclosed by the footnote
+ * (`DELETE_ACCOUNT_DEATTRIBUTION_NOTE`) instead. Bundling published recipes
+ * into "removed" over-promised deletion (a trust gap for privacy-motivated
+ * deleters). Path A: clarity, not a deletion-behaviour change.
  *
  * Resilience: each count is resolved independently. One failing query degrades
  * only its own row (to the generic "unknown count" label via a null count),
@@ -68,7 +78,7 @@ export async function fetchDeleteAccountLedger(
     });
   }
 
-  const [diaryEntries, createdRecipes, savedRecipes, profile, householdCount] =
+  const [diaryEntries, draftRecipes, savedRecipes, profile, householdCount] =
     await Promise.all([
       safeCount("nutrition_entries", () =>
         supabase
@@ -76,11 +86,15 @@ export async function fetchDeleteAccountLedger(
           .select("id", { count: "exact", head: true })
           .eq("user_id", userId),
       ),
+      // Only UNPUBLISHED authored drafts are hard-deleted (delete route step 3).
+      // Published authored recipes survive de-attributed (step 4) → excluded
+      // here, disclosed via DELETE_ACCOUNT_DEATTRIBUTION_NOTE. (ENG-1263)
       safeCount("recipes", () =>
         supabase
           .from("recipes")
           .select("id", { count: "exact", head: true })
-          .eq("author_id", userId),
+          .eq("author_id", userId)
+          .eq("published", false),
       ),
       safeCount("saves", () =>
         supabase
@@ -97,15 +111,16 @@ export async function fetchDeleteAccountLedger(
       ),
     ]);
 
-  // "Saved & created recipes" — sum authored recipes and saved recipes. Both
-  // are removed by the delete route (private recipes deleted, published
-  // unattributed; saves rows deleted). Each side is independently resilient:
-  // if both queries fail (both null), keep the row generic (null); if either
-  // succeeds, show the partial-but-truthful total rather than blanking.
+  // "Saved recipes & drafts" — the recipes that are HARD-DELETED: unpublished
+  // authored drafts + saved recipes (both removed by the delete route). Each
+  // side is independently resilient: if both queries fail (both null), keep the
+  // row generic (null); if either succeeds, show the partial-but-truthful total
+  // rather than blanking. Published authored recipes are NOT counted here — they
+  // survive de-attributed and are covered by the disclosure footnote. (ENG-1263)
   const recipes =
-    createdRecipes == null && savedRecipes == null
+    draftRecipes == null && savedRecipes == null
       ? null
-      : (createdRecipes ?? 0) + (savedRecipes ?? 0);
+      : (draftRecipes ?? 0) + (savedRecipes ?? 0);
 
   return formatDeleteAccountLedgerRows({
     diaryEntries,

@@ -45,12 +45,42 @@ export const DELETE_ACCOUNT_COPY = {
   deleteForever: "Delete forever",
 } as const;
 
+/**
+ * De-attribution disclosure footnote (ENG-1263, legal-approved 2026-06-29).
+ *
+ * The removal ledger lists what is HARD-DELETED. But recipes you published
+ * survive — the delete route only sets `author_id = null` (GDPR Art. 17
+ * de-identification erasure), it does NOT destroy the published recipe.
+ * Bundling published recipes into the red-✕ "removed" list over-promised
+ * deletion — a trust gap for privacy-motivated deleters. This note carves out
+ * the exception honestly, beneath the terse ledger, in calm Sloe voice.
+ *
+ * Rendered by BOTH the web (`src/app/components/settings/DeleteAccountSheet.tsx`)
+ * and mobile (`apps/mobile/components/settings/DeleteAccountSheet.tsx`) sheets
+ * from this single SSOT so the wording can never drift between platforms.
+ *
+ * Path A (de-attribution stays — Path B hard-delete rejected by legal): the
+ * fix is clarity, not changing the deletion behaviour. See ENG-1263.
+ */
+export const DELETE_ACCOUNT_DEATTRIBUTION_NOTE =
+  "Recipes you've published stay public, but we remove your name from them. " +
+  "Anyone who saved or cooked them keeps their copy. Everything else here is deleted for good.";
+
 export interface DeleteAccountLedgerRow {
   id: string;
   label: string;
 }
 
-/** Format ledger rows with live counts when available. */
+/**
+ * Format ledger rows with live counts when available.
+ *
+ * `recipes` is the count of recipes that are HARD-DELETED: saved recipes
+ * (`saves`) plus unpublished authored drafts (`recipes WHERE author_id = user
+ * AND published = false`). Published authored recipes are NOT included — they
+ * survive de-attributed (`author_id = null`) and are covered by
+ * `DELETE_ACCOUNT_DEATTRIBUTION_NOTE` instead. See ENG-1263 / the delete route
+ * (`app/api/account/delete/route.ts` steps 3 + 4).
+ */
 export function formatDeleteAccountLedgerRows(counts: {
   diaryEntries: number | null;
   recipes: number | null;
@@ -63,8 +93,8 @@ export function formatDeleteAccountLedgerRows(counts: {
       : "Food diary entries";
   const recipes =
     counts.recipes != null
-      ? `${counts.recipes} saved & created recipe${counts.recipes === 1 ? "" : "s"}`
-      : "Saved & created recipes";
+      ? `${counts.recipes} saved recipe${counts.recipes === 1 ? "" : "s"} & drafts`
+      : "Saved recipes & drafts";
   const weight =
     counts.weightDays != null
       ? `${counts.weightDays} day${counts.weightDays === 1 ? "" : "s"} of weight history`
