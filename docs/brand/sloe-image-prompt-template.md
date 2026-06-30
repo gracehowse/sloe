@@ -1,23 +1,26 @@
 # Sloe — Canonical Image Generation Prompt Template
 
-> ⚠️ **PENDING `brand-manager` SIGN-OFF (2026-06-08):** Template A §1 below was changed twice this day,
-> both LOCKED-artefact changes that must be ratified by `brand-manager` (record in `docs/decisions/`):
-> (1) the raw `featuring {KEY_INGREDIENTS}` clause was **replaced** by an LLM-written description of the
-> FINISHED, cooked, plated dish + explicit cooked-state guards (fixing whole raw eggs on a frittata, loose
-> protein powder heaped on porridge); and (2) the **dish-hero ENGINE migrated FLUX 2 Pro → Nano Banana Pro**
-> (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image) for hyper-realism — verified markedly more photoreal
-> than FLUX on the meatballs A/B, and it unifies the whole app on ONE model (ingredients were already on
-> Nano). The editorial house style + cooked-state guards now ride on a FIXED `system_prompt` (the
-> consistency lever, mirroring the ingredient path), with NO fixed seed (each dish is unique) and the cache
-> still keyed per-recipe. The code shipped first (proven via fal) to unblock the hero regeneration; the doc
-> reflects the new reality. See §1 "Failure mode + fix", the §6 Model row, and the implementation in
+> ✅ **RATIFIED by `brand-manager` (2026-06-30, Grace approved "Ratify").** The three 2026-06-08
+> LOCKED-artefact changes are the imagery direction of record — recorded in
+> [`docs/decisions/2026-06-30-image-prompt-template-ratification.md`](../decisions/2026-06-30-image-prompt-template-ratification.md)
+> (satisfying §9 change-control): (1) the Template-A hero cooked-state fix (the raw `featuring
+> {KEY_INGREDIENTS}` clause replaced by an LLM-written description of the FINISHED, cooked, plated dish +
+> explicit cooked-state guards — fixing whole raw eggs on a frittata, loose protein powder heaped on
+> porridge); (2) the **dish-hero ENGINE migrated FLUX 2 Pro → Nano Banana Pro** (`fal-ai/nano-banana-pro`,
+> Google Gemini 3 Pro Image) for hyper-realism; and (3) the **Template-B ingredient FIXED `system_prompt` +
+> FIXED seed 424242**. The editorial house style + cooked-state guards ride on a FIXED `system_prompt` (the
+> consistency lever), with NO fixed seed for heroes (each dish is unique) and the cache keyed per-recipe.
+> **Model posture is TIERED, not unified (ENG-999):** dish heroes default to Nano Banana Pro; **ingredient
+> tiles default to the cheaper FLUX tier** — see §1, the §6 Model row, and the implementation in
 > [`src/lib/server/llmDishAppearance.ts`](../../src/lib/server/llmDishAppearance.ts) +
 > [`src/lib/server/falImageGenerator.ts`](../../src/lib/server/falImageGenerator.ts).
 
 > **Status:** LOCKED brand artefact. Owned by `brand-manager`.
-> **Engine:** Nano Banana Pro (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image) via fal.ai for ALL
-> classes (Template A dish heroes migrated FLUX 2 Pro → Nano 2026-06-08; Template B + marketing already on
-> Nano). Model-swappable per the strategy doc, but these templates are the constant — the prompt does not
+> **Engine (tiered — ENG-999):** dish heroes (Template A) on **Nano Banana Pro**
+> (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image) via fal.ai; **ingredient tiles (Template B) on the
+> cheaper FLUX tier** (`FAL_INGREDIENT_IMAGE_MODEL`, falling back through `FAL_IMAGE_MODEL` to
+> `fal-ai/flux/dev`), keeping the identical Template-B prompt contract; marketing/social already on Nano.
+> Model-swappable per the strategy doc, but these templates are the constant — the prompt does not
 > change when the model does.
 > **Authority:** This file is the single source of truth for every Sloe-brand generated image, at
 > design-time (the fal/FLUX batch script) and at runtime (the recipe-import "generate an image"
@@ -64,11 +67,13 @@ watercolour, never cartoon, never 3D render.
 ### Engine + technique (Nano Banana Pro — the consistency lever) + the cooked-state fix (2026-06-08)
 
 > **ENGINE migrated FLUX 2 Pro → Nano Banana Pro on 2026-06-08** (`fal-ai/nano-banana-pro`, Google Gemini 3
-> Pro Image) for hyper-realism — verified markedly more photoreal than FLUX on the meatballs A/B, and it
-> unifies the whole app on ONE model (ingredients were already on Nano). PENDING `brand-manager` sign-off
-> (see top banner). The two fixes below — the cooked-state describe-the-dish step and the cooked-state
-> guards — are KEPT across the migration; they simply moved from a FLUX positive-prompt fold-in to the Nano
-> FIXED `system_prompt`.
+> Pro Image) for hyper-realism — verified markedly more photoreal than FLUX on the meatballs A/B. RATIFIED
+> by `brand-manager` 2026-06-30 (see top banner +
+> [`docs/decisions/2026-06-30-image-prompt-template-ratification.md`](../decisions/2026-06-30-image-prompt-template-ratification.md)).
+> This is the **dish-hero** engine only — ingredient tiles default to the cheaper FLUX tier (ENG-999, see
+> §2 + §6). The two fixes below — the cooked-state describe-the-dish step and the cooked-state guards — are
+> KEPT across the migration; they simply moved from a FLUX positive-prompt fold-in to the Nano FIXED
+> `system_prompt`.
 
 - **Model:** `fal-ai/nano-banana-pro` (Google Gemini 3 Pro Image).
 - **Per-image params:** `aspect_ratio: "4:3"` (landscape hero), `resolution: "2K"`, `output_format: "jpeg"`,
@@ -158,29 +163,40 @@ Hyperreal editorial food photography of {RECIPE_TITLE}. {DISH_DESCRIPTION}
 
 ## 2. Template B — Single ingredient
 
-> ⚠️ **PENDING `brand-manager` SIGN-OFF (2026-06-08):** Template B's ENGINE + technique below were changed
+> ✅ **RATIFIED by `brand-manager` (2026-06-30).** Template B's technique below was changed on 2026-06-08
 > to fix the consistency drift (pile-vs-bowl, background, literal-quantity — egg-whites rendered as a milk
-> bottle, "4 eggs" for one ingredient). The engine moved **FLUX 2 Pro → Nano Banana Pro** for ingredients,
-> and the consistency is now driven by a **FIXED `system_prompt` + FIXED seed (424242)** applied on every
-> call, with the per-image `prompt` reduced to the ONE representative subject. This is a change to a LOCKED
-> artefact and must be ratified by `brand-manager` (record in `docs/decisions/`). The code shipped first
-> (proven via fal — egg-white verified correct, not a milk bottle) to unblock the library re-shoot; the
-> doc reflects the new reality. See the implementation in
-> [`src/lib/server/falImageGenerator.ts`](../../src/lib/server/falImageGenerator.ts) `generateIngredientImage`
-> + the 2026-06-08 decision doc. **Template A (dish heroes) is UNCHANGED — still FLUX 2 Pro.** Linear: ENG-987.
+> bottle, "4 eggs" for one ingredient): the consistency is driven by a **FIXED `system_prompt` + FIXED seed
+> (424242)** applied on every call, with the per-image `prompt` reduced to the ONE representative subject.
+> The code was proven via fal (egg-white verified correct, not a milk bottle); the ratification is recorded
+> in [`docs/decisions/2026-06-30-image-prompt-template-ratification.md`](../decisions/2026-06-30-image-prompt-template-ratification.md)
+> (Linear: ENG-987). **Engine — tiered (ENG-999):** ingredient tiles now default to the **cheaper FLUX
+> tier** (`FAL_INGREDIENT_IMAGE_MODEL`, falling back through `FAL_IMAGE_MODEL` to `fal-ai/flux/dev`),
+> keeping the identical Template-B prompt contract — high-volume decorative single-subject white-background
+> tiles do not warrant 2K Nano economics. (The 2026-06-08 interim wording put ingredients on Nano too;
+> ENG-999 on 2026-06-19 moved them to the FLUX tier.) **Dish heroes (Template A) run on Nano Banana Pro.**
+> See the implementation in
+> [`src/lib/server/falImageGenerator.ts`](../../src/lib/server/falImageGenerator.ts)
+> `generateIngredientImage` + the 2026-06-08 decision doc.
 
 **Rule (locked, §11.1):** studio product photo of a single subject on pure white, soft even daylight, one
 soft natural shadow below, 1:1. Matches the existing eggs/blueberries set exactly. Not watercolour, not
 flat illustration, not 3D render. **Do not drift this style** — it is already established across the app
 and the allergen/diet tiles.
 
-### Engine + technique (Nano Banana Pro — the consistency lever)
+### Engine + technique (FLUX tier per ENG-999 — the FIXED system prompt + seed are the consistency lever)
 
-- **Model:** `fal-ai/nano-banana-pro` (Google Gemini 3 Pro Image) — NOT FLUX, for ingredients. (Brand
-  head-to-head winner + what the top competitor uses + verified to produce a consistent set.)
-- **Per-image params:** `aspect_ratio: "1:1"`, `resolution: "2K"`, `output_format: "jpeg"`, a FIXED
-  `seed: 424242` for the whole set, and the EXACT `system_prompt` below on every call (the consistency
-  lever — **do not edit it per call**):
+- **Model (tiered — ENG-999):** ingredient tiles default to the **cheaper FLUX tier**
+  (`FAL_INGREDIENT_IMAGE_MODEL`, falling back through `FAL_IMAGE_MODEL` to `fal-ai/flux/dev`) — high-volume,
+  decorative, single-subject white-background tiles that are cached globally and cheap to re-shoot, so they
+  do not warrant 2K Nano economics. The Template-B **prompt contract is identical regardless of engine**:
+  the FIXED `system_prompt` below + the FIXED `seed: 424242` are the consistency lever, and on a FLUX model
+  the runner folds the system prompt into the positive prompt (FLUX has no `system_prompt` field) and maps
+  the aspect ratio to a named `image_size`. (Dish heroes — Template A — run on Nano Banana Pro; ingredient
+  generation moved Nano → FLUX tier on 2026-06-19, ENG-999.)
+- **Per-image params:** `aspect_ratio: "1:1"`, a FIXED `seed: 424242` for the whole set, `num_images: 1`,
+  and the EXACT `system_prompt` below on every call (the consistency lever — **do not edit it per call**).
+  (On the Nano fallback the params are `resolution: "2K"`, `output_format: "jpeg"`; the FLUX tier uses the
+  named `image_size` for 1:1.)
 
 ```
 Studio product photography of a single food ingredient for a premium nutrition app. ALWAYS, identically
@@ -211,9 +227,10 @@ e.g. `A single whole head of garlic.`, `A single egg white.`, `A single cherry t
 
 > The white background / lighting / scale / shadow consistency now lives ENTIRELY in the FIXED
 > `system_prompt` + seed — NOT in the per-image line. That is why a grid of tiles reads as one set even
-> though each per-image prompt is a single short sentence. Nano honours a separate `system_prompt`
-> (Gemini-3 system instruction), so — unlike FLUX — the consistency block is a true system prompt, not a
-> trailing positive clause.
+> though each per-image prompt is a single short sentence. On the default FLUX tier (ENG-999) the runner
+> folds this block into the positive prompt (FLUX has no separate `system_prompt` field); on the Nano
+> fallback it rides as a true Gemini-3 `system_prompt`. Either way the FIXED block + FIXED seed are the
+> consistency lever, not a per-call variation.
 
 > Template B overrides two anchors from §4: background is **pure white** (not wood/linen), and the mood is
 > **clean daylight** (not moody under-exposure). Everything else in the anchor + never-list still applies.
@@ -502,7 +519,7 @@ Constant across the brand. Per-surface, only `aspect_ratio` varies.
 
 | Param | Value | Why |
 |---|---|---|
-| **Model** | **UNIFIED on `fal-ai/nano-banana-pro` (Nano Banana Pro, Google Gemini 3 Pro Image) — all classes, from 2026-06-08.** Template A dish heroes (migrated FLUX 2 Pro → Nano 2026-06-08), Template B ingredients (since 2026-06-08), and marketing/hero/social. PENDING `brand-manager` ratification (see top banner + §1). | **Why one model:** Nano won the head-to-head on hyper-realism for dish heroes (the meatballs A/B was markedly more photoreal than FLUX), and the whole app is now on ONE engine (ingredients were already on Nano). The consistency lever for BOTH classes is a FIXED `system_prompt` (a true Gemini-3 system instruction): **dish heroes** lock the editorial register + cooked-state guards in `DISH_SYSTEM_PROMPT` with NO seed (each dish is unique — variety is fine; cache stays per-recipe); **ingredient tiles** lock the white-studio look in `INGREDIENT_SYSTEM_PROMPT` with a FIXED seed (424242) so the set is reproducibly coherent. The per-image prompt is the ONE subject (dish title + LLM cooked-dish description for heroes; the single representative ingredient for tiles). **The prompt templates are model-swappable; the per-image prompt does not change when the model does.** **Negative-prompt caveat:** `fal-ai/nano-banana-pro` exposes **no `negative_prompt` field**, so for BOTH classes the consistency + exclusions (no people/text/raw-on-top; "NO props, NO bowl…" for B) live in the FIXED `system_prompt`, which is stronger than a positive avoid-clause. (Earlier FLUX-era split first recorded in `docs/decisions/2026-06-07-universal-food-imagery.md` + the 2026-06-08 ingredient-image decision; the Template-A Nano migration is recorded in the same 2026-06-08 decision doc.) |
+| **Model** | **TIERED (ENG-999), RATIFIED 2026-06-30.** **Dish heroes (Template A)** on **Nano Banana Pro** (`fal-ai/nano-banana-pro`, Google Gemini 3 Pro Image) via `FAL_HERO_IMAGE_MODEL` (fallback `fal-ai/nano-banana-pro`) — migrated FLUX 2 Pro → Nano 2026-06-08. **Ingredient tiles (Template B)** on the **cheaper FLUX tier** via `FAL_INGREDIENT_IMAGE_MODEL` (falling back through `FAL_IMAGE_MODEL` to `fal-ai/flux/dev`) — moved Nano → FLUX tier 2026-06-19 (ENG-999). Marketing/hero/social on Nano. (The 2026-06-08 interim wording said "unified on Nano for all classes"; ENG-999 superseded that — see `docs/decisions/2026-06-30-image-prompt-template-ratification.md`.) | **Why tiered, not unified:** Nano won the head-to-head on hyper-realism for dish heroes (the meatballs A/B was markedly more photoreal than FLUX), so heroes — high-visibility, shared, cached per recipe — stay on Nano. Ingredient tiles are high-volume, simple, single-subject white-background images, cached globally and cheap to re-shoot, so ENG-999 moved them to the cheaper FLUX tier to avoid ~5× the cost at viral volume. The consistency lever for BOTH classes is a FIXED `system_prompt`: **dish heroes** lock the editorial register + cooked-state guards in `DISH_SYSTEM_PROMPT` with NO seed (each dish is unique — variety is fine; cache stays per-recipe); **ingredient tiles** lock the white-studio look in `INGREDIENT_SYSTEM_PROMPT` with a FIXED seed (424242) so the set is reproducibly coherent. The per-image prompt is the ONE subject (dish title + LLM cooked-dish description for heroes; the single representative ingredient for tiles). **The prompt templates are model-swappable; the per-image prompt does not change when the model does.** **Negative-prompt handling:** `fal-ai/nano-banana-pro` exposes **no `negative_prompt` field**, so on Nano the consistency + exclusions (no people/text/raw-on-top; "NO props, NO bowl…" for B) ride as a true Gemini-3 `system_prompt`, which is stronger than a positive avoid-clause; on the FLUX ingredient tier the runner folds the same block into the positive prompt. (Earlier FLUX-era split first recorded in `docs/decisions/2026-06-07-universal-food-imagery.md` + the 2026-06-08 ingredient-image decision; the Template-A Nano migration + the ENG-999 ingredient FLUX tiering are both recorded in the 2026-06-08 decision doc, and the whole direction is ratified in the 2026-06-30 decision doc.) |
 | **`aspect_ratio` — dish (A)** | `4:3` hero, `1:1` square card, `16:9` paywall/landing strip | Recipe heroes are landscape-ish; the runtime import card hero is 4:3. Pick per surface, never stretch. |
 | **`aspect_ratio` — ingredient (B) / object (C)** | `1:1` | Locked in §11.1. |
 | **`aspect_ratio` — lifestyle (D, proposed)** | `4:5` social portrait, `1:1` IG grid, `16:9` landing/banner | Social-first formats; pass as an explicit `image_size: { width, height }` object (1080x1350 / 1080x1080 / 1920x1080). |
@@ -585,3 +602,15 @@ This file is LOCKED. Any change to the templates, the anchor block, the negative
 brand decision: it goes through `brand-manager`, must stay consistent with `_design-system.md` §11, and
 should be co-reviewed with `legal-reviewer` (AI-image honesty/attribution) when the runtime feature's
 labelling is touched. Record material changes in `docs/decisions/`.
+
+**Ratification of record:** the 2026-06-08 hero cooked-state fix, the Template-A FLUX → Nano hero engine
+migration, and the Template-B FIXED `system_prompt` + FIXED seed (424242) are RATIFIED in
+[`docs/decisions/2026-06-30-image-prompt-template-ratification.md`](../decisions/2026-06-30-image-prompt-template-ratification.md)
+(Grace approved "Ratify", 2026-06-30; Linear ENG-987). The tiered model posture (heroes → Nano, ingredient
+tiles → FLUX) is recorded under ENG-999 in the 2026-06-08 decision doc.
+
+**Not pending here — tracked under ENG-1276 (post-launch):** the unbuilt matched-food-name persistence
+(a `recipe_ingredients.matched_food_name` column; today v1 uses `cleanIngredientDisplayName(name)`, the
+documented fallback) and the ingredient-image alias storage (`canonicalImageKey` computes a high-confidence
+`matchedAliasKey` but there is no alias-key storage yet). Neither is part of this prompt template; both are
+deliberate post-launch schema work, not a gap in the locked prompt.
