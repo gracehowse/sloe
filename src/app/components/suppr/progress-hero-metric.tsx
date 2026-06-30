@@ -75,6 +75,11 @@ function OnTargetDots({ days }: { days: boolean[] }) {
     <div
       className="flex items-center gap-1.5"
       data-testid="progress-hero-ontarget-dots"
+      // The ribbon is a single graphic conveying "N of M days on target";
+      // role="img" makes the aria-label its text alternative (the dots
+      // themselves are decorative) and clears the axe "aria-label on a div
+      // with no valid role" rule. (ENG-780 storybook a11y gate.)
+      role="img"
       aria-label={`${days.filter(Boolean).length} of ${days.length} days on target`}
     >
       {days.map((on, i) => (

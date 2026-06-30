@@ -65,6 +65,11 @@ function OnTargetStreakDots({ days }: { days: boolean[] }) {
     <div
       className="flex items-center gap-1.5"
       data-testid="progress-adherence-streak-dots"
+      // The streak dots are a single graphic ("N of M days on target");
+      // role="img" makes the aria-label its text alternative (the dots are
+      // decorative) and clears the axe "aria-label on a div with no valid
+      // role" rule. (ENG-780 storybook a11y gate.)
+      role="img"
       aria-label={`${days.filter(Boolean).length} of ${days.length} days on target`}
     >
       {days.map((on, i) => (
@@ -144,7 +149,11 @@ export function ProgressAverageAdherence({
           className="mt-2 font-[family-name:var(--font-headline)] text-[40px] font-medium leading-none text-warning-solid tabular-nums"
         >
           {overDisplay.value}
-          <span className="text-[22px] text-warning-solid/70">{overDisplay.suffix}</span>
+          {/* Suffix at full `text-warning-solid` (#925812, 5.79:1 on white).
+              The prior `/70` opacity blended it to #b38a59 (3.14:1 on white)
+              — below AA at this 22px/normal size. Smaller size already carries
+              the hierarchy; keep the colour AA-safe. (ENG-780 a11y gate.) */}
+          <span className="text-[22px] text-warning-solid">{overDisplay.suffix}</span>
         </p>
       ) : (
         <p

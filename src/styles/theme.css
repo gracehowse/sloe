@@ -282,7 +282,13 @@
   --macro-sodium-solid: #A76541;                   /* ENG-1217: darkened clay — 4.58:1, AA PASS */
   --macro-sodium-soft: rgba(200, 121, 78, 0.08);
   --macro-water: #5A8A99;                          /* muted teal (fill only — 3.80:1 as text) */
-  --macro-water-solid: #517C8A;                    /* ENG-1217: darkened teal — 4.56:1, AA PASS */
+  /* ENG-780: re-darkened #517C8A → #3C5F6B. The old solid was tuned for
+     4.56:1 on WHITE only and fell to 4.35:1 as text on its own `macro-water
+     14%` badge/chip tint (the freeze/info Badge + Today freeze-row a11y
+     failure). #3C5F6B clears AA on white (6.90:1) AND on the 14% tint
+     (5.18:1) / 10% row tint (5.39:1) — bringing it to parity with the other
+     `-solid` text tokens (success 6.95 / warning 5.79). Still clearly teal. */
+  --macro-water-solid: #3C5F6B;
   --macro-water-soft: rgba(90, 138, 153, 0.12);
 
   /** Meal-slot tints — Sloe palette (dossier D-4).

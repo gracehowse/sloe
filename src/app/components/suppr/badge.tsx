@@ -34,16 +34,18 @@ export type BadgeVariant =
 const variantStyles: Record<BadgeVariant, string> = {
   // Catch-all, matches the previous `bg-muted + text-muted-foreground` AI badge.
   neutral: "bg-muted text-muted-foreground border-transparent",
-  // Info — cyan/water token; used for informational metadata.
-  info: "bg-[color-mix(in_oklab,var(--macro-water)_14%,transparent)] text-[color:var(--macro-water)] border-[color:color-mix(in_oklab,var(--macro-water)_35%,transparent)]",
+  // Info — cyan/water token; used for informational metadata. Ink reads the
+  // `-solid` teal (AA on the 14% tint), never the raw fill hue (ENG-828).
+  info: "bg-[color-mix(in_oklab,var(--macro-water)_14%,transparent)] text-[color:var(--macro-water-solid)] border-[color:color-mix(in_oklab,var(--macro-water)_35%,transparent)]",
   // Warn — amber warning token.
   warn: "bg-warning/10 text-warning-solid border-warning/30",
   // Pro — primary-coloured; marks Pro-gated features.
   pro: "bg-primary/10 text-primary-solid border-primary/30",
   // AI — violet/chart-5 token. Pulled from the existing theme --chart-5.
   ai: "bg-[color-mix(in_oklab,var(--chart-5)_14%,transparent)] text-[color:var(--chart-5)] border-[color:color-mix(in_oklab,var(--chart-5)_35%,transparent)]",
-  // Added — success/green: new content the user added themselves.
-  added: "bg-success/10 text-success border-success/30",
+  // Added — success/green: new content the user added themselves. Ink reads
+  // `-solid` sage (AA on the /10 tint), never the raw fill hue (ENG-828).
+  added: "bg-success/10 text-success-solid border-success/30",
   // Override — amber warning: a manual override pinned on a row.
   override: "bg-warning/10 text-warning-solid border-warning/30",
   // Leftover — subtle accent with amber tone that matches the planner's
@@ -51,8 +53,9 @@ const variantStyles: Record<BadgeVariant, string> = {
   leftover: "bg-warning/10 text-warning-solid border-warning/30",
   // Custom — primary: user-created foods in the search results.
   custom: "bg-primary/10 text-primary-solid border-primary/30",
-  // Freeze — cyan/water token with a snowflake prefix.
-  freeze: "bg-[color-mix(in_oklab,var(--macro-water)_14%,transparent)] text-[color:var(--macro-water)] border-[color:color-mix(in_oklab,var(--macro-water)_35%,transparent)]",
+  // Freeze — cyan/water token with a snowflake prefix. Ink reads the `-solid`
+  // teal (AA on the 14% tint), never the raw fill hue (ENG-828).
+  freeze: "bg-[color-mix(in_oklab,var(--macro-water)_14%,transparent)] text-[color:var(--macro-water-solid)] border-[color:color-mix(in_oklab,var(--macro-water)_35%,transparent)]",
 };
 
 /** Variants that carry semantics meaningful to a screen reader. Used to
