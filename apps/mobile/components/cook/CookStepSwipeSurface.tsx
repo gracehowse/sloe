@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Animated, Dimensions } from "react-native";
+import { useKeepAwake } from "expo-keep-awake";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
   cookStepSwipeRubberBand,
@@ -36,6 +37,18 @@ export function CookStepSwipeSurface({
   children,
   testID = "cook-step-swipe-surface",
 }: CookStepSwipeSurfaceProps) {
+  // Keep the screen awake while cooking (ENG-959 — web parity with the
+  // `navigator.wakeLock` in `src/app/components/CookMode.tsx`). This surface
+  // renders during the "steps" phase of the cook overlay, so the hook runs only
+  // while cooking and the keep-awake tag is released on unmount. The "mise"
+  // phase renders `CookMiseEnPlace` instead, which holds its own keep-awake tag
+  // for that phase. The standalone `/cook` screen calls `useKeepAwake()`
+  // directly; the inline cook overlay in `recipe/[id].tsx` did not — wiring it
+  // here (plus `CookMiseEnPlace`) covers both surfaces without touching that
+  // pinned (screen-budget) file, and `useKeepAwake` must never be called
+  // conditionally so it lives above the `enabled` early return.
+  useKeepAwake();
+
   const translateX = useRef(new Animated.Value(0)).current;
   const stepIndexRef = useRef(stepIndex);
   const stepCountRef = useRef(stepCount);

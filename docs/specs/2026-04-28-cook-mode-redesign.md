@@ -236,7 +236,7 @@ Reduce-motion: card opacity-fades 200ms; IconBox at final scale; haptic still fi
 |---|---|---|---|
 | Force dark by default | Yes | Yes | Kitchen lighting/glare. User can override. |
 | Backgrounded-timer notification | `expo-notifications` schedule | n/a (chime + tab-title flash + toast) | Mobile more likely backgrounded mid-cook. |
-| Wake lock | `useKeepAwake` (already present) | `navigator.wakeLock` with visibility-change re-acquire | Existing parity. |
+| Wake lock | `useKeepAwake` in the standalone `/cook` screen AND in the inline cook overlay's phase components (`CookMiseEnPlace` + `CookStepSwipeSurface`, ENG-959) | `navigator.wakeLock` with visibility-change re-acquire | Parity. The inline overlay (now the primary cook surface) initially lacked keep-awake — ENG-959 wired it into the always-mounted phase children rather than the pinned `recipe/[id].tsx`. |
 | Ingredients UI | Modal sheet from header `ListChecks` | Right-side panel `w-80` inside cook surface | Mobile has no spare horizontal real estate. |
 | Haptic feedback | selection / confirm / success per spec §1.1 | n/a | Web has no haptics. |
 | Audio chime | Notification sound (system) on completion | `AudioContext` 880Hz tone | Existing parity preserved. |
