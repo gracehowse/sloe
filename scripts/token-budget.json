@@ -111,7 +111,6 @@
     "apps/mobile/components/today/TodayCompleteDayModal.tsx": 1,
     "apps/mobile/components/today/TodayDashboardMacroBars.tsx": 2,
     "apps/mobile/components/today/TodayEditMealModal.tsx": 3,
-    "apps/mobile/components/today/TodayMealsSection.tsx": 4,
     "apps/mobile/components/today/TodaySnapShortcut.tsx": 1,
     "apps/mobile/components/today/TodayWeekView.tsx": 1,
     "apps/mobile/components/today/WeeklyCheckinModal.tsx": 1,

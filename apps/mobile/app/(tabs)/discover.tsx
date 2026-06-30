@@ -629,7 +629,7 @@ export default function DiscoverScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginBottom: Spacing.sm }}
-          contentContainerStyle={{ gap: Spacing.sm, paddingRight: 32, alignItems: "center" }}
+          contentContainerStyle={{ gap: Spacing.sm, paddingRight: Spacing.xxl, alignItems: "center" }}
         >
           <Pressable
             key="following"
@@ -1013,7 +1013,7 @@ export default function DiscoverScreen() {
           </IconBox>
           <View style={{ flex: 1 }}>
             <Text style={{ ...Type.body, fontWeight: '600', color: colors.text }}>My Library</Text>
-            <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }}>Saved and imported recipes</Text>
+            <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 /* intentional 1px hairline — sub-scale nudge, not a rhythm value */ }}>Saved and imported recipes</Text>
           </View>
           <ChevronRight size={16} color={colors.textTertiary} />
         </Pressable>
