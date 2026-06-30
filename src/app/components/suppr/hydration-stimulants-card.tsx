@@ -372,7 +372,9 @@ export function HydrationStimulantsCard({
                   style={{
                     backgroundColor:
                       "color-mix(in oklab, var(--stimulant-alcohol) 15%, transparent)",
-                    color: "var(--stimulant-alcohol)",
+                    // Label reads the `-solid` clay ink (AA on the 15% tint),
+                    // never the raw fill hue which is 2.85:1 here (ENG-1266).
+                    color: "var(--stimulant-alcohol-solid)",
                     borderColor:
                       "color-mix(in oklab, var(--stimulant-alcohol) 30%, transparent)",
                   }}

@@ -307,6 +307,13 @@
    *  Caffeine → damson, Alcohol → amber ("approaching weekly limit"). */
   --stimulant-caffeine: #6A4B7A;
   --stimulant-alcohol: #C8794E;   /* v3 clay — "approaching weekly limit" */
+  /** Alcohol INK — the raw clay fill (#C8794E) is only 2.85:1 as TEXT on its
+   *  own 15% tint (#F7EBE4), below AA. `-solid` is the AA-safe darker clay for
+   *  any alcohol TEXT (the quick-add chip label); the raw hue stays the
+   *  fill/dot. Same `-solid` ink discipline as `--macro-water-solid` /
+   *  `--warning-solid` (ENG-780, ENG-828). #9C5228 = 4.92:1 on the tint, still
+   *  clearly clay. (ENG-1266 storybook a11y gate.) */
+  --stimulant-alcohol-solid: #9C5228;
 
   /** Confidence colours — Sloe palette.
    *  high → sage, med → amber, low → destructive. */
@@ -599,6 +606,11 @@
   /** Stimulant tracker — Sloe dark. */
   --stimulant-caffeine: #9A7BAA;
   --stimulant-alcohol: #D6A24A;
+  /** Alcohol INK — dark. The lifted amber (#D6A24A) already clears AA as text
+   *  on its own 15% tint over the dark card (5.62:1), so the dark `-solid` is
+   *  the same value — the chip label is visually unchanged in dark mode; only
+   *  light mode needed darkening. (ENG-1266.) */
+  --stimulant-alcohol-solid: #D6A24A;
 
   /** Confidence colours — Sloe dark (lifted). */
   --confidence-high: #83A57E;
