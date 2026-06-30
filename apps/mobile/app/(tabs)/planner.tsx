@@ -114,6 +114,7 @@ import {
 } from "@suppr/shared/planning/shoppingListMeta";
 import { shouldShowRecipeRemovedBadge } from "@suppr/nutrition-core/recipeRemovedBadge";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/nutrition-core/coerceRecipeMacrosForPlanning";
+import { enabledMealSlotLabels, parseUserMealSlotConfig } from "@suppr/nutrition-core/userMealSlotConfig";
 import { planSlotAimKcal } from "@suppr/nutrition-core/mealSlotAim";
 import { EmptyMealSlotAimLine } from "@/components/EmptyMealSlotRow";
 import {
@@ -464,6 +465,7 @@ async function fetchPlanTargetsFromProfile(userId: string): Promise<{
   carbs: number;
   fat: number;
   fiber: number;
+  slots: string[]; // ENG-1177 — configured meal-slot labels (4–6) for plan gen.
 }> {
   let resolved = {
     calories: NUTRITION_DEFAULTS.calories,
@@ -471,11 +473,12 @@ async function fetchPlanTargetsFromProfile(userId: string): Promise<{
     carbs: NUTRITION_DEFAULTS.carbs,
     fat: NUTRITION_DEFAULTS.fat,
     fiber: NUTRITION_DEFAULTS.fiber,
+    slots: [...ALL_MEAL_SLOTS] as string[],
   };
   const { data } = await supabase
     .from("profiles")
     .select(
-      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace",
+      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace, meal_slot_config",
     )
     .eq("id", userId)
     .single();
@@ -500,7 +503,9 @@ async function fetchPlanTargetsFromProfile(userId: string): Promise<{
         plan_pace: d.plan_pace as string | null,
       },
     );
-    resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat, fiber: t.fiber };
+    // ENG-1177 — numbered presets drive a 4–6 slot plan (real share, not 0 kcal).
+    const slots = [...enabledMealSlotLabels(parseUserMealSlotConfig(d.meal_slot_config))];
+    resolved = { calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat, fiber: t.fiber, slots };
   }
   return resolved;
 }
@@ -758,25 +763,13 @@ export default function PlannerScreen() {
     };
   }, []);
 
-  // Load user tier from profile. F-43 (2026-04-22, TestFlight "Pro
-  // user shown as Free on Plan" x2): reconcile profile with
-  // RevenueCat entitlements + promo redemptions before reading, so a
-  // stale `profiles.user_tier` doesn't downgrade a user who is
-  // entitled via RC or promo but whose profile wasn't synced since
-  // the last paywall / promo redeem.
-  //
-  // F-58 (2026-04-22, TestFlight build-28 "On pro but plans thinks
-  // I'm on free" x3): two holes in F-43 —
-  //  (a) `getCustomerInfo` was called without first ensuring RC was
-  //      logged in as the Supabase userId. If the user signed in
-  //      after app boot, RC stayed anonymous → no entitlements → the
-  //      merge-max wrote "free" into `profiles.user_tier`, clobbering
-  //      a legitimately Pro profile.
-  //  (b) the `catch {}` was silent, so any RC misconfig (TestFlight
-  //      without RC API key, network hiccup) hid behind a stale
-  //      profile read.
-  // Fix: `ensurePurchasesUser(userId)` before `getCustomerInfo`, and
-  // log the failure mode in dev.
+  // Load user tier from profile. F-43 / F-58 (2026-04-22, TestFlight "Pro user
+  // shown as Free on Plan"): reconcile RevenueCat entitlements + promo
+  // redemptions BEFORE reading `profiles.user_tier`, so a stale/unsynced profile
+  // can't downgrade an entitled user. The two F-58 holes that fix closes:
+  // (a) `ensurePurchasesUser(userId)` runs before `getCustomerInfo` so RC isn't
+  // anonymous (which wrote "free" via merge-max), and (b) the RC failure is
+  // logged in dev instead of being swallowed by a silent `catch {}`.
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
@@ -2333,6 +2326,7 @@ export default function PlannerScreen() {
             carbs: NUTRITION_DEFAULTS.carbs,
             fat: NUTRITION_DEFAULTS.fat,
             fiber: NUTRITION_DEFAULTS.fiber,
+            slots: [...ALL_MEAL_SLOTS] as string[],
           };
 
       const targets: PlannerTargets = {
@@ -2469,7 +2463,12 @@ export default function PlannerScreen() {
       // Yield to the UI thread via InteractionManager before running
       // so the regenerate spinner actually paints, and instrument
       // duration so we can tune the sampler cap with real data.
-      const slotCount = ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)).length;
+      // ENG-1177 — classic keeps the `enabledSlots` toggle; numbered presets
+      // (no matching label) use the full configured list.
+      const planSlots = resolved.slots.some((s) => enabledSlots.has(s))
+        ? resolved.slots.filter((s) => enabledSlots.has(s))
+        : resolved.slots;
+      const slotCount = planSlots.length;
       const generateStartMs = Date.now();
       // ENG-956 — keep-locked mode reuses the partial-rebuilt plan and skips
       // the full sampler entirely; otherwise run the normal joint sampler.
@@ -2482,7 +2481,7 @@ export default function PlannerScreen() {
                   recipes: recipePool,
                   targets,
                   days,
-                  slotConfig: { slots: ALL_MEAL_SLOTS.filter((s) => enabledSlots.has(s)) },
+                  slotConfig: { slots: planSlots },
                 }),
               );
             });

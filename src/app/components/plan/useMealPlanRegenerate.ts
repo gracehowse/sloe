@@ -13,6 +13,14 @@ export interface UseMealPlanRegenerateArgs {
   enabledSlots: Set<string>;
   slots: readonly string[];
   slotTitle: (key: string) => string;
+  /**
+   * ENG-1177 — when the user runs a numbered meal-slot preset (four_meals /
+   * six_meals), this is the full configured slot list ("Meal 1" … "Meal N").
+   * It overrides the classic `enabledSlots` toggle so the extra slots get a
+   * real calorie share instead of being starved to 0 kcal. `null` for the
+   * classic preset (the per-slot toggle applies).
+   */
+  slotsOverride?: readonly string[] | null;
   mealLockEnabled: boolean;
   lockedMealCount: number;
   planSourceSelector: boolean;
@@ -36,13 +44,19 @@ export function useMealPlanRegenerate(args: UseMealPlanRegenerateArgs) {
         const slotsList: string[] = args.slots
           .filter((s) => args.enabledSlots.has(s))
           .map((s) => args.slotTitle(s));
-        const useSlotOverride =
-          slotsList.length > 0 && slotsList.length < args.slots.length;
+        // ENG-1177 — a numbered preset always overrides; otherwise the classic
+        // per-slot toggle drives a partial override.
+        const slotsOverride =
+          args.slotsOverride && args.slotsOverride.length > 0
+            ? [...args.slotsOverride]
+            : slotsList.length > 0 && slotsList.length < args.slots.length
+              ? slotsList
+              : null;
         const keepLocked =
           mode === "clear" ? false : args.mealLockEnabled && args.lockedMealCount > 0;
         await args.generateMealPlan({
           days,
-          ...(useSlotOverride ? { slots: slotsList } : {}),
+          ...(slotsOverride ? { slots: slotsOverride } : {}),
           ...(args.planSourceSelector ? { source: args.planSource } : {}),
           ...(keepLocked ? { keepLocked: true } : {}),
           allowLeftovers: args.allowBatchLeftovers,
