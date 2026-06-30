@@ -170,9 +170,39 @@ npm run mobile:verify
 
 GitHub Actions (`.github/workflows/ci.yml`):
 
-**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm run test:coverage` → `check:today-captures` → `check:type-scale` → `check:screen-budget` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
+**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm run test:coverage` → `check:today-captures` → `check:type-scale` → `check:spacing-scale` → `check:token-scale` → `check:screen-budget` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
 
-**Static line/scale ratchets (web job):** `check:type-scale` (ENG-119 — Tailwind `text-[Npx]` off the canonical type ramp) and `check:screen-budget` (ENG-717 — the "no screen file over 400 lines" rule; scans web `src/app/components` + `app` and mobile `apps/mobile/app` + `apps/mobile/components` `.tsx` surfaces, pins current offenders in `scripts/screen-line-budget.json` at their line count so they can only shrink, fails on any new >400 file or a pinned file growing). Re-pin a shrunk file with `npm run check:screen-budget:write`.
+**Static line/scale ratchets (web job):**
+
+- `check:type-scale` (ENG-119) — Tailwind `text-[Npx]` off the canonical type ramp.
+- `check:spacing-scale` (ENG-1007) — off-scale numeric spacing-prop literals
+  (`padding` / `margin` / `gap` / `inset` / …) in mobile `apps/mobile/app` +
+  `apps/mobile/components` `.tsx`. The legal scale is read at runtime from
+  `apps/mobile/constants/theme.ts` (`Spacing` — 4/8/12/16/20/24/32/40, plus the
+  `0` reset), never hardcoded. Per-file off-scale counts are pinned in
+  `scripts/spacing-budget.json`; a pinned file may only shrink, and any
+  un-pinned file that introduces an off-scale literal fails. Re-pin with
+  `npm run check:spacing-scale:write`.
+- `check:token-scale` (ENG-1007) — raw 6-digit `#RRGGBB` hexes + raw Tailwind
+  palette colour classes (`bg-/text-/border-<hue>-<NNN>`) + off-scale
+  `borderRadius` literals (legal `Radius` read from theme.ts: 4/6/8/12/full)
+  across web `src/app/components` + `app` and mobile `apps/mobile/app` +
+  `apps/mobile/components`. Excludes token-def files (`theme.ts`, `theme.css`,
+  the Tailwind theme); 3-digit hexes (`#000`/`#fff`) are not matched (Apple
+  Sign-In brand carve-out). Per-file counts pinned in
+  `scripts/token-budget.json`; only-shrink ratchet. Re-pin with
+  `npm run check:token-scale:write`.
+- `check:screen-budget` (ENG-717) — the "no screen file over 400 lines" rule;
+  scans web `src/app/components` + `app` and mobile `apps/mobile/app` +
+  `apps/mobile/components` `.tsx` surfaces, pins current offenders in
+  `scripts/screen-line-budget.json` at their line count so they can only
+  shrink, fails on any new >400 file or a pinned file growing. Re-pin a shrunk
+  file with `npm run check:screen-budget:write`.
+
+The spacing + token budgets each store an `allow` map alongside `pins`: a
+full-file carve-out keyed by path with a required rationale string (ENG-ref or
+explicit "intentional …" reason). A rationale-less (silent) carve-out is itself
+a CI failure — there are currently none.
 
 **Mobile job:** under `apps/mobile` — ESLint, TypeScript, import-path guards, `npm run test:coverage` (Vitest with Istanbul coverage for `app/**` and `lib/**`; HTML under `apps/mobile/coverage/`), `npm run test:e2e:verify-suite` (Maestro flow files + `config.yaml` manifest — does not run the simulator on CI).
 

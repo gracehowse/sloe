@@ -67,7 +67,15 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
 - **Tokens only.** Colour, spacing, radius, type, and shadow values come from
   `apps/mobile/constants/theme.ts` (mobile) / `src/styles/theme.css` + the
   Tailwind theme (web). No literal hexes, no off-scale numbers. If the value
-  you need doesn't exist, add the token first, then use it.
+  you need doesn't exist, add the token first, then use it. **Enforced by two
+  only-shrink ratchets** (ENG-1007, in `npm run ci` + CI): `check:spacing-scale`
+  (`scripts/check-spacing-scale.mjs` — off-scale mobile spacing literals, pinned
+  in `scripts/spacing-budget.json`) and `check:token-scale`
+  (`scripts/check-token-scale.mjs` — raw hexes, raw Tailwind palette colour
+  classes, and off-scale `borderRadius` across web + mobile, pinned in
+  `scripts/token-budget.json`). Both read the legal scales from `theme.ts`; a
+  new off-scale/off-token value fails CI. Re-pin a legitimately-shrunk file with
+  `npm run check:spacing-scale:write` / `npm run check:token-scale:write`.
 - **Spacing snaps to the scale:** 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40
   (12 adopted 2026-06-10, ENG-1012 — the dense chip/row step). An 18px
   padding or 10px gap is a bug even if it looks fine.
