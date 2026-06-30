@@ -131,6 +131,30 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
     ],
     route: "/health-sync",
   },
+  {
+    // ENG-955 — gentle, opt-in weigh-in reminder. The row lives in the
+    // Reminders card of the canonical Settings bundle and is gated by the
+    // default-OFF `weigh_in_reminder_v1` flag, so a hit routes to the
+    // Settings screen (where the row renders once the flag ramps) rather than
+    // to a standalone screen.
+    id: "weigh-in-reminder",
+    label: "Weigh-in reminder",
+    sub: "A gentle weekly weigh-in nudge — skipped if you've already weighed in",
+    section: "Reminders",
+    keywords: [
+      "weigh",
+      "weigh in",
+      "weigh-in",
+      "weighin",
+      "weight reminder",
+      "weigh in reminder",
+      "scale",
+      "scale reminder",
+      "weekly weigh",
+      "remind me to weigh",
+    ],
+    route: "/(tabs)/settings",
+  },
 ];
 
 /**

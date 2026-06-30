@@ -36,6 +36,7 @@ Canonical implementation paths live under `app/api/**/route.ts`. Detail for heav
 | `/api/user-foods` | GET, POST | Bearer | Community custom foods search / submit |
 | `/api/user-foods/vote` | POST | Bearer | Vote on pending food |
 | `/api/push/weekly-recap` | POST | `X-Cron-Secret` | Cron fan-out to Expo push (mobile) + Web Push (browser) |
+| `/api/push/weigh-in-reminder` | POST | `X-Cron-Secret` | ENG-955 hourly cron — gentle, opt-in weigh-in reminder (anti-nag); default-OFF `weigh_in_reminder_v1` |
 
 ## Recipe Import
 
@@ -376,6 +377,53 @@ stamped so the next cron re-tries them.)
   uses service-role access because the fan-out needs to read every
   opted-in profile (RLS would hide other users' rows) and to write
   back to `profiles` without a user session.
+
+### `POST /api/push/weigh-in-reminder`
+
+ENG-955 — gentle, **opt-in** weekly weigh-in reminder push (anti-nag).
+Mirrors the weekly-recap delivery rail (same `X-Cron-Secret` auth, same
+service-role select, same Expo + Web Push fan-out, same DeviceNotRegistered
+/ dead-endpoint cleanup, same 5000-row cap, same structured log line) but
+fires a calm, trend-framed nudge instead of the recap. **Gated behind the
+default-OFF `weigh_in_reminder_v1` flag** — the cron only ever pushes users
+who toggled the feature ON in Settings, and the toggle UI only renders when
+the flag is enabled.
+
+**Auth:** shared-secret header — `X-Cron-Secret: <SUPPR_CRON_SECRET>`,
+`401` on missing/wrong, `503` when unset. Configured as an **hourly** Vercel
+cron (`0 * * * *` in `vercel.json`) because the user's chosen weigh-in hour
+can be any of 24.
+
+**Eligibility (the consequential, headless-tested core
+`src/lib/push/weighInReminder.ts`):**
+
+- **Opt-in gate** — the user must have `notification_prefs.weighInReminder.enabled === true`. No pref → skipped.
+- **Window gate** — fires only when the user's *local* time is their chosen weekday + hour (DST-correct via IANA; unrecognised/null tz falls back to UTC, never silently dropped).
+- **Anti-nag #1** — SKIP if a weigh-in already exists this period (any non-zero entry in `weight_kg_by_day` in the trailing 7-day window ending on the user's local today). No reminder lands on top of a fresh weigh-in.
+- **Anti-nag #2** — dedupe via `last_weigh_in_reminder_sent_at`: never re-fire inside a 6-day window (protects against the hourly cron double-firing inside the chosen hour, and against a tz shift mid-week).
+
+**Behaviour:** selects `profiles` with a non-null `notification_prefs`
+(capped 5000/invocation), applies the four gates in-memory, cross-references
+`web_push_subscriptions`, drops candidates with neither rail, fans out the
+warm copy on each rail, then stamps `last_weigh_in_reminder_sent_at` for
+every user delivered on **either** rail. DeviceNotRegistered tickets null
+the Expo token; `404`/`410` web subscriptions are deleted. Per-user outcomes
+emit `weigh_in_reminder_push_attempted` (`sent` / `deregistered` /
+`ticket_error` / `send_failed`, with `rail`) — no delivery failure is silent.
+
+**Copy (warm, never a streak/badge/threat):** title `"Weekly weigh-in"`,
+body `"Ready for a quick weigh-in? Mornings give the steadiest trend."`,
+deep link `/progress` (mobile) / `/home?view=progress` (web).
+
+**Pref + schema:** the opt-in + cadence (`{ enabled, weekday, hour }`) live
+inside the freeform `profiles.notification_prefs` JSONB under the
+`weighInReminder` key (no new column). The only schema change is the
+`last_weigh_in_reminder_sent_at timestamptz` dedupe stamp
+(`supabase/migrations/20260702120500_profiles_weigh_in_reminder_dedupe.sql`).
+
+**Response (success):** `{ ok: true, attempted, succeeded, deregistered }`.
+**Errors:** `401` (auth), `503` (secret/service-role unset), `500` (select
+failed), `502` (Expo API failed after retry).
 
 ---
 

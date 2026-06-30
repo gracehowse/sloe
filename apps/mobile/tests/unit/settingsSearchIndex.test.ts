@@ -96,6 +96,19 @@ describe("filterSettingsIndex", () => {
     expect(ids).not.toContain("daily-targets");
     expect(ids).not.toContain("notifications");
     expect(ids).not.toContain("health-sync");
+    // ENG-955 — the weigh-in reminder has no "fast"-containing keyword.
+    expect(ids).not.toContain("weigh-in-reminder");
+  });
+
+  it("matches the ENG-955 weigh-in reminder on weigh keywords, routing to Settings", () => {
+    for (const q of ["weigh", "weigh in", "weigh-in", "scale"]) {
+      const ids = filterSettingsIndex(q).map((h) => h.id);
+      expect(ids, q).toContain("weigh-in-reminder");
+    }
+    const entry = SETTINGS_SEARCH_INDEX.find((e) => e.id === "weigh-in-reminder");
+    expect(entry?.route).toBe("/(tabs)/settings");
+    // Anti-nag framing in the sub copy — never a streak/badge/threat.
+    expect(entry?.sub.toLowerCase()).not.toMatch(/streak|badge|don't lose|keep your/);
   });
 
   it("every entry has a stable id, label, sub, route, and at least one keyword", () => {

@@ -500,6 +500,21 @@ export const AnalyticsEvents = {
    *   - `seedCount`: number of items pre-seeded (2–4). Product can join
    *     this against `saved_meal_created` to measure funnel completion. */
   weekly_recap_save_prompt_tapped: "weekly_recap_save_prompt_tapped",
+  /** ENG-955 — server-side weigh-in reminder push outcome telemetry. Fires
+   *  once per user the `/api/push/weigh-in-reminder` cron actually attempts a
+   *  send for (i.e. after the opt-in + window + dedupe + anti-nag gates pass).
+   *  Mirrors the `weekly_recap_push_attempted` outcome shape so the dashboard
+   *  can compute a delivery rate without joining. Payload:
+   *    `{ outcome: "sent" | "deregistered" | "ticket_error" | "send_failed",
+   *       rail: "expo" | "web", errorCode?: string }`. No PII. */
+  weigh_in_reminder_push_attempted: "weigh_in_reminder_push_attempted",
+  /** ENG-955 — user flipped the Settings toggle controlling the opt-in
+   *  weigh-in reminder (`profiles.notification_prefs.weighInReminder.enabled`),
+   *  web `Settings` / mobile `SettingsBundleContent`. Fires once per committed
+   *  change, never on initial hydration, never on a no-op. Default-OFF feature
+   *  (`weigh_in_reminder_v1`). Payload: `{ enabled: boolean, weekday?: number,
+   *  hour?: number }` — weekday/hour present when the cadence is also set. */
+  weigh_in_reminder_enabled_toggled: "weigh_in_reminder_enabled_toggled",
   /** Weekly Check-in surface (TDEE delta + goal-pace re-tune) was viewed.
    * MacroFactor parity (extended-competitor-audit, 2026-04-30). Fires
    * once per visible weekKey on either platform — mobile from the

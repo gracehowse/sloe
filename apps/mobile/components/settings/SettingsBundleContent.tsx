@@ -67,6 +67,8 @@ import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } fro
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { CARD_RADIUS, SHEET_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { WeighInReminderRow } from "@/components/settings/WeighInReminderRow";
+import { WeeklyRecapPushPicker } from "@/components/settings/WeeklyRecapPushPicker";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, type ResolvedTargets } from "@/lib/calcTargets";
 import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
@@ -85,7 +87,6 @@ import { fastingWindowLabel } from "@suppr/shared/fasting/milestones";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { probeHealthAccess } from "@/lib/healthSync";
 import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
-import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 import { saveWeekStartDay } from "@suppr/nutrition-core/weekStartDayClient";
 import {
@@ -2310,6 +2311,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }
           onPress={() => setWeeklyRecapPushPickerOpen(true)}
         />
+        {/* ENG-955 — gentle, opt-in weigh-in reminder (default-OFF flag
+            `weigh_in_reminder_v1`; renders null until ramp). Self-contained
+            so the picker doesn't grow this file's pinned screen budget. */}
+        <WeighInReminderRow userId={userId} />
       </SettingsCard>
 
       {/* Recipes */}
@@ -3279,160 +3284,17 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         </View>
       </Modal>
 
-      {/* Weekly recap push picker */}
-      <Modal
+      {/* Weekly recap push picker — extracted to WeeklyRecapPushPicker
+          (ENG-955) so the new weigh-in reminder row fits this file's pinned
+          screen budget. Behaviour + testIDs unchanged. */}
+      <WeeklyRecapPushPicker
         visible={weeklyRecapPushPickerOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setWeeklyRecapPushPickerOpen(false)}
-      >
-        <View style={{ flex: 1, justifyContent: "flex-end" }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.5)",
-            }}
-            onPress={() => setWeeklyRecapPushPickerOpen(false)}
-          />
-          <View
-            style={{
-              backgroundColor: colors.card,
-              borderTopLeftRadius: SHEET_RADIUS,
-              borderTopRightRadius: SHEET_RADIUS,
-              paddingTop: Spacing.lg,
-              paddingBottom: insets.bottom + Spacing.xl,
-              paddingHorizontal: Spacing.xl,
-            }}
-          >
-            <View
-              style={{
-                width: 36,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: colors.border,
-                alignSelf: "center",
-                marginBottom: Spacing.lg,
-              }}
-            />
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: colors.text,
-                marginBottom: 4,
-              }}
-            >
-              Weekly recap
-            </Text>
-            <Text
-              style={{
-                fontSize: 12,
-                color: colors.textSecondary,
-                marginBottom: Spacing.lg,
-              }}
-            >
-              Get a one-tap summary of your week on{" "}
-              {weekStartDay === "monday" ? "Sunday" : "Saturday"} evening. Off by choice — no reminder will be sent.
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingVertical: 12,
-                borderTopWidth: 1,
-                borderBottomWidth: 1,
-                borderColor: colors.cardBorder,
-              }}
-            >
-              <View style={{ flex: 1, paddingRight: Spacing.md }}>
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "600",
-                    color: colors.text,
-                  }}
-                >
-                  Send weekly recap
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginTop: 2,
-                  }}
-                >
-                  {weeklyRecapPushEnabled
-                    ? "On · next push lands at the end of your week"
-                    : "Off · no push will be scheduled"}
-                </Text>
-              </View>
-              <Switch
-                accessibilityRole="switch"
-                accessibilityLabel="Weekly recap push notifications"
-                accessibilityState={{ checked: weeklyRecapPushEnabled }}
-                value={weeklyRecapPushEnabled}
-                onValueChange={(next) => {
-                  const previous = weeklyRecapPushEnabled;
-                  if (previous === next) return;
-                  setWeeklyRecapPushEnabled(next);
-                  if (!userId) {
-                    setWeeklyRecapPushEnabled(previous);
-                    Alert.alert(
-                      "Sign in required",
-                      "Sign in to change this preference.",
-                    );
-                    return;
-                  }
-                  void (async () => {
-                    const { error } = await supabase
-                      .from("profiles")
-                      .update({ weekly_recap_push_enabled: next })
-                      .eq("id", userId);
-                    if (error) {
-                      setWeeklyRecapPushEnabled(previous);
-                      Alert.alert(
-                        "Could not save",
-                        "We couldn't save your preference. Please try again.",
-                      );
-                      return;
-                    }
-                    // Server cron at /api/push/weekly-recap owns delivery
-                    // since 2026-04-20; OFF still cancels any stale local
-                    // schedule lingering in the OS queue.
-                    if (!next) {
-                      try {
-                        await cancelWeeklyRecapPush();
-                      } catch {
-                        // captureException inside the helper already
-                        // routes OS errors; never revert the DB toggle.
-                      }
-                    }
-                    track(
-                      AnalyticsEvents.weekly_recap_push_enabled_toggled,
-                      { enabled: next },
-                    );
-                  })();
-                }}
-                trackColor={{ false: colors.border, true: accent.primary }}
-              />
-            </View>
-            {/* Done — GHOST (Sloe button canon, 2026-06-12). Inline picker
-                dismiss action: transparent, no border, plum label. */}
-            <SupprButton
-              variant="ghost"
-              onPress={() => setWeeklyRecapPushPickerOpen(false)}
-              label="Done"
-              style={{ marginTop: Spacing.lg }}
-            />
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setWeeklyRecapPushPickerOpen(false)}
+        enabled={weeklyRecapPushEnabled}
+        setEnabled={setWeeklyRecapPushEnabled}
+        userId={userId}
+        weekStartDay={weekStartDay}
+      />
 
       {/* Week start day picker */}
       <Modal
