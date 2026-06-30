@@ -351,6 +351,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "progress_plateau_insight_v1", // ENG-954 — calm plateau insight line
   "weigh_in_reminder_v1",        // ENG-955 — opt-in weigh-in reminder Settings surface
   "portion_fit_hint_v1",         // ENG-854 — portion-fit hint in food-search preview
+  // ENG-855 / make-anything-fit Mode B — distribute-around-anchor on the Plan
+  // tab. When the user drops a meal they *want* into the plan, the remaining
+  // day budget spreads across the other open slots as per-slot calorie + macro
+  // budgets, with a body-neutral, enabling-not-restricting summary line. Math:
+  // `distributeAroundAnchor` in `@suppr/shared/nutrition/distributeAroundAnchor`;
+  // a low-confidence anchor → qualitative fallback, never a fabricated per-slot
+  // number. DEFAULT-ON per ENG-1279 ("always flag on" so the solo tester sees
+  // it); the legacy Plan view (no Mode-B band) stays in the `else` as the kill
+  // switch. Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
+  "plan_distribute_anchor_v1",
 ]);
 
 /**

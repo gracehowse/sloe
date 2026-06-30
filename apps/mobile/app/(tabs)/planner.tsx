@@ -178,6 +178,7 @@ import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
 import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
+import { PlanAnchorBudgetBand } from "@/components/plan/PlanAnchorBudgetBand";
 import { PlanRegenerateToast } from "@/components/plan/PlanRegenerateToast";
 import { ResetPlanSheet } from "@/components/plan/ResetPlanSheet";
 import { usePlannerGenerateMenu } from "@/hooks/usePlannerGenerateMenu";
@@ -662,6 +663,8 @@ export default function PlannerScreen() {
   // legacy all-or-nothing regenerate. Override in sim via
   // `EXPO_PUBLIC_FLAG_FORCE_PLAN_MEAL_LOCK_V1=true`.
   const mealLockEnabled = isFeatureEnabled("plan_meal_lock_v1");
+  // ENG-855 Mode B — distribute-around-anchor band (default-ON, ENG-1279).
+  const planDistributeAnchor = isFeatureEnabled("plan_distribute_anchor_v1");
   // ENG-1193 / ENG-1131 — smart recipe suggestions on Plan (shared scorer +
   // save CTA). Same flag as web `plan_web_parity_v1` (default-on).
   const planWebParity = isFeatureEnabled("plan_web_parity_v1");
@@ -3983,6 +3986,8 @@ export default function PlannerScreen() {
                 </View>
               );
             })()}
+            {/* ENG-855 Mode B — distribute-around-anchor band (shared selector). */}
+            <PlanAnchorBudgetBand enabled={planDistributeAnchor} meals={dp.meals} targets={planTargets} />
             </View>
           </View>
           );

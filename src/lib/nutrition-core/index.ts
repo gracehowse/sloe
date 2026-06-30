@@ -30,6 +30,7 @@ export * from "../nutrition/dailyValues";
 export * from "../nutrition/dayOfWeekPattern";
 export * from "../nutrition/digest";
 export * from "../nutrition/digestStory";
+export * from "../nutrition/distributeAroundAnchor";
 export * from "../nutrition/eatAgainDismiss";
 export * from "../nutrition/fastingStageNarrative";
 export * from "../nutrition/fatsecretAutocompleteClient";
