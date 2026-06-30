@@ -414,8 +414,20 @@ The implementation rules above are partially enforced at lint time — a prevent
 | `margin*` | Same as padding. | Same. |
 | `borderRadius` | `Radius.sm / md / lg / xl / full` | Cards always `Radius.lg`. |
 | `gap` | `Spacing.*` | Gap is a spacing concern. |
+| **raw hex colour literal** (`"#fff"`, `'#3B2A4D'`) | `Accent.* / Colors.*.* / MacroColors.* / ShadowColor.*`, or `colors.*` from `useThemeColors()` | The ENG-811 mobile raw-hex lane (`SUPPR_RAW_HEX_SYNTAX`), added with the ENG-1013 sweep. `constants/theme.ts` is the only legal home for a literal hex. |
 
 Severity: **`warn`**. The today/ tree carries a baseline of legacy literals (~456 as of 2026-04-28) — those migrate opportunistically as files are touched. New code lights up the lint output. Expanding the scope to `components/**` and `app/**` is a follow-up once the today/ tree is clean.
+
+**Mobile raw-hex lane, broadened (ENG-1013, 2026-06-29)** — the raw-hex selector
+above ALSO runs (selector-only, no style-literal rules) on the rest of the
+ENG-1013 target screen tree: `app/(tabs)/planner.tsx`, `library.tsx`,
+`discover.tsx`, `progress.tsx`, `barcode.tsx`, `recipes.tsx`, `more.tsx`,
+`notifications.tsx`, `settings.tsx`, and `app/recipe/[id].tsx`. That tree was
+migrated to a **verified zero raw-hex baseline**, so the guard holds at `warn`
+and a new hex shows up loudly. `CalorieRing.tsx` keeps the style-literal guard
+but is held OUT of the hex lane — its plum overflow-ramp `to`-stops
+(`#A589B5` / `#7A5890`) have no matching token yet (a deferred CalorieRing
+colour-token decision, not a guess to make here).
 
 **Mobile, all files** — `no-restricted-imports` flags `@expo/vector-icons` Ionicons imports as **`warn`**. Lucide is canonical (Top-5 #4 decision); ~64 legacy Ionicons usages migrate opportunistically.
 
@@ -423,7 +435,14 @@ Severity: **`warn`**. The today/ tree carries a baseline of legacy literals (~45
 
 ### What's NOT enforced
 
-- Hardcoded hex colors in component files. Rule #1 in the implementation list above is convention-only — there's no AST selector that catches hex literals reliably without false positives. The token system + `useThemeColors()` covers the common path; visual review catches the rest.
+- Hardcoded hex colors **outside the ENG-1013 target screen tree**. The raw-hex
+  AST selector (`SUPPR_RAW_HEX_SYNTAX`, ENG-811 mobile lane / ENG-1013, 2026-06-29)
+  DOES now catch hex literals reliably (anchored so anchor hrefs / route fragments
+  never false-positive), but it is scoped to the migrated screen tree (the tabs +
+  `components/today/**` + recipe detail) where a zero baseline is verified. The
+  rest of `apps/mobile/**` still carries legacy hexes that migrate
+  opportunistically; the token system + `useThemeColors()` + visual review cover
+  those until the scope expands.
 
   _Off-token literals migrated onto semantic tokens (ENG-716, 2026-06-19, token + a11y sweep): `NutritionSourceBadge` (web green/yellow/slate → `success/warning/muted` tokens; mobile cool-slate `#94a3b8` manual → `sourceManual` warm-grey token); web `streak-pip` milestone tone (`amber-*` literals → `warning-soft`/`warning-solid` — **web-only**; the mobile `StreakPip` twin renders no distinct milestone tone, a pre-existing gap, not introduced here); both 404 pages (`app/not-found.tsx` + `app/recipe/[id]/not-found.tsx` — slate/violet/indigo literals + 🍽️ emoji → semantic tokens + lucide `FileQuestion`/`UtensilsCrossed`, unified onto one card shell)._
 

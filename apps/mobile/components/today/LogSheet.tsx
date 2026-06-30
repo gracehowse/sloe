@@ -31,7 +31,7 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import * as Haptics from "expo-haptics";
 
-import { Accent, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, IconSize, MacroColors, MacroColorsDark, Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -1726,7 +1726,7 @@ function BarcodeManualEntry({
     borderColor: colors.border,
     backgroundColor: colors.card,
     paddingHorizontal: 8,
-    borderRadius: 8,
+    borderRadius: Radius.lg,
     color: colors.text,
     textAlign: "right" as const,
     fontVariant: ["tabular-nums"] as ("tabular-nums")[],
@@ -1875,7 +1875,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: SHEET_RADIUS,
     borderTopRightRadius: SHEET_RADIUS,
     overflow: "hidden",
-    shadowColor: "#000",
+    shadowColor: ShadowColor.cast,
     shadowOpacity: 0.18,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: -8 },
@@ -2026,7 +2026,7 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.sm,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
-    borderRadius: 4,
+    borderRadius: Radius.sm,
     borderWidth: StyleSheet.hairlineWidth,
   },
   libraryMealTagText: {

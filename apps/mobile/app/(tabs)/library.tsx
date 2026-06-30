@@ -33,7 +33,7 @@ import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { FontFamily, Spacing, Radius } from "@/constants/theme";
+import { FontFamily, Spacing, Radius, ShadowColor } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -614,7 +614,7 @@ export default function LibraryScreen() {
       backgroundColor: "rgba(255,255,255,0.9)",
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: "#000",
+      shadowColor: ShadowColor.cast,
       shadowOpacity: 0.12,
       shadowRadius: 4,
       shadowOffset: { width: 0, height: 1 },

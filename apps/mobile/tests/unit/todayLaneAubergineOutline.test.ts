@@ -92,8 +92,10 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
   it("First-meal empty state 'Log a meal' CTA is a SOLID primary SupprButton", () => {
     expect(FIRST_MEAL).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}accessibilityLabel="Log a meal"/);
     expect(FIRST_MEAL).not.toMatch(/borderColor:\s*accent\.primarySolid/);
-    // The glyph rides on the solid fill → white, not plum.
-    expect(FIRST_MEAL).toMatch(/<Plus size=\{16\} color="#fff"/);
+    // The glyph rides on the solid fill → white, not plum. The white is now
+    // routed through the `Accent.primaryForeground` token (was a raw `#fff`
+    // literal pre-ENG-1013 hex sweep) — still white, just tokenised.
+    expect(FIRST_MEAL).toMatch(/<Plus size=\{16\} color=\{Accent\.primaryForeground\}/);
   });
 
   it("Edit-meal 'Save changes' is an outline; Delete stays destructive red", () => {

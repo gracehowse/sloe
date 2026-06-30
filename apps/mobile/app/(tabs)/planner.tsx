@@ -1672,7 +1672,7 @@ export default function PlannerScreen() {
           paddingHorizontal: Spacing.md,
           paddingVertical: Spacing.dense,
         },
-        summaryPrimaryText: { ...Type.button, color: "#fff", fontSize: 13 },
+        summaryPrimaryText: { ...Type.button, color: colors.primaryForeground, fontSize: 13 },
         summarySecondaryBtn: {
           flexDirection: "row",
           alignItems: "center",
@@ -1858,7 +1858,7 @@ export default function PlannerScreen() {
           paddingVertical: 16,
           alignItems: "center",
         },
-        generateBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+        generateBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 16 },
 
         // Sloe DS — the weekday reads in Newsreader (serif, plum ink) so the
         // week scans as a calm editorial list of days, not a stack of bold
@@ -2963,7 +2963,7 @@ export default function PlannerScreen() {
                 loading={generating}
                 accessibilityLabel="Generate or import plan"
               >
-                <RefreshCw size={14} color="#fff" strokeWidth={1.75} />
+                <RefreshCw size={14} color={colors.primaryForeground} strokeWidth={1.75} />
                 {/* ENG-956 — "Refresh the rest" when ≥1 meal is locked; the
                     keep-locked re-roll runs inside generatePlan(). */}
                 <Text style={styles.summaryPrimaryText}>
@@ -3283,7 +3283,7 @@ export default function PlannerScreen() {
                           // Solid CTA (button-system canon): dots in WHITE so
                           // they read on the solid aubergine fill (was
                           // aubergine for the retired outline treatment).
-                          backgroundColor: "#fff",
+                          backgroundColor: colors.primaryForeground,
                           opacity: 0.35 + (i / 7) * 0.6,
                         }}
                       />

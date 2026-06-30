@@ -2403,7 +2403,7 @@ export default function RecipeDetailScreen() {
         );
         const cookV3Shell = recipeDetailV3;
         const cookBg = cookV3Shell ? Accent.primaryDeep : colors.background;
-        const cookTextPrimary = cookV3Shell ? "#efe9f2" : colors.text;
+        const cookTextPrimary = cookV3Shell ? Accent.frostBright : colors.text;
         const cookTextMuted = cookV3Shell ? Accent.frost : colors.textSecondary;
         return (
           <Modal

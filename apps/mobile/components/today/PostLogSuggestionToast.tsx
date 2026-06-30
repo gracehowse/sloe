@@ -3,7 +3,7 @@ import * as React from "react";
 import { Text, View } from "react-native";
 import { Sparkles } from "lucide-react-native";
 
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -83,7 +83,7 @@ function PostLogSuggestionToastImpl(props: PostLogSuggestionToastProps) {
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: Accent.win + "40",
-        shadowColor: "#000",
+        shadowColor: ShadowColor.cast,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.12,
         shadowRadius: 6,

@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   proBadgeText: {
-    color: "#fff",
+    color: Accent.primaryForeground,
     fontSize: 8,
     fontWeight: "700",
     letterSpacing: 0.2,

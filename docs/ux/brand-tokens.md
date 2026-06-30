@@ -114,6 +114,30 @@ _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously du
 | Input background | `#F2EFEA` | `#232126` | `Colors.*.inputBg` |
 | Overlay | `#00000088` | `#000000aa` | `Colors.*.overlay` |
 | Brand-mark ring | `#3B2A4D` (plum) | `#ffffff` | `Colors.*.brandMarkRing` / `--brand-mark-ring` |
+| Brand-shell text | `#efe9f2` (frost-bright) | — | `Accent.frostBright` |
+
+> **Brand-shell text (`Accent.frostBright`, #efe9f2 — ENG-1013):** the near-white
+> plum-tinted PRIMARY text on the deep-plum brand ground (`Accent.primaryDeep`
+> `#241733`). Used by the cook-mode V3 shell (`app/cook.tsx`,
+> `app/recipe/[id].tsx`) for the step headline; one step brighter/warmer than the
+> muted `Accent.frost` (`#c9c2d6`) divider/tagline and than the dark-scheme body
+> ink `Colors.dark.text`. Route cook/brand-shell primary text here, never a raw
+> `#efe9f2`.
+
+## Shadow tokens
+
+`shadowColor` on a drop shadow is a token too. Two bases, matching what the
+`Elevation.*` tokens already cast from:
+
+| Role | Value | Mobile token | Used by |
+|------|-------|-------------|---------|
+| Sheet / toast / float cast | `#000` | `ShadowColor.cast` | bespoke toast/sheet/modal shadows + `Elevation.sheet` / `Elevation.float` |
+| Card ink cast | `#221B26` (aubergine ink) | `ShadowColor.ink` | resting cards + `Elevation.cardSoft` / `Elevation.cardHairline` |
+
+> Prefer spreading an `Elevation.*` token when the whole recipe matches. When a
+> surface needs a bespoke opacity/radius/offset (a one-off toast or tooltip),
+> route just `shadowColor` through `ShadowColor.cast` / `ShadowColor.ink` — never
+> a raw `#000` / `#221B26` (ENG-1013).
 
 > **Sloe Phase 0 (2026-06-03):** the page is **oat `#FBF8F3`**, cards are pure
 > white, the warmth lives in the **aubergine ink** (`--foreground` `#221B26`)
@@ -130,8 +154,16 @@ _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously du
 
 ## Where it lives in code
 
-- **Mobile:** `apps/mobile/constants/theme.ts` — `Accent`, `MacroColors`, `Brand`, `Colors.light` / `Colors.dark`, `Spacing`, `Radius`.
+- **Mobile:** `apps/mobile/constants/theme.ts` — `Accent`, `MacroColors`, `Brand`, `Colors.light` / `Colors.dark`, `Spacing`, `Radius`, `ShadowColor`, `Elevation`.
 - **Web:** `src/styles/theme.css` — CSS custom properties. When adding a new surface, use existing tokens. Do not introduce new hex values without updating this doc.
+
+### Raw-hex lint guard (the ENG-811 lanes)
+
+A raw hex literal in a component is a finding, caught at write time:
+
+- **Web:** `eslint.config.mjs` `SUPPR_RAW_COLOUR_SYNTAX` (`no-restricted-syntax`) — raw hex + raw-Tailwind-palette utilities, `warn`.
+- **Mobile (ENG-811 mobile lane, added with ENG-1013):** `apps/mobile/eslint.config.js` `SUPPR_RAW_HEX_SYNTAX` (`no-restricted-syntax`, `warn`), scoped to the ENG-1013-migrated screen tree (`app/(tabs)/*.tsx` + `components/today/**` + `app/recipe/[id].tsx`). The token file `constants/theme.ts` is the only legal home for a literal hex and is outside the scope. The Apple-HIG `#000`/`#fff` on `app/login.tsx` + onboarding `signup.tsx` are a brand carve-out, outside the scope.
+- **Test gate:** `apps/mobile/tests/unit/hexTokenSweepCensus.test.ts` walks the whole target tree and fails if ANY raw hex reappears (comment-stripped, source-grep).
 
 ## Spacing tokens
 

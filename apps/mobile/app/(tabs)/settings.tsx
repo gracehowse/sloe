@@ -263,7 +263,7 @@ export default function SettingsScreen() {
             style={{
               backgroundColor: colors.card,
               // Sloe warm-slab corner (was 14) — matches the section cards.
-              borderRadius: 24,
+              borderRadius: CARD_RADIUS,
               borderWidth: 1,
               borderColor: colors.border,
               overflow: "hidden",

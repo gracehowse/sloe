@@ -1280,7 +1280,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                                 style={{
                                   width: 40,
                                   height: 40,
-                                  borderRadius: 8,
+                                  borderRadius: Radius.lg,
                                   overflow: "hidden",
                                   flexShrink: 0,
                                 }}
