@@ -188,6 +188,7 @@ export async function DELETE(req: Request) {
     //   - `admin_users.user_id`                    → cascade delete
     //   - `user_food_votes.voter_id`               → cascade delete
     //   - `user_food_flags.flagger_id`             → cascade delete (F-138 P3)
+    //   - `recipe_cook_history.user_id`            → cascade delete
     //   - `households` member rows (household_members.user_id) → cascade
     //
     // Un-attributed via `on delete set null` (kept public, source-link

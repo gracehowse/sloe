@@ -211,6 +211,46 @@ The web "Export everything" Settings row and the delete-flow export-first action
 both call the shared `downloadSupprExport` helper, so there is exactly one
 complete-archive code path on web (no inlined, drifting copies).
 
+## Deletion removal ledger + de-attribution disclosure (ENG-1263)
+
+The DeleteAccount sheet's step 2 shows a **removal ledger** — a red-✕ list of
+what the destructive flow erases — so the user gives informed consent before an
+irreversible action. The ledger counts come from
+`src/lib/settings/fetchDeleteAccountLedger.ts`; the row formatting + the
+disclosure footnote live in the shared SSOT
+`src/lib/settings/deleteAccountFlow.ts`.
+
+**The ledger lists only what is HARD-DELETED.** The recipes row counts:
+
+- saved recipes (`saves` — deleted by the route), **plus**
+- unpublished authored drafts (`recipes WHERE author_id = user AND
+  published = false` — deleted by step 3 of the route).
+
+It does **not** count **published authored recipes**. Those survive
+de-attributed: the delete route (step 4) sets `author_id = null` and the recipe
+stays public. This is the correct, legally-sufficient GDPR **Art. 17** erasure
+posture (de-identification — confirmed by legal-reviewer 2026-06-29; the
+hard-delete alternative was rejected). The recipes row label reads
+**"N saved recipes & drafts"** (not "saved & created") so it never implies a
+published recipe was destroyed.
+
+To keep that honest, step 2 renders a **de-attribution footnote** beneath the
+ledger on both platforms (`DELETE_ACCOUNT_DEATTRIBUTION_NOTE`, rendered with
+`testID="delete-account-deattribution-note"`):
+
+> Recipes you've published stay public, but we remove your name from them.
+> Anyone who saved or cooked them keeps their copy. Everything else here is
+> deleted for good.
+
+The "Delete forever" button label is unchanged — it is accurate for the
+hard-deleted majority, and the footnote carves out the published exception.
+
+**Open question for formal counsel (data-integrity + legal):** the privacy
+policy should not treat de-attribution as *final* erasure until it is confirmed
+that the de-attribution is effectively irreversible in the DB and in backups —
+i.e. no shadow author link / restore re-link path that could re-associate a
+"deleted" user with their published recipes.
+
 ## Files
 
 - Server endpoint: `app/api/export/me/route.ts`
@@ -230,6 +270,12 @@ complete-archive code path on web (no inlined, drifting copies).
   - `tests/unit/settingsExportEverythingWeb.test.ts`
   - `tests/unit/exportEverythingWeb.test.ts` (web helper, ENG-1262)
   - `tests/unit/deleteAccountExportFirstWiring.test.ts` (web wiring, ENG-1262)
+  - `tests/unit/fetchDeleteAccountLedger.test.ts` (ledger counts; published vs
+    unpublished split, ENG-1263)
+  - `tests/unit/deleteAccountFlow.test.ts` (ledger labels + de-attribution
+    footnote SSOT + web/mobile parity pin, ENG-1263)
+  - `tests/unit/deleteAccountSheetDeattribution.test.tsx` (web sheet renders the
+    footnote on step 2, ENG-1263)
   - `apps/mobile/tests/unit/exportEverything.test.ts`
   - `apps/mobile/tests/unit/settingsExportEverythingRow.test.ts`
   - `apps/mobile/tests/unit/deleteAccountExportFirstWiring.test.ts`
@@ -238,4 +284,6 @@ complete-archive code path on web (no inlined, drifting copies).
 ## Related
 
 - Account deletion (the destructive twin): `app/api/account/delete/route.ts`
+  (step 3 hard-deletes unpublished drafts; step 4 de-attributes published
+  recipes — see the removal-ledger section above)
 - CSV meal-log export (curated subset): `src/lib/export/nutritionLogToCsv.ts`
