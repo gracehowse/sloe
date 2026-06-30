@@ -263,7 +263,7 @@ export function RecipeEditDialog({
                     disabled={saving}
                     className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
                       active
-                        ? "border-primary bg-primary/10 text-primary"
+                        ? "border-primary bg-primary/10 text-primary-solid"
                         : "border-border bg-background text-foreground hover:bg-muted/60"
                     }`}
                   >

@@ -82,7 +82,7 @@ export function StrategyStep() {
               <span className="flex items-center gap-2">
                 {s.title}
                 {s.id === recommended && (
-                  <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-primary px-1.5 py-0.5 rounded bg-primary/15">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-primary-solid px-1.5 py-0.5 rounded bg-primary/15">
                     Recommended
                   </span>
                 )}

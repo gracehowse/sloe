@@ -2977,7 +2977,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 <button
                   type="button"
                   onClick={() => setAddIngOpen(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/50 bg-card px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/50 bg-card px-4 py-2.5 text-sm font-semibold text-primary-solid hover:bg-primary/10 transition-colors"
                   aria-label="Add an ingredient the importer missed"
                 >
                   <span aria-hidden>+</span>

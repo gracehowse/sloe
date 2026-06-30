@@ -112,7 +112,7 @@ export function StreakPip({
     : isMilestone
       ? "bg-warning-soft text-warning-solid"
       : active
-        ? "bg-primary/10 text-primary"
+        ? "bg-primary/10 text-primary-solid"
         : "bg-muted text-muted-foreground";
 
   const sizeClass = isLg

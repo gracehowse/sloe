@@ -99,7 +99,7 @@ function entryKindForRecipe(
 function kindBadgeClasses(kind: LibraryEntryKind): string {
   switch (kind) {
     case "created":
-      return "bg-primary/10 text-primary";
+      return "bg-primary/10 text-primary-solid";
     case "imported":
       return "bg-warning-soft text-warning-solid";
     case "saved":

@@ -81,7 +81,15 @@ export function Badge({
 }: BadgeProps) {
   const accent = useAccent();
   // pro/custom anchor follows the scheme-resolved accent (module map can't hook).
-  const color = variant === "pro" || variant === "custom" ? accent.primary : variantColors[variant];
+  const isPrimaryVariant = variant === "pro" || variant === "custom";
+  const color = isPrimaryVariant ? accent.primary : variantColors[variant];
+  // ENG-828 — the fill/border anchor (`color`) is the primary FILL hue, but on
+  // dark `accent.primary` (#7E5C92) reads only ~2.9:1 as small TEXT on its own
+  // soft tint (AA FAIL). The text ink reads the AA-safe `primarySolid`
+  // (#3B2A4D light / #C4ACD0 dark, scheme-resolved by useAccent) — the mobile
+  // twin of web `badge.tsx` `pro`/`custom` → `text-primary-solid`. Light is a
+  // no-op (primarySolid === primary === #3B2A4D); dark lifts text to 7.6:1.
+  const textColor = isPrimaryVariant ? accent.primarySolid : color;
   const label = accessibilityLabel ?? defaultAccessibilityLabel[variant];
 
   return (
@@ -112,7 +120,7 @@ export function Badge({
           {
             fontSize: 10,
             fontWeight: "700",
-            color,
+            color: textColor,
             letterSpacing: 0.6,
             textTransform: "uppercase",
             includeFontPadding: false,

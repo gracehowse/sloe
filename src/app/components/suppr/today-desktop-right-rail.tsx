@@ -227,7 +227,7 @@ export function TodayDesktopRightRail({
                   </span>
 
                   {isToday && !isActive && (
-                    <span className="shrink-0 rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider">
+                    <span className="shrink-0 rounded-full bg-primary/10 text-primary-solid px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider">
                       Today
                     </span>
                   )}

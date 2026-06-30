@@ -2313,7 +2313,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             <button
               type="button"
               onClick={splitAllIngredientLines}
-              className="px-4 py-2 rounded-lg border border-primary/30 text-primary text-sm font-medium hover:bg-primary/10"
+              className="px-4 py-2 rounded-lg border border-primary/30 text-primary-solid text-sm font-medium hover:bg-primary/10"
             >
               Re-split lines
             </button>

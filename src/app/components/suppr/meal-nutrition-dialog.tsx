@@ -429,7 +429,7 @@ export function MealNutritionDialog({
                     type="button"
                     data-testid="meal-nutrition-edit"
                     onClick={() => onEdit(effectiveMeal.id)}
-                    className="rounded-md px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/5"
+                    className="rounded-md px-3 py-1.5 text-sm font-semibold text-primary-solid hover:bg-primary/5"
                     aria-label="Edit this meal"
                   >
                     Edit

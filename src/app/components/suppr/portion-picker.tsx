@@ -98,7 +98,7 @@ export function PortionPickerWeb(props: PortionPickerWebProps) {
             type="button"
             aria-label="Change unit"
             onClick={() => setUnitOpen((v) => !v)}
-            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11.5px] font-bold text-primary hover:bg-primary/15 transition"
+            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11.5px] font-bold text-primary-solid hover:bg-primary/15 transition"
           >
             {unitLabel(value)}
             <span className="text-[10px] opacity-70" aria-hidden>
@@ -117,7 +117,7 @@ export function PortionPickerWeb(props: PortionPickerWebProps) {
                     onClick={() => onSelectUnit(u)}
                     className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
                       active
-                        ? "bg-primary/15 text-primary font-bold"
+                        ? "bg-primary/15 text-primary-solid font-bold"
                         : "text-foreground hover:bg-muted/60"
                     }`}
                   >
@@ -160,7 +160,7 @@ export function PortionPickerWeb(props: PortionPickerWebProps) {
                   onClick={() => onTapChip(chip)}
                   className={`shrink-0 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition border ${
                     active
-                      ? "border-primary/30 bg-primary/15 text-primary"
+                      ? "border-primary/30 bg-primary/15 text-primary-solid"
                       : "border-border bg-card text-foreground hover:bg-muted/60"
                   }`}
                 >

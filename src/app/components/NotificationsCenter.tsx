@@ -23,7 +23,7 @@ const ICON_BY_KEY: Record<NotificationIconKey, (typeof Icons)[keyof typeof Icons
 
 /** Tone → toned-plate classes (v3 `.notif-ic.is-brand/good/neutral`). */
 const PLATE_BY_TONE: Record<NotificationTone, string> = {
-  brand: "bg-primary/10 text-primary",
+  brand: "bg-primary/10 text-primary-solid",
   good: "bg-[var(--success-soft)] text-[var(--success)]",
   neutral: "bg-muted text-muted-foreground",
 };

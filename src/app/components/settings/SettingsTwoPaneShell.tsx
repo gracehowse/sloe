@@ -13,7 +13,7 @@
  * Prototype source: `docs/ux/redesign/v3/Sloe-App.html` → `WebSettings`
  * (`.w-set-grid` 230px + 1fr, sticky `.w-set-nav`, `.w-sni` nav items,
  * serif `.w-set-panel h1`, muted `.w-sub-lead`). The active nav item uses
- * the established plum-on-tint grammar (`bg-primary/10 text-primary`) the
+ * the established plum-on-tint grammar (`bg-primary/10 text-primary-solid`) the
  * Settings header + Pro pill already use — the prototype's `accent-frost
  * -mist` token has no web equivalent, so we match intent with the live
  * token, not a literal.
@@ -109,7 +109,7 @@ export function SettingsTwoPaneShell({ header, sections }: SettingsTwoPaneShellP
                 data-testid={`settings-pane-nav-${section.id}`}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                   isActive
-                    ? "bg-primary/10 text-primary font-semibold"
+                    ? "bg-primary/10 text-primary-solid font-semibold"
                     : "text-foreground-tertiary hover:bg-muted hover:text-foreground"
                 }`}
               >

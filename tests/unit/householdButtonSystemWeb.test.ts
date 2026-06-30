@@ -42,8 +42,17 @@ const SETTINGS = read("src/app/components/HouseholdSettingsPage.tsx");
 const FOOD_SEARCH = read("src/app/components/food-search/FoodSearchPanel.tsx");
 
 // Retired Sloe aubergine-OUTLINE / filled-slab signatures the migration drops.
+// The retired outline-pill CTA paired a `border-[1.5px] border-primary-solid`
+// edge with a `text-primary-solid` label. ENG-828 introduced `text-primary-solid`
+// as the AA-safe CHIP/badge ink (on a `bg-primary/N` tint + `border-primary/30`),
+// so a bare `text-primary-solid` is no longer a CTA-regression signal on its
+// own — the tell is the `border-[1.5px] border-primary-solid` OUTLINE edge.
+// OUTLINE_LABEL now requires that outline edge to co-occur (chips use the `/30`
+// alpha border, never `border-primary-solid`), so the contrast-token chip fix
+// doesn't false-positive as a button regression.
 const OUTLINE_PILL = /border-\[1\.5px\]\s+border-primary-solid/;
-const OUTLINE_LABEL = /text-primary-solid/;
+const OUTLINE_LABEL =
+  /border-\[1\.5px\]\s+border-primary-solid[\s\S]{0,160}text-primary-solid|text-primary-solid[\s\S]{0,160}border-\[1\.5px\]\s+border-primary-solid/;
 
 describe("Wave E (web) — HouseholdPanel join/create card", () => {
   it("imports the shared web SupprButton primitive", () => {

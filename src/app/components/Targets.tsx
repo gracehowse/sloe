@@ -591,7 +591,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         aria-label="How is this calculated? Open calorie target explanation"
         className="flex items-center gap-3 w-full max-w-3xl rounded-2xl border border-border bg-card hover:bg-accent/30 transition-colors px-4 py-3.5 mb-pm-3 text-left"
       >
-        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary shrink-0">
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary-solid shrink-0">
           <HelpCircle size={14} strokeWidth={2} />
         </span>
         <span className="flex-1 min-w-0">

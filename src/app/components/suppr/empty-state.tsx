@@ -80,7 +80,7 @@ export function EmptyState({
       {illustration ? (
         <div
           aria-hidden
-          className="flex size-[72px] items-center justify-center rounded-full bg-primary/10 text-primary [&>svg]:size-8"
+          className="flex size-[72px] items-center justify-center rounded-full bg-primary/10 text-primary-solid [&>svg]:size-8"
         >
           {illustration}
         </div>

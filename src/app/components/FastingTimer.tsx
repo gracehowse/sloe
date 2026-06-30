@@ -336,7 +336,7 @@ export function FastingTimer() {
                 {/* Current-stage chip — clay flame for the active body
                     state (descriptive, not prescriptive). */}
                 <span
-                  className="inline-flex items-center gap-1.5 bg-primary/10 text-primary font-[family-name:var(--font-label)] text-[11px] font-semibold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full mb-2"
+                  className="inline-flex items-center gap-1.5 bg-primary/10 text-primary-solid font-[family-name:var(--font-label)] text-[11px] font-semibold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full mb-2"
                   data-testid="fasting-stage-chip"
                 >
                   <FlameIcon className="w-3.5 h-3.5" aria-hidden />

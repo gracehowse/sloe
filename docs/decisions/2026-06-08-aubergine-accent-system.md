@@ -54,7 +54,18 @@ Colour drops as emphasis drops — ration the accent like Julienne:
 - Research: `design-director` report (quantified flatness + Julienne real-screen sample), editorial-app survey (Julienne / NYT Cooking / Mela / Things / Aesop / Kinfolk), `docs/brand/2026-06-07-secondary-colour-exploration.md`, [Figma aubergine depth guide](https://www.figma.com/colors/aubergine/).
 
 ## Follow-ups
-- Verify dark-mode aubergine contrast via `tests/e2e/verify/contrast-audit.spec.ts`.
+- Dark-mode aubergine contrast is now pinned by measured-ratio unit guards —
+  `tests/unit/eng1109MacroContrastCensus.test.ts` (macros) and
+  `tests/unit/eng828PrimaryTintContrastCensus.test.ts` + the mobile
+  `apps/mobile/tests/unit/eng828PrimaryTintContrast.test.ts` (the
+  `text-primary-solid` chip/badge/pill ink). **Rule reinforced by ENG-828
+  (2026-06-29):** a chip/pill that fills with `bg-primary/N` MUST ink its
+  label/icon with `text-primary-solid` (`accent.primarySolid` on mobile), never
+  the bare `text-primary` / `accent.primary` fill hue — the bare fill reads
+  ~2.8:1 on its own tint in dark (AA FAIL). See
+  `docs/decisions/2026-06-29-eng828-primary-tint-text-contrast.md`. Open
+  follow-up: `text-primary` ghost links on the bare dark card/page (no tint)
+  also fail dark AA — tracked separately under ENG-828.
 - Optional polish: gradient on the FAB + conversion CTAs (currently solid aubergine + glow).
 - Notion Decisions-log mirror + Linear (batched per the 2026-06-08 velocity decision).
 - `navPrimary` token now unused (was FAB-only) — remove in a cleanup pass.

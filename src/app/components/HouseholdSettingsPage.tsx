@@ -669,9 +669,9 @@ export function HouseholdSettingsPage({ onBack }: HouseholdSettingsPageProps) {
                         "h-[34px] rounded-lg text-[11px] font-bold tabular-nums grid place-items-center",
                         "border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                         isAll
-                          ? "bg-primary/20 text-primary border-primary/30"
+                          ? "bg-primary/20 text-primary-solid border-primary/30"
                           : isSome
-                            ? "bg-primary/10 text-primary border-primary/30"
+                            ? "bg-primary/10 text-primary-solid border-primary/30"
                             : "bg-muted text-muted-foreground border-transparent",
                       ].join(" ")}
                     >

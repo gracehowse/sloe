@@ -49,7 +49,7 @@ export function TodayFastingPill({ activeFastElapsedLabel, fastingOptedIn }: Tod
           href="/fasting"
           aria-label={`Fasting — ${activeFastElapsedLabel} elapsed`}
           data-testid="today-fasting-pill-active"
-          className="inline-flex flex-row items-center justify-center gap-2 py-2 px-4 rounded-full font-[family-name:var(--font-label)] font-semibold text-sm text-primary bg-primary/10 hover:bg-primary/15 transition-colors"
+          className="inline-flex flex-row items-center justify-center gap-2 py-2 px-4 rounded-full font-[family-name:var(--font-label)] font-semibold text-sm text-primary-solid bg-primary/10 hover:bg-primary/15 transition-colors"
         >
           <Icons.timer className="w-4 h-4 shrink-0" aria-hidden />
           Fasting — {activeFastElapsedLabel}
