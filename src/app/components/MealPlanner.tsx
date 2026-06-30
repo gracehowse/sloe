@@ -2401,7 +2401,7 @@ export const MealPlanner = memo(function MealPlanner({
           variant="primary"
           loading={isGenerating}
           disabled={!sourceCanGenerate}
-          onClick={() => void handleRegenerate()}
+          onClick={requestRegenerate}
         >
           <RefreshCw size={14} strokeWidth={2} />
           {/* DC12 (2026-05-14, premium-bar audit) — no-plan empty state uses
