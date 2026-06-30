@@ -88,6 +88,44 @@ export const BACKDROP_FADE_MS = 200;
 /** Element→sheet morph: how far the trigger element scales down (0.96 = -4%). */
 export const SHEET_MORPH_SCALE = 0.96;
 
+// ── Progressive text reveal (ENG-720) ───────────────────────────────────────
+//
+// Word/clause-staggered text reveal for the two onboarding "moment" beats
+// (Welcome wordmark+tagline, Reveal "Your plan is ready." heading). Each token
+// fades + rises a few px, staggered by `PROGRESSIVE_TEXT_STAGGER_MS`. Read by
+// BOTH the web `ProgressiveText` (CSS keyframe + per-token `animation-delay`)
+// and the mobile `ProgressiveText` (Reanimated `withTiming` + per-token
+// `withDelay`), so the cadence cannot drift between platforms. Gated behind the
+// default-OFF `onboarding_progressive_text` flag + reduce-motion (instant
+// fallback) at the call sites.
+
+/** Per-token fade/rise duration. */
+export const PROGRESSIVE_TEXT_TOKEN_MS = 420;
+
+/** Delay added between successive tokens (the stagger step). */
+export const PROGRESSIVE_TEXT_STAGGER_MS = 70;
+
+/** How far each token rises into place as it fades in (px). */
+export const PROGRESSIVE_TEXT_RISE_PX = 8;
+
+/**
+ * Split a phrase into reveal tokens. Splits on whitespace, keeping the trailing
+ * space attached to each token so re-joining renders identically to the source
+ * string (no collapsed spaces, no lost punctuation). An empty / whitespace-only
+ * input yields an empty list. Framework-free so web + mobile share one
+ * tokenizer and the unit tests cover both.
+ */
+export function tokenizeProgressiveText(text: string): string[] {
+  if (!text) return [];
+  const matches = text.match(/\S+\s*/g);
+  return matches ?? [];
+}
+
+/** Stagger delay (ms) for the token at `index` (0-based). */
+export function progressiveTextDelayMs(index: number): number {
+  return Math.max(0, index) * PROGRESSIVE_TEXT_STAGGER_MS;
+}
+
 // ── Pure odometer math (shared, framework-free, unit-tested both sides) ─────
 
 /**

@@ -3,8 +3,9 @@
 import * as React from "react";
 import { Clock, Lock } from "lucide-react";
 import { AnalyticsEvents } from "@/lib/analytics/events";
-import { track } from "@/lib/analytics/track";
+import { isFeatureEnabled, track } from "@/lib/analytics/track";
 import { useOnboarding } from "../context";
+import { ProgressiveText } from "../progressive-text";
 
 /**
  * Web Welcome — v3 prototype `.ob--brand` / `.wob-brand` brand screen
@@ -22,6 +23,11 @@ import { useOnboarding } from "../context";
  */
 export function WelcomeStep() {
   const { go, displayIndex, displayTotal } = useOnboarding();
+  // ENG-720 — staggered reveal on the wordmark + tagline beat, behind the
+  // default-OFF `onboarding_progressive_text` flag. `ProgressiveText` itself
+  // also gates on prefers-reduced-motion; flag-OFF or reduce-motion → instant
+  // text (zero visual change vs the pre-ENG-720 surface).
+  const progressiveText = isFeatureEnabled("onboarding_progressive_text");
   return (
     <div
       className="relative flex h-full w-full flex-col overflow-hidden"
@@ -39,18 +45,22 @@ export function WelcomeStep() {
 
       {/* Centered brand block — wordmark + italic tagline. */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <h1
+        <ProgressiveText
+          as="h1"
+          animate={progressiveText}
           aria-label="Sloe"
           className="m-0 font-[family-name:var(--font-brand)] text-[56px] font-light lowercase leading-none tracking-tight text-white md:text-[64px]"
         >
           sloe
-        </h1>
-        <p
+        </ProgressiveText>
+        <ProgressiveText
+          as="p"
+          animate={progressiveText}
           className="m-0 mt-5 max-w-[18ch] font-[family-name:var(--font-headline)] text-[18px] italic leading-snug md:text-[24px]"
           style={{ color: "var(--accent-frost)" }}
         >
           Cook what you love. Still reach your goals.
-        </p>
+        </ProgressiveText>
       </div>
 
       {/* Bottom CTA + trust footer. */}

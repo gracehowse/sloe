@@ -366,6 +366,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   `src/lib/today/aiMethodTooltip.ts`.
  * - `progress_milestone_celebration_v1` (ENG-952) — quiet two-tier milestone
  *   celebration crossing the 10 Happy-Scale-style milestones. Web + mobile.
+ * - `onboarding_progressive_text` (ENG-720) — word/clause-staggered text reveal
+ *   on the two onboarding "moment" beats (Welcome wordmark+tagline, Reveal
+ *   "Your plan is ready." heading). Each token fades + rises a few px,
+ *   staggered by `PROGRESSIVE_TEXT_STAGGER_MS` (`@suppr/shared/motion`). Flag-OFF
+ *   or reduce-motion → instant text (zero visual change). Component:
+ *   `ProgressiveText` (web + mobile). Web + mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953, 2026-06-30); and the "always flag on"
@@ -390,6 +396,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "progress_milestone_celebration_v1",
   "import_magic_moment",
   "paywall_trajectory_chart_v1",
+  "onboarding_progressive_text",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

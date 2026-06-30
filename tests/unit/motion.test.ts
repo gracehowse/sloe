@@ -14,11 +14,16 @@ import { describe, it, expect } from "vitest";
 
 import {
   ODOMETER_MS,
+  PROGRESSIVE_TEXT_RISE_PX,
+  PROGRESSIVE_TEXT_STAGGER_MS,
+  PROGRESSIVE_TEXT_TOKEN_MS,
   SHEET_MORPH_SCALE,
   SPRING_DEFAULT,
   SPRING_SNAPPY,
   odometerProgress,
   odometerValue,
+  progressiveTextDelayMs,
+  tokenizeProgressiveText,
 } from "@/lib/motion";
 
 describe("odometerValue (shared count-up curve)", () => {
@@ -115,5 +120,48 @@ describe("spring personality constants (the single tuned vocabulary)", () => {
 
   it("sheet morph scales the trigger down by ~4%", () => {
     expect(SHEET_MORPH_SCALE).toBe(0.96);
+  });
+});
+
+describe("progressive text reveal (shared tokenizer + stagger — ENG-720)", () => {
+  it("splits a phrase into one token per word, keeping trailing spaces", () => {
+    const tokens = tokenizeProgressiveText("Cook what you love.");
+    expect(tokens).toEqual(["Cook ", "what ", "you ", "love."]);
+  });
+
+  it("re-joining the tokens reproduces the source string exactly", () => {
+    const source = "Cook what you love. Still reach your goals.";
+    expect(tokenizeProgressiveText(source).join("")).toBe(source);
+  });
+
+  it("treats a single word as a single token (e.g. the wordmark)", () => {
+    expect(tokenizeProgressiveText("sloe")).toEqual(["sloe"]);
+  });
+
+  it("returns an empty list for empty / whitespace-only input", () => {
+    expect(tokenizeProgressiveText("")).toEqual([]);
+    expect(tokenizeProgressiveText("   ")).toEqual([]);
+  });
+
+  it("preserves punctuation and multi-space gaps in the trailing whitespace", () => {
+    // Double space stays attached to the preceding token so re-joining is exact.
+    const source = "Your plan  is ready.";
+    expect(tokenizeProgressiveText(source).join("")).toBe(source);
+  });
+
+  it("staggers each token by PROGRESSIVE_TEXT_STAGGER_MS (0-based)", () => {
+    expect(progressiveTextDelayMs(0)).toBe(0);
+    expect(progressiveTextDelayMs(1)).toBe(PROGRESSIVE_TEXT_STAGGER_MS);
+    expect(progressiveTextDelayMs(3)).toBe(3 * PROGRESSIVE_TEXT_STAGGER_MS);
+  });
+
+  it("never returns a negative delay for a negative index", () => {
+    expect(progressiveTextDelayMs(-2)).toBe(0);
+  });
+
+  it("ships sane reveal constants (rise + per-token duration)", () => {
+    expect(PROGRESSIVE_TEXT_RISE_PX).toBeGreaterThan(0);
+    expect(PROGRESSIVE_TEXT_TOKEN_MS).toBeGreaterThan(0);
+    expect(PROGRESSIVE_TEXT_STAGGER_MS).toBeGreaterThan(0);
   });
 });

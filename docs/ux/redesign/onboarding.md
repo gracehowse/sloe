@@ -828,6 +828,28 @@ The web flow renders a `narrative.tsx` left column with eyebrow/head/body/extra 
 | weightSkipped transition | Fade out numeral + ruler, fade in Scale glyph | 300ms | `easeInOut` |
 | Data-bridges card connect | Badge fade in (Connected ✓) | 180ms | `easeOut` |
 | Progress bar advance | Width expand | 260ms | `easeInOut` |
+| Progressive text reveal (Welcome wordmark+tagline, Reveal "Your plan is ready.") | Per-word fade + 8px rise, staggered 70ms/token | 420ms/token | `cubic-bezier(0.22, 1, 0.36, 1)` |
+
+**Progressive text reveal (ENG-720, flag `onboarding_progressive_text`, default-OFF):**
+
+The two onboarding "moment" beats — the Welcome wordmark + italic tagline, and
+the Reveal "Your plan is ready." heading — reveal word-by-word: each
+whitespace-delimited token fades in and rises `PROGRESSIVE_TEXT_RISE_PX` (8px),
+staggered by `PROGRESSIVE_TEXT_STAGGER_MS` (70ms) per token. Numbers live in
+`src/lib/motion.ts` (`@suppr/shared/motion`) so web (CSS keyframe +
+`animation-delay`) and mobile (Reanimated `withTiming` + `withDelay`) share one
+cadence. Shared component: `ProgressiveText` — web
+`src/app/components/onboarding/progressive-text.tsx`, mobile
+`apps/mobile/components/onboarding/ProgressiveText.tsx`.
+
+**Gating (instant fallback — zero visual change):** the reveal only runs when
+the `onboarding_progressive_text` flag is ON **and** the user does not prefer
+reduced motion (web `prefers-reduced-motion: reduce`; mobile
+`useReduceMotion()` / iOS Reduce Motion). Flag-OFF or reduce-motion renders the
+plain text instantly (single node, no per-token markup) — pixel-identical to the
+pre-ENG-720 surface. The full phrase is always exposed to assistive tech
+(`aria-label` / `accessibilityLabel`), so the staggered visual reveal never
+changes what VoiceOver/screen readers announce.
 
 **Haptics (iOS only):**
 - Single-select card tap: light impact feedback (`.impactOccurred(.light)`)
@@ -908,6 +930,7 @@ All visual or structural changes from this redesign must ship behind a feature f
 | Reveal projected-outcome line | `onboarding-reveal-projected-date` | OFF | Additive; pairs with pace flag |
 | Data-bridges section hierarchy | `onboarding-bridges-hierarchy` | OFF | Section header restructure |
 | Italic-underline accent phrases | `onboarding-editorial-accent` | OFF | Newsreader italic + underline on H1 emotive phrase |
+| Progressive text reveal on Welcome + Reveal beats (ENG-720) | `onboarding_progressive_text` | OFF | Word/clause-staggered fade+rise; registered in `KNOWN_DEFAULT_OFF_FLAGS` (web `src/lib/analytics/track.ts` + mobile `apps/mobile/lib/analytics.ts`). Also gates reduce-motion → instant text fallback (zero visual change). Component: `ProgressiveText` (§5). |
 
 **PostHog ramp protocol:** each flag starts OFF. Target by email condition (Grace only) for initial validation. Verify in sim before any % ramp. Once stable at 100% for 2 weeks with no regression → cleanup PR to remove the gate.
 

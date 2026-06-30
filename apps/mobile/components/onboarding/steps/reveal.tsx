@@ -29,6 +29,7 @@ import {
 } from "@suppr/shared/onboarding/figmaCopy";
 import { useOnboarding } from "../context";
 import { MobileMethodologyNote } from "../scaffold";
+import { ProgressiveText } from "../ProgressiveText";
 
 /**
  * Mobile Reveal — animated count-up + macro tiles. Mirrors the web
@@ -46,11 +47,9 @@ export function MobileRevealStep() {
   // `MacroColors` — none of those are the secondary accent.
   const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // ENG-1187 — gloss BMR / TDEE / Mifflin-St Jeor on first use behind
-  // `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays as the
-  // default; the glossed copy leads with the plain phrase. The
-  // "Show the maths" expander below is the existing power-user affordance
-  // and is intentionally left on the acronyms. Shared web ↔ mobile via
-  // `figmaCopy.ts`.
+  // `onboarding_jargon_gloss_v1` (default-OFF). Glossed copy leads with the
+  // plain phrase; the "Show the maths" expander stays on the acronyms. Shared
+  // web ↔ mobile via `figmaCopy.ts`.
   const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
   const bmrLabel = glossOn
     ? ONBOARDING_REVEAL_BMR_LABEL_GLOSS
@@ -61,6 +60,8 @@ export function MobileRevealStep() {
   const methodologyCopy = glossOn
     ? ONBOARDING_REVEAL_METHODOLOGY_GLOSS
     : ONBOARDING_REVEAL_METHODOLOGY_PLAIN;
+  // ENG-720 — staggered "Your plan is ready." reveal (default-OFF flag; `ProgressiveText` also gates Reduce Motion → instant fallback).
+  const progressiveText = isFeatureEnabled("onboarding_progressive_text");
   const target = targets?.target ?? 0;
 
   const [displayCals, setDisplayCals] = React.useState(0);
@@ -205,7 +206,8 @@ export function MobileRevealStep() {
         >
           <CircleCheck size={28} color={Accent.success} strokeWidth={2} />
         </View>
-        <Text
+        <ProgressiveText
+          animate={progressiveText}
           style={{
             fontFamily: FontFamily.serifSemibold,
             fontSize: 24,
@@ -217,7 +219,7 @@ export function MobileRevealStep() {
           }}
         >
           Your plan is ready.
-        </Text>
+        </ProgressiveText>
         <Text
           style={{
             fontSize: 14,
@@ -261,12 +263,10 @@ export function MobileRevealStep() {
         <View
           style={{ width: SIZE, height: SIZE, alignItems: "center", justifyContent: "center" }}
         >
-          {/* Sloe v3 (ENG-1225): the onboarding reveal ring is the same jewel
-              watch-dial as the Today hero (CalorieRingDial), sized to the
-              reveal. consumed flips 0→target on `revealStarted` so the dial's
-              grow sweeps the segments to a full sage ring on the reveal beat.
-              `hideCenter` lets the reveal keep its bespoke centre (the
-              "Crunching…" beat → serif count-up). */}
+          {/* Sloe v3 (ENG-1225): same jewel watch-dial as the Today hero
+              (CalorieRingDial). consumed flips 0→target on `revealStarted` so the
+              dial sweeps to a full sage ring on the reveal beat; `hideCenter`
+              keeps the bespoke centre ("Crunching…" → serif count-up). */}
           <View style={{ position: "absolute" }}>
             <CalorieRingDial
               consumed={revealStarted ? target : 0}
