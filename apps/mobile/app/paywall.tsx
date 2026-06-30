@@ -50,6 +50,7 @@ import { PaywallCta } from "@/components/paywall/PaywallCta";
 import { PaywallNoPaymentChip } from "@/components/paywall/PaywallNoPaymentChip";
 import { PaywallTrustStrip } from "@/components/paywall/PaywallTrustStrip";
 import { PaywallPersonalisedPlanCard } from "@/components/paywall/PaywallPersonalisedPlanCard";
+import { PaywallTrajectoryChart } from "@/components/paywall/PaywallTrajectoryChart";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
@@ -1077,6 +1078,9 @@ export default function PaywallScreen() {
 
         {personalisedPlan ? <PaywallPersonalisedPlanCard summary={personalisedPlan} /> : null}
 
+        {/* ENG-969 — calm projected-weight chart (default-OFF; self-loads + self-hides; flag-OFF = no mount). */}
+        {isFeatureEnabled("paywall_trajectory_chart_v1") ? <PaywallTrajectoryChart /> : null}
+
         {/* 2×2 value-prop grid + FREE/PRO comparison matrix (Figma
             `284:2`). Copy from the shared SSOT (web == mobile). Sit
             between the hero and the plan selector, matching the frame
@@ -1084,14 +1088,10 @@ export default function PaywallScreen() {
         <PaywallValueGrid />
         <PaywallComparison />
 
-        {/* 2026-05-14 (premium-bar audit Group I #6): period toggle
-            promoted to the first prominent control after the headline.
-            Previous order placed the trust strip first; testers
-            scrolled past the toggle (buried below the chips) and
-            landed on the Pro card before realising they could switch
-            billing periods. Toggle now reads as the headline's "pick
-            your cadence" beat; trust strip follows so trust copy still
-            sits above the tier card. */}
+        {/* 2026-05-14 (premium-bar audit Group I #6): period toggle promoted to
+            the first prominent control after the headline (testers scrolled past
+            it when the trust strip led); trust strip follows so it still sits
+            above the tier card. */}
         {/* Plan selector (Figma `284:2`) — Annual (BEST VALUE, computed
             savings, per-month math, selected clay border) / Monthly. The
             two-row selector replaces the segmented toggle but drives the

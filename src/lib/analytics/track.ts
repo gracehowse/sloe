@@ -377,11 +377,19 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   Caller-gated on both platforms (web `RecipeUpload` success branch,
  *   mobile `ImportSuccessCelebration` child of `import-shared`).
  *   (default-OFF for now; flips to default-ON in the next ENG-1279 batch.)
+ * - `paywall_trajectory_chart_v1` (ENG-969) — calm single-line projected-weight
+ *   chart on the Pro paywall, drawn from the shared `computeTrajectory()` (the
+ *   same maths as the Progress TrajectoryCard; 5-week linear cap). Renders only
+ *   when a real projection exists — never a fabricated forecast. Web + mobile.
+ *   (The public, unauthenticated /pricing route has no per-user food log /
+ *   weight, so the web mount renders nothing there — net-neutral; the component
+ *   contract still matches mobile.)
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
   "progress_milestone_celebration_v1",
   "import_magic_moment",
+  "paywall_trajectory_chart_v1",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
