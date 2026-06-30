@@ -99,7 +99,7 @@ Verdict: **CONDITIONAL PASS** pending fix of D4 (LogFab) and scheduling of D9 (o
 | Feature | Native iOS | Mobile-web | Desktop web |
 |---|---|---|---|
 | Screen type | Dedicated `/cook` full-screen route | Inline modal in RecipeDetail | Same |
-| Keep screen awake | Yes `expo-keep-awake` | No | No |
+| Keep screen awake | Yes `expo-keep-awake` (then only the standalone `/cook` route; the inline overlay's phase components gained it in ENG-959, 2026-06-30) | No → Yes `navigator.wakeLock` (added batch 3.8) | No → Yes `navigator.wakeLock` (added batch 3.8) |
 | Timer | Single count-up timer `cook.tsx` | Multi-timer `parseTimersInStep` + AudioContext chime `CookMode.tsx` | Same as mobile-web |
 | Analytics | `cook_mode_opened {recipeId, stepCount}` | Same | Same |
 

@@ -1,4 +1,5 @@
 import { ScrollView, Text, View, StyleSheet } from "react-native";
+import { useKeepAwake } from "expo-keep-awake";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -23,6 +24,13 @@ export function CookMiseEnPlace({
   onContinueToSteps,
   testID = "cook-mise-en-place",
 }: CookMiseEnPlaceProps) {
+  // Keep the screen awake during the mise-en-place phase (ENG-959 — web parity).
+  // The inline cook overlay in `recipe/[id].tsx` renders EITHER this checklist
+  // ("mise" phase) OR `CookStepSwipeSurface` ("steps" phase), never both — so
+  // each phase holds its own keep-awake tag, matching web's whole-session
+  // `navigator.wakeLock` in `src/app/components/CookMode.tsx`.
+  useKeepAwake();
+
   const colors = useThemeColors();
 
   return (
