@@ -492,12 +492,19 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   push + Settings toggle + cadence picker. Gates the whole feature surface;
  *   the cron (`/api/push/weigh-in-reminder`) only nudges users who toggled it
  *   ON, and the toggle UI only renders when this flag is enabled. Web + mobile.
+ * - `portion_fit_hint_v1` (ENG-854) — body-neutral "how much of THIS fits
+ *   what's left today" line in the food-search preview's `fitHint` block
+ *   ("a 220 g serving fits your remaining 540 kcal" / "limited by carbs").
+ *   Math: `solvePortionToFit` in `@suppr/nutrition-core/remainingMacros`;
+ *   low count-to-weight confidence (gramWeight 0 / estimated tier) →
+ *   qualitative fallback, never a fabricated gram number. Web + mobile.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
   "progress_plateau_insight_v1",
   "progress_milestone_celebration_v1",
   "weigh_in_reminder_v1",
+  "portion_fit_hint_v1",
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
