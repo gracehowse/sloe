@@ -286,7 +286,7 @@ export async function POST(req: Request) {
               signal: ac.signal,
               headers: {
                 Accept: "text/html",
-                "User-Agent": "SupprBot/1.0 (+https://suppr-club.com/bot)",
+                "User-Agent": "SupprBot/1.0 (+https://getsloe.com/bot)",
               },
             });
             if (linkFetched && linkFetched.res.ok) {
@@ -608,7 +608,7 @@ export async function POST(req: Request) {
     const fetchHeaders = {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
-      "User-Agent": "SupprBot/1.0 (+https://suppr-club.com/bot)",
+      "User-Agent": "SupprBot/1.0 (+https://getsloe.com/bot)",
     };
     // ENG-1037 / ENG-730: follow redirects through the shared SSRF guard so
     // every hop is re-validated against the allowlist AND its hostname is
