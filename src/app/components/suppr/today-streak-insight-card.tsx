@@ -31,7 +31,10 @@ export function TodayStreakInsightCard({
         <Icons.streak />
       </IconBox>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-success">
+        {/* `text-success-solid` (#466046, 5.99:1 on the success-soft tint)
+            not `text-success` (sage #5E7C5A, 4.01:1 — below AA at 11px).
+            ENG-828 solid-ink discipline. (ENG-780 a11y gate.) */}
+        <p className="text-xs font-semibold text-success-solid">
           {streakDays}-day logging streak
         </p>
         <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -63,7 +66,10 @@ export function TodayStreakInsightCard({
             <button
               type="button"
               onClick={onDismissFreezeEarned}
-              className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--macro-water)] hover:bg-[color-mix(in_oklab,var(--macro-water)_15%,transparent)]"
+              // `--macro-water-solid` (#3C5F6B, 5.39:1 on this row's teal tint)
+              // not the raw fill hue `--macro-water` (#5A8A99, 2.96:1 — below
+              // AA at 10px). ENG-828 solid-ink discipline. (ENG-780 a11y gate.)
+              className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--macro-water-solid)] hover:bg-[color-mix(in_oklab,var(--macro-water)_15%,transparent)]"
             >
               Got it
             </button>
