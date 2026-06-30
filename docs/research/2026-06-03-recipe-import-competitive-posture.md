@@ -30,7 +30,7 @@ Sourced interrogation of ~17 apps (4 parallel research agents). Question: how do
 | **MyFitnessPal** | User-warranty+indemnity (ToS); link-back | **links out for instructions** | **none (facts only)** | **yes, auto** | reads page; protects own site from scraping |
 | **MacroFactor** | User-warranty+indemnity; structured-data-first | copies steps | **none (facts only)** | optional/manual | schema.org-first + AI fallback ⚠ |
 | **Cronometer** | User-warranty (recipes named in ToS) | copies steps | **none (facts only)** | **none found** | reads page; paid feature |
-| **Cal AI** | N/A — **no recipe import** (photo meal scanner) | — | — | — | — |
+| **Cal AI** *(acquired by MyFitnessPal, Mar 2026 — now standalone-inside-MFP)* | N/A — **no recipe import** (photo meal scanner) | — | — | — | — |
 | **Suppr (us)** | facts-only + block photo + source link | facts (we also capture description ⚠) | **blocked in code** ✅ | stored, not surfaced ⚠ | "honest bot UA" |
 
 ¹ Agent corrected a misattribution: Saffron is by **Ben Awad / Awad Development**, not Aaron Patzer/Mysa (Mysa = a thermostat company; Patzer has no recipe app). Confirm if a different app was meant.
