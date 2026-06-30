@@ -464,7 +464,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             "48,000+ recipes & foods" — aspirational catalog size, not
             the real one. Now honest until we either ship a real
             catalog count or pivot the placeholder to talk about Edamam. */}
-        <div className="mx-4 mt-4 flex items-center gap-2.5 rounded-2xl bg-muted/50 px-4 py-3.5 md:mx-0 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+        <div className="mx-4 mt-4 flex items-center gap-2 rounded-2xl bg-muted/50 px-4 py-4 md:mx-0 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
           <Icons.search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="search"
@@ -511,7 +511,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 setFeedScope("following");
                 setCategory("all");
               }}
-              className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+              className={`shrink-0 px-4 py-2 rounded-full text-[13px] whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                 feedScope === "following"
                   ? "bg-primary-soft text-primary-solid font-semibold"
                   : "bg-card text-muted-foreground font-medium hover:text-foreground hover:bg-muted"
@@ -531,7 +531,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     setFeedScope("forYou");
                     setCategory(f.id);
                   }}
-                  className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                  className={`shrink-0 px-4 py-2 rounded-full text-[13px] whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                     isActive
                       ? "bg-primary-soft text-primary-solid font-semibold"
                       : "bg-card text-muted-foreground font-medium hover:text-foreground hover:bg-muted"
@@ -564,7 +564,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 Eating out
               </p>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 {eatingOutLoading
                   ? "Searching…"
                   : `${eatingOut.length} restaurant ${eatingOut.length === 1 ? "match" : "matches"}`}
@@ -586,7 +586,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   title={m.label}
                 >
                   {m.brand ? (
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-primary-solid mb-1 truncate">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-primary-solid mb-1 truncate">
                       {m.brand}
                     </p>
                   ) : null}
@@ -596,7 +596,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   <p className="text-[11px] text-muted-foreground tabular-nums">
                     {Math.round(m.calories)} kcal · {Math.round(m.protein)}p
                   </p>
-                  <p className="text-[9px] text-muted-foreground/70 mt-0.5">per 100 g</p>
+                  <p className="text-[11px] text-muted-foreground/70 mt-1">per 100 g</p>
                 </SupprCard>
               ))}
             </div>
@@ -672,7 +672,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     {cluster.title}
                   </h2>
                   <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-pl-4 md:scroll-pl-0">
-                    <div className="flex gap-3.5 pb-2" style={{ minWidth: "max-content" }}>
+                    <div className="flex gap-4 pb-2" style={{ minWidth: "max-content" }}>
                       {items.map((recipe, idx) => {
                         const kcal = Math.round(recipe.calories);
                         const protein = Math.round(recipe.protein);
@@ -702,7 +702,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                                 className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                              <div className="absolute bottom-0 left-0 right-0 p-3.5">
+                              <div className="absolute bottom-0 left-0 right-0 p-4">
                                 <p
                                   className={`font-bold text-white leading-snug -tracking-[0.01em] drop-shadow-sm ${isHero ? "text-[15px]" : "text-[13px]"}`}
                                   style={{
@@ -714,7 +714,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                                 >
                                   {recipe.title}
                                 </p>
-                                <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-1.5 text-[11px] text-white/80 tabular-nums">
+                                <div className="flex flex-wrap gap-x-2 gap-y-1 mt-2 text-[11px] text-white/80 tabular-nums">
                                   <span className="inline-flex items-center gap-1">
                                     <Icons.calories className="w-3 h-3 text-white/70" />
                                     {kcal} kcal
@@ -875,7 +875,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             <h3 className="text-[13px] font-extrabold uppercase tracking-[0.04em] text-muted-foreground mt-[22px] mb-3 px-4">
               Recipe ideas
             </h3>
-            <div className="grid gap-3.5 px-4">
+            <div className="grid gap-4 px-4">
               {displayRecipes.slice(0, 2).map((recipe) => {
                 const kcal = Math.round(recipe.calories);
                 const protein = Math.round(recipe.protein);
@@ -1100,14 +1100,14 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             window.dispatchEvent(new PopStateEvent("popstate"));
           }}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-3 rounded-xl border border-border bg-card p-3.5 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors card-elevated"
+          className="mx-4 mt-3 rounded-xl border border-border bg-card p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors card-elevated"
         >
           <IconBox size="lg" tone="success">
             <Icons.save />
           </IconBox>
           <div className="flex-1">
             <p className="text-[13px] font-semibold text-foreground">My Library</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Saved and imported recipes</p>
+            <p className="text-[11px] text-muted-foreground mt-1">Saved and imported recipes</p>
           </div>
           <Icons.forward className="w-4 h-4 text-muted-foreground" />
         </div>

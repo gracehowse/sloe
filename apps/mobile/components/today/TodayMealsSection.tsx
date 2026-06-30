@@ -542,11 +542,11 @@ function MealActionSheet({
   );
 }
 
-// Prototype-matched sheet metrics (ENG-799). The `borderRadius` /
-// `gap` values below intentionally sit between the tightened `Radius`
-// ladder steps (the prototype's 24px sheet corner, 14px row, 11px icon
-// chip) — they are sourced from the approved surface prototype, not
-// arbitrary. Spacing maps to `Spacing.*` tokens where a clean step exists.
+// Prototype-matched sheet metrics (ENG-799). The sheet corner stays the
+// prototype's 24px `SHEET_RADIUS`; the thumbnail / action-row / icon-chip
+// corners (prototype 14/14/11px) snap to the canonical `Radius.xl` (12) —
+// a 1–2px near-identical nudge that brings them onto the radius scale
+// (ENG-1141, token-scale correctness). Spacing maps to `Spacing.*` tokens.
 const mas = StyleSheet.create({
   modalRoot: { flex: 1, justifyContent: "flex-end" },
   backdrop: { backgroundColor: "rgba(20,18,24,0.4)" },
@@ -575,8 +575,7 @@ const mas = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     marginBottom: Spacing.sm,
   },
-  // eslint-disable-next-line no-restricted-syntax -- prototype thumbnail radius (14px)
-  thumb: { width: 52, height: 52, borderRadius: 14, flexShrink: 0 },
+  thumb: { width: 52, height: 52, borderRadius: Radius.xl, flexShrink: 0 },
   thumbFallback: { alignItems: "center", justifyContent: "center" },
   headerMeta: { flex: 1, minWidth: 0 },
   list: { paddingTop: Spacing.xs },
@@ -584,8 +583,7 @@ const mas = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.md,
-    // eslint-disable-next-line no-restricted-syntax -- prototype action-row radius (14px)
-    borderRadius: 14,
+    borderRadius: Radius.xl,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
@@ -594,8 +592,7 @@ const mas = StyleSheet.create({
   rowIcon: {
     width: 34,
     height: 34,
-    // eslint-disable-next-line no-restricted-syntax -- prototype icon-chip radius (11px)
-    borderRadius: 11,
+    borderRadius: Radius.xl,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -859,7 +856,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 4,
+                  gap: Spacing.xs,
                 }}
               >
                 <Copy size={11} color={textSecondaryColor} />
@@ -1077,7 +1074,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                         style={{
                           flexDirection: "row",
                           alignItems: "center",
-                          gap: 4,
+                          gap: Spacing.xs,
                           paddingHorizontal: Spacing.dense,
                           paddingVertical: 4,
                           borderRadius: Radius.full,
@@ -1110,7 +1107,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                           style={{
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 4,
+                            gap: Spacing.xs,
                             flexShrink: 1,
                           }}
                         >
@@ -1292,10 +1289,10 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                             );
                           }
                           return (
-                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: Accent.success, flexShrink: 0 }} />
+                            <View style={{ width: 6, height: 6, borderRadius: Radius.full, backgroundColor: Accent.success, flexShrink: 0 }} />
                           );
                         })()}
-                        <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+                        <View style={{ flex: 1, gap: Spacing.xs, minWidth: 0 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                           {/* 2026-05-15 (crowder task) — `flexShrink: 1`
                               + `minWidth: 0` so `numberOfLines: 1`
@@ -1335,11 +1332,11 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                             tap affordance obvious. */}
                       </View>
                       </View>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
                         <Text style={{ ...Type.caption, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
                           {Math.round(m.calories)}
                         </Text>
-                        <Text style={{ fontSize: 10, color: textTertiaryColor, marginLeft: -2 }}>kcal</Text>
+                        <Text style={{ ...Type.caption, color: textTertiaryColor, marginLeft: -2 }}>kcal</Text>
                         <ChevronRight size={12} color={textTertiaryColor} />
                       </View>
                     </TodayMealRowPressable>
@@ -1393,7 +1390,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        gap: 4,
+                        gap: Spacing.xs,
                         paddingHorizontal: Spacing.dense,
                         paddingVertical: Spacing.sm,
                         borderRadius: Radius.sm,

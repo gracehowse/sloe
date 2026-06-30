@@ -150,7 +150,7 @@
     "apps/mobile/components/today/NorthStarBlock.tsx": 3,
     "apps/mobile/components/today/TodayActivityBonusCard.tsx": 1,
     "apps/mobile/components/today/TodayDateHeader.tsx": 6,
-    "apps/mobile/components/today/TodayMealsSection.tsx": 9,
+    "apps/mobile/components/today/TodayMealsSection.tsx": 7,
     "apps/mobile/components/today/TodayPlannedMealsCard.tsx": 1,
     "apps/mobile/components/today/TodaySnapShortcut.tsx": 1,
     "apps/mobile/components/today/TodayStreakInsightCard.tsx": 1,

@@ -82,7 +82,9 @@ describe("Phase 3 trust posture sweep — mobile source pins", () => {
     // 2026-05-24 — inline 6pt success dot on meal rows (SourceDot
     // import retained for parity with LogSheet; row chrome uses the
     // compact dot so the header doesn't compete with MacroIconRow).
-    expect(src).toMatch(/width:\s*6,\s*height:\s*6,\s*borderRadius:\s*3/);
+    // ENG-1141 — the dot's corner snapped from the off-scale `borderRadius: 3`
+    // to the on-scale `Radius.full` token (still a perfect circle on a 6×6).
+    expect(src).toMatch(/width:\s*6,\s*height:\s*6,\s*borderRadius:\s*Radius\.full/);
   });
 
   it("LogSheet (mobile) imports SourceDot + TrustChip", () => {
