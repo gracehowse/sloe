@@ -253,16 +253,15 @@ function NorthStarFigmaHeroBlock({
       <h3 className="font-[family-name:var(--font-headline)] text-2xl text-foreground-brand mb-4">
         What to eat next
       </h3>
-      <button
-        type="button"
-        onClick={onPrimaryCta}
+      {/* ENG-1266 a11y (axe nested-interactive): card is a plain <div>; the
+          whole-card tap is a full-bleed <button> (z-15) under the Skip
+          <button> (z-20); badge + footer are pointer-events-none overlays. */}
+      <div
         className={cn(
           // Flat-card surfaces (2026-06-12): hero lift retired — mobile twin
           // NorthStarBlock.figmaHeroCard flattened in the same wave.
-          "relative block w-full h-80 rounded-2xl overflow-hidden text-left",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          "relative block w-full h-80 rounded-2xl overflow-hidden",
         )}
-        aria-label={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}
       >
         <div className="absolute inset-0 z-0">
           {suggestion.thumbnail ? (
@@ -289,34 +288,34 @@ function NorthStarFigmaHeroBlock({
           className="absolute inset-0 z-10 bg-gradient-to-t from-[#221B26]/90 via-[#221B26]/20 to-transparent"
           aria-hidden
         />
+        {/* Whole-card primary action — full-bleed, sits under the Skip
+            button in z-order so Skip stays tappable. */}
+        <button
+          type="button"
+          onClick={onPrimaryCta}
+          aria-label={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}
+          className={cn(
+            "absolute inset-0 z-[15] rounded-2xl",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
+          )}
+        />
         {showFitsBadge ? (
-          <span className="absolute top-4 left-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-success/90 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md">
+          <span className="pointer-events-none absolute top-4 left-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-success/90 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md">
             <Check width={14} height={14} aria-hidden />
             Fits your day
           </span>
         ) : null}
         {onSkip ? (
-          <span
-            role="button"
-            tabIndex={0}
+          <button
+            type="button"
             aria-label="Skip this suggestion"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSkip();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                onSkip();
-              }
-            }}
-            className="absolute right-3 top-3 z-20 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white/90 hover:bg-black/45"
+            onClick={onSkip}
+            className="absolute right-3 top-3 z-20 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white/90 hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <X width={14} height={14} aria-hidden />
-          </span>
+          </button>
         ) : null}
-        <div className="absolute bottom-0 left-0 z-20 w-full p-5 text-white">
+        <div className="pointer-events-none absolute bottom-0 left-0 z-20 w-full p-5 text-white">
           <p className="text-[10px] uppercase tracking-[1px] text-[rgba(201,194,214,0.9)] mb-1 font-medium">
             {slotEyebrow}
           </p>
@@ -339,7 +338,7 @@ function NorthStarFigmaHeroBlock({
             ) : null}
           </div>
         </div>
-      </button>
+      </div>
     </section>
   );
 }
