@@ -120,15 +120,33 @@ enforced at write time as well as review time.
 - **Spacing:** 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 (12 = `Spacing.dense`,
   adopted 2026-06-10 ENG-1012) (`Spacing`,
   `apps/mobile/constants/theme.ts`; same rhythm on web). An 18px padding or
-  10px gap is a bug even if it "looks fine".
+  10px gap is a bug even if it "looks fine". **Enforced by the spacing-scale
+  ratchet** `npm run check:spacing-scale` (`scripts/check-spacing-scale.mjs`,
+  ENG-1007; in `npm run ci` + CI): scans mobile `.tsx`, reads the legal scale
+  from `theme.ts`, pins per-file off-scale counts in
+  `scripts/spacing-budget.json` (only-shrink). Re-pin with
+  `npm run check:spacing-scale:write`.
 - **Radius:** 4 / 6 / 8 / 12 / full (`Radius` — 2026-05-22 lock; bigger reads
-  "kids' tablet").
+  "kids' tablet"). Off-scale `borderRadius` literals are caught by the token
+  ratchet (below).
 - **Type:** the `Type` ramp on mobile (programmatic gate pending ENG-1002);
   type-scale-gated classes on web (25-snap gate, green).
 - **Colour:** every value traces to a semantic token (`theme.ts` /
   `src/styles/theme.css`). A literal hex in a component is a finding.
+  **Enforced by the token-scale ratchet** `npm run check:token-scale`
+  (`scripts/check-token-scale.mjs`, ENG-1007; in `npm run ci` + CI): flags raw
+  6-digit hexes, raw Tailwind palette colour classes, and off-scale
+  `borderRadius` across web + mobile `.tsx`; pins per-file counts in
+  `scripts/token-budget.json` (only-shrink). 3-digit `#000`/`#fff` are not
+  matched (Apple Sign-In brand carve-out). Re-pin with
+  `npm run check:token-scale:write`.
 - **Elevation:** one-card treatment — page-ground = soft lift, nested = flat
   (`docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`).
+
+  Both ratchets keep a sibling `allow` map (full-file carve-out → required
+  rationale string). A rationale-less carve-out is itself a CI failure — no
+  silent carve-outs. Currently empty: the per-file pins cover the legacy
+  baseline and the Apple-brand hexes are out of pattern.
 
 ### Census before verdict (review-time rule)
 

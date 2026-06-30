@@ -16,6 +16,9 @@ deterministic CI gate:
 | Web unit/component (coverage) | ✅ | `test:coverage` |
 | Today capture pairs (ENG-629) | ✅ | `check:today-captures` |
 | Type-scale lint (ENG-119) | ✅ | `check:type-scale` |
+| Spacing-scale ratchet (ENG-1007) | ✅ | `check:spacing-scale` |
+| Colour/radius token ratchet (ENG-1007) | ✅ | `check:token-scale` |
+| Screen line-count ratchet (ENG-717) | ✅ | `check:screen-budget` |
 | Web `next build` | ✅ | `build` |
 | Mobile ESLint | ✅ | `mobile:lint` |
 | Mobile typecheck | ✅ | `mobile:typecheck` |
