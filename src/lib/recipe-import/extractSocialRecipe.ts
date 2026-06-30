@@ -114,7 +114,7 @@ function guessTikTokAuthorDisplay(caption: string, pageTitle: string | null): st
  * If a fetch returns nothing, the user can paste the recipe text manually.
  */
 const UA_ATTEMPTS = [
-  "SupprBot/1.0 (+https://suppr-club.com/bot)",
+  "SupprBot/1.0 (+https://getsloe.com/bot)",
 ];
 
 /**
