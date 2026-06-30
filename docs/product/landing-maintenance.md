@@ -30,8 +30,19 @@ algorithm constants, and the real changelog.
 
 1. Edit the constant in its home file (`src/lib/nutrition/adaptiveTdee.ts`).
 2. Re-export from `src/lib/landing/content.ts` if it's new.
-3. Update the relevant step body in `HOW_IT_WORKS` — the copy template interpolates the constant (`"once you've logged ${TDEE_MIN_LOGGING_DAYS} days and weighed in ${TDEE_MIN_WEIGH_INS} times"`).
+3. Update the relevant step body in `HOW_IT_WORKS` — the copy template interpolates the constant (`"once you've logged ${TDEE_SURFACE_LOGGING_DAYS} days and weighed in ${TDEE_SURFACE_WEIGH_INS} times"`).
 4. The parity test pins rendered text to the constants, so forgetting step 3 will fail loudly.
+
+**Which threshold the copy promises (ENG-1218):** the landing re-exports the
+**MEDIUM-confidence** thresholds (`MEDIUM_CONFIDENCE_LOGGING_DAYS` = 14 /
+`MEDIUM_CONFIDENCE_WEIGH_INS` = 5), **not** the `MIN_*` compute floor (7 / 3).
+The floor is the earliest point the engine *can* run; adaptive TDEE only
+*surfaces* to the user at medium confidence (`refreshAdaptiveTdee` skips low,
+`resolveMaintenance` rejects low). Copy must promise the bar at which the
+feature actually engages — the same numbers the Progress "data progress toward
+adaptive" UI shows (`adaptiveDataProgress.ts`). If you ever need the floor in
+copy, that is a different (and probably wrong) claim — check with the
+nutrition engine before wiring it.
 
 ### Add or remove a nutrition source
 

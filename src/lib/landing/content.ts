@@ -24,15 +24,29 @@
 
 import { FREE_SAVE_LIMIT } from "@/context/appData/constants";
 import {
-  MIN_LOGGING_DAYS as TDEE_MIN_LOGGING_DAYS_RAW,
-  MIN_WEIGH_INS as TDEE_MIN_WEIGH_INS_RAW,
+  MEDIUM_CONFIDENCE_LOGGING_DAYS as TDEE_SURFACE_LOGGING_DAYS_RAW,
+  MEDIUM_CONFIDENCE_WEIGH_INS as TDEE_SURFACE_WEIGH_INS_RAW,
 } from "@/lib/nutrition/adaptiveTdee";
 import { getLatestChangelog } from "@/lib/changelog/entries";
 import { NUTRITION_SOURCES } from "./nutritionSources";
 
-/** Source-of-truth re-exports so the landing page never copies literals. */
-export const TDEE_MIN_LOGGING_DAYS = TDEE_MIN_LOGGING_DAYS_RAW;
-export const TDEE_MIN_WEIGH_INS = TDEE_MIN_WEIGH_INS_RAW;
+/**
+ * Source-of-truth re-exports so the landing page never copies literals.
+ *
+ * These point at the MEDIUM-confidence thresholds (14 days / 5 weigh-ins),
+ * NOT the `MIN_*` compute floor (7 days / 3 weigh-ins). The floor is the
+ * earliest point the engine *can* compute an estimate, but adaptive TDEE
+ * only *surfaces* to the user at medium confidence — `refreshAdaptiveTdee`
+ * skips low and `resolveMaintenance` rejects low (see the comment at
+ * `adaptiveTdee.ts:137-142`). Marketing copy must promise the bar at which
+ * the feature actually engages, so the landing reads the SAME thresholds the
+ * Progress "data progress toward adaptive" UI reads (`adaptiveDataProgress.ts`).
+ * Renamed off the old `TDEE_MIN_*` labels (which named the compute floor) so
+ * the constant name itself can't drift back to the wrong threshold — these are
+ * the *surface* thresholds, not the minimum the engine can run on.
+ */
+export const TDEE_SURFACE_LOGGING_DAYS = TDEE_SURFACE_LOGGING_DAYS_RAW;
+export const TDEE_SURFACE_WEIGH_INS = TDEE_SURFACE_WEIGH_INS_RAW;
 export { FREE_SAVE_LIMIT };
 
 /**
@@ -134,7 +148,7 @@ export const HOW_IT_WORKS: HowItWorksStep[] = [
   {
     n: 4,
     title: "Adapts to how you actually eat",
-    body: `Adaptive TDEE refines your maintenance estimate once you've logged ${TDEE_MIN_LOGGING_DAYS} days and weighed in ${TDEE_MIN_WEIGH_INS} times.`,
+    body: `Adaptive TDEE refines your maintenance estimate once you've logged ${TDEE_SURFACE_LOGGING_DAYS} days and weighed in ${TDEE_SURFACE_WEIGH_INS} times.`,
   },
 ];
 
