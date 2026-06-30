@@ -18,9 +18,10 @@ import { ConfidenceChip } from "../ui/confidence-chip.tsx";
  * comes from the shared `buildExpenditureTrendCopy` helper so web and mobile
  * can never drift.
  *
- * Gated behind `expenditure_trend_card` (default-OFF). Renders nothing when the
- * flag is off — flag-off ships ZERO visual change, and the existing collapsed
- * "How this works" expandable under the Maintenance card stays the live path.
+ * Gated behind `expenditure_trend_card` (default-ON since 2026-06-30 — Grace's
+ * "always flag on" for beta-window growth builds). Renders the card by default;
+ * removing the flag from `REDESIGN_DEFAULT_ON` (or a PostHog kill) hides it and
+ * the collapsed "How this works" expandable under the Maintenance card returns.
  *
  * Body-neutral, soft-confidence: "burning about ~X kcal/day lately" when we
  * have a confident read, "still learning your pattern" otherwise. Never a
