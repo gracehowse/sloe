@@ -116,8 +116,21 @@ describe("Plan-tab source wiring (web, ENG-790)", () => {
   });
 
   it("MealPlanner threads the chosen source into generateMealPlan", () => {
+    // 2026-06-29 (ENG-1261): the regenerate path was extracted into
+    // `useMealPlanRegenerate`. MealPlanner passes the flag + chosen source
+    // into the hook, and the hook threads `source` into generateMealPlan —
+    // pinned end-to-end across the two files so the wiring can't be severed.
+    expect(MEALPLANNER_SRC).toMatch(/planSourceSelector,\s*\n\s*planSource,/);
+    const REGEN_SRC = readFileSync(
+      resolve(__dirname, "../../src/app/components/plan/useMealPlanRegenerate.ts"),
+      "utf8",
+    );
+    expect(REGEN_SRC).toContain(
+      "...(args.planSourceSelector ? { source: args.planSource } : {})",
+    );
+    // The Adjust-constraints save path also threads the freshly chosen source.
     expect(MEALPLANNER_SRC).toContain(
-      "...(planSourceSelector ? { source: planSource } : {})",
+      "...(planSourceSelector ? { source: next.source } : {})",
     );
   });
 

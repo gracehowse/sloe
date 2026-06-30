@@ -24,6 +24,8 @@ import Constants from "expo-constants";
 // of truth.
 import { presentCustomerCenter } from "@/lib/purchases";
 import { CancelExportPromptSheet } from "@/components/settings/CancelExportPromptSheet";
+import { DeleteAccountSheet } from "@/components/settings/DeleteAccountSheet";
+import { useDeleteAccountSheet } from "@/components/settings/useDeleteAccountSheet";
 import { usePromoCode } from "@/hooks/usePromoCode";
 import {
   AlignLeft,
@@ -973,88 +975,6 @@ export function SettingsBundleContent({ context }: { context: Context }) {
     setCancelPromptOpen(true);
   }, [profileData.userTier]);
 
-  /**
-   * Delete account — Sloe DS (Figma 09 Settings `335:2`) renders this as a
-   * centered clay "Delete account" text at the very bottom (not a
-   * destructive card row). Extracted from the inline Danger-zone row
-   * onPress (unchanged flow) so the centered affordance can call it.
-   * Two-step deliberate confirm: an explainer Alert → a typed-"delete"
-   * prompt → `DELETE /api/account/delete` with the bearer token → sign
-   * out. Pinned by `settingsBundleParity.test.ts`.
-   */
-  const handleDeleteAccount = useCallback(() => {
-    Alert.alert(
-      "Delete your account?",
-      "This will permanently delete your account, all data, and sign you out. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "I want to delete",
-          style: "destructive",
-          onPress: () => {
-            Alert.prompt?.(
-              "Type 'delete' to confirm",
-              "We won't be able to recover this account.",
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Delete account",
-                  style: "destructive",
-                  onPress: async (text?: string) => {
-                    // P1-7 (2026-05-01) — the compare lowercases the
-                    // typed input so "Delete" / "DELETE" both work.
-                    if ((text ?? "").trim().toLowerCase() !== "delete") {
-                      Alert.alert(
-                        "Not deleted",
-                        "Type the word delete to confirm.",
-                      );
-                      return;
-                    }
-                    try {
-                      const { data: sessionData } =
-                        await supabase.auth.getSession();
-                      const token = sessionData?.session?.access_token;
-                      const base = getSupprWebBase();
-                      if (!base) {
-                        Alert.alert(
-                          "Error",
-                          "API URL not configured. Please contact support.",
-                        );
-                        return;
-                      }
-                      const res = await fetch(`${base}/api/account/delete`, {
-                        method: "DELETE",
-                        headers: token
-                          ? { Authorization: `Bearer ${token}` }
-                          : {},
-                      });
-                      const json = await res.json();
-                      if (json.ok) {
-                        await supabase.auth.signOut();
-                        Alert.alert(
-                          "Account deleted",
-                          "Your account has been permanently deleted.",
-                        );
-                      } else {
-                        Alert.alert(
-                          "Deletion failed",
-                          json.error || "Please try again.",
-                        );
-                      }
-                    } catch {
-                      Alert.alert("Deletion failed", "Please try again later.");
-                    }
-                  },
-                },
-              ],
-              "plain-text",
-            );
-          },
-        },
-      ],
-    );
-  }, []);
-
   const runExportEverything = useCallback(async () => {
     if (!userId) return;
     if (exportingEverything) return;
@@ -1202,6 +1122,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
       setExportingCsv(false);
     }
   }, [userId, exportingCsv]);
+
+  const deleteAccount = useDeleteAccountSheet(userId, () => {
+    void runExportCsv();
+  });
 
   /**
    * Persist the deficit/burn summary window into the same
@@ -2582,7 +2506,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         testID="settings-bundle-delete-account-row"
         accessibilityRole="button"
         accessibilityLabel="Delete my account"
-        onPress={handleDeleteAccount}
+        onPress={deleteAccount.handleDeleteAccount}
         style={{
           alignItems: "center",
           paddingVertical: 18,
@@ -3957,6 +3881,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           setCancelPromptOpen(false);
           void routeToCustomerCenter();
         }}
+      />
+      <DeleteAccountSheet
+        visible={deleteAccount.open}
+        onClose={() => deleteAccount.setOpen(false)}
+        ledger={deleteAccount.ledger}
+        loadingLedger={deleteAccount.loadingLedger}
+        deleting={deleteAccount.deleting}
+        onExportFirst={deleteAccount.exportFirst}
+        onDeleteForever={deleteAccount.deleteForever}
       />
     </>
   );

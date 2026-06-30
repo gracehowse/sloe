@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { Flame, Lock, UtensilsCrossed } from "lucide-react-native";
+import { Check, Flame, Lock, UtensilsCrossed } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { SmartImage } from "@/components/ui/SmartImage";
@@ -22,6 +22,8 @@ export interface PlanMealCardV3Props {
   isLocked?: boolean;
   /** "batch" → a Batch chip; any other truthy string → a quiet queued note. */
   note?: string | null;
+  /** When the user logged this planned meal on that day (diary match). */
+  isCooked?: boolean;
   onPress?: () => void;
 }
 
@@ -32,6 +34,7 @@ export function PlanMealCardV3({
   imageUrl,
   isLocked,
   note,
+  isCooked,
   onPress,
 }: PlanMealCardV3Props) {
   const colors = useThemeColors();
@@ -42,7 +45,11 @@ export function PlanMealCardV3({
       disabled={!onPress}
       accessibilityRole="button"
       accessibilityLabel={`${slot}: ${name}`}
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[
+        styles.card,
+        { backgroundColor: colors.card, borderColor: colors.border },
+        isCooked ? styles.cooked : null,
+      ]}
     >
       <View style={[styles.thumb, { backgroundColor: colors.backgroundSecondary }]}>
         {imageUrl ? (
@@ -50,6 +57,11 @@ export function PlanMealCardV3({
         ) : (
           <UtensilsCrossed size={18} color={colors.navPrimary} style={{ opacity: 0.55 }} />
         )}
+        {isCooked ? (
+          <View style={[styles.cookedBadge, { backgroundColor: `${Accent.successSolid}D1` }]}>
+            <Check size={14} color="#fff" strokeWidth={2.5} />
+          </View>
+        ) : null}
       </View>
       <View style={styles.body}>
         <View style={styles.topRow}>
@@ -63,7 +75,16 @@ export function PlanMealCardV3({
             {kcal ? `${kcal} kcal` : "—"}
           </Text>
         </View>
-        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+        <Text
+          style={[
+            styles.name,
+            { color: colors.text },
+            isCooked
+              ? { textDecorationLine: "line-through", textDecorationColor: colors.borderStrong }
+              : null,
+          ]}
+          numberOfLines={1}
+        >
           {name}
         </Text>
         {note === "batch" ? (
@@ -89,11 +110,17 @@ const styles = StyleSheet.create({
     padding: Spacing.dense,
     marginTop: Spacing.sm,
   },
+  cooked: { opacity: 0.72 },
   thumb: {
     width: 48,
     height: 48,
     borderRadius: Radius.lg,
     overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cookedBadge: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },

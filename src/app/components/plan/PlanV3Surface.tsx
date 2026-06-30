@@ -7,6 +7,11 @@ import {
   computePlanDayStatus,
   type PlanWeekVerdict,
 } from "@/lib/planning/planWeekStatus";
+import {
+  countPlanDayCookedMeals,
+  journalEntriesForPlanDate,
+  type PlanJournalByDay,
+} from "@/lib/planning/planCookedMeals";
 import type { DayPlan } from "@/types/recipe";
 import { PlanHeaderV3 } from "./PlanHeaderV3";
 import { PlanWeekStripV3, type PlanWeekStripDay } from "./PlanWeekStripV3";
@@ -75,6 +80,8 @@ export interface PlanV3SurfaceProps {
   batchCookSubtitle: string;
   /** Today (for the week-strip highlight) — injected for deterministic tests. */
   today?: Date;
+  /** Diary rows keyed by date_key — powers cooked tally + strike-through. */
+  nutritionByDay?: PlanJournalByDay;
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -104,6 +111,7 @@ export function PlanV3Surface({
   onOpenBatchCook,
   batchCookSubtitle,
   today,
+  nutritionByDay,
 }: PlanV3SurfaceProps) {
   const [mealFilter, setMealFilter] = React.useState<PlanMealFilter>("All");
   // Default the selected day to today (when it falls in the week), else day 0.
@@ -149,6 +157,18 @@ export function PlanV3Surface({
   const plannedCount =
     selectedDay?.meals.filter((m) => !m.isPlaceholder).length ?? 0;
   const totals = selectedDay?.totals;
+  const cookedCount = React.useMemo(() => {
+    if (!selectedDay || !selectedDate) return 0;
+    const logged = journalEntriesForPlanDate(nutritionByDay, selectedDate);
+    return countPlanDayCookedMeals(
+      selectedDay.meals.map((m) => ({
+        recipeId: m.recipeId,
+        recipeTitle: m.recipeTitle || m.name,
+        isPlaceholder: m.isPlaceholder,
+      })),
+      logged,
+    );
+  }, [selectedDay, selectedDate, nutritionByDay]);
 
   return (
     <>
@@ -172,7 +192,7 @@ export function PlanV3Surface({
         dayTotalKcal={Math.round(totals?.calories ?? 0)}
         targetKcal={targetKcal}
         plannedCount={plannedCount}
-        cookedCount={0}
+        cookedCount={cookedCount}
         macros={
           totals
             ? {
@@ -191,6 +211,7 @@ export function PlanV3Surface({
         filter={mealFilter}
         onOpenMeal={onOpenMeal}
         onAddToSlot={onAddToSlot}
+        nutritionByDay={nutritionByDay}
       />
       <PlanToolsV3
         batchCookSubtitle={batchCookSubtitle}

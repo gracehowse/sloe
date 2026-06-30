@@ -30,6 +30,18 @@ const SETTINGS_PATH = resolve(ROOT, "app/(tabs)/settings.tsx");
 const bundle = readFileSync(BUNDLE_PATH, "utf8");
 const settings = readFileSync(SETTINGS_PATH, "utf8");
 
+// 2026-06-29 (ENG-1260, B26): the delete-account flow was extracted from the
+// bundle into the `useDeleteAccountSheet` hook (it drives the new 3-step
+// DeleteAccountSheet and keeps the legacy Alert.prompt fallback). The bundle
+// now only renders the row + mounts the sheet, so the bearer-token DELETE and
+// typed-'delete' confirm contracts are pinned against the hook source.
+// Contract preserved, mechanism relocated.
+const DELETE_HOOK_PATH = resolve(
+  ROOT,
+  "components/settings/useDeleteAccountSheet.ts",
+);
+const deleteHook = readFileSync(DELETE_HOOK_PATH, "utf8");
+
 describe("SettingsBundleContent — parity contract", () => {
   it("exports the SettingsBundleContent component", () => {
     expect(bundle).toMatch(/export\s+function\s+SettingsBundleContent/);
@@ -150,9 +162,12 @@ describe("SettingsBundleContent — parity contract", () => {
   });
 
   it("delete-account flow still posts to /api/account/delete with bearer token", () => {
-    expect(bundle).toMatch(/fetch\(`\$\{base\}\/api\/account\/delete`/);
-    expect(bundle).toContain('method: "DELETE"');
-    expect(bundle).toMatch(/Authorization:\s*`Bearer/);
+    // ENG-1260: moved out of the bundle into `useDeleteAccountSheet` (the
+    // legacy fallback path) + the shared `executeAccountDelete` helper. The
+    // contract is unchanged: DELETE /api/account/delete with a Bearer token.
+    expect(deleteHook).toMatch(/fetch\(`\$\{base\}\/api\/account\/delete`/);
+    expect(deleteHook).toContain('method: "DELETE"');
+    expect(deleteHook).toMatch(/Authorization:\s*`Bearer/);
   });
 
   it("surfaces barcode contribution withdrawal from Settings Account", () => {
@@ -174,8 +189,20 @@ describe("SettingsBundleContent — parity contract", () => {
 
   it("delete-account flow still requires typing 'delete' to confirm", () => {
     // Two-step deliberate confirm: Alert → Alert.prompt → typed 'delete'.
-    expect(bundle).toMatch(/Alert\.prompt\?\.\(/);
-    expect(bundle).toContain('!== "delete"');
+    // ENG-1260: relocated to `useDeleteAccountSheet` (legacy fallback). The
+    // new sheet path gates on a typed token too (DeleteAccountSheet step 3).
+    expect(deleteHook).toMatch(/Alert\.prompt\?\.\(/);
+    expect(deleteHook).toContain('!== "delete"');
+  });
+
+  it("mounts the DeleteAccountSheet via the useDeleteAccountSheet hook (ENG-1260, B26)", () => {
+    // The 3-step sheet (reason → export-first → type-DELETE) is the new
+    // surface; the bundle wires it through the hook and mounts the sheet.
+    expect(bundle).toContain("useDeleteAccountSheet");
+    expect(bundle).toContain("<DeleteAccountSheet");
+    // export-first: the hook receives the CSV export runner so the sheet can
+    // offer "export before you go" ahead of the irreversible delete.
+    expect(deleteHook).toContain("exportFirst");
   });
 
   it("reset modal surfaces refresh-plan and erase-everything paths (2026-05-11 simpler flow)", () => {
@@ -323,11 +350,13 @@ describe("Settings — Figma `335:2` frame reskin", () => {
 
   it("delete account is a centred clay text affordance, not a destructive card row", () => {
     // The delete-account row moved below the Danger-zone card as a centred
-    // clay Pressable; the flow is unchanged (handleDeleteAccount).
+    // clay Pressable. ENG-1260: the handler now comes from the
+    // `useDeleteAccountSheet` hook (`deleteAccount.handleDeleteAccount`),
+    // which opens the 3-step sheet (or the legacy alerts when flag-off).
     expect(bundle).toMatch(/>\s*Delete account\s*</);
-    expect(bundle).toContain("handleDeleteAccount");
+    expect(bundle).toContain("deleteAccount.handleDeleteAccount");
     expect(bundle).toMatch(
-      /settings-bundle-delete-account-row[\s\S]{0,200}?onPress=\{handleDeleteAccount\}/,
+      /settings-bundle-delete-account-row[\s\S]{0,200}?onPress=\{deleteAccount\.handleDeleteAccount\}/,
     );
   });
 

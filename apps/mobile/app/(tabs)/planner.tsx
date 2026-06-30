@@ -77,6 +77,7 @@ import { SPRING_DEFAULT, SPRING_SNAPPY } from "@/lib/motion";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useHouseholdBanner } from "@/hooks/useHouseholdBanner";
+import { usePlanWeekJournal } from "@/hooks/usePlanWeekJournal";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
@@ -177,10 +178,16 @@ import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
 import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
 import { PlanRegenerateToast } from "@/components/plan/PlanRegenerateToast";
+import { ResetPlanSheet } from "@/components/plan/ResetPlanSheet";
+import { usePlannerGenerateMenu } from "@/hooks/usePlannerGenerateMenu";
+import { useResetPlanGate } from "@/hooks/useResetPlanGate";
 import { PlanV3Surface } from "@/components/plan/PlanV3Surface";
 import { AdjustConstraintsSheet } from "@/components/plan/AdjustConstraintsSheet";
 import { usePlanV3MealActions } from "@/components/plan/usePlanV3MealActions";
 import { computePlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
+import {
+  type ResetPlanMode,
+} from "@suppr/shared/planning/resetPlanSheet";
 import {
   type PlanSourceMode,
   DEFAULT_PLAN_SOURCE_MODE,
@@ -1503,6 +1510,7 @@ export default function PlannerScreen() {
       return d;
     });
   }, [planStartDate]);
+  const planWeekJournal = usePlanWeekJournal(userId, planV3WeekDates);
 
   // ENG-1092 — render-scope PlannerTargets for the empty-slot "Aim ~X kcal"
   // line (same shape the swap handler builds). Drives `slotMacroTargets` per
@@ -2258,7 +2266,7 @@ export default function PlannerScreen() {
     [userId, savedRecipes, discoverRecipes, shoppingScope, pantryStaples, planStartDate],
   );
 
-  const generatePlan = useCallback(async () => {
+  const generatePlan = useCallback(async (options?: { resetMode?: ResetPlanMode }) => {
     if (savedRecipes.length === 0 && discoverRecipes.length === 0) {
       Alert.alert("No recipes available", "Save at least 1 recipe from Discover to generate a plan.");
       return;
@@ -2403,7 +2411,11 @@ export default function PlannerScreen() {
         mealLockEnabled && plan
           ? plan.reduce((a, dp) => a + dp.meals.filter((m) => m.isLocked).length, 0)
           : 0;
-      const keepLockedActive = lockedCountNow > 0 && !!plan;
+      const resetMode = options?.resetMode;
+      let keepLockedActive =
+        resetMode === "clear"
+          ? false
+          : lockedCountNow > 0 && !!plan;
       let lockedRebuiltPlan: DayPlan[] | null = null;
       if (keepLockedActive && plan) {
         const baseSeed = Date.now();
@@ -2614,6 +2626,10 @@ export default function PlannerScreen() {
     }
   }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor]);
 
+  const resetPlan = useResetPlanGate(planHasRealMeals, generatePlan);
+  const requestLibraryGenerate = resetPlan.requestLibraryGenerate;
+  const handleResetPlanConfirm = resetPlan.handleResetPlanConfirm;
+
   const adjustInitial = useMemo<PlanAdjustConstraints>(
     () => ({
       source: planSource,
@@ -2636,38 +2652,12 @@ export default function PlannerScreen() {
     [generatePlan],
   );
 
-  const openGenerateMenu = useCallback(() => {
-    if (generating) return;
-    // ENG-742 — when Plan Import is cut from launch the menu has only one
-    // real action, so skip it and run the library generator directly.
-    if (!planImportEnabled) {
-      void generatePlan();
-      return;
-    }
-    const labels = ["Generate from library", "Import existing plan", "Cancel"] as const;
-    const runLibrary = () => {
-      void generatePlan();
-    };
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: "Generate",
-          options: [...labels],
-          cancelButtonIndex: 2,
-        },
-        (idx) => {
-          if (idx === 0) runLibrary();
-          else if (idx === 1) openPlanImport();
-        },
-      );
-      return;
-    }
-    Alert.alert("Generate", undefined, [
-      { text: "Generate from library", onPress: runLibrary },
-      { text: "Import existing plan", onPress: openPlanImport },
-      { text: "Cancel", style: "cancel" },
-    ]);
-  }, [generating, generatePlan, openPlanImport, planImportEnabled]);
+  const openGenerateMenu = usePlannerGenerateMenu({
+    generating,
+    planImportEnabled,
+    requestLibraryGenerate,
+    openPlanImport,
+  });
 
   // ENG-790 — generate gate. With the source selector on, generation is
   // gated by the chosen source's pool (Discovery/Library&discovery stay
@@ -2751,6 +2741,7 @@ export default function PlannerScreen() {
             onOpenShopping={() => router.push("/shopping" as Href)}
             onOpenBatchCook={() => router.push("/batch-cook" as Href)}
             batchCookSubtitle={defaultBatchCookToolSubtitle()}
+            nutritionByDay={planWeekJournal}
           />
         ) : null}
         {/* Named plan slots switcher (Grace 2026-05-22: "drop the redundant
@@ -3264,7 +3255,7 @@ export default function PlannerScreen() {
             {!libraryEmptySubcase && (
             <Pressable
               style={[styles.generateBtn, generateDisabled && { opacity: 0.65 }]}
-              onPress={generatePlan}
+              onPress={requestLibraryGenerate}
               disabled={generating || generateDisabled}
             >
               {generating ? (
@@ -4777,6 +4768,12 @@ export default function PlannerScreen() {
           setSwapSheet(null);
           pick?.(id);
         }}
+      />
+      <ResetPlanSheet
+        visible={resetPlan.open}
+        onClose={() => resetPlan.setOpen(false)}
+        loading={generating}
+        onConfirm={handleResetPlanConfirm}
       />
     </View>
   );

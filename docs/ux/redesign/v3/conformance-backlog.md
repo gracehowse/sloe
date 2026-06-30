@@ -4,7 +4,7 @@ Generated from the 14-agent forensic audit (workflow `sloe-v3-conformance-audit`
 
 **Totals:** 79 surfaces · 21 need work · 21 conformant · 33 keep-current · 1 net-new build · 3 in progress. §B/§D ratified 2026-06-28 — see registry below.
 
-**Completion framing (2026-06-28):** Launch-critical daily-loop + recipe spine conforms ship behind default-OFF flags on `main` (PR #609). §B (29) + §D (18) ratified 2026-06-28; remaining ⬜ = autonomous §A + explicit builds (B15–B16, B18, B21, B26, B28). See `docs/decisions/2026-06-28-eng1247-conformance-completion-status.md`.
+**Completion framing (2026-06-28):** Launch-critical daily-loop + recipe spine conforms ship behind default-OFF flags on `main` (PR #609). §B (29) + §D (18) ratified 2026-06-28; remaining ⬜ = autonomous §A + explicit builds (CreatorProfile, import input-phase polish). See `docs/decisions/2026-06-28-eng1247-conformance-completion-status.md`.
 
 Status legend: ⬜ todo · ✅ done · 🔄 in progress · 🔒 keep-current · 🆕 net-new (deferred)
 
@@ -47,7 +47,7 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 | B12 | CreateRecipe (both) | 🔒 keep live source set |
 | B13 | ScanLabel | 🔒 OCR in custom-food; standalone deferred |
 | B14 | Meal action sheet | 🔒 web host-surface meal editing |
-| B17, §D6 | ImportFlow | 🔒 route-out pipeline; B15 clear still builds |
+| B17, §D6 | ImportFlow | 🔒 route-out pipeline; B15 clear ✅ 2026-06-28 |
 | B19, §D7 | MfpImport | 🔒 Settings-embedded CSV + auto mapping |
 | B20 | GoPublic | 🔒 mobile attestation (already marked) |
 | B22 | Digest | 🔒 weekly recap on Progress |
@@ -67,16 +67,16 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 | §D15 | Changelog | 🔒 asymmetric entry points |
 | §D16 | Plan tools smart suggestions | 🔒 honest real-data nudges |
 | §D17 | Grocery | 🔒 no Tesco/Ocado fiction (already marked) |
-| §D18 | EraseEverything, DeleteAccount dialog | 🔒 web dialog IA (B26 sheet still builds) |
+| §D18 | EraseEverything, DeleteAccount dialog | 🔒 web dialog IA; DeleteAccount sheet ✅ B26 |
 
-**Still ⬜ (not keep-current):** autonomous §A cosmetic (Nutrients sort, Hydration sheet, CompleteDay, onboarding tokens, etc.) + explicit builds B15–B16, B18, B21, B26, B28 (ResetPlan 🆕), CreatorProfile, WeeklyRecap detail rows. **Flag backlog (not ⬜):** RecipeDetail CookMode dark theme (`recipe_detail_v3_conformance`). **Out of scope (not ⬜):** BatchCook assign-portions planner (Grace B3 minimal v1).
+**Still ⬜ (not keep-current):** autonomous §A cosmetic (Nutrients sort, Hydration sheet, CompleteDay, onboarding tokens, etc.) + CreatorProfile + import input-phase polish (single-line detect field, example chips — 🔒 route-out phases). **Shipped 2026-06-29:** B26 DeleteAccount 3-step sheet (`delete_account_sheet_v1`), B28 ResetPlan keep/clear sheet (`reset_plan_confirm_v1`), plan cooked state (diary match → strike-through + subline tally). **Shipped 2026-06-28:** B15 import clear button + B16 verify review banner (`unified-import-clear`, `RecipeImportReviewBanner`); B18 MFP reassurance strip (`mfp_tracker_reassurance_v1`, ENG-1258); B21 WeeklyRecap detail rows (`WeeklyRecapDetailRows`, ENG-1259). **Flag backlog (default-on, gate for rollback):** RecipeDetail CookMode dark theme (`recipe_detail_v3_conformance`). **Out of scope (not ⬜):** BatchCook assign-portions planner (Grace B3 minimal v1).
 
 
 
 ## Cluster: import-flows
 
 
-### 🔒 ImportFlow — route-out paste sheet (§D6; B15 clear btn still builds)
+### 🔒 ImportFlow — route-out paste sheet (§D6; B15 clear ✅ 2026-06-28)
 - proto: `4515-4631 (+CSS L817-820, L1286-1294, L2141-2142, L2199)`
 - mobile: apps/mobile/components/import/UnifiedImportSheet.tsx; apps/mobile/components/import/ImportDetectedChip.tsx; apps/mobile/components/import/ImportLoadingSkeleton.tsx; apps/mobile/lib/importRouting.ts
 - web: src/app/components/suppr/unified-import-sheet.tsx; src/app/components/suppr/import-detected-chip.tsx; src/lib/recipe-import/classifyImport.ts; src/lib/recipe-import/importRoutingWeb.ts
@@ -91,7 +91,7 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
   - **[HIGH 🔒keep?]** loading / single / multi / fail phases: proto = import-spin spinner + skeleton block; single-recipe import-preview (96px ip-photo + serif ip-name + review-banner warning card + detected-ingredients list with ver-dot confidence); multi-recipe exp-check picker list with 'Add N recipes' CTA; fail state with 'Try another' / 'Paste manually'. · app = both · _Routing out to dedicated, more-capable result surfaces is arguably better than a mock in-sheet preview — but it means none of the prototype's loading/single/multi/fail structure exists here; needs Grace's call on whether in-sheet preview is required for conformance._
   - **[MED]** Detection-driven CTA: proto = Docked pushed-cta: disabled when !det; label 'Import {label.toLowerCase()}' with sparkles icon, else 'Paste something to import'. · app = both · _CTA label logic conforms; missing the sparkles leading icon and the docked footer treatment._
 
-### 🔒 MfpImport — Settings-embedded CSV (§D7; B18 MFP strip still builds)
+### 🔒 MfpImport — Settings-embedded CSV (§D7; B18 MFP strip ✅ ENG-1258)
 - proto: `5791-5872 (+CSS L857-885, L2068)`
 - mobile: apps/mobile/components/imports/MfpCsvImportCard.tsx; apps/mobile/components/imports/CsvImportPreview.tsx
 - web: src/app/components/imports/MfpCsvImportCard.tsx; src/app/components/imports/CsvImportPreview.tsx; src/lib/imports/useCsvImportFlow.ts
@@ -243,10 +243,11 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
   - **[MED]** Footer meta (exp-foot): proto = 'N of 4 selected - GDPR-ready, machine-readable' with info icon, centered 12px fg-tertiary · app = Absent
   - **[MED]** Primary CTA copy: proto = 'Prepare export' (with chevD icon) then 'Download .zip' · app = 'Export nutrition log (CSV)' / 'Export everything' button labels
 
-### ⬜ DeleteAccount — H3 M2 L0
+### ✅ DeleteAccount — H3 M2 L0 (ENG-1260 / B26, `delete_account_sheet_v1`, 2026-06-29)
 - proto: `5942-5982`
-- mobile: apps/mobile/components/settings/SettingsBundleContent.tsx (handleDeleteAccount ~L1096-1150, centered 'Delete account' clay text affordance ~L2691-2705)
-- web: src/app/components/settings/SettingsDialogs.tsx (ConfirmDialog 'Delete your account?' ~L229-242, wired from Settings.tsx)
+- mobile: `apps/mobile/components/settings/DeleteAccountSheet.tsx` + `SettingsBundleContent.tsx` (flag-gated; legacy Alert chain in `else`)
+- web: `src/app/components/settings/DeleteAccountSheet.tsx` + `Settings.tsx` (flag-gated; legacy `SettingsDialogs` two-stage in `else`)
+- shared: `src/lib/settings/deleteAccountFlow.ts`, `fetchDeleteAccountLedger.ts`, `executeAccountDelete.ts`
 - _Prototype DeleteAccount is a 3-step Sheet (height 80%) with a del-steps progress bar (3 segments, destructive fill). Step 1: 'Why are you leaving?' del-stephd + 5 reason radios (ver-row + radio-dot) [Taking a break/Found another app/Privacy concerns/Too expensive/Other]. Step 2: del-warn circle (alertTri) + 'This can't be undone' + 'Export my data first' outline button + a set-row ledger of what's removed (418 diary entries / 26 recipes / 90 days weight / household membership) with destructive x icons. Step 3: type DELETE input (centered, letter-spaced, bold). Footer is a 2-button row: 'Keep my account' outline + 'Continue'/'Delete forever' (turns destructive when DELETE typed). The app has NONE of this multi-step structure. Mobile uses a native Alert chain (explainer Alert -> Alert.prompt type 'delete'); web uses a single ConfirmDialog with a one-line description. No reason capture, no progress steps, no removal ledger, no inline 'export first' affordance, no del-warn/del-step/ver-row/radio-dot visual language._
   - **[HIGH]** Container + structure: proto = Sheet height 80%, 3-step wizard with del-steps progress indicator · app = Mobile: native Alert + Alert.prompt chain. Web: single ConfirmDialog modal. No wizard, no steps bar.
   - **[HIGH]** Step 1 reason capture (ver-row + radio-dot): proto = 5 single-select reason radios under 'Why are you leaving?' serif heading · app = Absent on both platforms — no leaving-reason capture
@@ -546,7 +547,7 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 - _48px thumb (photo or tinted box + utensil glyph) + slot label + lock badge + kcal + name + Batch chip / queued note. Card structure + tokens conformant. Two real diffs on both platforms: (1) recipe name uses sans 13px(web)/14px(mobile) semibold, but prototype .plan-card-name is font-serif 16px medium (L1351); (2) the prototype's per-card shuffle 'Meal options' button (.plan-card-opt, L4796) is MISSING — there's no on-card affordance to open the action menu; the card's onPress instead routes to swap/recipe. Also the cooked state (.is-cooked opacity .72 + strike-through name + green check badge, L1359-1362) is not implemented (cookedCount never set)._
   - **[HIGH]** Meal options (shuffle) button on card: proto = .plan-card-opt icon-btn--ghost shuffle, 32px, opens the meal action sheet (L4796) · app = absent — no per-card options button on web or mobile; whole-card onPress routes to a single action · _The prototype separates 'tap card = open recipe' from 'tap shuffle = options menu'; the app collapses both into one tap._
   - **[MED]** Recipe name typography: proto = .plan-card-name font-serif, 16px, fw-medium, 2-line clamp · app = sans, 13px(web)/14px(mobile) semibold, 1-line truncate (Type.label / text-[13px])
-  - **[MED]** Cooked state: proto = .plan-card.is-cooked opacity .72 + strike-through name + .plan-cooked-badge green check over thumb · app = not rendered (no cooked tracking wired)
+  - **[MED]** Cooked state: proto = .plan-card.is-cooked opacity .72 + strike-through name + .plan-cooked-badge green check over thumb · app = ✅ diary match (`planCookedMeals.ts`) — strike-through + check badge when logged on that day (2026-06-29)
 
 ### ✅ PlanHead / PlanHeaderV3 — B1 AdjustConstraints shipped
 - proto: `4707-4721, 4882-4886`
@@ -566,9 +567,11 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
   - **[LOW]** Tool icon box radius: proto = .plan-tool-ic border-radius 11 · app = rounded-full (web) / Radius.full (mobile) 44px circle
   - **[LOW 🔒keep?]** Shopping subtitle copy: proto = '{17 + (servings-1)*6} items · for {servings}' · app = '{count} items · for {N}' or 'Build your basket · for N' when 0 — close; count source differs (real list count, acceptable) · _App uses the real shopping count — better than the prototype's hardcoded formula._
 
-### 🆕 ResetPlan sheet
+### ✅ ResetPlan sheet (ENG-1261 / B28, `reset_plan_confirm_v1`, 2026-06-29)
 - proto: `6441-6467`
-- _Prototype ResetPlan is a sheet with insight copy, two radio rows (Keep what I've logged / Clear and start fresh) using .ver-row + .radio-dot, a destructive lowconf-note when 'clear' is selected, and a Cancel / 'Reset plan' (refresh icon) two-button pushed CTA. No app equivalent exists — searched src/, app/, apps/mobile/ for 'Reset this week', 'Keep what I've logged', 'Clear and start fresh', ResetPlan: zero matches on web and mobile. The closest behaviour (regenerate week) exists but without the keep-vs-clear choice or the reset sheet UI._
+- mobile: `apps/mobile/components/plan/ResetPlanSheet.tsx` + `planner.tsx` (`requestLibraryGenerate` when plan has real meals)
+- web: `src/app/components/plan/ResetPlanSheet.tsx` + `MealPlanner.tsx` (`requestRegenerate` when plan has real meals)
+- shared: `src/lib/planning/resetPlanSheet.ts`
   - **[HIGH]** Reset-plan sheet: proto = keep/clear radio sheet + destructive note + Cancel/Reset CTA (L6441-6467) · app = absent on web and mobile; only a plain regenerate exists · _No keep-logged-vs-clear-and-rebuild choice anywhere; regenerate is destructive-by-default with no opt-out UI._
 
 ### ⬜ Plan day-detail band (plan-day) — H0 M1 L0
@@ -576,7 +579,7 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 - mobile: apps/mobile/components/plan/PlanDayDetailBandV3.tsx
 - web: src/app/components/plan/PlanDayDetailBandV3.tsx
 - _Day name (serif 18) + bold day-total / target kcal, a 7px progress bar (sage under / amber over), gap subline, and the P/C/F macro pill row — all driven by shared computePlanDayDetail. Conformant on layout/tokens. Only gap: the prototype subline appends a cooked tally ('· N cooked') and the card name strikes through cooked meals; the app passes cookedCount={0} hardcoded (PlanV3Surface L170/171 web+mobile), so the cooked dimension never renders._
-  - **[MED]** Cooked-meal tally in subline: proto = subline appends ' · {cookedCount} cooked' when meals marked cooked (L4778) · app = cookedCount={0} passed hardcoded in both PlanV3Surface files → tally never shows · _Part of the broader cooked-state gap (see meal card)._
+  - **[MED]** Cooked-meal tally in subline: proto = subline appends ' · {cookedCount} cooked' when meals marked cooked (L4778) · app = ✅ `countPlanDayCookedMeals` wired in PlanV3Surface (2026-06-29)
 
 ### ⬜ Plan empty / generating states — H0 M1 L0
 - proto: `4669-4693`
@@ -774,7 +777,14 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
   - **[MED]** Workouts list card: proto = L6675-6679: a second card--flush divide listing per-workout rows (burn-wk: 26px frost-mist icon plate, name ellipsised, duration meal-sub, warning-tinted kcal right). · app = Mobile burn-detail.tsx structure shows hero + Breakdown + Activity-bonus; the discrete per-workout list card was not confirmed present in this pass. · _Confirm the per-workout rows card exists; if absent it is a structural gap. Pixel/Read pass needed._
   - **[LOW 🔒keep?]** Final-burn / Maintenance / Bonus copy nuance: proto = Rows: 'Final burn' (always), 'Maintenance estimate' (− value), 'Bonus earned' (+N kcal, serif warning). · app = Mobile branches 'Final burn' vs 'Projected burn' (isPast) and 'Bonus earned' vs 'Bonus' — a state nuance the prototype doesn't show (prototype is a fixed past day). · _App's past/projected branching is a real-data correctness addition; keep._
 
-### ⬜ WeeklyRecap — H0 M0 L2
+### ✅ WeeklyRecap detail rows (ENG-1259 / B21, 2026-06-28)
+- proto: recap detail grid (weight / streak / most-cooked / protein)
+- mobile: apps/mobile/components/recap/WeeklyRecapDetailRows.tsx + weekly-recap.tsx
+- web: src/app/components/suppr/WeeklyRecapDetailRows.tsx + weekly-recap-dialog.tsx
+- shared: src/lib/nutrition-core/weeklyRecapDetailRows.ts
+  - **[LOW]** Footer domain string: proto = recap-foot … 'sloe.co'. · app = WeeklyRecapCard footer present; confirm the domain reads 'sloe.co' (some surfaces historically used getsloe.com). Mismatch if not 'sloe.co'. · _Verify exact domain string in the share card footer._
+
+### ⬜ WeeklyRecap — share card footer domain (residual LOW)
 - proto: `5985-6019; CSS recap-card L1097-1109, gradient L2403-2408`
 - mobile: apps/mobile/app/weekly-recap.tsx (+ apps/mobile/components/recap/WeeklyRecapCard.tsx, WeeklyRecapShareButton.tsx)
 - web: src/app/components/suppr/weekly-recap-card.tsx

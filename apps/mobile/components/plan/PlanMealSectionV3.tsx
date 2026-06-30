@@ -1,12 +1,17 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { ALL_MEAL_SLOTS } from "@/lib/mealPlanAlgo";
+import type { PlanJournalByDay } from "@suppr/shared/planning/planCookedMeals";
+import {
+  isPlanMealCooked,
+  journalEntriesForPlanDate,
+} from "@suppr/shared/planning/planCookedMeals";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { DayPlan } from "@/lib/types";
 import { PlanMealCardV3 } from "./PlanMealCardV3";
 import { PlanEmptySlotV3 } from "./PlanEmptySlotV3";
 import type { PlanMealFilter } from "./PlanMealFilterChipsV3";
+import { ALL_MEAL_SLOTS } from "@/lib/mealPlanAlgo";
 
 const WEEKDAY_LONG = [
   "Sunday",
@@ -41,6 +46,7 @@ export interface PlanMealSectionV3Props {
   filter: PlanMealFilter;
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  nutritionByDay?: PlanJournalByDay;
 }
 
 export function PlanMealSectionV3({
@@ -50,18 +56,30 @@ export function PlanMealSectionV3({
   filter,
   onOpenMeal,
   onAddToSlot,
+  nutritionByDay,
 }: PlanMealSectionV3Props) {
   const colors = useThemeColors();
 
   const renderSlot = (dayIndex: number, slotIndex: number, slotLabel: string) => {
     const meal = plan?.[dayIndex]?.meals[slotIndex];
+    const date = weekDates[dayIndex];
+    const logged = date ? journalEntriesForPlanDate(nutritionByDay, date) : [];
     if (meal && !meal.isPlaceholder) {
+      const cooked = isPlanMealCooked(
+        {
+          recipeId: meal.recipeId,
+          recipeTitle: meal.recipeTitle || meal.name,
+          isPlaceholder: meal.isPlaceholder,
+        },
+        logged,
+      );
       return (
         <PlanMealCardV3
           slot={slotLabel}
           name={meal.recipeTitle || meal.name}
           kcal={Math.round(meal.calories)}
           isLocked={meal.isLocked}
+          isCooked={cooked}
           onPress={() => onOpenMeal(dayIndex, slotIndex)}
         />
       );

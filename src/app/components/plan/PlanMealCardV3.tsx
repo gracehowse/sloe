@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Flame, Lock, UtensilsCrossed } from "lucide-react";
+import { Check, Flame, Lock, UtensilsCrossed } from "lucide-react";
 
 /**
  * PlanMealCardV3 — Sloe v3 Plan per-slot meal card.
@@ -21,6 +21,8 @@ export interface PlanMealCardV3Props {
   isLocked?: boolean;
   /** "batch" → a Batch chip; any other truthy string → a quiet queued note. */
   note?: string | null;
+  /** When the user logged this planned meal on that day (diary match). */
+  isCooked?: boolean;
   onPress?: () => void;
 }
 
@@ -31,6 +33,7 @@ export function PlanMealCardV3({
   imageUrl,
   isLocked,
   note,
+  isCooked,
   onPress,
 }: PlanMealCardV3Props) {
   const [broken, setBroken] = React.useState(false);
@@ -41,7 +44,7 @@ export function PlanMealCardV3({
       onClick={onPress}
       disabled={!onPress}
       aria-label={`${slot}: ${name}`}
-      className="mt-2 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 enabled:hover:bg-[var(--background-secondary)] enabled:active:scale-[0.99] disabled:cursor-default"
+      className={`mt-2 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-[background-color,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 enabled:hover:bg-[var(--background-secondary)] enabled:active:scale-[0.99] disabled:cursor-default${isCooked ? " opacity-[0.72]" : ""}`}
       style={{
         backgroundColor: "var(--card)",
         borderColor: "var(--border)",
@@ -65,6 +68,17 @@ export function PlanMealCardV3({
             style={{ color: "var(--primary)" }}
           />
         )}
+        {isCooked ? (
+          <span
+            className="absolute inset-0 flex items-center justify-center"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--accent-success-solid) 82%, transparent)",
+            }}
+            aria-hidden
+          >
+            <Check className="size-3.5 text-white" strokeWidth={2.5} />
+          </span>
+        ) : null}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center justify-between gap-1">
@@ -83,7 +97,9 @@ export function PlanMealCardV3({
             {kcal ? `${kcal} kcal` : "—"}
           </span>
         </span>
-        <span className="mt-0.5 block truncate text-[13px] font-semibold text-foreground">
+        <span
+          className={`mt-0.5 block truncate text-[13px] font-semibold text-foreground${isCooked ? " line-through decoration-[var(--border-strong)]" : ""}`}
+        >
           {name}
         </span>
         {note === "batch" ? (

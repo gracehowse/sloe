@@ -2,6 +2,11 @@
 
 import * as React from "react";
 
+import type { PlanJournalByDay } from "@/lib/planning/planCookedMeals";
+import {
+  isPlanMealCooked,
+  journalEntriesForPlanDate,
+} from "@/lib/planning/planCookedMeals";
 import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
 import type { DayPlan } from "@/types/recipe";
 import { PlanMealCardV3 } from "./PlanMealCardV3";
@@ -44,6 +49,8 @@ export interface PlanMealSectionV3Props {
   filter: PlanMealFilter;
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  /** Diary rows keyed by date_key — powers cooked strike-through. */
+  nutritionByDay?: PlanJournalByDay;
 }
 
 export function PlanMealSectionV3({
@@ -53,6 +60,7 @@ export function PlanMealSectionV3({
   filter,
   onOpenMeal,
   onAddToSlot,
+  nutritionByDay,
 }: PlanMealSectionV3Props) {
   const renderSlot = (
     dayIndex: number,
@@ -60,13 +68,24 @@ export function PlanMealSectionV3({
     slotLabel: string,
   ) => {
     const meal = plan?.[dayIndex]?.meals[slotIndex];
+    const date = weekDates[dayIndex];
+    const logged = date ? journalEntriesForPlanDate(nutritionByDay, date) : [];
     if (meal && !meal.isPlaceholder) {
+      const cooked = isPlanMealCooked(
+        {
+          recipeId: meal.recipeId,
+          recipeTitle: meal.recipeTitle || meal.name,
+          isPlaceholder: meal.isPlaceholder,
+        },
+        logged,
+      );
       return (
         <PlanMealCardV3
           slot={slotLabel}
           name={meal.recipeTitle || meal.name}
           kcal={Math.round(meal.calories)}
           isLocked={meal.isLocked}
+          isCooked={cooked}
           onPress={() => onOpenMeal(dayIndex, slotIndex)}
         />
       );
