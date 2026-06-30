@@ -51,9 +51,11 @@ describe("ReportRecipeDialog", () => {
     fireEvent.click(getByTestId("report-submit"));
 
     await waitFor(() => expect(queryByTestId("report-done")).not.toBeNull());
+    // ENG-1226: the endpoint is authenticated; the same-origin request must
+    // carry credentials so the Supabase auth cookie reaches the server.
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/recipe-report",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ method: "POST", credentials: "same-origin" }),
     );
     const sentBody = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
     expect(sentBody).toMatchObject({ recipeId: "r_demo_123", reason: "unsafe", description: "raw chicken step" });

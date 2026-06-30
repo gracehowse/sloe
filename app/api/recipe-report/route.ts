@@ -8,12 +8,22 @@
  * imported recipe content is live. Persists via the service-role client
  * (`recipe_reports` is service-role-only per its RLS policy).
  *
- * IP-rate-limited; network metadata captured for abuse defence.
+ * Authenticated-only (ENG-1226): the report sheet only renders inside the
+ * signed-in recipe-detail surface (web cookie / mobile bearer), so we require a
+ * valid Supabase session — return 401 if absent — and key the rate limit by
+ * user id AND trusted IP. That second factor closes the abuse gap an IP-only
+ * cap left open: an attacker rotating/forging the leftmost `x-forwarded-for`
+ * hop could otherwise flood the reviewer queue. (The DMCA endpoint stays
+ * anonymous on purpose — takedowns come from non-users — so it keeps IP-only
+ * scoping plus the part-1 trusted-IP hardening.)
+ *
+ * Rate-limited per (user, trusted IP); network metadata captured for audit.
  */
 
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getTrustedClientIp } from "@/lib/server/clientIp";
+import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
 import { assertOrigin } from "@/lib/api/assertOrigin";
 
@@ -40,10 +50,34 @@ export async function POST(req: Request) {
   if (originErr) return originErr;
 
   const h = req.headers;
-  // IP-based rate limit (10/hour/IP — a touch higher than DMCA since in-app
-  // reports are cheaper/more frequent than formal takedown notices).
+
+  // ENG-1226: second factor. The in-app report sheet only renders for a
+  // signed-in user (web sends the Supabase auth cookie; mobile sends a
+  // `Authorization: Bearer` token), so an authenticated session is required.
+  // Reject anonymous callers before doing any other work — this is the
+  // endpoint's contract now, not a public form.
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "unauthorized",
+        message: `Sign in to report a recipe. If it's urgent, email ${SUPPORT_EMAIL}.`,
+      },
+      { status: 401 },
+    );
+  }
+
+  // Rate limit per (user, trusted IP) (10/hour). The IP component is derived
+  // from the platform-injected, non-forgeable client IP (see
+  // `getTrustedClientIp`); the user-id component means an IP-rotating attacker
+  // can't escape the cap by forging `x-forwarded-for`, and a shared NAT can't
+  // starve other signed-in users on the same network. 10/hour is a touch
+  // higher than DMCA since in-app reports are cheaper/more frequent than formal
+  // takedown notices.
   const rl = await rateLimit({
     keyPrefix: "api:recipe-report",
+    userId,
     limit: 10,
     windowMs: 60 * 60 * 1000,
   });
