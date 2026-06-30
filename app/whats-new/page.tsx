@@ -125,7 +125,7 @@ export default function WhatsNewPage() {
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
           <Link
             href="/"
-            className="text-violet-600 dark:text-violet-400 hover:underline"
+            className="text-primary hover:underline"
           >
             &larr; Back to app
           </Link>
@@ -149,7 +149,7 @@ export default function WhatsNewPage() {
               Stripe all expose one. */}
           <a
             href="/whats-new/rss.xml"
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-primary transition-colors"
             data-testid="whats-new-rss-link"
           >
             <svg
@@ -197,7 +197,7 @@ export default function WhatsNewPage() {
                       </span>
                     </h2>
                     {isLatest ? (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary-solid border border-primary/20">
                         Latest
                       </span>
                     ) : null}

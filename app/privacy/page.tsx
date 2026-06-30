@@ -52,7 +52,7 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Privacy contact:</strong>{" "}
-              <a href={mailtoHref} className="text-violet-600 dark:text-violet-400 underline">
+              <a href={mailtoHref} className="text-primary underline">
                 {privacyEmail}
               </a>
             </li>
@@ -123,12 +123,12 @@ export default function PrivacyPage() {
             public post by emailing{" "}
             <a
               href="mailto:dmca@getsloe.com"
-              className="text-violet-600 dark:text-violet-400 underline"
+              className="text-primary underline"
             >
               dmca@getsloe.com
             </a>{" "}
             or by submitting the form on{" "}
-            <Link href="/dmca" className="text-violet-600 dark:text-violet-400 underline">
+            <Link href="/dmca" className="text-primary underline">
               /dmca
             </Link>
             . We&rsquo;ll remove within 7 business days.
@@ -239,7 +239,7 @@ export default function PrivacyPage() {
             Apple Health (for example logs you created in other apps). Sloe writes the calories, protein, carbohydrates,
             fat, and fibre of the meals you log back to Apple Health so other apps on your phone can read them. Data shared
             with Apple Health is governed by{" "}
-            <a href="https://www.apple.com/legal/privacy/en-ww/" className="text-violet-600 dark:text-violet-400 underline" rel="noopener noreferrer" target="_blank">Apple&rsquo;s privacy policy</a>{" "}
+            <a href="https://www.apple.com/legal/privacy/en-ww/" className="text-primary underline" rel="noopener noreferrer" target="_blank">Apple&rsquo;s privacy policy</a>{" "}
             and stored on your device; Sloe does not send your Health data to our servers unless you explicitly log a meal.
             You can revoke Sloe&rsquo;s Health access at any time in iOS Settings &rarr; Privacy &amp; Security &rarr; Health &rarr; Sloe.
           </p>
@@ -276,7 +276,7 @@ export default function PrivacyPage() {
               <strong>EU/UK residents:</strong> Under GDPR / UK GDPR you have the right to access, rectify, erase,
               restrict processing, data portability, and to object to processing. You also have the right to complain
               to your national data-protection authority (in the UK, the Information Commissioner&rsquo;s Office at{" "}
-              <a href="https://ico.org.uk" className="text-violet-600 dark:text-violet-400 underline" rel="noopener noreferrer" target="_blank">ico.org.uk</a>).
+              <a href="https://ico.org.uk" className="text-primary underline" rel="noopener noreferrer" target="_blank">ico.org.uk</a>).
               To exercise these rights, contact the support channel below.
             </li>
           </ul>
@@ -284,7 +284,7 @@ export default function PrivacyPage() {
           <p>
             For questions about this policy, data requests, or to exercise your rights, email us
             at{" "}
-            <a href={mailtoHref} className="text-violet-600 dark:text-violet-400 underline">
+            <a href={mailtoHref} className="text-primary underline">
               {privacyEmail}
             </a>.
             We aim to respond within 14 days.

@@ -75,7 +75,7 @@ function buildSections(email: string): Section[] {
             When we read a public web page, we identify ourselves honestly as Sloe&rsquo;s importer &mdash; an
             identified, rate-limited fetcher (<code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">SupprBot</code>)
             that links to a public bot page, respects access controls, and takes only the facts. See the{" "}
-            <Link href="/terms" className="text-violet-600 dark:text-violet-400 underline">Terms of service</Link>{" "}
+            <Link href="/terms" className="text-primary underline">Terms of service</Link>{" "}
             for the full posture.
           </p>
         </>
@@ -90,7 +90,7 @@ function buildSections(email: string): Section[] {
         <ul className="list-disc pl-5 space-y-2">
           <li><strong>USDA FoodData Central</strong> &mdash; lab-tested nutritional data for thousands of whole foods, maintained by the U.S. Department of Agriculture. Includes Foundation, SR Legacy, and Survey (FNDDS) datasets. FDC data is in the public domain; USDA does not endorse Sloe.</li>
           <li><strong>Edamam</strong> &mdash; restaurant and branded-food nutrition data. Food search results that come from Edamam are <em>Powered by Edamam</em> under Edamam&rsquo;s API terms.</li>
-          <li><strong>Open Food Facts</strong> &mdash; volunteer-maintained, open database of food products with strong UK, EU, US, and Australian coverage. Product data is &copy; Open Food Facts contributors and made available under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" className="text-violet-600 dark:text-violet-400 underline" rel="noopener noreferrer" target="_blank">Open Database License (ODbL)</a>.</li>
+          <li><strong>Open Food Facts</strong> &mdash; volunteer-maintained, open database of food products with strong UK, EU, US, and Australian coverage. Product data is &copy; Open Food Facts contributors and made available under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" className="text-primary underline" rel="noopener noreferrer" target="_blank">Open Database License (ODbL)</a>.</li>
           <li><strong>FatSecret Platform API</strong> &mdash; curated food database with detailed branded and generic food entries including serving size information.</li>
           <li><strong>Local staples database</strong> &mdash; 176+ common cooking ingredients with per-100g macros and density values for cup/volume conversions. Used as a fallback when no external match is found.</li>
         </ul>
@@ -170,7 +170,7 @@ function buildSections(email: string): Section[] {
       body: (
         <p>
           For questions, feedback, or support:{" "}
-          <a href={`mailto:${email}`} className="text-violet-600 dark:text-violet-400 underline">{email}</a>
+          <a href={`mailto:${email}`} className="text-primary underline">{email}</a>
         </p>
       ),
     },
@@ -204,7 +204,7 @@ export default function HelpClient() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="max-w-5xl mx-auto px-6 py-12">
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          <Link href="/" className="text-violet-600 dark:text-violet-400 hover:underline">
+          <Link href="/" className="text-primary hover:underline">
             &larr; Back to app
           </Link>
         </p>
@@ -224,7 +224,7 @@ export default function HelpClient() {
             placeholder="Search help…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-violet-400"
+            className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
             data-testid="help-search-input"
             aria-label="Search help"
           />
@@ -241,7 +241,7 @@ export default function HelpClient() {
                 <li key={s.id}>
                   <a
                     href={`#${s.id}`}
-                    className="text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                    className="text-slate-600 dark:text-slate-300 hover:text-primary transition-colors"
                   >
                     {s.title}
                   </a>
@@ -292,11 +292,11 @@ export default function HelpClient() {
 
             <p className="text-xs text-slate-500 dark:text-slate-400 pt-2">
               See also:{" "}
-              <Link href="/privacy" className="text-violet-600 dark:text-violet-400 underline">Privacy Policy</Link>
+              <Link href="/privacy" className="text-primary underline">Privacy Policy</Link>
               {" "}&middot;{" "}
-              <Link href="/terms" className="text-violet-600 dark:text-violet-400 underline">Terms of Service</Link>
+              <Link href="/terms" className="text-primary underline">Terms of Service</Link>
               {" "}&middot;{" "}
-              <Link href="/roadmap" className="text-violet-600 dark:text-violet-400 underline">Roadmap</Link>
+              <Link href="/roadmap" className="text-primary underline">Roadmap</Link>
             </p>
           </div>
         </div>
@@ -306,7 +306,7 @@ export default function HelpClient() {
           visible so users can reach out without scrolling back up. */}
       <a
         href={`mailto:${email}`}
-        className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-violet-600 hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600 text-white text-sm font-semibold px-4 py-2.5 shadow-lg shadow-violet-500/30"
+        className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground hover:brightness-95 text-sm font-semibold px-4 py-2.5 shadow-lg shadow-primary/30"
         data-testid="help-sticky-contact"
       >
         Contact support

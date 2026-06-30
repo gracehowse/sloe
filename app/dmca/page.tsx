@@ -63,7 +63,7 @@ export default function DmcaPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>
               <strong>Email:</strong>{" "}
-              <a href={`mailto:${DMCA_EMAIL}`} className="text-violet-600 dark:text-violet-400 underline">
+              <a href={`mailto:${DMCA_EMAIL}`} className="text-primary underline">
                 {DMCA_EMAIL}
               </a>{" "}
               (fastest route)
@@ -164,9 +164,9 @@ export default function DmcaPage() {
 
           <p className="text-xs text-slate-500 dark:text-slate-400 pt-4">
             See also:{" "}
-            <Link href="/terms" className="text-violet-600 dark:text-violet-400 underline">Terms of service</Link>
+            <Link href="/terms" className="text-primary underline">Terms of service</Link>
             {" "}&middot;{" "}
-            <Link href="/privacy" className="text-violet-600 dark:text-violet-400 underline">Privacy policy</Link>
+            <Link href="/privacy" className="text-primary underline">Privacy policy</Link>
           </p>
         </div>
     </TrustPageLayout>

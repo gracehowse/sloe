@@ -68,7 +68,7 @@ export default function LicencesPage() {
                 className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-3 text-xs"
               >
                 <a
-                  className="block font-semibold text-violet-600 dark:text-violet-400 underline"
+                  className="block font-semibold text-primary underline"
                   href={e.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -93,7 +93,7 @@ export default function LicencesPage() {
                 {DATA_LICENCES.map((e) => (
                   <tr key={e.name}>
                     <td>
-                      <a className="text-violet-600 dark:text-violet-400 underline" href={e.url} target="_blank" rel="noopener noreferrer">
+                      <a className="text-primary underline" href={e.url} target="_blank" rel="noopener noreferrer">
                         {e.name}
                       </a>
                     </td>
@@ -106,7 +106,7 @@ export default function LicencesPage() {
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
             Open Food Facts data is provided under the Open Database License; the full licence text is at{" "}
-            <a className="text-violet-600 dark:text-violet-400 underline" href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">
+            <a className="text-primary underline" href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">
               opendatacommons.org/licenses/odbl/1-0
             </a>.
           </p>
@@ -121,7 +121,7 @@ export default function LicencesPage() {
                 className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-3 text-xs"
               >
                 <a
-                  className="block font-semibold text-violet-600 dark:text-violet-400 underline"
+                  className="block font-semibold text-primary underline"
                   href={e.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -146,7 +146,7 @@ export default function LicencesPage() {
                 {CODE_LICENCES.map((e) => (
                   <tr key={e.name}>
                     <td>
-                      <a className="text-violet-600 dark:text-violet-400 underline" href={e.url} target="_blank" rel="noopener noreferrer">
+                      <a className="text-primary underline" href={e.url} target="_blank" rel="noopener noreferrer">
                         {e.name}
                       </a>
                     </td>
@@ -183,11 +183,11 @@ export default function LicencesPage() {
 
         <p className="text-xs text-slate-500 dark:text-slate-400">
           See also:{" "}
-          <Link href="/terms" className="text-violet-600 dark:text-violet-400 underline">Terms of Service</Link>
+          <Link href="/terms" className="text-primary underline">Terms of Service</Link>
           {" "}&middot;{" "}
-          <Link href="/privacy" className="text-violet-600 dark:text-violet-400 underline">Privacy Policy</Link>
+          <Link href="/privacy" className="text-primary underline">Privacy Policy</Link>
           {" "}&middot;{" "}
-          <Link href="/dmca" className="text-violet-600 dark:text-violet-400 underline">DMCA</Link>
+          <Link href="/dmca" className="text-primary underline">DMCA</Link>
         </p>
     </TrustPageLayout>
   );
