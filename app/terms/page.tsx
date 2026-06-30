@@ -13,6 +13,7 @@ const TERMS_SECTIONS = [
   { id: "eligibility", title: "Eligibility" },
   { id: "account", title: "Account & security" },
   { id: "your-content", title: "Your content licence" },
+  { id: "importing-recipes", title: "Importing recipes" },
   { id: "acceptable-use", title: "Acceptable use" },
   { id: "copyright", title: "Copyright / DMCA" },
   { id: "subscriptions", title: "Subscriptions" },
@@ -109,6 +110,15 @@ export default function TermsPage() {
           <p>
             We do not claim ownership of Your Content, we do not use it to train AI models, and we do not sell it.
           </p>
+          <h2 id="importing-recipes" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Importing recipes</h2>
+          <p>
+            When you import a recipe, Sloe makes a personal copy in your own cookbook &mdash; like saving to your notes
+            or printing for your kitchen. Imports are always started by you, never automatic, and are private by
+            default. We capture the facts (ingredients, steps, times, our nutrition estimates) and link back to the
+            original; we don&rsquo;t copy the original article&rsquo;s writing or photos, and we don&rsquo;t
+            bulk-collect recipes. When we read a public web page, we identify ourselves honestly as Sloe&rsquo;s
+            importer.
+          </p>
           <h2 id="acceptable-use" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Acceptable use</h2>
           <p>You agree not to:</p>
           <ul className="list-disc pl-5 space-y-1">
@@ -121,9 +131,8 @@ export default function TermsPage() {
           <p>
             When Sloe fetches a URL on your behalf (for example a recipe import), we do so using an identified
             <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded mx-1">SupprBot</code>
-            user agent that links to a public bot contact page, we do not circumvent access controls, and we respect
-            <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded mx-1">robots.txt</code>
-            where applicable. You remain responsible for choosing URLs that you are entitled to import.
+            user agent that links to a public bot contact page, and we do not circumvent access controls, paywalls, or
+            login walls. You remain responsible for choosing URLs that you are entitled to import.
           </p>
           <h2 id="copyright" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Copyright &mdash; DMCA and takedown</h2>
           <p>
