@@ -3,9 +3,21 @@
 /**
  * ENG-901 M6 — import-success surface (Figma `304:2`).
  * Web parity with mobile `import-shared.tsx` successSheet.
+ *
+ * ENG-728 — import-success "magic moment". When `import_magic_moment` is ON
+ * (default-OFF; ramps via PostHog) AND the user has not requested reduced
+ * motion, the sheet arrives with a subtle fade + scale settle and a one-shot
+ * `WinMomentPlayer celebration="log-confirm" fullBleed` overlay — the quiet
+ * gold "Logged" beat (NOT a loud confetti storm; the `goal-hit` tier stays
+ * reserved for the daily ring landmark). Flag OFF or reduce-motion → the sheet
+ * appears instantly with no overlay (zero visual change). Mobile mirror:
+ * `apps/mobile/components/import/ImportSuccessCelebration.tsx`.
  */
+import * as React from "react";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { Icons } from "../ui/icons";
 import { SupprButton } from "./suppr-button";
+import { WinMomentPlayer } from "../ui/win-moment-player.tsx";
 
 export interface ImportSuccessSheetProps {
   recipeTitle: string;
@@ -16,6 +28,19 @@ export interface ImportSuccessSheetProps {
   onReviewIngredients?: () => void;
 }
 
+/** Subtle settle window for the sheet fade/scale (ms). */
+const SETTLE_MS = 320;
+
+function usePrefersReducedMotion(): boolean {
+  const [reduce] = React.useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  return reduce;
+}
+
 export function ImportSuccessSheet({
   recipeTitle,
   recipeId,
@@ -24,13 +49,31 @@ export function ImportSuccessSheet({
   onViewRecipe,
   onReviewIngredients,
 }: ImportSuccessSheetProps) {
+  const reduceMotion = usePrefersReducedMotion();
+  const [enabled] = React.useState(() => isFeatureEnabled("import_magic_moment"));
+  const celebrate = enabled && !reduceMotion;
+  // One-shot overlay: mount on first render, unmount when the player completes.
+  const [showOverlay, setShowOverlay] = React.useState(celebrate);
+  const uid = React.useId().replace(/:/g, "");
+
   return (
     <div
       data-testid="import-success-sheet"
-      className="mx-auto w-full max-w-md rounded-[var(--radius-card-lg)] border border-[color-mix(in_srgb,var(--accent-success)_21%,transparent)] bg-card px-6 py-8 text-center shadow-[0_12px_24px_color-mix(in_srgb,var(--foreground-brand)_16%,transparent)]"
+      data-magic-moment={celebrate ? "on" : undefined}
+      className="relative mx-auto w-full max-w-md rounded-[var(--radius-card-lg)] border border-[color-mix(in_srgb,var(--accent-success)_21%,transparent)] bg-card px-6 py-8 text-center shadow-[0_12px_24px_color-mix(in_srgb,var(--foreground-brand)_16%,transparent)]"
       role="status"
       aria-label={`Saved ${recipeTitle} to your library`}
+      style={
+        celebrate
+          ? {
+              animation: `importMagicSettle-${uid} ${SETTLE_MS}ms cubic-bezier(0.33,1,0.68,1) both`,
+            }
+          : undefined
+      }
     >
+      {celebrate ? (
+        <style>{`@keyframes importMagicSettle-${uid} { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }`}</style>
+      ) : null}
       <div className="mb-2 flex justify-center">
         <div
           className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--accent-success)_12%,transparent)]"
@@ -64,6 +107,14 @@ export function ImportSuccessSheet({
         </SupprButton>
       ) : null}
       <span className="sr-only">Recipe id {recipeId}</span>
+      {celebrate && showOverlay ? (
+        <WinMomentPlayer
+          celebration="log-confirm"
+          fullBleed
+          onComplete={() => setShowOverlay(false)}
+          testID="import-magic-moment"
+        />
+      ) : null}
     </div>
   );
 }

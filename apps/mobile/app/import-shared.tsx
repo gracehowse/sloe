@@ -85,6 +85,7 @@ import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
 import { ImportLoadingSkeleton } from "@/components/import/ImportLoadingSkeleton";
+import { ImportSuccessCelebration } from "@/components/import/ImportSuccessCelebration";
 import { SupprMark } from "@/components/SupprMark";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { scaleMacrosByGrams , parseIngredientForSearch, type BarcodeProduct } from "@/lib/verifyRecipe";
@@ -2441,10 +2442,8 @@ export default function ImportSharedScreen() {
         )}
 
         {state === "success" && title && savedRecipeId && (
-          <View style={styles.successSheet}>
-            <View style={styles.successIconWrap}>
-              <Ionicons name="checkmark-circle" size={72} color={Accent.success} />
-            </View>
+          <ImportSuccessCelebration sheetStyle={styles.successSheet}>
+            <Ionicons name="checkmark-circle" size={72} color={Accent.success} style={styles.successIconWrap} />
             <Text style={styles.successKicker}>SAVED</Text>
             <Text style={styles.successRecipeTitle} numberOfLines={4}>
               {decodeEntities(title)}
@@ -2484,7 +2483,7 @@ export default function ImportSharedScreen() {
               <Ionicons name="nutrition-outline" size={18} color={accent.primary} style={{ marginRight: 6 }} />
               <Text style={styles.outlineBtnText}>Review ingredients</Text>
             </Pressable>
-          </View>
+          </ImportSuccessCelebration>
         )}
 
         {!authLoading && !userId && state === "idle" && (

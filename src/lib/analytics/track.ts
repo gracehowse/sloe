@@ -371,10 +371,17 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  * `expenditure_trend_card` (ENG-953, 2026-06-30); and the "always flag on"
  * batch (ENG-1279, 2026-06-30): `progress_plateau_insight_v1` (ENG-954),
  * `weigh_in_reminder_v1` (ENG-955), `portion_fit_hint_v1` (ENG-854).
+ * - `import_magic_moment` (ENG-728) — a CALM one-shot `log-confirm`
+ *   win-moment over the recipe-import success surface, plus a subtle
+ *   fade/scale on the success sheet. Reduce-motion → instant, no overlay.
+ *   Caller-gated on both platforms (web `RecipeUpload` success branch,
+ *   mobile `ImportSuccessCelebration` child of `import-shared`).
+ *   (default-OFF for now; flips to default-ON in the next ENG-1279 batch.)
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
   "progress_milestone_celebration_v1",
+  "import_magic_moment",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
