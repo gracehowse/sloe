@@ -12,7 +12,7 @@
 import * as React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, Text } from "react-native";
 
 import { SupprButton } from "../../components/ui/SupprButton";
 
@@ -112,5 +112,44 @@ describe("SupprButton (mobile)", () => {
     );
     fireEvent.press(getByTestId("cta"));
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  // ENG-1260/1261 hardening: a bare string/number passed as children
+  // (`<SupprButton>{copy.foo}</SupprButton>`) used to render raw into the
+  // Pressable, throwing RN's "Text strings must be rendered within a <Text>
+  // component" and red-boxing the screen. The component now wraps primitive
+  // children in <Text> with the same label style/colour as the `label` prop.
+  it("string children: does not throw and renders the text in the label style", () => {
+    const { getByText } = render(
+      <SupprButton variant="primary">Keep this target</SupprButton>,
+    );
+    const label = getByText("Keep this target");
+    // Wrapped with the same label style + colour as the label-prop path.
+    expect(flatten(label.props.style).color).toBe("#fff");
+  });
+
+  it("ghost string children: plum label colour matches the label-prop path", () => {
+    const { getByText } = render(
+      <SupprButton variant="ghost">Adjust my pace or goal</SupprButton>,
+    );
+    expect(flatten(getByText("Adjust my pace or goal").props.style).color).toBe(
+      PLUM,
+    );
+  });
+
+  it("number children: wrapped without throwing", () => {
+    const { getByText } = render(<SupprButton variant="ghost">{42}</SupprButton>);
+    expect(getByText("42")).toBeTruthy();
+  });
+
+  it("element children pass through unchanged (not double-wrapped)", () => {
+    const { getByTestId } = render(
+      <SupprButton variant="primary">
+        <Text testID="custom-child">Custom</Text>
+      </SupprButton>,
+    );
+    // The caller's own <Text> renders directly — no extra wrapping styling.
+    const child = getByTestId("custom-child");
+    expect(child.props.children).toBe("Custom");
   });
 });
