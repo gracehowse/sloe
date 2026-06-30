@@ -26,6 +26,7 @@ import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useImportQueue } from "../../lib/recipes/useImportQueue.ts";
 import { ImportRunnerError } from "../../lib/recipes/recipeImportScheduler.ts";
 import { importJobIdForUrl, importJobIdForImage } from "../../lib/recipes/importProgressMachine.ts";
+import { buildUrlImportJob, extractAllHttpUrls } from "../../lib/recipes/urlImportJob.ts";
 import {
   mapImageImportResponseToRecipe,
   photoSeedTitle,
@@ -937,34 +938,23 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     [importProgressV2, runBulkPhotoImport],
   );
 
+  // ENG-981 — enqueue ONE url job via shared `buildUrlImportJob` (same shape as mobile); the fan-out calls this per link.
+  const enqueueUrlImport = useCallback(
+    (u: string): boolean =>
+      importQueue.enqueue(
+        buildUrlImportJob<ApiImportedRecipe>(u, {
+          fetchRecipe: fetchImportedRecipe,
+          land: (recipe, imageUsed, opts) => applyAndMaybeSaveFirst(recipe, u, { imageUsed, captionTruncated: opts.captionTruncated }),
+          titleOf: (r) => r.title ?? "Imported recipe",
+        }),
+      ),
+    [importQueue, fetchImportedRecipe, applyAndMaybeSaveFirst],
+  );
+
   const executeUrlImport = useCallback(
     async (u: string) => {
       if (importProgressV2) {
-        const id = importJobIdForUrl("url", u);
-        let seedTitle = "Recipe";
-        try {
-          seedTitle = new URL(u).hostname.replace(/^www\./, "");
-        } catch {
-          /* keep default */
-        }
-        const enqueued = importQueue.enqueue({
-          id,
-          kind: "url",
-          title: seedTitle,
-          run: async (controls) => {
-            controls.setStage("extracting");
-            const { recipe, imageUsed, captionTruncated } = await fetchImportedRecipe(
-              u,
-              controls.signal,
-            );
-            if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
-            controls.setStage("organizing");
-            controls.setTitle(recipe.title ?? "Imported recipe");
-            await applyAndMaybeSaveFirst(recipe, u, { imageUsed, captionTruncated });
-            return { title: recipe.title ?? "Imported recipe" };
-          },
-        });
-        if (enqueued) {
+        if (enqueueUrlImport(u)) {
           setImportUrl("");
           setImportHint(null);
         }
@@ -997,7 +987,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     },
     [
       importProgressV2,
-      importQueue,
+      enqueueUrlImport,
       fetchImportedRecipe,
       applyAndMaybeSaveFirst,
       importRedesign,
@@ -1082,12 +1072,22 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   ]);
 
   const runImportFromUrl = async () => {
-    const u = importUrl.trim();
-    if (!u) {
+    const raw = importUrl.trim();
+    if (!raw) {
       toast.error("Paste a recipe URL first.");
       return;
     }
-
+    // ENG-981 — a pasted blob can carry several links; >1 fans out (parity with
+    // mobile). One link → single-URL path below unchanged (raw fallback kept).
+    const urls = extractAllHttpUrls(importUrl);
+    if (urls.length > 1 && importProgressV2) {
+      if (urls.map(enqueueUrlImport).some(Boolean)) {
+        setImportUrl("");
+        setImportHint(null);
+      }
+      return;
+    }
+    const u = urls[0] ?? raw;
     if (importCaptionPreviewFlag) {
       const platform = detectSourcePlatform(u);
       if (isCaptionTextPlatform(platform)) {

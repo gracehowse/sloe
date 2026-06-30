@@ -101,6 +101,8 @@ Three new events (same name web + mobile), distinct from the server-side
 - `tests/unit/importProgressMachine.test.ts` (15) — transitions, classification, copy, retry eligibility.
 - `tests/unit/recipeImportScheduler.test.ts` (19) — slot concurrency, queue position, cancel-aborts-fetch, slot-never-leaks-on-throw, idempotent enqueue, retry, history pruning.
 - `tests/unit/useImportQueue.test.tsx` (6) — derived state + the analytics contract (the cross-platform event shape).
+- `tests/unit/urlImportJob.test.ts` (10) — ENG-981: `extractAllHttpUrls` (N links, scheme-less hosts, trailing-punct strip, de-dupe, cap), the shared `buildUrlImportJob` job shape, and N urls → N enqueued jobs (web).
+- `apps/mobile/tests/unit/resolveImportUrl.test.ts` (14) — ENG-981: the same extraction + `multiUrlsFromRouterParams` / `multiUrlsFromDeepLink` resolvers + enqueue-count (mobile).
 
 ## Visual validation
 
@@ -127,6 +129,19 @@ Three new events (same name web + mobile), distinct from the server-side
   per-photo id via `importJobIdForImage`. See `docs/journeys/import-recipe.md`
   → "Bulk photo import". Pinned by `tests/unit/photoImport.test.ts` +
   `tests/unit/importProgressMachine.test.ts`.
+- ~~Multi-link URL import → queue parity~~ **DONE 2026-06-30 (ENG-981).** The
+  URL-share path mirrors the bulk-photo fan-out: when a paste / share / deep
+  link resolves to MORE than one link, each enqueues its own `url` job into
+  this same scheduler (one drawer row + cancel/retry per link, concurrent
+  across slots, last-wins review). Extraction (`extractAllHttpUrls` — global
+  URL match + scheme-less known hosts, trailing-punct strip, de-dupe, capped at
+  `BULK_PHOTO_IMPORT_MAX`) and the per-link job (`buildUrlImportJob`) are shared
+  in `src/lib/recipes/urlImportJob.ts` so web (`RecipeUpload`) and mobile
+  (`import-shared`) can't drift; deterministic id via `importJobIdForUrl` keeps
+  a repeated link a no-op. A single link (or queue UX OFF) is unchanged. No
+  feature flag — it extends an existing affordance whose queue UI already
+  exists. Pinned by `tests/unit/urlImportJob.test.ts` (web) +
+  `apps/mobile/tests/unit/resolveImportUrl.test.ts` (mobile).
 - Caption imports → queue parity (still on the Linear "Import-progress
   staged state-machine + queue UX" issue).
 - After the flag holds 100% for two weeks with no regression, remove the

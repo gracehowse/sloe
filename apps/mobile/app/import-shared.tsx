@@ -66,7 +66,8 @@ import {
 import { webRecipeDeepLink } from "@suppr/shared/share/recipeDeepLink";
 import { useImportQueue } from "@suppr/shared/recipes/useImportQueue";
 import { ImportRunnerError } from "@suppr/shared/recipes/recipeImportScheduler";
-import { importJobIdForUrl, importJobIdForImage } from "@suppr/shared/recipes/importProgressMachine";
+import { importJobIdForImage } from "@suppr/shared/recipes/importProgressMachine";
+import { buildUrlImportJob } from "@suppr/shared/recipes/urlImportJob";
 import {
   mapImageImportResponseToRecipe,
   photoSeedTitle,
@@ -90,8 +91,10 @@ import { scaleMacrosByGrams , parseIngredientForSearch, type BarcodeProduct } fr
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import {
   classifyImportSource,
+  extractAllHttpUrls,
   extractUrlFromShareText,
-  urlFromDeepLink,
+  multiUrlsFromDeepLink,
+  multiUrlsFromRouterParams,
   urlFromRouterParams,
 } from "@/lib/resolveImportUrl";
 import {
@@ -282,8 +285,9 @@ export default function ImportSharedScreen() {
   const [captionUrl, setCaptionUrl] = useState<string>("");
   const [captionEditing, setCaptionEditing] = useState<boolean>(false);
   const base = apiBase();
-  const runImportRef = useRef<(url: string) => Promise<void>>(async () => {});
-  /** Same URL can be delivered via router + Linking + clipboard; avoid parallel duplicate imports. */
+  // Latest `runImportMany`, so auto-fire effects call it without re-subscribing (ENG-981: batch-typed).
+  const runImportRef = useRef<(u: string[]) => Promise<void>>(async () => {});
+  /** Same URL/batch can be delivered via router + Linking + clipboard; avoid parallel duplicate imports. */
   const importInFlightRef = useRef<string | null>(null);
 
   // Profile targets for "How this fits your day"
@@ -563,62 +567,51 @@ export default function ImportSharedScreen() {
     [base],
   );
 
+  // Shared precondition guard (URL / caption / multi paths): needs API base +
+  // signed-in user; sets error+state, returns false. I07: missing-base is a log.
+  const guardImportReady = useCallback((): boolean => {
+    if (!base) {
+      setState("error");
+      console.warn("[import-shared] API base URL not configured");
+      setError(IMPORT_ERROR_COPY.import_failed);
+      return false;
+    }
+    if (!userId) {
+      setState("error");
+      setError(IMPORT_ERROR_COPY.client_signin_required_to_save);
+      return false;
+    }
+    return true;
+  }, [base, userId]);
+
+  // import-progress-v2 — enqueue ONE url job via shared `buildUrlImportJob`
+  // (deterministic id dedupes a repeat of the SAME url). Used by `runImport` +
+  // the `runImportMany` fan-out (ENG-981); job shape matches web verbatim.
+  const enqueueUrlImport = useCallback(
+    (trimmed: string) => {
+      importQueue.enqueue(
+        buildUrlImportJob<ApiImportedRecipe>(trimmed, {
+          fetchRecipe: fetchImportedRecipe,
+          land: landImportedRecipeInReview,
+          titleOf: (r) => r.title ?? undefined,
+        }),
+      );
+    },
+    [importQueue, fetchImportedRecipe, landImportedRecipeInReview],
+  );
+
   const runImport = useCallback(
     async (url: string) => {
       const trimmed = url.trim();
       if (!trimmed) return;
+      if (!guardImportReady()) return;
 
-      if (!base) {
-        setState("error");
-        // Audit I07 (2026-05-05) — was a dev-jargon string ("Set
-        // supprApiUrl in app config"). Surface a user-actionable
-        // message instead; the dev-only diagnostic should be a log,
-        // not toast copy.
-        console.warn("[import-shared] API base URL not configured");
-        setError(IMPORT_ERROR_COPY.import_failed);
-        return;
-      }
-
-      if (!userId) {
-        setState("error");
-        setError(IMPORT_ERROR_COPY.client_signin_required_to_save);
-        return;
-      }
-
-      // import-progress-v2 — enqueue into the shared scheduler so the import
-      // runs with live per-stage progress + queue position in the persistent
-      // drawer, and multiple shares can import concurrently. The screen stays
-      // on `idle` (the drawer carries progress); the legacy inline
-      // `importing` path below stays alive when the flag is OFF.
+      // import-progress-v2 — enqueue into the shared scheduler (drawer carries
+      // progress; screen stays `idle`). Legacy inline path below stays for flag OFF.
       if (importProgressV2) {
         setError(null);
         setSavedRecipeId(null);
-        // Deterministic id so a duplicate concurrent share/clipboard/deep-link
-        // of the SAME url is a scheduler no-op (mirrors the legacy
-        // `importInFlightRef` dedupe).
-        const id = importJobIdForUrl("url", trimmed);
-        let seedTitle = "Recipe";
-        try {
-          seedTitle = new URL(trimmed).hostname.replace(/^www\./, "");
-        } catch {
-          /* keep default */
-        }
-        importQueue.enqueue({
-          id,
-          kind: "url",
-          title: seedTitle,
-          run: async (controls) => {
-            controls.setStage("extracting");
-            const { recipe, imageUsed: used, captionTruncated: truncated } = await fetchImportedRecipe(trimmed, controls.signal);
-            if (controls.isCancelled()) throw new DOMException("Aborted", "AbortError");
-            controls.setStage("organizing");
-            controls.setTitle(recipe.title ?? seedTitle);
-            // Last-wins: the most recent finished import populates the review
-            // form; all imports remain listed in the drawer.
-            await landImportedRecipeInReview(recipe, used, { captionTruncated: truncated });
-            return { title: recipe.title ?? seedTitle };
-          },
-        });
+        enqueueUrlImport(trimmed);
         return;
       }
 
@@ -642,7 +635,31 @@ export default function ImportSharedScreen() {
         }
       }
     },
-    [base, userId, importProgressV2, importQueue, fetchImportedRecipe, landImportedRecipeInReview],
+    [guardImportReady, importProgressV2, enqueueUrlImport, fetchImportedRecipe, landImportedRecipeInReview],
+  );
+
+  // ENG-981 — multi-link import: >1 url → one job per link (mirrors the bulk-
+  // photo `assets.forEach` fan-out). A single URL (or queue UX OFF) falls through
+  // to `runImport` UNCHANGED. Joined-batch-key dedup replaces old `runImportOnce`.
+  const runImportMany = useCallback(
+    async (urls: string[]) => {
+      const key = urls.join("|");
+      if (!key || importInFlightRef.current === key) return;
+      importInFlightRef.current = key;
+      try {
+        if (urls.length <= 1 || !importProgressV2) {
+          await runImport(urls[0] ?? "");
+          return;
+        }
+        if (!guardImportReady()) return;
+        setError(null);
+        setSavedRecipeId(null);
+        urls.forEach((u) => enqueueUrlImport(u.trim()));
+      } finally {
+        importInFlightRef.current = null;
+      }
+    },
+    [guardImportReady, importProgressV2, runImport, enqueueUrlImport],
   );
 
   /**
@@ -658,18 +675,7 @@ export default function ImportSharedScreen() {
       const trimmedUrl = url.trim();
       const trimmedCaption = captionText.trim();
       if (!trimmedUrl || !trimmedCaption) return;
-
-      if (!base) {
-        setState("error");
-        console.warn("[import-shared] API base URL not configured");
-        setError(IMPORT_ERROR_COPY.import_failed);
-        return;
-      }
-      if (!userId) {
-        setState("error");
-        setError(IMPORT_ERROR_COPY.client_signin_required_to_save);
-        return;
-      }
+      if (!guardImportReady()) return;
 
       setState("importing");
       setError(null);
@@ -711,7 +717,7 @@ export default function ImportSharedScreen() {
         setError(IMPORT_ERROR_COPY.network_error);
       }
     },
-    [base, userId, runImport, landImportedRecipeInReview],
+    [base, guardImportReady, runImport, landImportedRecipeInReview],
   );
 
   /**
@@ -1103,17 +1109,11 @@ export default function ImportSharedScreen() {
     }
   }, [successShareCard, title, savedRecipeId, appOrigin]);
 
-  runImportRef.current = runImport;
+  runImportRef.current = runImportMany;
 
-  const runImportOnce = useCallback(async (url: string) => {
-    if (importInFlightRef.current === url) return;
-    importInFlightRef.current = url;
-    try {
-      await runImportRef.current(url);
-    } finally {
-      importInFlightRef.current = null;
-    }
-  }, []);
+  // ENG-981 — stable batch entry for the auto-fire effects: calls the LATEST
+  // `runImportMany` via the ref (no re-subscribe on identity change).
+  const runImportManyOnce = useCallback((urls: string[]) => runImportRef.current(urls), []);
 
   const routerUrl = useMemo(
     () => urlFromRouterParams(params as Record<string, string | string[] | undefined>),
@@ -1167,12 +1167,13 @@ export default function ImportSharedScreen() {
         setState("captionPreview");
         return;
       }
-      if (!cancelled) await runImportOnce(routerUrl);
+      const urls = multiUrlsFromRouterParams(params as Record<string, string | string[] | undefined>); // ENG-981 — one job each
+      if (!cancelled) await runImportManyOnce(urls.length ? urls : [routerUrl]);
     })();
     return () => {
       cancelled = true;
     };
-  }, [authLoading, userId, routerUrl, routerCaptionText, runImportOnce]);
+  }, [authLoading, userId, routerUrl, routerCaptionText, runImportManyOnce, params]);
 
   /**
    * No ?url= yet: read suppr:// initial link, then clipboard (delayed retries for iOS pasteboard).
@@ -1189,30 +1190,30 @@ export default function ImportSharedScreen() {
     let cancelled = false;
     setState("checking");
 
-    const readClipboard = async () => {
+    const readClipboardUrls = async () => {
       const t = await safeGetClipboardString();
-      return t ? extractUrlFromShareText(t) : null;
+      return t ? extractAllHttpUrls(t) : []; // ENG-981 — a blob can hold several links
     };
 
     const tick = async () => {
       const initialHref = await Linking.getInitialURL();
       if (cancelled) return;
 
-      let url = urlFromDeepLink(initialHref);
-      if (!url) url = await readClipboard();
-      if (!url && !cancelled) {
+      let urls = multiUrlsFromDeepLink(initialHref);
+      if (!urls.length) urls = await readClipboardUrls();
+      if (!urls.length && !cancelled) {
         await new Promise((r) => setTimeout(r, 450));
-        if (!cancelled) url = await readClipboard();
+        if (!cancelled) urls = await readClipboardUrls();
       }
-      if (!url && !cancelled) {
+      if (!urls.length && !cancelled) {
         await new Promise((r) => setTimeout(r, 600));
-        if (!cancelled) url = await readClipboard();
+        if (!cancelled) urls = await readClipboardUrls();
       }
 
       if (cancelled) return;
-      if (url) {
-        setManualUrl(url);
-        await runImportOnce(url);
+      if (urls.length) {
+        setManualUrl(urls.length === 1 ? urls[0]! : urls.join("\n"));
+        await runImportManyOnce(urls);
         return;
       }
       setState("idle");
@@ -1222,30 +1223,29 @@ export default function ImportSharedScreen() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, userId, routerUrl, runImportOnce]);
+  }, [authLoading, userId, routerUrl, runImportManyOnce]);
 
   /** Warm app: custom scheme only (https shares are handled in root layout). */
   useEffect(() => {
     if (authLoading || !userId) return;
     const sub = Linking.addEventListener("url", ({ url: href }) => {
       if (!/^suppr:/i.test(href)) return;
-      const u = urlFromDeepLink(href);
-      if (u) {
-        setManualUrl(u);
-        void runImportOnce(u);
-      }
+      const urls = multiUrlsFromDeepLink(href); // ENG-981 — may carry several links
+      if (!urls.length) return;
+      setManualUrl(urls.length === 1 ? urls[0]! : urls.join("\n"));
+      void runImportManyOnce(urls);
     });
     return () => sub.remove();
-  }, [authLoading, userId, runImportOnce]);
+  }, [authLoading, userId, runImportManyOnce]);
 
   const onManualImport = () => {
-    const url = extractUrlFromShareText(manualUrl.trim());
-    if (!url) {
+    const urls = extractAllHttpUrls(manualUrl.trim()); // ENG-981 — one job per link
+    if (urls.length === 0) {
       setError(IMPORT_ERROR_COPY.client_url_required);
       setState("error");
       return;
     }
-    void runImport(url);
+    void runImportMany(urls);
   };
 
   const onPasteFromClipboard = async () => {
@@ -1259,12 +1259,12 @@ export default function ImportSharedScreen() {
       setState("error");
       return;
     }
-    const url = extractUrlFromShareText(t);
-    if (url) {
-      setManualUrl(url);
+    const urls = extractAllHttpUrls(t);
+    if (urls.length > 0) {
+      setManualUrl(urls.length === 1 ? urls[0]! : t.trim());
       setError(null);
       setState("idle");
-      void runImport(url);
+      void runImportMany(urls);
       return;
     }
     setManualUrl(t.trim());
