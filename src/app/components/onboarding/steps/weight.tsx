@@ -51,7 +51,7 @@ export function WeightStep() {
         <button
           type="button"
           onClick={() => set({ weightSkipped: false })}
-          className="text-sm font-semibold text-primary self-center mt-2 bg-transparent border-0 cursor-pointer p-0"
+          className="text-sm font-semibold text-primary-solid self-center mt-2 bg-transparent border-0 cursor-pointer p-0"
         >
           Actually, I&apos;ll enter it
         </button>

@@ -764,7 +764,7 @@ export default function VerifyScreen() {
     // 700-weight token at a near size — `Type.label` (11/700) — forces uppercase,
     // which would change the mixed-case "Swap" copy. Left as 12 deliberately; a
     // 12px text token is tracked separately (do not silently snap to 11/13).
-    swapPillText: { color: accent.primary, fontSize: 12, fontWeight: FontWeight.bold },
+    swapPillText: { color: accent.primarySolid, fontSize: 12, fontWeight: FontWeight.bold },
     chevron: { marginLeft: Spacing.xs },
 
     // Expanded section
@@ -798,7 +798,7 @@ export default function VerifyScreen() {
       gap: Spacing.sm, paddingVertical: Spacing.dense, borderRadius: Radius.md,
       borderWidth: 1, borderColor: accent.primary + "40",
     },
-    actionBtnText: { color: accent.primary, fontSize: 13, fontWeight: "600" },
+    actionBtnText: { color: accent.primarySolid, fontSize: 13, fontWeight: "600" },
 
     // Footer
     footer: {
@@ -807,7 +807,7 @@ export default function VerifyScreen() {
       borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
       paddingHorizontal: Spacing.xl, paddingTop: Spacing.md,
     },
-    footerLabel: { fontSize: 12, color: accent.primary, textAlign: "center", fontWeight: "600", marginBottom: Spacing.sm },
+    footerLabel: { fontSize: 12, color: accent.primarySolid, textAlign: "center", fontWeight: "600", marginBottom: Spacing.sm },
     // P2-35 (2026-04-25 ui-critic): Save/Confirm CTAs were green
     // (Accent.success), fighting the brand blue accent. Green is
     // reserved for confirmed-success states; primary actions are blue.
@@ -1243,7 +1243,7 @@ export default function VerifyScreen() {
           accessibilityRole="button"
           accessibilityLabel="Add an ingredient the importer missed"
         >
-          <Text style={{ color: accent.primary, fontWeight: "700", fontSize: 15 }}>+ Add ingredient</Text>
+          <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>+ Add ingredient</Text>
           <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2, textAlign: "center" }}>
             Missed an ingredient during import? Add it here and totals update live.
           </Text>
@@ -1527,7 +1527,7 @@ function VerifyLoadingSkeleton({
               flex: 1,
               fontSize: 13,
               fontWeight: "600",
-              color: accent.primary,
+              color: accent.primarySolid,
             }}
             accessibilityLiveRegion="polite"
             testID="verify-status-narration"

@@ -121,7 +121,7 @@ export function CookbookSuccessView({
             style={{
               fontFamily: FontFamily.sansRegular,
               fontSize: 14,
-              color: accent.primary,
+              color: accent.primarySolid,
             }}
           >
             Build your week in Plan

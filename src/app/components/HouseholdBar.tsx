@@ -124,7 +124,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
         <button
           type="button"
           onClick={handleManage}
-          className="text-[11px] font-semibold text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+          className="text-[11px] font-semibold text-primary-solid hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
           data-testid="household-bar-manage"
         >
           Manage

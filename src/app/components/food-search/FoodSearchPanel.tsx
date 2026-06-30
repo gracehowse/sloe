@@ -2157,7 +2157,7 @@ export function FoodSearchPanel({
     return (
       <div className={`flex flex-col h-full ${px}`}>
         <div className="flex-1 overflow-y-auto pb-3 space-y-4">
-          <button onClick={() => setPreview(null)} className="text-sm text-primary hover:underline flex items-center gap-1">
+          <button onClick={() => setPreview(null)} className="text-sm text-primary-solid hover:underline flex items-center gap-1">
             <Icons.forward className="h-3 w-3 rotate-180" /> Back to results
           </button>
 
@@ -2337,7 +2337,7 @@ export function FoodSearchPanel({
               type="button"
               data-testid="food-search-preview-add-to-basket"
               onClick={onAddPreviewToBasket}
-              className="flex-1 py-3 rounded-xl border border-border bg-transparent text-primary font-semibold transition-colors hover:bg-muted/60"
+              className="flex-1 py-3 rounded-xl border border-border bg-transparent text-primary-solid font-semibold transition-colors hover:bg-muted/60"
             >
               Add
             </button>

@@ -92,7 +92,7 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
     >
       <div className="flex items-center gap-2">
         <Mail className="w-4 h-4 text-primary" aria-hidden />
-        <p className="text-xs font-bold uppercase tracking-wide text-primary">
+        <p className="text-xs font-bold uppercase tracking-wide text-primary-solid">
           {invites.length === 1 ? "Household invitation" : `${invites.length} household invitations`}
         </p>
       </div>

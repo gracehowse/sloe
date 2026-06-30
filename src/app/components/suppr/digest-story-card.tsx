@@ -50,7 +50,7 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
       }
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid">
           WEEK DIGEST
         </p>
         <p className="text-[11px] tabular-nums text-muted-foreground/80">

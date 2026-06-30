@@ -616,7 +616,7 @@ export default function BarcodeScreen() {
           ...(cardElevation.shadowStyle ?? {}),
         },
         presetChipSelected: { backgroundColor: accent.primary + "22", borderColor: accent.primary },
-        presetChipText: { fontSize: 11, fontWeight: "600" as const, color: accent.primary },
+        presetChipText: { fontSize: 11, fontWeight: "600" as const, color: accent.primarySolid },
         // Gap #5 (2026-06-09): slot pill row — 4-segment pill above portion
         // picker. Matches §3.1 LogSheet pattern.
         slotRow: {
@@ -686,7 +686,7 @@ export default function BarcodeScreen() {
           marginTop: Spacing.sm,
           ...(cardElevation.shadowStyle ?? {}),
         },
-        retryBtnText: { color: accent.primary, fontWeight: "600" },
+        retryBtnText: { color: accent.primarySolid, fontWeight: "600" },
         manualEntryBtn: {
           borderWidth: cardElevation.useBorder ? 1 : 0,
           borderColor: accent.primary + "55",
@@ -698,7 +698,7 @@ export default function BarcodeScreen() {
           marginTop: Spacing.xs,
           ...(cardElevation.shadowStyle ?? {}),
         },
-        manualEntryBtnText: { color: accent.primary, fontWeight: "600" },
+        manualEntryBtnText: { color: accent.primarySolid, fontWeight: "600" },
         manualOverlay: {
           position: "absolute",
           left: 0,
@@ -742,7 +742,7 @@ export default function BarcodeScreen() {
           fontSize: 15,
         },
         manualInputRow: { flexDirection: "row", gap: Spacing.sm },
-        corrLink: { color: accent.primary, fontSize: 13, textDecorationLine: "underline" as const, textAlign: "center" as const, paddingTop: Spacing.xs },
+        corrLink: { color: accent.primarySolid, fontSize: 13, textDecorationLine: "underline" as const, textAlign: "center" as const, paddingTop: Spacing.xs },
         corrOverlay: {
           position: "absolute" as const,
           left: 0,
@@ -918,7 +918,7 @@ export default function BarcodeScreen() {
               />
             </View>
             {rememberedPortion != null && rememberedPortion > 0 ? (
-              <Text style={[styles.servingHint, { color: accent.primary }]}>
+              <Text style={[styles.servingHint, { color: accent.primarySolid }]}>
                 You usually log {Math.round(rememberedPortion)} g — using that.
               </Text>
             ) : (

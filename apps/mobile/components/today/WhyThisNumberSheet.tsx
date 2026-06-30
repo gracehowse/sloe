@@ -308,7 +308,7 @@ function WhyThisNumberSheetImpl({
                 style={{
                   fontSize: 14,
                   fontWeight: "700",
-                  color: accent.primary,
+                  color: accent.primarySolid,
                 }}
               >
                 Adjust target

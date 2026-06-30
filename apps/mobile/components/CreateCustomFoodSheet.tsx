@@ -780,7 +780,7 @@ export default function CreateCustomFoodSheet({
                 ) : (
                   <Ionicons name="camera-outline" size={18} color={accent.primary} />
                 )}
-                <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primary }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
                   {scanLoading ? "Reading label…" : "Scan label"}
                 </Text>
               </Pressable>
@@ -915,7 +915,7 @@ export default function CreateCustomFoodSheet({
                   }}
                 >
                   <Ionicons name="swap-horizontal" size={16} color={accent.primary} />
-                  <Text style={{ fontSize: 13, color: accent.primary, fontWeight: "600" }}>
+                  <Text style={{ fontSize: 13, color: accent.primarySolid, fontWeight: "600" }}>
                     Convert {volumeConversion.unitLabel} → {formatNumber(volumeConversion.grams)} g
                   </Text>
                 </Pressable>
@@ -1004,7 +1004,7 @@ export default function CreateCustomFoodSheet({
                 }}
               >
                 <Ionicons name="add" size={16} color={accent.primary} />
-                <Text style={{ fontSize: 13, color: accent.primary, fontWeight: "600" }}>
+                <Text style={{ fontSize: 13, color: accent.primarySolid, fontWeight: "600" }}>
                   Add another serving
                 </Text>
               </Pressable>

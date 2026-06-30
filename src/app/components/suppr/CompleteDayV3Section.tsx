@@ -122,7 +122,7 @@ export function CompleteDayV3Section({
         </div>
       </div>
 
-      <p className="text-[15px] italic font-medium text-primary text-center px-2" data-testid="complete-day-v3-coach">
+      <p className="text-[15px] italic font-medium text-primary-solid text-center px-2" data-testid="complete-day-v3-coach">
         &ldquo;{coach}&rdquo;
       </p>
     </div>

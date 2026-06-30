@@ -453,7 +453,7 @@ export default function PlanImportScreen() {
           onBack={() => setStep("paste")}
           rightSlot={
             <Pressable onPress={() => setActivateOpen(true)} disabled={committing} hitSlop={8}>
-              <Text style={{ color: accent.primary, fontWeight: "700" }}>Save</Text>
+              <Text style={{ color: accent.primarySolid, fontWeight: "700" }}>Save</Text>
             </Pressable>
           }
         />

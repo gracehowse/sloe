@@ -265,7 +265,7 @@ function DesktopHeroStats({
           type="button"
           data-testid="today-macro-rings-toggle"
           onClick={onToggleExpanded}
-          className="text-[11px] font-semibold text-primary hover:opacity-80 transition-opacity"
+          className="text-[11px] font-semibold text-primary-solid hover:opacity-80 transition-opacity"
         >
           {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
         </button>

@@ -791,7 +791,7 @@ export default function BarcodeScannerModal({
       paddingHorizontal: Spacing.xl,
       paddingVertical: 12,
     },
-    retryBtnText: { color: accent.primary, fontWeight: "600" },
+    retryBtnText: { color: accent.primarySolid, fontWeight: "600" },
     productCard: {
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
@@ -894,7 +894,7 @@ export default function BarcodeScannerModal({
       backgroundColor: accent.primary + "18",
       borderColor: accent.primary,
     },
-    presetChipText: { fontSize: 11, fontWeight: "600", color: accent.primary },
+    presetChipText: { fontSize: 11, fontWeight: "600", color: accent.primarySolid },
     // F-18 (2026-04-19) — reduced top margin ~8px so the Log/Scan-again
     // pair sits tighter below the chip row.
     btnRow: { flexDirection: "row", gap: Spacing.sm, marginTop: 0 },
@@ -971,7 +971,7 @@ export default function BarcodeScannerModal({
       paddingVertical: 12,
       marginTop: Spacing.xs,
     },
-    manualEntryBtnText: { color: accent.primary, fontWeight: "600", textAlign: "center" },
+    manualEntryBtnText: { color: accent.primarySolid, fontWeight: "600", textAlign: "center" },
     // Audit 2026-04-30 — primary "Snap the label instead" CTA in the
     // not-found branch. Filled tint marks it as the recommended next
     // step; manual entry stays one tap away as a tinted-border ghost.
@@ -1002,7 +1002,7 @@ export default function BarcodeScannerModal({
       backgroundColor: accent.primary + "18",
     },
     basisChipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
-    basisChipTextSelected: { color: accent.primary },
+    basisChipTextSelected: { color: accent.primarySolid },
     // F-138 — post-submit success card (replaces the form, not the whole
     // sheet). White-card + soft success ring + Done button. Mirrors the
     // F-139 goals-hit banner restyle so the language stays consistent
@@ -1313,7 +1313,7 @@ export default function BarcodeScannerModal({
                     ) : (
                       <Ionicons name="camera-outline" size={18} color={accent.primary} />
                     )}
-                    <Text style={{ color: accent.primary, fontWeight: "700", fontSize: 14 }}>
+                    <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 14 }}>
                       {scanLabelLoading ? "Reading label..." : "Scan the label"}
                     </Text>
                   </Pressable>
@@ -1555,7 +1555,7 @@ export default function BarcodeScannerModal({
                       />
                     ) : null}
                     {rememberedPortion != null && rememberedPortion > 0 ? (
-                      <Text style={[styles.per100g, { marginTop: Spacing.sm, color: accent.primary }]}>
+                      <Text style={[styles.per100g, { marginTop: Spacing.sm, color: accent.primarySolid }]}>
                         You usually log {Math.round(rememberedPortion)} g — using that.
                       </Text>
                     ) : null}

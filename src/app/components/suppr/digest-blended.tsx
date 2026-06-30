@@ -417,7 +417,7 @@ export function DigestBlended(props: DigestProps) {
                 type="button"
                 onClick={onAdjustPace}
                 data-testid="digest-adjust-pace"
-                className="shrink-0 text-[11.5px] font-semibold text-primary hover:text-primary/80 whitespace-nowrap"
+                className="shrink-0 text-[11.5px] font-semibold text-primary-solid hover:text-primary-solid/80 whitespace-nowrap"
               >
                 Adjust pace →
               </button>

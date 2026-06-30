@@ -2247,7 +2247,7 @@ export default function FoodSearchPanel({
             }}
           >
             <Plus size={16} color={accent.primary} />
-            <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primary }}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
               Add as custom food
             </Text>
           </Pressable>
@@ -2379,7 +2379,7 @@ export default function FoodSearchPanel({
           }}
         >
           <Plus size={16} color={accent.primary} />
-          <Text style={{ fontSize: 14, fontWeight: "600", color: accent.primary }}>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: accent.primarySolid }}>
             Create custom food
           </Text>
         </Pressable>

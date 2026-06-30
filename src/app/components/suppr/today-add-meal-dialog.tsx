@@ -172,7 +172,7 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
           <button
             type="button"
             onClick={onOpenSearch}
-            className="w-full flex items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2.5 text-left text-sm font-medium text-primary hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-full flex items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2.5 text-left text-sm font-medium text-primary-solid hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Search foods including your custom foods, USDA, and Open Food Facts"
           >
             <span>Search foods (includes your custom foods)</span>

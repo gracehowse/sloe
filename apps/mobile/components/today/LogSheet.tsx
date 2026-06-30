@@ -930,7 +930,7 @@ function DefaultComposition({
                 fontFamily: Type.button.fontFamily,
                 fontSize: 15,
                 fontWeight: "600",
-                color: accent.primary,
+                color: accent.primarySolid,
               }}
             >
               {BARCODE_LOUD_CTA_LABEL}
@@ -996,7 +996,7 @@ function DefaultComposition({
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primary }}>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primarySolid }}>
                 Parse as meal description
               </Text>
             </Pressable>

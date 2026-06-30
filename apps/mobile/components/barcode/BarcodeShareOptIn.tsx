@@ -129,7 +129,7 @@ export function BarcodeShareOptIn({
         it too &mdash; once it&rsquo;s confirmed. Nothing else from your account is shared.
       </Text>
       <Text
-        style={[styles.link, { color: accent.primary }]}
+        style={[styles.link, { color: accent.primarySolid }]}
         onPress={() => void Linking.openURL(PRIVACY_URL)}
         accessibilityRole="link"
       >

@@ -373,7 +373,7 @@ function RevealShowTheMaths({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Hide the maths" : "Show the maths"}
-        className="inline-flex items-center gap-1.5 py-2 text-[11px] font-semibold text-primary hover:opacity-70 transition-opacity"
+        className="inline-flex items-center gap-1.5 py-2 text-[11px] font-semibold text-primary-solid hover:opacity-70 transition-opacity"
       >
         {open ? "Hide the maths" : "Show the maths"}
         {open ? (

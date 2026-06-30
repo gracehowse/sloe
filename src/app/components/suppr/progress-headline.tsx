@@ -68,7 +68,7 @@ export function ProgressHeadline({
       aria-label="This week"
     >
       {/* Sloe Figma 492:2 — sparkle glyph by the clay THIS WEEK eyebrow. */}
-      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary">
+      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid">
         <Icons.sparkles className="h-3.5 w-3.5" aria-hidden />
         THIS WEEK
       </p>

@@ -257,7 +257,7 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
                   style={{
                     fontSize: 13,
                     fontWeight: "700",
-                    color: accent.primary,
+                    color: accent.primarySolid,
                   }}
                 >
                   Paste from {clipboardHost}

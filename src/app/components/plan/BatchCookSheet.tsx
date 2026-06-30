@@ -198,7 +198,7 @@ export function BatchCookSheet({
             type="button"
             disabled={saving}
             onClick={() => void onSave(chosen, portions)}
-            className="flex-1 rounded-xl border py-3 text-sm font-semibold text-primary hover:bg-[var(--background-secondary)] disabled:opacity-50"
+            className="flex-1 rounded-xl border py-3 text-sm font-semibold text-primary-solid hover:bg-[var(--background-secondary)] disabled:opacity-50"
             style={{ borderColor: "var(--border)" }}
           >
             {saving ? "Saving…" : "Save plan"}

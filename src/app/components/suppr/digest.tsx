@@ -555,7 +555,7 @@ function DigestLegacy(props: DigestProps) {
               type="button"
               onClick={onAdjustGoalPace}
               data-testid="digest-weekly-checkin-retune-cta"
-              className="mt-2 inline-flex items-center text-[11px] font-semibold text-primary hover:text-primary/80"
+              className="mt-2 inline-flex items-center text-[11px] font-semibold text-primary-solid hover:text-primary-solid/80"
             >
               Adjust goal pace →
             </button>

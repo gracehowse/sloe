@@ -115,7 +115,7 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Mail size={16} color={accent.primary} />
-        <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary, letterSpacing: 0.5 }}>
+        <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primarySolid, letterSpacing: 0.5 }}>
           {invites.length === 1 ? "Household invitation" : `${invites.length} household invitations`}
         </Text>
       </View>

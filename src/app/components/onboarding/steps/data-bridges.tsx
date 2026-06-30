@@ -119,7 +119,7 @@ function ManualTargetsCard() {
       body="Paste them in — we'll use these instead of the BMR estimate. You can re-calibrate any time in Settings."
     >
       <div className="grid grid-cols-4 gap-2 mt-3">
-        <TargetInput label="kcal" value={kcal} onChange={setKcal} onBlur={commit} colorClass="text-primary" />
+        <TargetInput label="kcal" value={kcal} onChange={setKcal} onBlur={commit} colorClass="text-primary-solid" />
         <TargetInput label="P g" value={protein} onChange={setProtein} onBlur={commit} colorClass="text-[var(--macro-protein,oklch(0.6_0.18_180))]" />
         <TargetInput label="C g" value={carbs} onChange={setCarbs} onBlur={commit} colorClass="text-[var(--macro-carbs,oklch(0.7_0.15_50))]" />
         <TargetInput label="F g" value={fat} onChange={setFat} onBlur={commit} colorClass="text-[var(--macro-fat,oklch(0.65_0.16_25))]" />

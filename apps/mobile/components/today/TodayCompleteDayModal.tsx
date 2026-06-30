@@ -160,7 +160,7 @@ function TodayCompleteDayModalImpl({
                 }}
               >
                 {isToday ? "Today\u2019s trajectory" : "This day\u2019s trajectory"}:{" "}
-                <Text style={{ color: accent.primary }}>{prediction.projectedWeightKg} kg</Text>
+                <Text style={{ color: accent.primarySolid }}>{prediction.projectedWeightKg} kg</Text>
                 {" "}in ~{prediction.projectionWeeks} weeks
               </Text>
               <Text

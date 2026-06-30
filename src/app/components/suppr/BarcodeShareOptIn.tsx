@@ -91,7 +91,7 @@ export function BarcodeShareOptIn({ onShare, onDone }: BarcodeShareOptInProps) {
         href="/privacy#community-food-database"
         target="_blank"
         rel="noreferrer"
-        className="text-[13px] font-semibold text-primary underline underline-offset-2"
+        className="text-[13px] font-semibold text-primary-solid underline underline-offset-2"
       >
         How this is used
       </a>

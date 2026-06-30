@@ -345,7 +345,7 @@ export function HouseholdPanel() {
             {data.household.isOwner && (
               <button
                 onClick={() => setShowInvite(!showInvite)}
-                className="text-xs font-semibold text-primary hover:underline"
+                className="text-xs font-semibold text-primary-solid hover:underline"
               >
                 {showInvite ? "Hide code" : "Invite"}
               </button>

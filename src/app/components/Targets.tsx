@@ -514,7 +514,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
               <button
                 type="button"
                 onClick={goEdit}
-                className="mt-3 inline-flex items-center text-[13px] font-semibold text-primary hover:underline"
+                className="mt-3 inline-flex items-center text-[13px] font-semibold text-primary-solid hover:underline"
               >
                 Set a goal →
               </button>

@@ -103,7 +103,7 @@ function AiFirstLogTooltipImpl(props: AiFirstLogTooltipProps) {
           flex: 1,
           fontSize: 12,
           lineHeight: 16,
-          color: accent.primary,
+          color: accent.primarySolid,
           fontWeight: "500",
         }}
       >

@@ -2480,7 +2480,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                       setRecipeYieldEditing(true);
                     }}
                     title="Change how many portions the full recipe makes"
-                    className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                    className="text-xs font-semibold text-primary-solid hover:underline disabled:opacity-50"
                     aria-label={`Full recipe makes ${baseServings} portions. Click to edit.`}
                   >
                     Edit servings

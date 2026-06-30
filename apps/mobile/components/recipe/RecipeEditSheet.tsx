@@ -610,7 +610,7 @@ const makeStyles = (
     },
     chipActive: { backgroundColor: accent.primarySoft, borderColor: accent.primary },
     chipText: { fontSize: 14, fontWeight: "600", color: colors.text },
-    chipTextActive: { color: accent.primary },
+    chipTextActive: { color: accent.primarySolid },
     timeRow: { flexDirection: "row", gap: Spacing.md },
     timeCol: { flex: 1 },
     addBtn: {
@@ -630,7 +630,7 @@ const makeStyles = (
       backgroundColor: accent.primarySoft,
       marginTop: Spacing.xs,
     },
-    addBtnText: { color: accent.primary, fontWeight: "600", fontSize: 14 },
+    addBtnText: { color: accent.primarySolid, fontWeight: "600", fontSize: 14 },
     hint: { fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: Spacing.xs },
     footer: {
       flexDirection: "row",

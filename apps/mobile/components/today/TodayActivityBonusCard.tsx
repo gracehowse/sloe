@@ -734,7 +734,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
                 onPress={() => setInfoOpen(false)}
                 style={{ marginTop: Spacing.sm, paddingVertical: 8, alignItems: "flex-end" }}
               >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primary }}>Close</Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: accent.primarySolid }}>Close</Text>
               </Pressable>
             </View>
           </Pressable>

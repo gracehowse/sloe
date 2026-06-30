@@ -379,7 +379,7 @@ export function TodayWeekView({
             <p className="text-[11px] text-muted-foreground">Total kcal</p>
           </div>
           <div>
-            <p className="font-[family-name:var(--font-headline)] text-2xl font-medium text-primary tabular-nums">
+            <p className="font-[family-name:var(--font-headline)] text-2xl font-medium text-primary-solid tabular-nums">
               {Math.round(weekAvg.calories)}
             </p>
             <p className="text-[11px] text-muted-foreground">Daily avg</p>

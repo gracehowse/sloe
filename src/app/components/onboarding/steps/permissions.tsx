@@ -185,7 +185,7 @@ function PermissionCard({
             type="button"
             onClick={onAllow}
             disabled={working}
-            className="bg-transparent border-0 text-primary text-xs font-bold cursor-pointer p-0 disabled:opacity-60"
+            className="bg-transparent border-0 text-primary-solid text-xs font-bold cursor-pointer p-0 disabled:opacity-60"
           >
             Undo
           </button>

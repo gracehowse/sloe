@@ -54,7 +54,7 @@ export function AgeStep() {
 
       {helpOpen && (
         <div className="mt-3 p-3.5 bg-primary/5 border border-primary/15 rounded-xl text-xs text-foreground leading-relaxed">
-          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary mb-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary-solid mb-2">
             What Sloe does with this
           </div>
           <p className="m-0 mb-2.5">

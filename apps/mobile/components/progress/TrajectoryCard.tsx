@@ -102,7 +102,7 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
                 fontFamily: FontFamily.serifRegular,
                 fontSize: 30,
                 letterSpacing: -0.5,
-                color: accent.primary,
+                color: accent.primarySolid,
                 fontVariant: ["tabular-nums"],
               }}
             >

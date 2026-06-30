@@ -253,7 +253,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
             </div>
             <div className={`rounded-xl bg-card p-3 ${cardCls}`}>
               <p className="text-[11px] text-muted-foreground font-semibold">On target</p>
-              <p className="text-2xl font-extrabold text-primary tabular-nums mt-1">{weekStats.proteinOnTarget}/7</p>
+              <p className="text-2xl font-extrabold text-primary-solid tabular-nums mt-1">{weekStats.proteinOnTarget}/7</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
@@ -297,7 +297,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
               there's no streak yet — empty-state copy below carries the message. */}
           {streakDays > 0 ? (
             <div className={`rounded-xl bg-card p-5 mb-4 ${cardCls}`}>
-              <p className="text-4xl font-black text-primary tabular-nums">{streakDays}</p>
+              <p className="text-4xl font-black text-primary-solid tabular-nums">{streakDays}</p>
               <p className="text-sm font-semibold text-foreground mt-1">
                 consecutive logging day{streakDays !== 1 ? "s" : ""}
               </p>

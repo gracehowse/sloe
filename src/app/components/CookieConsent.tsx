@@ -102,7 +102,7 @@ export function CookieConsent() {
         <SupprPlateMark size={16} aria-hidden className="shrink-0" />
         <p className="text-xs text-muted-foreground flex-1 line-clamp-1 min-w-0">
           Essential cookies on; analytics stay off until you accept.{" "}
-          <Link href="/privacy" className="text-primary dark:text-primary underline">
+          <Link href="/privacy" className="text-primary-solid dark:text-primary-solid underline">
             Privacy
           </Link>
         </p>

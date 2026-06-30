@@ -256,7 +256,7 @@ function NorthStarBlockImpl({
             <Text
               style={[
                 Type.caption,
-                { color: accent.primary, fontWeight: "700" },
+                { color: accent.primarySolid, fontWeight: "700" },
               ]}
             >
               Browse →
@@ -272,7 +272,7 @@ function NorthStarBlockImpl({
           <Text
             style={[
               Type.caption,
-              { color: accent.primary, fontWeight: "700" },
+              { color: accent.primarySolid, fontWeight: "700" },
             ]}
           >
             Browse →

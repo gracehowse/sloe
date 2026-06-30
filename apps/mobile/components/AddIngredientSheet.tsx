@@ -275,7 +275,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
     },
     chipActive: { backgroundColor: accent.primary + "15", borderColor: accent.primary },
     chipText: { fontSize: 12, color: colors.text, fontWeight: "500" },
-    chipTextActive: { color: accent.primary, fontWeight: "700" },
+    chipTextActive: { color: accent.primarySolid, fontWeight: "700" },
     footer: {
       flexDirection: "row",
       gap: Spacing.sm,
@@ -384,7 +384,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
               {matching ? (
                 <ActivityIndicator size="small" color={accent.primary} />
               ) : (
-                <Text style={{ color: accent.primary, fontWeight: "700" }}>Find match</Text>
+                <Text style={{ color: accent.primarySolid, fontWeight: "700" }}>Find match</Text>
               )}
             </Pressable>
 
@@ -414,7 +414,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
               accessibilityRole="button"
               accessibilityLabel="Toggle manual macros"
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: accent.primary }}>
+              <Text style={{ fontSize: 14, fontWeight: "600", color: accent.primarySolid }}>
                 {showOverride ? "Hide manual macros" : "Enter manual macros (from label)"}
               </Text>
             </Pressable>

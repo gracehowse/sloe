@@ -77,6 +77,15 @@ ghost link app-wide) and are tracked as a follow-up — see the ENG-828 Linear
 comment. The sweep DID route the handful of on-card primary CTAs that already
 carried a `hover:bg-primary/N` to `-solid` (free dark-card win, light no-op).
 
+**Resolved 2026-06-29 in ENG-1273** — `docs/decisions/2026-06-29-eng1273-primary-ink-on-card-contrast.md`.
+That follow-up swept the on-card / ghost-link TEXT-ink class app-wide:
+`text-primary` → `text-primary-solid` (web, ~113 TEXT/link sites) and
+`color: accent.primary` → `accent.primarySolid` (mobile, 76 TEXT sites),
+SKIPPING nav-active states, icon-only glyphs, and `bg-primary` tint fills (the
+3:1-graphical FILL is correct for non-text). Guarded by
+`eng1273PrimaryInkOnCardContrastCensus.test.ts` (web) +
+`eng1273PrimaryInkOnCardContrast.test.ts` (mobile).
+
 ## Regression guard
 
 Measured-contrast guards, following the `eng1109MacroContrastCensus` pattern:

@@ -624,7 +624,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                       onGramsChange={(g) => onBarcodeGramsStrChange(String(g))}
                     />
                     {rememberedPortion != null && rememberedPortion > 0 ? (
-                      <p className="text-xs text-primary">
+                      <p className="text-xs text-primary-solid">
                         You usually log {Math.round(rememberedPortion)} g — using that.
                       </p>
                     ) : null}

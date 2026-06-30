@@ -1631,7 +1631,7 @@ export default function RecipeDetailScreen() {
       borderColor: colors.cardBorder,
       marginTop: Spacing.xs,
     },
-    officialButtonText: { fontSize: 14, fontWeight: "700", color: accent.primary },
+    officialButtonText: { fontSize: 14, fontWeight: "700", color: accent.primarySolid },
 
     sourceCard: {
       backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -1646,7 +1646,7 @@ export default function RecipeDetailScreen() {
     // widest hand-rolled eyebrow at 11/800/ls2).
     sourceLabel: { ...Type.label, color: colors.textTertiary },
     sourceName: { fontSize: 16, fontWeight: "600", color: colors.text },
-    sourceNameLink: { color: accent.primary, textDecorationLine: "underline" },
+    sourceNameLink: { color: accent.primarySolid, textDecorationLine: "underline" },
     sourceLinkBtn: {
       marginTop: Spacing.xs,
       alignSelf: "flex-start",
@@ -1656,7 +1656,7 @@ export default function RecipeDetailScreen() {
       borderWidth: 1,
       borderColor: accent.primary + "55",
     },
-    sourceLinkText: { color: accent.primary, fontSize: 14, fontWeight: "600" },
+    sourceLinkText: { color: accent.primarySolid, fontSize: 14, fontWeight: "600" },
     // ENG-858 — import disclaimer caption. Matches the gluten-disclaimer
     // treatment (the nearest disclaimer sibling): 11/15, textSecondary.
     sourceDisclaimer: {
@@ -2467,7 +2467,7 @@ export default function RecipeDetailScreen() {
                         }}
                       >
                         <Play size={14} color={accent.primary} />
-                        <Text style={{ color: accent.primary, fontSize: 12, fontWeight: "700" }}>
+                        <Text style={{ color: accent.primarySolid, fontSize: 12, fontWeight: "700" }}>
                           Watch original
                         </Text>
                       </Pressable>
@@ -2552,7 +2552,7 @@ export default function RecipeDetailScreen() {
                       marginBottom: Spacing.md,
                     }}
                   >
-                    <Text style={{ color: accent.primary, fontWeight: "700", fontSize: 13, textAlign: "center" }}>
+                    <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 13, textAlign: "center" }}>
                       Scaled for {cookViewServings} serving{cookViewServings !== 1 ? "s" : ""}
                     </Text>
                   </View>
