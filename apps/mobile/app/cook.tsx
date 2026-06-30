@@ -1031,7 +1031,7 @@ export default function CookModeScreen() {
     // in `Accent.destructive` (red) which made users hesitate. Reserve
     // red for true destructive actions; use the standard text colour
     // here so Exit reads as "go back" rather than "discard cook".
-    headerExit: { color: cookV3 ? "#efe9f2" : colors.text, fontSize: 16, fontWeight: "600" },
+    headerExit: { color: cookV3 ? Accent.frostBright : colors.text, fontSize: 16, fontWeight: "600" },
     headerCounter: { color: cookV3 ? Accent.frost : colors.textSecondary, fontSize: 14, fontWeight: "500" },
 
     /** Recime parity (2026-04-30) — "Watch original" ghost pill in the
@@ -1076,7 +1076,7 @@ export default function CookModeScreen() {
       fontSize: cookV3 ? 38 : 24,
       fontWeight: cookV3 ? "500" : "600",
       fontFamily: cookV3 ? FontFamily.serifSemibold : undefined,
-      color: cookV3 ? "#efe9f2" : colors.text,
+      color: cookV3 ? Accent.frostBright : colors.text,
       textAlign: "center",
       lineHeight: cookV3 ? 46 : 34,
       letterSpacing: cookV3 ? 0 : -0.3,

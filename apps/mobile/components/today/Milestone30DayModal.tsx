@@ -3,7 +3,7 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, Sparkles, Flame, Utensils, Scale } from "lucide-react-native";
-import { Accent, Radius, Spacing, FontFamily, Type } from "@/constants/theme";
+import { Accent, Radius, ShadowColor, Spacing, FontFamily, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { type Milestone30DayContent } from "@/lib/milestone30Day";
@@ -82,7 +82,7 @@ function Milestone30DayModalImpl({
             // Audit 2026-05-04 #33: soft shadow gives the sheet a
             // raised feel against the dimmed backdrop instead of
             // looking pasted on.
-            shadowColor: "#000",
+            shadowColor: ShadowColor.cast,
             shadowOffset: { width: 0, height: -8 },
             shadowOpacity: 0.18,
             shadowRadius: 24,

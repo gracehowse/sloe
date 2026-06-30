@@ -41,6 +41,6 @@ describe("Cook mode readable text", () => {
   });
 
   it("mobile cook step text uses theme colors.text on the default path", () => {
-    expect(MOBILE_COOK).toMatch(/stepText:[\s\S]*?color: cookV3 \? "#efe9f2" : colors\.text/);
+    expect(MOBILE_COOK).toMatch(/stepText:[\s\S]*?color: cookV3 \? Accent\.frostBright : colors\.text/);
   });
 });

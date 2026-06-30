@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Plus, Sparkles } from "lucide-react-native";
-import { Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
 
@@ -98,8 +98,8 @@ function TodayFirstMealEmptyStateImpl({
         onPress={onLogMeal}
         style={{ marginTop: Spacing.xs, alignSelf: "center" }}
       >
-        <Plus size={16} color="#fff" />
-        <Text style={{ ...Type.headline, color: "#fff", marginLeft: Spacing.sm }}>Log a meal</Text>
+        <Plus size={16} color={Accent.primaryForeground} />
+        <Text style={{ ...Type.headline, color: Accent.primaryForeground, marginLeft: Spacing.sm }}>Log a meal</Text>
       </SupprButton>
       {showTip && (
         <View

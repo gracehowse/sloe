@@ -49,6 +49,15 @@ export const Accent = {
   /** Frost (#c9c2d6) — soft lavender-grey for muted dividers + the brand-screen
    *  italic tagline on the deep-plum ground. Mirrors web `--accent-frost`. */
   frost: '#c9c2d6',
+  /** Frost Bright (#efe9f2) — the near-white plum-tinted PRIMARY text/heading
+   *  on the deep-plum brand ground (`primaryDeep`). One step brighter + warmer
+   *  than the muted `frost` divider/tagline value and than the dark-scheme body
+   *  ink (`Colors.dark.text` #ECE8F0); the cook-mode V3 shell + recipe cook
+   *  overlay paint their headline in it over the #241733 ground. Named here
+   *  (ENG-1013, 2026-06-10) so the cook-shell foreground lives in this file
+   *  instead of as a repeated literal in `app/cook.tsx` + `app/recipe/[id].tsx`.
+   *  Value-equal to those literals — a token-routing move, render unchanged. */
+  frostBright: '#efe9f2',
   /** Soft fill for selected pills / segmented active / nudge tint. Lifted-aubergine
    *  hue (12%) so the tint stays perceptible. Solid fill stays reserved for the FAB
    *  + conversion CTAs; everyday primaries are a deep-plum OUTLINE. */
@@ -708,6 +717,27 @@ export const Type = {
   ringValue:   { fontFamily: FontFamily.serifRegular, fontSize: 48, lineHeight: 48, fontWeight: '400' as const, letterSpacing: -0.5 },
   ringValueLg: { fontFamily: FontFamily.serifRegular, fontSize: 56, lineHeight: 56, fontWeight: '400' as const, letterSpacing: -0.9 },
 };
+
+/**
+ * Shadow base colours — the `shadowColor` values that drop shadows cast from.
+ *
+ * Two roles, mirroring what the `Elevation.*` tokens below already use:
+ *   - `cast` (#000) — the neutral black shadow base for SHEETS / TOASTS /
+ *     FLOATING overlays (matches `Elevation.sheet` / `Elevation.float`). The
+ *     bespoke per-component shadow recipes (custom opacity/radius/offset on a
+ *     toast or modal that aren't a 1:1 `Elevation.*` token) route their
+ *     `shadowColor` through this instead of a raw `'#000'`.
+ *   - `ink` (#221B26) — the aubergine-ink shadow base for resting CARDS
+ *     (matches `Elevation.cardSoft` / `Elevation.cardHairline`). Exposed as a
+ *     token so card-level shadows never hardcode the ink hex either.
+ *
+ * Named here (ENG-1013, 2026-06-10) so component `shadowColor` literals can be
+ * routed to a token; values are unchanged so every shadow renders identically.
+ */
+export const ShadowColor = {
+  cast: '#000',
+  ink: '#221B26',
+} as const;
 
 /**
  * Production design spec §1.3 — depth ladder (mobile mirror of web

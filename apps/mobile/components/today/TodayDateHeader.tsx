@@ -2,7 +2,7 @@ import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LayoutGrid, Sun } from "lucide-react-native";
-import { Accent, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import DayStrip from "@/components/charts/DayStrip";
 import { GradientAvatar } from "@/components/GradientAvatar";
@@ -91,7 +91,7 @@ function TodayDateHeaderImpl({
   const navChromeStyle = {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: Radius.lg,
     backgroundColor: cardColor,
     borderWidth: 1,
     borderColor: cardBorderColor,
@@ -303,7 +303,7 @@ function TodayDateHeaderImpl({
             <View
               style={{
                 flexDirection: "row",
-                borderRadius: 8,
+                borderRadius: Radius.lg,
                 backgroundColor: cardColor,
                 borderWidth: 1,
                 borderColor: cardBorderColor,

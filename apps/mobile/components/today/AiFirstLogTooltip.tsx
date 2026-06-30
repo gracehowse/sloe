@@ -2,7 +2,7 @@ import React, { memo, useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Sparkles, X } from "lucide-react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, ShadowColor, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 
 /**
@@ -90,7 +90,7 @@ function AiFirstLogTooltipImpl(props: AiFirstLogTooltipProps) {
         borderColor: accent.primary + "30",
         // Subtle elevation so the bubble lifts off the meal row
         // beneath it without dominating the card.
-        shadowColor: "#000",
+        shadowColor: ShadowColor.cast,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 2,

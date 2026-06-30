@@ -556,7 +556,7 @@ function NorthStarDefault({
           {suggestion.thumbnail ? (
             <SmartImage
               source={{ uri: suggestion.thumbnail }}
-              style={{ width: "100%", height: "100%", borderRadius: 8 }}
+              style={{ width: "100%", height: "100%", borderRadius: Radius.lg }}
               resizeMode="cover"
               recyclingKey={suggestion.recipeId ?? suggestion.thumbnail}
             />
@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
   thumb: {
     width: 64,
     height: 64,
-    borderRadius: 8,
+    borderRadius: Radius.lg,
     overflow: "hidden",
     flexShrink: 0,
     position: "relative",

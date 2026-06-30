@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   rowWrap: { flexDirection: "row", gap: Spacing.sm },
   cell: { flex: 1 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: Spacing.xs, marginBottom: Spacing.xs },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { width: 8, height: 8, borderRadius: Radius.sm },
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",

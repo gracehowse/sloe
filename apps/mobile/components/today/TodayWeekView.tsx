@@ -521,15 +521,15 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
         </View>
         <View style={{ flexDirection: "row", gap: Spacing.lg, justifyContent: "center", marginTop: Spacing.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mc.protein }} />
+            <View style={{ width: 8, height: 8, borderRadius: Radius.sm, backgroundColor: mc.protein }} />
             <Text style={{ fontSize: 10, color: textSecondaryColor }}>Protein</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mc.carbs }} />
+            <View style={{ width: 8, height: 8, borderRadius: Radius.sm, backgroundColor: mc.carbs }} />
             <Text style={{ fontSize: 10, color: textSecondaryColor }}>Carbs</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: mc.fat }} />
+            <View style={{ width: 8, height: 8, borderRadius: Radius.sm, backgroundColor: mc.fat }} />
             <Text style={{ fontSize: 10, color: textSecondaryColor }}>Fat</Text>
           </View>
         </View>

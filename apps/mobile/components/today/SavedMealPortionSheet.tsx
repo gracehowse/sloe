@@ -308,7 +308,7 @@ const s = StyleSheet.create({
   },
   macroCell: { flex: 1, alignItems: "center", gap: Spacing.xs },
   macroLabelRow: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
-  macroDot: { width: 8, height: 8, borderRadius: 4 },
+  macroDot: { width: 8, height: 8, borderRadius: Radius.sm },
   footer: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
