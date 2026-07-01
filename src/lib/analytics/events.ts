@@ -653,6 +653,23 @@ export const AnalyticsEvents = {
    * Identical payload on both platforms (web `PhotoLogDialog` +
    * mobile `PhotoLogSheet`) so the conversion funnel stays comparable. */
   photo_log_correction_persisted: "photo_log_correction_persisted",
+  /** ENG-974 — user submitted a free-text "refine by describing" correction
+   * on a photo / voice log result ("that was a large bowl, no rice, add a
+   * fried egg"). Closes Cal AI's most-cited gap (corrections "don't work").
+   * Fires from the client on SUBMIT (before the server responds) so the funnel
+   * captures attempts even when the re-estimate errors. Payload:
+   * `{ source: "photo" | "voice"; round: number; textLength: number; platform }`.
+   * `round` is 1-indexed (Nth refine on the current result); `textLength` is the
+   * character count only — the refinement TEXT itself is never sent (could be
+   * PII-adjacent). Same event name web ↔ mobile so the loop is one funnel. */
+  ai_log_refine_submitted: "ai_log_refine_submitted",
+  /** ENG-974 — server-side counterpart: the refine re-estimate completed and a
+   * corrected result was returned. Fired from `/api/nutrition/refine-log` via
+   * `serverTrack`. Payload: `{ source: "photo" | "voice"; round: number;
+   * itemCount: number; confidenceTier: "high" | "medium" | "low";
+   * totalElapsedMs: number; tier? }`. Lets us measure how the correction loop
+   * changes confidence (does refining raise or lower it?) and its latency. */
+  ai_log_refine_completed: "ai_log_refine_completed",
   /** ENG-977 — the calm post-log "what to eat next" micro-moment fired
    * after an AI log (photo / voice / describe) committed and there was
    * budget left for the day. Bridges log → suggestion (Cal AI's missing

@@ -36,10 +36,12 @@ import {
   sanitiseAiItems,
   type AiLoggedItem,
 } from "@suppr/nutrition-core/aiLogging";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import type { RefineVoiceItem } from "@suppr/nutrition-core/refineLog";
 import AiLogReviewItem from "./AiLogReviewItem";
 import AiLogReviewSummary from "./AiLogReviewSummary";
+import RefineByDescribing from "./RefineByDescribing";
 
 type Theme = {
   text: string;
@@ -95,6 +97,9 @@ export default function VoiceLogSheet({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const stopSpeechRef = useRef<null | (() => void)>(null);
+  // ENG-974 — 1-indexed "refine by describing" round for the current result.
+  const [refineRound, setRefineRound] = useState(1);
+  const refineEnabled = isFeatureEnabled("log_refine_describe_v1");
 
   useEffect(() => {
     if (visible) {
@@ -103,6 +108,7 @@ export default function VoiceLogSheet({
       setItems([]);
       setErrorMsg(null);
       setIsRecording(false);
+      setRefineRound(1);
       track(AnalyticsEvents.ai_voice_log_started);
     } else {
       const stop = stopSpeechRef.current;
@@ -182,6 +188,7 @@ export default function VoiceLogSheet({
           return;
         }
         setItems(cleaned);
+        setRefineRound(1);
         setStage("review");
       } catch {
         setErrorMsg("Voice logging failed. Check your connection and try again.");
@@ -367,6 +374,31 @@ export default function VoiceLogSheet({
                   slotLabel={activeSlot}
                   colors={colors}
                 />
+                {/* ENG-974 — refine by describing. Re-parses the food list from
+                    the CURRENT items + correction; nutrition re-runs through the
+                    verified pipeline server-side. */}
+                {refineEnabled && (
+                  <RefineByDescribing
+                    source="voice"
+                    apiBase={apiBase}
+                    accessToken={accessToken}
+                    items={items.map<RefineVoiceItem>((it) => ({
+                      name: it.name,
+                      quantity: it.unit,
+                      calories: it.calories,
+                      protein: it.protein,
+                      carbs: it.carbs,
+                      fat: it.fat,
+                    }))}
+                    round={refineRound}
+                    onRoundComplete={() => setRefineRound((r) => r + 1)}
+                    onRefined={({ items: nextItems }) => {
+                      setItems(sanitiseAiItems(nextItems, "voice"));
+                    }}
+                    accent={{ primary: accent.primary }}
+                    colors={colors}
+                  />
+                )}
               </ScrollView>
             )}
 
