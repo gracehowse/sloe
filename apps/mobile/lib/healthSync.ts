@@ -1412,13 +1412,14 @@ export async function syncHealthData(
     const { data: profile } = await supabase
       .from("profiles")
       .select(
-        "steps_by_day, weight_kg_by_day, weight_kg, body_fat_pct, activity_burn_by_day, workouts_by_day, basal_burn_by_day",
+        "steps_by_day, weight_kg_by_day, weight_kg, body_fat_pct, body_fat_pct_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day",
       )
       .eq("id", userId)
       .maybeSingle();
 
     const existingSteps = (profile?.steps_by_day ?? {}) as Record<string, number>;
     const existingWeight = (profile?.weight_kg_by_day ?? {}) as Record<string, number>;
+    const existingBodyFatByDay = (profile?.body_fat_pct_by_day ?? {}) as Record<string, number>;
     const existingActivityBurn = (profile?.activity_burn_by_day ?? {}) as Record<string, number>;
     const existingWorkouts = (profile?.workouts_by_day ?? {}) as Record<string, unknown[]>;
     const existingBasalBurn = (profile?.basal_burn_by_day ?? {}) as Record<string, number>;
@@ -1506,38 +1507,48 @@ export async function syncHealthData(
       const bodyFatSamples = await getBodyFatPercentageSamplesPromise(hk, {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
-        ascending: false,
+        ascending: true,
       });
 
-      let latestMs = -Infinity;
-      let latestPct: number | null = null;
-      for (const sample of bodyFatSamples) {
-        const t = new Date(sample.startDate).getTime();
-        if (!Number.isFinite(t)) continue;
+      const sortedBfSamples = [...bodyFatSamples].sort((a, b) => {
+        const ta = new Date(a.startDate).getTime();
+        const tb = new Date(b.startDate).getTime();
+        return ta - tb;
+      });
+      const bodyFatByDay: Record<string, number> = { ...existingBodyFatByDay };
+      for (const sample of sortedBfSamples) {
+        const dk = dateKey(sample.startDate);
         const pct = bodyFatPercentFromHealthKitValue(Number(sample.value));
         if (pct == null) continue;
-        if (t >= latestMs) {
-          latestMs = t;
-          latestPct = pct;
-        }
+        bodyFatByDay[dk] = pct;
       }
+      const mostRecentBfSample =
+        sortedBfSamples.length > 0 ? sortedBfSamples[sortedBfSamples.length - 1]! : null;
+      const mostRecentBfPct = mostRecentBfSample
+        ? bodyFatPercentFromHealthKitValue(Number(mostRecentBfSample.value))
+        : null;
 
-      if (latestPct != null) {
-        const existingBf =
-          profile && "body_fat_pct" in profile
-            ? (profile as { body_fat_pct?: number | null }).body_fat_pct
-            : null;
-        const existingRounded =
-          existingBf != null && Number.isFinite(Number(existingBf))
-            ? Math.round(Number(existingBf) * 10) / 10
-            : null;
-        if (existingRounded !== latestPct) {
-          const { error } = await supabase
-            .from("profiles")
-            .update({ body_fat_pct: latestPct })
-            .eq("id", userId);
-          if (!error) bodyFatUpdated = true;
-        }
+      const existingBf =
+        profile && "body_fat_pct" in profile
+          ? (profile as { body_fat_pct?: number | null }).body_fat_pct
+          : null;
+      const existingRounded =
+        existingBf != null && Number.isFinite(Number(existingBf))
+          ? Math.round(Number(existingBf) * 10) / 10
+          : null;
+      const mapChanged = JSON.stringify(bodyFatByDay) !== JSON.stringify(existingBodyFatByDay);
+      const scalarChanged =
+        mostRecentBfPct != null && existingRounded !== mostRecentBfPct;
+
+      if (mapChanged || scalarChanged) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            body_fat_pct_by_day: bodyFatByDay,
+            ...(mostRecentBfPct != null ? { body_fat_pct: mostRecentBfPct } : {}),
+          })
+          .eq("id", userId);
+        if (!error) bodyFatUpdated = true;
       }
     } catch {
       // Body fat sync failed silently

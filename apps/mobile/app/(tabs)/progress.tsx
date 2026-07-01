@@ -134,6 +134,8 @@ import { WeightChart } from "@/components/progress/WeightChart";
 import { WeightSparseState } from "@/components/progress/WeightSparseState";
 import { WeightPlateauInsight } from "@/components/progress/WeightPlateauInsight";
 import { ExpenditureTrendCard } from "@/components/progress/ExpenditureTrendCard";
+import { BodyCompositionTrendCard } from "@/components/progress/BodyCompositionTrendCard";
+import { loadCachedUserTier, normaliseCachedTier, type CachedTier } from "@/lib/cachedUserTier";
 import { useWeightCelebration } from "@/components/progress/useWeightCelebration";
 import { useWeightData } from "@/hooks/useWeightData";
 
@@ -225,6 +227,9 @@ export default function ProgressScreen() {
   // daily-deficit row. Defaults to `steady` so the explainer can still
   // render on profiles predating the column.
   const [planPace, setPlanPace] = useState<PlanPace>("steady");
+  const [bodyFatPct, setBodyFatPct] = useState<number | null>(null);
+  const [bodyFatPctByDay, setBodyFatPctByDay] = useState<Record<string, number>>({});
+  const [userTier, setUserTier] = useState<CachedTier>("free");
   // G-4 (2026-04-19) — "How this works" expandable under the
   // Maintenance card. In-memory only; a collapse on one visit shouldn't
   // persist past next focus.
@@ -485,7 +490,7 @@ export default function ProgressScreen() {
     const profilePromise = (async () =>
       await supabase
         .from("profiles")
-        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at, activity_burn_by_day, basal_burn_by_day, workouts_by_day, prefer_activity_adjusted_calories")
+        .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at, activity_burn_by_day, basal_burn_by_day, workouts_by_day, prefer_activity_adjusted_calories, body_fat_pct, body_fat_pct_by_day, user_tier")
         .eq("id", userId)
         .maybeSingle())();
     const [entriesResult, profileResult] = await Promise.all([
@@ -546,6 +551,10 @@ export default function ProgressScreen() {
       });
       hydrateFromProfile(profile);
       setStepsByDay(parseNumMap(profile.steps_by_day));
+      const bf = (profile as { body_fat_pct?: number | null }).body_fat_pct;
+      setBodyFatPct(bf != null && Number.isFinite(Number(bf)) ? Number(bf) : null);
+      setBodyFatPctByDay(parseNumMap((profile as { body_fat_pct_by_day?: unknown }).body_fat_pct_by_day));
+      setUserTier(normaliseCachedTier((profile as { user_tier?: string | null }).user_tier));
       // ENG-787 — burn + workout + preference for the effective-target chart.
       setActivityBurnByDay(parseNumMap((profile as any).activity_burn_by_day));
       setBasalBurnByDay(parseNumMap((profile as any).basal_burn_by_day));
@@ -852,10 +861,15 @@ export default function ProgressScreen() {
   // ENG-953 — calm Expenditure trend card (default-ON, ENG-1279). Same
   // deferred read-once-on-mount pattern as the plateau flag.
   const [expenditureCardEnabled, setExpenditureCardEnabled] = useState(false);
+  const [bodyCompositionCardEnabled, setBodyCompositionCardEnabled] = useState(false);
   useEffect(() => {
+    void loadCachedUserTier().then((cached) => {
+      setUserTier((prev) => (prev === "free" ? cached : prev));
+    });
     setDigestBlendEnabled(isFeatureEnabled("progress_digest_blend"));
     setPlateauInsightEnabled(isFeatureEnabled("progress_plateau_insight_v1"));
     setExpenditureCardEnabled(isFeatureEnabled("expenditure_trend_card"));
+    setBodyCompositionCardEnabled(isFeatureEnabled("body_composition_trends_v1"));
   }, []);
   const digestBlendVisible =
     digestBlendEnabled &&
@@ -1850,6 +1864,15 @@ export default function ProgressScreen() {
 
         {/* ENG-953 — calm "Expenditure" trend card (gated on default-ON `expenditure_trend_card`; parity: web `ExpenditureTrendCard`). */}
         <ExpenditureTrendCard enabled={expenditureCardEnabled} adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
+
+        {/* ENG-1237 — body fat + lean-mass trends (Pro-gated). */}
+        <BodyCompositionTrendCard
+          enabled={bodyCompositionCardEnabled}
+          userTier={userTier}
+          bodyFatPctByDay={bodyFatPctByDay}
+          weightKgByDay={weightKgByDay}
+          bodyFatPctLatest={bodyFatPct}
+        />
 
         {/* PROJECTED WEIGHT (trajectory) card — flag-gated feature kept. */}
         {trajectoryBoxEnabled && effectiveWeightSurfaceMode === "show" ? (

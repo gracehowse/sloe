@@ -108,6 +108,8 @@ import { ProgressAverageAdherence } from "./suppr/progress-average-adherence.tsx
 import { ProgressEnergyTriad } from "./suppr/progress-energy-triad.tsx";
 import { ProgressOnTargetRibbon } from "./suppr/progress-ontarget-ribbon.tsx";
 import { ExpenditureTrendCard } from "./suppr/expenditure-trend-card.tsx";
+import { BodyCompositionTrendCard } from "./suppr/body-composition-trend-card.tsx";
+import { pruneBodyFatPctByDay } from "../../lib/progress/bodyCompositionTrends.ts";
 import { hasEnoughDataForStory } from "../../lib/nutrition/progressStoryGate.ts";
 import { DigestStoryCard } from "./suppr/digest-story-card.tsx";
 import { TrajectoryCard } from "./suppr/trajectory-card.tsx";
@@ -189,6 +191,7 @@ function ProgressDashboardContent() {
     activityBurnByDay,
     basalBurnByDay,
     workoutsByDay,
+    profileTier,
   } = useAppData();
 
   // ENG-713 — body-neutral "Trend-only weight" opt-in (client-side pref; flag
@@ -204,6 +207,7 @@ function ProgressDashboardContent() {
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
   const [bodyFatPct, setBodyFatPct] = useState<number | null>(null);
+  const [bodyFatPctByDay, setBodyFatPctByDay] = useState<Record<string, number>>({});
   const [userGoal, setUserGoal] = useState<string | null>(null);
 
   // Adaptive TDEE state
@@ -304,7 +308,7 @@ function ProgressDashboardContent() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, milestone_30_shown_at",
+        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, body_fat_pct_by_day, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, milestone_30_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -325,6 +329,7 @@ function ProgressDashboardContent() {
       setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : DEFAULT_STEPS_GOAL);
       const bf = data.body_fat_pct != null ? Number(data.body_fat_pct) : null;
       setBodyFatPct(Number.isFinite(bf) ? bf : null);
+      setBodyFatPctByDay(parseNumMap(data.body_fat_pct_by_day));
       setUserGoal((data as any).goal ?? null);
       const wsd = String((data as { week_start_day?: string }).week_start_day ?? "").toLowerCase();
       setWeekStartDay(wsd === "sunday" ? "sunday" : "monday");
@@ -654,10 +659,14 @@ function ProgressDashboardContent() {
   const saveBodyFat = useCallback(async () => {
     const v = Number.parseFloat(bodyFatInput.replace(",", "."));
     if (!Number.isFinite(v) || v <= 0 || v > 60) return;
-    setBodyFatPct(v);
+    const rounded = Math.round(v * 10) / 10;
+    const tk = todayKey();
+    const nextMap = pruneBodyFatPctByDay({ ...bodyFatPctByDay, [tk]: rounded });
+    setBodyFatPct(rounded);
+    setBodyFatPctByDay(nextMap);
     setBodyFatInput("");
-    await persistProfilePatch({ body_fat_pct: v });
-  }, [bodyFatInput, persistProfilePatch]);
+    await persistProfilePatch({ body_fat_pct: rounded, body_fat_pct_by_day: nextMap });
+  }, [bodyFatInput, bodyFatPctByDay, persistProfilePatch]);
 
   const formatWeight = (kg: number) =>
     profileMeasurementSystem === "imperial" ? `${Math.round(kgToLb(kg) * 10) / 10} lb` : `${Math.round(kg * 10) / 10} kg`;
@@ -2203,6 +2212,14 @@ function ProgressDashboardContent() {
 
       {/* ENG-953 — calm "Expenditure" trend card (self-gates on default-ON `expenditure_trend_card`; parity: mobile `ExpenditureTrendCard`). */}
       <ExpenditureTrendCard adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
+
+      {/* ENG-1237 — body fat + lean-mass trends (Pro-gated). */}
+      <BodyCompositionTrendCard
+        userTier={profileTier}
+        bodyFatPctByDay={bodyFatPctByDay}
+        weightKgByDay={weightKgByDay}
+        bodyFatPctLatest={bodyFatPct}
+      />
 
       {/* WEIGHT TRACKING card — RELOCATED to frame position 4 above
           (Sloe Figma 492:2: Newsreader headline + Trend/Scale toggle +

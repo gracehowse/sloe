@@ -476,6 +476,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // growth builds). Off → the card hides and the Maintenance "How this works"
   // expandable stays the live path (kill switch: remove here / PostHog). M+W.
   "expenditure_trend_card",
+  // ENG-1237 — body fat + derived lean-mass trends on Progress (Pro-gated).
+  // DEFAULT-ON per ENG-1279 — off → card hidden (kill switch). Web + mobile.
+  "body_composition_trends_v1",
   // ENG-1279 "always flag on" batch (2026-06-30, Grace) — beta-window growth
   // builds flipped default-ON so the solo tester sees them; each keeps its
   // legacy/empty else as the kill switch (remove here / PostHog). Web + mobile.
