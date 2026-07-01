@@ -48,7 +48,7 @@ import { saveImportedRecipe, updateImportedRecipe, type ApiImportedRecipe, coerc
 import { classifyMealType } from "@/lib/classifyMealType";
 import { IMPORT_ERROR_COPY, userFacingImportError } from "@suppr/shared/recipes/importErrorCopy";
 import { fetchRecentImports, recentImportMonogram, type RecentImportItem } from "@suppr/shared/recipes/recentImports";
-import { importQualityProps } from "@suppr/shared/recipes/importQualitySignal";
+import { importQualityProps, isFlaggedIngredientRow } from "@suppr/shared/recipes/importQualitySignal";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
@@ -79,6 +79,7 @@ import MealTypePicker from "@/components/MealTypePicker";
 import FoodSearchModal, { type SelectedFood } from "@/components/FoodSearchModal";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
 import { ImportLoadingSkeleton } from "@/components/import/ImportLoadingSkeleton";
+import { ImportReviewFlaggedNote } from "@/components/import/ImportReviewFlaggedNote";
 import { ImportSuccessCelebration } from "@/components/import/ImportSuccessCelebration";
 import { SupprMark } from "@/components/SupprMark";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -226,6 +227,9 @@ export default function ImportSharedScreen() {
   // Resolved once at mount (PostHog reads are imperative; the screen doesn't
   // re-mount mid-flow).
   const [importRedesign] = useState(() => isFeatureEnabled("recipe-import-redesign"));
+
+  // ENG-1283 — import review honesty (flag-off = today's silent-success render).
+  const [importReviewHonesty] = useState(() => isFeatureEnabled("import_review_flagged_ingredients_v1"));
 
   const [state, setState] = useState<ImportState>("idle");
   const [title, setTitle] = useState<string | null>(null);
@@ -2314,6 +2318,9 @@ export default function ImportSharedScreen() {
               );
             })()}
 
+            {/* ENG-1283 — honest under-count note (renders only when flagged + flag ON). */}
+            {importReviewHonesty && <ImportReviewFlaggedNote recipe={pendingRecipe} />}
+
             {/* Macro breakdown */}
             {previewNutrition != null && pendingRecipe.calories != null && (
               <View style={styles.macroCardContainer}>
@@ -2356,7 +2363,11 @@ export default function ImportSharedScreen() {
                   </Text>
                 </View>
                 {pendingRecipe.ingredientMacros.map((m, i) => {
-                  const needsReview = !m.source || m.source === "Estimated" || m.source === "Unverified";
+                  // ENG-1283 — flag ON marks rows via the SHARED predicate (agrees
+                  // with the "N of M" count); flag-off keeps the legacy check.
+                  const needsReview = importReviewHonesty
+                    ? isFlaggedIngredientRow(m)
+                    : !m.source || m.source === "Estimated" || m.source === "Unverified";
                   const displayName = decodeEntities((m.name ?? "").trim() || "Ingredient");
                   const amountStr =
                     m.amount && m.unit

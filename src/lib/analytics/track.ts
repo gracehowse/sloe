@@ -405,6 +405,17 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // legal-reviewer sign-off before this ramps beyond the solo tester (see
   // docs/decisions/2026-07-01-trend-only-weight-mode.md).
   "progress_trend_only_v1",
+  // ENG-1283 — import review honesty: when a URL/social import leaves ≥1
+  // ingredient flagged (below the 0.55 confidence floor / quantity-less /
+  // unverified) or has no usable macro spine, the review surfaces a calm
+  // "N of M ingredients need review — the macro total may be incomplete." line
+  // + marks the affected rows, instead of a silent under-counted success.
+  // Derives from the SHARED importQualitySignal predicate (no recompute; no
+  // parser / floor / legal / persistence change). DEFAULT-ON per the "always
+  // flag on" beta-window policy; off → today's silent-success render exactly
+  // (kill switch: remove here / PostHog). Web + mobile — keep in sync with
+  // apps/mobile/lib/analytics.ts.
+  "import_review_flagged_ingredients_v1",
 ]);
 
 /**
