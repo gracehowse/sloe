@@ -301,3 +301,109 @@ export function moveMealInPlan(
 
   return working;
 }
+
+/**
+ * ENG-958 "Cook once, eat twice" — the explicit user action behind the
+ * automatic {@link distributeLeftovers} pass. Given a source (parent) meal and
+ * a set of chosen target day numbers, place a leftover copy of that meal into
+ * the first compatible empty slot on each chosen day. This is what the Plan
+ * "Cook twice…" row action drives — the user picks the days, we do the
+ * placement + portion book-keeping.
+ *
+ * Placement rules (shared with the auto-pass so the two never disagree):
+ *  - The source must be a real cooked meal — a recipe title, not a placeholder,
+ *    and not itself a leftover (no leftovers-of-leftovers). Otherwise no-op.
+ *  - The source's own day is never a target (a real kitchen doesn't serve the
+ *    same dinner twice in one day).
+ *  - On each target day, the leftover lands in the FIRST empty/placeholder slot
+ *    whose label is in `allowedLeftoverSlots(sourceSlot)` (dinner → lunch/dinner
+ *    etc.). A day with no compatible free slot is reported in `skippedDays` so
+ *    the caller can say "couldn't fit Thursday".
+ *  - A day that already holds a leftover of this recipe is skipped (idempotent —
+ *    re-running never double-places).
+ *
+ * Day numbers are 1-indexed (`DayPlan.day`), matching {@link moveMealInPlan}.
+ * Returns a new plan (input not mutated) plus `{ placedCount, skippedDays }`.
+ */
+export function repeatMealAsLeftovers(
+  plan: DayPlan[],
+  source: { day: number; slotIndex: number },
+  targetDays: number[],
+): { plan: DayPlan[]; placedCount: number; skippedDays: number[] } {
+  const working: DayPlan[] = plan.map((dp) => ({
+    ...dp,
+    meals: dp.meals.map((m) => ({ ...m })),
+    totals: { ...dp.totals },
+  }));
+
+  const sourceDay = working.find((d) => d.day === source.day);
+  const parent = sourceDay?.meals[source.slotIndex] as LeftoverAwareMeal | undefined;
+  const rid = parent?.recipeId;
+
+  // Guard: only a real, non-leftover cooked meal can be cooked twice.
+  if (!parent || !rid || parent.isPlaceholder || parent.leftoverOf || !(parent.recipeTitle ?? "").trim()) {
+    return { plan, placedCount: 0, skippedDays: [...targetDays] };
+  }
+
+  const allowed = allowedLeftoverSlots(parent.name);
+  const changedDays = new Set<DayPlan>();
+  let placedCount = 0;
+  const skippedDays: number[] = [];
+
+  for (const targetDayNum of targetDays) {
+    if (targetDayNum === source.day) {
+      skippedDays.push(targetDayNum);
+      continue;
+    }
+    const day = working.find((d) => d.day === targetDayNum);
+    if (!day) {
+      skippedDays.push(targetDayNum);
+      continue;
+    }
+    // Idempotent: never double-place a leftover of the same parent on a day.
+    if (day.meals.some((m) => (m as LeftoverAwareMeal).leftoverOf === rid)) {
+      skippedDays.push(targetDayNum);
+      continue;
+    }
+    const slotIdx = day.meals.findIndex(
+      (m) => isPlaceholderOrEmptySlot(m) && slotMatches(m, allowed),
+    );
+    if (slotIdx < 0) {
+      skippedDays.push(targetDayNum);
+      continue;
+    }
+    const slotName = day.meals[slotIdx]!.name;
+    day.meals[slotIdx] = {
+      name: slotName,
+      recipeTitle: parent.recipeTitle,
+      recipeId: parent.recipeId,
+      calories: parent.calories,
+      protein: parent.protein,
+      carbs: parent.carbs,
+      fat: parent.fat,
+      fiberG: (parent as LeftoverAwareMeal).fiberG,
+      portionMultiplier: parent.portionMultiplier,
+      leftoverOf: rid,
+      isLeftover: true,
+      isPlaceholder: false,
+    } as LeftoverAwareMeal;
+    placedCount++;
+    changedDays.add(day);
+  }
+
+  // Recompute totals only on days we touched (fiber included — ENG-1150).
+  for (const day of changedDays) {
+    day.totals = day.meals.reduce(
+      (acc, m) => ({
+        calories: acc.calories + (m.calories ?? 0),
+        protein: acc.protein + (m.protein ?? 0),
+        carbs: acc.carbs + (m.carbs ?? 0),
+        fat: acc.fat + (m.fat ?? 0),
+        fiberG: acc.fiberG + (m.fiberG ?? 0),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiberG: 0 },
+    );
+  }
+
+  return { plan: placedCount > 0 ? working : plan, placedCount, skippedDays };
+}

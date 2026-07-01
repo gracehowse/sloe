@@ -17,6 +17,7 @@ import {
   markLeftoversOnSwap,
   countLeftoversOfRecipe,
   moveMealInPlan,
+  repeatMealAsLeftovers,
   type LeftoverAwareMeal,
 } from "@/lib/nutrition/leftoversPlanner";
 import type { DayPlan, DayPlanMeal } from "@/types/recipe";
@@ -312,5 +313,78 @@ describe("moveMealInPlan", () => {
     const out = moveMealInPlan(plan, { day: 1, slotIndex: 0 }, { day: 2, slotIndex: 0 });
     expect(out[0].totals.fiberG).toBe(2);
     expect(out[1].totals.fiberG).toBe(8);
+  });
+});
+
+describe("repeatMealAsLeftovers (ENG-958 'Cook once, eat twice')", () => {
+  const base = (): DayPlan[] => [
+    day(1, [
+      slot("Breakfast", "Oats", { recipeId: "oats" }),
+      slot("Dinner", "Chili", { recipeId: "chili" }),
+    ]),
+    day(2, [slot("Lunch"), slot("Dinner")]),
+    day(3, [slot("Lunch"), slot("Dinner")]),
+  ];
+
+  it("places a leftover on each chosen day's first compatible empty slot", () => {
+    const { plan, placedCount, skippedDays } = repeatMealAsLeftovers(
+      base(),
+      { day: 1, slotIndex: 1 },
+      [2, 3],
+    );
+    expect(placedCount).toBe(2);
+    expect(skippedDays).toEqual([]);
+    const d2 = plan[1].meals[0] as LeftoverAwareMeal; // dinner → lunch/dinner; lunch is first
+    expect(d2.recipeId).toBe("chili");
+    expect(d2.isLeftover).toBe(true);
+    expect(d2.leftoverOf).toBe("chili");
+    expect((plan[2].meals[0] as LeftoverAwareMeal).leftoverOf).toBe("chili");
+  });
+
+  it("skips a day with no compatible empty slot and reports it", () => {
+    const plan0 = base();
+    plan0[1] = day(2, [
+      slot("Lunch", "Salad", { recipeId: "salad" }),
+      slot("Dinner", "Steak", { recipeId: "steak" }),
+    ]);
+    const { placedCount, skippedDays } = repeatMealAsLeftovers(plan0, { day: 1, slotIndex: 1 }, [2, 3]);
+    expect(placedCount).toBe(1);
+    expect(skippedDays).toEqual([2]);
+  });
+
+  it("never targets the source day", () => {
+    const { placedCount, skippedDays } = repeatMealAsLeftovers(base(), { day: 1, slotIndex: 1 }, [1]);
+    expect(placedCount).toBe(0);
+    expect(skippedDays).toEqual([1]);
+  });
+
+  it("is idempotent — skips a day that already holds a leftover of the recipe", () => {
+    const { plan } = repeatMealAsLeftovers(base(), { day: 1, slotIndex: 1 }, [2]);
+    const second = repeatMealAsLeftovers(plan, { day: 1, slotIndex: 1 }, [2]);
+    expect(second.placedCount).toBe(0);
+    expect(second.skippedDays).toEqual([2]);
+  });
+
+  it("no-ops (returns the original plan) on a placeholder/empty source", () => {
+    const plan0 = base();
+    const { placedCount, plan } = repeatMealAsLeftovers(plan0, { day: 2, slotIndex: 0 }, [3]);
+    expect(placedCount).toBe(0);
+    expect(plan).toBe(plan0);
+  });
+
+  it("no-ops on a leftover source (no leftovers of leftovers)", () => {
+    const { plan } = repeatMealAsLeftovers(base(), { day: 1, slotIndex: 1 }, [2]);
+    const { placedCount } = repeatMealAsLeftovers(plan, { day: 2, slotIndex: 0 }, [3]);
+    expect(placedCount).toBe(0);
+  });
+
+  it("recomputes the target day's totals including fibre (ENG-1150)", () => {
+    const plan0: DayPlan[] = [
+      day(1, [slot("Dinner", "Chili", { recipeId: "chili", calories: 600, fiberG: 12 })]),
+      day(2, [slot("Dinner")]),
+    ];
+    const { plan } = repeatMealAsLeftovers(plan0, { day: 1, slotIndex: 0 }, [2]);
+    expect(plan[1].totals.calories).toBe(600);
+    expect(plan[1].totals.fiberG).toBe(12);
   });
 });
