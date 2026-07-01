@@ -36,7 +36,6 @@
     "apps/mobile/app/meal-nutrition.tsx": 2,
     "apps/mobile/app/notifications-prompt.tsx": 4,
     "apps/mobile/app/paywall.tsx": 2,
-    "apps/mobile/app/profile.tsx": 1,
     "apps/mobile/app/progress-metric.tsx": 2,
     "apps/mobile/app/recipe/[id].tsx": 1,
     "apps/mobile/app/recipe/verify.tsx": 1,
