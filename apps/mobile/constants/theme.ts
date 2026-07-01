@@ -75,10 +75,17 @@ export const Accent = {
   brandBlue: '#3B2A4D',
   brandBlueLight: '#5B3B6E',
   /** Sage slot — success, calorie-ring at/under-target signals.
-   *  `successSolid` (#466046, 6.95:1 on white) carries text usage. */
+   *  `successSolid` (#466046, 6.95:1 on white) carries text usage.
+   *  `successSolidDark` (#83A57E) is the OLED-lifted sage TEXT for the dark
+   *  scheme: the light #466046 collapses to 2.43:1 on a dark card, so any
+   *  success TEXT on a dark tint (the Badge "added" label, the Today streak
+   *  headline) must read `successSolidDark` via `useAccent()` — 5.29:1 on the
+   *  success 14% tint / 5.66:1 on the 8% StreakInsight card, AA PASS. Mirrors
+   *  web `.dark` `--accent-success-solid: #83A57E`. (ENG-1275.) */
   success: '#5E7C5A',
   successLight: '#83A57E',
   successSolid: '#466046',
+  successSolidDark: '#83A57E',
   /** Amber slot — warning, sodium, approaching limits. (over-budget moved to
    *  red per dossier D-2; bonus/burn own honey via `Accent.activity`.)
    *  `warning` (#C9892C, 2.96:1 text-fail) is FILLS ONLY (dots / bars / soft
@@ -90,6 +97,20 @@ export const Accent = {
   warning: '#C9892C',
   warningLight: '#D6A24A',
   warningSolid: '#925812',
+  /** Alcohol INK — the alcohol tracker FILL is the amber `warning` hue
+   *  (`StimulantColors.alcohol` / `HydrationStimulantsCard` tone), which is
+   *  only 2.61:1 as TEXT on the chip's `backgroundSecondary` surface in light
+   *  (AA FAIL) — the same regression class the web `--stimulant-alcohol-solid`
+   *  (ENG-1266) fixed. `alcoholSolid` (#9C5228) is the AA-safe warm clay TEXT
+   *  for the alcohol quick-add chip label in light (5.07:1 on the light chip
+   *  surface / 5.0:1 on the amber 14% tint), a touch warmer than `warningSolid`
+   *  so alcohol ≠ generic warning. In DARK the chip sits on the dark
+   *  `backgroundSecondary` where the dark clay #9C5228 collapses to 3.13:1, so
+   *  `alcoholSolidDark` lifts to the bright honey #D6A24A (7.82:1 dark) — read
+   *  scheme-resolved via `useAccent()`. Mirrors web `--stimulant-alcohol-solid`
+   *  (#9C5228 light / #D6A24A dark). (ENG-1275.) */
+  alcoholSolid: '#9C5228',
+  alcoholSolidDark: '#D6A24A',
   /** Brick slot — destructive, error, over-budget. Base hue is the TEXT
    *  token in practice, so it must clear AA 4.5:1 as text: darkened
    *  #C0533F → #B04434 (2026-06-09, a11y; 4.86:1 on the cream
@@ -101,6 +122,17 @@ export const Accent = {
   destructiveSolid: '#9E3F2E',
   /** Legacy `cyan` alias — remapped onto Sloe teal (cyan has no Sloe slot). */
   cyan: '#4A7878',
+  /** Teal INK — the raw `cyan` fill (#4A7878) is only 4.14:1 as TEXT on its own
+   *  14% Badge tint in light and 2.98:1 on a dark card (AA FAIL both schemes).
+   *  The `-solid` family carries any cyan/teal TEXT (freeze/info Badge label,
+   *  the Today freeze-earned "Got it" ghost-link) while the raw hue stays the
+   *  fill/border. Scheme-resolved via `useAccent()` exactly like
+   *  `primarySolid` → `primarySolidDark`. Mirrors web `--macro-water-solid`
+   *  (#3C5F6B light / #7FAAB8 dark). #3C5F6B = 5.78:1 on the light tint; the
+   *  lifted #7FAAB8 = 5.84:1 on the dark tint — PASS both. (ENG-1275, parity
+   *  with web ENG-780/828/1273.) */
+  cyanSolid: '#3C5F6B',
+  cyanSolidDark: '#7FAAB8',
   /** Legacy `orange` alias — remapped onto Sloe amber. */
   orange: '#C9892C',
   /** Legacy `magenta` alias — remapped onto Sloe amber (Fat macro is amber;

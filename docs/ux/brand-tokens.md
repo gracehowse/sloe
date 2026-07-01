@@ -33,7 +33,7 @@ contrast ratios.
 | **Body ink** | `#221B26` (light) / `#F5F3F4` (dark) | `Colors.*.text` | `--foreground` | Aubergine ink — headlines and body copy, not button fill |
 | **brandBlue alias** | `#C8794E` | `Accent.brandBlue` | n/a | Legacy alias — now clay; same as `Accent.primary` |
 | **Success** | `#5E7C5A` (light) / `#83A57E` (dark) | `Accent.success` | `--accent-success` / `--success` | Confirmations, calorie-ring at/under-target signal, positive states — Sloe sage |
-| **Success solid (text)** | `#466046` | `Accent.successSolid` | `--accent-success-solid` | Sage as small text on light (AA-safe) |
+| **Success solid (text)** | `#466046` (light) / `#83A57E` (dark) | `Accent.successSolid` / `Accent.successSolidDark` | `--accent-success-solid` | Sage as small text — the light `#466046` collapses to 2.43:1 on a dark card, so the dark scheme lifts to `#83A57E` (read scheme-resolved via `useAccent()`). The "added" Badge label + Today streak headline use this (ENG-1275) |
 | **Warning** | `#C9892C` (light) / `#D6A24A` (dark) | `Accent.warning` | `--accent-warning` / `--warning` | Approaching limits — Sloe amber. **Not** over-budget (that is red, D-2); **not** activity bonus (that owns honey) |
 | **Warning solid (text)** | `#956619` | `Accent.warningSolid` | `--accent-warning-solid` | Amber as small text on light (AA-safe) |
 | **Carbs** | `#C8794E` (light) / `#D58A5E` (dark) | `Accent.carbs` | `--macro-carbs` | Carbs (+ sugar) macro track — Sloe clay (same hue family as primary) |
@@ -45,6 +45,7 @@ contrast ratios.
 | **Destructive solid (text)** | `#9E3F2E` | `Accent.destructiveSolid` | `--accent-destructive-solid` | Brick as small text on light (AA-safe) |
 | **Damson / win** | `#6A4B7A` (light) / `#9A7BAA` (dark) | `Accent.purple` / `Accent.win` | `--accent-win` / `--accent-info` | Streaks, milestones, Pro accent, dinner slot, caffeine, win landmark — Sloe damson |
 | **Teal (alias)** | `#4A7878` | `Accent.cyan` / `SlotColors.snack` | `--macro-water` / `--slot-snack` | Water tracking, **Snacks meal-slot tint** — Sloe teal (legacy `cyan` alias) |
+| **Cyan/teal solid (text)** | `#3C5F6B` (light) / `#7FAAB8` (dark) | `Accent.cyanSolid` / `Accent.cyanSolidDark` | `--macro-water-solid` | Teal as small TEXT — the raw `cyan` #4A7878 is only 4.14:1 (light) / 2.98:1 (dark) on its own 14% tint (AA FAIL). The freeze/info Badge label + Today freeze-earned "Got it" ghost-link use this, scheme-resolved via `useAccent()` (ENG-1275, mirrors web `--macro-water-solid`) |
 | **Amber (alias)** | `#C9892C` | `Accent.orange` / `Accent.magenta` | `--macro-sodium` / `--macro-fat` | Sodium + fat macro — Sloe amber (legacy `orange` / `magenta` aliases) |
 | **Info** | `#6A4B7A` (light) / `#9A7BAA` (dark) | `Accent.info` | `--accent-info` | Informational accents — Sloe damson |
 
@@ -97,6 +98,9 @@ Used exclusively by the Hydration & Stimulants card (Batch 2.5). Not macro roles
 |-----------|--------|--------------------|--------------|-----------------|
 | Caffeine | Damson | `#6A4B7A` / `#9A7BAA` | `StimulantColors.caffeine` | `--stimulant-caffeine` |
 | Alcohol | Amber | `#C9892C` / `#D6A24A` | `StimulantColors.alcohol` | `--stimulant-alcohol` |
+| Alcohol solid (text) | Warm clay / honey | `#9C5228` / `#D6A24A` | `Accent.alcoholSolid` / `Accent.alcoholSolidDark` | `--stimulant-alcohol-solid` |
+
+The amber alcohol FILL is only 2.61:1 as TEXT on the quick-add chip's `backgroundSecondary` surface in light (AA FAIL) — the alcohol chip LABEL inks with the scheme-resolved `alcoholSolid` (warm clay `#9C5228` light, 5.07:1 on the chip surface; bright honey `#D6A24A` dark, 7.82:1) via `useAccent()`. A touch warmer than `warningSolid` so alcohol ≠ generic warning. The raw amber stays the fill/dot/bar. (ENG-1275, mobile twin of the web `--stimulant-alcohol-solid` ENG-1266 fix.)
 
 _Added 2026-04-18 (audit M9) — replaces the hardcoded hex values previously duplicated across `src/app/components/suppr/hydration-stimulants-card.tsx` and `apps/mobile/components/HydrationStimulantsCard.tsx`._
 

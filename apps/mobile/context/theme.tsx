@@ -28,7 +28,9 @@ export type ResolvedTheme = "light" | "dark";
  *  `--accent-primary #7E5C92` / `-lift #9A7BAA` / `-solid #C4ACD0` /
  *  `-soft rgba(154,123,170,0.18)`. Non-primary keys (success/warning/
  *  destructive/activity…) keep their shared values — components already
- *  scheme-switch those via their `*Light` variants where needed. */
+ *  scheme-switch those via their `*Light` variants where needed — EXCEPT the
+ *  `-solid` TEXT inks, which lighten in dark (ENG-1275) the same way
+ *  `primarySolid` does. */
 const DARK_ACCENT: typeof Accent = {
   ...Accent,
   primary: Accent.primaryDark, // #7E5C92 (ENG-1013: named in constants/theme.ts)
@@ -38,6 +40,13 @@ const DARK_ACCENT: typeof Accent = {
   primarySoftStrong: Accent.primarySoftStrongDark, // rgba(154,123,170,0.28) — ENG-1087 hero import slab
   brandBlue: Accent.primaryDark, // #7E5C92
   brandBlueLight: Accent.purpleLight, // #9A7BAA
+  // ENG-1275 — `-solid` TEXT inks are dark hues in light, which collapse to
+  // ~2.4:1 on a dark card. Dark lifts them so the freeze/info/added Badge labels,
+  // the streak headline and the alcohol chip label stay AA in dark. Mirrors web
+  // `.dark` --macro-water-solid / --accent-success-solid / --stimulant-alcohol-solid.
+  cyanSolid: Accent.cyanSolidDark, // #7FAAB8 (freeze/info Badge + Got-it link)
+  successSolid: Accent.successSolidDark, // #83A57E (added Badge + streak headline)
+  alcoholSolid: Accent.alcoholSolidDark, // #D6A24A (alcohol quick-add chip label)
 };
 
 type ThemeContextValue = {

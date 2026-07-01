@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/layout";
 import { Accent, Radius, Spacing, StimulantColors, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useMacroColors } from "@/lib/macroColors";
@@ -47,9 +48,7 @@ import {
  * `src/app/components/suppr/hydration-stimulants-card.tsx`.
  * Presets, labels, and "Over limit" / "Over 400 mg" copy are identical.
  *
- * Rules:
- *   - Caffeine row is hidden when `targets.caffeineMg === 0`.
- *   - Alcohol row is hidden when `targets.alcoholGWeekly === 0`.
+ * Rules: caffeine row hidden when `targets.caffeineMg === 0`; alcohol when `targets.alcoholGWeekly === 0`.
  *
  * Accessibility: every chip has `accessibilityRole="button"` and an
  * `accessibilityLabel` that names quantity + stimulant.
@@ -337,7 +336,9 @@ function Chip({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const color = tones(useMacroColors().colors.water)[tone];
+  const accent = useAccent();
+  const waterTone = useMacroColors().colors.water; // ENG-1275: alcohol label → accent.alcoholSolid (amber tone was 2.61:1 on backgroundSecondary = AA fail)
+  const labelColor = tone === "alcohol" ? accent.alcoholSolid : tones(waterTone)[tone];
   return (
     <Pressable
       accessibilityRole="button"
@@ -355,7 +356,7 @@ function Chip({
         borderColor: colors.border,
       }}
     >
-      <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color }}>
+      <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "600", color: labelColor }}>
         {label}
       </Text>
     </Pressable>
@@ -411,9 +412,7 @@ export function HydrationStimulantsCard({
     [onAddAlcohol],
   );
 
-  // Split the water value + unit so the value reads in Newsreader and the
-  // unit stays in the calm caption — matching the `TD2` frame
-  // (`0 ml / 1.8 L`). `formatWaterLine` already returns "{value} {unit}".
+  // Split water value + unit — value in Newsreader, unit in caption (`TD2` frame `0 ml / 1.8 L`).
   const waterValueLine = `${formatWaterLine(waterTotalMl, measurementSystem)} / ${formatWaterLine(targets.waterMl, measurementSystem)}`;
 
   return (

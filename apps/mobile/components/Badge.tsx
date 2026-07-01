@@ -83,13 +83,23 @@ export function Badge({
   // pro/custom anchor follows the scheme-resolved accent (module map can't hook).
   const isPrimaryVariant = variant === "pro" || variant === "custom";
   const color = isPrimaryVariant ? accent.primary : variantColors[variant];
-  // ENG-828 — the fill/border anchor (`color`) is the primary FILL hue, but on
-  // dark `accent.primary` (#7E5C92) reads only ~2.9:1 as small TEXT on its own
-  // soft tint (AA FAIL). The text ink reads the AA-safe `primarySolid`
-  // (#3B2A4D light / #C4ACD0 dark, scheme-resolved by useAccent) — the mobile
-  // twin of web `badge.tsx` `pro`/`custom` → `text-primary-solid`. Light is a
-  // no-op (primarySolid === primary === #3B2A4D); dark lifts text to 7.6:1.
-  const textColor = isPrimaryVariant ? accent.primarySolid : color;
+  // ENG-828 / ENG-1275 — the fill/border anchor (`color`) is the raw FILL hue,
+  // but several raw hues read below AA 4.5:1 as small TEXT on their own 14%
+  // tint. The text ink reads the scheme-resolved AA-safe `-solid` per variant
+  // (the same pattern as `pro`/`custom` → `primarySolid`); the fill/border keep
+  // the raw hue. Mirrors web `badge.tsx`:
+  //   pro/custom → primarySolid (#3B2A4D light / #C4ACD0 dark)
+  //   freeze/info → cyanSolid    (#3C5F6B light / #7FAAB8 dark) — web --macro-water-solid
+  //   added      → successSolid  (#466046 light / #83A57E dark) — web --accent-success-solid
+  // Raw cyan #4A7878 was 4.14:1 light / 2.98:1 dark; raw success #5E7C5A was
+  // 3.93:1 light / 3.12:1 dark — both AA FAIL. The `-solid` inks clear AA.
+  const textColor = isPrimaryVariant
+    ? accent.primarySolid
+    : variant === "freeze" || variant === "info"
+      ? accent.cyanSolid
+      : variant === "added"
+        ? accent.successSolid
+        : color;
   const label = accessibilityLabel ?? defaultAccessibilityLabel[variant];
 
   return (

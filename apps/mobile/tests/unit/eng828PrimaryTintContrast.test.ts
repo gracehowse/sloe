@@ -107,7 +107,11 @@ describe("ENG-828 mobile — primarySolid is AA-safe on the primary tint, the ba
 
 describe("ENG-828 mobile — call sites ink with primarySolid, not the bare fill", () => {
   it("Badge pro/custom text reads accent.primarySolid via textColor", () => {
-    expect(BADGE).toContain("const textColor = isPrimaryVariant ? accent.primarySolid");
+    // ENG-1275 widened `textColor` to a per-variant solid map (freeze/info →
+    // cyanSolid, added → successSolid); the pro/custom → primarySolid branch is
+    // preserved as the first ternary arm.
+    expect(BADGE).toContain("const textColor = isPrimaryVariant");
+    expect(BADGE).toMatch(/isPrimaryVariant\s*\?\s*accent\.primarySolid/);
     expect(BADGE).toContain("color: textColor");
   });
 
