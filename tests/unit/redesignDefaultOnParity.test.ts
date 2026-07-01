@@ -90,6 +90,8 @@ const GATE_15_SHARED = [
   "today_log_again",
   "today_log_usual_row_v2",
   "log_sheet_nl_text_v1",
+  // ENG-974 — "refine by describing" conversational correction (photo + voice).
+  "log_refine_describe_v1",
   "recipe_share_card_v1",
   "cook_log_servings_confirm",
   "plan_web_parity_v1",

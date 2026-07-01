@@ -46,8 +46,10 @@ import {
   sanitiseAiItems,
   type AiLoggedItem,
 } from "../../../lib/nutrition/aiLogging";
-import { track } from "../../../lib/analytics/track";
+import type { RefineVoiceItem } from "../../../lib/nutrition/refineLog";
+import { track, isFeatureEnabled } from "../../../lib/analytics/track";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
+import { RefineByDescribing } from "./refine-by-describing";
 
 export type VoiceLogDialogProps = {
   open: boolean;
@@ -73,6 +75,9 @@ export function VoiceLogDialog({
   const [isRecording, setIsRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  // ENG-974 — 1-indexed "refine by describing" round for the current result.
+  const [refineRound, setRefineRound] = useState(1);
+  const refineEnabled = isFeatureEnabled("log_refine_describe_v1");
 
   useEffect(() => {
     if (open) {
@@ -81,6 +86,7 @@ export function VoiceLogDialog({
       setItems([]);
       setError(null);
       setIsRecording(false);
+      setRefineRound(1);
       track(AnalyticsEvents.ai_voice_log_started);
     }
   }, [open]);
@@ -210,6 +216,7 @@ export function VoiceLogDialog({
           return;
         }
         setItems(cleaned);
+        setRefineRound(1);
         setStage("review");
       } catch {
         setError("Voice logging failed. Check your connection and try again.");
@@ -414,6 +421,26 @@ export function VoiceLogDialog({
               Total: {totals.calories} kcal · P {totals.protein}g · C {totals.carbs}g · F {totals.fat}g
               {totals.fiber != null ? ` · Fi ${totals.fiber}g` : ""}
             </div>
+            {/* ENG-974 — refine by describing. Re-parses the food list from the
+                CURRENT items + correction; nutrition re-runs verified pipeline. */}
+            {refineEnabled && (
+              <RefineByDescribing
+                source="voice"
+                items={items.map<RefineVoiceItem>((it) => ({
+                  name: it.name,
+                  quantity: it.unit,
+                  calories: it.calories,
+                  protein: it.protein,
+                  carbs: it.carbs,
+                  fat: it.fat,
+                }))}
+                round={refineRound}
+                onRoundComplete={() => setRefineRound((r) => r + 1)}
+                onRefined={({ items: nextItems }) => {
+                  setItems(sanitiseAiItems(nextItems, "voice"));
+                }}
+              />
+            )}
           </div>
         )}
 

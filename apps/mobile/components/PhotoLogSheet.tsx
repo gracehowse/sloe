@@ -75,8 +75,9 @@ import {
 import { persistPhotoCorrections } from "@suppr/nutrition-core/photoCorrectionPersist";
 import { FREE_PHOTO_LOG_WEEKLY_LIMIT } from "@suppr/nutrition-core/photoLogQuota";
 import { supabase } from "@/lib/supabase";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import RefineByDescribing from "./RefineByDescribing";
 
 /** AsyncStorage key for the one-time "we'll remember this for next
  *  time" tooltip on the first persisted photo-log correction. The
@@ -167,6 +168,11 @@ export default function PhotoLogSheet({
    */
   const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
   const isFreeTier = userTier !== "pro";
+  // ENG-974 — 1-indexed "refine by describing" round for the current result.
+  // Increments per successful refine so the funnel measures how many turns a
+  // correction loop takes. Reset on each fresh open + on re-analyse.
+  const [refineRound, setRefineRound] = useState(1);
+  const refineEnabled = isFeatureEnabled("log_refine_describe_v1");
   /** Snapshot of the AI's items in `AiLoggedItem` form so the photo-
    *  corrections-persist helper can diff user edits at commit time
    *  (the helper expects that shape). Stored as a ref because we
@@ -184,6 +190,7 @@ export default function PhotoLogSheet({
       // Reset the quota signal on each fresh open. The first analyse
       // call populates it from the server response.
       setQuotaRemaining(null);
+      setRefineRound(1);
       originalItemsRef.current = [];
       track(AnalyticsEvents.ai_photo_log_started);
     }
@@ -358,6 +365,8 @@ export default function PhotoLogSheet({
       setItems(ranged);
       setAddons(Array.isArray(data.addons) ? data.addons : []);
       setNotes(typeof data.notes === "string" ? data.notes : null);
+      // Fresh estimate → reset the refine loop for this result.
+      setRefineRound(1);
       setStage("review");
     } catch (err) {
       // F-108 (2026-05-07): name the error so it's diagnosable from
@@ -838,7 +847,31 @@ export default function PhotoLogSheet({
                   </Text>
                 )}
 
-                <Text style={{ fontSize: 11, color: colors.textTertiary }}>
+                {/* ENG-974 — refine by describing. Re-estimates the whole plate
+                    from the CURRENT items + the user's free-text correction. */}
+                {refineEnabled && (
+                  <RefineByDescribing
+                    source="photo"
+                    apiBase={apiBase}
+                    accessToken={accessToken}
+                    items={items}
+                    notes={notes}
+                    round={refineRound}
+                    onRoundComplete={() => setRefineRound((r) => r + 1)}
+                    onRefined={({ items: nextItems, notes: nextNotes }) => {
+                      originalItemsRef.current = nextItems.map((it) => rangedItemToLogged(it));
+                      setItems(nextItems);
+                      // A refine may resolve add-ons into items; drop the stale
+                      // add-on strip so the plate total stays truthful.
+                      setAddons([]);
+                      setNotes(nextNotes ?? null);
+                    }}
+                    accent={{ primary: accent.primary }}
+                    colors={colors}
+                  />
+                )}
+
+                <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: Spacing.sm }}>
                   Logging to <Text style={{ fontWeight: "700", color: colors.text }}>{activeSlot}</Text>.
                   Calories saved use the midpoint of each range.
                 </Text>

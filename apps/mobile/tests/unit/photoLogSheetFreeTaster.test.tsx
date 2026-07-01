@@ -40,6 +40,10 @@ vi.mock("@/lib/supabase", () => ({
 
 vi.mock("@/lib/analytics", () => ({
   track: vi.fn(),
+  // ENG-974 — PhotoLogSheet now gates the "refine by describing" row on
+  // `log_refine_describe_v1`. These free-taster assertions don't reach the
+  // review stage, so keep the refine path OFF (false) to leave them untouched.
+  isFeatureEnabled: vi.fn(() => false),
 }));
 
 vi.mock("@react-native-async-storage/async-storage", () => ({

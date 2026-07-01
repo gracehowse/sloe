@@ -66,9 +66,10 @@ import {
 } from "../../../lib/nutrition/photoLogRanges";
 import { persistPhotoCorrections } from "../../../lib/nutrition/photoCorrectionPersist";
 import { supabase } from "../../../lib/supabase/browserClient";
-import { track } from "../../../lib/analytics/track";
+import { track, isFeatureEnabled } from "../../../lib/analytics/track";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { FREE_PHOTO_LOG_WEEKLY_LIMIT } from "../../../lib/nutrition/photoLogQuota";
+import { RefineByDescribing } from "./refine-by-describing";
 
 /** localStorage key for the one-time "we'll remember this for next
  *  time" toast on web. Mirrors the mobile AsyncStorage flag —
@@ -132,6 +133,9 @@ export function PhotoLogDialog({
    */
   const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
   const isFreeTier = userTier !== "pro";
+  // ENG-974 — 1-indexed "refine by describing" round for the current result.
+  const [refineRound, setRefineRound] = useState(1);
+  const refineEnabled = isFeatureEnabled("log_refine_describe_v1");
   /** Snapshot of the AI's original committed AiLoggedItems before any
    *  user edit. Used at commit time by `persistPhotoCorrections` to
    *  detect user corrections. Stored as a ref because we never re-
@@ -149,6 +153,7 @@ export function PhotoLogDialog({
       // Reset the quota signal on each fresh open. The first analyse
       // call populates it from the server response.
       setQuotaRemaining(null);
+      setRefineRound(1);
       originalItemsRef.current = [];
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -282,6 +287,7 @@ export function PhotoLogDialog({
       setItems(data.items);
       setAddons(Array.isArray(data.addons) ? data.addons : []);
       setNotes(typeof data.notes === "string" ? data.notes : null);
+      setRefineRound(1);
       setStage("review");
     } catch (err) {
       // F-108 (2026-05-07): name the error so it's diagnosable from
@@ -590,6 +596,25 @@ export function PhotoLogDialog({
               >
                 {notes}
               </p>
+            )}
+
+            {/* ENG-974 — refine by describing. Re-estimates the whole plate from
+                the CURRENT items + the user's free-text correction. */}
+            {refineEnabled && (
+              <RefineByDescribing
+                source="photo"
+                items={items}
+                notes={notes}
+                round={refineRound}
+                onRoundComplete={() => setRefineRound((r) => r + 1)}
+                onRefined={({ items: nextItems, notes: nextNotes }) => {
+                  originalItemsRef.current = nextItems.map((it) => rangedItemToLogged(it));
+                  setItems(nextItems);
+                  // A refine may resolve add-ons into items; drop the stale strip.
+                  setAddons([]);
+                  setNotes(nextNotes ?? null);
+                }}
+              />
             )}
 
             <div className="text-[11px] text-muted-foreground">
