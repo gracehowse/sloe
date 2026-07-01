@@ -37,11 +37,9 @@ function handleOf(c: CreatorChip): string {
   return c.handle.startsWith("@") ? c.handle : `@${c.handle}`;
 }
 
-function feedNote(creator: CreatorChip, recipe: RecipeCard): string | null {
+function feedNote(creator: CreatorChip): string | null {
   const bio = creator.bio?.trim();
-  if (bio) return bio;
-  const desc = recipe.description?.trim();
-  return desc || null;
+  return bio || null;
 }
 
 export function FollowingFeed({
@@ -141,7 +139,7 @@ export function FollowingFeed({
       <View style={{ gap: Spacing.md }}>
         {posts.map(({ creator, recipe }) => {
           const isFollowing = followed[creator.id] ?? false;
-          const note = feedNote(creator, recipe);
+          const note = feedNote(creator);
           const kcal = Math.round(recipe.calories);
           const protein = Math.round(recipe.protein);
           const carbs = Math.round(recipe.carbs);
