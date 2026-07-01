@@ -10,9 +10,18 @@
  * We do not guess lean mass without a paired weight reading.
  */
 
-import { MAX_WEIGHT_JSONB_DAYS, pruneWeightKgByDay } from "./weightData.ts";
-
 export const BODY_COMP_TREND_WINDOW_DAYS = 90;
+export const MAX_BODY_FAT_JSONB_DAYS = 400;
+
+function pruneBodyFatMap(map: Record<string, number>): Record<string, number> {
+  const keys = Object.keys(map)
+    .sort()
+    .reverse()
+    .slice(0, MAX_BODY_FAT_JSONB_DAYS);
+  const pruned: Record<string, number> = {};
+  for (const key of keys) pruned[key] = map[key];
+  return pruned;
+}
 
 export type BodyCompositionTrendInput = {
   bodyFatPctByDay: Record<string, number>;
@@ -119,10 +128,8 @@ function buildMetric(
 export function pruneBodyFatPctByDay(
   map: Record<string, number>,
 ): Record<string, number> {
-  return pruneWeightKgByDay(map);
+  return pruneBodyFatMap(map);
 }
-
-export { MAX_WEIGHT_JSONB_DAYS as MAX_BODY_FAT_JSONB_DAYS };
 
 export function buildBodyCompositionTrendCopy(
   input: BodyCompositionTrendInput,

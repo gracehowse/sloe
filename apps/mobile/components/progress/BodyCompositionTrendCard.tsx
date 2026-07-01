@@ -78,7 +78,7 @@ export function BodyCompositionTrendCard({
             Included with Sloe Pro alongside adaptive targets and unlimited imports.
           </Text>
           <PressableScale
-            haptic="light"
+            haptic="selection"
             onPress={() => router.push("/paywall?from=body_composition" as never)}
             style={{
               marginTop: Spacing.md,
@@ -91,7 +91,7 @@ export function BodyCompositionTrendCard({
             accessibilityRole="button"
             accessibilityLabel="See Pro plans"
           >
-            <Text style={{ ...Type.bodyMedium, color: colors.navPrimary }}>See Pro plans</Text>
+            <Text style={{ ...Type.button, color: colors.navPrimary }}>See Pro plans</Text>
           </PressableScale>
         </>
       ) : copy?.hasReadableData ? (
@@ -102,6 +102,7 @@ export function BodyCompositionTrendCard({
             unit="%"
             deltaLabel={copy.bodyFat.deltaLabel}
             colors={colors}
+            deltaColor={accent.successSolid}
             style={{ flex: 1 }}
           />
           <View style={{ width: 1, backgroundColor: colors.border, marginHorizontal: Spacing.md }} />
@@ -111,6 +112,7 @@ export function BodyCompositionTrendCard({
             unit="kg"
             deltaLabel={copy.leanMass.deltaLabel}
             colors={colors}
+            deltaColor={accent.successSolid}
             style={{ flex: 1 }}
           />
         </View>
@@ -129,13 +131,15 @@ function MetricColumn({
   unit,
   deltaLabel,
   colors,
+  deltaColor,
   style,
 }: {
   label: string;
   value: number | null;
   unit: string;
   deltaLabel: string | null;
-  colors: { text: string; textSecondary: string; success: string };
+  colors: { text: string; textSecondary: string };
+  deltaColor: string;
   style?: object;
 }) {
   const display =
@@ -147,7 +151,7 @@ function MetricColumn({
         {label}
       </Text>
       <Text style={{ ...Type.title, color: colors.text }}>{display}</Text>
-      <Text style={{ ...Type.caption, color: deltaLabel ? colors.success : colors.textSecondary, marginTop: Spacing.xs }}>
+      <Text style={{ ...Type.caption, color: deltaLabel ? deltaColor : colors.textSecondary, marginTop: Spacing.xs }}>
         {deltaLabel ?? "No trend yet"}
       </Text>
     </View>
