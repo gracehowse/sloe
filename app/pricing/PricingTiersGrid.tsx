@@ -476,19 +476,19 @@ function BillingDisclosure({
   isAnnual: boolean;
   isProDark: boolean;
   stripeTaxEnabled: boolean;
-  /** H7 (2026-04-21) — region-aware VAT disclosure. When the visitor
-   *  is detected as UK/EU we always render an inclusive-VAT note
-   *  regardless of the Stripe flag, because the non-established-supplier
-   *  rules in the 2026-04-19 consumer VAT memo require it. For
-   *  default / unknown regions we fall back to the flag-gated clause.
-   *  T22-E (2026-04-25): non-empty regionVatNote also signals UK/EU
-   *  for the statutory cancellation clause — same region branch
-   *  reused so the two disclosures can't drift. */
+  /** H7 (2026-04-21) — UK/EU always get the inclusive-VAT note (2026-04-19
+   *  consumer VAT memo), other regions fall back to the Stripe flag.
+   *  T22-E: non-empty also signals UK/EU for the statutory cancellation
+   *  clause — same region branch reused so the two can't drift. */
   regionVatNote: string;
 }) {
   const periodNoun = isAnnual ? "year" : "month";
-  // Tax-clause copy: UK/EU visitors always see the inclusive-VAT note
-  // (regionVatNote wins). Outside UK/EU, the Stripe flag decides.
+  // ENG-1285: annual has a real 7-day Stripe trial — the lead clause says so
+  // (monthly stays trial-less); both branches keep every ARL/FTC/CRD element.
+  const leadClause = isAnnual
+    ? `${price}${period} with a 7-day free trial — no payment due today, first charge on Day 7. Automatically renews each ${periodNoun} until you cancel. Cancel anytime in `
+    : `${price}${period}, charged today and automatically renews each ${periodNoun} until you cancel. Cancel anytime in `;
+  // Tax clause: UK/EU inclusive-VAT note wins; otherwise the Stripe flag decides.
   const taxClause = regionVatNote
     ? `${regionVatNote}.`
     : stripeTaxEnabled
@@ -512,7 +512,7 @@ function BillingDisclosure({
       className="mt-2 text-xs leading-snug text-center text-muted-foreground"
       data-testid="billing-disclosure"
     >
-      {`${price}${period}, charged today and automatically renews each ${periodNoun} until you cancel. Cancel anytime in `}
+      {leadClause}
       <a
         href="/account/billing"
         className="underline underline-offset-2 hover:text-foreground"

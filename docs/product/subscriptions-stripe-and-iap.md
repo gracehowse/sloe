@@ -6,6 +6,7 @@ Suppr uses **two purchase systems** by design; they must stay aligned on **entit
 
 - **Provider:** Stripe Checkout / Customer Portal (see app pricing and webhook handlers).
 - **Truth:** Stripe webhook updates `profiles.user_tier` after payment events. The same `checkout.session.completed` webhook captures `session.customer` onto `profiles.stripe_customer_id` so the billing portal can open without a Stripe API lookup round-trip (round 3, 2026-04-19).
+- **Trial (ENG-1285, 2026-07-01):** `app/api/stripe/checkout/route.ts` passes `subscription_data.trial_period_days: 7` + `payment_method_collection: "always"` (card upfront) for **Pro annual only** — monthly is trial-less per pricing v1 (`docs/decisions/2026-04-19-pricing-v1.md`). This matches the mobile IAP annual trial and makes the /pricing "No payment due now — first charge on Day 7" chip truthful. The webhook grants Pro on `trialing` status; the annual `BillingDisclosure` on /pricing and the upgrade-dialog renewal note both lead with the trial + Day-7 first-charge clause. Pinned by `tests/unit/stripeCheckoutRoute.test.ts` (params) and `tests/unit/landingParity.test.tsx` / `tests/unit/upgradePaywallDialog.test.tsx` (copy).
 - **Billing portal route:** `/account/billing` is a server component (`app/account/billing/page.tsx`) that opens the Stripe Customer Portal for the signed-in user.
   - Unauthenticated → redirects to `/login?redirect=/account/billing`.
   - No `stripe_customer_id` (Free users, or paid users pre-migration) → redirects to `/pricing?ref=billing`.

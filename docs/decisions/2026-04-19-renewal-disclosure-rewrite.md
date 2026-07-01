@@ -22,6 +22,9 @@ legal-reviewer (blocker + requirements), monetisation-architect (owns final copy
 **Status**
 Active — implementation complete; final copy pending sign-off from monetisation-architect. No landing claim or checkout flow should revert to the old one-liner pattern.
 
+**Addendum (2026-07-01, ENG-1285)**
+The "new payment cadence" revisit trigger fired: Pro annual on web now carries a real Stripe 7-day trial (`trial_period_days: 7`, card upfront via `payment_method_collection: "always"` — `app/api/stripe/checkout/route.ts`), restoring parity with the mobile IAP annual trial. The annual first-charge-timing clause changed accordingly: the `BillingDisclosure` lead on `/pricing` (annual view) and the upgrade-dialog renewal note now read "7-day free trial — no payment due today, first charge on Day 7" instead of "charged today". Monthly remains trial-less and keeps the "charged today" wording. All other disclosure elements (price + cadence, auto-renewal, cancel path, refund link, tax clause) are unchanged. Copy pinned by `tests/unit/landingParity.test.tsx` and `tests/unit/upgradePaywallDialog.test.tsx`; Stripe params pinned by `tests/unit/stripeCheckoutRoute.test.ts`.
+
 **Revisit on**
 - Regulatory change: if FTC Negative Option Rule is amended or California ARL enforcement guidance shifts.
 - New payment cadence (e.g. annual plans added): disclosure block must be updated to reflect the new cadence and first-charge amount before launch.

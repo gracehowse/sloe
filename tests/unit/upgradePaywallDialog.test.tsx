@@ -287,6 +287,11 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
     expect(renewal).toHaveTextContent(/per year/i);
     expect(renewal).toHaveTextContent(/until cancelled/i);
     expect(renewal).toHaveTextContent(/£7\.99 per month on the monthly plan/i);
+    // ENG-1285: annual checkouts carry the Stripe 7-day trial, so the
+    // annual disclosure leads with the trial + Day-7 first charge.
+    expect(renewal).toHaveTextContent(
+      /7-day free trial — no payment due today, first charge on Day 7/i,
+    );
   });
 
   it("T24: full CMA disclosure includes renews-until-cancelled, cancel path, refund policy (Pro)", () => {
@@ -298,6 +303,9 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
     expect(renewal).toHaveTextContent(/Cancel anytime from Account → Billing/i);
     expect(renewal).toHaveTextContent(/Prices include any applicable VAT/i);
     expect(renewal).toHaveTextContent(/7-day refund policy/i);
+    // ENG-1285: monthly stays trial-less — no trial claim on the
+    // default (monthly) disclosure.
+    expect(renewal).not.toHaveTextContent(/free trial/i);
     // PR-01: Base must not appear in the disclosure.
     expect(renewal).not.toHaveTextContent(/Suppr Base/i);
     expect(renewal).not.toHaveTextContent(/keep base/i);
