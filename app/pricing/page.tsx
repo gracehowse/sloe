@@ -14,6 +14,7 @@ import { PaywallTrustStrip } from "./PaywallTrustStrip.tsx";
 import { PricingLegacyTrustSignals } from "./PricingLegacyTrustSignals.tsx";
 import { PaywallValueGrid } from "./PaywallValueGrid.tsx";
 import { PaywallComparison } from "./PaywallComparison.tsx";
+import { PaywallTrajectoryChart } from "./PaywallTrajectoryChart.tsx";
 import { PromoCodeBlock } from "./PromoCodeBlock.tsx";
 
 /** Map a raw `?from=` URL-param value into the canonical enum so
@@ -207,6 +208,13 @@ export default async function PricingPage({
         <PricingHero />
 
         <PricingPaywallHonesty paywallFrom={paywallFrom} />
+
+        {/* ENG-969 — calm projected-weight chart (default-OFF
+            `paywall_trajectory_chart_v1`, self-gated client-side). The public
+            /pricing route is unauthenticated and passes no per-user data, so it
+            renders nothing here today — net-neutral. The component contract
+            matches mobile so an authenticated web mount draws the same chart. */}
+        <PaywallTrajectoryChart />
 
         {/* 2×2 value-prop grid (Figma `284:2`) — Unlimited imports /
             Macro fitting / AI coach / Cloud sync. Copy from the shared

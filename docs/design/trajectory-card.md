@@ -107,3 +107,47 @@ in a follow-up cleanup PR.
   it pure-trajectory — the Journey card owns goal-ETA.
 - Placement: directly under the chart (current) vs lower near the Journey
   card. Shipped under the chart per the approved prototype.
+
+## 10. Paywall trajectory chart (ENG-969)
+
+A second surface for the same projection, on the Pro paywall — a calm
+**single-line projected-weight chart** (current → projected, dashed
+segment + hollow end marker) instead of the bare hero numeral. The intent
+is a quiet reason-to-believe before the sell: "if you keep this pace,
+here's where you land."
+
+- **Maths is the SAME shared `computeTrajectory()`** — no re-derivation,
+  no web ↔ mobile drift, and the 5-week linear cap
+  (`MAX_LINEAR_PROJECTION_WEEKS`) is enforced by that helper. The line is
+  literally the current weight anchored at "now" and the `projectedKg`
+  value at `~weeks` out.
+- **Renderers:** `apps/mobile/components/paywall/PaywallTrajectoryChart.tsx`
+  (the mobile component self-loads the user's last-90-day food log +
+  profile weight/target/goal/TDEE and feeds the pure
+  `PaywallTrajectoryChartView`) and `app/pricing/PaywallTrajectoryChart.tsx`
+  (web, data-prop-driven + self-gated client-side).
+- **Honest framing on a conversion surface:** unlike the Progress card,
+  the paywall chart renders **only** the `projection` state. Below the
+  5-day floor, with no weight, or with no log at all → it renders
+  **nothing**. A paywall must never nag "log 5 more days" and must never
+  fabricate a forecast to sell against. Same `tabular-nums`, same
+  "An estimate, not a promise." footnote, accent line (never red/green).
+- **Mounts:** mobile `apps/mobile/app/paywall.tsx` (flag-gated mount,
+  net-neutral host lines, after the personalised-plan card); web
+  `app/pricing/page.tsx` (unconditional mount — the component self-gates).
+- **Flag:** `paywall_trajectory_chart_v1` (PostHog, **default-OFF**;
+  registered in `KNOWN_DEFAULT_OFF_FLAGS` on both platforms). Flag-OFF
+  ships zero visual change. Web dev/Playwright override:
+  `window.__SUPPR_FORCE_FLAGS__`; mobile dev override:
+  `EXPO_PUBLIC_FLAG_FORCE_PAYWALL_TRAJECTORY_CHART_V1=true` (or the dev
+  Settings panel).
+- **Cross-platform deviation (data availability, not behaviour):** the
+  public `/pricing` route is unauthenticated and passes no per-user data,
+  so the web chart renders nothing there today — net-neutral. The
+  component contract matches mobile so an authenticated web paywall mount
+  draws the identical chart. The chart pixels need a sim + web glance
+  before the flag ramps.
+- **Tests:** `tests/unit/paywallTrajectoryChart.test.tsx` (web — flag gate
+  + projection render + never-fabricates) and
+  `apps/mobile/tests/unit/paywallTrajectoryChart.test.tsx` (mobile —
+  projection render + never-fabricates/nags).
