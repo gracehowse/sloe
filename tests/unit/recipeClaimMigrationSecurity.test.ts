@@ -119,7 +119,7 @@ describe("ENG-1243 recipe claim RLS forward-fix migration", () => {
 
 describe("ENG-1235 recipe claim idempotency migration", () => {
   const sql = read(
-    "supabase/migrations/20260702120700_eng1235_recipe_claim_idempotency.sql",
+    "supabase/migrations/20260702120800_eng1235_recipe_claim_idempotency.sql",
   );
   const normalized = normalize(sql);
 
