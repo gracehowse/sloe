@@ -517,6 +517,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (explicit "Generate Shopping List" only; kill switch: remove here / PostHog).
   // Mirror of the web entry in src/lib/analytics/track.ts. M+W.
   "plan_shopping_sync_v1",
+  // ENG-722 — log-confirm checkmark micro-animation (Noom teardown element D):
+  // a calm sage check scale-fades over the Today ring on every successful log
+  // (visual half; the light commit haptic shipped 2026-04-28). DEFAULT-ON per
+  // the "always flag on" beta-window policy; off → no animation (kill switch).
+  // Reduce-motion → no check. Mirror of the web entry in track.ts. M+W.
+  "log_confirm_check_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in

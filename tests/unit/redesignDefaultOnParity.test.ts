@@ -137,6 +137,14 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
     // It's a shared flag — not on either platform-only carve-out list.
     expect(WEB_ONLY.has("recipe_shopping_list_v1")).toBe(false);
     expect(MOBILE_ONLY.has("recipe_shopping_list_v1")).toBe(false);
+  it("ENG-722 log-confirm checkmark flag defaults ON on both platforms", () => {
+    // The visual half of the commit feedback (haptic shipped 2026-04-28) ships
+    // default-on per the "always flag on" beta-window policy — registered in
+    // REDESIGN_DEFAULT_ON, NOT KNOWN_DEFAULT_OFF_FLAGS, on web AND mobile.
+    expect(web.has("log_confirm_check_v1"), "web log_confirm_check_v1").toBe(true);
+    expect(mobile.has("log_confirm_check_v1"), "mobile log_confirm_check_v1").toBe(
+      true,
+    );
   });
 
   it("core design-system flags default ON on both platforms", () => {

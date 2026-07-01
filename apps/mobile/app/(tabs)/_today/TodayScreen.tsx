@@ -214,6 +214,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { useWinMoment } from "@/hooks/use-win-moment";
 import { WinMomentPlayer } from "@/components/ui/WinMomentPlayer";
+import { useLogConfirmCheck } from "@/hooks/useLogConfirmCheck";
+import { LogConfirmCheck } from "@/components/today/LogConfirmCheck";
 import { TodayHero } from "@/components/today/TodayHero";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
 import { paceKgPerWeekFromPreset } from "@suppr/shared/nutrition/whyThisNumber";
@@ -448,13 +450,11 @@ export default function TrackerScreen() {
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // ENG-798 (Design Direction 2026) — the quiet daily-commit confirm haptic.
-  // Provided by `useWinMoment` (defined far below in this component, after the
-  // snapshot it needs is computed), so we reach it through a ref: every
-  // log-meal entry point funnels through `persistMealsImmediate`, and firing
-  // the haptic there gives ONE confirm beat per durable commit (no per-call-
-  // site duplication, no double-buzz). The haptic itself is gated behind
-  // `redesign_motion` inside the hook — flag-off keeps today's silent log.
+  // ENG-798 quiet daily-commit confirm haptic + ENG-722 log-confirm checkmark,
+  // both bound far below (after the snapshot they need), reached through a ref:
+  // every log-meal entry point funnels through `persistMealsImmediate`, so
+  // firing here gives ONE confirm beat per durable commit (no double-buzz, no
+  // per-call-site scatter). Each self-gates its flag inside its hook.
   const confirmLogHapticRef = useRef<() => void>(() => {});
 
   /**
@@ -516,10 +516,9 @@ export default function TrackerScreen() {
         );
         return false;
       }
-      // ENG-798 — the meal is durably saved: fire ONE quiet confirm haptic for
-      // the commit (gated behind `redesign_motion` in the hook). The loud
-      // SUCCESS notification stays reserved for the win-moment landmark, which
-      // `useWinMoment` fires on its own beat when the calorie/macro goal is hit.
+      // ENG-798 / ENG-722 — the meal is durably saved: fire ONE quiet confirm
+      // beat (Medium haptic + log-confirm check) through the funnel. The loud
+      // SUCCESS notification stays reserved for the win-moment landmark.
       confirmLogHapticRef.current();
       // Defer the heavy all-entries TDEE read so it cannot race food-search
       // network streams on the same commit beat (native dev-client crash).
@@ -3076,14 +3075,12 @@ export default function TrackerScreen() {
   );
   const protectedStreakLength = protectedStreakInfo.streakLength;
 
-  // ENG-798 (Redesign — Design Direction 2026) — reserved win-moment.
-  // The shared landmark math + the once-per-day / flag gate live in
-  // `useWinMoment`; Today just feeds it a live snapshot and renders the
-  // returned `<WinMomentPlayer>` overlay (see below in the JSX). All
-  // detection is inert when `redesign_winmoment` is off, so the
+  // ENG-798 (Redesign — Design Direction 2026) — reserved win-moment. The
+  // shared landmark math + once-per-day / flag gate live in `useWinMoment`;
+  // Today feeds it a live snapshot and renders the returned `<WinMomentPlayer>`
+  // overlay (below). Detection is inert when `redesign_winmoment` is off, so
   // pre-redesign static behaviour is preserved. `confirmLog` is the quiet
-  // <100ms confirm haptic for ordinary logs (gated behind
-  // `redesign_motion`) — wired into the ordinary-log path.
+  // <100ms confirm haptic for ordinary logs (gated behind `redesign_motion`).
   const winSnapshot = useMemo(
     () => ({
       consumed: totals.calories,
@@ -3118,14 +3115,17 @@ export default function TrackerScreen() {
     isToday,
     ready: hydrated,
   });
-  // Keep the persist-path ref pointed at the latest `confirmLog` so the
-  // commit haptic always reflects the current flag state (the hook returns a
-  // stable callback, but the assignment is cheap + future-proofs a re-bind).
-  confirmLogHapticRef.current = confirmLogHaptic;
+  // ENG-722 — visual half of commit feedback: `logConfirmBump` drives
+  // `<LogConfirmCheck>` on the same commit beat via the SINGLE funnel ref (no
+  // scatter); the hook self-gates (`log_confirm_check_v1` + reduce-motion).
+  const { bump: logConfirmBump, trigger: triggerLogConfirm } = useLogConfirmCheck();
+  confirmLogHapticRef.current = () => {
+    confirmLogHaptic();
+    triggerLogConfirm();
+  };
 
-  // L6 G8 (2026-04-18) — fire `streak_reset` exactly once when the
-  // protected streak transitions from >=1 to 0. Ref starts at `null`
-  // so a user with a zero streak on first render never fires.
+  // L6 G8 (2026-04-18) — fire `streak_reset` once when the protected streak
+  // goes >=1 → 0. Ref starts `null` so a zero-streak first render never fires.
   const priorProtectedStreakRef = useRef<number | null>(null);
   // Premium-bar audit DC8 polish (2026-05-14) — when the streak just
   // reset, show a calm supportive line in the date-header row
@@ -4526,10 +4526,9 @@ export default function TrackerScreen() {
         ...prev,
         [targetDayKey]: [...(prev[targetDayKey] ?? []), ...withIds],
       }));
-      // Copy / duplicate is a log commit — fire the canonical commit confirm
-      // beat (Medium, ENG-1016) through the shared funnel ref rather than a
-      // bespoke raw Light call. This path does its own insert (below) instead
-      // of `persistMealsImmediate`, so the funnel haptic is invoked here.
+      // Copy / duplicate is a log commit — this path inserts directly (below)
+      // instead of via `persistMealsImmediate`, so fire the shared confirm
+      // funnel (Medium haptic + log-confirm check) here.
       confirmLogHapticRef.current();
       if (!userId) return withIds.length;
       // Single shared row shape (launch-audit P1-2 consolidation) — the
@@ -5324,15 +5323,15 @@ export default function TrackerScreen() {
                   effectiveCalorieGoal > 0 &&
                   Math.abs(totals.calories - effectiveCalorieGoal) / effectiveCalorieGoal <= 0.1
                 }
-                // ENG-758: real weigh-in count from the profile's
-                // weight_kg_by_day map (already loaded) — distinct weigh-in
-                // days in the last 7, replacing the adaptiveTdeeConfidence proxy.
+                // ENG-758: real weigh-in count (distinct weigh-in days in the
+                // last 7) from weight_kg_by_day, not the old confidence proxy.
                 tdeeLearnDays={countWeighInDaysInWindow(
                   profileWeightKgByDay,
                   dateKeyFromDate(new Date()),
                 )}
                 onPressStatusChip={() => setWhySheetOpen(true)}
                 coachLine={heroCoachLine ?? undefined}
+                logConfirmBump={logConfirmBump}
               />
                 );
               })()}

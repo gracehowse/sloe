@@ -391,6 +391,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (explicit "Generate Shopping List" only; kill switch: remove here / PostHog).
   // Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
   "plan_shopping_sync_v1",
+  // ENG-722 — log-confirm checkmark micro-animation (Noom teardown element D):
+  // a calm sage check scale-fades over the Today ring on every successful log
+  // (visual half; the light commit haptic shipped 2026-04-28). DEFAULT-ON per
+  // the "always flag on" beta-window policy; off → no animation (kill switch).
+  // Reduce-motion → no check. Web + mobile — keep in sync with analytics.ts.
+  "log_confirm_check_v1",
 ]);
 
 /**
