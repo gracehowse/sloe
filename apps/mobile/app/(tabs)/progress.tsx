@@ -101,7 +101,10 @@ import {
 import { formatRecapForShare } from "@/lib/weeklyRecap";
 import { resolveDigestHeadline } from "@suppr/nutrition-core/digest";
 import type { DigestBlendedExtras } from "@suppr/nutrition-core/digest";
-import { isFeatureEnabled } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { useTrendOnlyWeight } from "@/lib/trendOnlyWeight";
+import { describeTrendOnly, trendOnlyDirection, resolveEffectiveWeightSurfaceMode, TREND_ONLY_MODE_NOTE } from "@suppr/shared/preferences/trendOnlyWeight";
 import { WeightCelebrationOverlays } from "@/components/progress/WeightCelebrationOverlays";
 import { Digest, type DigestUsualMeal } from "@/components/Digest";
 import { HouseholdBar } from "@/components/HouseholdBar";
@@ -285,6 +288,11 @@ export default function ProgressScreen() {
   // Loaded from profiles.weight_surface_mode; defaults to "show" to
   // preserve legacy behaviour.
   const [weightSurfaceMode, setWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
+
+  // ENG-713 — body-neutral "Trend-only weight" opt-in (client-side pref; flag
+  // `progress_trend_only_v1`). Composition lives in the shared helper.
+  const [trendOnlyWeight] = useTrendOnlyWeight();
+  const effectiveWeightSurfaceMode: WeightSurfaceMode = resolveEffectiveWeightSurfaceMode(weightSurfaceMode, trendOnlyWeight, isFeatureEnabled("progress_trend_only_v1"));
 
   // Weight chart consolidation Phase 1 (2026-05-11, B6). Inline
   // log-weight sheet replaces the prior `/weight-tracker` push for the
@@ -1263,7 +1271,7 @@ export default function ProgressScreen() {
           until the user crosses the 3-day data floor (geometry matches so
           the slot doesn't jump). On `trends_only` the direction tile still
           renders above so opt-out users keep a weight signal. */}
-      {weightSurfaceMode === "trends_only" && (
+      {effectiveWeightSurfaceMode === "trends_only" && (
         <WeightTrendOnlyCard weekDeltaKg={weightRange.weekDeltaKg} windowLabel={periodWindowLabel} theme={t} />
       )}
       {hasEnoughDataForStory(weekStats.daysWithFood) ? (
@@ -1305,7 +1313,7 @@ export default function ProgressScreen() {
           "View all measurements". The detailed Withings-style chart +
           all-data list stay reachable via the sheets (no feature lost).
           Gated on `show` — opt-out users saw the direction tile above. */}
-      {weightSurfaceMode === "show" && chartsReady ? (() => {
+      {effectiveWeightSurfaceMode === "show" && chartsReady ? (() => {
         const sortedWeightDays = Object.entries(weightKgByDay).sort(([a], [b]) => a.localeCompare(b));
         const startKg = sortedWeightDays.length > 0 ? sortedWeightDays[0][1] : null;
         const weekDeltaKg = weightRange.weekDeltaKg;
@@ -1508,7 +1516,7 @@ export default function ProgressScreen() {
             ) : null}
           </View>
         );
-      })() : weightSurfaceMode === "show" ? (
+      })() : effectiveWeightSurfaceMode === "show" ? (
         <View
           testID="progress-weight-chart-pending"
           style={[{ backgroundColor: cardElevation.liftBg ?? t.elevated, borderRadius: CARD_RADIUS, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, padding: 20, minHeight: 140 }, cardElevation.shadowStyle]}
@@ -1844,7 +1852,7 @@ export default function ProgressScreen() {
         <ExpenditureTrendCard enabled={expenditureCardEnabled} adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
 
         {/* PROJECTED WEIGHT (trajectory) card — flag-gated feature kept. */}
-        {trajectoryBoxEnabled && weightSurfaceMode === "show" ? (
+        {trajectoryBoxEnabled && effectiveWeightSurfaceMode === "show" ? (
           <TrajectoryCard
             byDay={byDay}
             latestWeightKg={latestWeightKg}
@@ -1860,7 +1868,7 @@ export default function ProgressScreen() {
         ) : null}
 
         {/* JOURNEY / projection card */}
-        {weightSurfaceMode === "show" &&
+        {effectiveWeightSurfaceMode === "show" &&
           latestWeightKg != null &&
           goalWeightKg != null &&
           Math.abs(goalWeightKg - latestWeightKg) > 0.05 && (
@@ -2072,7 +2080,7 @@ export default function ProgressScreen() {
               narrative={{ closestToTarget, maintenanceLine, usualMeal }}
               shareText={formatRecapForShare(recap)}
               state={digestState}
-              weightSurfaceMode={weightSurfaceMode}
+              weightSurfaceMode={effectiveWeightSurfaceMode}
               onShare={() => { /* Digest owns share sheet + analytics */ }}
               onDismiss={dismissRecap}
               onOpenSaveCombo={(slot, items) => {
@@ -2198,8 +2206,9 @@ type CardTheme = {
  * Mirrors `WeightTrendOnlyCardWeb` in `src/app/components/ProgressDashboard.tsx`
  * so opt-out behaviour is identical across web and mobile.
  *
- * Never surfaces an absolute kg/lb — only "Slightly down/up/Stable this
- * week" + an arrow glyph. Threshold (0.3 kg) matches the web copy.
+ * Never surfaces an absolute kg/lb — only the shared body-neutral trend phrase
+ * ("Trending down/up gently" / "Holding steady"), no directional glyph.
+ * Threshold (0.3 kg) matches the web copy.
  */
 function WeightTrendOnlyCard({
   weekDeltaKg,
@@ -2212,23 +2221,13 @@ function WeightTrendOnlyCard({
   theme: CardTheme;
 }) {
   const cardElev = useCardElevation();
-  const direction =
-    weekDeltaKg == null || !Number.isFinite(weekDeltaKg)
-      ? null
-      : Math.abs(weekDeltaKg) < 0.3
-        ? "stable"
-        : weekDeltaKg < 0
-          ? "down"
-          : "up";
-  const arrow = direction === "up" ? "↑" : direction === "down" ? "↓" : direction === "stable" ? "→" : "—";
-  const label =
-    direction === "up"
-      ? "Slightly up this week"
-      : direction === "down"
-        ? "Slightly down this week"
-        : direction === "stable"
-          ? "Stable this week"
-          : "Log a weight to see your trend";
+  // ENG-713 — direction + neutral copy from the shared trend-only helper so
+  // web + mobile can't drift and the strings live in one reviewable place (the
+  // copy needs diversity-inclusion + legal sign-off before ramp). No directional
+  // glyph — the neutral phrase carries the direction; an ↗/↘ shape would re-add
+  // the visual up/down valence this mode removes (legal review 2026-07-01).
+  const direction = trendOnlyDirection(weekDeltaKg);
+  const label = describeTrendOnly(direction);
   return (
     <View
       testID="progress-weight-trend-only-card"
@@ -2247,14 +2246,11 @@ function WeightTrendOnlyCard({
       <Text style={{ ...Type.label, color: theme.dim }}>
         Weight trend
       </Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
-        <Text style={{ fontSize: 24, fontWeight: "700", color: theme.text }} accessibilityElementsHidden>
-          {arrow}
-        </Text>
+      <View style={{ marginTop: 8 }}>
         <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>{label}</Text>
       </View>
       <Text style={{ fontSize: 12, color: theme.sub, marginTop: 4, lineHeight: 16 }}>
-        Showing direction only · {windowLabel}. Switch to numbers in Settings if you want them back.
+        {TREND_ONLY_MODE_NOTE} · {windowLabel}
       </Text>
     </View>
   );

@@ -526,6 +526,14 @@ export const AnalyticsEvents = {
    *  (`weigh_in_reminder_v1`). Payload: `{ enabled: boolean, weekday?: number,
    *  hour?: number }` — weekday/hour present when the cadence is also set. */
   weigh_in_reminder_enabled_toggled: "weigh_in_reminder_enabled_toggled",
+  /** ENG-713 — user toggled the body-neutral "Trend-only weight" display
+   *  preference (hides the numeric weight chart + figures on Progress, shows a
+   *  neutral direction instead). Same name web + mobile. Fires once per
+   *  committed change, never on initial hydration. Flag `progress_trend_only_v1`.
+   *  Payload: `{ enabled: boolean, platform: "web" | "mobile" }` — NEVER any
+   *  weight value, delta, or direction (dignity: the event must not leak the
+   *  thing the mode exists to hide). */
+  trend_only_weight_toggled: "trend_only_weight_toggled",
   /** Weekly Check-in surface (TDEE delta + goal-pace re-tune) was viewed.
    * MacroFactor parity (extended-competitor-audit, 2026-04-30). Fires
    * once per visible weekKey on either platform — mobile from the

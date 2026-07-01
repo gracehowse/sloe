@@ -78,6 +78,7 @@ import { MfpCsvImportCard } from "./imports/MfpCsvImportCard";
 import { SubscriptionCard } from "./settings/SubscriptionCard";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import { useCalmMode } from "../../lib/preferences/useCalmMode";
+import { TrendOnlyWeightToggle } from "./settings/TrendOnlyWeightToggle.tsx";
 import {
   type MacroDisplayStyle,
   MACRO_DISPLAY_OPTIONS,
@@ -1453,6 +1454,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               onCheckedChange={(next) => setCalmMode(!!next)}
             />
           </div>
+
+          <TrendOnlyWeightToggle /> {/* ENG-713 — flag-gated; self-hides */}
 
           {/* Week start picker.
               P1-7 (audit 2026-04-30) — migrated to SettingsSegmented.
