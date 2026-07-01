@@ -76,6 +76,15 @@ jobs:
         run: npm run check:today-captures
       - name: Type scale lint (ENG-119)
         run: npm run check:type-scale
+      - name: Mobile type-scale ratchet (ENG-1002)
+        # Mobile counterpart of the ENG-119 web type-scale gate above. Gives
+        # teeth to "Type comes from the ramp" on mobile: flags raw `fontSize: N`
+        # literals off the `Type` ramp (apps/mobile/constants/theme.ts) in
+        # apps/mobile/app + apps/mobile/components `.tsx`. Runs on the web job
+        # since the checkout includes apps/mobile. Legacy offenders are pinned
+        # in scripts/type-scale-mobile-budget.json and may only shrink; any new
+        # off-ramp size (or a pinned file gaining one) fails.
+        run: npm run check:type-scale-mobile
       - name: Screen line-count ratchet (ENG-717)
         # Gives teeth to the "No screen file over 400 lines" rule. Scans
         # both web (src/app/components, app) and mobile (apps/mobile/app,
