@@ -65,7 +65,7 @@ jobs:
       VERIFY_STRICT: "0"
     steps:
       - name: Checkout dispatched ref
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.ref }}
           # Need a writable token + full history so we can commit + push back.

@@ -39,7 +39,7 @@ jobs:
       SUPPR_TEST_AUTH_BEARER: ${{ secrets.SUPPR_TEST_AUTH_BEARER }}
       GATE0_VERIFY_PASSWORD: ${{ secrets.GATE0_VERIFY_PASSWORD }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -126,7 +126,7 @@ jobs:
       run:
         working-directory: apps/mobile
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -205,7 +205,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Fetch full history so gitleaks can scan back to the merge base
           # of the PR — partial history misses secrets introduced in older
@@ -236,7 +236,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -290,7 +290,7 @@ jobs:
       # unset so prod retains the secure default.
       SENTRY_RETAIN_SOURCEMAPS: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 20

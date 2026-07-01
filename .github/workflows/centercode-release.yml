@@ -27,7 +27,7 @@ jobs:
       - name: Skip when Centercode API key is not configured
         if: env.CENTERCODE_API_KEY == ''
         run: echo "CENTERCODE_API_KEY not set — skipping Centercode publish."
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: env.CENTERCODE_API_KEY != ''
       - uses: actions/setup-node@v4
         if: env.CENTERCODE_API_KEY != ''
