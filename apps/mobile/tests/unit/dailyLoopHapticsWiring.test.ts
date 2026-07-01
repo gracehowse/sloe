@@ -64,7 +64,13 @@ describe("Daily-loop haptics — LOG MEAL (Today)", () => {
   });
 
   it("the ref is kept current from the useWinMoment confirmLog handler", () => {
-    expect(TODAY).toContain("confirmLogHapticRef.current = confirmLogHaptic");
+    // ENG-722: the ref funnel now WRAPS the win-moment confirmLog handler so a
+    // durable commit fires both the haptic and the visual log-confirm check. It
+    // still invokes `confirmLogHaptic` (kept current) — it just no longer aliases
+    // it raw. The `.current()` call-count invariant above is unchanged.
+    expect(TODAY).toMatch(
+      /confirmLogHapticRef\.current = \(\) => \{[\s\S]*?confirmLogHaptic\(\);[\s\S]*?triggerLogConfirm\(\);/,
+    );
   });
 
   it("the confirm haptic is gated behind redesign_motion (not the win flag)", () => {

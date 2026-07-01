@@ -90,8 +90,6 @@ const GATE_15_SHARED = [
   "today_log_again",
   "today_log_usual_row_v2",
   "log_sheet_nl_text_v1",
-  // ENG-974 — "refine by describing" conversational correction (photo + voice).
-  "log_refine_describe_v1",
   "recipe_share_card_v1",
   "cook_log_servings_confirm",
   "plan_web_parity_v1",
@@ -137,6 +135,8 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
     // It's a shared flag — not on either platform-only carve-out list.
     expect(WEB_ONLY.has("recipe_shopping_list_v1")).toBe(false);
     expect(MOBILE_ONLY.has("recipe_shopping_list_v1")).toBe(false);
+  });
+
   it("ENG-722 log-confirm checkmark flag defaults ON on both platforms", () => {
     // The visual half of the commit feedback (haptic shipped 2026-04-28) ships
     // default-on per the "always flag on" beta-window policy — registered in

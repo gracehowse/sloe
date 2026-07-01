@@ -251,12 +251,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "recipe_share_card_v1",
   // ENG-972 — inline NL text meal logging inside LogSheet (default-on).
   "log_sheet_nl_text_v1",
-  // ENG-974 — "refine by describing" conversational correction on photo + voice
-  // log results ("that was a large bowl, no rice, add a fried egg" → re-estimate).
-  // Closes Cal AI's most-cited gap (corrections don't work). Default-on; off →
-  // the review screens ship WITHOUT the refine input (kill switch). Keep in sync
-  // with the mobile set in apps/mobile/lib/analytics.ts.
-  "log_refine_describe_v1",
   // ENG-980 — save-first import lands in Library before review (mobile import).
   "import-save-first-v1",
   // ENG-965 / ENG-990 — surface MFP/MacroFactor refugee app-choice step by default.
