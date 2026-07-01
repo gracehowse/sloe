@@ -379,6 +379,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // Grace's "always flag on" policy (ENG-1279) — off → the action is hidden and
   // the list stays plan-only (kill switch: remove here / PostHog). Web + mobile.
   "recipe_shopping_list_v1",
+  // ENG-1235 — owner Claim → Official macros provenance toggle. DEFAULT-ON per
+  // beta-window policy; off → owner action is hidden while the server route
+  // remains protected by auth/ownership/service-role checks. Web + mobile.
+  "official_recipe_claim_v1",
   // ENG-1236 — referral / invite-for-Pro growth loop in household invite
   // surfaces. Default-on for beta-window growth builds; off hides the new
   // referral card while leaving the existing household invite flow intact.

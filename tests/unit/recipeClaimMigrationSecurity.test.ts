@@ -116,3 +116,16 @@ describe("ENG-1243 recipe claim RLS forward-fix migration", () => {
     );
   });
 });
+
+describe("ENG-1235 recipe claim idempotency migration", () => {
+  const sql = read(
+    "supabase/migrations/20260702120800_eng1235_recipe_claim_idempotency.sql",
+  );
+  const normalized = normalize(sql);
+
+  it("adds one verified claim row per recipe claimant", () => {
+    expect(normalized).toContain("create unique index if not exists recipe_claims_verified_recipe_claimant_uidx");
+    expect(normalized).toContain("on public.recipe_claims(recipe_id, claimant_id)");
+    expect(normalized).toContain("where status = 'verified'");
+  });
+});

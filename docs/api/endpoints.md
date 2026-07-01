@@ -14,6 +14,7 @@ Canonical implementation paths live under `app/api/**/route.ts`. Detail for heav
 | `/api/recipe-import/image` | POST | Bearer + tier | Multipart image → structured recipe (Claude vision, OpenAI fallback) with per-ingredient parse confidence; Free tier **403** |
 | `/api/nutrition/scan-label` | POST | Bearer | Multipart nutrition-label photo → per-100g macros (vision OCR) + Atwater plausibility flag; pre-fills custom-food form |
 | `/api/nutrition/verify-recipe` | POST | Bearer | Ingredient verification pipeline |
+| `/api/recipes/claim-official` | POST | Bearer + origin | Owner marks published recipe macros official (service-role write after JWT ownership + eligibility checks) |
 | `/api/nutrition/voice-log` | POST | Bearer + **Pro** | Transcript → parsed items; **403** if not Pro; daily rate limit |
 | `/api/nutrition/photo-log` | POST | Bearer + **Pro** | Multipart photo → items; **403** if not Pro |
 | `/api/nutrition/adaptive-tdee` | GET | Bearer | Static vs adaptive TDEE snapshot for user |
@@ -680,6 +681,33 @@ Implementation: [app/api/edamam/food/route.ts](../../app/api/edamam/food/route.t
 ### `GET|POST|DELETE /api/household/meals`
 
 **Auth:** Bearer. Shared meals CRUD; `DELETE` includes IDOR guards (see integration tests).
+
+---
+
+## Recipe claim (owner official macros)
+
+### `POST /api/recipes/claim-official`
+
+**Auth:** Bearer + **origin** check (`assertOrigin`). **Service role** required on server.
+
+Owner-only path to flip a published community recipe to macros-confirmed (`content_origin='claimed'`, `is_verified=true`, claim audit row). The handler resolves the caller from the Supabase session/JWT, loads the recipe with the service-role client, and asserts `recipes.author_id === userId` in-route — never from the request body.
+
+**Rate limit:** 10 requests/hour per user
+
+**Request:**
+```json
+{ "recipeId": "uuid" }
+```
+
+**Eligibility (422):** published recipe with `source_url`, at least one ingredient, every ingredient verified, not already claimed by another owner.
+
+**Responses:**
+- **200** `{ ok: true, recipeId, claimed: true }` — newly claimed or idempotent retry (`alreadyClaimed: true` when already claimed by caller)
+- **404** `{ ok: false, error: "not_found" }` — recipe missing or not owned by caller
+- **409** `{ ok: false, error: "already_claimed" }` — claimed by another owner
+- **422** `{ ok: false, error: "<blocker>" }` — eligibility failure (`not_public`, `missing_source`, `no_ingredients`, `unverified_ingredients`, etc.)
+
+Implementation: [app/api/recipes/claim-official/route.ts](../../app/api/recipes/claim-official/route.ts). Shared eligibility: [src/lib/recipes/officialRecipeClaim.ts](../../src/lib/recipes/officialRecipeClaim.ts). UI gated behind `official_recipe_claim_v1`.
 
 ---
 
