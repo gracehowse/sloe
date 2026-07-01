@@ -48,9 +48,7 @@ import {
  * `src/app/components/suppr/hydration-stimulants-card.tsx`.
  * Presets, labels, and "Over limit" / "Over 400 mg" copy are identical.
  *
- * Rules:
- *   - Caffeine row is hidden when `targets.caffeineMg === 0`.
- *   - Alcohol row is hidden when `targets.alcoholGWeekly === 0`.
+ * Rules: caffeine row hidden when `targets.caffeineMg === 0`; alcohol when `targets.alcoholGWeekly === 0`.
  *
  * Accessibility: every chip has `accessibilityRole="button"` and an
  * `accessibilityLabel` that names quantity + stimulant.
@@ -339,12 +337,7 @@ function Chip({
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
-  const waterTone = useMacroColors().colors.water;
-  // ENG-1275 — the alcohol chip TONE is the amber `Accent.warning` fill, which
-  // reads only 2.61:1 as TEXT on the chip's frost-mist `backgroundSecondary` in
-  // light (AA FAIL). Route alcohol LABEL ink to the scheme-resolved
-  // `alcoholSolid` (#9C5228 light / #D6A24A dark — web --stimulant-alcohol-solid
-  // twin, the ENG-1266 fix's mobile mirror). Water/caffeine tones read fine.
+  const waterTone = useMacroColors().colors.water; // ENG-1275: alcohol label → accent.alcoholSolid (amber tone was 2.61:1 on backgroundSecondary = AA fail)
   const labelColor = tone === "alcohol" ? accent.alcoholSolid : tones(waterTone)[tone];
   return (
     <Pressable
@@ -419,9 +412,7 @@ export function HydrationStimulantsCard({
     [onAddAlcohol],
   );
 
-  // Split the water value + unit so the value reads in Newsreader and the
-  // unit stays in the calm caption — matching the `TD2` frame
-  // (`0 ml / 1.8 L`). `formatWaterLine` already returns "{value} {unit}".
+  // Split water value + unit — value in Newsreader, unit in caption (`TD2` frame `0 ml / 1.8 L`).
   const waterValueLine = `${formatWaterLine(waterTotalMl, measurementSystem)} / ${formatWaterLine(targets.waterMl, measurementSystem)}`;
 
   return (
