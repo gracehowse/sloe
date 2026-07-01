@@ -1,0 +1,18 @@
+# Reel-import benchmark seed URLs — GROW-61 / GROW-62 (2026-07-01)
+#
+# A tiny RUNNABLE smoke set of real-shaped TikTok food-Reel URLs so
+# `scripts/benchmark-tiktok-import.mjs` works out of the box (offline shape
+# precheck, and --live once you have a dev server + bearer token).
+#
+# These are SHAPE examples, not a curated ground-truth set. The real GROW-62
+# gate run (≥90% Definition-B on 100 RANDOM food Reels) needs 100 URLs sourced
+# separately — owner: founder / growth. Do NOT hardcode 100 URLs into the repo.
+#
+# Format: one URL per line. Blank lines and # comments are ignored.
+# A JSON array of strings is also accepted (see loadUrls in the harness).
+
+https://www.tiktok.com/@weeknightcook/video/7300000000000000001
+https://www.tiktok.com/@mealprepdaily/video/7300000000000000002
+https://www.tiktok.com/@onepotwonders/video/7300000000000000003
+https://vm.tiktok.com/ZMabc123def/
+https://www.tiktok.com/@highproteinchef/video/7300000000000000005

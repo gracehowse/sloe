@@ -15,6 +15,30 @@ export const AnalyticsEvents = {
   recipe_saved: "recipe_saved",
   food_logged: "food_logged",
   barcode_lookup: "barcode_lookup",
+  /**
+   * A recipe import produced a result the user can review. Fires from the
+   * macro-bearing import paths (URL / social on web `RecipeUpload` + mobile
+   * `import-shared`); the web photo-OCR editor extract also emits it with
+   * `source: "image"` but without quality props (that flow extracts text into
+   * the editor and has no per-ingredient macros to score).
+   *
+   * Same event name web + mobile. Payload:
+   *   {
+   *     source: "url" | "image",
+   *     host?: string,            // web URL path only — import URL hostname
+   *     platform?: "web" | "ios" | "android",  // mobile always sets this
+   *     ingredientCount?: number,
+   *     // GROW-61 quality signal (recipe-import audit, 2026-07-01). Present on
+   *     // the macro-bearing paths so the GROW-62 parse-rate gate (≥90% usable
+   *     // imports) can be measured. Derived from the route result via
+   *     // `importQualityProps` in `src/lib/recipes/importQualitySignal.ts` —
+   *     // no nutrition is recomputed.
+   *     macro_complete?: boolean,        // per-serving calories > 0 (usable spine)
+   *     ingredient_match_rate?: number,  // 0..1 — rows matched to a structured
+   *                                      // catalog (USDA/OFF/FatSecret/Edamam)
+   *                                      // with real macros, over total rows
+   *   }
+   */
   recipe_imported: "recipe_imported",
   /** ENG-980 — parsed import persisted to Library before review completes. */
   recipe_import_saved_first: "recipe_import_saved_first",
