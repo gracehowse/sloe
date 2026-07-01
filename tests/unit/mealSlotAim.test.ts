@@ -10,6 +10,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { emptySlotAimKcal, planSlotAimKcal, aimKcalLabel } from "../../src/lib/nutrition/mealSlotAim";
+import {
+  slotMacroTargets,
+  DEFAULT_PLANNER_BANDS,
+  type PlannerTargets,
+} from "../../src/lib/nutrition/mealPlanAlgo";
 
 describe("planSlotAimKcal (Plan day-card static per-slot target)", () => {
   it("rounds the passed slot-target kcal to the nearest 5", () => {
@@ -81,6 +86,55 @@ describe("emptySlotAimKcal", () => {
   });
 });
 
+describe("ENG-1278 — empty-slot aim over the user's REAL configured slots", () => {
+  const targets: PlannerTargets = {
+    calories: 2400,
+    protein: 180,
+    carbs: 240,
+    fat: 80,
+    fiber: 30,
+    ...DEFAULT_PLANNER_BANDS,
+  };
+
+  it("classic four keeps the dietitian ratio (25/30/35/10) and sums to the day budget", () => {
+    const per = slotMacroTargets(["Breakfast", "Lunch", "Dinner", "Snacks"], targets);
+    expect(per.map((p) => Math.round(p.calories))).toEqual([600, 720, 840, 240]);
+    const sum = per.reduce((a, p) => a + p.calories, 0);
+    expect(Math.round(sum)).toBe(2400);
+  });
+
+  it("a six-meal numbered preset splits the day evenly (1/6 each) and sums to the budget", () => {
+    const six = ["Meal 1", "Meal 2", "Meal 3", "Meal 4", "Meal 5", "Meal 6"];
+    const per = slotMacroTargets(six, targets);
+    expect(per).toHaveLength(6);
+    // No named ratio → even 1/6 share; no slot starved to 0 (the ENG-1177 class).
+    for (const p of per) expect(Math.round(p.calories)).toBe(400);
+    const sum = per.reduce((a, p) => a + p.calories, 0);
+    expect(Math.round(sum)).toBe(2400);
+  });
+
+  it("every numbered slot shows a real aim (none suppressed, none 'Aim ~0')", () => {
+    const six = ["Meal 1", "Meal 2", "Meal 3", "Meal 4", "Meal 5", "Meal 6"];
+    const per = slotMacroTargets(six, targets);
+    const aims = six.map((slot, i) => planSlotAimKcal(slot, per[i]!.calories));
+    // "Meal N" is not an optional slot → every one resolves an aim > 0.
+    expect(aims.every((a) => a != null && a > 0)).toBe(true);
+    expect(aims).toEqual([400, 400, 400, 400, 400, 400]);
+  });
+
+  it("a five-slot mix (four classic + one numbered) never starves the extra slot", () => {
+    // A pathological hand-built set: the numbered 'Meal 5' has no named ratio.
+    const per = slotMacroTargets(
+      ["Breakfast", "Lunch", "Dinner", "Snacks", "Meal 5"],
+      targets,
+    );
+    expect(per).toHaveLength(5);
+    // Every slot gets a non-zero share; total still equals the day budget.
+    for (const p of per) expect(p.calories).toBeGreaterThan(0);
+    expect(Math.round(per.reduce((a, p) => a + p.calories, 0))).toBe(2400);
+  });
+});
+
 describe("ENG-1092 wiring (web + mobile reference the shared helper + flag)", () => {
   const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8");
   const WEB = read("src/app/components/suppr/today-meals-section.tsx");
@@ -129,6 +183,21 @@ describe("ENG-1092 increment 2 — Plan day cards reference the shared helper + 
     for (const src of [WEB_PLAN, MOBILE_PLAN]) {
       expect(src).toMatch(/slotMacroTargets\(/);
     }
+  });
+
+  // ENG-1278 — the empty-slot aim must iterate the user's CONFIGURED slots, not
+  // a hardcoded classic four. Pin the real-slot source on both surfaces so a
+  // revert to ALL_MEAL_SLOTS / [...SLOTS] for the aim breaks a test.
+  it("mobile computes the empty-slot aim over configuredSlots (not ALL_MEAL_SLOTS)", () => {
+    expect(MOBILE_PLAN).toMatch(/slotMacroTargets\(configuredSlots, aimPlannerTargets\)/);
+    // the day-card entries iterate the same configured set
+    expect(MOBILE_PLAN).toMatch(/orderedPlanDaySlotEntries\([^)]*configuredSlots\)/);
+  });
+
+  it("web computes the empty-slot aim over daySlots (numbered preset or classic)", () => {
+    expect(WEB_PLAN).toMatch(/slotMacroTargets\(daySlots, targets\)/);
+    // daySlots resolves to the numbered preset labels, else the classic titles
+    expect(WEB_PLAN).toMatch(/numberedPresetSlots \?\? SLOTS\.map/);
   });
 });
 

@@ -829,6 +829,9 @@ export default function PlannerScreen() {
     fiber: number;
   } | null>(null);
   const [enabledSlots, setEnabledSlots] = useState<Set<string>>(new Set(ALL_MEAL_SLOTS));
+  // ENG-1278 — the user's configured slot labels (classic 4 OR numbered 4/6);
+  // drives the empty-slot "Aim ~X kcal" rows over their real slots.
+  const [configuredSlots, setConfiguredSlots] = useState<string[]>([...ALL_MEAL_SLOTS]);
   const [allowBatchLeftovers, setAllowBatchLeftovers] = useState(true);
   const [planCalorieFloor, setPlanCalorieFloor] = useState(
     DEFAULT_PLAN_ADJUST_CONSTRAINTS.calorieFloor,
@@ -905,7 +908,10 @@ export default function PlannerScreen() {
       }
       let cancelled = false;
       void fetchPlanTargetsFromProfile(userId).then((t) => {
-        if (!cancelled) setPlanTargets(t);
+        if (!cancelled) {
+          setPlanTargets(t);
+          setConfiguredSlots(t.slots); // ENG-1278 — real slot set for empty-slot aims
+        }
       });
       return () => {
         cancelled = true;
@@ -3482,11 +3488,10 @@ export default function PlannerScreen() {
                 />
               );
             })() : null}
-            {/* F-15 — residual protein gap hint (web/mobile parity). Only
-                rendered when the joint-fit scaler left this day more than
-                10g under the protein target. Points at the lowest-protein
-                slot so the user can act: tap the meal row to open the
-                portion / swap action sheet. */}
+            {/* F-15 — residual protein gap hint (web/mobile parity). Rendered
+                only when the joint-fit scaler left this day >10g under the
+                protein target; points at the lowest-protein slot so the user can
+                tap the row → portion / swap action sheet. */}
             {(() => {
               const gap = dp.residualProteinGap;
               if (gap == null || gap >= -10) return null;
@@ -3521,12 +3526,16 @@ export default function PlannerScreen() {
                   </View>
                 );
               }
+              // ENG-1278 — aim over the user's REAL configured slots (classic 4
+              // OR numbered 4/6): `slotMacroTargets` normalises the dietitian
+              // ratio over the set (numbered → even 1/N), indexed by position to
+              // match `orderedPlanDaySlotEntries`' slotIndex over the same list.
               const slotAims = canonicalAimRows
-                ? slotMacroTargets([...ALL_MEAL_SLOTS], aimPlannerTargets).map((t, i) =>
-                    planSlotAimKcal(ALL_MEAL_SLOTS[i]!, t.calories),
+                ? slotMacroTargets(configuredSlots, aimPlannerTargets).map((t, i) =>
+                    planSlotAimKcal(configuredSlots[i]!, t.calories),
                   )
                 : [];
-              const entries = orderedPlanDaySlotEntries(dp.meals, canonicalAimRows);
+              const entries = orderedPlanDaySlotEntries(dp.meals, canonicalAimRows, configuredSlots);
               return entries.map((entry) => {
                 if (entry.kind === "empty") {
                   const slot = entry.slot;
@@ -3567,11 +3576,9 @@ export default function PlannerScreen() {
               const multMeta = planMealPortionMeta(meal, planRecipePool);
               const currentMult = multMeta.displayMult;
               const multLabel = multMeta.label;
-              // ENG-1092 — empty-slot "Aim ~X kcal": the static per-slot share
-              // (`slotMacroTargets` over THIS day's slots, indexed by position —
-              // exact parity with web). null on the optional Snacks slot or when
-              // targets aren't set → no aim line (never "Aim ~0 kcal"). Computed
-              // only for genuinely empty rows; populated rows show real kcal.
+              // ENG-1092/1278 — placeholder-row "Aim ~X kcal": static per-slot
+              // share over THIS day's real slots (web parity); null on optional
+              // Snacks / no targets → no line. Empty rows only; populated show kcal.
               const planRowAim =
                 planAimEmptyOn && !calmMode && !planMealHasRecipe(meal) && aimPlannerTargets
                   ? planSlotAimKcal(
@@ -3600,18 +3607,11 @@ export default function PlannerScreen() {
                   setRowMenu({ dayIdx, mealIndexInDay });
                 }}
               >
-                {/* Prototype port (2026-04-20) — 36×36 thumbnail on the
-                    left of every meal row. Wave-2 (2026-04-30): when the
-                    meal has a recipe with a hero image, render that
-                    image so a multi-day plan reads as a visual scan of
-                    actual meals (not a column of identical slot icons).
-                    2026-06-08 (§11.4): a recipe with no usable image —
-                    OR a stale/expired hero URL that fails to load — now
-                    falls back to the warm sage→cream RecipeHeroFallback
-                    (same calm tile as the Library/Discover cards) instead
-                    of collapsing to an empty tinted square. Genuinely
-                    empty slots still show the slot icon-box, keyed off the
-                    shared `resolvePlanSlotIconKey`. See `PlanMealThumb`. */}
+                {/* 36×36 meal-row thumbnail (prototype 2026-04-20). Recipe hero
+                    image when present so a multi-day plan scans as real meals;
+                    a missing/stale hero falls back to RecipeHeroFallback
+                    (§11.4, 2026-06-08); genuinely empty slots show the slot
+                    icon-box via `resolvePlanSlotIconKey`. See `PlanMealThumb`. */}
                 {(() => {
                   const slotKey = resolvePlanSlotIconKey(meal.name);
                   const ref =
