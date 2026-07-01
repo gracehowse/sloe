@@ -120,6 +120,77 @@ calls it inline from the Plan tab's generate path.
 - `plan_regenerated_partial` (`{ lockedCount, rerolledCount, days, platform }`) —
   fires on a "Refresh the rest" regenerate (distinct from `meal_plan_generated`).
 
+## Make-anything-fit · Mode B — distribute-around-anchor (ENG-855)
+
+The proactive Plan-tab half of the make-anything-fit engine (spec:
+`docs/specs/2026-06-02-make-anything-fit-engine.md`). Sibling of Mode A (ENG-854,
+the Today portion-fit hint): same engine, different surface and question.
+
+> Mode A (Today): *"given what's left, how much of THIS fits right now?"*
+> Mode B (Plan): *"if I commit to THIS meal, what's my budget for the rest of the day?"*
+
+When the user **locks a meal they want** into a plan day (the **anchor** — the
+same `isLocked` flag the keep-locked regenerate uses, so the affordance is free),
+a body-neutral band appears under that day card showing how the **remaining day
+budget shakes out across the other open slots**.
+
+**Flag:** `plan_distribute_anchor_v1` — **default-ON** (`REDESIGN_DEFAULT_ON` on
+web + mobile, per ENG-1279 "always flag on" so the solo tester sees it). Off →
+the legacy day card with no band (the kill switch). Parity guard:
+`tests/unit/planDistributeAnchorFlagParity.test.ts`.
+
+**The band shows:**
+- a body-neutral, enabling-framed summary line — *"Spag bol's in for dinner —
+  here's how breakfast and lunch shake out."* — never a deficit instruction
+  ("eat less"). The framing rule is the positioning (failure-mode #1 in the
+  spec): every output enables the wanted food.
+- per-open-slot **calorie budget chips** (`~480 kcal`), one per non-optional open
+  slot. The optional **Snacks** slot keeps a budget for suggestion-scoping but is
+  never shown as a named aim (mirrors `emptySlotAimKcal`'s policy — a number on a
+  slot you may skip reads as a quota).
+
+**Math:** `distributeAroundAnchor(targets, consumed, anchor, openSlots)` in
+`src/lib/nutrition/distributeAroundAnchor.ts` (re-exported to mobile via
+`@suppr/nutrition-core/distributeAroundAnchor`). It subtracts the anchor (and
+anything already placed) from each macro's day budget — `remaining_macro =
+target − consumed − anchor`, floored at 0 — then spreads the remainder across the
+open slots by the **same dietitian weights** the planner uses (breakfast .25 /
+lunch .3 / dinner .35 / snacks .1, normalised over the open slots). Every macro
+(P/C/F + optional fibre) is distributed independently, so a **high-fat anchor
+leaves a smaller fat remainder** → the other slots come out leaner on fat, not
+merely smaller on calories ("macros, not just calories").
+
+**Per-slot floors (failure-mode #3):** a slot whose calorie share falls below
+`MODE_B_SLOT_FLOOR_KCAL` (150) is flagged `tooTight` and renders an honest
+"barely room" chip rather than a fabricated tiny number; when **every**
+non-optional open slot is below the floor, `anchorLeavesTooLittle` is true and
+the copy says so plainly — *"The cake fills most of today — the other slots
+barely have room, but it's your call."*
+
+**Nutrition-trust rule (non-negotiable):** when the anchor's macros are
+low-confidence (`macrosAreEstimated` — a kcal-only recipe coerced to a neutral
+28/42/30 split), the engine returns a **qualitative** result and the copy never
+names per-slot numbers — *"…here's roughly how the rest of the day shakes out."*
+No fabricated budget off a guessed split.
+
+**No-negative invariant:** an over-budget anchor (or an over-logged day) can never
+hand a slot a negative or inflated budget — every macro remainder is floored at 0;
+NaN/negative inputs clamp to 0.
+
+**Host wiring (net-neutral, screen-budget-PINNED hosts):** the shared selector
+`planDayDistributeAroundAnchor(meals, targets)` derives the anchor (the locked,
+non-placeholder meal), treats other placed meals as consumed, and uses
+placeholder slots as the open slots — so each host adds only one import + one
+`<PlanAnchorBudgetBand />` call. Web band:
+`src/app/components/suppr/plan-anchor-budget-band.tsx`; mobile band:
+`apps/mobile/components/plan/PlanAnchorBudgetBand.tsx`; hosts
+`src/app/components/MealPlanner.tsx` + `apps/mobile/app/(tabs)/planner.tsx`.
+
+**Tests:** `tests/unit/distributeAroundAnchor.test.ts` (distribution math,
+per-slot floors, the too-little case, macros-not-just-calories, the no-negative
+invariant, the low-confidence qualitative gate, the host selector, and the
+body-neutral copy) + the flag-parity test above.
+
 ## Save Plan as Template (Batch 3.10)
 A whole week — or any 1–7 day slice — can be saved as a named template (e.g. "Bulk week", "Vacation week"). Templates persist server-side in `user_plan_templates`.
 

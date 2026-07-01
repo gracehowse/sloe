@@ -119,6 +119,7 @@ import {
   EmptyMealSlotAimLine,
   PlanAbsentMealSlotRow,
 } from "./suppr/empty-meal-slot-row.tsx";
+import { PlanAnchorBudgetBand } from "./suppr/plan-anchor-budget-band.tsx";
 import type { DayPlan } from "../../types/recipe.ts";
 
 interface MealPlannerProps {
@@ -294,6 +295,8 @@ export const MealPlanner = memo(function MealPlanner({
   // (label becomes "Refresh the rest" when ≥1 meal is locked). Off → the legacy
   // all-or-nothing Regenerate; no lock affordance.
   const mealLockEnabled = isFeatureEnabled("plan_meal_lock_v1");
+  // ENG-855 Mode B — distribute-around-anchor band (default-ON, ENG-1279).
+  const planDistributeAnchor = isFeatureEnabled("plan_distribute_anchor_v1");
   // ENG-696 / ENG-647 — "Import existing plan" entry point. Same flag the
   // mobile Plan tab + deep link gate on (`plan_import_enabled`). Off → the
   // Import affordance is hidden and the Plan surface keeps the
@@ -2300,6 +2303,8 @@ export const MealPlanner = memo(function MealPlanner({
                   </div>
                 );
               })()}
+              {/* ENG-855 Mode B — distribute-around-anchor band (shared selector). */}
+              <PlanAnchorBudgetBand enabled={planDistributeAnchor} meals={dp.meals} targets={nutritionTargets} />
             </SupprCard>
           );
         })}

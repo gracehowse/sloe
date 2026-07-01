@@ -1,7 +1,7 @@
 # "Make anything fit" engine — feature spec
 
 **Date:** 2026-06-02
-**Status:** Proposed (brainstorm → spec; not yet scheduled)
+**Status:** Both modes shipped behind flags — Mode A (ENG-854, `portion_fit_hint_v1`, default-OFF, Today) + Mode B (ENG-855, `plan_distribute_anchor_v1`, default-ON per ENG-1279, Plan). Engine logic in `@suppr/shared/nutrition` (`remainingMacros.ts#solvePortionToFit` + `distributeAroundAnchor.ts`). Mode B host wiring + journey: `docs/journeys/meal-planning.md` § "Make-anything-fit · Mode B".
 **Owner routing:** product-lead + nutrition-engine (logic) · copy-reviewer + brand-manager (voice) · executor (web + mobile parity)
 **Anchors:** [Suppr positioning](../julienne-deep-dive-2026-06-02.md) ("love food AND have goals") · [strategic direction 2026-04-27](../../) "what to eat next" north-star · Linear **ENG-854** (Mode A / Today) + **ENG-855** (Mode B / Plan tab)
 
