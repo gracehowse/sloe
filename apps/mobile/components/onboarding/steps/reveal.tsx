@@ -30,6 +30,7 @@ import {
 import { useOnboarding } from "../context";
 import { MobileMethodologyNote } from "../scaffold";
 import { ProgressiveText } from "../ProgressiveText";
+import { RevealWhyNowReflection } from "./reveal-why-now";
 
 /**
  * Mobile Reveal — animated count-up + macro tiles. Mirrors the web
@@ -359,6 +360,7 @@ export function MobileRevealStep() {
             {revealProjection.sentence}
           </Text>
         ) : null}
+        <RevealWhyNowReflection whyNow={state.whyNow} />
       </View>
 
       <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
@@ -425,12 +427,9 @@ export function MobileRevealStep() {
           goal={state.goal ?? "maintain"}
         />
 
-        {/* 2026-05-12 (premium-bar audit DC1 — refuse-to-pass #5, Cal AI
-            plan-reveal borrow): "what happens next" 3-step card. Tells
-            the user what the very next moments of the app look like
-            after they tap Continue. Anchors the abstract number to a
-            concrete daily loop. Steps are intentionally bare — no CTAs,
-            no expanders — so the eye lands on the path, not the chrome. */}
+        {/* 2026-05-12 (premium-bar audit DC1 — Cal AI plan-reveal borrow):
+            "what happens next" 3-step card anchors the abstract number to a
+            concrete daily loop. Bare steps — no CTAs/expanders. */}
         <View
           style={{
             marginTop: Spacing.lg,

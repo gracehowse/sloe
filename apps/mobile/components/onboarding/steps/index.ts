@@ -24,6 +24,7 @@ import type { ComponentType } from "react";
 import type { StepId } from "@/lib/onboarding";
 import { MobileWelcomeStep } from "./welcome";
 import { MobileAppChoiceStep } from "./app-choice";
+import { MobileWhyNowStep } from "./why-now";
 import { MobileSignupStep } from "./signup";
 import { MobileGoalStep } from "./goal";
 import { MobileSexStep } from "./sex";
@@ -49,6 +50,7 @@ export const MOBILE_STEP_COMPONENTS: Record<
 > = {
   welcome: MobileWelcomeStep,
   "app-choice": MobileAppChoiceStep,
+  "why-now": MobileWhyNowStep,
   signup: MobileSignupStep,
   goal: MobileGoalStep,
   sex: MobileSexStep,
@@ -66,6 +68,7 @@ export const MOBILE_STEP_COMPONENTS: Record<
 export {
   MobileWelcomeStep,
   MobileAppChoiceStep,
+  MobileWhyNowStep,
   MobileSignupStep,
   MobileGoalStep,
   MobileSexStep,

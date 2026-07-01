@@ -12,7 +12,7 @@ import { useAuthSession } from "@/context/AuthSessionContext";
 import { supabase } from "@/lib/supabase/browserClient";
 import { saveLocalProfile } from "@/lib/profile/profileStorage";
 import { type UserProfile } from "@/types/profile";
-import { APP_CHOICE_FLAG, useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, WHY_NOW_FLAG, useOnboarding } from "./context";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
@@ -61,19 +61,18 @@ export function WebFlow() {
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
-  // ENG-990 — the app-choice step is flag-gated. `go()` already skips it
-  // when the flag is OFF, but a user whose persisted `step` points at
-  // app-choice (e.g. they reached it while the flag was ON, then it was
-  // ramped back to 0) would render it directly on remount. This effect
-  // is the same defensive auto-skip the signup step uses for already-
-  // authed users: if we're on app-choice while the flag is OFF, advance
-  // past it. `isFeatureEnabled` is cold-safe (returns false → skip).
-  const isAppChoice = currentStepId === "app-choice";
+  // Flag-gated steps (ENG-990 app-choice, ENG-963 why-now) are skipped by
+  // `go()` when their flag is OFF, but a persisted `step` pointing at one
+  // (reached while ON, then ramped to 0) would render it on remount. This
+  // single defensive effect advances past whichever flag-gated step is
+  // current while its flag is OFF; `isFeatureEnabled` is cold-safe (false →
+  // skip), so the live default keeps both steps hidden.
+  const flagGatedStepOff =
+    (currentStepId === "app-choice" && !isFeatureEnabled(APP_CHOICE_FLAG)) ||
+    (currentStepId === "why-now" && !isFeatureEnabled(WHY_NOW_FLAG));
   React.useEffect(() => {
-    if (isAppChoice && !isFeatureEnabled(APP_CHOICE_FLAG)) {
-      go(1);
-    }
-  }, [isAppChoice, go]);
+    if (flagGatedStepOff) go(1);
+  }, [flagGatedStepOff, go]);
   // Build-40 (2026-05-01): `data-bridges` is the new terminal step.
   // Reveal advances on Continue; data-bridges fires the
   // `handleComplete` write path on its "Build my plan" CTA. See
@@ -284,6 +283,7 @@ export function WebFlow() {
           // (`null` when the app-choice step was skipped / flag OFF).
           // Lets the funnel slice activation by chosen-app cohort.
           app_choice: state.appChoice,
+          why_now: state.whyNow, // ENG-963 — intent (null when skipped / flag OFF)
         });
         // WEB-01 (2026-04-28): clear persisted onboarding state on
         // successful completion. Without this, the next signup on the

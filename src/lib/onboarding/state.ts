@@ -74,22 +74,35 @@ export type Goal = "lose" | "maintain" | "gain" | "recomp";
  *  auto-skip it (same mechanism as the maintain/weight pace auto-skip)
  *  and drop it from `displayTotal`, so the live flow is unchanged until
  *  the flag ramps. Only apps with a registered adapter are surfaced —
- *  no dead options. */
+ *  no dead options.
+ *
+ *  Add `why-now` (2026-06-30, ENG-963): a single calm "What's bringing
+ *  you here?" intent capture placed immediately after `goal` — the
+ *  earliest moment the user has framed *what* they want, so we ask the
+ *  gentler *why* while it's top of mind. The choice (`whyNow`) is emitted
+ *  as `onboarding_why_now` and reflected back on the reveal step ("a plan
+ *  built around feeling better day to day", sourced from `figmaCopy.ts`).
+ *  The step is flag-gated behind `onboarding-why-now` (default-OFF): when
+ *  the flag is OFF, both flow shells auto-skip it (EXACTLY the app-choice
+ *  mechanism — `resolveNextStep` + the defensive shell effect) and drop it
+ *  from `displayTotal`, so the live step counter is unchanged until the
+ *  flag ramps. Body-neutral options only; no off-limits framing. */
 export const STEP_IDS = [
   "welcome", // 01
   "app-choice", // 02 — "Coming from another app?" (ENG-990) — auto-skipped when the `onboarding-app-choice` flag is OFF
   "goal", // 03
-  "sex", // 04
-  "age", // 05
-  "height", // 06
-  "weight", // 07
-  "activity", // 08
-  "pace", // 09 — auto-skipped when goal = maintain
-  "diet", // 10
-  "strategy", // 11 — macro split (parity with legacy nutrition_strategy)
-  "reveal", // 12 — aha: show targets before account (ENG-962)
-  "signup", // 13 — account after the reveal magic moment (ENG-962)
-  "data-bridges", // 14 — terminal: bring your data with you (Build-40)
+  "why-now", // 04 — "What's bringing you here?" (ENG-963) — auto-skipped when the `onboarding-why-now` flag is OFF (same mechanism as app-choice)
+  "sex", // 05
+  "age", // 06
+  "height", // 07
+  "weight", // 08
+  "activity", // 09
+  "pace", // 10 — auto-skipped when goal = maintain
+  "diet", // 11
+  "strategy", // 12 — macro split (parity with legacy nutrition_strategy)
+  "reveal", // 13 — aha: show targets before account (ENG-962)
+  "signup", // 14 — account after the reveal magic moment (ENG-962)
+  "data-bridges", // 15 — terminal: bring your data with you (Build-40)
 ] as const;
 
 export type StepId = (typeof STEP_IDS)[number];
@@ -98,6 +111,7 @@ export type StepId = (typeof STEP_IDS)[number];
 export const STEP_LABELS: Record<StepId, string> = {
   welcome: "Welcome",
   "app-choice": "Switching apps",
+  "why-now": "Why now",
   signup: "Account",
   goal: "Goal",
   sex: "Sex",
@@ -155,6 +169,34 @@ export type AppChoice =
   | "macrofactor"
   | "other"
   | "none"
+  | null;
+
+/**
+ * ENG-963 (2026-06-30) — the intent a user picked on the `why-now` step
+ * ("What's bringing you here?"). Body-neutral by design — every option is
+ * a calm, supportive framing of *why now*, never a body-shaming or
+ * outcome-promising one (trust posture: Sloe is a tool, not a clinician).
+ *
+ *   - "feel-better" — wants to feel better day to day
+ *   - "stronger"    — wants to get stronger / build strength
+ *   - "habit"       — wants to build a steady, sustainable habit
+ *   - "event"       — has something specific coming up
+ *   - "curious"     — just curious / exploring, no pressure
+ *   - null          — hasn't reached / answered the step (skipped, or the
+ *                     `onboarding-why-now` flag is OFF)
+ *
+ * The value is emitted with the `onboarding_why_now` event and persisted
+ * (via the same `OnboardingState` localStorage / AsyncStorage round-trip
+ * as every other answer) so the reveal step can reflect it back. It is NOT
+ * a `profiles` column — it's an analytics + onboarding-personalisation
+ * signal only, intentionally not written to the DB (mirrors `appChoice`).
+ */
+export type WhyNow =
+  | "feel-better"
+  | "stronger"
+  | "habit"
+  | "event"
+  | "curious"
   | null;
 
 /**
@@ -275,6 +317,15 @@ export interface OnboardingState {
    * yet answered.
    */
   appChoice: AppChoice;
+  /**
+   * ENG-963 (2026-06-30) — the intent the user picked on the `why-now`
+   * step ("What's bringing you here?"). See `WhyNow`. Drives the
+   * `onboarding_why_now` event + the reveal-step reflection ("a plan
+   * built around feeling better day to day"). `null` when the step was
+   * skipped (flag OFF) or the user advanced without picking. Not a
+   * `profiles` column — analytics + personalisation only.
+   */
+  whyNow: WhyNow;
 }
 
 /** Default pace per goal — applied when the user hasn't dragged the
@@ -363,6 +414,7 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
   manualTargetsFatG: null,
   dataBridgeChosen: null,
   appChoice: null,
+  whyNow: null,
 };
 
 /** Options that change which steps `resolveNextStep` skips. Kept as an
@@ -375,9 +427,16 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
  *  ramps) the `app-choice` step is auto-skipped on both forward and
  *  back navigation, exactly like the pace auto-skip — so the step is
  *  invisible until the flag turns on. Defaults to `false` (skip) so any
- *  caller that doesn't thread the flag keeps the pre-ENG-990 flow. */
+ *  caller that doesn't thread the flag keeps the pre-ENG-990 flow.
+ *
+ *  ENG-963 — `whyNowEnabled` is the resolved `onboarding-why-now` flag
+ *  value, threaded the same way. When `false` (the live default) the
+ *  `why-now` step is auto-skipped on forward + back navigation — IDENTICAL
+ *  mechanism to `appChoiceEnabled` — so the live flow + step counter are
+ *  unchanged until the flag ramps. Defaults to `false` (skip). */
 export interface ResolveStepOptions {
   appChoiceEnabled?: boolean;
+  whyNowEnabled?: boolean;
 }
 
 /** Resolve the step index a navigation should land on, accounting for
@@ -386,9 +445,12 @@ export interface ResolveStepOptions {
  *     `weightSkipped` (no body data for a safe floor — Stage F).
  *   - `app-choice` when the `onboarding-app-choice` flag is OFF
  *     (ENG-990 — keeps the step out of the live flow until it ramps).
- *  Skips compose: stepping from `welcome` forward with the flag OFF
- *  lands on `goal`, never the hidden `app-choice`. Returns a clamped
- *  index inside [0, TOTAL_STEPS - 1]. */
+ *   - `why-now` when the `onboarding-why-now` flag is OFF
+ *     (ENG-963 — same mechanism; keeps the step out until it ramps).
+ *  Skips compose: stepping from `welcome` forward with both flags OFF
+ *  lands on `goal`, never the hidden `app-choice`; stepping from `goal`
+ *  forward with the why-now flag OFF lands on `sex`, never the hidden
+ *  `why-now`. Returns a clamped index inside [0, TOTAL_STEPS - 1]. */
 export function resolveNextStep(
   current: number,
   delta: number,
@@ -397,8 +459,8 @@ export function resolveNextStep(
 ): number {
   let next = current + delta;
   const dir = delta > 0 ? 1 : -1;
-  // Loop because skips can chain (e.g. app-choice is adjacent to no
-  // other skip today, but keeping the loop means a future adjacent skip
+  // Loop because skips can chain (e.g. app-choice + why-now are not
+  // adjacent today, but keeping the loop means any future adjacent skip
   // pair can't strand the user on a hidden step). Bounded by TOTAL_STEPS.
   for (let guard = 0; guard < TOTAL_STEPS; guard++) {
     const id = STEP_IDS[next];
@@ -406,7 +468,9 @@ export function resolveNextStep(
       (state.goal === "maintain" || state.weightSkipped) && id === "pace";
     const skipAppChoice =
       options?.appChoiceEnabled !== true && id === "app-choice";
-    if (skipPace || skipAppChoice) {
+    const skipWhyNow =
+      options?.whyNowEnabled !== true && id === "why-now";
+    if (skipPace || skipAppChoice || skipWhyNow) {
       next += dir;
       continue;
     }
@@ -420,26 +484,30 @@ export function resolveNextStep(
  * that are actually *visible* for this flow, and the total visible count.
  *
  * The progress bar and "Step N of M" overline must count only the steps
- * the user can reach. Today the sole conditionally-hidden step is
- * `app-choice` (gated by `onboarding-app-choice`). When the flag is OFF
- * it sits at index 1 and every later step's display position is one less
- * than its raw index. Centralised here so web + mobile compute identical
- * numbers and a flag flip can never desync the bar from the flow.
+ * the user can reach. The conditionally-hidden steps are `app-choice`
+ * (gated by `onboarding-app-choice`, ENG-990) and `why-now` (gated by
+ * `onboarding-why-now`, ENG-963). When a flag is OFF its step is dropped
+ * from both the index and the total so every later step's display
+ * position shifts down by one — centralised here so web + mobile compute
+ * identical numbers and a flag flip can never desync the bar from the
+ * flow.
  *
  * Note: the pace auto-skip (maintain / weightSkipped) is intentionally
  * NOT discounted here — it has always been counted in the displayed
  * total (the bar simply jumps past it), matching the pre-ENG-990
- * behaviour. Only the flag-hidden step is removed from the count.
+ * behaviour. Only the flag-hidden steps are removed from the count.
  */
 export function displayPosition(
   stepIndex: number,
   options?: ResolveStepOptions,
 ): { index: number; total: number } {
   const hideAppChoice = options?.appChoiceEnabled !== true;
+  const hideWhyNow = options?.whyNowEnabled !== true;
   let total = 0;
   let index = 1;
   for (let i = 0; i < TOTAL_STEPS; i++) {
     if (hideAppChoice && STEP_IDS[i] === "app-choice") continue;
+    if (hideWhyNow && STEP_IDS[i] === "why-now") continue;
     total++;
     if (i < stepIndex) index++;
   }
@@ -491,6 +559,12 @@ export function canAdvance(
       // is the goal, not gating on it — a refugee who skips still gets
       // a clean flow. Mirrors the welcome / data-bridges always-advance
       // policy.
+      return true;
+    case "why-now":
+      // ENG-963 — optional, calm intent capture. Picking an option is
+      // never required to advance (the footer Continue always moves on);
+      // recording the choice is the goal, not gating on it. Mirrors the
+      // app-choice / welcome / data-bridges always-advance policy.
       return true;
     case "signup":
       // ENG-672 (2026-05-26) — advancing past Signup is gated on a REAL

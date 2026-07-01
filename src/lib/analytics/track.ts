@@ -372,6 +372,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   staggered by `PROGRESSIVE_TEXT_STAGGER_MS` (`@suppr/shared/motion`). Flag-OFF
  *   or reduce-motion → instant text (zero visual change). Component:
  *   `ProgressiveText` (web + mobile). Web + mobile.
+ * - `onboarding-why-now` (ENG-963) — the optional "What's bringing you here?"
+ *   onboarding step (placed after `goal`). DEFAULT-OFF: when OFF both flow
+ *   shells auto-skip the step (same mechanism as `onboarding-app-choice`)
+ *   and drop it from the step counter, so the live flow is unchanged and the
+ *   change is mergeable headless. Grace ramps it in PostHog after a sim + web
+ *   glance at the new step's pixels. Web + mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953, 2026-06-30); and the "always flag on"
@@ -397,6 +403,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "import_magic_moment",
   "paywall_trajectory_chart_v1",
   "onboarding_progressive_text",
+  "onboarding-why-now",
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

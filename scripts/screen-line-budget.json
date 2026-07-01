@@ -44,7 +44,7 @@
   "apps/mobile/components/onboarding/mobile-flow.tsx": 643,
   "apps/mobile/components/onboarding/steps/data-bridges.tsx": 598,
   "apps/mobile/components/onboarding/steps/pace.tsx": 527,
-  "apps/mobile/components/onboarding/steps/reveal.tsx": 824,
+  "apps/mobile/components/onboarding/steps/reveal.tsx": 823,
   "apps/mobile/components/PhotoLogSheet.tsx": 925,
   "apps/mobile/components/progress/AllWeightDataSheet.tsx": 401,
   "apps/mobile/components/progress/WeightChart.tsx": 879,

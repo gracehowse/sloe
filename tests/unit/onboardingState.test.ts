@@ -18,8 +18,9 @@ import {
  * Onboarding v2 — state shape, step ordering, and `canAdvance`
  * validation rules. Locks in the decision-doc invariants:
  *
- *  - 14 steps in fixed order; `pace` auto-skips when goal = maintain,
- *    `app-choice` auto-skips when the `onboarding-app-choice` flag is OFF.
+ *  - 15 steps in fixed order; `pace` auto-skips when goal = maintain,
+ *    `app-choice` auto-skips when the `onboarding-app-choice` flag is OFF,
+ *    `why-now` auto-skips when the `onboarding-why-now` flag is OFF.
  *    (Was 15 pre customer-lens shrink 2026-04-30 — `permissions`,
  *    `import`, `recipes` were moved off the linear flow. Components
  *    kept on disk for the post-launch nudge queue.
@@ -27,7 +28,9 @@ import {
  *    terminal step bundling manual-targets / Apple Health /
  *    notifications / recipe URL cards.
  *    ENG-990 (2026-06-08) — added `app-choice` ("Coming from another
- *    app?") after Welcome, flag-gated + auto-skipped when OFF. See
+ *    app?") after Welcome, flag-gated + auto-skipped when OFF.
+ *    ENG-963 (2026-06-30) — added `why-now` ("What's bringing you
+ *    here?") after `goal`, flag-gated + auto-skipped when OFF. See
  *    state.ts STEP_IDS.)
  *  - Pace safety floor is SOFT-WARN — `canAdvance("pace", …)` returns
  *    true even when projected target falls below 1,200/1,500 kcal.
@@ -47,12 +50,13 @@ const baseState = (
 });
 
 describe("onboarding v2 — step ordering", () => {
-  it("ships exactly 14 steps in the documented order (Build-40 data-bridges + ENG-990 app-choice)", () => {
-    expect(TOTAL_STEPS).toBe(14);
+  it("ships exactly 15 steps in the documented order (Build-40 data-bridges + ENG-990 app-choice + ENG-963 why-now)", () => {
+    expect(TOTAL_STEPS).toBe(15);
     expect(STEP_IDS).toEqual([
       "welcome",
       "app-choice",
       "goal",
+      "why-now",
       "sex",
       "age",
       "height",
@@ -187,31 +191,52 @@ describe("onboarding v2 — signup after reveal (ENG-962)", () => {
 });
 
 describe("onboarding v2 — displayPosition counts only visible steps (ENG-990)", () => {
+  // ENG-963 — these assertions isolate the app-choice flag's effect by
+  // holding `whyNowEnabled: true` (so why-now is NOT also discounted).
+  // The why-now flag's own count effect is covered in its dedicated wiring
+  // test (`onboardingWhyNowWiring.test.ts`).
   it("excludes app-choice from the total when the flag is OFF", () => {
-    const { total } = displayPosition(0, { appChoiceEnabled: false });
+    const { total } = displayPosition(0, {
+      appChoiceEnabled: false,
+      whyNowEnabled: true,
+    });
     expect(total).toBe(TOTAL_STEPS - 1);
   });
 
   it("includes app-choice in the total when the flag is ON", () => {
-    const { total } = displayPosition(0, { appChoiceEnabled: true });
+    const { total } = displayPosition(0, {
+      appChoiceEnabled: true,
+      whyNowEnabled: true,
+    });
     expect(total).toBe(TOTAL_STEPS);
   });
 
   it("does not inflate the display index for steps after the hidden app-choice (flag OFF)", () => {
     // goal is raw index 2, but with app-choice hidden it's the 2nd
-    // visible step → display index 2 (welcome is 1).
+    // visible step → display index 2 (welcome is 1). why-now sits AFTER
+    // goal, so its flag state can't change goal's index.
     const goal = STEP_IDS.indexOf("goal");
-    const off = displayPosition(goal, { appChoiceEnabled: false });
+    const off = displayPosition(goal, {
+      appChoiceEnabled: false,
+      whyNowEnabled: true,
+    });
     expect(off.index).toBe(2);
     // With the flag ON, goal is the 3rd visible step → index 3.
-    const on = displayPosition(goal, { appChoiceEnabled: true });
+    const on = displayPosition(goal, {
+      appChoiceEnabled: true,
+      whyNowEnabled: true,
+    });
     expect(on.index).toBe(3);
   });
 
   it("signup display index reflects post-reveal position (ENG-962)", () => {
     const signup = STEP_IDS.indexOf("signup");
-    const off = displayPosition(signup, { appChoiceEnabled: false });
-    // welcome + 11 body/reveal steps before signup (app-choice hidden).
+    // Both flag-gated steps hidden (the live default) — welcome + 11
+    // body/reveal steps before signup → index 12.
+    const off = displayPosition(signup, {
+      appChoiceEnabled: false,
+      whyNowEnabled: false,
+    });
     expect(off.index).toBe(12);
   });
 
@@ -228,6 +253,15 @@ describe("onboarding v2 — canAdvance per step", () => {
     // app-choice — ENG-990 optional capture; advancing without a pick is
     // a first-class choice (the "starting fresh" tile / footer Continue).
     ["app-choice", baseState(), true, "always advances (pick is optional)"],
+    // why-now — ENG-963 optional intent capture; advancing without a pick
+    // is a first-class choice (the footer Continue always moves on).
+    ["why-now", baseState(), true, "always advances (pick is optional)"],
+    [
+      "why-now",
+      baseState({ whyNow: "feel-better" }),
+      true,
+      "advances with an intent chosen",
+    ],
     [
       "app-choice",
       baseState({ appChoice: "mfp" }),

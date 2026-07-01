@@ -18,6 +18,7 @@ import { useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
 import { ProgressiveText } from "../progressive-text";
 import { CalorieRingDial } from "../../suppr/calorie-ring-dial";
+import { RevealWhyNowReflection } from "./reveal-why-now";
 
 /**
  * Reveal — step 11. The "aha" moment. Animated count-up on the daily
@@ -224,6 +225,7 @@ export function RevealStep({ compact = false }: RevealProps) {
             {revealProjection.sentence}
           </p>
         ) : null}
+        <RevealWhyNowReflection whyNow={state.whyNow} />
       </div>
 
       {/* Macro breakdown + BMR/TDEE summary */}
@@ -272,11 +274,9 @@ export function RevealStep({ compact = false }: RevealProps) {
 
         <MethodologyNote>{methodologyCopy}</MethodologyNote>
 
-        {/* 2026-05-12 (premium-bar audit B5 #3 — Cal AI parity, web
-            mirror of mobile `RevealShowTheMaths`): "Show the maths"
-            expandable that reveals the formula breakdown. Closed by
-            default — power users tap to expand, average user reads
-            the bigger blocks above. */}
+        {/* 2026-05-12 (premium-bar audit B5 #3 — Cal AI parity, web mirror
+            of mobile `RevealShowTheMaths`): "Show the maths" expandable —
+            formula breakdown, closed by default. */}
         <RevealShowTheMaths
           bmr={targets.bmr}
           tdee={targets.tdee}
