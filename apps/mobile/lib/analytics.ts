@@ -517,6 +517,20 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // the "always flag on" beta-window policy; off → no animation (kill switch).
   // Reduce-motion → no check. Mirror of the web entry in track.ts. M+W.
   "log_confirm_check_v1",
+  // ENG-713 — the opt-in body-neutral "Trend-only weight" Settings toggle (ED +
+  // dysphoria dignity). DEFAULT-ON per the "always flag on" beta-window policy,
+  // but the FLAG only controls whether the opt-in TOGGLE exists — the FEATURE
+  // itself is opt-in (the client-side pref defaults OFF, so no behaviour changes
+  // until the user flips it). Off → the toggle is hidden and Progress renders
+  // exactly as today (kill switch: remove here / PostHog). The pref reuses the
+  // T13 `trends_only` render path (no new weight-surface fork). Mirror of the
+  // web entry in src/lib/analytics/track.ts. M+W.
+  //
+  // COPY GATE: the neutral trend strings in
+  // `src/lib/preferences/trendOnlyWeight.ts` need diversity-inclusion +
+  // legal-reviewer sign-off before this ramps beyond the solo tester (see
+  // docs/decisions/2026-07-01-trend-only-weight-mode.md).
+  "progress_trend_only_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in

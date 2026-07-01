@@ -74,6 +74,8 @@ import {
 import { Digest } from "./suppr/digest.tsx";
 import { resolveDigestHeadline } from "../../lib/nutrition/digest.ts";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { useTrendOnlyWeight } from "../../lib/preferences/useTrendOnlyWeight.ts";
+import { describeTrendOnly, trendOnlyDirection, resolveEffectiveWeightSurfaceMode, TREND_ONLY_MODE_NOTE } from "../../lib/preferences/trendOnlyWeight.ts";
 import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
 import { WeightPlateauInsight } from "./progress/WeightPlateauInsight.tsx";
 import { WeightMilestoneMoment } from "./progress/WeightMilestoneMoment.tsx";
@@ -188,6 +190,11 @@ function ProgressDashboardContent() {
     basalBurnByDay,
     workoutsByDay,
   } = useAppData();
+
+  // ENG-713 — body-neutral "Trend-only weight" opt-in (client-side pref; flag
+  // `progress_trend_only_v1`). Composition lives in the shared helper.
+  const [trendOnlyWeight] = useTrendOnlyWeight();
+  const effectiveWeightSurfaceMode = resolveEffectiveWeightSurfaceMode(profileWeightSurfaceMode, trendOnlyWeight, isFeatureEnabled("progress_trend_only_v1"));
 
   const [loading, setLoading] = useState(true);
   const [weightKg, setWeightKg] = useState<number | null>(null);
@@ -1252,7 +1259,7 @@ function ProgressDashboardContent() {
       {/* WEIGHT DIRECTION (trends_only) — opt-out users keep a lightweight
           weight signal here (no absolute numbers). Average Adherence moved to
           AFTER Daily Calories per the v3 prototype order (ENG-1247). */}
-      {profileWeightSurfaceMode === "trends_only" && (
+      {effectiveWeightSurfaceMode === "trends_only" && (
         <div className="mb-4">
           <WeightTrendOnlyCardWeb
             weekDeltaKg={weightRange.weekDeltaKg}
@@ -1268,7 +1275,7 @@ function ProgressDashboardContent() {
           surface — win-moment + chart wiring + measurement system all
           preserved. Gated on `weight_surface_mode === "show"` (opt-out
           users see the direction tile above instead). */}
-      {profileWeightSurfaceMode === "show" ? (() => {
+      {effectiveWeightSurfaceMode === "show" ? (() => {
         const sortedWeightDays = Object.entries(weightKgByDay).sort(([a], [b]) => a.localeCompare(b));
         // ENG-1225 #22 — "No weigh-ins yet" state (transient flag) replaces the
         // broken "—" hero/chart/stat-row; the Log-weight input stays below.
@@ -1750,7 +1757,7 @@ function ProgressDashboardContent() {
             }}
             shareText={formatRecapForShare(recap)}
             state={digestState}
-            weightSurfaceMode={profileWeightSurfaceMode}
+            weightSurfaceMode={effectiveWeightSurfaceMode}
             // ENG-1019/1020 — history-aware empty + check-in copy. Any logged
             // day in the journal store → returning user, not a cold start
             // (same derivation as the Progress story gate above; mirror of
@@ -2206,12 +2213,13 @@ function ProgressDashboardContent() {
 
       {/* ENG-741 — Trajectory card. Sits directly under the weight chart.
           Flag-gated (`progress_trajectory_box`); default-off preserves the
-          current layout. Same `weightSurfaceMode === "show"` gate as the
-          weight chart + Journey card so a single opt-out hides every
-          absolute-weight surface. Reuses the top-level `latestWeightKg` +
+          current layout. Same `effectiveWeightSurfaceMode === "show"` gate as the
+          weight chart + Journey card so a single opt-out (T13 or the ENG-713
+          trend-only pref) hides every absolute-weight surface. Reuses the
+          top-level `latestWeightKg` +
           `goalTimeline` memos and the shared `computeTrajectory` helper —
           no projection maths is re-derived here. */}
-      {trajectoryBoxEnabled && profileWeightSurfaceMode === "show" ? (
+      {trajectoryBoxEnabled && effectiveWeightSurfaceMode === "show" ? (
         <TrajectoryCard
           byDay={nutritionByDay}
           latestWeightKg={latestWeightKg}
@@ -2226,7 +2234,7 @@ function ProgressDashboardContent() {
           (T13.2): the projection visualises absolute weight progression
           toward a goal kg, which is the exact thing trends_only / hide
           users opted out of. */}
-      {profileWeightSurfaceMode === "show" && weightKg != null && goalWeightKg != null && goalWeightKg !== weightKg && (() => {
+      {effectiveWeightSurfaceMode === "show" && weightKg != null && goalWeightKg != null && goalWeightKg !== weightKg && (() => {
         const timeline = calcGoalTimeline({ currentWeightKg: weightKg, goalWeightKg, weightKgByDay });
         // F-4a (2026-04-19, TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`): use
         // the canonical `(start - current) / (start - goal)` formula
@@ -2416,12 +2424,11 @@ function ProgressDashboardContent() {
    surface, not part of the removed dense grid). */
 
 /**
- * T13.2 (full-sweep follow-up, 2026-04-25): trends-only weight card
- * for users who chose `weight_surface_mode = "trends_only"`. Shows
- * a direction label ("Slightly down this week" / "Stable" / "Up") +
- * a window note. Never emits an absolute kg value — that's the whole
- * point of the opt-out. Mirrors the Digest's trends-only behaviour
- * (see decideWeightSurface in src/lib/nutrition/weightSurfaceMode.ts).
+ * T13.2: trends-only weight card, shown whenever the EFFECTIVE weight-surface
+ * mode is `trends_only` — the DB-backed `weight_surface_mode` (T13) OR the
+ * client-side "Trend-only weight" opt-in (ENG-713). Never emits an absolute kg
+ * value. Copy comes from the shared `describeTrendOnly` helper so web + mobile
+ * can't drift; those strings need diversity-inclusion + legal sign-off before ramp.
  */
 function WeightTrendOnlyCardWeb({
   weekDeltaKg,
@@ -2431,24 +2438,15 @@ function WeightTrendOnlyCardWeb({
   /** Period label for the window descriptor (ENG-1030), e.g. "15–21 Jun". */
   windowLabel: string;
 }) {
-  const direction =
-    weekDeltaKg == null || !Number.isFinite(weekDeltaKg)
-      ? null
-      : Math.abs(weekDeltaKg) < 0.3
-        ? "stable"
-        : weekDeltaKg < 0
-          ? "down"
-          : "up";
+  // ENG-713 — direction + neutral copy come from the shared trend-only helper so
+  // web + mobile can't drift and the strings live in one reviewable place (the
+  // copy needs diversity-inclusion + legal sign-off before ramp). The arrow is a
+  // gentle continuous glyph (no valence colour); "steady" reads "→" (holding),
+  // never a checkmark.
+  const direction = trendOnlyDirection(weekDeltaKg);
   const arrow =
-    direction === "up" ? "↑" : direction === "down" ? "↓" : direction === "stable" ? "→" : "—";
-  const label =
-    direction === "up"
-      ? "Slightly up this week"
-      : direction === "down"
-        ? "Slightly down this week"
-        : direction === "stable"
-          ? "Stable this week"
-          : "Log a weight to see your trend";
+    direction === "up" ? "↗" : direction === "down" ? "↘" : direction === "steady" ? "→" : "·";
+  const label = describeTrendOnly(direction);
   return (
     <SupprCard
       data-testid="progress-weight-trend-only-card"
@@ -2467,7 +2465,7 @@ function WeightTrendOnlyCardWeb({
         <span className="text-[15px] font-semibold text-foreground">{label}</span>
       </p>
       <p className="text-xs text-muted-foreground mt-1">
-        Showing direction only · {windowLabel}. Switch to numbers in Settings if you want them back.
+        {TREND_ONLY_MODE_NOTE} · {windowLabel}
       </p>
     </SupprCard>
   );

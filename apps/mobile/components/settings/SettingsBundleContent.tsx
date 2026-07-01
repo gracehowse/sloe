@@ -82,6 +82,7 @@ import {
 } from "@/lib/macroDisplayStyle";
 import { MACRO_DISPLAY_OPTIONS } from "@suppr/shared/preferences/macroDisplayStyle";
 import { useCalmMode } from "@/lib/calmMode";
+import { TrendOnlyWeightRow } from "@/components/settings/TrendOnlyWeightRow";
 import { supabase } from "@/lib/supabase";
 import { fastingWindowLabel } from "@suppr/shared/fasting/milestones";
 import { getSupprWebBase } from "@/lib/supprWeb";
@@ -2244,6 +2245,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             trackColor={{ true: accent.primary }}
           />
         </View>
+
+        <TrendOnlyWeightRow /> {/* ENG-713 — flag-gated; self-hides */}
       </SettingsCard>
 
       {/* Connections — Sloe DS (Figma 09 Settings `335:2`): device /
