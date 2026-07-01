@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import { Text, View } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { MacroColors, Spacing, Type } from "@/constants/theme";
@@ -49,12 +50,15 @@ export interface TodayDeficitInsightProps {
   selectedDate: Date;
   /** Logged meals keyed by day; today's slots are read from this. */
   byDay: Record<string, JournalMeal[]>;
+  /** ENG-1240 — opens the full Coach screen when the coach line is tapped. */
+  onPress?: () => void;
 }
 
 function TodayDeficitInsightImpl({
   remaining,
   selectedDate,
   byDay,
+  onPress,
 }: TodayDeficitInsightProps) {
   const isDark = useColorScheme() === "dark";
   // Plum coach colour, dark-aware. Light: Sloe plum (#3B2A4D =
@@ -82,6 +86,18 @@ function TodayDeficitInsightImpl({
   const line = todayRoomForMeal(remaining, nextMeal, loggedSlots, new Date().getHours());
   if (!line) return null;
 
+  const lineEl = (
+    <Text
+      style={{
+        ...Type.coach,
+        color: plum,
+        textAlign: "center",
+      }}
+    >
+      {line}
+    </Text>
+  );
+
   return (
     <View
       style={{
@@ -91,15 +107,13 @@ function TodayDeficitInsightImpl({
         alignItems: "center",
       }}
     >
-      <Text
-        style={{
-          ...Type.coach,
-          color: plum,
-          textAlign: "center",
-        }}
-      >
-        {line}
-      </Text>
+      {onPress ? (
+        <PressableScale onPress={onPress} haptic="selection" accessibilityRole="button">
+          {lineEl}
+        </PressableScale>
+      ) : (
+        lineEl
+      )}
     </View>
   );
 }

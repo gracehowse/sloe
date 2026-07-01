@@ -473,6 +473,7 @@ const STACK_HEADER_HIDDEN = new Set([
   // native header so the in-screen one doesn't double up.
   "whats-new",
   "weekly-recap",
+  "coach",
 ]);
 
 /** Readable titles (route `name` from Expo Router file path). */
