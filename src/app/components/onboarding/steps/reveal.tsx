@@ -16,6 +16,7 @@ import {
 } from "../../../../lib/onboarding/figmaCopy";
 import { useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
+import { ProgressiveText } from "../progressive-text";
 import { CalorieRingDial } from "../../suppr/calorie-ring-dial";
 
 /**
@@ -38,11 +39,9 @@ export function RevealStep({ compact = false }: RevealProps) {
   const { targets, state } = useOnboarding();
 
   // ENG-1187 — gloss BMR / TDEE / Mifflin-St Jeor on first use behind
-  // `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays as the
-  // default; the glossed copy leads with the plain phrase. The
-  // "Show the maths" expander below is the existing power-user affordance
-  // and is intentionally left on the acronyms. Shared web ↔ mobile via
-  // `figmaCopy.ts`.
+  // `onboarding_jargon_gloss_v1` (default-OFF). Glossed copy leads with the
+  // plain phrase; the "Show the maths" expander stays on the acronyms. Shared
+  // web ↔ mobile via `figmaCopy.ts`.
   const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
   const bmrLabel = glossOn
     ? ONBOARDING_REVEAL_BMR_LABEL_GLOSS
@@ -53,6 +52,8 @@ export function RevealStep({ compact = false }: RevealProps) {
   const methodologyCopy = glossOn
     ? ONBOARDING_REVEAL_METHODOLOGY_GLOSS
     : ONBOARDING_REVEAL_METHODOLOGY_PLAIN;
+  // ENG-720 — staggered "Your plan is ready." reveal (default-OFF flag; `ProgressiveText` also gates reduced-motion → instant fallback).
+  const progressiveText = isFeatureEnabled("onboarding_progressive_text");
 
   // Animated count-up — easeOutCubic over ~1.2s.
   const [displayCals, setDisplayCals] = React.useState(0);
@@ -146,18 +147,17 @@ export function RevealStep({ compact = false }: RevealProps) {
         <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-tertiary mb-2.5">
           Your daily target
         </div>
-        {/* 2026-05-12 (premium-bar audit, B5 Reveal upgrade #2):
-            re-titled from "Here's what your day looks like." → "Your
-            plan is ready." Cal AI parity — leads with completion +
-            reward beat. Mobile mirrored.
-            Sloe reskin (Figma plan-ready 192:2 2026-06-07): plum
-            Newsreader serif hero title. */}
-        <h1
+        {/* "Your plan is ready." (2026-05-12 premium-bar audit B5 #2 re-title;
+            Sloe reskin plum Newsreader serif). ENG-720 wraps it in
+            ProgressiveText for the staggered reveal beat (default-OFF). */}
+        <ProgressiveText
+          as="h1"
+          animate={progressiveText}
           className={`font-[family-name:var(--font-headline)] font-medium tracking-tight m-0 mb-5 text-foreground-brand leading-tight ${compact ? "text-[24px]" : "text-[24px]"}`}
           style={{ letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties}
         >
           Your plan is ready.
-        </h1>
+        </ProgressiveText>
         <p className="m-0 mb-2 text-sm text-muted-foreground leading-relaxed">
           {ONBOARDING_REVEAL_SUBTITLE}
         </p>

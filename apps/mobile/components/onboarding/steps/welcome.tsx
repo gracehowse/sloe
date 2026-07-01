@@ -4,9 +4,10 @@ import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Accent, FontFamily, Spacing } from "@/constants/theme";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
+import { ProgressiveText } from "../ProgressiveText";
 
 /**
  * Mobile Welcome — v3 prototype `.ob--brand` welcome (ENG-1247, 2026-06-24):
@@ -21,6 +22,10 @@ import { useOnboarding } from "../context";
 export function MobileWelcomeStep() {
   const { go, displayIndex, displayTotal } = useOnboarding();
   const router = useRouter();
+  // ENG-720 — staggered reveal on the wordmark + tagline beat, behind the
+  // default-OFF `onboarding_progressive_text` flag. `ProgressiveText` itself
+  // also gates on Reduce Motion; flag-OFF or reduce-motion → instant text.
+  const progressiveText = isFeatureEnabled("onboarding_progressive_text");
   return (
     <View style={{ flex: 1, backgroundColor: Accent.primaryDeep }}>
       {/* Soft radial bloom behind the wordmark (prototype `.ob--brand::before`). */}
@@ -49,7 +54,8 @@ export function MobileWelcomeStep() {
           paddingHorizontal: 24,
         }}
       >
-        <Text
+        <ProgressiveText
+          animate={progressiveText}
           accessibilityRole="header"
           accessibilityLabel="Sloe"
           style={{
@@ -62,8 +68,9 @@ export function MobileWelcomeStep() {
           }}
         >
           sloe
-        </Text>
-        <Text
+        </ProgressiveText>
+        <ProgressiveText
+          animate={progressiveText}
           style={{
             fontFamily: FontFamily.serifItalic,
             fontStyle: "italic",
@@ -76,7 +83,7 @@ export function MobileWelcomeStep() {
           }}
         >
           Cook what you love. Still reach your goals.
-        </Text>
+        </ProgressiveText>
       </View>
 
       {/* Bottom CTA + trust footer. */}

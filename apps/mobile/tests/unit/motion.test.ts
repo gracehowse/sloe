@@ -18,9 +18,12 @@ import { describe, it, expect } from "vitest";
 
 import {
   ODOMETER_MS as SHARED_MS,
+  PROGRESSIVE_TEXT_STAGGER_MS,
   SHEET_MORPH_SCALE as SHARED_MORPH,
   odometerProgress as sharedProgress,
   odometerValue as sharedValue,
+  progressiveTextDelayMs,
+  tokenizeProgressiveText,
 } from "@suppr/shared/motion";
 
 import {
@@ -88,5 +91,32 @@ describe("odometerProgress (mobile)", () => {
 
   it("defaults to the shared ODOMETER_MS duration", () => {
     expect(odometerProgress(0, ODOMETER_MS / 2)).toBeCloseTo(0.5, 5);
+  });
+});
+
+describe("progressive text reveal (shared tokenizer + stagger — ENG-720)", () => {
+  it("splits a phrase into one token per word, trailing space attached", () => {
+    expect(tokenizeProgressiveText("Cook what you love.")).toEqual([
+      "Cook ",
+      "what ",
+      "you ",
+      "love.",
+    ]);
+  });
+
+  it("re-joining the tokens reproduces the source string exactly", () => {
+    const source = "Cook what you love. Still reach your goals.";
+    expect(tokenizeProgressiveText(source).join("")).toBe(source);
+  });
+
+  it("returns an empty list for empty / whitespace-only input", () => {
+    expect(tokenizeProgressiveText("")).toEqual([]);
+    expect(tokenizeProgressiveText("   ")).toEqual([]);
+  });
+
+  it("staggers each token by PROGRESSIVE_TEXT_STAGGER_MS (0-based, never negative)", () => {
+    expect(progressiveTextDelayMs(0)).toBe(0);
+    expect(progressiveTextDelayMs(2)).toBe(2 * PROGRESSIVE_TEXT_STAGGER_MS);
+    expect(progressiveTextDelayMs(-1)).toBe(0);
   });
 });
