@@ -135,6 +135,29 @@ export function coerceMacrosWhenCaloriesButNoGrams(input: MacrosInput): MacrosRe
 }
 
 /**
+ * Planner-fitter base macros for a recipe row — the coerced calories/P/C/F with
+ * `fiberG` defaulted to 0, the exact shape `MealPlanner.pickSwap` feeds into
+ * `refitDayMealsToTargets`. Extracted from MealPlanner so the pinned screen file
+ * shrinks (ENG-958). Planner-display only — never persist (see the isCoerced note).
+ */
+export function baseMacrosFromRecipe(r: MacrosInput): {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG: number;
+} {
+  const c = coerceMacrosWhenCaloriesButNoGrams(r);
+  return {
+    calories: c.calories,
+    protein: c.protein,
+    carbs: c.carbs,
+    fat: c.fat,
+    fiberG: c.fiberG ?? 0,
+  };
+}
+
+/**
  * Penalise extreme per-slot portion spreads (e.g. 0.2× vs 1.8×) so the
  * sampler prefers days that still hit targets without looking absurd.
  */

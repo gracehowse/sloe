@@ -57,7 +57,7 @@ import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { useHouseholdBanner } from "../../hooks/useHouseholdBanner.ts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
-import { moveMealInPlan } from "../../lib/nutrition/leftoversPlanner.ts";
+import { moveMealInPlan, markLeftoversOnSwap } from "../../lib/nutrition/leftoversPlanner.ts";
 import {
   applyTemplateToWeek,
   buildTemplateFromWeek,
@@ -113,7 +113,7 @@ import {
   scaleMacros,
   slotMacroTargets,
 } from "../../lib/nutrition/mealPlanAlgo.ts";
-import { coerceMacrosWhenCaloriesButNoGrams } from "../../lib/nutrition/coerceRecipeMacrosForPlanning.ts";
+import { baseMacrosFromRecipe } from "../../lib/nutrition/coerceRecipeMacrosForPlanning.ts";
 import { planSlotAimKcal } from "../../lib/nutrition/mealSlotAim.ts";
 import {
   EmptyMealSlotAimLine,
@@ -933,28 +933,6 @@ export const MealPlanner = memo(function MealPlanner({
       setSwapFor(null);
       return;
     }
-    const baseFromRecipe = (r: {
-      calories: number;
-      protein: number;
-      carbs: number;
-      fat: number;
-      fiberG?: number;
-    }) => {
-      const c = coerceMacrosWhenCaloriesButNoGrams({
-        calories: r.calories,
-        protein: r.protein,
-        carbs: r.carbs,
-        fat: r.fat,
-        fiberG: r.fiberG,
-      });
-      return {
-        calories: c.calories,
-        protein: c.protein,
-        carbs: c.carbs,
-        fat: c.fat,
-        fiberG: c.fiberG ?? 0,
-      };
-    };
     const plannerTargets = {
       calories: nutritionTargets.calories,
       protein: nutritionTargets.protein,
@@ -965,12 +943,15 @@ export const MealPlanner = memo(function MealPlanner({
     };
     setMealPlan((prev) => {
       if (!prev) return prev;
-      return prev.map((dp) => {
+      const prevRid = (
+        prev.find((d) => d.day === swapFor.day)?.meals[swapFor.mealIndex] as { recipeId?: string } | undefined
+      )?.recipeId;
+      const swapped = prev.map((dp) => {
         if (dp.day !== swapFor.day) return dp;
         const baseRecipes = dp.meals.map((m, mi) => {
-          if (mi === swapFor.mealIndex) return baseFromRecipe(next);
+          if (mi === swapFor.mealIndex) return baseMacrosFromRecipe(next);
           const ref = pool.find((r) => r.id === m.recipeId);
-          if (ref) return baseFromRecipe(ref);
+          if (ref) return baseMacrosFromRecipe(ref);
           return {
             calories: m.calories,
             protein: m.protein,
@@ -1024,6 +1005,15 @@ export const MealPlanner = memo(function MealPlanner({
           ...(fit.residualProteinGap < 0 ? { residualProteinGap: fit.residualProteinGap } : {}),
         };
       });
+      // ENG-958 — clear the swapped-out recipe's downstream leftovers so they
+      // don't orphan (wrong shopping list + day totals). Web↔mobile parity: the
+      // mobile planner already runs markLeftoversOnSwap on swap.
+      const di = swapped.findIndex((d) => d.day === swapFor.day);
+      return markLeftoversOnSwap(swapped, {
+        dayIndex: di,
+        slot: swapFor.slot,
+        previousRecipeId: prevRid,
+      }).plan;
     });
     toast.success("Swapped meal");
     setSwapFor(null);
