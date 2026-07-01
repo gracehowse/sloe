@@ -40,7 +40,7 @@ import {
  * paywall is not the place to nag "log 5 more days". Net-neutral when there's
  * nothing honest to draw.
  *
- * Flag: `paywall_trajectory_chart_v1` (default-OFF; the host gates the mount).
+ * Flag: `paywall_trajectory_chart_v1` (default-ON since 2026-06-30, ENG-1279; the host gates the mount).
  *
  * The presentation component (`PaywallTrajectoryChartView`) is pure and
  * data-prop-driven so it's unit-testable without Supabase; the exported

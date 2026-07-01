@@ -28,8 +28,8 @@ import { WinMomentPlayer } from "@/components/ui/WinMomentPlayer";
  *      `goal-hit` tier stays reserved for the daily ring landmark).
  *
  * Gating contract:
- *   - `isFeatureEnabled("import_magic_moment")` (default-OFF; ramps via
- *     PostHog). Flag OFF → renders `children` verbatim, ZERO visual change.
+ *   - `isFeatureEnabled("import_magic_moment")` (default-ON since 2026-06-30,
+ *     ENG-1279). Flag OFF → renders `children` verbatim, ZERO visual change.
  *   - `useReduceMotion()` → instant: no entering animation, no overlay. The
  *     sheet just appears. (WinMomentPlayer also honours reduce-motion itself,
  *     but we skip the mount entirely so there is genuinely no motion.)

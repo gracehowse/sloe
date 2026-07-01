@@ -5,7 +5,7 @@
  * Web parity with mobile `import-shared.tsx` successSheet.
  *
  * ENG-728 — import-success "magic moment". When `import_magic_moment` is ON
- * (default-OFF; ramps via PostHog) AND the user has not requested reduced
+ * (default-ON since 2026-06-30, ENG-1279) AND the user has not requested reduced
  * motion, the sheet arrives with a subtle fade + scale settle and a one-shot
  * `WinMomentPlayer celebration="log-confirm" fullBleed` overlay — the quiet
  * gold "Logged" beat (NOT a loud confetti storm; the `goal-hit` tier stays

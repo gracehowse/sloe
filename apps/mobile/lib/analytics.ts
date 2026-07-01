@@ -494,6 +494,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // Grace's "always flag on" policy (ENG-1279) — off → the action is hidden and
   // the list stays plan-only (kill switch: remove here / PostHog). Web + mobile.
   "recipe_shopping_list_v1",
+  // ENG-728 — CALM one-shot import-success win-moment overlay (log-confirm,
+  // reduce-motion → instant). DEFAULT-ON per ENG-1279 ("always flag on") — off →
+  // the success sheet renders verbatim (kill switch). Web + mobile.
+  "import_magic_moment",
+  // ENG-969 — calm single-line projected-weight chart on the Pro paywall (shared
+  // computeTrajectory; renders only when a real projection exists). DEFAULT-ON per
+  // ENG-1279 — off → paywall without the chart (kill switch). Web + mobile.
+  "paywall_trajectory_chart_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
@@ -527,28 +535,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   glance at the new step's pixels. Web + mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
- * `expenditure_trend_card` (ENG-953, 2026-06-30); and the "always flag on"
- * batch (ENG-1279, 2026-06-30): `progress_plateau_insight_v1` (ENG-954),
- * `weigh_in_reminder_v1` (ENG-955), `portion_fit_hint_v1` (ENG-854).
- * - `import_magic_moment` (ENG-728) — a CALM one-shot `log-confirm`
- *   win-moment over the recipe-import success surface, plus a subtle
- *   fade/scale on the success sheet. Reduce-motion → instant, no overlay.
- *   Caller-gated on both platforms (mobile `ImportSuccessCelebration` child
- *   of `import-shared`, web `RecipeUpload` success branch).
- *   (default-OFF for now; flips to default-ON in the next ENG-1279 batch.)
- * - `paywall_trajectory_chart_v1` (ENG-969) — calm single-line projected-weight
- *   chart on the Pro paywall, drawn from the shared `computeTrajectory()` (the
- *   same maths as the Progress TrajectoryCard; 5-week linear cap). Renders only
- *   when a real projection exists — never a fabricated forecast. Web + mobile.
- *   (The public, unauthenticated /pricing route has no per-user food log /
- *   weight, so the web mount renders nothing there — net-neutral; the component
- *   contract still matches mobile.)
+ * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
+ * 2026-06-30): `progress_plateau_insight_v1` (ENG-954), `weigh_in_reminder_v1`
+ * (ENG-955), `portion_fit_hint_v1` (ENG-854); and `import_magic_moment`
+ * (ENG-728) + `paywall_trajectory_chart_v1` (ENG-969).
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
   "progress_milestone_celebration_v1",
-  "import_magic_moment",
-  "paywall_trajectory_chart_v1",
   "onboarding_progressive_text",
   "onboarding-why-now",
 ] as const;

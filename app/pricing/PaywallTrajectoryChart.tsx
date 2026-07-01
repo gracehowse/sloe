@@ -30,7 +30,7 @@
  * surface (or a future props-fed mount) renders the identical chart. The
  * platform difference is data availability, not behaviour.
  *
- * Flag: `paywall_trajectory_chart_v1` (default-OFF; the host gates the mount).
+ * Flag: `paywall_trajectory_chart_v1` (default-ON since 2026-06-30, ENG-1279; component self-gates).
  *
  * Mirror: `apps/mobile/components/paywall/PaywallTrajectoryChart.tsx`.
  */

@@ -1078,7 +1078,7 @@ export default function PaywallScreen() {
 
         {personalisedPlan ? <PaywallPersonalisedPlanCard summary={personalisedPlan} /> : null}
 
-        {/* ENG-969 — calm projected-weight chart (default-OFF; self-loads + self-hides; flag-OFF = no mount). */}
+        {/* ENG-969 — calm projected-weight chart (default-ON, ENG-1279; self-loads + self-hides; flag-OFF = no mount). */}
         {isFeatureEnabled("paywall_trajectory_chart_v1") ? <PaywallTrajectoryChart /> : null}
 
         {/* 2×2 value-prop grid + FREE/PRO comparison matrix (Figma

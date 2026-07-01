@@ -44,8 +44,8 @@ afterEach(() => {
 });
 
 describe("PaywallTrajectoryChart — flag gate (web)", () => {
-  it("renders nothing when the flag is OFF, even with a valid projection", () => {
-    // No force → default-OFF.
+  it("renders nothing when the flag is forced OFF, even with a valid projection", () => {
+    forceFlag(false); // default-ON now (ENG-1279); force OFF to test the kill switch
     render(
       <PaywallTrajectoryChart byDay={buildDays(7, 1500)} latestWeightKg={70} targetCalories={1500} />,
     );
