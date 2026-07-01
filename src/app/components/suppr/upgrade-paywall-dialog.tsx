@@ -390,18 +390,18 @@ export function UpgradePaywallDialog({
   const cardDescriptor = "Everything in Free, plus AI logging";
   const showMostPopular = true;
 
-  // T24 (full-sweep 2026-04-24): full CMA-aligned disclosure. Mirrors
-  // the mobile paywall string (apps/mobile/app/paywall.tsx ~540) so
-  // the highest-intent web surface and the iOS surface make the same
-  // commitment to the user. No trial on web upgrade-dialog flow
-  // today; if/when added, append the trial-end + first-charge clause
-  // from mobile.
+  // T24 (2026-04-24): CMA-aligned disclosure mirroring the mobile paywall
+  // string (apps/mobile/app/paywall.tsx ~540). ENG-1285: annual leads with
+  // the real 7-day Stripe trial + Day-7 first charge; monthly unchanged.
   const productName = "Pro";
   const periodNoun = isAnnual ? "year" : "month";
   const altLine = isAnnual
     ? ` (or ${proMonthlyPrice} per month on the monthly plan)`
     : "";
-  const renewalNote = `${productName} renews automatically at ${priceLabel} per ${periodNoun}${altLine} until cancelled. Cancel anytime from Account → Billing. Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
+  const trialLead = isAnnual
+    ? "Starts with a 7-day free trial — no payment due today, first charge on Day 7. "
+    : "";
+  const renewalNote = `${trialLead}${productName} renews automatically at ${priceLabel} per ${periodNoun}${altLine} until cancelled. Cancel anytime from Account → Billing. Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
 
   const primaryCtaLabel = `Upgrade to Pro · ${priceLabel}/${periodShort}`;
   const secondaryCtaLabel = "Continue for free";

@@ -187,6 +187,57 @@ describe("POST /api/stripe/checkout — Stripe Tax wiring", () => {
   });
 });
 
+// --- Trial wiring (ENG-1285) -------------------------------------------------
+
+describe("POST /api/stripe/checkout — 7-day trial on Pro annual (ENG-1285)", () => {
+  // Pricing v1 (docs/decisions/2026-04-19-pricing-v1.md): 7-day free
+  // trial on Pro ANNUAL only — no trial on monthly. Pre-fix the web
+  // route created the subscription with NO trial while the /pricing
+  // chip claimed "No payment due now — first charge on Day 7".
+  it("annual: passes subscription_data.trial_period_days = 7", async () => {
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ tier: "pro", period: "annual" }));
+    expect(res.status).toBe(200);
+
+    const payload = sessionsCreateMock.mock.calls[0][0];
+    expect(payload.subscription_data).toEqual({
+      metadata: {
+        supabase_user_id: "user-1",
+        tier: "pro",
+        period: "annual",
+        currency: "GBP",
+      },
+      trial_period_days: 7,
+    });
+  });
+
+  it("annual: pins card-upfront semantics via payment_method_collection 'always'", async () => {
+    // "always" is Stripe's default, pinned explicitly so the
+    // disclosure's "first charge on Day 7" promise can't drift to a
+    // card-less trial that dunning-fails on Day 7.
+    const POST = await loadRoute();
+    await POST(makeReq({ tier: "pro", period: "annual" }));
+    const payload = sessionsCreateMock.mock.calls[0][0];
+    expect(payload.payment_method_collection).toBe("always");
+  });
+
+  it("monthly: does NOT pass trial_period_days (no trial — churn trap per pricing v1)", async () => {
+    const POST = await loadRoute();
+    await POST(makeReq({ tier: "pro", period: "monthly" }));
+    const payload = sessionsCreateMock.mock.calls[0][0];
+    expect(payload.subscription_data).not.toHaveProperty("trial_period_days");
+    expect(payload).not.toHaveProperty("payment_method_collection");
+  });
+
+  it("omitted period defaults to monthly and stays trial-less (legacy clients)", async () => {
+    const POST = await loadRoute();
+    await POST(makeReq({ tier: "pro" }));
+    const payload = sessionsCreateMock.mock.calls[0][0];
+    expect(payload.subscription_data).not.toHaveProperty("trial_period_days");
+    expect(payload).not.toHaveProperty("payment_method_collection");
+  });
+});
+
 // --- Negative paths still short-circuit before sessions.create --------------
 
 describe("POST /api/stripe/checkout — negative paths", () => {

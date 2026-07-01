@@ -21,7 +21,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -310,9 +310,9 @@ describe("landing page — roadmap (Figma LP1)", () => {
 describe("/pricing — paid-tier renewal disclosure (legal round-4 + round-6 flag)", () => {
   // Build a Tier array shaped the way `app/pricing/page.tsx` passes it
   // in: every PRICING_TIERS entry, plus the derived `cta` +
-  // `featHeadStripped` fields. We only render the grid in monthly mode
-  // (default state) — that's enough to assert the disclosure copy for
-  // every paid tier.
+  // `featHeadStripped` fields. Monthly (default state) covers the
+  // trial-less disclosure; the ENG-1285 case below flips the toggle to
+  // pin the annual trial disclosure too.
   const TIERS = PRICING_TIERS.map((t) => ({
     ...t,
     cta: t.checkoutTier === null ? "Continue for free" : `Upgrade to ${t.name}`,
@@ -395,6 +395,29 @@ describe("/pricing — paid-tier renewal disclosure (legal round-4 + round-6 fla
       expect(text).toContain("Cancel anytime in");
       expect(text).toContain("account settings");
       expect(text).toContain("7-day refund policy");
+    });
+
+    // ENG-1285 — annual carries a real Stripe 7-day trial
+    // (`trial_period_days: 7` on the checkout route), so the annual
+    // disclosure must state the trial + Day-7 first charge and must
+    // NOT claim "charged today". Monthly (above) stays trial-less.
+    it("annual view: discloses the 7-day trial + Day-7 first charge, never 'charged today'", () => {
+      const { container } = render(
+        <PricingTiersGrid tiers={TIERS} stripeTaxEnabled={true} paywallFrom="deep_link" />,
+      );
+      const annualTab = Array.from(
+        container.querySelectorAll('button[role="tab"]'),
+      ).find((b) => b.textContent?.includes("Annual"));
+      expect(annualTab, "Annual billing tab").toBeTruthy();
+      fireEvent.click(annualTab!);
+
+      const text = container.textContent ?? "";
+      expect(text).toContain("7-day free trial");
+      expect(text).toContain("no payment due today, first charge on Day 7");
+      expect(text).toContain("Automatically renews each year until you cancel");
+      expect(text).not.toContain("charged today");
+      // Chip + disclosure must tell the same story on the same card.
+      expect(text).toContain("No payment due now — first charge on Day 7");
     });
 
     it("does not carry the retired '(billed in USD)' parenthetical on either branch", () => {

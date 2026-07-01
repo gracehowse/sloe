@@ -142,7 +142,22 @@ export async function POST(req: Request) {
           period,
           currency: checkoutCurrency,
         },
+        // ENG-1285: 7-day free trial on Pro ANNUAL only (pricing v1,
+        // docs/decisions/2026-04-19-pricing-v1.md — "no trial on
+        // monthly", churn trap). Pre-fix the /pricing chip claimed
+        // "No payment due now — first charge on Day 7" while this
+        // session charged immediately — a false-claim launch blocker.
+        // Mobile IAP already carries the same annual-only trial, so
+        // this restores web↔mobile parity. The webhook grants Pro on
+        // `trialing` (webhookProcess.ts) and the subscription card +
+        // /checkout/success already render trial states.
+        ...(period === "annual" ? { trial_period_days: 7 } : {}),
       },
+      // Card collected upfront during the trial ("always" is Stripe's
+      // default, pinned explicitly so the disclosure's "first charge on
+      // Day 7" promise can't drift to a card-less trial that dunning-
+      // fails on Day 7).
+      ...(period === "annual" ? { payment_method_collection: "always" as const } : {}),
       // Audit 2026-04-30 (user-sentiment pain #1): the success page is
       // a dedicated `/checkout/success` route that surfaces an explicit
       // trust-copy receipt (cancel path, trial-end, refund window,
