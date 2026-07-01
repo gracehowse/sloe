@@ -15,10 +15,8 @@ import { useRouter } from "expo-router";
 import {
   Check,
   Circle,
-  BookOpen,
   User,
   ChevronRight,
-  Flame,
   type LucideIcon,
 } from "lucide-react-native";
 import { MACRO_ICONS } from "@/lib/macroIconsLucide";
@@ -43,9 +41,18 @@ import { PROFILE_TARGETS_DIRTY_KEY } from "@/lib/profileTargetsDirtyFlag";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { recordGoalHistory } from "@suppr/nutrition-core/goalHistory";
-import { computeProtectedStreak, readFreezeLedger } from "@/lib/streakFreeze";
+import {
+  computeProtectedStreak,
+  readFreezeLedger,
+  type FreezeLedger,
+  type StreakByDay,
+} from "@/lib/streakFreeze";
+import { buildEditorialProfileBlock } from "@/lib/editorialProfileBlock";
+import { useSavedLibraryRecipes, useSavesHeadCount } from "@/lib/recipes";
 import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
 import { ProfileShowcaseReadView } from "@/components/profile/ProfileShowcaseReadView";
+import { EditorialProfileBlock } from "@/components/profile/EditorialProfileBlock";
+import { ProfileIdentityStrip } from "@/components/profile/ProfileIdentityStrip";
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
@@ -76,6 +83,9 @@ export default function ProfileScreen() {
   // `targets.tsx` / web `Targets.tsx`): sheet when on, interim note when off.
   const settingsRedesignV2 = isFeatureEnabled("settings_redesign_v2");
   const profileShowcaseV1 = isFeatureEnabled("profile_showcase_v1");
+  // ENG-1246 (Gap #16) — shared editorial Profile block (identity → streak dots
+  // + best/freezes → milestones → recipe grid). Default-on; off → legacy strip.
+  const editorialProfileV3 = isFeatureEnabled("sloe_v3_profile");
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
 
   const [loading, setLoading] = useState(true);
@@ -85,11 +95,23 @@ export default function ProfileScreen() {
   // Recipes + Day-streak stats strip. Streak uses the same
   // `computeProtectedStreak` helper Today / Progress / Settings use (no
   // hand-rolled count — that was the trust-killer fixed in the 2026-05-04
-  // settings audit). Recipe count is an exact head-count of `saves`.
+  // settings audit). Recipe count: see the `recipeCount` derivation below.
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
   const [streak, setStreak] = useState(0);
-  const [recipeCount, setRecipeCount] = useState(0);
   const [daysLogged, setDaysLogged] = useState(0);
+  // ENG-1246 — retain the streak-walk byDay + freeze ledger so the editorial
+  // dot row + best/freezes line share the SAME inputs.
+  const [streakByDay, setStreakByDay] = useState<StreakByDay>({});
+  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({ earnedAt: [], usedHistory: [] });
+  const [freezeBudgetMax, setFreezeBudgetMax] = useState(3);
+  // ENG-1246 — saved-recipe ROWS via the canonical Library/Today/Plan hook.
+  // GATED (M2): the heavy saves+authored batch runs only flag-ON; flag-OFF
+  // passes null (hook → `[]`) and uses the cheap head-only `saves` count below.
+  // n13: flag-ON `recipeCount` is the Library-consistent set (drops orphaned
+  // saves, adds authored) — not the raw head-count.
+  const { recipes: savedRecipes } = useSavedLibraryRecipes(editorialProfileV3 ? userId : null);
+  const savesHeadCount = useSavesHeadCount(editorialProfileV3 ? null : userId);
+  const recipeCount = editorialProfileV3 ? savedRecipes.length : savesHeadCount;
   // §3.7 body-stats entry row → GoalPaceEditorSheet (weight/height/goal/pace).
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   const joinedLabel = useMemo(() => {
@@ -112,6 +134,15 @@ export default function ProfileScreen() {
     if (fromEmail) return fromEmail.toUpperCase();
     return "S";
   }, [displayName, session?.user?.email]);
+  // ENG-1246 — editorial model from already-loaded data (no fetches/writes).
+  const editorialModel = useMemo(
+    () => buildEditorialProfileBlock({ byDay: streakByDay, freezeLedger, freezeBudgetMax }),
+    [streakByDay, freezeLedger, freezeBudgetMax],
+  );
+  const editorialRecipes = useMemo(
+    () => savedRecipes.map((r) => ({ id: r.id, title: r.title, image: r.image || null })),
+    [savedRecipes],
+  );
   const [calories, setCalories] = useState(String(NUTRITION_DEFAULTS.calories));
   const [protein, setProtein] = useState(String(NUTRITION_DEFAULTS.protein));
   const [carbs, setCarbs] = useState(String(NUTRITION_DEFAULTS.carbs));
@@ -170,59 +201,9 @@ export default function ProfileScreen() {
     },
     centered: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-    // §3.2 identity card — warm editorial anchor at the top of the surface.
-    // Monogram (accent.primarySolid) + serif name + tier·joined label, then a
-    // two-tile stats strip. Soft elevation on the outer wrapper so the card
-    // lifts off white (RN clips iOS shadows under overflow:hidden, so the
-    // shadow lives on this padded outer view, never on a clipped child).
-    identityCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: Spacing.md,
-      backgroundColor: cardElevation.liftBg ?? colors.card,
-      borderRadius: Radius.lg,
-      // Light soft-lift drops the hairline (shadow is the separation); dark keeps it.
-      borderWidth: cardElevation.useBorder ? 1 : 0,
-      borderColor: colors.border,
-      padding: Spacing.md,
-      ...(cardElevation.shadowStyle ?? {}),
-    },
-    monogram: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: accent.primarySolid,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    // Serif initial — Newsreader (Type.title), white on plum. The one accent
-    // colour-block allowed on this surface (small enough to read as accent).
-    monogramInitial: { ...Type.title, color: colors.primaryForeground },
-    identityName: { ...Type.title, color: colors.text },
-    identityMeta: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
-    tierPill: {
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: Spacing.xs,
-      borderRadius: Radius.full,
-      backgroundColor: accent.primarySoft,
-    },
-    tierPillText: { ...Type.label, color: accent.primarySolid },
-
-    // §3.2 stats strip — two equal-width tiles (Recipes saved + Day streak),
-    // serif numerals, sourced from the canonical streak/recipe data.
-    statsStrip: { flexDirection: "row", gap: Spacing.md },
-    statTile: {
-      flex: 1,
-      backgroundColor: colors.card,
-      borderRadius: Radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: Spacing.md,
-      gap: Spacing.xs,
-    },
-    statTileHeader: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
-    statTileLabel: { ...Type.caption, color: colors.textSecondary },
-    statTileValue: { ...Type.heroValue, fontSize: 24, lineHeight: 28, fontVariant: ["tabular-nums"], color: colors.text },
+    // §3.2 identity card + stats strip moved to `ProfileIdentityStrip`
+    // (ENG-1246) — the legacy kill-switch UI; the editorial block owns the
+    // flag-ON path. Their styles live in that component now.
 
     headerRow: {
       flexDirection: "row",
@@ -440,9 +421,9 @@ export default function ProfileScreen() {
       const tier = typeof tierRaw === "string" ? tierRaw : null;
       setUserTier(tier === "free" || tier === "base" || tier === "pro" ? tier : "free");
       // §3.2 streak — canonical protected-streak helper (same path as Today /
-      // Progress / Settings). Hydrate a byDay map from nutrition_entries and
-      // the freeze ledger from this same row. Failure is non-fatal: the strip
-      // simply hides the streak tile at 0.
+      // Progress / Settings). Hydrate a byDay map from nutrition_entries + the
+      // freeze ledger. Non-fatal on error (streak → 0). m4: the 400-day window
+      // means "Best streak" is best-RECENT, not all-time (see computeBestStreak).
       try {
         const { data: logs } = await supabase
           .from("nutrition_entries")
@@ -469,18 +450,12 @@ export default function ProfileScreen() {
             : 3;
         setStreak(computeProtectedStreak(byDay as never, ledger, budgetMax).streakLength);
         setDaysLogged(Object.keys(byDay).length);
+        // ENG-1246 — keep the same inputs for the editorial dot row / milestones.
+        setStreakByDay(byDay as StreakByDay);
+        setFreezeLedger(ledger);
+        setFreezeBudgetMax(budgetMax);
       } catch {
         setStreak(0);
-      }
-      // §3.2 recipes-saved — exact head-count of `saves` (no row payload).
-      try {
-        const { count } = await supabase
-          .from("saves")
-          .select("recipe_id", { count: "exact", head: true })
-          .eq("user_id", userId);
-        setRecipeCount(count ?? 0);
-      } catch {
-        setRecipeCount(0);
       }
       const d = data as Record<string, unknown>;
       const resolved = resolveTargets(
@@ -683,7 +658,24 @@ export default function ProfileScreen() {
     >
       <PushScreenHeader title="Profile" onBack={goBack} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {profileShowcaseV1 ? (
+        {editorialProfileV3 ? (
+          // ENG-1246 (Gap #16) — the shared editorial block: identity → streak
+          // dots + best/freezes → milestones → recipe grid. Editing still lives
+          // on the Daily Targets / Edit Targets cards below (rendered in every
+          // path). Takes precedence over the read-only showcase.
+          <EditorialProfileBlock
+            displayName={displayName}
+            joinedLabel={joinedLabel}
+            monogramInitial={monogramInitial}
+            tierLabel={userTier === "pro" ? "Pro" : "Free"}
+            isPro={userTier === "pro"}
+            model={editorialModel}
+            recipes={editorialRecipes}
+            recipeCount={recipeCount}
+            onOpenRecipe={(id) => router.push(`/recipe/${id}`)}
+            onSeeAllRecipes={() => router.push("/(tabs)/library")}
+          />
+        ) : profileShowcaseV1 ? (
           <ProfileShowcaseReadView
             displayName={displayName}
             joinedLabel={joinedLabel}
@@ -698,59 +690,19 @@ export default function ProfileScreen() {
           />
         ) : (
         <>
-        {/* §3.2 identity card + stats strip (settings.md). Net-new editorial
-            block — the warm human anchor that was missing (gaps #1, #12). Gated
-            behind `settings_redesign_v2`; old layout (straight to Daily Targets)
-            stays alive when the flag is off. The monogram + name render even on
-            a name-less fresh account (initials → email → "S" fallback). */}
+        {/* §3.2 identity card + stats strip — the legacy partial gap #16 UI,
+            extracted to `ProfileIdentityStrip` (ENG-1246). Kill-switch path:
+            the editorial block returns above; this renders only when both
+            `sloe_v3_profile` and `profile_showcase_v1` are off. */}
         {settingsRedesignV2 ? (
-          <View style={{ gap: Spacing.md }}>
-            <View style={styles.identityCard}>
-              <View style={styles.monogram} accessible={false}>
-                <Text style={styles.monogramInitial}>{monogramInitial}</Text>
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.identityName} numberOfLines={1}>
-                  {displayName.trim() || "Your profile"}
-                </Text>
-                <Text style={styles.identityMeta} numberOfLines={1}>
-                  {userTier === "pro" ? "Pro" : "Free"}
-                  {joinedLabel ? ` · ${joinedLabel}` : ""}
-                </Text>
-              </View>
-              {userTier === "pro" ? (
-                <View style={styles.tierPill}>
-                  <Text style={styles.tierPillText}>Pro</Text>
-                </View>
-              ) : null}
-            </View>
-
-            {/* Stats strip — hidden entirely at 0/0; each tile hidden at its own
-                0 (subtractive-zero rule). Streak is the canonical protected
-                streak; recipes is an exact saves head-count. */}
-            {recipeCount > 0 || streak > 0 ? (
-              <View style={styles.statsStrip}>
-                {recipeCount > 0 ? (
-                  <View style={styles.statTile}>
-                    <View style={styles.statTileHeader}>
-                      <BookOpen size={16} color={Accent.success} strokeWidth={1.75} />
-                      <Text style={styles.statTileLabel}>Recipes saved</Text>
-                    </View>
-                    <Text style={styles.statTileValue}>{recipeCount}</Text>
-                  </View>
-                ) : null}
-                {streak > 0 ? (
-                  <View style={styles.statTile}>
-                    <View style={styles.statTileHeader}>
-                      <Flame size={16} color={accent.primarySolid} strokeWidth={1.75} />
-                      <Text style={styles.statTileLabel}>Day streak</Text>
-                    </View>
-                    <Text style={styles.statTileValue}>{streak}</Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-          </View>
+          <ProfileIdentityStrip
+            monogramInitial={monogramInitial}
+            displayName={displayName}
+            isPro={userTier === "pro"}
+            joinedLabel={joinedLabel}
+            recipeCount={recipeCount}
+            streak={streak}
+          />
         ) : null}
 
         {/* Current targets summary.

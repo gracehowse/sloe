@@ -321,6 +321,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "loghub_quick_actions_v1",
   "recipe_detail_v3_conformance",
   "profile_showcase_v1",
+  // ENG-1246 (Gap #16) — the shared editorial Profile block: identity → streak
+  // dots + best/freezes line → milestones list → recipe grid, replacing the two
+  // divergent inline strips. Default-on; off → the legacy "More" hub / showcase
+  // (kill switch). Keep in sync with apps/mobile/lib/analytics.ts.
+  "sloe_v3_profile",
   "mfp_tracker_reassurance_v1",
   "today_hero_decard_v3",
   "today_quickadd_recents_v3",

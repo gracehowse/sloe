@@ -644,6 +644,36 @@ export function useSavedLibraryRecipes(userId: string | null) {
   return { recipes, loading, refreshing, refresh };
 }
 
+/**
+ * Head-only count of the user's `saves` rows — a single `head: true` COUNT
+ * query that returns no rows. The cheap alternative to `useSavedLibraryRecipes`
+ * for surfaces that only need "how many saved" (ENG-1246 review fix M2: the
+ * Profile kill-switch path). Pass a null `userId` (or the flag-off gate result)
+ * to skip the query and report 0. Re-runs whenever `userId` changes; the caller
+ * decides focus behaviour. Non-fatal on error — reports 0.
+ */
+export function useSavesHeadCount(userId: string | null): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!userId) {
+      setCount(0);
+      return;
+    }
+    let cancelled = false;
+    void supabase
+      .from("saves")
+      .select("recipe_id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .then(({ count: n }) => {
+        if (!cancelled) setCount(n ?? 0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+  return count;
+}
+
 /** Fetch a single recipe with ingredients. */
 export async function fetchRecipeDetail(recipeId: string) {
   const [recipeRes, ingredientsRes] = await Promise.all([

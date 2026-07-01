@@ -45,8 +45,9 @@ mobile macro Rings is fully built** (3-way `TodayMacroSection` switch +
 detail flag-asymmetry intentional); **#12/#13 Plan** has no `sloe_v3_plan` flag
 and nothing was promised-and-missing — no-op until a v3 Plan spec lands; **#21
 web Apple Health card WIRED this session** (38b0e7ec); #6 mobile billing
-deep-links to RevenueCat (functionally done, no screen); #16 editorial Profile
-partially built.
+deep-links to RevenueCat (functionally done, no screen); **#16 editorial Profile
+DONE** (ENG-1246 — shared `EditorialProfileBlock` behind `sloe_v3_profile`,
+default-on both platforms).
 
 **#23 EQUATION LAYOUT — web DONE (c9a48725).** Progress energy balance →
 prototype equation (intake − maintenance = deficit/day, operators + "How
@@ -141,7 +142,8 @@ still a check-in screen) is the remaining #4 follow-up.
    watermark + Save/Share) (L) — viral artifact; mobile `weekly-recap.tsx` is a
    check-in screen, not the card.
 6. **#3** — unify the fragmented importer (URL/CSV/Plan are 3 surfaces) (M).
-7. **#24** — two-pane WebSettings (L); **#16** editorial Profile finish (M).
+7. **#24** — two-pane WebSettings (L). (**#16 editorial Profile — DONE**,
+   ENG-1246, `sloe_v3_profile` default-on both platforms.)
 
 **Backlog claims that were FALSE:** #3, #5, #7, #8, #15, #20, #21(stale), #12,
 #13, #14(partial), #10(count), #6, #9, #24, #4. Full per-item evidence in the
@@ -198,7 +200,7 @@ Ranking weights: launch-critical (viral hooks, monetisation, MFP capture) > dail
 | 13 | Plan | **BUILT (PR #599, flag-dark on web)** — was: Web Plan pre-v3, no two-column grid + Smart/Shopping rail + stat strip | High | Yes | `MealPlanner.tsx` | `app/(tabs)/planner.tsx` | Done: `PlanV3WebDashboard.tsx` (prototype `WebPlan`) — two-column (week-stack + grounded insight/shopping rail), verdict header, week-health stat strip; `PlanV3Connected` renders it at `lg+`, keeps the phone column below `lg`. `sloe_v3_plan` stays **web-off** pending Grace's desktop SEE-approval (mobile already default-on). Story + render test green; `MealPlanner.tsx` untouched. |
 | 14 | Discover | Creator rail (both), web featured hero, mobile Following feed missing | High | Yes | `DiscoverFeed.tsx` | `app/(tabs)/discover.tsx` | Add creator rail to both, web featured hero, mobile Following feed-card. Creator plane = launch growth. |
 | 15 | Onboarding | No post-reveal trial/paywall decision step (7-day free → annual) | High | No | `lib/onboarding/state.ts`, `onboarding/web-flow.tsx` | `onboarding/mobile-flow.tsx` | Build the trial-decision step (StoreKit/RevenueCat mobile, Stripe web), flag-gated. **Highest-value commercial gap** — flow ends at data-bridges with no upgrade ask. Pricing must be region-aware (no hardcoded £). |
-| 16 | Settings/Profile | Editorial streak-dots + milestones + recipe-grid block missing on **both** Profiles | High | No | `Profile.tsx` | `app/profile.tsx` | Build a shared editorial-profile block (streak dots, freeze/best line, milestones, recipe grid) wired to the real freeze ledger + saved recipes. The warm anchor the whole v3 Profile is built around. |
+| 16 | Settings/Profile | **BUILT (ENG-1246, default-on `sloe_v3_profile`)** — was: editorial streak-dots + milestones + recipe-grid block missing on **both** Profiles | High | No | `Profile.tsx`, `profile/EditorialProfileBlock.tsx`, `lib/profile/editorialProfileBlock.ts` | `app/profile.tsx`, `components/profile/EditorialProfileBlock.tsx` | Done: shared `EditorialProfileBlock` (identity → 7-day streak dots + best/freezes line → milestones list → recipe grid) on both platforms, gated behind `sloe_v3_profile` (default-on; legacy "More" hub / identity strip stay in the `else` as the kill switch, extracted to `ProfileHubHeader` (web) / `ProfileIdentityStrip` (mobile) so both pinned screens net-shrank). Pure shaping (dot states, best-streak, milestones from the existing `STREAK_MILESTONES`) lives in `src/lib/profile/editorialProfileBlock.ts`; display-only, wired to the already-loaded freeze ledger + `savedRecipesForLibrary` / `useSavedLibraryRecipes` — no new queries. Streak-dot/milestone logic pinned by `tests/unit/editorialProfileBlock.test.ts`. |
 | 17 | Recipes | BatchCook flow ("cook once, assign portions, fridge tracker") entirely missing on both | High | No | `Library.tsx`, `CookMode.tsx` | `app/(tabs)/library.tsx`, `app/cook.tsx` | Build on both (leftover-tracking = retention hook), or drop the prototype's dead "Batch cook" button and ticket it. Don't ship a button that opens nothing. |
 | 18 | Recipes | Editorial Cookbook shelves (featured hero + fit-based shelves) absent — Library is a flat grid | High | No | `Library.tsx` | `app/(tabs)/library.tsx` | Add featured hero + 3 computed shelves (kcal≤600 fits / time≤30 quick / protein≥27) above the grid. Loses the "cook what fits your day" differentiator on the surface that drives cooking. |
 | 19 | Recipes | Per-recipe "Report an issue"/DMCA ReportRecipe sheet missing on both | High | No | `RecipeDetail.tsx` | `app/recipe/[id].tsx` | Add the report link + reasons sheet; route copyright→DMCA. UGC-safety + IP-launch requirement (ties to ENG-857/858/859). |
@@ -250,8 +252,8 @@ Everything tied to the 2026-07-01 push. iOS-first; region-aware pricing througho
 
 ### Phase 4 — Structural conformance & editorial IA
 Lower urgency, higher build cost; do after the launch cluster.
-- **Editorial Profile block** (streak/milestones/recipe grid) (#16) — single highest-value Settings/Profile item, but slots here because it's a from-scratch shared component.
-- **Two-pane WebSettings** behind `sloe_v3_settings` (#24); web editorial Profile (replacing the "More" hub); Settings/Profile IA reconciliation to v3's named groups.
+- ~~**Editorial Profile block** (streak/milestones/recipe grid) (#16)~~ — **DONE** (ENG-1246): shared `EditorialProfileBlock` behind `sloe_v3_profile`, default-on both platforms; the "More" hub / identity strip are the flag-off kill switch.
+- **Two-pane WebSettings** behind `sloe_v3_settings` (#24); Settings/Profile IA reconciliation to v3's named groups.
 - **Onboarding web `wob` shell**, body-stats granularity decision, motivation/referral/first-win steps, diet/allergens split — ratify-or-conform each; these are decisions as much as builds.
 - **Daily Digest screen** (distinct from the weekly primitive) — decide in/out of v3 scope first.
 - Polish tail: Daily-calories corridor band; barcode community-DB framing; ConfirmFood low-conf note; voice concentric-ring orb; Fasting 7-bar weekly strip; web styled date picker.

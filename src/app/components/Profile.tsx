@@ -37,6 +37,9 @@ import {
   sharingStorageKey,
 } from "../../lib/household/sharingGridStorage.ts";
 import { ProfileShowcaseReadView } from "./profile/ProfileShowcaseReadView.tsx";
+import { EditorialProfileBlock } from "./profile/EditorialProfileBlock.tsx";
+import { ProfileHubHeader } from "./profile/ProfileHubHeader.tsx";
+import { buildEditorialProfileBlock } from "../../lib/profile/editorialProfileBlock.ts";
 
 interface ProfileProps {
   userTier: "free" | "base" | "pro";
@@ -123,6 +126,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
   // out of scope here; the dialog routes there via `onCustomiseMacros`).
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
   const profileShowcaseV1 = isFeatureEnabled("profile_showcase_v1");
+  // ENG-1246 (Gap #16) — the shared editorial Profile block: identity →
+  // streak dots + best/freezes line → milestones → recipe grid. Default-on;
+  // off → the legacy "More" hub framing stays alive below (kill switch).
+  const editorialProfileV3 = isFeatureEnabled("sloe_v3_profile");
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
 
   /** Reveal + arm the in-page manual Macro Calculator editor. Used as the
@@ -406,6 +413,51 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
       })()
     : "Joined recently";
 
+  // ENG-1246 — shape the editorial block from already-loaded data only
+  // (nutritionByDay + freeze ledger + saved recipes). No fetches/writes.
+  const editorialModel = useMemo(
+    () => buildEditorialProfileBlock({ byDay: nutritionByDay as never, freezeLedger, freezeBudgetMax }),
+    [nutritionByDay, freezeLedger, freezeBudgetMax],
+  );
+  const editorialRecipes = useMemo(
+    () => (savedRecipesForLibrary ?? []).map((r) => ({ id: r.id, title: r.title, image: r.image || null })),
+    [savedRecipesForLibrary],
+  );
+  const goHome = (query: string) => {
+    if (typeof window !== "undefined") window.location.href = `/home?${query}`;
+  };
+
+  if (editorialProfileV3) {
+    return (
+      <div className="product-shell py-pm-5" data-testid="screen-profile-editorial">
+        <div className="mb-4 flex items-center gap-2">
+          <Link
+            href="/settings"
+            className="inline-flex items-center gap-1 rounded-md text-sm font-semibold text-primary-solid hover:text-primary-solid/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Icons.back className="h-4 w-4" aria-hidden />
+            Settings
+          </Link>
+        </div>
+        <h1 className="mb-4 font-[family-name:var(--font-headline)] text-2xl font-medium text-foreground">
+          Profile
+        </h1>
+        <EditorialProfileBlock
+          displayName={displayName?.trim() ?? ""}
+          joinedLabel={joinedAt ? joinedLabel : null}
+          monogramInitial={avatarInitial}
+          tierLabel={tierLabel}
+          isPro={userTier === "pro"}
+          model={editorialModel}
+          recipes={editorialRecipes}
+          recipeCount={recipeCount}
+          onOpenRecipe={(id) => goHome(`view=library&recipe=${id}`)}
+          onSeeAllRecipes={() => goHome("view=library")}
+        />
+      </div>
+    );
+  }
+
   if (profileShowcaseV1) {
     return (
       <div className="product-shell py-pm-5" data-testid="screen-profile-showcase">
@@ -439,78 +491,19 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
 
   return (
     <div className="product-shell py-pm-5">
-      {/* Phone-top header — prototype port (2026-04-20, web parity
-          with mobile More commit 26a63bf): ACCOUNT overline + large
-          "More" title + round avatar-initial button on the right.
-          Replaces the old inline "avatar + name row". The display-name
-          + tier + joined-at details that used to live in that header
-          now render inside the profile card immediately below, which
-          mirrors the mobile More tab layout one-to-one. Tab is still
-          the same route (`?view=profile`) — only the header presentation
-          changed; no router / nav changes. */}
-      <div className="flex items-start justify-between mb-3.5">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-            Account
-          </p>
-          <h1 className="text-[28px] font-bold text-foreground -tracking-[0.02em] mt-0.5 leading-tight">
-            More
-          </h1>
-        </div>
-        <button
-          type="button"
-          aria-label="Your profile"
-          className="shrink-0 w-10 h-10 rounded-full grid place-items-center text-[13px] font-bold bg-primary text-primary-foreground"
-        >
-          {avatarInitial}
-        </button>
-      </div>
-
-      {/* Profile card — 52×52 gradient avatar + display-name +
-          tier·joined subline + tier pill. Matches the mobile profile
-          card (`apps/mobile/app/(tabs)/more.tsx` ~L451) including the
-          subtle tier-coloured pill on the right. */}
-      {/* One-treatment elevation (Grace 2026-06-09): every card on this page
-          sits on the page ground → soft lift (`card-slab`). Was flat slab. */}
-      <div className="flex items-center gap-3.5 mb-4 rounded-xl bg-card p-3.5 card-slab">
-        <div
-          className="w-[52px] h-[52px] rounded-full grid place-items-center text-lg font-bold bg-primary text-primary-foreground shrink-0"
-        >
-          {avatarInitial}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-[family-name:var(--font-headline)] text-lg font-medium text-foreground leading-tight truncate">
-            {displayName?.trim() ? displayName : "Your profile"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">
-            {tierLabel} tier &middot; {joinedLabel}
-          </p>
-        </div>
-        <span
-          className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide ${
-            userTier === "pro"
-              ? "bg-primary/15 text-primary-solid"
-              : "bg-muted text-muted-foreground"
-          }`}
-        >
-          {tierLabel}
-        </span>
-      </div>
-
-      {/* P1-20 web parity (TestFlight `AHS6xzy…` / `AA63DQ7xd…`,
-          2026-04-21+): Score pill removed — tester rejected it twice
-          ("doesn't mean anything, remove"). Mobile parity:
-          `apps/mobile/app/(tabs)/more.tsx`. Recipes + Streak stay. */}
-      <div className="flex gap-2 mb-4">
-        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border card-slab">
-          <p className="text-lg font-bold text-primary-solid tabular-nums">{recipeCount}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Recipes</p>
-        </div>
-        <div className="flex-1 text-center p-3 rounded-xl bg-card border border-border card-slab">
-          <p className="text-lg font-bold text-success tabular-nums">{streakDays}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Streak</p>
-        </div>
-      </div>
+      {/* Legacy "More"-titled hub framing (Account overline + identity card +
+          Recipes/Streak tiles) — extracted to `ProfileHubHeader` (ENG-1246).
+          Kill-switch path: the `sloe_v3_profile`-ON editorial block returns
+          above; this renders only when the flag is off. */}
+      <ProfileHubHeader
+        avatarInitial={avatarInitial}
+        displayName={displayName}
+        tierLabel={tierLabel}
+        isPro={userTier === "pro"}
+        joinedLabel={joinedLabel}
+        recipeCount={recipeCount}
+        streakDays={streakDays}
+      />
 
       {/* Upgrade banner — shown to free + base users (mobile parity:
           `apps/mobile/app/(tabs)/more.tsx` 416). Pro users see no

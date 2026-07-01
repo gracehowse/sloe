@@ -96,6 +96,8 @@ const GATE_15_SHARED = [
   "import-save-first-v1",
   "onboarding-app-choice",
   "today_planned_empty_state",
+  // ENG-1246 (Gap #16) — shared editorial Profile block, default-on both platforms.
+  "sloe_v3_profile",
 ] as const;
 
 describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
