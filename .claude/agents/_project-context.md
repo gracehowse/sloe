@@ -129,8 +129,14 @@ enforced at write time as well as review time.
 - **Radius:** 4 / 6 / 8 / 12 / full (`Radius` — 2026-05-22 lock; bigger reads
   "kids' tablet"). Off-scale `borderRadius` literals are caught by the token
   ratchet (below).
-- **Type:** the `Type` ramp on mobile (programmatic gate pending ENG-1002);
-  type-scale-gated classes on web (25-snap gate, green).
+- **Type:** the `Type` ramp on mobile; type-scale-gated classes on web
+  (25-snap gate, green). **Enforced by the mobile type-scale ratchet**
+  `npm run check:type-scale-mobile` (`scripts/check-type-scale-mobile.mjs`,
+  ENG-1002; in `npm run ci` + CI): scans mobile `.tsx`, flags raw `fontSize: N`
+  literals off the `Type` ramp (read at runtime from `theme.ts`, unioned with a
+  micro 8–10 + display 36+ band that mirrors the web `check:type-scale` bands),
+  pins per-file off-ramp counts in `scripts/type-scale-mobile-budget.json`
+  (only-shrink). Re-pin with `npm run check:type-scale-mobile:write`.
 - **Colour:** every value traces to a semantic token (`theme.ts` /
   `src/styles/theme.css`). A literal hex in a component is a finding.
   **Enforced by the token-scale ratchet** `npm run check:token-scale`

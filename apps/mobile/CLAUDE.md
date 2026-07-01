@@ -21,7 +21,9 @@ mirroring) live in the root `.claude/CLAUDE.md` and still apply here.
   The RN specifics: `Spacing` / `Radius` / `Type` / `Colors` / `Elevation` /
   `IconSize` from `constants/theme.ts` — never literal hexes or off-scale
   numbers (Spacing 4/8/12/16/20/24/32/40 — 12 = `Spacing.dense`, ENG-1012;
-  Radius 4/6/8/12). Pressables go
+  Radius 4/6/8/12; type from the `Type` ramp — raw off-ramp `fontSize: N`
+  literals are gated by `npm run check:type-scale-mobile`, ENG-1002, an
+  only-shrink ratchet mirroring the web `check:type-scale`). Pressables go
   through `PressableScale` with the right `haptic` weight; async commits
   disable + show progress. Same element, same treatment as its nearest
   sibling — or document the divergence.

@@ -74,7 +74,14 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   padding or 10px gap is a bug even if it looks fine.
 - **Radius snaps to:** 4 / 6 / 8 / 12 / full.
 - **Type comes from the ramp** (`Type` on mobile; type-scale-gated classes on
-  web) — no ad-hoc font sizes or weights.
+  web) — no ad-hoc font sizes or weights. **Enforced by two only-shrink
+  ratchets:** `check:type-scale` (`scripts/check-type-scale.mjs`, ENG-119 —
+  off-ladder web `text-[Npx]` classes) and `check:type-scale-mobile`
+  (`scripts/check-type-scale-mobile.mjs`, ENG-1002 — raw `fontSize: N` literals
+  off the `Type` ramp in mobile `.tsx`, pinned in
+  `scripts/type-scale-mobile-budget.json`; reads the legal ramp from
+  `theme.ts`). Both in `npm run ci` + CI; re-pin the mobile one with
+  `npm run check:type-scale-mobile:write`.
 - **States ship with the element, not as polish.** Interactive = pressed
   (mobile, via `PressableScale` with the right `haptic` weight) / hover +
   `:focus-visible` + active (web), plus disabled, plus loading on async
