@@ -27,6 +27,93 @@ export async function getUserIdFromAuthHeader(authHeader: string | null): Promis
 }
 
 /**
+ * Reassemble the Supabase session cookie value from a raw Cookie header.
+ *
+ * ENG-1308: Supabase's cookie storage (`@supabase/ssr`) chunks large
+ * sessions (e.g. Google OAuth with a provider token) into
+ * `sb-<ref>-auth-token.0`, `.1`, … once the serialized value exceeds the
+ * per-cookie size cap. The previous single-regex match grabbed one
+ * fragment, JSON.parse failed on the partial JSON, the fragment was then
+ * treated as a bare JWT, and validation 401'd every request for those
+ * users. This parses the header into name/value pairs, collects ALL
+ * auth-token cookies, orders chunks numerically, and concatenates their
+ * URL-decoded values (matching `combineChunks` in `@supabase/ssr`).
+ *
+ * Deliberately excludes `sb-<ref>-auth-token-code-verifier` (PKCE
+ * verifier, not a session) via the end-anchored name pattern.
+ */
+function combineSupabaseAuthCookies(cookieHeader: string): string | null {
+  const chunks: Array<{ index: number; value: string }> = [];
+  let unchunked: string | null = null;
+
+  for (const pair of cookieHeader.split(";")) {
+    const eq = pair.indexOf("=");
+    if (eq === -1) continue;
+    const name = pair.slice(0, eq).trim();
+    const rawValue = pair.slice(eq + 1).trim();
+    // Ref segment allows hyphens (custom-domain storage keys derive the
+    // ref from the first hostname label); the end anchor is what keeps
+    // `…-auth-token-code-verifier` out, not the ref charset.
+    const m = name.match(/^sb-[A-Za-z0-9-]+-auth-token(?:\.(\d+))?$/);
+    if (!m) continue;
+
+    let value: string;
+    try {
+      value = decodeURIComponent(rawValue);
+    } catch {
+      continue; // malformed percent-encoding — skip this cookie
+    }
+
+    if (m[1] === undefined) {
+      unchunked = value;
+    } else {
+      chunks.push({ index: Number(m[1]), value });
+    }
+  }
+
+  // A complete unchunked cookie wins; otherwise stitch the chunks in
+  // numeric order (string sort would put .10 before .2).
+  if (unchunked !== null) return unchunked;
+  if (chunks.length === 0) return null;
+  chunks.sort((a, b) => a.index - b.index);
+  return chunks.map((c) => c.value).join("");
+}
+
+/**
+ * Extract the access token from a reassembled Supabase session cookie
+ * value. Handles the three shapes Supabase has shipped:
+ *   - `base64-<base64url(JSON session object)>` (current `@supabase/ssr`)
+ *   - plain JSON session object `{ access_token: … }`
+ *   - legacy JSON array `[access_token, refresh_token, …]`
+ * Falls back to treating the value as a bare JWT only when it is
+ * JWT-shaped (three dot-separated segments).
+ */
+function accessTokenFromSessionCookie(value: string): string | null {
+  let raw = value;
+  if (raw.startsWith("base64-")) {
+    try {
+      const b64 = raw.slice("base64-".length).replace(/-/g, "+").replace(/_/g, "/");
+      raw = Buffer.from(b64, "base64").toString("utf8");
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed) && typeof parsed[0] === "string") return parsed[0];
+    if (parsed !== null && typeof parsed === "object") {
+      const token = (parsed as { access_token?: unknown }).access_token;
+      return typeof token === "string" ? token : null;
+    }
+    if (typeof parsed === "string") return parsed;
+    return null;
+  } catch {
+    // Not JSON — only accept a bare JWT-shaped value.
+    return /^[\w-]+\.[\w-]+\.[\w-]+$/.test(raw) ? raw : null;
+  }
+}
+
+/**
  * Extract user ID from a Request — tries Authorization header first (mobile),
  * then Supabase session cookies (web). Returns null if unauthenticated.
  */
@@ -35,29 +122,16 @@ export async function getUserIdFromRequest(req: Request): Promise<string | null>
   const fromHeader = await getUserIdFromAuthHeader(req.headers.get("authorization"));
   if (fromHeader) return fromHeader;
 
-  // 2. Try Supabase session cookies (web app — middleware refreshes these)
+  // 2. Try Supabase session cookies (web app — middleware refreshes these).
+  //    Chunk-aware per ENG-1308: see combineSupabaseAuthCookies.
   const cookieHeader = req.headers.get("cookie") ?? "";
-  const accessTokenMatch = cookieHeader.match(/sb-[^-]+-auth-token[^=]*=([^;]+)/);
-  if (accessTokenMatch) {
-    try {
-      // The cookie value may be a JSON-encoded array where [0] is the access token
-      const raw = decodeURIComponent(accessTokenMatch[1]);
-      let token: string | null = null;
-      try {
-        const parsed = JSON.parse(raw);
-        token = Array.isArray(parsed) ? parsed[0] : typeof parsed === "string" ? parsed : null;
-      } catch {
-        token = raw;
-      }
-      if (token) {
-        return getUserIdFromAuthHeader(`Bearer ${token}`);
-      }
-    } catch {
-      // Cookie parse failed — fall through
-    }
-  }
+  const sessionValue = combineSupabaseAuthCookies(cookieHeader);
+  if (!sessionValue) return null;
 
-  return null;
+  const token = accessTokenFromSessionCookie(sessionValue);
+  if (!token) return null;
+
+  return getUserIdFromAuthHeader(`Bearer ${token}`);
 }
 
 export type UserTier = "free" | "base" | "pro";
