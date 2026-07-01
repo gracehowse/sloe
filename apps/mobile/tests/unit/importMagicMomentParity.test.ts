@@ -2,17 +2,17 @@
  * ENG-728 — import-success "magic moment" web/mobile parity (source-wiring).
  *
  * A CALM one-shot `log-confirm` win-moment over the recipe-import success
- * surface, gated by the NEW default-OFF `import_magic_moment` flag +
- * reduce-motion on BOTH platforms. Flag OFF (the shipped default) → zero visual
+ * surface, gated by `import_magic_moment` (default-ON since 2026-06-30, ENG-1279
+ * "always flag on") + reduce-motion on BOTH platforms. Flag OFF → zero visual
  * change, so the headless gate-on/gate-off behaviour is what these source
- * assertions pin (the motion itself needs a sim + web glance before the flag
- * ramps — out of scope for vitest).
+ * assertions pin (the motion itself needs Grace's sim + web glance — out of
+ * scope for vitest).
  *
  * Same convention as `planWinMomentParity.test.ts`: source-text assertions that
  * break if either platform drops the flag gate, the reduce-motion skip, the
  * `WinMomentPlayer celebration="log-confirm" fullBleed` mount, or the one-shot
- * unmount. They also pin that the flag is REGISTERED in both default-OFF
- * registries so a ramp can target it.
+ * unmount. They also pin that the flag is REGISTERED default-ON in both
+ * REDESIGN_DEFAULT_ON registries (the kill switch targets it there).
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -42,16 +42,17 @@ const WEB_FLAGS = readFileSync(
 );
 
 describe("import magic-moment parity (ENG-728)", () => {
-  it("registers the flag in BOTH default-OFF registries", () => {
-    expect(MOBILE_FLAGS).toContain('"import_magic_moment",');
-    expect(WEB_FLAGS).toContain('"import_magic_moment",');
-    // Must be inside the KNOWN_DEFAULT_OFF list, not REDESIGN_DEFAULT_ON.
-    const mobileBlock = MOBILE_FLAGS.slice(
-      MOBILE_FLAGS.indexOf("KNOWN_DEFAULT_OFF_FLAGS"),
-    );
-    const webBlock = WEB_FLAGS.slice(WEB_FLAGS.indexOf("KNOWN_DEFAULT_OFF_FLAGS"));
-    expect(mobileBlock).toContain(`"${FLAG}",`);
-    expect(webBlock).toContain(`"${FLAG}",`);
+  it("registers the flag DEFAULT-ON in BOTH REDESIGN_DEFAULT_ON registries", () => {
+    // Flipped default-ON 2026-06-30 (ENG-1279 "always flag on").
+    const mOn = MOBILE_FLAGS.indexOf("REDESIGN_DEFAULT_ON = new Set");
+    const wOn = WEB_FLAGS.indexOf("REDESIGN_DEFAULT_ON = new Set");
+    expect(MOBILE_FLAGS.slice(mOn, MOBILE_FLAGS.indexOf("]);", mOn))).toContain(`"${FLAG}",`);
+    expect(WEB_FLAGS.slice(wOn, WEB_FLAGS.indexOf("]);", wOn))).toContain(`"${FLAG}",`);
+    // And NOT in the default-OFF list (a flag belongs to exactly one set).
+    const mOff = MOBILE_FLAGS.indexOf("KNOWN_DEFAULT_OFF_FLAGS = [");
+    const wOff = WEB_FLAGS.indexOf("KNOWN_DEFAULT_OFF_FLAGS = [");
+    expect(MOBILE_FLAGS.slice(mOff, MOBILE_FLAGS.indexOf("]", mOff))).not.toContain(`"${FLAG}",`);
+    expect(WEB_FLAGS.slice(wOff, WEB_FLAGS.indexOf("]", wOff))).not.toContain(`"${FLAG}",`);
   });
 
   it("both platforms gate the celebration behind the same flag", () => {
@@ -102,7 +103,7 @@ describe("import magic-moment parity (ENG-728)", () => {
     );
   });
 
-  it("flag OFF (default) ships zero overlay — neither platform mounts the player unconditionally", () => {
+  it("flag OFF ships zero overlay — neither platform mounts the player unconditionally", () => {
     // The WinMomentPlayer mount is guarded by `celebrate` (flag && !reduceMotion)
     // on both platforms, so the default-OFF flag renders the sheet verbatim.
     expect(MOBILE_CELEBRATION).toContain("if (!celebrate)");
