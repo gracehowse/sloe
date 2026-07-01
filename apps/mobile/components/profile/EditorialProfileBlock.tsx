@@ -2,7 +2,7 @@ import React, { memo, useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Check, ChevronRight, Circle, Flame, Shield } from "lucide-react-native";
 
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -65,7 +65,7 @@ function EditorialProfileBlockImpl({
 }: EditorialProfileBlockProps) {
   const colors = useThemeColors();
   const accent = useAccent();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const styles = useMemo(() => makeStyles(colors, accent), [colors, accent]);
 
   const gridRecipes = recipes.slice(0, RECIPE_GRID_LIMIT);
   const freezeCount = model.freezesAvailable;
@@ -221,7 +221,10 @@ function EditorialProfileBlockImpl({
   );
 }
 
-function makeStyles(colors: ReturnType<typeof useThemeColors>) {
+function makeStyles(
+  colors: ReturnType<typeof useThemeColors>,
+  accent: ReturnType<typeof useAccent>,
+) {
   return StyleSheet.create({
     wrap: { gap: Spacing.md },
 
@@ -239,11 +242,11 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       width: 48,
       height: 48,
       borderRadius: Radius.full,
-      backgroundColor: Accent.primarySolid,
+      backgroundColor: accent.primarySolid,
       alignItems: "center",
       justifyContent: "center",
     },
-    monogramInitial: { ...Type.title, color: Accent.primaryForeground },
+    monogramInitial: { ...Type.title, color: accent.primaryForeground },
     identityBody: { flex: 1, minWidth: 0 },
     identityName: { ...Type.title, color: colors.text },
     identityMeta: { ...Type.caption, color: colors.textSecondary, marginTop: Spacing.xs },
@@ -251,9 +254,9 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       paddingHorizontal: Spacing.sm,
       paddingVertical: Spacing.xs,
       borderRadius: Radius.full,
-      backgroundColor: Accent.primarySoft,
+      backgroundColor: accent.primarySoft,
     },
-    tierPillText: { ...Type.label, color: Accent.primarySolid },
+    tierPillText: { ...Type.label, color: accent.primarySolid },
 
     card: {
       backgroundColor: colors.card,
@@ -285,7 +288,10 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
 
     dotRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
     dot: { width: 10, height: 10, borderRadius: Radius.full },
-    dotToday: { borderWidth: 2, borderColor: Accent.primarySolid },
+    // m7 — semi-transparent today ring (~40% opacity, `+ '66'`) to match the
+    // web `ring-primary/40` halo. Threaded via `accent` (M3) so the plum inverts
+    // correctly on dark instead of collapsing to the near-invisible static plum.
+    dotToday: { borderWidth: 2, borderColor: accent.primarySolid + "66" },
     bestLine: { ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
 
     milestoneRow: { flexDirection: "row", alignItems: "center", gap: Spacing.dense },
@@ -296,17 +302,19 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       alignItems: "center",
       justifyContent: "center",
     },
-    milestoneIconDone: { backgroundColor: `${Accent.success}26` },
+    // n14 — dark-aware success tint (~15%, `+ '26'`) via the threaded `accent`,
+    // so the done-icon fill tracks the scheme instead of the static light sage.
+    milestoneIconDone: { backgroundColor: `${accent.success}26` },
     milestoneIconTodo: { backgroundColor: colors.cardBorder },
     milestoneLabel: { ...Type.body, flex: 1, color: colors.textSecondary },
     milestoneLabelDone: { color: colors.text, fontWeight: "600" },
-    milestoneNext: { ...Type.caption, color: Accent.primarySolid, fontWeight: "700" },
+    milestoneNext: { ...Type.caption, color: accent.primarySolid, fontWeight: "700" },
     milestoneReached: { ...Type.caption, color: colors.textSecondary },
 
     seeAll: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
     seeAllText: {
       ...Type.caption,
-      color: Accent.primarySolid,
+      color: accent.primarySolid,
       fontWeight: "700",
       fontVariant: ["tabular-nums"],
     },

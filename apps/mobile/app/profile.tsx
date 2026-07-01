@@ -48,7 +48,7 @@ import {
   type StreakByDay,
 } from "@/lib/streakFreeze";
 import { buildEditorialProfileBlock } from "@/lib/editorialProfileBlock";
-import { useSavedLibraryRecipes } from "@/lib/recipes";
+import { useSavedLibraryRecipes, useSavesHeadCount } from "@/lib/recipes";
 import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
 import { ProfileShowcaseReadView } from "@/components/profile/ProfileShowcaseReadView";
 import { EditorialProfileBlock } from "@/components/profile/EditorialProfileBlock";
@@ -83,9 +83,8 @@ export default function ProfileScreen() {
   // `targets.tsx` / web `Targets.tsx`): sheet when on, interim note when off.
   const settingsRedesignV2 = isFeatureEnabled("settings_redesign_v2");
   const profileShowcaseV1 = isFeatureEnabled("profile_showcase_v1");
-  // ENG-1246 (Gap #16) — the shared editorial Profile block: identity →
-  // streak dots + best/freezes line → milestones → recipe grid. Default-on;
-  // off → the legacy identity strip / showcase stays alive (kill switch).
+  // ENG-1246 (Gap #16) — shared editorial Profile block (identity → streak dots
+  // + best/freezes → milestones → recipe grid). Default-on; off → legacy strip.
   const editorialProfileV3 = isFeatureEnabled("sloe_v3_profile");
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
 
@@ -96,21 +95,23 @@ export default function ProfileScreen() {
   // Recipes + Day-streak stats strip. Streak uses the same
   // `computeProtectedStreak` helper Today / Progress / Settings use (no
   // hand-rolled count — that was the trust-killer fixed in the 2026-05-04
-  // settings audit). Recipe count is an exact head-count of `saves`.
+  // settings audit). Recipe count: see the `recipeCount` derivation below.
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
   const [streak, setStreak] = useState(0);
   const [daysLogged, setDaysLogged] = useState(0);
-  // ENG-1246 — retain the byDay map + freeze ledger the streak walk already
-  // reads (was discarded after computing `streak`) so the editorial block's
-  // dot row + best/freezes line derive from the SAME inputs. No new query.
+  // ENG-1246 — retain the streak-walk byDay + freeze ledger so the editorial
+  // dot row + best/freezes line share the SAME inputs.
   const [streakByDay, setStreakByDay] = useState<StreakByDay>({});
   const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({ earnedAt: [], usedHistory: [] });
   const [freezeBudgetMax, setFreezeBudgetMax] = useState(3);
-  // ENG-1246 — saved-recipe ROWS for the editorial recipe grid, via the same
-  // canonical shared hook the Library / Today / Plan tabs use (replaces the
-  // bespoke `saves` head-count fetch: the count now derives from these rows).
-  const { recipes: savedRecipes } = useSavedLibraryRecipes(userId);
-  const recipeCount = savedRecipes.length;
+  // ENG-1246 — saved-recipe ROWS via the canonical Library/Today/Plan hook.
+  // GATED (M2): the heavy saves+authored batch runs only flag-ON; flag-OFF
+  // passes null (hook → `[]`) and uses the cheap head-only `saves` count below.
+  // n13: flag-ON `recipeCount` is the Library-consistent set (drops orphaned
+  // saves, adds authored) — not the raw head-count.
+  const { recipes: savedRecipes } = useSavedLibraryRecipes(editorialProfileV3 ? userId : null);
+  const savesHeadCount = useSavesHeadCount(editorialProfileV3 ? null : userId);
+  const recipeCount = editorialProfileV3 ? savedRecipes.length : savesHeadCount;
   // §3.7 body-stats entry row → GoalPaceEditorSheet (weight/height/goal/pace).
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   const joinedLabel = useMemo(() => {
@@ -133,8 +134,7 @@ export default function ProfileScreen() {
     if (fromEmail) return fromEmail.toUpperCase();
     return "S";
   }, [displayName, session?.user?.email]);
-  // ENG-1246 — shape the editorial block from already-loaded data only. No
-  // fetches/writes; same `computeProtectedStreak` inputs as the streak count.
+  // ENG-1246 — editorial model from already-loaded data (no fetches/writes).
   const editorialModel = useMemo(
     () => buildEditorialProfileBlock({ byDay: streakByDay, freezeLedger, freezeBudgetMax }),
     [streakByDay, freezeLedger, freezeBudgetMax],
@@ -421,9 +421,9 @@ export default function ProfileScreen() {
       const tier = typeof tierRaw === "string" ? tierRaw : null;
       setUserTier(tier === "free" || tier === "base" || tier === "pro" ? tier : "free");
       // §3.2 streak — canonical protected-streak helper (same path as Today /
-      // Progress / Settings). Hydrate a byDay map from nutrition_entries and
-      // the freeze ledger from this same row. Failure is non-fatal: the strip
-      // simply hides the streak tile at 0.
+      // Progress / Settings). Hydrate a byDay map from nutrition_entries + the
+      // freeze ledger. Non-fatal on error (streak → 0). m4: the 400-day window
+      // means "Best streak" is best-RECENT, not all-time (see computeBestStreak).
       try {
         const { data: logs } = await supabase
           .from("nutrition_entries")

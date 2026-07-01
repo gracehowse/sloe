@@ -10,14 +10,18 @@
  *   1. Streak DOTS — a fixed trailing window (last N days) where each day is
  *      `logged` / `frozen` / `missed`, derived from the same `byDay` map + the
  *      freeze `protectedDateKeys` the Today/Progress streak already computes.
- *   2. Best-streak / freezes LINE — the all-time best run + freezes still in
- *      hand, reusing `computeProtectedStreak` + `availableFreezes` (no new
- *      streak logic invented here).
+ *   2. Best-streak / freezes LINE — the best run + freezes still in hand,
+ *      reusing `computeProtectedStreak` + `availableFreezes` (no new streak
+ *      logic invented here). The displayed best is floored at the live
+ *      protected streak (`max(computeBestStreak, currentStreak)`) so a
+ *      freeze-bridged current run can never render above the "best" figure.
  *   3. MILESTONES list — reuses the existing `STREAK_MILESTONES` thresholds
  *      (3 / 7 / 30 / 100) from `winMomentLandmark.ts`. No new milestone logic:
- *      a milestone is `achieved` once the best streak reaches its threshold,
- *      and exactly one un-achieved milestone is flagged `next` so the surface
- *      can render a forward target.
+ *      a milestone is `achieved` once that same displayed best (i.e.
+ *      `max(bestStreak, currentStreak)`) reaches its threshold, and exactly one
+ *      un-achieved milestone is flagged `next` so the surface can render a
+ *      forward target. Flooring at the current streak means a landmark the live
+ *      streak has already crossed can never show as "next up".
  *
  * Pure module — no React, no Supabase, no side-effects beyond the optional
  * `now` parameter. Mobile imports it via `@suppr/shared/profile/editorialProfileBlock`.
@@ -75,7 +79,9 @@ export interface EditorialProfileBlockInput {
 export interface EditorialProfileBlockModel {
   /** Current protected streak length (matches Today/Progress exactly). */
   currentStreak: number;
-  /** Best (longest ever) consecutive-logging run in the byDay window. */
+  /** Best consecutive-logging run in the byDay window, floored at the live
+   *  protected streak (`max(computeBestStreak, currentStreak)`) so it can never
+   *  render below the current streak. */
   bestStreak: number;
   /** Freezes still available to absorb a missed day. */
   freezesAvailable: number;
@@ -92,9 +98,12 @@ function dayHasFood(meals: StreakByDay[string] | undefined): boolean {
 }
 
 /**
- * Longest consecutive run of logged days anywhere in `byDay`. Distinct from
- * the *current* streak — this is the all-time high, computed by the same walk
- * `milestone30Day` uses (kept local so this module has no cross-import cycle).
+ * Longest consecutive run of logged days within `byDay`. Distinct from the
+ * *current* streak — this is the best run in the supplied window, computed by
+ * the same walk `milestone30Day` uses (kept local so this module has no
+ * cross-import cycle). It is only as deep as the caller's `byDay` reaches: the
+ * Profile screen hydrates the most recent ~400 log days, so this is a
+ * best-RECENT run, not a verified all-time high.
  */
 export function computeBestStreak(byDay: StreakByDay): number {
   const sortedKeys = Object.keys(byDay).sort();
@@ -177,12 +186,20 @@ export function buildEditorialProfileBlock(
     input.freezeBudgetMax,
     now,
   );
-  const bestStreak = computeBestStreak(input.byDay);
+  // `computeBestStreak` resets its run on ANY zero-food day, but the current
+  // (protected) streak consumes freezes to bridge a gap — so a freeze-bridged
+  // run makes the raw best fall BELOW the live current streak (header "5-day
+  // streak" over "Best streak 3 days"), and the milestones then flag an
+  // already-reached landmark as "next up". Floor the displayed best at the live
+  // protected streak so best is never below current, and feed the SAME value to
+  // the milestones (no new streak logic — just the max of the two existing
+  // walks). ENG-1246 review fix M1.
+  const displayBest = Math.max(computeBestStreak(input.byDay), protectedResult.streakLength);
   return {
     currentStreak: protectedResult.streakLength,
-    bestStreak,
+    bestStreak: displayBest,
     freezesAvailable: availableFreezes(input.freezeLedger, input.freezeBudgetMax),
     dots: buildStreakDots(input.byDay, new Set(protectedResult.protectedDateKeys), now),
-    milestones: buildProfileMilestones(bestStreak),
+    milestones: buildProfileMilestones(displayBest),
   };
 }

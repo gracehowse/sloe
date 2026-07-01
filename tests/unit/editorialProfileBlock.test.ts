@@ -168,4 +168,38 @@ describe("buildEditorialProfileBlock", () => {
     expect(model.dots.every((d) => d.state === "missed")).toBe(true);
     expect(model.milestones.find((m) => m.next)?.days).toBe(3);
   });
+
+  it("floors best at the current streak when a freeze bridges a mid-window gap (M1)", () => {
+    // A freeze bridges 06-08 so the CURRENT protected run spans the gap:
+    //   06-10 log, 06-09 log, 06-08 FREEZE, 06-07 log, 06-06 log → current = 5.
+    // But `computeBestStreak` resets on the zero-food 06-08, so the raw best is
+    // only 2 (06-06→07) / 2 (06-09→10). Pre-fix that rendered "5-day streak"
+    // over "Best streak 2 days" and flagged the already-crossed 3-day milestone
+    // as "next up". The M1 floor = max(computeBestStreak, currentStreak).
+    const byDay = loggedDays("2026-06-06", "2026-06-07", "2026-06-09", "2026-06-10");
+    const ledger: FreezeLedger = {
+      // earnedAt.length (1) > usedHistory.length (0) → one freeze in hand.
+      earnedAt: [{ earnedAt: "2026-06-01T00:00:00Z" }],
+      usedHistory: [],
+    };
+    const model = buildEditorialProfileBlock({
+      byDay,
+      freezeLedger: ledger,
+      freezeBudgetMax: 3,
+      now,
+    });
+    // (a) the current streak spans the freeze-bridged gap.
+    expect(model.currentStreak).toBe(5);
+    // Sanity: the raw (freeze-blind) best is genuinely below the current run.
+    expect(computeBestStreak(byDay)).toBe(2);
+    // (b) displayed best is never below the live streak.
+    expect(model.bestStreak).toBeGreaterThanOrEqual(model.currentStreak);
+    expect(model.bestStreak).toBe(5);
+    // (c) a milestone at/below the current streak is achieved, not "next up".
+    const m3 = model.milestones.find((m) => m.days === 3);
+    expect(m3?.achieved).toBe(true);
+    expect(m3?.next).toBe(false);
+    // The nearest un-achieved landmark is the next one up (7), not 3.
+    expect(model.milestones.find((m) => m.next)?.days).toBe(7);
+  });
 });

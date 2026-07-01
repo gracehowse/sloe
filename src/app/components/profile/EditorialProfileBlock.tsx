@@ -38,7 +38,9 @@ export interface EditorialProfileBlockProps {
 const RECIPE_GRID_LIMIT = 6;
 
 const DOT_CLASSES: Record<StreakDotState, string> = {
-  logged: "bg-success",
+  // m9: logged dot uses the darker `success-solid` (matches mobile's
+  // `accent.successSolid`) so it stays legible on the white card.
+  logged: "bg-success-solid",
   frozen: "bg-muted-foreground/40",
   missed: "bg-muted",
 };
@@ -72,7 +74,9 @@ function EditorialProfileBlockImpl({
   return (
     <div className="flex flex-col gap-4" data-testid="editorial-profile-block">
       {/* Identity — monogram + name + tier·joined + tier pill. */}
-      <div className="flex items-center gap-3.5 rounded-xl bg-card p-3.5 card-slab">
+      {/* m8: p-4/gap-4 (16px) to match the sibling cards + the mobile value
+          (was off-scale p-3.5/gap-3.5). */}
+      <div className="flex items-center gap-4 rounded-xl bg-card p-4 card-slab">
         <div
           aria-hidden
           className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-primary text-lg font-bold text-primary-foreground"
@@ -84,7 +88,8 @@ function EditorialProfileBlockImpl({
             {displayName.trim() ? displayName : "Your profile"}
           </p>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {tierLabel} tier{joinedLabel ? ` · ${joinedLabel}` : ""}
+            {tierLabel}
+            {joinedLabel ? ` · ${joinedLabel}` : ""}
           </p>
         </div>
         {isPro ? (
@@ -177,6 +182,7 @@ function EditorialProfileBlockImpl({
             <button
               type="button"
               onClick={onSeeAllRecipes}
+              aria-label={`See all ${recipeCount} saved recipes`}
               className="flex items-center gap-0.5 rounded-md text-[11px] font-semibold text-primary-solid transition-colors hover:text-primary-solid/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               See all {recipeCount}
