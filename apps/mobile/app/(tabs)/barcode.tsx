@@ -27,7 +27,7 @@ import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter, type Href } from "expo-router";
 
 import { barcodeConfidenceTier, lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
-import { barcodeProvenanceLabel } from "@suppr/nutrition-core/barcodeProvenance";
+import { barcodeProvenanceLabel } from "@/lib/barcodeProvenance";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
