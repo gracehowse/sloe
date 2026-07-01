@@ -93,11 +93,11 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>
               <strong>Photo meal logging:</strong> images you upload are processed to suggest food items and nutrition
-              estimates. This processing uses third-party AI (OpenAI vision models).
+              estimates. This processing uses third-party AI (primarily Anthropic Claude; OpenAI as a fallback).
             </li>
             <li>
               <strong>Voice / text meal logging:</strong> text you submit (typed or transcribed) is processed to parse
-              foods and estimates and uses third-party AI (OpenAI). On the web, browser-based speech recognition
+              foods and estimates and uses third-party AI (primarily Anthropic Claude; OpenAI as a fallback). On the web, browser-based speech recognition
               (Web Speech API) may run on your device or via your browser/OS vendor before text reaches us; review your
               browser and OS privacy settings if you use that path.
             </li>
@@ -150,8 +150,10 @@ export default function PrivacyPage() {
 
           <h2 id="subprocessors" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Sub-processors</h2>
           <p>
-            We use the following third-party service providers to operate Sloe. Each is bound by a data-processing
-            agreement and processes your data only on our instructions.
+            We use the following third-party service providers to operate Sloe. We require a data-processing agreement
+            (or equivalent contractual terms) with each provider before it processes personal data on our behalf, and
+            each processes your data only on our instructions. We are completing these agreements as part of our launch
+            preparations.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs border border-slate-200 dark:border-slate-800">
@@ -171,7 +173,9 @@ export default function PrivacyPage() {
                 <tr><td>Apple (App Store, HealthKit, Sign in with Apple)</td><td>iOS purchases, sign-in relay, HealthKit sync</td><td>IAP receipt, private relay email, Health permission grants</td><td>Global</td></tr>
                 <tr><td>RevenueCat</td><td>iOS IAP receipt verification</td><td>IAP receipt, user id</td><td>US</td></tr>
                 <tr><td>Expo / EAS</td><td>Mobile OTA updates, push tokens, crash logs</td><td>Device id, push token</td><td>US</td></tr>
-                <tr><td>OpenAI</td><td>AI features (photo / text meal logging, recipe parsing)</td><td>Uploaded image, caption / URL text (no account data)</td><td>US</td></tr>
+                <tr><td>Anthropic (Claude)</td><td>AI features — primary provider (photo / text meal logging, recipe parsing, refinement)</td><td>Uploaded image, caption / URL / text (no account data)</td><td>US</td></tr>
+                <tr><td>fal.ai</td><td>AI image generation (recipe hero / ingredient images)</td><td>Recipe title + ingredient names you entered (no account data)</td><td>US</td></tr>
+                <tr><td>OpenAI</td><td>AI features — fallback provider (used only when the primary is unavailable)</td><td>Uploaded image, caption / URL text (no account data)</td><td>US</td></tr>
                 <tr><td>Supadata</td><td>Recipe-import content acquisition (web page scrape / video transcript)</td><td>The URL you import + the public page/transcript content it returns (no account data)</td><td>US</td></tr>
                 <tr><td>Edamam</td><td>Food database lookups</td><td>Ingredient text query (no account data)</td><td>US</td></tr>
                 <tr><td>FatSecret</td><td>Food database lookups</td><td>Ingredient text query (no account data)</td><td>US</td></tr>
@@ -207,8 +211,9 @@ export default function PrivacyPage() {
           </ul>
           <h2 id="transfers" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">International transfers</h2>
           <p>
-            Several sub-processors listed above are located in the United States (OpenAI, Stripe, Upstash, RevenueCat,
-            Expo, Edamam, FatSecret, USDA). Where we transfer personal data of EU or UK users to a country not covered
+            Several sub-processors listed above are located in the United States (Anthropic, OpenAI, fal.ai, Stripe,
+            Upstash, RevenueCat, Expo, Edamam, FatSecret, USDA). Where we transfer personal data of EU or UK users to a
+            country not covered
             by an adequacy decision, we rely on the European Commission&rsquo;s Standard Contractual Clauses (SCCs) and,
             for UK transfers, the UK International Data Transfer Addendum or the UK IDTA, together with supplementary
             technical and organisational measures (encryption in transit, access controls). A copy of the relevant
@@ -221,6 +226,10 @@ export default function PrivacyPage() {
             <li><strong>AI features, analytics, error reporting:</strong> our legitimate interests in improving and
               securing the service (you can opt out of analytics and error reporting; AI features are opt-in per
               action).</li>
+            <li><strong>Health &amp; wellness data (weight, body measurements, HealthKit metrics, and food logs in a
+              nutrition context):</strong> your explicit consent (GDPR Art. 9(2)(a)). These special-category data are
+              processed by Supabase (weight, measurements, food logs) and Apple HealthKit (device metrics you choose to
+              share); you can withdraw at any time by turning off the relevant sync or deleting your data.</li>
             <li><strong>Contributing to the shared food database:</strong> your consent (opt-in, 16+; you can withdraw
               at any time by deleting your submission).</li>
             <li><strong>Marketing email (if any):</strong> your consent.</li>
