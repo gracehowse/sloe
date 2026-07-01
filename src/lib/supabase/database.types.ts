@@ -2865,6 +2865,7 @@ export type Database = {
         Args: { p_limit?: number }
         Returns: {
           avatar_url: string
+          bio: string
           display_name: string
           handle: string
           id: string

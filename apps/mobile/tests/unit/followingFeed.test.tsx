@@ -1,12 +1,40 @@
 // @vitest-environment jsdom
 /**
- * FollowingFeed (mobile, ENG-1225 #14) — the v3 Discover "Following" creator
- * post stack. Pins: the `enabled` (flag) + empty gating, the creator header
- * (name + @handle), the Follow → Following toggle, the seed "sample creator"
- * disclosure, and the recipe / creator press wiring.
+ * FollowingFeed (mobile, ENG-1225 #14 / ENG-1239) — real creator posts with
+ * persisted follow state via the `follows` table.
  */
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react-native";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
+
+const getSession = vi.fn();
+const followsSelect = vi.fn();
+const followsInsert = vi.fn();
+const followsDelete = vi.fn();
+
+vi.mock("@/lib/supabase", () => ({
+  supabase: {
+    auth: { getSession: (...args: unknown[]) => getSession(...args) },
+    from: (table: string) => {
+      if (table !== "follows") throw new Error(`unexpected table ${table}`);
+      return {
+        select: (...args: unknown[]) => {
+          followsSelect(...args);
+          return {
+            eq: () => ({
+              in: () => Promise.resolve({ data: [], error: null }),
+            }),
+          };
+        },
+        delete: () => ({
+          eq: () => ({
+            eq: () => followsDelete(),
+          }),
+        }),
+        insert: (...args: unknown[]) => followsInsert(...args),
+      };
+    },
+  },
+}));
 
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({
@@ -34,9 +62,18 @@ vi.mock("expo-haptics", () => ({
 }));
 
 import { FollowingFeed } from "../../components/discover/FollowingFeed";
-import { SEED_CREATOR_CHIPS } from "@suppr/shared/discover/seedCreators";
 import type { CreatorChip } from "@suppr/shared/discover/topCreators";
 import type { RecipeCard } from "../../lib/types";
+
+const launchCreators: CreatorChip[] = [
+  {
+    id: "a1000001-0001-4000-8000-000000000001",
+    handle: "priyaeats",
+    displayName: "Priya Patel",
+    avatarUrl: null,
+    bio: "Batch-cooking & big-flavour veg",
+  },
+];
 
 const recipes: RecipeCard[] = [
   {
@@ -65,14 +102,24 @@ const recipes: RecipeCard[] = [
   } as RecipeCard,
 ];
 
-const seed = [...SEED_CREATOR_CHIPS];
-
 describe("FollowingFeed", () => {
-  it("renders the creator header (name + @handle) for each seed post", () => {
+  beforeEach(() => {
+    getSession.mockReset();
+    followsSelect.mockReset();
+    followsInsert.mockReset();
+    followsDelete.mockReset();
+    getSession.mockResolvedValue({
+      data: { session: { user: { id: "viewer-u1" } } },
+    });
+    followsInsert.mockResolvedValue({ error: null });
+    followsDelete.mockResolvedValue({ error: null });
+  });
+
+  it("renders the creator header (name + @handle) for each post", async () => {
     const { getByText } = render(
       <FollowingFeed
         enabled
-        creators={seed}
+        creators={launchCreators}
         recipes={recipes}
         onPressRecipe={() => {}}
         onPressCreator={() => {}}
@@ -80,68 +127,56 @@ describe("FollowingFeed", () => {
     );
     expect(getByText("Following")).toBeTruthy();
     expect(getByText("Priya Patel")).toBeTruthy();
-    // @handle · postedAgo
     expect(getByText(/@priyaeats/)).toBeTruthy();
+    await waitFor(() => expect(getSession).toHaveBeenCalled());
   });
 
-  it("toggles Follow → Following on press", () => {
-    const { getAllByText, queryAllByText } = render(
+  it("shows the creator bio as the feed note when present", () => {
+    const { getByText } = render(
       <FollowingFeed
         enabled
-        creators={seed.slice(0, 1)}
+        creators={launchCreators}
         recipes={recipes}
         onPressRecipe={() => {}}
         onPressCreator={() => {}}
       />,
     );
-    const follow = getAllByText("Follow")[0]!;
-    fireEvent.press(follow);
-    expect(queryAllByText("Following").length).toBeGreaterThanOrEqual(1);
+    expect(getByText("Batch-cooking & big-flavour veg")).toBeTruthy();
   });
 
-  it("discloses the seed creators as samples (no fabricated persisted follow)", () => {
-    const { getAllByText } = render(
+  it("toggles Follow → Following on press when signed in", async () => {
+    const { getByLabelText, findByLabelText } = render(
       <FollowingFeed
         enabled
-        creators={seed.slice(0, 1)}
+        creators={launchCreators}
         recipes={recipes}
         onPressRecipe={() => {}}
         onPressCreator={() => {}}
       />,
     );
-    expect(getAllByText(/Sample creator/).length).toBeGreaterThanOrEqual(1);
+    await waitFor(() => expect(getSession).toHaveBeenCalled());
+    fireEvent.press(getByLabelText("Follow Priya Patel"));
+    expect(await findByLabelText("Following Priya Patel")).toBeTruthy();
+    expect(followsInsert).toHaveBeenCalledWith({
+      user_id: "viewer-u1",
+      creator_id: launchCreators[0]!.id,
+    });
   });
 
-  it("does NOT show the sample disclosure for a real (non-seed) creator", () => {
-    const real: CreatorChip[] = [
-      { id: "11111111-2222-3333-4444-555555555555", handle: "real", displayName: "Real Cook", avatarUrl: null },
-    ];
-    const { queryByText } = render(
-      <FollowingFeed
-        enabled
-        creators={real}
-        recipes={recipes}
-        onPressRecipe={() => {}}
-        onPressCreator={() => {}}
-      />,
-    );
-    expect(queryByText(/Sample creator/)).toBeNull();
-  });
-
-  it("fires onPressRecipe / onPressCreator", () => {
+  it("fires onPressRecipe / onPressCreator with real creator ids", () => {
     const onPressRecipe = vi.fn();
     const onPressCreator = vi.fn();
     const { getByText } = render(
       <FollowingFeed
         enabled
-        creators={seed.slice(0, 1)}
+        creators={launchCreators}
         recipes={recipes}
         onPressRecipe={onPressRecipe}
         onPressCreator={onPressCreator}
       />,
     );
     fireEvent.press(getByText("Priya Patel"));
-    expect(onPressCreator).toHaveBeenCalledWith("seed-creator-priya");
+    expect(onPressCreator).toHaveBeenCalledWith(launchCreators[0]!.id);
     fireEvent.press(getByText("Harissa chickpea stew"));
     expect(onPressRecipe).toHaveBeenCalled();
   });
@@ -150,7 +185,7 @@ describe("FollowingFeed", () => {
     const { toJSON } = render(
       <FollowingFeed
         enabled={false}
-        creators={seed}
+        creators={launchCreators}
         recipes={recipes}
         onPressRecipe={() => {}}
         onPressCreator={() => {}}

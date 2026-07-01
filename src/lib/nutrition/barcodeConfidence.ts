@@ -19,8 +19,13 @@
 export type BarcodeConfidenceTier = "verified" | "estimated";
 
 export function barcodeConfidenceTier(
-  product: { verified?: boolean; basisCorrected?: boolean },
+  product: {
+    verified?: boolean;
+    basisCorrected?: boolean;
+    verificationStatus?: "pending" | "verified" | "rejected";
+  },
 ): BarcodeConfidenceTier {
   if (product.basisCorrected) return "estimated";
+  if (product.verificationStatus === "pending") return "estimated";
   return product.verified === true ? "verified" : "estimated";
 }

@@ -44,6 +44,12 @@ describe("barcodeConfidenceTier (shared)", () => {
     ).toBe("estimated");
   });
 
+  it("pending verificationStatus → estimated even when verified flag is true", () => {
+    expect(
+      barcodeConfidenceTier({ verified: true, verificationStatus: "pending" }),
+    ).toBe("estimated");
+  });
+
   it("only ever returns the two honest tiers", () => {
     const tiers: BarcodeConfidenceTier[] = [
       barcodeConfidenceTier({ verified: true }),

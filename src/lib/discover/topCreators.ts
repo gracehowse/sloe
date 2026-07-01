@@ -11,6 +11,8 @@ export interface CreatorChip {
   handle: string;
   displayName: string;
   avatarUrl: string | null;
+  /** Optional specialty line for Following feed cards. */
+  bio?: string | null;
 }
 
 type TopCreatorRow = {
@@ -18,6 +20,7 @@ type TopCreatorRow = {
   handle: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  bio?: string | null;
   saves: number;
 };
 
@@ -43,6 +46,7 @@ export async function loadTopCreators(
         handle: r.handle ?? r.id,
         displayName: (r.display_name ?? "").trim(),
         avatarUrl: r.avatar_url,
+        bio: r.bio ?? null,
       }));
   } catch {
     return [];

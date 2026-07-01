@@ -138,7 +138,7 @@ export default function DiscoverScreen() {
   // `discover_creator_rail_v1` (dark pending Grace's SEE; real creators win, else
   // a seeded set when the `creators` table is empty). Web parity: DiscoverFeed.tsx.
   const creatorRailEnabled = isFeatureEnabled("discover_creator_rail_v1");
-  const topCreators = useTopCreators(creatorRailEnabled);
+  const topCreators = useTopCreators();
   const [unifiedImportOpen, setUnifiedImportOpen] = useState(false); // ENG-1225 #3
 
   // ENG-700 — after publishing from Library / recipe detail, Discover

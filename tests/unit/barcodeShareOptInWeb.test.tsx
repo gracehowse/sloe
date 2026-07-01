@@ -12,6 +12,14 @@ import { render, screen, fireEvent } from "@testing-library/react";
 
 import { BarcodeShareOptIn } from "../../src/app/components/suppr/BarcodeShareOptIn";
 
+const track = vi.fn();
+vi.mock("../../src/lib/analytics/track", () => ({
+  track: (...args: unknown[]) => track(...args),
+}));
+vi.mock("../../src/lib/analytics/events", () => ({
+  AnalyticsEvents: { food_contribution_opt_in: "food_contribution_opt_in" },
+}));
+
 void React;
 
 describe("BarcodeShareOptIn (web)", () => {
@@ -36,11 +44,17 @@ describe("BarcodeShareOptIn (web)", () => {
 
   it("'Share it' calls onShare and shows the honest pending-until-verified card", async () => {
     const onShare = vi.fn(async () => ({ ok: true }));
-    render(<BarcodeShareOptIn onShare={onShare} onDone={() => {}} />);
+    render(
+      <BarcodeShareOptIn barcode="5012345678900" onShare={onShare} onDone={() => {}} />,
+    );
     fireEvent.click(screen.getByLabelText("Share it"));
     expect(onShare).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/Saved .* thank you/)).toBeTruthy();
     expect(screen.getByText(/it becomes the entry everyone sees/)).toBeTruthy();
+    expect(track).toHaveBeenCalledWith("food_contribution_opt_in", {
+      barcode: "5012345678900",
+      policy_version: "2026-06-27",
+    });
   });
 
   it("a plausibility BLOCK hides the success card and shows the inline reasons", async () => {

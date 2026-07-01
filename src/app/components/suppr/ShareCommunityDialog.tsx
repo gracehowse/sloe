@@ -43,7 +43,13 @@ export function ShareCommunityDialog({ input, onShare, onClose }: ShareCommunity
             Optionally contribute this barcode to Sloe&rsquo;s shared food database.
           </DialogDescription>
         </DialogHeader>
-        {input ? <BarcodeShareOptIn onShare={() => onShare(input)} onDone={onClose} /> : null}
+        {input ? (
+          <BarcodeShareOptIn
+            barcode={input.barcode}
+            onShare={() => onShare(input)}
+            onDone={onClose}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   );

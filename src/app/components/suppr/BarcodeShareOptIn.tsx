@@ -3,6 +3,8 @@
 import * as React from "react";
 
 import { Button } from "../ui/button";
+import { track } from "../../../lib/analytics/track";
+import { AnalyticsEvents } from "../../../lib/analytics/events";
 
 /**
  * BarcodeShareOptIn (web) — parity twin of
@@ -23,11 +25,13 @@ import { Button } from "../ui/button";
 export interface BarcodeShareOptInProps {
   onShare: () => Promise<{ ok: boolean; error?: string; reasons?: string[] }>;
   onDone: () => void;
+  /** When set, fires `food_contribution_opt_in` on successful share (ENG-1251 P1-A). */
+  barcode?: string;
 }
 
 type Phase = "prompt" | "sharing" | "success" | "blocked";
 
-export function BarcodeShareOptIn({ onShare, onDone }: BarcodeShareOptInProps) {
+export function BarcodeShareOptIn({ onShare, onDone, barcode }: BarcodeShareOptInProps) {
   const [phase, setPhase] = React.useState<Phase>("prompt");
   const [reasons, setReasons] = React.useState<string[]>([]);
 
@@ -35,6 +39,12 @@ export function BarcodeShareOptIn({ onShare, onDone }: BarcodeShareOptInProps) {
     setPhase("sharing");
     const result = await onShare();
     if (result.ok) {
+      if (barcode) {
+        track(AnalyticsEvents.food_contribution_opt_in, {
+          barcode,
+          policy_version: "2026-06-27",
+        });
+      }
       setPhase("success");
     } else if (result.error === "plausibility_blocked") {
       // Honesty rule: a blocked submission NEVER shows the success card.
