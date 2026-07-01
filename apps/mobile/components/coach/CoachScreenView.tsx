@@ -62,7 +62,7 @@ function CoachCandidateRow({
                 color: colors.tint,
                 backgroundColor: colors.fillQuiet,
                 paddingHorizontal: Spacing.sm,
-                paddingVertical: 2,
+                paddingVertical: Spacing.xs,
                 borderRadius: 9999,
                 overflow: "hidden",
                 textTransform: "uppercase",
@@ -73,7 +73,7 @@ function CoachCandidateRow({
             </Text>
           ) : null}
         </View>
-        <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 2 }}>
+        <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: Spacing.xs }}>
           {candidate.predictedCalories.toLocaleString()} kcal · {candidate.predictedProtein}g protein
         </Text>
         {candidate.whyLine ? (
@@ -125,7 +125,7 @@ export function CoachScreenView({
               gap: 4,
               backgroundColor: colors.fillQuiet,
               paddingHorizontal: Spacing.sm,
-              paddingVertical: 2,
+              paddingVertical: Spacing.xs,
               borderRadius: 9999,
             }}
           >
@@ -166,7 +166,7 @@ export function CoachScreenView({
           <Text style={{ ...Type.caption, color: colors.textSecondary }}>Refining order…</Text>
         ) : null}
         <View style={{ flexDirection: "row", gap: Spacing.sm, alignItems: "flex-start" }}>
-          <Info size={14} color={colors.textSecondary} style={{ marginTop: 2 }} />
+          <Info size={14} color={colors.textSecondary} style={{ marginTop: Spacing.xs }} />
           <Text style={{ ...Type.caption, color: colors.textSecondary, flex: 1 }}>
             Ranked from your saved recipes against what&apos;s left today. Numbers are always your own.
           </Text>
