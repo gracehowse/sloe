@@ -1,12 +1,23 @@
 /**
- * Library filter pill padding — pin (build-12, 2026-05-02).
+ * Library filter pill padding — pin (build-12, 2026-05-02; horizontal value
+ * updated ENG-1280, 2026-07-01).
  *
  * Tester (2026-05-02) reported the Library filter pills ("All · 21",
  * "Saved · 13", "High-Protein", "Quick") had text visually squished
  * against the border on iOS — descenders kissed the bottom edge,
  * ascenders kissed the top. The fix bumps vertical padding and adds
  * an explicit `min-h` floor so the label always sits in the optical
- * centre, regardless of the longest-label test fixture.
+ * centre, regardless of the longest-label test fixture. That vertical
+ * fix (py-2 min-h-8 / paddingVertical:8 minHeight:36) is still pinned below
+ * and is untouched by ENG-1280.
+ *
+ * ENG-1280 (2026-07-01): the web horizontal value moved px-3.5 (14px, an
+ * off-scale exception) → px-4 (16px, the on-scale token) to match Discover's
+ * category pills (snapped in ENG-1141) and resolve the same-element-
+ * same-treatment divergence between the two sibling filter rows. Safe
+ * because the squish-fix this file protects was vertical-only — widening
+ * horizontal padding doesn't reintroduce it. Mobile was already on-scale
+ * (`Spacing.dense`, 12px, matching mobile Discover) and is unaffected.
  *
  * This file pins the padding values on BOTH platforms so a future
  * refactor (e.g. someone collapsing the long-label classes back to
@@ -39,10 +50,11 @@ const MOBILE_SRC = readFileSync(MOBILE_LIBRARY_PATH, "utf8");
 
 describe("Library filter pill padding (build-12, 2026-05-02)", () => {
   describe("web — Tailwind className floor", () => {
-    it("uses px-3.5 (14px) horizontal padding — meets the 14pt brief floor", () => {
-      // The pill className must include `px-3.5`; the prior `px-3`
-      // (12px) is what the tester saw squished.
-      expect(WEB_SRC).toMatch(/shrink-0 inline-flex items-center px-3\.5 py-2 min-h-8/);
+    it("uses px-4 (16px) horizontal padding — on-scale, matches Discover (ENG-1280)", () => {
+      // The pill className must include `px-4`; ENG-1280 snapped this up
+      // from the off-scale px-3.5 (14px) floor to match Discover's
+      // category pills and resolve the sibling-row divergence.
+      expect(WEB_SRC).toMatch(/shrink-0 inline-flex items-center px-4 py-2 min-h-8/);
     });
 
     it("pins min-h-8 (32px) — matches mobile minHeight floor for parity", () => {
@@ -56,7 +68,7 @@ describe("Library filter pill padding (build-12, 2026-05-02)", () => {
       // Without `items-center`, `min-h-8` would just enlarge the box
       // and leave the text top-aligned. The combination is the actual
       // fix for the squish.
-      expect(WEB_SRC).toMatch(/inline-flex items-center px-3\.5 py-2 min-h-8/);
+      expect(WEB_SRC).toMatch(/inline-flex items-center px-4 py-2 min-h-8/);
     });
 
     it("does NOT regress to the squished px-3 py-1.5 (no min-h) baseline", () => {
@@ -66,8 +78,8 @@ describe("Library filter pill padding (build-12, 2026-05-02)", () => {
       const pillRegion = WEB_SRC.match(/LIBRARY_CATEGORY_PILLS\.map[\s\S]+?\}\)\}/);
       expect(pillRegion).not.toBeNull();
       // The squished baseline was `px-3 py-1.5` with no min-h. The
-      // new floor is `px-3.5 py-2 min-h-8` (ENG-921 category pills bumped
-      // py-1.5 → py-2). Reject the old shape.
+      // current floor is `px-4 py-2 min-h-8` (ENG-921 category pills bumped
+      // py-1.5 → py-2; ENG-1280 bumped px-3.5 → px-4). Reject the old shape.
       expect(pillRegion?.[0]).not.toMatch(/\bpx-3 py-1\.5 rounded-full/);
     });
   });
