@@ -39,7 +39,8 @@ import { normalizeMacroTargets } from "../../types/profile.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 import { roundCalories, roundMacro } from "../../lib/recipes/createRecipeWizard.ts";
 import { normaliseSource } from "../../lib/recipes/persistSourceAttribution.ts";
-import { importQualityProps, type ImportQualityProps } from "../../lib/recipes/importQualitySignal.ts";
+import { importQualityProps, type ImportQualityProps, type ImportQualityRecipe } from "../../lib/recipes/importQualitySignal.ts";
+import { ImportReviewFlaggedNote } from "./import/ImportReviewFlaggedNote.tsx";
 import { normalizeRecipeTitle } from "../../lib/recipes/normalizeRecipeTitle.ts";
 import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngredients.ts";
 import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
@@ -240,6 +241,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const [importCaptionPreviewFlag] = useState(() =>
     isFeatureEnabled("import_caption_preview_v1"),
   );
+  // ENG-1283 — import review honesty (flag-off = today's silent-success render).
+  const [importReviewHonesty] = useState(() => isFeatureEnabled("import_review_flagged_ingredients_v1"));
   const importQueue = useImportQueue("web", track);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -270,6 +273,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const [importImageUsed, setImportImageUsed] = useState<boolean | undefined>(undefined);
   /** ENG-1159b — true when caption exceeded CAPTION_MAX before extraction. */
   const [importCaptionTruncated, setImportCaptionTruncated] = useState(false);
+  // ENG-1283 — macro quality shape retained at apply-time (the form drops
+  // `ingredientMacros`) so the honest note derives from the analytics rows.
+  const [importFlaggedRecipe, setImportFlaggedRecipe] = useState<ImportQualityRecipe | null>(null);
   /** ENG-980 — true when save-first already landed this import in Library. */
   const [importSaveFirstActive, setImportSaveFirstActive] = useState(false);
   /** ENG-901 M6 — import-success sheet after library save (web parity). */
@@ -847,6 +853,13 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     ): Promise<boolean> => {
       setImportImageUsed(importFlags?.imageUsed);
       setImportCaptionTruncated(Boolean(importFlags?.captionTruncated));
+      // ENG-1283 — retain the macro quality rows for the honest under-count note.
+      setImportFlaggedRecipe({
+        calories: recipe.calories ?? null,
+        ingredientMacros: Array.isArray(recipe.ingredientMacros)
+          ? recipe.ingredientMacros.map((m) => ({ calories: m.calories, source: m.source }))
+          : null,
+      });
       const formRecipe: ImportedUrlRecipe = {
         title: recipe.title ?? "Imported recipe",
         description: recipe.description ?? null,
@@ -2103,6 +2116,11 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               : "Only the first part of this post was analysed. If the recipe continues below, add missing ingredients manually."}
           </p>
         </div>
+      ) : null}
+
+      {/* ENG-1283 — honest under-count note (renders only when flagged + flag ON). */}
+      {mode === "import" && importReviewHonesty && importFlaggedRecipe ? (
+        <ImportReviewFlaggedNote recipe={importFlaggedRecipe} />
       ) : null}
 
       {/* Image Upload — screenshot → cover + optional text extraction */}

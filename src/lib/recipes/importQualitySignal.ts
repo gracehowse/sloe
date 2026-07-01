@@ -106,3 +106,84 @@ export function importQualityProps(recipe: ImportQualityRecipe): ImportQualityPr
     ingredient_match_rate: Math.round(rate * 1000) / 1000,
   };
 }
+
+/**
+ * The honest review summary of an import (ENG-1283). Derived from the SAME
+ * `isMatchedIngredientRow` predicate the analytics props + the persist layer's
+ * `is_verified` rollup use — it never recomputes nutrition, never touches the
+ * parser, the 0.55 confidence floor, or the legal caption-only posture.
+ *
+ * A row is "flagged / needs review" iff it did NOT match a structured catalog
+ * with real macros (`!isMatchedIngredientRow`): below the confidence floor, an
+ * LLM extract, unverified, or quantity-less rows land here. When ≥1 row is
+ * flagged (or the recipe has no usable per-serving macro spine) the macro total
+ * shown in the review is under-counted, so the review must say so.
+ */
+export type ImportFlaggedSummary = {
+  /** Ingredient rows that did NOT match a structured catalog with real macros. */
+  flaggedCount: number;
+  /** Total ingredient rows in the import result. */
+  totalCount: number;
+  /** true iff the per-serving macro spine is usable (calories > 0). */
+  macroComplete: boolean;
+  /**
+   * true iff the review should surface the honest under-count line: ≥1 flagged
+   * row, OR the macro spine is missing. false → the import is clean and today's
+   * silent-success render is correct.
+   */
+  needsReview: boolean;
+};
+
+/**
+ * Row index -> "this row is flagged / needs review". Reuses
+ * `isMatchedIngredientRow` so the per-row affordance and the summary line agree
+ * exactly with the analytics `ingredient_match_rate` and the stored
+ * `is_verified` flag. Rows outside the array bound are treated as flagged
+ * (defensive — an index with no row can't be "matched").
+ */
+export function isFlaggedIngredientRow(
+  row: ImportQualityIngredientRow | null | undefined,
+): boolean {
+  return !isMatchedIngredientRow(row);
+}
+
+/**
+ * Compute the honest flagged-ingredient summary for a review surface. Shared by
+ * web (`RecipeUpload`) and mobile (`import-shared`) so both platforms surface an
+ * identical count from identical logic.
+ */
+export function importFlaggedSummary(recipe: ImportQualityRecipe): ImportFlaggedSummary {
+  const rows = Array.isArray(recipe.ingredientMacros) ? recipe.ingredientMacros : [];
+  const totalCount = rows.length;
+  const flaggedCount = rows.reduce(
+    (acc, row) => acc + (isFlaggedIngredientRow(row) ? 1 : 0),
+    0,
+  );
+  const macroComplete = isMacroComplete(recipe);
+  return {
+    flaggedCount,
+    totalCount,
+    macroComplete,
+    needsReview: flaggedCount > 0 || !macroComplete,
+  };
+}
+
+/**
+ * The calm, body-neutral review line for a flagged import (ENG-1283 — the
+ * estimate-honest posture: tell the truth, don't scare). Returns `null` when
+ * nothing needs review so the caller renders nothing (today's behaviour).
+ *
+ * Copy shape:
+ *   - flagged rows present   → "N of M ingredients need review — the macro
+ *                               total may be incomplete."
+ *   - macro spine missing    → "The macro total couldn't be calculated — review
+ *                               the ingredients before saving."
+ * Never alarming, never blocks saving.
+ */
+export function importFlaggedReviewLine(summary: ImportFlaggedSummary): string | null {
+  if (!summary.needsReview) return null;
+  if (summary.flaggedCount > 0 && summary.totalCount > 0) {
+    return `${summary.flaggedCount} of ${summary.totalCount} ingredients need review — the macro total may be incomplete.`;
+  }
+  return "The macro total couldn't be calculated — review the ingredients before saving.";
+}

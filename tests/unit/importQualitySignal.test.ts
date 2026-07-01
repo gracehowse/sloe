@@ -16,6 +16,9 @@ import {
   isMacroComplete,
   isMatchedIngredientRow,
   importQualityProps,
+  importFlaggedSummary,
+  importFlaggedReviewLine,
+  isFlaggedIngredientRow,
 } from "../../src/lib/recipes/importQualitySignal";
 
 const RECIPE_UPLOAD = readFileSync(
@@ -114,6 +117,103 @@ describe("importQualityProps — the event payload shape", () => {
   });
 });
 
+// ENG-1283 — the honest "some ingredients need review" review surfacing.
+// Same predicate (`isMatchedIngredientRow`) as the analytics props + the
+// persist layer's `is_verified`, so the count the user sees agrees with what's
+// stored. No recompute; no parser / floor / legal / persistence touch.
+describe("isFlaggedIngredientRow — inverse of the match predicate", () => {
+  it("flags every row that did NOT match a structured catalog with real macros", () => {
+    expect(isFlaggedIngredientRow(unverified())).toBe(true);
+    expect(isFlaggedIngredientRow(estimatedButCalories())).toBe(true);
+    expect(isFlaggedIngredientRow(structuredZeroCal())).toBe(true);
+    expect(isFlaggedIngredientRow({ source: null, calories: 100 })).toBe(true);
+    expect(isFlaggedIngredientRow(null)).toBe(true);
+    expect(isFlaggedIngredientRow(undefined)).toBe(true);
+  });
+
+  it("does NOT flag a matched structured-catalog row", () => {
+    expect(isFlaggedIngredientRow(matched("USDA"))).toBe(false);
+    expect(isFlaggedIngredientRow(matched("FatSecret Premier"))).toBe(false);
+  });
+});
+
+describe("importFlaggedSummary — the honest review summary", () => {
+  it("2 flagged of 4 total, macro spine present → needsReview true", () => {
+    const recipe = {
+      calories: 500,
+      ingredientMacros: [matched("USDA"), matched("OFF"), unverified(), estimatedButCalories()],
+    };
+    expect(importFlaggedSummary(recipe)).toEqual({
+      flaggedCount: 2,
+      totalCount: 4,
+      macroComplete: true,
+      needsReview: true,
+    });
+  });
+
+  it("a fully-matched import with a macro spine → needsReview false (clean)", () => {
+    const recipe = { calories: 400, ingredientMacros: [matched("USDA"), matched("OFF")] };
+    expect(importFlaggedSummary(recipe)).toEqual({
+      flaggedCount: 0,
+      totalCount: 2,
+      macroComplete: true,
+      needsReview: false,
+    });
+  });
+
+  it("all rows matched but NO macro spine (calories 0) → needsReview true", () => {
+    // FM-2 zero-macro shell: the rows may be structured but the per-serving
+    // total is missing, so the review must still say the total is incomplete.
+    const recipe = { calories: 0, ingredientMacros: [matched("USDA"), matched("OFF")] };
+    const summary = importFlaggedSummary(recipe);
+    expect(summary.flaggedCount).toBe(0);
+    expect(summary.macroComplete).toBe(false);
+    expect(summary.needsReview).toBe(true);
+  });
+
+  it("no ingredient rows at all → flaggedCount 0, needsReview driven by macro spine", () => {
+    expect(importFlaggedSummary({ calories: 300 }).needsReview).toBe(false);
+    expect(importFlaggedSummary({ calories: 0 }).needsReview).toBe(true);
+  });
+});
+
+describe("importFlaggedReviewLine — the calm honest copy", () => {
+  it("flagged rows present → the 'N of M' under-count line", () => {
+    const summary = importFlaggedSummary({
+      calories: 500,
+      ingredientMacros: [matched("USDA"), unverified(), unverified()],
+    });
+    expect(importFlaggedReviewLine(summary)).toBe(
+      "2 of 3 ingredients need review — the macro total may be incomplete.",
+    );
+  });
+
+  it("no macro spine but no flagged rows → the 'couldn't be calculated' line", () => {
+    const summary = importFlaggedSummary({
+      calories: 0,
+      ingredientMacros: [matched("USDA"), matched("OFF")],
+    });
+    expect(importFlaggedReviewLine(summary)).toBe(
+      "The macro total couldn't be calculated — review the ingredients before saving.",
+    );
+  });
+
+  it("clean import → null (render nothing, today's silent success)", () => {
+    const summary = importFlaggedSummary({
+      calories: 400,
+      ingredientMacros: [matched("USDA"), matched("OFF")],
+    });
+    expect(importFlaggedReviewLine(summary)).toBeNull();
+  });
+
+  it("copy is body-neutral — no alarm words, no health/diet-culture language", () => {
+    const line = importFlaggedReviewLine(
+      importFlaggedSummary({ calories: 500, ingredientMacros: [unverified(), matched("USDA")] }),
+    );
+    expect(line).not.toMatch(/error|failed|wrong|warning|inaccurate|bad|can't trust/i);
+  });
+});
+
 describe("web RecipeUpload wiring (parity with mobile import-shared)", () => {
   // RNTL/jsdom can't exercise the full RecipeUpload import flow (Supabase
   // session + FormData + queue drivers), so — like the mobile parity test —
@@ -121,8 +221,14 @@ describe("web RecipeUpload wiring (parity with mobile import-shared)", () => {
   // the same quality props into `recipe_imported`.
   it("imports the shared quality signal", () => {
     expect(RECIPE_UPLOAD).toContain(
-      'import { importQualityProps, type ImportQualityProps } from "../../lib/recipes/importQualitySignal.ts"',
+      'import { importQualityProps, type ImportQualityProps, type ImportQualityRecipe } from "../../lib/recipes/importQualitySignal.ts"',
     );
+  });
+
+  it("ENG-1283 — flag-gates the honest review note (flag-off = today's render)", () => {
+    expect(RECIPE_UPLOAD).toContain('isFeatureEnabled("import_review_flagged_ingredients_v1")');
+    expect(RECIPE_UPLOAD).toContain("importReviewHonesty && importFlaggedRecipe");
+    expect(RECIPE_UPLOAD).toContain("<ImportReviewFlaggedNote recipe={importFlaggedRecipe} />");
   });
 
   it("passes derived quality props from the full recipe into the URL import apply", () => {

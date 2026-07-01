@@ -53,7 +53,7 @@ describe("mobile import-quality derivation parity", () => {
 describe("import-shared.tsx wiring (FM-4 — event was mobile-missing)", () => {
   it("imports the shared quality signal", () => {
     expect(IMPORT_SHARED).toContain(
-      'import { importQualityProps } from "@suppr/shared/recipes/importQualitySignal"',
+      'import { importQualityProps, isFlaggedIngredientRow } from "@suppr/shared/recipes/importQualitySignal"',
     );
   });
 
