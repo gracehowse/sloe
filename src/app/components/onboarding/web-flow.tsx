@@ -29,17 +29,7 @@ import {
   saveResolvedSeeds,
 } from "@/lib/onboarding/onboardingSeedResolver";
 import { buildFirstWeekFromSeeds } from "@/lib/onboarding/onboardingFirstWeek";
-
-/**
- * Web flow shell — split layout with a narrative left column and an
- * interactive card on the right. The Welcome step takes the whole
- * canvas; every other step uses the split. Mobile (Stage D) uses a
- * different shell.
- *
- * The route component (`app/onboarding/v2/page.tsx`) wraps this in
- * `<OnboardingProvider>` so the shell stays unconditional and easy
- * to mount inside the dev preview.
- */
+import { redeemPendingReferral, storePendingReferralFromLocation } from "@/lib/referrals/pendingReferral";
 
 export function WebFlow() {
   const { currentStepId, displayIndex, displayTotal, go, goTo, state, targets, warning } =
@@ -73,10 +63,6 @@ export function WebFlow() {
   React.useEffect(() => {
     if (flagGatedStepOff) go(1);
   }, [flagGatedStepOff, go]);
-  // Build-40 (2026-05-01): `data-bridges` is the new terminal step.
-  // Reveal advances on Continue; data-bridges fires the
-  // `handleComplete` write path on its "Build my plan" CTA. See
-  // `state.ts` STEP_IDS comment for the customer-lens audit drivers.
   const isTerminal = currentStepId === "data-bridges";
   const [completing, setCompleting] = React.useState(false);
   // completionStatus is set just before window.location.href fires —
@@ -91,6 +77,10 @@ export function WebFlow() {
   // left paid users on their OLD target). Now we render this message and
   // keep the user on the step so they can retry.
   const [completionError, setCompletionError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    storePendingReferralFromLocation(window.location.search);
+  }, []);
 
   // Auto-skip the signup step when the visitor is already authed (e.g.
   // they came from /signin → /onboarding directly). The step renders
@@ -190,6 +180,8 @@ export function WebFlow() {
           return;
         }
 
+        const referralResult = await redeemPendingReferral(supabase as any);
+
         // Phase 5 / B2.3 — seed-and-plan flow per spec Surface F.
         // Best-effort: each step is independently observable so a
         // partial failure (resolve miss / plan-build fail) still
@@ -284,6 +276,8 @@ export function WebFlow() {
           // Lets the funnel slice activation by chosen-app cohort.
           app_choice: state.appChoice,
           why_now: state.whyNow, // ENG-963 — intent (null when skipped / flag OFF)
+          referral_redeemed: referralResult.redeemed,
+          referral_error: referralResult.error,
         });
         // WEB-01 (2026-04-28): clear persisted onboarding state on
         // successful completion. Without this, the next signup on the

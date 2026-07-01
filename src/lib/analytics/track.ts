@@ -373,6 +373,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // Grace's "always flag on" policy (ENG-1279) — off → the action is hidden and
   // the list stays plan-only (kill switch: remove here / PostHog). Web + mobile.
   "recipe_shopping_list_v1",
+  // ENG-1236 — referral / invite-for-Pro growth loop in household invite
+  // surfaces. Default-on for beta-window growth builds; off hides the new
+  // referral card while leaving the existing household invite flow intact.
+  // Web + mobile.
+  "referral_invite_loop_v1",
   // ENG-728 — CALM one-shot import-success win-moment overlay (log-confirm,
   // reduce-motion → instant). DEFAULT-ON per ENG-1279 ("always flag on") — off →
   // the success sheet renders verbatim (kill switch). Web + mobile.
