@@ -387,12 +387,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-978/979 — shareable import-success card + creator credit (keep in sync w/ track.ts).
   "recipe_share_card_v1",
   "log_sheet_nl_text_v1",
-  // ENG-974 — "refine by describing" conversational correction on photo + voice
-  // log results ("that was a large bowl, no rice, add a fried egg" → re-estimate).
-  // Closes Cal AI's most-cited gap (corrections don't work). Default-on; off →
-  // the review screens ship WITHOUT the refine input (kill switch). Keep in sync
-  // with the web set in src/lib/analytics/track.ts.
-  "log_refine_describe_v1",
   // ENG-980 — save-first import (keep in sync w/ track.ts).
   "import-save-first-v1",
   // ENG-965 / ENG-990 — refugee app-choice step default-on.
@@ -517,6 +511,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (explicit "Generate Shopping List" only; kill switch: remove here / PostHog).
   // Mirror of the web entry in src/lib/analytics/track.ts. M+W.
   "plan_shopping_sync_v1",
+  // ENG-722 — log-confirm checkmark micro-animation (Noom teardown element D):
+  // a calm sage check scale-fades over the Today ring on every successful log
+  // (visual half; the light commit haptic shipped 2026-04-28). DEFAULT-ON per
+  // the "always flag on" beta-window policy; off → no animation (kill switch).
+  // Reduce-motion → no check. Mirror of the web entry in track.ts. M+W.
+  "log_confirm_check_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in

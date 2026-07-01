@@ -1141,6 +1141,22 @@
     from { opacity: 0; transform: scale(0.4); }
     to   { opacity: 1; transform: scale(1); }
   }
+
+  /** ENG-722 — log-confirm checkmark micro-animation (Noom teardown element D).
+   *  A calm sage check that scale-fades in over the Today ring on every
+   *  successful log, then fades out. Restraint by design — NOT the gold
+   *  win-moment. Gated + reduce-motion-guarded by `useLogConfirmCheck`; the
+   *  global reduce-motion rule above also collapses this to ~instant. Total
+   *  ~480ms — keep in sync with `LOG_CONFIRM_CHECK_MS`. */
+  .log-confirm-check {
+    animation: log-confirm-check 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes log-confirm-check {
+    0%   { opacity: 0; transform: scale(0.5); }
+    45%  { opacity: 1; transform: scale(1.06); }
+    62%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1); }
+  }
 }
 
 /* ─── Marketing / landing-page utilities (mirrored from Vielum design system) ─── */

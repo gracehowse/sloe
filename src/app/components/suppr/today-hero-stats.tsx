@@ -3,6 +3,7 @@
 import * as React from "react";
 import { DailyRing } from "./daily-ring";
 import { CalorieRingDial } from "./calorie-ring-dial";
+import { LogConfirmCheck } from "./log-confirm-check";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 import {
   MACRO_RING_TOGGLE,
@@ -82,6 +83,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     onPressStatusChip,
     pulse,
     commitPulse,
+    logConfirmVisible,
     coachLine,
   } = props;
   return {
@@ -97,6 +99,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     onPressStatusChip,
     pulse,
     commitPulse,
+    logConfirmVisible,
     coachLine,
   };
 }
@@ -120,6 +123,7 @@ function DesktopHeroStats({
   // `displayMode` / `onToggleDisplayMode` retired (web ring parity 2026-06-10).
   pulse,
   commitPulse,
+  logConfirmVisible = false,
   onPressStatusChip,
   coachLine,
 }: TodayHeroStatsProps) {
@@ -164,37 +168,42 @@ function DesktopHeroStats({
           <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
         </div>
 
-        {v3Ring ? (
-          <CalorieRingDial
-            consumed={consumed}
-            target={target}
-            size={DESKTOP_RING_GEOMETRY.size}
-          />
-        ) : (
-          <DailyRing
-            consumed={consumed}
-            target={target}
-            size={DESKTOP_RING_GEOMETRY.size}
-            // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
-            // the macro stroke; the collapsed lone ring keeps the confident bold
-            // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
-            strokeWidth={
-              expanded
-                ? DESKTOP_RING_GEOMETRY.strokeWidth
-                : DESKTOP_RING_GEOMETRY.strokeWidthBold
-            }
-            ringRadius={DESKTOP_RING_GEOMETRY.radius}
-            macroRadii={DESKTOP_RING_GEOMETRY.macroRadii}
-            macroStroke={DESKTOP_RING_GEOMETRY.macroStroke}
-            proteinPct={proteinPct}
-            carbsPct={carbsPct}
-            fatPct={fatPct}
-            expanded={expanded}
-            onToggle={onToggleExpanded}
-            pulse={pulse}
-            commitPulse={commitPulse}
-          />
-        )}
+        {/* ENG-722 — `relative` so the log-confirm checkmark overlays whichever
+            ring variant renders. */}
+        <div className="relative flex items-center justify-center">
+          {v3Ring ? (
+            <CalorieRingDial
+              consumed={consumed}
+              target={target}
+              size={DESKTOP_RING_GEOMETRY.size}
+            />
+          ) : (
+            <DailyRing
+              consumed={consumed}
+              target={target}
+              size={DESKTOP_RING_GEOMETRY.size}
+              // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
+              // the macro stroke; the collapsed lone ring keeps the confident bold
+              // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
+              strokeWidth={
+                expanded
+                  ? DESKTOP_RING_GEOMETRY.strokeWidth
+                  : DESKTOP_RING_GEOMETRY.strokeWidthBold
+              }
+              ringRadius={DESKTOP_RING_GEOMETRY.radius}
+              macroRadii={DESKTOP_RING_GEOMETRY.macroRadii}
+              macroStroke={DESKTOP_RING_GEOMETRY.macroStroke}
+              proteinPct={proteinPct}
+              carbsPct={carbsPct}
+              fatPct={fatPct}
+              expanded={expanded}
+              onToggle={onToggleExpanded}
+              pulse={pulse}
+              commitPulse={commitPulse}
+            />
+          )}
+          <LogConfirmCheck visible={logConfirmVisible} />
+        </div>
 
         {showStatRow ? (
           <div

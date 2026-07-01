@@ -251,12 +251,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "recipe_share_card_v1",
   // ENG-972 — inline NL text meal logging inside LogSheet (default-on).
   "log_sheet_nl_text_v1",
-  // ENG-974 — "refine by describing" conversational correction on photo + voice
-  // log results ("that was a large bowl, no rice, add a fried egg" → re-estimate).
-  // Closes Cal AI's most-cited gap (corrections don't work). Default-on; off →
-  // the review screens ship WITHOUT the refine input (kill switch). Keep in sync
-  // with the mobile set in apps/mobile/lib/analytics.ts.
-  "log_refine_describe_v1",
   // ENG-980 — save-first import lands in Library before review (mobile import).
   "import-save-first-v1",
   // ENG-965 / ENG-990 — surface MFP/MacroFactor refugee app-choice step by default.
@@ -391,6 +385,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (explicit "Generate Shopping List" only; kill switch: remove here / PostHog).
   // Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
   "plan_shopping_sync_v1",
+  // ENG-722 — log-confirm checkmark micro-animation (Noom teardown element D):
+  // a calm sage check scale-fades over the Today ring on every successful log
+  // (visual half; the light commit haptic shipped 2026-04-28). DEFAULT-ON per
+  // the "always flag on" beta-window policy; off → no animation (kill switch).
+  // Reduce-motion → no check. Web + mobile — keep in sync with analytics.ts.
+  "log_confirm_check_v1",
 ]);
 
 /**

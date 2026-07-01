@@ -68,7 +68,7 @@ Format: **Keep from live / Adopt from Noom / Refuse** — each tagged delight (s
 - **Suppr live:** ring number tweens on log + light haptic on all six meal-add paths (shipped 2026-04-28). No milestone confetti. Flat lucide icons (a *defended* sharp choice). No hand-drawn touches.
 - **Verdicts:**
   - **Milestone confetti → ADOPT (one-off, single trigger).** Fire on the **north-star moment**: the first time the "what to eat next" suggestion is accepted and logged. One-shot, dismissible, no running counter behind it. Product-lead's tighter single-trigger recommendation over a trigger-list — keeps confetti from sprawling into Cal-AI-style shouting. Behind flag; respects reduce-motion.
-  - **Per-meal completion feel → mostly HAVE; finish it.** Haptic is done; add a subtle log-confirm checkmark micro-animation so the core loop *lands*.
+  - **Per-meal completion feel → DONE (ENG-722).** Haptic shipped 2026-04-28; the subtle log-confirm checkmark micro-animation shipped behind `log_confirm_check_v1` (default-ON) — a calm sage check that scale-fades over the Today ring on every successful log, so the core loop *lands* visually as well as in the hand. Reduce-motion → no check; flag off → the old no-animation path (kill switch). Web = CSS keyframe (`.log-confirm-check` in `theme.css`), mobile = Reanimated (`LogConfirmCheck`). Both fire on the single durable-commit funnel — the meal-count rising edge (web) / the `confirmLog` funnel ref (mobile) — so nothing scatters per meal-add path.
   - **3D glossy icons → REFUSE.** Suppr's flat lucide vocabulary is sharper and is a defended choice. Borrowing Noom's dimensional icons would be the conformity trap — copying a comparable's *structural* choice that erases a differentiator.
   - **Hand-drawn human touch → ADOPT (one place, low priority).** A single hand-drawn pointer/scribble on the notification or health-permission sheet. Charming, cheap, distinctive. One surface only — don't make it a system.
 - **Tag:** delight. Safe.
@@ -103,7 +103,7 @@ All visual/structural → ship behind `isFeatureEnabled` flag, HTML prototype (w
 | 1 | Re-introduce scoped editorial serif token (recipe/detail display headings + landing hero only; never chrome/Today) | Landing + Marketing / Recipes tab | M | P2 |
 | 2 | Progressive text reveal on 2–3 key onboarding beats (reduce-motion safe) | Onboarding + Auth | M | P2 |
 | 3 | One-off milestone confetti on north-star accept (single trigger, no counter) | Today tab | S–M | P2 |
-| 4 | Log-confirm checkmark micro-animation (haptic already shipped) | Today tab | S | P3 |
+| 4 | Log-confirm checkmark micro-animation (haptic already shipped) — **SHIPPED** ENG-722 (flag `log_confirm_check_v1`, default-ON) | Today tab | S | P3 |
 | 5 | Calm structured (dotted-baseline) empty states — Discover / Plan / weight chart | Surface polish (multi) | M | P3 |
 | 6 | One hand-drawn human touch on a permission sheet | Onboarding + Auth | S | P3 |
 

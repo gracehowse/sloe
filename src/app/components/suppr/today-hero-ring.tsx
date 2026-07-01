@@ -4,6 +4,7 @@ import * as React from "react";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
 import { CalorieRingDial } from "./calorie-ring-dial";
+import { LogConfirmCheck } from "./log-confirm-check";
 import { MACRO_RING_TOGGLE, todayStatusChip } from "../../../lib/copy/today";
 import { useCalorieRingGeometry } from "../../../lib/hooks/useCalorieRingGeometry";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
@@ -38,6 +39,10 @@ export interface TodayHeroRingProps {
   /** ENG-1016 — per-commit ring pulse (the web analog of mobile's Medium
    *  commit haptic). True for ~160ms after an ordinary log lands. */
   commitPulse?: boolean;
+  /** ENG-722 — log-confirm checkmark. True for ~480ms after an ordinary log
+   *  lands; overlays a calm sage check on the ring (visual half of the commit
+   *  feedback whose haptic shipped 2026-04-28). */
+  logConfirmVisible?: boolean;
   /** ENG-889 — optional coach line rendered inside the hero card below stats. */
   coachLine?: React.ReactNode;
 }
@@ -175,6 +180,7 @@ export function TodayHeroRing({
   onPressStatusChip,
   pulse = false,
   commitPulse = false,
+  logConfirmVisible = false,
   coachLine,
 }: TodayHeroRingProps) {
   const isEmpty = consumed === 0 || target <= 0;
@@ -207,36 +213,41 @@ export function TodayHeroRing({
           <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
         </div>
       ) : null}
-      {v3Ring ? (
-        <CalorieRingDial
-          consumed={consumed}
-          target={target}
-          size={ringGeometry.size}
-          numeralLarge={decard}
-        />
-      ) : (
-        <DailyRing
-          consumed={consumed}
-          target={target}
-          size={ringGeometry.size}
-          // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
-          // the macro stroke; the collapsed lone ring keeps the confident bold
-          // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
-          strokeWidth={
-            expanded ? ringGeometry.strokeWidth : ringGeometry.strokeWidthBold
-          }
-          ringRadius={ringGeometry.radius}
-          macroRadii={ringGeometry.macroRadii}
-          macroStroke={ringGeometry.macroStroke}
-          proteinPct={proteinPct}
-          carbsPct={carbsPct}
-          fatPct={fatPct}
-          expanded={expanded}
-          onToggle={onToggleExpanded}
-          pulse={pulse}
-          commitPulse={commitPulse}
-        />
-      )}
+      {/* ENG-722 — `relative` so the log-confirm checkmark overlays the ring
+          regardless of which ring variant renders. */}
+      <div className="relative flex items-center justify-center">
+        {v3Ring ? (
+          <CalorieRingDial
+            consumed={consumed}
+            target={target}
+            size={ringGeometry.size}
+            numeralLarge={decard}
+          />
+        ) : (
+          <DailyRing
+            consumed={consumed}
+            target={target}
+            size={ringGeometry.size}
+            // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
+            // the macro stroke; the collapsed lone ring keeps the confident bold
+            // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
+            strokeWidth={
+              expanded ? ringGeometry.strokeWidth : ringGeometry.strokeWidthBold
+            }
+            ringRadius={ringGeometry.radius}
+            macroRadii={ringGeometry.macroRadii}
+            macroStroke={ringGeometry.macroStroke}
+            proteinPct={proteinPct}
+            carbsPct={carbsPct}
+            fatPct={fatPct}
+            expanded={expanded}
+            onToggle={onToggleExpanded}
+            pulse={pulse}
+            commitPulse={commitPulse}
+          />
+        )}
+        <LogConfirmCheck visible={logConfirmVisible} />
+      </div>
       {decard ? <RingStatusLine state={chipState} /> : null}
       {/* Goal / Eaten / Bonus stats row — renders on EMPTY days too (web ring
           parity 2026-06-10): the empty page mirrors a populated day, so Eaten 0

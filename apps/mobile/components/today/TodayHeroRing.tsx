@@ -6,6 +6,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react-native";
 import { TodayHeroRingGraphic } from "@/components/today/TodayHeroRingGraphic";
 import { TodayHeroStats } from "@/components/today/TodayHeroStats";
+import { LogConfirmCheck } from "@/components/today/LogConfirmCheck";
 import { Layout } from "@/constants/layout";
 import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -29,17 +30,12 @@ import { MACRO_RING_TOGGLE, todayStatusChip } from "@suppr/shared/copy/today";
  * Current behaviour:
  *   - Ring sits inside a bordered card.
  *   - Tap → no-op (the long-press is the canonical mode toggle).
- *   - Long-press → toggles BOTH the central number ("Remaining" ⇆
- *     "Logged") AND the inner protein/carbs/fat sub-rings (show /
- *     hide). User feedback 2026-05-02 ("the click and hold to switch
- *     between views was better showing and hiding macro rings"):
- *     bring back the long-press as the single gesture for both
- *     state changes. Discoverability via the long-press is sufficient
- *     for the ring; the segmented "Remaining / Consumed" chips
- *     introduced in PR #50 were reverted because the user found them
+ *   - Long-press → toggles BOTH the central number ("Remaining" ⇆ "Logged")
+ *     AND the inner protein/carbs/fat sub-rings (show / hide). User feedback
+ *     2026-05-02 brought back the long-press as the single gesture for both;
+ *     the segmented "Remaining / Consumed" chips (PR #50) were reverted as
  *     redundant.
- *   - The "Why this number?" pill below the ring is a separate
- *     affordance, unchanged.
+ *   - The "Why this number?" pill below the ring is a separate affordance.
  */
 export interface TodayHeroRingProps {
   /** @deprecated 2026-06-10 — Remaining/Consumed toggle retired; ignored. */
@@ -78,6 +74,9 @@ export interface TodayHeroRingProps {
   onPressStatusChip?: () => void;
   /** ENG-889 — coach line inside the hero card below stats (Figma `654:2`). */
   coachLine?: React.ReactNode;
+  /** ENG-722 — log-confirm checkmark play counter; overlays a calm sage check
+   *  on the ring graphic each time it increments (a durable commit). */
+  logConfirmBump?: number;
 }
 
 /**
@@ -224,6 +223,7 @@ function TodayHeroRingImpl({
   onPressWhy: _onPressWhy,
   onPressStatusChip,
   coachLine,
+  logConfirmBump = 0,
 }: TodayHeroRingProps) {
   const accent = useAccent();
   const isDark = useColorScheme() === "dark";
@@ -265,20 +265,24 @@ function TodayHeroRingImpl({
           />
         </View>
       ) : null}
-      <TodayHeroRingGraphic
-        consumed={consumed}
-        goal={goal}
-        baseGoal={baseGoal}
-        textColor={textColor}
-        secondaryColor={secondaryColor}
-        trackColor={trackColor}
-        proteinPct={proteinPct}
-        carbsPct={carbsPct}
-        fatPct={fatPct}
-        expanded={expanded}
-        onToggleExpanded={onToggleExpanded}
-        numeralLarge={decard}
-      />
+      {/* ENG-722 — relative wrapper so the log-confirm check centres on the ring. */}
+      <View style={{ position: "relative", alignItems: "center", justifyContent: "center" }}>
+        <TodayHeroRingGraphic
+          consumed={consumed}
+          goal={goal}
+          baseGoal={baseGoal}
+          textColor={textColor}
+          secondaryColor={secondaryColor}
+          trackColor={trackColor}
+          proteinPct={proteinPct}
+          carbsPct={carbsPct}
+          fatPct={fatPct}
+          expanded={expanded}
+          onToggleExpanded={onToggleExpanded}
+          numeralLarge={decard}
+        />
+        <LogConfirmCheck bump={logConfirmBump} />
+      </View>
       {decard ? (
         <RingStatusLine state={chipState} overByKcal={overByKcal} isDark={isDark} />
       ) : null}

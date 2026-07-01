@@ -101,6 +101,7 @@ import { TodayLoadingSkeleton } from "./suppr/today-loading-skeleton.tsx";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
 import { useWebWinMoment } from "../../lib/preferences/useWebWinMoment.ts";
 import { useCommitPulse } from "../../lib/preferences/useCommitPulse.ts";
+import { useLogConfirmCheck } from "../../lib/preferences/useLogConfirmCheck.ts";
 import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
 import { TodayWeekSidebar } from "./suppr/today-week-sidebar";
 import { TodayDesktopRightRail } from "./suppr/today-desktop-right-rail";
@@ -2382,27 +2383,26 @@ export const NutritionTracker = memo(function NutritionTracker({
     authUserCreatedAt,
   ]);
 
-  // ENG-1016 — per-commit ring pulse, the web colour/scale analog of mobile's
-  // Medium commit haptic (web has no haptics). Fires a brief, subtle scale +
-  // soft brand glow on the calorie ring whenever a log lands on the selected
-  // day. Gated behind `redesign_motion` + reduced-motion inside the hook (the
-  // same gate mobile's `confirmLog` uses), so it's inert until ramp. Driven by
-  // the meal-count rising edge — the observable durable-commit signal every
-  // web log entry point (`addLoggedMeal` / `addLoggedMealForDate`) flows
-  // through — mirroring how mobile's CalorieRing reacts to logged-calorie
-  // changes.
+  // ENG-1016 ring pulse + ENG-722 log-confirm checkmark (visual half; haptic
+  // shipped 2026-04-28). BOTH fire on the meal-count rising edge — the single
+  // durable-commit signal every web log path flows through (no per-call-site
+  // scatter); each self-gates its flag + reduced-motion in its hook.
   const { pulse: commitPulse, trigger: triggerCommitPulse } = useCommitPulse();
+  const { visible: logConfirmVisible, trigger: triggerLogConfirm } = useLogConfirmCheck();
   const prevMealCountRef = useRef<{ key: string; count: number } | null>(null);
   useEffect(() => {
     const count = mealsForSelectedDate.length;
     const prev = prevMealCountRef.current;
     prevMealCountRef.current = { key: selectedDateKey, count };
-    // Only pulse on a rising edge for the SAME day — never on day-switch
-    // (which changes both key and count) or on a remote removal.
+    // Rising edge, SAME day only — not day-switch (key+count both change) / removal.
     if (!winReady) return;
     if (!prev || prev.key !== selectedDateKey) return;
-    if (count > prev.count) triggerCommitPulse();
-  }, [mealsForSelectedDate.length, selectedDateKey, winReady, triggerCommitPulse]);
+    if (count > prev.count) {
+      triggerCommitPulse();
+      triggerLogConfirm();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- trigger fns stable
+  }, [mealsForSelectedDate.length, selectedDateKey, winReady]);
 
   // ENG-935: "What to eat next" is a PERMANENT glanceable Today block —
   // it renders for today regardless of remaining calories, including the
@@ -2813,14 +2813,14 @@ export const NutritionTracker = memo(function NutritionTracker({
         onToggleExpanded={() => setRingExpanded((v) => !v)}
         pulse={winPulse}
         commitPulse={commitPulse}
+        logConfirmVisible={logConfirmVisible}
         isOnTrack={
           totals.calories > 100 &&
           effectiveCalorieTarget > 0 &&
           Math.abs(totals.calories - effectiveCalorieTarget) / effectiveCalorieTarget <= 0.1
         }
-        // ENG-758: real weigh-in count from the profile's weight_kg_by_day
-        // map (already loaded above) — distinct weigh-in days in the last 7,
-        // replacing the old adaptiveTdeeConfidence-tier proxy.
+        // ENG-758: real weigh-in count (distinct weigh-in days in the last 7)
+        // from the profile's weight_kg_by_day map, not the old confidence proxy.
         tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
         onPressStatusChip={() => setWhyThisNumberOpen(true)}
         coachLine={coachInHero ? coachLineEl : undefined}
