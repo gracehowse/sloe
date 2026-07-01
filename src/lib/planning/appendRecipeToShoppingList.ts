@@ -3,13 +3,17 @@
 // web RecipeDetail and the mobile recipe/[id] "Add to shopping list" action
 // through this shared appender, so it lives in the cross-platform module graph.
 import type { ShoppingItem } from "../../types/recipe";
-import {
-  measureToGramsConfidence,
-  measureToGrams,
-} from "../nutrition/measureToGrams";
 import { guessGroceryCategory } from "./category";
-import { normalizeIngredientNameKey } from "./ingredientNameKey";
 import { normalizeShoppingIngredientRow } from "./normalizeShoppingIngredientRow";
+import {
+  formatAmount,
+  gramsMergeKey,
+  isGramsRow,
+  parseAmount,
+  shoppingMergeKey,
+  sourceWith,
+  tryCountToWeightGrams,
+} from "./shoppingMergePrimitives";
 
 /** A raw ingredient line off a recipe (name / amount / unit, pre-normalised). */
 export type RecipeIngredientLine = {
@@ -29,66 +33,6 @@ export type AppendRecipeToShoppingListResult = {
   /** Existing rows this recipe merged into (quantity summed / source appended). */
   mergedCount: number;
 };
-
-/**
- * Canonical merge key for a shopping row: normalised ingredient identity + unit.
- * Two rows merge only when BOTH the ingredient name key AND the (normalised)
- * unit match — mirrors `generateShoppingList.ts#shoppingMergeKey` so a recipe
- * appended here groups identically to a recipe pulled in via the plan path.
- */
-function shoppingMergeKey(name: string, unit: string): string {
-  return `${normalizeIngredientNameKey(name)}|${unit.trim().toLowerCase()}`;
-}
-
-/** Grams merge key — identity only (unit dropped; we've converted to grams). */
-function gramsMergeKey(name: string): string {
-  return `${normalizeIngredientNameKey(name)}|__grams__`;
-}
-
-function parseAmount(amount: string): number | null {
-  const t = (amount ?? "").trim();
-  if (!t) return null;
-  const slash = t.match(/^(\d+)\s*\/\s*(\d+)$/);
-  if (slash) {
-    const num = Number(slash[1]) / Number(slash[2]);
-    return Number.isFinite(num) && num > 0 ? num : null;
-  }
-  const v = Number.parseFloat(t);
-  return Number.isFinite(v) ? v : null;
-}
-
-function formatAmount(value: number): string {
-  return String(Math.round(value * 100) / 100);
-}
-
-/** True when an existing row carries a weight (grams) unit. */
-function isGramsRow(unit: string): boolean {
-  return unit.trim().toLowerCase() === "g";
-}
-
-/**
- * Decide whether a recipe line and an existing list row — same ingredient, but
- * one a COUNT and one a WEIGHT — can be safely combined into a single grams row.
- *
- * Count-to-weight normalisation is applied ONLY when BOTH sides convert to grams
- * at HIGH confidence (`measureToGramsConfidence`). If either side is a guessed
- * weight (bare count of an unknown food, defaulted cup density, …) we DO NOT
- * guess — we keep the two rows separate (the safe default). This honours the
- * non-negotiable "never guess a weight if confidence is low".
- */
-function tryCountToWeightGrams(
-  name: string,
-  amount: string,
-  unit: string,
-): { grams: number } | null {
-  const value = parseAmount(amount);
-  const safeAmount = value != null && value > 0 ? value : 1;
-  const confidence = measureToGramsConfidence({ name, amount: safeAmount, unit });
-  if (confidence !== "high") return null;
-  const grams = measureToGrams({ name, amount: safeAmount, unit });
-  if (!Number.isFinite(grams) || grams <= 0) return null;
-  return { grams };
-}
 
 /**
  * Append a recipe's ingredient lines onto an existing shopping list, merging
@@ -150,9 +94,7 @@ export function appendRecipeToShoppingList(input: {
       } else if (scaled != null && prev == null) {
         exact.amount = formatAmount(scaled);
       }
-      if (!sourceIncludes(exact.from, title)) {
-        exact.from = exact.from ? `${exact.from}, ${title}` : title;
-      }
+      exact.from = sourceWith(exact.from, title);
       mergedCount += 1;
       continue;
     }
@@ -165,9 +107,7 @@ export function appendRecipeToShoppingList(input: {
       if (conv) {
         const prev = parseAmount(gramsRow.amount) ?? 0;
         gramsRow.amount = formatAmount(prev + conv.grams * mult);
-        if (!sourceIncludes(gramsRow.from, title)) {
-          gramsRow.from = gramsRow.from ? `${gramsRow.from}, ${title}` : title;
-        }
+        gramsRow.from = sourceWith(gramsRow.from, title);
         mergedCount += 1;
         continue;
       }
@@ -191,16 +131,6 @@ export function appendRecipeToShoppingList(input: {
   }
 
   return { items, ingredientCount, addedCount, mergedCount };
-}
-
-/** Case-insensitive, whole-token source membership (avoids "Soup" ⊂ "Soupy"). */
-function sourceIncludes(from: string, title: string): boolean {
-  if (!from) return false;
-  const needle = title.trim().toLowerCase();
-  return from
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .includes(needle);
 }
 
 /**

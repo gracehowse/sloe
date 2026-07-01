@@ -42,7 +42,12 @@ import {
   type WeightSurfaceMode,
 } from "../lib/nutrition/weightSurfaceMode.ts";
 import { AnalyticsEvents, type FoodLoggedSource } from "../lib/analytics/events.ts";
-import { track } from "../lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../lib/analytics/track.ts";
+import {
+  runPlanShoppingSync,
+  planShoppingSyncedPayload,
+  type PlanShoppingEditRef,
+} from "../lib/planning/planShoppingSyncHost.ts";
 import { useAuthSession } from "./AuthSessionContext.tsx";
 import {
   dateKey,
@@ -150,6 +155,15 @@ interface AppDataContextValue {
     calorieFloorMin?: number;
   }) => Promise<void>;
   generateShoppingListFromPlan: () => Promise<void>;
+  /**
+   * ENG-957 — edit-driven re-sync of the shopping list when a single meal is
+   * added / removed / swapped in the plan (flag `plan_shopping_sync_v1`). Unlike
+   * `generateShoppingListFromPlan` (full delete-and-replace), this appends/merges
+   * (add) or decrements only the outgoing recipe's contribution (remove/swap),
+   * preserving checked rows + household-mate additions. No-op when the flag is
+   * off or the user is signed out. Fire-and-forget from the host.
+   */
+  syncShoppingListForPlanEdit: (edit: PlanShoppingEditRef) => Promise<void>;
   /** True when the list was built from the planner and the meal plan (or portions) has changed since. */
   shoppingListOutOfSync: boolean;
   /** ENG-1135 — calendar date the shopping list was generated from (`YYYY-MM-DD`). */
@@ -1506,6 +1520,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [mealPlan, savedRecipeIds, myLibraryRecipes, uploadedRecipes, authedUserId, shoppingScope, setShoppingItems, pantryStaples]);
 
+  // ENG-957 — edit-driven plan→shopping-list re-sync. Delegates all merge /
+  // decrement + delta-persist logic to the shared `runPlanShoppingSync`; the
+  // context just gates on the flag + scope, refreshes local list state, and
+  // emits analytics. No-op (silent) when the flag is off or there's nothing to
+  // sync — never a full delete-and-replace, so checked rows survive.
+  const syncShoppingListForPlanEdit = useCallback(
+    async (edit: PlanShoppingEditRef) => {
+      if (!isFeatureEnabled("plan_shopping_sync_v1")) return;
+      if (!authedUserId || !shoppingScope) return;
+      const res = await runPlanShoppingSync({
+        client: supabase as unknown as Parameters<typeof runPlanShoppingSync>[0]["client"],
+        scope: shoppingScope,
+        edit,
+      });
+      if (!res.ok) {
+        toast.error(syncFailedRetryMessage("shopping list", res.error));
+        return;
+      }
+      if ("skipped" in res) return;
+      setShoppingItems(filterShoppingItemsByPantry(res.items, pantryStaples));
+      track(AnalyticsEvents.plan_shopping_synced, planShoppingSyncedPayload(res, "web"));
+    },
+    [authedUserId, shoppingScope, pantryStaples, setShoppingItems],
+  );
+
   const savePantryStaples = useCallback(
     async (staples: readonly string[]) => {
       const normalized = parsePantryStaples(staples);
@@ -2240,6 +2279,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       signOut,
       generateMealPlan,
       generateShoppingListFromPlan,
+      syncShoppingListForPlanEdit,
       shoppingListOutOfSync,
       shoppingListPlanStartDate,
       pantryStaples,
@@ -2334,6 +2374,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       signOut,
       generateMealPlan,
       generateShoppingListFromPlan,
+      syncShoppingListForPlanEdit,
       shoppingListOutOfSync,
       shoppingListPlanStartDate,
       pantryStaples,

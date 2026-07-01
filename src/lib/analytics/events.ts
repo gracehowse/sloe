@@ -129,6 +129,12 @@ export const AnalyticsEvents = {
    *  Payload: `{ recipeId, ingredientCount, addedCount, mergedCount, platform }`.
    *  No PII; ingredient names are not sent. */
   recipe_shopping_list_added: "recipe_shopping_list_added",
+  /** ENG-957 — a plan edit (add / remove / swap a meal) re-synced the shopping
+   *  list without a full delete-and-replace. Fires once per synced edit. Same
+   *  name web + mobile. Payload: `{ editKind: "add" | "remove" | "swap",
+   *  addedCount, mergedCount, decrementedCount, removedCount, platform }`. No
+   *  PII; ingredient names are not sent. */
+  plan_shopping_synced: "plan_shopping_synced",
   /** Planner overlap suggestions — user saved a suggested recipe from the Plan tab.
    *  Payload: `{ recipeId, platform: "web" | "mobile" }`. */
   smart_suggestion_saved: "smart_suggestion_saved",
