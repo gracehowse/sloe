@@ -369,6 +369,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // it); the legacy Plan view (no Mode-B band) stays in the `else` as the kill
   // switch. Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
   "plan_distribute_anchor_v1",
+  // ENG-1240 — full Coach screen (Today's read + ranked suggestions + Ask chips).
+  // Off → Today coach line stays one-liner only; no /coach destination.
+  "coach_screen_v1",
   // ENG-943 — "Add to shopping list" from a single recipe (web RecipeDetail +
   // mobile recipe/[id]). Parses the recipe's ingredients, aggregates duplicates
   // (count-to-weight normalise where high-confidence, never guesses a weight),
