@@ -2440,12 +2440,11 @@ function WeightTrendOnlyCardWeb({
 }) {
   // ENG-713 — direction + neutral copy come from the shared trend-only helper so
   // web + mobile can't drift and the strings live in one reviewable place (the
-  // copy needs diversity-inclusion + legal sign-off before ramp). The arrow is a
-  // gentle continuous glyph (no valence colour); "steady" reads "→" (holding),
-  // never a checkmark.
+  // copy needs diversity-inclusion + legal sign-off before ramp).
   const direction = trendOnlyDirection(weekDeltaKg);
-  const arrow =
-    direction === "up" ? "↗" : direction === "down" ? "↘" : direction === "steady" ? "→" : "·";
+  // ENG-713 — no directional glyph. The neutral phrase carries the direction; an
+  // ↗/↘ shape would re-add the visual up/down valence this mode exists to remove
+  // (legal review 2026-07-01). `direction` still drives the shared neutral copy.
   const label = describeTrendOnly(direction);
   return (
     <SupprCard
@@ -2458,10 +2457,7 @@ function WeightTrendOnlyCardWeb({
       <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
         Weight trend
       </p>
-      <p className="mt-2 flex items-baseline gap-2">
-        <span className="text-[24px] font-bold text-foreground" aria-hidden>
-          {arrow}
-        </span>
+      <p className="mt-2">
         <span className="text-[15px] font-semibold text-foreground">{label}</span>
       </p>
       <p className="text-xs text-muted-foreground mt-1">

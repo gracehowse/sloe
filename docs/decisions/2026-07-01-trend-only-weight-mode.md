@@ -65,9 +65,14 @@ flag is off or the pref is off, the DB mode passes through unchanged → today's
 behaviour exactly (kill switch). The trend card + all numeric gates already read
 the effective mode, so both opt-out sources share one render path.
 
-The T13 card's old copy ("Slightly up/down this week") was replaced with the new
-neutral strings from the shared helper, so both opt-out paths now speak the same
-body-neutral language (a consolidation, not a divergence).
+The T13 Digest/Recap weight tile is routed through the SAME shared
+`describeTrendOnly()` helper as the Progress trend-only card (`decideWeightSurface`
+maps the T13 `"stable"` direction to the helper's `"steady"`), so both opt-out
+paths emit one reviewed body-neutral string set — there is no second, un-reviewed
+copy on the tab. The trend-only card also renders **no directional arrow glyph**:
+the ↗/↘/→ shapes were removed (legal review 2026-07-01) because the shape re-added
+the visual up/down valence the neutral wording exists to avoid — direction now
+lives only in the words.
 
 ## The neutral copy (needs DI + legal sign-off)
 

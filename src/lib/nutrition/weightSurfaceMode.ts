@@ -9,6 +9,8 @@
  * Policy: `docs/decisions/2026-04-24-phase2-architecture-choices.md` §T13.
  */
 
+import { describeTrendOnly } from "../preferences/trendOnlyWeight";
+
 export type WeightSurfaceMode = "show" | "hide" | "trends_only";
 
 const VALID: ReadonlySet<WeightSurfaceMode> = new Set(["show", "hide", "trends_only"] as const);
@@ -63,14 +65,11 @@ export function decideWeightSurface(
 
   if (mode === "trends_only") {
     const direction = weightTrendDirection(deltaKg);
-    const label =
-      direction === "up"
-        ? "Slightly up this week"
-        : direction === "down"
-          ? "Slightly down this week"
-          : direction === "stable"
-            ? "Stable this week"
-            : "Log a weight to see your trend";
+    // ENG-713 — route the Digest/Recap weight tile through the SAME shared
+    // body-neutral helper as the Progress trend-only card so both opt-out paths
+    // speak one reviewed language (DI + legal sign-off 2026-07-01). "stable" is
+    // the T13 direction name; the shared helper's neutral word for it is "steady".
+    const label = describeTrendOnly(direction === "stable" ? "steady" : direction);
     return { kind: "trends", direction, label };
   }
 

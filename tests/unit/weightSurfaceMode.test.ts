@@ -69,28 +69,28 @@ describe("decideWeightSurface", () => {
     expect(up.kind).toBe("trends");
     if (up.kind === "trends") {
       expect(up.direction).toBe("up");
-      expect(up.label).toBe("Slightly up this week");
+      expect(up.label).toBe("Trending up gently");
     }
 
     const down = decideWeightSurface("trends_only", -0.5);
     expect(down.kind).toBe("trends");
     if (down.kind === "trends") {
       expect(down.direction).toBe("down");
-      expect(down.label).toBe("Slightly down this week");
+      expect(down.label).toBe("Trending down gently");
     }
 
     const stable = decideWeightSurface("trends_only", 0.1);
     expect(stable.kind).toBe("trends");
     if (stable.kind === "trends") {
       expect(stable.direction).toBe("stable");
-      expect(stable.label).toBe("Stable this week");
+      expect(stable.label).toBe("Holding steady");
     }
 
     const missing = decideWeightSurface("trends_only", null);
     expect(missing.kind).toBe("trends");
     if (missing.kind === "trends") {
       expect(missing.direction).toBeNull();
-      expect(missing.label).toBe("Log a weight to see your trend");
+      expect(missing.label).toBe("Add a weigh-in to see your trend");
     }
   });
 

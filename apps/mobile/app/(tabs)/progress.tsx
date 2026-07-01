@@ -2206,8 +2206,9 @@ type CardTheme = {
  * Mirrors `WeightTrendOnlyCardWeb` in `src/app/components/ProgressDashboard.tsx`
  * so opt-out behaviour is identical across web and mobile.
  *
- * Never surfaces an absolute kg/lb — only "Slightly down/up/Stable this
- * week" + an arrow glyph. Threshold (0.3 kg) matches the web copy.
+ * Never surfaces an absolute kg/lb — only the shared body-neutral trend phrase
+ * ("Trending down/up gently" / "Holding steady"), no directional glyph.
+ * Threshold (0.3 kg) matches the web copy.
  */
 function WeightTrendOnlyCard({
   weekDeltaKg,
@@ -2222,10 +2223,10 @@ function WeightTrendOnlyCard({
   const cardElev = useCardElevation();
   // ENG-713 — direction + neutral copy from the shared trend-only helper so
   // web + mobile can't drift and the strings live in one reviewable place (the
-  // copy needs diversity-inclusion + legal sign-off before ramp). The arrow is a
-  // gentle continuous glyph (no valence colour); "steady" reads "→" (holding).
+  // copy needs diversity-inclusion + legal sign-off before ramp). No directional
+  // glyph — the neutral phrase carries the direction; an ↗/↘ shape would re-add
+  // the visual up/down valence this mode removes (legal review 2026-07-01).
   const direction = trendOnlyDirection(weekDeltaKg);
-  const arrow = direction === "up" ? "↗" : direction === "down" ? "↘" : direction === "steady" ? "→" : "·";
   const label = describeTrendOnly(direction);
   return (
     <View
@@ -2245,10 +2246,7 @@ function WeightTrendOnlyCard({
       <Text style={{ ...Type.label, color: theme.dim }}>
         Weight trend
       </Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
-        <Text style={{ fontSize: 24, fontWeight: "700", color: theme.text }} accessibilityElementsHidden>
-          {arrow}
-        </Text>
+      <View style={{ marginTop: 8 }}>
         <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>{label}</Text>
       </View>
       <Text style={{ fontSize: 12, color: theme.sub, marginTop: 4, lineHeight: 16 }}>
