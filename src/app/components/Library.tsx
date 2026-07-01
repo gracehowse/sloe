@@ -276,7 +276,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     setEntryKind(p.id === "all" ? null : p.id);
                   }}
                   className={[
-                    "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
+                    "shrink-0 inline-flex items-center px-4 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     active
                       ? "bg-primary-soft text-primary-solid font-semibold"
@@ -290,7 +290,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               );
             })}
           </div>
-          {/* Category pills — ENG-921/Figma 527:2 (meal types · Quick 30 · …); provenance is the row above (ENG-1247). */}
+          {/* Category pills — ENG-921/Figma 527:2 (meal types · Quick 30 · …); provenance is the row above (ENG-1247). Padding snapped px-3.5→px-4 (ENG-1280) to match Discover's on-scale 16px; the ENG-921 squish-fix was vertical-only (py-2 min-h-8) so this doesn't regress it. */}
           <div
             data-testid="library-filter-pills"
             className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -304,7 +304,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   data-testid={`library-category-${f.id}`}
                   onClick={() => setCategory(f.id)}
                   className={[
-                    "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
+                    "shrink-0 inline-flex items-center px-4 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     // Chip grammar (ENG-1022): selected = bg-primary-soft + primary-solid label + font-semibold, no border; unselected = quiet bg-card + muted, no border. Shared with the provenance row above.
                     active
@@ -344,7 +344,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     aria-pressed={active}
                     aria-label={`Filter imported plan: ${short}`}
                     className={[
-                      "shrink-0 inline-flex items-center px-3.5 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
+                      "shrink-0 inline-flex items-center px-4 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                       active
                         ? "bg-primary-soft text-primary-solid font-semibold"
