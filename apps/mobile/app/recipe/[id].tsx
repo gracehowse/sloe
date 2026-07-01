@@ -71,7 +71,12 @@ import { journalSlotFromMealTypes } from "@suppr/nutrition-core/recipeJournalSlo
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
 import { sanitizeRecipeDescription } from "@suppr/shared/recipes/sanitizeRecipeDescription";
 import { isImportedRecipe, importSourceDisclaimer } from "@suppr/shared/recipes/importSourceDisclaimer";
-import { canShowOfficialVersion } from "@suppr/shared/recipes/officialRecipeClaim";
+import {
+  OFFICIAL_MACROS_CLAIM_BLOCKER_COPY,
+  OFFICIAL_RECIPE_CLAIM_FLAG,
+  canShowOfficialVersion,
+  officialMacrosClaimBlocker,
+} from "@suppr/shared/recipes/officialRecipeClaim";
 import {
   pickHeroImageUrl,
   extractVideoHost,
@@ -444,6 +449,7 @@ export default function RecipeDetailScreen() {
   const [logPortion, setLogPortion] = useState(1);
   const [loggingJournal, setLoggingJournal] = useState(false);
   const [recipeEditOpen, setRecipeEditOpen] = useState(false);
+  const [officialClaiming, setOfficialClaiming] = useState(false);
   // Figma 332:2 §6 — the ingredient grid shows a preview then expands via the
   // "View all N ingredients" pill.
   const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
@@ -941,6 +947,24 @@ export default function RecipeDetailScreen() {
 
   const isPublished = publishedOverride ?? Boolean(recipe?.published);
 
+  const officialClaimBlocker = recipe
+    ? officialMacrosClaimBlocker({
+        isOwner: isRecipeOwner,
+        isCatalogRecipe: isSeedRecipeId(recipeId),
+        published: isPublished,
+        contentOrigin: recipe.content_origin,
+        sourceUrl: recipe.source_url,
+        ingredientCount: ingredients.length,
+        verifiedIngredientCount: ingredients.filter((ingredient) => ingredient.is_verified === true).length,
+      })
+    : "not_owner";
+  const showOfficialClaimAction =
+    isFeatureEnabled(OFFICIAL_RECIPE_CLAIM_FLAG) &&
+    isRecipeOwner &&
+    recipe != null &&
+    !isSeedRecipeId(recipeId) &&
+    recipe.content_origin !== "claimed";
+
   const reloadRecipeIngredients = useCallback(async () => {
     if (!recipeId || isSeedRecipeId(recipeId)) return;
     const ingRes = await supabase
@@ -1011,6 +1035,45 @@ export default function RecipeDetailScreen() {
     },
     [userId, recipe?.id, isRecipeOwner],
   );
+
+  const handleMarkOfficial = useCallback(async () => {
+    if (!recipe || !showOfficialClaimAction || officialClaimBlocker || officialClaiming) return;
+    const apiBase = getSupprApiBase();
+    if (!apiBase) {
+      Alert.alert("Could not update", "Sloe API is not configured on this build.");
+      return;
+    }
+    setOfficialClaiming(true);
+    try {
+      const res = await authedFetch(`${apiBase}/api/recipes/claim-official`, {
+        method: "POST",
+        body: JSON.stringify({ recipeId: recipe.id }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (!res.ok) {
+        const copy = json.error && json.error in OFFICIAL_MACROS_CLAIM_BLOCKER_COPY
+          ? OFFICIAL_MACROS_CLAIM_BLOCKER_COPY[json.error as keyof typeof OFFICIAL_MACROS_CLAIM_BLOCKER_COPY]
+          : json.message ?? "Could not mark this recipe official.";
+        Alert.alert("Could not update", copy);
+        return;
+      }
+      setRecipe((prev) =>
+        prev
+          ? {
+              ...prev,
+              is_verified: true,
+              content_origin: "claimed",
+            }
+          : prev,
+      );
+      setOfficialRecipeId(null);
+      Alert.alert("Official macros confirmed", "The recipe now shows as official to others.");
+    } catch (e) {
+      Alert.alert("Could not update", e instanceof Error ? e.message : "Please try again.");
+    } finally {
+      setOfficialClaiming(false);
+    }
+  }, [recipe, showOfficialClaimAction, officialClaimBlocker, officialClaiming]);
 
   // Authored-yield editing (recipes.servings + per-serving aggregate recompute)
   // is now owned by `RecipeEditSheet`, opened from the Edit action pill / owner
@@ -1756,6 +1819,18 @@ export default function RecipeDetailScreen() {
       menu.push({ text: "Go public", onPress: () => void handleSetPublished(true) });
     } else {
       menu.push({ text: "Unpublish", onPress: () => void handleSetPublished(false) });
+    }
+    if (showOfficialClaimAction) {
+      menu.push({
+        text: officialClaiming ? "Marking official..." : "Mark macros official",
+        onPress: () => {
+          if (officialClaimBlocker) {
+            Alert.alert("Not ready yet", OFFICIAL_MACROS_CLAIM_BLOCKER_COPY[officialClaimBlocker]);
+            return;
+          }
+          void handleMarkOfficial();
+        },
+      });
     }
     menu.push(
       {

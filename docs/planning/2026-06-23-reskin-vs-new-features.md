@@ -48,7 +48,7 @@ coach/recap/streak primitives. The job: restyle + collapse flags + SEE both plat
 - ★ **Referral / invite-for-Pro loop** (L, backend-only) — personal invite link, inviter + invitee each earn a free month (referrals table exists, no surface).
 
 ### Trust / provenance
-- ★ **Owner "Claim → Official" verified-macros toggle** (M, backend-only) — owner flips their recipe from community-estimate to macros-confirmed (recipe_claim ENG-870 exists, no UI).
+- ★ **Owner "Claim → Official" verified-macros toggle** (M, in review ENG-1235) — owner flips their recipe from community-estimate to macros-confirmed via a service-role route after JWT ownership, public source, and all-ingredients-verified checks. UI action exists behind `official_recipe_claim_v1`; migration application remains `supabase db push --linked`.
 - **Per-value nutrition-source provenance & confidence screen** (M, partial) — DB priority order, prefer-custom toggle, confidence labels, per-value "where it comes from".
 
 ### Import front-door (the unified-import shell already shipped flag-dark — these are the net-new phases)

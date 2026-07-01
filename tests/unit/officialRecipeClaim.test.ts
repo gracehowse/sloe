@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  OFFICIAL_MACROS_CLAIM_BLOCKER_COPY,
   canShowOfficialVersion,
+  officialMacrosClaimBlocker,
   claimVerificationIsVerified,
   isExactOfficialSourceMatch,
 } from "@/lib/recipes/officialRecipeClaim";
@@ -24,5 +26,24 @@ describe("official recipe claim helpers", () => {
     expect(claimVerificationIsVerified({ method: "self_serve", source_url: "https://example.com/r", verified_at: "2026-06-19T00:00:00Z", attestation: true })).toBe(false);
     expect(claimVerificationIsVerified({ method: "bio_code", source_url: "https://example.com/r", attestation: true })).toBe(false);
     expect(claimVerificationIsVerified({ method: "dns_meta", source_url: "https://example.com/r", verified_at: "2026-06-19T00:00:00Z", attestation: true })).toBe(true);
+  });
+
+  it("requires owner, public source, and fully verified ingredients before Claim → Official", () => {
+    const base = {
+      isOwner: true,
+      published: true,
+      contentOrigin: "first_party",
+      sourceUrl: "https://example.com/r",
+      ingredientCount: 3,
+      verifiedIngredientCount: 3,
+    };
+
+    expect(officialMacrosClaimBlocker(base)).toBeNull();
+    expect(officialMacrosClaimBlocker({ ...base, isOwner: false })).toBe("not_owner");
+    expect(officialMacrosClaimBlocker({ ...base, published: false })).toBe("not_public");
+    expect(officialMacrosClaimBlocker({ ...base, sourceUrl: "" })).toBe("missing_source");
+    expect(officialMacrosClaimBlocker({ ...base, ingredientCount: 0, verifiedIngredientCount: 0 })).toBe("no_ingredients");
+    expect(officialMacrosClaimBlocker({ ...base, verifiedIngredientCount: 2 })).toBe("unverified_ingredients");
+    expect(OFFICIAL_MACROS_CLAIM_BLOCKER_COPY.unverified_ingredients).toContain("Verify every ingredient");
   });
 });

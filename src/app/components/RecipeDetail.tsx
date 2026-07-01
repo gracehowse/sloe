@@ -29,7 +29,12 @@ import {
 } from "../../lib/recipes/seedRecipesV2";
 import { pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
 import { isImportedRecipe, importSourceDisclaimer } from "../../lib/recipes/importSourceDisclaimer.ts";
-import { canShowOfficialVersion } from "../../lib/recipes/officialRecipeClaim.ts";
+import {
+  OFFICIAL_MACROS_CLAIM_BLOCKER_COPY,
+  OFFICIAL_RECIPE_CLAIM_FLAG,
+  canShowOfficialVersion,
+  officialMacrosClaimBlocker,
+} from "../../lib/recipes/officialRecipeClaim.ts";
 import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { fetchIngredientImages } from "../../lib/recipe/ingredientImages.ts";
@@ -499,6 +504,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [publicSaveCount, setPublicSaveCount] = useState<number | null>(null);
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [officialRecipeId, setOfficialRecipeId] = useState<string | null>(null);
+  const [recipeContentOrigin, setRecipeContentOrigin] = useState<string | null>(recipe.contentOrigin ?? null);
+  const [recipeSourceUrl, setRecipeSourceUrl] = useState<string | null>(recipe.sourceUrl ?? null);
+  const [officialClaiming, setOfficialClaiming] = useState(false);
 
   const isMyRecipe = Boolean(
     !isCatalogRecipe &&
@@ -575,15 +583,18 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
       const cid = (metaRow.creator_id as string | null) ?? null;
       const aid = (metaRow.author_id as string | null) ?? null;
+      const sourceUrl = (metaRow as { source_url?: string | null }).source_url ?? recipe.sourceUrl ?? null;
+      const contentOrigin = (metaRow as { content_origin?: string | null }).content_origin ?? recipe.contentOrigin ?? null;
       setFollowCreatorId(cid);
       setRecipeAuthorId(aid);
+      setRecipeSourceUrl(sourceUrl);
+      setRecipeContentOrigin(contentOrigin);
 
-      const sourceUrl = (metaRow as { source_url?: string | null }).source_url ?? recipe.sourceUrl ?? null;
       if (canShowOfficialVersion({
         currentRecipeId: recipe.id,
         sourceUrl,
         published: (metaRow as { published?: boolean | null }).published ?? recipe.isPublished ?? null,
-        contentOrigin: (metaRow as { content_origin?: string | null }).content_origin ?? null,
+        contentOrigin,
       })) {
         const { data: official } = await supabase
           .from("recipes")
@@ -682,6 +693,48 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     !isCatalogRecipe &&
     followMetaLoaded &&
     Boolean(authUserId && recipeAuthorId && authUserId !== recipeAuthorId);
+
+  const officialClaimEnabled = isFeatureEnabled(OFFICIAL_RECIPE_CLAIM_FLAG);
+  const officialClaimBlocker = officialMacrosClaimBlocker({
+    isOwner: isMyRecipe,
+    isCatalogRecipe,
+    published: isPublished,
+    contentOrigin: recipeContentOrigin,
+    sourceUrl: recipeSourceUrl,
+    ingredientCount: dbIngredients.length,
+    verifiedIngredientCount: dbIngredients.filter((ingredient) => ingredient.isVerified === true).length,
+  });
+  const showOfficialClaimAction =
+    officialClaimEnabled && isMyRecipe && !isCatalogRecipe && recipeContentOrigin !== "claimed";
+
+  const markRecipeOfficial = async () => {
+    if (!showOfficialClaimAction || officialClaimBlocker || officialClaiming) return;
+    setOfficialClaiming(true);
+    try {
+      const res = await fetch("/api/recipes/claim-official", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipeId: recipe.id }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (!res.ok) {
+        const copy = json.error && json.error in OFFICIAL_MACROS_CLAIM_BLOCKER_COPY
+          ? OFFICIAL_MACROS_CLAIM_BLOCKER_COPY[json.error as keyof typeof OFFICIAL_MACROS_CLAIM_BLOCKER_COPY]
+          : json.message ?? "Could not mark this recipe official.";
+        toast.error(copy);
+        return;
+      }
+      setRecipeContentOrigin("claimed");
+      setOfficialRecipeId(null);
+      await refreshDiscoverRecipes();
+      await refreshMyLibraryRecipes();
+      toast.success("Official macros confirmed");
+    } catch {
+      toast.error("Could not mark this recipe official.");
+    } finally {
+      setOfficialClaiming(false);
+    }
+  };
 
   const toggleFollow = async () => {
     if (!authUserId || followBusy) return;
@@ -1925,6 +1978,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                     ) : null}
                     {isMyRecipe && isPublished === true ? (
                       <DropdownMenuItem disabled={dbLoading} onSelect={() => setUnpublishOpen(true)}>Unpublish</DropdownMenuItem>
+                    ) : null}
+                    {showOfficialClaimAction ? (
+                      <DropdownMenuItem
+                        disabled={Boolean(officialClaimBlocker) || officialClaiming || dbLoading}
+                        onSelect={() => void markRecipeOfficial()}
+                      >
+                        {officialClaiming ? "Marking official..." : "Mark macros official"}
+                      </DropdownMenuItem>
                     ) : null}
                     <DropdownMenuItem onSelect={report.openReport}>Report an issue</DropdownMenuItem>
                   </DropdownMenuContent>
