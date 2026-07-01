@@ -494,6 +494,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // Grace's "always flag on" policy (ENG-1279) — off → the action is hidden and
   // the list stays plan-only (kill switch: remove here / PostHog). Web + mobile.
   "recipe_shopping_list_v1",
+  // ENG-958 — "Cook once, eat twice": the Plan "Cook twice…" row action + day
+  // picker that places the recipe as leftovers on chosen days (engine:
+  // `repeatMealAsLeftovers`). DEFAULT-ON per ENG-1279 — off → the action is
+  // hidden (kill switch: remove here / PostHog). Web + mobile.
+  "cook_twice_leftovers_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
