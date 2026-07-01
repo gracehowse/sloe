@@ -1,0 +1,295 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { CoachScreenView } from "@/components/coach/CoachScreenView";
+import { useAuth } from "@/context/auth";
+import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled, track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { authedFetch } from "@/lib/authedFetch";
+import { getSupprApiBase } from "@/lib/supprWeb";
+import { supabase } from "@/lib/supabase";
+import { useSavedLibraryRecipes } from "@/lib/recipes";
+import useCoach from "@/lib/useCoach";
+import { dateKeyFromDate } from "@suppr/nutrition-core/trackerStats";
+import { detectSlotForHour } from "@suppr/nutrition-core/northStarSuggestion";
+import {
+  buildCoachDayFacts,
+  buildTemplateCoachDayNarrative,
+} from "@suppr/nutrition-core/coachDayNarrative";
+import {
+  buildCoachAskFacts,
+  buildTemplateCoachAskAnswer,
+  type CoachAskChipId,
+} from "@suppr/nutrition-core/coachAsk";
+import { todayLongDateSubline } from "@suppr/shared/copy/today";
+import { nextUnloggedMealSlot } from "@suppr/shared/copy/today";
+import { normalizeJournalSlotName } from "@/lib/nutritionJournal";
+import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+
+type TodayMeal = {
+  name?: string | null;
+  calories?: number | null;
+  protein?: number | null;
+};
+
+export default function CoachScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
+  const enabled = isFeatureEnabled("coach_screen_v1");
+
+  const today = useMemo(() => new Date(), []);
+  const todayKey = dateKeyFromDate(today);
+
+  const [loading, setLoading] = useState(true);
+  const [mealsToday, setMealsToday] = useState<TodayMeal[]>([]);
+  const [targets, setTargets] = useState({
+    calories: NUTRITION_DEFAULTS.calories,
+    protein: NUTRITION_DEFAULTS.protein,
+    carbs: NUTRITION_DEFAULTS.carbs,
+    fat: NUTRITION_DEFAULTS.fat,
+  });
+
+  const { recipes: savedLibraryRecipes } = useSavedLibraryRecipes(userId);
+  const library = useMemo(
+    () =>
+      savedLibraryRecipes.map((r) => ({
+        id: r.id,
+        title: r.title,
+        calories: r.calories ?? 0,
+        protein: r.protein ?? 0,
+        carbs: r.carbs ?? 0,
+        fat: r.fat ?? 0,
+        thumbnail: r.image,
+        mealType: r.mealSlots,
+        cookTimeMin: r.cookTimeMin ?? undefined,
+      })),
+    [savedLibraryRecipes],
+  );
+
+  useEffect(() => {
+    if (!enabled) {
+      router.replace("/(tabs)");
+      return;
+    }
+    track(AnalyticsEvents.coach_screen_opened, { platform: "mobile" });
+  }, [enabled, router]);
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    void (async () => {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("target_calories, target_protein, target_carbs, target_fat")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (!cancelled) {
+          setTargets({
+            calories: Number(profile?.target_calories) || NUTRITION_DEFAULTS.calories,
+            protein: Number(profile?.target_protein) || NUTRITION_DEFAULTS.protein,
+            carbs: Number(profile?.target_carbs) || NUTRITION_DEFAULTS.carbs,
+            fat: Number(profile?.target_fat) || NUTRITION_DEFAULTS.fat,
+          });
+        }
+
+        const { data: entries } = await supabase
+          .from("nutrition_entries")
+          .select("name, calories, protein, carbs, fat")
+          .eq("user_id", userId)
+          .eq("date_key", todayKey);
+
+        if (!cancelled) {
+          setMealsToday(
+            (entries ?? []).map((e) => ({
+              name: e.name,
+              calories: e.calories,
+              protein: e.protein,
+            })),
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, todayKey]);
+
+  const totals = useMemo(() => {
+    let calories = 0;
+    let protein = 0;
+    let carbs = 0;
+    let fat = 0;
+    for (const m of mealsToday) {
+      calories += Number(m.calories) || 0;
+      protein += Number(m.protein) || 0;
+      carbs += Number((m as { carbs?: number }).carbs) || 0;
+      fat += Number((m as { fat?: number }).fat) || 0;
+    }
+    return { calories, protein, carbs, fat };
+  }, [mealsToday]);
+
+  const remaining = useMemo(
+    () => ({
+      calories: targets.calories - totals.calories,
+      protein: Math.max(0, targets.protein - totals.protein),
+      carbs: Math.max(0, targets.carbs - totals.carbs),
+      fat: Math.max(0, targets.fat - totals.fat),
+      dailyCalorieTarget: targets.calories,
+    }),
+    [targets, totals],
+  );
+
+  const loggedSlots = mealsToday.map((m) => normalizeJournalSlotName(m.name ?? ""));
+  const nextMeal = nextUnloggedMealSlot(loggedSlots);
+  const slot = detectSlotForHour(today.getHours() * 60 + today.getMinutes());
+
+  const dayFactsInput = useMemo(
+    () => ({
+      dateLabel: todayLongDateSubline(today),
+      caloriesLogged: totals.calories,
+      calorieTarget: targets.calories,
+      proteinLogged: totals.protein,
+      proteinTarget: targets.protein,
+      mealsLoggedCount: mealsToday.length,
+      nextMealSlot: nextMeal,
+    }),
+    [today, totals, targets, mealsToday.length, nextMeal],
+  );
+
+  const templateNarrative = useMemo(
+    () => buildTemplateCoachDayNarrative(buildCoachDayFacts(dayFactsInput)),
+    [dayFactsInput],
+  );
+
+  const [narrative, setNarrative] = useState(templateNarrative);
+  const [narrativeLoading, setNarrativeLoading] = useState(true);
+  const [selectedChipId, setSelectedChipId] = useState<CoachAskChipId | null>(null);
+  const [askAnswer, setAskAnswer] = useState<string | null>(null);
+  const [askLoading, setAskLoading] = useState(false);
+
+  const { candidates, refining } = useCoach({
+    library,
+    remaining,
+    slot,
+    enabled,
+  });
+
+  useEffect(() => {
+    if (!enabled || !userId) return;
+    let cancelled = false;
+    setNarrativeLoading(true);
+    void authedFetch(`${getSupprApiBase()}/api/nutrition/coach-day-narrative`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(dayFactsInput),
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = (await res.json()) as { narrative?: string };
+        return typeof data.narrative === "string" ? data.narrative : null;
+      })
+      .then((text) => {
+        if (!cancelled && text) setNarrative(text);
+      })
+      .finally(() => {
+        if (!cancelled) setNarrativeLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dayFactsInput, enabled, userId]);
+
+  const onAskChip = useCallback(
+    async (chipId: CoachAskChipId) => {
+      setSelectedChipId(chipId);
+      setAskLoading(true);
+      setAskAnswer(null);
+      track(AnalyticsEvents.coach_ask_chip_tapped, { chip_id: chipId, platform: "mobile" });
+
+      const top = candidates[0];
+      const body = {
+        chipId,
+        ...dayFactsInput,
+        topCandidateTitle: top?.title ?? null,
+        topCandidateCalories: top?.predictedCalories ?? null,
+        topCandidateProtein: top?.predictedProtein ?? null,
+      };
+
+      try {
+        const res = await authedFetch(`${getSupprApiBase()}/api/nutrition/coach-ask`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { answer?: string };
+          if (typeof data.answer === "string") {
+            setAskAnswer(data.answer);
+            return;
+          }
+        }
+        const facts = buildCoachAskFacts({
+          ...buildCoachDayFacts(dayFactsInput),
+          chipId,
+          topCandidateTitle: top?.title ?? null,
+          topCandidateCalories: top?.predictedCalories ?? null,
+          topCandidateProtein: top?.predictedProtein ?? null,
+        });
+        setAskAnswer(buildTemplateCoachAskAnswer(facts));
+      } catch {
+        const facts = buildCoachAskFacts({
+          ...buildCoachDayFacts(dayFactsInput),
+          chipId,
+          topCandidateTitle: top?.title ?? null,
+          topCandidateCalories: top?.predictedCalories ?? null,
+          topCandidateProtein: top?.predictedProtein ?? null,
+        });
+        setAskAnswer(buildTemplateCoachAskAnswer(facts));
+      } finally {
+        setAskLoading(false);
+      }
+    },
+    [candidates, dayFactsInput],
+  );
+
+  if (!enabled) return null;
+
+  return (
+    <View
+      testID="screen-coach"
+      style={{ flex: 1, backgroundColor: colors.background, paddingBottom: insets.bottom }}
+    >
+      <PushScreenHeader title="Your coach" onBack={() => router.back()} />
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 24 }} color={colors.tint} />
+      ) : (
+        <CoachScreenView
+          narrative={narrative}
+          narrativeLoading={narrativeLoading}
+          candidates={candidates}
+          candidatesRefining={refining}
+          onCandidatePress={(id) => router.push(`/recipe/${id}`)}
+          selectedChipId={selectedChipId}
+          askAnswer={askAnswer}
+          askLoading={askLoading}
+          onAskChip={onAskChip}
+        />
+      )}
+    </View>
+  );
+}

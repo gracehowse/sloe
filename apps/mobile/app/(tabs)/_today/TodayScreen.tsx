@@ -5294,12 +5294,14 @@ export default function TrackerScreen() {
             <ReAnimated.View style={heroEntrance.style}>
               {(() => {
                 const coachInHero = isFeatureEnabled("today_coach_in_hero_v1");
+                const coachScreenEnabled = isFeatureEnabled("coach_screen_v1");
                 const heroCoachLine =
                   coachInHero && !activeFastStart && isToday && remaining > 0 ? (
                     <TodayDeficitInsight
                       remaining={remaining}
                       selectedDate={selectedDate}
                       byDay={byDay}
+                      onPress={coachScreenEnabled ? () => router.push("/coach" as never) : undefined}
                     />
                   ) : null;
                 return (

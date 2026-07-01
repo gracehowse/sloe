@@ -2786,6 +2786,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       {(() => {
         const coachInHero = isFeatureEnabled("today_coach_in_hero_v1");
         const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
+        const coachScreenEnabled = isFeatureEnabled("coach_screen_v1");
         const coachLineEl =
           !activeFast &&
           viewMode === "day" &&
@@ -2795,6 +2796,7 @@ export const NutritionTracker = memo(function NutritionTracker({
               remaining={remainingToday}
               selectedDate={selectedDate}
               byDay={nutritionByDay}
+              onPress={coachScreenEnabled ? () => trackerRouter.push("/coach") : undefined}
             />
           ) : null;
         return (

@@ -184,6 +184,10 @@ export const AnalyticsEvents = {
    *  story. Same name web + mobile. Payload:
    *  `{ source: "ai" | "template", maintenanceMoved, platform }`. */
   digest_narrative_shown: "digest_narrative_shown",
+  /** ENG-1240 — full Coach screen opened from Today coach line. */
+  coach_screen_opened: "coach_screen_opened",
+  /** ENG-1240 — user tapped an Ask-the-coach chip on the Coach screen. */
+  coach_ask_chip_tapped: "coach_ask_chip_tapped",
   profile_targets_saved: "profile_targets_saved",
   cook_mode_first_step_advanced: "cook_mode_first_step_advanced",
   cook_mode_completed: "cook_mode_completed",
