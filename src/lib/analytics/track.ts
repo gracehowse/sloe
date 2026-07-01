@@ -382,6 +382,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // computeTrajectory; renders only when a real projection exists). DEFAULT-ON per
   // ENG-1279 — off → paywall without the chart (kill switch). Web + mobile.
   "paywall_trajectory_chart_v1",
+  // ENG-957 — plan→shopping-list edit-driven re-sync. Adding / removing /
+  // swapping a meal in the Plan keeps the list in sync via the shared appender
+  // (ENG-943) + remover: an add appends+merges (preserving checked rows), a
+  // remove/swap decrements only the outgoing recipe's contribution (provenance
+  // = the `source` field), never a full delete-and-replace. DEFAULT-ON per
+  // Grace's "always flag on" policy (ENG-1279) — off → the legacy one-off list
+  // (explicit "Generate Shopping List" only; kill switch: remove here / PostHog).
+  // Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
+  "plan_shopping_sync_v1",
 ]);
 
 /**

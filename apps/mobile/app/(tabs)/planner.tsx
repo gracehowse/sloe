@@ -30,6 +30,7 @@ import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { supabase } from "@/lib/supabase";
 import { upsertShoppingListJsonItems } from "@suppr/shared/supabase/shoppingJsonFallback";
+import { syncPlanSwapToShoppingList, syncPlanRemoveToShoppingList } from "@/lib/planShoppingSync";
 import { getMyHousehold } from "@suppr/shared/household/householdClient";
 import {
   shoppingScopeFor,
@@ -1176,8 +1177,7 @@ export default function PlannerScreen() {
           carbs: planTargets.carbs,
           fat: planTargets.fat,
           fiber: planTargets.fiber,
-          calorieBandPct: DEFAULT_PLANNER_BANDS.calorieBandPct,
-          carbFatBandPct: DEFAULT_PLANNER_BANDS.carbFatBandPct,
+          ...DEFAULT_PLANNER_BANDS,
         }
       : null;
     // ENG-1011 follow-on (2026-06-10): split the day target across the
@@ -1192,9 +1192,7 @@ export default function PlannerScreen() {
           ? slotMacroTargets(daySlotNames, plannerTargets)[mealIndex]!
           : slotMacroTargets([canonicalSlot], plannerTargets)[0]!)
       : { calories: 400, protein: 30, carbs: 45, fat: 15, fiber: 0 };
-    const sorted = [...fits].sort(
-      (a, b) => recipeSlotFitScore(a, slotMacro) - recipeSlotFitScore(b, slotMacro),
-    );
+    const sorted = [...fits].sort((a, b) => recipeSlotFitScore(a, slotMacro) - recipeSlotFitScore(b, slotMacro));
     const slotTarget = slotMacro.calories;
 
     // P1-22 (TestFlight `APHEBaM02gFAhoeHQ5mtxuE`,
@@ -1218,10 +1216,9 @@ export default function PlannerScreen() {
       image: (r as { image?: string | null }).image ?? null,
       isSaved: savedSet.has(r.id),
     }));
-    const swapDayLabel = (() => {
-      const cal = planCalendarDateForIndex(dayIndex, startOffset);
-      return WEEKDAY_LONG[cal.getDay()] ?? `Day ${dayIndex + 1}`;
-    })();
+    const swapDayLabel =
+      WEEKDAY_LONG[planCalendarDateForIndex(dayIndex, startOffset).getDay()] ??
+      `Day ${dayIndex + 1}`;
     setSwapSheet({
       slotName,
       dayLabel: swapDayLabel,
@@ -1331,14 +1328,15 @@ export default function PlannerScreen() {
                   ...(fit.residualProteinGap < 0 ? { residualProteinGap: fit.residualProteinGap } : {}),
                 };
               });
-              // ENG-1150 — re-derive per-row fibre from the pool before persist
-              // so the day-total fibre cell (computed at render from the meal
-              // rows) survives the swap. enrichPlanDaysFiber is idempotent and
-              // preserves rows that already carry a positive fiberG.
+              // ENG-1150 — re-derive per-row fibre before persist so the day-total
+              // fibre cell survives the swap (idempotent; keeps positive fiberG rows).
               const enriched = enrichPlanDaysFiber(next, recipeFiberPool);
               void persistPlan(enriched);
               return enriched;
             });
+            // ENG-957 — re-sync the shopping list to the swap (flag-gated).
+            const swapCtx = { scope: shoppingScope, outgoing: currentDay.meals[mealIndex], incoming: picked, pool: allPool };
+            void syncPlanSwapToShoppingList(swapCtx, setShoppingItemCount);
           };
 
           if (trialDayCals > dayTarget * 1.1) {
@@ -1355,7 +1353,7 @@ export default function PlannerScreen() {
           }
         },
     });
-  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool, startOffset]);
+  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool, startOffset, shoppingScope]);
 
   // ENG-1225 Block 3 — v3 Plan meal handlers (open → recipe detail; add → swap
   // picker), lifted to a hook so the pinned planner stays lean.
@@ -4509,9 +4507,7 @@ export default function PlannerScreen() {
                 if (!prev) return prev;
                 const next = prev.map((dpRow, di) => {
                   if (di !== dayIdx) return dpRow;
-                  const newMeals = sortMealsBySlotOrder(
-                    dpRow.meals.filter((_, mi) => mi !== mealIndexInDay),
-                  );
+                  const newMeals = sortMealsBySlotOrder(dpRow.meals.filter((_, mi) => mi !== mealIndexInDay));
                   const totals = newMeals.reduce(
                     (a, m) => ({
                       calories: a.calories + m.calories,
@@ -4530,6 +4526,9 @@ export default function PlannerScreen() {
                 void persistPlan(enriched);
                 return enriched;
               });
+              // ENG-957 — decrement the removed meal's recipe off the list (flag-gated).
+              const rmCtx = { scope: shoppingScope, meal, pool: [...savedRecipes, ...discoverRecipes] };
+              void syncPlanRemoveToShoppingList(rmCtx, setShoppingItemCount);
             };
 
             const ActionRow = ({

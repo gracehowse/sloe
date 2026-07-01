@@ -95,6 +95,65 @@ Analytics: `recipe_shopping_list_added` fires with
 
 Decision: [`docs/decisions/2026-06-30-recipe-to-shopping-list.md`](../decisions/2026-06-30-recipe-to-shopping-list.md).
 
+## Keep the Shopping List in Sync as the Plan Is Edited (ENG-957)
+
+Adding / removing / **swapping** a meal in the Plan now keeps the shopping list
+in sync, without the explicit "Generate Shopping List" tap and **without** Step
+4's full delete-and-replace. It closes the loop from the *other* direction to
+ENG-943: ENG-943 fed the list from a single recipe; ENG-957 keeps the list
+tracking the plan as the plan changes.
+
+**Flag:** `plan_shopping_sync_v1` — **default-ON** (`REDESIGN_DEFAULT_ON` on web
++ mobile; PostHog kill switch). Off → the legacy one-off list (the explicit
+"Generate Shopping List" path only). Parity guard:
+`tests/unit/planShoppingSyncFlagParity.test.ts`.
+
+```
+On a plan edit (add / remove / swap a meal):
+  → Read the user's LIVE shopping_items for their scope (solo / household)
+  → Apply the edit in memory (shared applyPlanEditToShoppingList):
+      • add    → append + merge the recipe (ENG-943 aggregator): same
+                 ingredient+unit sums, count↔weight folds to grams ONLY at high
+                 confidence (else separate rows — never guesses a weight)
+      • remove → decrement ONLY that recipe's contribution; drop a row when it
+                 hits ~zero AND no other recipe still sources it
+      • swap   → remove the outgoing recipe, then append the incoming (one read),
+                 so a shared ingredient nets correctly (not double-counted)
+  → Persist ONLY the delta: UPDATE changed rows (preserves `checked`), INSERT
+    new rows, DELETE rows the edit emptied — never delete-and-replace, so a
+    checked-off row or a household-mate's manual addition is never clobbered
+```
+
+**Provenance = the existing `shopping_items.source` field** (comma-separated
+recipe titles — the same tag the G-2 `shoppingItemsTiedToCurrentPlan`
+reconciliation already reads). A row sourced only by the removed recipe is safe
+to delete; a row still sourced by another recipe is decremented and kept. **No
+schema change was needed** (see the decision note).
+
+**Reuse (not reinvention):** the add side is ENG-943's
+`appendRecipeToShoppingList`; the remove side is the new
+`removeRecipeFromShoppingList` (its exact inverse — same normaliser, merge-key,
+servings multiplier, and high-confidence count↔weight gate, extracted into
+`shoppingMergePrimitives.ts` so both share one implementation). The engine is
+`syncPlanEditToShoppingList.ts`; the persistence is
+`syncPlanEditToShoppingListClient.ts`; the platform glue (ingredient fetch +
+analytics) is `planShoppingSyncHost.ts` — all shared, imported by mobile via
+`@suppr/shared`.
+
+**Surfaces:** web — swap (`MealPlanner` `pickSwap` → `AppDataContext`
+`syncShoppingListForPlanEdit`). Mobile — swap **and** "Remove from plan" (the
+row-menu action) via `apps/mobile/lib/planShoppingSync.ts`. Web has no per-meal
+"remove" affordance today (its meal-edit surface is swap-only), so only the swap
+path is wired there; when a web remove lands it calls the same shared engine (the
+context method already accepts `{ kind: "remove" }`). This is a pre-existing UI
+divergence, not new drift.
+
+Analytics: `plan_shopping_synced` fires with
+`{ editKind, addedCount, mergedCount, decrementedCount, removedCount, platform }`
+(same name web + mobile; no PII, no ingredient names).
+
+Decision: [`docs/decisions/2026-07-01-plan-to-shopping-list-sync.md`](../decisions/2026-07-01-plan-to-shopping-list-sync.md).
+
 ## Named Plan Slots
 Users can create, rename, and switch between multiple named plans (e.g. "This week", "Cut phase", "Bulk phase"). The active plan syncs to Supabase; **all other named slots live only in localStorage**. Switching devices or clearing browser data loses inactive slots. See [Data Schema — Client-only Data](../data/schema.md#client-only-data-localstorage) for details.
 

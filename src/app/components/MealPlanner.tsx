@@ -85,6 +85,7 @@ import {
 } from "../../lib/planning/batchCook.ts";
 import { filterShoppingItemsByPantry } from "../../lib/planning/pantryStaples.ts";
 import { generateShoppingListFromRecipeEntriesAsync } from "../../lib/planning/generateShoppingList.ts";
+import { buildPlanSwapEdit } from "../../lib/planning/planShoppingSyncHost.ts";
 import { upsertShoppingListJsonItems } from "../../lib/supabase/shoppingJsonFallback.ts";
 import { AdjustConstraintsSheet } from "./plan/AdjustConstraintsSheet.tsx";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions";
@@ -243,6 +244,7 @@ export const MealPlanner = memo(function MealPlanner({
     setMealPlan,
     generateMealPlan,
     generateShoppingListFromPlan,
+    syncShoppingListForPlanEdit,
     savedRecipesForLibrary,
     discoverRecipes,
     nutritionTargets,
@@ -933,6 +935,8 @@ export const MealPlanner = memo(function MealPlanner({
       setSwapFor(null);
       return;
     }
+    // ENG-957 — outgoing meal captured BEFORE the swap for the shopping re-sync.
+    const outgoing = mealPlan?.find((d) => d.day === swapFor.day)?.meals[swapFor.mealIndex];
     const plannerTargets = {
       calories: nutritionTargets.calories,
       protein: nutritionTargets.protein,
@@ -1016,6 +1020,12 @@ export const MealPlanner = memo(function MealPlanner({
       }).plan;
     });
     toast.success("Swapped meal");
+    // ENG-957 — re-sync the list to the swap (flag-gated, fire-and-forget).
+    const swapEdit = buildPlanSwapEdit(
+      { ...outgoing, servings: pool.find((r) => r.id === outgoing?.recipeId)?.servings },
+      { id: next.id, title: next.title, servings: next.servings },
+    );
+    if (swapEdit) void syncShoppingListForPlanEdit(swapEdit);
     setSwapFor(null);
   };
 
