@@ -46,15 +46,9 @@ import { decodeEntities } from "@/lib/decodeEntities";
 import { resolveTargets } from "@/lib/calcTargets";
 import { saveImportedRecipe, updateImportedRecipe, type ApiImportedRecipe, coercePositiveMinutes } from "@/lib/saveImportedRecipe";
 import { classifyMealType } from "@/lib/classifyMealType";
-import {
-  IMPORT_ERROR_COPY,
-  userFacingImportError,
-} from "@suppr/shared/recipes/importErrorCopy";
-import {
-  fetchRecentImports,
-  recentImportMonogram,
-  type RecentImportItem,
-} from "@suppr/shared/recipes/recentImports";
+import { IMPORT_ERROR_COPY, userFacingImportError } from "@suppr/shared/recipes/importErrorCopy";
+import { fetchRecentImports, recentImportMonogram, type RecentImportItem } from "@suppr/shared/recipes/recentImports";
+import { importQualityProps } from "@suppr/shared/recipes/importQualitySignal";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
@@ -493,6 +487,8 @@ export default function ImportSharedScreen() {
       setPendingRecipe(normalized);
       setTitle(decodedTitle);
       setState("review");
+      // GROW-61 (audit FM-4) — import-success event at review render; mirrors web `recipe_imported` + `importQualityProps`. Was mobile-missing; primary-surface parse-rate signal.
+      track(AnalyticsEvents.recipe_imported, { source: "url" as const, platform: Platform.OS === "ios" ? "ios" : "android", ingredientCount: ingredients.length, ...importQualityProps(normalized) });
       return { normalized, mealTags: autoTags, title: decodedTitle };
     },
     [],

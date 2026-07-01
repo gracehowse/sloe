@@ -1,32 +1,72 @@
 /**
- * TikTok / social caption import benchmark — ENG-7
+ * TikTok / Reel import parse-rate benchmark — GROW-61 / GROW-62.
  *
- * Offline-first harness: validates caption fixtures against the import
- * pipeline's pre-LLM gates (platform detect, minimum length). When
- * OPENAI_API_KEY is set and --live is passed, also exercises
- * POST /api/recipe-import against a running dev server.
+ * Produces a TRUSTWORTHY number for the recipe-import success gate (GROW-62:
+ * ≥90% usable imports on 100 random TikTok food Reels). Rewritten 2026-07-01
+ * (recipe-import audit fix #2) after the audit found the previous version
+ * scored the WRONG signal:
+ *   - offline it checked `platform !== "other" && captionLen >= 40` and called
+ *     that a "pass rate";
+ *   - `--live` POSTed a `captionText` the `/api/recipe-import` route IGNORES,
+ *     then treated any `res.ok` as a pass — so zero-macro shells scored as
+ *     success.
+ *
+ * What it does now — scores each URL against THREE definitions (see the audit's
+ * success-definition analysis) and reports all three:
+ *
+ *   A. Recipe-object-returned (vanity)  — `ok && ingredients > 0`.
+ *   B. Strict success (the LAUNCH GATE) — `ok` AND ingredients AND per-serving
+ *      calories > 0 AND ingredient_match_rate >= THRESHOLD (default 0.7).
+ *   Caption-present rate                — how many URLs yielded extractable
+ *      recipe text at all (the FM-1 structural ceiling: how much of the gap is
+ *      the legal caption-only posture vs the parser).
+ *
+ * The Definition-B predicate + the three-way scoring live in the pure,
+ * unit-tested module `scripts/lib/reelImportScore.mjs`.
  *
  * Usage:
- *   node scripts/benchmark-tiktok-import.mjs
- *   node scripts/benchmark-tiktok-import.mjs --fixtures docs/testflight-feedback/tiktok-import-benchmark/captions
- *   node scripts/benchmark-tiktok-import.mjs --live --base-url http://localhost:3000
+ *   # Offline URL-shape precheck (no server, no auth) — NOT a success rate:
+ *   node scripts/benchmark-tiktok-import.mjs --urls scripts/fixtures/reel-import-seed-urls.txt
  *
- * Exit 0 when offline gate pass rate ≥ 90% on fixtures, else exit 1.
- * Live mode requires auth token via BENCHMARK_TOKEN or SUPABASE_ANON_KEY.
+ *   # Live gate measurement (dev server + authed bearer token):
+ *   npm run dev
+ *   export BENCHMARK_BEARER=<supabase-session-jwt for a test account>
+ *   node scripts/benchmark-tiktok-import.mjs --live \
+ *     --urls scripts/fixtures/reel-import-seed-urls.txt \
+ *     --base-url http://localhost:3000
+ *
+ * The route requires an AUTHED user and rate-limits 20 imports/min, so a real
+ * GROW-62 run needs a valid bearer + a URL file the harness paces under the
+ * limit. See docs/growth/reel-import-gate.md.
+ *
+ * The seed fixture ships 3–5 real-shaped TikTok food-Reel URLs so the harness
+ * is runnable out of the box. The real GROW-62 run needs 100 RANDOM food-Reel
+ * URLs sourced separately (owner: founder / growth) — do NOT hardcode 100 URLs
+ * here.
+ *
+ * Exit code:
+ *   - live mode:    0 iff Definition-B rate >= --gate (default 90), else 1.
+ *   - offline mode: 0 iff every input URL is a well-formed social URL, else 1.
+ *     (Offline is a shape precheck; it does NOT gate on a success rate.)
  */
 
-import { readFileSync, readdirSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, basename } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { parseArgs } from "node:util";
+import {
+  MATCH_RATE_THRESHOLD,
+  classifyImportResult,
+  summarise,
+} from "./lib/reelImportScore.mjs";
 
 const { values: args } = parseArgs({
   options: {
-    fixtures: {
-      type: "string",
-      default: "docs/testflight-feedback/tiktok-import-benchmark/captions",
-    },
+    urls: { type: "string" },
     live: { type: "boolean", default: false },
     "base-url": { type: "string", default: "http://localhost:3000" },
+    "match-threshold": { type: "string" },
+    gate: { type: "string", default: "90" },
+    "throttle-ms": { type: "string", default: "3200" },
     out: { type: "string" },
     help: { type: "boolean", default: false },
   },
@@ -34,125 +74,197 @@ const { values: args } = parseArgs({
 });
 
 if (args.help) {
-  console.log(`Usage: node scripts/benchmark-tiktok-import.mjs [--fixtures <dir>] [--live] [--base-url URL]`);
+  console.log(
+    [
+      "Usage: node scripts/benchmark-tiktok-import.mjs --urls <file> [options]",
+      "",
+      "  --urls <file>          URL list (newline-delimited or a JSON array). Required.",
+      "  --live                 POST { url } to /api/recipe-import (needs a dev server + auth).",
+      "  --base-url <url>       Dev server base URL (default http://localhost:3000).",
+      "  --match-threshold <n>  Definition-B ingredient_match_rate floor (default " +
+        MATCH_RATE_THRESHOLD +
+        ").",
+      "  --gate <pct>           Live exit-gate on Definition-B rate (default 90).",
+      "  --throttle-ms <ms>     Delay between live requests (route limits 20/min; default 3200).",
+      "  --out <file>           JSON report path.",
+      "",
+      "Auth (live): set BENCHMARK_BEARER (preferred) or BENCHMARK_TOKEN to a Supabase session JWT.",
+    ].join("\n"),
+  );
   process.exit(0);
 }
 
-const fixturesDir = args.fixtures;
+const threshold =
+  args["match-threshold"] != null
+    ? Math.max(0, Math.min(1, Number.parseFloat(args["match-threshold"])))
+    : MATCH_RATE_THRESHOLD;
+const gatePct = Math.max(0, Math.min(100, Number.parseInt(args.gate, 10) || 90));
+const throttleMs = Math.max(0, Number.parseInt(args["throttle-ms"], 10) || 0);
+
 const today = new Date().toISOString().slice(0, 10);
 const outPath =
-  args.out ??
-  join("docs/testflight-feedback", `tiktok-import-benchmark-${today}.json`);
+  args.out ?? join("docs/testflight-feedback", `reel-import-benchmark-${today}.json`);
 
-/** Minimum caption length — mirrors parseCaption guard. */
-const MIN_CAPTION_CHARS = 40;
+/** Parse a URL file: JSON array of strings, or newline-delimited (# comments). */
+function loadUrls(file) {
+  if (!file) {
+    console.error(
+      "Missing --urls <file>. Ship/point at a URL list, e.g. scripts/fixtures/reel-import-seed-urls.txt",
+    );
+    process.exit(1);
+  }
+  if (!existsSync(file)) {
+    console.error(`URL file not found: ${file}`);
+    process.exit(1);
+  }
+  const raw = readFileSync(file, "utf8").trim();
+  let urls;
+  if (raw.startsWith("[")) {
+    try {
+      urls = JSON.parse(raw);
+    } catch {
+      console.error(`URL file ${file} looks like JSON but did not parse.`);
+      process.exit(1);
+    }
+  } else {
+    urls = raw
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#"));
+  }
+  urls = (Array.isArray(urls) ? urls : []).map(String).filter(Boolean);
+  if (urls.length === 0) {
+    console.error(`No URLs found in ${file}.`);
+    process.exit(1);
+  }
+  return urls;
+}
 
-function detectPlatform(url) {
+/** Well-formed social URL check for the offline shape precheck. */
+function isSocialUrl(url) {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    if (host.includes("tiktok.com")) return "tiktok";
-    if (host.includes("instagram.com")) return "instagram";
-    if (host.includes("youtube.com") || host === "youtu.be") return "youtube";
-    return "other";
+    return (
+      host.includes("tiktok.com") ||
+      host.includes("instagram.com") ||
+      host.includes("youtube.com") ||
+      host === "youtu.be"
+    );
   } catch {
-    return "other";
+    return false;
   }
 }
 
-function loadFixtures(dir) {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => {
-      const raw = JSON.parse(readFileSync(join(dir, f), "utf8"));
-      return {
-        id: basename(f, ".json"),
-        sourceUrl: raw.sourceUrl ?? "https://www.tiktok.com/@chef/video/1",
-        captionText: raw.captionText ?? "",
-        expectParse: raw.expectParse !== false,
-      };
-    });
-}
-
-async function runLive(url, captionText, token) {
+/** POST { url } ONLY (the route ignores captionText — the old bug). */
+async function runLive(url, token) {
   const res = await fetch(`${args["base-url"]}/api/recipe-import`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ url, captionText }),
+    body: JSON.stringify({ url }),
   });
   const json = await res.json().catch(() => ({}));
-  return { status: res.status, ok: res.ok, json };
+  const ok = res.ok && json && json.ok === true;
+  return { status: res.status, ok, recipe: (json && json.recipe) ?? null };
 }
 
-const fixtures = loadFixtures(fixturesDir);
-if (fixtures.length === 0) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const urls = loadUrls(args.urls);
+
+// --------------------------------------------------------------------------
+// OFFLINE MODE — URL-shape precheck. NOT a success rate. (relabelled per audit)
+// --------------------------------------------------------------------------
+if (!args.live) {
+  const rows = urls.map((url) => ({ url, wellFormed: isSocialUrl(url) }));
+  const wellFormed = rows.filter((r) => r.wellFormed).length;
+  console.log(`Reel-import benchmark — OFFLINE URL-shape precheck (${urls.length} URLs)`);
+  console.log(
+    `  This checks URL shape only. It is NOT a parse-rate / success number —`,
+  );
+  console.log(`  run with --live against a dev server for Definition A/B/caption rates.`);
+  console.log(`  Well-formed social URLs: ${wellFormed}/${urls.length}`);
+  for (const r of rows) {
+    console.log(`    ${r.wellFormed ? "OK " : "BAD"}  ${r.url}`);
+  }
+  const report = {
+    date: today,
+    mode: "offline_url_shape_precheck",
+    urlCount: urls.length,
+    wellFormedCount: wellFormed,
+    note: "URL-shape precheck only — not a success rate. Live mode measures Definition A/B/caption.",
+    rows,
+  };
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, JSON.stringify(report, null, 2));
+  console.log(`Report → ${outPath}`);
+  process.exit(wellFormed === urls.length ? 0 : 1);
+}
+
+// --------------------------------------------------------------------------
+// LIVE MODE — the real GROW-62 measurement.
+// --------------------------------------------------------------------------
+const token = process.env.BENCHMARK_BEARER ?? process.env.BENCHMARK_TOKEN ?? "";
+if (!token) {
   console.error(
-    `No caption fixtures in ${fixturesDir}. Add *.json files with { sourceUrl, captionText, expectParse }.`,
+    "Live mode requires an auth bearer: set BENCHMARK_BEARER (preferred) or BENCHMARK_TOKEN to a Supabase session JWT for a test account. The /api/recipe-import route rejects unauthenticated requests (401).",
   );
   process.exit(1);
 }
 
-const token = process.env.BENCHMARK_TOKEN ?? process.env.SUPABASE_ANON_KEY ?? "";
-const results = [];
-
-for (const fixture of fixtures) {
-  const platform = detectPlatform(fixture.sourceUrl);
-  const captionLen = fixture.captionText.trim().length;
-  const offlinePass = platform !== "other" && captionLen >= MIN_CAPTION_CHARS;
-  const row = {
-    id: fixture.id,
-    platform,
-    captionChars: captionLen,
-    offlinePass,
-    expectParse: fixture.expectParse,
-    live: null,
-  };
-
-  if (args.live) {
-    if (!token) {
-      console.error("Live mode requires BENCHMARK_TOKEN or SUPABASE_ANON_KEY.");
-      process.exit(1);
-    }
-    row.live = await runLive(fixture.sourceUrl, fixture.captionText, token);
-    row.livePass = row.live.ok === true;
+const rows = [];
+for (let i = 0; i < urls.length; i++) {
+  const url = urls[i];
+  let live;
+  try {
+    live = await runLive(url, token);
+  } catch (e) {
+    live = { status: 0, ok: false, recipe: null, error: String(e?.message ?? e) };
   }
-
-  results.push(row);
+  const scored = classifyImportResult({ ok: live.ok, recipe: live.recipe, threshold });
+  rows.push({ url, status: live.status, ...scored });
+  // Pace under the route's 20/min rate limit (skip after the last URL).
+  if (throttleMs > 0 && i < urls.length - 1) await sleep(throttleMs);
 }
 
-const offlineCorrect = results.filter((r) => r.offlinePass === r.expectParse).length;
-const offlineRate = Math.round((offlineCorrect / results.length) * 100);
-const liveResults = results.filter((r) => r.live);
-const liveRate =
-  liveResults.length > 0
-    ? Math.round((liveResults.filter((r) => r.livePass).length / liveResults.length) * 100)
-    : null;
+const summary = summarise(rows);
+
+console.log(`Reel-import benchmark — LIVE (${rows.length} URLs, match-threshold ${threshold})`);
+console.log("");
+console.log("  Definition A — recipe-object-returned (vanity):");
+console.log(`    ${summary.definitionA.count}/${summary.total}  (${summary.definitionA.pct}%)`);
+console.log("  Definition B — STRICT success / usable macro-tracked recipe (LAUNCH GATE):");
+console.log(`    ${summary.definitionB.count}/${summary.total}  (${summary.definitionB.pct}%)`);
+console.log("  Caption-present — URL yielded extractable recipe text (structural ceiling):");
+console.log(`    ${summary.captionPresent.count}/${summary.total}  (${summary.captionPresent.pct}%)`);
+console.log("");
+console.log("  Per-URL breakdown:");
+for (const r of rows) {
+  const hit = r.definitionB ? "B" : r.definitionA ? "A" : "-";
+  const reason = r.failureReason ? `  reason=${r.failureReason}` : "";
+  console.log(
+    `    [${hit}] match=${r.matchRate.toFixed(2)} kcal=${r.perServingCalories} ings=${r.ingredientCount}${reason}  ${r.url}`,
+  );
+}
 
 const report = {
   date: today,
-  fixtureCount: results.length,
-  offlinePassRatePct: offlineRate,
-  livePassRatePct: liveRate,
-  minCaptionChars: MIN_CAPTION_CHARS,
-  results,
-  blockers: liveResults.length === 0
-    ? [
-        "Live LLM parse rate not measured — run with --live against `npm run dev` and a valid token.",
-        "Target sample set is 100 Reels (ENG-670); current fixtures are a smoke subset only.",
-      ]
-    : [],
+  mode: "live",
+  baseUrl: args["base-url"],
+  urlCount: rows.length,
+  matchThreshold: threshold,
+  gatePct,
+  summary,
+  rows,
+  note:
+    "Definition B is the GROW-62 launch gate. The seed fixture is a smoke set — a real gate run needs 100 random food-Reel URLs sourced by founder/growth. Caption-present rate quantifies the FM-1 structural ceiling (legal caption-only posture) that bounds the achievable Definition-B ceiling until the flag-off caption-text path ships.",
 };
-
-mkdirSync(join("docs/testflight-feedback"), { recursive: true });
+mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify(report, null, 2));
-
-console.log(`TikTok import benchmark — ${results.length} fixtures`);
-console.log(`Offline gate pass rate: ${offlineRate}% (platform + min ${MIN_CAPTION_CHARS} chars)`);
-if (liveRate != null) console.log(`Live API pass rate: ${liveRate}%`);
+console.log("");
 console.log(`Report → ${outPath}`);
+console.log(`Exit gate: Definition-B ${summary.definitionB.pct}% vs required ${gatePct}%`);
 
-const passThreshold = 90;
-process.exit(offlineRate >= passThreshold ? 0 : 1);
+process.exit(summary.definitionB.pct >= gatePct ? 0 : 1);

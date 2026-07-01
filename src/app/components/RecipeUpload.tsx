@@ -39,6 +39,7 @@ import { normalizeMacroTargets } from "../../types/profile.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
 import { roundCalories, roundMacro } from "../../lib/recipes/createRecipeWizard.ts";
 import { normaliseSource } from "../../lib/recipes/persistSourceAttribution.ts";
+import { importQualityProps, type ImportQualityProps } from "../../lib/recipes/importQualitySignal.ts";
 import { normalizeRecipeTitle } from "../../lib/recipes/normalizeRecipeTitle.ts";
 import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngredients.ts";
 import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
@@ -63,10 +64,7 @@ import {
   saveImportedRecipe as persistImportedRecipeDraft,
   type ApiImportedRecipe,
 } from "../../lib/recipes/persistImportedRecipe.ts";
-import {
-  fetchRecentImports,
-  type RecentImportItem,
-} from "../../lib/recipes/recentImports.ts";
+import { fetchRecentImports, type RecentImportItem } from "../../lib/recipes/recentImports.ts";
 import {
   detectSourcePlatform,
   isCaptionTextPlatform,
@@ -688,7 +686,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
    * (`import-progress-v2`) apply the result identically — no drift between
    * "imported inline" and "imported via the queue then reviewed".
    */
-  const applyImportedRecipeToForm = useCallback((r: ImportedUrlRecipe, sourceUrl: string) => {
+  // GROW-61 `quality` — macro quality derived by the caller (holds the full recipe w/ ingredientMacros); the form shape has none. Carried onto `recipe_imported` to mirror mobile. Absent (OCR path) → props omitted.
+  const applyImportedRecipeToForm = useCallback((r: ImportedUrlRecipe, sourceUrl: string, quality?: ImportQualityProps) => {
     setTitle(r.title);
     setDescription(r.description ?? "");
     if (r.servings && r.servings > 0) setServings(r.servings);
@@ -718,7 +717,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     } catch {
       importHost = "invalid";
     }
-    track(AnalyticsEvents.recipe_imported, { host: importHost, source: "url" as const });
+    track(AnalyticsEvents.recipe_imported, { host: importHost, source: "url" as const, ...(quality ?? {}) });
   }, []);
 
   /** ENG-980 — persist parsed import to Library before the user finishes review. */
@@ -864,7 +863,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         sourceUrl: recipe.sourceUrl ?? sourceUrl,
         sourceName: recipe.sourceName ?? null,
       };
-      applyImportedRecipeToForm(formRecipe, sourceUrl);
+      applyImportedRecipeToForm(formRecipe, sourceUrl, importQualityProps(recipe));
       return landImportedRecipeSaveFirst(recipe, sourceUrl);
     },
     [applyImportedRecipeToForm, landImportedRecipeSaveFirst],

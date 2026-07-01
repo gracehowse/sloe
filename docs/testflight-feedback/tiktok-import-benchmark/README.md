@@ -1,37 +1,36 @@
-# TikTok / social import benchmark (ENG-7)
+# TikTok / social import benchmark — SUPERSEDED (GROW-61, 2026-07-01)
 
-Smoke fixtures for caption-import gate checks. Full 100-Reel empirical gate is tracked in **ENG-670**.
+> **These caption fixtures are legacy.** The 2026-07-01 recipe-import audit
+> found the harness scored the wrong signal (caption length / `res.ok`, not a
+> usable macro-tracked recipe). The harness was rewritten to score
+> **Definition B** (usable macro spine + ingredient match rate) against real
+> URLs, driven by a URL list rather than these caption JSON fixtures.
+>
+> **Canonical doc:** [`docs/growth/reel-import-gate.md`](../../growth/reel-import-gate.md)
+> — the three metrics (A / B / caption-present), how to run it, the bearer-token
+> requirement, and why the ceiling is caption-present-bound.
 
-## Run offline (no API)
+## Run it now (URL-based harness)
 
 ```bash
-node scripts/benchmark-tiktok-import.mjs
-```
+# offline URL-shape precheck (NOT a success rate):
+node scripts/benchmark-tiktok-import.mjs --urls scripts/fixtures/reel-import-seed-urls.txt
 
-Writes `docs/testflight-feedback/tiktok-import-benchmark-YYYY-MM-DD.json`.
-
-## Run live (dev server + token)
-
-```bash
+# live gate measurement (dev server + authed bearer):
 npm run dev
-export BENCHMARK_TOKEN=<supabase-session-jwt>
-node scripts/benchmark-tiktok-import.mjs --live --base-url http://localhost:3000
+export BENCHMARK_BEARER=<supabase-session-jwt for a test account>
+node scripts/benchmark-tiktok-import.mjs --live \
+  --urls scripts/fixtures/reel-import-seed-urls.txt \
+  --base-url http://localhost:3000
 ```
 
-## Fixture format
+The seed fixture is a smoke set; the real GROW-62 gate run needs 100 random
+food-Reel URLs sourced by founder/growth.
 
-Each `captions/*.json` file:
+---
 
-```json
-{
-  "sourceUrl": "https://www.tiktok.com/@creator/video/123",
-  "captionText": "Full caption text with ingredients and steps…",
-  "expectParse": true
-}
-```
+## Legacy caption fixtures (historical)
 
-## Current status (2026-05-29)
-
-- **Offline gate:** 3 smoke fixtures (2 pass, 1 intentionally short) — validates platform detect + min caption length only.
-- **Live parse rate:** not run in CI; requires OpenAI key + authenticated `/api/recipe-import`.
-- **Blocker for ≥90% live gate:** need Grace-curated sample of 100 food Reels with ground-truth ingredient lists (ENG-670).
+The `captions/*.json` files fed the old caption-length precheck (format:
+`{ sourceUrl, captionText, expectParse }`). Kept as historical record only —
+the URL-based harness above no longer reads them.
