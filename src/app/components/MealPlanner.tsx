@@ -158,7 +158,15 @@ const SLOT_ICONS: Record<SlotKey, LucideIcon> = {
   snacks: Cookie,
 };
 
-type SwapTarget = { day: number; slot: SlotKey; mealIndex: number };
+/** ENG-1278 — icon for any slot: classic map for named slots, neutral cutlery
+ *  glyph for numbered-preset labels ("Meal 1" … "Meal N"). */
+function slotIconFor(slot: string): LucideIcon {
+  return SLOT_ICONS[slot.toLowerCase() as SlotKey] ?? UtensilsCrossed;
+}
+
+// ENG-1278 — `slot` widened to string so a numbered-preset slot label
+// ("Meal N") can drive a swap; classic slots still resolve their slot-fit pool.
+type SwapTarget = { day: number; slot: string; mealIndex: number };
 
 /** F2-E (2026-04-28) — tone → tailwind class for the day-total
  *  delta cells. Symmetric over/under bands per
@@ -341,6 +349,12 @@ export const MealPlanner = memo(function MealPlanner({
   // ENG-1177 — numbered meal-slot presets (4–6 "Meal N") drive plan generation
   // directly; classic returns null and keeps the `enabledSlots` toggle. See hook.
   const { numberedPresetSlots } = useMealSlotConfig(authedUserId);
+  // ENG-1278 — the day-card grid + empty-slot aims iterate the user's REAL
+  // configured slots (numbered preset labels, else classic four titles).
+  const daySlots = useMemo<string[]>(
+    () => numberedPresetSlots ?? SLOTS.map((s) => SLOT_TITLE[s]),
+    [numberedPresetSlots],
+  );
   const [allowBatchLeftovers, setAllowBatchLeftovers] = useState(true);
   const [planCalorieFloor, setPlanCalorieFloor] = useState(
     DEFAULT_PLAN_ADJUST_CONSTRAINTS.calorieFloor,
@@ -385,12 +399,10 @@ export const MealPlanner = memo(function MealPlanner({
     [mealPlan, targetCalories],
   );
 
-  // ENG-1092 ("Purposeful empties") — the static per-slot aim, keyed by
-  // canonical slot. `slotMacroTargets` over the four canonical SLOTS = the
-  // dietitian ratio (breakfast .25 / lunch .3 / dinner .35 / snack .1), the
-  // spec's Plan source. null on the optional Snacks slot or when no target is
-  // set. Used for every empty slot (absent-slot card AND placeholder row), so
-  // the dominant fresh-grid empty state reads its purpose, not "Empty slot".
+  // ENG-1092 / ENG-1278 — static per-slot aim keyed by lowercased slot.
+  // `slotMacroTargets` over the user's REAL `daySlots` (classic → dietitian
+  // ratio 25/30/35/10; numbered → even 1/N). null on optional Snacks / no
+  // target. Used for every empty slot (absent-slot card AND placeholder row).
   const canonicalSlotAim = useMemo<Record<string, number | null>>(() => {
     // ENG-1098: Calm mode → no aims at all (empty cells fall back to "Empty slot").
     if (!planAimEmptyOn || calmMode || !(nutritionTargets.calories > 0)) return {};
@@ -402,11 +414,11 @@ export const MealPlanner = memo(function MealPlanner({
       fiber: nutritionTargets.fiber ?? 28,
       ...DEFAULT_PLANNER_BANDS,
     };
-    const perSlot = slotMacroTargets([...SLOTS], targets);
+    const perSlot = slotMacroTargets(daySlots, targets);
     return Object.fromEntries(
-      SLOTS.map((s, i) => [s, planSlotAimKcal(s, perSlot[i]!.calories)]),
+      daySlots.map((s, i) => [s.toLowerCase(), planSlotAimKcal(s, perSlot[i]!.calories)]),
     );
-  }, [planAimEmptyOn, calmMode, nutritionTargets]);
+  }, [planAimEmptyOn, calmMode, nutritionTargets, daySlots]);
 
   // ENG-1020 (2026-06-13): the week-date moved off a page subtitle and onto
   // the summary card as a "{start} – {end} · Meal plan" eyebrow, mirroring
@@ -1032,7 +1044,9 @@ export const MealPlanner = memo(function MealPlanner({
       dinner: "Dinner",
       snacks: "Snacks",
     };
-    const slot = slotMap[swapFor.slot];
+    // ENG-1278 — numbered slots ("Meal N") have no classic slot-fit → full pool.
+    const slot = slotMap[swapFor.slot.toLowerCase() as SlotKey];
+    if (!slot) return pool;
     const fits = pool.filter((r) => recipeFitsMealSlot(r, slot));
     return fits.length > 0 ? fits : pool;
   }, [swapFor, discoverRecipes, savedRecipesForLibrary]);
@@ -1532,11 +1546,10 @@ export const MealPlanner = memo(function MealPlanner({
         })}
       </div>
 
-      {/* F2-H (2026-04-28): slot toggles. Mobile parity at
-          `apps/mobile/app/(tabs)/planner.tsx:1775-1793`. Toggle off
-          slots you don't want the regenerator to fill (e.g. Snacks).
-          At least one slot must stay enabled — the toggle no-ops when
-          asked to disable the last one. */}
+      {/* F2-H (2026-04-28): slot toggles (mobile parity). Toggle off slots the
+          regenerator shouldn't fill (e.g. Snacks); ≥1 must stay enabled.
+          ENG-1278 — classic-only: numbered presets set slot count in Settings. */}
+      {numberedPresetSlots ? null : (
       <div
         data-testid="planner-slot-toggles-row"
         className="flex items-center gap-2 mb-3 flex-wrap"
@@ -1579,9 +1592,9 @@ export const MealPlanner = memo(function MealPlanner({
           );
         })}
       </div>
+      )}
 
-      {/* F2-D (2026-04-28): start-date picker. Mobile parity at
-          `apps/mobile/app/(tabs)/planner.tsx:1759-1774`. */}
+      {/* F2-D (2026-04-28): start-date picker (mobile parity). */}
       <div
         data-testid="planner-start-date-row"
         className="flex items-center gap-2 mb-4 flex-wrap"
@@ -1759,29 +1772,26 @@ export const MealPlanner = memo(function MealPlanner({
             (m) => !m.isPlaceholder && !!m.recipeTitle,
           );
           const renderTotals = dayTotalLine.hasTargets && dayHasRealMeal;
-          // F2-A (2026-04-28): bySlot now indexes all four canonical
-          // slots (Breakfast / Lunch / Dinner / Snacks) so the grid
-          // renders Snacks when the generated plan carries it. Pre-
-          // fix the web grid silently dropped any snack rows the
-          // sampler produced.
+          // F2-A (2026-04-28) / ENG-1278: bySlot indexes the user's REAL
+          // configured slots (classic four OR a numbered 4-/6-meal preset),
+          // keyed by lowercased label so both "Snacks" and "Meal 5" match. Pre-
+          // fix the grid dropped snack rows (F2-A) + every numbered meal (1278).
           const bySlot = new Map<
-            SlotKey,
+            string,
             { mealIndex: number; meal: DayPlan["meals"][number] } | null
           >();
-          for (const s of SLOTS) bySlot.set(s, null);
+          for (const s of daySlots) bySlot.set(s.toLowerCase(), null);
           dp.meals.forEach((m, i) => {
-            const key = String(m.name ?? "").toLowerCase() as SlotKey;
+            const key = String(m.name ?? "").toLowerCase();
             if (bySlot.has(key) && bySlot.get(key) == null) {
               bySlot.set(key, { mealIndex: i, meal: m });
             }
           });
           return (
-            // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-
-            // one-card-treatment-soft-elevation.md): each per-day kanban column
-            // sits on the page-ground grid → soft `.card-slab` like every
-            // resting card. Today keeps tone="primary" (soft shadow composes
-            // with the tint, border dropped). Mobile renders Plan days as a
-            // continuous list — that layout divergence predates this sweep.
+            // One-treatment soft lift (2026-06-09, one-card-treatment-soft-
+            // elevation.md): each per-day column sits on the page-ground grid →
+            // soft `.card-slab`; Today keeps tone="primary". Mobile renders Plan
+            // days as a continuous list — that layout divergence predates this.
             <SupprCard
               key={`day-${dp.day}`}
               elevation="card"
@@ -1811,16 +1821,11 @@ export const MealPlanner = memo(function MealPlanner({
                   </span>
                 ) : null}
               </div>
-              {/* F2-E (2026-04-28): day total vs goal — calories
-                  header + P/C/F delta chips. Mobile parity at
-                  `apps/mobile/app/(tabs)/planner.tsx:2053-2089`.
-                  F2 follow-up #3 (2026-04-28, see
-                  `docs/decisions/2026-04-28-plan-day-summary-strip-web-divergence.md`):
-                  added a slim per-day progress bar that ports the
-                  one signal the mobile day-summary strip carries
-                  beyond what the grid already shows. The strip
-                  itself stays mobile-only (web 7-column grid serves
-                  the same spatial function). */}
+              {/* F2-E (2026-04-28): day total vs goal — calories header + P/C/F
+                  delta chips (mobile parity). F2 follow-up #3 added a slim per-
+                  day progress bar (see 2026-04-28-plan-day-summary-strip-web-
+                  divergence.md); the mobile day-summary strip stays mobile-only
+                  (the web 7-column grid serves the same spatial function). */}
               {renderTotals ? (
                 <div
                   data-testid={`planner-day-totals-${dp.day}`}
@@ -1883,11 +1888,14 @@ export const MealPlanner = memo(function MealPlanner({
                   </div>
                 </div>
               ) : null}
-              {SLOTS.map((slot) => {
-                const SlotIcon = SLOT_ICONS[slot];
-                const entry = bySlot.get(slot);
+              {daySlots.map((slot) => {
+                // ENG-1278 — `slot` is the display label (classic title OR
+                // "Meal N"); lookups (bySlot, aim map) key by its lowercase form.
+                const slotKey = slot.toLowerCase();
+                const SlotIcon = slotIconFor(slot);
+                const entry = bySlot.get(slotKey);
                 if (!entry) {
-                  const emptyAim = canonicalSlotAim[slot] ?? null;
+                  const emptyAim = canonicalSlotAim[slotKey] ?? null;
                   return (
                     <PlanAbsentMealSlotRow
                       key={slot}
@@ -1903,7 +1911,7 @@ export const MealPlanner = memo(function MealPlanner({
                 });
                 // ENG-1092 — aim for this empty (placeholder) slot; null on the
                 // optional Snacks slot, no target, or a populated row.
-                const slotAim = isPlaceholder ? (canonicalSlotAim[slot] ?? null) : null;
+                const slotAim = isPlaceholder ? (canonicalSlotAim[slotKey] ?? null) : null;
                 const kcal = Math.round(Math.max(0, Number(meal.calories) || 0));
                 const prot = Math.round(Math.max(0, Number(meal.protein) || 0));
                 const recipeId = (meal as { recipeId?: string }).recipeId;
@@ -1919,24 +1927,17 @@ export const MealPlanner = memo(function MealPlanner({
                   knownRecipeIds,
                   libraryLoaded: knownRecipeIds.size > 0,
                 });
-                // F2-E (2026-04-28): per-meal portion-multiplier
-                // badge. Hidden at 1× (the silent default) so cards
-                // stay clean when no portion adjustment was made.
-                // The post-portion macros are already baked into
-                // `meal.calories` (per the F30 fix), so this badge
-                // is display-only — it explains, doesn't multiply.
+                // F2-E (2026-04-28): per-meal portion-multiplier badge. Hidden
+                // at 1× (silent default); display-only — post-portion macros are
+                // already baked into `meal.calories` (F30 fix), so it explains,
+                // doesn't multiply.
                 const portionLabel = formatPortionMultiplier(
                   (meal as { portionMultiplier?: number }).portionMultiplier,
                 );
-                // F2-J (2026-04-28): leftover badge. The leftover
-                // distribution pass at `src/lib/nutrition/leftoversPlanner.ts`
-                // tags downstream slots with `leftoverOf: recipeId` and
-                // `isLeftover: true` when a recipe yields multiple
-                // servings. Display-only badge so the user sees that
-                // a slot is a leftover portion rather than a fresh
-                // cook. Data already exists in the plan JSON; pre-fix
-                // the web grid silently rendered leftovers as if they
-                // were independent meals.
+                // F2-J (2026-04-28): leftover badge. `leftoversPlanner.ts` tags
+                // downstream slots (`leftoverOf` / `isLeftover`) when a recipe
+                // yields multiple servings; display-only so a leftover portion
+                // reads as a repeat, not an independent meal.
                 const isLeftover = Boolean(
                   (meal as { isLeftover?: boolean }).isLeftover ||
                     (meal as { leftoverOf?: string }).leftoverOf,
@@ -2260,12 +2261,11 @@ export const MealPlanner = memo(function MealPlanner({
                   </div>
                 );
               })}
-              {/* F2-I (2026-04-28): "Add slot back" chips for any
-                  canonical slot missing from this day. Mobile parity:
-                  `apps/mobile/app/(tabs)/planner.tsx:2451-2522`.
-                  Hidden when all four slots are present — keeps the
-                  card lean. */}
-              {(() => {
+              {/* F2-I (2026-04-28): "Add slot back" chips for any canonical slot
+                  missing from this day (mobile parity). ENG-1278 — classic-only:
+                  numbered presets manage their slot count in Settings, not via
+                  per-day chips, so the classic add-back is suppressed for them. */}
+              {numberedPresetSlots ? null : (() => {
                 const presentLower = new Set(
                   dp.meals.map((m) => String(m.name ?? "").toLowerCase()),
                 );
