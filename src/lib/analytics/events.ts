@@ -124,6 +124,11 @@ export const AnalyticsEvents = {
    *  (full re-roll). Payload: `{ lockedCount, rerolledCount, days, platform }`. */
   plan_regenerated_partial: "plan_regenerated_partial",
   shopping_list_generated: "shopping_list_generated",
+  /** ENG-943 — user added a single recipe's ingredients to their shopping list
+   *  from RecipeDetail (web) / recipe/[id] (mobile). Same name web + mobile.
+   *  Payload: `{ recipeId, ingredientCount, addedCount, mergedCount, platform }`.
+   *  No PII; ingredient names are not sent. */
+  recipe_shopping_list_added: "recipe_shopping_list_added",
   /** Planner overlap suggestions — user saved a suggested recipe from the Plan tab.
    *  Payload: `{ recipeId, platform: "web" | "mobile" }`. */
   smart_suggestion_saved: "smart_suggestion_saved",

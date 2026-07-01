@@ -129,6 +129,14 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
     }
   });
 
+  it("ENG-943 recipe→shopping-list flag is default-ON + shared (web ↔ mobile)", () => {
+    expect(web.has("recipe_shopping_list_v1"), "web recipe_shopping_list_v1").toBe(true);
+    expect(mobile.has("recipe_shopping_list_v1"), "mobile recipe_shopping_list_v1").toBe(true);
+    // It's a shared flag — not on either platform-only carve-out list.
+    expect(WEB_ONLY.has("recipe_shopping_list_v1")).toBe(false);
+    expect(MOBILE_ONLY.has("recipe_shopping_list_v1")).toBe(false);
+  });
+
   it("core design-system flags default ON on both platforms", () => {
     const core = [
       "design_system_elevation",

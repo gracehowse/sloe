@@ -487,6 +487,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (no Mode-B band) stays in the `else` as the kill switch. Mirror of the web
   // entry in src/lib/analytics/track.ts. M+W.
   "plan_distribute_anchor_v1",
+  // ENG-943 — "Add to shopping list" from a single recipe (mobile recipe/[id] +
+  // web RecipeDetail). Parses the recipe's ingredients, aggregates duplicates
+  // (count-to-weight normalise where high-confidence, never guesses a weight),
+  // and APPENDS to the user's list (merging rows already there). DEFAULT-ON per
+  // Grace's "always flag on" policy (ENG-1279) — off → the action is hidden and
+  // the list stays plan-only (kill switch: remove here / PostHog). Web + mobile.
+  "recipe_shopping_list_v1",
 ]);
 
 // NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
