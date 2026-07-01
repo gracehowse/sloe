@@ -123,7 +123,11 @@ When appointed, replace the placeholders at `app/privacy/page.tsx:38` and `app/p
 
 ## 9. Vendor DPAs
 
-Sign a Data Processing Agreement with each subprocessor handling user data:
+Sign a Data Processing Agreement with each subprocessor handling user data. The **canonical,
+repo-grounded list of every sub-processor + its DPA status** lives in
+[`docs/legal/dpa-inventory.md`](../legal/dpa-inventory.md) (ENG-1277) — that inventory is the
+superset and the record; the list below is the quick-reference starting set from the 2026-04-25
+review:
 
 - Supabase (sign DPA via dashboard → Org Settings → Legal)
 - Stripe (auto-applied via terms; record in `docs/legal/dpa-inventory.md`)
@@ -135,7 +139,14 @@ Sign a Data Processing Agreement with each subprocessor handling user data:
 - Edamam (signable via Edamam dashboard)
 - FatSecret (review tier-specific terms; per the 2026-04-25 fatsecret-tier-confirmation decision the Basic-tier compliance wording belongs on the licences page — TODO P1-18)
 
-Track signed-vs-pending in a Notion row per vendor under "Vendors & subscriptions".
+> **Reconcile against the inventory before closing this step.** The full inventory adds vendors this
+> starter list omits — notably **Anthropic** (the *active* AI provider; the privacy policy currently
+> names only OpenAI) and **fal.ai** (AI image generation, flagged **DPA NEEDED** by the ENG-865
+> legal-reviewer gate), plus Supadata, Upstash, Vercel, and Apple. See
+> [`docs/legal/dpa-inventory.md` → "Open items requiring founder / legal action"](../legal/dpa-inventory.md#open-items-requiring-founder--legal-action).
+
+Track signed-vs-pending in [`docs/legal/dpa-inventory.md`](../legal/dpa-inventory.md) (flip each row
+from *To provision* / *NEEDED* to *Signed* as agreements execute).
 
 ## 10. Re-run prelaunch:checklist
 
