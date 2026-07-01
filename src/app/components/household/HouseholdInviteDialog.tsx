@@ -13,12 +13,19 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { supabase } from "@/lib/supabase/browserClient";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 import {
   cancelHouseholdInvite,
   listSentHouseholdInvites,
   sendHouseholdInvite,
   type HouseholdInvite,
 } from "@/lib/household/householdClient";
+import {
+  getOrCreateReferralReward,
+  REFERRAL_FLAG,
+  type ReferralReward,
+} from "@/lib/referrals/referralClient";
+import { ReferralRewardCard } from "./ReferralRewardCard";
 
 /**
  * HouseholdInviteDialog — F-111 (TestFlight `AGthJykAoNdxEYKsRoLWf-c`,
@@ -68,6 +75,10 @@ export function HouseholdInviteDialog({
   const [invites, setInvites] = React.useState<HouseholdInvite[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [referralReward, setReferralReward] = React.useState<ReferralReward | null>(null);
+  const [referralLoading, setReferralLoading] = React.useState(false);
+  const [referralError, setReferralError] = React.useState<string | null>(null);
+  const referralEnabled = isFeatureEnabled(REFERRAL_FLAG);
 
   const reload = React.useCallback(async () => {
     setLoading(true);
@@ -84,6 +95,25 @@ export function HouseholdInviteDialog({
       setEmail("");
     }
   }, [open, reload]);
+
+  React.useEffect(() => {
+    if (!open || !referralEnabled) return;
+    let cancelled = false;
+    setReferralLoading(true);
+    setReferralError(null);
+    void getOrCreateReferralReward(supabase as any, window.location.origin)
+      .then((result) => {
+        if (cancelled) return;
+        setReferralReward(result.data);
+        setReferralError(result.error);
+      })
+      .finally(() => {
+        if (!cancelled) setReferralLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, referralEnabled]);
 
   const onSend = React.useCallback(async () => {
     setSending(true);
@@ -123,6 +153,14 @@ export function HouseholdInviteDialog({
         </DialogHeader>
 
         <div className="space-y-5">
+          {referralEnabled && (
+            <ReferralRewardCard
+              reward={referralReward}
+              loading={referralLoading}
+              error={referralError}
+            />
+          )}
+
           {/* Email input */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-muted-foreground">Send by email</label>

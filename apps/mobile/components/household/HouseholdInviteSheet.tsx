@@ -31,6 +31,8 @@ import { Mail, Plus, Trash2, X } from "lucide-react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { getSupprApiBase, getSupprWebBase } from "@/lib/supprWeb";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { supabase } from "@/lib/supabase";
 import {
@@ -39,6 +41,12 @@ import {
   sendHouseholdInvite,
   type HouseholdInvite,
 } from "@suppr/shared/household/householdClient";
+import {
+  getOrCreateReferralReward,
+  REFERRAL_FLAG,
+  type ReferralReward,
+} from "@suppr/shared/referrals/referralClient";
+import { ReferralRewardCard } from "./ReferralRewardCard";
 
 export interface HouseholdInviteSheetProps {
   visible: boolean;
@@ -79,6 +87,10 @@ export function HouseholdInviteSheet({
   const [sending, setSending] = useState(false);
   const [invites, setInvites] = useState<HouseholdInvite[]>([]);
   const [loading, setLoading] = useState(false);
+  const [referralReward, setReferralReward] = useState<ReferralReward | null>(null);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralError, setReferralError] = useState<string | null>(null);
+  const referralEnabled = isFeatureEnabled(REFERRAL_FLAG);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -91,6 +103,26 @@ export function HouseholdInviteSheet({
     if (visible) void reload();
     else setEmail("");
   }, [visible, reload]);
+
+  useEffect(() => {
+    if (!visible || !referralEnabled) return;
+    let cancelled = false;
+    const base = getSupprWebBase() || getSupprApiBase();
+    setReferralLoading(true);
+    setReferralError(null);
+    void getOrCreateReferralReward(supabase as any, base)
+      .then((result) => {
+        if (cancelled) return;
+        setReferralReward(result.data);
+        setReferralError(result.error);
+      })
+      .finally(() => {
+        if (!cancelled) setReferralLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, referralEnabled]);
 
   const onSend = useCallback(async () => {
     setSending(true);
@@ -161,6 +193,14 @@ export function HouseholdInviteSheet({
           </View>
 
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {referralEnabled && (
+              <ReferralRewardCard
+                reward={referralReward}
+                loading={referralLoading}
+                error={referralError}
+              />
+            )}
+
             {/* Email input + send action */}
             <View style={{ gap: Spacing.sm, marginBottom: Spacing.lg }}>
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary }}>
