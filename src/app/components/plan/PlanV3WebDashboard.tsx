@@ -4,7 +4,12 @@ import * as React from "react";
 import { Flame, ShoppingCart, Sparkles } from "lucide-react";
 
 import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
-import type { PlanWeekVerdict } from "@/lib/planning/planWeekStatus";
+import {
+  computePlanDayDetail,
+  computePlanDayStatus,
+  type PlanDayStatus,
+  type PlanWeekVerdict,
+} from "@/lib/planning/planWeekStatus";
 import {
   isPlanMealCooked,
   journalEntriesForPlanDate,
@@ -25,11 +30,14 @@ import {
  * The web Plan v3 column ({@link PlanV3Surface}) is the phone design; on a wide
  * screen it leaves the page empty either side. This is the prototype's desktop
  * Plan (`docs/ux/redesign/v3/Sloe-App.html` `WebPlan` ~L7581–7708): a two-column
- * `w-grid` — LEFT = the whole week stacked (each day a header + a row of meal
- * cards), RIGHT rail = a grounded "This week" insight card + a "Shopping list"
- * card — topped by the shared verdict header, a week-health stat strip, and the
- * household banner. `PlanV3Connected` renders this on `md+` and keeps the phone
- * column below `md`. Behind `sloe_v3_plan` (host-gated).
+ * `w-grid` — LEFT = the whole week stacked (each day a CARD with a day-total
+ * numeral + calorie progress bar and its meal rows), RIGHT rail = a grounded
+ * "This week" insight card + a "Shopping list" card — topped by the wide
+ * verdict header ("Hits your targets N of 7 days", prototype L7627), the
+ * `wpweek` week-health strip (7-day target-status bars folded with the
+ * summary stats, L7630–7640), and the household banner. `PlanV3Connected`
+ * renders this at `lg+` and keeps the phone column below `lg`. UNGATED since
+ * ENG-1303 (v3 ratified canonical under ENG-1247).
  *
  * Data is real: the insight rows derive from the actual plan (open slots, week
  * completeness) and the shopping card shows the live item/serving counts — no
@@ -65,12 +73,21 @@ export interface PlanV3WebDashboardProps {
   onOpenBatchCook: () => void;
   batchCookSubtitle: string;
   nutritionByDay?: PlanJournalByDay;
+  /** Today (for the week-strip highlight) — injected for deterministic tests. */
+  today?: Date;
 }
 
 type WeekStat = { value: string; label: string };
 
-/** Derive the week-health stat strip from the real plan (planned days, the
- *  week's average calories + protein over planned days, and the daily target). */
+/**
+ * Derive the week-health summary stats from the real plan (planned days, the
+ * week's average calories + protein over planned days, and the daily target).
+ *
+ * The prototype's fourth stat ("£48 est. shop", `WebPlan` ~L7636) is
+ * intentionally omitted — the data layer carries no ingredient pricing, and a
+ * fabricated estimate would violate the trust posture — not a gap. The daily
+ * target takes its slot so every numeral is real.
+ */
 function useWeekStats(plan: DayPlan[], targetKcal: number): WeekStat[] {
   return React.useMemo(() => {
     const plannedDays = plan.filter((d) =>
@@ -81,11 +98,102 @@ function useWeekStats(plan: DayPlan[], targetKcal: number): WeekStat[] {
       n === 0 ? 0 : Math.round(plannedDays.reduce((s, d) => s + pick(d), 0) / n);
     return [
       { value: `${n}/7`, label: "Days planned" },
-      { value: String(avg((d) => d.totals?.calories ?? 0)), label: "Avg cal" },
+      {
+        value: avg((d) => d.totals?.calories ?? 0).toLocaleString("en-US"),
+        label: "Avg kcal",
+      },
       { value: `${avg((d) => d.totals?.protein ?? 0)}g`, label: "Avg protein" },
-      { value: String(targetKcal), label: "Daily target" },
+      { value: targetKcal.toLocaleString("en-US"), label: "Daily target" },
     ];
   }, [plan, targetKcal]);
+}
+
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+function weekStripBarStyle(status: PlanDayStatus): React.CSSProperties {
+  if (status === "full") return { backgroundColor: "var(--accent-success)" };
+  if (status === "part") return { backgroundColor: "var(--warning)" };
+  return {
+    backgroundColor: "var(--background-secondary)",
+    boxShadow: "inset 0 0 0 1px var(--border-strong)",
+  };
+}
+
+/**
+ * WeekHealthStrip — the prototype `wpweek` (WebPlan ~L7630–7640): one card
+ * folding the 7-day target-status strip (day label + full/part/empty bar,
+ * today's label in the brand accent) with the summary-stat row (serif
+ * numerals, hairline dividers). Statuses come from the shared
+ * `computePlanDayStatus`, so the bars can never disagree with the phone
+ * column's week-strip rings or the header verdict.
+ */
+function WeekHealthStrip({
+  plan,
+  weekDates,
+  stats,
+  today,
+}: {
+  plan: DayPlan[];
+  weekDates: Date[];
+  stats: WeekStat[];
+  today?: Date;
+}) {
+  const now = today ?? new Date();
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  return (
+    <div className="mt-4 flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-card p-4">
+      {weekDates.map((date, i) => {
+        const meals = plan[i]?.meals ?? [];
+        const status = computePlanDayStatus(
+          meals.map((m, j) => ({
+            slot: ALL_MEAL_SLOTS[j] ?? "Snacks",
+            kcal: m.calories,
+            empty: m.isPlaceholder,
+          })),
+        );
+        const isToday = isSameDay(date, now);
+        return (
+          <div
+            key={i}
+            data-testid={`plan-web-week-strip-day-${i}`}
+            data-status={status}
+            className="flex min-w-[30px] flex-1 flex-col items-center gap-2"
+          >
+            <span
+              className="text-[11px] font-semibold"
+              style={{
+                color: isToday
+                  ? "var(--primary)"
+                  : "var(--foreground-tertiary)",
+              }}
+            >
+              {WEEKDAY_SHORT[date.getDay()]}
+            </span>
+            <span
+              aria-hidden
+              className="block h-1.5 w-full rounded-full"
+              style={weekStripBarStyle(status)}
+            />
+          </div>
+        );
+      })}
+      <div className="ml-2 flex divide-x divide-border border-l border-border pl-2">
+        {stats.map((s) => (
+          <div key={s.label} className="px-3 text-center">
+            <div className="font-[family-name:var(--font-headline)] text-[18px] font-medium leading-none tabular-nums text-foreground">
+              {s.value}
+            </div>
+            <div className="mt-1 text-[11px] text-foreground-tertiary">
+              {s.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /** Open dinner/lunch/etc. slots, grouped into a single grounded nudge. */
@@ -101,23 +209,6 @@ function useOpenSlots(plan: DayPlan[], weekDates: Date[]) {
     });
     return openDays;
   }, [plan, weekDates]);
-}
-
-function StatStrip({ stats }: { stats: WeekStat[] }) {
-  return (
-    <div className="mt-4 grid grid-cols-4 gap-2 rounded-xl border border-border bg-card p-3">
-      {stats.map((s) => (
-        <div key={s.label} className="text-center">
-          <div className="text-[18px] font-semibold tabular-nums text-foreground">
-            {s.value}
-          </div>
-          <div className="mt-0.5 text-[11px] text-foreground-tertiary">
-            {s.label}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function InsightCard({
@@ -257,6 +348,7 @@ export function PlanV3WebDashboard({
   onOpenBatchCook,
   batchCookSubtitle,
   nutritionByDay,
+  today,
 }: PlanV3WebDashboardProps) {
   const stats = useWeekStats(plan, targetKcal);
   const openDays = useOpenSlots(plan, weekDates);
@@ -269,8 +361,14 @@ export function PlanV3WebDashboard({
         onGenerate={onGenerate}
         onAdjust={onAdjust}
         onTemplates={onTemplates}
+        wide
       />
-      <StatStrip stats={stats} />
+      <WeekHealthStrip
+        plan={plan}
+        weekDates={weekDates}
+        stats={stats}
+        today={today}
+      />
       {household ? (
         <div className="mt-4">
           <PlanHouseholdBannerV3 {...household} onPress={onOpenHousehold} />
@@ -278,20 +376,65 @@ export function PlanV3WebDashboard({
       ) : null}
 
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-        {/* Left: the whole week stacked — each day a header + its meal cards. */}
-        <div className="space-y-6">
+        {/* Left: the whole week stacked — each day a CARD (prototype `w-card`,
+            WebPlan ~L7659): header (day name + "total / target" numeral), the
+            `plan-day-bar` calorie progress bar, then the slot rows. Flat
+            bordered card — the one treatment every card on this surface uses
+            (right-rail siblings included). */}
+        <div className="space-y-5">
           {weekDates.map((date, dayIndex) => {
             const day = plan[dayIndex];
             const dayKcal = Math.round(day?.totals?.calories ?? 0);
+            const plannedCount =
+              day?.meals.filter((m) => !m.isPlaceholder).length ?? 0;
+            // Shared thresholds (planWeekStatus): bar fill capped at target,
+            // amber only when meaningfully over (> target + 200) — never red.
+            const detail = computePlanDayDetail(
+              dayKcal,
+              targetKcal,
+              plannedCount,
+              0,
+            );
             return (
-              <section key={dayIndex} aria-label={`${WEEKDAY_LONG[date.getDay()]} ${date.getDate()}`}>
+              <section
+                key={dayIndex}
+                data-testid={`plan-web-day-card-${dayIndex}`}
+                aria-label={`${WEEKDAY_LONG[date.getDay()]} ${date.getDate()}`}
+                className="rounded-2xl border border-border bg-card p-4"
+              >
                 <div className="flex items-baseline justify-between">
                   <h3 className="text-[15px] font-semibold text-foreground">
                     {WEEKDAY_LONG[date.getDay()] ?? "Day"} {date.getDate()}
                   </h3>
-                  <span className="text-[11px] tabular-nums text-foreground-tertiary">
-                    {dayKcal > 0 ? `${dayKcal} / ${targetKcal} kcal` : "—"}
+                  <span className="text-[13px] tabular-nums text-foreground-tertiary">
+                    {dayKcal > 0 ? (
+                      <>
+                        {dayKcal.toLocaleString("en-US")}{" "}
+                        <span className="opacity-70">
+                          / {targetKcal.toLocaleString("en-US")}
+                        </span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </span>
+                </div>
+                <div
+                  aria-hidden
+                  className="mb-2 mt-3 h-[7px] overflow-hidden rounded-full"
+                  style={{ backgroundColor: "var(--background-secondary)" }}
+                >
+                  <i
+                    data-testid={`plan-web-day-bar-${dayIndex}`}
+                    className="block h-full rounded-full transition-[width] duration-700"
+                    style={{
+                      width: `${Math.round(detail.barPct * 100)}%`,
+                      backgroundColor:
+                        detail.tone === "warning"
+                          ? "var(--warning)"
+                          : "var(--accent-success)",
+                    }}
+                  />
                 </div>
                 {ALL_MEAL_SLOTS.map((slot, slotIndex) => {
                   const meal = day?.meals[slotIndex];
