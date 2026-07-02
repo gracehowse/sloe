@@ -1,7 +1,7 @@
 /**
  * ENG-927 — user-facing copy must say Sloe, not Suppr.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -201,5 +201,65 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
     expect(terms).toContain("SupprBot");
     expect(privacy).toContain("privacy@getsloe.com");
     expect(privacy).toContain("dmca@getsloe.com");
+  });
+
+  // ── Transactional auth emails (ENG-1289, sweep V3) ──────────────────
+  // The six Supabase auth templates + their config.toml subjects were
+  // authored 2026-04-28 under the Suppr brand (gradient wordmark
+  // #4c6ce0→#e04888, "Suppr" in subjects/bodies) and were never covered
+  // by this guard, which only scanned app-UI files. Pin them here so the
+  // retired brand can't silently return in the one surface every new
+  // user sees before the app itself. Link HOSTS (suppr-club.com) are
+  // infrastructure — the domain cutover is separate, deliberate work —
+  // and stay out of scope: the case-sensitive \bSuppr\b token never
+  // matches the lowercase host.
+  const EMAIL_TEMPLATE_DIRS = [
+    "supabase/templates", // canonical — what `supabase config push` applies
+    "docs/emails/supabase-auth", // human-reference mirror
+  ];
+
+  it("supabase auth email templates carry the Sloe brand (no Suppr, no retired gradient)", () => {
+    for (const dir of EMAIL_TEMPLATE_DIRS) {
+      const files = readdirSync(join(ROOT, dir)).filter((f) => f.endsWith(".html"));
+      expect(files.length, dir).toBe(6);
+      for (const file of files) {
+        const html = readFileSync(join(ROOT, dir, file), "utf8");
+        const label = `${dir}/${file}`;
+        expect(html, label).not.toMatch(/\bSuppr\b/);
+        expect(html, label).not.toMatch(/#4c6ce0/i);
+        expect(html, label).not.toMatch(/#e04888/i);
+        // Wordmark + CTA/link ink is the Sloe plum, mirroring
+        // --foreground-brand in src/styles/theme.css.
+        expect(html, label).toMatch(/#3B2A4D/i);
+        expect(html, label).toContain(">sloe</span>");
+        // Footer mailbox matches the legal pages (app/privacy/page.tsx).
+        expect(html, label).toContain("privacy@getsloe.com");
+        expect(html, label).not.toContain("privacy@suppr-club.com");
+      }
+    }
+  });
+
+  it("docs mirror of the auth email templates is byte-identical to canonical", () => {
+    const [canonicalDir, mirrorDir] = EMAIL_TEMPLATE_DIRS;
+    for (const file of readdirSync(join(ROOT, canonicalDir)).filter((f) => f.endsWith(".html"))) {
+      const canonical = readFileSync(join(ROOT, canonicalDir, file), "utf8");
+      const mirror = readFileSync(join(ROOT, mirrorDir, file), "utf8");
+      expect(mirror, file).toBe(canonical);
+    }
+  });
+
+  it("supabase config.toml auth email subjects say Sloe (not Suppr)", () => {
+    const config = readFileSync(join(ROOT, "supabase/config.toml"), "utf8");
+    // Grab the subject line of every [auth.email.template.*] block.
+    const subjects = [...config.matchAll(
+      /\[auth\.email\.template\.\w+\]\s*\nsubject = "([^"]+)"/g,
+    )].map((m) => m[1]);
+    expect(subjects).toHaveLength(6);
+    for (const subject of subjects) {
+      expect(subject).not.toMatch(/\bSuppr\b/);
+    }
+    // Every brand-bearing subject (all but the brand-neutral
+    // "Confirm your new email address") must actually carry the new mark.
+    expect(subjects.filter((s) => s.includes("Sloe"))).toHaveLength(5);
   });
 });
