@@ -456,10 +456,8 @@ export default function CreateRecipeScreen() {
         return;
       }
       if (!data.ok || !data.ingredients?.length) {
-        Alert.alert(
-          "Could not read photo",
-          data.message ?? data.error ?? "Try a clearer photo of the ingredient list or card.",
-        );
+        // ENG-1309: userFacingImportError so the raw `data.error` token never renders.
+        Alert.alert("Could not read photo", data.message || data.error ? userFacingImportError(data) : "Try a clearer photo of the ingredient list or card.");
         return;
       }
       const lines = data.ingredients.map((s) => String(s).trim()).filter(Boolean);

@@ -189,6 +189,15 @@ interface AppDataContextValue {
   duplicateRecipeToCreatedDraft: (sourceRecipeId: string) => Promise<string | null>;
   isRecipeSaved: (recipeId: string) => boolean;
   savedRecipesForLibrary: Array<RecipeCard & { savedAt: Date }>;
+  /**
+   * ENG-1313 — true once the data that DECIDES what the Library shows
+   * has settled: auth session resolved, and (when signed in) both the
+   * cloud saves fetch and the authored-recipes fetch have completed at
+   * least once. Until then `savedRecipesForLibrary` may be a transient
+   * empty array — route guards (Library → Discover, ENG-100) must not
+   * redirect on it, and the Library renders its loading skeleton.
+   */
+  libraryDataReady: boolean;
   shoppingItems: ShoppingItem[];
   setShoppingItems: Dispatch<SetStateAction<ShoppingItem[]>>;
   toggleShoppingChecked: (itemId: string) => void;
@@ -316,7 +325,7 @@ interface AppDataContextValue {
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const { authedUserId, authEmail } = useAuthSession();
+  const { authedUserId, authEmail, authResolved } = useAuthSession();
   const initial = useMemo(() => loadSnapshot(), []);
 
   // Notifications are now managed by NotificationContext (wrapped above in providers.tsx).
@@ -1073,9 +1082,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setMyLibraryRecipes(mapped);
   }, [authedUserId, profileDisplayName]);
 
+  // ENG-1313 — authored-recipes settle signal. Signed out: nothing to
+  // fetch, settled immediately. Signed in: unsettled until the first
+  // fetch completes (success OR error — the guard's job is to kill the
+  // race, not to model fetch failure).
+  const [authoredResolved, setAuthoredResolved] = useState(false);
   useEffect(() => {
-    if (!authedUserId) return;
-    void refreshMyLibraryRecipes();
+    if (!authedUserId) {
+      setAuthoredResolved(true);
+      return;
+    }
+    setAuthoredResolved(false);
+    void refreshMyLibraryRecipes().finally(() => setAuthoredResolved(true));
   }, [authedUserId, refreshMyLibraryRecipes]);
 
   const duplicateRecipeToCreatedDraft = useCallback(
@@ -1568,11 +1586,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [authedUserId],
   );
 
+  // ENG-1313 — cloud-saves settle signal (see `libraryDataReady`).
+  const [savesResolved, setSavesResolved] = useState(false);
+
   // Sync DB-backed saves (Phase 0). Other state remains local for now.
   useEffect(() => {
     if (!authedUserId || !dbSavesEnabled) {
+      // Local snapshot IS the deciding data — settled immediately.
+      setSavesResolved(true);
       return;
     }
+    setSavesResolved(false);
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
@@ -1582,6 +1606,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (cancelled) {
         return;
       }
+      // Any settled outcome (data, error, schema-fallback) unblocks the
+      // Library guard — the error branches below still show their toasts.
+      setSavesResolved(true);
       if (error) {
         // If schema cache doesn't include the table yet, fall back to localStorage so the app stays usable.
         const msg = error.message ?? "";
@@ -2270,6 +2297,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
   }, [savedRecipeIds, savedAtById, uploadedRecipes, myLibraryRecipes, authedUserId]);
 
+  // ENG-1313 — see the interface doc. Auth must resolve first: on a cold
+  // load `authedUserId` is null for a beat, which would otherwise settle
+  // the two per-user signals in their "signed out" branches and let the
+  // Library→Discover guard fire before the session (then the saves)
+  // arrive.
+  const libraryDataReady = authResolved && savesResolved && authoredResolved;
+
   const value = useMemo(
     (): AppDataContextValue => ({
       userId: authedUserId,
@@ -2302,6 +2336,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       duplicateRecipeToCreatedDraft,
       isRecipeSaved,
       savedRecipesForLibrary,
+      libraryDataReady,
       shoppingItems,
       setShoppingItems,
       toggleShoppingChecked,
@@ -2398,6 +2433,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       duplicateRecipeToCreatedDraft,
       isRecipeSaved,
       savedRecipesForLibrary,
+      libraryDataReady,
       shoppingItems,
       setShoppingItems,
       toggleShoppingChecked,

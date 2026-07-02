@@ -46,7 +46,7 @@ import { decodeEntities } from "@/lib/decodeEntities";
 import { resolveTargets } from "@/lib/calcTargets";
 import { saveImportedRecipe, updateImportedRecipe, type ApiImportedRecipe, coercePositiveMinutes } from "@/lib/saveImportedRecipe";
 import { classifyMealType } from "@/lib/classifyMealType";
-import { IMPORT_ERROR_COPY, userFacingImportError } from "@suppr/shared/recipes/importErrorCopy";
+import { IMPORT_ERROR_COPY, coerceImportErrorCode, userFacingImportError } from "@suppr/shared/recipes/importErrorCopy";
 import { fetchRecentImports, recentImportMonogram, type RecentImportItem } from "@suppr/shared/recipes/recentImports";
 import { importQualityProps, isFlaggedIngredientRow } from "@suppr/shared/recipes/importQualitySignal";
 import { isFeatureEnabled, track } from "@/lib/analytics";
@@ -560,7 +560,7 @@ export default function ImportSharedScreen() {
             : 30;
           setRetryAfterAt(Date.now() + sec * 1000);
         }
-        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        const code = coerceImportErrorCode(data.error, "no_recipe_extracted");
         throw new ImportRunnerError(code, data.message);
       }
       return { recipe: data.recipe, imageUsed: data.imageUsed, captionTruncated: data.captionTruncated };
@@ -707,7 +707,7 @@ export default function ImportSharedScreen() {
 
         if (!data.ok || !data.recipe) {
           setState("error");
-          setError(data.message ?? "Could not extract a recipe from this caption.");
+          setError(userFacingImportError(data)); // ENG-1309: surface the IG/TT cause
           return;
         }
 
@@ -762,7 +762,7 @@ export default function ImportSharedScreen() {
       }
       const data = (await res.json()) as ImageImportApiResponse;
       if (!data.ok || !data.ingredients?.length) {
-        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        const code = coerceImportErrorCode(data.error, "no_recipe_extracted");
         throw new ImportRunnerError(code, data.message);
       }
       return mapImageImportResponseToRecipe(data);

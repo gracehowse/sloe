@@ -53,6 +53,7 @@ import { ImportRecentImports } from "./suppr/import-recent-imports.tsx";
 import { SupprButton } from "./suppr/suppr-button.tsx";
 import {
   IMPORT_ERROR_COPY,
+  coerceImportErrorCode,
   mapPersistenceError,
   userFacingImportError,
 } from "../../lib/recipes/importErrorCopy.ts";
@@ -664,7 +665,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       }
       const data = (await res.json()) as ImageImportApiResponse;
       if (!res.ok || !data.ok || !data.ingredients?.length) {
-        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        const code = coerceImportErrorCode(data.error, "no_recipe_extracted");
         throw new ImportRunnerError(code, data.message);
       }
       return mapImageImportResponseToRecipe(data);
@@ -792,7 +793,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       };
       if (!data.ok || !data.recipe) {
         // Prefer the server's stable error code so retry-eligibility is honest.
-        const code = (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        const code = coerceImportErrorCode(data.error, "no_recipe_extracted");
         throw new ImportRunnerError(code, data.message);
       }
       return {
@@ -836,8 +837,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         error?: string;
       };
       if (!data.ok || !data.recipe) {
-        const code =
-          (data.error as ImportRunnerError["code"] | undefined) ?? "no_recipe_extracted";
+        const code = coerceImportErrorCode(data.error, "no_recipe_extracted");
         throw new ImportRunnerError(code, data.message);
       }
       return { recipe: data.recipe, imageUsed: false, captionTruncated: false };

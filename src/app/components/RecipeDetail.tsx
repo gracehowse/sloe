@@ -28,6 +28,7 @@ import {
   isSeedRecipeId,
 } from "../../lib/recipes/seedRecipesV2";
 import { isRetiredStockImageUrl, pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
+import { mapPersistenceError, userFacingImageGenError, userFacingImportError } from "../../lib/recipes/importErrorCopy.ts";
 import { isImportedRecipe, importSourceDisclaimer } from "../../lib/recipes/importSourceDisclaimer.ts";
 import {
   OFFICIAL_MACROS_CLAIM_BLOCKER_COPY,
@@ -953,9 +954,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           preview: true,
         }),
       });
-      const json = (await res.json()) as { ok?: boolean; url?: string; message?: string; reason?: string };
+      const json = (await res.json()) as { ok?: boolean; url?: string; message?: string; reason?: string; error?: string };
       if (!res.ok || !json.ok || !json.url) {
-        toast.error(json.message ?? json.reason ?? "Could not generate an image.");
+        // ENG-1328: image-gen error channel — the shared `pro_required`
+        // copy describes photo IMPORTS; raw `reason` tokens never render.
+        toast.error(userFacingImageGenError(json));
         return;
       }
       setHeroPreviewUrl(json.url);
@@ -980,10 +983,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         })
         .eq("id", recipe.id)
         .eq("author_id", authUserId);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
+      if (error) return void toast.error(userFacingImportError(mapPersistenceError(error)));
       setDbImageUrl(heroPreviewUrl);
       setDbImageSource("ai_generated");
       setHeroPreviewUrl(null);
@@ -1006,7 +1006,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       });
       const json = (await res.json()) as { ok?: boolean; message?: string; reason?: string };
       if (!res.ok || !json.ok) {
-        toast.error(json.message ?? json.reason ?? "Could not remove the image.");
+        toast.error(json.message?.trim() ? userFacingImportError(json) : "Could not remove the image.");
         return;
       }
       setDbImageUrl(null);
@@ -2434,7 +2434,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         })()}
 
         {/* Creator Info */}
-        {/* Figma 332:2 white slab. ENG-1298 — name via displayAttribution ("Suppr Kitchen" → "Sloe Kitchen" at display). */}
+        {/* Figma 332:2 — white slab on cream (was translucent cream-on-white). */}
         <div className="flex items-center gap-4 p-6 rounded-2xl" style={whiteSlabStyle}>
           {/* eslint-disable-next-line @next/next/no-img-element -- creator avatar URLs */}
           <img src={recipe.creatorImage} alt={displayAttribution({ creatorName: recipe.creatorName }) || recipe.creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20" />

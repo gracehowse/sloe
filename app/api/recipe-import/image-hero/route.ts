@@ -29,7 +29,7 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
-import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
+import { IMAGE_GEN_ERROR_COPY, importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import {
@@ -74,7 +74,13 @@ export async function POST(req: Request) {
   // the placeholder + any imported thumbnail — never a 5xx here.
   const tier = await getUserTier(userId);
   if (tier === "free") {
-    return NextResponse.json(importErrorResponse("pro_required"), { status: 403 });
+    // ENG-1328: same stable code + 403 (gating unchanged, ENG-865), but
+    // the message is image-GENERATION copy — the shared `pro_required`
+    // default describes photo imports, which is not what the user tapped.
+    return NextResponse.json(
+      importErrorResponse("pro_required", IMAGE_GEN_ERROR_COPY.pro_required),
+      { status: 403 },
+    );
   }
 
   // Per-user rate limit — generation is expensive; cap it.
@@ -86,7 +92,10 @@ export async function POST(req: Request) {
   });
   if (!limited.ok) {
     return NextResponse.json(
-      { ...importErrorResponse("rate_limited"), retryAfterSec: limited.retryAfterSec },
+      {
+        ...importErrorResponse("rate_limited", IMAGE_GEN_ERROR_COPY.rate_limited),
+        retryAfterSec: limited.retryAfterSec,
+      },
       { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
   }

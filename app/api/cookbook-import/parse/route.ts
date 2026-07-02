@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(importErrorResponse("unauthorized"), { status: 401 });
   }
 
   const tier = await getUserTier(userId);
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   });
   if (!limited.ok) {
     return NextResponse.json(
-      { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
+      { ...importErrorResponse("rate_limited"), retryAfterSec: limited.retryAfterSec },
       { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
   }
@@ -52,12 +52,12 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid_body" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("invalid_body"), { status: 400 });
   }
 
   const text = body.text?.trim();
   if (!text) {
-    return NextResponse.json({ ok: false, error: "missing_text" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("missing_text"), { status: 400 });
   }
 
   try {

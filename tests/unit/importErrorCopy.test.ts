@@ -18,10 +18,14 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  IMAGE_GEN_ERROR_COPY,
+  IMAGE_GEN_UNAVAILABLE_COPY,
   IMPORT_ERROR_COPY,
+  coerceImportErrorCode,
   importErrorResponse,
   mapPersistenceError,
   sanitiseImportErrorMessage,
+  userFacingImageGenError,
   userFacingImportError,
 } from "@/lib/recipes/importErrorCopy";
 
@@ -237,5 +241,166 @@ describe("mapPersistenceError", () => {
     expect(mapPersistenceError(undefined)).toBe("save_failed");
     expect(mapPersistenceError({ message: "transient network blip" })).toBe("save_failed");
     expect(mapPersistenceError({ code: "08000" })).toBe("save_failed");
+  });
+});
+
+describe("ENG-1309 — no raw snake_case token ever renders", () => {
+  it("maps every UI-reachable route code to human copy (whitespace = human)", () => {
+    // Every code the import routes emit today. If a route adds a code
+    // without a copy entry, the union type breaks the build — this test
+    // additionally pins that the copy reads as a sentence, not a token.
+    const uiReachable = [
+      "forbidden_origin",
+      "server_misconfigured",
+      "invalid_form",
+      "missing_file",
+      "missing_text",
+      "invalid_pdf_type",
+      "ai_not_configured",
+      "not_html",
+      "no_recipe_schema",
+      "caption_too_long",
+      "social_no_caption",
+      "wrong_platform",
+      "feature_disabled",
+      "pdf_extract_failed",
+      "pdf_text_too_short",
+    ] as const;
+    for (const code of uiReachable) {
+      const copy = IMPORT_ERROR_COPY[code];
+      expect(copy, `missing copy for ${code}`).toBeTruthy();
+      expect(copy, `copy for ${code} looks like a raw token`).toMatch(/\s/);
+    }
+  });
+
+  it("renders human copy for a known code arriving as a bare string", () => {
+    expect(userFacingImportError("forbidden_origin")).toBe(IMPORT_ERROR_COPY.forbidden_origin);
+    expect(userFacingImportError("unauthorized")).toBe(IMPORT_ERROR_COPY.unauthorized);
+    expect(userFacingImportError("server_misconfigured")).toBe(
+      IMPORT_ERROR_COPY.server_misconfigured,
+    );
+  });
+
+  it("falls back to generic copy for an UNKNOWN snake_case token (string + object shapes)", () => {
+    expect(userFacingImportError("some_future_code")).toBe(IMPORT_ERROR_COPY.unknown);
+    expect(userFacingImportError({ ok: false, error: "some_future_code" })).toBe(
+      IMPORT_ERROR_COPY.unknown,
+    );
+    expect(userFacingImportError({ ok: false, error: "some_future_code", message: "" })).toBe(
+      IMPORT_ERROR_COPY.unknown,
+    );
+  });
+
+  it("skips a raw-token `message` and resolves via the `error` code instead", () => {
+    expect(
+      userFacingImportError({ ok: false, error: "rate_limited", message: "upstream_weirdness" }),
+    ).toBe(IMPORT_ERROR_COPY.rate_limited);
+  });
+
+  it("resolves a `message` that IS a known code to that code's copy", () => {
+    expect(userFacingImportError({ ok: false, message: "forbidden_origin" })).toBe(
+      IMPORT_ERROR_COPY.forbidden_origin,
+    );
+  });
+
+  it("never outputs a whitespace-free token for any {error: code} response", () => {
+    for (const code of Object.keys(IMPORT_ERROR_COPY)) {
+      const out = userFacingImportError({ ok: false, error: code });
+      expect(/\s/.test(out), `code=${code} rendered token-shaped output "${out}"`).toBe(true);
+    }
+  });
+
+  it("collapses 'this Instagram post' to 'this post' without double-wording", () => {
+    const out = sanitiseImportErrorMessage(
+      "Could not extract content from this Instagram post. Try image import.",
+    );
+    expect(out).toBe("Could not extract content from this post. Try image import.");
+    expect(out).not.toMatch(/post post/i);
+  });
+});
+
+describe("ENG-1328 — image-generation error channel", () => {
+  it("maps pro_required to image-GEN copy, distinct from the photo-import copy", () => {
+    // The exact bug: free-tier "Generate an image" surfaced
+    // "Recipe imports from photos are a Pro feature."
+    const out = userFacingImageGenError({
+      ok: false,
+      error: "pro_required",
+      message: IMPORT_ERROR_COPY.pro_required,
+    });
+    expect(out).toBe(IMAGE_GEN_ERROR_COPY.pro_required);
+    expect(out).not.toBe(IMPORT_ERROR_COPY.pro_required);
+    expect(out).toMatch(/image/i);
+    expect(out).not.toMatch(/photo/i);
+  });
+
+  it("override map outranks the server message for every shared code", () => {
+    for (const [code, copy] of Object.entries(IMAGE_GEN_ERROR_COPY)) {
+      const out = userFacingImageGenError({
+        ok: false,
+        error: code,
+        message: "Server copy written for a different surface.",
+      });
+      expect(out, `code=${code}`).toBe(copy);
+    }
+  });
+
+  it("collapses raw skipped-reason tokens to the unavailable line", () => {
+    const reasons = [
+      "fal_not_configured",
+      "import_killed",
+      "generate_threw",
+      "storage_not_configured",
+      "remove_failed",
+      "published_no_ai_image",
+      "fetch_failed", // an import code, but as a skip-reason it means "no image today"
+    ];
+    for (const reason of reasons) {
+      const out = userFacingImageGenError({ ok: false, skipped: true, reason });
+      expect(out, `reason=${reason}`).toBe(IMAGE_GEN_UNAVAILABLE_COPY);
+      expect(out).toMatch(/\s/);
+    }
+  });
+
+  it("resolves non-overridden known codes through the shared mapper", () => {
+    expect(userFacingImageGenError({ ok: false, error: "ai_capacity_reached" })).toBe(
+      IMPORT_ERROR_COPY.ai_capacity_reached,
+    );
+  });
+
+  it("falls back to the image-gen voice (never a raw token) for junk input", () => {
+    expect(userFacingImageGenError(null)).toBe(IMAGE_GEN_UNAVAILABLE_COPY);
+    expect(userFacingImageGenError({})).toBe(IMAGE_GEN_UNAVAILABLE_COPY);
+    expect(userFacingImageGenError({ ok: false, error: "totally_new_code" })).toBe(
+      IMAGE_GEN_UNAVAILABLE_COPY,
+    );
+  });
+
+  it("image-gen copy never names a vendor, env var, or model", () => {
+    const all = [...Object.values(IMAGE_GEN_ERROR_COPY), IMAGE_GEN_UNAVAILABLE_COPY];
+    for (const copy of all) {
+      expect(copy).not.toMatch(/fal|openai|anthropic|nano.?banana|_KEY|supabase/i);
+    }
+  });
+});
+
+describe("coerceImportErrorCode (ENG-1309)", () => {
+  it("passes a known code through unchanged", () => {
+    expect(coerceImportErrorCode("rate_limited")).toBe("rate_limited");
+    expect(coerceImportErrorCode("forbidden_origin")).toBe("forbidden_origin");
+  });
+
+  it("coerces unknown / non-string values to the default fallback", () => {
+    expect(coerceImportErrorCode("brand_new_server_code")).toBe("import_failed");
+    expect(coerceImportErrorCode(undefined)).toBe("import_failed");
+    expect(coerceImportErrorCode(null)).toBe("import_failed");
+    expect(coerceImportErrorCode(500)).toBe("import_failed");
+    expect(coerceImportErrorCode({})).toBe("import_failed");
+  });
+
+  it("honours a custom fallback", () => {
+    expect(coerceImportErrorCode("whatever_else", "no_recipe_extracted")).toBe(
+      "no_recipe_extracted",
+    );
   });
 });

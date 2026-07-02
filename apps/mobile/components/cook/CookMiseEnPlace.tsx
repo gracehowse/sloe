@@ -1,6 +1,7 @@
 import { ScrollView, Text, View, StyleSheet } from "react-native";
 import { useKeepAwake } from "expo-keep-awake";
-import { Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing, Type } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprButton } from "@/components/ui/SupprButton";
 import {
@@ -32,6 +33,14 @@ export function CookMiseEnPlace({
   useKeepAwake();
 
   const colors = useThemeColors();
+  // ENG-1311 — the cook screen's v3 shell is `Accent.primaryDeep` (gated
+  // on the same flag in `app/cook.tsx`). The light-theme ink tokens are
+  // dark-on-dark there: match the shell siblings (headerExit/stepText =
+  // frostBright, headerCounter = frost) — serif H1 = `Accent.frostBright`
+  // (#efe9f2 on #241733, ≈14.1:1), muted copy = `Accent.frost` (≈9.8:1).
+  // Flag OFF keeps the light-shell theme colours.
+  const cookV3 = isFeatureEnabled("recipe_detail_v3_conformance");
+  const mutedColor = cookV3 ? Accent.frost : colors.textSecondary;
 
   return (
     <ScrollView
@@ -39,14 +48,16 @@ export function CookMiseEnPlace({
       keyboardShouldPersistTaps="handled"
       testID={testID}
     >
-      <Text style={[styles.eyebrow, { color: colors.textTertiary }]}>
+      <Text style={[styles.eyebrow, { color: cookV3 ? Accent.frost : colors.textTertiary }]}>
         Before you start
       </Text>
-      <Text style={[styles.title, { color: colors.text }]}>Gather your ingredients</Text>
+      <Text style={[styles.title, { color: cookV3 ? Accent.frostBright : colors.text }]}>
+        Gather your ingredients
+      </Text>
       {recipeTitle ? (
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{recipeTitle}</Text>
+        <Text style={[styles.subtitle, { color: mutedColor }]}>{recipeTitle}</Text>
       ) : null}
-      <Text style={[styles.hint, { color: colors.textSecondary }]}>
+      <Text style={[styles.hint, { color: mutedColor }]}>
         Tap each line as you add it — so you never wonder whether the salt went in.
       </Text>
       <CookIngredientChecklist recipeId={recipeId} items={items} surface="mise" />

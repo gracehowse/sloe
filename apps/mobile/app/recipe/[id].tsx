@@ -52,6 +52,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { useRecipeReport } from "@/hooks/useRecipeReport";
 import { SloeImageNotice } from "@/components/recipe/SloeImageNotice";
 import { getSupprApiBase } from "@/lib/supprWeb";
+import { mapPersistenceError, userFacingImageGenError, userFacingImportError } from "@suppr/shared/recipes/importErrorCopy";
 import { authedFetch } from "@/lib/authedFetch";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -1410,10 +1411,7 @@ export default function RecipeDetailScreen() {
   const generateSloeHero = useCallback(async () => {
     if (!recipe || heroGenerating) return;
     const apiBase = getSupprApiBase();
-    if (!apiBase) {
-      Alert.alert("Image generation unavailable", "Sloe's image service is not configured in this build.");
-      return;
-    }
+    if (!apiBase) return Alert.alert("Image generation unavailable", "Sloe's image service is not configured in this build.");
     setHeroGenerating(true);
     try {
       const previewRes = await authedFetch(`${apiBase}/api/recipe-import/image-hero`, {
@@ -1425,9 +1423,10 @@ export default function RecipeDetailScreen() {
           preview: true,
         }),
       });
-      const preview = (await previewRes.json()) as { ok?: boolean; url?: string; message?: string; reason?: string };
+      const preview = (await previewRes.json()) as { ok?: boolean; url?: string; message?: string; reason?: string; error?: string };
       if (!previewRes.ok || !preview.ok || !preview.url) {
-        Alert.alert("Couldn't generate image", preview.message ?? preview.reason ?? "Please try again.");
+        // ENG-1328: image-gen error channel — raw `reason` tokens never render
+        Alert.alert("Couldn't generate image", userFacingImageGenError(preview));
         return;
       }
       Alert.alert(
@@ -1449,7 +1448,7 @@ export default function RecipeDetailScreen() {
                 .eq("id", recipe.id)
                 .eq("author_id", userId);
               if (error) {
-                Alert.alert("Couldn't save image", error.message);
+                Alert.alert("Couldn't save image", userFacingImportError(mapPersistenceError(error)));
                 return;
               }
               setRecipe((prev) =>
