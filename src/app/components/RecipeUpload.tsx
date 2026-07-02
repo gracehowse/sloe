@@ -37,6 +37,7 @@ import { RecipeImportQueueDrawer } from "./suppr/recipe-import-queue-drawer.tsx"
 import { GoPublicDialog } from "./GoPublicDialog.tsx";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { normaliseInstructions } from "../../lib/recipes/normaliseInstructions.ts";
+import { isRetiredStockImageUrl } from "../../lib/recipes/heroImageFallback.ts";
 import { roundCalories, roundMacro } from "../../lib/recipes/createRecipeWizard.ts";
 import { normaliseSource } from "../../lib/recipes/persistSourceAttribution.ts";
 import { importQualityProps, type ImportQualityProps, type ImportQualityRecipe } from "../../lib/recipes/importQualitySignal.ts";
@@ -135,8 +136,7 @@ type VerifiedLine = {
   } | null;
 };
 
-const DEFAULT_COVER_IMAGE =
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
+// ENG-1287: the old DEFAULT_COVER_IMAGE stock salad is retired — photo-less recipes persist image_url NULL.
 
 type UsdaHit = { fdcId: number; description: string; dataType?: string; brandName?: string; score?: number };
 
@@ -266,7 +266,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const [importedSourceUrl, setImportedSourceUrl] = useState<string | null>(null);
   const [importedSourceName, setImportedSourceName] = useState<string | null>(null);
   const [ocrBusy, setOcrBusy] = useState(false);
-  const [coverImageUrl, setCoverImageUrl] = useState(DEFAULT_COVER_IMAGE);
+  const [coverImageUrl, setCoverImageUrl] = useState("");
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [importHint, setImportHint] = useState<string | null>(null);
   /** Audit I05 — `false` when image step fell back to caption-only. */
@@ -530,7 +530,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     setInstructions("");
     setMealType("lunch");
     setDietary([]);
-    setCoverImageUrl(DEFAULT_COVER_IMAGE);
+    setCoverImageUrl("");
     setCoverImageFile(null);
     setImportUrl("");
     setImportHint(null);
@@ -1151,8 +1151,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       setMealType(Array.isArray(mt) ? (mt[0] as string) ?? "lunch" : (mt as string) ?? "lunch");
       const d = row.dietary;
       setDietary(Array.isArray(d) ? (d as string[]) : []);
-      const img = row.image_url as string | null;
-      setCoverImageUrl(img?.trim() || DEFAULT_COVER_IMAGE);
+      const img = (row.image_url as string | null)?.trim() ?? "";
+      setCoverImageUrl(isRetiredStockImageUrl(img) ? "" : img);
 
       const { data: ings, error: iErr } = await supabase
         .from("recipe_ingredients")
@@ -1549,20 +1549,20 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           )
         : inferAllergensFromIngredients(cleanedIngredients.map((i) => i.name));
 
-      // Upload image to Supabase Storage if a local file was selected
-      let finalImageUrl = coverImageUrl;
+      // Upload to Supabase Storage if a local file was selected. ENG-1287:
+      // no usable image → persist NULL, never a stock photo.
+      let finalImageUrl: string | null = coverImageUrl || null;
       if (coverImageFile) {
         const uploadResult = await uploadRecipeImage(coverImageFile, uid);
         if (uploadResult.ok) {
           finalImageUrl = uploadResult.publicUrl;
         } else {
-          // Non-blocking: fall back to default, warn user
-          toast.warning(uploadResult.error);
-          finalImageUrl = DEFAULT_COVER_IMAGE;
+          toast.warning(uploadResult.error); // non-blocking: save without an image
+          finalImageUrl = null;
         }
-      } else if (finalImageUrl.startsWith("blob:") || finalImageUrl.startsWith("data:")) {
+      } else if (finalImageUrl && (finalImageUrl.startsWith("blob:") || finalImageUrl.startsWith("data:"))) {
         // Don't store blob/data URLs in the DB
-        finalImageUrl = DEFAULT_COVER_IMAGE;
+        finalImageUrl = null;
       }
 
       // F-5 (`AI-CNKcmy7y`): route every write through `normaliseSource` so web
@@ -1593,7 +1593,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             title: trimmedTitle,
             description: description.trim() || null,
             instructions: normaliseInstructions(instructions),
-            image_url: finalImageUrl || DEFAULT_COVER_IMAGE,
+            image_url: finalImageUrl || null,
             servings: s,
             prep_time_min: prepTime,
             cook_time_min: cookTime,
@@ -1717,7 +1717,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       // or out of balance. The recipe already shows the calm placeholder
       // until/if a real hero lands; a later detail-view load picks up the
       // generated `image_url`.
-      if (!effectivePublished && (finalImageUrl || DEFAULT_COVER_IMAGE) === DEFAULT_COVER_IMAGE) {
+      if (!effectivePublished && !finalImageUrl) {
         void fetch("/api/recipe-import/image-hero", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

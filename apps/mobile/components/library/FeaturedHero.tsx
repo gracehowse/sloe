@@ -46,7 +46,6 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
           uri={recipe.image}
           cardImageStyle={StyleSheet.absoluteFillObject}
           fallbackBg={colors.backgroundSecondary}
-          fallbackTint={colors.textTertiary}
           recipeId={recipe.id}
           recipeTitle={recipe.title}
         />

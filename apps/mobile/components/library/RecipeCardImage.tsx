@@ -1,65 +1,45 @@
 import { useState } from "react";
 import { View, type ImageStyle } from "react-native";
-import { UtensilsCrossed } from "lucide-react-native";
-import { FoodFallbackThumb } from "@/components/imagery/FoodFallbackThumb";
+import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 
 /**
- * Library recipe card image with on-error fallback (audit 2026-05-04 #28;
- * ENG-1015 painterly samples when no photo loads).
+ * Library / profile recipe card image with no-image + on-error fallback
+ * (audit 2026-05-04 #28; honest imagery ENG-1287).
  *
- * Renders the photo when the URL loads cleanly. Swaps to
- * `<FoodFallbackThumb>` (category sample or utensil glyph) when:
- *   - no URI was supplied upstream AND a recipe `id`+`title` are
- *     available, OR
- *   - the Image component reports a load failure (network blip, expired
- *     stock URL, 404 — the actually-live fallback path in production).
- *
- * Falls back to the legacy neutral utensils-glyph placeholder only when
- * the caller doesn't pass an id/title (defensive — every Library + Saved
- * card has both today).
+ * Renders the photo when a URL is present and loads cleanly. When the
+ * recipe has no image (`uri` null — never a substituted stock photo) or
+ * the image fails to load, renders the deterministic `RecipeHeroFallback`
+ * (cuisine-tinted cream gradient + food glyph, design system §11.4) — the
+ * same treatment Discover cards, coach rows and the NorthStar card use,
+ * keyed by recipe id + title so the tint is stable per recipe on both
+ * platforms.
  */
 export function RecipeCardImage({
   uri,
   cardImageStyle,
   fallbackBg,
-  fallbackTint,
   recipeId,
   recipeTitle,
 }: {
   uri: string | null | undefined;
   cardImageStyle: ImageStyle;
+  /** Solid tint painted under the photo while it fades in. */
   fallbackBg: string;
-  fallbackTint: string;
-  /** Recipe id — required for the per-recipe deterministic placeholder. */
-  recipeId?: string;
-  /** Recipe title — used by the painterly category resolver. */
-  recipeTitle?: string;
+  /** Recipe id — keys the deterministic placeholder tint. */
+  recipeId: string;
+  /** Recipe title — picks the placeholder's cuisine glyph. */
+  recipeTitle: string;
 }) {
   const [errored, setErrored] = useState(false);
   const showPlaceholder = !uri || errored;
   if (showPlaceholder) {
-    if (recipeId && recipeTitle) {
-      return (
-        <View
-          style={[
-            cardImageStyle,
-            { backgroundColor: fallbackBg, position: "relative", overflow: "hidden" },
-          ]}
-          testID={`recipe-card-image-fallback-${recipeId}`}
-        >
-          <FoodFallbackThumb
-            title={recipeTitle}
-            style={{ width: "100%", height: "100%", borderRadius: 0 }}
-            testID={`recipe-card-food-fallback-${recipeId}`}
-          />
-        </View>
-      );
-    }
-    // Defensive legacy path — kept for callers that don't pass id/title.
     return (
-      <View style={[cardImageStyle, { backgroundColor: fallbackBg, alignItems: "center", justifyContent: "center" }]}>
-        <UtensilsCrossed size={32} color={fallbackTint} strokeWidth={1.5} />
+      <View
+        style={[cardImageStyle, { position: "relative", overflow: "hidden" }]}
+        testID={`recipe-card-image-fallback-${recipeId}`}
+      >
+        <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={28} />
       </View>
     );
   }
@@ -69,7 +49,7 @@ export function RecipeCardImage({
       style={cardImageStyle}
       resizeMode="cover"
       onError={() => setErrored(true)}
-      recyclingKey={recipeId ?? uri}
+      recyclingKey={recipeId}
       placeholderColor={fallbackBg}
     />
   );

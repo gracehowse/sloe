@@ -27,7 +27,12 @@ export interface RecipeCard {
   creatorName: string;
   creatorImage: string;
   title: string;
-  image: string;
+  /**
+   * Hero image URL, or `null` when the recipe has no real image
+   * (ENG-1287 — never substitute a stock photo; card surfaces render
+   * the deterministic `RecipeHeroFallback` instead).
+   */
+  image: string | null;
   imageSource?: string | null;
   servings: number;
   calories: number;

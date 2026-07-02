@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { UtensilsCrossed } from "lucide-react";
+import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 
 import type { RecipeCard } from "@/types/recipe";
 
@@ -9,8 +9,8 @@ import type { RecipeCard } from "@/types/recipe";
  * FeaturedHero — the Sloe v3 Cookbook "Tonight's pick" featured card.
  *
  * WEB parity twin of `apps/mobile/components/library/FeaturedHero.tsx` (prototype
- * `cook-feat` ~L4283): a full-width card with a 150px photo (or a tinted box +
- * utensil glyph when none) carrying a "Tonight's pick" kick badge, then a
+ * `cook-feat` ~L4283): a full-width card with a 150px photo (or the deterministic
+ * RecipeHeroFallback tint + glyph when none — honest imagery, ENG-1287) carrying a "Tonight's pick" kick badge, then a
  * "From your cookbook" plum overline, the recipe title (serif), and a
  * "{kcal} kcal · {protein}g protein · {time} min" meta line. Sits above the
  * editorial shelves when the All filter is active. Behind
@@ -51,7 +51,7 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
         className="relative flex h-[150px] w-full items-center justify-center overflow-hidden md:h-[260px]"
         style={{ backgroundColor: "var(--background-secondary)" }}
       >
-        {showImage ? (
+        {showImage && recipe.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={recipe.image}
@@ -60,10 +60,7 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
             onError={() => setBroken(true)}
           />
         ) : (
-          <UtensilsCrossed
-            className="size-6 opacity-55"
-            style={{ color: "var(--foreground-tertiary)" }}
-          />
+          <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={32} />
         )}
         <span
           className="absolute left-3 top-3 rounded-full px-[11px] py-[5px] text-[10px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-sm"

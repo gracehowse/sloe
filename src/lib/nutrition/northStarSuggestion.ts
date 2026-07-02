@@ -65,8 +65,8 @@ export interface NorthStarRecipe {
   protein: number;
   carbs: number;
   fat: number;
-  /** Optional thumbnail URL. */
-  thumbnail?: string;
+  /** Optional thumbnail URL (`null`/absent = no real image — ENG-1287). */
+  thumbnail?: string | null;
   /** Optional slot tags ("breakfast" | "lunch" | "dinner" | "snack"). */
   mealType?: string | readonly string[] | null;
   /**

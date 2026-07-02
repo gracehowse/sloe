@@ -14,32 +14,29 @@ import { fetchPublicRecipeSaveCounts } from "@suppr/shared/recipes/fetchPublicRe
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { SEED_RECIPES_V2 } from "@suppr/shared/recipes/seedRecipesV2";
 import { seedsToRecipeCards } from "@suppr/shared/recipes/seedRecipesToCard";
-import { pickHeroImageUrl } from "@suppr/shared/recipes/heroImageFallback";
+import {
+  isRetiredStockImageUrl,
+  pickHeroImageUrl,
+} from "@suppr/shared/recipes/heroImageFallback";
 
-// F-21 (2026-04-21): when a recipe has no image_url we previously fell back to
-// a single shared Unsplash salad, so every placeholder recipe looked identical
-// in the Library and Plan views (TestFlight AKhHD-Uv1JWd, ABTpne3YnbHm,
-// AGr4EisM3BOC). Rotate across 6 visually distinct stock photos keyed by
-// recipe id so recipes without a real photo at least look like different
-// recipes. Real imported images (`image_url`) still take priority.
-const DEFAULT_IMAGE_POOL = [
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop", // green bowl
-  "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&h=600&fit=crop", // pasta
-  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=600&fit=crop", // salad
-  "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&h=600&fit=crop", // buddha bowl
-  "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800&h=600&fit=crop", // sandwich
-  "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800&h=600&fit=crop", // breakfast
-];
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-function pickDefaultImage(id: string | number | undefined | null): string {
-  const idx = id != null ? hashStr(String(id)) % DEFAULT_IMAGE_POOL.length : 0;
-  return DEFAULT_IMAGE_POOL[idx];
-}
+// ENG-1287 (2026-07-01, launch-blocker): the old F-21 fallback rotated a
+// 6-photo Unsplash pool keyed by recipe id, presenting someone else's dish
+// as the recipe's real photo ("Protein banana bread" rendered a stir-fry).
+// A recipe with no image now stays `image: null` end-to-end and every card
+// surface renders the deterministic `RecipeHeroFallback` (cuisine-tinted
+// gradient + glyph, §11.4) instead. Web parity: `src/context/AppDataContext.tsx`.
 const DEFAULT_AVATAR = NEUTRAL_AVATAR_DATA_URI;
+
+/**
+ * Pre-ENG-1287 offline caches stored the fabricated pool URLs baked into
+ * `RecipeCard.image`. Strip them on read so a stale cache can't keep
+ * lying after the fabrication removal.
+ */
+function sanitizeCachedCardImages(cards: RecipeCard[]): RecipeCard[] {
+  return cards.map((c) =>
+    isRetiredStockImageUrl(c.image) ? { ...c, image: null } : c,
+  );
+}
 
 /** Fetch published community recipes for the Discover feed. */
 export function useDiscoverRecipes() {
@@ -134,7 +131,7 @@ export function useDiscoverRecipes() {
             image_url: r.image_url ?? null,
             image_source: r.image_source ?? null,
             source_url: r.source_url ?? null,
-          }) ?? pickDefaultImage(r.id),
+          }) ?? null, // ENG-1287 — no image stays null (RecipeHeroFallback renders)
           creatorName: r.source_name ?? "Community",
           creatorImage: DEFAULT_AVATAR,
           servings: r.servings ?? 1,
@@ -214,7 +211,7 @@ export function useDiscoverRecipes() {
       const cached = cachedRaw === discoverRaceTimeout ? null : cachedRaw;
       const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
       if (cached && Array.isArray(cached)) {
-        let list = cached as RecipeCard[];
+        let list = sanitizeCachedCardImages(cached as RecipeCard[]);
         // If we're online enough for Supabase RPC, refresh global save counts on top of cache.
         try {
           const ids = list.map((r) => r.id).filter(Boolean);
@@ -419,7 +416,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
       | RecipeCard[]
       | null;
     if (warmCache && warmCache.length > 0) {
-      setRecipes(warmCache);
+      setRecipes(sanitizeCachedCardImages(warmCache));
     }
 
     // ENG-1063 / F-168 — stale-while-revalidate: tab-focus refresh must not
@@ -566,7 +563,7 @@ export function useSavedLibraryRecipes(userId: string | null) {
             image_url: r.image_url ?? null,
             image_source: r.image_source ?? null,
             source_url: r.source_url ?? null,
-          }) ?? pickDefaultImage(r.id),
+          }) ?? null, // ENG-1287 — no image stays null (RecipeHeroFallback renders)
           creatorName,
           creatorImage,
           servings: r.servings ?? 1,

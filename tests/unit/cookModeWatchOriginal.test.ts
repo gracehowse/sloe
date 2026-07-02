@@ -71,15 +71,17 @@ describe("web CookMode.tsx — Watch original button", () => {
 describe("web RecipeDetail.tsx — hero image fallback ladder", () => {
   it("imports pickHeroImageUrl from the shared helper", () => {
     expect(DETAIL_SOURCE).toMatch(
-      /import\s*\{\s*pickHeroImageUrl\s*\}\s*from\s+["'][^"']*\/recipes\/heroImageFallback(?:\.ts)?["']/,
+      /import\s*\{[^}]*\bpickHeroImageUrl\b[^}]*\}\s*from\s+["'][^"']*\/recipes\/heroImageFallback(?:\.ts)?["']/,
     );
   });
 
-  it("treats the DEFAULT_UPLOADED_RECIPE_IMAGE as no-image (so YT thumbnail wins)", () => {
-    // Without this guard, the helper would always see image_url as
-    // truthy (the AppDataContext mapper defaults it to the stock
-    // Unsplash placeholder) and the YT fallback would never surface.
-    expect(DETAIL_SOURCE).toMatch(/DEFAULT_UPLOADED_RECIPE_IMAGE/);
+  it("carries no stock-placeholder default (honest imagery, ENG-1287)", () => {
+    // The AppDataContext mapper no longer substitutes a stock Unsplash
+    // photo for image-less recipes (image stays null), so the detail
+    // must not reference the retired constant. Legacy DB rows that
+    // persisted the retired URL are nulled via isRetiredStockImageUrl.
+    expect(DETAIL_SOURCE).not.toMatch(/DEFAULT_UPLOADED_RECIPE_IMAGE/);
+    expect(DETAIL_SOURCE).toMatch(/isRetiredStockImageUrl/);
   });
 
   it("calls pickHeroImageUrl with image_url + source_url candidates", () => {
