@@ -48,17 +48,23 @@ export function CookRunningTimerStrip({
           >
             <Text
               style={[
+                Type.captionSmall,
                 styles.time,
                 { color: done ? Accent.successSolid : accent.primarySolid },
               ]}
             >
               {formatTimer(timer.remainingSeconds)}
             </Text>
-            <Text style={[styles.label, { color: colors.textSecondary }]} numberOfLines={1}>
+            <Text
+              style={[Type.captionSmall, styles.label, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
               · {timer.label}
             </Text>
             {done ? (
-              <Text style={[styles.done, { color: Accent.successSolid }]}>Done!</Text>
+              <Text style={[Type.captionSmall, styles.done, { color: Accent.successSolid }]}>
+                Done!
+              </Text>
             ) : null}
             <Pressable
               onPress={() => onReset(timer.id)}
@@ -66,7 +72,9 @@ export function CookRunningTimerStrip({
               accessibilityLabel={`Reset ${timer.label} timer`}
               hitSlop={6}
             >
-              <Text style={[styles.action, { color: colors.textSecondary }]}>Reset</Text>
+              <Text style={[Type.captionSmall, styles.action, { color: colors.textSecondary }]}>
+                Reset
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => onCancel(timer.id)}
@@ -103,29 +111,17 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
   },
   time: {
-    fontFamily: Type.captionSmall.fontFamily,
-    fontSize: Type.captionSmall.fontSize,
-    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
   },
   label: {
-    fontFamily: Type.captionSmall.fontFamily,
-    fontSize: Type.captionSmall.fontSize,
-    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "500",
     flexShrink: 1,
   },
   done: {
-    fontFamily: Type.captionSmall.fontFamily,
-    fontSize: Type.captionSmall.fontSize,
-    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "700",
   },
   action: {
-    fontFamily: Type.captionSmall.fontFamily,
-    fontSize: Type.captionSmall.fontSize,
-    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "600",
     textDecorationLine: "underline",
   },
