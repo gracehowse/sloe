@@ -108,11 +108,23 @@ describe("Phase 2 — mobile insert sites populate recipe_id", () => {
   });
 
   it("today SELECT loads recipe_id back into JournalMeal.recipeId", () => {
-    expect(MOBILE_TODAY).toMatch(
-      /\.select\("[^"]*recipe_id[^"]*"\)/,
+    // ENG-1325 — the SELECT column list + row mapping moved out of the
+    // Today inline load into the shared read-side SoT in
+    // `nutritionEntryRow.ts` (NUTRITION_ENTRY_SELECT_COLUMNS +
+    // journalRowToMeal), reused by the out-of-window day fetch. Pin the
+    // const carries recipe_id, the mapper carries it into recipeId, and
+    // Today consumes both.
+    const MOBILE_ENTRY_ROW = readFileSync(
+      resolve(__dirname, "../../apps/mobile/lib/nutritionEntryRow.ts"),
+      "utf8",
     );
-    expect(MOBILE_TODAY).toMatch(
-      /recipeId:\s*\(r as[\s\S]{0,80}\)\.recipe_id\s*\?\?\s*undefined/,
+    expect(MOBILE_ENTRY_ROW).toMatch(
+      /NUTRITION_ENTRY_SELECT_COLUMNS\s*=\s*\n?\s*"[^"]*recipe_id[^"]*"/,
     );
+    expect(MOBILE_ENTRY_ROW).toMatch(
+      /recipeId:\s*\(r\.recipe_id as[\s\S]{0,60}\)\s*\?\?\s*undefined/,
+    );
+    expect(MOBILE_TODAY).toMatch(/\.select\(NUTRITION_ENTRY_SELECT_COLUMNS\)/);
+    expect(MOBILE_TODAY).toMatch(/journalRowToMeal\(r\)/);
   });
 });

@@ -45,6 +45,9 @@ const appDataState = {
       "2026-05-27": [{ id: "e1", calories: 450, protein: 30, carbs: 40, fat: 12 }],
     },
     profileMeasurementSystem: "metric" as const,
+    // ENG-1324 — ProgressDashboard mounts useNutritionHistoryWindow, which
+    // asks the context to widen the journal to the 90-day history window.
+    ensureNutritionHistory: () => {},
   },
 };
 

@@ -23,9 +23,55 @@
  *      with `eatenAt` and one without produce the same `Object.keys`, so the
  *      PostgREST upsert column set can never become heterogeneous.
  */
-import { newMealId, type JournalMeal } from "@/lib/nutritionJournal";
+import {
+  newMealId,
+  normalizeJournalSlotName,
+  parseNutritionMicrosJson,
+  type JournalMeal,
+} from "@/lib/nutritionJournal";
 import { canonicalNutritionEntrySource } from "@suppr/nutrition-core/canonicalNutritionEntrySource";
 import { nutritionEntryDateKeyAndEatenAt } from "@suppr/nutrition-core/mealEatenAt";
+
+/**
+ * ENG-1325 — column list shared by the Today boot-window query and the
+ * out-of-window single-day fetch (`useOutOfWindowJournalDay`) so the two
+ * read paths cannot drift (mirrors web's `NUTRITION_ENTRY_SELECT_COLUMNS`
+ * in `useNutritionJournalState`). Schema refactor Phase 2 (2026-05-11) —
+ * includes `recipe_id` so the loaded JournalMeal carries the typed FK link.
+ */
+export const NUTRITION_ENTRY_SELECT_COLUMNS =
+  "id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, eaten_at, nutrition_micros, recipe_id";
+
+/**
+ * ENG-1325 — read-side single source of truth: map a `nutrition_entries`
+ * SELECT row (per {@link NUTRITION_ENTRY_SELECT_COLUMNS}) to the in-memory
+ * `JournalMeal`. Extracted verbatim from the Today `loadJournal` inline
+ * mapping so the boot load and the out-of-window day fetch hydrate meals
+ * identically (web parity: `rowToLoggedMeal`).
+ */
+export function journalRowToMeal(r: Record<string, unknown>): JournalMeal {
+  return {
+    id: r.id as string,
+    name: normalizeJournalSlotName((r.name as string) ?? ""),
+    recipeTitle: (r.recipe_title as string) ?? "",
+    time: (r.time_label as string) ?? "",
+    calories: (r.calories as number) ?? 0,
+    protein: (r.protein as number) ?? 0,
+    carbs: (r.carbs as number) ?? 0,
+    fat: (r.fat as number) ?? 0,
+    fiberG: (r.fiber_g as number) ?? undefined,
+    waterMl: (r.water_ml as number) ?? undefined,
+    portionMultiplier: (r.portion_multiplier as number) ?? undefined,
+    micros: parseNutritionMicrosJson(r.nutrition_micros),
+    source: (r.source as string) ?? undefined,
+    createdAt: (r.created_at as string | undefined) ?? undefined,
+    eatenAt: (r.eaten_at as string | null | undefined) ?? undefined,
+    // Schema refactor Phase 2 (2026-05-11) — carry the typed FK through
+    // into the in-memory JournalMeal so the copy / duplicate path can
+    // clone with recipe_id intact.
+    recipeId: (r.recipe_id as string | null | undefined) ?? undefined,
+  };
+}
 
 /** Matches the `nutrition_entries` id format; non-matching ids get re-minted. */
 export const NUTRITION_ENTRY_UUID_RE =
