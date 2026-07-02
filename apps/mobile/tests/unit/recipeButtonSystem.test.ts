@@ -28,6 +28,7 @@ const OVERRIDE_SHEET = read("components/OverrideIngredientSheet.tsx");
 const ADD_SHEET = read("components/AddIngredientSheet.tsx");
 const CREATE_RECIPE = read("app/create-recipe.tsx");
 const RECIPE_DETAIL = read("app/recipe/[id].tsx");
+const COOK_MODE = read("app/cook.tsx");
 
 describe("Recipe detail action pills — solid primary / ghost (button system 2026-06-12)", () => {
   it("imports the shared SupprButton primitive", () => {
@@ -175,24 +176,27 @@ describe("create-recipe quick-action row — three GHOST peers (none is the prim
   });
 });
 
-describe("recipe/[id] cook stepper + error recovery — solid primary / ghost", () => {
+describe("cook.tsx step navigation — solid primary Next / ghost Previous (ENG-945)", () => {
   it("imports the shared SupprButton primitive (@/ path)", () => {
-    expect(RECIPE_DETAIL).toMatch(
+    expect(COOK_MODE).toMatch(
       /import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/,
     );
   });
 
-  it("cook-stepper Next is the solid primary, Previous is ghost", () => {
-    expect(RECIPE_DETAIL).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}label="Next"/);
-    expect(RECIPE_DETAIL).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,160}label="Previous"/);
+  it("cook nav Next Step is the solid primary; Previous is a ghost-style Pressable", () => {
+    expect(COOK_MODE).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label=\{current === totalSteps - 1 \? "Done!" : "Next Step"\}/);
+    expect(COOK_MODE).toMatch(/<Text style=\{styles\.navBtnText\}>Previous<\/Text>/);
   });
+});
 
+describe("recipe/[id] error recovery — solid primary / ghost", () => {
   it("error-state 'Go back' is the sole recovery solid primary", () => {
     expect(RECIPE_DETAIL).toMatch(/<SupprButton\s+variant="primary"\s+label="Go back"/);
   });
 
-  it("the retired cook-Next outline + bordered back-button styles are gone", () => {
+  it("the retired inline cook overlay styles are gone (ENG-945)", () => {
     expect(RECIPE_DETAIL).not.toMatch(/cookNextOutline/);
     expect(RECIPE_DETAIL).not.toMatch(/backBtn:\s*\{/);
+    expect(RECIPE_DETAIL).not.toMatch(/testID=["']cook-watch-original["']/);
   });
 });

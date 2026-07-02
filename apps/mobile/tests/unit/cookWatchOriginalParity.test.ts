@@ -72,35 +72,15 @@ describe("mobile cook.tsx — Watch original pill", () => {
   });
 });
 
-describe("mobile recipe/[id].tsx — Watch original pill (inline cook overlay)", () => {
-  it("imports extractVideoHost + pickHeroImageUrl from the shared helper", () => {
-    expect(RECIPE_SOURCE).toMatch(
-      /import\s*\{[^}]*\bpickHeroImageUrl\b[^}]*\bextractVideoHost\b[^}]*\}\s*from\s+["'][^"']*\/recipes\/heroImageFallback["']|import\s*\{[^}]*\bextractVideoHost\b[^}]*\bpickHeroImageUrl\b[^}]*\}\s*from\s+["'][^"']*\/recipes\/heroImageFallback["']/,
-    );
+describe("mobile recipe/[id].tsx — routes watch-original to canonical /cook (ENG-945)", () => {
+  it("threads sourceUrl into buildCookModeHref for the rich cook screen", () => {
+    expect(RECIPE_SOURCE).toMatch(/buildCookModeHref\(/);
+    expect(RECIPE_SOURCE).toMatch(/sourceUrl:\s*recipe\.source_url/);
   });
 
-  it("imports Play from lucide-react-native", () => {
-    expect(RECIPE_SOURCE).toMatch(
-      /import\s*\{[^}]*\bPlay\b[^}]*\}\s*from\s+["']lucide-react-native["']/,
-    );
-  });
-
-  it("renders the pill on the inline cook overlay (testID parity)", () => {
-    expect(RECIPE_SOURCE).toMatch(/testID=["']cook-watch-original["']/);
-  });
-
-  it("derives watchOriginalUrl from recipe.source_url", () => {
-    expect(RECIPE_SOURCE).toMatch(/watchOriginalUrl\s*=\s*recipe\??\.source_url/);
-  });
-
-  it("fires cook_watch_original_tapped on tap", () => {
-    expect(RECIPE_SOURCE).toMatch(
-      /track\(\s*AnalyticsEvents\.cook_watch_original_tapped\b/,
-    );
-  });
-
-  it("opens the URL via Linking.openURL", () => {
-    expect(RECIPE_SOURCE).toMatch(/Linking\.openURL\s*\(\s*watchOriginalUrl/);
+  it("no longer renders an inline cook overlay watch-original pill", () => {
+    expect(RECIPE_SOURCE).not.toMatch(/testID=["']cook-watch-original["']/);
+    expect(RECIPE_SOURCE).not.toMatch(/watchOriginalUrl\s*=\s*recipe\??\.source_url/);
   });
 });
 
