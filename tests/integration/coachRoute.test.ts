@@ -34,6 +34,9 @@ vi.mock("@/lib/server/aiProvider", () => ({
     retryAfterSec = 3600;
   },
 }));
+vi.mock("@/lib/analytics/serverTrack", () => ({
+  serverTrack: vi.fn(async () => ({ ok: true })),
+}));
 
 import { POST } from "../../app/api/nutrition/coach/route";
 import {
@@ -45,11 +48,14 @@ import {
   callAiText,
   AiBudgetExceededError,
 } from "@/lib/server/aiProvider";
+import { serverTrack } from "@/lib/analytics/serverTrack";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 
 const mockGetUserId = getUserIdFromRequest as ReturnType<typeof vi.fn>;
 const mockGetUserTier = getUserTier as ReturnType<typeof vi.fn>;
 const mockCreateClient = createSupabaseServiceRoleClient as ReturnType<typeof vi.fn>;
 const mockAi = callAiText as ReturnType<typeof vi.fn>;
+const mockServerTrack = serverTrack as ReturnType<typeof vi.fn>;
 
 type RecipeRow = {
   id: string;
@@ -131,10 +137,43 @@ describe("POST /api/nutrition/coach", () => {
     );
   });
 
-  it("returns 401 when unauthenticated", async () => {
+  it("returns 401 when unauthenticated (no completion event on 4xx)", async () => {
     mockGetUserId.mockResolvedValue(null);
     const res = await POST(coachRequest({ remaining }));
     expect(res.status).toBe(401);
+    expect(mockServerTrack).not.toHaveBeenCalled();
+  });
+
+  it("free tier skips the AI branch entirely — deterministic result, provider never invoked (ENG-1292)", async () => {
+    mockGetUserTier.mockResolvedValue("free");
+    const res = await POST(coachRequest({ remaining, slot: "dinner" }));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.ok).toBe(true);
+    expect(json.source).toBe("deterministic");
+    expect(json.candidates.length).toBeGreaterThanOrEqual(2);
+    expect(mockAi).not.toHaveBeenCalled();
+    // ENG-1288 — the completion event records the deliberate template
+    // path and the gated tier.
+    expect(mockServerTrack).toHaveBeenCalledWith(
+      AnalyticsEvents.coach_api_completed,
+      "user-1",
+      expect.objectContaining({
+        source: "template",
+        tier: "free",
+        latency_ms: expect.any(Number),
+      }),
+    );
+  });
+
+  it("base tier is gated like free — the AI re-rank is Pro-only (ENG-1292)", async () => {
+    mockGetUserTier.mockResolvedValue("base");
+    const res = await POST(coachRequest({ remaining, slot: "dinner" }));
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.source).toBe("deterministic");
+    expect(json.candidates.length).toBeGreaterThanOrEqual(2);
+    expect(mockAi).not.toHaveBeenCalled();
   });
 
   it("returns 400 on invalid remaining", async () => {
@@ -159,6 +198,16 @@ describe("POST /api/nutrition/coach", () => {
     expect(json.candidates[0].whyLine).toBe("Tops up your protein");
     // Numbers stay OURS (one serving), not invented.
     expect(json.candidates[0].predictedCalories).toBe(520);
+    // ENG-1288 — Pro caller, AI succeeded: completion event says so.
+    expect(mockServerTrack).toHaveBeenCalledWith(
+      AnalyticsEvents.coach_api_completed,
+      "user-1",
+      expect.objectContaining({
+        source: "ai",
+        tier: "pro",
+        latency_ms: expect.any(Number),
+      }),
+    );
   });
 
   it("falls back to deterministic order when the provider errors (surface never empty)", async () => {
@@ -173,6 +222,13 @@ describe("POST /api/nutrition/coach", () => {
     expect(res.status).toBe(200);
     expect(json.source).toBe("deterministic");
     expect(json.candidates.length).toBeGreaterThanOrEqual(2);
+    // ENG-1288 — an attempted-but-failed AI call is source:"error", not
+    // "template", so the fall-back rate stays visible.
+    expect(mockServerTrack).toHaveBeenCalledWith(
+      AnalyticsEvents.coach_api_completed,
+      "user-1",
+      expect.objectContaining({ source: "error", tier: "pro" }),
+    );
   });
 
   it("falls back to deterministic order when the AI budget is exceeded", async () => {
