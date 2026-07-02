@@ -95,7 +95,7 @@ describe("F-138 Phase 1 — lookupBarcode read path uses canonical first", () =>
     // narrow window and assert it appears first.
     const fnIdx = SRC.indexOf("export async function lookupBarcode");
     expect(fnIdx).toBeGreaterThan(-1);
-    const fnSlice = SRC.slice(fnIdx, fnIdx + 4000);
+    const fnSlice = SRC.slice(fnIdx, fnIdx + 5000);
     const canonIdx = fnSlice.indexOf("verified_food_canonical");
     const userFoodsIdx = fnSlice.indexOf('.from("user_foods")');
     expect(canonIdx).toBeGreaterThan(-1);
@@ -112,7 +112,7 @@ describe("F-138 Phase 1 — lookupBarcode read path uses canonical first", () =>
     // masked by the `find(...verified)` fallback. Post-fix: PK hit on
     // canonical table, no lex sort needed.
     const fnIdx = SRC.indexOf("export async function lookupBarcode");
-    const fnSlice = SRC.slice(fnIdx, fnIdx + 4000);
+    const fnSlice = SRC.slice(fnIdx, fnIdx + 5000);
     expect(fnSlice).not.toMatch(
       /\.order\(["']verification_status["'],\s*\{\s*ascending:\s*true/,
     );
@@ -123,7 +123,7 @@ describe("F-138 Phase 1 — lookupBarcode read path uses canonical first", () =>
     // but the failure must not be silent — a broken read (RLS regression,
     // schema drift, network) has to surface in Sentry.
     const fnIdx = SRC.indexOf("export async function lookupBarcode");
-    const fnSlice = SRC.slice(fnIdx, fnIdx + 4000);
+    const fnSlice = SRC.slice(fnIdx, fnIdx + 5000);
     // The catch binds the error and routes it to captureException.
     expect(fnSlice).toMatch(/catch\s*\(\s*e\s*\)\s*\{[\s\S]*?captureException\(e\)/);
     // And it is no longer the old empty `catch {}` swallow.
