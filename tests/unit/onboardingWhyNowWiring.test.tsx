@@ -90,17 +90,20 @@ describe("why-now — displayed step count (displayPosition)", () => {
     const { total } = displayPosition(0, {
       appChoiceEnabled: true,
       whyNowEnabled: false,
+      conversionFunnelEnabled: false,
     });
-    // why-now removed from the count → one fewer than the raw total.
-    expect(total).toBe(TOTAL_STEPS - 1);
+    // why-now + conversion-funnel steps removed from the count → three fewer than raw.
+    expect(total).toBe(TOTAL_STEPS - 3);
   });
 
   it("counts why-now in the total when the flag is ON", () => {
     const { total } = displayPosition(0, {
       appChoiceEnabled: true,
       whyNowEnabled: true,
+      conversionFunnelEnabled: false,
     });
-    expect(total).toBe(TOTAL_STEPS);
+    // why-now visible; upgrade + first-log still hidden when conversion funnel OFF.
+    expect(total).toBe(TOTAL_STEPS - 2);
   });
 
   it("does not shift goal's display index when why-now is hidden (it sits after goal)", () => {
@@ -132,12 +135,13 @@ describe("why-now — displayed step count (displayPosition)", () => {
     expect(shown.index).toBe(hidden.index + 1);
   });
 
-  it("when BOTH flag-gated steps are OFF (the live default) the total is TOTAL_STEPS - 2", () => {
+  it("when BOTH flag-gated steps are OFF (the live default) the total is TOTAL_STEPS - 4", () => {
     const { total } = displayPosition(0, {
       appChoiceEnabled: false,
       whyNowEnabled: false,
+      conversionFunnelEnabled: false,
     });
-    expect(total).toBe(TOTAL_STEPS - 2);
+    expect(total).toBe(TOTAL_STEPS - 4);
   });
 });
 

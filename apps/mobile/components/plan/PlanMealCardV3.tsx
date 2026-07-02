@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
-import { Flame, Lock, MoreHorizontal, UtensilsCrossed } from "lucide-react-native";
+import { Check, Flame, Lock, MoreHorizontal, UtensilsCrossed } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -21,6 +22,8 @@ export interface PlanMealCardV3Props {
   isLocked?: boolean;
   /** "batch" → a Batch chip; any other truthy string → a quiet queued note. */
   note?: string | null;
+  /** When the user logged this planned meal on that day (diary match). */
+  isCooked?: boolean;
   onPress?: () => void;
   /** ENG-1238 — opens the per-meal action sheet (card tap still opens recipe). */
   onOpenOptions?: () => void;
@@ -33,13 +36,18 @@ export function PlanMealCardV3({
   imageUrl,
   isLocked,
   note,
+  isCooked,
   onPress,
   onOpenOptions,
 }: PlanMealCardV3Props) {
   const colors = useThemeColors();
   return (
     <View
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[
+        styles.card,
+        { backgroundColor: colors.card, borderColor: colors.border },
+        isCooked ? styles.cooked : null,
+      ]}
     >
       <PressableScale
         onPress={onPress}
@@ -55,6 +63,11 @@ export function PlanMealCardV3({
           ) : (
             <UtensilsCrossed size={18} color={colors.navPrimary} style={{ opacity: 0.55 }} />
           )}
+          {isCooked ? (
+            <View style={[styles.cookedBadge, { backgroundColor: `${Accent.successSolid}D1` }]}>
+              <Check size={14} color="#fff" strokeWidth={2.5} />
+            </View>
+          ) : null}
         </View>
         <View style={styles.body}>
           <View style={styles.topRow}>
@@ -68,7 +81,16 @@ export function PlanMealCardV3({
               {kcal ? `${kcal} kcal` : "—"}
             </Text>
           </View>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+          <Text
+            style={[
+              styles.name,
+              { color: colors.text },
+              isCooked
+                ? { textDecorationLine: "line-through", textDecorationColor: colors.borderStrong }
+                : null,
+            ]}
+            numberOfLines={1}
+          >
             {name}
           </Text>
           {note === "batch" ? (
@@ -102,11 +124,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.dense,
-    borderRadius: Radius.xl,
+    borderRadius: CARD_RADIUS,
     borderWidth: 1,
     padding: Spacing.dense,
     marginTop: Spacing.sm,
   },
+  cooked: { opacity: 0.72 },
   mainPress: {
     flex: 1,
     flexDirection: "row",
@@ -119,6 +142,11 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: Radius.lg,
     overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cookedBadge: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },

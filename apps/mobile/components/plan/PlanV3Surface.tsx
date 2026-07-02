@@ -5,6 +5,11 @@ import {
   computePlanDayStatus,
   type PlanWeekVerdict,
 } from "@suppr/shared/planning/planWeekStatus";
+import {
+  countPlanDayCookedMeals,
+  journalEntriesForPlanDate,
+  type PlanJournalByDay,
+} from "@suppr/shared/planning/planCookedMeals";
 import type { DayPlan } from "@/lib/types";
 import { PlanHeaderV3 } from "./PlanHeaderV3";
 import {
@@ -72,8 +77,13 @@ export interface PlanV3SurfaceProps {
   servingCount: number;
   /** Open the shopping list (restores the access the legacy chrome carried). */
   onOpenShopping: () => void;
+  /** Open batch cook (ENG-1255). */
+  onOpenBatchCook: () => void;
+  /** Subtitle for the batch-cook tool row. */
+  batchCookSubtitle: string;
   /** Today (for the week-strip highlight) — injected for deterministic tests. */
   today?: Date;
+  nutritionByDay?: PlanJournalByDay;
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -101,7 +111,10 @@ export function PlanV3Surface({
   shoppingItemCount,
   servingCount,
   onOpenShopping,
+  onOpenBatchCook,
+  batchCookSubtitle,
   today,
+  nutritionByDay,
 }: PlanV3SurfaceProps) {
   const [mealFilter, setMealFilter] = useState<PlanMealFilter>("All");
   // Default the selected day to today (when it falls in the week), else day 0.
@@ -147,6 +160,18 @@ export function PlanV3Surface({
   const plannedCount =
     selectedDay?.meals.filter((m) => !m.isPlaceholder).length ?? 0;
   const totals = selectedDay?.totals;
+  const cookedCount = useMemo(() => {
+    if (!selectedDay || !selectedDate) return 0;
+    const logged = journalEntriesForPlanDate(nutritionByDay, selectedDate);
+    return countPlanDayCookedMeals(
+      selectedDay.meals.map((m) => ({
+        recipeId: m.recipeId,
+        recipeTitle: m.recipeTitle || m.name,
+        isPlaceholder: m.isPlaceholder,
+      })),
+      logged,
+    );
+  }, [selectedDay, selectedDate, nutritionByDay]);
 
   return (
     <>
@@ -170,7 +195,7 @@ export function PlanV3Surface({
         dayTotalKcal={Math.round(totals?.calories ?? 0)}
         targetKcal={targetKcal}
         plannedCount={plannedCount}
-        cookedCount={0}
+        cookedCount={cookedCount}
         macros={
           totals
             ? {
@@ -190,10 +215,13 @@ export function PlanV3Surface({
         onOpenMeal={onOpenMeal}
         onAddToSlot={onAddToSlot}
         onOpenMealOptions={onOpenMealOptions}
+        nutritionByDay={nutritionByDay}
       />
       <PlanToolsV3
+        batchCookSubtitle={batchCookSubtitle}
         shoppingItemCount={shoppingItemCount}
         servingCount={servingCount}
+        onOpenBatchCook={onOpenBatchCook}
         onOpenShopping={onOpenShopping}
       />
     </>

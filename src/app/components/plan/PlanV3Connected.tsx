@@ -11,6 +11,10 @@ import type { PlanJournalByDay } from "@/lib/planning/planCookedMeals";
 import { PlanV3Surface } from "./PlanV3Surface";
 import { PlanV3WebDashboard } from "./PlanV3WebDashboard";
 import { defaultBatchCookToolSubtitle } from "@/lib/planning/batchCook";
+import {
+  usePlanV3MealActions,
+  type UsePlanV3MealActionsArgs,
+} from "./usePlanV3MealActions.tsx";
 
 /**
  * PlanV3Connected — adapts the web `MealPlanner` host's raw plan data + handlers
@@ -52,9 +56,17 @@ export interface PlanV3ConnectedProps {
   household?: HouseholdBannerData | null;
   /** Diary rows keyed by date_key — plan cooked strike-through. */
   nutritionByDay?: PlanJournalByDay;
+  /** ENG-1238 — when set, wires the per-meal action sheet inside this wrapper. */
+  mealActionDeps?: Omit<UsePlanV3MealActionsArgs, "plan">;
 }
 
-export function PlanV3Connected({
+type PlanV3ConnectedBodyProps = PlanV3ConnectedProps & {
+  openMeal: (dayIndex: number, slotIndex: number) => void;
+  openMealOptions?: (dayIndex: number, slotIndex: number) => void;
+  mealActionDialog?: React.ReactNode;
+};
+
+function PlanV3ConnectedBody({
   plan,
   targetCalories,
   startOffset,
@@ -65,15 +77,15 @@ export function PlanV3Connected({
   onOpenShopping,
   onOpenBatchCook,
   onSwapSlot,
-  onOpenMeal,
-  onOpenMealOptions,
+  openMeal,
+  openMealOptions,
   shoppingItemCount = 0,
   servingCount = 1,
   batchCookSubtitle = defaultBatchCookToolSubtitle(),
   household = null,
   nutritionByDay,
-}: PlanV3ConnectedProps) {
-  const openMeal = onOpenMeal ?? onSwapSlot;
+  mealActionDialog,
+}: PlanV3ConnectedBodyProps) {
   const templates = onTemplates ?? onAdjust;
   const openHousehold = onOpenHousehold ?? onAdjust;
   const openBatchCook = onOpenBatchCook ?? (() => {});
@@ -122,7 +134,7 @@ export function PlanV3Connected({
           onOpenHousehold={openHousehold}
           onOpenMeal={openMeal}
           onAddToSlot={onSwapSlot}
-          onOpenMealOptions={onOpenMealOptions}
+          onOpenMealOptions={openMealOptions}
           shoppingItemCount={shoppingItemCount}
           servingCount={servingCount}
           onOpenShopping={onOpenShopping}
@@ -146,7 +158,7 @@ export function PlanV3Connected({
           onOpenHousehold={openHousehold}
           onOpenMeal={openMeal}
           onAddToSlot={onSwapSlot}
-          onOpenMealOptions={onOpenMealOptions}
+          onOpenMealOptions={openMealOptions}
           shoppingItemCount={shoppingItemCount}
           servingCount={servingCount}
           onOpenShopping={onOpenShopping}
@@ -155,7 +167,43 @@ export function PlanV3Connected({
           nutritionByDay={nutritionByDay}
         />
       </div>
+      {mealActionDialog}
     </>
+  );
+}
+
+function PlanV3ConnectedWithMealActions(
+  props: PlanV3ConnectedProps & {
+    mealActionDeps: Omit<UsePlanV3MealActionsArgs, "plan">;
+  },
+) {
+  const { mealActionDeps, ...rest } = props;
+  const mealActions = usePlanV3MealActions({
+    plan: props.plan,
+    ...mealActionDeps,
+  });
+  return (
+    <PlanV3ConnectedBody
+      {...rest}
+      openMeal={mealActions.openV3Meal}
+      openMealOptions={mealActions.openV3MealOptions}
+      mealActionDialog={mealActions.mealActionDialog}
+    />
+  );
+}
+
+export function PlanV3Connected(props: PlanV3ConnectedProps) {
+  if (props.mealActionDeps) {
+    return <PlanV3ConnectedWithMealActions {...props} mealActionDeps={props.mealActionDeps} />;
+  }
+  const { onOpenMeal, onOpenMealOptions, onSwapSlot, ...rest } = props;
+  return (
+    <PlanV3ConnectedBody
+      {...rest}
+      onSwapSlot={onSwapSlot}
+      openMeal={onOpenMeal ?? onSwapSlot}
+      openMealOptions={onOpenMealOptions}
+    />
   );
 }
 

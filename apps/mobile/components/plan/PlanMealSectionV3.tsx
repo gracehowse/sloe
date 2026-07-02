@@ -1,5 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
 
+import type { PlanJournalByDay } from "@suppr/shared/planning/planCookedMeals";
+import {
+  isPlanMealCooked,
+  journalEntriesForPlanDate,
+} from "@suppr/shared/planning/planCookedMeals";
 import { ALL_MEAL_SLOTS } from "@/lib/mealPlanAlgo";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -43,6 +48,7 @@ export interface PlanMealSectionV3Props {
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
   /** ENG-1238 — per-meal action sheet (⋯ on populated cards). */
   onOpenMealOptions?: (dayIndex: number, slotIndex: number) => void;
+  nutritionByDay?: PlanJournalByDay;
 }
 
 export function PlanMealSectionV3({
@@ -53,18 +59,30 @@ export function PlanMealSectionV3({
   onOpenMeal,
   onAddToSlot,
   onOpenMealOptions,
+  nutritionByDay,
 }: PlanMealSectionV3Props) {
   const colors = useThemeColors();
 
   const renderSlot = (dayIndex: number, slotIndex: number, slotLabel: string) => {
     const meal = plan?.[dayIndex]?.meals[slotIndex];
+    const date = weekDates[dayIndex];
+    const logged = date ? journalEntriesForPlanDate(nutritionByDay, date) : [];
     if (meal && !meal.isPlaceholder) {
+      const cooked = isPlanMealCooked(
+        {
+          recipeId: meal.recipeId,
+          recipeTitle: meal.recipeTitle || meal.name,
+          isPlaceholder: meal.isPlaceholder,
+        },
+        logged,
+      );
       return (
         <PlanMealCardV3
           slot={slotLabel}
           name={meal.recipeTitle || meal.name}
           kcal={Math.round(meal.calories)}
           isLocked={meal.isLocked}
+          isCooked={cooked}
           onPress={() => onOpenMeal(dayIndex, slotIndex)}
           onOpenOptions={
             onOpenMealOptions

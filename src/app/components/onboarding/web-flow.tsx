@@ -12,7 +12,7 @@ import { useAuthSession } from "@/context/AuthSessionContext";
 import { supabase } from "@/lib/supabase/browserClient";
 import { saveLocalProfile } from "@/lib/profile/profileStorage";
 import { type UserProfile } from "@/types/profile";
-import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, WHY_NOW_FLAG, useOnboarding } from "./context";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
@@ -29,17 +29,7 @@ import {
   saveResolvedSeeds,
 } from "@/lib/onboarding/onboardingSeedResolver";
 import { buildFirstWeekFromSeeds } from "@/lib/onboarding/onboardingFirstWeek";
-
-/**
- * Web flow shell — split layout with a narrative left column and an
- * interactive card on the right. The Welcome step takes the whole
- * canvas; every other step uses the split. Mobile (Stage D) uses a
- * different shell.
- *
- * The route component (`app/onboarding/v2/page.tsx`) wraps this in
- * `<OnboardingProvider>` so the shell stays unconditional and easy
- * to mount inside the dev preview.
- */
+import { redeemPendingReferral, storePendingReferralFromLocation } from "@/lib/referrals/pendingReferral";
 
 export function WebFlow() {
   const { currentStepId, displayIndex, displayTotal, go, goTo, state, targets, warning } =
@@ -61,32 +51,19 @@ export function WebFlow() {
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
-  // ENG-990 — the app-choice step is flag-gated. `go()` already skips it
-  // when the flag is OFF, but a user whose persisted `step` points at
-  // app-choice (e.g. they reached it while the flag was ON, then it was
-  // ramped back to 0) would render it directly on remount. This effect
-  // is the same defensive auto-skip the signup step uses for already-
-  // authed users: if we're on app-choice while the flag is OFF, advance
-  // past it. `isFeatureEnabled` is cold-safe (returns false → skip).
-  const isAppChoice = currentStepId === "app-choice";
-  React.useEffect(() => {
-    if (isAppChoice && !isFeatureEnabled(APP_CHOICE_FLAG)) {
-      go(1);
-    }
-  }, [isAppChoice, go]);
   const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
-  const isUpgrade = currentStepId === "upgrade";
-  const isFirstLog = currentStepId === "first-log";
+  // Flag-gated steps auto-skip in `go()` when OFF; persisted `step` on a
+  // hidden step still renders on remount — advance past it defensively.
+  const flagGatedStepOff =
+    (currentStepId === "app-choice" && !isFeatureEnabled(APP_CHOICE_FLAG)) ||
+    (currentStepId === "why-now" && !isFeatureEnabled(WHY_NOW_FLAG)) ||
+    ((currentStepId === "upgrade" || currentStepId === "first-log") &&
+      !conversionFunnelEnabled);
   React.useEffect(() => {
-    if (
-      (isUpgrade || isFirstLog) &&
-      !conversionFunnelEnabled
-    ) {
-      go(isUpgrade ? 1 : -1);
-    }
-  }, [isUpgrade, isFirstLog, conversionFunnelEnabled, go]);
-  // Build-40 (2026-05-01): `data-bridges` is terminal when conversion
-  // funnel OFF. When ON, `first-log` is terminal (upgrade → first-log).
+    if (!flagGatedStepOff) return;
+    go(currentStepId === "first-log" && !conversionFunnelEnabled ? -1 : 1);
+  }, [flagGatedStepOff, conversionFunnelEnabled, currentStepId, go]);
+  // Build-40: `data-bridges` is terminal when conversion funnel OFF; `first-log` when ON.
   const isTerminal = conversionFunnelEnabled
     ? currentStepId === "first-log"
     : currentStepId === "data-bridges";
@@ -126,6 +103,10 @@ export function WebFlow() {
       track(AnalyticsEvents.onboarding_started, { platform: "web" });
     }
   }, [isWelcome]);
+
+  React.useEffect(() => {
+    storePendingReferralFromLocation(window.location.search);
+  }, []);
 
   /**
    * OB2-1 — terminal-step completion handler. Mirrors the legacy
@@ -201,6 +182,8 @@ export function WebFlow() {
           );
           return;
         }
+
+        await redeemPendingReferral(supabase as any);
 
         // Phase 5 / B2.3 — seed-and-plan flow per spec Surface F.
         // Best-effort: each step is independently observable so a
@@ -528,7 +511,7 @@ export function WebFlow() {
                 // organic surfaces post-launch.
                 const terminalLabel = completing
                   ? "Building your plan…"
-                  : isFirstLog
+                  : currentStepId === "first-log"
                     ? "Go to Today"
                     : "Build my plan";
                 return (
