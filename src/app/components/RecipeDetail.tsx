@@ -2437,9 +2437,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         {/* Figma 332:2 — white slab on cream (was translucent cream-on-white). */}
         <div className="flex items-center gap-4 p-6 rounded-2xl" style={whiteSlabStyle}>
           {/* eslint-disable-next-line @next/next/no-img-element -- creator avatar URLs */}
-          <img src={recipe.creatorImage} alt={recipe.creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20" />
+          <img src={recipe.creatorImage} alt={displayAttribution({ creatorName: recipe.creatorName }) || recipe.creatorName} className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20" />
           <div className="flex-1">
-            <p className="font-semibold text-foreground">{recipe.creatorName}</p>
+            <p className="font-semibold text-foreground">{displayAttribution({ creatorName: recipe.creatorName }) || recipe.creatorName}</p>
             <p className="text-sm text-muted-foreground">
               {!followMetaLoaded && !isCatalogRecipe ? (
                 <span className="text-muted-foreground">Loading reach…</span>

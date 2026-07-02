@@ -1411,7 +1411,7 @@ export default function RecipeDetailScreen() {
   const generateSloeHero = useCallback(async () => {
     if (!recipe || heroGenerating) return;
     const apiBase = getSupprApiBase();
-    if (!apiBase) return Alert.alert("Image generation unavailable", "Suppr's image service is not configured in this build.");
+    if (!apiBase) return Alert.alert("Image generation unavailable", "Sloe's image service is not configured in this build.");
     setHeroGenerating(true);
     try {
       const previewRes = await authedFetch(`${apiBase}/api/recipe-import/image-hero`, {
