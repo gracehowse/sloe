@@ -2727,7 +2727,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           return (
             <div
               data-testid="recipe-nutrition-pending"
-              className="rounded-xl border px-5 py-3 text-center text-sm font-semibold text-muted-foreground border-border bg-muted/30"
+              className="rounded-[var(--radius-card-lg)] border px-5 py-3 text-center text-sm font-semibold text-muted-foreground border-border bg-muted/30"
             >
               Calories not yet computed — open the Ingredients tab to verify
             </div>
@@ -2786,7 +2786,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               className={`grid grid-cols-4 ${
                 recipeDetailV3
                   ? "border-y border-border py-4"
-                  : "rounded-2xl"
+                  : "rounded-[var(--radius-card-lg)]"
               }`}
               style={recipeDetailV3 ? undefined : whiteSlabStyle}
             >

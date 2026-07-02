@@ -395,10 +395,14 @@ describe("mobile detail — Figma radii (delta 6)", () => {
     expect(sourceCardBlock).toContain("borderRadius: CARD_RADIUS");
   });
 
-  it("macro tiles round to 16", () => {
-    // Re-pinned 2026-06-09: the macro strip slab is the extracted
-    // `RecipeMacroStrip` — its container rounds to borderRadius: 16.
-    expect(MOBILE_MACRO_STRIP).toContain("borderRadius: 16");
+  it("macro strip rounds to CARD_RADIUS (ENG-1331 — unified with the sibling detail cards)", () => {
+    // ENG-1331 (Grace device session 2026-07-02): the macro strip card
+    // variant's Figma delta-6 `borderRadius: 16` read as "square" next to the
+    // 24-radius sibling cards/tiles on the same surface. The Figma is dead as
+    // source of truth (2026-06-24); the strip now snaps to the canonical Sloe
+    // card corner (CARD_RADIUS = 24) like the other detail cards. Supersedes
+    // the 2026-06-09 delta-6 re-pin.
+    expect(MOBILE_MACRO_STRIP).toContain("borderRadius: CARD_RADIUS");
   });
 
   it("primary action + sticky-footer pills are radius-full", () => {

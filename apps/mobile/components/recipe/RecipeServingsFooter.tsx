@@ -62,7 +62,7 @@ export function RecipeServingsFooter({
   const roundBtn = (enabled: boolean) => ({
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: Radius.full,
     backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
     borderColor: colors.cardBorder,
