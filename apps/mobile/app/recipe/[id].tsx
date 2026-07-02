@@ -83,16 +83,18 @@ import {
 } from "@suppr/shared/recipes/seedRecipesV2";
 import {
   flatMacroRowsFromVerifyJson,
+  isVerifiedFromVerifyRow,
   mergeVerifiedMacroRows,
   perServingFromVerifyJson,
+  verifyJsonNeedsReview,
 } from "@suppr/nutrition-core/verifyRecipeResponse";
 import { structuredIngredientsForVerify } from "@suppr/shared/recipe-ingredients/structuredIngredientsForVerify";
-import { isStructuredSource } from "@suppr/nutrition-core/structuredSourceGate";
 import {
   formatContainsLine,
   normaliseAllergenIds,
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
+import { scaleStepText } from "@suppr/nutrition-core/scaleStepText";
 import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
 import { buildCookModeHref } from "@/lib/navigateToCookMode";
 import {
@@ -144,15 +146,6 @@ import {
   IngredientInfoSheet,
   type IngredientInfo,
 } from "../../components/recipe/IngredientInfoSheet";
-
-function verifyJsonNeedsReviewNudge(json: Record<string, unknown>): boolean {
-  const avg = json.avgIngredientConfidence;
-  const min = json.minIngredientConfidence;
-  return ingredientVerifyNeedsReview(
-    typeof avg === "number" ? avg : undefined,
-    typeof min === "number" ? min : undefined,
-  );
-}
 
 const DEFAULT_TRACKED_MACROS = ["protein", "carbs", "fat"] as const;
 /** Matches Today dashboard widgets except water (not derived from recipe nutrition). */
@@ -580,10 +573,9 @@ export default function RecipeDetailScreen() {
               sodium_mg: Math.round(r.sodium),
               source: r.source,
               confidence: r.confidence,
-              is_verified:
-                isStructuredSource(r.source) &&
-                typeof r.confidence === "number" &&
-                r.confidence >= 0.5,
+              // ENG-1305: shared helper reads the canonical accept floor
+              // (0.55) — this was an inline duplicate pinned at 0.5.
+              is_verified: isVerifiedFromVerifyRow(r.confidence, r.source),
             });
             const { error: ingErr } = await supabase
               .from("recipe_ingredients")
@@ -1144,7 +1136,7 @@ export default function RecipeDetailScreen() {
         });
         if (applied.ok) {
           autoVerifySucceededForRecipeId.current = recipeId;
-          if (verifyJsonNeedsReviewNudge(json)) {
+          if (verifyJsonNeedsReview(json)) {
             const plat = Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web";
             track(AnalyticsEvents.recipe_verify_needs_review, {
               recipe_id: recipeId,

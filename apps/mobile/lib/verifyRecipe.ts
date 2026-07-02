@@ -45,7 +45,10 @@ import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers
  * maintaining a hand-synced duplicate. Same value as before (0.50);
  * the import path is now stable across web + mobile.
  */
-import { RECIPE_INGREDIENT_REVIEW_CONFIDENCE } from "@suppr/nutrition-core/verifyConfidencePolicy";
+import {
+  MIN_ACCEPT_CONFIDENCE,
+  RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
+} from "@suppr/nutrition-core/verifyConfidencePolicy";
 import {
   foodSearchRankScore,
   searchMatchScore,
@@ -2042,7 +2045,10 @@ export async function addUserIngredient(
     // typed entries).
     caffeine_mg: Math.round((payload.caffeineMg ?? 0) * 10) / 10,
     alcohol_g: Math.round((payload.alcoholG ?? 0) * 10) / 10,
-    is_verified: payload.hasMatch && payload.confidence >= 0.5,
+    // ENG-1305: shared accept floor (0.55) — never label a row the
+    // pipeline would exclude from totals as "verified". Mirrors the web
+    // insert path in RecipeDetail.tsx.
+    is_verified: payload.hasMatch && payload.confidence >= MIN_ACCEPT_CONFIDENCE,
     source: payload.source,
     confidence: payload.confidence,
     added_by_user: true,

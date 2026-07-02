@@ -5,9 +5,17 @@ import {
   ingredientVerifyNeedsReview,
   INGREDIENT_VERIFY_REVIEW_AVG_THRESHOLD,
   INGREDIENT_VERIFY_REVIEW_MIN_THRESHOLD,
+  MIN_ACCEPT_CONFIDENCE,
+  MIN_MATCH_CONFIDENCE,
+  MIN_OFF_CONFIDENCE,
   RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
 } from "../../src/lib/nutrition/verifyConfidencePolicy";
-import { RECIPE_INGREDIENT_REVIEW_CONFIDENCE as REVIEW_FROM_VERIFY_INGREDIENTS } from "../../src/lib/nutrition/verifyIngredients";
+import {
+  MIN_ACCEPT_CONFIDENCE as ACCEPT_FROM_VERIFY_INGREDIENTS,
+  MIN_MATCH_CONFIDENCE as MATCH_FROM_VERIFY_INGREDIENTS,
+  MIN_OFF_CONFIDENCE as OFF_FROM_VERIFY_INGREDIENTS,
+  RECIPE_INGREDIENT_REVIEW_CONFIDENCE as REVIEW_FROM_VERIFY_INGREDIENTS,
+} from "../../src/lib/nutrition/verifyIngredients";
 
 describe("verifyConfidencePolicy", () => {
   it("flags when minimum line confidence is critically low", () => {
@@ -34,6 +42,49 @@ describe("verifyConfidencePolicy — accept-floor documentation", () => {
     );
     expect(src).toMatch(/MIN_ACCEPT_CONFIDENCE = 0\.55/);
     expect(src).not.toMatch(/MIN_ACCEPT_CONFIDENCE = 0\.70/);
+  });
+});
+
+describe("verifyConfidencePolicy — ENG-1305 accept-floor unification", () => {
+  it("canonical accept floor lives here at the ratified 0.55 (D-05 impact review 2026-05-26)", () => {
+    // Do NOT bump these to 0.70 without the empirical over-rejection
+    // measurement ENG-746 piece 2 requires — the 2026-05-26 impact
+    // review found 0.70 over-rejects verbose-descriptor staples.
+    expect(MIN_ACCEPT_CONFIDENCE).toBe(0.55);
+    expect(MIN_MATCH_CONFIDENCE).toBe(MIN_ACCEPT_CONFIDENCE);
+    expect(MIN_OFF_CONFIDENCE).toBe(0.57);
+  });
+
+  it("verifyIngredients re-exports the same accept-floor constants (no drift)", () => {
+    expect(ACCEPT_FROM_VERIFY_INGREDIENTS).toBe(MIN_ACCEPT_CONFIDENCE);
+    expect(MATCH_FROM_VERIFY_INGREDIENTS).toBe(MIN_MATCH_CONFIDENCE);
+    expect(OFF_FROM_VERIFY_INGREDIENTS).toBe(MIN_OFF_CONFIDENCE);
+  });
+
+  it("accept floor sits above the review badge and OFF stays the strictest source", () => {
+    expect(MIN_ACCEPT_CONFIDENCE).toBeGreaterThan(RECIPE_INGREDIENT_REVIEW_CONFIDENCE);
+    expect(MIN_OFF_CONFIDENCE).toBeGreaterThan(MIN_ACCEPT_CONFIDENCE);
+  });
+
+  it("belowAcceptFloorCount > 0 forces the review nudge even with pristine stats", () => {
+    // ENG-1305: min/avg now describe only ACCEPTED rows (the row set the
+    // totals sum). A recipe with excluded rows must still nudge review —
+    // its headline numbers are incomplete by design.
+    expect(ingredientVerifyNeedsReview(0.95, 0.9, 1)).toBe(true);
+    expect(ingredientVerifyNeedsReview(0.95, 0.9, 3)).toBe(true);
+  });
+
+  it("belowAcceptFloorCount of 0 / undefined / null leaves the stats-based verdict unchanged", () => {
+    expect(ingredientVerifyNeedsReview(0.95, 0.9, 0)).toBe(false);
+    expect(ingredientVerifyNeedsReview(0.95, 0.9, undefined)).toBe(false);
+    expect(ingredientVerifyNeedsReview(0.95, 0.9, null)).toBe(false);
+    // Stats-based nudges still fire regardless of the count.
+    expect(ingredientVerifyNeedsReview(0.46, 0.46, 0)).toBe(true);
+    expect(ingredientVerifyNeedsReview(0.9, 0.1, 0)).toBe(true);
+  });
+
+  it("ignores a non-finite count (defensive against bad JSON)", () => {
+    expect(ingredientVerifyNeedsReview(0.95, 0.9, Number.NaN)).toBe(false);
   });
 });
 

@@ -592,6 +592,28 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
     expect(line).toBe("Fits your remaining 500 kcal");
   });
 
+  it("formats thousands in the calorie why-line via the shared formatter (ENG-1305)", () => {
+    // "Fits your remaining 1900 kcal" read as a typo next to every other
+    // kcal surface (LogSheet, weekly check-in) which renders "1,900".
+    const remaining = rem({ calories: 1900, protein: 5, carbs: 200, fat: 60 });
+    const suggestion = pickNorthStarSuggestion(
+      [
+        {
+          id: "a",
+          title: "Big day",
+          calories: 1900,
+          protein: 5,
+          carbs: 190,
+          fat: 55,
+        },
+      ],
+      remaining,
+    );
+    expect(suggestion).not.toBeNull();
+    const line = whyLineForSuggestion(suggestion!, remaining);
+    expect(line).toBe("Fits your remaining 1,900 kcal");
+  });
+
   it("uses calorie why-line when remaining protein is < 10g (already mostly hit)", () => {
     // The protein-fits gate requires remaining.protein >= 10 — so a user
     // with only 5g of protein left should never see the protein why-line

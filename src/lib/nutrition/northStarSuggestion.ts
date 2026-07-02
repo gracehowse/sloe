@@ -58,6 +58,8 @@
  * pattern as `mealPlanAlgo`).
  */
 
+import { formatKcal } from "./weeklyCheckin";
+
 export interface NorthStarRecipe {
   id: string;
   title: string;
@@ -506,9 +508,10 @@ export function whyLineForSuggestion(
     // Word "remaining" with the actual gram count the user has left.
     return `Fits your remaining ${protRemaining}g protein`;
   }
-  // Thousands separator matches the Today ring format (`toLocaleString`,
-  // e.g. "1,900 kcal") — ENG-1294.
-  return `Fits your remaining ${calRemaining.toLocaleString()} kcal`;
+  // ENG-1305: thousands separator via the shared formatter so the
+  // why-line renders "1,900 kcal", matching every other kcal surface
+  // (supersedes ENG-1294's inline toLocaleString on merge).
+  return `Fits your remaining ${formatKcal(calRemaining)} kcal`;
 }
 
 /**

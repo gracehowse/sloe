@@ -45,7 +45,7 @@ import { ImportReviewFlaggedNote } from "./import/ImportReviewFlaggedNote.tsx";
 import { normalizeRecipeTitle } from "../../lib/recipes/normalizeRecipeTitle.ts";
 import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngredients.ts";
 import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
-import { ingredientVerifyNeedsReview } from "../../lib/nutrition/verifyConfidencePolicy.ts";
+import { verifyJsonNeedsReview } from "../../lib/nutrition/verifyRecipeResponse.ts";
 import { stripSectionPrefix } from "../../lib/recipe-import/socialUrlHelpers.ts";
 import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
 import { ImportSuccessSheet } from "./suppr/import-success-sheet.tsx";
@@ -1415,7 +1415,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         platform: "web",
         avgConfidence: avgConfidence,
       });
-      const needsReview = ingredientVerifyNeedsReview(data.avgIngredientConfidence, data.minIngredientConfidence);
+      const needsReview = verifyJsonNeedsReview(data); // ENG-1305: folds in belowAcceptFloorCount
       if (needsReview) {
         track(AnalyticsEvents.recipe_verify_needs_review, {
           source: "create_paste",

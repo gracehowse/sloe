@@ -62,8 +62,7 @@ import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle
 import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
 import { parseRawIngredients } from "@suppr/shared/recipe-ingredients/parseRawIngredients";
 import { splitPastedIngredientLines } from "@suppr/shared/recipe-ingredients/splitPastedIngredientLines";
-import { flatMacroRowsFromVerifyJson } from "@suppr/nutrition-core/verifyRecipeResponse";
-import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
+import { flatMacroRowsFromVerifyJson, verifyJsonNeedsReview } from "@suppr/nutrition-core/verifyRecipeResponse";
 
 let ImagePicker: typeof import("expo-image-picker") | null = null;
 try {
@@ -351,10 +350,9 @@ export default function CreateRecipeScreen() {
         return;
       }
       const built = ingredientsFromLinesAndVerify(lines, json);
-      const needsReview = ingredientVerifyNeedsReview(
-        typeof json.avgIngredientConfidence === "number" ? json.avgIngredientConfidence : undefined,
-        typeof json.minIngredientConfidence === "number" ? json.minIngredientConfidence : undefined,
-      );
+      // ENG-1305: shared helper folds in belowAcceptFloorCount — excluded
+      // rows force the review nudge now that stats cover accepted rows only.
+      const needsReview = verifyJsonNeedsReview(json);
       const apply = (mode: "replace" | "append") => {
         mergePastedIngredients(built, mode);
         const plat = Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web";

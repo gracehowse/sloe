@@ -26,6 +26,7 @@ import {
   verifyIngredients,
   MIN_ACCEPT_CONFIDENCE,
 } from "@/lib/nutrition/verifyIngredients";
+import { ingredientVerifyNeedsReview } from "@/lib/nutrition/verifyConfidencePolicy";
 
 async function verifyOne(name: string, amount: string, unit: string) {
   const result = await verifyIngredients({
@@ -82,5 +83,80 @@ describe("verifyIngredients — curated generic short-circuit (ENG-746)", () => 
     // NOT fire here. It should land on the local estimate / unverified path.
     const row = await verifyOne("foie gras", "50", "g");
     expect(row.source).not.toBe("Suppr");
+  });
+});
+
+describe("verifyIngredients — recipe-level stats row set (ENG-1305)", () => {
+  // With all providers off: "brown rice" resolves via the curated table
+  // (Suppr, confidence 0.95, accepted) and "mackerel" falls through to the
+  // local estimator (Estimated, confidence 0.35 — below the 0.55 accept
+  // floor, macros kept on the row but EXCLUDED from totals).
+  async function verifyRiceAndMackerel() {
+    return verifyIngredients({
+      ingredients: [
+        { name: "brown rice", amount: "100", unit: "g" },
+        { name: "mackerel", amount: "100", unit: "g" },
+      ],
+      servings: 1,
+      provider: "auto",
+    });
+  }
+
+  it("flags the below-floor row and excludes it from totals", async () => {
+    const result = await verifyRiceAndMackerel();
+    const rice = result.verified[0]!;
+    const mackerel = result.verified[1]!;
+    expect(rice.belowAcceptFloor).toBeFalsy();
+    expect(mackerel.source).toBe("Estimated");
+    expect(mackerel.confidence).toBeLessThan(MIN_ACCEPT_CONFIDENCE);
+    expect(mackerel.belowAcceptFloor).toBe(true);
+    expect(mackerel.macros).not.toBeNull(); // estimate stays on the row for the UI
+    expect(result.belowAcceptFloorCount).toBe(1);
+    // Totals sum ONLY the accepted rice row (100 g ≈ 123 kcal).
+    expect(result.totals.calories).toBe(123);
+  });
+
+  it("min/avg confidence describe the SAME row set the totals sum", async () => {
+    const result = await verifyRiceAndMackerel();
+    // Pre-ENG-1305 the excluded mackerel row (0.35) dragged min to 0.35 and
+    // avg to 0.65 — stats describing a different recipe than the headline
+    // numbers. Now both stats describe the single accepted row.
+    expect(result.minIngredientConfidence).toBe(0.95);
+    expect(result.avgIngredientConfidence).toBe(0.95);
+  });
+
+  it("excluded rows still force the review nudge via belowAcceptFloorCount", async () => {
+    const result = await verifyRiceAndMackerel();
+    // Stats alone no longer carry the excluded row's signal…
+    expect(
+      ingredientVerifyNeedsReview(result.avgIngredientConfidence, result.minIngredientConfidence),
+    ).toBe(false);
+    // …the count is what keeps the recipe honest.
+    expect(
+      ingredientVerifyNeedsReview(
+        result.avgIngredientConfidence,
+        result.minIngredientConfidence,
+        result.belowAcceptFloorCount,
+      ),
+    ).toBe(true);
+  });
+
+  it("all-rows-excluded recipe reports zeroed stats and still nudges review", async () => {
+    const result = await verifyIngredients({
+      ingredients: [{ name: "mackerel", amount: "100", unit: "g" }],
+      servings: 1,
+      provider: "auto",
+    });
+    expect(result.belowAcceptFloorCount).toBe(1);
+    expect(result.totals.calories).toBe(0);
+    expect(result.minIngredientConfidence).toBe(0);
+    expect(result.avgIngredientConfidence).toBe(0);
+    expect(
+      ingredientVerifyNeedsReview(
+        result.avgIngredientConfidence,
+        result.minIngredientConfidence,
+        result.belowAcceptFloorCount,
+      ),
+    ).toBe(true);
   });
 });

@@ -21,6 +21,10 @@
 Acceptance gates (`MIN_MATCH_CONFIDENCE = 0.42`, `MIN_OFF_CONFIDENCE = 0.52`) remain in `verifyIngredients.ts`. They serve a different role — they decide whether to accept a candidate match at all, before any UI threshold applies. Conflating them with the review thresholds would change the meaning, not just the value.
 
 > **Superseded for the acceptance-gate values (2026-05-25, ENG-691 / Decision D-05):** the accept gate was raised to `MIN_ACCEPT_CONFIDENCE = 0.70` (`MIN_MATCH_CONFIDENCE = 0.70`, `MIN_OFF_CONFIDENCE = 0.72`) to match the published "reject < 0.70" confidence band, and sub-floor rows (including local estimates) are now excluded from recipe totals rather than silently summed. The **review** thresholds in this doc (per-line/mean 0.50, min-nudge 0.20) are unchanged. A nutrition-engine over-rejection impact review is REQUIRED before the ENG-691 PR merges. See `docs/product/nutrition-approximation-policy.md` and `docs/technical/architecture.md` for the current contract.
+>
+> **Impact-review outcome (2026-05-26):** shipped at **0.55 / 0.55 / 0.57**, not 0.70 — the review found 0.70 over-rejects verbose-descriptor staples. The 0.70 band remains the published display/trust signal only. Raising the live floor to a genuine 0.70 is ENG-746 piece 2 (open).
+>
+> **ENG-1305 (2026-07-01):** the acceptance-gate constants (`MIN_ACCEPT_CONFIDENCE` / `MIN_MATCH_CONFIDENCE` / `MIN_OFF_CONFIDENCE`) moved into `verifyConfidencePolicy.ts` — the same canonical home this doc established for the review thresholds — with `verifyIngredients.ts` re-exporting. The `is_verified` trust label (web + mobile write paths, `isVerifiedFromVerifyRow`) now reads `MIN_ACCEPT_CONFIDENCE` instead of a hand-typed 0.5, and recipe-level min/avg confidence stats compute over the accepted row set only (excluded rows nudge review via `belowAcceptFloorCount`, a new optional third parameter on `ingredientVerifyNeedsReview`). Values unchanged. See the ENG-1305 entry in `docs/product/nutrition-approximation-policy.md` §G3.
 
 ## Rationale
 

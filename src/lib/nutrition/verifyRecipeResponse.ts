@@ -170,14 +170,42 @@ export function perServingFromVerifyJson(
 }
 
 import { isStructuredSource } from "./structuredSourceGate";
+import { ingredientVerifyNeedsReview, MIN_ACCEPT_CONFIDENCE } from "./verifyConfidencePolicy";
 
-/** Whether a verified line should flip `is_verified` in UI + DB. */
+/**
+ * Review nudge straight from a raw verify-response JSON (web + mobile).
+ *
+ * ENG-1305 (2026-07-01): recipe-level min/avg stats describe only ACCEPTED
+ * rows (the row set the totals sum), so rows excluded below the accept floor
+ * must reach the nudge through `belowAcceptFloorCount`. This helper is the
+ * single place that narrows the response fields — call sites pass the parsed
+ * JSON as-is.
+ */
+export function verifyJsonNeedsReview(json: unknown): boolean {
+  const o = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+  return ingredientVerifyNeedsReview(
+    num(o.avgIngredientConfidence),
+    num(o.minIngredientConfidence),
+    num(o.belowAcceptFloorCount),
+  );
+}
+
+/**
+ * Whether a verified line should flip `is_verified` in UI + DB.
+ *
+ * ENG-1305 (2026-07-01): the bar is the shared accept floor
+ * ({@link MIN_ACCEPT_CONFIDENCE} = 0.55) instead of a hand-typed 0.5 — a row
+ * the pipeline would exclude from recipe totals must never carry the
+ * "verified" trust label. Tightening 0.5 → 0.55 only marks fewer rows
+ * verified (trust-safe direction).
+ */
 export function isVerifiedFromVerifyRow(confidence: number, source: string): boolean {
   return (
     isStructuredSource(source) &&
     typeof confidence === "number" &&
     Number.isFinite(confidence) &&
-    confidence >= 0.5
+    confidence >= MIN_ACCEPT_CONFIDENCE
   );
 }
 

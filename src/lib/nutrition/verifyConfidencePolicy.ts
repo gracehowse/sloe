@@ -23,9 +23,13 @@
  * raises the mean nudge so a recipe whose every line is "needs review"
  * also gets the recipe-level "review suggested" CTA.
  *
- * Acceptance gates (`MIN_ACCEPT_CONFIDENCE = 0.55` in `verifyIngredients.ts`,
- * with `MIN_MATCH_CONFIDENCE = 0.55` and `MIN_OFF_CONFIDENCE = 0.57`) decide
- * whether to accept a candidate match at all, before any UI threshold applies.
+ * Acceptance gates ({@link MIN_ACCEPT_CONFIDENCE} = 0.55, with
+ * {@link MIN_MATCH_CONFIDENCE} = 0.55 and {@link MIN_OFF_CONFIDENCE} = 0.57)
+ * decide whether to accept a candidate match at all, before any UI threshold
+ * applies. ENG-1305 (2026-07-01) moved them HERE from `verifyIngredients.ts`
+ * (which still re-exports them) so every floor consumer — the web verify
+ * pipeline, `isVerifiedFromVerifyRow`, and the mobile `is_verified` write
+ * path via `@suppr/nutrition-core` — reads the SAME constants.
  * D-05 (2026-05-25) proposed 0.70; the nutrition-engine impact review (2026-05-26)
  * shipped 0.55 so verbose-descriptor staples are not over-rejected. The **0.70
  * band** remains the published display/trust signal for "high confidence" in
@@ -36,6 +40,50 @@
  * Distinct from `classifyConfidence` in `aiLogging.ts` (logging
  * buckets — different domain).
  */
+
+/**
+ * Single tunable accept floor for ingredient matches (ENG-691, Decision D-05,
+ * Grace 2026-05-25; value set by the nutrition-engine impact review 2026-05-26).
+ *
+ * The engine previously accepted down to 0.42 (0.52 OFF) with only a "needs
+ * review" badge below — much weaker matches than policy claimed. D-05 proposed
+ * raising it to 0.70 (the published "reject < 0.70" band), but the required
+ * impact review found 0.70 over-rejects verbose-descriptor staples (brown rice
+ * ~0.50, canned tomatoes ~0.46, salmon ~0.36, flour, whole milk ~0.66) — correct
+ * matches with multi-word USDA labels, not wrong matches.
+ *
+ * SHIPPED at 0.55: above 0.42 (still tightens, kills weak dish-word matches)
+ * while keeping staples accepted. The 0.70 *band* stays as the display/trust
+ * signal (acceptance ≠ display confidence).
+ *
+ * ENG-746 piece 1 (DONE): the curated genericFoods/genericBeverages tables are
+ * now wired as a high-priority exact-alias short-circuit (resolves common
+ * staples at 0.95, bypassing the verbose-descriptor penalty). Piece 2 — raising
+ * this floor to a genuine 0.70 + re-tuning `confidenceForMatch` for the verbose
+ * USDA long-tail — is still open: it has broad blast radius on the recipe-import
+ * critical path and needs an empirical over-rejection measurement on a real
+ * ingredient corpus before flipping (can't be validated against mocked
+ * providers). One knob to re-tune when that validation lands.
+ *
+ * ENG-1305 (2026-07-01): canonical home moved here from `verifyIngredients.ts`
+ * so mobile (via `@suppr/nutrition-core/verifyConfidencePolicy`) and the
+ * `is_verified` trust label read the same constant as the accept gate.
+ */
+export const MIN_ACCEPT_CONFIDENCE = 0.55;
+
+/**
+ * Minimum confidence for USDA / FatSecret name overlap before accepting a match.
+ * Raised 0.25 → 0.42 → 0.55 (ENG-691): tightens the accept gate without
+ * over-rejecting verbose-descriptor staples (the 0.70 *band* stays the
+ * display/trust signal; see {@link MIN_ACCEPT_CONFIDENCE}).
+ */
+export const MIN_MATCH_CONFIDENCE = MIN_ACCEPT_CONFIDENCE;
+
+/**
+ * Minimum confidence for Open Food Facts (stricter — noisy product names).
+ * Held one notch above the general floor so OFF stays the strictest source.
+ */
+export const MIN_OFF_CONFIDENCE = 0.57;
 
 /**
  * Per-line confidence below which the recipe-verify UI shows a "needs
@@ -64,7 +112,25 @@ export const INGREDIENT_VERIFY_REVIEW_MIN_THRESHOLD = 0.2;
 export function ingredientVerifyNeedsReview(
   avgIngredientConfidence: number | null | undefined,
   minIngredientConfidence: number | null | undefined,
+  /**
+   * ENG-1305 (2026-07-01): count of rows excluded from recipe totals because
+   * they fell below {@link MIN_ACCEPT_CONFIDENCE} (`VerifyResult.
+   * belowAcceptFloorCount`). Since ENG-1305 the min/avg stats describe only
+   * the ACCEPTED row set (the same rows the totals sum), so excluded rows no
+   * longer drag the stats — this parameter is how they still force the
+   * review nudge. Any excluded row ⇒ the headline numbers are incomplete ⇒
+   * review. Optional so stored-row callers (which compute stats over ALL
+   * persisted rows and have no exclusion count) keep their behaviour.
+   */
+  belowAcceptFloorCount?: number | null,
 ): boolean {
+  if (
+    typeof belowAcceptFloorCount === "number" &&
+    Number.isFinite(belowAcceptFloorCount) &&
+    belowAcceptFloorCount > 0
+  ) {
+    return true;
+  }
   if (
     typeof minIngredientConfidence === "number" &&
     Number.isFinite(minIngredientConfidence) &&
