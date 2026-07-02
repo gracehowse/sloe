@@ -58,17 +58,14 @@ describe("cook handsfree feature flag — v1 shell ships dark by default", () =>
   });
 
   it("the toggle JSX is wrapped in a `COOK_HANDSFREE_FEATURE_ENABLED ? ... : <spacer />` ternary", () => {
-    const src = read("apps/mobile/app/cook.tsx");
+    const cook = read("apps/mobile/app/cook.tsx");
+    const panelUi = read("apps/mobile/hooks/useCookIngredientPanelUi.tsx");
     // The toggle Pressable is rendered when the flag is true.
-    expect(src).toMatch(
+    expect(cook).toMatch(
       /COOK_HANDSFREE_FEATURE_ENABLED\s*\?[\s\S]+?testID="cook-handsfree-toggle"/,
     );
-    // And a same-width spacer with its own testID renders when false
-    // — pin the testID so a future "tidy-up" doesn't drop the spacer
-    // and re-introduce header layout drift.
-    expect(src).toMatch(
-      /testID="cook-handsfree-toggle-placeholder"/,
-    );
+    // Spacer (header balance) lives in the ingredient-panel hook when handsfree is off.
+    expect(panelUi).toMatch(/testID="cook-handsfree-toggle-placeholder"/);
   });
 
   it("the AsyncStorage hydration effect short-circuits when the flag is off", () => {
