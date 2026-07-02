@@ -27,18 +27,21 @@ import { useTodayWidgetSnapshot } from "@/hooks/useTodayWidgetSnapshot";
 import { useTrackingExtrasOnFocus } from "@/hooks/useTrackingExtrasOnFocus";
 import { useLogSheetDeepLinks } from "@/hooks/useLogSheetDeepLinks";
 import { useHouseholdMemberCount } from "@/hooks/useHouseholdMemberCount";
+import { useOutOfWindowJournalDay } from "@/hooks/useOutOfWindowJournalDay";
 import {
   dateKeyFromDate,
   newMealId,
   normalizeJournalSlotName,
-  parseNutritionMicrosJson,
   type ByDay,
   type JournalMeal,
 } from "@/lib/nutritionJournal";
 import {
   buildNutritionEntryRow,
   buildNutritionEntryUpdatePayload,
+  journalRowToMeal,
+  NUTRITION_ENTRY_SELECT_COLUMNS,
 } from "@/lib/nutritionEntryRow";
+import { journalBootWindowStartKey } from "@suppr/shared/nutrition/journalWindow";
 import {
   buildDayNutrientDetailRows,
   formatMealNutritionMultiline,
@@ -603,6 +606,9 @@ export default function TrackerScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileTargets, setProfileTargets] = useState(DEFAULT_TRACKER_TARGETS);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  // ENG-1325 — calendar jumps older than the 35-day boot window fetch
+  // that single day on demand (web parity with ENG-1290).
+  useOutOfWindowJournalDay({ userId, selectedDate, setByDay });
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   // Canonical 2026-05-22 C1: multi-ring removed entirely. Inner macro
   // SLOE redesign (2026-06-03): the canonical Sloe `01 · Today` hero is a
@@ -3962,22 +3968,18 @@ export default function TrackerScreen() {
     // 2026-05-15 (ENG-542): window to the last 35 days. Covers the
     // week-strip (7d) + trailing analytics (~28d). The .limit(20_000)
     // guard removed (ENG-705): the 35-day date filter is the correct
-    // bound; the row cap was misleading and would silently truncate a
-    // dense import user within the window.
-    const WINDOW_DAYS = 35;
-    const windowStart = new Date();
-    windowStart.setUTCHours(0, 0, 0, 0);
-    windowStart.setUTCDate(windowStart.getUTCDate() - WINDOW_DAYS);
-    const windowStartKey = windowStart.toISOString().slice(0, 10);
+    // bound. Computation now shared with web via
+    // `journalBootWindowStartKey` (ENG-1290 / ENG-1325); days older
+    // than the window are fetched on demand by `useOutOfWindowJournalDay`.
+    const windowStartKey = journalBootWindowStartKey();
     const activePlanSlotId = await readActiveCloudMealPlanSlotId();
     const entriesPromise = (async () =>
       await supabase
         .from("nutrition_entries")
-        // Schema refactor Phase 2 (2026-05-11) — select recipe_id so
-        // the loaded JournalMeal can carry the typed FK link. The
-        // copy/duplicate path uses it to clone; future surfaces (e.g.
-        // "open the recipe behind this log") rely on it being present.
-        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, created_at, eaten_at, nutrition_micros, recipe_id")
+        // ENG-1325 — column list + row mapping shared with the
+        // out-of-window single-day fetch via `nutritionEntryRow.ts`
+        // (includes recipe_id, Schema refactor Phase 2).
+        .select(NUTRITION_ENTRY_SELECT_COLUMNS)
         .eq("user_id", userId)
         .gte("date_key", windowStartKey)
         .order("date_key", { ascending: true })
@@ -4045,27 +4047,9 @@ export default function TrackerScreen() {
       for (const r of rows ?? []) {
         const k = r.date_key as string;
         if (!loaded[k]) loaded[k] = [];
-        loaded[k].push({
-          id: r.id as string,
-          name: normalizeJournalSlotName((r.name as string) ?? ""),
-          recipeTitle: (r.recipe_title as string) ?? "",
-          time: (r.time_label as string) ?? "",
-          calories: (r.calories as number) ?? 0,
-          protein: (r.protein as number) ?? 0,
-          carbs: (r.carbs as number) ?? 0,
-          fat: (r.fat as number) ?? 0,
-          fiberG: (r.fiber_g as number) ?? undefined,
-          waterMl: (r.water_ml as number) ?? undefined,
-          portionMultiplier: (r.portion_multiplier as number) ?? undefined,
-          micros: parseNutritionMicrosJson((r as { nutrition_micros?: unknown }).nutrition_micros),
-          source: (r.source as string) ?? undefined,
-          createdAt: (r as { created_at?: string }).created_at ?? undefined,
-          eatenAt: (r as { eaten_at?: string | null }).eaten_at ?? undefined,
-          // Schema refactor Phase 2 (2026-05-11) — carry the typed FK
-          // through into the in-memory JournalMeal so the copy /
-          // duplicate path can clone with recipe_id intact.
-          recipeId: (r as { recipe_id?: string | null }).recipe_id ?? undefined,
-        });
+        // ENG-1325 — shared read-side mapper (`journalRowToMeal`) so the
+        // boot load and the out-of-window day fetch hydrate identically.
+        loaded[k].push(journalRowToMeal(r));
       }
       // Schema refactor Phase 3 (2026-05-11) — legacy by_day JSONB
       // fallback removed. An empty `nutrition_entries` just means an
