@@ -74,6 +74,9 @@ const MOBILE_ONLY = new Set([
   // platforms use platform-prefixed flag names, so each is listed as its own
   // platform-only entry rather than a shared flag.
   "progress_weight_empty",
+  // ENG-1300 — SmartImage expo-image adoption (memory-disk cache, recycling,
+  // fade). expo-image is a native module; web has no equivalent surface.
+  "expo_image_adoption_v1",
 ]);
 
 /** Gate 1.5 redesign surfaces that must ship default-on on both platforms. */
