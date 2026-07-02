@@ -22,6 +22,7 @@ import {
   PERSONAS,
   PERSONA_FORBIDDEN_EMAILS,
   PERSONA_ROW_TAG,
+  RECIPE_LIBRARY,
   shapeAllEntries,
   shapeDayEntries,
   shapeRecipes,
@@ -248,6 +249,72 @@ describe("shapeRecipes", () => {
   it("returns the persona's recipe count", () => {
     expect(shapeRecipes(PERSONAS["instagram-recipe-saver"])).toHaveLength(9);
     expect(shapeRecipes(PERSONAS["cold-start-newcomer"])).toHaveLength(0);
+  });
+});
+
+describe("recipe library — coherent whole-recipe bundles (ENG-1330)", () => {
+  // Grace device session 2026-07-02: a persona recipe titled "High-protein
+  // overnight oats" carried Greek-salad ingredients and a lemon-olive-oil
+  // method because titles and content were assigned independently. Every
+  // library entry is now a whole-recipe bundle; these invariants keep it so.
+  const library = RECIPE_LIBRARY; // full library — every persona slices from it
+
+  it("every bundle ships title + descriptor + ingredients + method + meta together", () => {
+    for (const r of library) {
+      expect(r.description.length, `${r.title} description`).toBeGreaterThan(20);
+      expect(r.ingredients.length, `${r.title} ingredients`).toBeGreaterThanOrEqual(4);
+      expect(r.instructions.length, `${r.title} method steps`).toBeGreaterThanOrEqual(3);
+      expect(r.servings, `${r.title} servings`).toBeGreaterThanOrEqual(1);
+      expect(r.prep_time_min, `${r.title} prep`).toBeGreaterThanOrEqual(0);
+      expect(r.cook_time_min, `${r.title} cook`).toBeGreaterThanOrEqual(0);
+      for (const ing of r.ingredients) {
+        expect(ing.name.trim().length, `${r.title} ingredient name`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("per-serving macros are sane and internally consistent (Atwater ±15%)", () => {
+    for (const r of library) {
+      expect(r.calories, `${r.title} kcal`).toBeGreaterThanOrEqual(150);
+      expect(r.calories, `${r.title} kcal`).toBeLessThanOrEqual(800);
+      const atwater = r.protein * 4 + r.carbs * 4 + r.fat * 9;
+      expect(
+        Math.abs(atwater - r.calories) / r.calories,
+        `${r.title} macros→kcal drift (${atwater} vs ${r.calories})`,
+      ).toBeLessThan(0.15);
+    }
+  });
+
+  it("pins: overnight oats are OATS — not a Greek salad", () => {
+    const oats = library.find((r) => r.title === "High-protein overnight oats");
+    expect(oats).toBeDefined();
+    const names = oats!.ingredients.map((i) => i.name.toLowerCase()).join(", ");
+    expect(names).toContain("rolled oats");
+    expect(names).toContain("greek yogurt");
+    // The exact foreign set Grace saw on device must never come back.
+    for (const foreign of ["tomato", "cucumber", "feta", "olive"]) {
+      expect(names, `oats must not contain ${foreign}`).not.toContain(foreign);
+    }
+    expect(oats!.instructions.join(" ").toLowerCase()).toContain("overnight");
+  });
+
+  it("pins: miso-butter salmon is salmon + miso with a broil step", () => {
+    const salmon = library.find((r) => r.title === "Miso-butter salmon");
+    expect(salmon).toBeDefined();
+    const names = salmon!.ingredients.map((i) => i.name.toLowerCase()).join(", ");
+    expect(names).toContain("salmon");
+    expect(names).toContain("miso");
+    expect(salmon!.instructions.join(" ").toLowerCase()).toContain("broil");
+  });
+
+  it("pins: shakshuka poaches eggs in tomato with feta", () => {
+    const shak = library.find((r) => r.title === "Shakshuka with feta");
+    expect(shak).toBeDefined();
+    const names = shak!.ingredients.map((i) => i.name.toLowerCase()).join(", ");
+    expect(names).toContain("eggs");
+    expect(names).toContain("tomato");
+    expect(names).toContain("feta");
+    expect(shak!.instructions.join(" ").toLowerCase()).toContain("poach");
   });
 });
 

@@ -113,20 +113,27 @@ async function resetAccount(admin: SupabaseClient, userId: string): Promise<void
   if (findRecipes) throw findRecipes;
   if (priorRecipes && priorRecipes.length > 0) {
     const ids = priorRecipes.map((r) => r.id);
-    // Remove save links first (FK), then the recipes themselves.
+    // Remove save links + ingredient rows first (FK), then the recipes.
     const { error: delSaves } = await admin
       .from("saves")
       .delete()
       .eq("user_id", userId)
       .in("recipe_id", ids);
     if (delSaves) throw delSaves;
+    // ENG-1330 — persona recipes now seed whole-recipe bundles including
+    // recipe_ingredients rows; clear them before deleting the parents.
+    const { error: delIngredients } = await admin
+      .from("recipe_ingredients")
+      .delete()
+      .in("recipe_id", ids);
+    if (delIngredients) throw delIngredients;
     const { error: delRecipes } = await admin
       .from("recipes")
       .delete()
       .eq("author_id", userId)
       .in("id", ids);
     if (delRecipes) throw delRecipes;
-    log(`  removed ${ids.length} persona recipe(s) + their save links`);
+    log(`  removed ${ids.length} persona recipe(s) + their save links + ingredients`);
   }
 
   // 3. Clear the weight series + persona daily_targets snapshots.
@@ -184,16 +191,23 @@ async function applyPlan(admin: SupabaseClient, plan: SeedPlan): Promise<void> {
   }
 
   // 3. Library recipes (authored by this user, tagged, then self-saved).
+  //    ENG-1330: each row is a coherent whole-recipe bundle — description,
+  //    method and recipe_ingredients rows land together with the title so
+  //    seeded content never mixes one dish's title with another's ingredients.
   if (plan.recipes.length > 0) {
     const recipeRows = plan.recipes.map((r) => ({
       author_id: userId,
       title: r.title,
+      description: r.description,
+      instructions: r.instructions.join("\n"),
       calories: r.calories,
       protein: r.protein,
       carbs: r.carbs,
       fat: r.fat,
       fiber_g: r.fiber_g,
       servings: r.servings,
+      prep_time_min: r.prep_time_min,
+      cook_time_min: r.cook_time_min,
       cuisine: r.cuisine,
       // Tag the recipe via source_name so --reset can find it precisely.
       source_name: `${PERSONA_ROW_TAG} ${r.source_name}`,
@@ -204,9 +218,32 @@ async function applyPlan(admin: SupabaseClient, plan: SeedPlan): Promise<void> {
     const { data: inserted, error: recErr } = await admin
       .from("recipes")
       .insert(recipeRows)
-      .select("id");
+      .select("id, title");
     if (recErr) throw recErr;
-    const saveRows = (inserted ?? []).map((row) => ({
+    const insertedRows = inserted ?? [];
+
+    // Ingredient rows — matched to parents by TITLE (not insert order) so a
+    // reordered response can never re-create the decoupling bug. Macros seed
+    // at 0: the standard log-time / auto-verify pipeline owns row nutrition
+    // (mirrors the catalog-seed posture — never invent per-row values here).
+    const ingredientRows = insertedRows.flatMap((row) => {
+      const bundle = plan.recipes.find((r) => r.title === row.title);
+      if (!bundle) throw new Error(`inserted recipe "${row.title}" has no bundle`);
+      return bundle.ingredients.map((ing) => ({
+        recipe_id: row.id,
+        name: ing.name,
+        amount: ing.amount,
+        unit: ing.unit,
+      }));
+    });
+    if (ingredientRows.length > 0) {
+      const { error: ingErr } = await admin
+        .from("recipe_ingredients")
+        .insert(ingredientRows);
+      if (ingErr) throw ingErr;
+    }
+
+    const saveRows = insertedRows.map((row) => ({
       user_id: userId,
       recipe_id: row.id,
     }));
@@ -214,7 +251,9 @@ async function applyPlan(admin: SupabaseClient, plan: SeedPlan): Promise<void> {
       const { error: saveErr } = await admin.from("saves").insert(saveRows);
       if (saveErr) throw saveErr;
     }
-    log(`inserted ${plan.recipes.length} library recipes (+save links)`);
+    log(
+      `inserted ${plan.recipes.length} library recipes (+${ingredientRows.length} ingredient rows, +save links)`,
+    );
   }
 
   log("done.");
