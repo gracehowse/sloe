@@ -48,6 +48,7 @@ import {
 } from "../ui/dialog.tsx";
 import { Button } from "../ui/button.tsx";
 import { Input } from "../ui/input.tsx";
+import { FilterChip } from "../ui/filter-chip.tsx";
 import { Label } from "../ui/label.tsx";
 import { Textarea } from "../ui/textarea.tsx";
 
@@ -313,21 +314,15 @@ export function RecipeEditDialog({
               {RECIPE_MEAL_TYPES.map((m) => {
                 const active = mealType.includes(m);
                 return (
-                  <button
+                  <FilterChip
                     key={m}
-                    type="button"
+                    label={m[0]!.toUpperCase() + m.slice(1)}
+                    selected={active}
+                    size="md"
                     data-testid={`recipe-edit-meal-${m}`}
-                    aria-pressed={active}
-                    onClick={() => onMealChip(m)}
                     disabled={saving}
-                    className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
-                      active
-                        ? "border-primary bg-primary/10 text-primary-solid"
-                        : "border-border bg-background text-foreground hover:bg-muted/60"
-                    }`}
-                  >
-                    {m[0]!.toUpperCase() + m.slice(1)}
-                  </button>
+                    onClick={() => onMealChip(m)}
+                  />
                 );
               })}
             </div>

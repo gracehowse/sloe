@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { FilterChip } from "../ui/filter-chip";
 import { SupprButton } from "./suppr-button";
 import { formatCookScaleLabel } from "../../../lib/nutrition/recipeScale.ts";
 
@@ -62,18 +63,13 @@ export function CookLogServingsDialog({
         </div>
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((preset) => (
-            <button
+            <FilterChip
               key={preset}
-              type="button"
+              label={formatServings(preset)}
+              selected={servingsEaten === preset}
+              size="md"
               onClick={() => setServingsEaten(preset)}
-              className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                servingsEaten === preset
-                  ? "border-primary bg-primary/10 text-primary-solid"
-                  : "border-border text-foreground"
-              }`}
-            >
-              {formatServings(preset)}
-            </button>
+            />
           ))}
         </div>
         <div className="flex items-center justify-center gap-3">

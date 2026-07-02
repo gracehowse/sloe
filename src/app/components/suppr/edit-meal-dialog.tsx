@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
+import { FilterChip } from "../ui/filter-chip";
 import { SupprButton } from "./suppr-button";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { MEAL_SLOTS } from "../../../lib/nutrition/mealSlots";
@@ -172,19 +173,14 @@ export function EditMealDialog({
             </p>
             <div className="flex flex-wrap gap-2">
               {slotLabels.map((label) => (
-                <button
+                <FilterChip
                   key={label}
-                  type="button"
+                  label={label}
+                  selected={slot === label}
+                  size="md"
                   data-testid={`edit-meal-slot-${label}`}
-                  className={`rounded-full border px-3 py-1 text-sm ${
-                    slot === label
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border text-muted-foreground"
-                  }`}
                   onClick={() => setSlot(label)}
-                >
-                  {label}
-                </button>
+                />
               ))}
             </div>
           </div>
