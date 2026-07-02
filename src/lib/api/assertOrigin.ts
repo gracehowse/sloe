@@ -28,8 +28,15 @@ export function assertOrigin(req: Request): NextResponse | null {
     // If the app URL is not configured we cannot verify. Fail closed:
     // reject cross-origin-looking requests to avoid a misconfiguration
     // silently disabling CSRF protection.
+    // ENG-1309: `message` is user-facing per the import-error contract —
+    // the env-var name must not reach pixels. The stable `error` code is
+    // what ops/telemetry keys on.
     return NextResponse.json(
-      { ok: false, error: "server_misconfigured", message: "NEXT_PUBLIC_APP_URL unset" },
+      {
+        ok: false,
+        error: "server_misconfigured",
+        message: "This service is temporarily unavailable. Try again shortly.",
+      },
       { status: 503 },
     );
   }

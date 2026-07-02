@@ -4,6 +4,7 @@ import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { extractPdfText } from "@/lib/planning/planImport/extractPdfText";
+import { importErrorResponse } from "@/lib/recipes/importErrorCopy";
 import { assertOrigin } from "@/lib/api/assertOrigin";
 
 export const runtime = "nodejs";
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
 
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(importErrorResponse("unauthorized"), { status: 401 });
   }
 
   const limited = await rateLimit({
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
   });
   if (!limited.ok) {
     return NextResponse.json(
-      { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
+      { ...importErrorResponse("rate_limited"), retryAfterSec: limited.retryAfterSec },
       { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
   }
@@ -58,19 +59,24 @@ export async function POST(req: Request) {
   try {
     form = await req.formData();
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid_form" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("invalid_form"), { status: 400 });
   }
 
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return NextResponse.json({ ok: false, error: "missing_file" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("missing_file"), { status: 400 });
   }
   if (file.type && file.type !== "application/pdf") {
-    return NextResponse.json({ ok: false, error: "invalid_pdf_type" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("invalid_pdf_type"), { status: 400 });
   }
   if (file.size > MAX_PDF_BYTES) {
     return NextResponse.json(
-      { ok: false, error: "file_too_large", maxBytes: MAX_PDF_BYTES },
+      {
+        // ENG-1309: surface-specific override — the mapped `file_too_large`
+        // copy is image-import-shaped ("under 6MB"); this is a PDF.
+        ...importErrorResponse("file_too_large", "That PDF is too large. Try a smaller file."),
+        maxBytes: MAX_PDF_BYTES,
+      },
       { status: 413 },
     );
   }
@@ -94,7 +100,7 @@ export async function POST(req: Request) {
     }
     captureRouteError(err, "/api/cookbook-import/extract", { stage: "pdf", fileName: file.name });
     return NextResponse.json(
-      { ok: false, error: "pdf_extract_failed", message: "Could not read this PDF." },
+      importErrorResponse("pdf_extract_failed"),
       { status: 422 },
     );
   }

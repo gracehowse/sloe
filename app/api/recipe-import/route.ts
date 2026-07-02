@@ -162,7 +162,7 @@ export async function POST(req: Request) {
 
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(importErrorResponse("unauthorized"), { status: 401 });
   }
 
   // P0-6 (2026-04-25): per-user scoping.
@@ -178,12 +178,12 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("invalid_json"), { status: 400 });
   }
   const url = typeof body === "object" && body !== null && "url" in body ? String((body as { url: unknown }).url) : "";
   const trimmed = url.trim();
   if (!trimmed || !isAllowedUrl(trimmed)) {
-    return NextResponse.json({ ok: false, error: "invalid_url" }, { status: 400 });
+    return NextResponse.json(importErrorResponse("invalid_url"), { status: 400 });
   }
 
   const socialPlatform = detectSocialPlatform(trimmed);
@@ -198,22 +198,16 @@ export async function POST(req: Request) {
       // is configured before proceeding.
       const { activeVendor } = await import("@/lib/server/aiProvider");
       if (!activeVendor()) {
-        return NextResponse.json(
-          { ok: false, error: "ai_not_configured", message: "Set ANTHROPIC_API_KEY (preferred) or OPENAI_API_KEY to enable social recipe import." },
-          { status: 503 },
-        );
+        // ENG-1309: env-var names must never reach pixels — the mapped
+        // copy is the user-facing body; ops keys on the stable code.
+        return NextResponse.json(importErrorResponse("ai_not_configured"), { status: 503 });
       }
 
       const meta = await fetchSocialPostMeta(trimmed);
       if (!meta || (!meta.caption && !meta.title)) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: "social_no_caption",
-            message: `Could not extract content from this ${socialPlatform} post. Try screenshotting the recipe and using image import instead.`,
-          },
-          { status: 422 },
-        );
+        // ENG-1309: platform names (Instagram/TikTok) never reach pixels —
+        // the mapped `social_no_caption` copy carries the next step.
+        return NextResponse.json(importErrorResponse("social_no_caption"), { status: 422 });
       }
 
       let captionText = [meta.title, meta.caption].filter(Boolean).join("\n\n");
@@ -402,14 +396,7 @@ export async function POST(req: Request) {
           });
         }
 
-        return NextResponse.json(
-          {
-            ok: false,
-            error: "social_no_recipe",
-            message: "This post doesn't appear to contain a recipe. Try a different post or use image import.",
-          },
-          { status: 422 },
-        );
+        return NextResponse.json(importErrorResponse("social_no_recipe"), { status: 422 });
       }
 
       const servings = recipe.servings ?? 1;
@@ -566,7 +553,9 @@ export async function POST(req: Request) {
 
     // Re-validate resolved URL (may have changed via redirect)
     if (!isAllowedUrl(effectiveUrl)) {
-      return NextResponse.json({ ok: false, error: "Resolved URL is not allowed." }, { status: 400 });
+      // ENG-1309: the `error` field is a stable code, never a sentence —
+      // clients key state + retry logic on it.
+      return NextResponse.json(importErrorResponse("url_not_allowed"), { status: 400 });
     }
 
     let currentUrl = effectiveUrl;
@@ -626,7 +615,7 @@ export async function POST(req: Request) {
       if (!fetched) {
         // currentUrl was already isAllowedUrl-validated above, so a null here
         // means a redirect hop / DNS resolution hit the SSRF blocklist.
-        return NextResponse.json({ ok: false, error: "Redirect target is not allowed." }, { status: 400 });
+        return NextResponse.json(importErrorResponse("redirect_blocked"), { status: 400 });
       }
       res = fetched.res;
       currentUrl = fetched.finalUrl;
