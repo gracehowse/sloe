@@ -28,12 +28,7 @@ export default function BatchCookScreen() {
 
   const candidates = useMemo<BatchCookRecipeCandidate[]>(() => {
     return saved
-      .filter((r) =>
-        isBatchCookCandidate({
-          prep_time_min: r.prepTimeMin ?? null,
-          cook_time_min: r.cookTimeMin ?? null,
-        }),
-      )
+      .filter((r) => isBatchCookCandidate({ servings: r.servings ?? null }))
       .slice(0, 12)
       .map((r) => ({
         id: r.id,

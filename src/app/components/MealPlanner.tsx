@@ -1077,12 +1077,7 @@ export const MealPlanner = memo(function MealPlanner({
 
   const batchCookCandidates = useMemo<BatchCookRecipeCandidate[]>(() => {
     return savedRecipesForLibrary
-      .filter((r) =>
-        isBatchCookCandidate({
-          prepTimeMin: r.prepTimeMin ?? null,
-          cookTimeMin: r.cookTimeMin ?? null,
-        }),
-      )
+      .filter((r) => isBatchCookCandidate({ servings: r.servings ?? null }))
       .slice(0, 12)
       .map((r) => ({
         id: r.id,

@@ -597,42 +597,447 @@ export function shapeWeightByDay(
   return out;
 }
 
+export type SeededRecipeIngredient = {
+  name: string;
+  amount: number | null;
+  unit: string | null;
+};
+
 export type SeededRecipe = {
   /** Stable per-(persona,index) id so re-runs upsert rather than duplicate. */
   title: string;
+  /** One-line descriptor — surfaces as the recipe-detail standfirst. */
+  description: string;
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
   fiber_g: number;
   servings: number;
+  prep_time_min: number;
+  cook_time_min: number;
   cuisine: string;
   source_name: string;
   meal_type: string[];
+  /** Whole-recipe bundle (ENG-1330): the ingredient set BELONGS to the title. */
+  ingredients: SeededRecipeIngredient[];
+  /** Method steps, in order — joined with newlines at insert time. */
+  instructions: string[];
 };
 
-const RECIPE_LIBRARY: SeededRecipe[] = [
-  { title: "Crispy gochujang tofu bowl", calories: 540, protein: 28, carbs: 62, fat: 20, fiber_g: 9, servings: 2, cuisine: "Korean", source_name: "Instagram Reel", meal_type: ["dinner"] },
-  { title: "High-protein overnight oats", calories: 410, protein: 32, carbs: 48, fat: 11, fiber_g: 8, servings: 1, cuisine: "American", source_name: "TikTok", meal_type: ["breakfast"] },
-  { title: "Sheet-pan harissa chicken", calories: 620, protein: 48, carbs: 38, fat: 30, fiber_g: 7, servings: 4, cuisine: "Middle Eastern", source_name: "Instagram Reel", meal_type: ["dinner"] },
-  { title: "Cottage-cheese pasta", calories: 480, protein: 30, carbs: 64, fat: 12, fiber_g: 5, servings: 2, cuisine: "Italian", source_name: "TikTok", meal_type: ["lunch", "dinner"] },
-  { title: "Green smoothie that actually tastes good", calories: 280, protein: 24, carbs: 34, fat: 6, fiber_g: 7, servings: 1, cuisine: "American", source_name: "Instagram Reel", meal_type: ["breakfast", "snack"] },
-  { title: "Smashed chickpea salad sandwich", calories: 450, protein: 18, carbs: 58, fat: 16, fiber_g: 11, servings: 2, cuisine: "American", source_name: "TikTok", meal_type: ["lunch"] },
-  { title: "Miso-butter salmon", calories: 560, protein: 42, carbs: 12, fat: 38, fiber_g: 2, servings: 2, cuisine: "Japanese", source_name: "Instagram Reel", meal_type: ["dinner"] },
-  { title: "Protein banana bread", calories: 230, protein: 12, carbs: 30, fat: 7, fiber_g: 3, servings: 8, cuisine: "American", source_name: "TikTok", meal_type: ["snack"] },
-  { title: "One-pan creamy tuscan gnocchi", calories: 590, protein: 22, carbs: 70, fat: 26, fiber_g: 5, servings: 3, cuisine: "Italian", source_name: "Instagram Reel", meal_type: ["dinner"] },
+/**
+ * ENG-1330 (Grace device session 2026-07-02): each library entry is a
+ * COHERENT whole-recipe bundle — title + descriptor + ingredients + method +
+ * meta authored together. The previous shape carried titles and macros only;
+ * seeded rows landed content-empty and any surface that filled the gap could
+ * show foreign content ("High-protein overnight oats" with Greek-salad
+ * ingredients — the same credibility-killer family as the ENG-1287 imagery
+ * mismatches). Macros are deliberate round estimates for the WHOLE dish
+ * per serving; per-ingredient rows seed at 0 and the standard log-time /
+ * auto-verify pipeline owns row-level nutrition (never invented here).
+ */
+export const RECIPE_LIBRARY: SeededRecipe[] = [
+  {
+    title: "Crispy gochujang tofu bowl",
+    description: "Pan-crisped tofu tossed in a sticky gochujang glaze over rice, cucumber and quick-pickled carrot.",
+    calories: 540, protein: 28, carbs: 62, fat: 20, fiber_g: 9, servings: 2,
+    prep_time_min: 15, cook_time_min: 20,
+    cuisine: "Korean", source_name: "Instagram Reel", meal_type: ["dinner"],
+    ingredients: [
+      { name: "extra-firm tofu", amount: 350, unit: "g" },
+      { name: "cornflour", amount: 2, unit: "tbsp" },
+      { name: "gochujang", amount: 2, unit: "tbsp" },
+      { name: "soy sauce", amount: 1, unit: "tbsp" },
+      { name: "maple syrup", amount: 1, unit: "tbsp" },
+      { name: "cooked short-grain rice", amount: 300, unit: "g" },
+      { name: "cucumber", amount: 150, unit: "g" },
+      { name: "carrot", amount: 100, unit: "g" },
+      { name: "sesame oil", amount: 1, unit: "tsp" },
+    ],
+    instructions: [
+      "Press the tofu, tear into chunks and toss with cornflour.",
+      "Pan-fry in a little oil until deeply crisp on all sides.",
+      "Whisk gochujang, soy and maple; toss the tofu through until sticky.",
+      "Serve over rice with cucumber, quick-pickled carrot and sesame oil.",
+    ],
+  },
+  {
+    title: "High-protein overnight oats",
+    description: "Oats soaked overnight with Greek yogurt, protein powder and chia — grab-and-go breakfast that keeps you full.",
+    calories: 410, protein: 32, carbs: 48, fat: 11, fiber_g: 8, servings: 1,
+    prep_time_min: 5, cook_time_min: 0,
+    cuisine: "American", source_name: "TikTok", meal_type: ["breakfast"],
+    ingredients: [
+      { name: "rolled oats", amount: 50, unit: "g" },
+      { name: "Greek yogurt", amount: 150, unit: "g" },
+      { name: "vanilla protein powder", amount: 25, unit: "g" },
+      { name: "chia seeds", amount: 1, unit: "tbsp" },
+      { name: "semi-skimmed milk", amount: 120, unit: "ml" },
+      { name: "blueberries", amount: 60, unit: "g" },
+    ],
+    instructions: [
+      "Stir the oats, protein powder and chia seeds together in a jar.",
+      "Add the yogurt and milk; mix until no dry pockets remain.",
+      "Refrigerate overnight (or at least 4 hours).",
+      "Top with blueberries before serving.",
+    ],
+  },
+  {
+    title: "Sheet-pan harissa chicken",
+    description: "Harissa-rubbed chicken thighs roasted with red onion, peppers and chickpeas on one tray.",
+    calories: 620, protein: 48, carbs: 38, fat: 30, fiber_g: 7, servings: 4,
+    prep_time_min: 15, cook_time_min: 35,
+    cuisine: "Middle Eastern", source_name: "Instagram Reel", meal_type: ["dinner"],
+    ingredients: [
+      { name: "chicken thighs, bone-in", amount: 800, unit: "g" },
+      { name: "harissa paste", amount: 3, unit: "tbsp" },
+      { name: "red onion", amount: 1, unit: "whole" },
+      { name: "red pepper", amount: 2, unit: "whole" },
+      { name: "chickpeas, drained", amount: 400, unit: "g" },
+      { name: "olive oil", amount: 2, unit: "tbsp" },
+      { name: "lemon", amount: 1, unit: "whole" },
+      { name: "Greek yogurt", amount: 120, unit: "g" },
+    ],
+    instructions: [
+      "Rub the chicken with harissa, oil and a pinch of salt.",
+      "Spread onion wedges, pepper strips and chickpeas on a sheet pan; nestle the chicken on top.",
+      "Roast at 200°C for 30–35 minutes until the chicken is cooked through and charred at the edges.",
+      "Squeeze over lemon and serve with a spoon of yogurt.",
+    ],
+  },
+  {
+    title: "Cottage-cheese pasta",
+    description: "Blended cottage cheese turns silky — a high-protein 'creamy' sauce with garlic, lemon and basil.",
+    calories: 480, protein: 30, carbs: 64, fat: 12, fiber_g: 5, servings: 2,
+    prep_time_min: 10, cook_time_min: 15,
+    cuisine: "Italian", source_name: "TikTok", meal_type: ["lunch", "dinner"],
+    ingredients: [
+      { name: "penne pasta", amount: 160, unit: "g" },
+      { name: "cottage cheese", amount: 250, unit: "g" },
+      { name: "garlic", amount: 2, unit: "cloves" },
+      { name: "parmesan", amount: 30, unit: "g" },
+      { name: "lemon", amount: 0.5, unit: "whole" },
+      { name: "fresh basil", amount: 10, unit: "g" },
+      { name: "cherry tomatoes", amount: 150, unit: "g" },
+    ],
+    instructions: [
+      "Cook the pasta; reserve a mug of pasta water.",
+      "Blend cottage cheese, garlic, parmesan and lemon juice until completely smooth.",
+      "Toss the sauce through the hot pasta, loosening with pasta water.",
+      "Fold in halved cherry tomatoes and torn basil.",
+    ],
+  },
+  {
+    title: "Green smoothie that actually tastes good",
+    description: "Spinach hidden behind mango, banana and vanilla protein — tastes like a milkshake, drinks like a salad.",
+    calories: 280, protein: 24, carbs: 34, fat: 6, fiber_g: 7, servings: 1,
+    prep_time_min: 5, cook_time_min: 0,
+    cuisine: "American", source_name: "Instagram Reel", meal_type: ["breakfast", "snack"],
+    ingredients: [
+      { name: "baby spinach", amount: 60, unit: "g" },
+      { name: "frozen mango", amount: 100, unit: "g" },
+      { name: "banana", amount: 1, unit: "whole" },
+      { name: "vanilla protein powder", amount: 25, unit: "g" },
+      { name: "unsweetened almond milk", amount: 250, unit: "ml" },
+      { name: "chia seeds", amount: 1, unit: "tsp" },
+    ],
+    instructions: [
+      "Blend the spinach and almond milk first until completely smooth.",
+      "Add mango, banana, protein powder and chia.",
+      "Blend again until thick and creamy; add ice to taste.",
+    ],
+  },
+  {
+    title: "Smashed chickpea salad sandwich",
+    description: "Lemony smashed chickpeas with celery and dill on toasted sourdough — a deli classic without the mayo heaviness.",
+    calories: 450, protein: 18, carbs: 58, fat: 16, fiber_g: 11, servings: 2,
+    prep_time_min: 10, cook_time_min: 0,
+    cuisine: "American", source_name: "TikTok", meal_type: ["lunch"],
+    ingredients: [
+      { name: "chickpeas, drained", amount: 400, unit: "g" },
+      { name: "Greek yogurt", amount: 60, unit: "g" },
+      { name: "dijon mustard", amount: 1, unit: "tsp" },
+      { name: "celery", amount: 60, unit: "g" },
+      { name: "red onion", amount: 30, unit: "g" },
+      { name: "fresh dill", amount: 5, unit: "g" },
+      { name: "lemon", amount: 0.5, unit: "whole" },
+      { name: "sourdough bread", amount: 4, unit: "slices" },
+    ],
+    instructions: [
+      "Roughly smash the chickpeas with a fork, leaving some texture.",
+      "Stir through yogurt, mustard, lemon juice, celery, onion and dill.",
+      "Season, then pile onto toasted sourdough.",
+    ],
+  },
+  {
+    title: "Miso-butter salmon",
+    description: "Salmon fillets under a miso-butter glaze, broiled until lacquered — four ingredients, restaurant finish.",
+    calories: 560, protein: 42, carbs: 12, fat: 38, fiber_g: 2, servings: 2,
+    prep_time_min: 5, cook_time_min: 12,
+    cuisine: "Japanese", source_name: "Instagram Reel", meal_type: ["dinner"],
+    ingredients: [
+      { name: "salmon fillets", amount: 300, unit: "g" },
+      { name: "white miso paste", amount: 1.5, unit: "tbsp" },
+      { name: "butter, softened", amount: 25, unit: "g" },
+      { name: "mirin", amount: 1, unit: "tbsp" },
+      { name: "spring onion", amount: 2, unit: "whole" },
+      { name: "steamed greens", amount: 200, unit: "g" },
+    ],
+    instructions: [
+      "Mash the miso, butter and mirin into a paste.",
+      "Spread over the salmon fillets.",
+      "Broil 8–10 minutes until the glaze bubbles and browns.",
+      "Scatter with sliced spring onion and serve with steamed greens.",
+    ],
+  },
+  {
+    title: "Protein banana bread",
+    description: "A moist banana loaf with whey folded into the batter — cuts into eight snackable slices.",
+    calories: 230, protein: 12, carbs: 30, fat: 7, fiber_g: 3, servings: 8,
+    prep_time_min: 15, cook_time_min: 50,
+    cuisine: "American", source_name: "TikTok", meal_type: ["snack"],
+    ingredients: [
+      { name: "ripe bananas", amount: 3, unit: "whole" },
+      { name: "eggs", amount: 2, unit: "whole" },
+      { name: "vanilla protein powder", amount: 60, unit: "g" },
+      { name: "wholemeal flour", amount: 150, unit: "g" },
+      { name: "Greek yogurt", amount: 100, unit: "g" },
+      { name: "honey", amount: 2, unit: "tbsp" },
+      { name: "baking powder", amount: 1.5, unit: "tsp" },
+      { name: "walnuts", amount: 40, unit: "g" },
+    ],
+    instructions: [
+      "Mash the bananas; whisk in eggs, yogurt and honey.",
+      "Fold in flour, protein powder and baking powder — do not overmix.",
+      "Scrape into a lined loaf tin and top with walnuts.",
+      "Bake at 175°C for 45–50 minutes until a skewer comes out clean.",
+    ],
+  },
+  {
+    title: "One-pan creamy tuscan gnocchi",
+    description: "Shelf gnocchi simmered straight in a sun-dried-tomato cream with spinach — one pan, twenty minutes.",
+    calories: 590, protein: 22, carbs: 70, fat: 26, fiber_g: 5, servings: 3,
+    prep_time_min: 5, cook_time_min: 20,
+    cuisine: "Italian", source_name: "Instagram Reel", meal_type: ["dinner"],
+    ingredients: [
+      { name: "potato gnocchi", amount: 500, unit: "g" },
+      { name: "sun-dried tomatoes", amount: 60, unit: "g" },
+      { name: "garlic", amount: 3, unit: "cloves" },
+      { name: "light cream", amount: 200, unit: "ml" },
+      { name: "vegetable stock", amount: 200, unit: "ml" },
+      { name: "baby spinach", amount: 100, unit: "g" },
+      { name: "parmesan", amount: 40, unit: "g" },
+    ],
+    instructions: [
+      "Sauté the garlic and sun-dried tomatoes in a splash of their oil.",
+      "Add gnocchi, stock and cream; simmer 8–10 minutes, stirring, until tender.",
+      "Wilt in the spinach and finish with parmesan.",
+    ],
+  },
   // Entries 10–18 extend the library so the data-rich persona can carry a deep
   // (16-recipe) imported shelf. Sources span the real import surfaces — pasted
   // links, cookbook scans, creator Reels — to exercise mixed provenance.
-  { title: "Korean beef bulgogi rice bowl", calories: 610, protein: 38, carbs: 66, fat: 22, fiber_g: 4, servings: 4, cuisine: "Korean", source_name: "Imported link", meal_type: ["dinner"] },
-  { title: "Lemon-herb roast chicken thighs", calories: 520, protein: 44, carbs: 8, fat: 34, fiber_g: 2, servings: 4, cuisine: "Mediterranean", source_name: "Cookbook PDF", meal_type: ["dinner"] },
-  { title: "Black bean & sweet potato tacos", calories: 470, protein: 16, carbs: 72, fat: 13, fiber_g: 14, servings: 3, cuisine: "Mexican", source_name: "Imported link", meal_type: ["lunch", "dinner"] },
-  { title: "Thai green curry with chickpeas", calories: 540, protein: 20, carbs: 58, fat: 26, fiber_g: 10, servings: 4, cuisine: "Thai", source_name: "Web import", meal_type: ["dinner"] },
-  { title: "Blueberry protein pancakes", calories: 390, protein: 30, carbs: 50, fat: 9, fiber_g: 5, servings: 2, cuisine: "American", source_name: "TikTok", meal_type: ["breakfast"] },
-  { title: "Halloumi & roasted veg traybake", calories: 480, protein: 24, carbs: 30, fat: 28, fiber_g: 8, servings: 3, cuisine: "Mediterranean", source_name: "Cookbook PDF", meal_type: ["dinner"] },
-  { title: "Peanut sesame noodle salad", calories: 520, protein: 18, carbs: 68, fat: 20, fiber_g: 6, servings: 3, cuisine: "Asian", source_name: "Imported link", meal_type: ["lunch"] },
-  { title: "Shakshuka with feta", calories: 360, protein: 20, carbs: 24, fat: 22, fiber_g: 6, servings: 2, cuisine: "Middle Eastern", source_name: "Instagram Reel", meal_type: ["breakfast", "dinner"] },
-  { title: "Turkey & spinach meatballs", calories: 430, protein: 40, carbs: 18, fat: 22, fiber_g: 3, servings: 4, cuisine: "Italian", source_name: "Web import", meal_type: ["dinner"] },
+  {
+    title: "Korean beef bulgogi rice bowl",
+    description: "Thin-sliced beef in a pear-soy bulgogi marinade, seared hot and piled on rice with kimchi.",
+    calories: 610, protein: 38, carbs: 66, fat: 22, fiber_g: 4, servings: 4,
+    prep_time_min: 20, cook_time_min: 10,
+    cuisine: "Korean", source_name: "Imported link", meal_type: ["dinner"],
+    ingredients: [
+      { name: "sirloin steak, thinly sliced", amount: 600, unit: "g" },
+      { name: "soy sauce", amount: 4, unit: "tbsp" },
+      { name: "pear, grated", amount: 0.5, unit: "whole" },
+      { name: "garlic", amount: 3, unit: "cloves" },
+      { name: "sesame oil", amount: 1, unit: "tbsp" },
+      { name: "brown sugar", amount: 1, unit: "tbsp" },
+      { name: "cooked short-grain rice", amount: 600, unit: "g" },
+      { name: "kimchi", amount: 120, unit: "g" },
+      { name: "spring onion", amount: 2, unit: "whole" },
+    ],
+    instructions: [
+      "Marinate the beef in soy, grated pear, garlic, sugar and sesame oil for 15 minutes.",
+      "Sear in a screaming-hot pan in batches, 1–2 minutes a side.",
+      "Serve over rice with kimchi and sliced spring onion.",
+    ],
+  },
+  {
+    title: "Lemon-herb roast chicken thighs",
+    description: "Crisp-skinned thighs roasted over lemon, garlic and oregano — a low-carb weeknight anchor.",
+    calories: 520, protein: 44, carbs: 8, fat: 34, fiber_g: 2, servings: 4,
+    prep_time_min: 10, cook_time_min: 40,
+    cuisine: "Mediterranean", source_name: "Cookbook PDF", meal_type: ["dinner"],
+    ingredients: [
+      { name: "chicken thighs, bone-in", amount: 900, unit: "g" },
+      { name: "lemon", amount: 2, unit: "whole" },
+      { name: "garlic", amount: 6, unit: "cloves" },
+      { name: "dried oregano", amount: 2, unit: "tsp" },
+      { name: "olive oil", amount: 2, unit: "tbsp" },
+      { name: "green beans", amount: 300, unit: "g" },
+    ],
+    instructions: [
+      "Toss the thighs with oil, oregano, salt and the juice of one lemon.",
+      "Roast skin-side up at 200°C with lemon halves and whole garlic cloves, 35–40 minutes.",
+      "Steam the green beans and serve with the roasting juices.",
+    ],
+  },
+  {
+    title: "Black bean & sweet potato tacos",
+    description: "Cumin-roasted sweet potato and smoky black beans in warm corn tortillas with lime crema.",
+    calories: 470, protein: 16, carbs: 72, fat: 13, fiber_g: 14, servings: 3,
+    prep_time_min: 15, cook_time_min: 25,
+    cuisine: "Mexican", source_name: "Imported link", meal_type: ["lunch", "dinner"],
+    ingredients: [
+      { name: "sweet potato", amount: 500, unit: "g" },
+      { name: "black beans, drained", amount: 400, unit: "g" },
+      { name: "ground cumin", amount: 2, unit: "tsp" },
+      { name: "smoked paprika", amount: 1, unit: "tsp" },
+      { name: "corn tortillas", amount: 9, unit: "whole" },
+      { name: "Greek yogurt", amount: 100, unit: "g" },
+      { name: "lime", amount: 1, unit: "whole" },
+      { name: "coriander", amount: 10, unit: "g" },
+    ],
+    instructions: [
+      "Roast cubed sweet potato with cumin and paprika at 200°C for 25 minutes.",
+      "Warm the black beans with a splash of water and more paprika.",
+      "Stir lime juice into the yogurt for the crema.",
+      "Fill warm tortillas with beans, sweet potato, crema and coriander.",
+    ],
+  },
+  {
+    title: "Thai green curry with chickpeas",
+    description: "Fragrant green-curry coconut broth with chickpeas, green beans and bamboo shoots over jasmine rice.",
+    calories: 540, protein: 20, carbs: 58, fat: 26, fiber_g: 10, servings: 4,
+    prep_time_min: 10, cook_time_min: 25,
+    cuisine: "Thai", source_name: "Web import", meal_type: ["dinner"],
+    ingredients: [
+      { name: "green curry paste", amount: 3, unit: "tbsp" },
+      { name: "coconut milk", amount: 400, unit: "ml" },
+      { name: "chickpeas, drained", amount: 400, unit: "g" },
+      { name: "green beans", amount: 200, unit: "g" },
+      { name: "bamboo shoots", amount: 120, unit: "g" },
+      { name: "fish sauce", amount: 1, unit: "tbsp" },
+      { name: "jasmine rice", amount: 240, unit: "g" },
+      { name: "Thai basil", amount: 10, unit: "g" },
+    ],
+    instructions: [
+      "Fry the curry paste in a splash of coconut cream until fragrant.",
+      "Add the rest of the coconut milk, chickpeas, beans and bamboo shoots; simmer 15 minutes.",
+      "Season with fish sauce and finish with Thai basil.",
+      "Serve over jasmine rice.",
+    ],
+  },
+  {
+    title: "Blueberry protein pancakes",
+    description: "Fluffy oat-and-whey pancakes studded with blueberries — a weekend stack that still hits your protein target.",
+    calories: 390, protein: 30, carbs: 50, fat: 9, fiber_g: 5, servings: 2,
+    prep_time_min: 10, cook_time_min: 15,
+    cuisine: "American", source_name: "TikTok", meal_type: ["breakfast"],
+    ingredients: [
+      { name: "rolled oats", amount: 80, unit: "g" },
+      { name: "vanilla protein powder", amount: 50, unit: "g" },
+      { name: "eggs", amount: 2, unit: "whole" },
+      { name: "banana", amount: 1, unit: "whole" },
+      { name: "baking powder", amount: 1, unit: "tsp" },
+      { name: "blueberries", amount: 120, unit: "g" },
+      { name: "semi-skimmed milk", amount: 100, unit: "ml" },
+    ],
+    instructions: [
+      "Blitz oats, protein powder, eggs, banana, milk and baking powder into a thick batter.",
+      "Fold in most of the blueberries.",
+      "Cook small pancakes over medium heat, 2 minutes a side.",
+      "Stack and top with the remaining berries.",
+    ],
+  },
+  {
+    title: "Halloumi & roasted veg traybake",
+    description: "Golden halloumi over honey-roasted courgette, peppers and red onion — a meat-free tray dinner.",
+    calories: 480, protein: 24, carbs: 30, fat: 28, fiber_g: 8, servings: 3,
+    prep_time_min: 15, cook_time_min: 30,
+    cuisine: "Mediterranean", source_name: "Cookbook PDF", meal_type: ["dinner"],
+    ingredients: [
+      { name: "halloumi", amount: 250, unit: "g" },
+      { name: "courgette", amount: 2, unit: "whole" },
+      { name: "red pepper", amount: 2, unit: "whole" },
+      { name: "red onion", amount: 1, unit: "whole" },
+      { name: "olive oil", amount: 2, unit: "tbsp" },
+      { name: "honey", amount: 1, unit: "tbsp" },
+      { name: "couscous", amount: 150, unit: "g" },
+    ],
+    instructions: [
+      "Roast the chopped vegetables with oil at 200°C for 20 minutes.",
+      "Add thick halloumi slices, drizzle with honey, and roast 10 more minutes until golden.",
+      "Serve over fluffed couscous with the tray juices.",
+    ],
+  },
+  {
+    title: "Peanut sesame noodle salad",
+    description: "Chilled noodles in a peanut-sesame dressing with shredded carrot, cabbage and edamame.",
+    calories: 520, protein: 18, carbs: 68, fat: 20, fiber_g: 6, servings: 3,
+    prep_time_min: 20, cook_time_min: 8,
+    cuisine: "Asian", source_name: "Imported link", meal_type: ["lunch"],
+    ingredients: [
+      { name: "wholewheat noodles", amount: 250, unit: "g" },
+      { name: "peanut butter", amount: 3, unit: "tbsp" },
+      { name: "soy sauce", amount: 2, unit: "tbsp" },
+      { name: "rice vinegar", amount: 1, unit: "tbsp" },
+      { name: "sesame oil", amount: 1, unit: "tbsp" },
+      { name: "carrot", amount: 150, unit: "g" },
+      { name: "red cabbage", amount: 150, unit: "g" },
+      { name: "edamame beans", amount: 150, unit: "g" },
+      { name: "sesame seeds", amount: 1, unit: "tbsp" },
+    ],
+    instructions: [
+      "Cook and cool the noodles under cold water.",
+      "Whisk peanut butter, soy, vinegar, sesame oil and a splash of water into a dressing.",
+      "Toss the noodles with shredded carrot, cabbage and edamame.",
+      "Coat in the dressing and finish with sesame seeds.",
+    ],
+  },
+  {
+    title: "Shakshuka with feta",
+    description: "Eggs poached in a spiced tomato-pepper sauce with feta crumbled over — pan to table.",
+    calories: 360, protein: 20, carbs: 24, fat: 22, fiber_g: 6, servings: 2,
+    prep_time_min: 10, cook_time_min: 20,
+    cuisine: "Middle Eastern", source_name: "Instagram Reel", meal_type: ["breakfast", "dinner"],
+    ingredients: [
+      { name: "eggs", amount: 4, unit: "whole" },
+      { name: "chopped tomatoes", amount: 400, unit: "g" },
+      { name: "red pepper", amount: 1, unit: "whole" },
+      { name: "onion", amount: 1, unit: "whole" },
+      { name: "garlic", amount: 2, unit: "cloves" },
+      { name: "ground cumin", amount: 1, unit: "tsp" },
+      { name: "smoked paprika", amount: 1, unit: "tsp" },
+      { name: "feta cheese", amount: 60, unit: "g" },
+    ],
+    instructions: [
+      "Soften the onion, pepper and garlic with the spices.",
+      "Add the tomatoes and simmer to a thick sauce, about 10 minutes.",
+      "Make wells and crack in the eggs; cover and poach 5–6 minutes.",
+      "Crumble over the feta and serve from the pan.",
+    ],
+  },
+  {
+    title: "Turkey & spinach meatballs",
+    description: "Lean turkey meatballs with wilted spinach folded through, baked in a garlicky tomato sauce.",
+    calories: 430, protein: 40, carbs: 18, fat: 22, fiber_g: 3, servings: 4,
+    prep_time_min: 20, cook_time_min: 25,
+    cuisine: "Italian", source_name: "Web import", meal_type: ["dinner"],
+    ingredients: [
+      { name: "turkey mince", amount: 600, unit: "g" },
+      { name: "baby spinach, chopped", amount: 100, unit: "g" },
+      { name: "egg", amount: 1, unit: "whole" },
+      { name: "breadcrumbs", amount: 40, unit: "g" },
+      { name: "parmesan", amount: 30, unit: "g" },
+      { name: "passata", amount: 500, unit: "g" },
+      { name: "garlic", amount: 3, unit: "cloves" },
+    ],
+    instructions: [
+      "Mix the turkey, wilted spinach, egg, breadcrumbs and parmesan; roll into balls.",
+      "Brown the meatballs, then set aside.",
+      "Simmer the passata with garlic in the same pan.",
+      "Return the meatballs and bake at 190°C for 15 minutes.",
+    ],
+  },
 ];
 
 /** The first N recipes from the library — deterministic per persona count. */

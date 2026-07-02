@@ -4,7 +4,7 @@
   "app/login/ui.tsx": 586,
   "app/pricing/PricingTiersGrid.tsx": 552,
   "app/recipe/[id]/page.tsx": 492,
-  "apps/mobile/app/_layout.tsx": 614,
+  "apps/mobile/app/_layout.tsx": 620,
   "apps/mobile/app/(tabs)/_today/TodayScreen.tsx": 6993,
   "apps/mobile/app/(tabs)/barcode.tsx": 1257,
   "apps/mobile/app/(tabs)/discover.tsx": 1024,
