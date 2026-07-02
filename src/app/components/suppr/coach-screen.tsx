@@ -73,7 +73,7 @@ function CoachCandidateRow({
           ) : null}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-          {candidate.predictedCalories.toLocaleString()} kcal · {candidate.predictedProtein}g protein
+          Est. {candidate.predictedCalories.toLocaleString()} kcal · {candidate.predictedProtein}g protein
         </p>
         {candidate.whyLine ? (
           <p className="mt-1 text-xs leading-snug text-muted-foreground">{candidate.whyLine}</p>

@@ -250,3 +250,49 @@ describe("F-86 — micros panel collapses to source-attributed empty state", () 
     expect(SRC.mealNutrition).toMatch(/published by \{sourceLabel\}/);
   });
 });
+
+describe("ENG-1305 — trust-label consistency parity pins", () => {
+  const MOBILE_COACH = resolve(__dirname, "../../components/coach/CoachScreenView.tsx");
+  const WEB_COACH = resolve(
+    __dirname,
+    "../../../../src/app/components/suppr/coach-screen.tsx",
+  );
+  const coachMobile = readFileSync(MOBILE_COACH, "utf8");
+  const coachWeb = readFileSync(WEB_COACH, "utf8");
+
+  it("is_verified reads the shared accept floor on both platforms (no hand-typed 0.5)", () => {
+    // Mobile addIngredientToRecipe + web RecipeDetail insert both gate the
+    // trust label on MIN_ACCEPT_CONFIDENCE (0.55) — a row the pipeline would
+    // exclude from totals must never be labelled verified.
+    expect(SRC.verify).toMatch(/payload\.confidence >= MIN_ACCEPT_CONFIDENCE/);
+    expect(SRC.verify).not.toMatch(/payload\.confidence >= 0\.5\b/);
+    expect(SRC.webRecipe).toMatch(/payload\.confidence >= MIN_ACCEPT_CONFIDENCE/);
+    expect(SRC.webRecipe).not.toMatch(/payload\.confidence >= 0\.5\b/);
+    // Mobile recipe detail's persist path uses the shared helper instead of
+    // an inline isStructuredSource + 0.5 duplicate.
+    expect(SRC.recipe).toMatch(/isVerifiedFromVerifyRow\(r\.confidence, r\.source\)/);
+    expect(SRC.recipe).not.toMatch(/r\.confidence >= 0\.5\b/);
+  });
+
+  it("coach candidate kcal line carries the app-standard estimated qualifier (both platforms)", () => {
+    // Same wording as the LogSheet confirmation ("Est. {kcal} kcal") — coach
+    // predictions are estimates and must never render as bare precision.
+    const pattern = /Est\. \{candidate\.predictedCalories\.toLocaleString\(\)\} kcal/;
+    expect(coachMobile).toMatch(pattern);
+    expect(coachWeb).toMatch(pattern);
+  });
+
+  it("fresh-verify review nudges fold in belowAcceptFloorCount on both platforms", () => {
+    // ENG-1305: recipe-level min/avg stats now describe only accepted rows,
+    // so excluded rows must reach the nudge through the count — call sites
+    // delegate to the shared verifyJsonNeedsReview helper, which reads it.
+    const SHARED_VERIFY_RESPONSE = resolve(
+      __dirname,
+      "../../../../src/lib/nutrition/verifyRecipeResponse.ts",
+    );
+    const shared = readFileSync(SHARED_VERIFY_RESPONSE, "utf8");
+    expect(shared).toMatch(/num\(o\.belowAcceptFloorCount\)/);
+    expect(SRC.recipe).toMatch(/verifyJsonNeedsReview\(json\)/);
+    expect(SRC.webRecipe).toMatch(/verifyJsonNeedsReview\(json\)/);
+  });
+});

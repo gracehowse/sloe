@@ -52,9 +52,13 @@ export type VerifyResult = {
   perServing: VerifiedMacros;
   primarySource: string;
   sourceCounts: Record<string, number>;
-  /** Minimum per-line confidence among ingredients with macros (honest recipe-level bar). */
+  /**
+   * Minimum per-line confidence among ACCEPTED ingredients (rows with macros
+   * at/above {@link MIN_ACCEPT_CONFIDENCE} — the same row set `totals` sums;
+   * ENG-1305). Below-floor rows surface via `belowAcceptFloorCount` instead.
+   */
   minIngredientConfidence: number;
-  /** Mean per-line confidence among ingredients with macros. */
+  /** Mean per-line confidence among ACCEPTED ingredients (same row set as `totals`; ENG-1305). */
   avgIngredientConfidence: number;
   /**
    * ENG-691: count of lines whose confidence fell below
@@ -73,44 +77,18 @@ export type IngredientOverride = {
 };
 
 /**
- * Single tunable accept floor for ingredient matches (ENG-691, Decision D-05,
- * Grace 2026-05-25; value set by the nutrition-engine impact review 2026-05-26).
+ * Accept floor + per-source gates for ingredient matches (ENG-691, Decision
+ * D-05, Grace 2026-05-25; value set by the nutrition-engine impact review
+ * 2026-05-26 — see the full rationale on the constants themselves).
  *
- * The engine previously accepted down to 0.42 (0.52 OFF) with only a "needs
- * review" badge below — much weaker matches than policy claimed. D-05 proposed
- * raising it to 0.70 (the published "reject < 0.70" band), but the required
- * impact review found 0.70 over-rejects verbose-descriptor staples (brown rice
- * ~0.50, canned tomatoes ~0.46, salmon ~0.36, flour, whole milk ~0.66) — correct
- * matches with multi-word USDA labels, not wrong matches.
- *
- * SHIPPED at 0.55: above 0.42 (still tightens, kills weak dish-word matches)
- * while keeping staples accepted. The 0.70 *band* stays as the display/trust
- * signal in `verifyConfidencePolicy` (acceptance ≠ display confidence).
- *
- * ENG-746 piece 1 (DONE): the curated genericFoods/genericBeverages tables are
- * now wired as a high-priority exact-alias short-circuit above (resolves common
- * staples at 0.95, bypassing the verbose-descriptor penalty). Piece 2 — raising
- * this floor to a genuine 0.70 + re-tuning `confidenceForMatch` for the verbose
- * USDA long-tail — is still open: it has broad blast radius on the recipe-import
- * critical path and needs an empirical over-rejection measurement on a real
- * ingredient corpus before flipping (can't be validated against mocked
- * providers). One knob to re-tune when that validation lands.
+ * ENG-1305 (2026-07-01): canonical home is now `verifyConfidencePolicy.ts`
+ * (pure, shim-shared to mobile via `@suppr/nutrition-core`), so the web
+ * accept gate, `isVerifiedFromVerifyRow`, and the mobile `is_verified` write
+ * path all read the SAME constants. Re-exported here so existing engine +
+ * test imports keep working.
  */
-export const MIN_ACCEPT_CONFIDENCE = 0.55;
-
-/**
- * Minimum confidence for USDA / FatSecret name overlap before accepting a match.
- * Raised 0.25 → 0.42 → 0.55 (ENG-691): tightens the accept gate without
- * over-rejecting verbose-descriptor staples (the 0.70 *band* stays the
- * display/trust signal; see {@link MIN_ACCEPT_CONFIDENCE}).
- */
-export const MIN_MATCH_CONFIDENCE = MIN_ACCEPT_CONFIDENCE;
-
-/**
- * Minimum confidence for Open Food Facts (stricter — noisy product names).
- * Held one notch above the general floor so OFF stays the strictest source.
- */
-export const MIN_OFF_CONFIDENCE = 0.57;
+import { MIN_ACCEPT_CONFIDENCE, MIN_MATCH_CONFIDENCE, MIN_OFF_CONFIDENCE } from "./verifyConfidencePolicy";
+export { MIN_ACCEPT_CONFIDENCE, MIN_MATCH_CONFIDENCE, MIN_OFF_CONFIDENCE };
 
 /**
  * Recipe verify UI: lines below this show "needs review" until the user
@@ -1091,7 +1069,15 @@ export async function verifyIngredients(opts: {
     sodiumMg: Math.max(0, Math.round(totals.sodiumMg / servings)),
   };
 
-  const confidences = verified.filter((v) => v.macros != null).map((v) => v.confidence);
+  // ENG-1305 (2026-07-01): min/avg describe the SAME row set the totals sum —
+  // rows with macros that cleared the accept floor. Previously below-floor
+  // rows (already excluded from `totals`) still dragged these stats, so the
+  // recipe-level trust numbers described a different recipe than the headline
+  // macros. Excluded rows now surface through `belowAcceptFloorCount`, which
+  // `ingredientVerifyNeedsReview` treats as an unconditional review nudge.
+  const confidences = verified
+    .filter((v) => v.macros != null && !v.belowAcceptFloor)
+    .map((v) => v.confidence);
   const minIngredientConfidence = confidences.length > 0 ? Math.min(...confidences) : 0;
   const avgIngredientConfidence =
     confidences.length > 0 ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0;

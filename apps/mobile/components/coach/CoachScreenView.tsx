@@ -88,7 +88,7 @@ function CoachCandidateRow({
           ) : null}
         </View>
         <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: Spacing.xs }}>
-          {candidate.predictedCalories.toLocaleString()} kcal · {candidate.predictedProtein}g protein
+          Est. {candidate.predictedCalories.toLocaleString()} kcal · {candidate.predictedProtein}g protein
         </Text>
         {candidate.whyLine ? (
           <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: Spacing.xs }}>

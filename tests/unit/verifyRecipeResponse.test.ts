@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { flatMacroRowsFromVerifyJson, perServingFromVerifyJson } from "../../src/lib/nutrition/verifyRecipeResponse";
+import {
+  flatMacroRowsFromVerifyJson,
+  isVerifiedFromVerifyRow,
+  perServingFromVerifyJson,
+  verifyJsonNeedsReview,
+} from "../../src/lib/nutrition/verifyRecipeResponse";
+import { MIN_ACCEPT_CONFIDENCE } from "../../src/lib/nutrition/verifyConfidencePolicy";
 
 describe("verifyRecipeResponse", () => {
   it("maps canonical verify API verified[] + macros", () => {
@@ -81,5 +87,73 @@ describe("verifyRecipeResponse", () => {
     const ps = perServingFromVerifyJson(json as Record<string, unknown>, { servings: 4 });
     expect(ps?.calories).toBe(100);
     expect(ps?.protein).toBe(2.5);
+  });
+});
+
+describe("isVerifiedFromVerifyRow — trust label reads the shared accept floor (ENG-1305)", () => {
+  it("labels a structured row at/above the accept floor as verified", () => {
+    expect(isVerifiedFromVerifyRow(MIN_ACCEPT_CONFIDENCE, "USDA")).toBe(true);
+    expect(isVerifiedFromVerifyRow(0.9, "OFF")).toBe(true);
+    expect(isVerifiedFromVerifyRow(0.72, "FatSecret")).toBe(true);
+  });
+
+  it("never labels a row below the accept floor as verified (0.50–0.55 sliver closed)", () => {
+    // Pre-ENG-1305 this bar was a hand-typed 0.5 — rows the pipeline
+    // would EXCLUDE from recipe totals (< 0.55) still got the "verified"
+    // trust label. Tightening only removes labels: trust-safe.
+    expect(isVerifiedFromVerifyRow(0.5, "USDA")).toBe(false);
+    expect(isVerifiedFromVerifyRow(0.54, "USDA")).toBe(false);
+    expect(isVerifiedFromVerifyRow(MIN_ACCEPT_CONFIDENCE - 0.001, "OFF")).toBe(false);
+  });
+
+  it("never labels non-structured sources as verified, regardless of confidence", () => {
+    expect(isVerifiedFromVerifyRow(0.99, "Estimated")).toBe(false);
+    expect(isVerifiedFromVerifyRow(0.99, "Manual")).toBe(false);
+    expect(isVerifiedFromVerifyRow(0.99, "")).toBe(false);
+  });
+
+  it("rejects non-finite confidence", () => {
+    expect(isVerifiedFromVerifyRow(Number.NaN, "USDA")).toBe(false);
+  });
+});
+
+describe("verifyJsonNeedsReview — response-level review nudge (ENG-1305)", () => {
+  it("no nudge for a clean high-confidence response", () => {
+    expect(
+      verifyJsonNeedsReview({
+        avgIngredientConfidence: 0.9,
+        minIngredientConfidence: 0.8,
+        belowAcceptFloorCount: 0,
+      }),
+    ).toBe(false);
+  });
+
+  it("nudges when rows were excluded below the accept floor, even with pristine stats", () => {
+    // Stats describe only accepted rows since ENG-1305 — the count is how
+    // excluded rows keep forcing the review prompt.
+    expect(
+      verifyJsonNeedsReview({
+        avgIngredientConfidence: 0.95,
+        minIngredientConfidence: 0.9,
+        belowAcceptFloorCount: 1,
+      }),
+    ).toBe(true);
+  });
+
+  it("nudges on low stats (mean below the review bar)", () => {
+    expect(
+      verifyJsonNeedsReview({
+        avgIngredientConfidence: 0.46,
+        minIngredientConfidence: 0.46,
+        belowAcceptFloorCount: 0,
+      }),
+    ).toBe(true);
+  });
+
+  it("tolerates missing fields and non-object input", () => {
+    expect(verifyJsonNeedsReview({})).toBe(false);
+    expect(verifyJsonNeedsReview(null)).toBe(false);
+    expect(verifyJsonNeedsReview(undefined)).toBe(false);
+    expect(verifyJsonNeedsReview({ belowAcceptFloorCount: 2 })).toBe(true);
   });
 });

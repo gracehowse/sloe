@@ -63,9 +63,10 @@ import {
   mergeVerifiedMacroRows,
   overallConfidenceFromVerifyJson,
   perServingFromVerifyJson,
+  verifyJsonNeedsReview,
 } from "../../lib/nutrition/verifyRecipeResponse.ts";
 import {
-  ingredientVerifyNeedsReview,
+  MIN_ACCEPT_CONFIDENCE,
   RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
 } from "../../lib/nutrition/verifyConfidencePolicy.ts";
 import { inferAllergensFromIngredients } from "../../lib/nutrition/inferAllergens.ts";
@@ -1229,12 +1230,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         autoVerifySucceededForRecipeId.current = recipe.id;
         const avg = json.avgIngredientConfidence;
         const min = json.minIngredientConfidence;
-        if (
-          ingredientVerifyNeedsReview(
-            typeof avg === "number" ? avg : undefined,
-            typeof min === "number" ? min : undefined,
-          )
-        ) {
+        // ENG-1305: shared helper folds in belowAcceptFloorCount.
+        if (verifyJsonNeedsReview(json)) {
           track(AnalyticsEvents.recipe_verify_needs_review, {
             recipe_id: recipe.id,
             source: "auto_verify",
@@ -1623,7 +1620,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         fiber_g: Math.round(payload.fiberG * 10) / 10,
         sugar_g: Math.round(payload.sugarG * 10) / 10,
         sodium_mg: Math.round(payload.sodiumMg),
-        is_verified: payload.hasMatch && payload.confidence >= 0.5,
+        // ENG-1305: shared accept floor (0.55) — never label a row the
+        // pipeline would exclude from totals as "verified".
+        is_verified: payload.hasMatch && payload.confidence >= MIN_ACCEPT_CONFIDENCE,
         source: payload.source,
         confidence: payload.confidence,
         added_by_user: true,
@@ -1690,7 +1689,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         // confidence so product can answer "do people override
         // high-confidence matches too?". The `IngredientRow` itself
         // only stores `isVerified` (true when the pipeline returned a
-        // match with confidence >= 0.5 at insert time), which mirrors
+        // match at/above MIN_ACCEPT_CONFIDENCE at insert time,
+        // ENG-1305), which mirrors
         // the UI's `ConfidenceDot level={ing.isVerified ? "high" : "medium"}`
         // decision. No raw confidence is persisted, so we reuse the
         // UI's mapping here instead of inventing a new threshold.

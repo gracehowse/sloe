@@ -17,11 +17,14 @@ export const MFP_IMPORT_BYTE_CAP = 5 * 1024 * 1024;
  * Confidence threshold for any future user-initiated "find a better
  * match" flow on an imported log entry. Set deliberately high —
  * anything softer risks asking users to swap their MFP-confirmed totals
- * for weak fuzzy matches, which CLAUDE.md prohibits. Now exactly
- * aligned with the verify-pipeline accept floor
- * `MIN_ACCEPT_CONFIDENCE = MIN_MATCH_CONFIDENCE = 0.70` in
- * `verifyIngredients` (both raised to the published reject-< 0.70 band
- * in ENG-691, 2026-05-25).
+ * for weak fuzzy matches, which CLAUDE.md prohibits. Pinned to the
+ * published "high confidence" 0.70 trust band — deliberately STRICTER
+ * than the live verify-pipeline accept floor (`MIN_ACCEPT_CONFIDENCE`
+ * = 0.55 in `verifyConfidencePolicy`; D-05 proposed 0.70 but the
+ * 2026-05-26 impact review shipped 0.55 — see that constant's doc).
+ * ENG-1305 (2026-07-01): corrected this comment, which wrongly claimed
+ * the live floor was 0.70. The 0.70 value HERE is intentional: swapping
+ * user-confirmed totals warrants the strict band, not the accept floor.
  *
  * The synchronous import route (`POST /api/imports/mfp-csv`) does NOT
  * re-match CSV rows, and ENG-750 explicitly rejects background
