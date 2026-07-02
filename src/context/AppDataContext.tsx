@@ -28,6 +28,10 @@ import type {
 } from "../types/recipe.ts";
 import { normaliseTier } from "../types/recipe.ts";
 import { tierRank } from "../lib/tier/tierRank.ts";
+import {
+  parseDayTargetSchedule,
+  type DayTargetSchedule,
+} from "../lib/nutrition/dayTargetSchedule.ts";
 import { type AppNotification, type NotificationPrefs } from "../types/notifications.ts";
 import { useNotifications } from "./NotificationContext.tsx";
 import {
@@ -215,6 +219,9 @@ interface AppDataContextValue {
   householdMemberCount: number;
   nutritionTargets: MacroTargets;
   setNutritionTargets: Dispatch<SetStateAction<MacroTargets>>;
+  /** ENG-960 — opt-in day-target schedule (null = flat week). The Today ring
+   *  applies it to `nutritionTargets` for the displayed weekday. */
+  dayTargetSchedule: DayTargetSchedule | null;
   preferActivityAdjustedCalories: boolean;
   setPreferActivityAdjustedCalories: Dispatch<SetStateAction<boolean>>;
   /** P2-26 / P3-30 (2026-04-25): when true, the user has opted into the
@@ -455,6 +462,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const waterActivityLoadedRef = useRef(false);
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
   const [profileTier, setProfileTier] = useState<UserTier>("free");
+  // ENG-960 — opt-in day-target schedule (null = flat week). Read from the
+  // profile below; the Today ring applies it for the displayed weekday.
+  const [dayTargetSchedule, setDayTargetSchedule] = useState<DayTargetSchedule | null>(null);
   const [profileTimeZone, setProfileTimeZone] = useState<string | null>(null);
   const [profileMeasurementSystem, setProfileMeasurementSystem] = useState<"metric" | "imperial">("metric");
   const [profileWeightSurfaceMode, setProfileWeightSurfaceMode] = useState<WeightSurfaceMode>("show");
@@ -665,7 +675,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled, pantry_staples, meal_plan_slots, tz_iana",
+          "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled, pantry_staples, meal_plan_slots, tz_iana, calorie_schedule, high_days",
         )
         .eq("id", authedUserId)
         .maybeSingle();
@@ -714,6 +724,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       // populated yet (forward-only safe).
       setNetCarbsLensEnabled(Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled));
       setPantryStaples(parsePantryStaples((data as { pantry_staples?: unknown } | null)?.pantry_staples));
+      // ENG-960 — opt-in day-target schedule (null for everyone not opted in).
+      setDayTargetSchedule(
+        parseDayTargetSchedule(
+          (data as { calorie_schedule?: unknown } | null)?.calorie_schedule,
+          (data as { high_days?: unknown } | null)?.high_days,
+        ),
+      );
       const cloudSlotMeta = parseMealPlanSlotsMetadata(
         (data as { meal_plan_slots?: unknown } | null)?.meal_plan_slots,
       );
@@ -776,7 +793,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled, tz_iana",
+        "display_name, user_tier, measurement_system, sex, target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, prefer_activity_adjusted_calories, weight_surface_mode, net_carbs_lens_enabled, tz_iana, calorie_schedule, high_days",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -815,6 +832,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }),
       );
     }
+    // ENG-960 — keep the schedule fresh on a post-checkout / manual refresh too.
+    setDayTargetSchedule(
+      parseDayTargetSchedule(
+        (data as { calorie_schedule?: unknown } | null)?.calorie_schedule,
+        (data as { high_days?: unknown } | null)?.high_days,
+      ),
+    );
   }, [authedUserId]);
 
   /**
@@ -2363,6 +2387,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       householdMemberCount,
       nutritionTargets,
       setNutritionTargets,
+      dayTargetSchedule,
       preferActivityAdjustedCalories,
       setPreferActivityAdjustedCalories,
       netCarbsLensEnabled,
@@ -2460,6 +2485,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       householdMemberCount,
       nutritionTargets,
       setNutritionTargets,
+      dayTargetSchedule,
       preferActivityAdjustedCalories,
       setPreferActivityAdjustedCalories,
       netCarbsLensEnabled,

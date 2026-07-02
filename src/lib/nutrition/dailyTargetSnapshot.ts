@@ -29,6 +29,10 @@
  */
 
 import { dateKeyFromDate } from "./trackerStats";
+import {
+  effectiveTargetsForDateKey,
+  parseDayTargetSchedule,
+} from "./dayTargetSchedule";
 import { resolveMaintenance } from "./resolveMaintenance";
 
 /**
@@ -74,7 +78,7 @@ export async function snapshotDailyTargetIfMissing(
   const { data: profile, error: profileErr } = await supabase
     .from("profiles")
     .select(
-      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age",
+      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age, calorie_schedule, high_days",
     )
     .eq("id", userId)
     .maybeSingle();
@@ -113,14 +117,28 @@ export async function snapshotDailyTargetIfMissing(
     { now: opts?.now },
   );
 
+  // ENG-960 — snapshot the SCHEDULE-ADJUSTED target for this day so history
+  // (recap/progress) matches what the ring showed. Flat when not opted in.
+  const eff = effectiveTargetsForDateKey(
+    {
+      calories: targetCalories,
+      proteinG: toInt(profile.target_protein),
+      carbsG: toInt(profile.target_carbs),
+      fatG: toInt(profile.target_fat),
+      fiberG: toInt(profile.target_fiber_g),
+    },
+    parseDayTargetSchedule(profile.calorie_schedule, profile.high_days),
+    today,
+  );
+
   const row = {
     user_id: userId,
     date_key: today,
-    target_calories: targetCalories,
-    target_protein_g: toInt(profile.target_protein),
-    target_carbs_g: toInt(profile.target_carbs),
-    target_fat_g: toInt(profile.target_fat),
-    target_fiber_g: toInt(profile.target_fiber_g),
+    target_calories: eff.calories,
+    target_protein_g: eff.proteinG,
+    target_carbs_g: eff.carbsG,
+    target_fat_g: eff.fatG,
+    target_fiber_g: eff.fiberG,
     activity_level: typeof profile.activity_level === "string" ? profile.activity_level : null,
     plan_pace: typeof profile.plan_pace === "string" ? profile.plan_pace : null,
     goal: typeof profile.goal === "string" ? profile.goal : null,
@@ -223,18 +241,29 @@ export async function backfillDailyTargetsFromProfile(
   // upsert's first-write-wins semantic protects today's existing
   // snapshot (today is intentionally NOT backfilled — that's the
   // job of `snapshotDailyTargetIfMissing` on the next log).
+  // ENG-960 — each backfilled day records its own schedule-adjusted target so a
+  // past Saturday reads as the (higher) weekend goal, not the flat number.
+  const backfillSchedule = parseDayTargetSchedule(profile.calorie_schedule, profile.high_days);
+  const backfillBase = {
+    calories: targetCalories,
+    proteinG: toInt(profile.target_protein),
+    carbsG: toInt(profile.target_carbs),
+    fatG: toInt(profile.target_fat),
+    fiberG: toInt(profile.target_fiber_g),
+  };
   const rows: Array<Record<string, unknown>> = [];
   for (let i = 1; i <= lookbackDays; i++) {
     const d = new Date(now.getTime() - i * 86_400_000);
     const dateKey = dateKeyFromDate(d);
+    const eff = effectiveTargetsForDateKey(backfillBase, backfillSchedule, dateKey);
     rows.push({
       user_id: userId,
       date_key: dateKey,
-      target_calories: targetCalories,
-      target_protein_g: toInt(profile.target_protein),
-      target_carbs_g: toInt(profile.target_carbs),
-      target_fat_g: toInt(profile.target_fat),
-      target_fiber_g: toInt(profile.target_fiber_g),
+      target_calories: eff.calories,
+      target_protein_g: eff.proteinG,
+      target_carbs_g: eff.carbsG,
+      target_fat_g: eff.fatG,
+      target_fiber_g: eff.fiberG,
       activity_level: typeof profile.activity_level === "string" ? profile.activity_level : null,
       plan_pace: typeof profile.plan_pace === "string" ? profile.plan_pace : null,
       goal: typeof profile.goal === "string" ? profile.goal : null,

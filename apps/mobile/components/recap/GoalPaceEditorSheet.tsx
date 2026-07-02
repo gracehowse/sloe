@@ -58,7 +58,11 @@ import { useGoalPaceEditor } from "./useGoalPaceEditor";
 import { GoalPaceSlider } from "./GoalPaceSlider";
 import { GoalPaceBodyFields } from "./GoalPaceBodyFields";
 import { GoalPaceSecondaryTargets } from "./GoalPaceSecondaryTargets";
-import { GoalOptionList, GoalPaceFooter } from "./GoalPaceControls";
+import {
+  GoalOptionList,
+  GoalPaceFooter,
+  CalorieScheduleOptionList,
+} from "./GoalPaceControls";
 
 export interface GoalPaceEditorSheetProps {
   visible: boolean;
@@ -206,6 +210,13 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                 fiberInput={editor.fiberInput}
                 setFiberInput={editor.setFiberInput}
                 previewFiberG={editor.previewFiberG}
+              />
+
+              {/* ENG-960 — opt-in day-target schedule (weekly-neutral) */}
+              {sectionLabel("Calorie schedule")}
+              <CalorieScheduleOptionList
+                value={editor.calorieSchedule}
+                onChange={editor.setCalorieSchedule}
               />
 
               {/* Live preview (adaptive-aware) */}

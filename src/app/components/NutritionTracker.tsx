@@ -9,6 +9,10 @@ import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
 import { scaleMacroTargetsForCalorieBudget } from "../../lib/nutrition/scaleMacroTargetsForCalorieBudget.ts";
+import {
+  resolveEffectiveDayTargets,
+  type WeekdayIndex,
+} from "../../lib/nutrition/dayTargetSchedule.ts";
 import { previousDayKey } from "../../lib/nutrition/copyYesterdayMeals.ts";
 import {
   foodSelectionAnalyticsSource,
@@ -281,6 +285,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   const {
     nutritionTargets,
     setNutritionTargets,
+    dayTargetSchedule,
     selectedDateKey,
     setSelectedDateKey,
     mealsForSelectedDate,
@@ -1975,7 +1980,22 @@ export const NutritionTracker = memo(function NutritionTracker({
   );
 
   const targets = normalizeMacroTargets(nutritionTargets);
-  const baseCalorieTarget = targets.calories;
+  // ENG-960 — apply the opt-in day-target schedule for the DISPLAYED weekday
+  // (`selectedDate`, so navigating to a past/future day shows that day's target).
+  // Weekly-neutral: the schedule never changes the 7-day total. When the user
+  // hasn't opted in (`dayTargetSchedule === null`) this is a pure identity.
+  const scheduledDayTargets = resolveEffectiveDayTargets(
+    {
+      calories: targets.calories,
+      proteinG: targets.protein,
+      carbsG: targets.carbs,
+      fatG: targets.fat,
+      fiberG: targets.fiber ?? null,
+    },
+    dayTargetSchedule,
+    selectedDate.getDay() as WeekdayIndex,
+  );
+  const baseCalorieTarget = scheduledDayTargets.calories;
 
   const weekData = useMemo(() => {
     const d = new Date(selectedDate);
@@ -2299,10 +2319,25 @@ export const NutritionTracker = memo(function NutritionTracker({
   const effectiveMacroTargets = useMemo(
     () =>
       scaleMacroTargetsForCalorieBudget(
-        { protein: targets.protein, carbs: targets.carbs, fat: targets.fat },
+        {
+          // ENG-960 — schedule-adjusted day macros (protein passes through;
+          // carbs/fat absorb the calorie delta) so the macro rings match the ring.
+          protein: scheduledDayTargets.proteinG ?? targets.protein,
+          carbs: scheduledDayTargets.carbsG ?? targets.carbs,
+          fat: scheduledDayTargets.fatG ?? targets.fat,
+        },
         { baseCalories: baseCalorieTarget, effectiveCalories: effectiveCalorieTarget },
       ),
-    [baseCalorieTarget, effectiveCalorieTarget, targets.protein, targets.carbs, targets.fat],
+    [
+      baseCalorieTarget,
+      effectiveCalorieTarget,
+      scheduledDayTargets.proteinG,
+      scheduledDayTargets.carbsG,
+      scheduledDayTargets.fatG,
+      targets.protein,
+      targets.carbs,
+      targets.fat,
+    ],
   );
 
   // ENG-798 (Redesign — Design Direction 2026) — reserved Today win-moment.

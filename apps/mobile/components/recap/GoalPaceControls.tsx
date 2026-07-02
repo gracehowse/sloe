@@ -13,6 +13,7 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { EditorDbGoal } from "@suppr/nutrition-core/goalEditorPace";
+import type { DayTargetScheduleId } from "@suppr/shared/nutrition/dayTargetSchedule";
 
 export const GOAL_OPTIONS: { value: EditorDbGoal; label: string; desc: string }[] = [
   { value: "cut", label: "Lose weight", desc: "Eat in a deficit" },
@@ -69,6 +70,74 @@ export function GoalOptionList({
                 {opt.label}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>
+                {opt.desc}
+              </Text>
+            </View>
+            {selected ? <Check size={18} color={accent.primarySolid} /> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// ENG-960 — opt-in day-target schedule presets. "same" clears the schedule.
+export const SCHEDULE_OPTIONS: {
+  value: DayTargetScheduleId | "same";
+  label: string;
+  desc: string;
+}[] = [
+  { value: "same", label: "Same every day", desc: "One steady target" },
+  { value: "weekend_lift", label: "More at weekends", desc: "Higher Sat/Sun" },
+  { value: "lighter_weekdays", label: "Lighter weekdays", desc: "Bigger weekends" },
+];
+
+export function CalorieScheduleOptionList({
+  value,
+  onChange,
+}: {
+  value: DayTargetScheduleId | "same";
+  onChange: (v: DayTargetScheduleId | "same") => void;
+}) {
+  const accent = useAccent();
+  const colors = useThemeColors();
+  return (
+    <View
+      style={{ gap: Spacing.sm, marginBottom: Spacing.lg }}
+      testID="goal-pace-editor-schedule-options"
+    >
+      {SCHEDULE_OPTIONS.map((opt) => {
+        const selected = value === opt.value;
+        return (
+          <Pressable
+            key={opt.value}
+            accessibilityRole="button"
+            accessibilityLabel={`${opt.label} — ${selected ? "selected" : "tap to select"}`}
+            onPress={() => onChange(opt.value)}
+            testID={`calorie-schedule-option-${opt.value}`}
+            style={{
+              paddingVertical: Spacing.md,
+              paddingHorizontal: Spacing.md,
+              borderRadius: Radius.md,
+              borderWidth: 1.5,
+              borderColor: selected ? accent.primarySolid : colors.cardBorder,
+              backgroundColor: selected ? accent.primarySoft : colors.card,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: selected ? "700" : "500",
+                  color: selected ? colors.text : colors.textSecondary,
+                }}
+              >
+                {opt.label}
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: Spacing.xs }}>
                 {opt.desc}
               </Text>
             </View>

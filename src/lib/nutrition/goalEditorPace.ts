@@ -34,6 +34,12 @@ import {
   type PlanPace,
   type Sex,
 } from "./tdee";
+import {
+  parseDayTargetSchedule,
+  DEFAULT_HIGH_DAYS,
+  type DayTargetScheduleId,
+  type WeekdayIndex,
+} from "./dayTargetSchedule";
 
 /** The three goal options the editor exposes (DB vocabulary). The editor
  *  never sets `recomp` — that's an onboarding-only nuance carried by
@@ -66,13 +72,17 @@ export interface LoadedGoalEditorProfile {
   targetFiberG: number | null;
   /** Fibre provenance — `user` values are sticky across recomputes (ENG-779). */
   targetFiberSource: "onboarding" | "recompute" | "user" | null;
+  /** ENG-960 — opt-in weekday/weekend day-target schedule. `null` = flat week
+   *  ("same every day"). `highDays` carries the higher-target weekday set. */
+  calorieSchedule: DayTargetScheduleId | null;
+  highDays: WeekdayIndex[];
 }
 
 /** The exact column list both editors select from `profiles`. Single
  *  source so the two SELECTs can't drift (e.g. one forgets to add the
  *  adaptive columns). */
 export const GOAL_EDITOR_PROFILE_COLUMNS =
-  "sex, age, weight_kg, height_cm, activity_level, goal, plan_pace, pace_kg_per_week, goal_weight_kg, nutrition_strategy, measurement_system, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, target_fiber_g, target_fiber_source";
+  "sex, age, weight_kg, height_cm, activity_level, goal, plan_pace, pace_kg_per_week, goal_weight_kg, nutrition_strategy, measurement_system, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, target_fiber_g, target_fiber_source, calorie_schedule, high_days";
 
 /** Map the loaded DB goal string to one of the three editor options. */
 export function normalizeEditorGoal(raw: string | null | undefined): EditorDbGoal {
@@ -147,6 +157,13 @@ export function parseGoalEditorProfileRow(
       row.target_fiber_source === "user"
         ? row.target_fiber_source
         : null,
+    // ENG-960 — parseDayTargetSchedule tolerates every malformed shape and
+    // returns null (flat week) for "same"/unknown; the weekend default fills in
+    // when a preset is set with no explicit high_days.
+    calorieSchedule: parseDayTargetSchedule(row.calorie_schedule, row.high_days)?.id ?? null,
+    highDays:
+      parseDayTargetSchedule(row.calorie_schedule, row.high_days)?.highDays ??
+      [...DEFAULT_HIGH_DAYS],
   };
 }
 

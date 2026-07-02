@@ -50,12 +50,24 @@ import {
   safetyAckBody,
   type EditorDbGoal,
 } from "../../../lib/nutrition/goalEditorPace.ts";
+import { type DayTargetScheduleId } from "../../../lib/nutrition/dayTargetSchedule.ts";
 import { useGoalPaceEditorDialog } from "./useGoalPaceEditorDialog.ts";
 
 const GOAL_OPTIONS: { value: EditorDbGoal; label: string; desc: string }[] = [
   { value: "cut", label: "Lose weight", desc: "Eat in a deficit" },
   { value: "maintain", label: "Maintain", desc: "Hold your weight" },
   { value: "bulk", label: "Gain weight", desc: "Eat in a surplus" },
+];
+
+// ENG-960 — opt-in day-target schedule presets. "same" clears the schedule.
+const SCHEDULE_OPTIONS: {
+  value: DayTargetScheduleId | "same";
+  label: string;
+  desc: string;
+}[] = [
+  { value: "same", label: "Same every day", desc: "One steady target" },
+  { value: "weekend_lift", label: "More at weekends", desc: "Higher Sat/Sun" },
+  { value: "lighter_weekdays", label: "Lighter weekdays", desc: "Bigger weekends" },
 ];
 
 const ACCENT_BY_SLIDER_GOAL: Record<string, string> = {
@@ -283,6 +295,46 @@ export function GoalPaceEditorDialog({
               <p className="text-[11px] text-muted-foreground mt-1">
                 Your fibre goal stays put when you change pace — unless you edit it
                 here.
+              </p>
+            </div>
+
+            {/* ENG-960 — opt-in day-target schedule (weekly-neutral) */}
+            <div>
+              <p className={sectionCls}>Calorie schedule</p>
+              <div
+                className="grid grid-cols-3 gap-2"
+                role="radiogroup"
+                aria-label="Calorie schedule"
+              >
+                {SCHEDULE_OPTIONS.map((opt) => {
+                  const selected = e.calorieSchedule === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => e.setCalorieSchedule(opt.value)}
+                      data-testid={`calorie-schedule-option-${opt.value}`}
+                      className={`text-left rounded-xl border p-3 transition-colors ${
+                        selected
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-background hover:border-primary/40"
+                      }`}
+                    >
+                      <span className="block text-[13px] font-semibold text-foreground">
+                        {opt.label}
+                      </span>
+                      <span className="block text-[11px] text-muted-foreground mt-0.5">
+                        {opt.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Cycles your daily calories across the week without changing the
+                7-day total — your goal pace stays the same.
               </p>
             </div>
 

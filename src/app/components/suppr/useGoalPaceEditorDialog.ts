@@ -23,6 +23,10 @@ import {
   type RecomputedTargets,
 } from "../../../lib/nutrition/recomputeTargetsForActivity.ts";
 import { persistRecomputedTargets } from "../../../lib/nutrition/persistRecomputedTargets.ts";
+import {
+  DEFAULT_HIGH_DAYS,
+  type DayTargetScheduleId,
+} from "../../../lib/nutrition/dayTargetSchedule.ts";
 import { safetyFloorFor } from "../../../lib/onboarding/targets.ts";
 import { mapPaceToPreset } from "../../../lib/onboarding/persist.ts";
 import {
@@ -72,6 +76,10 @@ export function useGoalPaceEditorDialog({
   const [heightFeetInput, setHeightFeetInput] = React.useState("");
   const [heightInchesInput, setHeightInchesInput] = React.useState("");
   const [fiberInput, setFiberInput] = React.useState("");
+  // ENG-960 — opt-in day-target schedule. "same" = flat week (the default);
+  // the two presets cycle the weekly calories weekly-neutrally.
+  const [calorieSchedule, setCalorieSchedule] =
+    React.useState<DayTargetScheduleId | "same">("same");
   // ENG-1027 — explicit below-floor acknowledgment (Cronometer pattern).
   const [acknowledged, setAcknowledged] = React.useState(false);
 
@@ -104,6 +112,7 @@ export function useGoalPaceEditorDialog({
 
       setLoaded(p);
       setGoal(p.goal);
+      setCalorieSchedule(p.calorieSchedule ?? "same");
       setPace(seat);
       setSeatedPace(seat);
       setGoalWeightInput(
@@ -223,7 +232,11 @@ export function useGoalPaceEditorDialog({
     [loaded, editedFiberG],
   );
 
-  const dirty = recomputeChanged || goalWeightChanged || fiberChanged;
+  // ENG-960 — a schedule-only edit is savable on its own (no target recompute).
+  const scheduleChanged =
+    loaded != null && (loaded.calorieSchedule ?? "same") !== calorieSchedule;
+
+  const dirty = recomputeChanged || goalWeightChanged || fiberChanged || scheduleChanged;
 
   const preview = React.useMemo<RecomputedTargets | null>(() => {
     if (!loaded || !recomputeChanged) return null;
@@ -300,6 +313,12 @@ export function useGoalPaceEditorDialog({
       if (weightChanged && editedWeightKg != null) profileUpdate.weight_kg = editedWeightKg;
       if (heightChanged && editedHeightCm != null) profileUpdate.height_cm = editedHeightCm;
       if (goalWeightChanged) profileUpdate.goal_weight_kg = goalWeightKg;
+      if (scheduleChanged) {
+        // ENG-960 — the opt-in day-target schedule. "same" clears it back to the
+        // flat week (null); a preset writes its id + the weekend high-day set.
+        profileUpdate.calorie_schedule = calorieSchedule === "same" ? null : calorieSchedule;
+        profileUpdate.high_days = calorieSchedule === "same" ? null : DEFAULT_HIGH_DAYS;
+      }
 
       const recomputed = recomputeChanged ? preview : null;
       const continuousPace =
@@ -378,6 +397,8 @@ export function useGoalPaceEditorDialog({
     dirty,
     goal,
     onChangeGoal,
+    calorieSchedule,
+    setCalorieSchedule,
     pace,
     setPace,
     sliderRange,

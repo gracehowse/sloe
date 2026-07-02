@@ -19,6 +19,12 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { mergeJournalByDay } from "@suppr/shared/nutrition/mergeJournalByDay";
+import {
+  resolveEffectiveDayTargets,
+  parseDayTargetSchedule,
+  type DayTargetSchedule,
+  type WeekdayIndex,
+} from "@suppr/shared/nutrition/dayTargetSchedule";
 import { subscribeJournalRefresh } from "@/lib/journalRefresh";
 import { normaliseCachedTier, loadCachedUserTier } from "@/lib/cachedUserTier";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
@@ -606,6 +612,9 @@ export default function TrackerScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileTargets, setProfileTargets] = useState(DEFAULT_TRACKER_TARGETS);
+  // ENG-960 — opt-in day-target schedule (null = flat week). Read from the
+  // profile below; the ring applies it for the displayed weekday.
+  const [dayTargetSchedule, setDayTargetSchedule] = useState<DayTargetSchedule | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   // ENG-1325 — calendar jumps older than the 35-day boot window fetch
   // that single day on demand (web parity with ENG-1290).
@@ -1856,7 +1865,7 @@ export default function TrackerScreen() {
     let resp = await supabase
       .from("profiles")
       .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, meal_slot_config, weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, last_weekly_checkin_shown_at, net_carbs_lens_enabled, tz_iana",
+        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, target_caffeine_mg, target_alcohol_g_weekly, extra_water_by_day, extra_caffeine_by_day, extra_alcohol_g_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, meal_slot_config, weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, milestone_30_shown_at, last_weekly_checkin_shown_at, net_carbs_lens_enabled, tz_iana, calorie_schedule, high_days",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1864,7 +1873,7 @@ export default function TrackerScreen() {
       resp = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace",
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, target_water_ml, extra_water_by_day, steps_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, daily_steps_goal, prefer_activity_adjusted_calories, fasting_sessions, fasting_window, tracked_macros, week_start_day, measurement_system, weight_kg, height_cm, sex, activity_level, goal, goal_weight_kg, dob, age, notification_prefs, plan_pace, calorie_schedule, high_days",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -1896,6 +1905,8 @@ export default function TrackerScreen() {
       fat: targets.fat,
       fiber: targets.fiber,
     });
+    // ENG-960 — opt-in day-target schedule (null for everyone not opted in).
+    setDayTargetSchedule(parseDayTargetSchedule(d.calorie_schedule, d.high_days));
     const tw = data.target_water_ml != null ? Number(data.target_water_ml) : NUTRITION_DEFAULTS.water;
     setWaterGoalMl(Number.isFinite(tw) && tw > 0 ? Math.round(tw) : NUTRITION_DEFAULTS.water);
     // Batch 2.5 — caffeine + alcohol targets. Falls back to defaults if the
@@ -2321,6 +2332,20 @@ export default function TrackerScreen() {
   }, [mealsToday, aiTooltipShown]);
 
   const targets = profileTargets;
+  // ENG-960 — apply the opt-in day-target schedule for the DISPLAYED weekday
+  // (selectedDate), so navigating days shows that day's target. Weekly-neutral;
+  // a pure identity when the user hasn't opted in (dayTargetSchedule === null).
+  const scheduledDayTargets = resolveEffectiveDayTargets(
+    {
+      calories: targets.calories,
+      proteinG: targets.protein,
+      carbsG: targets.carbs,
+      fatG: targets.fat,
+      fiberG: targets.fiber ?? null,
+    },
+    dayTargetSchedule,
+    selectedDate.getDay() as WeekdayIndex,
+  );
   const isToday = dayKey === dateKeyFromDate(new Date());
 
   // Activation hook (audit 2026-04-30 — leak fix #3): detect the
@@ -2462,7 +2487,7 @@ export default function TrackerScreen() {
     () =>
       Math.max(
         0,
-        targets.calories +
+        scheduledDayTargets.calories +
           dayActivityBudgetAddon(
             preferActivityAdjustedCalories,
             true,
@@ -2475,7 +2500,7 @@ export default function TrackerScreen() {
           ),
       ),
     [
-      targets.calories,
+      scheduledDayTargets.calories,
       preferActivityAdjustedCalories,
       activityBonusCaloriesOnly,
       activityBurnByDay,
@@ -2496,10 +2521,24 @@ export default function TrackerScreen() {
   const effectiveMacroTargets = useMemo(
     () =>
       scaleMacroTargetsForCalorieBudget(
-        { protein: targets.protein, carbs: targets.carbs, fat: targets.fat },
-        { baseCalories: targets.calories, effectiveCalories: effectiveCalorieGoal },
+        {
+          // ENG-960 — schedule-adjusted day macros so the macro bars match the ring.
+          protein: scheduledDayTargets.proteinG ?? targets.protein,
+          carbs: scheduledDayTargets.carbsG ?? targets.carbs,
+          fat: scheduledDayTargets.fatG ?? targets.fat,
+        },
+        { baseCalories: scheduledDayTargets.calories, effectiveCalories: effectiveCalorieGoal },
       ),
-    [targets.calories, targets.protein, targets.carbs, targets.fat, effectiveCalorieGoal],
+    [
+      scheduledDayTargets.calories,
+      scheduledDayTargets.proteinG,
+      scheduledDayTargets.carbsG,
+      scheduledDayTargets.fatG,
+      targets.protein,
+      targets.carbs,
+      targets.fat,
+      effectiveCalorieGoal,
+    ],
   );
 
   /** Macro tiles/bars expect a full targets object; only P/C/F scale with bonus. */
