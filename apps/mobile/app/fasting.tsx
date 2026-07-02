@@ -80,8 +80,10 @@ function formatDuration(ms: number): { hours: number; minutes: number; seconds: 
  *
  * All wired functionality is preserved exactly: load/persist, the live
  * timer + animated ring, start/end (long-press End Fast), the in-app
- * window picker, quick-start chips, history with long-press delete +
- * "Extended" badge. Only the skin + the OMAD preset are new.
+ * window picker, history with long-press delete + "Extended" badge.
+ * Only the skin + the OMAD preset are new. (The landing quick-start
+ * chips were removed in ENG-1302 — they duplicated the window picker;
+ * the v3 prototype has one Start CTA + one window chooser.)
  *
  * Data contract unchanged — `profiles.fasting_window` +
  * `fasting_sessions`, read + written by web too so a fast started on
@@ -216,22 +218,6 @@ export default function FastingScreen() {
     persist([...sessions, s]);
     setNow(Date.now());
   }, [sessions, persist]);
-
-  /**
-   * Quick-start the user's fast with a specific preset in one tap. Sets
-   * the fasting window (persists) and immediately starts a fast. Used by
-   * the landing-card chips (16:8 / 18:6 / OMAD) to remove the two-step
-   * "pick window then tap Start" hop for the common journey.
-   */
-  const quickStartFast = useCallback(
-    (window: string) => {
-      changeWindow(window);
-      const s: FastingSession = { start: new Date().toISOString(), end: null };
-      persist([...sessions, s]);
-      setNow(Date.now());
-    },
-    [changeWindow, sessions, persist],
-  );
 
   const endFast = useCallback(() => {
     if (!activeFast) return;
@@ -418,28 +404,6 @@ export default function FastingScreen() {
           marginBottom: Spacing.lg,
           fontVariant: ["tabular-nums"],
         },
-        landingChipRow: {
-          flexDirection: "row",
-          flexWrap: "wrap",
-          gap: 8,
-          marginTop: Spacing.md,
-          justifyContent: "center",
-        },
-        landingChip: {
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          borderRadius: Radius.full,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.card,
-        },
-        landingChipText: {
-          fontFamily: FontFamily.sansSemibold,
-          fontSize: 13,
-          fontWeight: "600",
-          color: colors.textSecondary,
-          fontVariant: ["tabular-nums"],
-        },
         historyTitle: { ...Type.label, color: colors.textTertiary, marginBottom: Spacing.sm },
         histRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
         histDate: { fontFamily: FontFamily.sansRegular, fontSize: 13, color: colors.textSecondary },
@@ -546,24 +510,6 @@ export default function FastingScreen() {
             onPress={startFast}
             style={styles.landingStartCta}
           />
-
-          {/* One-tap quick-start chips — set window + start (16:8 / 18:6 /
-              OMAD). Web-parity with the FastingTimer landing chips. */}
-          <View style={styles.landingChipRow} testID="fasting-landing-chips">
-            {(["16:8", "18:6", "23:1"] as const).map((w) => (
-              <Pressable
-                key={w}
-                testID={`fasting-landing-chip-${fastingWindowLabel(w)}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Start a ${fastingWindowLabel(w)} fast`}
-                onPress={() => quickStartFast(w)}
-                style={styles.landingChip}
-                hitSlop={6}
-              >
-                <Text style={styles.landingChipText}>{fastingWindowLabel(w)}</Text>
-              </Pressable>
-            ))}
-          </View>
         </View>
       ) : (
         <View style={[styles.card, { alignItems: "center" }]}>

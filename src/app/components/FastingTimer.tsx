@@ -40,7 +40,9 @@ type FastingSession = { start: string; end: string | null };
  *   5. Clay "End fast" pill.
  *   6. Italic serif stage-narrative quote below the button.
  *   7. Not-fasting landing — moon glyph + "Fast when you're ready" +
- *      one-tap quick-start chips.
+ *      one Start CTA. (The landing quick-start chips were removed in
+ *      ENG-1302 — they duplicated the window picker; the v3 prototype
+ *      has one Start CTA + one window chooser.)
  *   8. History of recent completed fasts (kept; reskinned to the Sloe
  *      slab geometry).
  *
@@ -193,22 +195,6 @@ export function FastingTimer() {
       void persist(sessions, w);
     },
     [fastingWindow, sessions, persist],
-  );
-
-  /**
-   * Quick-start a fast with a specific preset in one tap. Sets the
-   * fasting window AND starts a fast immediately — mirrors the mobile
-   * `quickStartFast` helper. Used by the landing card chips so the most
-   * common journey is a single click.
-   */
-  const quickStartFast = useCallback(
-    (w: string) => {
-      const next = [...sessions, { start: new Date().toISOString(), end: null }];
-      setFastingWindow(w);
-      void persist(next, w);
-      setNow(Date.now());
-    },
-    [sessions, persist],
   );
 
   const recentCompleted = useMemo(
@@ -515,25 +501,6 @@ export function FastingTimer() {
           >
             Start {fastingWindowLabel(fastingWindow)} fast
           </SupprButton>
-
-          {/* Quick-start chips — one tap = set window + start fast. */}
-          <div
-            className="flex gap-2 mt-4 justify-center flex-wrap"
-            data-testid="fasting-landing-chips"
-          >
-            {(["16:8", "18:6", "23:1"] as const).map((w) => (
-              <button
-                key={w}
-                type="button"
-                onClick={() => quickStartFast(w)}
-                aria-label={`Start a ${fastingWindowLabel(w)} fast`}
-                data-testid={`fasting-landing-chip-${fastingWindowLabel(w)}`}
-                className="font-[family-name:var(--font-label)] px-4 py-2 rounded-full text-[13px] font-semibold border border-border bg-card text-muted-foreground hover:bg-muted/40 transition-colors tabular-nums"
-              >
-                {fastingWindowLabel(w)}
-              </button>
-            ))}
-          </div>
         </section>
       )}
 

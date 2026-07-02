@@ -1113,6 +1113,7 @@ export type Database = {
           avatar_url: string | null
           basal_burn_by_day: Json | null
           body_fat_pct: number | null
+          body_fat_pct_by_day: Json
           calorie_schedule: string | null
           created_at: string
           daily_steps_goal: number
@@ -1136,6 +1137,7 @@ export type Database = {
           last_weekly_checkin_decision: string | null
           last_weekly_checkin_shown_at: string | null
           last_weekly_recap_push_sent_at: string | null
+          last_weigh_in_reminder_sent_at: string | null
           meal_plan_slots: Json
           meal_slot_config: Json | null
           measured_tdee: number | null
@@ -1191,6 +1193,7 @@ export type Database = {
           avatar_url?: string | null
           basal_burn_by_day?: Json | null
           body_fat_pct?: number | null
+          body_fat_pct_by_day?: Json
           calorie_schedule?: string | null
           created_at?: string
           daily_steps_goal?: number
@@ -1214,6 +1217,7 @@ export type Database = {
           last_weekly_checkin_decision?: string | null
           last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
+          last_weigh_in_reminder_sent_at?: string | null
           meal_plan_slots?: Json
           meal_slot_config?: Json | null
           measured_tdee?: number | null
@@ -1269,6 +1273,7 @@ export type Database = {
           avatar_url?: string | null
           basal_burn_by_day?: Json | null
           body_fat_pct?: number | null
+          body_fat_pct_by_day?: Json
           calorie_schedule?: string | null
           created_at?: string
           daily_steps_goal?: number
@@ -1292,6 +1297,7 @@ export type Database = {
           last_weekly_checkin_decision?: string | null
           last_weekly_checkin_shown_at?: string | null
           last_weekly_recap_push_sent_at?: string | null
+          last_weigh_in_reminder_sent_at?: string | null
           meal_plan_slots?: Json
           meal_slot_config?: Json | null
           measured_tdee?: number | null

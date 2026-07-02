@@ -24,10 +24,11 @@ import { StepBody, StepHeader, useStepOverline } from "../scaffold";
  * permissions.tsx still renders both cards.
  *
  * Notifications: Allow now actually prompts the browser (Grace
- * 2026-04-20). A granted permission lets us surface in-tab nudges
- * immediately via `new Notification(...)`; server-initiated Web Push
- * (VAPID + service worker + cron fan-out) is a separate follow-up
- * that will reuse this grant signal.
+ * 2026-04-20). A granted permission surfaces in-tab nudges immediately
+ * via `new Notification(...)`, and server-initiated Web Push is shipped
+ * (ENG-187 VAPID keys, ENG-200 service-worker + weekly-recap cron
+ * fan-out, ENG-161 `web_push_subscriptions`) — the grant flows into
+ * `subscribeToWebPush` in `src/lib/push/webNotifications.ts`.
  */
 
 export function PermissionsStep() {

@@ -19,6 +19,8 @@ Canonical implementation paths live under `app/api/**/route.ts`. Detail for heav
 | `/api/nutrition/photo-log` | POST | Bearer + **Pro** | Multipart photo → items; **403** if not Pro |
 | `/api/nutrition/adaptive-tdee` | GET | Bearer | Static vs adaptive TDEE snapshot for user |
 | `/api/nutrition/coach` | POST | Bearer | "What to eat next" — AI-ranked from the user's own library, deterministic fallback |
+| `/api/nutrition/coach-day-narrative` | POST | Bearer + origin | Coach screen "Today's read" — AI phrasing Pro-only (template for Free, never 403), template fallback |
+| `/api/nutrition/coach-ask` | POST | Bearer + origin | Coach screen "Ask the coach" chip answers — AI Pro-only (template for Free, never 403), template fallback |
 | `/api/nutrition/digest-narrative` | POST | Bearer | Grounded weekly-digest narrative (coach voice), deterministic template fallback |
 | `/api/nutrition/analyze-recipe` | POST | Bearer | Edamam full-recipe analysis |
 | `/api/usda/search` | GET | Bearer | USDA FDC search |
@@ -521,6 +523,67 @@ rate_limited (120/hr); `503` server_misconfigured.
 Implementation: [app/api/nutrition/coach/route.ts](../../app/api/nutrition/coach/route.ts).
 Client hooks: [src/lib/today/useCoach.ts](../../src/lib/today/useCoach.ts) (web) ·
 [apps/mobile/lib/useCoach.ts](../../apps/mobile/lib/useCoach.ts) (mobile).
+
+### `POST /api/nutrition/coach-day-narrative`
+
+"Today's read" paragraph for the full Coach screen (`/coach` on web,
+`suppr:///coach` on mobile — behind `coach_screen_v1`). The client passes
+its **already-computed** day totals; the model may only phrase over those
+facts (`buildCoachDayFacts` → `parseCoachDayNarrative` schema validation —
+same grounding contract as the digest narrative).
+
+**Auth:** Bearer + origin check. **Tiering (ENG-1292):** the AI phrasing is
+Pro-only, server-enforced. Free/Base users get the grounded template
+narrative in the **same 200 response shape** with `source: "template"` —
+never a 403 (the Coach screen itself is free; only the AI voice is Pro).
+
+**Request body:** `{ dateLabel, caloriesLogged, calorieTarget,
+proteinLogged, proteinTarget, mealsLoggedCount, nextMealSlot }`
+(`dateLabel` required).
+
+**Returns:** `{ ok: true, narrative: string, source: "ai" | "template" }`.
+
+**Fallback (never empties):** kill flag `kill_coach_day_narrative_ai`,
+non-Pro tier, provider error, budget exceeded, or off-contract output →
+the deterministic template narrative, still `200`.
+
+**Analytics (ENG-1288):** `coach_day_narrative_api_completed` on every 200
+with `{ latency_ms, source: "ai" | "template" | "error", tier }` —
+`"error"` = AI attempted but failed, template shipped.
+
+**Errors:** `401`; `400` invalid_body / missing_date_label; `429`
+rate_limited (90/hr).
+
+Implementation: [app/api/nutrition/coach-day-narrative/route.ts](../../app/api/nutrition/coach-day-narrative/route.ts).
+
+### `POST /api/nutrition/coach-ask`
+
+Bounded "Ask the coach" chip answers on the Coach screen — a **closed set
+of chip prompts** (`COACH_ASK_CHIPS`), not free-text chat. Grounded in the
+same day facts as the narrative plus the current top coach candidate.
+
+**Auth:** Bearer + origin check. **Tiering (ENG-1292):** AI answers are
+Pro-only, server-enforced; Free/Base get the grounded template answer,
+same 200 shape, `source: "template"` — never a 403.
+
+**Request body:** `{ chipId, dateLabel, caloriesLogged, calorieTarget,
+proteinLogged, proteinTarget, mealsLoggedCount, nextMealSlot,
+topCandidateTitle, topCandidateCalories, topCandidateProtein }`
+(`chipId` must be a known chip id; `dateLabel` required).
+
+**Returns:** `{ ok: true, answer: string, source: "ai" | "template" }`.
+
+**Fallback (never empties):** kill flag `kill_coach_ask_ai`, non-Pro tier,
+provider error, budget exceeded, or off-contract output → the
+deterministic template answer, still `200`.
+
+**Analytics (ENG-1288):** `coach_ask_api_completed` on every 200 with
+`{ latency_ms, source: "ai" | "template" | "error", tier }`.
+
+**Errors:** `401`; `400` invalid_body / invalid_chip / missing_date_label;
+`429` rate_limited (60/hr).
+
+Implementation: [app/api/nutrition/coach-ask/route.ts](../../app/api/nutrition/coach-ask/route.ts).
 
 ---
 

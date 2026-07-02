@@ -72,9 +72,12 @@ describe("Fasting (mobile) — CTA migration to SupprButton", () => {
     expect(FASTING).not.toMatch(/endBtn:\s*\{[\s\S]{0,200}backgroundColor:\s*accent/);
   });
 
-  it("SANCTIONED non-migration: preset window pills + quick-start chips stay raw Pressables", () => {
+  it("SANCTIONED non-migration: preset window pills stay raw Pressables; duplicate landing chips stay removed", () => {
+    // The landing quick-start chips were removed in ENG-1302 (they
+    // duplicated the picker; v3 prototype = one Start CTA + one chooser).
     expect(FASTING).toMatch(/testID="fasting-window-picker"/);
-    expect(FASTING).toMatch(/onPress=\{\(\) => quickStartFast\(w\)\}/);
+    expect(FASTING).not.toMatch(/fasting-landing-chips/);
+    expect(FASTING).not.toMatch(/quickStartFast/);
   });
 });
 
