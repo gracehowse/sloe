@@ -141,6 +141,16 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       expect(readCssVar(LIGHT, "ring-over-a")).toBe(readMobileColor("light", "ringOverA"));
       expect(readCssVar(LIGHT, "ring-over-b")).toBe(readMobileColor("light", "ringOverB"));
     });
+
+    it("empty ring bloom — web ↔ mobile parity + deepened stops (ENG-1315)", () => {
+      expect(readCssVar(LIGHT, "ring-empty-a")).toBe(readMobileColor("light", "ringEmptyA"));
+      expect(readCssVar(LIGHT, "ring-empty-b")).toBe(readMobileColor("light", "ringEmptyB"));
+      // Decision 2026-07-01 #5: the cold-open ticks must clear the 3:1
+      // UI-component floor on white (the old #C4BCD4/#E6E0F1 were ≈1.8:1 —
+      // the hero read as a skeleton). Pin the deepened pair.
+      expect(readCssVar(LIGHT, "ring-empty-a")).toBe("#786a94");
+      expect(readCssVar(LIGHT, "ring-empty-b")).toBe("#9587b3");
+    });
   });
 
   describe("dark mode", () => {
@@ -163,6 +173,11 @@ describe("cross-platform theme tokens (ENG-623)", () => {
     it("over-budget ring arc — web ↔ mobile parity (ENG-1296)", () => {
       expect(readCssVar(DARK, "ring-over-a")).toBe(readMobileColor("dark", "ringOverA"));
       expect(readCssVar(DARK, "ring-over-b")).toBe(readMobileColor("dark", "ringOverB"));
+    });
+
+    it("empty ring bloom — web ↔ mobile parity (ENG-1315)", () => {
+      expect(readCssVar(DARK, "ring-empty-a")).toBe(readMobileColor("dark", "ringEmptyA"));
+      expect(readCssVar(DARK, "ring-empty-b")).toBe(readMobileColor("dark", "ringEmptyB"));
     });
 
     it("macro hues (ENG-1223 — web .dark ↔ mobile MacroColorsDark parity)", () => {

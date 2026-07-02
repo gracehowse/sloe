@@ -131,6 +131,24 @@ describe("Sloe text tokens clear WCAG AA on their surfaces", () => {
     expect(ratio(OVER_BUDGET_FG_DARK, DARK_CARD)).toBeGreaterThanOrEqual(AA_NORMAL); // 7.3
   });
 
+  it("empty hero-ring gradient stops clear the 3:1 UI-component floor (ENG-1315)", () => {
+    // Decision 2026-07-01 #5 (measured): the cold-open ring ticks were
+    // #C4BCD4/#E6E0F1 ≈ 1.8:1 on white — below the WCAG 1.4.11 3:1 floor for
+    // UI components, so the hero read as a skeleton. Deepened calm plum-lilac:
+    // A #786A94 = 4.90:1 white, B #9587B3 = 3.28:1 white. Values must mirror
+    // theme.css --ring-empty-a/b + mobile ringEmptyA/B (pinned in
+    // crossPlatformThemeTokens.test.ts).
+    const RING_EMPTY_A = "#786A94";
+    const RING_EMPTY_B = "#9587B3";
+    expect(ratio(RING_EMPTY_A, WHITE)).toBeGreaterThanOrEqual(AA_LARGE); // 4.90
+    expect(ratio(RING_EMPTY_B, WHITE)).toBeGreaterThanOrEqual(AA_LARGE); // 3.28
+    // Dark: A lifted #6A5A7E → #7D6C93 so the bloom clears 3:1 on the dark
+    // card too (3.56:1; was 2.71:1). B #B9ADD0 already passed (7.99:1).
+    const DARK_RING_CARD = "#211A2A"; // .dark --card
+    expect(ratio("#7D6C93", DARK_RING_CARD)).toBeGreaterThanOrEqual(AA_LARGE);
+    expect(ratio("#B9ADD0", DARK_RING_CARD)).toBeGreaterThanOrEqual(AA_LARGE);
+  });
+
   it("net-energy chip backgrounds carry white label at AA-normal", () => {
     for (const state of ["deficit", "surplus", "maintenance"] as const) {
       expect(ratio(WHITE, NET_ENERGY_CHIP_BG[state])).toBeGreaterThanOrEqual(

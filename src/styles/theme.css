@@ -422,7 +422,11 @@
    *  under = sage gradient, over = AMBER family (red retired). */
   --ring-under-a: #4D7A50;  --ring-under-b: #93C08C;   /* sage → fresh leaf */
   --ring-over-a:  #925812;  --ring-over-b:  #C9892C;   /* ONE amber family with the numeral: warning-solid → warning (ENG-1296) */
-  --ring-empty-a: #C4BCD4;  --ring-empty-b: #E6E0F1;   /* frost bloom */
+  /* Empty bloom deepened (ENG-1315, decision 2026-07-01 #5): the old
+     #C4BCD4/#E6E0F1 ticks measured ≈1.8:1 on white — under the 3:1
+     UI-component floor (hero read as a skeleton). Now A = 4.90:1, B = 3.28:1
+     on white — same calm plum-lilac concept, visible. ↔ mobile ringEmptyA/B. */
+  --ring-empty-a: #786A94;  --ring-empty-b: #9587B3;   /* deepened frost bloom */
   --ring-channel: rgba(36, 23, 51, 0.06);              /* engraved inner edge */
   --ring-cap-core: #FFFFFF;                             /* luminous gem highlight */
   --ring-tick: rgba(59, 42, 77, 0.20);                 /* watch-dial graduations */
@@ -692,7 +696,7 @@
    *  the prototype dark `:root`. */
   --ring-under-a: #6FA06A;  --ring-under-b: #B6E0AD;
   --ring-over-a:  #D6A24A;  --ring-over-b:  #E0B25E;  /* lifted amber family — red retired (ENG-1296) */
-  --ring-empty-a: #6A5A7E;  --ring-empty-b: #B9ADD0;
+  --ring-empty-a: #7D6C93;  --ring-empty-b: #B9ADD0;  /* A lifted for the 3:1 floor on the dark card (ENG-1315) */
   --ring-channel: rgba(0, 0, 0, 0.28);
   --ring-cap-core: #FBF7FF;
   --ring-tick: rgba(201, 194, 214, 0.24);

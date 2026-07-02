@@ -496,7 +496,12 @@ export const Colors = {
      *  the coral/red #C0533F→#E08A5F pair is retired). Stops are the amber
      *  warning tokens themselves: A = `Accent.warningSolid`, B = `Accent.warning`. */
     ringOverA: '#925812', ringOverB: '#C9892C',
-    ringEmptyA: '#C4BCD4', ringEmptyB: '#E6E0F1',
+    /** Empty (cold-open) arc — deepened calm plum-lilac (ENG-1315, decision
+     *  2026-07-01 #5): the old frost bloom #C4BCD4/#E6E0F1 measured ≈1.8:1 on
+     *  white — under the 3:1 UI-component floor, so the hero read as a
+     *  skeleton. Both stops now clear it: A #786A94 = 4.90:1 white, B #9587B3
+     *  = 3.28:1 white — still the calm "ready/empty" bloom, now visible. */
+    ringEmptyA: '#786A94', ringEmptyB: '#9587B3',
   },
   dark: {
     // SLOE Phase 0 dark — warm aubergine graphite, not cool-slate.
@@ -558,7 +563,9 @@ export const Colors = {
     /** Over arc (dark) — lifted amber family (ENG-1296): A = dark warning-solid
      *  honey, B = lifted light honey. Red pair #D2614A→#F0A47A retired. */
     ringOverA: '#D6A24A', ringOverB: '#E0B25E',
-    ringEmptyA: '#6A5A7E', ringEmptyB: '#B9ADD0',
+    /** Empty arc (dark) — A lifted #6A5A7E → #7D6C93 (ENG-1315: 3.56:1 on the
+     *  dark card vs 2.71:1 before — same 3:1 floor as light). B unchanged. */
+    ringEmptyA: '#7D6C93', ringEmptyB: '#B9ADD0',
   },
 };
 
