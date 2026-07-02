@@ -342,3 +342,29 @@ describe("DesktopSidebar — collapse affordance", () => {
     expect(screen.getByRole("button", { name: /^Progress$/ })).toBeDefined();
   });
 });
+
+describe("DesktopSidebar — Coach entry (ENG-1293, sweep decision #3)", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+  });
+
+  it("renders the always-present Coach entry under the active Today group", () => {
+    render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
+    const coach = screen.getByTestId("desktop-sidebar-coach-entry");
+    // A real route link (not an onNavigate view) — /coach is a standalone
+    // page, so the entry must navigate as an anchor.
+    expect(coach.getAttribute("href")).toBe("/coach");
+    expect(coach.textContent).toContain("Coach");
+  });
+
+  it("does not render the Coach entry when another primary group is active", () => {
+    render(<DesktopSidebar currentView="library" onNavigate={() => {}} />);
+    expect(screen.queryByTestId("desktop-sidebar-coach-entry")).toBeNull();
+  });
+
+  it("hides the Coach entry while the sidebar is collapsed (icon rail)", () => {
+    render(<DesktopSidebar currentView="today" onNavigate={() => {}} />);
+    fireEvent.click(screen.getByTestId("desktop-sidebar-collapse-toggle"));
+    expect(screen.queryByTestId("desktop-sidebar-coach-entry")).toBeNull();
+  });
+});

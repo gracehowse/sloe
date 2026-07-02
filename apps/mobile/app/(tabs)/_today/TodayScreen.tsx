@@ -5362,6 +5362,12 @@ export default function TrackerScreen() {
                   dateKeyFromDate(new Date()),
                 )}
                 onPressStatusChip={() => setWhySheetOpen(true)}
+                // ENG-1293 — always-present Coach entry (sweep decision #3):
+                // renders in every hero state; same `coach_screen_v1` gate as
+                // the screen. The contextual deficit-line deep-link stays.
+                onPressCoach={
+                  coachScreenEnabled ? () => router.push("/coach" as never) : undefined
+                }
                 coachLine={heroCoachLine ?? undefined}
                 logConfirmBump={logConfirmBump}
               />
@@ -5376,19 +5382,7 @@ export default function TrackerScreen() {
                 one prompt above the meals". */}
             <ReAnimated.View style={contextEntrance.style}>
             {(() => {
-              if (isFeatureEnabled("today_coach_in_hero_v1")) {
-                if (activeFastStart) {
-                  return (
-                    <TodayFastingPill
-                      startedAt={activeFastStart}
-                      nowTick={fastingTick}
-                      onPress={() => router.push("/fasting")}
-                    />
-                  );
-                }
-                return null;
-              }
-              // 1. Active fast wins outright.
+              // 1. Active fast wins outright (both hero variants).
               if (activeFastStart) {
                 return (
                   <TodayFastingPill
@@ -5398,6 +5392,9 @@ export default function TrackerScreen() {
                   />
                 );
               }
+              // Coach-in-hero: the deficit line renders INSIDE the hero, so
+              // no standalone context block below it.
+              if (isFeatureEnabled("today_coach_in_hero_v1")) return null;
               // 1b. Idle "Start fast" removed (Today premium sprint 2026-05-19).
               // 2. Eat-again card removed from Today (2026-05-22 v4) and
               //    fully retired (ENG-984, 2026-06-17).

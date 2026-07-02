@@ -35,6 +35,13 @@ export interface TodayHeroRingProps {
    *  the calorie-target explainer. Distinct from the retired "Why this
    *  number?" pill; the chip is the calm, Figma-native affordance. */
   onPressStatusChip?: () => void;
+  /** ENG-1293 — always-present labelled Coach entry (sweep decision #3,
+   *  2026-07-01). Renders a "Coach" chip in the hero chip row in EVERY state
+   *  (over budget, all logged, past days, fasting) — the old deficit-line
+   *  deep-link vanished exactly when the user needed it. Host gates on
+   *  `coach_screen_v1`. Mobile-web only surface — desktop gets the sidebar
+   *  "Coach" item instead (this component renders under `md:hidden`). */
+  onPressCoach?: () => void;
   pulse?: boolean;
   /** ENG-1016 — per-commit ring pulse (the web analog of mobile's Medium
    *  commit haptic). True for ~160ms after an ordinary log lands. */
@@ -109,6 +116,28 @@ function HeroStatusChip({
 }
 
 /**
+ * HeroCoachChip — the always-present labelled Coach entry in the hero chip
+ * row (ENG-1293). Same element, same treatment as the "Coach" pill on the
+ * Coach screen header (`coach-screen.tsx`): frost-mist fill, plum Sparkles +
+ * label. Mobile mirror: `TodayCoachChip` in
+ * `apps/mobile/components/today/TodayHeroChips.tsx`.
+ */
+function HeroCoachChip({ onPress }: { onPress: () => void }) {
+  return (
+    <button
+      type="button"
+      data-testid="today-coach-chip"
+      onClick={onPress}
+      aria-label="Open your coach"
+      className="inline-flex items-center gap-1 rounded-full bg-accent-frost-mist px-2 py-0.5 text-xs font-medium text-primary-solid transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Sparkles className="h-3 w-3" aria-hidden />
+      Coach
+    </button>
+  );
+}
+
+/**
  * RingStatusLine — the de-carded v3 hero's status indicator (ENG-1247): a
  * centered dot + label BELOW the ring (prototype `.ring-status`), replacing the
  * carded hero's chip-above-the-ring. Sage when under, red when over (Grace's
@@ -178,6 +207,7 @@ export function TodayHeroRing({
   // accepted on the prop API for call-site stability, ignored here.
   onPressWhy: _onPressWhy,
   onPressStatusChip,
+  onPressCoach,
   pulse = false,
   commitPulse = false,
   logConfirmVisible = false,
@@ -207,10 +237,17 @@ export function TodayHeroRing({
     <>
       {/* Carded hero: status CHIP above the ring. De-carded v3 hero: the chip is
           replaced by a centered RingStatusLine BELOW the ring (prototype). The
-          Remaining/Consumed toggle stays retired (web ring parity 2026-06-10). */}
-      {!decard ? (
+          Remaining/Consumed toggle stays retired (web ring parity 2026-06-10).
+          The Coach chip (ENG-1293) takes the row's right slot in BOTH layouts
+          so the entry survives every hero state. */}
+      {!decard || onPressCoach ? (
         <div className="flex w-full items-center justify-between gap-2">
-          <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
+          {!decard ? (
+            <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
+          ) : (
+            <span aria-hidden />
+          )}
+          {onPressCoach ? <HeroCoachChip onPress={onPressCoach} /> : null}
         </div>
       ) : null}
       {/* ENG-722 — `relative` so the log-confirm checkmark overlays the ring
