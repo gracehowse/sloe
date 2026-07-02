@@ -1495,11 +1495,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             Sloe Pro
           </Text>
         </View>
-        {/* Manage — GHOST treatment (Sloe button canon, 2026-06-12). The
-            whole banner row is the Pressable, so this stays a decorative pill
-            (nesting a SupprButton inside the Pressable would double the press
-            target) — we apply the ghost grammar by hand: transparent, no
-            border, plum label. Mirrors the web Pro-banner Manage pill. */}
+        {/* Manage / Upgrade — decorative ghost pill (canon 2026-06-12; the
+            whole banner row is the Pressable). ENG-1297: visible label is
+            tier-conditional to match the a11y label + onPress routing —
+            free → "Upgrade" (paywall), pro → "Manage" (customer center).
+            Mirrors the web Pro-banner pill. */}
         <View
           style={{
             paddingHorizontal: 14,
@@ -1508,7 +1508,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }}
         >
           <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
-            Manage
+            {profileData.userTier === "pro" ? "Manage" : "Upgrade"}
           </Text>
         </View>
       </Pressable>

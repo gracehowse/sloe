@@ -16,6 +16,31 @@ export function getConsentChoice(): ConsentChoice {
   return null;
 }
 
+/**
+ * ENG-1318 — single write path for the consent choice, shared by the
+ * banner and the Settings "Usage analytics & replay" toggle (mirror of
+ * mobile's `setAnalyticsConsent`, which the prompt + row both use).
+ * Persists the choice, notifies `AnalyticsProvider` via the
+ * `suppr-consent` event (live opt-in/opt-out, no reload), and
+ * belt-and-braces opts PostHog out immediately on decline in case the
+ * provider hasn't mounted its listener yet.
+ */
+export function setConsentChoice(choice: "accepted" | "declined"): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(CONSENT_KEY, choice);
+  window.dispatchEvent(new CustomEvent("suppr-consent", { detail: choice }));
+  if (choice === "declined") {
+    try {
+      const posthog = (window as unknown as Record<string, unknown>).posthog as
+        | { opt_out_capturing?: () => void }
+        | undefined;
+      posthog?.opt_out_capturing?.();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /** ENG-633 — FAB + bottom nav sit above the consent strip on authed app routes. */
 function isProductAppRoute(pathname: string): boolean {
   const seg = pathname.replace(/^\/+|\/+$/g, "").split("/")[0] ?? "";
@@ -48,24 +73,13 @@ export function CookieConsent() {
   }, []);
 
   function accept() {
-    localStorage.setItem(CONSENT_KEY, "accepted");
-    window.dispatchEvent(new CustomEvent("suppr-consent", { detail: "accepted" }));
+    setConsentChoice("accepted");
     setVisible(false);
   }
 
   function decline() {
-    localStorage.setItem(CONSENT_KEY, "declined");
-    window.dispatchEvent(new CustomEvent("suppr-consent", { detail: "declined" }));
+    setConsentChoice("declined");
     setVisible(false);
-    // Disable PostHog if already loaded
-    try {
-      const posthog = (window as unknown as Record<string, unknown>).posthog as
-        | { opt_out_capturing?: () => void }
-        | undefined;
-      posthog?.opt_out_capturing?.();
-    } catch {
-      /* ignore */
-    }
   }
 
   if (!visible) return null;
