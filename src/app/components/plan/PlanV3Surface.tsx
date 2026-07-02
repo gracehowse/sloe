@@ -70,6 +70,8 @@ export interface PlanV3SurfaceProps {
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   /** Add a meal to an empty slot (day index + slot index). */
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  /** ENG-1238 — per-meal action menu trigger. */
+  onOpenMealOptions?: (dayIndex: number, slotIndex: number) => void;
   /** Shopping-list item count (for the foot tool row). */
   shoppingItemCount: number;
   /** Household serving count (for the foot tool row). */
@@ -105,6 +107,7 @@ export function PlanV3Surface({
   onOpenHousehold,
   onOpenMeal,
   onAddToSlot,
+  onOpenMealOptions,
   shoppingItemCount,
   servingCount,
   onOpenShopping,
@@ -211,6 +214,7 @@ export function PlanV3Surface({
         filter={mealFilter}
         onOpenMeal={onOpenMeal}
         onAddToSlot={onAddToSlot}
+        onOpenMealOptions={onOpenMealOptions}
         nutritionByDay={nutritionByDay}
       />
       <PlanToolsV3

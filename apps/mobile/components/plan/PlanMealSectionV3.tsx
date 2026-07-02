@@ -5,13 +5,13 @@ import {
   isPlanMealCooked,
   journalEntriesForPlanDate,
 } from "@suppr/shared/planning/planCookedMeals";
+import { ALL_MEAL_SLOTS } from "@/lib/mealPlanAlgo";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { DayPlan } from "@/lib/types";
 import { PlanMealCardV3 } from "./PlanMealCardV3";
 import { PlanEmptySlotV3 } from "./PlanEmptySlotV3";
 import type { PlanMealFilter } from "./PlanMealFilterChipsV3";
-import { ALL_MEAL_SLOTS } from "@/lib/mealPlanAlgo";
 
 const WEEKDAY_LONG = [
   "Sunday",
@@ -46,6 +46,8 @@ export interface PlanMealSectionV3Props {
   filter: PlanMealFilter;
   onOpenMeal: (dayIndex: number, slotIndex: number) => void;
   onAddToSlot: (dayIndex: number, slotIndex: number) => void;
+  /** ENG-1238 — per-meal action sheet (⋯ on populated cards). */
+  onOpenMealOptions?: (dayIndex: number, slotIndex: number) => void;
   nutritionByDay?: PlanJournalByDay;
 }
 
@@ -56,6 +58,7 @@ export function PlanMealSectionV3({
   filter,
   onOpenMeal,
   onAddToSlot,
+  onOpenMealOptions,
   nutritionByDay,
 }: PlanMealSectionV3Props) {
   const colors = useThemeColors();
@@ -81,6 +84,11 @@ export function PlanMealSectionV3({
           isLocked={meal.isLocked}
           isCooked={cooked}
           onPress={() => onOpenMeal(dayIndex, slotIndex)}
+          onOpenOptions={
+            onOpenMealOptions
+              ? () => onOpenMealOptions(dayIndex, slotIndex)
+              : undefined
+          }
         />
       );
     }

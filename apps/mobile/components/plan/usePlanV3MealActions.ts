@@ -18,23 +18,26 @@ export interface UsePlanV3MealActionsArgs {
   plan: DayPlan[] | null;
   savedRecipes: PlanV3PoolRecipe[];
   discoverRecipes: PlanV3PoolRecipe[];
-  /** The planner's swap picker — also serves as "add a recipe to this slot". */
+  /** Open the swap picker for (dayIndex, slotIndex). */
   swapMeal: (dayIndex: number, mealIndex: number, slotName: string) => void;
+  /** ENG-1238 — open the legacy row action sheet for a populated meal. */
+  openMealMenu?: (dayIndex: number, slotIndex: number) => void;
 }
 
 /**
- * usePlanV3MealActions — the v3 Plan surface's meal handlers, lifted out of the
- * pinned planner screen (ENG-1225 Block 3). `onOpenMeal` routes a real meal to
- * its recipe detail (falling back to the swap picker when the recipe can't be
- * resolved); `onAddToSlot` opens the swap picker so the empty slot can be filled
- * from the library. Both take (dayIndex, slotIndex) where slotIndex is the
- * position in ALL_MEAL_SLOTS.
+ * usePlanV3MealActions — v3 Plan meal open/add/options handlers.
+ *
+ * ENG-1238 parity note: web hosts the action sheet in
+ * `usePlanV3MealActions.tsx` + `PlanMealActionDialog`; mobile keeps the
+ * sheet UI in `planner.tsx` (`rowMenu` bottom sheet) and threads
+ * `openMealMenu` here so card ⋯ taps share one entry point.
  */
 export function usePlanV3MealActions({
   plan,
   savedRecipes,
   discoverRecipes,
   swapMeal,
+  openMealMenu,
 }: UsePlanV3MealActionsArgs) {
   const router = useRouter();
 
@@ -61,7 +64,19 @@ export function usePlanV3MealActions({
     [plan, savedRecipes, discoverRecipes, router, swapMeal],
   );
 
-  return { onOpenMeal, onAddToSlot };
+  const onOpenMealOptions = useCallback(
+    (dayIndex: number, slotIndex: number) => {
+      const meal = plan?.[dayIndex]?.meals[slotIndex];
+      if (!meal || meal.isPlaceholder) {
+        swapMeal(dayIndex, slotIndex, slotNameForIndex(slotIndex));
+        return;
+      }
+      openMealMenu?.(dayIndex, slotIndex);
+    },
+    [plan, openMealMenu, swapMeal],
+  );
+
+  return { onOpenMeal, onAddToSlot, onOpenMealOptions };
 }
 
 export default usePlanV3MealActions;

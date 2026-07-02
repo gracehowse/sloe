@@ -436,6 +436,17 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (kill switch: remove here / PostHog). Web + mobile — keep in sync with
   // apps/mobile/lib/analytics.ts.
   "import_review_flagged_ingredients_v1",
+  // ENG-1233/1241 — onboarding conversion funnel: the guided first-log
+  // activation step (ENG-1233) then the optional, skippable "See Pro"
+  // trial ask (ENG-1241, TERMINAL — skip lands straight on Today). Runs
+  // first-log → upgrade after data-bridges. Default-ON per the beta-window
+  // house rule (Grace is the N=1 tester); OFF → data-bridges stays terminal
+  // (legacy flow, byte-identical). This IS the flag the ENG-1241 brief
+  // called "onboarding-see-pro" — reused rather than renamed to avoid
+  // breaking the live PostHog funnel dashboards keyed on it. Keep in sync
+  // with apps/mobile/lib/analytics.ts + GATE_15_SHARED in
+  // tests/unit/redesignDefaultOnParity.test.ts.
+  "onboarding_conversion_funnel_v1",
 ]);
 
 /**

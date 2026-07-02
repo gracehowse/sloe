@@ -1237,9 +1237,8 @@ export const MealPlanner = memo(function MealPlanner({
           onOpenBatchCook={() => setBatchCookOpen(true)}
           batchCookSubtitle={defaultBatchCookToolSubtitle()}
           nutritionByDay={nutritionByDay}
-          onSwapSlot={(day, slotIndex) =>
-            openSwap(day, SLOTS[slotIndex] ?? "snacks", slotIndex)
-          }
+          onSwapSlot={(day, slotIndex) => openSwap(day, SLOTS[slotIndex] ?? "snacks", slotIndex)}
+          mealActionDeps={{ slots: SLOTS, mealLockEnabled, onOpenRecipe, openSwap, handleLogToday, setPortionTarget, setMoveFrom, setMealPlan, toggleMealLock }}
         />
       ) : (
         <>

@@ -13,7 +13,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 // ENG-528 (2026-05-16): CloudOff dropped — the "Subscriptions
 // unavailable" card it iconified was removed per Grace decision
@@ -231,6 +231,12 @@ export default function PaywallScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
 
+  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const paywallFrom = useMemo(
+    () => normalisePaywallFrom(params.from),
+    [params.from],
+  );
+
   // Photo-hero height (Figma `284:2`) — ~44% of the screen before
   // scroll, clamped so very tall/short devices stay balanced. The hero
   // includes the safe-area top inset so the close button + eyebrow sit
@@ -247,15 +253,19 @@ export default function PaywallScreen() {
   const [restoring, setRestoring] = useState(false);
   const [offeringsReady, setOfferingsReady] = useState(false);
   const [earlyRedirected, setEarlyRedirected] = useState(false);
-  // ENG-698: unify to monthly default behind a feature flag (PostHog:
-  // `paywall-default-monthly`). Annual remains the fallback so users
-  // on the annual-only SKU still see the 7-day trial by default; the
-  // lock-period effect below overrides this when only one period is
-  // provisioned in RC. Lazy initializer runs synchronously so there
-  // is no flash — PostHog flags are loaded well before the user
-  // reaches the paywall in any normal flow.
+  // ENG-698: unify to monthly default behind `paywall-default-monthly`;
+  // annual is the fallback so annual-only SKUs still show the trial. The
+  // lock-period effect below overrides when only one period is
+  // provisioned. Lazy initializer runs synchronously (no flash).
+  // ENG-1241 (Decision 4): onboarding "See Pro" entry defaults to ANNUAL
+  // regardless of the flag, so the trial-eligible SKU is preselected and
+  // the "Try Pro free for 7 days" headline is what's shown.
   const [billing, setBilling] = useState<BillingPeriod>(() =>
-    isFeatureEnabled("paywall-default-monthly") ? "monthly" : "annual",
+    paywallFrom === "onboarding"
+      ? "annual"
+      : isFeatureEnabled("paywall-default-monthly")
+        ? "monthly"
+        : "annual",
   );
   // PR-01 (audit 2026-04-28): single Pro card, single focused tier.
   // The state retains the type contract for the analytics emits but
@@ -284,11 +294,14 @@ export default function PaywallScreen() {
     redeem: redeemPromo,
   } = usePromoCode({ userId });
 
-  const params = useLocalSearchParams<{ from?: string | string[] }>();
-  const paywallFrom = useMemo(
-    () => normalisePaywallFrom(params.from),
-    [params.from],
-  );
+  // ENG-1241 — where a forward-only entry lands on finish (purchase /
+  // restore / skip / close). Onboarding lands STRAIGHT on Today, no
+  // notifications-prompt detour (decision 2 / legal C4); trial-end keeps
+  // its existing prompt (out of ENG-1241 scope). `firstRun=1` triggers
+  // Today's first-run polish.
+  const onboardingForwardExit = (
+    paywallFrom === "onboarding" ? "/(tabs)?firstRun=1" : "/notifications-prompt"
+  ) as Href;
 
   // ENG-966 — when onboarding just wrote targets, lead with the user's plan.
   useEffect(() => {
@@ -350,7 +363,8 @@ export default function PaywallScreen() {
         const info = await getCustomerInfo();
         if (!cancelled && isProEntitled(info)) {
           setEarlyRedirected(true);
-          router.replace(paywallFrom === "onboarding" ? "/notifications-prompt" : "/");
+          // ENG-1241 — already-Pro from onboarding → straight to Today.
+          router.replace(paywallFrom === "onboarding" ? "/(tabs)?firstRun=1" : "/");
           return;
         }
       } catch {
@@ -584,7 +598,7 @@ export default function PaywallScreen() {
           Alert.alert("You're in", message, [
             {
               text: "Continue",
-              onPress: () => router.replace("/notifications-prompt"),
+              onPress: () => router.replace(onboardingForwardExit),
             },
           ]);
         } else {
@@ -609,7 +623,7 @@ export default function PaywallScreen() {
             const trialEndsLabel = trialOnThisPurchase ? "in 7 days" : "with your billing period";
             const message = buildReceiptTrustCopy({ trialEndsLabel, cancelPath });
             Alert.alert("You're in", message, [
-              { text: "Continue", onPress: () => router.replace("/notifications-prompt") },
+              { text: "Continue", onPress: () => router.replace(onboardingForwardExit) },
             ]);
           } else {
             // Still not entitled after 10s — bounded poll exhausted.
@@ -669,7 +683,7 @@ export default function PaywallScreen() {
         })();
       }
       if (isProEntitled(info) || Object.keys(info.entitlements.active).length > 0) {
-        router.replace("/notifications-prompt");
+        router.replace(onboardingForwardExit);
       } else {
         Alert.alert("No active subscription found");
       }
@@ -682,7 +696,8 @@ export default function PaywallScreen() {
 
   function onContinueFree() {
     if (purchasing) return;
-    router.replace("/notifications-prompt");
+    // ENG-1241 — onboarding "skip" bail-out lands straight on Today.
+    router.replace(onboardingForwardExit);
   }
 
   function onClose() {
@@ -697,12 +712,12 @@ export default function PaywallScreen() {
       surface: "route",
       platform: Platform.OS === "ios" ? "ios" : "android",
     });
-    // Onboarding + trial-end are forward-only flows; every other entry
-    // surface came from a user-initiated navigation, so `back()` is the
-    // correct cancel. Falls back to the onboarding route if there's no
-    // history (first-launch deep link).
+    // Onboarding + trial-end are forward-only; every other entry came
+    // from a user navigation, so `back()` is the correct cancel. ENG-1241
+    // — onboarding close lands on Today (no detour); trial-end keeps the
+    // notifications-prompt (`onboardingForwardExit` resolves each).
     if (paywallFrom === "onboarding" || paywallFrom === "trial_end") {
-      router.replace("/notifications-prompt");
+      router.replace(onboardingForwardExit);
       return;
     }
     if (router.canGoBack()) {

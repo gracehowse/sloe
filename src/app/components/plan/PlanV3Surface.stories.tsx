@@ -117,6 +117,7 @@ const meta = {
     onTemplates: noop,
     onOpenHousehold: noop,
     onOpenMeal: noop,
+    onOpenMealOptions: noop,
     onAddToSlot: noop,
     shoppingItemCount: 23,
     servingCount: 2,

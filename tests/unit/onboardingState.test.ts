@@ -18,9 +18,10 @@ import {
  * Onboarding v2 — state shape, step ordering, and `canAdvance`
  * validation rules. Locks in the decision-doc invariants:
  *
- *  - 15 steps in fixed order; `pace` auto-skips when goal = maintain,
+ *  - 17 steps in fixed order; `pace` auto-skips when goal = maintain,
  *    `app-choice` auto-skips when the `onboarding-app-choice` flag is OFF,
- *    `why-now` auto-skips when the `onboarding-why-now` flag is OFF.
+ *    `why-now` auto-skips when the `onboarding-why-now` flag is OFF,
+ *    `upgrade` + `first-log` auto-skip when `onboarding_conversion_funnel_v1` is OFF.
  *    (Was 15 pre customer-lens shrink 2026-04-30 — `permissions`,
  *    `import`, `recipes` were moved off the linear flow. Components
  *    kept on disk for the post-launch nudge queue.
@@ -50,8 +51,8 @@ const baseState = (
 });
 
 describe("onboarding v2 — step ordering", () => {
-  it("ships exactly 15 steps in the documented order (Build-40 data-bridges + ENG-990 app-choice + ENG-963 why-now)", () => {
-    expect(TOTAL_STEPS).toBe(15);
+  it("ships exactly 17 steps in the documented order (Build-40 data-bridges + ENG-990 app-choice + ENG-963 why-now + ENG-1233/1241 funnel — first-log → upgrade terminal)", () => {
+    expect(TOTAL_STEPS).toBe(17);
     expect(STEP_IDS).toEqual([
       "welcome",
       "app-choice",
@@ -68,6 +69,11 @@ describe("onboarding v2 — step ordering", () => {
       "reveal",
       "signup",
       "data-bridges",
+      // ENG-1241 (2026-07-01): funnel order is first-log → upgrade so the
+      // skippable "See Pro" trial step is TERMINAL — skip lands straight
+      // on Today (Decision 2). Was upgrade → first-log when PR #692 landed.
+      "first-log",
+      "upgrade",
     ]);
   });
 
@@ -166,6 +172,72 @@ describe("onboarding v2 — resolveNextStep app-choice flag gate (ENG-990)", () 
   });
 });
 
+describe("onboarding v2 — resolveNextStep conversion-funnel gate (ENG-1233 / ENG-1241)", () => {
+  const DATA_BRIDGES = STEP_IDS.indexOf("data-bridges");
+  const UPGRADE = STEP_IDS.indexOf("upgrade");
+  const FIRST_LOG = STEP_IDS.indexOf("first-log");
+
+  it("skips upgrade + first-log when the flag is OFF — data-bridges stays terminal", () => {
+    const next = resolveNextStep(DATA_BRIDGES, +1, baseState(), {
+      conversionFunnelEnabled: false,
+    });
+    expect(STEP_IDS[next]).toBe("data-bridges");
+  });
+
+  it("lands on first-log when the flag is ON (forward from data-bridges)", () => {
+    // ENG-1241 — funnel order is first-log → upgrade, so the first funnel
+    // step reached after data-bridges is the activation (first-log) step.
+    const next = resolveNextStep(DATA_BRIDGES, +1, baseState(), {
+      conversionFunnelEnabled: true,
+    });
+    expect(STEP_IDS[next]).toBe("first-log");
+  });
+
+  it("lands on upgrade (the terminal See Pro step) after first-log when the flag is ON", () => {
+    const next = resolveNextStep(FIRST_LOG, +1, baseState(), {
+      conversionFunnelEnabled: true,
+    });
+    expect(STEP_IDS[next]).toBe("upgrade");
+  });
+
+  it("skips conversion-funnel steps on backward navigation when flag OFF (from upgrade, the terminal step)", () => {
+    const prev = resolveNextStep(UPGRADE, -1, baseState(), {
+      conversionFunnelEnabled: false,
+    });
+    expect(STEP_IDS[prev]).toBe("data-bridges");
+  });
+});
+
+describe("onboarding v2 — displayPosition conversion-funnel (ENG-1233 / ENG-1241)", () => {
+  const funnelOn = {
+    appChoiceEnabled: true,
+    whyNowEnabled: true,
+    conversionFunnelEnabled: true,
+  };
+
+  it("excludes upgrade + first-log from the total when the flag is OFF", () => {
+    const { total } = displayPosition(0, {
+      ...funnelOn,
+      conversionFunnelEnabled: false,
+    });
+    expect(total).toBe(TOTAL_STEPS - 2);
+  });
+
+  it("includes upgrade + first-log when the flag is ON", () => {
+    const { total } = displayPosition(0, funnelOn);
+    expect(total).toBe(TOTAL_STEPS);
+  });
+
+  it("hides funnel, app-choice, and why-now when all three flags are OFF", () => {
+    const { total } = displayPosition(0, {
+      appChoiceEnabled: false,
+      whyNowEnabled: false,
+      conversionFunnelEnabled: false,
+    });
+    expect(total).toBe(TOTAL_STEPS - 4);
+  });
+});
+
 describe("onboarding v2 — signup after reveal (ENG-962)", () => {
   it("places signup immediately after reveal and before data-bridges", () => {
     const reveal = STEP_IDS.indexOf("reveal");
@@ -199,6 +271,7 @@ describe("onboarding v2 — displayPosition counts only visible steps (ENG-990)"
     const { total } = displayPosition(0, {
       appChoiceEnabled: false,
       whyNowEnabled: true,
+      conversionFunnelEnabled: true,
     });
     expect(total).toBe(TOTAL_STEPS - 1);
   });
@@ -207,6 +280,7 @@ describe("onboarding v2 — displayPosition counts only visible steps (ENG-990)"
     const { total } = displayPosition(0, {
       appChoiceEnabled: true,
       whyNowEnabled: true,
+      conversionFunnelEnabled: true,
     });
     expect(total).toBe(TOTAL_STEPS);
   });
@@ -219,12 +293,14 @@ describe("onboarding v2 — displayPosition counts only visible steps (ENG-990)"
     const off = displayPosition(goal, {
       appChoiceEnabled: false,
       whyNowEnabled: true,
+      conversionFunnelEnabled: true,
     });
     expect(off.index).toBe(2);
     // With the flag ON, goal is the 3rd visible step → index 3.
     const on = displayPosition(goal, {
       appChoiceEnabled: true,
       whyNowEnabled: true,
+      conversionFunnelEnabled: true,
     });
     expect(on.index).toBe(3);
   });
@@ -256,6 +332,8 @@ describe("onboarding v2 — canAdvance per step", () => {
     // why-now — ENG-963 optional intent capture; advancing without a pick
     // is a first-class choice (the footer Continue always moves on).
     ["why-now", baseState(), true, "always advances (pick is optional)"],
+    ["upgrade", baseState(), true, "always advances (skippable trial step)"],
+    ["first-log", baseState(), true, "always advances (terminal funnel step)"],
     [
       "why-now",
       baseState({ whyNow: "feel-better" }),

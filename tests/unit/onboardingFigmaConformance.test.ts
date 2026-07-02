@@ -153,8 +153,10 @@ describe("ENG-895 — onboarding Figma conformance pins", () => {
       "utf8",
     );
     expect(webReveal).toContain("computeOnboardingRevealProjection");
+    expect(webReveal).toContain("OnboardingRevealProjectionChart");
     expect(webReveal).toContain("onboarding-reveal-projection");
     expect(mobileReveal).toContain("computeOnboardingRevealProjection");
+    expect(mobileReveal).toContain("OnboardingRevealProjectionChart");
     expect(mobileReveal).toContain("onboarding-reveal-projection");
   });
 

@@ -941,6 +941,8 @@ export default function PlannerScreen() {
   // meal, Remove from plan) but on an on-brand bottom sheet that
   // matches the rest of the app.
   const [rowMenu, setRowMenu] = useState<{ dayIdx: number; mealIndexInDay: number } | null>(null);
+  /** ENG-1238 — guard async "Log as planned" against double-submit taps. */
+  const rowMenuLogInFlightRef = useRef(false);
   // 2026-05-13 (premium-bar audit Plan Card 4 #4): instruction copy
   // ("Change options below, then regenerate. Edits to individual
   // meals…") used to render every time the Plan setup was expanded.
@@ -1357,7 +1359,14 @@ export default function PlannerScreen() {
 
   // ENG-1225 Block 3 — v3 Plan meal handlers (open → recipe detail; add → swap
   // picker), lifted to a hook so the pinned planner stays lean.
-  const planV3Meal = usePlanV3MealActions({ plan, savedRecipes, discoverRecipes, swapMeal });
+  const planV3Meal = usePlanV3MealActions({
+    plan,
+    savedRecipes,
+    discoverRecipes,
+    swapMeal,
+    openMealMenu: (dayIdx, mealIndexInDay) =>
+      setRowMenu({ dayIdx, mealIndexInDay }),
+  });
 
   // ENG-820 (Plan win-moment): one flag gates the whole Plan win layer — the
   // state-aware headline tone + pulse, the 7/7 success haptic, and generate/move
@@ -2742,6 +2751,7 @@ export default function PlannerScreen() {
             onOpenHousehold={() => router.push("/household-settings" as Href)}
             onOpenMeal={planV3Meal.onOpenMeal}
             onAddToSlot={planV3Meal.onAddToSlot}
+            onOpenMealOptions={planV3Meal.onOpenMealOptions}
             shoppingItemCount={shoppingItemCount}
             servingCount={householdMemberCount}
             onOpenShopping={() => router.push("/shopping" as Href)}
@@ -4342,7 +4352,10 @@ export default function PlannerScreen() {
             const mealIndexInDay = rowMenu.mealIndexInDay;
 
             const doLogAsPlanned = async () => {
+              if (rowMenuLogInFlightRef.current) return;
+              rowMenuLogInFlightRef.current = true;
               setRowMenu(null);
+              try {
               if (!userId) {
                 // Pre-consolidation this inserted with a null user_id and
                 // failed at RLS; surface the real requirement instead.
@@ -4398,6 +4411,9 @@ export default function PlannerScreen() {
                 void snapshotDailyTargetIfMissing(supabase, userId);
                 const dayLabel = shortWeekdayLabel(planDayCalendarDate(calInput));
                 Alert.alert(`${meal.recipeTitle} logged`, `Added to ${dayLabel}'s tracker.`);
+              }
+              } finally {
+                rowMenuLogInFlightRef.current = false;
               }
             };
             const doViewRecipe = () => {
