@@ -149,6 +149,33 @@ describe("Sloe text tokens clear WCAG AA on their surfaces", () => {
     expect(ratio("#B9ADD0", DARK_RING_CARD)).toBeGreaterThanOrEqual(AA_LARGE);
   });
 
+  it("light page ground separates measurably from the white card (ENG-1316)", () => {
+    // Decision 2026-07-01 #6 (measured): page vs card was 2/255 — the one-card
+    // soft lift was invisible at the fill level. The ground is now the
+    // whisper-cool plum-white #F7F6FA (the v3 GROUND SYSTEM's stated intent —
+    // cool, never beige); cards stay #FFFFFF on the layered --elev-card-soft.
+    // Values mirror theme.css --background/--card + mobile Colors.light
+    // (parity pinned in crossPlatformThemeTokens.test.ts).
+    const PAGE_GROUND = "#F7F6FA";
+    const CARD_WHITE = "#FFFFFF";
+    expect(PAGE_GROUND).not.toBe(CARD_WHITE);
+    // Measurable at token level: ≥1.07:1 luminance separation (was 1.00) and
+    // every RGB channel at least 4/255 below the card (was ≤2/255).
+    expect(ratio(PAGE_GROUND, CARD_WHITE)).toBeGreaterThanOrEqual(1.07);
+    const [pr, pg, pb] = hexToRgb(PAGE_GROUND);
+    expect(255 - pr).toBeGreaterThanOrEqual(4);
+    expect(255 - pg).toBeGreaterThanOrEqual(4);
+    expect(255 - pb).toBeGreaterThanOrEqual(4);
+    // The ladder stays monotonic: card > page > grouped > secondary.
+    const lumOf = (hex: string) => relativeLuminance(hexToRgb(hex));
+    expect(lumOf(CARD_WHITE)).toBeGreaterThan(lumOf(PAGE_GROUND));
+    expect(lumOf(PAGE_GROUND)).toBeGreaterThan(lumOf("#F5F4F7")); // --background-grouped
+    expect(lumOf("#F5F4F7")).toBeGreaterThan(lumOf("#F1F0F4")); // --background-secondary
+    // Text tokens keep AA on the tinted ground.
+    expect(ratio(FOREGROUND_TERTIARY, PAGE_GROUND)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.01
+    expect(ratio(WARNING_SOLID, PAGE_GROUND)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.38
+  });
+
   it("net-energy chip backgrounds carry white label at AA-normal", () => {
     for (const state of ["deficit", "surplus", "maintenance"] as const) {
       expect(ratio(WHITE, NET_ENERGY_CHIP_BG[state])).toBeGreaterThanOrEqual(

@@ -69,16 +69,21 @@
    *  `apps/mobile/constants/theme.ts`. Spec:
    *  `docs/ux/redesign/phase-0-token-foundation-dossier.md`. */
   /* Sloe v3 surface model (2026-06-21, Grace's consolidated Claude-Design
-     prototype `docs/ux/redesign/v3/Sloe-App.html`). The in-product ground
-     returns to PURE WHITE; cream (`--background-marketing`) is reserved for
-     marketing / landing / paywall only. This REVERSES the 2026-06-12 flat-card-
-     on-cream grammar: per the prototype, "white-on-white is NOT warmth, NOT
-     beige fills and NOT 1px hairlines — it is ELEVATION: a whisper-cool
-     near-white ground so BRIGHT WHITE cards lift on a soft layered shadow."
-     Depth now comes from `--background-grouped` (cool plum-grey grouped ground)
-     + the layered `--elev-card-soft`, not from a warm page tint. Mirrors mobile
-     Colors.light. Spec: v3 `:root` surface block. */
-  --background: #FFFFFF;            /* pure white app canvas */
+     prototype `docs/ux/redesign/v3/Sloe-App.html`), refined 2026-07-01
+     (decision #6, ENG-1316). The prototype's GROUND SYSTEM prose: "white-on-
+     white is NOT warmth, NOT beige fills and NOT 1px hairlines — it is
+     ELEVATION: a whisper-cool near-white ground so BRIGHT WHITE cards lift on
+     a soft layered shadow." Its token never landed the tint (--bg stayed
+     #ffffff), and the sweep measured the result: page vs card = 2/255 — the
+     one-card soft lift was invisible at the fill level (shadows only live at
+     edges). ENG-1316 lands the stated intent: the ground is now the
+     whisper-COOL plum-white #F7F6FA (NOT beige — cool, per the locked ground
+     system), cards stay pure white on the layered `--elev-card-soft`.
+     Measured separation: Δ RGB 8/9/5 vs the white card (1.08:1) — visible.
+     Ladder stays monotonic: card #FFFFFF > page #F7F6FA > grouped #F5F4F7 >
+     secondary #F1F0F4. Cream (`--background-marketing`) stays marketing-only.
+     Mirrors mobile Colors.light. */
+  --background: #F7F6FA;            /* whisper-cool plum-white app canvas (ENG-1316) */
   --background-secondary: #F1F0F4; /* recessed cool plum-grey (tracks, wells) */
   --background-grouped: #F5F4F7;   /* faint cool-plum grouped ground (NOT beige) */
   --background-marketing: #FBF8F3; /* Oat — marketing / landing / paywall ONLY */
@@ -230,7 +235,7 @@
   --border: #EAE7F0;             /* v3 faint cool-plum hairline */
   --border-strong: #D9D4E0;
   --input: transparent;
-  --input-background: #FFFFFF;   /* v3 white input on white ground — lift via --border */
+  --input-background: #FFFFFF;   /* v3 white input — lifts on the cool ground + --border (ENG-1316) */
   --switch-background: #C9C2D6;
   --ring: var(--accent-primary);
 

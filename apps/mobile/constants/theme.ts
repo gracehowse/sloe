@@ -412,14 +412,18 @@ export const Colors = {
     // 4.81 cream — PASS, lightest grey that clears AA. Mirrors web
     // `--foreground-tertiary`. textSecondary (#655C6E) already passed.
     textTertiary: '#6E6874',
-    // Sloe v3 surface model (2026-06-21, prototype docs/ux/redesign/v3). The
-    // in-product ground returns to PURE WHITE; cream is marketing-only. v3
-    // REVERSES the 2026-06-12 flat-card-on-cream grammar: white cards LIFT on
-    // the layered Elevation.cardSoft over a whisper-cool white ground
-    // ("elevation, not warmth"). Depth comes from backgroundGrouped (cool
-    // plum-grey) + the shadow, not a warm page tint. Splash/icon ground stays
-    // #FBF8F3 in app.json (brandIconSplash.test.ts pins it). ↔ web theme.css.
-    background: '#FFFFFF',          // pure white app canvas
+    // Sloe v3 surface model (2026-06-21, prototype docs/ux/redesign/v3),
+    // refined 2026-07-01 (decision #6, ENG-1316): the v3 ground system wants
+    // "a whisper-cool near-white ground so BRIGHT WHITE cards lift on a soft
+    // shadow" — but the pure-white token left page vs card at 2/255 (the
+    // one-card soft lift was invisible at the fill level). The ground now
+    // lands that intent: whisper-COOL plum-white #F7F6FA (NOT beige/warm —
+    // "elevation, not warmth" holds), white cards + Elevation.cardSoft
+    // unchanged. Δ 8/9/5 per channel vs the white card — measurable. Ladder:
+    // card #FFFFFF > background #F7F6FA > grouped #F5F4F7 > secondary
+    // #F1F0F4. Splash/icon ground stays #FBF8F3 in app.json
+    // (brandIconSplash.test.ts pins it). ↔ web theme.css --background.
+    background: '#F7F6FA',          // whisper-cool plum-white canvas (ENG-1316)
     backgroundSecondary: '#F1F0F4', // recessed cool plum-grey (tracks, wells)
     backgroundGrouped: '#F5F4F7',   // faint cool-plum grouped ground (NOT beige)
     card: '#FFFFFF',                // white card — lift via Elevation.cardSoft
@@ -438,7 +442,7 @@ export const Colors = {
     icon: '#655C6E',
     tabIconDefault: '#9B93A3',
     tabIconSelected: Accent.primary,
-    inputBg: '#FFFFFF',             // v3 white input on white ground — lift via border
+    inputBg: '#FFFFFF',             // v3 white input — lifts on the cool ground + border (ENG-1316)
     overlay: '#00000088',
     /** Source / provenance dots — Sloe palette. Mirrors web --source-*. */
     sourceUsda: '#5E7C5A',          // sage

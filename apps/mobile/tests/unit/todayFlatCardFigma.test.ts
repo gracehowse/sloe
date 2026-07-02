@@ -24,14 +24,15 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
   // another card (inset tiles, rows inside a sheet) stay flat — a card-in-a-card
   // must not double-shadow. This guard pins the page-ground cards to SOFT; the
   // exceptions (macro tiles, hero) are pinned explicitly below.
-  it("light material is the Sloe v3 white-ground elevation model (2026-06-21)", () => {
+  it("light material is the Sloe v3 elevation model + ENG-1316 cool ground", () => {
     // Sloe v3 (docs/ux/redesign/v3) reverses the 2026-06-12 flat-card-on-cream
-    // grammar: the in-product ground returns to PURE WHITE and white cards
-    // separate via Elevation.cardSoft ("elevation, not warmth"). Depth comes
-    // from backgroundGrouped (cool plum-grey) + the shadow, not a warm page
-    // tint. Cream is marketing-only; splash/icon ground stays #FBF8F3 (app.json,
+    // grammar: white cards separate via Elevation.cardSoft ("elevation, not
+    // warmth"). Refined 2026-07-01 (decision #6, ENG-1316): the ground lands
+    // the v3 GROUND SYSTEM's stated whisper-COOL near-white (#F7F6FA — never
+    // beige) so cards separate measurably at the fill level too (was 2/255).
+    // Cream is marketing-only; splash/icon ground stays #FBF8F3 (app.json,
     // brandIconSplash.test.ts).
-    expect(Colors.light.background).toBe("#FFFFFF");
+    expect(Colors.light.background).toBe("#F7F6FA");
     expect(Colors.light.card).toBe("#FFFFFF");
     expect(Colors.light.cardElevated).toBe("#FFFFFF");
     expect(Colors.light.backgroundGrouped).toBe("#F5F4F7");
