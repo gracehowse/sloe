@@ -474,6 +474,12 @@ const STACK_HEADER_HIDDEN = new Set([
   "whats-new",
   "weekly-recap",
   "coach",
+  // ENG-1327 (Grace 2026-07-02): Batch Cook renders its own PushScreenHeader
+  // inside `BatchCookSurface` (serif "Batch cook" + back chevron, doubling as
+  // the picker↔detail back affordance). The auto stack header stacked a second
+  // "Batch Cook" title + second back arrow on top — same duplicate-header
+  // class as fasting / targets / macro-detail above.
+  "batch-cook",
 ]);
 
 /** Readable titles (route `name` from Expo Router file path). */

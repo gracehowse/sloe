@@ -61,7 +61,7 @@ export function BatchCookSurface({
           <View style={[styles.listCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {recipes.length === 0 ? (
               <Text style={[styles.empty, { color: colors.textSecondary }]}>
-                Save recipes with at least 25 minutes cook time to batch cook.
+                Save recipes that make 2+ servings to batch cook.
               </Text>
             ) : (
               recipes.map((r, idx) => (

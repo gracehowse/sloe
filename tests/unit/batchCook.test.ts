@@ -8,10 +8,21 @@ import {
   recipeTotalTimeMin,
 } from "../../src/lib/planning/batchCook";
 
-describe("batchCook (ENG-1255)", () => {
-  it("flags recipes with total time ≥ 25 min as batchable", () => {
-    expect(isBatchCookCandidate({ prep_time_min: 10, cook_time_min: 14 })).toBe(false);
-    expect(isBatchCookCandidate({ prep_time_min: 10, cook_time_min: 15 })).toBe(true);
+describe("batchCook (ENG-1255 / ENG-1327)", () => {
+  it("flags recipes that make 2+ servings as batchable — cook time is not a gate", () => {
+    expect(isBatchCookCandidate({ servings: 2 })).toBe(true);
+    expect(isBatchCookCandidate({ servings: 6 })).toBe(true);
+    expect(isBatchCookCandidate({ servings: 1 })).toBe(false);
+    expect(isBatchCookCandidate({ servings: 0 })).toBe(false);
+    expect(isBatchCookCandidate({ servings: null })).toBe(false);
+    expect(isBatchCookCandidate({})).toBe(false);
+  });
+
+  it("creator batch-friendly signal short-circuits the servings gate (ENG-1327)", () => {
+    expect(isBatchCookCandidate({ servings: 1, batchFriendly: true })).toBe(true);
+    expect(isBatchCookCandidate({ servings: null, batchFriendly: true })).toBe(true);
+    expect(isBatchCookCandidate({ servings: 1, batchFriendly: false })).toBe(false);
+    expect(isBatchCookCandidate({ servings: 1, batchFriendly: null })).toBe(false);
   });
 
   it("computes per-portion calories from recipe yield", () => {

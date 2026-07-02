@@ -6,7 +6,6 @@
  * scale — not the full assign-portions / fridge-pip planner at launch.
  */
 export const BATCH_COOK_MIN_PORTIONS = 2;
-export const BATCH_COOK_MIN_TIME_MIN = 25;
 
 export interface BatchCookRecipeCandidate {
   id: string;
@@ -16,6 +15,14 @@ export interface BatchCookRecipeCandidate {
   timeMin: number;
   servings: number;
   imageUrl?: string | null;
+  /**
+   * ENG-1327 — future creator signal. Creators will be able to mark a recipe
+   * as explicitly batch-friendly (keeps well, freezes well); when that field
+   * lands it flows through here and short-circuits the servings gate. No
+   * schema exists yet — candidate mappers populate it once the creator field
+   * ships.
+   */
+  batchFriendly?: boolean;
 }
 
 export function recipeTotalTimeMin(
@@ -25,20 +32,18 @@ export function recipeTotalTimeMin(
   return (prep ?? 0) + (cook ?? 0);
 }
 
+/**
+ * Batch-cook eligibility (ENG-1327, Grace 2026-07-02): a recipe is batchable
+ * when it yields multiple portions — or a creator has marked it
+ * batch-friendly. Cook time is deliberately NOT a gate: batching is about
+ * portions / keeps-well / creator signal, not how long the pot takes.
+ */
 export function isBatchCookCandidate(input: {
-  prep_time_min?: number | null;
-  cook_time_min?: number | null;
-  prepTimeMin?: number | null;
-  cookTimeMin?: number | null;
-  timeMin?: number;
+  servings?: number | null;
+  batchFriendly?: boolean | null;
 }): boolean {
-  const t =
-    input.timeMin ??
-    recipeTotalTimeMin(
-      input.prep_time_min ?? input.prepTimeMin,
-      input.cook_time_min ?? input.cookTimeMin,
-    );
-  return t >= BATCH_COOK_MIN_TIME_MIN;
+  if (input.batchFriendly === true) return true;
+  return (input.servings ?? 0) >= BATCH_COOK_MIN_PORTIONS;
 }
 
 /** Per-portion kcal when the recipe yield is scaled to `batchPortions`. */

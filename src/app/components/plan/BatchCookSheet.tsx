@@ -89,7 +89,7 @@ export function BatchCookSheet({
             >
               {recipes.length === 0 ? (
                 <p className="p-4 text-center text-sm text-foreground-secondary">
-                  Save recipes with at least 25 minutes cook time to batch cook.
+                  Save recipes that make 2+ servings to batch cook.
                 </p>
               ) : (
                 recipes.map((r) => (
