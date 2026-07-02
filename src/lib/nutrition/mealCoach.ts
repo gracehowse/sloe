@@ -174,6 +174,43 @@ export function isLibraryEligibleForCoach(librarySize: number): boolean {
   return Number.isFinite(librarySize) && librarySize >= NORTH_STAR_LIBRARY_MIN;
 }
 
+/* ─────────────────── Empty-state copy (ENG-1294) ─────────────────── */
+
+/** Over-budget / day-done empty state — shown when the library has recipes
+ *  but `remaining.calories <= 0` gated `assembleCandidates` to `[]`. Calm,
+ *  no-shame framing (voice rules): the day is complete, not failed. */
+export const COACH_EMPTY_OVER_BUDGET_COPY =
+  "You're past today's target — nothing left to fit. Tomorrow starts fresh.";
+
+/** Genuinely-nothing-to-rank empty state — the library is empty/too thin
+ *  (or nothing currently fits a positive budget). */
+export const COACH_EMPTY_NO_RECIPES_COPY =
+  "Log a meal or save a few recipes — ranked suggestions appear once the coach has something to work with.";
+
+export interface CoachEmptyStateInput {
+  /** Saved-recipe library size the screen already holds. */
+  librarySize: number;
+  /** Remaining calories for the day — ≤ 0 when at/over target. */
+  remainingCalories: number;
+}
+
+/**
+ * Copy for the "What to eat next" empty state, SHARED so web + mobile render
+ * identical strings (nutrition-core pattern). `assembleCandidates` returns
+ * `[]` for two very different users — a fully-logged one (over budget) and a
+ * new one with no recipes — and the surface must not tell the first to "log
+ * a meal". Library-size precedence mirrors the engine's own gate order in
+ * `assembleCandidates` (empty library short-circuits before the budget gate):
+ * with no recipes saved, saving recipes is the actionable next step even on
+ * an over-budget day.
+ */
+export function coachEmptyStateCopy(input: CoachEmptyStateInput): string {
+  const overBudget =
+    Number.isFinite(input.remainingCalories) && input.remainingCalories <= 0;
+  if (input.librarySize > 0 && overBudget) return COACH_EMPTY_OVER_BUDGET_COPY;
+  return COACH_EMPTY_NO_RECIPES_COPY;
+}
+
 /* ───────────────────────── Prompt contract ───────────────────────── */
 
 /**

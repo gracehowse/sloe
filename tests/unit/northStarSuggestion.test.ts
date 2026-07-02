@@ -615,6 +615,29 @@ describe("whyLineForSuggestion (activation hook — leak fix #5)", () => {
     expect(line).toBe("Fits your remaining 500 kcal");
   });
 
+  it("formats remaining calories ≥ 1000 with a thousands separator (ENG-1294)", () => {
+    // Matches the Today ring format ("1,900" not "1900") — same
+    // `toLocaleString` the ring + coach rows already use.
+    const remaining = rem({ calories: 1900, protein: 5, carbs: 200, fat: 60 });
+    const suggestion = pickNorthStarSuggestion(
+      [
+        {
+          id: "a",
+          title: "Match",
+          calories: 1900,
+          protein: 5,
+          carbs: 200,
+          fat: 60,
+        },
+      ],
+      remaining,
+    );
+    expect(suggestion).not.toBeNull();
+    const line = whyLineForSuggestion(suggestion!, remaining);
+    expect(line).toBe(`Fits your remaining ${(1900).toLocaleString()} kcal`);
+    expect(line).not.toContain("1900");
+  });
+
   it("returns a generic line when remaining calories are non-positive (defensive)", () => {
     // Caller should have already short-circuited via
     // pickNorthStarSuggestion returning null in this case — this asserts

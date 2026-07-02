@@ -16,8 +16,11 @@ import {
   assembleCandidates,
   buildCoachUserMessage,
   COACH_CANDIDATE_LIMIT,
+  COACH_EMPTY_NO_RECIPES_COPY,
+  COACH_EMPTY_OVER_BUDGET_COPY,
   COACH_RECENCY_PENALTY,
   COACH_SYSTEM_PROMPT,
+  coachEmptyStateCopy,
   isLibraryEligibleForCoach,
   parseCoachRanking,
   type CoachCandidate,
@@ -305,5 +308,49 @@ describe("applyCoachRanking — merge guarantees", () => {
     });
     expect(out[0].predictedCalories).toBe(500);
     expect(out[0].predictedProtein).toBe(30);
+  });
+});
+
+describe("coachEmptyStateCopy — over-budget vs no-recipes empty states (ENG-1294)", () => {
+  it("shows the over-budget/day-done copy when the library has recipes but remaining ≤ 0", () => {
+    expect(
+      coachEmptyStateCopy({ librarySize: 8, remainingCalories: 0 }),
+    ).toBe(COACH_EMPTY_OVER_BUDGET_COPY);
+    expect(
+      coachEmptyStateCopy({ librarySize: 8, remainingCalories: -240 }),
+    ).toBe(COACH_EMPTY_OVER_BUDGET_COPY);
+  });
+
+  it("keeps the saved-recipes copy for the genuinely-no-recipes case", () => {
+    expect(
+      coachEmptyStateCopy({ librarySize: 0, remainingCalories: 1200 }),
+    ).toBe(COACH_EMPTY_NO_RECIPES_COPY);
+  });
+
+  it("prefers the saved-recipes copy when the library is empty even over budget (engine gate order)", () => {
+    // assembleCandidates short-circuits on the empty library BEFORE the
+    // budget gate — and "save recipes" is the only actionable next step for
+    // this user, over budget or not.
+    expect(
+      coachEmptyStateCopy({ librarySize: 0, remainingCalories: -100 }),
+    ).toBe(COACH_EMPTY_NO_RECIPES_COPY);
+  });
+
+  it("keeps the saved-recipes copy when remaining is positive but nothing fits", () => {
+    expect(
+      coachEmptyStateCopy({ librarySize: 3, remainingCalories: 850 }),
+    ).toBe(COACH_EMPTY_NO_RECIPES_COPY);
+  });
+
+  it("never tells a fully-logged user to log a meal", () => {
+    expect(
+      coachEmptyStateCopy({ librarySize: 12, remainingCalories: -1 }),
+    ).not.toMatch(/log a meal/i);
+  });
+
+  it("treats non-finite remaining as not-over-budget (defensive)", () => {
+    expect(
+      coachEmptyStateCopy({ librarySize: 5, remainingCalories: Number.NaN }),
+    ).toBe(COACH_EMPTY_NO_RECIPES_COPY);
   });
 });

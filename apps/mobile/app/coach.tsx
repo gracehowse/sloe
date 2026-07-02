@@ -326,6 +326,8 @@ export default function CoachScreen() {
           candidates={candidates}
           candidatesRefining={refining}
           onCandidatePress={(id) => router.push(`/recipe/${id}`)}
+          librarySize={library.length}
+          remainingCalories={remaining.calories}
           selectedChipId={selectedChipId}
           askAnswer={askAnswer}
           askLoading={askLoading}
