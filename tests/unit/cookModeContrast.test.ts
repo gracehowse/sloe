@@ -29,15 +29,10 @@ describe("Cook mode readable text", () => {
     expect(COOK).toContain("cook-mode-v3");
   });
 
-  it("mobile cook surfaces gate v3 dark shell behind recipe_detail_v3_conformance", () => {
+  it("mobile cook screen gates v3 dark shell behind recipe_detail_v3_conformance", () => {
     expect(MOBILE_COOK).toContain('isFeatureEnabled("recipe_detail_v3_conformance")');
     expect(MOBILE_COOK).toContain("Accent.primaryDeep");
-    const RECIPE_DETAIL = readFileSync(
-      resolve(__dirname, "../../apps/mobile/app/recipe/[id].tsx"),
-      "utf8",
-    );
-    expect(RECIPE_DETAIL).toContain("cook-mode-v3");
-    expect(RECIPE_DETAIL).toContain("Accent.primaryDeep");
+    expect(MOBILE_COOK).toContain("cookV3");
   });
 
   it("mobile cook step text uses theme colors.text on the default path", () => {

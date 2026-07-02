@@ -153,11 +153,10 @@ describe("mobile recipe-detail — viewing-servings stepper source pins", () => 
     expect(MOBILE_RECIPE).toMatch(/setLogPortion\(viewMultiplier\)/);
   });
 
-  it("does NOT regress PR #72's cook-mode contract: cookScaleFactor still derives from logPortion", () => {
-    expect(MOBILE_RECIPE).toMatch(/cookScaleFactor\s*=\s*[^=][^;]*logPortion/);
-    expect(MOBILE_RECIPE).toMatch(
-      /scaleStepText\(\s*cleanedStep\s*,\s*cookScaleFactor\s*\)/,
-    );
+  it("does NOT regress PR #72's cook-mode contract: portion threads from logPortion into /cook (ENG-945)", () => {
+    expect(MOBILE_RECIPE).toMatch(/buildCookModeHref\(/);
+    expect(MOBILE_RECIPE).toMatch(/logPortion/);
+    expect(MOBILE_RECIPE).toMatch(/portion:\s*scaleSource\s*!==\s*1\s*\?\s*scaleSource\s*:\s*undefined/);
   });
 });
 

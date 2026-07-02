@@ -427,7 +427,8 @@ describe("app-only features preserved across the reskin (no logic ripped out)", 
   });
 
   it("mobile keeps Cook Mode, verification, sticky footer, stepper, net-carbs", () => {
-    expect(MOBILE_SRC).toContain("setCookMode");
+    expect(MOBILE_SRC).toContain("openCookMode");
+    expect(MOBILE_SRC).toContain("buildCookModeHref");
     expect(MOBILE_SRC).toContain("autoVerifyingIngredients");
     expect(MOBILE_SRC).toContain("netCarbsForRow");
     // Re-pinned 2026-06-09: the sticky footer (servings stepper + Cook Mode
