@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { Info, Sparkles } from "lucide-react";
-import type { CoachCandidate } from "@/lib/nutrition/mealCoach";
+import { coachEmptyStateCopy, type CoachCandidate } from "@/lib/nutrition/mealCoach";
 import {
   COACH_ASK_CHIPS,
   type CoachAskChipId,
@@ -24,6 +24,11 @@ export interface CoachScreenProps {
   candidates: readonly CoachCandidate[];
   candidatesRefining?: boolean;
   onCandidatePress?: (recipeId: string) => void;
+  /** Saved-recipe library size — distinguishes the over-budget empty state
+   *  from the genuinely-no-recipes one (ENG-1294). */
+  librarySize: number;
+  /** Remaining calories for the day (≤ 0 when at/over target). */
+  remainingCalories: number;
   selectedChipId: CoachAskChipId | null;
   askAnswer: string | null;
   askLoading: boolean;
@@ -58,7 +63,11 @@ function CoachCandidateRow({
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium text-foreground line-clamp-2">{candidate.title}</p>
           {isBest ? (
-            <span className="shrink-0 rounded-full bg-accent-frost-mist px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-solid">
+            // Sanctioned soft-tint badge pair (`bg-primary-soft` +
+            // `text-primary-solid`) — same as the selected filter chips in
+            // DiscoverFeed / MealPlanner / FastingTimer; AA in dark (the old
+            // `bg-accent-frost-mist` token never existed). ENG-1294.
+            <span className="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary-solid">
               Best fit
             </span>
           ) : null}
@@ -73,22 +82,33 @@ function CoachCandidateRow({
     </>
   );
 
+  // Row chrome routed through <SupprCard elevation="card"> (ENG-1294) — the
+  // same soft-lift page-ground treatment mobile's rows use, replacing the
+  // hand-rolled `rounded-2xl border shadow-sm` div. Clickable-card pattern
+  // per Library.tsx / DiscoverFeed.tsx; pressed state per the
+  // discover-collections `active:scale-[0.99]` convention.
   if (onPress) {
     return (
-      <button
-        type="button"
+      <SupprCard
+        role="button"
+        tabIndex={0}
         onClick={onPress}
-        className="flex w-full gap-3 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") onPress();
+        }}
+        elevation="card"
+        padding="lg"
+        className="flex w-full gap-3 text-left cursor-pointer transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {inner}
-      </button>
+      </SupprCard>
     );
   }
 
   return (
-    <div className="flex w-full gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm">
+    <SupprCard elevation="card" padding="lg" className="flex w-full gap-3">
       {inner}
-    </div>
+    </SupprCard>
   );
 }
 
@@ -98,6 +118,8 @@ export function CoachScreen({
   candidates,
   candidatesRefining,
   onCandidatePress,
+  librarySize,
+  remainingCalories,
   selectedChipId,
   askAnswer,
   askLoading,
@@ -121,12 +143,17 @@ export function CoachScreen({
       </header>
 
       <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 pb-12">
-        <SupprCard className="space-y-3 p-4">
+        {/* Digest card — explicit soft-lift page-ground treatment
+            (`elevation="card"`, 20px padding), matching the Today/Progress
+            content-card siblings (digest-story-card,
+            progress-activity-section) and mobile's `lift="soft"
+            padding="lg"`. ENG-1294. */}
+        <SupprCard elevation="card" padding="xl" className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               Today&apos;s read
             </p>
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent-frost-mist px-2 py-0.5 text-xs font-medium text-primary-solid">
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary-solid">
               <Sparkles className="h-3 w-3" aria-hidden />
               Coach
             </span>
@@ -150,8 +177,7 @@ export function CoachScreen({
           <div className="space-y-2">
             {candidates.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Log a meal or save a few recipes — ranked suggestions appear once the coach has
-                something to work with.
+                {coachEmptyStateCopy({ librarySize, remainingCalories })}
               </p>
             ) : (
               candidates.map((c, i) => (
@@ -188,9 +214,14 @@ export function CoachScreen({
                 disabled={askLoading && selectedChipId === chip.id}
                 onClick={() => onAskChip(chip.id)}
                 className={cn(
+                  // 16px/8px chip step + body-size (14px) label — snapped to
+                  // the same scale mobile's ask chips use (Spacing.md /
+                  // Spacing.sm / Type.body). Selected fill is the sanctioned
+                  // `bg-primary-soft` pair (selected-chip siblings in
+                  // DiscoverFeed / MealPlanner / FastingTimer). ENG-1294.
                   "rounded-full border border-border bg-card px-4 py-2 text-left text-sm font-medium text-foreground transition-colors",
                   "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  selectedChipId === chip.id && "border-primary-solid bg-accent-frost-mist",
+                  selectedChipId === chip.id && "border-primary-solid bg-primary-soft",
                 )}
               >
                 {chip.label}
@@ -200,7 +231,7 @@ export function CoachScreen({
           {askLoading ? (
             <p className="text-sm text-muted-foreground">Coach is thinking…</p>
           ) : askAnswer ? (
-            <SupprCard className="p-4">
+            <SupprCard elevation="card" padding="xl">
               <p className="text-sm leading-relaxed text-foreground">{askAnswer}</p>
             </SupprCard>
           ) : null}

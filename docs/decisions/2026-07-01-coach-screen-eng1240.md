@@ -35,6 +35,10 @@ Same posture as `digestNarrative` and `mealCoach`:
 
 The AI branch on all three routes (`coach`, `coach-ask`, `coach-day-narrative`) is **Pro-only, server-enforced** via `getUserTier` (voice-log precedent, `2026-04-19-voice-logging-pro-only-server-enforced.md`) per sweep decision #1 (`2026-07-01-sweep-decisions.md`). Free/Base users get the deterministic/template result with the same 200 response shape (`source: "deterministic"` / `"template"`) — the screen and endpoints stay free; only the Claude calls are gated. Supersedes the ungated state this screen originally shipped with.
 
+## UX hardening (2026-07-01 update, ENG-1294)
+
+Distinct over-budget empty state via the shared `coachEmptyStateCopy` (`src/lib/nutrition/mealCoach.ts` — never "log a meal" for a fully-logged user); `useCoach` refining can no longer strand (early-return reset + cleanup reset + 10s AbortController timeout on both platforms); digest/rows/ask-answer chrome unified on explicit soft-lift `SupprCard` (mobile `lift="soft"` ↔ web `elevation="card"`) with 16/8 body-label ask chips; BEST FIT/Coach badges moved to the sanctioned `primarySoft`+`primarySolid` pair (old tint-on-fillQuiet was 1.79:1 in dark; web's `bg-accent-frost-mist` was an undefined token); whyLine kcal now thousands-separated to match the Today ring.
+
 ## Analytics
 
 - `coach_screen_opened`

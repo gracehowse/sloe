@@ -506,7 +506,9 @@ export function whyLineForSuggestion(
     // Word "remaining" with the actual gram count the user has left.
     return `Fits your remaining ${protRemaining}g protein`;
   }
-  return `Fits your remaining ${calRemaining} kcal`;
+  // Thousands separator matches the Today ring format (`toLocaleString`,
+  // e.g. "1,900 kcal") — ENG-1294.
+  return `Fits your remaining ${calRemaining.toLocaleString()} kcal`;
 }
 
 /**

@@ -1,13 +1,17 @@
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { Info, Sparkles } from "lucide-react-native";
 
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
-import type { CoachCandidate } from "@suppr/nutrition-core/mealCoach";
+import {
+  coachEmptyStateCopy,
+  type CoachCandidate,
+} from "@suppr/nutrition-core/mealCoach";
 import {
   COACH_ASK_CHIPS,
   type CoachAskChipId,
@@ -19,6 +23,11 @@ export interface CoachScreenViewProps {
   candidates: readonly CoachCandidate[];
   candidatesRefining?: boolean;
   onCandidatePress?: (recipeId: string) => void;
+  /** Saved-recipe library size — distinguishes the over-budget empty state
+   *  from the genuinely-no-recipes one (ENG-1294). */
+  librarySize: number;
+  /** Remaining calories for the day (≤ 0 when at/over target). */
+  remainingCalories: number;
   selectedChipId: CoachAskChipId | null;
   askAnswer: string | null;
   askLoading: boolean;
@@ -35,6 +44,7 @@ function CoachCandidateRow({
   onPress?: () => void;
 }) {
   const colors = useThemeColors();
+  const accent = useAccent();
   const content = (
     <View style={{ flexDirection: "row", gap: Spacing.md, alignItems: "center" }}>
       {candidate.thumbnail ? (
@@ -56,11 +66,15 @@ function CoachCandidateRow({
             {candidate.title}
           </Text>
           {isBest ? (
+            // Sanctioned soft-tint badge pair (`accent.primarySoft` fill +
+            // `accent.primarySolid` label — theme-aware, AA in dark; same as
+            // the QuickAddPanel / selected-pill siblings). The old
+            // tint-on-fillQuiet pair measured 1.79:1 in dark. ENG-1294.
             <Text
               style={{
                 ...Type.caption,
-                color: colors.tint,
-                backgroundColor: colors.fillQuiet,
+                color: accent.primarySolid,
+                backgroundColor: accent.primarySoft,
                 paddingHorizontal: Spacing.sm,
                 paddingVertical: Spacing.xs,
                 borderRadius: 9999,
@@ -85,15 +99,20 @@ function CoachCandidateRow({
     </View>
   );
 
+  // Row chrome — explicit soft-lift page-ground treatment (`lift="soft"`,
+  // 16px padding via the `padding` prop), matching the Today content-card
+  // siblings (TodayActivityCard et al.) and web's `elevation="card"`. The old
+  // `style={{ padding }}` landed on the OUTER wrapper and stacked with the
+  // card-size default inner padding. ENG-1294.
   if (onPress) {
     return (
       <PressableScale onPress={onPress} haptic="selection" style={{ width: "100%" }}>
-        <SupprCard style={{ padding: Spacing.md }}>{content}</SupprCard>
+        <SupprCard lift="soft" padding="md">{content}</SupprCard>
       </PressableScale>
     );
   }
 
-  return <SupprCard style={{ padding: Spacing.md }}>{content}</SupprCard>;
+  return <SupprCard lift="soft" padding="md">{content}</SupprCard>;
 }
 
 export function CoachScreenView({
@@ -102,12 +121,15 @@ export function CoachScreenView({
   candidates,
   candidatesRefining,
   onCandidatePress,
+  librarySize,
+  remainingCalories,
   selectedChipId,
   askAnswer,
   askLoading,
   onAskChip,
 }: CoachScreenViewProps) {
   const colors = useThemeColors();
+  const accent = useAccent();
 
   return (
     <ScrollView
@@ -115,22 +137,28 @@ export function CoachScreenView({
       contentContainerStyle={{ padding: Spacing.lg, paddingBottom: Spacing.xl * 2, gap: Spacing.lg }}
       keyboardShouldPersistTaps="handled"
     >
-      <SupprCard style={{ padding: Spacing.lg, gap: Spacing.md }}>
+      {/* Digest card — explicit soft-lift page-ground treatment
+          (`lift="soft" padding="lg"`), matching the Today content-card
+          siblings (TodayActivityCard) and web's `elevation="card"
+          padding="xl"`. ENG-1294. */}
+      <SupprCard lift="soft" padding="lg" innerStyle={{ gap: Spacing.md }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <Text style={{ ...Type.label, color: colors.textSecondary }}>Today&apos;s read</Text>
+          {/* Sanctioned soft-tint badge pair — see the Best-fit chip note.
+              ENG-1294 (was tint-on-fillQuiet, 1.79:1 in dark). */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 4,
-              backgroundColor: colors.fillQuiet,
+              gap: Spacing.xs,
+              backgroundColor: accent.primarySoft,
               paddingHorizontal: Spacing.sm,
               paddingVertical: Spacing.xs,
               borderRadius: 9999,
             }}
           >
-            <Sparkles size={12} color={colors.tint} />
-            <Text style={{ ...Type.caption, color: colors.tint, fontWeight: "600" }}>Coach</Text>
+            <Sparkles size={12} color={accent.primarySolid} />
+            <Text style={{ ...Type.caption, color: accent.primarySolid, fontWeight: "600" }}>Coach</Text>
           </View>
         </View>
         {narrativeLoading ? (
@@ -149,8 +177,7 @@ export function CoachScreenView({
         </View>
         {candidates.length === 0 ? (
           <Text style={{ ...Type.body, color: colors.textSecondary }}>
-            Log a meal or save a few recipes — ranked suggestions appear once the coach has something
-            to work with.
+            {coachEmptyStateCopy({ librarySize, remainingCalories })}
           </Text>
         ) : (
           candidates.map((c, i) => (
@@ -177,28 +204,37 @@ export function CoachScreenView({
         <Text style={{ ...Type.headline, color: colors.text }}>Ask the coach</Text>
         <View style={{ gap: Spacing.sm, alignItems: "flex-start" }}>
           {COACH_ASK_CHIPS.map((chip) => (
-            <Pressable
+            // 16px/8px chip step + body-size (14px) label — snapped to the
+            // same scale web's ask chips use (px-4 / py-2 / text-sm).
+            // Selected fill is the sanctioned `accent.primarySoft` pair
+            // (selected-pill siblings: QuickAddPanel / MealTypePicker) —
+            // `fillQuiet` fails contrast under a tinted label in dark.
+            // Routed through PressableScale (pressed state ships with the
+            // element). ENG-1294.
+            <PressableScale
               key={chip.id}
+              haptic="selection"
               disabled={askLoading && selectedChipId === chip.id}
               onPress={() => onAskChip(chip.id)}
               style={{
                 borderWidth: 1,
-                borderColor: selectedChipId === chip.id ? colors.tint : colors.cardBorder,
+                borderColor:
+                  selectedChipId === chip.id ? accent.primarySolid : colors.cardBorder,
                 backgroundColor:
-                  selectedChipId === chip.id ? colors.fillQuiet : colors.card,
+                  selectedChipId === chip.id ? accent.primarySoft : colors.card,
                 borderRadius: 9999,
-                paddingHorizontal: Spacing.lg,
+                paddingHorizontal: Spacing.md,
                 paddingVertical: Spacing.sm,
               }}
             >
-              <Text style={{ ...Type.button, color: colors.text }}>{chip.label}</Text>
-            </Pressable>
+              <Text style={{ ...Type.body, color: colors.text }}>{chip.label}</Text>
+            </PressableScale>
           ))}
         </View>
         {askLoading ? (
           <Text style={{ ...Type.body, color: colors.textSecondary }}>Coach is thinking…</Text>
         ) : askAnswer ? (
-          <SupprCard style={{ padding: Spacing.lg }}>
+          <SupprCard lift="soft" padding="lg">
             <Text style={{ ...Type.body, color: colors.text }}>{askAnswer}</Text>
           </SupprCard>
         ) : null}

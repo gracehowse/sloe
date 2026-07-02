@@ -13,9 +13,9 @@
  * transport differs.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 
-import { useCoach } from "@/lib/today/useCoach";
+import { COACH_REFINE_TIMEOUT_MS, useCoach } from "@/lib/today/useCoach";
 import type { NorthStarRecipe } from "@/lib/nutrition/northStarSuggestion";
 
 const library: NorthStarRecipe[] = [
@@ -120,5 +120,65 @@ describe("useCoach (web)", () => {
       useCoach({ library, remaining, slot: "dinner", enabled: false }),
     );
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  // ENG-1294 — refining stuck-path hardening. `refining` is a soft state,
+  // but a stranded true pins "Refining order…" on the screen forever.
+
+  it("resets refining when the candidate set shrinks below the fetch threshold mid-flight", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {}))); // never settles
+    const { result, rerender } = renderHook(
+      ({ lib }: { lib: NorthStarRecipe[] }) =>
+        useCoach({ library: lib, remaining, slot: "dinner" }),
+      { initialProps: { lib: library } },
+    );
+    expect(result.current.refining).toBe(true);
+    // Decision space collapses to a single candidate → early return, which
+    // must reset refining even though the prior run never settled.
+    rerender({ lib: [library[0]] });
+    expect(result.current.refining).toBe(false);
+  });
+
+  it("resets refining when the hook is disabled mid-flight", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {}))); // never settles
+    const { result, rerender } = renderHook(
+      ({ on }: { on: boolean }) =>
+        useCoach({ library, remaining, slot: "dinner", enabled: on }),
+      { initialProps: { on: true } },
+    );
+    expect(result.current.refining).toBe(true);
+    rerender({ on: false });
+    expect(result.current.refining).toBe(false);
+  });
+
+  it("passes an abort signal and aborts a hung fetch after the client timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(
+        (_url: unknown, init?: RequestInit) =>
+          new Promise<never>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("Aborted", "AbortError")),
+            );
+          }),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      const { result } = renderHook(() =>
+        useCoach({ library, remaining, slot: "dinner" }),
+      );
+      expect(result.current.refining).toBe(true);
+      const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(COACH_REFINE_TIMEOUT_MS + 1);
+      });
+      expect(result.current.refining).toBe(false);
+      // Deterministic candidates stand — the surface never empties.
+      expect(result.current.source).toBe("deterministic");
+      expect(result.current.candidates.length).toBeGreaterThanOrEqual(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
