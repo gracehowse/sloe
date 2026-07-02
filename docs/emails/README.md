@@ -1,14 +1,16 @@
-# Suppr email templates
+# Sloe email templates
 
 EMAIL-01 (audit 2026-04-28) — kills the Phase 6 P0 finding that "default
-Supabase emails are scammy on first signup." The deliverable splits in
-two:
+Supabase emails are scammy on first signup." Rebranded Suppr → Sloe
+2026-07-01 (ENG-1289); brand drift is guarded by
+`tests/unit/brandDriftSloe.test.ts`. The deliverable splits in two:
 
 1. **Supabase Auth templates** (`supabase-auth/`) — Welcome / Confirm /
-   Reset / Magic-link / Change-email / Invite. These are configured in
-   the Supabase Dashboard (`Authentication → Email Templates`). The
-   HTML files in this directory are the canonical source; copy-paste
-   into the dashboard. Variables follow Supabase's documented
+   Reset / Magic-link / Change-email / Invite. The canonical source is
+   `supabase/templates/*.html` + the `[auth.email.template.*]` subjects
+   in `supabase/config.toml`, applied with `supabase config push
+   --project-ref fnfgxsignmuepshbebrl`; this directory is a byte-identical
+   human-reference mirror. Variables follow Supabase's documented
    templating syntax (`{{ .ConfirmationURL }}`, `{{ .Email }}`, etc.).
 
 2. **Custom transactional emails** (trial-ending / subscription /
@@ -26,8 +28,13 @@ copy is short, action is explicit, footer is honest.
 ## Visual constraints
 
 - Inline CSS only. Mail clients reject `<style>` blocks unpredictably.
-- Suppr brand gradient: `linear-gradient(135deg, #4c6ce0 0%, #e04888
-  100%)`. Used on the primary button background.
+- Brand ink: Sloe plum `#3B2A4D` — the literal hex mirrors
+  `--foreground-brand` in `src/styles/theme.css` (email HTML can't use
+  CSS vars). Wordmark text, primary button fill, and link colour. The
+  pre-rebrand blue→magenta gradient (`#4c6ce0` → `#e04888`) is retired.
+- Wordmark: lowercase `sloe` in a serif stack (`'Fraunces', Georgia,
+  'Times New Roman', serif`) — mail clients don't load webfonts, so
+  Georgia stands in for the Fraunces logotype.
 - Single 600px-wide content column. Renders correctly on Gmail
   desktop, Apple Mail desktop, and Apple Mail iOS down to 320px.
 - No tracking pixels, no analytics beacons in the templates
@@ -35,13 +42,16 @@ copy is short, action is explicit, footer is honest.
 
 ## Installation
 
-For each `.html` file in `supabase-auth/`:
+Templates + subjects apply from the repo:
 
-1. Open Supabase Dashboard → Authentication → Email Templates
-2. Pick the matching template (e.g. "Confirm signup", "Magic link")
-3. Open the file, copy the HTML body, paste into the dashboard
-4. Set the subject line from the comment at the top of each file
-5. Save
+```
+supabase config push --project-ref fnfgxsignmuepshbebrl
+```
+
+The Dashboard (Authentication → Email Templates) reflects the pushed
+state. Manual fallback: copy each HTML body from `supabase-auth/` into
+the matching Dashboard template and set the subject from the comment at
+the top of the file.
 
 The `Site URL` in `Authentication → URL Configuration` must match the
 domain Supabase emits in `{{ .ConfirmationURL }}`. For production this
@@ -70,7 +80,7 @@ The templates avoid common spam triggers:
 - Footer carries the company contact + privacy email (not a `noreply@`
   trap)
 - Single `<a>` per call-to-action (no link soup)
-- Real Suppr logo (gradient mark) — improves brand-recognition spam
+- Real Sloe wordmark (plum logotype) — improves brand-recognition spam
   score
 
 Once Supabase is configured to use a custom SMTP provider (vs the

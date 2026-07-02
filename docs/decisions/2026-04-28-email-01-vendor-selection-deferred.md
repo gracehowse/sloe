@@ -4,6 +4,15 @@
 **Area:** Engineering / Ops
 **Status:** Open (deferred to vendor-selection round)
 
+> **Update 2026-07-01 (ENG-1289):** the six auth templates + config.toml
+> subjects were rebranded Suppr → Sloe (plum wordmark `#3B2A4D` mirroring
+> `--foreground-brand`; the blue→magenta gradient described below is
+> retired). Guarded by `tests/unit/brandDriftSloe.test.ts`. Applying to
+> the live mailer requires `supabase config push --project-ref
+> fnfgxsignmuepshbebrl` post-merge. Link hosts stay `suppr-club.com`
+> until the domain cutover. Step 3's "inherit the auth-template
+> aesthetic (gradient wordmark)" should now read the Sloe plum treatment.
+
 ## What's done
 
 EMAIL-01 partial closure shipped 2026-04-28 (commits `5d72203`,
