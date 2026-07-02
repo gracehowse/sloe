@@ -26,7 +26,7 @@ export function TrialEndReminderDayPicker({
 
   return (
     <div className="mt-4" data-testid="trial-end-reminder-picker">
-      <p className="text-[12px] text-muted-foreground leading-snug mb-2">
+      <p className="text-[11px] text-muted-foreground leading-snug mb-2">
         We&apos;ll remind you before your trial ends — choose when.
       </p>
       <div
