@@ -37,6 +37,7 @@ import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track";
 import { sanitizeOverrideInput } from "../../../lib/nutrition/ingredientOverrides";
 import { ingredientVerifyNeedsReview } from "../../../lib/nutrition/verifyConfidencePolicy";
+import { formatNutritionSourceLabel } from "../../../lib/nutrition/sourceLabel";
 
 export type AddIngredientPayload = {
   name: string;
@@ -334,15 +335,13 @@ export function AddIngredientDialog({ open, onOpenChange, onAdd, recipeId }: Add
           </Button>
 
           {match?.macros ? (
-            <div
-              className="rounded-lg border border-border bg-muted/50 p-3 text-sm"
-              aria-live="polite"
-            >
+            <div className="rounded-lg border border-border bg-muted/50 p-3 text-sm" aria-live="polite">
               <p className="font-medium text-foreground">
                 Match: {match.matchedName ?? name.trim()}
               </p>
               <p className="text-xs text-muted-foreground">
-                {match.source} · {Math.round(match.macros.calories)} kcal ·{" "}
+                {/* ENG-1298 — source id → display label ("Suppr" → "Sloe"). */}
+                {formatNutritionSourceLabel(match.source) ?? match.source} · {Math.round(match.macros.calories)} kcal ·{" "}
                 {Math.round(match.macros.protein)}P / {Math.round(match.macros.carbs)}C /{" "}
                 {Math.round(match.macros.fat)}F
               </p>

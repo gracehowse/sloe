@@ -8,6 +8,7 @@ import { AnalyticsEvents } from "../../../src/lib/analytics/events.ts";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions.ts";
 import { RecipeHeroFallback } from "../../../src/app/components/suppr/RecipeHeroFallback.tsx";
 import { isRetiredStockImageUrl } from "../../../src/lib/recipes/heroImageFallback.ts";
+import { SupprLogoMark } from "../../components/SupprLogoMark.tsx";
 
 function getServerClient() {
   return createClient(supabasePublicUrl(), supabasePublicAnonKey());
@@ -122,11 +123,11 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const data = await fetchRecipe(id);
-  if (!data) return { title: "Recipe Not Found — Suppr" };
+  if (!data) return { title: "Recipe Not Found — Sloe" };
 
   const { recipe } = data;
   return {
-    title: `${recipe.title} — Suppr`,
+    title: `${recipe.title} — Sloe`,
     description: `${recipe.calories} kcal · ${recipe.protein}g protein · ${recipe.carbs}g carbs · ${recipe.fat}g fat${recipe.description ? ` — ${recipe.description}` : ""}`,
     openGraph: {
       title: recipe.title,
@@ -234,12 +235,10 @@ export default async function RecipePage({ params }: Props) {
       {/* Nav bar — Sloe palette: plum wordmark, clay CTA pill. */}
       <header className="sticky top-0 z-10 bg-background-secondary/90 backdrop-blur-xl border-b border-border px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-lg font-semibold text-foreground-brand"
-            style={{ fontFamily: "var(--font-headline)" }}
-          >
-            Suppr
+          {/* ENG-1298 — lowercase "sloe" wordmark (SupprLogoMark carries the
+              brand font + casing), replacing the stale literal "Suppr". */}
+          <Link href="/" className="inline-flex items-center text-lg" aria-label="Sloe">
+            <SupprLogoMark />
           </Link>
           <Link
             href="/login"
@@ -476,7 +475,7 @@ export default async function RecipePage({ params }: Props) {
             Add this to a meal plan that hits your macros
           </h3>
           <p className="text-foreground-secondary mb-6 max-w-md mx-auto">
-            Suppr plans your week from recipes like this one — matched to your calorie and protein targets — then generates your shopping list automatically.
+            Sloe plans your week from recipes like this one — matched to your calorie and protein targets — then generates your shopping list automatically.
           </p>
           <a
             href="/login"

@@ -1753,7 +1753,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               <div className="flex-1 min-w-0">
                 <span className="block text-sm font-medium text-foreground">Apple Health</span>
                 <span className="block text-xs text-muted-foreground mt-1">
-                  iOS only · syncs from the Suppr app
+                  iOS only · syncs from the Sloe app
                 </span>
               </div>
               <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />

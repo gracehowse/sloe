@@ -187,7 +187,7 @@ export function SettingsDialogs(props: SettingsDialogsProps) {
           <DialogHeader>
             <DialogTitle>Apple Health syncs from iOS</DialogTitle>
             <DialogDescription>
-              Apple Health connects in the Suppr iOS app — HealthKit is
+              Apple Health connects in the Sloe iOS app — HealthKit is
               iOS-only, so there&rsquo;s nothing to connect here on the web.
               Once it&rsquo;s connected on your iPhone, your steps, active
               energy, and weight show up across Today and Progress here,

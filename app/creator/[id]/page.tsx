@@ -99,13 +99,13 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const data = await fetchCreatorBundle(id);
-  if (!data) return { title: "Creator not found — Suppr" };
+  if (!data) return { title: "Creator not found — Sloe" };
   const { creator } = data;
   const desc = creator.bio
     ? creator.bio.slice(0, 200)
     : `${creator.display_name} on Sloe — recipes by @${creator.handle}.`;
   return {
-    title: `${creator.display_name} (@${creator.handle}) — Suppr`,
+    title: `${creator.display_name} (@${creator.handle}) — Sloe`,
     description: desc,
     openGraph: {
       title: creator.display_name,

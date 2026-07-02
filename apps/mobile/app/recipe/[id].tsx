@@ -1419,7 +1419,7 @@ export default function RecipeDetailScreen() {
     if (!recipe || heroGenerating) return;
     const apiBase = getSupprApiBase();
     if (!apiBase) {
-      Alert.alert("Image generation unavailable", "Suppr's image service is not configured in this build.");
+      Alert.alert("Image generation unavailable", "Sloe's image service is not configured in this build.");
       return;
     }
     setHeroGenerating(true);

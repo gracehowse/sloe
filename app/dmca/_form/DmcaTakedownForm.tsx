@@ -146,7 +146,7 @@ export function DmcaTakedownForm() {
           htmlFor="dmca-recipe"
           className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1"
         >
-          Suppr recipe ID or link <span aria-hidden="true">*</span>
+          Sloe recipe ID or link <span aria-hidden="true">*</span>
         </label>
         <input
           id="dmca-recipe"

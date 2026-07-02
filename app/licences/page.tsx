@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { TrustPageLayout } from "../../src/app/components/trust/TrustPageLayout";
 
 export const metadata: Metadata = {
-  title: "Open-source licences — Suppr",
-  description: "Open-source software, data, and content used by Suppr, with licence notices.",
+  title: "Open-source licences — Sloe",
+  description: "Open-source software, data, and content used by Sloe, with licence notices.",
 };
 
 type Entry = { name: string; licence: string; purpose: string; url: string };
@@ -33,7 +33,7 @@ const CODE_LICENCES: Entry[] = [
 ];
 
 const DATA_LICENCES: Entry[] = [
-  { name: "USDA FoodData Central", licence: "Public domain (US Government works)", purpose: "Nutrition data for whole foods. USDA does not endorse Suppr.", url: "https://fdc.nal.usda.gov/" },
+  { name: "USDA FoodData Central", licence: "Public domain (US Government works)", purpose: "Nutrition data for whole foods. USDA does not endorse Sloe.", url: "https://fdc.nal.usda.gov/" },
   { name: "Open Food Facts", licence: "Open Database License 1.0 (ODbL)", purpose: "Product and barcode data. Data © Open Food Facts contributors.", url: "https://opendatacommons.org/licenses/odbl/1-0/" },
   { name: "Edamam Food Database API", licence: "Edamam API terms (commercial licence)", purpose: "Restaurant and branded-food nutrition. Powered by Edamam.", url: "https://www.edamam.com/" },
   { name: "FatSecret Platform API", licence: "FatSecret Platform terms (Basic developer tier — non-caching)", purpose: "Food and nutrition database. Macros are fetched at request time and not stored.", url: "https://platform.fatsecret.com/" },
@@ -45,12 +45,12 @@ export default function LicencesPage() {
       title="Open-source & open-data licences"
       lastUpdated="April 2026"
       version="v1.0"
-      subtitle="The software Suppr ships and the data Suppr displays — and the licences they use."
+      subtitle="The software Sloe ships and the data Sloe displays — and the licences they use."
       revisionPath="app/licences/page.tsx"
     >
         <p className="text-sm text-slate-700 dark:text-slate-300 mb-8">
-          Suppr is built on the work of hundreds of open-source contributors and the maintainers of public food-data
-          databases. This page lists the licences that apply to software Suppr ships and to data it displays. The
+          Sloe is built on the work of hundreds of open-source contributors and the maintainers of public food-data
+          databases. This page lists the licences that apply to software Sloe ships and to data it displays. The
           information here is provided for transparency and to meet attribution obligations. &ldquo;Trademarks&rdquo; of
           respective owners.
         </p>

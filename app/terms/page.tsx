@@ -85,7 +85,7 @@ export default function TermsPage() {
           <p>
             To use most of Sloe you need an account. You agree to provide accurate information, to keep your sign-in
             credentials confidential, and to tell us promptly at{" "}
-            <a href={`mailto:legal@suppr.app`} className="text-primary-solid underline">legal@suppr.app</a>{" "}
+            <a href={`mailto:legal@getsloe.com`} className="text-primary-solid underline">legal@getsloe.com</a>{" "}
             if you believe your account has been compromised. You are responsible for activity that happens under your account. We
             may suspend accounts showing signs of unauthorised use, fraud, or abuse.
           </p>
@@ -211,7 +211,7 @@ export default function TermsPage() {
             <strong>you are asked to expressly consent to performance beginning before the 14-day period ends and to acknowledge
             that, by doing so, you lose the right to withdraw once performance has begun in full</strong>. If you purchased a
             subscription and wish to exercise a withdrawal right before performance has begun, email{" "}
-            <a href={`mailto:legal@suppr.app`} className="text-primary-solid underline">legal@suppr.app</a>{" "}
+            <a href={`mailto:legal@getsloe.com`} className="text-primary-solid underline">legal@getsloe.com</a>{" "}
             within 14 days of purchase. This right is separate from, and additional to, the voluntary 7-day refund policy above,
             and it does not apply to in-app purchases made through the Apple App Store or Google Play (which are governed by the
             respective store&rsquo;s policy).
@@ -225,7 +225,7 @@ export default function TermsPage() {
           <h2 id="contact" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">Contact</h2>
           <p>
             Legal notices, DMCA / IP complaints, and questions about these terms:{" "}
-            <a href={`mailto:legal@suppr.app`} className="text-primary-solid underline">legal@suppr.app</a>.
+            <a href={`mailto:legal@getsloe.com`} className="text-primary-solid underline">legal@getsloe.com</a>.
             General support:{" "}
             <a href={`mailto:${supportEmail}`} className="text-primary-solid underline">{supportEmail}</a>.
           </p>
