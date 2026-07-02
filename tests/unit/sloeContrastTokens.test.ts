@@ -116,6 +116,66 @@ describe("Sloe text tokens clear WCAG AA on their surfaces", () => {
     expect(ratio(WARNING_SOLID, CREAM)).toBeGreaterThanOrEqual(AA_NORMAL); // ~5.2
   });
 
+  it("over-budget amber numeral clears AA-normal on cream, white + card (ENG-1296)", () => {
+    // 2026-07-01 re-ratification: over-budget is uniformly amber — the ring
+    // "kcal over" numeral reads in --over-budget-fg (= --accent-warning-solid,
+    // #925812) on light surfaces. Measured: 5.79:1 white / 5.17:1 cream /
+    // 5.31:1 card — AA PASS everywhere the numeral can sit, so no darker
+    // sanctioned amber is needed. Dark numeral (#D6A24A) = 7.33:1 on the
+    // dark card. Guards the amber-on-cream pair the ticket called out.
+    const OVER_BUDGET_FG = WARNING_SOLID; // single-sourced in theme.css
+    expect(ratio(OVER_BUDGET_FG, CREAM)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.17
+    expect(ratio(OVER_BUDGET_FG, WHITE)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.79
+    expect(ratio(OVER_BUDGET_FG, CARD)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.31
+    const OVER_BUDGET_FG_DARK = "#D6A24A"; // .dark --over-budget-fg (= warning-solid dark)
+    expect(ratio(OVER_BUDGET_FG_DARK, DARK_CARD)).toBeGreaterThanOrEqual(AA_NORMAL); // 7.3
+  });
+
+  it("empty hero-ring gradient stops clear the 3:1 UI-component floor (ENG-1315)", () => {
+    // Decision 2026-07-01 #5 (measured): the cold-open ring ticks were
+    // #C4BCD4/#E6E0F1 ≈ 1.8:1 on white — below the WCAG 1.4.11 3:1 floor for
+    // UI components, so the hero read as a skeleton. Deepened calm plum-lilac:
+    // A #786A94 = 4.90:1 white, B #9587B3 = 3.28:1 white. Values must mirror
+    // theme.css --ring-empty-a/b + mobile ringEmptyA/B (pinned in
+    // crossPlatformThemeTokens.test.ts).
+    const RING_EMPTY_A = "#786A94";
+    const RING_EMPTY_B = "#9587B3";
+    expect(ratio(RING_EMPTY_A, WHITE)).toBeGreaterThanOrEqual(AA_LARGE); // 4.90
+    expect(ratio(RING_EMPTY_B, WHITE)).toBeGreaterThanOrEqual(AA_LARGE); // 3.28
+    // Dark: A lifted #6A5A7E → #7D6C93 so the bloom clears 3:1 on the dark
+    // card too (3.56:1; was 2.71:1). B #B9ADD0 already passed (7.99:1).
+    const DARK_RING_CARD = "#211A2A"; // .dark --card
+    expect(ratio("#7D6C93", DARK_RING_CARD)).toBeGreaterThanOrEqual(AA_LARGE);
+    expect(ratio("#B9ADD0", DARK_RING_CARD)).toBeGreaterThanOrEqual(AA_LARGE);
+  });
+
+  it("light page ground separates measurably from the white card (ENG-1316)", () => {
+    // Decision 2026-07-01 #6 (measured): page vs card was 2/255 — the one-card
+    // soft lift was invisible at the fill level. The ground is now the
+    // whisper-cool plum-white #F7F6FA (the v3 GROUND SYSTEM's stated intent —
+    // cool, never beige); cards stay #FFFFFF on the layered --elev-card-soft.
+    // Values mirror theme.css --background/--card + mobile Colors.light
+    // (parity pinned in crossPlatformThemeTokens.test.ts).
+    const PAGE_GROUND = "#F7F6FA";
+    const CARD_WHITE = "#FFFFFF";
+    expect(PAGE_GROUND).not.toBe(CARD_WHITE);
+    // Measurable at token level: ≥1.07:1 luminance separation (was 1.00) and
+    // every RGB channel at least 4/255 below the card (was ≤2/255).
+    expect(ratio(PAGE_GROUND, CARD_WHITE)).toBeGreaterThanOrEqual(1.07);
+    const [pr, pg, pb] = hexToRgb(PAGE_GROUND);
+    expect(255 - pr).toBeGreaterThanOrEqual(4);
+    expect(255 - pg).toBeGreaterThanOrEqual(4);
+    expect(255 - pb).toBeGreaterThanOrEqual(4);
+    // The ladder stays monotonic: card > page > grouped > secondary.
+    const lumOf = (hex: string) => relativeLuminance(hexToRgb(hex));
+    expect(lumOf(CARD_WHITE)).toBeGreaterThan(lumOf(PAGE_GROUND));
+    expect(lumOf(PAGE_GROUND)).toBeGreaterThan(lumOf("#F5F4F7")); // --background-grouped
+    expect(lumOf("#F5F4F7")).toBeGreaterThan(lumOf("#F1F0F4")); // --background-secondary
+    // Text tokens keep AA on the tinted ground.
+    expect(ratio(FOREGROUND_TERTIARY, PAGE_GROUND)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.01
+    expect(ratio(WARNING_SOLID, PAGE_GROUND)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.38
+  });
+
   it("net-energy chip backgrounds carry white label at AA-normal", () => {
     for (const state of ["deficit", "surplus", "maintenance"] as const) {
       expect(ratio(WHITE, NET_ENERGY_CHIP_BG[state])).toBeGreaterThanOrEqual(

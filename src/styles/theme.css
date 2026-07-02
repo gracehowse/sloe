@@ -69,16 +69,21 @@
    *  `apps/mobile/constants/theme.ts`. Spec:
    *  `docs/ux/redesign/phase-0-token-foundation-dossier.md`. */
   /* Sloe v3 surface model (2026-06-21, Grace's consolidated Claude-Design
-     prototype `docs/ux/redesign/v3/Sloe-App.html`). The in-product ground
-     returns to PURE WHITE; cream (`--background-marketing`) is reserved for
-     marketing / landing / paywall only. This REVERSES the 2026-06-12 flat-card-
-     on-cream grammar: per the prototype, "white-on-white is NOT warmth, NOT
-     beige fills and NOT 1px hairlines — it is ELEVATION: a whisper-cool
-     near-white ground so BRIGHT WHITE cards lift on a soft layered shadow."
-     Depth now comes from `--background-grouped` (cool plum-grey grouped ground)
-     + the layered `--elev-card-soft`, not from a warm page tint. Mirrors mobile
-     Colors.light. Spec: v3 `:root` surface block. */
-  --background: #FFFFFF;            /* pure white app canvas */
+     prototype `docs/ux/redesign/v3/Sloe-App.html`), refined 2026-07-01
+     (decision #6, ENG-1316). The prototype's GROUND SYSTEM prose: "white-on-
+     white is NOT warmth, NOT beige fills and NOT 1px hairlines — it is
+     ELEVATION: a whisper-cool near-white ground so BRIGHT WHITE cards lift on
+     a soft layered shadow." Its token never landed the tint (--bg stayed
+     #ffffff), and the sweep measured the result: page vs card = 2/255 — the
+     one-card soft lift was invisible at the fill level (shadows only live at
+     edges). ENG-1316 lands the stated intent: the ground is now the
+     whisper-COOL plum-white #F7F6FA (NOT beige — cool, per the locked ground
+     system), cards stay pure white on the layered `--elev-card-soft`.
+     Measured separation: Δ RGB 8/9/5 vs the white card (1.08:1) — visible.
+     Ladder stays monotonic: card #FFFFFF > page #F7F6FA > grouped #F5F4F7 >
+     secondary #F1F0F4. Cream (`--background-marketing`) stays marketing-only.
+     Mirrors mobile Colors.light. */
+  --background: #F7F6FA;            /* whisper-cool plum-white app canvas (ENG-1316) */
   --background-secondary: #F1F0F4; /* recessed cool plum-grey (tracks, wells) */
   --background-grouped: #F5F4F7;   /* faint cool-plum grouped ground (NOT beige) */
   --background-marketing: #FBF8F3; /* Oat — marketing / landing / paywall ONLY */
@@ -230,7 +235,7 @@
   --border: #EAE7F0;             /* v3 faint cool-plum hairline */
   --border-strong: #D9D4E0;
   --input: transparent;
-  --input-background: #FFFFFF;   /* v3 white input on white ground — lift via --border */
+  --input-background: #FFFFFF;   /* v3 white input — lifts on the cool ground + --border (ENG-1316) */
   --switch-background: #C9C2D6;
   --ring: var(--accent-primary);
 
@@ -268,10 +273,9 @@
   --macro-fat-solid: #9A4A66;                     /* darkened berry — ~6:1 on white, AA PASS */
   --macro-fat-soft: rgba(178, 93, 122, 0.12);
   --macro-calories: #5E7C5A;                      /* sage — under-budget ring identity */
-  /** Calorie ring over-budget second lap + leading-cap glow — warm-red family
-   *  (v3 over gradient #C0533F→#E08A5F), distinct from the sage under arc. */
-  --ring-overage-lap: #C0533F;
-  --ring-overage-glow: #E08A5F;
+  /* --ring-overage-lap / --ring-overage-glow deleted (ENG-1296): the red
+     overage-lap tokens were dead (no consumers — the lap idiom was retired
+     2026-06-10) and red-over is retired product-wide (2026-07-01 decision #2). */
   --macro-fiber: #5E7C5A;                         /* sage */
   --macro-fiber-solid: #466046;                   /* 6.95:1 — AA PASS */
   --macro-fiber-soft: rgba(94, 124, 90, 0.12);
@@ -345,15 +349,21 @@
      read as grey. Text-safe. Mirrors mobile `colors.importHeroBg`. */
   --import-hero-bg: rgba(126, 92, 146, 0.3);
 
-  /** Over-budget — Sloe destructive red (dossier D-2). Fat now owns amber,
-   *  so over-budget moves to red to stay distinct. Traffic-light mode
-   *  (opt-in Settings toggle) still substitutes red — same hue now. */
-  --over-budget-fg: #B04434;
-  --over-budget-soft: rgba(176, 68, 52, 0.08);
+  /** Over-budget — AMBER (2026-07-01 re-ratification, sweep decision #2 /
+   *  ENG-1296). The dossier D-2 "over = destructive red" carve-out is RETIRED:
+   *  diet-culture research (red numbers = guilt cycles, the #1 refugee
+   *  complaint; MacroFactor's no-red posture) outweighs at-a-glance severity.
+   *  Over-budget signals product-wide are uniformly the amber warning family —
+   *  destructive red is errors/dangerous actions ONLY. Single-sourced off the
+   *  warning tokens so the pair can never drift apart. The ring "kcal over"
+   *  numeral reads in this at AA (#925812 = 5.79:1 white / 5.17:1 cream).
+   *  ↔ mobile `Colors.light.overBudgetFg/-Soft`. */
+  --over-budget-fg: var(--accent-warning-solid);
+  --over-budget-soft: var(--accent-warning-soft);
 
   /** Activity / burn / earned-bonus — Sloe honey. Ring bonus arc, activity
-   *  cards, burn-detail bonus. Distinct from warning (amber) + over-budget
-   *  (red) so "earned via exercise" never reads as an alert. Used as an
+   *  cards, burn-detail bonus. Distinct from the darker warning/over-budget
+   *  ambers so "earned via exercise" never reads as an alert. Used as an
    *  arc/fill (3:1 graphical), not small text. */
   --activity: #D6A24A;
   --activity-soft: rgba(214, 162, 74, 0.16);
@@ -412,11 +422,16 @@
   /** Sloe v3 jewel-grade ring (prototype `:root`). The DailyRing arc draws as a
    *  gradient (deep → fresh stop), with a luminous gem cap, an engraved inner
    *  channel on the track, and watch-dial graduation ticks. Consumed by the
-   *  Phase 1 ring component (web SVG / mobile Skia). Locked rule:
-   *  empty = frost bloom, under = sage gradient, over = destructive → warm. */
+   *  Phase 1 ring component (web SVG / mobile Skia). Locked rule
+   *  (2026-07-01 re-ratification, ENG-1296): empty = frost bloom,
+   *  under = sage gradient, over = AMBER family (red retired). */
   --ring-under-a: #4D7A50;  --ring-under-b: #93C08C;   /* sage → fresh leaf */
-  --ring-over-a:  #C0533F;  --ring-over-b:  #E08A5F;   /* destructive → warm */
-  --ring-empty-a: #C4BCD4;  --ring-empty-b: #E6E0F1;   /* frost bloom */
+  --ring-over-a:  #925812;  --ring-over-b:  #C9892C;   /* ONE amber family with the numeral: warning-solid → warning (ENG-1296) */
+  /* Empty bloom deepened (ENG-1315, decision 2026-07-01 #5): the old
+     #C4BCD4/#E6E0F1 ticks measured ≈1.8:1 on white — under the 3:1
+     UI-component floor (hero read as a skeleton). Now A = 4.90:1, B = 3.28:1
+     on white — same calm plum-lilac concept, visible. ↔ mobile ringEmptyA/B. */
+  --ring-empty-a: #786A94;  --ring-empty-b: #9587B3;   /* deepened frost bloom */
   --ring-channel: rgba(36, 23, 51, 0.06);              /* engraved inner edge */
   --ring-cap-core: #FFFFFF;                             /* luminous gem highlight */
   --ring-tick: rgba(59, 42, 77, 0.20);                 /* watch-dial graduations */
@@ -571,8 +586,7 @@
   --macro-fat-solid: #D489A3;
   --macro-fat-soft: rgba(212, 137, 163, 0.16);
   --macro-calories: #7FA078;
-  --ring-overage-lap: #DC6B55;
-  --ring-overage-glow: #E8A882;
+  /* --ring-overage-lap / --ring-overage-glow deleted (ENG-1296) — see :root. */
   --macro-fiber: #7FA078;
   --macro-fiber-solid: #7FA078;
   --macro-fiber-soft: rgba(127, 160, 120, 0.16);
@@ -632,9 +646,11 @@
   /* ENG-1094 — Discover import hero confident lavender-plum accent (dark). */
   --import-hero-bg: rgba(154, 123, 170, 0.3);
 
-  /** Over-budget — Sloe dark destructive (dossier D-2). */
-  --over-budget-fg: #DC6B55;
-  --over-budget-soft: rgba(220, 107, 85, 0.14);
+  /** Over-budget — amber, dark (ENG-1296 re-ratification; red retired).
+   *  Resolves to the dark warning-solid honey #D6A24A (7.33:1 on the dark
+   *  card — AA PASS). ↔ mobile `Colors.dark.overBudgetFg/-Soft`. */
+  --over-budget-fg: var(--accent-warning-solid);
+  --over-budget-soft: var(--accent-warning-soft);
 
   /** Activity / burn / earned-bonus — Sloe dark honey (OLED-lifted). */
   --activity: #E0B25E;
@@ -684,8 +700,8 @@
    *  plum-black; tick lifts to a frost-grey alpha visible on Nocturne. Mirrors
    *  the prototype dark `:root`. */
   --ring-under-a: #6FA06A;  --ring-under-b: #B6E0AD;
-  --ring-over-a:  #D2614A;  --ring-over-b:  #F0A47A;
-  --ring-empty-a: #6A5A7E;  --ring-empty-b: #B9ADD0;
+  --ring-over-a:  #D6A24A;  --ring-over-b:  #E0B25E;  /* lifted amber family — red retired (ENG-1296) */
+  --ring-empty-a: #7D6C93;  --ring-empty-b: #B9ADD0;  /* A lifted for the 3:1 floor on the dark card (ENG-1315) */
   --ring-channel: rgba(0, 0, 0, 0.28);
   --ring-cap-core: #FBF7FF;
   --ring-tick: rgba(201, 194, 214, 0.24);

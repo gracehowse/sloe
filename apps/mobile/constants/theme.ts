@@ -86,8 +86,10 @@ export const Accent = {
   successLight: '#83A57E',
   successSolid: '#466046',
   successSolidDark: '#83A57E',
-  /** Amber slot — warning, sodium, approaching limits. (over-budget moved to
-   *  red per dossier D-2; bonus/burn own honey via `Accent.activity`.)
+  /** Amber slot — warning, sodium, approaching limits, AND over-budget
+   *  (2026-07-01 re-ratification, sweep decision #2 / ENG-1296: the dossier
+   *  D-2 "over = red" carve-out is RETIRED — over-budget signals product-wide
+   *  are uniformly amber; bonus/burn own honey via `Accent.activity`.)
    *  `warning` (#C9892C, 2.96:1 text-fail) is FILLS ONLY (dots / bars / soft
    *  tints). `warningSolid` carries ALL amber TEXT + icons. Darkened
    *  #956619 → #925812 (2026-06-23, a11y parity with web `--accent-warning-solid`):
@@ -111,7 +113,8 @@ export const Accent = {
    *  (#9C5228 light / #D6A24A dark). (ENG-1275.) */
   alcoholSolid: '#9C5228',
   alcoholSolidDark: '#D6A24A',
-  /** Brick slot — destructive, error, over-budget. Base hue is the TEXT
+  /** Brick slot — destructive + error ONLY (over-budget is amber since the
+   *  2026-07-01 re-ratification — ENG-1296). Base hue is the TEXT
    *  token in practice, so it must clear AA 4.5:1 as text: darkened
    *  #C0533F → #B04434 (2026-06-09, a11y; 4.86:1 on the cream
    *  `destructive/5` composite, 5.64:1 on white — PASS), mirrors web
@@ -145,8 +148,9 @@ export const Accent = {
   carbs: '#C8794E',
   carbsLight: '#D58A5E',
   /** Activity / burn / earned-bonus — Sloe honey. Ring bonus arc, activity
-   *  cards, burn-detail bonus. Distinct from warning (amber) + over (red).
-   *  FILL-only (arc/dot/icon at 3:1) — see `activitySolid` for text. */
+   *  cards, burn-detail bonus. Distinct from the darker warning/over-budget
+   *  ambers (ENG-1296). FILL-only (arc/dot/icon at 3:1) — see `activitySolid`
+   *  for text. */
   activity: '#D6A24A',
   activityLight: '#E0B25E',
   /** Deep honey — TEXT/icon-on-light variant of `activity` (mirrors web
@@ -408,14 +412,18 @@ export const Colors = {
     // 4.81 cream — PASS, lightest grey that clears AA. Mirrors web
     // `--foreground-tertiary`. textSecondary (#655C6E) already passed.
     textTertiary: '#6E6874',
-    // Sloe v3 surface model (2026-06-21, prototype docs/ux/redesign/v3). The
-    // in-product ground returns to PURE WHITE; cream is marketing-only. v3
-    // REVERSES the 2026-06-12 flat-card-on-cream grammar: white cards LIFT on
-    // the layered Elevation.cardSoft over a whisper-cool white ground
-    // ("elevation, not warmth"). Depth comes from backgroundGrouped (cool
-    // plum-grey) + the shadow, not a warm page tint. Splash/icon ground stays
-    // #FBF8F3 in app.json (brandIconSplash.test.ts pins it). ↔ web theme.css.
-    background: '#FFFFFF',          // pure white app canvas
+    // Sloe v3 surface model (2026-06-21, prototype docs/ux/redesign/v3),
+    // refined 2026-07-01 (decision #6, ENG-1316): the v3 ground system wants
+    // "a whisper-cool near-white ground so BRIGHT WHITE cards lift on a soft
+    // shadow" — but the pure-white token left page vs card at 2/255 (the
+    // one-card soft lift was invisible at the fill level). The ground now
+    // lands that intent: whisper-COOL plum-white #F7F6FA (NOT beige/warm —
+    // "elevation, not warmth" holds), white cards + Elevation.cardSoft
+    // unchanged. Δ 8/9/5 per channel vs the white card — measurable. Ladder:
+    // card #FFFFFF > background #F7F6FA > grouped #F5F4F7 > secondary
+    // #F1F0F4. Splash/icon ground stays #FBF8F3 in app.json
+    // (brandIconSplash.test.ts pins it). ↔ web theme.css --background.
+    background: '#F7F6FA',          // whisper-cool plum-white canvas (ENG-1316)
     backgroundSecondary: '#F1F0F4', // recessed cool plum-grey (tracks, wells)
     backgroundGrouped: '#F5F4F7',   // faint cool-plum grouped ground (NOT beige)
     card: '#FFFFFF',                // white card — lift via Elevation.cardSoft
@@ -434,7 +442,7 @@ export const Colors = {
     icon: '#655C6E',
     tabIconDefault: '#9B93A3',
     tabIconSelected: Accent.primary,
-    inputBg: '#FFFFFF',             // v3 white input on white ground — lift via border
+    inputBg: '#FFFFFF',             // v3 white input — lifts on the cool ground + border (ENG-1316)
     overlay: '#00000088',
     /** Source / provenance dots — Sloe palette. Mirrors web --source-*. */
     sourceUsda: '#5E7C5A',          // sage
@@ -454,8 +462,14 @@ export const Colors = {
      *  Text-safe (the plum headline + grey subcopy stay legible). Grace
      *  2026-06-13: "keep it a hero but a real accent." */
     importHeroBg: 'rgba(126, 92, 146, 0.30)',
-    overBudgetFg: '#B04434',        // Sloe destructive red (dossier D-2), AA-darkened 2026-06-09
-    overBudgetSoft: 'rgba(176, 68, 52, 0.08)',
+    /** Over-budget foreground — AMBER (2026-07-01 re-ratification, ENG-1296):
+     *  the dossier D-2 red carve-out is retired; over-budget product-wide is
+     *  the amber warning family. Value == `Accent.warningSolid` (#925812 —
+     *  5.79:1 white / 5.17:1 cream / 5.38:1 tinted ground — AA PASS as text,
+     *  so the "kcal over" ring numeral reads at AA). ↔ web `--over-budget-fg`
+     *  (= var(--accent-warning-solid)). */
+    overBudgetFg: '#925812',
+    overBudgetSoft: 'rgba(201, 137, 44, 0.12)', // amber soft — ↔ web --over-budget-soft (= --accent-warning-soft)
     /** Foreground tokens that previously lived only in CSS — wired
      *  here so RN consumers can stop hardcoding `#fff`. */
     destructiveForeground: '#ffffff',
@@ -482,8 +496,16 @@ export const Colors = {
     ringTick: 'rgba(59, 42, 77, 0.20)',
     ringCapCore: '#FFFFFF',
     ringUnderA: '#4D7A50', ringUnderB: '#93C08C',
-    ringOverA: '#C0533F', ringOverB: '#E08A5F',
-    ringEmptyA: '#C4BCD4', ringEmptyB: '#E6E0F1',
+    /** Over arc — ONE amber family with the numeral (ENG-1296, 2026-07-01:
+     *  the coral/red #C0533F→#E08A5F pair is retired). Stops are the amber
+     *  warning tokens themselves: A = `Accent.warningSolid`, B = `Accent.warning`. */
+    ringOverA: '#925812', ringOverB: '#C9892C',
+    /** Empty (cold-open) arc — deepened calm plum-lilac (ENG-1315, decision
+     *  2026-07-01 #5): the old frost bloom #C4BCD4/#E6E0F1 measured ≈1.8:1 on
+     *  white — under the 3:1 UI-component floor, so the hero read as a
+     *  skeleton. Both stops now clear it: A #786A94 = 4.90:1 white, B #9587B3
+     *  = 3.28:1 white — still the calm "ready/empty" bloom, now visible. */
+    ringEmptyA: '#786A94', ringEmptyB: '#9587B3',
   },
   dark: {
     // SLOE Phase 0 dark — warm aubergine graphite, not cool-slate.
@@ -521,8 +543,10 @@ export const Colors = {
     northStarBorder: 'rgba(129, 94, 145, 0.28)',
     /** ENG-1094 — Discover import hero confident lavender-plum accent (dark). */
     importHeroBg: 'rgba(154, 123, 170, 0.30)',
-    overBudgetFg: '#DC6B55',
-    overBudgetSoft: 'rgba(220, 107, 85, 0.14)',
+    /** Over-budget foreground (dark) — amber (ENG-1296): the dark warning-solid
+     *  honey (7.33:1 on the dark card — AA PASS). ↔ web .dark --over-budget-fg. */
+    overBudgetFg: '#D6A24A',
+    overBudgetSoft: 'rgba(214, 162, 74, 0.18)', // ↔ web .dark --over-budget-soft
     destructiveForeground: '#ffffff',
     primaryForeground: '#ffffff',
     brandMarkRing: '#ffffff',
@@ -540,8 +564,12 @@ export const Colors = {
     ringTick: 'rgba(201, 194, 214, 0.24)',
     ringCapCore: '#FBF7FF',
     ringUnderA: '#6FA06A', ringUnderB: '#B6E0AD',
-    ringOverA: '#D2614A', ringOverB: '#F0A47A',
-    ringEmptyA: '#6A5A7E', ringEmptyB: '#B9ADD0',
+    /** Over arc (dark) — lifted amber family (ENG-1296): A = dark warning-solid
+     *  honey, B = lifted light honey. Red pair #D2614A→#F0A47A retired. */
+    ringOverA: '#D6A24A', ringOverB: '#E0B25E',
+    /** Empty arc (dark) — A lifted #6A5A7E → #7D6C93 (ENG-1315: 3.56:1 on the
+     *  dark card vs 2.71:1 before — same 3:1 floor as light). B unchanged. */
+    ringEmptyA: '#7D6C93', ringEmptyB: '#B9ADD0',
   },
 };
 

@@ -52,7 +52,7 @@ export function ImportDetectedChip({
     >
       <Icon size={14} aria-hidden />
       <span>
-        <span className="opacity-70">Detected:</span> {result.label}
+        <span className="opacity-80">Detected:</span> {result.label}
       </span>
     </span>
   );

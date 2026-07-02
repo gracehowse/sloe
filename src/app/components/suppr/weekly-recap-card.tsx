@@ -131,7 +131,9 @@ export function WeeklyRecapCard({
             width={barW}
             height={h}
             rx={12}
-            fill={over ? "#E08A5F" : `url(#wr-bar-${uid})`}
+            /* Over-day bar — amber family (ENG-1296; retired coral #E08A5F
+               gone). == mobile WeeklyRecapCard OVER + dark ringOverB honey. */
+            fill={over ? "#E0B25E" : `url(#wr-bar-${uid})`}
           />
         );
       })}
