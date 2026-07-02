@@ -59,7 +59,7 @@ viral-hook surfaces hardest.
    photo ids also appear with different params as curated per-dish seed
    heroes (`seedRecipesV2.ts`), which remain legitimate attributed imagery.
 4. **DB cleanup at source** —
-   `supabase/migrations/20260702120900_eng1287_null_fabricated_recipe_stock_images.sql`
+   `supabase/migrations/20260702121000_eng1287_null_fabricated_recipe_stock_images.sql`
    nulls `recipes.image_url` for the retired URLs (Grace runs
    `supabase db push --linked`; never MCP `apply_migration`).
 5. **Real images are untouched.** `image_url` present → identical behaviour

@@ -30,7 +30,7 @@
 > fabricated stock URLs (incl. rows RecipeUpload persisted to the DB) are
 > blocklisted in `pickHeroImageUrl` via `RETIRED_STOCK_IMAGE_URLS`
 > (`src/lib/recipes/heroImageFallback.ts`) and nulled at source by
-> `supabase/migrations/20260702120900_eng1287_null_fabricated_recipe_stock_images.sql`.
+> `supabase/migrations/20260702121000_eng1287_null_fabricated_recipe_stock_images.sql`.
 > Decision record: `docs/decisions/2026-07-01-honest-recipe-imagery-eng1287.md`.
 
 Target file: `apps/mobile/app/(tabs)/discover.tsx:224` (and the equivalent web Discover card when a recipe has no image).
