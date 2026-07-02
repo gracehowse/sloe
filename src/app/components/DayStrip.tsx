@@ -251,14 +251,18 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                       onClick={() => onSelectDateKey(dateKeyFromDate(clampJournalDate(date)))}
                       aria-label={isProtected ? `Freeze used on ${dk}` : undefined}
                       data-testid={`daystrip-dot-minimal-${dotKind}`}
-                      className={`flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl ${selectedFill ? "bg-primary" : ""} ${outOfRange ? "opacity-35" : ""}`}
+                      className={`flex-1 min-w-0 flex flex-col items-center gap-1.5 py-2 rounded-xl ${selectedFill ? "bg-primary" : ""} ${outOfRange ? "opacity-35" : ""}`}
                     >
                       <span
                         className={`text-[10px] font-semibold uppercase tracking-wide leading-none ${selectedFill ? "text-primary-foreground/70" : "text-foreground-tertiary"}`}
                       >
                         {label}
                       </span>
-                      <div className="relative flex items-center justify-center min-w-7 h-7">
+                      {/* min-w-6 (not 7): flex items default to min-width:auto, so the
+                          28px circle set each cell's floor — 7 cells × 28 + chrome = 212px
+                          overflowing the ~190px pager at 390vw and clipping Sunday.
+                          24px floor + min-w-0 cells lets the week genuinely fit. */}
+                      <div className="relative flex items-center justify-center min-w-6 h-7">
                         <span
                           className={[
                             "font-[family-name:var(--font-headline)] text-sm tabular-nums leading-none",
