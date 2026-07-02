@@ -46,22 +46,38 @@ export async function seedConsent(page: Page): Promise<void> {
   });
 }
 
-/** Dismiss cookie banner and one-shot checklist overlays before screenshots. */
+/** Dismiss cookie banner and one-shot checklist overlays before screenshots.
+ *  Every match is scoped to its genuine overlay container, not page-wide —
+ *  an unscoped, unanchored `/keep going|continue|got it|close/i` here also
+ *  matched the /login screen's dismiss X (app/login/ui.tsx, aria-label
+ *  "Close"), whose onClose hard-navigates to "/", self-dismissing every
+ *  /login and /signin visual capture to the marketing landing (same defect
+ *  class already fixed in scripts/web-drive.mjs#dismissOverlays, 2026-07-01).
+ *  "continue" is dropped entirely — it collides with real nav/auth CTAs
+ *  ("Continue with email", pricing "Continue to checkout"). */
 export async function dismissVisualOverlays(page: Page): Promise<void> {
-  const acceptBtn = page.getByRole("button", { name: /accept all/i });
+  const acceptBtn = page
+    .locator('[data-testid="cookie-consent-banner"]')
+    .getByRole("button", { name: /accept all/i });
   if (await acceptBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
     await acceptBtn.click();
     await page.waitForTimeout(400);
   }
 
-  const dismissBtn = page.getByRole("button", { name: /dismiss checklist/i });
+  const dismissBtn = page
+    .locator('[data-testid="first-run-checklist"]')
+    .getByRole("button", { name: /dismiss checklist/i });
   if (await dismissBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
     await dismissBtn.click();
     await page.waitForTimeout(400);
   }
 
+  // Radix Dialog/AlertDialog content renders role="dialog" / "alertdialog" —
+  // the only DOM contexts where a bare "Keep going" / "Got it" / "Close" is
+  // a genuine one-shot overlay dismissal rather than page content or nav.
   const keepGoing = page
-    .getByRole("button", { name: /keep going|continue|got it|close/i })
+    .locator('[role="dialog"], [role="alertdialog"]')
+    .getByRole("button", { name: /^(keep going|got it|close)$/i })
     .first();
   if (await keepGoing.isVisible({ timeout: 1000 }).catch(() => false)) {
     await keepGoing.click().catch(() => undefined);

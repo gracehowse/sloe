@@ -90,6 +90,7 @@ export function CookieConsent() {
   // design_system_brandmark flag).
   return (
     <div
+      data-testid="cookie-consent-banner"
       className={`fixed inset-x-0 z-50 bg-card/95 backdrop-blur border-border shadow-[var(--elev-sheet)] ${
         topAnchored
           ? "top-0 border-b pt-[env(safe-area-inset-top)]"

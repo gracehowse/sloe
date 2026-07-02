@@ -195,10 +195,26 @@ async function forceFlagsOn(page, flags) {
  *  bare `continue` token matched real navigation/auth CTAs ("Continue with
  *  email", pricing "Continue to checkout"), so this helper would click them
  *  and either dismiss the email auth modal or navigate a public screenshot
- *  (e.g. /pricing) off to /login. Only exact dismissal labels are matched now. */
+ *  (e.g. /pricing) off to /login. Only exact dismissal labels are matched now.
+ *
+ *  Every pattern is scoped to its genuine overlay container, not matched
+ *  page-wide — an earlier page-wide `getByRole("button", { name: /^close$/i })`
+ *  also matched the /login screen's dismiss X (app/login/ui.tsx, aria-label
+ *  "Close"), whose onClose hard-navigates to "/". That self-dismissed every
+ *  /login and /signin capture to the marketing landing (false P0, 2026-07-01
+ *  sweep). Scoping rules out page furniture that merely shares a label with
+ *  a real overlay. */
 async function dismissOverlays(page) {
-  for (const rx of [/accept all/i, /dismiss checklist/i, /^(keep going|got it|close)$/i]) {
-    const btn = page.getByRole("button", { name: rx }).first();
+  const scopes = [
+    { container: '[data-testid="cookie-consent-banner"]', rx: /accept all/i },
+    { container: '[data-testid="first-run-checklist"]', rx: /dismiss checklist/i },
+    // Radix Dialog/AlertDialog content renders role="dialog" / "alertdialog" —
+    // the only DOM contexts where a bare "Keep going" / "Got it" / "Close" is
+    // a genuine one-shot overlay dismissal rather than page content or nav.
+    { container: '[role="dialog"], [role="alertdialog"]', rx: /^(keep going|got it|close)$/i },
+  ];
+  for (const { container, rx } of scopes) {
+    const btn = page.locator(container).getByRole("button", { name: rx }).first();
     if (await btn.isVisible({ timeout: 1200 }).catch(() => false)) {
       await btn.click().catch(() => undefined);
       await page.waitForTimeout(300);
