@@ -268,6 +268,19 @@ coach layer, not the whole brain. Decision:
   ours. Validation drops invented ids and rejects health/diet-culture
   reason copy.
 
+### The `/coach` screen (2026-07 — ENG-1288/1292/1294/1295)
+
+The engine now also feeds a **dedicated full Coach screen** — `/coach` on
+web (`app/coach/page.tsx` → `CoachScreenClient`) and `suppr:///coach` on
+mobile (`apps/mobile/app/coach.tsx` → `CoachScreenView`) — reached from the
+Today coach strip and gated on `coach_screen_v1`. It stacks three grounded
+surfaces: "Today's read" (`POST /api/nutrition/coach-day-narrative`),
+what-to-eat-next candidates (the same `useCoach` engine above), and bounded
+"Ask the coach" chips (`POST /api/nutrition/coach-ask`). AI phrasing on the
+two new routes is Pro-only server-side (ENG-1292) — Free users get the
+grounded template in the same response shape, never a 403. Route contracts:
+`docs/api/endpoints.md`.
+
 ### Today wiring — DEFERRED (not silent)
 
 The one-line swap of the suggestion brain inside

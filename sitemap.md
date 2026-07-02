@@ -86,6 +86,7 @@ under `apps/mobile/app/`.
 | Meal nutrition | `meal-nutrition.tsx` | `suppr:///meal-nutrition?id=<mealId>` | `id`, `slot`, `date`; title "Nutrition" |
 | Macro detail | `macro-detail.tsx` | `suppr:///macro-detail?macro=protein` | `macro` = protein\|carbs\|fat\|fiber, `date` |
 | Burn / activity detail | `burn-detail.tsx` | `suppr:///burn-detail?date=YYYY-MM-DD` | `date`; "Activity Bonus" |
+| Coach | `coach.tsx` | `suppr:///coach` (Today coach strip tap; flag `coach_screen_v1`) | "Today's read" + what-to-eat-next + Ask-the-coach chips; AI voice Pro-only (template for Free) |
 | Targets | `targets.tsx` | `suppr:///targets` (Settings/Profile) | Calorie + macro targets editor |
 | Weight tracker | `weight-tracker.tsx` | `suppr:///weight-tracker` | Title "Weight & trends" |
 | Progress metric | `progress-metric.tsx` | `suppr:///progress-metric?metric=weight` | `metric` = weight\|calories; title "This week" |

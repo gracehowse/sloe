@@ -447,6 +447,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // with apps/mobile/lib/analytics.ts + GATE_15_SHARED in
   // tests/unit/redesignDefaultOnParity.test.ts.
   "onboarding_conversion_funnel_v1",
+  // ENG-974 — "Refine by describing" conversational correction on photo +
+  // voice log review (docs/decisions/2026-07-01-log-refine-by-describing.md
+  // ratified it Shipped default-ON, but the flag was never added here, so it
+  // sat dark — ENG-1302 closed the gap). Off → hosts render their legacy
+  // review without the refine input (kill switch: remove here / PostHog).
+  // Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
+  "log_refine_describe_v1",
 ]);
 
 /**

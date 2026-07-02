@@ -16,7 +16,7 @@ import {
   Bar,
 } from "recharts";
 import { supabase } from "../../lib/supabase/browserClient.ts";
-import { persistWeightKgByDay, pruneWeightKgByDay } from "../../lib/progress/weightData.ts";
+import { persistWeightDayPatch, pruneWeightKgByDay } from "../../lib/progress/weightData.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
 import { avgCaloriesOverRecentLoggedDays, calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
@@ -642,7 +642,12 @@ function ProgressDashboardContent() {
     setWeightInput("");
     fireCelebration(celebration); // ENG-824/952 — loud new-low or quiet milestone; no-op when "none".
     if (!authedUserId) return;
-    await persistWeightKgByDay({ supabase, userId: authedUserId, weightKgByDay: nextMap, weightKg: kg });
+    // ENG-1306 — per-day patch through the upsert_body_metric_days RPC (no
+    // full-map clobber); rehydrate from the server-merged result so a
+    // concurrent HealthKit sync's days survive locally too.
+    const merged = await persistWeightDayPatch({ supabase, userId: authedUserId, patch: { [tk]: kg } });
+    setWeightKgByDay(merged.weightKgByDay);
+    setWeightKg(merged.weightKg);
   }, [weightInput, profileMeasurementSystem, weightKgByDay, goalWeightKg, authedUserId, fireCelebration]);
 
   const saveTodaySteps = useCallback(async () => {
@@ -664,8 +669,21 @@ function ProgressDashboardContent() {
     setBodyFatPct(rounded);
     setBodyFatPctByDay(nextMap);
     setBodyFatInput("");
-    await persistProfilePatch({ body_fat_pct: rounded, body_fat_pct_by_day: nextMap });
-  }, [bodyFatInput, bodyFatPctByDay, persistProfilePatch]);
+    if (!authedUserId) return;
+    // ENG-1306 — per-day patch via the upsert_body_metric_days RPC (no
+    // full-map clobber vs a racing HealthKit body-fat sync); the scalar
+    // body_fat_pct is derived server-side from the merged map.
+    const { data, error } = await supabase.rpc("upsert_body_metric_days", {
+      p_body_fat_patch: { [tk]: rounded },
+    });
+    if (error) {
+      console.error("[progress] save failed", error.message);
+      return;
+    }
+    const mergedMap = (data as { body_fat_pct_by_day?: Record<string, number> } | null)
+      ?.body_fat_pct_by_day;
+    if (mergedMap) setBodyFatPctByDay(pruneBodyFatPctByDay(mergedMap));
+  }, [bodyFatInput, bodyFatPctByDay, authedUserId]);
 
   const formatWeight = (kg: number) =>
     profileMeasurementSystem === "imperial" ? `${Math.round(kgToLb(kg) * 10) / 10} lb` : `${Math.round(kg * 10) / 10} kg`;

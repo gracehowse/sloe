@@ -70,10 +70,12 @@ describe("Fasting (web) — anti-drift CTA token/variant pins", () => {
     expect(FASTING).not.toMatch(OUTLINE_PILL);
   });
 
-  it("SANCTIONED non-migration: preset window pills + quick-start chips stay raw buttons", () => {
-    // The window picker + landing chips are segmented/filter grammar — not
-    // SupprButtons. Their handlers are unchanged.
+  it("SANCTIONED non-migration: preset window pills stay raw buttons; duplicate landing chips stay removed", () => {
+    // The window picker is segmented/filter grammar — not SupprButtons.
+    // The landing quick-start chips were removed in ENG-1302 (they
+    // duplicated the picker; v3 prototype = one Start CTA + one chooser).
     expect(FASTING).toMatch(/data-testid="fasting-window-picker"/);
-    expect(FASTING).toMatch(/onClick=\{\(\) => quickStartFast\(w\)\}/);
+    expect(FASTING).not.toMatch(/fasting-landing-chips/);
+    expect(FASTING).not.toMatch(/quickStartFast/);
   });
 });

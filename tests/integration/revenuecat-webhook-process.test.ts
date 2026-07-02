@@ -26,9 +26,24 @@ function setNextInsertResult(
 }
 const insertMock = vi.fn().mockImplementation(() => Promise.resolve(lastInsertResult));
 
+// ENG-1306 — the TRANSFER handler reads the ORIGIN profile's tier when the
+// payload carries no entitlements. Tests set this per-case.
+let profileTierReadResult: { user_tier: string } | null = null;
+function setProfileTierReadResult(tier: string | null): void {
+  profileTierReadResult = tier ? { user_tier: tier } : null;
+}
+const maybeSingleMock = vi
+  .fn()
+  .mockImplementation(() => Promise.resolve({ data: profileTierReadResult, error: null }));
+
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   createSupabaseServiceRoleClient: () => ({
-    from: () => ({ insert: insertMock }),
+    from: () => ({
+      insert: insertMock,
+      select: () => ({
+        eq: () => ({ maybeSingle: maybeSingleMock }),
+      }),
+    }),
   }),
   supabasePublicUrl: () => "https://example.supabase.co",
 }));
@@ -229,5 +244,153 @@ describe("processRevenueCatEvent", () => {
       userId,
       tier: "pro",
     });
+  });
+
+  // ENG-1306 — REFUND revokes immediately (unlike CANCELLATION there is no
+  // paid-through window left): tier → free.
+  it("REFUND downgrades to free (entitlement revoked with the money)", async () => {
+    const result = await processRevenueCatEvent({
+      id: "evt_refund",
+      type: "REFUND",
+      app_user_id: userId,
+      entitlement_ids: ["pro"],
+    });
+    expect(result).toEqual({
+      ok: true,
+      outcome: "tier_updated",
+      userId,
+      tier: "free",
+    });
+    expect(mockTierWrite).toHaveBeenCalledWith(userId, "free");
+  });
+
+  it("duplicate REFUND (23505) stays idempotent — no second tier write", async () => {
+    setNextInsertResult({ error: { code: "23505", message: "duplicate key" } });
+    const result = await processRevenueCatEvent({
+      id: "evt_refund_dup",
+      type: "REFUND",
+      app_user_id: userId,
+    });
+    expect(result).toEqual({ ok: true, outcome: "skipped_duplicate" });
+    expect(mockTierWrite).not.toHaveBeenCalled();
+  });
+});
+
+// ENG-1306 — TRANSFER re-points the entitlement: destination gains the
+// moved tier, origin drops to free.
+describe("processRevenueCatEvent — TRANSFER", () => {
+  const mockTierWrite = vi.mocked(updateProfileTierServiceRole);
+  const fromUser = "22222222-2222-4222-8222-222222222222";
+  const toUser = "33333333-3333-4333-8333-333333333333";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setNextInsertResult({ error: null });
+    setProfileTierReadResult(null);
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test_service_role";
+  });
+
+  it("re-points the entitlement using payload entitlements: grant destination, revoke origin", async () => {
+    const result = await processRevenueCatEvent({
+      id: "evt_transfer_pro",
+      type: "TRANSFER",
+      app_user_id: "$RCAnonymousID:store-account",
+      transferred_from: ["$RCAnonymousID:old-store", fromUser],
+      transferred_to: [toUser],
+      entitlement_ids: ["pro"],
+    });
+    expect(result).toEqual({
+      ok: true,
+      outcome: "transferred",
+      fromUserId: fromUser,
+      toUserId: toUser,
+      tier: "pro",
+    });
+    expect(mockTierWrite).toHaveBeenCalledWith(toUser, "pro");
+    expect(mockTierWrite).toHaveBeenCalledWith(fromUser, "free");
+  });
+
+  it("falls back to the origin profile's paid tier when the payload has no entitlements", async () => {
+    setProfileTierReadResult("base");
+    const result = await processRevenueCatEvent({
+      id: "evt_transfer_no_ent",
+      type: "TRANSFER",
+      app_user_id: "$RCAnonymousID:store-account",
+      transferred_from: [fromUser],
+      transferred_to: [toUser],
+    });
+    expect(result).toEqual({
+      ok: true,
+      outcome: "transferred",
+      fromUserId: fromUser,
+      toUserId: toUser,
+      tier: "base",
+    });
+    expect(mockTierWrite).toHaveBeenCalledWith(toUser, "base");
+    expect(mockTierWrite).toHaveBeenCalledWith(fromUser, "free");
+  });
+
+  it("no-ops (never downgrades anyone) when neither entitlements nor an origin paid tier resolve", async () => {
+    setProfileTierReadResult("free");
+    const result = await processRevenueCatEvent({
+      id: "evt_transfer_unresolvable",
+      type: "TRANSFER",
+      app_user_id: "$RCAnonymousID:store-account",
+      transferred_from: [fromUser],
+      transferred_to: [toUser],
+    });
+    expect(result).toEqual({ ok: true, outcome: "no_op", eventType: "TRANSFER" });
+    expect(mockTierWrite).not.toHaveBeenCalled();
+  });
+
+  it("skips as anonymous when no end of the transfer maps to a Supabase uuid", async () => {
+    const result = await processRevenueCatEvent({
+      id: "evt_transfer_anon",
+      type: "TRANSFER",
+      app_user_id: "$RCAnonymousID:store-account",
+      transferred_from: ["$RCAnonymousID:a"],
+      transferred_to: ["$RCAnonymousID:b"],
+      entitlement_ids: ["pro"],
+    });
+    expect(result).toEqual({
+      ok: true,
+      outcome: "skipped_anonymous",
+      eventType: "TRANSFER",
+    });
+    expect(mockTierWrite).not.toHaveBeenCalled();
+  });
+
+  it("same-account transfer grants the destination without a revoke write", async () => {
+    const result = await processRevenueCatEvent({
+      id: "evt_transfer_same",
+      type: "TRANSFER",
+      app_user_id: toUser,
+      transferred_from: [toUser],
+      transferred_to: [toUser],
+      entitlement_ids: ["pro"],
+    });
+    expect(result).toEqual({
+      ok: true,
+      outcome: "transferred",
+      fromUserId: toUser,
+      toUserId: toUser,
+      tier: "pro",
+    });
+    expect(mockTierWrite).toHaveBeenCalledTimes(1);
+    expect(mockTierWrite).toHaveBeenCalledWith(toUser, "pro");
+  });
+
+  it("duplicate TRANSFER (23505) stays idempotent — no tier writes", async () => {
+    setNextInsertResult({ error: { code: "23505", message: "duplicate key" } });
+    const result = await processRevenueCatEvent({
+      id: "evt_transfer_dup",
+      type: "TRANSFER",
+      app_user_id: toUser,
+      transferred_from: [fromUser],
+      transferred_to: [toUser],
+      entitlement_ids: ["pro"],
+    });
+    expect(result).toEqual({ ok: true, outcome: "skipped_duplicate" });
+    expect(mockTierWrite).not.toHaveBeenCalled();
   });
 });

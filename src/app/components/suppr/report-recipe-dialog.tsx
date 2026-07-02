@@ -18,10 +18,13 @@ import {
  *   - Copyright / "I own this" → the existing DMCA takedown form at `/dmca`,
  *     pre-filled with the recipe id (real flow → `dmca_takedowns` via
  *     `/api/dmca-takedown`).
- *   - Everything else → a pre-filled email to support (the real support
- *     channel; there is no general report table yet — see follow-up).
+ *   - Everything else → the durable `/api/recipe-report` queue backed by
+ *     the `recipe_reports` table (OSA/DSA — ENG-1225 #19, auth-hardened in
+ *     ENG-1226); the pre-filled support email survives only as the error
+ *     fallback when the POST fails.
  *
- * Mirror target: `apps/mobile/app/recipe/[id].tsx` (mobile parity follow-up).
+ * Mobile mirror: `apps/mobile/app/recipe/[id].tsx` via `useRecipeReport`
+ * (shipped — ENG-1227).
  */
 const SUPPORT_EMAIL = "support@getsloe.com";
 

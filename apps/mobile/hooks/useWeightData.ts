@@ -121,26 +121,37 @@ export function useWeightData(userId: string | null | undefined) {
     void reload();
   }, [reload]);
 
-  const persistWeightMap = React.useCallback(
+  /**
+   * ENG-1306 — persist a per-day PATCH through the `upsert_body_metric_days`
+   * RPC instead of a client-side read-modify-write of the whole map. The
+   * server merges under the row lock, so a HealthKit sync racing a manual
+   * weigh-in (or another device) can no longer clobber this write's days —
+   * and vice versa. Patch value `null` deletes that day; the scalar
+   * `weight_kg` is derived server-side from the merged map. Local state is
+   * rehydrated from the server-merged result (true post-merge picture).
+   */
+  const persistWeightPatch = React.useCallback(
     async (
-      nextMap: Record<string, number>,
-      scalarWeightKg: number | null,
+      patch: Record<string, number | null>,
     ): Promise<WeightMutationResult> => {
       if (!userId) throw new Error("Sign in before changing weight history.");
-      const payload: {
-        weight_kg_by_day: Record<string, number>;
-        weight_kg?: number | null;
-      } = {
-        weight_kg_by_day: nextMap,
-        weight_kg: scalarWeightKg,
-      };
-      const { error } = await supabase
-        .from("profiles")
-        .update(payload)
-        .eq("id", userId);
+      const { data, error } = await supabase.rpc("upsert_body_metric_days", {
+        p_weight_patch: patch,
+      });
       if (error) throw error;
       await refreshAdaptiveTdeeForUser(supabase, userId);
-      return { weightKgByDay: nextMap, weightKg: scalarWeightKg };
+      const merged = (data ?? {}) as {
+        weight_kg_by_day?: unknown;
+        weight_kg?: unknown;
+      };
+      const mergedMap = parseWeightKgByDay(merged.weight_kg_by_day);
+      const mergedWeight =
+        typeof merged.weight_kg === "number" && Number.isFinite(merged.weight_kg)
+          ? merged.weight_kg
+          : null;
+      setWeightKgByDay(mergedMap);
+      setWeightKg(mergedWeight);
+      return { weightKgByDay: mergedMap, weightKg: mergedWeight };
     },
     [userId],
   );
@@ -155,14 +166,14 @@ export function useWeightData(userId: string | null | undefined) {
       setWeightKgByDay(nextMap);
       setWeightKg(nextWeight);
       try {
-        return await persistWeightMap(nextMap, nextWeight);
+        return await persistWeightPatch({ [dateKey]: kg });
       } catch (error) {
         setWeightKgByDay(previousMap);
         setWeightKg(previousWeight);
         throw error;
       }
     },
-    [persistWeightMap, weightKg, weightKgByDay],
+    [persistWeightPatch, weightKg, weightKgByDay],
   );
 
   const editWeight = logWeight;
@@ -177,14 +188,14 @@ export function useWeightData(userId: string | null | undefined) {
       setWeightKgByDay(nextMap);
       setWeightKg(nextWeight);
       try {
-        return await persistWeightMap(nextMap, nextWeight);
+        return await persistWeightPatch({ [dateKey]: null });
       } catch (error) {
         setWeightKgByDay(previousMap);
         setWeightKg(previousWeight);
         throw error;
       }
     },
-    [persistWeightMap, weightKg, weightKgByDay],
+    [persistWeightPatch, weightKg, weightKgByDay],
   );
 
   return {

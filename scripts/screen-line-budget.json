@@ -77,7 +77,7 @@
   "src/app/components/onboarding/steps/reveal.tsx": 518,
   "src/app/components/onboarding/web-flow.tsx": 575,
   "src/app/components/Profile.tsx": 1306,
-  "src/app/components/ProgressDashboard.tsx": 2538,
+  "src/app/components/ProgressDashboard.tsx": 2555,
   "src/app/components/RecipeDetail.tsx": 3400,
   "src/app/components/RecipeUpload.tsx": 3012,
   "src/app/components/Settings.tsx": 2232,

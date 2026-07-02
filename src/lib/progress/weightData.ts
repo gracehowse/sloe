@@ -33,28 +33,34 @@ export function latestWeightFromMap(
   return newest ? map[newest] : null;
 }
 
-type SupabaseLike = {
-  from: (table: "profiles") => {
-    update: (patch: Record<string, unknown>) => {
-      eq: (
-        column: "id",
-        value: string,
-      ) => Promise<{ error: { message?: string } | null }>;
-    };
-  };
-};
-
-export async function persistWeightKgByDay(opts: {
+/**
+ * ENG-1306 — persist weigh-in changes as a per-day PATCH through the
+ * `upsert_body_metric_days` RPC instead of a client-side read-modify-write
+ * of the whole `weight_kg_by_day` map. Server-side jsonb key upserts under
+ * the row lock mean a HealthKit sync racing a manual weigh-in (or two
+ * devices) merge instead of clobbering each other's days. Patch value
+ * `null` deletes that day. The scalar `weight_kg` is derived server-side
+ * from the merged map (newest positive day), so it is no longer passed in.
+ *
+ * Returns the server-merged map so callers can rehydrate local state with
+ * the true post-merge picture.
+ */
+export async function persistWeightDayPatch(opts: {
   supabase: any;
   userId: string;
-  weightKgByDay: Record<string, number>;
-  weightKg: number | null;
-}): Promise<void> {
-  const nextMap = pruneWeightKgByDay(opts.weightKgByDay);
-  const { error } = await opts.supabase
-    .from("profiles")
-    .update({ weight_kg: opts.weightKg, weight_kg_by_day: nextMap })
-    .eq("id", opts.userId);
+  patch: Record<string, number | null>;
+}): Promise<{ weightKgByDay: Record<string, number>; weightKg: number | null }> {
+  const { data, error } = await opts.supabase.rpc("upsert_body_metric_days", {
+    p_weight_patch: opts.patch,
+  });
   if (error) throw new Error(error.message ?? "Could not save weight history.");
+  const merged = (data as {
+    weight_kg_by_day?: Record<string, number>;
+    weight_kg?: number | null;
+  } | null) ?? {};
   await refreshAdaptiveTdeeForUser(opts.supabase, opts.userId);
+  return {
+    weightKgByDay: merged.weight_kg_by_day ?? {},
+    weightKg: typeof merged.weight_kg === "number" ? merged.weight_kg : null,
+  };
 }

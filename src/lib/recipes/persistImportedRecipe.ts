@@ -80,6 +80,29 @@ function normalizeInstructionsField(raw: unknown): string | null {
 }
 
 /**
+ * ENG-1306 — the single lookup used by both the pre-insert check and the
+ * 23505 unique-violation recovery, so both paths resolve the same row the
+ * partial unique index guards (imported stubs only — the claim flow can
+ * legitimately own a claimed row with the same source_url).
+ */
+async function findExistingImportBySourceUrl(
+  supabase: SupabaseClient,
+  userId: string,
+  sourceUrl: string,
+): Promise<string | null> {
+  const { data: existing } = await supabase
+    .from("recipes")
+    .select("id")
+    .eq("author_id", userId)
+    .eq("source_url", sourceUrl)
+    .eq("content_origin", "imported_stub")
+    .limit(1)
+    .maybeSingle();
+  const id = (existing as { id?: string } | null)?.id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+/**
  * Inserts a private recipe for the user, optional ingredient lines, and a save row so it appears in Library.
  */
 export async function saveImportedRecipe(
@@ -114,16 +137,8 @@ export async function saveImportedRecipe(
   });
 
   if (sourceUrl) {
-    const { data: existing } = await supabase
-      .from("recipes")
-      .select("id")
-      .eq("author_id", userId)
-      .eq("source_url", sourceUrl)
-      .limit(1)
-      .maybeSingle();
-    if (existing && (existing as { id?: string }).id) {
-      return { recipeId: (existing as { id: string }).id };
-    }
+    const existingId = await findExistingImportBySourceUrl(supabase, userId, sourceUrl);
+    if (existingId) return { recipeId: existingId };
   }
 
   const { data: row, error: insErr } = await supabase
@@ -166,6 +181,17 @@ export async function saveImportedRecipe(
     .single();
 
   if (insErr || !row) {
+    // ENG-1306 — idempotent re-import. The pre-check above races: two
+    // concurrent imports of the same URL both miss it and both insert. The
+    // partial unique index recipes_import_author_source_url_unique
+    // (author_id, source_url) WHERE content_origin = 'imported_stub' makes
+    // the database the arbiter; a 23505 here means the recipe already
+    // exists, so return it instead of an error — same contract as the
+    // pre-check hit.
+    if (sourceUrl && (insErr as { code?: string } | null)?.code === "23505") {
+      const existingId = await findExistingImportBySourceUrl(supabase, userId, sourceUrl);
+      if (existingId) return { recipeId: existingId };
+    }
     console.error("[saveImport] recipe insert failed:", insErr?.message ?? "no row returned");
     return { error: IMPORT_ERROR_COPY[mapPersistenceError(insErr ?? null)] };
   }

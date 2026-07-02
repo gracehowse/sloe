@@ -628,6 +628,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // breaking the live PostHog funnel dashboards keyed on it. Mirror of the
   // web entry in src/lib/analytics/track.ts.
   "onboarding_conversion_funnel_v1",
+  // ENG-974 — "Refine by describing" conversational correction on photo +
+  // voice log review (docs/decisions/2026-07-01-log-refine-by-describing.md
+  // ratified it Shipped default-ON, but the flag was never added here, so it
+  // sat dark — ENG-1302 closed the gap). Off → hosts render their legacy
+  // review without the refine input (kill switch: remove here / PostHog).
+  // Mirror of the web entry in src/lib/analytics/track.ts. M+W.
+  "log_refine_describe_v1",
 ]);
 
 /**
