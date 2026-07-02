@@ -52,12 +52,7 @@ import {
 } from "../../lib/progress/weightTrend.ts";
 import { weightDeltaTone } from "../../lib/progress/progressRangeChart.ts";
 import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
-import {
-  availableFreezes,
-  computeProtectedStreak,
-  readFreezeLedger,
-  type FreezeLedger,
-} from "../../lib/nutrition/streakFreeze.ts";
+import { availableFreezes, computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "../../lib/nutrition/streakFreeze.ts";
 import {
   buildUsualMealRecapInsight,
   buildWeeklyRecap,
@@ -116,6 +111,7 @@ import { TrajectoryCard } from "./suppr/trajectory-card.tsx";
 import { computeDayOfWeekPattern } from "../../lib/nutrition/dayOfWeekPattern.ts";
 import { generateProgressCommentary } from "../../lib/nutrition/progressCommentary.ts";
 import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProgress.ts";
+import { useNutritionHistoryWindow } from "../../hooks/useNutritionHistoryWindow.ts";
 import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
 import { SupprCard } from "./ui/suppr-card.tsx";
 import { ProgressActivitySection } from "./suppr/progress-activity-section.tsx";
@@ -193,6 +189,9 @@ function ProgressDashboardContent() {
     workoutsByDay,
     profileTier,
   } = useAppData();
+  // ENG-1324 — streaks, period stats, and the 30-day milestone look past the
+  // 35-day boot window; widen the shared journal to 90 days (mobile parity).
+  useNutritionHistoryWindow();
 
   // ENG-713 — body-neutral "Trend-only weight" opt-in (client-side pref; flag
   // `progress_trend_only_v1`). Composition lives in the shared helper.

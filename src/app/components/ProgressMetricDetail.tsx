@@ -12,6 +12,7 @@ import { computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "../
 import { buildWeekStats, getStreakContributingDays } from "../../lib/nutrition/progressWeekReport.ts";
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTargetRead.ts";
+import { useNutritionHistoryWindow } from "../../hooks/useNutritionHistoryWindow.ts";
 
 export type ProgressMetric = "calories" | "protein" | "streak";
 
@@ -31,6 +32,9 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
   const searchParams = useSearchParams();
   const { nutritionByDay, setSelectedDateKey, nutritionTargets } = useAppData();
   const { authedUserId } = useAuthSession();
+  // ENG-1324 — streak detail looks past the 35-day boot window; widen the
+  // shared journal to 90 days (mobile parity).
+  useNutritionHistoryWindow();
   const targets = normalizeMacroTargets(nutritionTargets);
   const todayDk = todayKey();
 

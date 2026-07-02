@@ -218,6 +218,57 @@ export function useNutritionJournalState(opts: {
   }, [authedUserId, dbNutritionEnabled, dbNutritionWarned, bootWindowStartKey]);
 
   /**
+   * ENG-1324 — extended-history window for surfaces whose stats look past
+   * the 35-day boot window: Progress (90d trend cards + charts, streaks,
+   * 30-day milestone) and Profile (streak / days-logged / editorial
+   * block). Mobile Progress fetches its own 90-day `nutrition_entries`
+   * slice on focus (`apps/mobile/app/(tabs)/progress.tsx` `loadData`);
+   * the web equivalents read the shared context journal, so the widening
+   * happens here instead. Guards: one fetch per requested window start
+   * per mount (`historyFetchedStartKeyRef` keeps the widest fetched key);
+   * a failed fetch leaves the guard unset so a surface remount retries.
+   */
+  const historyFetchedStartKeyRef = useRef<string | null>(null);
+  const historyFetchInFlightRef = useRef(false);
+
+  const ensureJournalHistory = useCallback(
+    async (startKey: string) => {
+      if (!authedUserId || !dbNutritionEnabled) return;
+      // The boot window already covers this start key.
+      if (startKey >= bootWindowStartKey) return;
+      const fetchedKey = historyFetchedStartKeyRef.current;
+      if (fetchedKey != null && fetchedKey <= startKey) return;
+      if (historyFetchInFlightRef.current) return;
+      historyFetchInFlightRef.current = true;
+      try {
+        const { data, error } = await supabase
+          .from("nutrition_entries")
+          .select(NUTRITION_ENTRY_SELECT_COLUMNS)
+          .eq("user_id", authedUserId)
+          // Full window (not just the pre-boot slice): mirrors the mobile
+          // Progress read and self-heals a failed boot load. The merge
+          // below dedupes rows already in memory by id.
+          .gte("date_key", startKey)
+          .order("created_at", { ascending: true });
+        if (error) return;
+        historyFetchedStartKeyRef.current = startKey;
+        if (data && data.length > 0) {
+          const byDay: Record<string, LoggedMeal[]> = {};
+          for (const row of data as NutritionEntryRow[]) {
+            const key = row.date_key;
+            if (!byDay[key]) byDay[key] = [];
+            byDay[key].push(rowToLoggedMeal(row));
+          }
+          setNutritionByDay((prev) => mergeJournalByDay(byDay, prev));
+        }
+      } finally {
+        historyFetchInFlightRef.current = false;
+      }
+    },
+    [authedUserId, dbNutritionEnabled, bootWindowStartKey],
+  );
+
+  /**
    * ENG-1290 — days requested via the out-of-window single-day fetch.
    * One fetch per day key per mount (empty days included) so browsing a
    * historical week doesn't refetch the same day on every re-render. A
@@ -717,6 +768,7 @@ export function useNutritionJournalState(opts: {
   return {
     journalHydrated,
     nutritionByDay,
+    ensureJournalHistory,
     addLoggedMealForDate,
     addLoggedMealsForDate,
     addLoggedMeal,
