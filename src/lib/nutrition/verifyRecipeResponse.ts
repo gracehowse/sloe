@@ -205,6 +205,8 @@ export function isVerifiedFromVerifyRow(confidence: number, source: string): boo
     isStructuredSource(source) &&
     typeof confidence === "number" &&
     Number.isFinite(confidence) &&
+    // ENG-1305: was a hardcoded 0.5, drifted from the 0.55 accept floor
+    // used by the main verify pipeline (verifyIngredients.ts).
     confidence >= MIN_ACCEPT_CONFIDENCE
   );
 }

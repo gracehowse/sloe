@@ -66,8 +66,14 @@
  * providers). One knob to re-tune when that validation lands.
  *
  * ENG-1305 (2026-07-01): canonical home moved here from `verifyIngredients.ts`
- * so mobile (via `@suppr/nutrition-core/verifyConfidencePolicy`) and the
+ * (was defined only in that server-only module, unreachable from mobile) so
+ * mobile (via `@suppr/nutrition-core/verifyConfidencePolicy`) and the
  * `is_verified` trust label read the same constant as the accept gate.
+ * `is_verified` gates on mobile (`apps/mobile/lib/verifyRecipe.ts`,
+ * `apps/mobile/app/recipe/verify.tsx`) now share the exact same floor
+ * instead of a hardcoded, drifted 0.5 — that drift meant a 0.5–0.55-
+ * confidence match was silently trusted on mobile while the equivalent web
+ * row was excluded from totals.
  */
 export const MIN_ACCEPT_CONFIDENCE = 0.55;
 

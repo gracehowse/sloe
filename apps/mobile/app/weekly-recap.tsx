@@ -71,7 +71,7 @@ import { useRouter } from "expo-router";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { formatMacro } from "@suppr/nutrition-core/formatMacro";
+import { formatMacro, formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
 import { supabase } from "@/lib/supabase";
 import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -1085,7 +1085,7 @@ export default function WeeklyRecapScreen() {
                   fontVariant: ["tabular-nums"],
                 }}
               >
-                {weekStats.avgCalories.toLocaleString()} kcal
+                {formatKcalDisplay(weekStats.avgCalories)} kcal
               </Text>
               <Text
                 style={{
@@ -1101,12 +1101,12 @@ export default function WeeklyRecapScreen() {
                     return `Across ${daysLogged} day${daysLogged === 1 ? "" : "s"} you logged.`;
                   }
                   if (abs <= 50) {
-                    return `On target (${targets.calories.toLocaleString()} kcal).`;
+                    return `On target (${formatKcalDisplay(targets.calories)} kcal).`;
                   }
                   if (diff < 0) {
-                    return `${abs.toLocaleString()} under your ${targets.calories.toLocaleString()} kcal target.`;
+                    return `${formatKcalDisplay(abs)} under your ${formatKcalDisplay(targets.calories)} kcal target.`;
                   }
-                  return `${abs.toLocaleString()} over your ${targets.calories.toLocaleString()} kcal target.`;
+                  return `${formatKcalDisplay(abs)} over your ${formatKcalDisplay(targets.calories)} kcal target.`;
                 })()}
               </Text>
             </>,
@@ -1168,9 +1168,9 @@ export default function WeeklyRecapScreen() {
                       fontVariant: ["tabular-nums"],
                     }}
                   >
-                    {closestToTarget.calories.toLocaleString()} kcal
+                    {formatKcalDisplay(closestToTarget.calories)} kcal
                     {targets.calories > 0
-                      ? ` vs ${targets.calories.toLocaleString()} target`
+                      ? ` vs ${formatKcalDisplay(targets.calories)} target`
                       : ""}
                     {" · "}
                     {closestToTarget.protein}g protein

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authedFetch } from "@/lib/authedFetch";
+import { formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
 import {
   Alert,
   View,
@@ -2186,9 +2187,8 @@ export default function ImportSharedScreen() {
             <Text style={styles.panelTitle}>{decodeEntities(title ?? "Imported recipe")}</Text>
             {previewNutrition != null && pendingRecipe.calories != null && (
               <Text style={styles.panelSub}>
-                {previewNutrition.calories} kcal · {previewNutrition.protein}g protein · recipe yields{" "}
-                {previewNutrition.draft} serving{previewNutrition.draft !== 1 ? "s" : ""}
-              </Text>
+                {formatKcalDisplay(previewNutrition.calories)} kcal · {previewNutrition.protein}g protein · recipe yields{" "}
+                {previewNutrition.draft} serving{previewNutrition.draft !== 1 ? "s" : ""}</Text>
             )}
 
             <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, marginTop: Spacing.md }}>

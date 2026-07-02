@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Icons } from "../ui/icons";
+import { formatKcalDisplay } from "../../../lib/nutrition/formatMacro";
 
 /**
  * TodayWeeklyInsightCard — compact right-rail summary on the desktop
@@ -94,7 +95,7 @@ export function TodayWeeklyInsightCard({
           <>
             {" "}
             <span className="font-semibold text-foreground">
-              {Math.round(weekAvgKcal).toLocaleString()} kcal
+              {formatKcalDisplay(weekAvgKcal)} kcal
             </span>{" "}
             daily average.
           </>

@@ -29,6 +29,7 @@ import {
   parseIngredientForSearch,
   sourceLabel,
   RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
+  MIN_ACCEPT_CONFIDENCE,
   addUserIngredient,
   setIngredientOverride,
   type VerifiableIngredient,
@@ -438,7 +439,7 @@ export default function VerifyScreen() {
           source: payload.source,
           confidence: payload.confidence,
           matchedName: payload.hasMatch ? payload.name : null,
-          isVerified: payload.hasMatch && payload.confidence >= 0.5,
+          isVerified: payload.hasMatch && payload.confidence >= MIN_ACCEPT_CONFIDENCE,
           isDirty: false,
           macrosPer100g: null,
           portions: [],
@@ -485,7 +486,7 @@ export default function VerifyScreen() {
             ? "g"
             : item.unit?.trim() || "piece";
         const sourceLabel = item.source === "voice" ? "AI voice" : "AI photo";
-        const hasMatch = item.confidence >= 0.5;
+        const hasMatch = item.confidence >= MIN_ACCEPT_CONFIDENCE;
         const res = await addUserIngredient(recipeId, {
           name: item.name,
           amount,
@@ -566,10 +567,8 @@ export default function VerifyScreen() {
       track(AnalyticsEvents.recipe_ingredient_overridden, {
         recipeId,
         ingredientPosition: index,
-        // L6 G4 (2026-04-18) — bucket the row's PRE-override
-        // confidence. `VerifiableIngredient.isVerified` is true iff
-        // the pipeline returned a match with confidence >= 0.5,
-        // mirroring the ConfidenceDot mapping in the UI.
+        // L6 G4 (2026-04-18) — bucket the row's PRE-override confidence.
+        // `isVerified` is true iff confidence >= MIN_ACCEPT_CONFIDENCE.
         confidence_bucket: priorIng.isVerified ? "high" : "medium",
       });
       // ENG-1016 — pinning a manual macro override is a durable commit → Medium.
@@ -964,9 +963,9 @@ export default function VerifyScreen() {
           // per-row confidence): expose the confidence value as a
           // colour-coded bar at the bottom of the collapsed row.
           // - >= 0.9 → success (high confidence match)
-          // - >= 0.5 → muted track (moderate; already flagged via
-          //   alert-circle for needsReview path)
-          // - < 0.5  → destructive (low; needs user attention)
+          // - >= RECIPE_INGREDIENT_REVIEW_CONFIDENCE (0.5) → muted track
+          //   (moderate; already flagged via alert-circle for needsReview path)
+          // - below that → destructive (low; needs user attention)
           // Override rows skip the bar entirely — the user has
           // explicitly pinned the value so confidence is "100% user".
           // Added rows (user-typed) also skip — they're user-authored.
@@ -974,7 +973,7 @@ export default function VerifyScreen() {
           const confColor =
             confPct >= 0.9
               ? Accent.success
-              : confPct >= 0.5
+              : confPct >= RECIPE_INGREDIENT_REVIEW_CONFIDENCE
                 ? Accent.warning
                 : Accent.destructive;
           const showConfBar = !rowHasOverride && !rowAdded && ing.isVerified !== undefined;

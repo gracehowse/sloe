@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { todayKey } from "../../../lib/nutrition/trackerDate";
-
+import { formatKcalDisplay } from "../../../lib/nutrition/formatMacro";
 /**
  * TodayWeekView — week-mode view of the Today screen.
  *
@@ -184,7 +184,7 @@ export function TodayWeekView({
             data-testid="today-week-chart-summary"
             className="mb-3 text-[11px] text-muted-foreground"
           >
-            {`7-day avg: ${Math.round(weekAvg.calories)} kcal`}
+            {`7-day avg: ${formatKcalDisplay(weekAvg.calories)} kcal`}
             {bestDayLabel ? ` · closest to target: ${bestDayLabel}` : ""}
           </p>
         )}
@@ -208,11 +208,11 @@ export function TodayWeekView({
                   setScrubIndex((prev) => (prev === i ? null : i))
                 }
                 onDoubleClick={() => onSelectDayKey(day.key)}
-                aria-label={`${day.short} — ${Math.round(day.totals.calories)} kcal of ${Math.round(dayGoal)} kcal target`}
+                aria-label={`${day.short} — ${formatKcalDisplay(day.totals.calories)} kcal of ${formatKcalDisplay(dayGoal)} kcal target`}
                 className="relative z-10 flex flex-col items-center flex-1 gap-1 min-w-0"
               >
                 <span className="text-[10px] text-muted-foreground tabular-nums h-4">
-                  {day.totals.calories > 0 ? Math.round(day.totals.calories) : ""}
+                  {day.totals.calories > 0 ? formatKcalDisplay(day.totals.calories) : ""}
                 </span>
                 <div
                   className="w-full max-w-[28px] mx-auto transition-[height,width,background-color] duration-500 ease-out"
@@ -282,13 +282,13 @@ export function TodayWeekView({
                 <div
                   data-testid="today-week-chart-tooltip"
                   role="status"
-                  aria-label={`${day.short} — ${Math.round(day.totals.calories)} kcal of ${Math.round(goal)} kcal target — ${deltaLabel}`}
+                  aria-label={`${day.short} — ${formatKcalDisplay(day.totals.calories)} kcal of ${formatKcalDisplay(goal)} kcal target — ${deltaLabel}`}
                   className={`absolute top-0 ${isLeftHalf ? "left-0" : "right-0"} rounded-md border border-border bg-card px-3 py-2 shadow-sm`}
                   style={{ minWidth: 140 }}
                 >
                   <p className="text-[11px] font-bold text-foreground">{day.short}</p>
                   <p className="text-[11px] text-muted-foreground tabular-nums">
-                    {Math.round(day.totals.calories)} / {Math.round(goal)} kcal
+                    {formatKcalDisplay(day.totals.calories)} / {formatKcalDisplay(goal)} kcal
                   </p>
                   <p
                     className={`text-[11px] font-bold ${
@@ -374,13 +374,13 @@ export function TodayWeekView({
               numerals for serif); labels stay sans. Mirrors mobile TodayWeekView. */}
           <div>
             <p className="font-[family-name:var(--font-headline)] text-2xl font-medium text-foreground tabular-nums">
-              {Math.round(weekTotals.calories)}
+              {formatKcalDisplay(weekTotals.calories)}
             </p>
             <p className="text-[11px] text-muted-foreground">Total kcal</p>
           </div>
           <div>
             <p className="font-[family-name:var(--font-headline)] text-2xl font-medium text-primary-solid tabular-nums">
-              {Math.round(weekAvg.calories)}
+              {formatKcalDisplay(weekAvg.calories)}
             </p>
             <p className="text-[11px] text-muted-foreground">Daily avg</p>
           </div>
@@ -435,7 +435,7 @@ export function TodayWeekView({
                 })()}
               </div>
               <span className="w-11 text-right text-[11px] text-muted-foreground tabular-nums">
-                {day.totals.calories > 0 ? Math.round(day.totals.calories) : "—"}
+                {day.totals.calories > 0 ? formatKcalDisplay(day.totals.calories) : "—"}
               </span>
             </button>
           ))}

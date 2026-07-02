@@ -33,6 +33,8 @@ export type OffSearchHit = {
   _basisCorrected?: boolean;
   /** F-79 — full micronutrient set per 100g, canonical camelCase keys. */
   microsPer100g?: Record<string, number>;
+  /** ENG-1305 — Unix seconds, OFF's last-edit timestamp. See `offStaleness.ts`. */
+  lastModifiedT?: number | null;
 };
 
 /**
@@ -58,8 +60,10 @@ export async function searchOffProducts(
     // P0 (2026-05-26) — request `nutrition_data_per` + `serving_quantity` so
     // we can detect rows whose `*_100g` fields actually hold per-serving
     // values and reconstruct a genuine per-100g basis (reconcileOffPer100g).
+    // ENG-1305 — last_modified_t powers the staleness demotion in
+    // verifyIngredients.ts (see offStaleness.ts).
     fields:
-      "code,product_name,brands,nutriments,image_small_url,serving_size,nutrition_data_per,serving_quantity",
+      "code,product_name,brands,nutriments,image_small_url,serving_size,nutrition_data_per,serving_quantity,last_modified_t",
   });
   // Optionally filter by country (e.g. "united-kingdom", "france")
   if (opts?.countryTag) {
@@ -139,6 +143,7 @@ export async function searchOffProducts(
           // F-79 — pull every micro OFF exposes; commit sites scale + persist.
           // ENG-738 — scaled by the per-100g factor to match the macro basis.
           microsPer100g: parseOffMicrosPer100g(n, f),
+          lastModifiedT: typeof p.last_modified_t === "number" ? p.last_modified_t : null,
         };
       })
       // F-77 (2026-04-25) — drop OFF rows that fail an Atwater plausibility

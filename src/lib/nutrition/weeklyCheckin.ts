@@ -32,6 +32,8 @@
  * Mobile re-exports from `apps/mobile/lib/weeklyCheckin.ts`.
  */
 
+import { formatKcalDisplay } from "./formatMacro";
+
 /** Minimum weight datapoints in the recap window before we render the
  *  TDEE delta as a confident statement. Below this we surface the
  *  "building confidence" placeholder. Mirrors the
@@ -135,21 +137,17 @@ function roundKcal(n: number): number {
   return Math.round(n);
 }
 
-/** Format kcal with thousand separators. We use a hard-coded
- *  comma formatter so server-rendered web output and mobile output
- *  match without depending on the runtime's default locale. */
-export function formatKcal(n: number): string {
-  const sign = n < 0 ? "-" : "";
-  const abs = Math.abs(roundKcal(n));
-  const s = String(abs);
-  // Insert commas every 3 digits from the right.
-  let withCommas = "";
-  for (let i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 === 0) withCommas += ",";
-    withCommas += s[i];
-  }
-  return `${sign}${withCommas}`;
-}
+/**
+ * Format kcal with thousand separators, independent of the runtime's
+ * locale (so server-rendered web output and mobile output match).
+ *
+ * ENG-1305: delegates to the app-wide `formatKcalDisplay` (promoted from
+ * this exact implementation to `formatMacro.ts` so every kcal display —
+ * not just the weekly check-in — gets the same locale-independent commas).
+ * Re-exported here (imported above) so existing consumers of this module
+ * don't need to switch imports.
+ */
+export const formatKcal = formatKcalDisplay;
 
 /** "2,340 → 2,410 kcal/day". The arrow is the "rightwards arrow"
  *  (U+2192) — same glyph the Digest weight-line uses, so visual

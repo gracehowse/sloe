@@ -58,7 +58,7 @@ import {
   type SectionedSearchRows,
 } from "@suppr/nutrition-core/foodSearchRanking";
 import { mergeFoodSearchRows } from "@suppr/shared/nutrition/foodSearchMerge";
-export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE };
+export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE, MIN_ACCEPT_CONFIDENCE };
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`
 // vs search-oriented helpers here — see `docs/product/web-mobile-parity-scope.md`

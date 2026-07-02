@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, CheckCircle2, ChevronRight } from "lucide-react-native";
-import { formatMacro } from "@suppr/nutrition-core/formatMacro";
+import { formatMacro, formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -242,7 +242,7 @@ export default function ProgressMetricDetailScreen() {
 
   const subtitle =
     metric === "calories"
-      ? `Average across days you logged food: ${weekStats.avgCalories.toLocaleString()} kcal vs ${targets.calories.toLocaleString()} kcal target.`
+      ? `Average across days you logged food: ${formatKcalDisplay(weekStats.avgCalories)} kcal vs ${formatKcalDisplay(targets.calories)} kcal target.`
       : metric === "protein"
         ? `A day counts as “on target” when protein is at least 90% of your ${formatMacro(targets.protein, "protein", "g")} goal.`
         : "Consecutive days (ending today or yesterday) where you logged at least one meal.";
@@ -373,7 +373,7 @@ export default function ProgressMetricDetailScreen() {
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={{ fontSize: 16, fontWeight: "800", color: t.text, fontVariant: ["tabular-nums"] }}>
-                  {d.calories.toLocaleString()} kcal
+                  {formatKcalDisplay(d.calories)} kcal
                 </Text>
                 <Text style={{ fontSize: 11, color: d.calories > 0 ? t.sub : t.dim }}>
                   {/* F-2 — % of goal uses each day's frozen target. Past
@@ -487,7 +487,7 @@ export default function ProgressMetricDetailScreen() {
                   <View>
                     <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(row.key)}</Text>
                     <Text style={{ fontSize: 12, color: t.dim, marginTop: 2 }}>
-                      {row.mealCount} item{row.mealCount !== 1 ? "s" : ""} · {row.calories.toLocaleString()} kcal
+                      {row.mealCount} item{row.mealCount !== 1 ? "s" : ""} · {formatKcalDisplay(row.calories)} kcal
                     </Text>
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

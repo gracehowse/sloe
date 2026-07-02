@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
 import { toast } from "sonner";
-import {
-  formatContainsLine,
-  normaliseAllergenIds,
-} from "../../constants/regulatedAllergens";
+import { formatContainsLine, normaliseAllergenIds } from "../../constants/regulatedAllergens";
 import { supabase } from "../../lib/supabase/browserClient.ts";
+import { MIN_ACCEPT_CONFIDENCE } from "../../lib/nutrition/verifyConfidencePolicy.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { IngredientOverride, IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { GoPublicDialog } from "./GoPublicDialog.tsx";

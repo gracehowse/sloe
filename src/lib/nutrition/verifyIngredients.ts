@@ -20,6 +20,7 @@ import { fdcConfigFromEnv, fdcFoodGet, fdcFoodsSearch } from "@/lib/usda/fdcClie
 import { fdcFoodMacrosPer100g } from "@/lib/nutrition/usdaNormalize";
 import { fetchProductByBarcode } from "@/lib/openFoodFacts/fetchProductByBarcode";
 import { searchOffProducts } from "@/lib/openFoodFacts/searchProducts";
+import { isOffDataStale } from "@/lib/openFoodFacts/offStaleness";
 import { edamamConfigFromEnv, edamamFoodSearch, edamamFoodMacrosPer100g } from "@/lib/edamam/client";
 import { hasFatSecretConfig, hasEdamamConfig, hasUsdaConfig, hasSupabaseServiceConfig } from "@/lib/server/serverEnv";
 import { estimateLineMacros } from "@/lib/nutrition/estimateIngredientMacros";
@@ -27,6 +28,7 @@ import { searchUserFoods } from "@/lib/nutrition/userFoodsLookup";
 import { checkScaledLogPlausibility } from "@/lib/nutrition/macroPlausibility";
 import { matchGenericFood } from "@/lib/nutrition/genericFoods";
 import { matchGenericBeverage } from "@/lib/nutrition/genericBeverages";
+import { MIN_ACCEPT_CONFIDENCE, MIN_MATCH_CONFIDENCE, MIN_OFF_CONFIDENCE } from "@/lib/nutrition/verifyConfidencePolicy";
 
 export type VerifiedIngredient = {
   input: { name: string; amount: string; unit: string };
@@ -84,10 +86,9 @@ export type IngredientOverride = {
  * ENG-1305 (2026-07-01): canonical home is now `verifyConfidencePolicy.ts`
  * (pure, shim-shared to mobile via `@suppr/nutrition-core`), so the web
  * accept gate, `isVerifiedFromVerifyRow`, and the mobile `is_verified` write
- * path all read the SAME constants. Re-exported here so existing engine +
- * test imports keep working.
+ * path all read the SAME constants. Re-exported here (imported above) so
+ * existing engine + test imports keep working.
  */
-import { MIN_ACCEPT_CONFIDENCE, MIN_MATCH_CONFIDENCE, MIN_OFF_CONFIDENCE } from "./verifyConfidencePolicy";
 export { MIN_ACCEPT_CONFIDENCE, MIN_MATCH_CONFIDENCE, MIN_OFF_CONFIDENCE };
 
 /**
@@ -287,7 +288,13 @@ const NAME_ALIASES: [RegExp, string][] = [
   [/\bswedes?\b/i, "rutabaga"],
   [/\bmangetout\b/i, "snow peas"],
   [/\bbeetroot\b/i, "beet"],
-  [/\bpepper\b(?!corn)/i, "bell pepper"],
+  // ENG-1305: bare "pepper" defaults to the vegetable, but the spice
+  // (black/white/cayenne/pink/green peppercorn, or pre-crushed) must not be
+  // relabelled as a bell pepper — "black pepper" -> "black bell pepper" is
+  // not a real ingredient and mismatches the food database. "red pepper"
+  // stays ambiguous (both a bell-pepper colour and a chili-flake shorthand
+  // in recipes) and is left as-is rather than guessing.
+  [/\b(?<!black )(?<!white )(?<!cayenne )(?<!pink )(?<!green )(?<!crushed )(?<!ground )(?<!bell )pepper\b(?!corn)/i, "bell pepper"],
   [/\bchickpeas?\b/i, "garbanzo beans"],
   [/\bbroad beans?\b/i, "fava beans"],
   [/\brunner beans?\b/i, "green beans"],
@@ -857,9 +864,20 @@ export async function verifyIngredients(opts: {
             // verification. A clean OFF row that cleared the (stricter) OFF
             // gate must not be demoted below the accept floor by the -0.03
             // display nudge — clamp so an accepted clean match stays in totals.
-            const offConf = hit._basisCorrected
+            const offConfBase = hit._basisCorrected
               ? Math.min(0.6, conf - 0.1)
               : Math.max(MIN_ACCEPT_CONFIDENCE, Math.min(0.9, conf - 0.03));
+            // ENG-1305 — OFF staleness gate. Applied AFTER the clean-row
+            // floor clamp above (not folded into it): staleness is a softer
+            // signal than a basis correction (the row's own math is fine,
+            // it just hasn't been re-verified recently in the crowd-sourced
+            // database), so a stale-but-otherwise-strong match should still
+            // be ABLE to fall below the accept floor and get excluded/
+            // flagged — not artificially propped back up to 0.55 by the
+            // clamp meant for fresh rows.
+            const offConf = isOffDataStale(hit.lastModifiedT)
+              ? Math.max(0, offConfBase - 0.08)
+              : offConfBase;
             return {
               input: raw, resolved,
               fatSecretFoodId: hit.code,

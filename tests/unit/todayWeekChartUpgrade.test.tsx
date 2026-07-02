@@ -81,7 +81,9 @@ describe("TodayWeekView (web) — chart upgrade", () => {
   it("above-chart summary surfaces 7-day avg + closest-to-target day", () => {
     render(<TodayWeekView {...baseProps()} />);
     const summary = screen.getByTestId("today-week-chart-summary");
-    expect(summary.textContent).toContain("7-day avg: 1677 kcal");
+    // ENG-1305: kcal now renders via the locale-independent formatKcalDisplay
+    // (thousands separator), not a bare Math.round().
+    expect(summary.textContent).toContain("7-day avg: 1,677 kcal");
     expect(summary.textContent).toContain("closest to target: Fri");
   });
 
@@ -102,7 +104,8 @@ describe("TodayWeekView (web) — chart upgrade", () => {
     fireEvent.click(screen.getByTestId("today-week-chart-bar-3")); // Thu 2400 / 2000
     const tooltip = screen.getByTestId("today-week-chart-tooltip");
     expect(tooltip.textContent).toContain("Thu");
-    expect(tooltip.textContent).toContain("2400 / 2000 kcal");
+    // ENG-1305: kcal now renders via formatKcalDisplay (thousands separator).
+    expect(tooltip.textContent).toContain("2,400 / 2,000 kcal");
     expect(tooltip.textContent).toContain("400 kcal over");
   });
 

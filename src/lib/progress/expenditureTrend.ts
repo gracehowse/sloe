@@ -20,6 +20,8 @@
  * engine already produced.
  */
 
+import { formatKcalDisplay } from "../nutrition/formatMacro";
+
 export type ExpenditureConfidence = "low" | "medium" | "high";
 
 /** The confidence tier the ConfidenceChip should render, or null when the
@@ -71,10 +73,14 @@ function roundToTen(kcal: number): number {
   return Math.round(kcal / 10) * 10;
 }
 
-/** A small, locale-pinned thousands formatter so the copy reads the same in
- *  the RN <Text> path (no Intl guarantees on older runtimes) and on web. */
+/**
+ * ENG-1305: delegates to the app-wide `formatKcalDisplay` instead of a
+ * locale-pinned `.toLocaleString("en-US")` — same reasoning (comma
+ * formatting must not depend on the runtime), now via the single shared
+ * implementation so every kcal display in the app can never drift again.
+ */
 function formatKcal(kcal: number): string {
-  return kcal.toLocaleString("en-US");
+  return formatKcalDisplay(kcal);
 }
 
 /** Soft recency phrasing from the `updated_at` timestamp. Returns "" when we
