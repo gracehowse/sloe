@@ -15,7 +15,7 @@ If a screen works but feels generic, prototype-level, dated, or cheap, you say s
 
 ## STEP ZERO — READ PROJECT CONTEXT
 
-Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-context.md` for cross-cutting Suppr design rules — particularly the **calorie-ring 3-state colour mapping** (empty=gradient / under=green / over=destructive red), the **prototype-as-reference** stance (mix and match, don't carte-blanche flip), and the **three-bucket audit format** (Keep from live / Adopt from prototype / Swap in place).
+Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-context.md` for cross-cutting Suppr design rules — particularly the **calorie-ring 3-state colour mapping** (empty=gradient / under=green / over=amber — red retired 2026-07-01, ENG-1296), the **prototype-as-reference** stance (mix and match, don't carte-blanche flip), and the **three-bucket audit format** (Keep from live / Adopt from prototype / Swap in place).
 
 ---
 

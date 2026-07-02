@@ -136,6 +136,11 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       expect(readCssVar(LIGHT, "ring-bg")).toBe(readMobileColor("light", "ringTrack"));
       expect(readCssVar(LIGHT, "ring-track")).toBe(readMobileColor("light", "ringTrack"));
     });
+
+    it("over-budget ring arc — web ↔ mobile parity (ENG-1296)", () => {
+      expect(readCssVar(LIGHT, "ring-over-a")).toBe(readMobileColor("light", "ringOverA"));
+      expect(readCssVar(LIGHT, "ring-over-b")).toBe(readMobileColor("light", "ringOverB"));
+    });
   });
 
   describe("dark mode", () => {
@@ -149,10 +154,15 @@ describe("cross-platform theme tokens (ENG-623)", () => {
       expect(readCssVar(DARK, "card")).toBe(readMobileColor("dark", "card"));
     });
 
-    it("over-budget red (Sloe D-2) — web ↔ mobile parity", () => {
+    it("over-budget amber (2026-07-01 re-ratification) — web ↔ mobile parity", () => {
       expect(readCssVar(DARK, "over-budget-fg")).toBe(
         readMobileColor("dark", "overBudgetFg"),
       );
+    });
+
+    it("over-budget ring arc — web ↔ mobile parity (ENG-1296)", () => {
+      expect(readCssVar(DARK, "ring-over-a")).toBe(readMobileColor("dark", "ringOverA"));
+      expect(readCssVar(DARK, "ring-over-b")).toBe(readMobileColor("dark", "ringOverB"));
     });
 
     it("macro hues (ENG-1223 — web .dark ↔ mobile MacroColorsDark parity)", () => {
@@ -170,9 +180,9 @@ describe("cross-platform theme tokens (ENG-623)", () => {
     // web ring parity 2026-06-10 (mobile ring wave): the OVER state caps the
     // ring at one full plum lap — NO second overage lap, NO red recolour of the
     // arc. The 2026-06-04 Apple-wrap lap was retired on BOTH platforms in this
-    // wave; the over verdict lives in the centre + status chip. The over-budget
-    // RED rule still holds for NET/text stat tones (D-2). (Same component pins
-    // as calorieRingSolidGreenAtTarget.test.ts.)
+    // wave; the over verdict lives in the centre + status chip (amber warning
+    // family since the 2026-07-01 re-ratification, ENG-1296). (Same component
+    // pins as calorieRingSolidGreenAtTarget.test.ts.)
     const mobileRing = readFileSync(
       resolve(ROOT, "apps/mobile/components/charts/CalorieRing.tsx"),
       "utf8",
@@ -205,13 +215,25 @@ describe("cross-platform theme tokens (ENG-623)", () => {
     expect(hero).not.toContain('valueTone="over"');
   });
 
-  it("over-budget token resolves to the Sloe destructive red (D-2), not amber", () => {
-    // Light hue AA-darkened #c0533f → #b04434 (2026-06-09) so the shared
-    // destructive/over-budget red clears WCAG AA 4.5:1 as text on the cream
-    // `destructive/5` surface (4.86:1) — it renders as text, not just a fill.
-    expect(readCssVar(LIGHT, "over-budget-fg")).toBe("#b04434");
-    expect(readCssVar(DARK, "over-budget-fg")).toBe("#dc6b55");
-    // It must match the destructive hue family (over = red, post-Sloe).
-    expect(readCssVar(LIGHT, "over-budget-fg")).toBe(readCssVar(LIGHT, "accent-destructive"));
+  it("over-budget token resolves to the amber warning family, NOT red (ENG-1296, 2026-07-01)", () => {
+    // Grace's sweep decision #2 retired the dossier D-2 "over = destructive
+    // red" carve-out: over-budget signals are uniformly amber product-wide
+    // (diet-culture research — red numbers = guilt cycles). The token is
+    // single-sourced off --accent-warning-solid so arc + numeral + every
+    // over-budget foreground share ONE amber family. #925812 = 5.79:1 white /
+    // 5.17:1 cream — AA PASS as text.
+    expect(readCssVar(LIGHT, "over-budget-fg")).toBe("#925812");
+    expect(readCssVar(DARK, "over-budget-fg")).toBe("#d6a24a");
+    // It must match the amber warning-solid family (over = amber, locked).
+    expect(readCssVar(LIGHT, "over-budget-fg")).toBe(
+      readCssVar(LIGHT, "accent-warning-solid"),
+    );
+    // …and must NEVER return to the destructive red family.
+    expect(readCssVar(LIGHT, "over-budget-fg")).not.toBe(
+      readCssVar(LIGHT, "accent-destructive"),
+    );
+    // The over ARC is the same family: warning-solid → warning (one amber pair).
+    expect(readCssVar(LIGHT, "ring-over-a")).toBe(readCssVar(LIGHT, "accent-warning-solid"));
+    expect(readCssVar(LIGHT, "ring-over-b")).toBe(readCssVar(LIGHT, "accent-warning"));
   });
 });

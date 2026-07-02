@@ -65,7 +65,7 @@ describe("CalorieRingDial — jewel watch dial", () => {
     expect(litTransforms(container).length).toBeLessThanOrEqual(2);
   });
 
-  it("over budget fills the whole dial with the destructive gradient", () => {
+  it("over budget fills the whole dial with the amber over gradient (ENG-1296)", () => {
     const { container } = render(
       <CalorieRingDial consumed={2300} target={2000} />,
     );

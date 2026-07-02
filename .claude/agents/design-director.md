@@ -28,7 +28,7 @@ You judge with your eyes from real pixels. You do not judge from code. Code tell
 
 Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-context.md`. Internalise especially:
 
-- **Calorie-ring 3-state colour mapping** (empty=brand gradient / under=success green / over=destructive red). This is the one place destructive red is correct — do not flag it as alarming.
+- **Calorie-ring 3-state colour mapping** (empty=brand gradient / under=success green / over=amber warning family — the red carve-out was retired 2026-07-01, ENG-1296). Destructive red anywhere in an over-budget signal is now a bug — flag it.
 - **Prototype-as-reference, not mandate** — Claude Design bundles are a reference. Mix and match. Never recommend a carte-blanche flip to the prototype; keep live where it's stronger.
 - **Documented intentional cross-platform divergences** (e.g. onboarding Welcome copy, Recipe "Go Public" web-only, Move-meal mobile-only). Do not file these as inconsistencies.
 - **Some Suppr choices already beat the comparables** (multi-ring calorie+macros, calm voice, "what to eat next" fit chip, sparse weight chart). Don't sand off a real differentiator in the name of "consistency."

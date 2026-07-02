@@ -70,14 +70,17 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Colors.dark.sourceAi.toLowerCase()).toBe("#9a7baa");
     });
 
-    it("over-budget-fg maps to Sloe destructive red (D-2)", () => {
-      // Sloe Phase 0 (dossier D-2): fat now owns amber, so over-budget moves
-      // to red — the ring overage AND the inline "over by N" copy share the
-      // destructive hue. Was orange (#F78A32) → #C0533F → AA-darkened to
-      // #B04434 (2026-06-09) so the inline "over by N" TEXT clears WCAG AA
-      // 4.5:1 on the cream surface (4.86:1). Mirrors web --over-budget-fg.
-      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#b04434");
-      expect(Colors.dark.overBudgetFg.toLowerCase()).toBe("#dc6b55");
+    it("over-budget-fg maps to the amber warning family (ENG-1296, 2026-07-01)", () => {
+      // 2026-07-01 re-ratification (sweep decision #2): the dossier D-2
+      // "over = destructive red" carve-out is RETIRED — over-budget is
+      // uniformly amber product-wide. The ring "kcal over" numeral AND the
+      // inline "over by N" copy share Accent.warningSolid (#925812 light —
+      // 5.79:1 white / 5.17:1 cream, AA PASS; #D6A24A dark — 7.33:1 on the
+      // dark card). Mirrors web --over-budget-fg (= var(--accent-warning-solid)).
+      // History: orange #F78A32 → red #C0533F → #B04434 (D-2 era) → amber.
+      expect(Colors.light.overBudgetFg.toLowerCase()).toBe("#925812");
+      expect(Colors.dark.overBudgetFg.toLowerCase()).toBe("#d6a24a");
+      expect(Colors.light.overBudgetFg).toBe(Accent.warningSolid);
     });
   });
 

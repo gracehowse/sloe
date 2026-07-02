@@ -44,7 +44,10 @@ const PLUM_B = "#3b2a4d";
 const PLUM_C = "#1d1329";
 const SAGE = "#93C08C";
 const FROST = "#C9C2D6";
-const OVER = "#E08A5F";
+// Over-day bar — amber family (ENG-1296, 2026-07-01: over-budget is uniformly
+// amber; the retired coral #E08A5F is gone). Value == the dark-scheme
+// `ringOverB` lifted honey, bright on the plum artifact ground.
+const OVER = "#E0B25E";
 const WHITE = "#FFFFFF";
 
 export const WeeklyRecapCard = forwardRef<Svg, WeeklyRecapCardProps>(

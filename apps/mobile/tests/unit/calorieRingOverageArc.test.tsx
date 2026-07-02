@@ -51,9 +51,12 @@ void React;
 // values so the test is colour-scheme-agnostic and still pins the wrap rule.
 const PLUM_LIGHT = MacroColors.calories.toUpperCase(); // #3B2A4D
 const PLUM_DARK = "#815E91";
-// Retired Sloe over-red — must NOT appear when over any more.
-const OVER_RED_LIGHT = Colors.light.overBudgetFg.toUpperCase(); // #B04434
-const OVER_RED_DARK = Colors.dark.overBudgetFg.toUpperCase(); // #DC6B55
+// Retired Sloe over-reds — must NOT appear when over any more. Pinned as
+// LITERALS (not Colors.*.overBudgetFg) since ENG-1296 repointed that token to
+// the amber warning family (2026-07-01 re-ratification) — these guard the
+// retired RED hues specifically so red can never return to the ring.
+const OVER_RED_LIGHT = "#B04434";
+const OVER_RED_DARK = "#DC6B55";
 // Lifted-plum overage lap (one step lighter than the base plum, both modes).
 const LAP_LIGHT = "#6A4B7A";
 const LAP_DARK = "#9A7BAA";

@@ -268,10 +268,9 @@
   --macro-fat-solid: #9A4A66;                     /* darkened berry — ~6:1 on white, AA PASS */
   --macro-fat-soft: rgba(178, 93, 122, 0.12);
   --macro-calories: #5E7C5A;                      /* sage — under-budget ring identity */
-  /** Calorie ring over-budget second lap + leading-cap glow — warm-red family
-   *  (v3 over gradient #C0533F→#E08A5F), distinct from the sage under arc. */
-  --ring-overage-lap: #C0533F;
-  --ring-overage-glow: #E08A5F;
+  /* --ring-overage-lap / --ring-overage-glow deleted (ENG-1296): the red
+     overage-lap tokens were dead (no consumers — the lap idiom was retired
+     2026-06-10) and red-over is retired product-wide (2026-07-01 decision #2). */
   --macro-fiber: #5E7C5A;                         /* sage */
   --macro-fiber-solid: #466046;                   /* 6.95:1 — AA PASS */
   --macro-fiber-soft: rgba(94, 124, 90, 0.12);
@@ -345,15 +344,21 @@
      read as grey. Text-safe. Mirrors mobile `colors.importHeroBg`. */
   --import-hero-bg: rgba(126, 92, 146, 0.3);
 
-  /** Over-budget — Sloe destructive red (dossier D-2). Fat now owns amber,
-   *  so over-budget moves to red to stay distinct. Traffic-light mode
-   *  (opt-in Settings toggle) still substitutes red — same hue now. */
-  --over-budget-fg: #B04434;
-  --over-budget-soft: rgba(176, 68, 52, 0.08);
+  /** Over-budget — AMBER (2026-07-01 re-ratification, sweep decision #2 /
+   *  ENG-1296). The dossier D-2 "over = destructive red" carve-out is RETIRED:
+   *  diet-culture research (red numbers = guilt cycles, the #1 refugee
+   *  complaint; MacroFactor's no-red posture) outweighs at-a-glance severity.
+   *  Over-budget signals product-wide are uniformly the amber warning family —
+   *  destructive red is errors/dangerous actions ONLY. Single-sourced off the
+   *  warning tokens so the pair can never drift apart. The ring "kcal over"
+   *  numeral reads in this at AA (#925812 = 5.79:1 white / 5.17:1 cream).
+   *  ↔ mobile `Colors.light.overBudgetFg/-Soft`. */
+  --over-budget-fg: var(--accent-warning-solid);
+  --over-budget-soft: var(--accent-warning-soft);
 
   /** Activity / burn / earned-bonus — Sloe honey. Ring bonus arc, activity
-   *  cards, burn-detail bonus. Distinct from warning (amber) + over-budget
-   *  (red) so "earned via exercise" never reads as an alert. Used as an
+   *  cards, burn-detail bonus. Distinct from the darker warning/over-budget
+   *  ambers so "earned via exercise" never reads as an alert. Used as an
    *  arc/fill (3:1 graphical), not small text. */
   --activity: #D6A24A;
   --activity-soft: rgba(214, 162, 74, 0.16);
@@ -412,10 +417,11 @@
   /** Sloe v3 jewel-grade ring (prototype `:root`). The DailyRing arc draws as a
    *  gradient (deep → fresh stop), with a luminous gem cap, an engraved inner
    *  channel on the track, and watch-dial graduation ticks. Consumed by the
-   *  Phase 1 ring component (web SVG / mobile Skia). Locked rule:
-   *  empty = frost bloom, under = sage gradient, over = destructive → warm. */
+   *  Phase 1 ring component (web SVG / mobile Skia). Locked rule
+   *  (2026-07-01 re-ratification, ENG-1296): empty = frost bloom,
+   *  under = sage gradient, over = AMBER family (red retired). */
   --ring-under-a: #4D7A50;  --ring-under-b: #93C08C;   /* sage → fresh leaf */
-  --ring-over-a:  #C0533F;  --ring-over-b:  #E08A5F;   /* destructive → warm */
+  --ring-over-a:  #925812;  --ring-over-b:  #C9892C;   /* ONE amber family with the numeral: warning-solid → warning (ENG-1296) */
   --ring-empty-a: #C4BCD4;  --ring-empty-b: #E6E0F1;   /* frost bloom */
   --ring-channel: rgba(36, 23, 51, 0.06);              /* engraved inner edge */
   --ring-cap-core: #FFFFFF;                             /* luminous gem highlight */
@@ -571,8 +577,7 @@
   --macro-fat-solid: #D489A3;
   --macro-fat-soft: rgba(212, 137, 163, 0.16);
   --macro-calories: #7FA078;
-  --ring-overage-lap: #DC6B55;
-  --ring-overage-glow: #E8A882;
+  /* --ring-overage-lap / --ring-overage-glow deleted (ENG-1296) — see :root. */
   --macro-fiber: #7FA078;
   --macro-fiber-solid: #7FA078;
   --macro-fiber-soft: rgba(127, 160, 120, 0.16);
@@ -632,9 +637,11 @@
   /* ENG-1094 — Discover import hero confident lavender-plum accent (dark). */
   --import-hero-bg: rgba(154, 123, 170, 0.3);
 
-  /** Over-budget — Sloe dark destructive (dossier D-2). */
-  --over-budget-fg: #DC6B55;
-  --over-budget-soft: rgba(220, 107, 85, 0.14);
+  /** Over-budget — amber, dark (ENG-1296 re-ratification; red retired).
+   *  Resolves to the dark warning-solid honey #D6A24A (7.33:1 on the dark
+   *  card — AA PASS). ↔ mobile `Colors.dark.overBudgetFg/-Soft`. */
+  --over-budget-fg: var(--accent-warning-solid);
+  --over-budget-soft: var(--accent-warning-soft);
 
   /** Activity / burn / earned-bonus — Sloe dark honey (OLED-lifted). */
   --activity: #E0B25E;
@@ -684,7 +691,7 @@
    *  plum-black; tick lifts to a frost-grey alpha visible on Nocturne. Mirrors
    *  the prototype dark `:root`. */
   --ring-under-a: #6FA06A;  --ring-under-b: #B6E0AD;
-  --ring-over-a:  #D2614A;  --ring-over-b:  #F0A47A;
+  --ring-over-a:  #D6A24A;  --ring-over-b:  #E0B25E;  /* lifted amber family — red retired (ENG-1296) */
   --ring-empty-a: #6A5A7E;  --ring-empty-b: #B9ADD0;
   --ring-channel: rgba(0, 0, 0, 0.28);
   --ring-cap-core: #FBF7FF;

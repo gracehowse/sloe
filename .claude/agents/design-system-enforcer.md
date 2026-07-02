@@ -87,7 +87,7 @@ If repo tokens drift from the prototype tokens, **the repo is wrong**. The proto
 - Macro-fat magenta `#e04888` / `#ff7eb3`
 - Macro-water cyan `#06b6d4` / `#22d3ee`
 - Destructive red is for **errors only** — **never** for over-budget macros (warning amber instead).
-- **Carve-out: calorie ring (only).** Empty state = brand gradient, logged + under = success green, logged + over = destructive red. This is the one surface where over-budget legitimately uses destructive red. All other over-budget signals (macros, sodium, etc.) still use amber. See `_project-context.md` for the full rule.
+- **Calorie-ring red carve-out RETIRED (2026-07-01, ENG-1296).** Empty state = brand gradient, logged + under = success green, logged + over = amber warning family (arc `--ring-over-a/b`, numeral `--accent-warning-solid`). Over-budget is uniformly amber product-wide — never re-enforce red in a conformance pass. See `_project-context.md` for the full rule.
 
 ### Spacing — 4px grid
 - 4 / 8 / 12 / 16 (primary rhythm, card padding) / 20 / 24 / 32.

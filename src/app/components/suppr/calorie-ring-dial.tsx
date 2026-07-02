@@ -12,9 +12,11 @@ import * as React from "react";
  * and stagger in on mount, and the leading segment glows as a luminous gem
  * (`--ring-cap-core` + blur). A soft radial bloom sits behind.
  *
- * State (locked rule): empty → frost bloom, under → sage gradient, over →
- * destructive→warm. Mirrors mobile `CalorieRing` (Skia) — keep the geometry
- * (48 ticks, base 224 viewBox) identical across platforms.
+ * State (locked rule, 2026-07-01 re-ratification ENG-1296): empty → frost
+ * bloom, under → sage gradient, over → AMBER family (arc `--ring-over-a/b` =
+ * warning-solid → warning; numeral `--accent-warning-solid` — red retired).
+ * Mirrors mobile `CalorieRing` (Skia) — keep the geometry (48 ticks, base 224
+ * viewBox) identical across platforms.
  *
  * Drop-in for `<DailyRing>` inside `TodayHeroRing` behind `sloe_v3_ring`.
  */

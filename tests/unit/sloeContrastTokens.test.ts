@@ -116,6 +116,21 @@ describe("Sloe text tokens clear WCAG AA on their surfaces", () => {
     expect(ratio(WARNING_SOLID, CREAM)).toBeGreaterThanOrEqual(AA_NORMAL); // ~5.2
   });
 
+  it("over-budget amber numeral clears AA-normal on cream, white + card (ENG-1296)", () => {
+    // 2026-07-01 re-ratification: over-budget is uniformly amber — the ring
+    // "kcal over" numeral reads in --over-budget-fg (= --accent-warning-solid,
+    // #925812) on light surfaces. Measured: 5.79:1 white / 5.17:1 cream /
+    // 5.31:1 card — AA PASS everywhere the numeral can sit, so no darker
+    // sanctioned amber is needed. Dark numeral (#D6A24A) = 7.33:1 on the
+    // dark card. Guards the amber-on-cream pair the ticket called out.
+    const OVER_BUDGET_FG = WARNING_SOLID; // single-sourced in theme.css
+    expect(ratio(OVER_BUDGET_FG, CREAM)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.17
+    expect(ratio(OVER_BUDGET_FG, WHITE)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.79
+    expect(ratio(OVER_BUDGET_FG, CARD)).toBeGreaterThanOrEqual(AA_NORMAL); // 5.31
+    const OVER_BUDGET_FG_DARK = "#D6A24A"; // .dark --over-budget-fg (= warning-solid dark)
+    expect(ratio(OVER_BUDGET_FG_DARK, DARK_CARD)).toBeGreaterThanOrEqual(AA_NORMAL); // 7.3
+  });
+
   it("net-energy chip backgrounds carry white label at AA-normal", () => {
     for (const state of ["deficit", "surplus", "maintenance"] as const) {
       expect(ratio(WHITE, NET_ENERGY_CHIP_BG[state])).toBeGreaterThanOrEqual(

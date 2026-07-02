@@ -65,17 +65,17 @@ Multi-category context (creator, discovery, monetisation patterns) still applies
 
 ---
 
-## Calorie ring colour mapping (overrides prototype)
+## Calorie ring colour mapping (red carve-out RETIRED 2026-07-01)
 
-The Claude Design prototype says "destructive red is for errors only — over-budget = amber." For the **calorie ring specifically**, that rule is overridden:
+Over-budget is **uniformly amber product-wide** — the 2026-04 "calorie ring over = destructive red" carve-out was retired by Grace on 2026-07-01 (sweep decision #2, `docs/decisions/2026-07-01-sweep-decisions.md`; implemented ENG-1296). Rationale: diet-culture exhaustion — "red numbers, guilt cycles" is the #1 refugee complaint; MacroFactor's no-red posture. Do **not** re-enforce red in any future conformance pass.
 
 | State | Colour |
 |---|---|
 | Empty / not yet logged today | gradient (brand) |
 | Logged + under budget | success green (`--success` token) |
-| Logged + over budget | destructive red (`--destructive` token) |
+| Logged + over budget | amber warning family — arc `--ring-over-a/b` (warning-solid → warning), numeral `--accent-warning-solid` / `overBudgetFg` |
 
-Both mobile and web use this mapping. **Other over-budget signals (macros, sodium, etc.) still use amber** per the prototype. The carve-out is the calorie ring only.
+Both mobile and web use this mapping. Destructive red is errors and dangerous actions **only**.
 
 ---
 
@@ -101,7 +101,7 @@ The Claude Design bundles at `docs/ux/claude-design-bundles/{prototype,onboardin
   - **Adopt from prototype** — items the prototype has that live doesn't (per item: Adopt as-is / Adopt with modifications / Skip, with rationale)
   - **Swap in place** — items present on both (per item: which version wins, with rationale)
 - **Icons must be exact.** Use `lucide-react-native` on mobile; cross-reference the bundle before substituting an SF Symbol.
-- **Tokens flip project-wide** (carryover rules — these are NOT screen-level decisions): macro colour map, over-budget = amber (except calorie ring above), sodium = orange (never destructive), background tone, sidebar 248, ring track = `var(--ring-bg)`.
+- **Tokens flip project-wide** (carryover rules — these are NOT screen-level decisions): macro colour map, over-budget = amber (uniformly, incl. the calorie ring — red retired 2026-07-01), sodium = orange (never destructive), background tone, sidebar 248, ring track = `var(--ring-bg)`.
 - **No hardcoded Tailwind hexes** (`#ef4444`, `#f87171`, etc.) — use semantic tokens.
 
 ---
@@ -236,7 +236,7 @@ Rules of engagement:
 **Documented intentional divergences (do NOT flag as drift):**
 - **Onboarding step count** — web N/13 vs mobile N/12 (mobile refresh-plan step). Intentional.
 - **iOS-only build target** — Android config is vestigial; not a parity gap.
-- **Calorie-ring colour map** — empty=gradient, under=success green, over=destructive red (other over-budget signals stay amber).
+- **Calorie-ring colour map** — empty=gradient, under=success green, over=amber warning family (red carve-out retired 2026-07-01, ENG-1296 — over-budget is amber product-wide).
 - **Stripe (web) vs IAP (mobile)** billing rails — entitlements reconcile in `profiles.user_tier`.
 - **Apple Health / Apple Sign-In** — mobile-first/native; web has manual equivalents.
 - **Today dark surface tone** — mobile `#0a0a0f` vs web `#101014` (platform-native depth).

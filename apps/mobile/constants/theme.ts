@@ -86,8 +86,10 @@ export const Accent = {
   successLight: '#83A57E',
   successSolid: '#466046',
   successSolidDark: '#83A57E',
-  /** Amber slot — warning, sodium, approaching limits. (over-budget moved to
-   *  red per dossier D-2; bonus/burn own honey via `Accent.activity`.)
+  /** Amber slot — warning, sodium, approaching limits, AND over-budget
+   *  (2026-07-01 re-ratification, sweep decision #2 / ENG-1296: the dossier
+   *  D-2 "over = red" carve-out is RETIRED — over-budget signals product-wide
+   *  are uniformly amber; bonus/burn own honey via `Accent.activity`.)
    *  `warning` (#C9892C, 2.96:1 text-fail) is FILLS ONLY (dots / bars / soft
    *  tints). `warningSolid` carries ALL amber TEXT + icons. Darkened
    *  #956619 → #925812 (2026-06-23, a11y parity with web `--accent-warning-solid`):
@@ -111,7 +113,8 @@ export const Accent = {
    *  (#9C5228 light / #D6A24A dark). (ENG-1275.) */
   alcoholSolid: '#9C5228',
   alcoholSolidDark: '#D6A24A',
-  /** Brick slot — destructive, error, over-budget. Base hue is the TEXT
+  /** Brick slot — destructive + error ONLY (over-budget is amber since the
+   *  2026-07-01 re-ratification — ENG-1296). Base hue is the TEXT
    *  token in practice, so it must clear AA 4.5:1 as text: darkened
    *  #C0533F → #B04434 (2026-06-09, a11y; 4.86:1 on the cream
    *  `destructive/5` composite, 5.64:1 on white — PASS), mirrors web
@@ -145,8 +148,9 @@ export const Accent = {
   carbs: '#C8794E',
   carbsLight: '#D58A5E',
   /** Activity / burn / earned-bonus — Sloe honey. Ring bonus arc, activity
-   *  cards, burn-detail bonus. Distinct from warning (amber) + over (red).
-   *  FILL-only (arc/dot/icon at 3:1) — see `activitySolid` for text. */
+   *  cards, burn-detail bonus. Distinct from the darker warning/over-budget
+   *  ambers (ENG-1296). FILL-only (arc/dot/icon at 3:1) — see `activitySolid`
+   *  for text. */
   activity: '#D6A24A',
   activityLight: '#E0B25E',
   /** Deep honey — TEXT/icon-on-light variant of `activity` (mirrors web
@@ -454,8 +458,14 @@ export const Colors = {
      *  Text-safe (the plum headline + grey subcopy stay legible). Grace
      *  2026-06-13: "keep it a hero but a real accent." */
     importHeroBg: 'rgba(126, 92, 146, 0.30)',
-    overBudgetFg: '#B04434',        // Sloe destructive red (dossier D-2), AA-darkened 2026-06-09
-    overBudgetSoft: 'rgba(176, 68, 52, 0.08)',
+    /** Over-budget foreground — AMBER (2026-07-01 re-ratification, ENG-1296):
+     *  the dossier D-2 red carve-out is retired; over-budget product-wide is
+     *  the amber warning family. Value == `Accent.warningSolid` (#925812 —
+     *  5.79:1 white / 5.17:1 cream / 5.38:1 tinted ground — AA PASS as text,
+     *  so the "kcal over" ring numeral reads at AA). ↔ web `--over-budget-fg`
+     *  (= var(--accent-warning-solid)). */
+    overBudgetFg: '#925812',
+    overBudgetSoft: 'rgba(201, 137, 44, 0.12)', // amber soft — ↔ web --over-budget-soft (= --accent-warning-soft)
     /** Foreground tokens that previously lived only in CSS — wired
      *  here so RN consumers can stop hardcoding `#fff`. */
     destructiveForeground: '#ffffff',
@@ -482,7 +492,10 @@ export const Colors = {
     ringTick: 'rgba(59, 42, 77, 0.20)',
     ringCapCore: '#FFFFFF',
     ringUnderA: '#4D7A50', ringUnderB: '#93C08C',
-    ringOverA: '#C0533F', ringOverB: '#E08A5F',
+    /** Over arc — ONE amber family with the numeral (ENG-1296, 2026-07-01:
+     *  the coral/red #C0533F→#E08A5F pair is retired). Stops are the amber
+     *  warning tokens themselves: A = `Accent.warningSolid`, B = `Accent.warning`. */
+    ringOverA: '#925812', ringOverB: '#C9892C',
     ringEmptyA: '#C4BCD4', ringEmptyB: '#E6E0F1',
   },
   dark: {
@@ -521,8 +534,10 @@ export const Colors = {
     northStarBorder: 'rgba(129, 94, 145, 0.28)',
     /** ENG-1094 — Discover import hero confident lavender-plum accent (dark). */
     importHeroBg: 'rgba(154, 123, 170, 0.30)',
-    overBudgetFg: '#DC6B55',
-    overBudgetSoft: 'rgba(220, 107, 85, 0.14)',
+    /** Over-budget foreground (dark) — amber (ENG-1296): the dark warning-solid
+     *  honey (7.33:1 on the dark card — AA PASS). ↔ web .dark --over-budget-fg. */
+    overBudgetFg: '#D6A24A',
+    overBudgetSoft: 'rgba(214, 162, 74, 0.18)', // ↔ web .dark --over-budget-soft
     destructiveForeground: '#ffffff',
     primaryForeground: '#ffffff',
     brandMarkRing: '#ffffff',
@@ -540,7 +555,9 @@ export const Colors = {
     ringTick: 'rgba(201, 194, 214, 0.24)',
     ringCapCore: '#FBF7FF',
     ringUnderA: '#6FA06A', ringUnderB: '#B6E0AD',
-    ringOverA: '#D2614A', ringOverB: '#F0A47A',
+    /** Over arc (dark) — lifted amber family (ENG-1296): A = dark warning-solid
+     *  honey, B = lifted light honey. Red pair #D2614A→#F0A47A retired. */
+    ringOverA: '#D6A24A', ringOverB: '#E0B25E',
     ringEmptyA: '#6A5A7E', ringEmptyB: '#B9ADD0',
   },
 };
