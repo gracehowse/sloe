@@ -14,6 +14,33 @@ import { parseDateKey } from "../../lib/nutrition/trackerDate.ts";
 import { dayStripIndicator } from "../../lib/today/dayStripIndicator.ts";
 import { weekdayInitials } from "../../lib/today/weekdayLabels.ts";
 
+/**
+ * ENG-1291 — the TRUE horizontal stride of one week panel in the pager.
+ *
+ * The pager previously assumed each panel's width equals the scroller
+ * viewport width (`pagerW`, the ResizeObserver measurement). At
+ * mobile-web widths the real panel width can disagree with that integer
+ * measurement by a few px; multiplied across ~160 week panels (3 years
+ * of history) the write (`scrollTo`) landed whole WEEKS away from the
+ * intended one — the strip showed a wrong week with no selected day.
+ *
+ * Deriving the stride from `scrollWidth / panelCount` uses the panels'
+ * actual laid-out total, so the per-panel error is bounded by
+ * `0.5 / panelCount` px instead of compounding. The same stride MUST be
+ * used by both the write (scrollToWeekIndex) and the read-back
+ * (handleScrollEnd) so they can't disagree. Falls back to the measured
+ * viewport width before layout has produced a scrollWidth (e.g. first
+ * paint, jsdom).
+ */
+function weekPanelStride(
+  el: HTMLDivElement,
+  panelCount: number,
+  fallbackPagerW: number,
+): number {
+  if (panelCount > 0 && el.scrollWidth > 0) return el.scrollWidth / panelCount;
+  return fallbackPagerW;
+}
+
 type Props = {
   selectedDateKey: string;
   weekStartDay: "monday" | "sunday";
@@ -77,7 +104,10 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
       const el = scrollRef.current;
       if (!el || pagerW <= 0 || weekStarts.length === 0) return;
       const clamped = Math.max(0, Math.min(weekStarts.length - 1, index));
-      el.scrollTo({ left: clamped * pagerW, behavior });
+      // ENG-1291 — stride from the panels' real layout, not the viewport
+      // measurement (see weekPanelStride).
+      const stride = weekPanelStride(el, weekStarts.length, pagerW);
+      el.scrollTo({ left: clamped * stride, behavior });
     },
     [pagerW, weekStarts.length],
   );
@@ -117,7 +147,10 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
     userScrollRef.current = false;
     const el = scrollRef.current;
     if (!el || pagerW <= 0) return;
-    const idx = Math.round(el.scrollLeft / pagerW);
+    // ENG-1291 — read back with the SAME stride the write path uses so
+    // the settle position maps to the week the user actually sees.
+    const stride = weekPanelStride(el, weekStarts.length, pagerW);
+    const idx = Math.round(el.scrollLeft / stride);
     const clamped = Math.max(0, Math.min(weekStarts.length - 1, idx));
     setViewWeekIdx(clamped);
     const newWeekStart = weekStarts[clamped];
