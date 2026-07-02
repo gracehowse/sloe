@@ -1230,7 +1230,9 @@ export const MealPlanner = memo(function MealPlanner({
           onGenerate={requestRegenerate}
           onAdjust={() => setAdjustOpen(true)}
           onTemplates={() => setTemplatesOpen(true)}
-          onOpenHousehold={() => setTemplatesOpen(true)}
+          onOpenHousehold={() => {
+            window.location.assign("/home?view=household-settings");
+          }}
           onOpenShopping={handleShoppingList}
           onOpenBatchCook={() => setBatchCookOpen(true)}
           batchCookSubtitle={defaultBatchCookToolSubtitle()}

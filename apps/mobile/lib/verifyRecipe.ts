@@ -257,6 +257,9 @@ export type BarcodeProduct = {
   source?: "user" | "verified" | "open_food_facts";
   /** Whether this is a verified community entry */
   verified?: boolean;
+  verificationStatus?: "pending" | "verified" | "rejected";
+  /** True when tier-2 `user_foods` row belongs to the signed-in viewer. */
+  isOwnSubmission?: boolean;
   /**
    * P0 (2026-05-26) — true when OFF's published `*_100g` macros disagreed
    * with the per-serving basis and were reconstructed. Barcode commit path
@@ -1616,6 +1619,8 @@ export async function lookupBarcode(
   // explicit own-pending lookup with verification_status NEQ 'rejected'.
   try {
     const { supabase } = await import("@/lib/supabase");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const viewerId = sessionData.session?.user.id ?? null;
     const { data: canon } = await supabase
       .from("verified_food_canonical")
       .select(
@@ -1641,6 +1646,8 @@ export async function lookupBarcode(
         servingSizeG: Number(canon.serving_size_g) || 100,
         source: "verified",
         verified: true,
+        verificationStatus: "verified",
+        isOwnSubmission: false,
       };
     }
 
@@ -1650,7 +1657,7 @@ export async function lookupBarcode(
     const { data: ownRows } = await supabase
       .from("user_foods")
       .select(
-        "name, calories, protein, carbs, fat, fiber_g, serving_size_g, verification_status",
+        "name, calories, protein, carbs, fat, fiber_g, serving_size_g, verification_status, submitted_by",
       )
       .eq("barcode", trimmed)
       .neq("verification_status", "rejected")
@@ -1659,6 +1666,13 @@ export async function lookupBarcode(
 
     const own = ownRows?.[0];
     if (own) {
+      const status = own.verification_status as
+        | "pending"
+        | "verified"
+        | "rejected"
+        | undefined;
+      const isOwn = viewerId != null && own.submitted_by === viewerId;
+      const verified = status === "verified";
       return {
         name: own.name,
         calories: Math.round(Number(own.calories) || 0),
@@ -1668,7 +1682,9 @@ export async function lookupBarcode(
         fiberG: Math.round((Number(own.fiber_g) || 0) * 10) / 10,
         servingSizeG: Number(own.serving_size_g) || 100,
         source: "user",
-        verified: false,
+        verified,
+        verificationStatus: status,
+        isOwnSubmission: isOwn,
       };
     }
   } catch (e) {

@@ -139,10 +139,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   // `discover_creator_rail_v1` (dark pending Grace's SEE; real creators win, else
   // a seeded set when the `creators` table is empty). Mobile parity: discover.tsx.
   const creatorRailEnabled = isFeatureEnabled("discover_creator_rail_v1");
-  const creatorRail = useTopCreators(
-    (c) => router.push(`/creator/${c.id}`),
-    creatorRailEnabled,
-  );
+  const creatorRail = useTopCreators((c) => router.push(`/creator/${c.id}`));
   // ENG-921 (2026-06-07) — CATEGORY filters per Figma `528:2`
   // (All · Trending · Quick 30 · Under 500 cal · High protein · From
   // Reels · Breakfast · Dinner · Dessert · Soup · Pasta · Chicken).

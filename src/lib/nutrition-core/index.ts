@@ -13,6 +13,7 @@ export * from "../nutrition/adherenceDisplay";
 export * from "../nutrition/aiLogging";
 export * from "../nutrition/allocateIngredientMacrosFromLines";
 export * from "../nutrition/barcodeConfidence";
+export * from "../nutrition/barcodeProvenance";
 export * from "../nutrition/barcodeFreePromise";
 export * from "../nutrition/canonicalNutritionEntrySource";
 export * from "../nutrition/coerceRecipeMacrosForPlanning";

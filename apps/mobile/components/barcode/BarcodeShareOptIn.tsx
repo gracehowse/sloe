@@ -5,6 +5,8 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { submitFoodCorrection } from "@/lib/verifyRecipe";
+import { track } from "@/lib/analytics";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { getSupprWebBase } from "@/lib/supprWeb";
 
 /**
@@ -65,6 +67,10 @@ export function BarcodeShareOptIn({
       userId,
     });
     if (result.ok) {
+      track(AnalyticsEvents.food_contribution_opt_in, {
+        barcode: entry.barcode,
+        policy_version: "2026-06-27",
+      });
       setPhase("success");
     } else if (result.error === "plausibility_blocked") {
       // Honesty rule: a blocked submission NEVER shows the success card.

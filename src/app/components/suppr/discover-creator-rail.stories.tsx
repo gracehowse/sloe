@@ -1,13 +1,35 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { DiscoverCreatorRail } from "./discover-creator-rail";
-import { SEED_CREATOR_CHIPS } from "../../../lib/discover/seedCreators";
+
+/** Launch-partner chips (ENG-1239) — same shape as `top_creators_by_saves` rows. */
+const LAUNCH_PARTNER_CHIPS = [
+  {
+    id: "a1000001-0001-4000-8000-000000000001",
+    handle: "priyaeats",
+    displayName: "Priya Patel",
+    avatarUrl: null,
+    bio: "Batch-cooking & big-flavour veg",
+  },
+  {
+    id: "a1000001-0001-4000-8000-000000000002",
+    handle: "marcuscooks",
+    displayName: "Marcus Chen",
+    avatarUrl: null,
+    bio: "30-minute weeknight dinners",
+  },
+  {
+    id: "a1000001-0001-4000-8000-000000000003",
+    handle: "sofiaromano",
+    displayName: "Sofia Romano",
+    avatarUrl: null,
+    bio: "Slow mornings & comfort food",
+  },
+];
 
 /**
  * DiscoverCreatorRail — the "explore from" creator rail (ENG-1225 #14).
  * Mock creators show the layout (initial-on-plum-tint fallback + avatar photos);
  * the live rail is sourced from `top_creators_by_saves` and hides when empty.
- * The `Seeded` story renders the SHARED seed fixture (`SEED_CREATOR_CHIPS`) —
- * what `discover_creator_rail_v1` shows while the `creators` table is empty.
  */
 const meta = {
   title: "Suppr/DiscoverCreatorRail",
@@ -40,9 +62,9 @@ export const Fallbacks: Story = {
   },
 };
 
-export const Seeded: Story = {
-  name: "Seeded (discover_creator_rail_v1 fallback)",
-  args: { creators: [...SEED_CREATOR_CHIPS] },
+export const LaunchPartners: Story = {
+  name: "Launch partners (real DB rows)",
+  args: { creators: [...LAUNCH_PARTNER_CHIPS] },
 };
 
 export const Empty: Story = {

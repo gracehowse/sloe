@@ -13,15 +13,18 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
 
 const submitFoodCorrection = vi.fn();
+const track = vi.fn();
 vi.mock("@/lib/verifyRecipe", () => ({
   submitFoodCorrection: (...args: unknown[]) => submitFoodCorrection(...args),
 }));
+vi.mock("@/lib/analytics", () => ({ track: (...args: unknown[]) => track(...args) }));
 vi.mock("@/lib/supprWeb", () => ({ getSupprWebBase: () => "https://getsloe.com" }));
 vi.mock("@/context/theme", () => ({
   useAccent: () => ({ primary: "#5B3B6E", primaryForeground: "#FFFFFF", success: "#5E7C5A" }),
 }));
 
 import { BarcodeShareOptIn } from "../../components/barcode/BarcodeShareOptIn";
+import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 const ENTRY = {
   barcode: "5012345678900",
@@ -33,7 +36,10 @@ const ENTRY = {
 };
 
 describe("BarcodeShareOptIn", () => {
-  beforeEach(() => submitFoodCorrection.mockReset());
+  beforeEach(() => {
+    submitFoodCorrection.mockReset();
+    track.mockReset();
+  });
 
   it("renders the legal-reviewed opt-in copy", () => {
     const { getByText } = render(<BarcodeShareOptIn entry={ENTRY} userId="u1" onDone={() => {}} />);
@@ -64,6 +70,10 @@ describe("BarcodeShareOptIn", () => {
     expect(await findByText(/Saved .* thank you/)).toBeTruthy();
     // honest: pending-until-verified, not "everyone sees it now"
     expect(getByText(/it becomes the entry everyone sees/)).toBeTruthy();
+    expect(track).toHaveBeenCalledWith(AnalyticsEvents.food_contribution_opt_in, {
+      barcode: ENTRY.barcode,
+      policy_version: "2026-06-27",
+    });
   });
 
   it("a plausibility BLOCK hides the success card and shows the inline reasons", async () => {

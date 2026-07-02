@@ -2739,7 +2739,7 @@ export default function PlannerScreen() {
             onGenerate={openGenerateMenu}
             onAdjust={() => setAdjustOpen(true)}
             onTemplates={() => setTemplatesOpen(true)}
-            onOpenHousehold={() => setTemplatesOpen(true)}
+            onOpenHousehold={() => router.push("/household-settings" as Href)}
             onOpenMeal={planV3Meal.onOpenMeal}
             onAddToSlot={planV3Meal.onAddToSlot}
             shoppingItemCount={shoppingItemCount}

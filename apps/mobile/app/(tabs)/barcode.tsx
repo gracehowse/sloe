@@ -27,6 +27,7 @@ import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter, type Href } from "expo-router";
 
 import { barcodeConfidenceTier, lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { barcodeProvenanceLabel } from "@/lib/barcodeProvenance";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -434,6 +435,10 @@ export default function BarcodeScreen() {
         fat: Math.round((Number(corrFat) || 0) * 10) / 10,
         fiberG: product?.fiberG ?? 0,
         servingSizeG: product?.servingSizeG ?? 100,
+        source: "user",
+        verified: false,
+        verificationStatus: "pending",
+        isOwnSubmission: true,
       };
       setProduct(corrected);
       setCorrectionMode(false);
@@ -960,13 +965,7 @@ export default function BarcodeScreen() {
                   tier={barcodeConfidenceTier(product)}
                   testID="barcode-confidence-chip"
                 />
-                <Text style={styles.source}>
-                  {product.verified
-                    ? "Verified entry"
-                    : product.source === "user"
-                      ? "Community submitted"
-                      : "via Open Food Facts"}
-                </Text>
+                <Text style={styles.source}>{barcodeProvenanceLabel(product)}</Text>
               </View>
             ) : product.verified ? (
               // Old path (binary green tick): preserved for flag-off.
@@ -975,9 +974,7 @@ export default function BarcodeScreen() {
                 <Text style={styles.source}>Verified</Text>
               </View>
             ) : (
-              <Text style={styles.source}>
-                {product.source === "user" ? "Community submitted" : "via Open Food Facts"}
-              </Text>
+              <Text style={styles.source}>{barcodeProvenanceLabel(product)}</Text>
             )}
             <View style={styles.btnRow}>
               <Pressable

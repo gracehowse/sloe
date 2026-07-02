@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -8,6 +8,7 @@ import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { supabase } from "@/lib/supabase";
 import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { decodeEntities } from "@/lib/decodeEntities";
@@ -18,57 +19,27 @@ import {
   creatorInitialOf,
   creatorTintFor,
 } from "@suppr/shared/discover/creatorChipPresentation";
-import {
-  isSeedCreatorId,
-  SEED_CREATORS,
-} from "@suppr/shared/discover/seedCreators";
 
 /**
  * FollowingFeed — the v3 mobile Discover "Following" section (ENG-1225 #14,
- * prototype `.feed-card`, Sloe-App.html L4251-4261): a stack of creator
- * post-cards, each = a creator header (avatar + name + @handle · when + a
- * Follow/Following affordance), a one-line note, and the creator's latest
- * recipe rendered as a compact card.
- *
- * This is the web-missing half (web has no Following FEED; it has a
- * Following SCOPE toggle) — added here because iOS is the primary surface. It is
- * the parity mirror of where the web featured hero lands on the wide canvas.
- *
- * Behind the host's `discover_creator_rail_v1` gate (passed as `enabled`).
- * Renders nothing when disabled or when there are no creators. Creators come
- * from the SAME resolver as the rail (`resolveCreatorRail`): real creators when
- * they exist, else the presentation-only seed set. The seed posts carry sample
- * "what they just cooked" notes (`SEED_CREATORS.latestNote`); real creators pair
- * with the first available feed recipe.
- *
- * Follow state is LOCAL/optimistic here — the seed creators have no DB row to
- * write to, so the toggle is presentation-only (it never lies about a persisted
- * follow; seed posts carry an explicit "Sample creator" disclosure). When the
- * rail is wired to REAL creators (the Grace-filed follow-up in `seedCreators.ts`),
- * this routes the follow write through the existing `follows` graph.
+ * ENG-1239 real creators). Creator posts pair with feed recipes; follow state
+ * persists via the `follows` table when the viewer is signed in.
  */
 export interface FollowingFeedProps {
   enabled: boolean;
-  /** Resolved creators (real or seed) — same source as the rail. */
   creators: CreatorChip[];
-  /** Discover feed recipes — paired with creators that lack a seed post. */
   recipes: RecipeCard[];
   onPressRecipe: (recipe: RecipeCard) => void;
   onPressCreator: (creatorId: string) => void;
 }
 
-function noteFor(creatorId: string): string | null {
-  const seed = SEED_CREATORS.find((c) => c.id === creatorId);
-  return seed?.latestNote ?? null;
-}
-
-function postedAgoFor(creatorId: string): string | null {
-  const seed = SEED_CREATORS.find((c) => c.id === creatorId);
-  return seed?.postedAgo ?? null;
-}
-
 function handleOf(c: CreatorChip): string {
   return c.handle.startsWith("@") ? c.handle : `@${c.handle}`;
+}
+
+function feedNote(creator: CreatorChip): string | null {
+  const bio = creator.bio?.trim();
+  return bio || null;
 }
 
 export function FollowingFeed({
@@ -81,10 +52,68 @@ export function FollowingFeed({
   const colors = useThemeColors();
   const accent = useAccent();
   const cardElevation = useCardElevation({ variant: "soft" });
+  const [authedUserId, setAuthedUserId] = useState<string | null>(null);
   const [followed, setFollowed] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
 
-  // Pair each creator with a recipe to feature: their own when we can resolve a
-  // creatorId match, else the Nth feed recipe so every post shows a real card.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const sessionRes = await supabase.auth.getSession();
+      if (cancelled) return;
+      const uid = sessionRes.data.session?.user.id ?? null;
+      setAuthedUserId(uid);
+      if (!uid || creators.length === 0) return;
+      const { data, error } = await supabase
+        .from("follows")
+        .select("creator_id")
+        .eq("user_id", uid)
+        .in(
+          "creator_id",
+          creators.map((c) => c.id),
+        );
+      if (cancelled || error || !data) return;
+      const next: Record<string, boolean> = {};
+      for (const row of data) {
+        if (row.creator_id) next[row.creator_id] = true;
+      }
+      setFollowed(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [creators]);
+
+  const toggleFollow = useCallback(
+    async (creatorId: string) => {
+      if (!authedUserId || busy[creatorId]) return;
+      const wasFollowing = followed[creatorId] ?? false;
+      setBusy((m) => ({ ...m, [creatorId]: true }));
+      setFollowed((m) => ({ ...m, [creatorId]: !wasFollowing }));
+      try {
+        if (wasFollowing) {
+          const { error } = await supabase
+            .from("follows")
+            .delete()
+            .eq("user_id", authedUserId)
+            .eq("creator_id", creatorId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("follows").insert({
+            user_id: authedUserId,
+            creator_id: creatorId,
+          });
+          if (error) throw error;
+        }
+      } catch {
+        setFollowed((m) => ({ ...m, [creatorId]: wasFollowing }));
+      } finally {
+        setBusy((m) => ({ ...m, [creatorId]: false }));
+      }
+    },
+    [authedUserId, busy, followed],
+  );
+
   const posts = useMemo(() => {
     const photo = recipes.filter((r) => (r.image ?? "").trim().length > 0);
     const pool = photo.length > 0 ? photo : recipes;
@@ -110,16 +139,11 @@ export function FollowingFeed({
       <View style={{ gap: Spacing.md }}>
         {posts.map(({ creator, recipe }) => {
           const isFollowing = followed[creator.id] ?? false;
-          const note = noteFor(creator.id);
-          const when = postedAgoFor(creator.id);
+          const note = feedNote(creator);
           const kcal = Math.round(recipe.calories);
           const protein = Math.round(recipe.protein);
           const carbs = Math.round(recipe.carbs);
           const fat = Math.round(recipe.fat);
-          // Seed creators have no DB row — the follow toggle is presentation-
-          // only (never claims a persisted follow). Real creators (no
-          // `seed-creator-` id) route through the follow graph once wired.
-          const canPersist = !isSeedCreatorId(creator.id);
           return (
             <View
               key={creator.id}
@@ -133,7 +157,6 @@ export function FollowingFeed({
                 cardElevation.shadowStyle,
               ]}
             >
-              {/* Creator header */}
               <View style={styles.header}>
                 <PressableScale
                   haptic="selection"
@@ -145,7 +168,11 @@ export function FollowingFeed({
                   <View
                     style={[
                       styles.avatar,
-                      { backgroundColor: creator.avatarUrl ? colors.card : creatorTintFor(creator.id) },
+                      {
+                        backgroundColor: creator.avatarUrl
+                          ? colors.card
+                          : creatorTintFor(creator.id),
+                      },
                     ]}
                   >
                     {creator.avatarUrl ? (
@@ -172,15 +199,13 @@ export function FollowingFeed({
                       numberOfLines={1}
                     >
                       {handleOf(creator)}
-                      {when ? ` · ${when}` : ""}
                     </Text>
                   </View>
                 </PressableScale>
                 <PressableScale
                   haptic="selection"
-                  onPress={() =>
-                    setFollowed((m) => ({ ...m, [creator.id]: !isFollowing }))
-                  }
+                  onPress={() => void toggleFollow(creator.id)}
+                  disabled={!authedUserId || busy[creator.id]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isFollowing }}
                   accessibilityLabel={
@@ -191,7 +216,10 @@ export function FollowingFeed({
                   style={[
                     styles.followBtn,
                     {
-                      backgroundColor: isFollowing ? accent.primarySoft : accent.primarySolid,
+                      backgroundColor: isFollowing
+                        ? accent.primarySoft
+                        : accent.primarySolid,
+                      opacity: authedUserId ? 1 : 0.45,
                     },
                   ]}
                 >
@@ -215,7 +243,6 @@ export function FollowingFeed({
                 </Text>
               ) : null}
 
-              {/* Recipe card */}
               <PressableScale
                 haptic="confirm"
                 onPress={() => onPressRecipe(recipe)}
@@ -258,12 +285,6 @@ export function FollowingFeed({
                   />
                 </View>
               </PressableScale>
-
-              {!canPersist ? (
-                <Text style={[Type.caption, styles.sampleNote, { color: colors.textTertiary }]}>
-                  Sample creator · follow lands when creators go live
-                </Text>
-              ) : null}
             </View>
           );
         })}
@@ -333,10 +354,6 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 10,
     overflow: "hidden",
     backgroundColor: "transparent",
-  },
-  sampleNote: {
-    marginTop: Spacing.sm,
-    textAlign: "center",
   },
 });
 

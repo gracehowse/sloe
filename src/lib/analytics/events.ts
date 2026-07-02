@@ -16,6 +16,11 @@ export const AnalyticsEvents = {
   food_logged: "food_logged",
   barcode_lookup: "barcode_lookup",
   /**
+   * ENG-1251 P1-A — affirmative community-food contribution opt-in.
+   * Payload: `{ barcode, policy_version }`.
+   */
+  food_contribution_opt_in: "food_contribution_opt_in",
+  /**
    * A recipe import produced a result the user can review. Fires from the
    * macro-bearing import paths (URL / social on web `RecipeUpload` + mobile
    * `import-shared`); the web photo-OCR editor extract also emits it with

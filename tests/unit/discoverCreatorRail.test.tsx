@@ -47,8 +47,35 @@ describe("loadTopCreators", () => {
     const out = await loadTopCreators(supabase, 12);
     expect(supabase.rpc).toHaveBeenCalledWith("top_creators_by_saves", { p_limit: 12 });
     expect(out).toEqual([
-      { id: "a1", handle: "mob", displayName: "Mob Kitchen", avatarUrl: null },
-      { id: "b2", handle: "b2", displayName: "Anna", avatarUrl: "x" }, // handle falls back to id
+      { id: "a1", handle: "mob", displayName: "Mob Kitchen", avatarUrl: null, bio: null },
+      { id: "b2", handle: "b2", displayName: "Anna", avatarUrl: "x", bio: null }, // handle falls back to id
+    ]);
+  });
+
+  it("maps bio from the RPC rows", async () => {
+    const supabase = {
+      rpc: vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: "a1",
+            handle: "mob",
+            display_name: "Mob Kitchen",
+            avatar_url: null,
+            bio: "Batch-cooking",
+            saves: 3,
+          },
+        ],
+        error: null,
+      }),
+    };
+    expect(await loadTopCreators(supabase)).toEqual([
+      {
+        id: "a1",
+        handle: "mob",
+        displayName: "Mob Kitchen",
+        avatarUrl: null,
+        bio: "Batch-cooking",
+      },
     ]);
   });
 
