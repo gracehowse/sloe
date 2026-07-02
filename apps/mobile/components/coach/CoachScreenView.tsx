@@ -43,12 +43,12 @@ function CoachCandidateRow({
           style={{ width: 52, height: 52, borderRadius: 12 }}
         />
       ) : (
-        <RecipeHeroFallback
-          id={candidate.recipeId}
-          title={candidate.title}
-          iconSize={20}
-          style={{ width: 52, height: 52, borderRadius: 12 }}
-        />
+        // RecipeHeroFallback absolute-fills its parent (hero-slot semantics) —
+        // row thumbs give it a fixed-size wrapper, same idiom as
+        // DiscoverMoreIdeaRow / RecipeDetailHero.
+        <View style={{ width: 52, height: 52, borderRadius: 12, overflow: "hidden" }}>
+          <RecipeHeroFallback id={candidate.recipeId} title={candidate.title} iconSize={20} />
+        </View>
       )}
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm }}>
