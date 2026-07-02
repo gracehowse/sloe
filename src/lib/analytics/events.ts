@@ -1233,7 +1233,15 @@ export type FoodLoggedSource =
   | "voice"          // Voice log commit
   | "photo"          // AI photo log commit
   | "recipe"         // Logged from recipe detail / recipe mode
-  | "planner";       // Logged from planner slot
+  | "planner"        // Logged from planner slot
+  // ENG-1301 (VERIFIED V13) — one-tap quick-log on suggestion surfaces. The
+  // north-star CTA + Coach candidate rows used to route only to
+  // /recipe/[id]; the compact secondary "Log" action commits the suggested
+  // recipe to the suggested slot in place. Registered here (the product's
+  // meal-logged event is `food_logged`; `source` is its attribution prop)
+  // so the suggestion→log conversion is sliceable per surface.
+  | "north_star"       // "What to eat next" block secondary Log (Today)
+  | "coach_suggestion"; // Coach screen candidate-row secondary Log
 
 /** Canonical `surface` of an `empty_state_cta_clicked` event (L6 G5). */
 export type EmptyStateSurface =

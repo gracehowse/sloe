@@ -81,6 +81,10 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     onToggleExpanded,
     onPressWhy,
     onPressStatusChip,
+    // ENG-1293 — Coach chip is a mobile-web surface (`< md` ring only);
+    // desktop (`>= md`) gets the sidebar "Coach" item instead, so
+    // `DesktopHeroStats` deliberately does not consume it.
+    onPressCoach,
     pulse,
     commitPulse,
     logConfirmVisible,
@@ -97,6 +101,7 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     onToggleExpanded,
     onPressWhy,
     onPressStatusChip,
+    onPressCoach,
     pulse,
     commitPulse,
     logConfirmVisible,

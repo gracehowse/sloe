@@ -14,7 +14,7 @@ const ROOT = resolve(__dirname, "../..");
 describe("north-star hero — flat on both platforms (flat-card surfaces)", () => {
   it("web hero button carries no shadow utility", () => {
     const src = readFileSync(
-      resolve(ROOT, "src/app/components/suppr/north-star-block.tsx"),
+      resolve(ROOT, "src/app/components/suppr/north-star-figma-hero.tsx"),
       "utf8",
     );
     const heroIdx = src.indexOf("h-80 rounded-2xl");
@@ -24,7 +24,7 @@ describe("north-star hero — flat on both platforms (flat-card surfaces)", () =
 
   it("mobile figmaHeroCard carries no shadow/elevation literals", () => {
     const src = readFileSync(
-      resolve(ROOT, "apps/mobile/components/today/NorthStarBlock.tsx"),
+      resolve(ROOT, "apps/mobile/components/today/NorthStarFigmaHero.tsx"),
       "utf8",
     );
     const idx = src.indexOf("figmaHeroCard");

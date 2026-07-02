@@ -2860,6 +2860,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         // from the profile's weight_kg_by_day map, not the old confidence proxy.
         tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
         onPressStatusChip={() => setWhyThisNumberOpen(true)}
+        // ENG-1293 — always-present Coach entry (sweep decision #3): renders
+        // in every hero state on mobile-web (`< md`); desktop gets the sidebar
+        // item. Same `coach_screen_v1` gate; the deficit-line deep-link stays.
+        onPressCoach={coachScreenEnabled ? () => trackerRouter.push("/coach") : undefined}
         coachLine={coachInHero ? coachLineEl : undefined}
       />
         );
@@ -2870,17 +2874,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           from Today scroll (2026-05-22 v4) and fully retired (ENG-984,
           2026-06-17); logging shortcuts live in the Log sheet. */}
       {(() => {
-        if (isFeatureEnabled("today_coach_in_hero_v1")) {
-          if (activeFast) {
-            return (
-              <TodayFastingPill
-                activeFastElapsedLabel={fastingElapsedLabel}
-                fastingOptedIn={fastingOptedIn}
-              />
-            );
-          }
-          return null;
-        }
+        // 1. Active fast wins outright (both hero variants).
         if (activeFast) {
           return (
             <TodayFastingPill
@@ -2889,6 +2883,9 @@ export const NutritionTracker = memo(function NutritionTracker({
             />
           );
         }
+        // Coach-in-hero: the deficit line renders INSIDE the hero, so no
+        // standalone context block below it.
+        if (isFeatureEnabled("today_coach_in_hero_v1")) return null;
         const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
         if (
           viewMode === "day" &&
@@ -2906,10 +2903,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         return null;
       })()}
 
-      {/* RemainingMacrosBar removed 2026-04-20 — duplicated the 2x2
-          TodayDashboardMacroTiles grid below. Mobile parity: removed
-          same day in apps/mobile/app/(tabs)/index.tsx. See
-          feedback_no_duplicate_today_hero_content.md. */}
+      {/* RemainingMacrosBar removed 2026-04-20 — duplicated the macro tiles
+          below (feedback_no_duplicate_today_hero_content.md; mobile parity). */}
 
       {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings),
           same keys as mobile. Phase 4 / Top-5 #2 (2026-04-28): the
@@ -3012,9 +3007,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           present on Today via the Net tile (`TodayHeroStats`) and the
           Activity Bonus card. */}
 
-      {/* Eat-again block retired (ENG-984, 2026-06-17) — removed from
-          Today on 2026-05-22 (v4) and never re-surfaced; the dead
-          component is gone. Mobile parity: apps/mobile/app/(tabs)/index.tsx. */}
+      {/* Eat-again block retired (ENG-984, 2026-06-17); mobile parity. */}
 
       {/* Quick add panel — Usual meals / Recent / Frequent / Favourites
           tabs with one-tap log. Ship M1 (2026-04-18) reordered so Usual
@@ -3040,6 +3033,13 @@ export const NutritionTracker = memo(function NutritionTracker({
           onPrimaryCta={(_recipeId) => {
             setMealSlot(slotForHour(new Date().getHours()));
             setLogSheetOpen(true);
+          }}
+          // ENG-1301 — compact secondary Log: reuses the existing quick-log
+          // insert primitive (addLoggedMealForDate), attributed
+          // `source: "north_star"`; toast = the standard success feedback.
+          onLogSuggestion={({ meal, slotName, title }) => {
+            addLoggedMealForDate(selectedDateKey, meal, "north_star");
+            toast.success(`${title} logged to ${slotName}`);
           }}
           onBrowseLibrary={() => {
             setMealSlot(slotForHour(new Date().getHours()));

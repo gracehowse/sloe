@@ -77,6 +77,8 @@ describe("Today cohesion — TodayHeroRing ENG-1099 RC-3", () => {
 
 describe("Today cohesion — NorthStarBlock ENG-1099 RC-4", () => {
   const src = read("../../components/today/NorthStarBlock.tsx");
+  // ENG-1293/1301: the figma hero card was extracted into NorthStarFigmaHero.
+  const heroSrc = read("../../components/today/NorthStarFigmaHero.tsx");
 
   it("uses on-family sage tokens for the band-tight chip when tierV1 is on", () => {
     expect(src).toMatch(/Accent\.success \+ "1A"/);
@@ -84,7 +86,7 @@ describe("Today cohesion — NorthStarBlock ENG-1099 RC-4", () => {
   });
 
   it("ENG-1099 RC-3: figma hero card uses PressableScale haptic selection", () => {
-    expect(src).toMatch(/PressableScale[\s\S]{0,200}haptic="selection"[\s\S]{0,200}styles\.figmaHeroCard/);
+    expect(heroSrc).toMatch(/PressableScale[\s\S]{0,200}haptic="selection"[\s\S]{0,200}styles\.figmaHeroCard/);
   });
 });
 

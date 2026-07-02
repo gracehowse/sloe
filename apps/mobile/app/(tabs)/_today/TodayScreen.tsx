@@ -132,7 +132,7 @@ import {
   parseLocalTimeInput,
   reanchorMealEatenAt,
 } from "@suppr/shared/nutrition/mealEatenAt";
-import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { AnalyticsEvents, type FoodLoggedSource } from "@suppr/shared/analytics/events";
 import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalendarAnchor";
 import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/shared/nutrition/coerceRecipeMacrosForPlanning";
@@ -2063,10 +2063,15 @@ export default function TrackerScreen() {
   const dayKey = dateKeyFromDate(selectedDate);
 
   /** Log any FoodHistoryItem to the active slot. Used by the Quick add
-   * panel (Usual meals / Recents / Frequent / Favourites) so the
-   * persist/event shape stays aligned across logging shortcuts. */
+   * panel (Usual meals / Recents / Frequent / Favourites) and the
+   * north-star secondary Log (ENG-1301, `analyticsSource: "north_star"`)
+   * so the persist/event shape stays aligned across logging shortcuts. */
   const logHistoryItemToSlot = useCallback(
-    async (item: FoodHistoryItem, slot: string) => {
+    async (
+      item: FoodHistoryItem,
+      slot: string,
+      analyticsSource: FoodLoggedSource = "quick_add",
+    ) => {
       let recipeTitle = item.recipeTitle;
       if (item.recipeId) {
         const fresh = await fetchMobileCanonicalRecipeTitle(item.recipeId);
@@ -2108,7 +2113,7 @@ export default function TrackerScreen() {
       // the value into `extra_caffeine_by_day`, then the read merged
       // both → 2× display. Quick-add (`addCaffeineMg`) keeps writing
       // to the ledger directly; that ledger now holds quick-add only.
-      try { track(AnalyticsEvents.food_logged, { source: "quick_add", slot }); } catch { /* noop */ }
+      try { track(AnalyticsEvents.food_logged, { source: analyticsSource, slot }); } catch { /* noop */ }
     },
     [dayKey, persistMealsImmediate, profileTimeZone, userId],
   );
@@ -5362,6 +5367,12 @@ export default function TrackerScreen() {
                   dateKeyFromDate(new Date()),
                 )}
                 onPressStatusChip={() => setWhySheetOpen(true)}
+                // ENG-1293 — always-present Coach entry (sweep decision #3):
+                // renders in every hero state; same `coach_screen_v1` gate as
+                // the screen. The contextual deficit-line deep-link stays.
+                onPressCoach={
+                  coachScreenEnabled ? () => router.push("/coach" as never) : undefined
+                }
                 coachLine={heroCoachLine ?? undefined}
                 logConfirmBump={logConfirmBump}
               />
@@ -5376,19 +5387,7 @@ export default function TrackerScreen() {
                 one prompt above the meals". */}
             <ReAnimated.View style={contextEntrance.style}>
             {(() => {
-              if (isFeatureEnabled("today_coach_in_hero_v1")) {
-                if (activeFastStart) {
-                  return (
-                    <TodayFastingPill
-                      startedAt={activeFastStart}
-                      nowTick={fastingTick}
-                      onPress={() => router.push("/fasting")}
-                    />
-                  );
-                }
-                return null;
-              }
-              // 1. Active fast wins outright.
+              // 1. Active fast wins outright (both hero variants).
               if (activeFastStart) {
                 return (
                   <TodayFastingPill
@@ -5398,6 +5397,9 @@ export default function TrackerScreen() {
                   />
                 );
               }
+              // Coach-in-hero: the deficit line renders INSIDE the hero, so
+              // no standalone context block below it.
+              if (isFeatureEnabled("today_coach_in_hero_v1")) return null;
               // 1b. Idle "Start fast" removed (Today premium sprint 2026-05-19).
               // 2. Eat-again card removed from Today (2026-05-22 v4) and
               //    fully retired (ENG-984, 2026-06-17).
@@ -5480,21 +5482,12 @@ export default function TrackerScreen() {
           />
         ) : null}
 
-        {/* TodayStreakInsightCard removed 2026-04-20 — Grace's call
-            per Today alignment pass. Streak logic still runs (powers
-            the freeze ledger + weekly recap analytics) but is no
-            longer surfaced on Today. Re-add if streak signal becomes
-            a retention lever later. */}
-
-        {/* Deficit insight moved into the unified context block
-            inside the day-mode wrapper above (Phase 4 / Top-5 #2,
-            2026-04-28). It renders only when no higher-priority
-            context block (fasting) fits. */}
+        {/* TodayStreakInsightCard removed 2026-04-20 (Grace, Today alignment
+            pass) — streak logic still runs for the freeze ledger + recap.
+            Deficit insight lives in the unified context block above (Phase 4 /
+            Top-5 #2, 2026-04-28). Eat-again card retired (ENG-984). */}
 
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
-        {/* Eat-again card retired (ENG-984, 2026-06-17) — suppressed from
-            Today on 2026-05-22 (v4) and never re-surfaced; component +
-            plumbing removed. Web parity: NutritionTracker.tsx. */}
 
         {/* Figma `654:2` — What to eat next sits above Today's Meals. */}
         {showAboveMealsNorthStar && (
@@ -5509,6 +5502,13 @@ export default function TrackerScreen() {
             onPrimaryCta={(recipeId) => {
               router.push(`/recipe/${recipeId}` as any);
             }}
+            // ENG-1301 — compact secondary Log: reuses the existing
+            // quick-log insert path (logHistoryItemToSlot), attributed
+            // `source: "north_star"`. Success feedback = the standard
+            // optimistic ring update + log-confirm check.
+            onLogSuggestion={({ item, slotName }) =>
+              logHistoryItemToSlot(item, slotName, "north_star")
+            }
             onBrowseLibrary={() => {
               router.push("/(tabs)/library" as any);
             }}

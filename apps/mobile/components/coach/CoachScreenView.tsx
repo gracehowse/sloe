@@ -4,6 +4,7 @@ import { Info, Sparkles } from "lucide-react-native";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
+import { QuickLogButton } from "@/components/ui/QuickLogButton";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
@@ -29,6 +30,10 @@ export interface CoachScreenViewProps {
   librarySize: number;
   /** Remaining calories for the day (≤ 0 when at/over target). */
   remainingCalories: number;
+  /** ENG-1301 (VERIFIED V13) — compact secondary "Log": one-tap logs the
+   *  candidate to the suggested slot via the host's existing quick-log
+   *  insert helper. The row press keeps routing to the recipe. */
+  onCandidateLog?: (recipeId: string) => Promise<void> | void;
   selectedChipId: CoachAskChipId | null;
   askAnswer: string | null;
   askLoading: boolean;
@@ -39,10 +44,12 @@ function CoachCandidateRow({
   candidate,
   isBest,
   onPress,
+  onLog,
 }: {
   candidate: CoachCandidate;
   isBest: boolean;
   onPress?: () => void;
+  onLog?: () => Promise<void> | void;
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -102,6 +109,15 @@ function CoachCandidateRow({
           </Text>
         ) : null}
       </View>
+      {/* ENG-1301 — compact secondary Log (ghost). Nested pressable wins the
+          touch, so the row's recipe press stays intact around it. */}
+      {onLog ? (
+        <QuickLogButton
+          testID={`coach-candidate-log-${candidate.recipeId}`}
+          onLog={onLog}
+          accessibilityLabel={`Log ${candidate.title}`}
+        />
+      ) : null}
     </View>
   );
 
@@ -129,6 +145,7 @@ export function CoachScreenView({
   onCandidatePress,
   librarySize,
   remainingCalories,
+  onCandidateLog,
   selectedChipId,
   askAnswer,
   askLoading,
@@ -192,6 +209,7 @@ export function CoachScreenView({
               candidate={c}
               isBest={i === 0}
               onPress={onCandidatePress ? () => onCandidatePress(c.recipeId) : undefined}
+              onLog={onCandidateLog ? () => onCandidateLog(c.recipeId) : undefined}
             />
           ))
         )}

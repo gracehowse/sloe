@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Icons } from "../ui/icons";
 import { SupprWordmark } from "../ui/suppr-mark";
-import { SupprButton } from "./suppr-button";
 import type { UserTier } from "../../../types/recipe";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { formatSidebarBadge } from "../../../lib/navigation/sidebarBadge.ts";
+import { SidebarUpgradeSlot } from "./sidebar-upgrade-slot";
 import {
   NAV_TAB_ORDER_FLAG,
   canonicalNavOrderEnabled,
@@ -246,6 +248,10 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
     [planFirst],
   );
 
+  // ENG-1293 — always-present Coach entry under the Today group. Same
+  // `coach_screen_v1` gate as the Coach screen itself.
+  const coachEnabled = isFeatureEnabled("coach_screen_v1");
+
   // Collapsed state — initialised lazily from localStorage so SSR is
   // safe (read returns false on the server, then hydrates to the real
   // value once `window` exists). See `readCollapsedPref` for SSR
@@ -400,11 +406,18 @@ export function DesktopSidebar(props: DesktopSidebarProps) {
                 {/* Sub-tabs hide while collapsed — the icon rail is a
                     single column, leaves are reached by clicking the
                     primary (which routes to the default leaf) and then
-                    expanding. */}
+                    expanding. The Today group additionally carries the
+                    flag-gated Coach entry (ENG-1293). */}
                 {isActive &&
                 !collapsed &&
-                SUB_TABS[item.view].length > 0 ? (
+                (SUB_TABS[item.view].length > 0 ||
+                  (item.view === "today" && coachEnabled)) ? (
                   <ul className="mt-1 mb-2 ml-7 space-y-0.5 border-l border-border/60 pl-3">
+                    {item.view === "today" && coachEnabled ? (
+                      <li key="coach">
+                        <CoachSidebarItem />
+                      </li>
+                    ) : null}
                     {SUB_TABS[item.view].map((sub) => (
                       <li key={sub.view}>
                         <SubTabSidebarItem
@@ -500,48 +513,27 @@ function SidebarProfileEntry({
   );
 }
 
-function SidebarUpgradeSlot({
-  userTier,
-  onNavigate,
-}: {
-  userTier: UserTier;
-  onNavigate: (view: SidebarView) => void;
-}) {
-  const gateOn = useFeatureFlagEnabled("premium-sweep-v2-p0-t12");
-  if (!gateOn) return null;
-  if (userTier === "pro" || userTier === "base") return null;
+// SidebarUpgradeSlot extracted to `sidebar-upgrade-slot.tsx` (ENG-1293) so
+// this file stays under its screen-budget pin; behaviour unchanged.
+
+/**
+ * CoachSidebarItem — the always-present labelled Coach entry (ENG-1293,
+ * sweep decision #3 2026-07-01). Renders as a Today sub-tab (same grammar as
+ * Recipes' Library/Discover rows) whenever the Today group is active, in
+ * EVERY Today state — the old deficit-line-only deep-link vanished exactly
+ * when the user needed it. `/coach` is a standalone route (not a SPA view),
+ * so it navigates via a real `<Link>` instead of `onNavigate`. Gated on
+ * `coach_screen_v1` at the render site. Mobile mirror: the hero "Coach" chip.
+ */
+function CoachSidebarItem() {
   return (
-    <div className="p-3 pb-0">
-      <div
-        className="rounded-2xl p-3"
-        style={{
-          background: "linear-gradient(135deg, var(--north-star-bg-from), var(--north-star-bg-to))",
-          border: "1px solid var(--north-star-border)",
-        }}
-      >
-        <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary-solid">
-          <Icons.sparkles className="h-3 w-3" aria-hidden />
-          Free plan
-        </div>
-        <div className="mb-1.5 text-sm font-semibold text-foreground">
-          Unlock the meal planner
-        </div>
-        <p className="mb-2.5 text-xs leading-snug text-muted-foreground">
-          Pro adds week planning, recipe import, and adaptive macro coaching.
-        </p>
-        {/* See Pro — PRIMARY (Sloe button canon, 2026-06-12). Conversion
-            CTA: solid aubergine pill, white label, flat (no shadow — the
-            solid fill is the affordance). `px-3 py-1.5 text-xs` keeps the
-            compact sidebar-slot footprint. */}
-        <SupprButton
-          variant="primary"
-          onClick={() => onNavigate("settings")}
-          className="h-auto w-full px-3 py-1.5 text-xs"
-        >
-          See Pro
-        </SupprButton>
-      </div>
-    </div>
+    <Link
+      href="/coach"
+      data-testid="desktop-sidebar-coach-entry"
+      className="group relative flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-all duration-150 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+    >
+      <span className="flex-1 text-left">Coach</span>
+    </Link>
   );
 }
 

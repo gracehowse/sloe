@@ -15,6 +15,23 @@ import {
   readNorthStarSkippedSet,
   writeNorthStarSkippedSet,
 } from "../../../lib/nutrition/trackerLocalState.ts";
+import { normaliseMealSlot } from "../../../lib/nutrition/mealSlots";
+import { fallbackSlotFromTimeOfDay } from "../../../lib/nutrition/recipeJournalSlot";
+import type { LoggedMeal } from "../../../types/recipe";
+
+/**
+ * ENG-1301 — payload for the compact secondary "Log" action: the suggested
+ * recipe's predicted macros as a ready journal row targeted at the suggested
+ * slot, for the host's existing quick-log insert helper
+ * (`addLoggedMealForDate` — no new logging path). Mobile mirror:
+ * `NorthStarLogPayload` in `apps/mobile/components/today/NorthStarBlockHost.tsx`.
+ */
+export interface NorthStarLogPayload {
+  meal: Omit<LoggedMeal, "id">;
+  /** Canonical journal slot ("Breakfast" | "Lunch" | "Dinner" | "Snacks"). */
+  slotName: string;
+  title: string;
+}
 
 /**
  * NorthStarBlockHost — small wrapper that runs the suggestion picker and
@@ -34,6 +51,7 @@ export function NorthStarBlockHost({
   remainingFat,
   dailyCalorieTarget,
   onPrimaryCta,
+  onLogSuggestion,
   onBrowseLibrary,
   selectedDateKey,
   userCreatedAt,
@@ -53,6 +71,10 @@ export function NorthStarBlockHost({
    *  Receives the suggestion's recipe id so the parent can route
    *  directly (mobile) or open the log sheet (web — arg ignored). */
   onPrimaryCta: (recipeId: string) => void;
+  /** ENG-1301 — compact secondary "Log": one-tap logs the suggested recipe
+   *  to the suggested slot via the parent's existing quick-log insert
+   *  helper. Absent → the Log action doesn't render. */
+  onLogSuggestion?: (payload: NorthStarLogPayload) => Promise<void> | void;
   onBrowseLibrary: () => void;
   /** Date scope for the skip ledger (Phase 4 / B3.Y). */
   selectedDateKey: string;
@@ -164,6 +186,34 @@ export function NorthStarBlockHost({
         whyLine: whyLineForSuggestion(suggestion, remaining),
       }}
       onPrimaryCta={() => onPrimaryCta(suggestion.recipe.id)}
+      // ENG-1301 — the Log payload carries the SAME predicted macros the
+      // card shows, targeted at the suggested slot (falls back to the
+      // time-of-day slot outside the four windows).
+      onLogCta={
+        onLogSuggestion
+          ? () => {
+              const slotName = normaliseMealSlot(slot) ?? fallbackSlotFromTimeOfDay(now);
+              return onLogSuggestion({
+                meal: {
+                  name: slotName,
+                  recipeTitle: suggestion.recipe.title,
+                  recipeId: suggestion.recipe.id,
+                  time: new Date().toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  }),
+                  calories: suggestion.predictedCalories,
+                  protein: suggestion.predictedProtein,
+                  carbs: suggestion.predictedCarbs,
+                  fat: suggestion.predictedFat,
+                  source: "Recipe",
+                },
+                slotName,
+                title: suggestion.recipe.title,
+              });
+            }
+          : undefined
+      }
       onSkip={() => handleSkip(suggestion.recipe.id)}
     />
   );

@@ -67,6 +67,11 @@ export interface TodayHeroProps {
   /** ENG-1184 — tap status chip to open calorie-target explainer on Today. */
   onPressStatusChip?: () => void;
 
+  /** ENG-1293 — always-present labelled Coach entry (sweep decision #3,
+   *  2026-07-01). Renders the "Coach" chip in the hero chip row in every
+   *  state; host gates on `coach_screen_v1`. */
+  onPressCoach?: () => void;
+
   /** ENG-753 — true when the user has logged today and calories are
    *  within ±10% of the daily target. Drives the "On track" pill.
    *  Gated behind `today-status-pills`. */
@@ -104,6 +109,7 @@ function TodayHeroImpl(props: TodayHeroProps) {
     trackColor,
     onPressWhy,
     onPressStatusChip,
+    onPressCoach,
     isOnTrack,
     // `tdeeLearnDays` is retained on the props interface for call-site
     // stability but no longer rendered on Today — the Adaptive-TDEE line was
@@ -146,6 +152,7 @@ function TodayHeroImpl(props: TodayHeroProps) {
         textTertiaryColor={textTertiaryColor}
         onPressWhy={onPressWhy}
         onPressStatusChip={onPressStatusChip}
+        onPressCoach={onPressCoach}
         coachLine={coachLine}
         logConfirmBump={logConfirmBump}
       />

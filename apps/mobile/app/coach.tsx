@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Alert, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -27,7 +27,15 @@ import {
 } from "@suppr/nutrition-core/coachAsk";
 import { todayLongDateSubline } from "@suppr/shared/copy/today";
 import { nextUnloggedMealSlot } from "@suppr/shared/copy/today";
-import { normalizeJournalSlotName } from "@/lib/nutritionJournal";
+import { normaliseMealSlot } from "@suppr/nutrition-core/mealSlots";
+import { fallbackSlotFromTimeOfDay } from "@suppr/nutrition-core/recipeJournalSlot";
+import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
+import { buildNutritionEntryRow } from "@/lib/nutritionEntryRow";
+import {
+  newMealId,
+  normalizeJournalSlotName,
+  type JournalMeal,
+} from "@/lib/nutritionJournal";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 
 type TodayMeal = {

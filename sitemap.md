@@ -93,6 +93,7 @@ under `apps/mobile/app/`.
 | Weekly recap | `weekly-recap.tsx` | `suppr:///weekly-recap` (StreakPip tap / weekly push) | Back → Today |
 | Apple Health sync | `health-sync.tsx` | `suppr:///health-sync` | Title "Apple Health" |
 | Fasting | `fasting.tsx` | `suppr:///fasting` | Fasting-window timer |
+| Coach | `coach.tsx` | `suppr:///coach` (Today hero "Coach" chip / deficit coach line) | Gated on `coach_screen_v1` (flag off → redirects to Today); title "Your coach" (ENG-1240/1293) |
 | Nutrition sources | `nutrition-sources.tsx` | `suppr:///nutrition-sources` | Data-source attribution |
 | Household | `household-settings.tsx` | `suppr:///household-settings` | Household members / servings |
 | Shopping list | `shopping.tsx` | `suppr:///shopping` (or Plan → Shop) | — |
