@@ -86,7 +86,10 @@ const PRO_FEATURES: Feature[] = [
   {
     icon: Camera,
     title: "AI photo meal recognition",
-    description: "Snap a plate and get verified macros. Up to 100 logs per day.",
+    // ENG-1241 legal C6 — "verified macros" reads as an unqualified
+    // accuracy guarantee. Nutrition is always estimated (trust posture);
+    // soften to "estimated macros" so no accuracy claim is made.
+    description: "Snap a plate and get estimated macros. Up to 100 logs per day.",
   },
   {
     icon: Mic,
@@ -151,6 +154,15 @@ export interface UpgradePaywallDialogProps {
    * where the user clearly wants to re-engage. Defaults to `false`.
    */
   bypassSessionCap?: boolean;
+  /**
+   * ENG-1241 — the billing period the toggle starts on. Defaults to
+   * `"monthly"` (matches /pricing). The onboarding "See Pro" step passes
+   * `"annual"` so the trial-eligible SKU is preselected and the trial is
+   * the offer the user sees first (Decision 4). Only the trial SKU
+   * (annual) shows the "7-day free trial — first charge on Day 7"
+   * disclosure lead — legal C2.
+   */
+  defaultPeriod?: "monthly" | "annual";
 }
 
 /**
@@ -185,6 +197,7 @@ export function UpgradePaywallDialog({
   from,
   userTier,
   bypassSessionCap = false,
+  defaultPeriod = "monthly",
 }: UpgradePaywallDialogProps) {
   const [busy, setBusy] = useState(false);
   // T24 (full-sweep 2026-04-24): the highest-intent purchase surface
@@ -192,7 +205,13 @@ export function UpgradePaywallDialog({
   // here always paid ~60% more per year vs. annual. Default monthly
   // matches the /pricing default but the user can flip to annual
   // before checkout — no second-screen trip required.
-  const [period, setPeriod] = useState<"monthly" | "annual">("monthly");
+  // ENG-1241: the onboarding "See Pro" entry passes `defaultPeriod="annual"`
+  // so the trial-eligible SKU is preselected (Decision 4). Re-sync when the
+  // dialog re-opens so the preselection isn't lost after a dismiss+reopen.
+  const [period, setPeriod] = useState<"monthly" | "annual">(defaultPeriod);
+  useEffect(() => {
+    if (open) setPeriod(defaultPeriod);
+  }, [open, defaultPeriod]);
 
   // --- Variant selection --------------------------------------------
   // PR-01 (audit 2026-04-28): single Free→Pro variant. Pro users

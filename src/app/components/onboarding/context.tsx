@@ -26,12 +26,11 @@ import { isFeatureEnabled } from "@/lib/analytics/track";
  *  flag ramps in PostHog. Same flag name on web + mobile. */
 export const APP_CHOICE_FLAG = "onboarding-app-choice";
 
-/** ENG-963 — default-OFF feature flag gating the "What's bringing you
- *  here?" (`why-now`) step. Same mechanism as `APP_CHOICE_FLAG`: when OFF
- *  the step is auto-skipped in `go()` and dropped from `displayTotal`, so
- *  the live flow + step counter are unchanged until the flag ramps in
- *  PostHog. Same flag name on web + mobile. */
+/** ENG-963 — feature flag gating the "What's bringing you here?" step. */
 export const WHY_NOW_FLAG = "onboarding-why-now";
+
+/** ENG-1233/1241 — conversion funnel (upgrade + first-log after data-bridges). */
+export const CONVERSION_FUNNEL_FLAG = "onboarding_conversion_funnel_v1";
 
 /**
  * OnboardingProvider — single source of state for the v2 onboarding
@@ -61,6 +60,15 @@ interface OnboardingContext {
   goTo: (index: number) => void;
   /** Reset to the welcome step with default values. */
   reset: () => void;
+  /**
+   * ENG-1241 — run the terminal completion path (persist profile + seed
+   * recipes + fire `onboarding_completed` + navigate to Today) from a
+   * step component. The flow shell registers its `handleComplete` via
+   * `registerComplete`; the terminal `upgrade` step calls `complete()`
+   * from its "Continue on Free" CTA so skip lands straight on Today with
+   * no detour (Decision 2). A no-op before the shell registers. */
+  complete: () => void;
+  registerComplete: (fn: () => void) => void;
   /** Computed targets — `null` until body-stat steps have been answered. */
   targets: V2Targets | null;
   /** Pace warning derived from the current state. `null` when safe. */
@@ -170,14 +178,12 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   const appChoiceEnabled = isFeatureEnabled(APP_CHOICE_FLAG);
   const appChoiceEnabledRef = React.useRef(appChoiceEnabled);
   appChoiceEnabledRef.current = appChoiceEnabled;
-
-  // ENG-963 — resolve the why-now flag once per render, same cold-safe
-  // posture as the app-choice flag (false when PostHog is cold/missing →
-  // skip the step). Held in a ref so the stable `go()` callback reads the
-  // latest value.
   const whyNowEnabled = isFeatureEnabled(WHY_NOW_FLAG);
   const whyNowEnabledRef = React.useRef(whyNowEnabled);
   whyNowEnabledRef.current = whyNowEnabled;
+  const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
+  const conversionFunnelEnabledRef = React.useRef(conversionFunnelEnabled);
+  conversionFunnelEnabledRef.current = conversionFunnelEnabled;
 
   const set = React.useCallback<OnboardingContext["set"]>((patch) => {
     setState((prev) => ({
@@ -192,6 +198,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       step: resolveNextStep(prev.step, delta, prev, {
         appChoiceEnabled: appChoiceEnabledRef.current,
         whyNowEnabled: whyNowEnabledRef.current,
+        conversionFunnelEnabled: conversionFunnelEnabledRef.current,
       }),
     }));
   }, []);
@@ -205,6 +212,21 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
 
   const reset = React.useCallback(() => {
     setState({ ...DEFAULT_ONBOARDING_STATE });
+  }, []);
+
+  // ENG-1241 — the flow shell registers its terminal completion handler
+  // here so the terminal `upgrade` step can trigger it directly (skip →
+  // Today, no detour). Held in a ref so `complete` stays referentially
+  // stable and always calls the latest registered handler.
+  const completeRef = React.useRef<() => void>(() => undefined);
+  const registerComplete = React.useCallback<OnboardingContext["registerComplete"]>(
+    (fn) => {
+      completeRef.current = fn;
+    },
+    [],
+  );
+  const complete = React.useCallback<OnboardingContext["complete"]>(() => {
+    completeRef.current();
   }, []);
 
   const targets = React.useMemo(() => computeV2Targets(state), [state]);
@@ -226,7 +248,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   // the bar from the flow.
   const { index: displayIndex, total: displayTotal } = displayPosition(
     state.step,
-    { appChoiceEnabled, whyNowEnabled },
+    { appChoiceEnabled, whyNowEnabled, conversionFunnelEnabled },
   );
 
   const value = React.useMemo<OnboardingContext>(
@@ -236,6 +258,8 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       go,
       goTo,
       reset,
+      complete,
+      registerComplete,
       targets,
       warning,
       currentStepId,
@@ -244,7 +268,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       canAdvance,
       stepLabels: STEP_LABELS,
     }),
-    [state, set, go, goTo, reset, targets, warning, currentStepId, canAdvance, displayIndex, displayTotal],
+    [state, set, go, goTo, reset, complete, registerComplete, targets, warning, currentStepId, canAdvance, displayIndex, displayTotal],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

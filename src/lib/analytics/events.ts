@@ -908,6 +908,15 @@ export const AnalyticsEvents = {
    *  `onboarding_completed` also carries the final `why_now` for
    *  funnel slicing (intent → activation). No PII; no health claims. */
   onboarding_why_now: "onboarding_why_now",
+  /** ENG-1241 — trial vs free on the conversion-funnel upgrade step.
+   *  Payload: { choice: "trial" | "free", platform: "web" | "mobile" } */
+  onboarding_trial_choice: "onboarding_trial_choice",
+  /** ENG-1241 — the optional "See Pro" upgrade step rendered (funnel ON).
+   *  Payload: { platform: "web" | "mobile" } */
+  onboarding_upgrade_step_viewed: "onboarding_upgrade_step_viewed",
+  /** ENG-1233 — guided first-log chip on the conversion-funnel terminal step.
+   *  Payload: { choice: "breakfast" | "coffee" | "search" | "skip", platform } */
+  onboarding_first_log_prompt: "onboarding_first_log_prompt",
   /** 2026-05-02 — user picked an MFP CSV file in the importer card.
    *  Closes the MFP-refugee history-bridge gap (P1 customer-lens).
    *  Fires once per file pick on both web and mobile.

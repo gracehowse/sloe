@@ -35,6 +35,7 @@ const OVERRIDE_SHEET = read("components/OverrideIngredientSheet.tsx");
 const ADD_SHEET = read("components/AddIngredientSheet.tsx");
 const CREATE_RECIPE = read("app/create-recipe.tsx");
 const RECIPE_DETAIL = read("app/recipe/[id].tsx");
+const COOK_MODE = read("app/cook.tsx");
 
 describe("Recipe sheets — GHOST Cancel + SOLID primary commit (Wave C-clean 2026-06-13)", () => {
   it("RecipeEditSheet: Cancel is GHOST, Save is the sheet's SOLID primary", () => {
@@ -84,15 +85,15 @@ describe("create-recipe quick-action row — three GHOST peers (Wave C-clean 202
   });
 });
 
-describe("recipe/[id] cook stepper — SOLID primary Next / GHOST Previous (Wave C-clean 2026-06-13)", () => {
+describe("cook.tsx step navigation — SOLID primary Next / Pressable Previous (ENG-945)", () => {
   it("imports the shared SupprButton primitive (@/ path)", () => {
-    expect(RECIPE_DETAIL).toMatch(
+    expect(COOK_MODE).toMatch(
       /import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/,
     );
   });
 
-  it("cook-stepper Next is the SOLID primary, Previous is GHOST", () => {
-    expect(RECIPE_DETAIL).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}label="Next"/);
-    expect(RECIPE_DETAIL).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,160}label="Previous"/);
+  it("cook nav Next Step is the SOLID primary, Previous is a Pressable label", () => {
+    expect(COOK_MODE).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label=\{current === totalSteps - 1 \? "Done!" : "Next Step"\}/);
+    expect(COOK_MODE).toMatch(/<Text style=\{styles\.navBtnText\}>Previous<\/Text>/);
   });
 });

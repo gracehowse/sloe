@@ -24,6 +24,10 @@ const MOBILE_RECIPE = readFileSync(
   resolve(REPO, "apps/mobile/app/recipe/[id].tsx"),
   "utf8",
 );
+const MOBILE_COOK = readFileSync(
+  resolve(REPO, "apps/mobile/app/cook.tsx"),
+  "utf8",
+);
 const WEB_COOK = readFileSync(
   resolve(REPO, "src/app/components/CookMode.tsx"),
   "utf8",
@@ -33,35 +37,24 @@ const WEB_RECIPE = readFileSync(
   "utf8",
 );
 
-describe("mobile cook-mode — servings handoff", () => {
-  it("imports scaleStepText from the shared nutrition lib", () => {
-    expect(MOBILE_RECIPE).toMatch(
-      /import\s*\{\s*scaleStepText\s*\}\s*from\s*["']@suppr\/nutrition-core\/scaleStepText["']/,
+describe("mobile cook-mode — servings handoff (ENG-945 canonical /cook)", () => {
+  it("recipe detail threads logPortion into buildCookModeHref as portion", () => {
+    expect(MOBILE_RECIPE).toMatch(/buildCookModeHref\(/);
+    expect(MOBILE_RECIPE).toMatch(/portion:\s*scaleSource\s*!==\s*1\s*\?\s*scaleSource\s*:\s*undefined/);
+    expect(MOBILE_RECIPE).toMatch(/logPortion/);
+  });
+
+  it("canonical cook screen scales step text via scaleAmountText + active scale", () => {
+    expect(MOBILE_COOK).toMatch(
+      /import\s*\{[^}]*\bscaleAmountText\b[^}]*\}\s*from\s*["']@suppr\/nutrition-core\/recipeScale["']/,
     );
+    expect(MOBILE_COOK).toMatch(/scaleAmountText\(rawStepText,\s*scale\)/);
+    expect(MOBILE_COOK).toMatch(/cookScaleCaption\(scale,\s*baseServings\)/);
   });
 
-  it("computes a cookScaleFactor from logPortion before rendering the modal step text", () => {
-    expect(MOBILE_RECIPE).toMatch(/cookScaleFactor\s*=\s*[^=][^;]*logPortion/);
-  });
-
-  it("computes cookViewServings as recipe.servings × scaleFactor (rounded)", () => {
-    // The exact formatting may shift, but the formula must mention
-    // recipe.servings and the scale factor multiplied together.
-    expect(MOBILE_RECIPE).toMatch(/cookViewServings/);
-    expect(MOBILE_RECIPE).toMatch(/recipe[?.]?\.servings[^*]*\*[^*]*cookScaleFactor/);
-  });
-
-  it("renders the 'Scaled for N servings' banner only when scaleFactor !== 1", () => {
-    expect(MOBILE_RECIPE).toMatch(/cookScaleFactor\s*!==\s*1/);
-    expect(MOBILE_RECIPE).toMatch(/Scaled for\s*\{cookViewServings\}/);
-  });
-
-  it("passes the cleaned step through scaleStepText before rendering", () => {
-    // Pin: the rendered step variable must be derived from
-    // scaleStepText(...) so the regex is actually applied at render
-    // time. Pre-fix, the modal rendered `instructionSteps[cookStep]`
-    // directly with a leading-number strip and nothing else.
-    expect(MOBILE_RECIPE).toMatch(/scaleStepText\(\s*cleanedStep\s*,\s*cookScaleFactor\s*\)/);
+  it("honours deep-link portion param when hydrating cook scale", () => {
+    expect(MOBILE_COOK).toMatch(/portionParam/);
+    expect(MOBILE_COOK).toMatch(/Number\.parseFloat\(portionParam\)/);
   });
 });
 

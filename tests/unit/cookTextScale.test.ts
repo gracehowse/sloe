@@ -97,11 +97,9 @@ describe("ENG-949 cook text-size control wiring", () => {
     expect(WEB).toMatch(/cookStepFontSize/);
   });
 
-  it("mobile cook overlay renders the A−/A+ control with accessible labels", () => {
-    expect(MOBILE).toMatch(/Increase text size/);
-    expect(MOBILE).toMatch(/Decrease text size/);
-    expect(MOBILE).toMatch(/handleCookTextScaleStep/);
-    // Base 24 scaled (matches the standalone screen; the overlay used 22).
-    expect(MOBILE).toMatch(/cookStepFontSize\(24, cookTextScale\)/);
+  it("mobile cook text-size control lives on web until ported to cook.tsx (overlay retired ENG-945)", () => {
+    expect(MOBILE).not.toMatch(/handleCookTextScaleStep/);
+    expect(WEB).toMatch(/Increase text size/);
+    expect(WEB).toMatch(/Decrease text size/);
   });
 });

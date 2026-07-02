@@ -12,7 +12,7 @@ import { useAuthSession } from "@/context/AuthSessionContext";
 import { supabase } from "@/lib/supabase/browserClient";
 import { saveLocalProfile } from "@/lib/profile/profileStorage";
 import { type UserProfile } from "@/types/profile";
-import { APP_CHOICE_FLAG, WHY_NOW_FLAG, useOnboarding } from "./context";
+import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, WHY_NOW_FLAG, useOnboarding } from "./context";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
@@ -32,7 +32,7 @@ import { buildFirstWeekFromSeeds } from "@/lib/onboarding/onboardingFirstWeek";
 import { redeemPendingReferral, storePendingReferralFromLocation } from "@/lib/referrals/pendingReferral";
 
 export function WebFlow() {
-  const { currentStepId, displayIndex, displayTotal, go, goTo, state, targets, warning } =
+  const { currentStepId, displayIndex, displayTotal, go, goTo, state, targets, warning, registerComplete } =
     useOnboarding();
   const { authedUserId } = useAuthSession();
   // ENG-672 (2026-05-26) — recompute `canAdvance` HERE with the live
@@ -51,19 +51,30 @@ export function WebFlow() {
   const StepComponent = STEP_COMPONENTS[currentStepId];
   const isWelcome = currentStepId === "welcome";
   const isSignup = currentStepId === "signup";
-  // Flag-gated steps (ENG-990 app-choice, ENG-963 why-now) are skipped by
-  // `go()` when their flag is OFF, but a persisted `step` pointing at one
-  // (reached while ON, then ramped to 0) would render it on remount. This
-  // single defensive effect advances past whichever flag-gated step is
-  // current while its flag is OFF; `isFeatureEnabled` is cold-safe (false →
-  // skip), so the live default keeps both steps hidden.
+  const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
+  // Flag-gated steps auto-skip in `go()` when OFF; persisted `step` on a
+  // hidden step still renders on remount — advance past it defensively.
   const flagGatedStepOff =
     (currentStepId === "app-choice" && !isFeatureEnabled(APP_CHOICE_FLAG)) ||
-    (currentStepId === "why-now" && !isFeatureEnabled(WHY_NOW_FLAG));
+    (currentStepId === "why-now" && !isFeatureEnabled(WHY_NOW_FLAG)) ||
+    ((currentStepId === "upgrade" || currentStepId === "first-log") &&
+      !conversionFunnelEnabled);
   React.useEffect(() => {
-    if (flagGatedStepOff) go(1);
-  }, [flagGatedStepOff, go]);
-  const isTerminal = currentStepId === "data-bridges";
+    if (!flagGatedStepOff) return;
+    // ENG-1241 — funnel steps (first-log → upgrade) sit at the tail, so a
+    // hidden funnel step with the flag OFF steps BACK to data-bridges;
+    // mid-flow app-choice / why-now still step forward.
+    const isFunnelStep =
+      currentStepId === "first-log" || currentStepId === "upgrade";
+    go(isFunnelStep && !conversionFunnelEnabled ? -1 : 1);
+  }, [flagGatedStepOff, conversionFunnelEnabled, currentStepId, go]);
+  // Build-40 / ENG-1241: `data-bridges` is terminal when conversion
+  // funnel OFF; `upgrade` (the "See Pro" ask) when ON — the funnel runs
+  // first-log → upgrade so the monetise step is last and skip → Today is
+  // a clean completion (Decision 2, no detour).
+  const isTerminal = conversionFunnelEnabled
+    ? currentStepId === "upgrade"
+    : currentStepId === "data-bridges";
   const [completing, setCompleting] = React.useState(false);
   // completionStatus is set just before window.location.href fires —
   // useful for tests (the bounce navigates immediately so no UI
@@ -77,10 +88,6 @@ export function WebFlow() {
   // left paid users on their OLD target). Now we render this message and
   // keep the user on the step so they can retry.
   const [completionError, setCompletionError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    storePendingReferralFromLocation(window.location.search);
-  }, []);
 
   // Auto-skip the signup step when the visitor is already authed (e.g.
   // they came from /signin → /onboarding directly). The step renders
@@ -104,6 +111,10 @@ export function WebFlow() {
       track(AnalyticsEvents.onboarding_started, { platform: "web" });
     }
   }, [isWelcome]);
+
+  React.useEffect(() => {
+    storePendingReferralFromLocation(window.location.search);
+  }, []);
 
   /**
    * OB2-1 — terminal-step completion handler. Mirrors the legacy
@@ -180,7 +191,7 @@ export function WebFlow() {
           return;
         }
 
-        const referralResult = await redeemPendingReferral(supabase as any);
+        await redeemPendingReferral(supabase as any);
 
         // Phase 5 / B2.3 — seed-and-plan flow per spec Surface F.
         // Best-effort: each step is independently observable so a
@@ -275,9 +286,6 @@ export function WebFlow() {
           // (`null` when the app-choice step was skipped / flag OFF).
           // Lets the funnel slice activation by chosen-app cohort.
           app_choice: state.appChoice,
-          why_now: state.whyNow, // ENG-963 — intent (null when skipped / flag OFF)
-          referral_redeemed: referralResult.redeemed,
-          referral_error: referralResult.error,
         });
         // WEB-01 (2026-04-28): clear persisted onboarding state on
         // successful completion. Without this, the next signup on the
@@ -324,6 +332,16 @@ export function WebFlow() {
       setCompleting(false);
     }
   }, [authedUserId, state, targets, goTo]);
+
+  // ENG-1241 — register the terminal completion path so the terminal
+  // `upgrade` step's "Continue on Free" CTA can complete onboarding and
+  // land the user on Today directly (Decision 2, no detour). Re-registers
+  // whenever `handleComplete` changes so the latest closure runs.
+  React.useEffect(() => {
+    registerComplete(() => {
+      void handleComplete();
+    });
+  }, [registerComplete, handleComplete]);
 
   // Stage E — when the user clicks Continue from the Pace step while
   // a soft-warn banner is showing, fire the `advanced` variant of
@@ -498,11 +516,13 @@ export function WebFlow() {
                 <ChevronLeft className="size-4" />
                 Back
               </button>
-              {/* Signup step suppresses the global Continue — it has
-                  its own "Create account" CTA which fires the real
-                  Supabase signUp and advances on success. Showing
-                  both would let the user bypass the auth handshake. */}
-              {!isSignup && (() => {
+              {/* Signup step suppresses the global Continue — it has its
+                  own "Create account" CTA. ENG-1241 — the terminal
+                  `upgrade` ("See Pro") step also suppresses it: it owns
+                  its own trial + "Continue on Free" CTAs, so a footer
+                  "Build my plan" would be a competing control (legal C4).
+                  "Continue on Free" calls `complete()` → Today. */}
+              {!isSignup && !(currentStepId === "upgrade" && conversionFunnelEnabled) && (() => {
                 // Customer-lens shrink (2026-04-30): terminal step is
                 // now `reveal`. The "Build my plan" CTA fires the
                 // `handleComplete` write path directly — no picker

@@ -237,25 +237,28 @@ otp_expiry = 3600
 # at `supabase/templates/*.html` (canonical) and mirror at
 # `docs/emails/supabase-auth/*.html` (for human reference). Subjects
 # match the comment line at the top of each HTML file.
+# Rebranded Suppr → Sloe 2026-07-01 (ENG-1289) — plum wordmark
+# (#3B2A4D mirrors --foreground-brand), retired blue→magenta gradient
+# removed. Guarded by tests/unit/brandDriftSloe.test.ts.
 #
 # Pushed to the linked project via `supabase config push --project-ref
 # fnfgxsignmuepshbebrl`. The Dashboard view (Authentication → Email
 # Templates) will reflect these after push.
 
 [auth.email.template.invite]
-subject = "You're invited to join Suppr"
+subject = "You're invited to join Sloe"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.confirmation]
-subject = "Confirm your Suppr account"
+subject = "Confirm your Sloe account"
 content_path = "./supabase/templates/confirm-signup.html"
 
 [auth.email.template.recovery]
-subject = "Reset your Suppr password"
+subject = "Reset your Sloe password"
 content_path = "./supabase/templates/reset-password.html"
 
 [auth.email.template.magic_link]
-subject = "Your Suppr login link"
+subject = "Your Sloe login link"
 content_path = "./supabase/templates/magic-link.html"
 
 [auth.email.template.email_change]
@@ -263,7 +266,7 @@ subject = "Confirm your new email address"
 content_path = "./supabase/templates/change-email.html"
 
 [auth.email.template.reauthentication]
-subject = "Confirm a sensitive change to your Suppr account"
+subject = "Confirm a sensitive change to your Sloe account"
 content_path = "./supabase/templates/reauthentication.html"
 
 # Uncomment to customize notification email template
