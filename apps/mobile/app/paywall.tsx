@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -51,6 +51,7 @@ import { PaywallNoPaymentChip } from "@/components/paywall/PaywallNoPaymentChip"
 import { PaywallTrustStrip } from "@/components/paywall/PaywallTrustStrip";
 import { PaywallPersonalisedPlanCard } from "@/components/paywall/PaywallPersonalisedPlanCard";
 import { PaywallTrajectoryChart } from "@/components/paywall/PaywallTrajectoryChart";
+import { TrialEndReminderPaywallBlock, type TrialEndReminderPaywallBlockHandle } from "@/components/paywall/TrialEndReminderPaywallBlock";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
@@ -280,6 +281,7 @@ export default function PaywallScreen() {
   // re-fires the same `tier: "pro"` event on every return, inflating
   // F2's denominator. Each (mount, tier) fires once.
   const viewedTiersRef = useRef<Set<string>>(new Set());
+  const trialReminderRef = useRef<TrialEndReminderPaywallBlockHandle>(null);
 
   // Promo-code expander (D9 M1, 2026-04-21). Collapsed by default;
   // tap "Have a promo code?" to reveal TextInput + Apply. On success,
@@ -479,6 +481,37 @@ export default function PaywallScreen() {
   // surfaces there.
   const trustChips = useMemo(() => getPaywallTrustChips("mobile"), []);
 
+  const celebrateEntitledPurchase = useCallback(
+    (opts: {
+      tier: "pro";
+      trialOnPurchase: boolean;
+      platform: "ios" | "android";
+    }) => {
+      track(AnalyticsEvents.checkout_completed, {
+        tier: opts.tier,
+        period: billing,
+        surface: "mobile_paywall",
+        platform: opts.platform,
+        from: paywallFrom,
+        trialApplied: opts.trialOnPurchase,
+      });
+      if (opts.trialOnPurchase) void trialReminderRef.current?.commitOnTrialStart();
+      const cancelPath =
+        Platform.OS === "ios"
+          ? "Settings > Apple ID > Subscriptions"
+          : "Google Play > Payments & subscriptions";
+      const trialEndsLabel = opts.trialOnPurchase
+        ? "in 7 days"
+        : "with your billing period";
+      Alert.alert(
+        "You're in",
+        buildReceiptTrustCopy({ trialEndsLabel, cancelPath }),
+        [{ text: "Continue", onPress: () => router.replace(onboardingForwardExit) }],
+      );
+    },
+    [billing, onboardingForwardExit, paywallFrom, router],
+  );
+
   // ─── Interaction handlers ───────────────────────────────────────
 
   async function onSelectTier(tier: "pro") {
@@ -566,41 +599,11 @@ export default function PaywallScreen() {
           ? isProEntitled(customerInfo)
           : Object.keys(customerInfo.entitlements.active).length > 0;
         if (entitled) {
-          // `checkout_completed` fires only after entitlement is truly
-          // granted. Mobile starts clean on this name — the `_return`
-          // legacy dual-emit is web-only and retires 2026-05-18.
-          track(AnalyticsEvents.checkout_completed, {
+          celebrateEntitledPurchase({
             tier,
-            period: billing,
-            surface: "mobile_paywall",
+            trialOnPurchase: trialOnThisPurchase,
             platform,
-            from: paywallFrom,
-            trialApplied: trialOnThisPurchase,
           });
-          // Trust-explicit confirmation Alert (audit 2026-04-30,
-          // user-sentiment pain #1). Lead with cancel-anytime, then
-          // trial-end + first-charge, then refund window + zero-email
-          // promise. Apple's receipt has the wall-clock dates; the
-          // alert states the cadence in plain English. The Alert is
-          // dismissed before navigation so the user explicitly
-          // acknowledges the disclosures, never bypassing them.
-          const cancelPath =
-            Platform.OS === "ios"
-              ? "Settings > Apple ID > Subscriptions"
-              : "Google Play > Payments & subscriptions";
-          const trialEndsLabel = trialOnThisPurchase
-            ? "in 7 days"
-            : "with your billing period";
-          const message = buildReceiptTrustCopy({
-            trialEndsLabel,
-            cancelPath,
-          });
-          Alert.alert("You're in", message, [
-            {
-              text: "Continue",
-              onPress: () => router.replace(onboardingForwardExit),
-            },
-          ]);
         } else {
           // ENG-684: RC confirmed the purchase but entitlement hasn't
           // propagated yet — poll for up to 10s (5 × 2s) before giving up.
@@ -608,23 +611,11 @@ export default function PaywallScreen() {
           if (polledInfo) {
             // Entitlement arrived during the poll window — treat as success.
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            track(AnalyticsEvents.checkout_completed, {
+            celebrateEntitledPurchase({
               tier,
-              period: billing,
-              surface: "mobile_paywall",
+              trialOnPurchase: trialOnThisPurchase,
               platform,
-              from: paywallFrom,
-              trialApplied: trialOnThisPurchase,
             });
-            const cancelPath =
-              Platform.OS === "ios"
-                ? "Settings > Apple ID > Subscriptions"
-                : "Google Play > Payments & subscriptions";
-            const trialEndsLabel = trialOnThisPurchase ? "in 7 days" : "with your billing period";
-            const message = buildReceiptTrustCopy({ trialEndsLabel, cancelPath });
-            Alert.alert("You're in", message, [
-              { text: "Continue", onPress: () => router.replace(onboardingForwardExit) },
-            ]);
           } else {
             // Still not entitled after 10s — bounded poll exhausted.
             // Show a clear recovery message with explicit Restore CTA.
@@ -1206,6 +1197,12 @@ export default function PaywallScreen() {
               </View>
               );
             })}
+            <TrialEndReminderPaywallBlock
+              ref={trialReminderRef}
+              userId={userId}
+              trialApplies={trialApplies}
+              hasProPackage={Boolean(currentProPkg)}
+            />
           </View>
         ) : null}
 

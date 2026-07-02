@@ -493,6 +493,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "progress_milestone_celebration_v1",
   "onboarding_progressive_text",
   "onboarding-why-now",
+  "trial_end_reminder_v1", // ENG-968 — Duolingo-style trial-end reminder day picker
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
