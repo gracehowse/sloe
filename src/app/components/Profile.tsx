@@ -12,14 +12,8 @@ import { Checkbox } from "./ui/checkbox.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { GoalPaceEditorDialog } from "./suppr/goal-pace-editor-dialog.tsx";
-import {
-  calculateBMR,
-  calculateTDEE,
-  calculateBudget,
-  calculateMacros,
-  type PlanPace,
-  type NutritionStrategy,
-} from "../../lib/nutrition/tdee.ts";
+import { calculateBMR, calculateTDEE, calculateBudget, calculateMacros, type PlanPace, type NutritionStrategy } from "../../lib/nutrition/tdee.ts";
+import { useNutritionHistoryWindow } from "../../hooks/useNutritionHistoryWindow.ts";
 import { DIETARY_PREFERENCE_ENTRIES, normaliseDietaryFromProfile } from "../../constants/dietaryPreferences.ts";
 // Household summary for the "People" row (renamed from "Everything
 // else" 2026-05-02) — 2026-04-20 Claude
@@ -68,6 +62,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
     targetCaffeineMg,
     targetAlcoholGWeekly,
   } = useAppData();
+  // ENG-1324 — the protected streak + days-logged stats look past the 35-day
+  // boot window; widen the shared journal to 90 days (mobile parity).
+  useNutritionHistoryWindow();
   // Local mirrors of two profile fields not in AppDataContext —
   // weekStartDay and trackedMacros (a.k.a. Dashboard Widgets) — so we
   // can show their current values in the new Profile rows. Same DB

@@ -295,6 +295,12 @@ interface AppDataContextValue {
   /** ENG-889 — true once the first nutrition_entries fetch settles (web Today skeleton gate). */
   nutritionJournalHydrated: boolean;
   nutritionByDay: Record<string, LoggedMeal[]>;
+  /**
+   * ENG-1324 — widen the journal to a history window (inclusive `date_key`
+   * lower bound). Progress/Profile mount this via `useNutritionHistoryWindow`
+   * so their >35-day stats see real history (mobile-Progress parity).
+   */
+  ensureNutritionHistory: (startKey: string) => void;
   /** In-app notifications inbox (newest-first). */
   notificationsInbox: AppNotification[];
   notificationsUnreadCount: number;
@@ -528,6 +534,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const {
     journalHydrated: nutritionJournalHydrated,
     nutritionByDay,
+    ensureJournalHistory,
     addLoggedMealForDate,
     addLoggedMeal,
     removeLoggedMeal,
@@ -2350,6 +2357,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       deleteMealPlanSlot,
       nutritionJournalHydrated,
       nutritionByDay,
+      ensureNutritionHistory: ensureJournalHistory,
       notificationsInbox,
       notificationsUnreadCount,
       notificationPrefs,
@@ -2445,6 +2453,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       deleteMealPlanSlot,
       nutritionJournalHydrated,
       nutritionByDay,
+      ensureJournalHistory,
       notificationsInbox,
       notificationsUnreadCount,
       notificationPrefs,
