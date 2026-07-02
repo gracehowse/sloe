@@ -609,13 +609,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (kill switch: remove here / PostHog). Mirror of the web entry in
   // src/lib/analytics/track.ts. Web + mobile.
   "import_review_flagged_ingredients_v1",
+  // ENG-1300 (was ENG-685 ship-OFF-and-ramp): SmartImage's expo-image path —
+  // memory-disk cachePolicy, recyclingKey, 200 ms cross-fade over a DS-tint
+  // placeholder. With the flag off, prod fell to the raw RN Image kill-switch
+  // and grids refetched every image on scroll. DEFAULT-ON per Grace's "always
+  // flag on" beta-window policy (ENG-1279); off → verbatim RN Image, zero
+  // visual change (kill switch: remove here / PostHog). Mobile-only surface
+  // (web has no expo-image) — listed under MOBILE_ONLY in
+  // tests/unit/redesignDefaultOnParity.test.ts, no web mirror entry.
+  "expo_image_adoption_v1",
 ]);
-
-// NOTE (ENG-685): `expo_image_adoption_v1` is intentionally NOT in
-// REDESIGN_DEFAULT_ON — it ships OFF and ramps via PostHog. SmartImage falls
-// through isFeatureEnabled → PostHog (false until ramped), rendering the
-// verbatim RN Image kill-switch by default. No registry entry is required for
-// an off-by-default flag.
 
 /**
  * DEFAULT-OFF flags (registered for discoverability — NOT in REDESIGN_DEFAULT_ON,
