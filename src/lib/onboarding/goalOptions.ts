@@ -14,10 +14,16 @@ export const ONBOARDING_GOAL_OPTIONS: ReadonlyArray<{
     subtitle: "Gradual deficit, protein-first",
     thumbnailTitle: "green salad bowl",
   },
+  // ENG-1314 — the neutral tracking intent maps to MAINTENANCE. It used to
+  // sit on the `recomp` card, silently assigning a deficit the user never
+  // asked for (D&I / trust-posture finding, 2026-07-01 sweep). Recomp keeps
+  // its own card because the pipeline is real and distinct (high_protein
+  // strategy, 2.2 g/kg, own pace range) — but its title now says what it
+  // does to your body, so the deficit is an explicit opt-in.
   {
     id: "maintain",
-    title: "Eat healthier at home",
-    subtitle: "Keep things steady",
+    title: "Just track what I cook",
+    subtitle: "Maintenance — keep things steady",
     thumbnailTitle: "pasta tomato basil",
   },
   {
@@ -28,8 +34,8 @@ export const ONBOARDING_GOAL_OPTIONS: ReadonlyArray<{
   },
   {
     id: "recomp",
-    title: "Just track what I cook",
-    subtitle: "Slight deficit, strength-focused",
+    title: "Lose fat, build strength",
+    subtitle: "Slight deficit, protein-first",
     thumbnailTitle: "berry smoothie",
   },
 ] as const;

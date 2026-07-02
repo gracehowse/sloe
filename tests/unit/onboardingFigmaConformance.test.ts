@@ -13,8 +13,44 @@ import {
   ONBOARDING_GOAL_OPTIONS,
   ONBOARDING_GOAL_QUESTION,
 } from "../../src/lib/onboarding/goalOptions";
+import { GOAL_DEFAULT_PACE } from "../../src/lib/onboarding/state";
+import { paceToKcalAdjustment } from "../../src/lib/onboarding/targets";
 
 const ROOT = resolve(__dirname, "../..");
+
+describe("ENG-1314 — goal cards never assign a silent deficit", () => {
+  it("the neutral tracking intent lives on the maintain card (0 kcal adjustment)", () => {
+    const trackCard = ONBOARDING_GOAL_OPTIONS.find((o) =>
+      /just track/i.test(o.title),
+    );
+    expect(trackCard).toBeDefined();
+    expect(trackCard!.id).toBe("maintain");
+    expect(
+      paceToKcalAdjustment(trackCard!.id, GOAL_DEFAULT_PACE[trackCard!.id]),
+    ).toBe(0);
+    // The subtitle says what the card does — maintenance, not a hidden cut.
+    expect(trackCard!.subtitle.toLowerCase()).toContain("maintenance");
+  });
+
+  it("every deficit-mapped card discloses the deficit in its own copy", () => {
+    for (const opt of ONBOARDING_GOAL_OPTIONS) {
+      const adj = paceToKcalAdjustment(opt.id, GOAL_DEFAULT_PACE[opt.id]);
+      if (adj < 0) {
+        const copy = `${opt.title} ${opt.subtitle}`.toLowerCase();
+        expect(copy, `"${opt.title}" maps to a ${adj} kcal/day cut but never says so`).toMatch(
+          /deficit|lose/,
+        );
+      }
+    }
+  });
+
+  it("recomp stays a clearly-labelled explicit opt-in, not a tracking default", () => {
+    const recomp = ONBOARDING_GOAL_OPTIONS.find((o) => o.id === "recomp");
+    expect(recomp).toBeDefined();
+    expect(recomp!.title.toLowerCase()).not.toContain("track");
+    expect(recomp!.subtitle.toLowerCase()).toContain("deficit");
+  });
+});
 
 describe("ENG-895 — onboarding Figma conformance pins", () => {
   it("goal step uses Sloe copy + four Figma thumbnail options", () => {
