@@ -18,9 +18,18 @@
 #   - NEXT_PUBLIC_SUPABASE_URL      (public Supabase project URL)
 #   - NEXT_PUBLIC_SUPABASE_ANON_KEY (public anon key)
 #   - SUPABASE_SERVICE_ROLE_KEY     (service role — seeds/repairs the golden account)
+#   - E2E_EMAIL                     (plain E2E test user — the `chromium-authed`
+#                                    project's default storageState, used by specs
+#                                    that don't opt into the visual-golden account,
+#                                    e.g. visual-regression-subpages.spec.ts)
+#   - E2E_PASSWORD                  (password for that account)
 #   - E2E_VISUAL_EMAIL              (the dedicated visual-golden inbox, plus-addressed)
 #   - E2E_VISUAL_PASSWORD           (stable password for that account)
 #   The preflight step fails fast and names any of these that are missing.
+#   (2026-07-02: E2E_EMAIL/E2E_PASSWORD were missing here — auth.setup.ts only
+#   refreshes tests/e2e/.auth/user.json when hasE2ECredentials() is true, so any
+#   spec using the plain `chromium-authed` project failed with ENOENT on that
+#   file. ci.yml and visual-review.yml both wire these two; this workflow didn't.)
 #
 # DETERMINISM CAVEAT (per the #486 rescue note): the two non-deterministic
 # specs — visual-audit-authed and visual-regression-deep — render real
@@ -60,6 +69,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
       E2E_VISUAL_EMAIL: ${{ secrets.E2E_VISUAL_EMAIL }}
       E2E_VISUAL_PASSWORD: ${{ secrets.E2E_VISUAL_PASSWORD }}
       VERIFY_STRICT: "0"
@@ -79,6 +90,8 @@ jobs:
           [ -n "$NEXT_PUBLIC_SUPABASE_URL" ]      || missing+=("NEXT_PUBLIC_SUPABASE_URL")
           [ -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] || missing+=("NEXT_PUBLIC_SUPABASE_ANON_KEY")
           [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]     || missing+=("SUPABASE_SERVICE_ROLE_KEY")
+          [ -n "$E2E_EMAIL" ]                     || missing+=("E2E_EMAIL")
+          [ -n "$E2E_PASSWORD" ]                  || missing+=("E2E_PASSWORD")
           [ -n "$E2E_VISUAL_EMAIL" ]              || missing+=("E2E_VISUAL_EMAIL")
           [ -n "$E2E_VISUAL_PASSWORD" ]           || missing+=("E2E_VISUAL_PASSWORD")
           if [ ${#missing[@]} -ne 0 ]; then
