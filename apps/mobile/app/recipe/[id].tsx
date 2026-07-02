@@ -1,10 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
-import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
-import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
-import { CookMiseEnPlace } from "@/components/cook/CookMiseEnPlace";
-import { CookTimerPanel } from "@/components/cook/CookTimerPanel";
 import { formatMultiplier } from "@/components/today/PortionStepper";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";

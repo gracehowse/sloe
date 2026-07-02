@@ -275,9 +275,11 @@ describe("ENG-1305 — trust-label consistency parity pins", () => {
   });
 
   it("coach candidate kcal line carries the app-standard estimated qualifier (both platforms)", () => {
-    // Same wording as the LogSheet confirmation ("Est. {kcal} kcal") — coach
-    // predictions are estimates and must never render as bare precision.
-    const pattern = /Est\. \{candidate\.predictedCalories\.toLocaleString\(\)\} kcal/;
+    // ENG-1305: coach predictions are Coach's own derived estimates, not a
+    // verified match — so they carry the dominant predicted-meal qualifier
+    // "~" (RecipeUpload / ProgressDashboard / digest / today-week-view …),
+    // NOT the LogSheet confirmation's "Est.". Must never render bare precision.
+    const pattern = /~\{formatKcalDisplay\(candidate\.predictedCalories\)\} kcal/;
     expect(coachMobile).toMatch(pattern);
     expect(coachWeb).toMatch(pattern);
   });
