@@ -68,13 +68,14 @@ const DIALOGS_PATH = resolve(
 const DIALOGS_SRC = readFileSync(DIALOGS_PATH, "utf8");
 
 describe("Settings — Manage subscription via SubscriptionCard → cancel-flow export prompt (ENG-748 #11)", () => {
-  it("mounts <SubscriptionCard> flag-gated behind web-subscription-card AND gated on userTier !== 'free'", () => {
-    // Flag gate first (visual changes ship behind isFeatureEnabled),
-    // then the tier gate so free users never see it even at 100% ramp.
-    // (Now the `subscriptionCard` const — the gate is the const's value.)
-    expect(SRC).toMatch(
-      /isFeatureEnabled\("web-subscription-card"\) && userTier !== "free" \? \(\s*<SubscriptionCard/,
-    );
+  it("mounts <SubscriptionCard> gated on ENTITLEMENT only (userTier !== 'free'), NOT behind a flag", () => {
+    // ENG (Pro-lockout): the subscription-management card is the ONLY path a
+    // paying user has to manage/cancel. Gating it behind `web-subscription-card`
+    // meant a flag being off (or PostHog failing to load) locked a Pro user out
+    // of cancellation — a billing-trust/legal problem. Access is entitlement-only;
+    // flags gate visual variants, not the ability to leave.
+    expect(SRC).toMatch(/const subscriptionCard\s*=\s*\n?\s*userTier !== "free" \? \(\s*<SubscriptionCard/);
+    expect(SRC).not.toMatch(/isFeatureEnabled\("web-subscription-card"\)/);
   });
 
   it("wires SubscriptionCard.onManageSubscription to setCancelPromptOpen(true) (dialog-first, not direct nav)", () => {

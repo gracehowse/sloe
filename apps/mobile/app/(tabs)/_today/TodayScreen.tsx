@@ -20,6 +20,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { mergeJournalByDay } from "@suppr/shared/nutrition/mergeJournalByDay";
 import { subscribeJournalRefresh } from "@/lib/journalRefresh";
+import { normaliseCachedTier, loadCachedUserTier } from "@/lib/cachedUserTier";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useNutritionEntriesSync } from "@/hooks/useNutritionEntriesSync";
@@ -932,11 +933,19 @@ export default function TrackerScreen() {
     };
   }, [userId]);
 
-  // Batch 5.13 — load profile tier for Voice / AI photo gating. Same
-  // pattern as `planner.tsx`; defaults to "free" on any error.
+  // Batch 5.13 — load profile tier for Voice / AI photo gating. Same pattern as
+  // `planner.tsx`. ENG (Pro-lockout): hydrate from the AsyncStorage cache FIRST
+  // (F-91) so a returning Pro isn't shown Voice/AI-photo locked while the async
+  // read is in flight, then reconcile with the authoritative profiles read.
+  // normaliseCachedTier collapses lifetime_pro → pro so founders aren't dropped.
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    // Upgrade-only cache hydrate — kills the Free-flash without clobbering a
+    // fresh DB read that may already have landed.
+    void loadCachedUserTier().then((cached) => {
+      if (!cancelled) setUserTier((prev) => (prev === "free" ? cached : prev));
+    });
     supabase
       .from("profiles")
       .select("user_tier")
@@ -944,9 +953,7 @@ export default function TrackerScreen() {
       .single()
       .then(({ data }) => {
         if (cancelled) return;
-        const t = data?.user_tier as string | null;
-        if (t === "free" || t === "base" || t === "pro") setUserTier(t);
-        else setUserTier("free");
+        setUserTier(normaliseCachedTier(data?.user_tier as string | null));
       });
     return () => {
       cancelled = true;

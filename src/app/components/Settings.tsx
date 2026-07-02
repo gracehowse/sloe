@@ -1813,12 +1813,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       </SupprCard>
   );
 
-  // Subscription management (ENG-748 #11). Self-contained card; only shown
-  // for Pro users behind `web-subscription-card` (null otherwise). The
-  // "Manage or cancel" CTA fires the same cancel-export prompt flow. Web-
-  // only — mobile billing is IAP.
+  // Subscription management (ENG-748 #11). Web-only (mobile billing is IAP).
+  // ENG (Pro-lockout): gated on ENTITLEMENT only, not the `web-subscription-card`
+  // flag — a paying user's ability to cancel must never depend on flag delivery.
   const subscriptionCard =
-    isFeatureEnabled("web-subscription-card") && userTier !== "free" ? (
+    userTier !== "free" ? (
         <SubscriptionCard
           userTier={userTier}
           onManageSubscription={() => {

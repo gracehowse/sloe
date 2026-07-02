@@ -23,6 +23,7 @@ import Constants from "expo-constants";
 // the canonical Membership card so the bundle is the single source
 // of truth.
 import { presentCustomerCenter } from "@/lib/purchases";
+import { normaliseCachedTier } from "@/lib/cachedUserTier";
 import { CancelExportPromptSheet } from "@/components/settings/CancelExportPromptSheet";
 import { DeleteAccountSheet } from "@/components/settings/DeleteAccountSheet";
 import { useDeleteAccountSheet } from "@/components/settings/useDeleteAccountSheet";
@@ -567,10 +568,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           },
         );
 
-        const resolvedTier: "free" | "base" | "pro" = (() => {
-          const t = typeof p.user_tier === "string" ? p.user_tier : null;
-          return t === "free" || t === "base" || t === "pro" ? t : "free";
-        })();
+        const resolvedTier = normaliseCachedTier(
+          typeof p.user_tier === "string" ? p.user_tier : null,
+        );
         setProfileData({
           savedCount,
           streak,
