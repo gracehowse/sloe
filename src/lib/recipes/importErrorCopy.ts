@@ -324,6 +324,57 @@ export function coerceImportErrorCode(
 }
 
 /**
+ * ENG-1328 — image-GENERATION surface overrides. The `/api/recipe-import/
+ * image-hero` route shares stable codes with the photo-IMPORT surface
+ * (`pro_required`, `rate_limited`, …) whose mapped copy describes
+ * importing ("Recipe imports from photos are a Pro feature.") — the wrong
+ * story when the user tapped "Generate an image". This map is the
+ * image-gen channel's own honest copy; codes not listed here fall through
+ * to the shared resolver. Gating itself is unchanged (ENG-865).
+ */
+export const IMAGE_GEN_ERROR_COPY = {
+  pro_required: "Generating recipe images is a Pro feature. Upgrade to create one.",
+  unauthorized: "Sign in to generate a recipe image.",
+  rate_limited: "You've generated a lot of images. Try again in a minute.",
+  invalid_body: "We couldn't start that image. Try again.",
+  service_unavailable: "Image generation is temporarily unavailable. Try again shortly.",
+} satisfies Partial<Record<ImportErrorCode, string>>;
+
+/**
+ * ENG-1328 — the image-hero route degrades gracefully: fal unconfigured /
+ * locked / errored returns 200 `{ok:false, skipped:true, reason}` with a
+ * raw ops token (`fal_not_configured`, `generate_threw`, …). Every skip
+ * means the same thing to the user, so they all collapse to this line.
+ */
+export const IMAGE_GEN_UNAVAILABLE_COPY =
+  "We couldn't generate an image right now. Try again later.";
+
+/**
+ * Resolve an image-generation failure (server response / thrown Error /
+ * unknown) to user-facing copy. Code-first: the surface override map
+ * outranks any server `message`, because shared routes ship photo-import
+ * copy for shared codes. Raw `reason` tokens never render.
+ */
+export function userFacingImageGenError(input: unknown): string {
+  const obj =
+    typeof input === "object" && input !== null
+      ? (input as { error?: unknown; reason?: unknown; message?: unknown })
+      : null;
+  const code =
+    typeof input === "string" ? input : typeof obj?.error === "string" ? obj.error : null;
+  if (code && Object.prototype.hasOwnProperty.call(IMAGE_GEN_ERROR_COPY, code)) {
+    return IMAGE_GEN_ERROR_COPY[code as keyof typeof IMAGE_GEN_ERROR_COPY];
+  }
+  if (obj && typeof obj.reason === "string" && obj.reason.trim()) {
+    return IMAGE_GEN_UNAVAILABLE_COPY;
+  }
+  const resolved = userFacingImportError(input);
+  // The shared "Something went wrong" fallback reads worse than the
+  // surface-specific one here — keep the image-gen voice.
+  return resolved === IMPORT_ERROR_COPY.unknown ? IMAGE_GEN_UNAVAILABLE_COPY : resolved;
+}
+
+/**
  * Helper for API routes: build the `{ok, error, message}` response
  * body. Prevents per-route drift on the response shape.
  */

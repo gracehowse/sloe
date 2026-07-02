@@ -18,11 +18,14 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  IMAGE_GEN_ERROR_COPY,
+  IMAGE_GEN_UNAVAILABLE_COPY,
   IMPORT_ERROR_COPY,
   coerceImportErrorCode,
   importErrorResponse,
   mapPersistenceError,
   sanitiseImportErrorMessage,
+  userFacingImageGenError,
   userFacingImportError,
 } from "@/lib/recipes/importErrorCopy";
 
@@ -313,6 +316,71 @@ describe("ENG-1309 — no raw snake_case token ever renders", () => {
     );
     expect(out).toBe("Could not extract content from this post. Try image import.");
     expect(out).not.toMatch(/post post/i);
+  });
+});
+
+describe("ENG-1328 — image-generation error channel", () => {
+  it("maps pro_required to image-GEN copy, distinct from the photo-import copy", () => {
+    // The exact bug: free-tier "Generate an image" surfaced
+    // "Recipe imports from photos are a Pro feature."
+    const out = userFacingImageGenError({
+      ok: false,
+      error: "pro_required",
+      message: IMPORT_ERROR_COPY.pro_required,
+    });
+    expect(out).toBe(IMAGE_GEN_ERROR_COPY.pro_required);
+    expect(out).not.toBe(IMPORT_ERROR_COPY.pro_required);
+    expect(out).toMatch(/image/i);
+    expect(out).not.toMatch(/photo/i);
+  });
+
+  it("override map outranks the server message for every shared code", () => {
+    for (const [code, copy] of Object.entries(IMAGE_GEN_ERROR_COPY)) {
+      const out = userFacingImageGenError({
+        ok: false,
+        error: code,
+        message: "Server copy written for a different surface.",
+      });
+      expect(out, `code=${code}`).toBe(copy);
+    }
+  });
+
+  it("collapses raw skipped-reason tokens to the unavailable line", () => {
+    const reasons = [
+      "fal_not_configured",
+      "import_killed",
+      "generate_threw",
+      "storage_not_configured",
+      "remove_failed",
+      "published_no_ai_image",
+      "fetch_failed", // an import code, but as a skip-reason it means "no image today"
+    ];
+    for (const reason of reasons) {
+      const out = userFacingImageGenError({ ok: false, skipped: true, reason });
+      expect(out, `reason=${reason}`).toBe(IMAGE_GEN_UNAVAILABLE_COPY);
+      expect(out).toMatch(/\s/);
+    }
+  });
+
+  it("resolves non-overridden known codes through the shared mapper", () => {
+    expect(userFacingImageGenError({ ok: false, error: "ai_capacity_reached" })).toBe(
+      IMPORT_ERROR_COPY.ai_capacity_reached,
+    );
+  });
+
+  it("falls back to the image-gen voice (never a raw token) for junk input", () => {
+    expect(userFacingImageGenError(null)).toBe(IMAGE_GEN_UNAVAILABLE_COPY);
+    expect(userFacingImageGenError({})).toBe(IMAGE_GEN_UNAVAILABLE_COPY);
+    expect(userFacingImageGenError({ ok: false, error: "totally_new_code" })).toBe(
+      IMAGE_GEN_UNAVAILABLE_COPY,
+    );
+  });
+
+  it("image-gen copy never names a vendor, env var, or model", () => {
+    const all = [...Object.values(IMAGE_GEN_ERROR_COPY), IMAGE_GEN_UNAVAILABLE_COPY];
+    for (const copy of all) {
+      expect(copy).not.toMatch(/fal|openai|anthropic|nano.?banana|_KEY|supabase/i);
+    }
   });
 });
 
