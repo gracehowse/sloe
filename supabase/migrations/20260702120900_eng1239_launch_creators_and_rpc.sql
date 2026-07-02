@@ -2,6 +2,11 @@
 -- creators even before organic saves land (LEFT JOIN). Replaces the presentation-
 -- only `seedCreators.ts` fixture once this migration is applied.
 
+-- The prior definition (migration 20260702120200) returned fewer columns; this
+-- version widens the return type (adds avatar_url, bio), which `create or
+-- replace` cannot do in place (Postgres 42P13). Drop first, then recreate.
+drop function if exists public.top_creators_by_saves(int);
+
 create or replace function public.top_creators_by_saves(p_limit int default 12)
 returns table (
   id uuid,
