@@ -9,6 +9,8 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { AiBudgetExceededError, callAiText } from "@/lib/server/aiProvider";
+import { serverTrack } from "@/lib/analytics/serverTrack";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 import {
   applyCoachRanking,
   assembleCandidates,
@@ -70,6 +72,8 @@ export async function POST(req: Request) {
   const originErr = assertOrigin(req);
   if (originErr) return originErr;
 
+  const routeStart = Date.now();
+
   // Kill switch — lets us cut the AI ranking instantly without a deploy.
   // The deterministic path keeps working; we just skip the model.
   const killAi = await isServerFeatureEnabled("kill_meal_coach_ai").catch(
@@ -115,6 +119,19 @@ export async function POST(req: Request) {
     );
   }
 
+  // ENG-1288 — server-side completion event (voice-log's
+  // `voice_log_api_completed` pattern). Fires on every 200; never on
+  // 4xx/5xx. `source: "template"` = deterministic path without an AI
+  // attempt; `"error"` = AI attempted but failed → deterministic
+  // fallback shipped. Fire-and-forget — analytics must not block.
+  const emitCompleted = (source: "ai" | "template" | "error") => {
+    void serverTrack(AnalyticsEvents.coach_api_completed, userId, {
+      latency_ms: Date.now() - routeStart,
+      source,
+      tier,
+    });
+  };
+
   let body: CoachRequestBody;
   try {
     body = (await req.json()) as CoachRequestBody;
@@ -153,6 +170,7 @@ export async function POST(req: Request) {
   // No recipe fits the remaining budget — return empty deterministically
   // (the surface renders its "no-fit" state). Never an error.
   if (candidates.length === 0) {
+    emitCompleted("template");
     return deterministicResponse([]);
   }
 
@@ -160,6 +178,7 @@ export async function POST(req: Request) {
   // (ENG-1292 — AI re-rank is a Pro entitlement), or a single candidate
   // has nothing to re-rank. Same payload shape, source: "deterministic".
   if (killAi || tier !== "pro" || candidates.length < 2) {
+    emitCompleted("template");
     return deterministicResponse(candidates);
   }
 
@@ -182,14 +201,17 @@ export async function POST(req: Request) {
     if (err instanceof AiBudgetExceededError) {
       // Budget exhausted — fall back to the deterministic order. The
       // surface still works; we just don't spend on AI phrasing.
+      emitCompleted("error");
       return deterministicResponse(candidates);
     }
     captureRouteError(err, "/api/nutrition/coach", { stage: "rank" });
+    emitCompleted("error");
     return deterministicResponse(candidates);
   }
 
   if (!aiResult.ok) {
     // Any provider error (timeout, http, not-configured) → deterministic.
+    emitCompleted("error");
     return deterministicResponse(candidates);
   }
 
@@ -202,6 +224,9 @@ export async function POST(req: Request) {
     candidates: ranked,
     source: ranking ? "ai" : "deterministic",
   };
+  // A null ranking means the model answered but off-contract — that is an
+  // AI attempt that failed, not a deliberate template path.
+  emitCompleted(ranking ? "ai" : "error");
   return NextResponse.json({ ok: true, ...result });
 }
 

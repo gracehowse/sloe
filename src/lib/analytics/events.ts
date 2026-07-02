@@ -193,6 +193,16 @@ export const AnalyticsEvents = {
   coach_screen_opened: "coach_screen_opened",
   /** ENG-1240 — user tapped an Ask-the-coach chip on the Coach screen. */
   coach_ask_chip_tapped: "coach_ask_chip_tapped",
+  /** ENG-1288 — an Ask-the-coach answer resolved on the Coach screen.
+   *  Completion pair for `coach_ask_chip_tapped` (which fires on tap
+   *  only) so the ask funnel has an end. Fires CLIENT-side when the
+   *  answer renders — including the client-side template fallback
+   *  (`buildTemplateCoachAskAnswer` on network/shape failure), which
+   *  emits `source: "template"` so template answers are not
+   *  undercounted. Same name web + mobile. Payload:
+   *  `{ chip_id: CoachAskChipId, source: "ai" | "template", platform }`.
+   *  No PII; the answer text is never sent. */
+  coach_ask_answered: "coach_ask_answered",
   profile_targets_saved: "profile_targets_saved",
   cook_mode_first_step_advanced: "cook_mode_first_step_advanced",
   cook_mode_completed: "cook_mode_completed",
@@ -1159,6 +1169,25 @@ export const AnalyticsEvents = {
    * Fires on success only. Used to measure accuracy benchmark coverage
    * and detect prompt-regression across model versions. */
   photo_log_api_completed: "photo_log_api_completed",
+  /** ENG-1288 — server-side coach re-rank route completed (POST
+   * /api/nutrition/coach). Fires on every 200 (the route degrades
+   * instead of erroring for AI failures — see mealCoach.ts contract).
+   * Payload: `{ latency_ms, source: "ai" | "template" | "error", tier }`
+   * where `template` = deterministic path chosen WITHOUT attempting AI
+   * (kill switch, non-Pro tier per ENG-1292, <2 candidates, no-fit) and
+   * `error` = AI attempted but failed (provider error / budget /
+   * off-contract output) so the deterministic fallback shipped. Lets us
+   * watch AI spend vs tier and the fall-back rate server-side. */
+  coach_api_completed: "coach_api_completed",
+  /** ENG-1288 — server-side coach-ask route completed. Same
+   * source contract as `coach_api_completed` (the template answer is
+   * this route's deterministic path). Payload:
+   * `{ latency_ms, source: "ai" | "template" | "error", tier }`. */
+  coach_ask_api_completed: "coach_ask_api_completed",
+  /** ENG-1288 — server-side coach-day-narrative route completed. Same
+   * source contract as `coach_api_completed`. Payload:
+   * `{ latency_ms, source: "ai" | "template" | "error", tier }`. */
+  coach_day_narrative_api_completed: "coach_day_narrative_api_completed",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
