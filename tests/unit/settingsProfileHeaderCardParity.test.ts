@@ -55,12 +55,14 @@ describe("Settings — profile header card (Group G IA Batch C)", () => {
 });
 
 describe("Settings — Figma `335:2` frame reskin (web parity)", () => {
-  it("renders the peach Sloe Pro upsell banner with a Manage affordance", () => {
+  it("renders the peach Sloe Pro upsell banner with a tier-conditional pill label", () => {
     // Mirrors the mobile banner (frame `335:23`). Free → /pricing,
-    // Pro → /account/billing. The clay-tint fill uses --primary @16%.
+    // Pro → /account/billing. ENG-1297: visible pill is Manage (pro) or Upgrade (free).
     expect(settings).toContain('data-testid="settings-sloe-pro-banner"');
     expect(settings).toMatch(/>\s*Sloe Pro\s*</);
-    expect(settings).toMatch(/>\s*Manage\s*</);
+    expect(settings).toMatch(
+      /userTier === "pro" \? "Manage" : "Upgrade"/,
+    );
     expect(settings).toMatch(
       /userTier === "pro" \? "\/account\/billing" : "\/pricing"/,
     );

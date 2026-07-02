@@ -88,7 +88,7 @@ describe("GoalStep", () => {
     expect(screen.getByTestId("goal-display").textContent).toBe("none");
     fireEvent.click(screen.getByRole("button", { name: /lose weight while still eating/i }));
     expect(screen.getByTestId("goal-display").textContent).toBe("lose");
-    fireEvent.click(screen.getByRole("button", { name: /eat healthier at home/i }));
+    fireEvent.click(screen.getByRole("button", { name: /just track what i cook/i }));
     expect(screen.getByTestId("goal-display").textContent).toBe("maintain");
   });
 });
