@@ -279,7 +279,7 @@ describe("LogSheet (mobile) — inline-search mode (2026-04-30, customer-lens ne
 
 describe("LogSheet (mobile) — describe meal review", () => {
   it("anchors the AI review summary to the active meal slot", async () => {
-    const { getByDisplayValue, getByLabelText, getByText } = render(
+    const { getByDisplayValue, getByLabelText, getByText, getByTestId } = render(
       <LogSheet
         visible
         onClose={() => {}}
@@ -305,6 +305,7 @@ describe("LogSheet (mobile) — describe meal review", () => {
       />,
     );
 
+    fireEvent.press(getByTestId("log-sheet-describe-expand"));
     fireEvent.changeText(getByLabelText("Describe what you ate"), "chicken sandwich");
     fireEvent.press(getByLabelText("Parse meal description"));
 

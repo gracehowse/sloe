@@ -130,6 +130,7 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
     const webDescribe = read(WEB_DESCRIBE_FLOW);
     const mobileDescribe = read(MOBILE_DESCRIBE_FLOW);
     for (const id of [
+      "log-sheet-describe-expand",
       "log-sheet-describe",
       "log-sheet-describe-input",
       "log-sheet-describe-parse",

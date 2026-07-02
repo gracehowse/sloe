@@ -932,7 +932,7 @@ function DefaultComposition({
       ) : null}
 
       {!describeReviewActive ? (
-      <>
+      <div className="flex min-h-0 flex-1 flex-col">
       {/* Inline search results — only mounted when the user has actually
           started typing. Empty query keeps the existing Recent / Saved
           browse content visible so the sheet doesn't look "blank" on
@@ -1117,7 +1117,7 @@ function DefaultComposition({
           ) : null}
         </>
       )}
-      </>
+      </div>
       ) : null}
     </>
   );

@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Lock, PencilLine } from "lucide-react-native";
+import { Lock, PencilLine, ChevronDown, ChevronUp } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -65,6 +65,7 @@ function LogSheetDescribeFlowImpl({
   const [text, setText] = React.useState("");
   const [items, setItems] = React.useState<AiLoggedItem[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [expanded, setExpanded] = React.useState(false);
 
   React.useEffect(() => {
     if (!sheetOpen) {
@@ -72,6 +73,7 @@ function LogSheetDescribeFlowImpl({
       setText("");
       setItems([]);
       setError(null);
+      setExpanded(false);
     }
   }, [sheetOpen]);
 
@@ -82,6 +84,7 @@ function LogSheetDescribeFlowImpl({
   React.useEffect(() => {
     if (!seedText?.trim()) return;
     setText(seedText.trim());
+    setExpanded(true);
     onSeedConsumed?.();
   }, [seedText, onSeedConsumed]);
 
@@ -188,75 +191,123 @@ function LogSheetDescribeFlowImpl({
     return null;
   }
 
+  if (!expanded && stage === "input" && !error) {
+    return (
+      <Pressable
+        testID="log-sheet-describe-expand"
+        accessibilityRole="button"
+        accessibilityLabel="Describe what you ate. Tap to expand."
+        onPress={() => {
+          if (locked) {
+            onPaywall?.();
+            return;
+          }
+          setExpanded(true);
+        }}
+        style={({ pressed }) => ({
+          marginHorizontal: Spacing.md,
+          marginTop: Spacing.sm,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: Spacing.sm,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.sm,
+          borderRadius: Radius.lg,
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <PencilLine size={IconSize.sm} color={accent.primary} strokeWidth={2} />
+        <Text style={[Type.body, { color: colors.text, fontWeight: "600", flex: 1, fontSize: 13 }]}>
+          Describe what you ate
+        </Text>
+        {locked ? <Lock size={14} color={colors.textTertiary} /> : null}
+        <ChevronDown size={16} color={colors.textTertiary} />
+      </Pressable>
+    );
+  }
+
   return (
     <View
       testID="log-sheet-describe"
       style={{
         marginHorizontal: Spacing.md,
         marginTop: Spacing.sm,
-        padding: Spacing.md,
-        borderRadius: Radius.xl,
+        padding: Spacing.sm,
+        borderRadius: Radius.lg,
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.border,
         gap: Spacing.sm,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-        <PencilLine size={IconSize.base} color={accent.primary} strokeWidth={2} />
-        <Text style={[Type.body, { color: colors.text, fontWeight: "600", flex: 1 }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Collapse describe meal"
+        onPress={() => setExpanded(false)}
+        style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
+      >
+        <PencilLine size={IconSize.sm} color={accent.primary} strokeWidth={2} />
+        <Text style={[Type.body, { color: colors.text, fontWeight: "600", flex: 1, fontSize: 13 }]}>
           Describe what you ate
         </Text>
         {locked ? <Lock size={14} color={colors.textTertiary} /> : null}
+        <ChevronUp size={16} color={colors.textTertiary} />
+      </Pressable>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+        <TextInput
+          testID="log-sheet-describe-input"
+          value={text}
+          onChangeText={setText}
+          placeholder={'e.g. "2 eggs and toast"'}
+          placeholderTextColor={colors.textTertiary}
+          multiline
+          numberOfLines={2}
+          accessibilityLabel="Describe what you ate"
+          accessibilityHint="AI estimates from verified nutrition data. Review every item before logging."
+          style={{
+            flex: 1,
+            backgroundColor: colors.inputBg,
+            borderRadius: Radius.md,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.sm,
+            color: colors.text,
+            fontSize: 14,
+            minHeight: 40,
+            maxHeight: 64,
+            textAlignVertical: "top",
+          }}
+        />
+        {stage === "parsing" ? (
+          <ActivityIndicator size="small" color={accent.primary} />
+        ) : (
+          <Pressable
+            testID="log-sheet-describe-parse"
+            accessibilityRole="button"
+            accessibilityLabel="Parse meal description"
+            onPress={() => void runParse(text)}
+            style={({ pressed }) => ({
+              paddingHorizontal: Spacing.md,
+              paddingVertical: Spacing.sm,
+              borderRadius: Radius.full,
+              backgroundColor: accent.primary,
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <Text style={{ color: colors.primaryForeground, fontWeight: "600", fontSize: 13 }}>
+              Parse
+            </Text>
+          </Pressable>
+        )}
       </View>
-      <TextInput
-        testID="log-sheet-describe-input"
-        value={text}
-        onChangeText={setText}
-        placeholder={'e.g. "2 scrambled eggs and toast with butter"'}
-        placeholderTextColor={colors.textTertiary}
-        multiline
-        accessibilityLabel="Describe what you ate"
-        style={{
-          backgroundColor: colors.inputBg,
-          borderRadius: Radius.md,
-          paddingHorizontal: Spacing.md,
-          paddingVertical: Spacing.md,
-          color: colors.text,
-          fontSize: 15,
-          minHeight: 56,
-          textAlignVertical: "top",
-        }}
-      />
       {stage === "error" && error ? (
         <Text style={{ fontSize: 13, color: Accent.destructive }}>{error}</Text>
       ) : null}
       {stage === "parsing" ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-          <ActivityIndicator size="small" color={accent.primary} />
-          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Parsing your description…</Text>
-        </View>
-      ) : (
-        <Pressable
-          testID="log-sheet-describe-parse"
-          accessibilityRole="button"
-          accessibilityLabel="Parse meal description"
-          onPress={() => void runParse(text)}
-          style={({ pressed }) => ({
-            alignSelf: "flex-start",
-            paddingHorizontal: Spacing.lg,
-            paddingVertical: Spacing.sm,
-            borderRadius: Radius.full,
-            backgroundColor: accent.primary,
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text style={{ color: colors.primaryForeground, fontWeight: "600", fontSize: 14 }}>Parse meal</Text>
-        </Pressable>
-      )}
-      <Text style={{ fontSize: 11, color: colors.textTertiary, lineHeight: 15 }}>
-        AI estimates from verified nutrition data. Review every item before logging.
-      </Text>
+        <Text style={{ fontSize: 12, color: colors.textSecondary }}>Parsing your description…</Text>
+      ) : null}
     </View>
   );
 }
