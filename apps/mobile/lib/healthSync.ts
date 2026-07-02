@@ -1465,35 +1465,33 @@ export async function syncHealthData(
       // guarantee timestamp order, so when ≥1 weigh-in lands on the same
       // calendar day the previous loop's last-iterated sample won — which
       // could be the older reading. Sort ascending by `startDate` so the
-      // last write per `dateKey` is the most-recent-by-time. Then surface
-      // the absolute-most-recent sample as `weight_kg` (not the today-bucket
-      // value) so the "current weight" pill always matches Apple Health.
+      // last write per `dateKey` is the most-recent-by-time.
       const sortedSamples = [...weightSamples].sort((a, b) => {
         const ta = new Date(a.startDate).getTime();
         const tb = new Date(b.startDate).getTime();
         return ta - tb;
       });
-      const weightByDay: Record<string, number> = { ...existingWeight };
+      // ENG-1306 — build the PATCH of only the days HealthKit actually
+      // reported, then hand it to the `upsert_body_metric_days` RPC, which
+      // merges key-by-key under the profile row lock. A manual weigh-in
+      // racing this sync (or another device) keeps its days instead of
+      // being clobbered by a full-map UPDATE. The scalar `weight_kg` is
+      // derived server-side from the merged map's newest day — same value
+      // the F-115 "absolute most recent sample" rule produced, since the
+      // ascending sort makes the newest day's bucket the latest-by-time
+      // sample.
+      const fromHealthWeight: Record<string, number> = {};
       for (const sample of sortedSamples) {
         const dk = dateKey(sample.startDate);
         const rounded = Math.round(sample.value * 10) / 10;
-        weightByDay[dk] = rounded;
+        fromHealthWeight[dk] = rounded;
       }
-      const mostRecentSample =
-        sortedSamples.length > 0 ? sortedSamples[sortedSamples.length - 1]! : null;
-      const mostRecentRounded = mostRecentSample
-        ? Math.round(mostRecentSample.value * 10) / 10
-        : null;
+      const weightByDay: Record<string, number> = { ...existingWeight, ...fromHealthWeight };
 
       if (JSON.stringify(weightByDay) !== JSON.stringify(existingWeight)) {
-        const profileWeightKg = profile && "weight_kg" in profile ? (profile as { weight_kg?: number | null }).weight_kg : null;
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            weight_kg_by_day: weightByDay,
-            weight_kg: mostRecentRounded ?? profileWeightKg ?? null,
-          })
-          .eq("id", userId);
+        const { error } = await supabase.rpc("upsert_body_metric_days", {
+          p_weight_patch: fromHealthWeight,
+        });
         if (!error) {
           void refreshAdaptiveTdeeForUser(supabase, userId);
           weightUpdated = true;
@@ -1515,13 +1513,22 @@ export async function syncHealthData(
         const tb = new Date(b.startDate).getTime();
         return ta - tb;
       });
-      const bodyFatByDay: Record<string, number> = { ...existingBodyFatByDay };
+      // ENG-1306 — same per-day PATCH shape as the weight sync above: only
+      // the days HealthKit reported go to the `upsert_body_metric_days`
+      // RPC, which merges them key-by-key under the row lock and derives
+      // the scalar `body_fat_pct` from the merged map's newest day (the
+      // ascending sort keeps the newest day's bucket latest-by-time).
+      const fromHealthBodyFat: Record<string, number> = {};
       for (const sample of sortedBfSamples) {
         const dk = dateKey(sample.startDate);
         const pct = bodyFatPercentFromHealthKitValue(Number(sample.value));
         if (pct == null) continue;
-        bodyFatByDay[dk] = pct;
+        fromHealthBodyFat[dk] = pct;
       }
+      const bodyFatByDay: Record<string, number> = {
+        ...existingBodyFatByDay,
+        ...fromHealthBodyFat,
+      };
       const mostRecentBfSample =
         sortedBfSamples.length > 0 ? sortedBfSamples[sortedBfSamples.length - 1]! : null;
       const mostRecentBfPct = mostRecentBfSample
@@ -1540,14 +1547,10 @@ export async function syncHealthData(
       const scalarChanged =
         mostRecentBfPct != null && existingRounded !== mostRecentBfPct;
 
-      if (mapChanged || scalarChanged) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            body_fat_pct_by_day: bodyFatByDay,
-            ...(mostRecentBfPct != null ? { body_fat_pct: mostRecentBfPct } : {}),
-          })
-          .eq("id", userId);
+      if ((mapChanged || scalarChanged) && Object.keys(fromHealthBodyFat).length > 0) {
+        const { error } = await supabase.rpc("upsert_body_metric_days", {
+          p_body_fat_patch: fromHealthBodyFat,
+        });
         if (!error) bodyFatUpdated = true;
       }
     } catch {

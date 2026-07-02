@@ -2878,6 +2878,10 @@ export type Database = {
           saves: number
         }[]
       }
+      upsert_body_metric_days: {
+        Args: { p_body_fat_patch?: Json; p_weight_patch?: Json }
+        Returns: Json
+      }
     }
     Enums: {
       recipe_content_origin: "first_party" | "imported_stub" | "claimed"

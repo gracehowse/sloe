@@ -31,9 +31,14 @@ export const dynamic = "force-dynamic";
  *     when the entitlement payload is present.
  *   - CANCELLATION / BILLING_ISSUE → no-op (auto-renew off / grace
  *     period; entitlement still active).
- *   - EXPIRATION / SUBSCRIPTION_PAUSED → tier → free.
- *   - TRANSFER / REFUND / SUBSCRIPTION_EXTENDED → persisted but no-op
- *     in v0; forensic replay possible from `revenuecat_events.payload`.
+ *   - EXPIRATION / SUBSCRIPTION_PAUSED / REFUND → tier → free (ENG-1306:
+ *     a refund revokes the entitlement immediately — no paid-through
+ *     window remains).
+ *   - TRANSFER → entitlement re-pointed (ENG-1306): destination profile
+ *     gains the moved tier, origin drops to free; resolved via the
+ *     `transferred_from` / `transferred_to` arrays.
+ *   - SUBSCRIPTION_EXTENDED → persisted, no-op (entitlement unchanged);
+ *     forensic replay possible from `revenuecat_events.payload`.
  *
  * Idempotent: events are deduped on `event_id` via the
  * `revenuecat_events` primary key (sister to `stripe_webhook_events`,

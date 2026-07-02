@@ -81,12 +81,36 @@ export function userIdFromAppUserId(raw: unknown): string | null {
  *     Don't downgrade.
  *   * SUBSCRIPTION_PAUSED — entitlement is gone for the pause window.
  *     Treat as expiration (will get an UNCANCELLATION when resumed).
+ *   * REFUND (ENG-1306) — the store returned the money and RC revokes the
+ *     entitlement immediately (unlike CANCELLATION there is no paid-through
+ *     window left). Treat as expiration: tier → free. `lifetime_pro` comps
+ *     stay floor-protected by `updateProfileTierServiceRole`.
  *   * TRANSFER — entitlement moved to a different app_user_id. The
  *     OLD user_id loses the entitlement; the NEW user_id gains it.
- *     The route handler resolves both ends explicitly.
+ *     Handled explicitly in `webhookProcess.ts` (ENG-1306), which resolves
+ *     both ends via `transferred_from` / `transferred_to`.
  */
 export function eventTypeRequiresExpiration(eventType: string): boolean {
-  return eventType === "EXPIRATION" || eventType === "SUBSCRIPTION_PAUSED";
+  return (
+    eventType === "EXPIRATION" ||
+    eventType === "SUBSCRIPTION_PAUSED" ||
+    eventType === "REFUND"
+  );
+}
+
+/**
+ * ENG-1306 — RC TRANSFER payloads carry `transferred_from` /
+ * `transferred_to` as arrays of app_user_ids (store anonymous ids mixed
+ * with our uuid app_user_ids). Return the first entry that maps to a
+ * Supabase uuid, or null when none does.
+ */
+export function firstUuidFromAppUserIds(raw: unknown): string | null {
+  if (!Array.isArray(raw)) return null;
+  for (const entry of raw) {
+    const id = userIdFromAppUserId(entry);
+    if (id) return id;
+  }
+  return null;
 }
 
 export function eventTypeIsTierGrant(eventType: string): boolean {

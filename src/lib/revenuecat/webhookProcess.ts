@@ -26,6 +26,7 @@ import {
   eventTypeIsTierGrant,
   eventTypeRequiresExpiration,
   extractEntitlements,
+  firstUuidFromAppUserIds,
   tierFromRevenueCatEntitlements,
   userIdFromAppUserId,
 } from "@/lib/revenuecat/tierFromEntitlements";
@@ -36,9 +37,12 @@ export type RevenueCatEvent = {
   id: string;
   type: string;
   app_user_id: string;
-  /** Optional explicit transferee uuid for TRANSFER events.
-   *  RC sends this as `transferred_from` / `transferred_to`. We only
-   *  use the destination here to apply tier on the new owner. */
+  /** TRANSFER payload fields (ENG-1306): RC sends both ends as arrays of
+   *  app_user_ids (store-anonymous ids mixed with our uuid ids). */
+  transferred_from?: string[];
+  transferred_to?: string[];
+  /** Optional explicit transferee uuid for TRANSFER events — tolerated
+   *  alongside the arrays above for older/test payload shapes. */
   transferred_to_app_user_id?: string;
   /** Newer field (RC 2024+); some integrations still see the array. */
   entitlement_id?: string;
@@ -57,6 +61,13 @@ export type ProcessResult =
   | { ok: true; outcome: "skipped_anonymous"; eventType: string }
   | { ok: true; outcome: "no_op"; eventType: string }
   | { ok: true; outcome: "tier_updated"; userId: string; tier: "free" | "base" | "pro" }
+  | {
+      ok: true;
+      outcome: "transferred";
+      fromUserId: string | null;
+      toUserId: string;
+      tier: "base" | "pro";
+    }
   | { ok: false; reason: "service_role_missing" | "persist_failed"; error?: string };
 
 /** Insert the event into `revenuecat_events`. Return values:
@@ -82,6 +93,24 @@ async function recordEvent(
   throw new Error(error.message);
 }
 
+/**
+ * ENG-1306 — service-role read of a profile's current tier. Used by the
+ * TRANSFER handler to discover which paid tier is being moved when the RC
+ * payload carries no entitlement fields. Returns null on any failure so
+ * the caller can fall back to a no-op rather than guessing.
+ */
+async function readProfileTierServiceRole(userId: string): Promise<string | null> {
+  const sb = createSupabaseServiceRoleClient();
+  if (!sb) return null;
+  const { data, error } = await sb
+    .from("profiles")
+    .select("user_tier")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) return null;
+  return ((data as { user_tier?: string | null } | null)?.user_tier as string | null) ?? null;
+}
+
 export async function processRevenueCatEvent(event: RevenueCatEvent): Promise<ProcessResult> {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     return { ok: false, reason: "service_role_missing" };
@@ -102,6 +131,54 @@ export async function processRevenueCatEvent(event: RevenueCatEvent): Promise<Pr
 
   if (!isFirstTime) {
     return { ok: true, outcome: "skipped_duplicate" };
+  }
+
+  // ENG-1306 — TRANSFER: the store subscription moved to a different
+  // app_user_id (e.g. a new Apple ID restored the purchase). Re-point the
+  // entitlement: the destination profile gains the tier, the origin loses
+  // it. Handled BEFORE the anonymous skip because RC's top-level
+  // `app_user_id` on TRANSFER events can be a store-anonymous id while the
+  // `transferred_to` array still carries our uuid.
+  if (event.type === "TRANSFER") {
+    const toUserId =
+      firstUuidFromAppUserIds(event.transferred_to) ??
+      userIdFromAppUserId(event.transferred_to_app_user_id) ??
+      userId;
+    const fromUserId = firstUuidFromAppUserIds(event.transferred_from);
+    if (!toUserId) {
+      // Neither end maps to a Supabase profile — persisted for audit only.
+      return { ok: true, outcome: "skipped_anonymous", eventType: event.type };
+    }
+
+    // Tier to re-point: prefer the entitlements on the payload; fall back
+    // to the origin profile's current paid tier (the thing being moved).
+    const entitlements = extractEntitlements(event);
+    let tier: "free" | "base" | "pro" = entitlements
+      ? tierFromRevenueCatEntitlements(entitlements)
+      : "free";
+    if (tier === "free" && fromUserId) {
+      const originTier = await readProfileTierServiceRole(fromUserId);
+      if (originTier === "pro" || originTier === "base") tier = originTier;
+    }
+    if (tier === "free") {
+      // Nothing resolvable to move — never downgrade anyone on a partial
+      // payload (mirrors the grant-path posture on missing entitlements).
+      return { ok: true, outcome: "no_op", eventType: event.type };
+    }
+
+    const grantOk = await updateProfileTierServiceRole(toUserId, tier);
+    if (!grantOk) {
+      return { ok: false, reason: "persist_failed", error: "transfer_grant_failed" };
+    }
+    if (fromUserId && fromUserId !== toUserId) {
+      // Origin loses the entitlement. `lifetime_pro` comps stay
+      // floor-protected inside the writer.
+      const revokeOk = await updateProfileTierServiceRole(fromUserId, "free");
+      if (!revokeOk) {
+        return { ok: false, reason: "persist_failed", error: "transfer_revoke_failed" };
+      }
+    }
+    return { ok: true, outcome: "transferred", fromUserId, toUserId, tier };
   }
 
   // Skip events for anonymous RC users (we can't map to a Supabase
@@ -152,7 +229,8 @@ export async function processRevenueCatEvent(event: RevenueCatEvent): Promise<Pr
     return { ok: true, outcome: "tier_updated", userId, tier };
   }
 
-  // TRANSFER, SUBSCRIPTION_EXTENDED, REFUND, etc. — log + no-op for v0.
-  // The forensic payload is on the row; future work can refine.
+  // SUBSCRIPTION_EXTENDED and any unrecognised event types — persisted
+  // for audit, no tier action needed (an extension keeps the current
+  // entitlement; RENEWAL will re-assert it).
   return { ok: true, outcome: "no_op", eventType: event.type };
 }
