@@ -18,7 +18,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Mic, MicOff, Play, Star, Timer as TimerIcon, CheckCircle2 } from "lucide-react-native";
+import {
+  Mic,
+  MicOff,
+  Play,
+  Star,
+  Timer as TimerIcon,
+  CheckCircle2,
+  ListChecks,
+} from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius, FontFamily } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -29,6 +37,7 @@ import { CookLogServingsSheet } from "@/components/cook/CookLogServingsSheet";
 import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
 import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
 import { CookMiseEnPlace } from "@/components/cook/CookMiseEnPlace";
+import { CookIngredientPanelSheet } from "@/components/cook/CookIngredientPanelSheet";
 import { CookRunningTimerStrip } from "@/components/cook/CookRunningTimerStrip";
 import { CookStepTimerPills } from "@/components/cook/CookStepTimerPills";
 import { useCookRunningTimers } from "@/hooks/useCookRunningTimers";
@@ -242,6 +251,8 @@ export default function CookModeScreen() {
   const [savedRating, setSavedRating] = useState<number | null>(null);
   const [addedToRegulars, setAddedToRegulars] = useState(false);
   const [logServingsOpen, setLogServingsOpen] = useState(false);
+  /** ENG-942 — in-step ingredient peek sheet (mobile parity with web sidebar). */
+  const [ingredientPanelOpen, setIngredientPanelOpen] = useState(false);
   /** Latest in a small recent-cook history per recipe, hydrated lazily
    *  when the completion card mounts so we can preview "you usually cook
    *  this in N min" once the surface lands. */
@@ -334,6 +345,18 @@ export default function CookModeScreen() {
         return { name: ing.name, amountLabel };
       }),
     [stepIngredients, scale],
+  );
+
+  /** ENG-942 — header ListChecks opens the in-step ingredient peek sheet. */
+  const showIngredientPanel =
+    cookIngredientChecklistEnabled &&
+    checklistItems.length > 0 &&
+    cookPhase === "steps" &&
+    !isDone;
+
+  const ingredientPanelScaleLabel = useMemo(
+    () => cookScaleCaption(scale, baseServings),
+    [scale, baseServings],
   );
 
   useEffect(() => {
@@ -1344,6 +1367,19 @@ export default function CookModeScreen() {
       marginTop: Spacing.lg,
     },
 
+    // ENG-942 — header ListChecks opens the in-step ingredient sheet.
+    ingredientPanelToggle: {
+      width: 40,
+      height: 32,
+      borderRadius: Radius.sm,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.card,
+    },
+    ingredientPanelToggleActive: {
+      backgroundColor: accent.primary + "18",
+    },
+
     // Voice handsfree toggle (Paprika parity, 2026-05-01). The mic
     // sits in the right slot of the header where the layout
     // previously held a 40-width spacer balancing the Exit button.
@@ -1458,6 +1494,26 @@ export default function CookModeScreen() {
               <Text style={styles.watchOriginalText}>Watch original</Text>
             </SupprButton>
           ) : null}
+          {showIngredientPanel ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ingredients"
+              accessibilityState={{ expanded: ingredientPanelOpen }}
+              testID="cook-ingredient-panel-toggle"
+              onPress={() => setIngredientPanelOpen(true)}
+              hitSlop={8}
+              style={[
+                styles.ingredientPanelToggle,
+                ingredientPanelOpen && styles.ingredientPanelToggleActive,
+              ]}
+            >
+              <ListChecks
+                size={20}
+                color={ingredientPanelOpen ? accent.primarySolid : colors.textSecondary}
+                strokeWidth={2}
+              />
+            </Pressable>
+          ) : null}
           {COOK_HANDSFREE_FEATURE_ENABLED ? (
             <Pressable
               accessibilityRole="switch"
@@ -1479,7 +1535,7 @@ export default function CookModeScreen() {
                 <MicOff size={18} color={colors.textSecondary} strokeWidth={2} />
               )}
             </Pressable>
-          ) : (
+          ) : showIngredientPanel ? null : (
             // Spacer keeps the centered step counter centred when
             // the toggle is hidden behind the feature flag.
             <View
@@ -1910,6 +1966,13 @@ export default function CookModeScreen() {
           />
         </ScrollView>
       )}
+      <CookIngredientPanelSheet
+        visible={ingredientPanelOpen}
+        recipeId={recipeId}
+        items={checklistItems}
+        scaleLabel={ingredientPanelScaleLabel}
+        onClose={() => setIngredientPanelOpen(false)}
+      />
       <CookLogServingsSheet
         visible={logServingsOpen}
         batchScale={scale}
