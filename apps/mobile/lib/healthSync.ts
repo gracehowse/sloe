@@ -17,6 +17,7 @@ import { refreshAdaptiveTdeeForUser } from "./refreshAdaptiveTdee";
 // `dateKey(d: Date | string)`, so HealthKit sample timestamps (strings)
 // still format identically.
 import { dateKeyFromDate as dateKey } from "@suppr/shared/datetime/dateKey";
+import { pruneBodyFatPctByDay } from "@suppr/shared/progress/bodyCompositionTrends";
 import {
   HEALTH_DIETARY_CORE_PERMISSION_KEYS,
   HEALTH_DIETARY_IMPORT_PERMISSION_KEYS,
@@ -1525,10 +1526,10 @@ export async function syncHealthData(
         if (pct == null) continue;
         fromHealthBodyFat[dk] = pct;
       }
-      const bodyFatByDay: Record<string, number> = {
+      const bodyFatByDay = pruneBodyFatPctByDay({
         ...existingBodyFatByDay,
         ...fromHealthBodyFat,
-      };
+      });
       const mostRecentBfSample =
         sortedBfSamples.length > 0 ? sortedBfSamples[sortedBfSamples.length - 1]! : null;
       const mostRecentBfPct = mostRecentBfSample
@@ -1549,7 +1550,7 @@ export async function syncHealthData(
 
       if ((mapChanged || scalarChanged) && Object.keys(fromHealthBodyFat).length > 0) {
         const { error } = await supabase.rpc("upsert_body_metric_days", {
-          p_body_fat_patch: fromHealthBodyFat,
+          p_body_fat_patch: pruneBodyFatPctByDay(fromHealthBodyFat),
         });
         if (!error) bodyFatUpdated = true;
       }

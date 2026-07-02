@@ -1,12 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
-import {
-  buildBodyCompositionTrendCopy,
-  type BodyCompositionTrendInput,
-} from "../../../lib/progress/bodyCompositionTrends.ts";
+import type { BodyCompositionTrendCopy } from "../../../lib/progress/bodyCompositionTrends.ts";
 import type { UserTier } from "../../../lib/supabase/serverAnonClient.ts";
 import { SupprButton } from "./suppr-button.tsx";
 import { SupprCard } from "../ui/suppr-card.tsx";
@@ -14,8 +12,9 @@ import { IconBox } from "../ui/icon-box.tsx";
 import { Icons } from "../ui/icons.ts";
 import { Badge } from "./badge.tsx";
 
-export type BodyCompositionTrendCardProps = BodyCompositionTrendInput & {
+export type BodyCompositionTrendCardProps = {
   userTier: UserTier;
+  refreshKey?: number;
 };
 
 /**
@@ -26,13 +25,37 @@ export type BodyCompositionTrendCardProps = BodyCompositionTrendInput & {
  */
 export function BodyCompositionTrendCard({
   userTier,
-  ...input
+  refreshKey = 0,
 }: BodyCompositionTrendCardProps) {
   const router = useRouter();
-  if (!isFeatureEnabled("body_composition_trends_v1")) return null;
-
+  const enabled = isFeatureEnabled("body_composition_trends_v1");
   const isPro = userTier === "pro";
-  const copy = isPro ? buildBodyCompositionTrendCopy(input) : null;
+  const [copy, setCopy] = useState<BodyCompositionTrendCopy | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!enabled || !isPro) {
+      setCopy(null);
+      return;
+    }
+    void fetch("/api/progress/body-composition-trends")
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const payload = (await res.json()) as { trends?: BodyCompositionTrendCopy };
+        return payload.trends ?? null;
+      })
+      .then((trends) => {
+        if (!cancelled) setCopy(trends);
+      })
+      .catch(() => {
+        if (!cancelled) setCopy(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, isPro, refreshKey]);
+
+  if (!enabled) return null;
 
   return (
     <SupprCard

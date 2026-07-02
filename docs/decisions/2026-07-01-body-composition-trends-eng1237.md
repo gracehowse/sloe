@@ -21,12 +21,12 @@ Free/Base users see a factual upsell (no numbers). Pro users see metrics or an h
 
 - New column: `profiles.body_fat_pct_by_day jsonb` (migration `20260702120700`).
 - Latest scalar `body_fat_pct` unchanged — still powers legacy inputs and HealthKit “current” sync.
-- Apple Health sync now writes **per-day** body-fat samples into the map (same last-write-wins-per-day rule as weight).
+- Apple Health sync now writes **per-day** body-fat samples into the map (same last-write-wins-per-day rule as weight) and prunes mobile-written maps to the shared 400-day cap.
 
 ## Enforcement
 
-- **UI:** `userTier === "pro"` (web `profileTier`; mobile `user_tier` + cached tier bootstrap).
-- **API:** `GET /api/progress/body-composition-trends` returns **403 `pro_required`** for non-Pro — historical trends are not advisory-only.
+- **UI:** Free/Base cards render the upsell from tier state only; they do not receive historical body-fat maps as props.
+- **API:** Pro metric reads go through `GET /api/progress/body-composition-trends`, which returns **403 `pro_required`** for non-Pro — historical trends are not advisory-only.
 
 Grace must run `supabase db push --linked` to apply the migration on the linked project.
 

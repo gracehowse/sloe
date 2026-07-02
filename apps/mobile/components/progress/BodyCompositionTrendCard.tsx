@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { Activity } from "lucide-react-native";
 import { useRouter } from "expo-router";
@@ -10,16 +11,15 @@ import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAccent } from "@/context/theme";
-import {
-  buildBodyCompositionTrendCopy,
-  type BodyCompositionTrendInput,
-} from "@suppr/shared/progress/bodyCompositionTrends";
+import type { BodyCompositionTrendCopy } from "@suppr/shared/progress/bodyCompositionTrends";
+import { authedFetch } from "@/lib/authedFetch";
+import { getSupprApiBase } from "@/lib/supprWeb";
 import type { CachedTier } from "@/lib/cachedUserTier";
 
 export type BodyCompositionTrendCardProps = {
   enabled: boolean;
   userTier: CachedTier;
-} & BodyCompositionTrendInput;
+};
 
 /**
  * ENG-1237 — Body-composition trends card on Progress (mobile). Pro users see
@@ -30,17 +30,44 @@ export type BodyCompositionTrendCardProps = {
 export function BodyCompositionTrendCard({
   enabled,
   userTier,
-  ...input
 }: BodyCompositionTrendCardProps) {
   const colors = useThemeColors();
   const accent = useAccent();
   const cardElevation = useCardElevation({ variant: "soft" });
   const router = useRouter();
 
-  if (!enabled) return null;
-
   const isPro = userTier === "pro";
-  const copy = isPro ? buildBodyCompositionTrendCopy(input) : null;
+  const [copy, setCopy] = useState<BodyCompositionTrendCopy | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!enabled || !isPro) {
+      setCopy(null);
+      return;
+    }
+    const base = getSupprApiBase();
+    if (!base) {
+      setCopy(null);
+      return;
+    }
+    void authedFetch(`${base}/api/progress/body-composition-trends`)
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const payload = (await res.json()) as { trends?: BodyCompositionTrendCopy };
+        return payload.trends ?? null;
+      })
+      .then((trends) => {
+        if (!cancelled) setCopy(trends);
+      })
+      .catch(() => {
+        if (!cancelled) setCopy(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, isPro]);
+
+  if (!enabled) return null;
 
   return (
     <View
