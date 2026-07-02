@@ -13,7 +13,7 @@
  * `src/lib/push/weighInReminder.ts` instead of the recap compute.
  *
  * Invocation chain:
- *   Vercel cron (hourly) → POST here with `X-Cron-Secret: SUPPR_CRON_SECRET`
+ *   GitHub Actions cron (.github/workflows/scheduled-crons.yml, hourly) → POST here with `X-Cron-Secret: SUPPR_CRON_SECRET`
  *     → service-role select of profiles with a weigh-in reminder opt-in in
  *       `notification_prefs`
  *     → per-user `decideWeighInReminder(...)`: opt-in + tz-aware window +
@@ -85,7 +85,7 @@ function safeCompare(a: string, b: string): boolean {
 }
 
 /** Sentry Cron monitor — auto-provisions on first check-in. Schedule must
- *  match `vercel.json`; the reminder cron runs hourly because the user's
+ *  match `.github/workflows/scheduled-crons.yml`; the reminder cron runs hourly because the user's
  *  chosen hour can be any of 24. */
 const WEIGH_IN_REMINDER_MONITOR_CONFIG = {
   schedule: { type: "crontab" as const, value: "0 * * * *" },

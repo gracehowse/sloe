@@ -9,7 +9,7 @@
  * underlying lint flips state.
  *
  * Invocation chain:
- *   Vercel cron → POST here with `X-Cron-Secret: SUPPR_CRON_SECRET`
+ *   GitHub Actions cron (.github/workflows/scheduled-crons.yml) → POST here with `X-Cron-Secret: SUPPR_CRON_SECRET`
  *                 → fetch Supabase Management API advisors
  *                 → filter ERROR/WARN, skip INFO (intentional state)
  *                 → Sentry.captureMessage per finding
@@ -23,7 +23,7 @@
  * module + are imported here.
  *
  * Env vars
- *   - `SUPPR_CRON_SECRET`        shared with all Vercel crons.
+ *   - `SUPPR_CRON_SECRET`        shared with all scheduled crons (GH Actions workflow + Vercel env, rotate together).
  *   - `SUPABASE_PAT`             Supabase Management API personal
  *                                access token (created at
  *                                https://supabase.com/dashboard/account/tokens).

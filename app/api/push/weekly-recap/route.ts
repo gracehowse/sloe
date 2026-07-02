@@ -26,7 +26,7 @@
  * both rails gets both and is stamped once.
  *
  * Invocation chain:
- *   Vercel cron → POST here with `X-Cron-Secret: SUPPR_CRON_SECRET`
+ *   GitHub Actions cron (.github/workflows/scheduled-crons.yml) → POST here with `X-Cron-Secret: SUPPR_CRON_SECRET`
  *                 → service-role select of ALL opted-in profiles
  *                 → dedupe filter (skip rows pushed in last 6 days) + tz
  *                 → cross-reference `web_push_subscriptions` (step 4a),
