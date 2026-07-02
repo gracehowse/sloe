@@ -47,6 +47,8 @@ Canonical `foods` / `food_sources` rows are **not** region-scoped today; the ver
 ### Per-serving macros on recipes table
 The `recipes` table stores **per-serving** values (calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg). The UI multiplies by `servings` to show recipe totals. This matches how nutrition labels work.
 
+**Structured yield (ENG-736, foundation):** optional nullable `recipes.yield jsonb` holds `{ kind: "weight" | "units" | "weight_and_units" | "servings", … }` so authors can define total batch weight (grams) and/or discrete units (e.g. slices). When `yield` is null, `recipes.servings` remains the canonical yield. Shared math lives in `src/lib/nutrition/recipeYield.ts` (`@suppr/nutrition-core/recipeYield` on mobile). Migration: `20260702130000_eng736_recipes_yield_jsonb.sql` — apply with `supabase db push --linked` (not MCP).
+
 ### Denormalised ingredient macros
 `recipe_ingredients` stores a snapshot of macros at write time. This avoids re-computing from USDA data on every read. Can be re-verified via the verify screen.
 

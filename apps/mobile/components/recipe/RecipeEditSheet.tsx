@@ -50,9 +50,17 @@ import {
   recomputeRecipeAggregate,
   toggleMealType,
 } from "@suppr/shared/recipes/recipeEdit";
+import {
+  buildRecipeYieldPersistence,
+  recipeYieldEditorDraftFromDb,
+  validateRecipeYieldEditorDraft,
+  type RecipeYieldEditorDraft,
+} from "@suppr/shared/recipes/recipeYieldEditor";
+import { isFeatureEnabled } from "@/lib/analytics";
 import IngredientEditRow, {
   type EditableIngredient,
 } from "./IngredientEditRow";
+import RecipeYieldEditorFields from "./RecipeYieldEditorFields";
 import { SupprButton } from "../ui/SupprButton";
 
 export type EditableRecipe = {
@@ -65,6 +73,7 @@ export type EditableRecipe = {
   cook_time_min: number | null;
   meal_type: string[] | null;
   author_id: string | null;
+  yield?: unknown;
 };
 
 export type RecipeEditSavePayload = {
@@ -82,6 +91,7 @@ export type RecipeEditSavePayload = {
   fiber_g: number;
   sugar_g: number;
   sodium_mg: number;
+  yield?: unknown;
 };
 
 let _localKey = 0;
@@ -140,6 +150,10 @@ export default function RecipeEditSheet({
   const [prepTime, setPrepTime] = useState<string>(recipe.prep_time_min ? String(recipe.prep_time_min) : "");
   const [cookTime, setCookTime] = useState<string>(recipe.cook_time_min ? String(recipe.cook_time_min) : "");
   const [instructions, setInstructions] = useState(recipe.instructions ?? "");
+  const yieldPortionEnabled = isFeatureEnabled("recipe_yield_portion_v1");
+  const [yieldDraft, setYieldDraft] = useState<RecipeYieldEditorDraft>(() =>
+    recipeYieldEditorDraftFromDb(recipe.yield, recipe.servings ?? 1),
+  );
 
   const [ingredients, setIngredients] = useState<EditableIngredient[]>([]);
   /** rowIds of ingredients deleted in this session — removed from DB on save. */
@@ -214,6 +228,13 @@ export default function RecipeEditSheet({
       Alert.alert("Add a title", "Give your recipe a name before saving.");
       return;
     }
+    if (yieldPortionEnabled) {
+      const yieldErr = validateRecipeYieldEditorDraft(yieldDraft);
+      if (yieldErr) {
+        Alert.alert("Check batch yield", yieldErr);
+        return;
+      }
+    }
     setSaving(true);
     try {
       const metadata = buildRecipeMetadataUpdate({
@@ -225,6 +246,12 @@ export default function RecipeEditSheet({
         cookTimeMin: cookTime,
         instructions,
       });
+      const yieldPersistence = yieldPortionEnabled
+        ? buildRecipeYieldPersistence(yieldDraft)
+        : { servings: metadata.servings, yield: null };
+      const effectiveServings = yieldPortionEnabled
+        ? yieldPersistence.servings
+        : metadata.servings;
 
       // 1. Delete removed rows (scoped via recipe_id — RLS enforces ownership).
       if (deletedRowIds.length > 0) {
@@ -288,12 +315,21 @@ export default function RecipeEditSheet({
         .filter((i) => i.rowId && !deletedRowIds.includes(i.rowId))
         .map((i) => macroByRowId[i.rowId!])
         .filter((m): m is DbIngredientRow => Boolean(m));
-      const aggregate = recomputeRecipeAggregate(survivingMacros, metadata.servings);
+      const aggregate = recomputeRecipeAggregate(survivingMacros, effectiveServings);
+
+      const recipeUpdate: Record<string, unknown> = {
+        ...metadata,
+        servings: effectiveServings,
+        ...aggregate,
+      };
+      if (yieldPortionEnabled) {
+        recipeUpdate.yield = yieldPersistence.yield;
+      }
 
       // 5. Write metadata + aggregate to the recipe row (scoped to owner).
       const { error: recipeErr } = await supabase
         .from("recipes")
-        .update({ ...metadata, ...aggregate })
+        .update(recipeUpdate)
         .eq("id", recipe.id)
         .eq("author_id", userId);
       if (recipeErr) {
@@ -302,7 +338,12 @@ export default function RecipeEditSheet({
         return;
       }
 
-      await onSave({ ...metadata, ...aggregate });
+      await onSave({
+        ...metadata,
+        servings: effectiveServings,
+        ...aggregate,
+        ...(yieldPortionEnabled ? { yield: yieldPersistence.yield } : {}),
+      });
       onClose();
     } catch (e) {
       Alert.alert("Error", e instanceof Error ? e.message : "Something went wrong.");
@@ -323,6 +364,8 @@ export default function RecipeEditSheet({
     deletedRowIds,
     macroByRowId,
     recipe.id,
+    yieldPortionEnabled,
+    yieldDraft,
     onSave,
     onClose,
   ]);
@@ -391,6 +434,7 @@ export default function RecipeEditSheet({
                 <Pressable
                   style={styles.servingsBtn}
                   onPress={() => stepServings(-1)}
+                  disabled={yieldPortionEnabled}
                   accessibilityLabel="Decrease servings"
                 >
                   <Minus size={18} color={colors.text} />
@@ -399,12 +443,26 @@ export default function RecipeEditSheet({
                 <Pressable
                   style={styles.servingsBtn}
                   onPress={() => stepServings(1)}
+                  disabled={yieldPortionEnabled}
                   accessibilityLabel="Increase servings"
                 >
                   <Plus size={18} color={colors.text} />
                 </Pressable>
               </View>
             </Field>
+
+            {yieldPortionEnabled ? (
+              <RecipeYieldEditorFields
+                draft={yieldDraft}
+                onChange={(next) => {
+                  setYieldDraft(next);
+                  if (next.mode !== "servings_only") {
+                    setServings(clampRecipeServings(next.servings));
+                  }
+                }}
+                disabled={saving}
+              />
+            ) : null}
 
             <Field label="Meal type">
               <View style={styles.chipRow}>

@@ -2,7 +2,7 @@
  * ENG-972 — inline natural-language describe flow inside the web Log sheet.
  */
 import * as React from "react";
-import { Lock, PencilLine } from "lucide-react";
+import { Lock, PencilLine, ChevronDown, ChevronUp } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -50,6 +50,7 @@ export function LogSheetDescribeFlow({
   const [text, setText] = React.useState("");
   const [items, setItems] = React.useState<AiLoggedItem[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [expanded, setExpanded] = React.useState(false);
 
   React.useEffect(() => {
     if (!sheetOpen) {
@@ -57,6 +58,7 @@ export function LogSheetDescribeFlow({
       setText("");
       setItems([]);
       setError(null);
+      setExpanded(false);
     }
   }, [sheetOpen]);
 
@@ -67,6 +69,7 @@ export function LogSheetDescribeFlow({
   React.useEffect(() => {
     if (!seedText?.trim()) return;
     setText(seedText.trim());
+    setExpanded(true);
     onSeedConsumed?.();
   }, [seedText, onSeedConsumed]);
 
@@ -217,48 +220,81 @@ export function LogSheetDescribeFlow({
     return null;
   }
 
+  if (!expanded && stage === "input" && !error) {
+    return (
+      <button
+        type="button"
+        data-testid="log-sheet-describe-expand"
+        onClick={() => {
+          if (locked) {
+            onPaywall?.();
+            return;
+          }
+          setExpanded(true);
+        }}
+        className="mx-3 mt-2 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-[var(--radius-card-lg)] border border-border bg-card px-3 py-2 text-left hover:bg-muted/40"
+      >
+        <PencilLine className="size-4 shrink-0 text-primary" aria-hidden />
+        <span className="flex-1 text-[13px] font-semibold text-foreground">Describe what you ate</span>
+        {locked ? <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-hidden /> : null}
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      </button>
+    );
+  }
+
   return (
     <div
       data-testid="log-sheet-describe"
-      className="mx-3 mt-2 space-y-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3"
+      className="mx-3 mt-2 space-y-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-2"
     >
-      <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(false)}
+        className="flex w-full items-center gap-2 text-left"
+        aria-label="Collapse describe meal"
+      >
         <PencilLine className="size-4 text-primary" aria-hidden />
         <span className="flex-1 text-[13px] font-semibold text-foreground">Describe what you ate</span>
         {locked ? <Lock className="size-3.5 text-muted-foreground" aria-hidden /> : null}
+        <ChevronUp className="size-4 text-muted-foreground" aria-hidden />
+      </button>
+      <div className="flex items-start gap-2">
+        <textarea
+          data-testid="log-sheet-describe-input"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={'e.g. "2 eggs and toast"'}
+          aria-label="Describe what you ate"
+          aria-describedby="log-sheet-describe-hint"
+          rows={2}
+          className="min-h-[40px] max-h-16 flex-1 resize-none rounded-lg bg-muted px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        />
+        {stage === "parsing" ? (
+          <span className="mt-2 size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            data-testid="log-sheet-describe-parse"
+            onClick={() => void runParse(text)}
+            className="shrink-0"
+          >
+            Parse
+          </Button>
+        )}
       </div>
-      <textarea
-        data-testid="log-sheet-describe-input"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={'e.g. "2 scrambled eggs and toast with butter"'}
-        aria-label="Describe what you ate"
-        rows={2}
-        className="min-h-[56px] w-full resize-none rounded-lg bg-muted px-3 py-2 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      />
       {stage === "error" && error ? (
         <p className="text-[13px] text-destructive" role="alert">
           {error}
         </p>
       ) : null}
       {stage === "parsing" ? (
-        <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-          <span className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          Parsing your description…
-        </div>
+        <p className="text-[11px] text-muted-foreground">Parsing your description…</p>
       ) : (
-        <Button
-          type="button"
-          size="sm"
-          data-testid="log-sheet-describe-parse"
-          onClick={() => void runParse(text)}
-        >
-          Parse meal
-        </Button>
+        <p id="log-sheet-describe-hint" className="sr-only">
+          AI estimates from verified nutrition data. Review every item before logging.
+        </p>
       )}
-      <p className="text-[11px] leading-snug text-muted-foreground">
-        AI estimates from verified nutrition data. Review every item before logging.
-      </p>
     </div>
   );
 }
