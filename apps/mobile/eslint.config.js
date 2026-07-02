@@ -36,8 +36,8 @@ const expoConfig = require('eslint-config-expo/flat');
  *    the web guard (`eslint.config.mjs`, `SUPPR_RAW_COLOUR_SYNTAX`).
  *    Scoped to the SCREEN TREE that ENG-1013 migrated to zero raw hexes
  *    (the four tabs the census named + recipe detail), where it holds a
- *    verified ZERO-violation baseline — so it can ship at `warn` and a
- *    NEW raw hex shows up loudly in lint output. The token file
+ *    verified ZERO-violation baseline — so it ships at `error` and a
+ *    NEW raw hex fails mobile lint immediately. The token file
  *    (`constants/theme.ts`) is the only legal home for a literal hex and
  *    sits outside these `files` globs, so it is never linted. The
  *    Apple-HIG `#000` / `#fff` on `app/login.tsx` +
@@ -45,8 +45,9 @@ const expoConfig = require('eslint-config-expo/flat');
  *    out (see `_project-context.md`) and are NOT in the scoped globs.
  *
  * If you're adding a fourth rule here: keep it `warn` (not `error`)
- * unless you've verified zero existing violations across the tree.
- * CI runs with `--max-warnings 500` and breaking that cap is loud.
+ * unless you've verified zero existing violations across the tree. Raw-hex
+ * enforcement is the exception: its scoped baseline is clean, so it is an
+ * error-level CI gate.
  */
 const SUPPR_RAW_HEX_SYNTAX = [
   {
@@ -123,14 +124,15 @@ module.exports = defineConfig([
   // legacy literals stay as warnings against an unscoped rule's risk of
   // overwhelming the lint budget. The raw-hex guard (ENG-811 mobile lane)
   // rides along here because the Today screen + its component tree were
-  // migrated to zero raw hexes (ENG-1013).
+  // migrated to zero raw hexes (ENG-1013). Style literal warnings stay
+  // separate from the error-level raw-hex block below so flat-config
+  // last-match-wins semantics do not downgrade colour enforcement.
   {
     files: ['app/(tabs)/index.tsx', 'components/today/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
         'warn',
         ...SUPPR_RESTRICTED_STYLE_LITERALS,
-        ...SUPPR_RAW_HEX_SYNTAX,
       ],
     },
   },
@@ -138,15 +140,18 @@ module.exports = defineConfig([
   // tree (the census-named tabs + recipe detail) plus CalorieRing. These
   // files carry the full legacy baseline of style-literal warnings that we
   // are NOT surfacing yet (that scope-expansion is a separate cleanup), so
-  // this block runs ONLY the raw-hex selector. Disjoint from the today block
-  // above (no `index.tsx` / `components/today/**` overlap), so the two
-  // `no-restricted-syntax` entries never clobber each other under flat
-  // config's last-match-wins semantics. Verified zero-violation baseline.
+  // this block runs ONLY the raw-hex selector. It intentionally repeats the
+  // Today screen files after their style-literal warning block so flat-config
+  // last-match-wins semantics upgrade colour enforcement to error without
+  // also promoting the legacy style-literal warnings. Verified zero-violation
+  // raw-hex baseline.
   // CalorieRing joined the lane in ENG-1269: its plum overflow-ramp `to`-stops
   // (#A589B5 / #7A5890) were tokenised (`Colors.*.ringOverflowTo`, value-equal)
   // so the file now holds zero raw hexes and is held to the no-raw-hex rule.
   {
     files: [
+      'app/(tabs)/index.tsx',
+      'components/today/**/*.{ts,tsx}',
       'app/(tabs)/planner.tsx',
       'app/(tabs)/library.tsx',
       'app/(tabs)/discover.tsx',
@@ -160,7 +165,7 @@ module.exports = defineConfig([
       'components/charts/CalorieRing.tsx',
     ],
     rules: {
-      'no-restricted-syntax': ['warn', ...SUPPR_RAW_HEX_SYNTAX],
+      'no-restricted-syntax': ['error', ...SUPPR_RAW_HEX_SYNTAX],
     },
   },
 ]);
