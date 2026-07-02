@@ -47,15 +47,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CalendarDays,
-  ShoppingCart,
-  Infinity as InfinityIcon,
-  Camera,
-  Mic,
-  Mail,
   Sparkles,
   X as XIcon,
-  type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { supabasePublicAnonKey, supabasePublicUrl } from "../../../../utils/supabase/publicConfig.ts";
@@ -63,68 +56,10 @@ import { AnalyticsEvents, type PaywallViewedFrom } from "../../../lib/analytics/
 import { track, isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { PRICING_TIERS } from "../../../lib/landing/pricingTiers.ts";
 import { PaywallTrustStrip } from "../../../../app/pricing/PaywallTrustStrip.tsx";
-import {
-  TrialEndReminderDayPicker,
-  DEFAULT_TRIAL_END_REMINDER_DAY,
-} from "../paywall/TrialEndReminderDayPicker.tsx";
-import {
-  persistTrialEndReminderPref,
-} from "../../../lib/push/persistTrialEndReminderPref.ts";
-import type { TrialEndReminderDay } from "../../../lib/push/trialEndReminder.ts";
+import { TrialEndReminderUpgradeBlock, type TrialEndReminderUpgradeBlockHandle } from "../paywall/TrialEndReminderUpgradeBlock.tsx";
+import { UPGRADE_PAYWALL_PRO_FEATURES } from "../paywall/upgradePaywallProFeatures.ts";
 
 const supabase = createClient(supabasePublicUrl(), supabasePublicAnonKey());
-
-type Feature = {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-};
-
-/**
- * Pro upsell features. PR-01 (audit 2026-04-28) collapsed the prior
- * Variant A (Free→Base, "the full meal-planning loop") and Variant B
- * (Base→Pro, "AI logging") into a single feature list because Base
- * was removed from the SSOT. The merged list opens with the
- * highest-intent AI features (the Pro-distinguishing pitch) then
- * carries forward the multi-day plan + shopping list + cook mode +
- * unlimited saves features that used to live under Base. Icons
- * inherited from the per-variant lists.
- */
-const PRO_FEATURES: Feature[] = [
-  {
-    icon: Camera,
-    title: "AI photo meal recognition",
-    // ENG-1241 legal C6 — "verified macros" reads as an unqualified
-    // accuracy guarantee. Nutrition is always estimated (trust posture);
-    // soften to "estimated macros" so no accuracy claim is made.
-    description: "Snap a plate and get estimated macros. Up to 100 logs per day.",
-  },
-  {
-    icon: Mic,
-    title: "Voice food logging",
-    description: 'Say "bowl of oats and a banana" and it\'s logged. Up to 100 per day.',
-  },
-  {
-    icon: CalendarDays,
-    title: "Meal plans matched to your macros",
-    description: "A week of meals tailored to your targets. Regenerate any day.",
-  },
-  {
-    icon: ShoppingCart,
-    title: "Shopping list from your plan",
-    description: "Aisle-sorted, quantities combined across recipes.",
-  },
-  {
-    icon: InfinityIcon,
-    title: "Unlimited saved recipes",
-    description: "Free tier caps at 10. Pro is uncapped.",
-  },
-  {
-    icon: Mail,
-    title: "Priority email support",
-    description: "Real humans, faster response.",
-  },
-];
 
 /**
  * sessionStorage key for the once-per-session frequency cap. PR-01
@@ -217,10 +152,8 @@ export function UpgradePaywallDialog({
   // so the trial-eligible SKU is preselected (Decision 4). Re-sync when the
   // dialog re-opens so the preselection isn't lost after a dismiss+reopen.
   const [period, setPeriod] = useState<"monthly" | "annual">(defaultPeriod);
-  const trialReminderFlag = isFeatureEnabled("trial_end_reminder_v1");
-  const [trialReminderDay, setTrialReminderDay] = useState<TrialEndReminderDay>(
-    DEFAULT_TRIAL_END_REMINDER_DAY,
-  );
+  const isAnnual = period === "annual";
+  const trialReminderRef = useRef<TrialEndReminderUpgradeBlockHandle>(null);
   useEffect(() => {
     if (open) setPeriod(defaultPeriod);
   }, [open, defaultPeriod]);
@@ -234,9 +167,6 @@ export function UpgradePaywallDialog({
 
   // --- Pricing (from SSOT, never hardcoded) -------------------------
   const proTier = useMemo(() => PRICING_TIERS.find((t) => t.name === "Pro"), []);
-
-  const isAnnual = period === "annual";
-  const trialReminderUiVisible = trialReminderFlag && isAnnual;
 
   const proMonthlyPrice = proTier?.price ?? "£7.99";
   const proAnnualPrice = proTier?.annualPrice ?? "£59.99";
@@ -375,16 +305,10 @@ export function UpgradePaywallDialog({
         alert(data.message ?? data.error ?? "Checkout is unavailable right now. Please try again.");
         return;
       }
-      if (trialReminderUiVisible) {
-        const userId = sessionData.session?.user?.id;
-        if (userId) {
-          void persistTrialEndReminderPref(supabase, userId, trialReminderDay);
-        }
-        track(AnalyticsEvents.trial_end_reminder_day_selected, {
-          day: trialReminderDay,
-          surface: "upgrade_dialog",
-        });
-      }
+      await trialReminderRef.current?.persistBeforeCheckout(
+        supabase,
+        sessionData.session?.user?.id,
+      );
       // Legacy `checkout_started` — unchanged shape.
       track(AnalyticsEvents.checkout_started, { tier: "pro", period, from });
       // New `upsell_variant_converted` — always `free_to_pro` post-PR-01.
@@ -403,7 +327,7 @@ export function UpgradePaywallDialog({
     } finally {
       setBusy(false);
     }
-  }, [busy, from, variant, userTier, period, trialReminderDay, trialReminderUiVisible]);
+  }, [busy, from, variant, userTier, period]);
 
   // Pro users, or anyone hitting the session cap without explicit
   // bypass, render nothing. We do the cap check at render time (not in
@@ -424,7 +348,7 @@ export function UpgradePaywallDialog({
   const heroHeadline = "Log faster. Let the AI do the work.";
   const heroSubtitle =
     "Snap a photo or say what you ate. Pro handles the rest — and unlocks the full meal-planning loop.";
-  const features = PRO_FEATURES;
+  const features = UPGRADE_PAYWALL_PRO_FEATURES;
   const priceLabel = proPriceLabel;
   const periodLabel = proPeriodLabel;
   const periodShort = proPeriodShort;
@@ -605,11 +529,7 @@ export function UpgradePaywallDialog({
             </div>
           </div>
 
-          <TrialEndReminderDayPicker
-            visible={trialReminderUiVisible}
-            value={trialReminderDay}
-            onChange={setTrialReminderDay}
-          />
+          <TrialEndReminderUpgradeBlock ref={trialReminderRef} isAnnual={isAnnual} />
         </div>
 
         {/* Footer — renewal note pinned above CTAs so it is visible
