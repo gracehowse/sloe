@@ -12,7 +12,19 @@
 #   Half-finished code stays uncommitted; this hook does not paper over
 #   that.
 # - Uses --force-with-lease (not --force) so concurrent pushes from
-#   another worktree on the same branch are not silently overwritten.
+#   another worktree on the same branch are not silently overwritten —
+#   BUT --force-with-lease only protects against the remote differing
+#   from our last-known upstream ref, not against it having moved SINCE
+#   then. On 2026-07-02 this hook force-pushed over a CI bot's commit
+#   (update-visual-baselines.yml regenerating snapshots) because the
+#   session had fetched the bot's commit earlier in the turn — the lease
+#   check passed against that stale-but-fetched value, and a local
+#   branch that never incorporated the bot's commit clobbered it. Now we
+#   fetch fresh immediately before checking, and refuse to force-push at
+#   all if the remote tip isn't an ancestor of local HEAD (i.e. someone
+#   else's commit is there that we haven't merged in) — better to leave
+#   work stranded locally for a human to reconcile than to silently
+#   destroy someone else's push.
 # - Exits 0 on every path so it never blocks Claude.
 
 set -uo pipefail
@@ -37,7 +49,10 @@ fi
 
 ahead="$(git rev-list --count "$upstream..HEAD" 2>/dev/null || echo 0)"
 if [ "$ahead" -gt 0 ]; then
-  git push --force-with-lease origin "$branch" >/dev/null 2>&1 || true
+  git fetch origin "$branch" >/dev/null 2>&1 || true
+  if git merge-base --is-ancestor "$upstream" HEAD 2>/dev/null; then
+    git push --force-with-lease origin "$branch" >/dev/null 2>&1 || true
+  fi
 fi
 
 exit 0
