@@ -80,7 +80,7 @@ export function StatusChip({
   const chipContent = (
     <>
       <Icon size={14} color={fg} strokeWidth={2} />
-      <Text style={{ fontSize: 12, fontWeight: "600", color: fg }}>{label}</Text>
+      <Text style={{ fontSize: 11, fontWeight: "600", color: fg }}>{label}</Text>
     </>
   );
   if (!onPress) {

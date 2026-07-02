@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   figmaFitsText: {
     color: Accent.primaryForeground,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "500",
   },
   figmaSkipButton: {
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   figmaMetaDot: {
     width: 4,
     height: 4,
-    borderRadius: 2,
+    borderRadius: Radius.full,
     backgroundColor: "rgba(255,255,255,0.4)",
   },
   figmaHeroTitle: {
