@@ -86,6 +86,8 @@ import { ImportSuccessCelebration } from "@/components/import/ImportSuccessCeleb
 import { SupprMark } from "@/components/SupprMark";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { scaleMacrosByGrams , parseIngredientForSearch, type BarcodeProduct } from "@/lib/verifyRecipe";
+import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
+import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import {
   classifyImportSource,
@@ -964,6 +966,12 @@ export default function ImportSharedScreen() {
               sodiumMg: 0,
             }
           : scaleMacrosByGrams(result.macrosPer100g!, grams);
+        // ENG-1299 — carry the replacement match's micros panel scaled
+        // exactly like its macros; ALWAYS overwrite so the previous match's
+        // panel never survives a re-match.
+        const nextMicros = isPerServingOnly
+          ? scaleMicrosPerServing(result.microsPerServing, q)
+          : scaleMicrosForGrams(result.microsPer100g ?? {}, grams);
         const next = prev.ingredientMacros.map((row, i) =>
           i === idx
             ? {
@@ -978,6 +986,7 @@ export default function ImportSharedScreen() {
                 fiberG: scaled.fiberG,
                 sugarG: scaled.sugarG,
                 sodiumMg: scaled.sodiumMg,
+                micros: Object.keys(nextMicros).length > 0 ? nextMicros : undefined,
                 source: result.source,
               }
             : row,
@@ -1002,6 +1011,9 @@ export default function ImportSharedScreen() {
       if (idx == null) return;
       const grams = product.servingSizeG ?? 100;
       const f = grams / 100;
+      // ENG-1299 — carry the scanned product's micros panel scaled with the
+      // same grams as the macros; always overwrite the previous panel.
+      const nextMicros = scaleMicrosForGrams(product.microsPer100g ?? {}, grams);
       setPendingRecipe((prev) => {
         if (!prev || !Array.isArray(prev.ingredientMacros)) return prev;
         const next = prev.ingredientMacros.map((row, i) =>
@@ -1018,6 +1030,7 @@ export default function ImportSharedScreen() {
                 fiberG: Math.round(product.fiberG * f * 10) / 10,
                 sugarG: 0,
                 sodiumMg: 0,
+                micros: Object.keys(nextMicros).length > 0 ? nextMicros : undefined,
                 source: "OFF",
               }
             : row,
@@ -1048,6 +1061,11 @@ export default function ImportSharedScreen() {
                 ...(override.fiber != null
                   ? { fiberG: Math.round(override.fiber * 10) / 10 }
                   : {}),
+                // ENG-1299 — a manual override replaces the match's macros
+                // wholesale, so the match's micros panel no longer
+                // corresponds to the row. Clear it rather than keep values
+                // that can't be rescaled (no-guessing rule).
+                micros: undefined,
                 source: "Override",
               }
             : row,

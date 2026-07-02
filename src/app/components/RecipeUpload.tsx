@@ -135,6 +135,8 @@ type VerifiedLine = {
     sugarG: number;
     sodiumMg: number;
   } | null;
+  /** ENG-1299 — absolute micros panel at the row's scaled grams (optional). */
+  micros?: Record<string, number>;
 };
 
 // ENG-1287: the old DEFAULT_COVER_IMAGE stock salad is retired — photo-less recipes persist image_url NULL.
@@ -301,6 +303,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     avgConfidence: number;
     minConfidence: number;
     primarySource?: string;
+    /** ENG-1299 — per-serving micros panel from the verify response. */
+    microsPerServing?: Record<string, number>;
   } | null>(null);
   const [lineOverrides, setLineOverrides] = useState<
     Record<number, { kind: "USDA"; fdcId: number; description: string } | { kind: "OFF"; barcode: string; description: string }>
@@ -1291,6 +1295,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             primarySource?: string;
             minIngredientConfidence?: number;
             avgIngredientConfidence?: number;
+            // ENG-1299 — partial per-serving micros panel (absent ≠ zero).
+            microsPerServing?: Record<string, number>;
           }
         | { ok?: false; message?: string; error?: string };
       if (!("ok" in data) || !data.ok) {
@@ -1320,6 +1326,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         avgConfidence,
         minConfidence,
         primarySource: data.primarySource,
+        // ENG-1299 — per-serving micros panel (accept-floor applied server-side).
+        microsPerServing: data.microsPerServing,
       });
       if (!opts?.silent) {
         toast.success(`Best-available nutrition calculated (${data.primarySource ?? provider})`, {
@@ -1341,6 +1349,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     verified: VerifiedLine[];
     totals: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
     perServing: { calories: number; protein: number; carbs: number; fat: number; fiberG: number; sugarG: number; sodiumMg: number };
+    /** ENG-1299 — per-serving micros panel (accept-floor applied server-side). */
+    microsPerServing?: Record<string, number>;
     primarySource?: string;
     minIngredientConfidence?: number;
     avgIngredientConfidence?: number;
@@ -1407,6 +1417,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         avgConfidence,
         minConfidence,
         primarySource: data.primarySource,
+        // ENG-1299 — per-serving micros panel (accept-floor applied server-side).
+        microsPerServing: data.microsPerServing,
       });
       setPasteDialogOpen(false);
       setPasteDraft("");
@@ -1632,6 +1644,11 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   ? verifiedTotals.perServing.sodiumMg
                   : 0,
             ),
+            // ENG-1299 — per-serving micros panel. Zeroed with the rest of
+            // the aggregate when any line is FatSecret-sourced (T19 Path B);
+            // empty when the recipe was saved without a verify pass.
+            nutrition_micros:
+              !aggregateScrub && verifiedOk ? (verifiedTotals.microsPerServing ?? {}) : {},
             allergens: allergensPayload,
           },
           { onConflict: "id" },
@@ -1688,6 +1705,8 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           fiber_g: roundMacro(macros?.fiberG ?? 0),
           sugar_g: roundMacro(macros?.sugarG ?? 0),
           sodium_mg: roundMacro(macros?.sodiumMg ?? 0),
+          // ENG-1299 — micros travel (and scrub) with the macros.
+          nutrition_micros: v?.micros ?? {},
           fatsecret_food_id: v?.fatSecretFoodId ?? null,
           confidence: v?.confidence ?? null,
           is_verified: isStructuredSource(rowSource) && Boolean(macros),

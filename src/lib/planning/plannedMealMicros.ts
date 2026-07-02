@@ -21,6 +21,7 @@
  * uncertain, do not guess" project rule).
  */
 import { wouldCoerceMacros } from "../nutrition/coerceRecipeMacrosForPlanning";
+import { scaleMicrosPerServing } from "../nutrition/scaleMicrosPerServing";
 
 export type SupabaseLike = {
   from: (table: string) => {
@@ -37,7 +38,9 @@ export type PlannedMealMicros = {
   fiberG: number | null;
   /**
    * Micros jsonb payload for `nutrition_entries.nutrition_micros`. Uses the
-   * canonical keys the meal-nutrition display reads (`sugarG`, `sodiumMg`).
+   * canonical keys the meal-nutrition display reads (`sugarG`, `sodiumMg`,
+   * and — since ENG-1299 — the full panel from `recipes.nutrition_micros`:
+   * `saturatedFatG`, `cholesterolMg`, `potassiumMg`, vitamins, …).
    * Empty object when no micros are available.
    */
   micros: Record<string, number>;
@@ -64,6 +67,13 @@ export function scaleRecipeMicros(
      *  ingredient-aggregate to read). */
     caffeine_mg?: number | null;
     alcohol_g?: number | null;
+    /**
+     * ENG-1299 — per-serving micronutrient panel from
+     * `recipes.nutrition_micros` (canonical camelCase keys). Scaled by the
+     * portion multiplier and merged under the columnar keys below so the
+     * logged journal entry carries the full panel, like a food log.
+     */
+    nutrition_micros?: Record<string, unknown> | null;
     calories?: number | null;
     protein?: number | null;
     carbs?: number | null;
@@ -83,7 +93,19 @@ export function scaleRecipeMicros(
       ? Math.round(fiberRaw * safeMult * 10) / 10
       : null;
 
-  const micros: Record<string, number> = {};
+  // ENG-1299 — start from the recipe's per-serving micros panel scaled by
+  // the portion multiplier (same helper + rounding the food-log commit path
+  // uses). Non-numeric / non-positive junk in the jsonb is dropped by the
+  // scaler. Columnar keys below OVERWRITE panel keys — the columns are the
+  // canonical roll-ups for sugar/sodium/caffeine/alcohol and cover rows the
+  // panel misses (sources that publish macros but no micros panel).
+  const panel: Record<string, number> = {};
+  if (recipe.nutrition_micros && typeof recipe.nutrition_micros === "object" && !Array.isArray(recipe.nutrition_micros)) {
+    for (const [k, v] of Object.entries(recipe.nutrition_micros)) {
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) panel[k] = v;
+    }
+  }
+  const micros: Record<string, number> = scaleMicrosPerServing(panel, safeMult);
   if (typeof sugarRaw === "number" && Number.isFinite(sugarRaw) && sugarRaw > 0) {
     micros.sugarG = Math.round(sugarRaw * safeMult * 10) / 10;
   }
@@ -118,14 +140,15 @@ export async function fetchPlannedMealMicros(
   try {
     const { data, error } = await supabase
       .from("recipes")
-      .select("fiber_g, sugar_g, sodium_mg, caffeine_mg, alcohol_g, calories, protein, carbs, fat")
+      .select("fiber_g, sugar_g, sodium_mg, caffeine_mg, alcohol_g, nutrition_micros, calories, protein, carbs, fat")
       .eq("id", recipeId)
       .maybeSingle();
     if (error) {
-      // F-74 cross-device (2026-05-08): if the migration hasn't been
+      // F-74 cross-device (2026-05-08), extended ENG-1299: if either the
+      // caffeine/alcohol or the nutrition_micros migration hasn't been
       // applied yet (PGREST 42703 / "column ... does not exist"), fall
-      // back to the legacy column set so the planner / recipe-detail
-      // log paths keep working with stale data.
+      // back to the minimal legacy column set so the planner /
+      // recipe-detail log paths keep working with stale data.
       const code = (error as { code?: string }).code;
       if (code === "42703") {
         const { data: legacy } = await supabase
@@ -157,6 +180,7 @@ export async function fetchPlannedMealMicros(
         sodium_mg?: number | null;
         caffeine_mg?: number | null;
         alcohol_g?: number | null;
+        nutrition_micros?: Record<string, unknown> | null;
         calories?: number | null;
         protein?: number | null;
         carbs?: number | null;

@@ -93,10 +93,13 @@ import {
   flatMacroRowsFromVerifyJson,
   isVerifiedFromVerifyRow,
   mergeVerifiedMacroRows,
+  microsPerServingFromVerifyJson,
   perServingFromVerifyJson,
   verifyJsonNeedsReview,
 } from "@suppr/nutrition-core/verifyRecipeResponse";
 import { structuredIngredientsForVerify } from "@suppr/shared/recipe-ingredients/structuredIngredientsForVerify";
+import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
+import { isStructuredSource } from "@suppr/nutrition-core/structuredSourceGate";
 import {
   formatContainsLine,
   normaliseAllergenIds,
@@ -177,6 +180,13 @@ type FullRecipe = {
   fiber_g?: number;
   sugar_g?: number;
   sodium_mg?: number;
+  /**
+   * ENG-1299 — per-serving micros panel from `recipes.nutrition_micros`
+   * (canonical `nutrition_micros` camelCase keys). Absent on legacy DBs
+   * (42703 fallback select) and on recipes never verified with a
+   * micros-carrying source.
+   */
+  nutrition_micros?: Record<string, unknown> | null;
   meal_type: string[] | null;
   source_url: string | null;
   source_name: string | null;
@@ -581,6 +591,8 @@ export default function RecipeDetailScreen() {
               fiber_g: Math.round(r.fiber * 10) / 10,
               sugar_g: Math.round(r.sugar * 10) / 10,
               sodium_mg: Math.round(r.sodium),
+              // ENG-1299 — micros panel travels (and scrubs) with the macros.
+              nutrition_micros: r.micros ?? {},
               source: r.source,
               confidence: r.confidence,
               // ENG-1305: shared helper reads the canonical accept floor
@@ -604,7 +616,9 @@ export default function RecipeDetailScreen() {
           rows.map((r) => ({ source: r.source ?? null })),
         );
         const aggregateUpdate = aggregateHasFs
-          ? ZEROED_RECIPE_AGGREGATE
+          ? // ENG-1299 — mixed-FatSecret aggregates zero the micros panel
+            // too (same T19 Path B cache rule as the macro columns).
+            { ...ZEROED_RECIPE_AGGREGATE, nutrition_micros: {} }
           : {
               calories: Math.round(perServing.calories),
               protein: Math.round(perServing.protein),
@@ -613,6 +627,8 @@ export default function RecipeDetailScreen() {
               fiber_g: perServing.fiberG != null ? Math.round(perServing.fiberG * 10) / 10 : 0,
               sugar_g: perServing.sugarG != null ? Math.round(perServing.sugarG * 10) / 10 : 0,
               sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
+              // ENG-1299 — per-serving micros panel from the verify response.
+              nutrition_micros: microsPerServingFromVerifyJson(json),
             };
 
         const { error: recipeErr } = await supabase
@@ -711,7 +727,9 @@ export default function RecipeDetailScreen() {
         let recipeRes = await supabase
           .from("recipes")
           .select(
-            "id, title, description, instructions, image_url, image_source, image_model, image_generated_at, servings, yield, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, published, content_origin, allergens",
+            // ENG-1299: nutrition_micros — the per-serving micros panel the
+            // "Add to today" log path merges into the journal entry.
+            "id, title, description, instructions, image_url, image_source, image_model, image_generated_at, servings, yield, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, nutrition_micros, meal_type, source_url, source_name, author_id, creator_id, published, content_origin, allergens",
           )
           .eq("id", recipeId)
           .maybeSingle();
@@ -1323,7 +1341,20 @@ export default function RecipeDetailScreen() {
       const dk = dateKeyFromDate(new Date());
       const slot = journalSlotFromMealTypes(recipe.meal_type);
       const mult = Math.max(0.125, Math.min(24, logPortion));
-      const micros: Record<string, number> = {};
+      // ENG-1299 — start from the recipe's per-serving micros panel scaled
+      // by the portion (same helper + rounding as the food-log commit path;
+      // web parity: `scaleRecipeMicros` in `plannedMealMicros.ts`). The
+      // columnar sugar/sodium below OVERWRITE panel keys — they're the
+      // canonical roll-ups and cover rows whose source published macros but
+      // no micros panel. Non-numeric jsonb junk is dropped.
+      const panel: Record<string, number> = {};
+      const rawPanel = recipe.nutrition_micros;
+      if (rawPanel && typeof rawPanel === "object" && !Array.isArray(rawPanel)) {
+        for (const [k, v] of Object.entries(rawPanel)) {
+          if (typeof v === "number" && Number.isFinite(v) && v > 0) panel[k] = v;
+        }
+      }
+      const micros: Record<string, number> = scaleMicrosPerServing(panel, mult);
       if (scaledForLog.sugar_g != null) micros.sugarG = scaledForLog.sugar_g;
       if (scaledForLog.sodium_mg != null) micros.sodiumMg = scaledForLog.sodium_mg;
       // F-74 / F-103 (2026-05-07) — recipe rows do not carry caffeine_mg /

@@ -50,6 +50,15 @@ export type ScrubableRow = {
   is_verified?: boolean | null;
   /** Confidence travels with the source label and is dropped on scrub. */
   confidence?: number | null;
+  /**
+   * ENG-1299 — optional micronutrient panels. The micros map is FatSecret
+   * data exactly like the macro columns, so both spellings are cleared on
+   * scrub (in-memory rows use `micros`; DB payloads use `nutrition_micros`).
+   * Only keys already present on the row are rewritten, so a scrubbed DB
+   * payload never gains a column it didn't carry.
+   */
+  micros?: Record<string, number> | null;
+  nutrition_micros?: Record<string, number> | null;
   /** Permit other columns through unchanged. */
   [extra: string]: unknown;
 };
@@ -81,7 +90,7 @@ export function isFatSecretSourced(row: ScrubableRow): boolean {
  */
 export function scrubFatSecretMacros<T extends ScrubableRow>(row: T): T {
   if (!isFatSecretSourced(row)) return row;
-  return {
+  const scrubbed: T = {
     ...row,
     calories: 0,
     protein: 0,
@@ -94,6 +103,12 @@ export function scrubFatSecretMacros<T extends ScrubableRow>(row: T): T {
     source: SCRUBBED_SOURCE_LABEL,
     confidence: null,
   };
+  // ENG-1299 — clear the micros panel too (same FatSecret-cached data class
+  // as the macro columns). Only rewrite keys the row already carries so DB
+  // update payloads never gain a column they didn't have.
+  if ("micros" in row) (scrubbed as ScrubableRow).micros = undefined;
+  if ("nutrition_micros" in row) (scrubbed as ScrubableRow).nutrition_micros = {};
+  return scrubbed;
 }
 
 /**

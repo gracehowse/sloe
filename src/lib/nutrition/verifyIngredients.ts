@@ -11,11 +11,14 @@ import { fatSecretConfigFromEnv, fatSecretFoodGet, fatSecretFoodSearch } from "@
 import { parseIngredientLine } from "@/lib/recipe-ingredients/parseIngredientLine";
 import { measureToGrams } from "@/lib/nutrition/measureToGrams";
 import {
+  fatSecretServingMicrosPer100g,
   normalizeServingToMacros,
   pickBestServing,
   servingMassGrams,
   type VerifiedMacros,
 } from "@/lib/nutrition/fatsecretNormalize";
+import { scaleMicrosForGrams } from "@/lib/openFoodFacts/parseOffMicros";
+import { perServingMicrosFromRows } from "@/lib/nutrition/recipeMicros";
 import { fdcConfigFromEnv, fdcFoodGet, fdcFoodsSearch } from "@/lib/usda/fdcClient";
 import { fdcFoodMacrosPer100g } from "@/lib/nutrition/usdaNormalize";
 import { fetchProductByBarcode } from "@/lib/openFoodFacts/fetchProductByBarcode";
@@ -38,6 +41,20 @@ export type VerifiedIngredient = {
   confidence: number;
   source: "Suppr" | "USDA" | "Edamam" | "OFF" | "FatSecret" | "Estimated" | "Unverified";
   macros: VerifiedMacros | null;
+  /**
+   * ENG-1299 — optional micronutrient panel for this row, ABSOLUTE at the
+   * row's scaled gram weight (same grams the `macros` were scaled with, so
+   * micros and macros stay exactly proportional). Keys are the canonical
+   * camelCase `nutrition_entries.nutrition_micros` set (`saturatedFatG`,
+   * `cholesterolMg`, `potassiumMg`, `calciumMg`, `ironMg`, vitamins, …) —
+   * the same shape the FOOD-LOG path plumbs. Absent when the source did not
+   * publish a micros panel (absent ≠ zero; never synthesised).
+   *
+   * Populated by the OFF (search + barcode-override) and FatSecret (Premier,
+   * metric-grounded servings only) branches. USDA / Edamam carry — deferred:
+   * see ENG-1332.
+   */
+  micros?: Record<string, number>;
   /**
    * ENG-691 (Decision D-05, 2026-05-25): true when this row's confidence is
    * below {@link MIN_ACCEPT_CONFIDENCE} (0.55). Its `macros` (if any) are kept
@@ -62,6 +79,15 @@ export type VerifyResult = {
   minIngredientConfidence: number;
   /** Mean per-line confidence among ACCEPTED ingredients (same row set as `totals`; ENG-1305). */
   avgIngredientConfidence: number;
+  /**
+   * ENG-1299 — per-serving micronutrient panel aggregated from accepted
+   * rows only (same accept-floor contract as `totals`: `belowAcceptFloor`
+   * rows are excluded). Canonical `nutrition_micros` keys; PARTIAL by
+   * design — a key sums only the rows whose source published it, exactly
+   * like the existing fiber/sugar/sodium columns. Empty object when no
+   * row carried micros.
+   */
+  microsPerServing: Record<string, number>;
   /**
    * ENG-691: count of lines whose confidence fell below
    * {@link MIN_ACCEPT_CONFIDENCE} and were therefore excluded from `totals`.
@@ -520,6 +546,12 @@ export async function verifyIngredients(opts: {
           scaledMacrosPlausible(barcodeMacros) &&
           checkScaledLogPlausibility(barcodeMacros, gramsToUse, off.product).ok
         ) {
+          // ENG-1299 — carry the OFF micros panel, scaled with the same
+          // grams the macros used (per-100g → absolute). Empty panel → no
+          // key (absent ≠ zero).
+          const barcodeMicros = off.product.microsPer100g
+            ? scaleMicrosForGrams(off.product.microsPer100g, gramsToUse)
+            : {};
           return {
             input: raw, resolved,
             fatSecretFoodId: override.barcode,
@@ -527,6 +559,7 @@ export async function verifyIngredients(opts: {
             confidence: off.product.basisCorrected ? 0.6 : 1,
             source: "OFF",
             macros: barcodeMacros,
+            ...(Object.keys(barcodeMicros).length > 0 ? { micros: barcodeMicros } : {}),
           };
         }
       }
@@ -878,6 +911,13 @@ export async function verifyIngredients(opts: {
             const offConf = isOffDataStale(hit.lastModifiedT)
               ? Math.max(0, offConfBase - 0.08)
               : offConfBase;
+            // ENG-1299 — carry the OFF micros panel. `hit.microsPer100g` is
+            // already on the reconciled per-100g basis (searchProducts applies
+            // `per100gFactor` inside `parseOffMicrosPer100g`), so scaling by
+            // the same grams as the macros keeps micros ∝ macros exactly.
+            const offMicros = hit.microsPer100g
+              ? scaleMicrosForGrams(hit.microsPer100g, grams)
+              : {};
             return {
               input: raw, resolved,
               fatSecretFoodId: hit.code,
@@ -885,6 +925,7 @@ export async function verifyIngredients(opts: {
               confidence: offConf,
               source: "OFF",
               macros: offMacros,
+              ...(Object.keys(offMicros).length > 0 ? { micros: offMicros } : {}),
             };
           }
         }
@@ -929,7 +970,8 @@ export async function verifyIngredients(opts: {
                 );
                 // fall through past the FatSecret block to USDA-other / OFF / estimator
               } else {
-              const servingG = servingMassGrams(serving) ?? 100;
+              const servingMass = servingMassGrams(serving);
+              const servingG = servingMass ?? 100;
               const perGram = {
                 calories: perServing.calories / servingG,
                 protein: perServing.protein / servingG,
@@ -960,6 +1002,22 @@ export async function verifyIngredients(opts: {
                 scaledMacrosPlausible(fsMacros) &&
                 checkScaledLogPlausibility(fsMacros, grams, fsPer100g).ok
               ) {
+                // ENG-1299 — carry the Premier micros panel ONLY when the
+                // serving has real metric grounding (`servingMassGrams`
+                // resolved). When it is null the macros above already run on
+                // an assumed-100g serving (legacy behaviour, unchanged); we
+                // do NOT stack the new micros surface on that assumption —
+                // carry nothing rather than guess. Grounded servings scale
+                // per-100g micros by the same `grams` the macros used, so
+                // micros ∝ macros exactly. Basic-tier responses return an
+                // empty panel → no key.
+                const fsMicros =
+                  servingMass != null && servingMass > 0
+                    ? scaleMicrosForGrams(
+                        fatSecretServingMicrosPer100g(serving, servingMass),
+                        grams,
+                      )
+                    : {};
                 return {
                   input: raw, resolved,
                   fatSecretFoodId: best.food_id,
@@ -967,6 +1025,7 @@ export async function verifyIngredients(opts: {
                   confidence: conf,
                   source: "FatSecret",
                   macros: fsMacros,
+                  ...(Object.keys(fsMicros).length > 0 ? { micros: fsMicros } : {}),
                 };
               }
               } // closes else { (sourceIsAllZero guard, 2026-04-25)
@@ -1100,6 +1159,13 @@ export async function verifyIngredients(opts: {
   const avgIngredientConfidence =
     confidences.length > 0 ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0;
 
+  // ENG-1299 — per-serving micros panel, same accept-floor contract as
+  // `totals`: sub-floor rows are surfaced for verification, never summed.
+  const microsPerServing = perServingMicrosFromRows(
+    verified.map((v) => (v.macros && !v.belowAcceptFloor ? v.micros : undefined)),
+    servings,
+  );
+
   return {
     verified,
     totals,
@@ -1109,6 +1175,7 @@ export async function verifyIngredients(opts: {
     minIngredientConfidence,
     avgIngredientConfidence,
     belowAcceptFloorCount,
+    microsPerServing,
   };
 }
 

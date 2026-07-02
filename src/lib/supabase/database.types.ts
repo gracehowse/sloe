@@ -1565,6 +1565,7 @@ export type Database = {
           ingredient_id: string | null
           is_verified: boolean
           name: string
+          nutrition_micros: Json
           override_macros: Json | null
           protein: number
           recipe_id: string
@@ -1590,6 +1591,7 @@ export type Database = {
           ingredient_id?: string | null
           is_verified?: boolean
           name: string
+          nutrition_micros?: Json
           override_macros?: Json | null
           protein?: number
           recipe_id: string
@@ -1615,6 +1617,7 @@ export type Database = {
           ingredient_id?: string | null
           is_verified?: boolean
           name?: string
+          nutrition_micros?: Json
           override_macros?: Json | null
           protein?: number
           recipe_id?: string
@@ -1810,6 +1813,7 @@ export type Database = {
           instructions: string | null
           is_verified: boolean
           meal_type: string[] | null
+          nutrition_micros: Json
           prep_time_min: number | null
           protein: number
           published: boolean
@@ -1853,6 +1857,7 @@ export type Database = {
           instructions?: string | null
           is_verified?: boolean
           meal_type?: string[] | null
+          nutrition_micros?: Json
           prep_time_min?: number | null
           protein?: number
           published?: boolean
@@ -1896,6 +1901,7 @@ export type Database = {
           instructions?: string | null
           is_verified?: boolean
           meal_type?: string[] | null
+          nutrition_micros?: Json
           prep_time_min?: number | null
           protein?: number
           published?: boolean
