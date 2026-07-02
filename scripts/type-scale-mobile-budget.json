@@ -29,7 +29,7 @@
     "apps/mobile/app/plan-import.tsx": 6,
     "apps/mobile/app/profile.tsx": 3,
     "apps/mobile/app/progress-metric.tsx": 4,
-    "apps/mobile/app/recipe/[id].tsx": 7,
+    "apps/mobile/app/recipe/[id].tsx": 8,
     "apps/mobile/app/recipe/verify.tsx": 12,
     "apps/mobile/app/shopping.tsx": 2,
     "apps/mobile/app/targets.tsx": 5,
