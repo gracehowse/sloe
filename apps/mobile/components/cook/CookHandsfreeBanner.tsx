@@ -1,5 +1,5 @@
 import { Text, View, StyleSheet } from "react-native";
-import { Spacing, Radius } from "@/constants/theme";
+import { Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 
@@ -26,10 +26,10 @@ export function CookHandsfreeBanner({ visible }: CookHandsfreeBannerProps) {
       accessibilityLiveRegion="polite"
       testID="cook-handsfree-banner"
     >
-      <Text style={[styles.title, { color: colors.text }]}>
+      <Text style={[Type.captionStrong, { color: colors.text }]}>
         Screen stays awake while you cook.
       </Text>
-      <Text style={[styles.sub, { color: colors.textSecondary }]}>
+      <Text style={[Type.caption, { color: colors.textSecondary, marginTop: Spacing.xs }]}>
         Voice control (say &quot;next&quot;, &quot;back&quot;, &quot;repeat&quot;) is coming soon. We don&apos;t record audio yet.
       </Text>
     </View>
@@ -44,15 +44,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: Radius.sm,
     borderWidth: 1,
-  },
-  title: {
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: "600",
-  },
-  sub: {
-    fontSize: 11,
-    lineHeight: 15,
-    marginTop: 2,
   },
 });
