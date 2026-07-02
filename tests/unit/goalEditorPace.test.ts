@@ -207,7 +207,19 @@ describe("goalEditorPace — profile row parsing", () => {
       adaptiveTdeeUpdatedAt: "2026-05-25T00:00:00.000Z",
       targetFiberG: null,
       targetFiberSource: null,
+      // ENG-960 — a row with no schedule parses flat (weekend default filled in).
+      calorieSchedule: null,
+      highDays: [0, 6],
     });
+  });
+
+  it("parses an opted-in day-target schedule row (ENG-960)", () => {
+    const p = parseGoalEditorProfileRow({ calorie_schedule: "weekend_lift", high_days: [0, 6] });
+    expect(p.calorieSchedule).toBe("weekend_lift");
+    expect(p.highDays).toEqual([0, 6]);
+    // "same" / null / malformed collapse to the flat week.
+    expect(parseGoalEditorProfileRow({ calorie_schedule: "same" }).calorieSchedule).toBeNull();
+    expect(parseGoalEditorProfileRow({}).calorieSchedule).toBeNull();
   });
 
   it("defends a partial / legacy row with safe defaults", () => {
