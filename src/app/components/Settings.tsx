@@ -1658,25 +1658,22 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Dietary Restrictions</label>
             <div className="flex flex-wrap gap-2">
-              {DIETARY_PREFERENCE_ENTRIES.map((diet) => {
-                const active = dietary.includes(diet.id);
-                return (
-                  <FilterChip
-                    key={diet.id}
-                    size="md"
-                    label={diet.label}
-                    selected={active}
-                    data-testid={`settings-dietary-${diet.id}`}
-                    onClick={() => {
-                      const next = active
-                        ? dietary.filter((d) => d !== diet.id)
-                        : [...dietary, diet.id];
-                      setDietary(next);
-                      void savePref({ dietary: next.length > 0 ? next : null });
-                    }}
-                  />
-                );
-              })}
+              {DIETARY_PREFERENCE_ENTRIES.map((diet) => (
+                <FilterChip
+                  key={diet.id}
+                  size="md"
+                  label={diet.label}
+                  selected={dietary.includes(diet.id)}
+                  data-testid={`settings-dietary-${diet.id}`}
+                  onClick={() => {
+                    const next = dietary.includes(diet.id)
+                      ? dietary.filter((d) => d !== diet.id)
+                      : [...dietary, diet.id];
+                    setDietary(next);
+                    void savePref({ dietary: next.length > 0 ? next : null });
+                  }}
+                />
+              ))}
             </div>
           </div>
 
