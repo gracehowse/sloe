@@ -118,6 +118,45 @@ describe("verifyIngredients — USDA micros carry (ENG-1332)", () => {
     expect(row.micros!.calciumMg).toBeGreaterThan(0);
   });
 
+  it("scales micros by effectiveGrams (portion-aware), not the raw grams input (adversarial self-review catch)", async () => {
+    // "2 slice ham" — a food-specific portion weight (28g/slice) overrides the
+    // generic per-gram default. If a future regression scaled micros with the
+    // raw `grams` parsed from the ingredient line instead of the resolved
+    // `effectiveGrams`, this is the only test that would catch it (the other
+    // USDA tests use unit: "g", which never enters the portion-lookup branch).
+    const HAM: FdcFood = {
+      fdcId: 900003,
+      description: "ham, sliced",
+      foodNutrients: [
+        { nutrient: { name: "Energy", number: "208", unitName: "kcal" }, amount: 145 },
+        { nutrient: { name: "Protein", number: "203", unitName: "g" }, amount: 21 },
+        { nutrient: { name: "Total lipid (fat)", number: "204", unitName: "g" }, amount: 5 },
+        { nutrient: { name: "Carbohydrate, by difference", number: "205", unitName: "g" }, amount: 1.5 },
+        { nutrient: { name: "Sodium, Na", number: "307", unitName: "mg" }, amount: 1200 },
+      ],
+      foodPortions: [{ portionDescription: "1 slice", modifier: "slice", measureUnit: { name: "slice" }, gramWeight: 28 }],
+    } as unknown as FdcFood;
+    mockFdcFoodsSearch.mockResolvedValue([{ fdcId: 900003, description: "ham, sliced" }]);
+    mockFdcFoodGet.mockResolvedValue(HAM);
+
+    const result = await verifyIngredients({
+      ingredients: [{ name: "ham", amount: "2", unit: "slice" }],
+      servings: 1,
+      provider: "auto",
+    });
+
+    const row = result.verified[0]!;
+    expect(row.source).toBe("USDA");
+    // effectiveGrams = 2 slices × 28g = 56g — NOT the generic-default grams
+    // the estimator would otherwise assign to a bare "2 ham".
+    const effectiveGrams = 56;
+    const expected = scaleMicrosForGrams(fdcFoodMicrosPer100g(HAM), effectiveGrams);
+    expect(Object.keys(expected).length).toBeGreaterThan(0);
+    expect(row.micros).toEqual(expected);
+    // Macros must agree with the SAME effectiveGrams basis (sodium 1200mg/100g × 56/100).
+    expect(row.macros!.sodiumMg).toBeCloseTo(1200 * (effectiveGrams / 100), 0);
+  });
+
   it("emits no micros key when the USDA food publishes none (absent ≠ zero)", async () => {
     const bare = {
       fdcId: 900002,

@@ -30,6 +30,39 @@ describe("applyNameAliases — pepper spice vs vegetable (ENG-1305)", () => {
     expect(applyNameAliases("ground black pepper")).toBe("ground black pepper");
   });
 
+  it("does NOT relabel 'red pepper' — stays ambiguous (chili-flake shorthand vs bell-pepper colour), never guessed (adversarial self-review catch, 2026-07-02)", () => {
+    // Regression: the guard comment documented this intent from day one, but
+    // the implementation never actually added a `red` lookbehind — "1 red
+    // pepper, diced" silently became "1 red bell pepper, diced", mismatching
+    // to a bell pepper (~20 kcal/100g) when the recipe meant crushed red
+    // pepper flakes (~280 kcal/100g) or another chili.
+    expect(applyNameAliases("red pepper")).toBe("red pepper");
+    expect(applyNameAliases("1 red pepper, diced")).toBe("1 red pepper, diced");
+  });
+
+  it("does NOT relabel chili-variety peppers as bell pepper (adversarial self-review catch, 2026-07-02)", () => {
+    // Same failure class as red pepper: a named chili variety is nutritionally
+    // distinct from a bell pepper and must not be force-aliased onto it.
+    for (const variety of [
+      "jalapeno",
+      "jalapeño",
+      "poblano",
+      "habanero",
+      "serrano",
+      "banana",
+      "thai",
+      "scotch",
+      "ghost",
+      "fresno",
+      "anaheim",
+      "shishito",
+      "chili",
+      "chile",
+    ]) {
+      expect(applyNameAliases(`${variety} pepper`)).toBe(`${variety} pepper`);
+    }
+  });
+
   it("does not double-alias 'bell pepper' to 'bell bell pepper' (pre-existing bug)", () => {
     expect(applyNameAliases("bell pepper")).toBe("bell pepper");
   });

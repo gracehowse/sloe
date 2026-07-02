@@ -314,13 +314,21 @@ const NAME_ALIASES: [RegExp, string][] = [
   [/\bswedes?\b/i, "rutabaga"],
   [/\bmangetout\b/i, "snow peas"],
   [/\bbeetroot\b/i, "beet"],
-  // ENG-1305: bare "pepper" defaults to the vegetable, but the spice
-  // (black/white/cayenne/pink/green peppercorn, or pre-crushed) must not be
-  // relabelled as a bell pepper — "black pepper" -> "black bell pepper" is
-  // not a real ingredient and mismatches the food database. "red pepper"
-  // stays ambiguous (both a bell-pepper colour and a chili-flake shorthand
-  // in recipes) and is left as-is rather than guessing.
-  [/\b(?<!black )(?<!white )(?<!cayenne )(?<!pink )(?<!green )(?<!crushed )(?<!ground )(?<!bell )pepper\b(?!corn)/i, "bell pepper"],
+  // ENG-1305 (+ correctness fix, 2026-07-02 self-review): bare "pepper"
+  // defaults to the vegetable, but any qualified form must not be silently
+  // relabelled — either the spice (black/white/cayenne/pink/green
+  // peppercorn, or pre-crushed/ground: "black pepper" -> "black bell
+  // pepper" mismatches the food database) or a distinct chili variety
+  // (jalapeño/poblano/habanero/serrano/banana/thai/scotch bonnet/ghost/
+  // fresno/anaheim/shishito/chili/chile — nutritionally distinct from bell
+  // pepper). "red pepper" stays ambiguous (both a bell-pepper colour and a
+  // chili-flake shorthand in recipes) and is left as-is rather than
+  // guessing — the guard below must include "red" for that to hold; an
+  // earlier version of this fix documented that intent without actually
+  // implementing the "red" guard, so "red pepper" silently became "red
+  // bell pepper" and chili varieties like "jalapeno pepper" became
+  // "jalapeno bell pepper" (caught by adversarial self-review).
+  [/\b(?<!black )(?<!white )(?<!cayenne )(?<!pink )(?<!green )(?<!crushed )(?<!ground )(?<!bell )(?<!red )(?<!chil(?:i|e) )(?<!jalape[nñ]o )(?<!poblano )(?<!habanero )(?<!serrano )(?<!banana )(?<!thai )(?<!scotch )(?<!ghost )(?<!fresno )(?<!anaheim )(?<!shishito )pepper\b(?!corn)/i, "bell pepper"],
   [/\bchickpeas?\b/i, "garbanzo beans"],
   [/\bbroad beans?\b/i, "fava beans"],
   [/\brunner beans?\b/i, "green beans"],
