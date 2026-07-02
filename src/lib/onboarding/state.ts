@@ -86,7 +86,23 @@ export type Goal = "lose" | "maintain" | "gain" | "recomp";
  *  the flag is OFF, both flow shells auto-skip it (EXACTLY the app-choice
  *  mechanism — `resolveNextStep` + the defensive shell effect) and drop it
  *  from `displayTotal`, so the live step counter is unchanged until the
- *  flag ramps. Body-neutral options only; no off-limits framing. */
+ *  flag ramps. Body-neutral options only; no off-limits framing.
+ *
+ *  Conversion-funnel order (ENG-1241, 2026-07-01 — Grace's decisions): the
+ *  two conversion-funnel steps run **first-log → upgrade** (was
+ *  upgrade → first-log when PR #692 first landed). The guided first-win
+ *  (`first-log`, ENG-1233) is the ACTIVATION step; the skippable "See Pro"
+ *  trial ask (`upgrade`, ENG-1241) is the MONETISE step and must be
+ *  TERMINAL — activate first, ask for money last. Making `upgrade`
+ *  terminal is what lets Decision 2 ("skip lands straight on Today — no
+ *  detour through any other screen") hold literally: "Continue on Free"
+ *  on the upgrade step runs the completion handler → `/(tabs)` directly,
+ *  and "Start free trial" routes into the compliant paywall/dialog which
+ *  itself lands on Today. Neither path re-enters another onboarding step.
+ *  Both steps stay flag-gated behind `onboarding_conversion_funnel_v1`
+ *  (default-ON both platforms) and auto-skip together when OFF, so the
+ *  legacy data-bridges-terminal flow is byte-identical when the flag is
+ *  down. See docs/decisions/2026-07-01-onboarding-see-pro-eng1241.md. */
 export const STEP_IDS = [
   "welcome", // 01
   "app-choice", // 02 — "Coming from another app?" (ENG-990) — auto-skipped when the `onboarding-app-choice` flag is OFF
@@ -103,8 +119,8 @@ export const STEP_IDS = [
   "reveal", // 13 — aha: show targets before account (ENG-962)
   "signup", // 14 — account after the reveal magic moment (ENG-962)
   "data-bridges", // 15 — bring your data with you (Build-40)
-  "upgrade", // 16 — optional skippable Pro trial decision (ENG-1241) — auto-skipped when `onboarding_conversion_funnel_v1` is OFF
-  "first-log", // 17 — guided first-win log prompt (ENG-1233) — terminal when conversion funnel ON
+  "first-log", // 16 — guided first-win log prompt (ENG-1233) — auto-skipped when `onboarding_conversion_funnel_v1` is OFF
+  "upgrade", // 17 — optional skippable "See Pro" trial decision (ENG-1241) — TERMINAL when conversion funnel ON; auto-skipped when OFF
 ] as const;
 
 export type StepId = (typeof STEP_IDS)[number];
@@ -456,8 +472,9 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
  *  unchanged until the flag ramps. Defaults to `false` (skip).
  *
  *  ENG-1233/1241 — `conversionFunnelEnabled` gates the post-data-bridges
- *  `upgrade` + `first-log` steps behind `onboarding_conversion_funnel_v1`.
- *  When OFF, `data-bridges` remains the terminal step (legacy path). */
+ *  `first-log` + `upgrade` steps behind `onboarding_conversion_funnel_v1`.
+ *  When OFF, `data-bridges` remains the terminal step (legacy path). When
+ *  ON, `upgrade` is terminal (first-log → upgrade → Today/paywall). */
 export interface ResolveStepOptions {
   appChoiceEnabled?: boolean;
   whyNowEnabled?: boolean;
@@ -672,13 +689,14 @@ export function canAdvance(
       return true;
     case "data-bridges":
       // Build-40 — terminal when conversion funnel OFF; advance continues
-      // to upgrade → first-log when funnel ON.
-      return true;
-    case "upgrade":
-      // ENG-1241 — skippable; Continue on Free or Start trial both valid.
+      // to first-log → upgrade when funnel ON.
       return true;
     case "first-log":
-      // ENG-1233 — terminal when funnel ON; skip or chip tap both valid.
+      // ENG-1233 — guided activation step; skip or chip tap both valid.
+      return true;
+    case "upgrade":
+      // ENG-1241 — TERMINAL skippable "See Pro" step; Continue on Free
+      // (→ Today) or Start trial (→ paywall/dialog) both valid.
       return true;
     default:
       return true;

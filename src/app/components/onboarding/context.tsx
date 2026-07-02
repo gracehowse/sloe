@@ -60,6 +60,15 @@ interface OnboardingContext {
   goTo: (index: number) => void;
   /** Reset to the welcome step with default values. */
   reset: () => void;
+  /**
+   * ENG-1241 — run the terminal completion path (persist profile + seed
+   * recipes + fire `onboarding_completed` + navigate to Today) from a
+   * step component. The flow shell registers its `handleComplete` via
+   * `registerComplete`; the terminal `upgrade` step calls `complete()`
+   * from its "Continue on Free" CTA so skip lands straight on Today with
+   * no detour (Decision 2). A no-op before the shell registers. */
+  complete: () => void;
+  registerComplete: (fn: () => void) => void;
   /** Computed targets — `null` until body-stat steps have been answered. */
   targets: V2Targets | null;
   /** Pace warning derived from the current state. `null` when safe. */
@@ -205,6 +214,21 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     setState({ ...DEFAULT_ONBOARDING_STATE });
   }, []);
 
+  // ENG-1241 — the flow shell registers its terminal completion handler
+  // here so the terminal `upgrade` step can trigger it directly (skip →
+  // Today, no detour). Held in a ref so `complete` stays referentially
+  // stable and always calls the latest registered handler.
+  const completeRef = React.useRef<() => void>(() => undefined);
+  const registerComplete = React.useCallback<OnboardingContext["registerComplete"]>(
+    (fn) => {
+      completeRef.current = fn;
+    },
+    [],
+  );
+  const complete = React.useCallback<OnboardingContext["complete"]>(() => {
+    completeRef.current();
+  }, []);
+
   const targets = React.useMemo(() => computeV2Targets(state), [state]);
   const currentStepId = STEP_IDS[state.step] as StepId;
   const warning = React.useMemo(
@@ -234,6 +258,8 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       go,
       goTo,
       reset,
+      complete,
+      registerComplete,
       targets,
       warning,
       currentStepId,
@@ -242,7 +268,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       canAdvance,
       stepLabels: STEP_LABELS,
     }),
-    [state, set, go, goTo, reset, targets, warning, currentStepId, canAdvance, displayIndex, displayTotal],
+    [state, set, go, goTo, reset, complete, registerComplete, targets, warning, currentStepId, canAdvance, displayIndex, displayTotal],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

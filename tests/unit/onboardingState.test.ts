@@ -51,7 +51,7 @@ const baseState = (
 });
 
 describe("onboarding v2 — step ordering", () => {
-  it("ships exactly 17 steps in the documented order (Build-40 data-bridges + ENG-990 app-choice + ENG-963 why-now + ENG-1233/1241 funnel)", () => {
+  it("ships exactly 17 steps in the documented order (Build-40 data-bridges + ENG-990 app-choice + ENG-963 why-now + ENG-1233/1241 funnel — first-log → upgrade terminal)", () => {
     expect(TOTAL_STEPS).toBe(17);
     expect(STEP_IDS).toEqual([
       "welcome",
@@ -69,8 +69,11 @@ describe("onboarding v2 — step ordering", () => {
       "reveal",
       "signup",
       "data-bridges",
-      "upgrade",
+      // ENG-1241 (2026-07-01): funnel order is first-log → upgrade so the
+      // skippable "See Pro" trial step is TERMINAL — skip lands straight
+      // on Today (Decision 2). Was upgrade → first-log when PR #692 landed.
       "first-log",
+      "upgrade",
     ]);
   });
 
@@ -181,22 +184,24 @@ describe("onboarding v2 — resolveNextStep conversion-funnel gate (ENG-1233 / E
     expect(STEP_IDS[next]).toBe("data-bridges");
   });
 
-  it("lands on upgrade when the flag is ON (forward from data-bridges)", () => {
+  it("lands on first-log when the flag is ON (forward from data-bridges)", () => {
+    // ENG-1241 — funnel order is first-log → upgrade, so the first funnel
+    // step reached after data-bridges is the activation (first-log) step.
     const next = resolveNextStep(DATA_BRIDGES, +1, baseState(), {
-      conversionFunnelEnabled: true,
-    });
-    expect(STEP_IDS[next]).toBe("upgrade");
-  });
-
-  it("lands on first-log after upgrade when the flag is ON", () => {
-    const next = resolveNextStep(UPGRADE, +1, baseState(), {
       conversionFunnelEnabled: true,
     });
     expect(STEP_IDS[next]).toBe("first-log");
   });
 
-  it("skips conversion-funnel steps on backward navigation when flag OFF", () => {
-    const prev = resolveNextStep(FIRST_LOG, -1, baseState(), {
+  it("lands on upgrade (the terminal See Pro step) after first-log when the flag is ON", () => {
+    const next = resolveNextStep(FIRST_LOG, +1, baseState(), {
+      conversionFunnelEnabled: true,
+    });
+    expect(STEP_IDS[next]).toBe("upgrade");
+  });
+
+  it("skips conversion-funnel steps on backward navigation when flag OFF (from upgrade, the terminal step)", () => {
+    const prev = resolveNextStep(UPGRADE, -1, baseState(), {
       conversionFunnelEnabled: false,
     });
     expect(STEP_IDS[prev]).toBe("data-bridges");

@@ -59,11 +59,13 @@ function Harness({
   userTier = "free",
   from = "meal_planner",
   bypassSessionCap = true,
+  defaultPeriod,
 }: {
   initialOpen?: boolean;
   userTier?: "free" | "base" | "pro";
   from?: React.ComponentProps<typeof UpgradePaywallDialog>["from"];
   bypassSessionCap?: boolean;
+  defaultPeriod?: "monthly" | "annual";
 }) {
   const [open, setOpen] = React.useState(initialOpen);
   return (
@@ -75,6 +77,7 @@ function Harness({
         from={from}
         userTier={userTier}
         bypassSessionCap={bypassSessionCap}
+        defaultPeriod={defaultPeriod}
       />
     </>
   );
@@ -309,6 +312,36 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
     // PR-01: Base must not appear in the disclosure.
     expect(renewal).not.toHaveTextContent(/Suppr Base/i);
     expect(renewal).not.toHaveTextContent(/keep base/i);
+  });
+
+  it("ENG-1241: defaultPeriod='annual' (onboarding See Pro) preselects annual + leads with the 7-day trial", () => {
+    // Decision 4 — the onboarding "See Pro" step opens the dialog with
+    // the trial-eligible (annual) SKU preselected so the trial is the
+    // offer the user sees, and the disclosure leads with the 7-day trial
+    // (legal C1/C2). from="onboarding" attributes the funnel (legal C10).
+    render(<Harness userTier="free" from="onboarding" defaultPeriod="annual" />);
+    const monthlyBtn = screen.getByTestId("upsell-period-monthly");
+    const annualBtn = screen.getByTestId("upsell-period-annual");
+    expect(annualBtn).toHaveAttribute("aria-selected", "true");
+    expect(monthlyBtn).toHaveAttribute("aria-selected", "false");
+    // Annual disclosure leads with the trial (only shown when the trial
+    // SKU is selected — legal C2).
+    const renewal = screen.getByTestId("upsell-renewal-note");
+    expect(renewal).toHaveTextContent(
+      /7-day free trial — no payment due today, first charge on Day 7/i,
+    );
+    // paywall_viewed carries from=onboarding for skip-rate measurement.
+    const viewed = trackCalls.filter((c) => c.event === "paywall_viewed");
+    expect(viewed).toHaveLength(1);
+    expect(viewed[0].payload).toMatchObject({ from: "onboarding" });
+  });
+
+  it("ENG-1241 legal C6: the AI photo feature says 'estimated macros', never 'verified macros'", () => {
+    render(<Harness userTier="free" />);
+    expect(
+      screen.getByText(/Snap a plate and get estimated macros/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/verified macros/i)).not.toBeInTheDocument();
   });
 
   it("session cap suppresses a second auto-open but bypassSessionCap shows it", () => {

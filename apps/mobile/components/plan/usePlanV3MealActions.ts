@@ -25,12 +25,12 @@ export interface UsePlanV3MealActionsArgs {
 }
 
 /**
- * usePlanV3MealActions — the v3 Plan surface's meal handlers, lifted out of the
- * pinned planner screen (ENG-1225 Block 3). `onOpenMeal` routes a real meal to
- * its recipe detail (falling back to the swap picker when the recipe can't be
- * resolved); `onAddToSlot` opens the swap picker so the empty slot can be filled
- * from the library. Both take (dayIndex, slotIndex) where slotIndex is the
- * position in ALL_MEAL_SLOTS.
+ * usePlanV3MealActions — v3 Plan meal open/add/options handlers.
+ *
+ * ENG-1238 parity note: web hosts the action sheet in
+ * `usePlanV3MealActions.tsx` + `PlanMealActionDialog`; mobile keeps the
+ * sheet UI in `planner.tsx` (`rowMenu` bottom sheet) and threads
+ * `openMealMenu` here so card ⋯ taps share one entry point.
  */
 export function usePlanV3MealActions({
   plan,

@@ -32,7 +32,7 @@ import { buildFirstWeekFromSeeds } from "@/lib/onboarding/onboardingFirstWeek";
 import { redeemPendingReferral, storePendingReferralFromLocation } from "@/lib/referrals/pendingReferral";
 
 export function WebFlow() {
-  const { currentStepId, displayIndex, displayTotal, go, goTo, state, targets, warning } =
+  const { currentStepId, displayIndex, displayTotal, go, goTo, state, targets, warning, registerComplete } =
     useOnboarding();
   const { authedUserId } = useAuthSession();
   // ENG-672 (2026-05-26) — recompute `canAdvance` HERE with the live
@@ -61,11 +61,19 @@ export function WebFlow() {
       !conversionFunnelEnabled);
   React.useEffect(() => {
     if (!flagGatedStepOff) return;
-    go(currentStepId === "first-log" && !conversionFunnelEnabled ? -1 : 1);
+    // ENG-1241 — funnel steps (first-log → upgrade) sit at the tail, so a
+    // hidden funnel step with the flag OFF steps BACK to data-bridges;
+    // mid-flow app-choice / why-now still step forward.
+    const isFunnelStep =
+      currentStepId === "first-log" || currentStepId === "upgrade";
+    go(isFunnelStep && !conversionFunnelEnabled ? -1 : 1);
   }, [flagGatedStepOff, conversionFunnelEnabled, currentStepId, go]);
-  // Build-40: `data-bridges` is terminal when conversion funnel OFF; `first-log` when ON.
+  // Build-40 / ENG-1241: `data-bridges` is terminal when conversion
+  // funnel OFF; `upgrade` (the "See Pro" ask) when ON — the funnel runs
+  // first-log → upgrade so the monetise step is last and skip → Today is
+  // a clean completion (Decision 2, no detour).
   const isTerminal = conversionFunnelEnabled
-    ? currentStepId === "first-log"
+    ? currentStepId === "upgrade"
     : currentStepId === "data-bridges";
   const [completing, setCompleting] = React.useState(false);
   // completionStatus is set just before window.location.href fires —
@@ -325,6 +333,16 @@ export function WebFlow() {
     }
   }, [authedUserId, state, targets, goTo]);
 
+  // ENG-1241 — register the terminal completion path so the terminal
+  // `upgrade` step's "Continue on Free" CTA can complete onboarding and
+  // land the user on Today directly (Decision 2, no detour). Re-registers
+  // whenever `handleComplete` changes so the latest closure runs.
+  React.useEffect(() => {
+    registerComplete(() => {
+      void handleComplete();
+    });
+  }, [registerComplete, handleComplete]);
+
   // Stage E — when the user clicks Continue from the Pace step while
   // a soft-warn banner is showing, fire the `advanced` variant of
   // the analytics event so product can compute the through-rate of
@@ -498,11 +516,13 @@ export function WebFlow() {
                 <ChevronLeft className="size-4" />
                 Back
               </button>
-              {/* Signup step suppresses the global Continue — it has
-                  its own "Create account" CTA which fires the real
-                  Supabase signUp and advances on success. Showing
-                  both would let the user bypass the auth handshake. */}
-              {!isSignup && (() => {
+              {/* Signup step suppresses the global Continue — it has its
+                  own "Create account" CTA. ENG-1241 — the terminal
+                  `upgrade` ("See Pro") step also suppresses it: it owns
+                  its own trial + "Continue on Free" CTAs, so a footer
+                  "Build my plan" would be a competing control (legal C4).
+                  "Continue on Free" calls `complete()` → Today. */}
+              {!isSignup && !(currentStepId === "upgrade" && conversionFunnelEnabled) && (() => {
                 // Customer-lens shrink (2026-04-30): terminal step is
                 // now `reveal`. The "Build my plan" CTA fires the
                 // `handleComplete` write path directly — no picker
@@ -511,9 +531,7 @@ export function WebFlow() {
                 // organic surfaces post-launch.
                 const terminalLabel = completing
                   ? "Building your plan…"
-                  : currentStepId === "first-log"
-                    ? "Go to Today"
-                    : "Build my plan";
+                  : "Build my plan";
                 return (
                   <Button
                     size="lg"

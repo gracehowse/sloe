@@ -618,7 +618,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (web has no expo-image) — listed under MOBILE_ONLY in
   // tests/unit/redesignDefaultOnParity.test.ts, no web mirror entry.
   "expo_image_adoption_v1",
-  // ENG-1233/1241 — onboarding conversion funnel (upgrade + first-log steps).
+  // ENG-1233/1241 — onboarding conversion funnel: the guided first-log
+  // activation step (ENG-1233) then the optional, skippable "See Pro"
+  // trial ask (ENG-1241, TERMINAL — skip lands straight on Today). Runs
+  // first-log → upgrade after data-bridges. Default-ON per the beta-window
+  // house rule (Grace is the N=1 tester); OFF → data-bridges stays terminal
+  // (legacy flow, byte-identical). This IS the flag the ENG-1241 brief
+  // called "onboarding-see-pro" — reused rather than renamed to avoid
+  // breaking the live PostHog funnel dashboards keyed on it. Mirror of the
+  // web entry in src/lib/analytics/track.ts.
   "onboarding_conversion_funnel_v1",
 ]);
 

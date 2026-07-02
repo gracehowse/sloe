@@ -54,6 +54,7 @@ export function MobileFlow() {
     targets,
     warning,
     isRefreshPlan,
+    registerComplete,
   } = useOnboarding();
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the footer Continue
@@ -90,12 +91,14 @@ export function MobileFlow() {
   const isWelcome = currentStepId === "welcome";
   const [completing, setCompleting] = React.useState(false);
 
-  // Build-40: `data-bridges` terminal when funnel OFF; `first-log` when ON.
+  // Build-40 / ENG-1241: `data-bridges` terminal when funnel OFF;
+  // `upgrade` (the "See Pro" ask) terminal when ON (funnel runs
+  // first-log → upgrade, so skip → Today is a clean completion).
   const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
   const isUpgrade = currentStepId === "upgrade";
   const isFirstLog = currentStepId === "first-log";
   const isTerminal = conversionFunnelEnabled
-    ? currentStepId === "first-log"
+    ? currentStepId === "upgrade"
     : currentStepId === "data-bridges";
   const isSignup = currentStepId === "signup";
 
@@ -139,11 +142,23 @@ export function MobileFlow() {
     }
   }, [isAppChoice, isRefreshPlan, go]);
 
+  // ENG-1241 defensive auto-skip: funnel steps (first-log → upgrade) sit
+  // at the tail, so a persisted hidden step with the flag OFF must step
+  // BACK to the legacy terminal (data-bridges); resolveNextStep composes.
   React.useEffect(() => {
     if ((isUpgrade || isFirstLog) && !conversionFunnelEnabled) {
-      go(isUpgrade ? 1 : -1);
+      go(-1);
     }
   }, [isUpgrade, isFirstLog, conversionFunnelEnabled, go]);
+
+  // ENG-1241 — register the terminal completion path so the terminal
+  // `upgrade` step's "Continue on Free" lands on Today directly (no
+  // detour). Re-registers each render to capture the latest closure.
+  React.useEffect(() => {
+    registerComplete(() => {
+      void handleComplete();
+    });
+  });
 
   // ENG-1 — fire onboarding_started once when a new user first sees the
   // Welcome step. Excluded for refresh-plan flow (isRefreshPlan is null
@@ -579,8 +594,12 @@ export function MobileFlow() {
           tell which button advanced the flow). The shared
           `canAdvance("signup", …)` gate still keeps the footer inert
           until a session lands — this just removes the confusing inert
-          control entirely on that one step. */}
-      {isSignup ? null : (
+          control entirely on that one step.
+          ENG-1241: also suppressed on the terminal `upgrade` step — it
+          owns its own "Start free trial" + "Continue on Free" CTAs, so a
+          footer "Build my plan" would be a competing control that muddies
+          the skip affordance (legal C4). */}
+      {isSignup || (isUpgrade && conversionFunnelEnabled) ? null : (
       <View
         style={{
           paddingHorizontal: Spacing.xl,

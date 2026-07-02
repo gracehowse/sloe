@@ -911,6 +911,9 @@ export const AnalyticsEvents = {
   /** ENG-1241 — trial vs free on the conversion-funnel upgrade step.
    *  Payload: { choice: "trial" | "free", platform: "web" | "mobile" } */
   onboarding_trial_choice: "onboarding_trial_choice",
+  /** ENG-1241 — the optional "See Pro" upgrade step rendered (funnel ON).
+   *  Payload: { platform: "web" | "mobile" } */
+  onboarding_upgrade_step_viewed: "onboarding_upgrade_step_viewed",
   /** ENG-1233 — guided first-log chip on the conversion-funnel terminal step.
    *  Payload: { choice: "breakfast" | "coffee" | "search" | "skip", platform } */
   onboarding_first_log_prompt: "onboarding_first_log_prompt",
