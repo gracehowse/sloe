@@ -60,8 +60,9 @@ describe("LANE D gap 1 — cook-CTA dedup (one cook entry; Log is the top-row pr
     expect(SERVINGS_FOOTER).toMatch(/Cook Mode/);
     // openCookMode is still threaded into the footer (the one cook entry).
     expect(SRC).toMatch(/onCookMode=\{openCookMode\}/);
-    // The cook overlay is still launched from openCookMode.
-    expect(SRC).toMatch(/const openCookMode = \(\) => \{/);
+    // ENG-945 — cook launches the canonical `/cook` screen (not an inline overlay).
+    expect(SRC).toMatch(/buildCookModeHref\(/);
+    expect(SRC).toMatch(/const openCookMode = useCallback\(/);
   });
 });
 
