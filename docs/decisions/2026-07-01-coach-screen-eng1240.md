@@ -31,6 +31,10 @@ Same posture as `digestNarrative` and `mealCoach`:
 - Mobile: `apps/mobile/app/coach.tsx` + `CoachScreenView.tsx`
 - Kill switches: `kill_coach_day_narrative_ai`, `kill_coach_ask_ai` (server flags)
 
+## Tier gating (2026-07-01 update, ENG-1292)
+
+The AI branch on all three routes (`coach`, `coach-ask`, `coach-day-narrative`) is **Pro-only, server-enforced** via `getUserTier` (voice-log precedent, `2026-04-19-voice-logging-pro-only-server-enforced.md`) per sweep decision #1 (`2026-07-01-sweep-decisions.md`). Free/Base users get the deterministic/template result with the same 200 response shape (`source: "deterministic"` / `"template"`) — the screen and endpoints stay free; only the Claude calls are gated. Supersedes the ungated state this screen originally shipped with.
+
 ## Analytics
 
 - `coach_screen_opened`

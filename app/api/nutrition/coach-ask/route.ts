@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
@@ -52,12 +52,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const limited = await rateLimit({
-    keyPrefix: "api:coach-ask",
-    userId,
-    limit: 60,
-    windowMs: 60 * 60_000,
-  });
+  // ENG-1292 (2026-07-01 sweep decision #1): AI answers are Pro-only,
+  // server-enforced (voice-log precedent, 2026-04-19). Free/Base users
+  // get the grounded template answer below — same 200 response shape,
+  // source: "template" — never a 403. Tier check runs in parallel with
+  // the rate limit (voice-log's ENG-8 pattern).
+  const [tier, limited] = await Promise.all([
+    getUserTier(userId),
+    rateLimit({
+      keyPrefix: "api:coach-ask",
+      userId,
+      limit: 60,
+      windowMs: 60 * 60_000,
+    }),
+  ]);
   if (!limited.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
@@ -102,7 +110,9 @@ export async function POST(req: Request) {
   });
 
   const template = buildTemplateCoachAskAnswer(facts);
-  if (killAi) {
+  // Kill switch or non-Pro tier (ENG-1292): skip the AI branch entirely,
+  // return the deterministic template answer.
+  if (killAi || tier !== "pro") {
     return templateResponse(template);
   }
 

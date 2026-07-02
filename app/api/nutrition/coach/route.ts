@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   getUserIdFromRequest,
+  getUserTier,
   createSupabaseServiceRoleClient,
 } from "@/lib/supabase/serverAnonClient";
 import { misconfiguredServiceRoleResponse } from "@/lib/server/serverEnv";
@@ -91,12 +92,22 @@ export async function POST(req: Request) {
     );
   }
 
-  const limited = await rateLimit({
-    keyPrefix: "api:coach",
-    userId,
-    limit: 120,
-    windowMs: 60 * 60_000,
-  });
+  // ENG-1292 (docs/decisions/2026-07-01-sweep-decisions.md #1): the AI
+  // re-rank is Pro-only, server-enforced — mirroring the voice-log
+  // precedent (docs/decisions/2026-04-19-voice-logging-pro-only-server-enforced.md).
+  // Unlike voice-log this is NOT a 403: free/Base users keep the full
+  // deterministic coach (the screen stays a free-tier retention hook);
+  // we just never spend on the model for them. Tier check runs in
+  // parallel with the rate limit (voice-log's ENG-8 pattern).
+  const [tier, limited] = await Promise.all([
+    getUserTier(userId),
+    rateLimit({
+      keyPrefix: "api:coach",
+      userId,
+      limit: 120,
+      windowMs: 60 * 60_000,
+    }),
+  ]);
   if (!limited.ok) {
     return NextResponse.json(
       { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
@@ -145,8 +156,10 @@ export async function POST(req: Request) {
     return deterministicResponse([]);
   }
 
-  // A single candidate has nothing to re-rank — skip the AI call.
-  if (killAi || candidates.length < 2) {
+  // Skip the AI call when: the kill switch is on, the caller is not Pro
+  // (ENG-1292 — AI re-rank is a Pro entitlement), or a single candidate
+  // has nothing to re-rank. Same payload shape, source: "deterministic".
+  if (killAi || tier !== "pro" || candidates.length < 2) {
     return deterministicResponse(candidates);
   }
 
