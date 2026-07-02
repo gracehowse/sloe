@@ -63,6 +63,11 @@ opt-out as event capture).
 Already shipped 2026-05-11 in `apps/mobile/lib/analytics.ts` with
 the same P0 posture. No change needed.
 
+> **Update 2026-07-01 (ENG-1286):** mobile capture + replay are now
+> consent-gated like web — `getPostHogClient()` stays null until the
+> stored choice in `apps/mobile/lib/analyticsConsent.ts` is
+> "accepted". See `2026-07-01-mobile-analytics-consent-gate.md`.
+
 ### Privacy policy
 
 `app/privacy/page.tsx` PostHog row updated:

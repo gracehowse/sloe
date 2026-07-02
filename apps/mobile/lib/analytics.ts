@@ -12,6 +12,10 @@ import {
   readCachedSampleRate,
   writeSampleRateFromClient,
 } from "./sessionReplaySampleRateCache";
+import {
+  getAnalyticsConsent,
+  onAnalyticsConsentChange,
+} from "./analyticsConsent";
 
 const POSTHOG_KEY =
   Constants.expoConfig?.extra?.posthogKey ??
@@ -175,6 +179,22 @@ export function __getInitialSampleRateForTests(): number {
 export function getPostHogClient(): PostHog | null {
   if (client) return client;
   if (!POSTHOG_KEY) return null;
+  // ENG-1286 — consent gate (launch blocker). Mirror of the web
+  // `opt_out_capturing_by_default: consent !== "accepted"` posture
+  // (src/app/components/AnalyticsProvider.tsx), but STRONGER: on RN the
+  // SDK is never constructed at all pre-consent, because
+  // `enableSessionReplay` is an init-time option — the native replay
+  // recorder starts with the client, so opt-out-after-init is not a
+  // reliable replay gate the way it is on posthog-js. No consent → no
+  // client → no events, no replay, no device storage writes. `null`
+  // (never asked / prime pending) and "declined" are both closed —
+  // fail-closed, matching web where the banner-unanswered state is
+  // opted out. Every call site already tolerates a null client (track /
+  // identify / reset / isFeatureEnabled / isFeatureDisabled /
+  // getFeatureFlagPayload all early-return). Known cost, shared with a
+  // cold client: PostHog-side kill switches (`isFeatureDisabled`) can't
+  // fire for un-consented users — REDESIGN_DEFAULT_ON still resolves.
+  if (getAnalyticsConsent() !== "accepted") return null;
 
   client = new PostHog(POSTHOG_KEY, {
     host: POSTHOG_HOST,
@@ -183,6 +203,9 @@ export function getPostHogClient(): PostHog | null {
     // affordable and the highest-leverage analytics change we can
     // make: every TF bug report becomes a replayable video instead
     // of a screenshot + memory of "what was the previous screen".
+    // ENG-1286 (2026-07-01): replay is consent-gated — this init only
+    // runs once stored consent === "accepted" (gate above), so
+    // "every session" means every CONSENTED session, matching web.
     //
     // SDK defaults we accept as-is (already privacy-conservative):
     //   - maskAllTextInputs:    true (text inputs masked at capture)
@@ -242,6 +265,31 @@ export function getPostHogClient(): PostHog | null {
 
   return client;
 }
+
+// ENG-1286 — apply consent flips to the client without an app restart
+// (mirror of web's `suppr-consent` event listener in
+// AnalyticsProvider.tsx). Accepted → construct the client if this is
+// the first accept (the gate above now passes) and ALWAYS optIn(): the
+// SDK persists an opt-out flag in its own storage, so a
+// decline→re-accept would otherwise stay silently opted out on the
+// next construction. Declined → optOut() on the live client (stops
+// event capture + session replay per the SDK's opt-out contract); the
+// instance is intentionally kept, matching web where posthog stays
+// loaded but opted out. On the NEXT launch the gate above returns null
+// before construction, so a declined user never re-inits the SDK.
+onAnalyticsConsentChange((choice) => {
+  if (choice === "accepted") {
+    const c = getPostHogClient();
+    void c?.optIn?.()?.catch?.(() => {
+      /* opt-in persistence failed — capture still proceeds this session */
+    });
+  } else if (choice === "declined" && client) {
+    void client.optOut?.()?.catch?.(() => {
+      /* opt-out persistence failed — the consent gate still blocks the
+         next launch; in-session capture stops via the SDK flag */
+    });
+  }
+});
 
 type CaptureProps = NonNullable<Parameters<PostHog["capture"]>[1]>;
 

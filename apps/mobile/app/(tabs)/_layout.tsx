@@ -1,6 +1,8 @@
 import { Tabs, Redirect, useRouter, usePathname } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { AppLaunchScreen } from '@/components/AppLaunchScreen';
+import { AnalyticsConsentPrompt } from '@/components/consent/AnalyticsConsentPrompt';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Tab glyphs match Figma `654:228`: Today=Calendar, Plan=BookOpen, Recipes=Utensils, Progress=BarChart3.
@@ -109,6 +111,11 @@ export default function TabLayout() {
   }
 
   return (
+    // ENG-1286 — plain flex wrapper so the analytics-consent card can
+    // float over whichever tab is active (mirror of the web CookieConsent
+    // strip, which overlays every route until answered). The prompt
+    // renders null once a stored choice exists.
+    <View style={{ flex: 1 }}>
     <Tabs
       // ENG-1247 — set the tab scene container background to the app page colour
       // directly (not only via the nav theme). The nav theme background applies
@@ -248,5 +255,7 @@ export default function TabLayout() {
           so external links matching the tab label resolve correctly. */}
       <Tabs.Screen name="recipes" options={{ href: null }} />
     </Tabs>
+    <AnalyticsConsentPrompt />
+    </View>
   );
 }
