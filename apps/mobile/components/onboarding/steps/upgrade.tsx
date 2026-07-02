@@ -7,7 +7,7 @@ import { useRouter, type Href } from "expo-router";
 import { Sparkles } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import { track } from "@/lib/analytics";
@@ -82,7 +82,7 @@ export function UpgradeStep() {
         onPress={chooseTrial}
         style={{
           backgroundColor: colors.navPrimary,
-          borderRadius: 999,
+          borderRadius: Radius.full,
           paddingVertical: Spacing.md,
           alignItems: "center",
           marginBottom: Spacing.sm,
