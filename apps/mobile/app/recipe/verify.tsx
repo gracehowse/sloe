@@ -735,7 +735,7 @@ export default function VerifyScreen() {
     reviewBannerIcon: {
       width: 40,
       height: 40,
-      borderRadius: 11,
+      borderRadius: Radius.xl,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: Accent.warningSolid,

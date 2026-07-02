@@ -2162,7 +2162,7 @@ export default function RecipeDetailScreen() {
                   style={{
                     paddingVertical: Spacing.sm,
                     paddingHorizontal: Spacing.lg,
-                    borderRadius: 16,
+                    borderRadius: CARD_RADIUS,
                     borderWidth: 1,
                     borderColor: colors.border,
                     opacity: 0.75,

@@ -16,6 +16,7 @@
 import { Text, View } from "react-native";
 
 import { FontFamily, Spacing, Type } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { macroColorFor } from "@/lib/macroColors";
 import { useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -67,7 +68,7 @@ export function RecipeMacroStrip({
               borderColor: colors.border,
             }
           : {
-              borderRadius: 16,
+              borderRadius: CARD_RADIUS,
               backgroundColor: colors.backgroundSecondary,
               borderWidth: 1,
               borderColor: colors.cardBorder,

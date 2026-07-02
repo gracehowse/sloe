@@ -22,6 +22,7 @@
 import { Image, Pressable, Text, View } from "react-native";
 
 import { FontFamily, Spacing, Type } from "@/constants/theme";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
@@ -129,7 +130,7 @@ export function RecipeIngredientGrid({
                 <View
                   style={{
                     height: 88,
-                    borderRadius: 24,
+                    borderRadius: CARD_RADIUS,
                     backgroundColor: colors.backgroundSecondary,
                     borderWidth: 1,
                     borderColor: colors.cardBorder,
@@ -218,7 +219,7 @@ export function RecipeIngredientGrid({
           accessibilityRole="button"
           testID="recipe-ingredients-view-all"
           style={{
-            borderRadius: 24,
+            borderRadius: CARD_RADIUS,
             borderWidth: 1,
             borderColor: colors.cardBorder,
             backgroundColor: colors.backgroundSecondary,
