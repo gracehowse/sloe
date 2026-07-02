@@ -27,6 +27,7 @@ import type {
   UserTier,
 } from "../types/recipe.ts";
 import { normaliseTier } from "../types/recipe.ts";
+import { tierRank } from "../lib/tier/tierRank.ts";
 import { type AppNotification, type NotificationPrefs } from "../types/notifications.ts";
 import { useNotifications } from "./NotificationContext.tsx";
 import {
@@ -651,6 +652,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setPreferActivityAdjustedCalories(local?.preferActivityAdjustedCalories ?? false);
       return;
     }
+    // ENG (Pro-lockout / Free-flash): hydrate the tier from the local cache the
+    // moment auth resolves — BEFORE the async profiles round-trip — so a returning
+    // Pro isn't shown paid surfaces flashed locked for the fetch duration. Upgrade-
+    // only: never downgrades a tier we already hold; the DB fetch below confirms.
+    const cachedTier = loadLocalProfile(authedUserId)?.userTier;
+    if (cachedTier) {
+      setProfileTier((prev) => (tierRank(cachedTier) >= tierRank(prev) ? cachedTier : prev));
+    }
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
@@ -664,7 +673,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       if (error) {
         const local = loadLocalProfile(authedUserId);
-        setProfileTier(local?.userTier ?? "free");
+        // ENG (Pro-lockout): a transient profiles fetch error must NOT clobber a
+        // known-higher tier to Free — that locks a real Pro out of paid surfaces
+        // until a later refetch. Only adopt the cached tier when it's at least as
+        // high as what we already hold; never downgrade on a network blip.
+        if (local?.userTier) {
+          setProfileTier((prev) =>
+            tierRank(local.userTier) >= tierRank(prev) ? local.userTier : prev,
+          );
+        }
         setProfileDisplayName(local?.displayName ?? null);
         setProfileTimeZone(null);
         setProfileMeasurementSystem(local?.measurementSystem ?? "metric");

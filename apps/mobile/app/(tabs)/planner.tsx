@@ -25,6 +25,7 @@ import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
+import { normaliseCachedTier } from "@/lib/cachedUserTier";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
@@ -797,8 +798,7 @@ export default function PlannerScreen() {
         .maybeSingle();
       if (cancelled) return;
       const tier = (data?.user_tier as string | null) ?? null;
-      const resolved: "free" | "base" | "pro" =
-        tier === "free" || tier === "base" || tier === "pro" ? tier : "free";
+      const resolved = normaliseCachedTier(tier);
       setUserTier(resolved);
       setPantryStaples(parsePantryStaples((data as { pantry_staples?: unknown } | null)?.pantry_staples));
       // F-91 — persist for next mount so the gate doesn't flash Free

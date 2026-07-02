@@ -16,6 +16,7 @@ import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAccent } from "@/context/theme";
 import { supabase } from "@/lib/supabase";
+import { normaliseCachedTier } from "@/lib/cachedUserTier";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -95,8 +96,7 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
         .maybeSingle();
       if (cancelled) return;
       const tier = (data?.user_tier as string | null) ?? null;
-      const resolved: "free" | "base" | "pro" =
-        tier === "free" || tier === "base" || tier === "pro" ? tier : "free";
+      const resolved = normaliseCachedTier(tier);
       setUserTier(resolved);
       void import("@/lib/cachedUserTier").then(({ saveCachedUserTier }) =>
         saveCachedUserTier(resolved),

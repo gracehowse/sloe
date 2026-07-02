@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authedFetch } from "@/lib/authedFetch";
+import { normaliseCachedTier } from "@/lib/cachedUserTier";
 import { formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
 import {
   Alert,
@@ -412,8 +413,7 @@ export default function ImportSharedScreen() {
         .maybeSingle();
       if (cancelled) return;
       const tier = (data?.user_tier as string | null) ?? null;
-      const resolved: "free" | "base" | "pro" =
-        tier === "free" || tier === "base" || tier === "pro" ? tier : "free";
+      const resolved = normaliseCachedTier(tier);
       setUserTier(resolved);
       void import("@/lib/cachedUserTier").then(({ saveCachedUserTier }) =>
         saveCachedUserTier(resolved),

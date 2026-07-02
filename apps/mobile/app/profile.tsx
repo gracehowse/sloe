@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { MACRO_ICONS } from "@/lib/macroIconsLucide";
+import { normaliseCachedTier } from "@/lib/cachedUserTier";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -418,8 +419,7 @@ export default function ProfileScreen() {
       // §3.2 tier pill — Pro is the only tier with a reward pill; Free/Base
       // render no pill (avoids "Free" reading as a penalty marker at the top).
       const tierRaw = (data as Record<string, unknown>).user_tier;
-      const tier = typeof tierRaw === "string" ? tierRaw : null;
-      setUserTier(tier === "free" || tier === "base" || tier === "pro" ? tier : "free");
+      setUserTier(normaliseCachedTier(typeof tierRaw === "string" ? tierRaw : null));
       // §3.2 streak — canonical protected-streak helper (same path as Today /
       // Progress / Settings). Hydrate a byDay map from nutrition_entries + the
       // freeze ledger. Non-fatal on error (streak → 0). m4: the 400-day window
