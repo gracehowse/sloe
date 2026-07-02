@@ -63,9 +63,17 @@ describe("Phase 2 — web journal builder threads recipe_id into the insert row"
   });
 
   it("the SELECT includes recipe_id", () => {
+    // ENG-1290 extracted the column list into NUTRITION_ENTRY_SELECT_COLUMNS
+    // (shared by the boot load and the out-of-window day fetch). The contract
+    // holds through the indirection: the const carries recipe_id, and every
+    // .select() on this surface uses the const.
     expect(WEB_JOURNAL_HOOK).toMatch(
-      /\.select\("[^"]*recipe_id[^"]*"\)/,
+      /NUTRITION_ENTRY_SELECT_COLUMNS\s*=\s*"[^"]*recipe_id[^"]*"/,
     );
+    expect(WEB_JOURNAL_HOOK).toMatch(/\.select\(NUTRITION_ENTRY_SELECT_COLUMNS\)/);
+    // No inline entry-row select may bypass the const (the bare `select("id")`
+    // probe on :107 is a connectivity check, not an entry-row read).
+    expect(WEB_JOURNAL_HOOK).not.toMatch(/\.select\("[^"]*recipe_title[^"]*"\)/);
   });
 });
 
