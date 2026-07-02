@@ -51,6 +51,10 @@ import {
   type LoadedGoalEditorProfile,
 } from "@suppr/nutrition-core/goalEditorPace";
 import {
+  DEFAULT_HIGH_DAYS,
+  type DayTargetScheduleId,
+} from "@suppr/shared/nutrition/dayTargetSchedule";
+import {
   cmToFeetInches,
   feetInchesToCm,
   kgToLb,
@@ -87,6 +91,9 @@ export function useGoalPaceEditor({
   const [heightFeetInput, setHeightFeetInput] = useState("");
   const [heightInchesInput, setHeightInchesInput] = useState("");
   const [fiberInput, setFiberInput] = useState("");
+  // ENG-960 — opt-in day-target schedule. "same" = flat week (default).
+  const [calorieSchedule, setCalorieSchedule] =
+    useState<DayTargetScheduleId | "same">("same");
   // ENG-1027 — explicit below-floor acknowledgment (Cronometer pattern).
   const [acknowledged, setAcknowledged] = useState(false);
 
@@ -114,6 +121,7 @@ export function useGoalPaceEditor({
 
       setLoaded(p);
       setGoal(p.goal);
+      setCalorieSchedule(p.calorieSchedule ?? "same");
       setPace(seat);
       setSeatedPace(seat);
       setGoalWeightInput(
@@ -246,7 +254,11 @@ export function useGoalPaceEditor({
     [loaded, editedFiberG],
   );
 
-  const dirty = recomputeChanged || goalWeightChanged || fiberChanged;
+  // ENG-960 — a schedule-only edit is savable on its own.
+  const scheduleChanged =
+    loaded != null && (loaded.calorieSchedule ?? "same") !== calorieSchedule;
+
+  const dirty = recomputeChanged || goalWeightChanged || fiberChanged || scheduleChanged;
 
   // Live preview — adaptive-aware. Only when a recompute input moved AND
   // we have the body basics.
@@ -327,6 +339,12 @@ export function useGoalPaceEditor({
         profileUpdate.height_cm = editedHeightCm;
       }
       if (goalWeightChanged) profileUpdate.goal_weight_kg = goalWeightKg;
+      if (scheduleChanged) {
+        // ENG-960 — the opt-in day-target schedule. "same" clears it (null); a
+        // preset writes its id + the weekend high-day set.
+        profileUpdate.calorie_schedule = calorieSchedule === "same" ? null : calorieSchedule;
+        profileUpdate.high_days = calorieSchedule === "same" ? null : DEFAULT_HIGH_DAYS;
+      }
 
       const recomputed = recomputeChanged ? preview : null;
       // Lossless continuous pace persisted alongside the snapped preset.
@@ -410,6 +428,8 @@ export function useGoalPaceEditor({
     // goal + pace
     goal,
     onChangeGoal,
+    calorieSchedule,
+    setCalorieSchedule,
     pace,
     setPace,
     sliderRange,
