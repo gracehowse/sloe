@@ -122,12 +122,13 @@ describe("Library filter pill padding (build-12, 2026-05-02)", () => {
       );
     });
 
-    it("uses fontSize 12 / lineHeight 18 — matches Discover's 12/18 text scale", () => {
+    it("uses Type.captionSmall + lineHeight 18 — matches Discover's 12/18 text scale (ENG-1281)", () => {
       // Was Type.body (14/20). Dropped to Discover's 12/18 so the
       // 4-pill row fits a 393pt iPhone width and the pill text scale
-      // is consistent across Library and Discover.
+      // is consistent across Library and Discover. ENG-1281: fontSize
+      // 12 literal → Type.captionSmall spread + lineHeight 18 override.
       expect(MOBILE_SRC).toMatch(
-        /filterPillText:\s*\{[\s\S]*?fontSize:\s*12[\s\S]*?lineHeight:\s*18[\s\S]*?\}/,
+        /filterPillText:\s*\{[\s\S]*?\.\.\.Type\.captionSmall[\s\S]*?lineHeight:\s*18[\s\S]*?\}/,
       );
     });
 

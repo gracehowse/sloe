@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     ...Type.title,
   },
   subtitle: {
-    fontSize: 15,
+    ...Type.bodyLarge,
     lineHeight: 22,
   },
   hint: {

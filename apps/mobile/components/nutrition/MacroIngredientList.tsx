@@ -1,4 +1,5 @@
 import { Text, View } from "react-native";
+import { Type } from "@/constants/theme";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { IngredientBreakdownResult } from "@suppr/nutrition-core/macroIngredientBreakdown";
@@ -62,7 +63,9 @@ export function MacroIngredientList({
               {line.lowConfidence ? (
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontFamily: Type.captionSmall.fontFamily,
+                    fontSize: Type.captionSmall.fontSize,
+                    lineHeight: Type.captionSmall.lineHeight,
                     fontWeight: "500",
                     color: colors.textSecondary,
                     marginTop: 2,
@@ -75,7 +78,9 @@ export function MacroIngredientList({
             </View>
             <Text
               style={{
-                fontSize: 15,
+                fontFamily: Type.bodyLarge.fontFamily,
+                fontSize: Type.bodyLarge.fontSize,
+                lineHeight: Type.bodyLarge.lineHeight,
                 fontWeight: "700",
                 color: config.color,
                 fontVariant: ["tabular-nums"],

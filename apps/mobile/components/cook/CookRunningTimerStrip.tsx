@@ -1,6 +1,6 @@
 import { Pressable, Text, View, StyleSheet } from "react-native";
 import { X } from "lucide-react-native";
-import { Spacing, Radius, Accent } from "@/constants/theme";
+import { Spacing, Radius, Accent, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import { formatTimer } from "@suppr/nutrition-core/recipeTimers";
@@ -103,21 +103,29 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
   },
   time: {
-    fontSize: 12,
+    fontFamily: Type.captionSmall.fontFamily,
+    fontSize: Type.captionSmall.fontSize,
+    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
   },
   label: {
-    fontSize: 12,
+    fontFamily: Type.captionSmall.fontFamily,
+    fontSize: Type.captionSmall.fontSize,
+    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "500",
     flexShrink: 1,
   },
   done: {
-    fontSize: 12,
+    fontFamily: Type.captionSmall.fontFamily,
+    fontSize: Type.captionSmall.fontSize,
+    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "700",
   },
   action: {
-    fontSize: 12,
+    fontFamily: Type.captionSmall.fontFamily,
+    fontSize: Type.captionSmall.fontSize,
+    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "600",
     textDecorationLine: "underline",
   },

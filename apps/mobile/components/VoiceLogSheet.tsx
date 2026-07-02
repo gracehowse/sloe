@@ -304,7 +304,7 @@ export default function VoiceLogSheet({
                       strokeWidth={2.25}
                     />
                   </Pressable>
-                  <Text style={{ flex: 1, fontSize: 12, color: colors.textSecondary }}>
+                  <Text style={{ flex: 1, ...Type.captionSmall, color: colors.textSecondary }}>
                     {isRecording
                       ? "Listening… release to stop."
                       : "Press and hold to record, or type below."}
@@ -321,7 +321,7 @@ export default function VoiceLogSheet({
                     borderRadius: Radius.md,
                     paddingHorizontal: Spacing.md,
                     paddingVertical: Spacing.md,
-                    fontSize: 15,
+                    ...Type.bodyLarge,
                     color: colors.text,
                     minHeight: 48,
                   }}

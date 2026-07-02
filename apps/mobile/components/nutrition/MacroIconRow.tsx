@@ -1,4 +1,5 @@
 import React from "react";
+import { Type } from "@/constants/theme";
 import { Text, View, type StyleProp, type ViewStyle, type TextStyle } from "react-native";
 import {
   Clock,
@@ -87,7 +88,7 @@ function Chunk({
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
       <Icon size={iconSize} color={iconColor} />
-      <Text style={[{ fontSize: 12, color: textColor, fontVariant: ["tabular-nums"] }, textStyle]}>
+      <Text style={[{ ...Type.captionSmall, color: textColor, fontVariant: ["tabular-nums"] }, textStyle]}>
         {value}
         {letter ? (
           <Text style={{ color: textTertiaryColor }}> {letter}</Text>

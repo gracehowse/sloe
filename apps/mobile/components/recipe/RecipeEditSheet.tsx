@@ -630,7 +630,7 @@ const makeStyles = (
       borderRadius: Radius.md,
       paddingVertical: Spacing.dense,
       paddingHorizontal: Spacing.dense,
-      fontSize: 15,
+      ...Type.bodyLarge,
       color: colors.text,
       backgroundColor: colors.inputBg,
     },
@@ -689,7 +689,7 @@ const makeStyles = (
       marginTop: Spacing.xs,
     },
     addBtnText: { color: accent.primarySolid, fontWeight: "600", fontSize: 14 },
-    hint: { fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: Spacing.xs },
+    hint: { ...Type.captionSmall, color: colors.textSecondary, lineHeight: 17, marginTop: Spacing.xs },
     footer: {
       flexDirection: "row",
       gap: Spacing.sm,

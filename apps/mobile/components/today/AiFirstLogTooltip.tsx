@@ -2,7 +2,7 @@ import React, { memo, useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Sparkles, X } from "lucide-react-native";
 
-import { Radius, ShadowColor, Spacing } from "@/constants/theme";
+import { Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 
 /**
@@ -101,7 +101,7 @@ function AiFirstLogTooltipImpl(props: AiFirstLogTooltipProps) {
       <Text
         style={{
           flex: 1,
-          fontSize: 12,
+          ...Type.captionSmall,
           lineHeight: 16,
           color: accent.primarySolid,
           fontWeight: "500",

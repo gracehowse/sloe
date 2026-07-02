@@ -41,17 +41,15 @@ const BUDGET_FILE = join(REPO_ROOT, "scripts", "type-scale-mobile-budget.json");
 describe("readLegalSizes", () => {
   it("reads the Type ramp from theme.ts (11 … 56) and the micro + display bands", () => {
     const legal = readLegalSizes();
-    // The Type ramp fontSizes as of ENG-1002.
-    for (const v of [11, 13, 14, 16, 17, 18, 20, 22, 24, 28, 32, 48, 56]) {
+    // The Type ramp fontSizes as of ENG-1281 (captionSmall 12, bodyLarge 15 added).
+    for (const v of [11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24, 28, 32, 48, 56]) {
       expect(legal.has(v)).toBe(true);
     }
     // Micro + display bands.
     for (const v of [...MICRO_SIZES, ...DISPLAY_SIZES]) {
       expect(legal.has(v)).toBe(true);
     }
-    // The off-ramp values the census pins (not on ramp, micro, or display).
-    expect(legal.has(12)).toBe(false);
-    expect(legal.has(15)).toBe(false);
+    // Remaining off-ramp values the census still pins (not on ramp, micro, or display).
     expect(legal.has(19)).toBe(false);
     expect(legal.has(30)).toBe(false);
     expect(legal.has(10.5)).toBe(false);
@@ -79,20 +77,16 @@ describe("findOffScale", () => {
   const legal = readLegalSizes();
 
   it("flags an off-ramp fontSize and points at the nearest legal value", () => {
-    const hits = findOffScale("const s = { fontSize: 15 };", legal);
-    // 15 is equidistant from 14 and 16; the sort is stable on the ramp order,
-    // so the first-inserted equidistant ramp value wins — assert distance, not
-    // a specific tie-break.
+    const hits = findOffScale("const s = { fontSize: 19 };", legal);
     expect(hits).toHaveLength(1);
     expect(hits[0].line).toBe(1);
-    expect(hits[0].value).toBe(15);
-    expect(Math.abs(hits[0].nearest - 15)).toBe(1);
+    expect(hits[0].value).toBe(19);
+    expect(Math.abs(hits[0].nearest - 19)).toBe(1);
   });
 
-  it("flags the dominant off-ramp value 12 (nearest 11 or 13)", () => {
-    const hits = findOffScale("const s = { fontSize: 12 };", legal);
-    expect(hits).toHaveLength(1);
-    expect(Math.abs(hits[0].nearest - 12)).toBe(1);
+  it("ignores ENG-1281 on-ramp values 12 and 15 (captionSmall / bodyLarge)", () => {
+    expect(findOffScale("const s = { fontSize: 12 };", legal)).toEqual([]);
+    expect(findOffScale("const s = { fontSize: 15 };", legal)).toEqual([]);
   });
 
   it("ignores on-ramp values (Type ramp + micro + display)", () => {

@@ -188,7 +188,9 @@ const styles = StyleSheet.create({
   },
   label: {
     ...Type.body,
-    fontSize: 15,
+    fontFamily: Type.bodyLarge.fontFamily,
+    fontSize: Type.bodyLarge.fontSize,
+    lineHeight: Type.bodyLarge.lineHeight,
     fontWeight: "600",
     minWidth: 160,
     textAlign: "center",

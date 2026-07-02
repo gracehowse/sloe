@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track } from "@/lib/analytics";
@@ -93,7 +93,7 @@ export function WeeklyRecapPushPicker({
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.textSecondary,
               marginBottom: Spacing.lg,
             }}
@@ -117,7 +117,7 @@ export function WeeklyRecapPushPicker({
                 Send weekly recap
               </Text>
               <Text
-                style={{ fontSize: 12, color: colors.textSecondary, marginTop: Spacing.xs }}
+                style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: Spacing.xs }}
               >
                 {enabled
                   ? "On · next push lands at the end of your week"

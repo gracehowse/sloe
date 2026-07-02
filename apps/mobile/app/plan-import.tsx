@@ -348,7 +348,7 @@ export default function PlanImportScreen() {
           borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.lg,
-          fontSize: 15,
+          ...Type.bodyLarge,
           color: colors.text,
           minHeight: 160,
           textAlignVertical: "top",
@@ -359,7 +359,7 @@ export default function PlanImportScreen() {
           borderWidth: 1,
           borderColor: colors.border,
           padding: Spacing.lg,
-          fontSize: 15,
+          ...Type.bodyLarge,
           color: colors.text,
         },
         primaryBtn: {
@@ -402,7 +402,7 @@ export default function PlanImportScreen() {
           marginBottom: Spacing.sm,
         },
         uploadTitle: { ...Type.headline, color: colors.text, textAlign: "center" },
-        uploadHint: { fontSize: 12, color: colors.textSecondary, marginTop: 6, textAlign: "center", lineHeight: 18 },
+        uploadHint: { ...Type.captionSmall, color: colors.textSecondary, marginTop: 6, textAlign: "center", lineHeight: 18 },
         assessment: {
           backgroundColor: colors.card,
           borderRadius: Radius.xl,
@@ -420,7 +420,7 @@ export default function PlanImportScreen() {
           borderBottomColor: colors.border,
         },
         rowTitle: { fontSize: 15, fontWeight: "600", color: colors.text },
-        rowMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+        rowMeta: { ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 },
         kcal: { fontSize: 17, fontWeight: "700", color: colors.text },
         toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8 },
         parseCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl },
@@ -463,7 +463,7 @@ export default function PlanImportScreen() {
               Plan averages <Text style={{ fontWeight: "700" }}>{avgKcal} kcal/day</Text> (Sloe calc) · Your
               target <Text style={{ fontWeight: "700" }}>{userTargetKcal}</Text>
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 6 }}>
+            <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 6 }}>
               {parseResult.stats.recipeCount} recipes · {parseResult.stats.slotCount} slots ·{" "}
               {parseResult.stats.blockedCount} blocked
             </Text>

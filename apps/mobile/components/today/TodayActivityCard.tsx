@@ -83,7 +83,7 @@ function TodayActivityCardImpl({
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
               <Footprints size={18} color={textSecondaryColor} strokeWidth={2} />
-              <Text style={{ fontSize: 15, color: textColor }}>Steps</Text>
+              <Text style={{ ...Type.bodyLarge, color: textColor }}>Steps</Text>
             </View>
             <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
               {stepsCount != null ? stepsCount.toLocaleString() : "—"}
@@ -114,7 +114,7 @@ function TodayActivityCardImpl({
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
             <Flame size={18} color={Accent.activity} strokeWidth={2} />
-            <Text style={{ fontSize: 15, color: textColor }}>Active energy</Text>
+            <Text style={{ ...Type.bodyLarge, color: textColor }}>Active energy</Text>
           </View>
           <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
             {activityBurnKcal != null ? (

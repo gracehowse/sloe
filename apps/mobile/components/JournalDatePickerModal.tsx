@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
@@ -138,7 +138,9 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
                   >
                     <Text
                       style={{
-                        fontSize: 15,
+                        fontFamily: Type.bodyLarge.fontFamily,
+                        fontSize: Type.bodyLarge.fontSize,
+                        lineHeight: Type.bodyLarge.lineHeight,
                         fontWeight: isSel ? "800" : "600",
                         color: isSel ? colors.primaryForeground : colors.text,
                         fontVariant: ["tabular-nums"],

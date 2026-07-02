@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bell } from "lucide-react-native";
 
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   body: {
-    fontSize: 15,
+    ...Type.bodyLarge,
     lineHeight: 22,
     textAlign: "center",
     marginBottom: Spacing.xl,
@@ -210,7 +210,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   secondaryBtnText: {
-    fontSize: 15,
+    fontFamily: Type.bodyLarge.fontFamily,
+    fontSize: Type.bodyLarge.fontSize,
+    lineHeight: Type.bodyLarge.lineHeight,
     fontWeight: "600",
   },
 });

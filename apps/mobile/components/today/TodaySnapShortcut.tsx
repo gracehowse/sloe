@@ -174,7 +174,7 @@ function TodaySnapShortcutImpl({
           <Text
             style={[
               Type.bodyMuted,
-              { fontSize: 12, color: colors.textSecondary, marginTop: Spacing.xs / 2 },
+              { ...Type.captionSmall, color: colors.textSecondary, marginTop: Spacing.xs / 2 },
             ]}
           >
             ~3 seconds · AI estimates macros, review before saving.

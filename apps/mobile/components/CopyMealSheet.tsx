@@ -11,7 +11,7 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
@@ -261,7 +261,9 @@ export default function CopyMealSheet({
                 >
                   <Text
                     style={{
-                      fontSize: 12,
+                      fontFamily: Type.captionSmall.fontFamily,
+                      fontSize: Type.captionSmall.fontSize,
+                      lineHeight: Type.captionSmall.lineHeight,
                       fontWeight: "600",
                       color: isActive ? colors.primaryForeground : colors.text,
                     }}
@@ -274,7 +276,7 @@ export default function CopyMealSheet({
           </View>
 
           {/* Factual summary */}
-          <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: Spacing.md }}>
+          <Text style={{ ...Type.captionSmall, color: colors.textTertiary, marginTop: Spacing.md }}>
             {targetDayKeys.length === 0
               ? "Nothing to copy — pick a day other than the source."
               : targetDayKeys.length === 1

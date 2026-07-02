@@ -201,7 +201,9 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
                   >
                     <Text
                       style={{
-                        fontSize: 12,
+                        fontFamily: Type.captionSmall.fontFamily,
+                        fontSize: Type.captionSmall.fontSize,
+                        lineHeight: Type.captionSmall.lineHeight,
                         fontWeight: "600",
                         color: deltaFg,
                         fontVariant: ["tabular-nums"],

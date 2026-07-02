@@ -10,7 +10,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { supabase } from "@/lib/supabase";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { dateKeyFromDate, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
@@ -369,7 +369,7 @@ export default function ProgressMetricDetailScreen() {
             >
               <View>
                 <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(d.key)}</Text>
-                <Text style={{ fontSize: 12, color: t.dim, marginTop: 2 }}>{d.label}</Text>
+                <Text style={{ ...Type.captionSmall, color: t.dim, marginTop: 2 }}>{d.label}</Text>
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={{ fontSize: 16, fontWeight: "800", color: t.text, fontVariant: ["tabular-nums"] }}>
@@ -409,7 +409,7 @@ export default function ProgressMetricDetailScreen() {
               </Text>
             </View>
           </View>
-          <Text style={{ fontSize: 12, color: t.sub, marginTop: Spacing.md, lineHeight: 18 }}>
+          <Text style={{ ...Type.captionSmall, color: t.sub, marginTop: Spacing.md, lineHeight: 18 }}>
             Weekly protein adherence vs goal: {weekStats.proteinAdherence}%. Carbs {weekStats.carbsAdherence}% · Fat {weekStats.fatAdherence}%
           </Text>
 
@@ -486,7 +486,7 @@ export default function ProgressMetricDetailScreen() {
                 >
                   <View>
                     <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(row.key)}</Text>
-                    <Text style={{ fontSize: 12, color: t.dim, marginTop: 2 }}>
+                    <Text style={{ ...Type.captionSmall, color: t.dim, marginTop: 2 }}>
                       {row.mealCount} item{row.mealCount !== 1 ? "s" : ""} · {formatKcalDisplay(row.calories)} kcal
                     </Text>
                   </View>

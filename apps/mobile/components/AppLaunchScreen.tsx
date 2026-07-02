@@ -2,7 +2,7 @@ import React from "react";
 import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
 
 import { SloeLaunchWordmark } from "@/components/SloeLaunchWordmark";
-import { Accent, Colors, Spacing } from "@/constants/theme";
+import { Accent, Colors, Spacing, Type } from "@/constants/theme";
 
 type ThemeColors = typeof Colors.light;
 export type LaunchScheme = "light" | "dark";
@@ -79,7 +79,7 @@ export function AppLaunchScreen({
       <Text
         style={{
           marginTop: Spacing.md,
-          fontSize: 15,
+          ...Type.bodyLarge,
           lineHeight: 20,
           color: messageColor,
           fontWeight: "500",

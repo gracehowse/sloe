@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md },
   iconPlate: { width: 36, height: 36, borderRadius: Radius.lg, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 14, fontWeight: "600" },
-  subtitle: { fontSize: 12, marginTop: 2 },
+  subtitle: { ...Type.captionSmall, marginTop: 2 },
 });
 
 export default WeeklyRecapDetailRows;

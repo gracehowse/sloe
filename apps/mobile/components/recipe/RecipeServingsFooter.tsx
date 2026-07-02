@@ -164,8 +164,9 @@ export function RecipeServingsFooter({
           <UtensilsCrossed size={18} color={accent.primarySolid} />
           <Text
             style={{
-              fontFamily: FontFamily.sansSemibold,
-              fontSize: 15,
+              fontFamily: Type.bodyLarge.fontFamily,
+              fontSize: Type.bodyLarge.fontSize,
+              lineHeight: Type.bodyLarge.lineHeight,
               fontWeight: "700",
               color: accent.primarySolid,
             }}
@@ -187,8 +188,9 @@ export function RecipeServingsFooter({
             <PlusCircle size={18} color="#fff" />
             <Text
               style={{
-                fontFamily: FontFamily.sansSemibold,
-                fontSize: 15,
+                fontFamily: Type.bodyLarge.fontFamily,
+                fontSize: Type.bodyLarge.fontSize,
+                lineHeight: Type.bodyLarge.lineHeight,
                 fontWeight: "700",
                 color: "#fff",
               }}

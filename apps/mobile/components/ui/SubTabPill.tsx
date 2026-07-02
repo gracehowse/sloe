@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -85,7 +85,9 @@ export function SubTabPill<TId extends string>({
           >
             <Text
               style={{
-                fontSize: 15,
+                fontFamily: Type.bodyLarge.fontFamily,
+                fontSize: Type.bodyLarge.fontSize,
+                lineHeight: Type.bodyLarge.lineHeight,
                 fontWeight: active ? "700" : "500",
                 color: active ? colors.text : colors.textSecondary,
                 letterSpacing: active ? -0.2 : 0,

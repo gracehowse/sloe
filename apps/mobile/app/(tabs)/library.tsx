@@ -33,7 +33,7 @@ import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { FontFamily, Spacing, Radius, ShadowColor } from "@/constants/theme";
+import { FontFamily, Spacing, Radius, ShadowColor, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -419,7 +419,7 @@ export default function LibraryScreen() {
       // 12/18 — matches Discover's text scale (fontSize 12) but
       // with a bumped lineHeight 16 → 18 so descenders sit fully
       // inside the pill body instead of clipping at the border.
-      fontSize: 12,
+      ...Type.captionSmall,
       lineHeight: 18,
       fontWeight: "600",
       color: colors.textSecondary,
@@ -460,7 +460,9 @@ export default function LibraryScreen() {
       borderColor: colors.border,
     },
     quietControlText: {
-      fontSize: 12,
+      fontFamily: Type.captionSmall.fontFamily,
+      fontSize: Type.captionSmall.fontSize,
+      lineHeight: Type.captionSmall.lineHeight,
       fontWeight: "600",
       color: colors.textSecondary,
     },
@@ -509,7 +511,7 @@ export default function LibraryScreen() {
       backgroundColor: accentSoft,
     },
     planImportPillText: {
-      fontSize: 12,
+      ...Type.captionSmall,
       lineHeight: 16,
       fontWeight: "600",
       color: colors.textSecondary,
@@ -638,7 +640,7 @@ export default function LibraryScreen() {
     // route through one canonical size. lineHeight 16 keeps the row
     // compact at card width.
     macroValue: {
-      fontSize: 12,
+      ...Type.captionSmall,
       lineHeight: 16,
     },
     // Title — Newsreader serif (Figma `527:2`), parity with web
@@ -666,7 +668,7 @@ export default function LibraryScreen() {
       gap: Spacing.xs,
     },
     metaChunk: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textSecondary,
       fontVariant: ["tabular-nums"],
     },

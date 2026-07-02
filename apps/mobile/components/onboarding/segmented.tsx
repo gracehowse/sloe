@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Pressable, Text, View, ViewStyle, StyleProp } from "react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -76,7 +76,9 @@ export function MobileSegmented<T extends string = string>({
           >
             <Text
               style={{
-                fontSize: 12,
+                fontFamily: Type.captionSmall.fontFamily,
+                fontSize: Type.captionSmall.fontSize,
+                lineHeight: Type.captionSmall.lineHeight,
                 fontWeight: "700",
                 color: on ? accent.primary : colors.textSecondary,
               }}

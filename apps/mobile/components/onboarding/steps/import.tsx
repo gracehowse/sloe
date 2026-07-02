@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -216,7 +216,9 @@ function ImportParsing() {
       <ActivityIndicator size="large" color={accent.primaryLight} />
       <Text
         style={{
-          fontSize: 15,
+          fontFamily: Type.bodyLarge.fontFamily,
+          fontSize: Type.bodyLarge.fontSize,
+          lineHeight: Type.bodyLarge.lineHeight,
           fontWeight: "700",
           color: colors.text,
           marginVertical: 16,
@@ -254,7 +256,7 @@ function ImportParsing() {
             )}
             <Text
               style={{
-                fontSize: 12,
+                ...Type.captionSmall,
                 color: i <= cur ? colors.text : colors.textSecondary,
               }}
             >
@@ -340,7 +342,7 @@ function ImportDone({ source }: { source: ImportSource }) {
           Sheet-pan chicken with roasted peppers
         </Text>
         <Text
-          style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.md }}
+          style={{ ...Type.captionSmall, color: colors.textSecondary, marginBottom: Spacing.md }}
         >
           {`4 servings · 32 min · ${src}`}
         </Text>
@@ -369,7 +371,9 @@ function MiniStat({ n, u, c }: { n: string; u: string; c: string }) {
     <View style={{ flex: 1 }}>
       <Text
         style={{
-          fontSize: 15,
+          fontFamily: Type.bodyLarge.fontFamily,
+          fontSize: Type.bodyLarge.fontSize,
+          lineHeight: Type.bodyLarge.lineHeight,
           fontWeight: "700",
           color: colors.text,
           fontVariant: ["tabular-nums"],

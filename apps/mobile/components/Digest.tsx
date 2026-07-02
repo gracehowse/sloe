@@ -330,7 +330,7 @@ function DigestLegacy(props: DigestProps) {
       >
         {headline}
       </Text>
-      <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 14 }}>
+      <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginBottom: 14 }}>
         {isEmpty
           ? "No days logged — that's fine."
           : `${daysLogged} day${daysLogged === 1 ? "" : "s"} logged · ${mealsLogged} item${mealsLogged === 1 ? "" : "s"}.`}
@@ -398,7 +398,7 @@ function DigestLegacy(props: DigestProps) {
       {!isEmpty && narrative.closestToTarget ? (
         <Text
           testID="digest-closest-to-target"
-          style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 10 }}
+          style={{ ...Type.captionSmall, color: colors.textSecondary, marginBottom: 10 }}
         >
           Closest to target —{" "}
           <Text style={{ fontWeight: "700", color: colors.text }}>{narrative.closestToTarget.label}</Text>
@@ -410,7 +410,7 @@ function DigestLegacy(props: DigestProps) {
       {!isEmpty && weightFirstLastLine ? (
         <Text
           testID="digest-weight-first-last"
-          style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 10 }}
+          style={{ ...Type.captionSmall, color: colors.textSecondary, marginBottom: 10 }}
         >
           {weightFirstLastLine}
         </Text>
@@ -419,7 +419,7 @@ function DigestLegacy(props: DigestProps) {
       {!isEmpty && narrative.maintenanceLine ? (
         <Text
           testID="digest-maintenance-line"
-          style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 10 }}
+          style={{ ...Type.captionSmall, color: colors.textSecondary, marginBottom: 10 }}
         >
           {narrative.maintenanceLine}
         </Text>
@@ -428,7 +428,7 @@ function DigestLegacy(props: DigestProps) {
       {!isEmpty && usual?.kind === "celebration" ? (
         <Text
           testID="digest-usual-celebration"
-          style={{ fontSize: 12, color: colors.text, marginBottom: 10 }}
+          style={{ ...Type.captionSmall, color: colors.text, marginBottom: 10 }}
         >
           You logged <Text style={{ fontWeight: "700" }}>{usual.name}</Text>{" "}
           {usual.count} time{usual.count === 1 ? "" : "s"} this week.
@@ -502,7 +502,9 @@ function DigestLegacy(props: DigestProps) {
           />
           <Text
             style={{
-              fontSize: 12,
+              fontFamily: Type.captionSmall.fontFamily,
+              fontSize: Type.captionSmall.fontSize,
+              lineHeight: Type.captionSmall.lineHeight,
               fontWeight: "700",
               color: shareDisabled ? colors.textSecondary : Accent.success,
             }}
@@ -520,7 +522,7 @@ function DigestLegacy(props: DigestProps) {
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ fontSize: 12, color: colors.textSecondary }}>Got it</Text>
+          <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>Got it</Text>
         </Pressable>
       </View>
 

@@ -3,7 +3,7 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { Download, Settings as SettingsIcon, X } from "lucide-react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
@@ -169,7 +169,7 @@ export function CancelExportPromptSheet({
                 </Text>
                 <Text
                   style={{
-                    fontSize: 12,
+                    ...Type.captionSmall,
                     color: colors.textSecondary,
                     marginTop: 2,
                   }}
@@ -225,7 +225,7 @@ export function CancelExportPromptSheet({
                 </Text>
                 <Text
                   style={{
-                    fontSize: 12,
+                    ...Type.captionSmall,
                     color: colors.textSecondary,
                     marginTop: 2,
                   }}

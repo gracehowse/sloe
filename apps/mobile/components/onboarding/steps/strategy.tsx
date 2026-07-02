@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Spacing } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { OptionCard } from "@/components/OptionCard";
@@ -99,8 +99,7 @@ export function MobileStrategyStep() {
                   <Text
                     style={{
                       color: colors.text,
-                      fontWeight: "700",
-                      fontSize: 15,
+                      fontFamily: Type.bodyLarge.fontFamily, fontSize: Type.bodyLarge.fontSize, lineHeight: Type.bodyLarge.lineHeight, fontWeight: "700",
                     }}
                   >
                     {s.title}

@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   supportiveCopy: {
-    fontSize: 12,
+    ...Type.captionSmall,
     textAlign: "center",
     marginBottom: Spacing.lg,
   },

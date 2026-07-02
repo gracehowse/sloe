@@ -161,7 +161,7 @@ function WhyNumberV3SectionImpl({
           <Text style={{ fontSize: 15, fontWeight: "600", color: accent.primaryForeground }}>
             {WHY_NUMBER_V3_COPY.yourTarget}
           </Text>
-          <Text style={{ fontSize: 12, color: accent.primaryForeground, opacity: 0.8, marginTop: 2 }}>
+          <Text style={{ ...Type.captionSmall, color: accent.primaryForeground, opacity: 0.8, marginTop: 2 }}>
             {buildWhyNumberResultSubtitle(result.lines)}
           </Text>
         </View>

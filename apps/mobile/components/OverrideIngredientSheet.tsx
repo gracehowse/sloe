@@ -20,7 +20,7 @@ import {
   View,
 } from "react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { SupprButton } from "./ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import {
@@ -128,7 +128,7 @@ export default function OverrideIngredientSheet({
       paddingHorizontal: Spacing.md,
       paddingVertical: 10,
       color: colors.text,
-      fontSize: 15,
+      ...Type.bodyLarge,
       fontVariant: ["tabular-nums"],
     },
     footer: {

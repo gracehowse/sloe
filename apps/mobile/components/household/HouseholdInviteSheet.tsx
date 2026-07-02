@@ -28,7 +28,7 @@ import {
 } from "react-native";
 import { Mail, Plus, Trash2, X } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -232,7 +232,7 @@ export function HouseholdInviteSheet({
                     autoCorrect={false}
                     keyboardType="email-address"
                     editable={!sending}
-                    style={{ flex: 1, paddingVertical: 12, fontSize: 15, color: colors.text }}
+                    style={{ flex: 1, paddingVertical: 12, ...Type.bodyLarge, color: colors.text }}
                   />
                 </View>
                 <Pressable
@@ -256,7 +256,7 @@ export function HouseholdInviteSheet({
                   )}
                 </Pressable>
               </View>
-              <Text style={{ fontSize: 12, color: colors.textTertiary, lineHeight: 16 }}>
+              <Text style={{ ...Type.captionSmall, color: colors.textTertiary, lineHeight: 16 }}>
                 {"They'll see an Accept / Decline prompt the next time they open Sloe."}
               </Text>
             </View>
@@ -301,7 +301,7 @@ export function HouseholdInviteSheet({
                         <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
                           {inv.invitee_email}
                         </Text>
-                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                        <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}>
                           {STATUS_LABEL[inv.status]}
                         </Text>
                       </View>
@@ -349,7 +349,7 @@ export function HouseholdInviteSheet({
               >
                 {inviteCode.toUpperCase()}
               </Text>
-              <Text style={{ fontSize: 12, color: colors.textTertiary, lineHeight: 16, textAlign: "center" }}>
+              <Text style={{ ...Type.captionSmall, color: colors.textTertiary, lineHeight: 16, textAlign: "center" }}>
                 {'Anyone with this code can join from "Join household" on their device.'}
               </Text>
             </View>

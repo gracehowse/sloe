@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { AlertTriangle, Check, Info } from "lucide-react-native";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled, track } from "@/lib/analytics";
@@ -312,7 +312,7 @@ export function MobilePaceStep() {
               {projectedTarget.toLocaleString()}
               <Text
                 style={{
-                  fontSize: 12,
+                  ...Type.captionSmall,
                   color: colors.textSecondary,
                   fontWeight: "500",
                 }}
@@ -350,7 +350,7 @@ export function MobilePaceStep() {
               {dailyMagnitude.toLocaleString()}
               <Text
                 style={{
-                  fontSize: 12,
+                  ...Type.captionSmall,
                   color: colors.textSecondary,
                   fontWeight: "500",
                 }}
@@ -467,7 +467,7 @@ function PaceWarningBanner({
         </Text>
         <Text
           style={{
-            fontSize: 12,
+            ...Type.captionSmall,
             color: colors.textSecondary,
             lineHeight: 18,
           }}
@@ -511,7 +511,7 @@ function PaceWarningBanner({
             <Text
               style={{
                 flex: 1,
-                fontSize: 12,
+                ...Type.captionSmall,
                 color: colors.text,
                 lineHeight: 17,
               }}

@@ -2233,7 +2233,7 @@ export default function RecipeDetailScreen() {
                     borderColor: colors.cardBorder,
                   }}
                 >
-                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>{m.label}</Text>
+                  <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>{m.label}</Text>
                   <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, fontVariant: ["tabular-nums"] }}>
                     {m.value}
                   </Text>
@@ -2257,7 +2257,7 @@ export default function RecipeDetailScreen() {
               <Text
                 testID="recipe-kcal-total-line"
                 accessibilityLabel={`${totalKcal} kilocalories total for ${viewServings} portions`}
-                style={{ fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}
+                style={{ ...Type.captionSmall, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}
               >
                 {totalKcal} kcal total for {viewServings} portions
               </Text>
@@ -2287,7 +2287,7 @@ export default function RecipeDetailScreen() {
               <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
                 {allergenLine}
               </Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+              <Text style={{ ...Type.captionSmall, color: colors.textSecondary, lineHeight: 17 }}>
                 We tag recipes from matched ingredients at import and verify time. Always verify
                 ingredients against the original source if an allergen is a safety concern.
               </Text>
@@ -2297,7 +2297,7 @@ export default function RecipeDetailScreen() {
               accessibilityRole="text"
               accessibilityLabel="Not tagged for allergens. We tag recipes from matched ingredients — always verify against the original source if an allergen is a safety concern."
               testID="recipe-allergen-callout"
-              style={{ fontSize: 12, color: colors.textTertiary, lineHeight: 17 }}
+              style={{ ...Type.captionSmall, color: colors.textTertiary, lineHeight: 17 }}
             >
               Not tagged for allergens — always verify against the original source.
             </Text>
@@ -2309,13 +2309,13 @@ export default function RecipeDetailScreen() {
               only (CookMiseEnPlace) since RecipeIngredientGrid below already
               carries per-row match state via the verification dot. */}
           {autoVerifyingIngredients ? (
-            <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+            <Text style={{ ...Type.captionSmall, color: colors.textSecondary, lineHeight: 17 }}>
               Matching each line against the food database (USDA / Open Food Facts / FatSecret /
               Edamam when configured)…
             </Text>
           ) : autoVerifyFailed ? (
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md, backgroundColor: Accent.warning + "1A", borderWidth: 1, borderColor: Accent.warning }}>
-              <Text style={{ fontSize: 12, color: Accent.warningSolid, lineHeight: 17, flexShrink: 1 }}>
+              <Text style={{ ...Type.captionSmall, color: Accent.warningSolid, lineHeight: 17, flexShrink: 1 }}>
                 Couldn’t match ingredients against the food database.
               </Text>
               <Pressable onPress={() => setAutoVerifyRetryToken((n) => n + 1)}>

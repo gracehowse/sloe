@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronRight, X } from "lucide-react-native";
 
-import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import {
   buildWhyThisNumber,
@@ -151,7 +151,7 @@ function WhyThisNumberSheetImpl({
             {result.isEarlyEstimate ? (
               <Text
                 style={{
-                  fontSize: 12,
+                  ...Type.captionSmall,
                   color: textTertiaryColor,
                   marginTop: Spacing.xs,
                   fontStyle: "italic",
@@ -163,7 +163,7 @@ function WhyThisNumberSheetImpl({
               <Text
                 testID="why-this-number-calibrating-ask"
                 style={{
-                  fontSize: 12,
+                  ...Type.captionSmall,
                   color: textTertiaryColor,
                   marginTop: Spacing.xs,
                   lineHeight: 17,

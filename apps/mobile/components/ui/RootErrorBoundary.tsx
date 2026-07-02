@@ -202,7 +202,7 @@ export class RootErrorBoundary extends React.Component<Props, State> {
         {this.state.resets >= 2 ? (
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: "#64748b",
               textAlign: "center",
               marginTop: Spacing.sm,

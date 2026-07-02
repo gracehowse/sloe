@@ -1662,7 +1662,7 @@ export default function PlannerScreen() {
         },
         summarySubtitle: {
           ...Type.caption,
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textSecondary,
           lineHeight: 18,
           marginBottom: Spacing.lg,
@@ -1774,7 +1774,7 @@ export default function PlannerScreen() {
         },
         dayEmptyHint: {
           ...Type.caption,
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textTertiary,
           lineHeight: 16,
         },
@@ -1886,7 +1886,7 @@ export default function PlannerScreen() {
         // not as a CTA.
         // headers census 2026-06-10: pill eyebrow → Type.label.
         daySharedPill: { ...Type.label, color: colors.textTertiary },
-        dayTotals: { fontSize: 12, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
+        dayTotals: { ...Type.captionSmall, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
 
         // 2026-05-22 evening (Grace): tightened vertical padding 10→8
         // so 4 meals × 7 days fits closer to 2 screens not 3.
@@ -2844,7 +2844,9 @@ export default function PlannerScreen() {
                 ) : null}
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontFamily: Type.captionSmall.fontFamily,
+                    fontSize: Type.captionSmall.fontSize,
+                    lineHeight: Type.captionSmall.lineHeight,
                     fontWeight: active ? "700" : "500",
                     color: active ? colors.text : colors.textSecondary,
                   }}
@@ -3514,7 +3516,7 @@ export default function PlannerScreen() {
                 <Text
                   accessibilityRole="text"
                   accessibilityLabel={`Protein ${under} grams under target. Scale ${lowest.name} up or swap to a higher-protein recipe.`}
-                  style={{ fontSize: 12, color: Accent.warningSolid, marginTop: 4, marginBottom: 4, lineHeight: 16 }}
+                  style={{ ...Type.captionSmall, color: Accent.warningSolid, marginTop: 4, marginBottom: 4, lineHeight: 16 }}
                   testID="residual-protein-gap-hint"
                 >
                   Protein {under}g under target — try scaling {lowest.name} up or swap to a higher-protein recipe.
@@ -4573,7 +4575,9 @@ export default function PlannerScreen() {
               >
                 <Text
                   style={{
-                    fontSize: 15,
+                    fontFamily: Type.bodyLarge.fontFamily,
+                    fontSize: Type.bodyLarge.fontSize,
+                    lineHeight: Type.bodyLarge.lineHeight,
                     fontWeight: "500",
                     color: destructive ? Accent.destructive : colors.text,
                   }}

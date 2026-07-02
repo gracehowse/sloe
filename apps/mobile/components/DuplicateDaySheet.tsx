@@ -12,7 +12,7 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
@@ -296,7 +296,7 @@ export default function DuplicateDaySheet({
             )}
           </ScrollView>
 
-          <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: Spacing.md }}>
+          <Text style={{ ...Type.captionSmall, color: colors.textTertiary, marginTop: Spacing.md }}>
             {sourceMealCount === 0
               ? "Nothing to duplicate — this day has no meals."
               : targetDayKeys.length === 0

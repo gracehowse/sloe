@@ -11,7 +11,7 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { CalorieRingDial } from "@/components/charts/CalorieRingDial";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { Layout } from "@/constants/layout";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -308,7 +308,9 @@ export function MobileRevealStep() {
                 </Text>
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontFamily: Type.captionSmall.fontFamily,
+                    fontSize: Type.captionSmall.fontSize,
+                    lineHeight: Type.captionSmall.lineHeight,
                     fontWeight: "600",
                     color: colors.textSecondary,
                     marginTop: Spacing.xs,
@@ -522,7 +524,7 @@ function NextStepRow({
         <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
           {title}
         </Text>
-        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 }}>
+        <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2, lineHeight: 17 }}>
           {sub}
         </Text>
       </View>
@@ -614,7 +616,9 @@ function MacroTile({
         {pairedLayout ? (
           <Text
             style={{
-              fontSize: 12,
+              fontFamily: Type.captionSmall.fontFamily,
+              fontSize: Type.captionSmall.fontSize,
+              lineHeight: Type.captionSmall.lineHeight,
               fontWeight: "700",
               fontVariant: ["tabular-nums"],
               color,
@@ -754,7 +758,9 @@ function RevealShowTheMaths({
       >
         <Text
           style={{
-            fontSize: 12,
+            fontFamily: Type.captionSmall.fontFamily,
+            fontSize: Type.captionSmall.fontSize,
+            lineHeight: Type.captionSmall.lineHeight,
             fontWeight: "600",
             color: accent.primarySolid,
             letterSpacing: 0.1,
@@ -803,7 +809,9 @@ function RevealShowTheMaths({
                 </Text>
                 <Text
                   style={{
-                    fontSize: 15,
+                    fontFamily: Type.bodyLarge.fontFamily,
+                    fontSize: Type.bodyLarge.fontSize,
+                    lineHeight: Type.bodyLarge.lineHeight,
                     fontWeight: "700",
                     color: colors.text,
                     fontVariant: ["tabular-nums"],

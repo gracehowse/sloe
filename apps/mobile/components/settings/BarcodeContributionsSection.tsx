@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import { Package, Trash2 } from "lucide-react-native";
 
-import { Accent, Radius } from "@/constants/theme";
+import { Accent, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -138,7 +138,7 @@ export function BarcodeContributionsSection({ userId }: { userId: string | null 
           {barcodeContributions.length === 0 ? (
             <Text
               style={{
-                fontSize: 12,
+                ...Type.captionSmall,
                 lineHeight: 16,
                 color: colors.textSecondary,
               }}

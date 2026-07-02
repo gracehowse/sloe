@@ -235,7 +235,7 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
         starBtn: { padding: 4 },
         clearBtn: { paddingHorizontal: 6 },
         clearText: {
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textTertiary,
           textDecorationLine: "underline",
         },

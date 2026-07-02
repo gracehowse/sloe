@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { PAYWALL_NO_PAYMENT_DUE_CHIP } from "@suppr/shared/landing/paywallTrust";
 
 /**
@@ -32,8 +32,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: Accent.successSolid,
-    fontFamily: FontFamily.sansMedium,
-    fontSize: 12,
+    ...Type.captionSmall,
     textAlign: "center",
   },
 });

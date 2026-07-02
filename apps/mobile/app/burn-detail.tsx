@@ -365,7 +365,7 @@ export default function BurnDetailScreen() {
                     <Ionicons name="barbell-outline" size={14} color={accent.primary} />
                     <Text style={{ fontSize: 13, color: colors.text, flex: 1 }}>{w.type}</Text>
                     {w.minutes > 0 ? (
-                      <Text style={{ fontSize: 12, color: colors.textSecondary }}>{w.minutes} min</Text>
+                      <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>{w.minutes} min</Text>
                     ) : null}
                     {w.calories > 0 ? (
                       <Text style={{ fontSize: 12, fontWeight: "700", color: activitySolid, fontVariant: ["tabular-nums"] }}>
@@ -482,7 +482,7 @@ export default function BurnDetailScreen() {
                     </View>
                   ) : null}
                 </SupprCard>
-                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: Spacing.dense, lineHeight: 18, paddingHorizontal: 4 }}>
+                <Text style={{ ...Type.captionSmall, color: colors.textTertiary, marginTop: Spacing.dense, lineHeight: 18, paddingHorizontal: 4 }}>
                   Burn above your maintenance estimate adds to your daily food budget.
                 </Text>
               </View>
@@ -537,7 +537,7 @@ function BurnStatRow({
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ fontSize: 15, fontWeight: "500", color: textColor }}>{title}</Text>
-          <Text style={{ fontSize: 12, color: subtitleColor, marginTop: 2 }}>{subtitle}</Text>
+          <Text style={{ ...Type.captionSmall, color: subtitleColor, marginTop: 2 }}>{subtitle}</Text>
         </View>
         <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 20, color: textColor, fontVariant: ["tabular-nums"] }}>
           {value}

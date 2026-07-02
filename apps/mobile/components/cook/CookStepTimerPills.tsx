@@ -1,6 +1,6 @@
 import { Animated, Text, View, StyleSheet } from "react-native";
 import { Timer as TimerIcon } from "lucide-react-native";
-import { Spacing } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import {
@@ -77,7 +77,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   pillText: {
-    fontSize: 15,
+    fontFamily: Type.bodyLarge.fontFamily,
+    fontSize: Type.bodyLarge.fontSize,
+    lineHeight: Type.bodyLarge.lineHeight,
     fontWeight: "600",
   },
 });

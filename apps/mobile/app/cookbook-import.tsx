@@ -408,8 +408,7 @@ export default function CookbookImportScreen() {
           borderColor: colors.border,
           borderRadius: Radius.xl,
           padding: Spacing.md,
-          fontFamily: FontFamily.sansRegular,
-          fontSize: 15,
+          ...Type.bodyLarge,
           color: colors.text,
           backgroundColor: colors.card,
         },
@@ -445,8 +444,9 @@ export default function CookbookImportScreen() {
         },
         primaryBtnText: {
           fontFamily: FontFamily.sansSemibold,
+          fontSize: Type.bodyLarge.fontSize,
+          lineHeight: Type.bodyLarge.lineHeight,
           color: accent.primaryForeground,
-          fontSize: 15,
         },
         // DS §4: standard cards → radius-lg (8). Flat-card surfaces
         // (2026-06-12, Withings grammar — decision:
@@ -469,8 +469,7 @@ export default function CookbookImportScreen() {
         // = serifMedium 17pt — the correct role for a recipe name in a review list card.
         cardTitle: { ...Type.headline, color: colors.text },
         cardMeta: {
-          fontFamily: FontFamily.sansRegular,
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textSecondary,
           marginTop: Spacing.xs,
         },
@@ -531,8 +530,7 @@ export default function CookbookImportScreen() {
           paddingBottom: insets.bottom + Spacing.md,
         },
         reviewCount: {
-          fontFamily: FontFamily.serifRegular,
-          fontSize: 15,
+          ...Type.bodyLarge,
           color: colors.text,
           marginBottom: Spacing.sm,
         },
@@ -599,11 +597,10 @@ export default function CookbookImportScreen() {
             !redesignOn ? (
               <Pressable onPress={() => void finishSave()} disabled={committing} hitSlop={8}>
                 <Text
-                  style={{
-                    fontFamily: FontFamily.sansSemibold,
-                    color: accent.primarySolid,
-                    fontSize: 15,
-                  }}
+                  style={[
+                    Type.bodyLarge,
+                    { fontFamily: FontFamily.sansSemibold, color: accent.primarySolid },
+                  ]}
                 >
                   {committing ? "…" : "Save"}
                 </Text>

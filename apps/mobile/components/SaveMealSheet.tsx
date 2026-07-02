@@ -30,7 +30,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 import type { SavedMealItem } from "@suppr/nutrition-core/savedMeals";
@@ -203,7 +203,9 @@ export default function SaveMealSheet({
             >
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: "600",
                   color: colors.text,
                   marginBottom: 6,
@@ -237,7 +239,9 @@ export default function SaveMealSheet({
 
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: "600",
                   color: colors.text,
                   marginBottom: 6,
@@ -276,7 +280,9 @@ export default function SaveMealSheet({
                     >
                       <Text
                         style={{
-                          fontSize: 12,
+                          fontFamily: Type.captionSmall.fontFamily,
+                          fontSize: Type.captionSmall.fontSize,
+                          lineHeight: Type.captionSmall.lineHeight,
                           fontWeight: "600",
                           color: isActive ? accent.primary : colors.textSecondary,
                         }}
@@ -290,7 +296,9 @@ export default function SaveMealSheet({
 
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: "600",
                   color: colors.text,
                   marginBottom: 6,
@@ -301,7 +309,7 @@ export default function SaveMealSheet({
               {items.length === 0 && (
                 <Text
                   style={{
-                    fontSize: 12,
+                    ...Type.captionSmall,
                     color: colors.textSecondary,
                     paddingVertical: 12,
                   }}

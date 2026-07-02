@@ -893,7 +893,9 @@ export default function CreateRecipeWizard() {
           gap: Spacing.sm,
         },
         stepIndex: {
-          fontSize: 12,
+          fontFamily: Type.captionSmall.fontFamily,
+          fontSize: Type.captionSmall.fontSize,
+          lineHeight: Type.captionSmall.lineHeight,
           fontWeight: "700",
           color: accent.primarySolid,
           letterSpacing: 1,
@@ -906,7 +908,7 @@ export default function CreateRecipeWizard() {
           borderColor: colors.border,
           padding: Spacing.md,
           color: colors.text,
-          fontSize: 15,
+          ...Type.bodyLarge,
           minHeight: 64,
           textAlignVertical: "top",
         },
@@ -944,7 +946,7 @@ export default function CreateRecipeWizard() {
           borderColor: colors.border,
           padding: Spacing.sm,
           color: colors.text,
-          fontSize: 15,
+          ...Type.bodyLarge,
           fontVariant: ["tabular-nums"],
         },
         // Save step. Gap 13: Radius.xl (12).
@@ -1329,7 +1331,7 @@ export default function CreateRecipeWizard() {
             {hasMacroOverrides({ macroOverrides }) && (
               <Text
                 style={{
-                  fontSize: 12,
+                  ...Type.captionSmall,
                   color: colors.textSecondary,
                   textAlign: "center",
                 }}

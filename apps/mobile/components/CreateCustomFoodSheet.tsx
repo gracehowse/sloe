@@ -47,7 +47,7 @@ import * as ImagePicker from "expo-image-picker";
 import Constants from "expo-constants";
 
 import KeyboardSafeView from "./KeyboardSafeView";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { track } from "@/lib/analytics";
@@ -815,7 +815,9 @@ export default function CreateCustomFoodSheet({
 
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: "600",
                   color: colors.text,
                   marginBottom: 6,
@@ -837,7 +839,9 @@ export default function CreateCustomFoodSheet({
 
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: "600",
                   color: colors.text,
                   marginBottom: 6,
@@ -859,7 +863,9 @@ export default function CreateCustomFoodSheet({
               {/* Natural serving row — prominent, above the macro grid. */}
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: "600",
                   color: colors.text,
                   marginBottom: 6,
@@ -1069,7 +1075,9 @@ export default function CreateCustomFoodSheet({
                   natural serving (label + grams) is set. */}
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: "600",
                   color: colors.text,
                   marginBottom: 6,
@@ -1266,7 +1274,7 @@ export default function CreateCustomFoodSheet({
                 >
                   Per-serving preview
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.text }}>
+                <Text style={{ ...Type.captionSmall, color: colors.text }}>
                   {hasServingLabel && hasServingGrams && hasValidBase
                     ? `${servingLabelClean} (${servingGrams} g) ≈ ${previewScaled.calories} kcal · P ${previewScaled.protein} · C ${previewScaled.carbs} · F ${previewScaled.fat}`
                     : hasValidBase

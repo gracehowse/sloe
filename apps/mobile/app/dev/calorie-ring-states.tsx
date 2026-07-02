@@ -17,6 +17,7 @@
  * `suppr:///dev/calorie-ring-states` (used by Maestro).
  */
 import * as React from "react";
+import { Type } from "@/constants/theme";
 import { ScrollView, View, Text } from "react-native";
 import { Stack } from "expo-router";
 import CalorieRing from "@/components/charts/CalorieRing";
@@ -128,7 +129,7 @@ export default function CalorieRingStatesScreen() {
               >
                 <CalorieRingDial consumed={s.consumed} target={s.goal} size={200} />
               </View>
-              <Text style={{ fontSize: 12, color: "#666" }}>{s.note}</Text>
+              <Text style={{ ...Type.captionSmall, color: "#666" }}>{s.note}</Text>
               <Text style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
                 consumed {s.consumed} · goal {s.goal}
               </Text>

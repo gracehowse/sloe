@@ -138,7 +138,7 @@ export function MacroStatTile({
           <Text
             style={{
               ...Type.caption,
-              fontSize: 12,
+              ...Type.captionSmall,
               lineHeight: 16,
               color: textSecondaryColor,
             }}

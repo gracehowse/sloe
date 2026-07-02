@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -256,7 +256,9 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   afterValue: {
-    fontSize: 12,
+    fontFamily: Type.captionSmall.fontFamily,
+    fontSize: Type.captionSmall.fontSize,
+    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
   },

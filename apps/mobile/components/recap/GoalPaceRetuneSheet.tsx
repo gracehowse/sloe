@@ -34,7 +34,7 @@ import {
 } from "react-native";
 import { Check, X } from "lucide-react-native";
 
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -421,7 +421,9 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
                   >
                     <Text
                       style={{
-                        fontSize: 15,
+                        fontFamily: Type.bodyLarge.fontFamily,
+                        fontSize: Type.bodyLarge.fontSize,
+                        lineHeight: Type.bodyLarge.lineHeight,
                         fontWeight: selected ? "700" : "500",
                         color: selected ? colors.text : colors.textSecondary,
                       }}
@@ -479,7 +481,7 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
                 </Text>
                 <Text
                   style={{
-                    fontSize: 12,
+                    ...Type.captionSmall,
                     color: colors.textTertiary,
                     fontVariant: ["tabular-nums"],
                   }}

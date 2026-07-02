@@ -183,8 +183,9 @@ export function RecipeIngredientGrid({
                 </View>
                 <Text
                   style={{
-                    fontFamily: FontFamily.sansMedium,
-                    fontSize: 12,
+                    fontFamily: Type.captionSmall.fontFamily,
+                    fontSize: Type.captionSmall.fontSize,
+                    lineHeight: Type.captionSmall.lineHeight,
                     fontWeight: "500",
                     color: colors.text,
                     textAlign: "center",
@@ -196,8 +197,7 @@ export function RecipeIngredientGrid({
                 {scaledAmount != null ? (
                   <Text
                     style={{
-                      fontFamily: FontFamily.sansRegular,
-                      fontSize: 12,
+                      ...Type.captionSmall,
                       color: colors.textSecondary,
                       textAlign: "center",
                       fontVariant: ["tabular-nums"],

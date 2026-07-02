@@ -340,8 +340,7 @@ export function CreateRecipeActionSheet({ visible, onClose }: CreateRecipeAction
             <Text
               style={{
                 color: colors.textSecondary,
-                fontWeight: "600",
-                fontSize: 15,
+                fontFamily: Type.bodyLarge.fontFamily, fontSize: Type.bodyLarge.fontSize, lineHeight: Type.bodyLarge.lineHeight, fontWeight: "600",
               }}
             >
               Cancel
@@ -429,7 +428,7 @@ function ActionRow({
         </View>
         <Text
           style={{
-            fontSize: 12,
+            ...Type.captionSmall,
             color: colors.textSecondary,
             marginTop: Spacing.xs,
             lineHeight: 17,

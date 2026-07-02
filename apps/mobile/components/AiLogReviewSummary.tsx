@@ -13,7 +13,7 @@
 import { useMemo } from "react";
 import { Text, View } from "react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import {
   aggregateTotals,
   averageConfidence,
@@ -101,7 +101,7 @@ export default function AiLogReviewSummary({ items, slotLabel, colors }: Props) 
           </Text>
         </View>
       </View>
-      <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+      <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>
         Logging to{" "}
         <Text style={{ color: colors.text, fontWeight: "700" }}>{slotLabel}</Text>
         . Total: {formatMacroTrailer({

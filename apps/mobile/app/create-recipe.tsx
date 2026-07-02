@@ -876,7 +876,7 @@ export default function CreateRecipeScreen() {
       padding: Spacing.md, flexDirection: "row", alignItems: "center",
     },
     ingName: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.text },
-    ingDetail: { fontSize: 12, color: colors.textSecondary },
+    ingDetail: { ...Type.captionSmall, color: colors.textSecondary },
     removeBtn: { padding: Spacing.xs },
 
     addBtn: {
@@ -989,7 +989,7 @@ export default function CreateRecipeScreen() {
       borderColor: colors.border,
       padding: Spacing.md,
       color: colors.text,
-      fontSize: 15,
+      ...Type.bodyLarge,
     },
     modalActions: { flexDirection: "row", gap: Spacing.sm, justifyContent: "flex-end" },
     modalBtn: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg, borderRadius: Radius.xl },
@@ -1241,7 +1241,7 @@ export default function CreateRecipeScreen() {
         <View style={styles.publishRow}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.label, { marginBottom: 2 }]}>Publish to community</Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+            <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>
               Others can discover and save your recipe
             </Text>
           </View>

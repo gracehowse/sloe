@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
     marginBottom: Spacing.sm,
   },
-  basis: { fontSize: 12, lineHeight: 18, marginTop: Spacing.sm },
+  basis: { ...Type.captionSmall, lineHeight: 18, marginTop: Spacing.sm },
   footnote: { fontSize: 10.5, marginTop: Spacing.sm },
 });
 

@@ -306,7 +306,7 @@ function LogSheetDescribeFlowImpl({
         <Text style={{ fontSize: 13, color: Accent.destructive }}>{error}</Text>
       ) : null}
       {stage === "parsing" ? (
-        <Text style={{ fontSize: 12, color: colors.textSecondary }}>Parsing your description…</Text>
+        <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>Parsing your description…</Text>
       ) : null}
     </View>
   );

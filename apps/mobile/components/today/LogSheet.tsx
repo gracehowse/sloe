@@ -589,7 +589,9 @@ function LogSheetImpl({
                       <Text
                         numberOfLines={1}
                         style={{
-                          fontSize: 12,
+                          fontFamily: Type.captionSmall.fontFamily,
+                          fontSize: Type.captionSmall.fontSize,
+                          lineHeight: Type.captionSmall.lineHeight,
                           fontWeight: "700",
                           color: colors.text,
                         }}
@@ -927,8 +929,9 @@ function DefaultComposition({
             <ScanBarcode size={18} color={accent.primary} />
             <Text
               style={{
-                fontFamily: Type.button.fontFamily,
-                fontSize: 15,
+                fontFamily: Type.bodyLarge.fontFamily,
+                fontSize: Type.bodyLarge.fontSize,
+                lineHeight: Type.bodyLarge.lineHeight,
                 fontWeight: "600",
                 color: accent.primarySolid,
               }}
@@ -1371,8 +1374,7 @@ function LogSheetDailyProgress({
           <View key={letter} style={{ alignItems: "center" }}>
             <Text
               style={{
-                fontFamily: Type.title.fontFamily,
-                fontSize: 15,
+                ...Type.bodyLarge,
                 color,
                 fontVariant: ["tabular-nums"],
               }}

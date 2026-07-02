@@ -670,7 +670,7 @@ export default function WeeklyRecapScreen() {
             padding: Spacing.xl,
           }}
         >
-          <Text style={{ color: colors.text, fontSize: 15, textAlign: "center", marginBottom: Spacing.sm }}>
+          <Text style={{ color: colors.text, ...Type.bodyLarge, textAlign: "center", marginBottom: Spacing.sm }}>
             Couldn&rsquo;t load your week.
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: "center" }}>

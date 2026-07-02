@@ -21,7 +21,7 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
@@ -222,7 +222,7 @@ export default function LoginScreen() {
     },
     emailBtnText: { color: colors.navPrimary, fontWeight: "700", fontSize: 17 },
     termsFinePrint: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textTertiary,
       textAlign: "center",
       marginTop: Spacing.xl,

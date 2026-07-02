@@ -20,7 +20,7 @@
 import * as React from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { Check, FileSpreadsheet, RotateCcw } from "lucide-react-native";
-import { Accent, Radius } from "@/constants/theme";
+import { Accent, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { authedFetch } from "@/lib/authedFetch";
@@ -223,7 +223,7 @@ export function MobileMfpCsvImportCard({
           </View>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.textSecondary,
               marginTop: 4,
               lineHeight: 18,
@@ -270,7 +270,7 @@ export function MobileMfpCsvImportCard({
               }}
             >
               <ActivityIndicator size="small" color={accent.primaryLight} />
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+              <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>
                 Reading {state.fileName}&hellip;
               </Text>
             </View>
@@ -301,7 +301,9 @@ export function MobileMfpCsvImportCard({
                 />
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontFamily: Type.captionSmall.fontFamily,
+                    fontSize: Type.captionSmall.fontSize,
+                    lineHeight: Type.captionSmall.lineHeight,
                     fontWeight: "600",
                     color: Accent.successLight ?? Accent.success,
                   }}
@@ -339,7 +341,7 @@ export function MobileMfpCsvImportCard({
           {state.kind === "error" && (
             <View style={{ marginTop: 12 }}>
               <Text
-                style={{ fontSize: 12, color: Accent.warningSolid, marginBottom: 8 }}
+                style={{ ...Type.captionSmall, color: Accent.warningSolid, marginBottom: 8 }}
                 accessibilityRole="alert"
               >
                 {state.message}

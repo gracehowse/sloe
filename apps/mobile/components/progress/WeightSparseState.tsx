@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Scale } from "lucide-react-native";
-import { Colors, FontFamily, Spacing, Radius } from "@/constants/theme";
+import { Colors, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightPoint } from "@/lib/progress/weightTrend";
@@ -101,7 +101,9 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   headline: {
-    fontSize: 15,
+    fontFamily: Type.bodyLarge.fontFamily,
+    fontSize: Type.bodyLarge.fontSize,
+    lineHeight: Type.bodyLarge.lineHeight,
     fontWeight: "600",
     textAlign: "center",
   },
