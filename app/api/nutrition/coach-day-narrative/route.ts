@@ -4,6 +4,8 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { AiBudgetExceededError, callAiText } from "@/lib/server/aiProvider";
+import { serverTrack } from "@/lib/analytics/serverTrack";
+import { AnalyticsEvents } from "@/lib/analytics/events";
 import {
   buildCoachDayFacts,
   buildCoachDayUserMessage,
@@ -37,6 +39,8 @@ export async function POST(req: Request) {
   const originErr = assertOrigin(req);
   if (originErr) return originErr;
 
+  const routeStart = Date.now();
+
   const killAi = await isServerFeatureEnabled("kill_coach_day_narrative_ai").catch(
     () => false,
   );
@@ -67,6 +71,18 @@ export async function POST(req: Request) {
     );
   }
 
+  // ENG-1288 — server-side completion event (voice-log's
+  // `voice_log_api_completed` pattern). Fires on every 200; never on
+  // 4xx/5xx. `source: "template"` = template path without an AI attempt;
+  // `"error"` = AI attempted but failed → template fallback shipped.
+  const emitCompleted = (source: "ai" | "template" | "error") => {
+    void serverTrack(AnalyticsEvents.coach_day_narrative_api_completed, userId, {
+      latency_ms: Date.now() - routeStart,
+      source,
+      tier,
+    });
+  };
+
   let body: CoachDayRequestBody;
   try {
     body = (await req.json()) as CoachDayRequestBody;
@@ -94,6 +110,7 @@ export async function POST(req: Request) {
   // Kill switch or non-Pro tier (ENG-1292): skip the AI branch entirely,
   // return the deterministic template narrative.
   if (killAi || tier !== "pro") {
+    emitCompleted("template");
     return templateResponse(template);
   }
 
@@ -110,21 +127,27 @@ export async function POST(req: Request) {
     });
 
     if (!aiResult.ok) {
+      emitCompleted("error");
       return templateResponse(template);
     }
 
     const narrative = parseCoachDayNarrative(aiResult.text, facts);
     if (!narrative) {
+      // Model answered but off-contract — an AI attempt that failed.
+      emitCompleted("error");
       return templateResponse(template);
     }
 
     const result: CoachDayNarrativeResult = { narrative, source: "ai" };
+    emitCompleted("ai");
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof AiBudgetExceededError) {
+      emitCompleted("error");
       return templateResponse(template);
     }
     captureRouteError(err, "/api/nutrition/coach-day-narrative", { stage: "narrate" });
+    emitCompleted("error");
     return templateResponse(template);
   }
 }

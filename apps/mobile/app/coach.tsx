@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -182,12 +182,39 @@ export default function CoachScreen() {
   const [askAnswer, setAskAnswer] = useState<string | null>(null);
   const [askLoading, setAskLoading] = useState(false);
 
-  const { candidates, refining } = useCoach({
+  const { candidates, source, refining } = useCoach({
     library,
     remaining,
     slot,
     enabled,
   });
+
+  // ENG-1288 — meal_coach_suggestion_shown: fires once per screen-view
+  // when the suggestion list renders, with the FINAL source attribution.
+  // A 2+ candidate set triggers the AI re-rank fetch on mount, so we wait
+  // for `refining` to settle before firing — a mount-instant emit would
+  // always report "deterministic" and hide the AI hit-rate. A 0/1-candidate
+  // set never fetches (useCoach contract) and fires immediately. Gated on
+  // `!loading` so it only fires once the CoachScreenView is on screen.
+  // Web parity: src/app/components/suppr/coach-screen-client.tsx.
+  const suggestionShownRef = useRef(false);
+  const sawRefiningRef = useRef(false);
+  useEffect(() => {
+    if (!enabled) return;
+    if (refining) {
+      sawRefiningRef.current = true;
+      return;
+    }
+    if (loading || suggestionShownRef.current || candidates.length === 0) return;
+    if (candidates.length >= 2 && !sawRefiningRef.current) return;
+    suggestionShownRef.current = true;
+    track(AnalyticsEvents.meal_coach_suggestion_shown, {
+      source,
+      candidateCount: candidates.length,
+      slot,
+      platform: "mobile",
+    });
+  }, [enabled, loading, refining, candidates, source, slot]);
 
   useEffect(() => {
     if (!enabled || !userId) return;
@@ -230,6 +257,18 @@ export default function CoachScreen() {
         topCandidateProtein: top?.predictedProtein ?? null,
       };
 
+      // ENG-1288 — completion pair for coach_ask_chip_tapped. Fires on
+      // every resolution path; the client-side template fallback emits
+      // source:"template" so template answers are not undercounted.
+      // Web parity: src/app/components/suppr/coach-screen-client.tsx.
+      const emitAnswered = (source: "ai" | "template") => {
+        track(AnalyticsEvents.coach_ask_answered, {
+          chip_id: chipId,
+          source,
+          platform: "mobile",
+        });
+      };
+
       try {
         const res = await authedFetch(`${getSupprApiBase()}/api/nutrition/coach-ask`, {
           method: "POST",
@@ -237,9 +276,10 @@ export default function CoachScreen() {
           body: JSON.stringify(body),
         });
         if (res.ok) {
-          const data = (await res.json()) as { answer?: string };
+          const data = (await res.json()) as { answer?: string; source?: string };
           if (typeof data.answer === "string") {
             setAskAnswer(data.answer);
+            emitAnswered(data.source === "ai" ? "ai" : "template");
             return;
           }
         }
@@ -251,6 +291,7 @@ export default function CoachScreen() {
           topCandidateProtein: top?.predictedProtein ?? null,
         });
         setAskAnswer(buildTemplateCoachAskAnswer(facts));
+        emitAnswered("template");
       } catch {
         const facts = buildCoachAskFacts({
           ...buildCoachDayFacts(dayFactsInput),
@@ -260,6 +301,7 @@ export default function CoachScreen() {
           topCandidateProtein: top?.predictedProtein ?? null,
         });
         setAskAnswer(buildTemplateCoachAskAnswer(facts));
+        emitAnswered("template");
       } finally {
         setAskLoading(false);
       }
