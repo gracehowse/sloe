@@ -40,7 +40,7 @@ describe("ENG-889 S5 — Fresh start empty Today", () => {
   });
 
   it("mobile hero chip de-tints Fresh start when today_tracker_tier_v1 is on", () => {
-    const src = read("apps/mobile/components/today/TodayHeroRing.tsx");
+    const src = read("apps/mobile/components/today/TodayHeroChips.tsx");
     expect(src).toMatch(/today_tracker_tier_v1/);
     expect(src).toMatch(/tierV1\s*\?\s*"transparent"/);
   });

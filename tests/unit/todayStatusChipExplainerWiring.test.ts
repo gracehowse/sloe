@@ -37,7 +37,8 @@ describe("ENG-1184 — status chip → WhyThisNumber on Today", () => {
   it("mobile hero status chip is pressable when onPressStatusChip is provided", () => {
     const ring = read("apps/mobile/components/today/TodayHeroRing.tsx");
     expect(ring).toMatch(/onPressStatusChip/);
-    expect(ring).toMatch(/accessibilityRole="button"/);
-    expect(ring).toMatch(/see how your calorie target was set/);
+    const chips = read("apps/mobile/components/today/TodayHeroChips.tsx");
+    expect(chips).toMatch(/accessibilityRole="button"/);
+    expect(chips).toMatch(/see how your calorie target was set/);
   });
 });
