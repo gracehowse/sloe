@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   },
   body: {
     // Per spec: body 12pt text-secondary inside the headline card.
-    fontSize: 12,
+    ...Type.captionSmall,
     lineHeight: 18,
     marginTop: 8,
   },

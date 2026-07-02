@@ -17,7 +17,7 @@ import {
   type ActivityLevel,
   type Sex,
 } from "@suppr/nutrition-core/tdee";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -176,7 +176,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   optionTitle: {
-    fontSize: 15,
+    fontFamily: Type.bodyLarge.fontFamily,
+    fontSize: Type.bodyLarge.fontSize,
+    lineHeight: Type.bodyLarge.lineHeight,
     fontWeight: "700",
   },
   optionDesc: {
@@ -184,18 +186,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   optionKcal: {
-    fontSize: 12,
+    ...Type.captionSmall,
     marginTop: 6,
     fontVariant: ["tabular-nums"],
   },
   previewRow: {
-    fontSize: 12,
+    ...Type.captionSmall,
     lineHeight: 18,
     fontVariant: ["tabular-nums"],
     marginTop: Spacing.sm,
   },
   previewFallback: {
-    fontSize: 12,
+    ...Type.captionSmall,
     lineHeight: 18,
     marginTop: Spacing.sm,
   },

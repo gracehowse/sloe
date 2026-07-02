@@ -182,7 +182,7 @@ export function MobileSexStep() {
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.text,
               lineHeight: 18,
               marginBottom: Spacing.sm,
@@ -193,7 +193,7 @@ export function MobileSexStep() {
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.text,
               lineHeight: 18,
               marginBottom: Spacing.sm,
@@ -209,7 +209,7 @@ export function MobileSexStep() {
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.textSecondary,
               lineHeight: 18,
             }}

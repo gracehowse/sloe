@@ -140,7 +140,7 @@ function PanelRow({
       <Text
         style={{
           flex: 1.0,
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textSecondary,
           fontVariant: ["tabular-nums"],
           textAlign: "right",
@@ -173,7 +173,9 @@ function PanelRow({
       <Text
         style={{
           width: 44,
-          fontSize: 12,
+          fontFamily: Type.captionSmall.fontFamily,
+          fontSize: Type.captionSmall.fontSize,
+          lineHeight: Type.captionSmall.lineHeight,
           fontWeight: "600",
           color: row.percentDv === null ? colors.textTertiary : colors.text,
           fontVariant: ["tabular-nums"],
@@ -299,7 +301,7 @@ function FullNutrientPanelSheetImpl({
               </Text>
               <Text
                 style={{
-                  fontSize: 12,
+                  ...Type.captionSmall,
                   color: colors.textSecondary,
                   marginTop: 2,
                 }}

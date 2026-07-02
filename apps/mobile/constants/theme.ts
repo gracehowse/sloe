@@ -691,6 +691,8 @@ export const Type = {
    *  navTitle (ui-product-designer Spec 3, 2026-06-09). */
   navTitle: { fontFamily: FontFamily.serifMedium, fontSize: 18, lineHeight: 22, fontWeight: '500' as const, letterSpacing: -0.1 },
   body:    { fontFamily: FontFamily.sansMedium, fontSize: 14, lineHeight: 20, fontWeight: '500' as const, letterSpacing: 0 },
+  /** In-body emphasis row — 15/20 sans medium (ENG-1281). Call sites often override weight. */
+  bodyLarge: { fontFamily: FontFamily.sansMedium, fontSize: 15, lineHeight: 20, fontWeight: '500' as const, letterSpacing: 0 },
   /** CTA / button label — Inter SemiBold 16. Sans, NOT the Newsreader serif
    *  ramp (headline/title): serif on a control reads dated; every comparable
    *  (Withings/Alma) uses a sans semibold button label. Grace 2026-06-12. */
@@ -705,6 +707,8 @@ export const Type = {
     textTransform: 'uppercase' as const,
   },
   caption: { fontFamily: FontFamily.sansMedium, fontSize: 11, lineHeight: 14, fontWeight: '500' as const, letterSpacing: 0 },
+  /** Secondary metadata — 12/16 sans medium (ENG-1281). Prefer over raw `fontSize: 12`. */
+  captionSmall: { fontFamily: FontFamily.sansMedium, fontSize: 12, lineHeight: 16, fontWeight: '500' as const, letterSpacing: 0 },
   /** Hero stat label — GOAL/EATEN/BONUS under the ring. A calmer sibling of
    *  `label`: 600 (not 700) and 0.5 tracking (not 0.88) so the tracked caps
    *  read as a quiet section label, not a shouty warning (design-director

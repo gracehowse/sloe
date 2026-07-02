@@ -27,7 +27,7 @@ import {
 } from "react-native";
 import Constants from "expo-constants";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "./ui/SupprButton";
 import { authedFetch } from "@/lib/authedFetch";
@@ -268,7 +268,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
       paddingHorizontal: Spacing.md,
       paddingVertical: 10,
       color: colors.text,
-      fontSize: 15,
+      ...Type.bodyLarge,
     },
     label: { fontSize: 12, color: colors.textTertiary, fontWeight: "600", marginBottom: 4 },
     row: { flexDirection: "row", gap: Spacing.md, marginBottom: Spacing.md },
@@ -400,7 +400,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
             {match?.macros ? (
               <View style={styles.matchCard}>
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 2 }}>Match: {match.matchedName ?? name.trim()}</Text>
-                <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>
                   {/* ENG-1298 — source id → display label ("Suppr" → "Sloe"). */}
                   {formatNutritionSourceLabel(match.source) ?? match.source} · {Math.round(match.macros.calories)} kcal ·{" "}
                   {formatMacro(match.macros.protein, "protein")}P /{" "}
@@ -411,7 +411,7 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
             ) : null}
 
             {matchError ? (
-              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.md }}>
+              <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginBottom: Spacing.md }}>
                 {matchError}
               </Text>
             ) : null}

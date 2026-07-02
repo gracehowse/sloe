@@ -1763,13 +1763,13 @@ export default function ProgressScreen() {
             </View>
 
             {resolved.adaptiveRejectedBelowFormula && resolved.rejectedAdaptiveKcal != null && (
-              <Text style={{ fontSize: 12, color: t.sub, marginBottom: Spacing.sm }}>
+              <Text style={{ ...Type.captionSmall, color: t.sub, marginBottom: Spacing.sm }}>
                 Adaptive estimate was {resolved.rejectedAdaptiveKcal.toLocaleString()} kcal — below your formula floor, so we{"'"}re showing the formula estimate until logging catches up.
               </Text>
             )}
 
             {showAdaptiveExtras && resolved.formulaKcal != null && (
-              <Text style={{ fontSize: 12, color: t.sub, marginBottom: Spacing.sm }}>
+              <Text style={{ ...Type.captionSmall, color: t.sub, marginBottom: Spacing.sm }}>
                 Formula estimate: {resolved.formulaKcal.toLocaleString()} kcal
                 {Math.abs(resolved.kcal - resolved.formulaKcal) >= 50 && (
                   <Text style={{ fontWeight: "600", color: t.text }}>
@@ -1799,7 +1799,7 @@ export default function ProgressScreen() {
               </View>
             )}
 
-            <Text style={{ fontSize: 12, color: t.sub, lineHeight: 17 }}>
+            <Text style={{ ...Type.captionSmall, color: t.sub, lineHeight: 17 }}>
               {showAdaptiveExtras
                 ? `Maintenance is the calories you'd burn in a normal day. Based on your actual intake and weight changes (${adaptiveConfidence ?? "medium"} confidence).`
                 : "Maintenance is the calories you'd burn in a normal day. Formula estimate from your stats and activity level. Log meals and weigh in regularly to unlock an adaptive value that adjusts to your real burn."
@@ -1812,7 +1812,7 @@ export default function ProgressScreen() {
                 thresholds — no contradictory "full bars but still formula". */}
             {!showAdaptiveExtras && !showMeasuredExtras && (
               <View testID="maintenance-data-progress" style={{ marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: t.border }}>
-                <Text testID="maintenance-adaptive-status" style={{ fontSize: 12, color: t.sub, lineHeight: 17, marginBottom: Spacing.sm }}>
+                <Text testID="maintenance-adaptive-status" style={{ ...Type.captionSmall, color: t.sub, lineHeight: 17, marginBottom: Spacing.sm }}>
                   {adaptiveProgress.message}
                 </Text>
                 <View style={{ flexDirection: "row", gap: Spacing.sm }}>
@@ -1998,7 +1998,7 @@ export default function ProgressScreen() {
                             ? `avg surplus ${Math.abs(avgDeficit).toLocaleString()} kcal/day`
                             : "at maintenance";
                       return (
-                        <Text style={{ fontSize: 12, color: t.sub, lineHeight: 18 }}>
+                        <Text style={{ ...Type.captionSmall, color: t.sub, lineHeight: 18 }}>
                           Last 7 days averaged {avgCals.toLocaleString()} kcal/day — {deficitLabel}. On that trend you&apos;d reach{" "}
                           <Text style={{ fontWeight: "700", color: t.accent }}>{dailyProjection.projectedWeightKg} kg</Text> in ~{dailyProjection.projectionWeeks} weeks.
                         </Text>
@@ -2264,7 +2264,7 @@ function WeightTrendOnlyCard({
       <View style={{ marginTop: 8 }}>
         <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>{label}</Text>
       </View>
-      <Text style={{ fontSize: 12, color: theme.sub, marginTop: 4, lineHeight: 16 }}>
+      <Text style={{ ...Type.captionSmall, color: theme.sub, marginTop: 4, lineHeight: 16 }}>
         {TREND_ONLY_MODE_NOTE} · {windowLabel}
       </Text>
     </View>

@@ -474,7 +474,9 @@ export default function MealNutritionScreen() {
                   </View>
                   <Text
                     style={{
-                      fontSize: 15,
+                      fontFamily: Type.bodyLarge.fontFamily,
+                      fontSize: Type.bodyLarge.fontSize,
+                      lineHeight: Type.bodyLarge.lineHeight,
                       fontWeight: "700",
                       color: accent.primarySolid,
                       fontVariant: ["tabular-nums"],
@@ -671,7 +673,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     padding: Spacing.md,
   },
-  meta: { fontSize: 12, marginBottom: 4 },
+  meta: { ...Type.captionSmall, marginBottom: 4 },
   metaOverline: { ...Type.label, textTransform: "uppercase", marginBottom: 4 },
   portion: { fontSize: 13, marginBottom: Spacing.sm },
   // SLOE Phase 0: the big standalone meal-kcal hero reads in Newsreader serif
@@ -681,7 +683,7 @@ const styles = StyleSheet.create({
   macroBar: { flexDirection: "row", height: 10, borderRadius: 5, overflow: "hidden", marginBottom: Spacing.md },
   macroSeg: { minWidth: 2 },
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
-  sectionSub: { fontSize: 12, lineHeight: 17, marginBottom: Spacing.sm },
+  sectionSub: { ...Type.captionSmall, lineHeight: 17, marginBottom: Spacing.sm },
   microRow: {
     flexDirection: "row",
     justifyContent: "space-between",

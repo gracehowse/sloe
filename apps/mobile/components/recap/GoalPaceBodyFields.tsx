@@ -8,7 +8,7 @@
 
 import { Text, TextInput, View } from "react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export interface GoalPaceBodyFieldsProps {
@@ -45,7 +45,7 @@ export function GoalPaceBodyFields(props: GoalPaceBodyFieldsProps) {
     borderRadius: Radius.md,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.md,
-    fontSize: 15,
+    ...Type.bodyLarge,
     color: colors.text,
     backgroundColor: colors.card,
   } as const;

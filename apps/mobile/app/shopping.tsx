@@ -665,7 +665,9 @@ export default function ShoppingListScreen() {
     syncBannerText: {
       flex: 1,
       color: colors.text,
-      fontSize: 12,
+      fontFamily: Type.captionSmall.fontFamily,
+      fontSize: Type.captionSmall.fontSize,
+      lineHeight: Type.captionSmall.lineHeight,
       fontWeight: "600",
     },
     syncBannerSub: {

@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
   heroRow: { flexDirection: "row", alignItems: "baseline", marginBottom: 4 },
-  basis: { fontSize: 12, lineHeight: 18 },
+  basis: { ...Type.captionSmall, lineHeight: 18 },
   footnote: { fontSize: 10.5, marginTop: 8 },
   phTitle: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
   phSub: { fontSize: 12.5, lineHeight: 18 },

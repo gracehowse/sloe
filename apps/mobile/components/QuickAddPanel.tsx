@@ -18,7 +18,7 @@ import {
   PlusCircle,
   Star as StarIcon,
 } from "lucide-react-native";
-import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
+import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -664,7 +664,7 @@ export function QuickAddPanel({
                       {meal.name}
                     </Text>
                     <Text
-                      style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}
+                      style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}
                     >
                       {itemsLabel} · {formatMacroTrailer({
                         calories: summary.totalCalories,
@@ -770,7 +770,7 @@ export function QuickAddPanel({
                   </View>
                   <Text
                     style={{
-                      fontSize: 12,
+                      ...Type.captionSmall,
                       color: colors.textSecondary,
                       marginTop: 2,
                     }}

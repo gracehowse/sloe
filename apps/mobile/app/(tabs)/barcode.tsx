@@ -596,8 +596,7 @@ export default function BarcodeScreen() {
         servingLabel: { color: Colors.dark.textSecondary, fontSize: 13 },
         servingInput: {
           color: Accent.primaryForeground,
-          fontWeight: "600",
-          fontSize: 15,
+          fontFamily: Type.bodyLarge.fontFamily, fontSize: Type.bodyLarge.fontSize, lineHeight: Type.bodyLarge.lineHeight, fontWeight: "600",
           // Gap #10: token-based input bg instead of raw rgba literal.
           backgroundColor: Colors.dark.inputBg,
           borderRadius: Radius.sm,
@@ -744,7 +743,7 @@ export default function BarcodeScreen() {
           paddingHorizontal: Spacing.lg,
           paddingVertical: Spacing.md,
           color: Accent.primaryForeground,
-          fontSize: 15,
+          ...Type.bodyLarge,
         },
         manualInputRow: { flexDirection: "row", gap: Spacing.sm },
         corrLink: { color: accent.primarySolid, fontSize: 13, textDecorationLine: "underline" as const, textAlign: "center" as const, paddingTop: Spacing.xs },

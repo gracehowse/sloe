@@ -60,8 +60,7 @@ export function CookbookSuccessView({
         </Text>
         <Text
           style={{
-            fontFamily: FontFamily.sansRegular,
-            fontSize: 15,
+            ...Type.bodyLarge,
             color: colors.textSecondary,
             marginTop: Spacing.xs,
             textAlign: "center",
@@ -106,11 +105,10 @@ export function CookbookSuccessView({
           onPress={onViewLibrary}
         >
           <Text
-            style={{
-              fontFamily: FontFamily.sansSemibold,
-              color: accent.primaryForeground,
-              fontSize: 15,
-            }}
+            style={[
+              Type.bodyLarge,
+              { fontFamily: FontFamily.sansSemibold, color: accent.primaryForeground },
+            ]}
           >
             View library
           </Text>

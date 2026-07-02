@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeekdayIndex } from "@suppr/shared/push/weighInReminder";
@@ -71,7 +71,9 @@ function CadenceChip({
     >
       <Text
         style={{
-          fontSize: 12,
+          fontFamily: Type.captionSmall.fontFamily,
+          fontSize: Type.captionSmall.fontSize,
+          lineHeight: Type.captionSmall.lineHeight,
           fontWeight: selected ? "700" : "500",
           color: selected ? accent.primary : colors.text,
         }}
@@ -155,7 +157,7 @@ export function WeighInReminderPicker({
             Weigh-in reminder
           </Text>
           <Text
-            style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.lg }}
+            style={{ ...Type.captionSmall, color: colors.textSecondary, marginBottom: Spacing.lg }}
           >
             A gentle weekly nudge to weigh in — only when you haven&apos;t
             already this week. Mornings give the steadiest trend. Off by
@@ -178,7 +180,7 @@ export function WeighInReminderPicker({
                 Send weigh-in reminder
               </Text>
               <Text
-                style={{ fontSize: 12, color: colors.textSecondary, marginTop: Spacing.xs }}
+                style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: Spacing.xs }}
               >
                 {enabled
                   ? "On · skipped automatically if you've already weighed in"
@@ -200,7 +202,9 @@ export function WeighInReminderPicker({
           <View style={{ opacity: enabled ? 1 : 0.5, marginTop: Spacing.lg }}>
             <Text
               style={{
-                fontSize: 12,
+                fontFamily: Type.captionSmall.fontFamily,
+                fontSize: Type.captionSmall.fontSize,
+                lineHeight: Type.captionSmall.lineHeight,
                 fontWeight: "600",
                 color: colors.textSecondary,
                 marginBottom: Spacing.sm,
@@ -226,7 +230,9 @@ export function WeighInReminderPicker({
 
             <Text
               style={{
-                fontSize: 12,
+                fontFamily: Type.captionSmall.fontFamily,
+                fontSize: Type.captionSmall.fontSize,
+                lineHeight: Type.captionSmall.lineHeight,
                 fontWeight: "600",
                 color: colors.textSecondary,
                 marginTop: Spacing.lg,

@@ -24,7 +24,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Star, UtensilsCrossed } from "lucide-react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -191,7 +191,7 @@ export function SwapMealSheet({
                       ) : null}
                     </View>
                     <Text
-                      style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}
+                      style={{ color: colors.textSecondary, ...Type.captionSmall, marginTop: 2 }}
                       numberOfLines={1}
                     >
                       {c.calories.toLocaleString()} kcal · {Math.round(c.proteinG)}g protein

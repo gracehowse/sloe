@@ -64,7 +64,7 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { CARD_RADIUS, SHEET_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -361,7 +361,9 @@ function SegmentedRow({
             >
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: active ? "700" : "500",
                   // Active label reads in `accent.primarySolid` (aubergine);
                   // inactive stays muted on the rail (treatment #8).
@@ -1487,7 +1489,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           <Sparkles size={18} color={accent.primarySolid} strokeWidth={1.75} />
           <Text
             style={{
-              fontSize: 15,
+              fontFamily: Type.bodyLarge.fontFamily,
+              fontSize: Type.bodyLarge.fontSize,
+              lineHeight: Type.bodyLarge.lineHeight,
               fontWeight: "600",
               color: accent.primarySolid,
             }}
@@ -1589,7 +1593,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         >
           Your name
         </Text>
-        <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+        <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>
           Used to greet you on Today (&quot;Morning, {nameInput.trim().split(/\s+/)[0] || "Grace"}&quot;). Leave blank to keep it name-free.
         </Text>
         <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
@@ -1691,7 +1695,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               </Text>
               <Text
                 style={{
-                  fontSize: 12,
+                  ...Type.captionSmall,
                   color: colors.textSecondary,
                   marginTop: 2,
                 }}
@@ -1791,7 +1795,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             gap: 10,
           }}
         >
-          <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+          <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>
             Enter your code exactly as provided (letters are not
             case-sensitive).
           </Text>
@@ -2628,13 +2632,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             >
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                 <Text style={{ color: t.green, fontWeight: "700", fontSize: 13, marginTop: 1 }}>✓</Text>
-                <Text style={{ flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+                <Text style={{ flex: 1, ...Type.captionSmall, color: colors.textSecondary, lineHeight: 17 }}>
                   <Text style={{ fontWeight: "700", color: colors.text }}>Refresh my plan</Text> keeps your food log, weight history, recipes, plans, saves, and shopping lists.
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                 <Text style={{ color: t.red, fontWeight: "700", fontSize: 13, marginTop: 1 }}>✗</Text>
-                <Text style={{ flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+                <Text style={{ flex: 1, ...Type.captionSmall, color: colors.textSecondary, lineHeight: 17 }}>
                   <Text style={{ fontWeight: "700", color: colors.text }}>Erase everything</Text> wipes all of the above. Your account and subscription stay.
                 </Text>
               </View>
@@ -2722,8 +2726,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               <Text
                 style={{
                   color: colors.textSecondary,
-                  fontWeight: "600",
-                  fontSize: 15,
+                  fontFamily: Type.bodyLarge.fontFamily, fontSize: Type.bodyLarge.fontSize, lineHeight: Type.bodyLarge.lineHeight, fontWeight: "600",
                 }}
               >
                 Cancel
@@ -2827,7 +2830,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             </View>
             <Text
               style={{
-                fontSize: 12,
+                ...Type.captionSmall,
                 color: colors.textTertiary,
                 textAlign: "center",
                 lineHeight: 17,
@@ -2838,7 +2841,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             </Text>
             <Text
               style={{
-                fontSize: 12,
+                ...Type.captionSmall,
                 color: colors.textTertiary,
                 textAlign: "center",
                 marginTop: Spacing.xs,
@@ -2903,8 +2906,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               <Text
                 style={{
                   color: colors.textSecondary,
-                  fontWeight: "600",
-                  fontSize: 15,
+                  fontFamily: Type.bodyLarge.fontFamily, fontSize: Type.bodyLarge.fontSize, lineHeight: Type.bodyLarge.lineHeight, fontWeight: "600",
                 }}
               >
                 Cancel
@@ -2967,7 +2969,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             </Text>
             <Text
               style={{
-                fontSize: 12,
+                ...Type.captionSmall,
                 color: colors.textSecondary,
                 marginBottom: Spacing.lg,
               }}
@@ -3024,7 +3026,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   <Text
                     style={{
                       flex: 1,
-                      fontSize: 15,
+                      fontFamily: Type.bodyLarge.fontFamily,
+                      fontSize: Type.bodyLarge.fontSize,
+                      lineHeight: Type.bodyLarge.lineHeight,
                       fontWeight: "500",
                       color: colors.text,
                     }}
@@ -3112,7 +3116,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             </Text>
             <Text
               style={{
-                fontSize: 12,
+                ...Type.captionSmall,
                 color: colors.textSecondary,
                 marginBottom: Spacing.lg,
               }}
@@ -3230,7 +3234,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             </Text>
             <Text
               style={{
-                fontSize: 12,
+                ...Type.captionSmall,
                 color: colors.textSecondary,
                 marginBottom: Spacing.lg,
               }}
@@ -3391,7 +3395,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 <Text
                   style={{
                     flex: 1,
-                    fontSize: 15,
+                    fontFamily: Type.bodyLarge.fontFamily,
+                    fontSize: Type.bodyLarge.fontSize,
+                    lineHeight: Type.bodyLarge.lineHeight,
                     fontWeight: "500",
                     color: colors.text,
                   }}
@@ -3491,7 +3497,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   <Text style={{ fontSize: 15, fontWeight: "500", color: colors.text }}>
                     {opt.label}
                   </Text>
-                  <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                  <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}>
                     {opt.description}
                   </Text>
                 </View>
@@ -3563,7 +3569,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   paddingHorizontal: 12,
                   paddingVertical: 10,
                   color: colors.text,
-                  fontSize: 15,
+                  ...Type.bodyLarge,
                 }}
                 onSubmitEditing={() => {
                   const next = pantryInput.trim();
@@ -3695,7 +3701,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 <Text
                   style={{
                     flex: 1,
-                    fontSize: 15,
+                    fontFamily: Type.bodyLarge.fontFamily,
+                    fontSize: Type.bodyLarge.fontSize,
+                    lineHeight: Type.bodyLarge.lineHeight,
                     fontWeight: "500",
                     color: colors.text,
                   }}

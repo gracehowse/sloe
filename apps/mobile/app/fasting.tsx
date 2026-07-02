@@ -302,7 +302,7 @@ export default function FastingScreen() {
         // Pulled up under the narrative (negative top margin offsets the
         // narrative's bottom gap) so the two read as one block.
         stageDisclosure: {
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textTertiary,
           textAlign: "center",
           marginHorizontal: Spacing.xl,
@@ -397,8 +397,7 @@ export default function FastingScreen() {
           paddingHorizontal: Spacing.sm,
         },
         landingWindow: {
-          fontFamily: FontFamily.sansRegular,
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textTertiary,
           textAlign: "center",
           marginBottom: Spacing.lg,

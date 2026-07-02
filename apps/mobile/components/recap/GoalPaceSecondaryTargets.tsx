@@ -6,7 +6,7 @@
 
 import { Text, TextInput, View } from "react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 export interface GoalPaceSecondaryTargetsProps {
@@ -49,14 +49,14 @@ export function GoalPaceSecondaryTargets({
     borderRadius: Radius.md,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.md,
-    fontSize: 15,
+    ...Type.bodyLarge,
     color: colors.text,
     backgroundColor: colors.card,
     marginBottom: Spacing.xs,
   } as const;
 
   const hintStyle = {
-    fontSize: 12,
+    ...Type.captionSmall,
     color: colors.textTertiary,
     marginBottom: Spacing.lg,
     lineHeight: 17,

@@ -937,7 +937,7 @@ export default function PaywallScreen() {
       gap: Spacing.sm,
     },
     promoHint: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textSecondary,
       lineHeight: 17,
     },
@@ -988,7 +988,7 @@ export default function PaywallScreen() {
       marginTop: Spacing.sm,
     },
     nutritionEstimateNote: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textSecondary,
       textAlign: "center",
       lineHeight: 17,

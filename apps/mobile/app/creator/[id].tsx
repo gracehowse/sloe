@@ -55,7 +55,7 @@ import { formatMacro, formatKcalDisplay } from "@suppr/nutrition-core/formatMacr
 
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Spacing, Radius } from "@/constants/theme";
+import { Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import {
@@ -597,7 +597,7 @@ function buildStyles(
     },
     recipeMeta: {
       color: colors.textSecondary,
-      fontSize: 12,
+      ...Type.captionSmall,
       marginTop: 2,
     },
     emptyRecipes: {
@@ -644,7 +644,7 @@ function buildStyles(
     },
     loadMoreError: {
       color: colors.textSecondary,
-      fontSize: 12,
+      ...Type.captionSmall,
       textAlign: "center",
     },
   });

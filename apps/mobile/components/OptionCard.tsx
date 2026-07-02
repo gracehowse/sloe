@@ -7,7 +7,7 @@ import {
   ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -154,7 +154,7 @@ export function OptionCard({
               numberOfLines={2}
               style={{
                 color: colors.textSecondary,
-                fontSize: 12,
+                ...Type.captionSmall,
                 marginTop: 2,
                 lineHeight: 16,
               }}

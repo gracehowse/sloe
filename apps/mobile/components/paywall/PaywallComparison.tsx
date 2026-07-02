@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Check } from "lucide-react-native";
 
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
@@ -143,7 +143,7 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       letterSpacing: 0.6,
       color: Accent.info,
     },
-    dash: { fontSize: 15, color: colors.textSecondary },
+    dash: { ...Type.bodyLarge, color: colors.textSecondary },
     cellValue: { fontFamily: FontFamily.sansSemibold, fontSize: 14 },
   });
 }

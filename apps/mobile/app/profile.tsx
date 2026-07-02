@@ -280,7 +280,7 @@ export default function ProfileScreen() {
       // off the Spacing scale (4/8/16/20/24/32/40 — no 12) and read squat.
       paddingVertical: Spacing.md,
       color: colors.text,
-      fontSize: 15,
+      ...Type.bodyLarge,
     },
     // §3.7 — the Calories value is an editorial serif moment (Type.heroValue,
     // 24sp Newsreader) since it is the most important number the user touches
@@ -754,7 +754,7 @@ export default function ProfileScreen() {
               accessibilityLabel={`Calorie target is below the 1,200 kcal safety floor we recommend.`}
             >
               <Circle size={14} color={Accent.warningSolid} fill={Accent.warning} style={{ marginTop: 2 }} />
-              <Text style={{ flex: 1, fontSize: 12, lineHeight: 17, color: colors.text }}>
+              <Text style={{ flex: 1, ...Type.captionSmall, lineHeight: 17, color: colors.text }}>
                 <Text style={{ fontWeight: "700" }}>Below 1,200 kcal.</Text> This is under the safety floor we recommend for adults. Consider raising your target — or talk to a clinician if a lower target is medically necessary.
               </Text>
             </View>

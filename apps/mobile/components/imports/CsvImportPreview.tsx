@@ -13,7 +13,7 @@
 import * as React from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { ArrowRight } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { CsvSampleRow } from "@suppr/shared/imports/useCsvImportFlow";
@@ -47,7 +47,7 @@ export function CsvImportPreview({
     <View style={{ marginTop: Spacing.dense }} testID="mfp-csv-preview">
       <Text
         style={{
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textSecondary,
           lineHeight: 18,
         }}
@@ -101,7 +101,9 @@ export function CsvImportPreview({
               numberOfLines={1}
               style={{
                 flex: 1,
-                fontSize: 12,
+                fontFamily: Type.captionSmall.fontFamily,
+                fontSize: Type.captionSmall.fontSize,
+                lineHeight: Type.captionSmall.lineHeight,
                 fontWeight: "500",
                 color: colors.text,
               }}
@@ -110,7 +112,9 @@ export function CsvImportPreview({
             </Text>
             <Text
               style={{
-                fontSize: 12,
+                fontFamily: Type.captionSmall.fontFamily,
+                fontSize: Type.captionSmall.fontSize,
+                lineHeight: Type.captionSmall.lineHeight,
                 fontWeight: "600",
                 color: colors.textSecondary,
                 fontVariant: ["tabular-nums"],

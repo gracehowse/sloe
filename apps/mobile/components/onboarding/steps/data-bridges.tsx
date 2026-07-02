@@ -45,7 +45,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -482,7 +482,7 @@ function RecipeUrlCard() {
     >
       <Text
         style={{
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textSecondary,
           marginTop: Spacing.dense,
           lineHeight: 17,
@@ -582,7 +582,7 @@ function BridgeCard({
           </View>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.textSecondary,
               marginTop: 4,
               lineHeight: 18,

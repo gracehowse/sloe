@@ -44,7 +44,7 @@ import {
 import { useRouter } from "expo-router";
 import { Check, ChevronRight, SlidersHorizontal, X } from "lucide-react-native";
 
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -251,7 +251,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
+                      ...Type.captionSmall,
                       color: colors.textTertiary,
                       fontVariant: ["tabular-nums"],
                     }}
@@ -368,7 +368,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                   <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
                     Customise macros (incl. fibre)
                   </Text>
-                  <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>
+                  <Text style={{ ...Type.captionSmall, color: colors.textTertiary, marginTop: 2 }}>
                     Set per-macro and fibre targets by hand
                   </Text>
                 </View>

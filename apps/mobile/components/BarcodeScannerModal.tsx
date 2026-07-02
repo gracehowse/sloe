@@ -36,7 +36,7 @@ import {
   X,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
@@ -861,7 +861,7 @@ export default function BarcodeScannerModal({
     },
     macroRow: { flexDirection: "row", gap: Spacing.lg },
     macroItem: { fontSize: 14, color: colors.textSecondary, fontWeight: "500" },
-    per100g: { fontSize: 12, color: colors.textTertiary },
+    per100g: { ...Type.captionSmall, color: colors.textTertiary },
     servingRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -871,8 +871,7 @@ export default function BarcodeScannerModal({
     servingLabel: { fontSize: 13, color: colors.textSecondary },
     servingInput: {
       color: colors.text,
-      fontWeight: "600",
-      fontSize: 15,
+      fontFamily: Type.bodyLarge.fontFamily, fontSize: Type.bodyLarge.fontSize, lineHeight: Type.bodyLarge.lineHeight, fontWeight: "600",
       backgroundColor: colors.inputBg,
       borderRadius: Radius.sm,
       paddingHorizontal: Spacing.sm,
@@ -946,11 +945,13 @@ export default function BarcodeScannerModal({
       paddingHorizontal: Spacing.lg,
       paddingVertical: Spacing.md,
       color: colors.text,
-      fontSize: 15,
+      ...Type.bodyLarge,
     },
     manualInputRow: { flexDirection: "row", gap: Spacing.sm },
     fieldLabel: {
-      fontSize: 12,
+      fontFamily: Type.captionSmall.fontFamily,
+      fontSize: Type.captionSmall.fontSize,
+      lineHeight: Type.captionSmall.lineHeight,
       fontWeight: "600",
       color: colors.textSecondary,
       marginBottom: 6,
@@ -1092,18 +1093,18 @@ export default function BarcodeScannerModal({
       color: Accent.destructive,
     },
     plausibilityBlockReason: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.text,
       lineHeight: 17,
     },
     plausibilityBlockHint: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textSecondary,
       fontStyle: "italic",
       marginTop: 4,
     },
     basisReference: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textTertiary,
       fontVariant: ["tabular-nums"],
     },
@@ -1238,7 +1239,7 @@ export default function BarcodeScannerModal({
                     <Text
                       style={{
                         color: colors.textSecondary,
-                        fontSize: 12,
+                        ...Type.captionSmall,
                         textAlign: "center",
                         marginTop: -Spacing.sm,
                         marginBottom: Spacing.sm,
@@ -1322,7 +1323,7 @@ export default function BarcodeScannerModal({
                       accessibilityLiveRegion="polite"
                       style={{
                         color: Accent.destructive,
-                        fontSize: 12,
+                        ...Type.captionSmall,
                         textAlign: "center",
                         paddingTop: Spacing.sm,
                       }}
@@ -1584,7 +1585,7 @@ export default function BarcodeScannerModal({
                       </Pressable>
                     </View>
                     <Pressable onPress={openCorrectionMode} style={{ alignItems: "center", paddingTop: Spacing.md }}>
-                      <Text style={{ fontSize: 12, color: colors.textTertiary, textDecorationLine: "underline" }}>This is wrong — edit and update</Text>
+                      <Text style={{ ...Type.captionSmall, color: colors.textTertiary, textDecorationLine: "underline" }}>This is wrong — edit and update</Text>
                     </Pressable>
                   </View>
                 </View>

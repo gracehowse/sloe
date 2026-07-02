@@ -1441,7 +1441,9 @@ export default function ImportSharedScreen() {
       paddingHorizontal: Spacing.sm,
     },
     successMacroLine: {
-      fontSize: 15,
+      fontFamily: Type.bodyLarge.fontFamily,
+      fontSize: Type.bodyLarge.fontSize,
+      lineHeight: Type.bodyLarge.lineHeight,
       fontWeight: "600",
       color: colors.textSecondary,
       textAlign: "center",
@@ -1550,7 +1552,7 @@ export default function ImportSharedScreen() {
     platformHintText: {
       flex: 1,
       color: Accent.successSolid,
-      fontSize: 12,
+      ...Type.captionSmall,
       lineHeight: 18,
     },
 
@@ -1598,7 +1600,7 @@ export default function ImportSharedScreen() {
     pasteFieldInput: {
       flex: 1,
       color: colors.text,
-      fontSize: 15,
+      ...Type.bodyLarge,
       paddingVertical: Spacing.md,
       minHeight: 44,
     },
@@ -1612,12 +1614,11 @@ export default function ImportSharedScreen() {
       alignItems: "center",
     },
     pasteImportPillText: {
-      fontFamily: FontFamily.serifMedium,
-      fontSize: 15,
+      ...Type.bodyLarge,
       color: colors.primaryForeground,
     },
     platformHintShort: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textSecondary,
       lineHeight: 18,
     },
@@ -1663,7 +1664,9 @@ export default function ImportSharedScreen() {
       backgroundColor: Accent.warning + "1F",
     },
     proPillText: {
-      fontSize: 12,
+      fontFamily: Type.captionSmall.fontFamily,
+      fontSize: Type.captionSmall.fontSize,
+      lineHeight: Type.captionSmall.lineHeight,
       fontWeight: "600",
       color: Accent.warningSolid,
     },
@@ -1712,7 +1715,7 @@ export default function ImportSharedScreen() {
     },
     methodTileTitle: {
       ...Type.headline,
-      fontSize: 15,
+      ...Type.bodyLarge,
       color: colors.text,
       textAlign: "center",
     },
@@ -1768,7 +1771,9 @@ export default function ImportSharedScreen() {
       borderColor: colors.border,
     },
     trustChipText: {
-      fontSize: 12,
+      fontFamily: Type.captionSmall.fontFamily,
+      fontSize: Type.captionSmall.fontSize,
+      lineHeight: Type.captionSmall.lineHeight,
       fontWeight: "600",
       color: colors.text,
     },
@@ -1816,7 +1821,7 @@ export default function ImportSharedScreen() {
       marginBottom: 2,
     },
     recentTime: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textSecondary,
     },
 
@@ -1952,7 +1957,7 @@ export default function ImportSharedScreen() {
       color: colors.text,
     },
     importIngDetail: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textSecondary,
       marginTop: 2,
     },
@@ -2028,7 +2033,7 @@ export default function ImportSharedScreen() {
             live per-stage progress + queue position instead. */}
         {state === "importing" && !importProgressV2 && (
           <View style={styles.panelCard}>
-            <Text style={[styles.panelTitle, { fontSize: 15, marginBottom: Spacing.xs }]}>
+            <Text style={[styles.panelTitle, { ...Type.bodyLarge, marginBottom: Spacing.xs }]}>
               Extracting recipe…
             </Text>
             <Text style={[styles.panelSub, { marginBottom: Spacing.lg }]}>
@@ -2233,7 +2238,7 @@ export default function ImportSharedScreen() {
                   <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
                     {previewNutrition?.draft ?? pendingRecipe.servings ?? 1} portions
                   </Text>
-                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                  <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>
                     Per-serving macros scale when you change portions.
                   </Text>
                 </View>
@@ -2241,7 +2246,7 @@ export default function ImportSharedScreen() {
               </Pressable>
             ) : (
               <View style={{ alignSelf: "stretch", marginBottom: Spacing.md, gap: Spacing.sm }}>
-                <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
+                <Text style={{ ...Type.captionSmall, color: colors.textSecondary, lineHeight: 18 }}>
                   How many portions does the full recipe make? Values below rescale to stay consistent with the same
                   total dish.
                 </Text>

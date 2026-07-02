@@ -271,7 +271,7 @@ function WeeklyCheckinModalImpl({
             <Text
               accessibilityLiveRegion="polite"
               style={{
-                fontSize: 12,
+                ...Type.captionSmall,
                 lineHeight: 17,
                 color: textSecondaryColor,
                 textAlign: "center",

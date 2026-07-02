@@ -8,7 +8,7 @@
 import { Pressable, Text, View } from "react-native";
 import { Check } from "lucide-react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -62,14 +62,16 @@ export function GoalOptionList({
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 15,
+                  fontFamily: Type.bodyLarge.fontFamily,
+                  fontSize: Type.bodyLarge.fontSize,
+                  lineHeight: Type.bodyLarge.lineHeight,
                   fontWeight: selected ? "700" : "500",
                   color: selected ? colors.text : colors.textSecondary,
                 }}
               >
                 {opt.label}
               </Text>
-              <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 2 }}>
+              <Text style={{ ...Type.captionSmall, color: colors.textTertiary, marginTop: 2 }}>
                 {opt.desc}
               </Text>
             </View>

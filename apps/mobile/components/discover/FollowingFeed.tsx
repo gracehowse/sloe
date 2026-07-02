@@ -330,8 +330,7 @@ const styles = StyleSheet.create({
     color: CREATOR_CHIP_INK,
   },
   name: {
-    fontFamily: FontFamily.serifMedium,
-    fontSize: 15,
+    ...Type.bodyLarge,
     lineHeight: 19,
     fontWeight: "500",
   },

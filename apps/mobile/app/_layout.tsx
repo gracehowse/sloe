@@ -89,7 +89,7 @@ import { AuthProvider } from '@/context/auth';
 import { AnalyticsProvider } from '@/context/AnalyticsProvider';
 import { ThemeProvider as SupprThemeProvider, useTheme } from '@/context/theme';
 import { DrOutageBanner } from '@/components/ops/DrOutageBanner';
-import { Colors } from '@/constants/theme';
+import { Colors, Type } from "@/constants/theme";
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard } from '@/lib/clipboardShareForward';
 import { initErrorTracking } from '@/lib/errorTracking';
@@ -525,7 +525,7 @@ function RootLayoutInner() {
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: bg }}>
         <View style={{ flex: 1, paddingHorizontal: 28, justifyContent: 'center', gap: 12 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: fg }}>Supabase is not configured</Text>
-          <Text style={{ fontSize: 15, lineHeight: 22, color: sub }}>
+          <Text style={{ ...Type.bodyLarge, lineHeight: 22, color: sub }}>
             This build is missing `supabaseUrl` and `supabaseAnonKey` under `expo.extra` (see `app.json` or your local `app.config`). Rebuild the dev client after fixing env.
           </Text>
         </View>

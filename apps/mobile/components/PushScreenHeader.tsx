@@ -72,7 +72,7 @@ export function PushScreenHeader({
         </Text>
         {caption ? (
           <Text
-            style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}
+            style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}
             numberOfLines={1}
           >
             {caption}

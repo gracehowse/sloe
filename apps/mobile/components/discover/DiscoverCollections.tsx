@@ -101,8 +101,7 @@ const styles = StyleSheet.create({
   },
   tileBody: { padding: Spacing.dense },
   tileName: {
-    fontFamily: FontFamily.serifMedium,
-    fontSize: 15,
+    ...Type.bodyLarge,
     lineHeight: 19,
     color: "#fff",
   },

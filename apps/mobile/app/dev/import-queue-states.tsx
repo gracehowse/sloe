@@ -12,6 +12,7 @@
  * `suppr:///dev/import-queue-states`.
  */
 import * as React from "react";
+import { Type } from "@/constants/theme";
 import { ScrollView, View, Text } from "react-native";
 import { Stack } from "expo-router";
 
@@ -77,7 +78,7 @@ function Frame({ label, note, seeds, concurrency }: { label: string; note: strin
         <Text style={{ fontSize: 11, fontWeight: "700", letterSpacing: 1, color: colors.textSecondary, marginBottom: 4 }}>
           {label.toUpperCase()}
         </Text>
-        <Text style={{ fontSize: 12, color: colors.textSecondary }}>{note}</Text>
+        <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>{note}</Text>
       </View>
       <ImportProgressDrawer queue={queue} onOpenRecipe={() => {}} />
     </View>

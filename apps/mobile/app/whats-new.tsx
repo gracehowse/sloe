@@ -405,13 +405,13 @@ function buildStyles(
     },
     itemText: {
       flex: 1,
-      fontSize: 15,
+      ...Type.bodyLarge,
       // On-scale: body-primary token lineHeight (22) from §2.2
       lineHeight: 22,
       color: colors.text,
     },
     attribution: {
-      fontSize: 12,
+      ...Type.captionSmall,
       lineHeight: 18,
       color: colors.textTertiary,
       marginTop: Spacing.sm,

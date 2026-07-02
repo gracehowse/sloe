@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Spacing } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAccent } from "@/context/theme";
@@ -100,7 +100,7 @@ export function MobileAgeStep() {
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.text,
               lineHeight: 18,
               marginBottom: Spacing.sm,
@@ -112,7 +112,7 @@ export function MobileAgeStep() {
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.text,
               lineHeight: 18,
               marginBottom: Spacing.sm,
@@ -125,7 +125,7 @@ export function MobileAgeStep() {
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.textSecondary,
               lineHeight: 18,
             }}

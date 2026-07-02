@@ -558,7 +558,7 @@ export default function TargetsScreen() {
         },
         statusText: { fontSize: 11, fontWeight: "700" },
         footnote: {
-          fontSize: 12,
+          ...Type.captionSmall,
           color: colors.textTertiary,
           textAlign: "center",
           paddingHorizontal: Spacing.lg,
@@ -731,7 +731,9 @@ export default function TargetsScreen() {
                 </Text>
                 <Text
                   style={{
-                    fontSize: 15,
+                    fontFamily: Type.bodyLarge.fontFamily,
+                    fontSize: Type.bodyLarge.fontSize,
+                    lineHeight: Type.bodyLarge.lineHeight,
                     fontWeight: "700",
                     color: colors.text,
                     fontVariant: ["tabular-nums"],
@@ -739,7 +741,7 @@ export default function TargetsScreen() {
                 >
                   {(adaptiveTdee ?? tdeeKcal).toLocaleString()}
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.textSecondary }}>kcal / day</Text>
+                <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>kcal / day</Text>
               </View>
             </PostHogMaskView>
           ) : null}
@@ -899,7 +901,7 @@ export default function TargetsScreen() {
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
               How is this calculated?
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+            <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}>
               See the maintenance TDEE, goal, and pace behind today&apos;s target.
             </Text>
           </View>

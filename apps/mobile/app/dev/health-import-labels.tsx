@@ -9,6 +9,7 @@
  * Reachable only via deeplink `suppr:///dev/health-import-labels`.
  */
 import * as React from "react";
+import { Type } from "@/constants/theme";
 import { ScrollView, View, Text } from "react-native";
 import { Stack } from "expo-router";
 import {
@@ -59,11 +60,11 @@ export default function HealthImportLabelsDevScreen() {
             <Text style={{ fontSize: 11, fontWeight: "700", letterSpacing: 1.2, color: "#666", marginBottom: 12 }}>
               FALLBACK STRING FORMAT
             </Text>
-            <Text style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>BEFORE (legacy)</Text>
+            <Text style={{ ...Type.captionSmall, color: "#999", marginBottom: 4 }}>BEFORE (legacy)</Text>
             <Text style={{ fontSize: 14, color: "#111", marginBottom: 12, fontFamily: "Menlo" }}>
               Food log (250 kcal) (via MyFitnessPal)
             </Text>
-            <Text style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>AFTER (new)</Text>
+            <Text style={{ ...Type.captionSmall, color: "#999", marginBottom: 4 }}>AFTER (new)</Text>
             <Text style={{ fontSize: 14, color: "#111", fontFamily: "Menlo" }}>
               {formatHealthImportFallbackTitle({ sourceApp: "MyFitnessPal", calories: 250 })}
             </Text>

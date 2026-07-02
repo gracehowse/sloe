@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Link2, SlidersHorizontal, Sparkles, Cloud, type LucideIcon } from "lucide-react-native";
 
-import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -75,8 +75,7 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       borderColor: colors.border,
     },
     title: {
-      fontFamily: FontFamily.sansSemibold,
-      fontSize: 15,
+      ...Type.bodyLarge,
       color: colors.text,
       marginTop: Spacing.md,
     },

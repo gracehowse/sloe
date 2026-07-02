@@ -1,7 +1,7 @@
 import * as React from "react";
 import { StyleProp, Text, TextStyle, View, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius } from "@/constants/theme";
+import { Accent, Radius, Type } from "@/constants/theme";
 
 /**
  * SponsoredDisclosure — mobile parallel to the web primitive at
@@ -102,7 +102,9 @@ export function SponsoredDisclosure({
           style={[
             {
               color: fg,
-              fontSize: 12,
+              fontFamily: Type.captionSmall.fontFamily,
+              fontSize: Type.captionSmall.fontSize,
+              lineHeight: Type.captionSmall.lineHeight,
               fontWeight: "500",
             },
             textStyle,

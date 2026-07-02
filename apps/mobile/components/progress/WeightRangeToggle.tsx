@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightRange } from "@/lib/progress/weightTrend";
 
@@ -63,7 +63,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   label: {
-    fontSize: 12,
+    fontFamily: Type.captionSmall.fontFamily,
+    fontSize: Type.captionSmall.fontSize,
+    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "500",
   },
 });

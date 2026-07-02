@@ -62,8 +62,7 @@ export function RecipeMethodSteps({
               <Text
                 style={{
                   flex: 1,
-                  fontFamily: FontFamily.sansRegular,
-                  fontSize: 15,
+                  ...Type.bodyLarge,
                   lineHeight: 23,
                   color: colors.text,
                   paddingTop: 2,

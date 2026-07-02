@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   sub: { ...Type.caption, fontSize: 12 },
-  macros: { fontSize: 12, fontVariant: ["tabular-nums"] },
+  macros: { ...Type.captionSmall, fontVariant: ["tabular-nums"] },
 });
 
 export default PlanDayDetailBandV3;

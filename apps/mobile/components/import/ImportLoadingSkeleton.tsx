@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SkeletonCard, SkeletonRow } from "@/components/ui/SkeletonRow";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -128,7 +128,7 @@ export function ImportLoadingSkeleton({
         <Text
           style={{
             marginTop: Spacing.md,
-            fontSize: 12,
+            ...Type.captionSmall,
             color: colors.textSecondary,
             textAlign: "center",
           }}

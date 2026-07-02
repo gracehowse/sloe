@@ -466,7 +466,7 @@ export default function HouseholdSettingsScreen() {
               backgroundColor: Accent.destructive + "14",
             }}
           >
-            <Text style={{ fontSize: 12, color: Accent.destructiveSolid }}>{error}</Text>
+            <Text style={{ ...Type.captionSmall, color: Accent.destructiveSolid }}>{error}</Text>
           </View>
         ) : null}
 
@@ -486,7 +486,7 @@ export default function HouseholdSettingsScreen() {
             <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text, marginBottom: Spacing.sm - 2 }}>
               No household yet
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginBottom: Spacing.sm + 2 }}>
+            <Text style={{ ...Type.captionSmall, color: colors.textSecondary, lineHeight: 17, marginBottom: Spacing.sm + 2 }}>
               Create or join a household from the Plan tab. Sharing settings show up here once
               you&apos;re part of one.
             </Text>
@@ -557,7 +557,7 @@ export default function HouseholdSettingsScreen() {
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
+                      ...Type.captionSmall,
                       color: colors.textSecondary,
                       textAlign: "center",
                       lineHeight: 17,
@@ -1093,7 +1093,7 @@ export default function HouseholdSettingsScreen() {
               Who&apos;s eating?
             </Text>
             {editingMeta ? (
-              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: Spacing.md }}>
+              <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginBottom: Spacing.md }}>
                 {editingMeta.slotFull} · {editingMeta.dayLabel}
               </Text>
             ) : null}

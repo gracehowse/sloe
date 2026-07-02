@@ -87,8 +87,7 @@ export function CookbookReviewRow({ item, excluded, nutritionMode, onToggle }: P
             </Text>
             <Text
               style={{
-                fontFamily: FontFamily.sansRegular,
-                fontSize: 12,
+                ...Type.captionSmall,
                 color: colors.textSecondary,
                 marginTop: Spacing.xs,
               }}
@@ -102,11 +101,10 @@ export function CookbookReviewRow({ item, excluded, nutritionMode, onToggle }: P
           <View style={{ alignItems: "flex-end", marginLeft: Spacing.sm, flexShrink: 0 }}>
             {/* DS §2.3: numeric value — serifMedium for editorial data. */}
             <Text
-              style={{
-                fontFamily: FontFamily.serifMedium,
-                fontSize: 15,
-                color: colors.text,
-              }}
+              style={[
+                Type.bodyLarge,
+                { fontFamily: FontFamily.serifMedium, color: colors.text },
+              ]}
             >
               {kcal} kcal
             </Text>

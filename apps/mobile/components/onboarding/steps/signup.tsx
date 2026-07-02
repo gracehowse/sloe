@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform, Pressable, Text, TextInput, View } from "r
 import * as AppleAuthentication from "expo-apple-authentication";
 import { sha256 } from "js-sha256";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
@@ -172,7 +172,7 @@ export function MobileSignupStep() {
             marginBottom: Spacing.dense,
           }}
         >
-          <Text style={{ fontSize: 12, color: Accent.destructive, lineHeight: 17 }}>
+          <Text style={{ ...Type.captionSmall, color: Accent.destructive, lineHeight: 17 }}>
             {error}
           </Text>
         </View>

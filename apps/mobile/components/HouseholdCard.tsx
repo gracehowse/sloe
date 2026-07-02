@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, Radius, MacroColors, MacroColorsDark } from "@/constants/theme";
+import { Accent, Radius, MacroColors, MacroColorsDark, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -293,7 +293,7 @@ export function HouseholdCard() {
         gap: 8,
       }}
     >
-      <Text style={{ flex: 1, fontSize: 12, color: t.text, lineHeight: 17 }}>
+      <Text style={{ flex: 1, ...Type.captionSmall, color: t.text, lineHeight: 17 }}>
         {SCOPE_NARROWING_NOTICE_COPY}
       </Text>
       <Pressable onPress={dismissScopeNotice} accessibilityLabel="Dismiss notice" hitSlop={8}>
@@ -320,7 +320,7 @@ export function HouseholdCard() {
           </View>
           <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Household Meals</Text>
         </View>
-        <Text style={{ fontSize: 12, color: t.sub, marginBottom: 12, lineHeight: 17 }}>
+        <Text style={{ ...Type.captionSmall, color: t.sub, marginBottom: 12, lineHeight: 17 }}>
           {HOUSEHOLD_CARD_HEADER_COPY}
         </Text>
 
@@ -396,7 +396,7 @@ export function HouseholdCard() {
             </Pressable>
           )}
           <Pressable onPress={leaveHousehold}>
-            <Text style={{ fontSize: 12, color: t.dim }}>Leave</Text>
+            <Text style={{ ...Type.captionSmall, color: t.dim }}>Leave</Text>
           </Pressable>
         </View>
       </View>
@@ -461,7 +461,7 @@ export function HouseholdCard() {
           showing?" across builds 18/20/21. Reframe so the self row shows
           your remaining-today totals against your targets, and other
           members only show identity — not numeric noise. */}
-      <Text style={{ fontSize: 12, color: t.dim, marginBottom: 12, lineHeight: 16 }}>
+      <Text style={{ ...Type.captionSmall, color: t.dim, marginBottom: 12, lineHeight: 16 }}>
         Your remaining calories and macros for today. Members&apos; targets are private.
       </Text>
       {data.members.map((m) => {

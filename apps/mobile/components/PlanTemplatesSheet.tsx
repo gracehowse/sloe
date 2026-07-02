@@ -24,7 +24,7 @@ import {
   View,
   StyleSheet,
 } from "react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { PlanTemplate } from "@suppr/nutrition-core/planTemplates";
@@ -206,16 +206,16 @@ export function PlanTemplatesSheet({
               ))}
             </View>
             {sourceMealCount === 0 ? (
-              <Text style={{ color: Accent.warningSolid, fontSize: 12, marginTop: Spacing.md }}>
+              <Text style={{ color: Accent.warningSolid, ...Type.captionSmall, marginTop: Spacing.md }}>
                 This plan has no meals to save. Generate a plan first.
               </Text>
             ) : (
-              <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: Spacing.md }}>
+              <Text style={{ color: colors.textSecondary, ...Type.captionSmall, marginTop: Spacing.md }}>
                 {`Will save the first ${dayCount} day${dayCount === 1 ? "" : "s"} · ${sourceMealCount} meal${sourceMealCount === 1 ? "" : "s"} eligible.`}
               </Text>
             )}
             {error ? (
-              <Text style={{ color: Accent.destructive, fontSize: 12, marginTop: Spacing.sm }}>
+              <Text style={{ color: Accent.destructive, ...Type.captionSmall, marginTop: Spacing.sm }}>
                 {error}
               </Text>
             ) : null}
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     borderWidth: 1,
-    fontSize: 15,
+    ...Type.bodyLarge,
   },
   daySelector: {
     flexDirection: "row",

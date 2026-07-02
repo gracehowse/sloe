@@ -253,7 +253,7 @@ export function DigestBlended(props: DigestProps) {
             <Text testID="digest-hero-empty" style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>
               {headline}
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4 }}>
+            <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 4 }}>
               No days logged yet — log a meal to start your week.
             </Text>
           </>
@@ -316,7 +316,7 @@ export function DigestBlended(props: DigestProps) {
                 <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: colors.text }}> kcal</Text>
               </Text>
             )}
-            <Text testID="digest-hero-protein" style={{ fontSize: 12, color: colors.textSecondary, marginTop: 10 }}>
+            <Text testID="digest-hero-protein" style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 10 }}>
               {closest.protein}g protein · your most on-target day this week
             </Text>
           </>

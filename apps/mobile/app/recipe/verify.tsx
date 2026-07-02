@@ -720,7 +720,7 @@ export default function VerifyScreen() {
       lineHeight: 18,
     },
     claimBannerBody: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: Accent.warningSolid,
       marginTop: 2,
       lineHeight: 16,
@@ -1282,7 +1282,7 @@ export default function VerifyScreen() {
           accessibilityLabel="Add an ingredient the importer missed"
         >
           <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>+ Add ingredient</Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2, textAlign: "center" }}>
+          <Text style={{ color: colors.textSecondary, ...Type.captionSmall, marginTop: 2, textAlign: "center" }}>
             Missed an ingredient during import? Add it here and totals update live.
           </Text>
         </Pressable>
@@ -1606,7 +1606,7 @@ function VerifyLoadingSkeleton({
           <Text
             style={{
               marginTop: Spacing.md,
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.textSecondary,
               textAlign: "center",
               lineHeight: 17,
@@ -1635,7 +1635,9 @@ function VerifyLoadingSkeleton({
         >
           <Text
             style={{
-              fontSize: 15,
+              fontFamily: Type.bodyLarge.fontFamily,
+              fontSize: Type.bodyLarge.fontSize,
+              lineHeight: Type.bodyLarge.lineHeight,
               fontWeight: "600",
               color: colors.textSecondary,
             }}

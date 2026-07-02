@@ -27,7 +27,7 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Radius, SlotColors, Spacing } from "@/constants/theme";
+import { Accent, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { DayPlan } from "../../../src/types/recipe";
@@ -240,7 +240,7 @@ export function MoveMealSheet({
                     <Text
                       style={{
                         color: colors.textSecondary,
-                        fontSize: 12,
+                        ...Type.captionSmall,
                         marginTop: Spacing.xs,
                       }}
                       numberOfLines={1}

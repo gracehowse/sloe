@@ -2057,7 +2057,7 @@ export default function FoodSearchPanel({
           {previewPlausibilityWarning ? (
             <Text
               accessibilityRole="alert"
-              style={{ fontSize: 12, color: mc.calories, marginTop: Spacing.sm }}
+              style={{ ...Type.captionSmall, color: mc.calories, marginTop: Spacing.sm }}
             >
               {previewPlausibilityWarning}
             </Text>
@@ -2090,7 +2090,7 @@ export default function FoodSearchPanel({
                 ))}
               </View>
               {portionFitHintText ? (
-                <Text accessibilityLabel={portionFitHintText} style={{ fontSize: 12, color: colors.textSecondary, marginTop: Spacing.sm }}>
+                <Text accessibilityLabel={portionFitHintText} style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: Spacing.sm }}>
                   {portionFitHintText}
                 </Text>
               ) : null}
@@ -2487,7 +2487,9 @@ export default function FoodSearchPanel({
             >
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: "700",
                   color: isActive ? accent.primaryForeground : colors.textSecondary,
                   letterSpacing: 0.2,
@@ -2526,7 +2528,7 @@ export default function FoodSearchPanel({
                 paddingHorizontal: Spacing.dense,
               }}
             >
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{s}</Text>
+              <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>{s}</Text>
             </View>
           ))}
         </View>
@@ -2593,7 +2595,7 @@ export default function FoodSearchPanel({
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
+                      ...Type.captionSmall,
                       color: colors.textSecondary,
                       marginTop: 2,
                       fontVariant: ["tabular-nums"],
@@ -2681,7 +2683,7 @@ export default function FoodSearchPanel({
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
+                      ...Type.captionSmall,
                       color: colors.textSecondary,
                       marginTop: 2,
                       fontVariant: ["tabular-nums"],
@@ -2773,7 +2775,7 @@ export default function FoodSearchPanel({
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
+                      ...Type.captionSmall,
                       color: colors.textSecondary,
                       marginTop: 2,
                       fontVariant: ["tabular-nums"],

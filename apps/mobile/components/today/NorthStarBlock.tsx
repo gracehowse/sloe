@@ -777,7 +777,9 @@ const styles = StyleSheet.create({
   },
   figmaFitsText: {
     color: Accent.primaryForeground,
-    fontSize: 12,
+    fontFamily: Type.captionSmall.fontFamily,
+    fontSize: Type.captionSmall.fontSize,
+    lineHeight: Type.captionSmall.lineHeight,
     fontWeight: "500",
   },
   figmaSkipButton: {

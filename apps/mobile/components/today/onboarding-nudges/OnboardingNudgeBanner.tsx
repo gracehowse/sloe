@@ -4,7 +4,7 @@ import { Platform, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { BookOpen, Heart, Link2 } from "lucide-react-native";
 
-import { FontWeight, Radius, Spacing } from "@/constants/theme";
+import { FontWeight, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -315,7 +315,9 @@ function OnboardingNudgeBannerImpl({
               // ring and competes with macro-tile labels; 15pt reads as
               // a card heading without rivalling the ring number.
               // eslint-disable-next-line no-restricted-syntax
-              fontSize: 15,
+              fontFamily: Type.bodyLarge.fontFamily,
+              fontSize: Type.bodyLarge.fontSize,
+              lineHeight: Type.bodyLarge.lineHeight,
               fontWeight: FontWeight.bold,
               color: colors.text,
               letterSpacing: -0.2,

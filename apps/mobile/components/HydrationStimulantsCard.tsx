@@ -202,7 +202,7 @@ function Row({
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
           <Ionicons name={icon} size={18} color={tone$[tone]} />
-          <Text numberOfLines={1} style={{ fontSize: 15, color: colors.text }}>
+          <Text numberOfLines={1} style={{ ...Type.bodyLarge, color: colors.text }}>
             {label}
           </Text>
         </View>

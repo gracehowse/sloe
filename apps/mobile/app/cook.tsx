@@ -27,7 +27,7 @@ import {
   CheckCircle2,
 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
-import { Accent, Spacing, Radius, FontFamily } from "@/constants/theme";
+import { Accent, Spacing, Radius, FontFamily, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track, isFeatureEnabled } from "@/lib/analytics";
@@ -1069,7 +1069,9 @@ export default function CookModeScreen() {
     },
     watchOriginalText: {
       color: accent.primarySolid,
-      fontSize: 12,
+      fontFamily: Type.captionSmall.fontFamily,
+      fontSize: Type.captionSmall.fontSize,
+      lineHeight: Type.captionSmall.lineHeight,
       fontWeight: "700",
     },
 
@@ -1140,7 +1142,7 @@ export default function CookModeScreen() {
       fontWeight: "700",
     },
     scaleCaption: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textSecondary,
       textAlign: "center",
       marginTop: Spacing.xs,
@@ -1215,7 +1217,7 @@ export default function CookModeScreen() {
       lineHeight: 18,
     },
     lastTimeMore: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textSecondary,
       marginTop: 2,
     },
@@ -1338,7 +1340,7 @@ export default function CookModeScreen() {
     },
     addRegularsTextDone: { color: Accent.success },
     priorCookLine: {
-      fontSize: 12,
+      ...Type.captionSmall,
       color: colors.textTertiary,
       textAlign: "center",
     },

@@ -132,7 +132,7 @@ export default function NutritionSourcesScreen() {
           marginTop: Spacing.xs,
         },
         disclaimer: {
-          fontSize: 12,
+          ...Type.captionSmall,
           lineHeight: 18,
           color: colors.textTertiary,
           marginTop: Spacing.md,

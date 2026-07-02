@@ -185,7 +185,7 @@ export default function SettingsScreen() {
             style={{
               flex: 1,
               color: colors.text,
-              fontSize: 15,
+              ...Type.bodyLarge,
               paddingVertical: 0,
             }}
           />
@@ -299,7 +299,7 @@ export default function SettingsScreen() {
                   </Text>
                   <Text
                     style={{
-                      fontSize: 12,
+                      ...Type.captionSmall,
                       color: colors.textSecondary,
                       marginTop: 2,
                       lineHeight: 16,

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -202,7 +202,9 @@ function PermissionCard({
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              fontSize: 15,
+              fontFamily: Type.bodyLarge.fontFamily,
+              fontSize: Type.bodyLarge.fontSize,
+              lineHeight: Type.bodyLarge.lineHeight,
               fontWeight: "700",
               color: colors.text,
               letterSpacing: -0.2,
@@ -212,7 +214,7 @@ function PermissionCard({
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              ...Type.captionSmall,
               color: colors.textSecondary,
               marginTop: 4,
               lineHeight: 18,
@@ -232,13 +234,15 @@ function PermissionCard({
       ) : granted === false ? (
         <View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.dense }}>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, flex: 1 }}>
+            <Text style={{ ...Type.captionSmall, color: colors.textSecondary, flex: 1 }}>
               {errorMessage ?? "Skipped — you can allow later"}
             </Text>
             <Pressable onPress={onAllow} disabled={busy}>
               <Text
                 style={{
-                  fontSize: 12,
+                  fontFamily: Type.captionSmall.fontFamily,
+                  fontSize: Type.captionSmall.fontSize,
+                  lineHeight: Type.captionSmall.lineHeight,
                   fontWeight: "700",
                   color: busy ? colors.textTertiary : accent.primaryLight,
                 }}

@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   },
   slotWrap: { flexDirection: "row", alignItems: "center", gap: 4 },
   slot: { ...Type.statLabel, fontSize: 10 },
-  kcal: { fontSize: 12, fontVariant: ["tabular-nums"] },
+  kcal: { ...Type.captionSmall, fontVariant: ["tabular-nums"] },
   name: { ...Type.label, textTransform: "none", letterSpacing: 0, fontSize: 14, marginTop: 2 },
   batch: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 },
   batchText: { ...Type.statLabel, fontSize: 10 },

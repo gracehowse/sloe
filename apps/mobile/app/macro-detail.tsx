@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Plus, Salad } from "lucide-react-native";
 
-import { Accent, Spacing, Radius } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { MacroIngredientList } from "@/components/nutrition/MacroIngredientList";
 import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
@@ -276,7 +276,9 @@ export default function MacroDetailScreen() {
                     </View>
                     <Text
                       style={{
-                        fontSize: 15,
+                        fontFamily: Type.bodyLarge.fontFamily,
+                        fontSize: Type.bodyLarge.fontSize,
+                        lineHeight: Type.bodyLarge.lineHeight,
                         fontWeight: "800",
                         color: config.color,
                         fontVariant: ["tabular-nums"],
