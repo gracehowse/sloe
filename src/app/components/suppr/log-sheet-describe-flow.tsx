@@ -267,7 +267,7 @@ export function LogSheetDescribeFlow({
           aria-label="Describe what you ate"
           aria-describedby="log-sheet-describe-hint"
           rows={2}
-          className="min-h-[40px] max-h-16 flex-1 resize-none rounded-lg bg-muted px-3 py-2 text-[14px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="min-h-[40px] max-h-16 flex-1 resize-none rounded-lg bg-muted px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
         {stage === "parsing" ? (
           <span className="mt-2 size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -289,7 +289,7 @@ export function LogSheetDescribeFlow({
         </p>
       ) : null}
       {stage === "parsing" ? (
-        <p className="text-[12px] text-muted-foreground">Parsing your description…</p>
+        <p className="text-[11px] text-muted-foreground">Parsing your description…</p>
       ) : (
         <p id="log-sheet-describe-hint" className="sr-only">
           AI estimates from verified nutrition data. Review every item before logging.
