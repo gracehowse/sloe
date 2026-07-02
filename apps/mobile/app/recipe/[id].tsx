@@ -1,7 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
-import { CookIngredientChecklist } from "@/components/cook/CookIngredientChecklist";
 import { formatMultiplier } from "@/components/today/PortionStepper";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
@@ -96,7 +95,6 @@ import {
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
 import { scaleStepText } from "@suppr/nutrition-core/scaleStepText";
-import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
 import { buildCookModeHref } from "@/lib/navigateToCookMode";
 import {
   deriveIngredientVerificationTier,
@@ -267,8 +265,6 @@ export default function RecipeDetailScreen() {
   // ENG-949 — in-cook A−/A+ text-size control, behind a flag (default-OFF).
   // Flag-off keeps the overlay byte-identical and skips re-applying a
   // previously-persisted size, so flipping it off is a clean revert.
-  /** ENG-946 — tap-to-check ingredient checklist on recipe detail. Default-OFF. */
-  const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
   /** ENG-943 — "Add to shopping list" action (default-ON). */
   const recipeShoppingListEnabled = isFeatureEnabled("recipe_shopping_list_v1");
 
@@ -331,6 +327,9 @@ export default function RecipeDetailScreen() {
   }, [id]);
   /** USDA / FatSecret / OFF / Edamam / Suppr DB path via `/api/nutrition/verify-recipe` (not local staples). */
   const [autoVerifyingIngredients, setAutoVerifyingIngredients] = useState(false);
+  // ENG-1329 — the fetch below had no timeout/error state; a hung request left "Matching…" showing forever.
+  const [autoVerifyFailed, setAutoVerifyFailed] = useState(false);
+  const [autoVerifyRetryToken, setAutoVerifyRetryToken] = useState(0);
   const autoVerifySucceededForRecipeId = useRef<string | null>(null);
   /** At most one low-confidence alert per recipe per mount for auto-verify (avoid nag on focus). */
   const lowConfidenceAutoNudgeShown = useRef<Set<string>>(new Set());
@@ -1112,6 +1111,7 @@ export default function RecipeDetailScreen() {
       const apiBase = getSupprApiBase();
       if (!apiBase) return;
       setAutoVerifyingIngredients(true);
+      setAutoVerifyFailed(false);
       try {
         const res = await fetch(`${apiBase}/api/nutrition/verify-recipe`, {
           method: "POST",
@@ -1119,6 +1119,8 @@ export default function RecipeDetailScreen() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
+        // ENG-1329 — was unbounded; a hung request left this stuck true forever.
+        signal: AbortSignal.timeout(30_000),
         body: JSON.stringify({
           ingredients: structuredIngredientsForVerify(snap),
           servings: recipe.servings ?? 1,
@@ -1156,7 +1158,8 @@ export default function RecipeDetailScreen() {
           }
         }
       } catch {
-        /* Local allocate fallback remains in ingredientsForIngredientsTab */
+        // ENG-1329 — was silent; local allocate fallback still renders unverified rows + manual Verify CTA.
+        if (!cancelled) setAutoVerifyFailed(true);
       } finally {
         if (!cancelled) setAutoVerifyingIngredients(false);
       }
@@ -1175,6 +1178,7 @@ export default function RecipeDetailScreen() {
     session?.access_token,
     userId,
     applyVerifyJsonToStateAndDb,
+    autoVerifyRetryToken,
   ]);
 
   // Compute header / Nutrition-tab totals. When no row has per-ingredient macros,
@@ -1923,20 +1927,6 @@ export default function RecipeDetailScreen() {
     is_verified: ing.is_verified ?? null,
   }));
 
-  const ingredientChecklistItems = ingredientsForIngredientsTab.map((ing) => {
-    const scaledAmount =
-      ing.amount != null
-        ? Math.round(ing.amount * viewMultiplier * 100) / 100
-        : null;
-    return {
-      name: ing.name,
-      amountLabel:
-        scaledAmount != null || ing.unit
-          ? formatIngredientAmountUnit(scaledAmount, ing.unit)
-          : null,
-    };
-  });
-
   const cleanDescription = sanitizeRecipeDescription(recipe.description);
   const allergenLine = formatContainsLine(normaliseAllergenIds(recipe.allergens ?? []));
 
@@ -2162,22 +2152,28 @@ export default function RecipeDetailScreen() {
             </Text>
           )}
 
-          {/* Auto-verify progress note. */}
+          {/* Auto-verify progress note. ENG-1329 — used to sit above a duplicate,
+              always-unchecked CookIngredientChecklist that read as a second,
+              stalled progress indicator; that checklist now lives in Cook Mode
+              only (CookMiseEnPlace) since RecipeIngredientGrid below already
+              carries per-row match state via the verification dot. */}
           {autoVerifyingIngredients ? (
             <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
               Matching each line against the food database (USDA / Open Food Facts / FatSecret /
               Edamam when configured)…
             </Text>
+          ) : autoVerifyFailed ? (
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md, backgroundColor: Accent.warning + "1A", borderWidth: 1, borderColor: Accent.warning }}>
+              <Text style={{ fontSize: 12, color: Accent.warningSolid, lineHeight: 17, flexShrink: 1 }}>
+                Couldn’t match ingredients against the food database.
+              </Text>
+              <Pressable onPress={() => setAutoVerifyRetryToken((n) => n + 1)}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.warningSolid }}>Retry</Text>
+              </Pressable>
+            </View>
           ) : null}
 
           {/* 6. Ingredients thumbnail grid. */}
-          {cookIngredientChecklistEnabled && ingredientChecklistItems.length > 0 ? (
-            <CookIngredientChecklist
-              recipeId={recipeId}
-              items={ingredientChecklistItems}
-              surface="recipe_detail"
-            />
-          ) : null}
           <RecipeIngredientGrid
             recipeId={recipeId}
             ingredients={gridIngredients}

@@ -24,6 +24,7 @@ import {
   macroSplitIncompleteCopy,
 } from "@suppr/nutrition-core/macroSplitConfidence";
 import { macroCalorieSplit } from "@suppr/nutrition-core/macroCalorieSplit";
+import { formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -378,7 +379,7 @@ export default function MealNutritionScreen() {
                   fontVariant: ["tabular-nums"],
                 }}
               >
-                {Math.round(meal.calories)} kcal
+                {formatKcalDisplay(meal.calories)} kcal
               </Text>
             </View>
           }
@@ -522,8 +523,7 @@ export default function MealNutritionScreen() {
                 })}
               </View>
               <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 8, textAlign: "center" }}>
-                {Math.round(meal.calories)} kcal across {slotLineItems.length} logged item
-                {slotLineItems.length !== 1 ? "s" : ""}
+                {formatKcalDisplay(meal.calories)} kcal across {slotLineItems.length} logged item{slotLineItems.length !== 1 ? "s" : ""}
               </Text>
             </View>
           </View>
@@ -544,7 +544,7 @@ export default function MealNutritionScreen() {
             {showPortionLine ? (
               <Text style={[styles.portion, { color: colors.textSecondary }]}>Portion ×{portionLabel}</Text>
             ) : null}
-            <Text style={[styles.kcal, { color: colors.text }]}>{Math.round(meal.calories)} kcal</Text>
+            <Text style={[styles.kcal, { color: colors.text }]}>{formatKcalDisplay(meal.calories)} kcal</Text>
           </>
         ) : (
           <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary, marginBottom: Spacing.sm }}>

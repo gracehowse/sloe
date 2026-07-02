@@ -43,6 +43,7 @@ import {
 } from "../../../lib/nutrition/weeklyRecapEmptyCopy";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track } from "../../../lib/analytics/track";
+import { formatKcalDisplay } from "../../../lib/nutrition/formatMacro";
 import { Icons } from "../ui/icons";
 import { cn } from "../ui/utils";
 import { DigestBlended } from "./digest-blended";
@@ -460,12 +461,10 @@ function DigestLegacy(props: DigestProps) {
           data-testid="digest-closest-to-target"
         >
           Closest to target —{" "}
-          <span className="text-foreground font-semibold">
-            {narrative.closestToTarget.label}
-          </span>
+          <span className="text-foreground font-semibold">{narrative.closestToTarget.label}</span>
           {" · "}
           {narrative.closestToTarget.protein}g protein,{" "}
-          {narrative.closestToTarget.calories} kcal
+          {formatKcalDisplay(narrative.closestToTarget.calories)} kcal
         </p>
       ) : null}
 

@@ -2,6 +2,7 @@
  * WhyNumber v3 grammar (ENG-1247 §A6). Shared web + mobile.
  */
 import type { WhyThisNumberLine, WhyThisNumberResult } from "./nutrition/whyThisNumber";
+import { formatKcalDisplay } from "./nutrition/formatMacro";
 
 export const WHY_NUMBER_V3_COPY = {
   heroOverline: "Your daily target",
@@ -12,8 +13,11 @@ export const WHY_NUMBER_V3_COPY = {
   adjustPace: "Adjust my pace or goal",
 } as const;
 
+// ENG-1305: was locale-default .toLocaleString() — separator/grouping
+// depends on the runtime's locale. Use the app-wide locale-independent
+// formatter so web SSR and every mobile device locale render identically.
 export function formatWhyNumberHeroKcal(targetCalories: number): string {
-  return Math.round(targetCalories).toLocaleString();
+  return formatKcalDisplay(targetCalories);
 }
 
 export function buildWhyNumberResultSubtitle(lines: WhyThisNumberLine[]): string {

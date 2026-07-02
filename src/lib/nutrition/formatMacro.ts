@@ -59,3 +59,29 @@ export function formatMacro(
   }
   return unit ? `${str}${unit}` : str;
 }
+
+/**
+ * ENG-1305: single source of truth for kcal thousands-grouping.
+ *
+ * Pre-fix, kcal displays split three ways across the app: bare
+ * `{Math.round(value)}` (no separator — "1900"), locale-default
+ * `.toLocaleString()` (separator depends on the RUNTIME's locale, which can
+ * differ between web SSR and a mobile device's OS locale), and a hand-rolled
+ * comma inserter duplicated in `weeklyCheckin.ts` specifically to avoid that
+ * locale dependency. This promotes that hand-rolled version here so every
+ * kcal display — web and mobile — renders identically regardless of locale.
+ * Rounds via `formatMacroValue("calories", ...)` first so this is also the
+ * canonical kcal *rounding*, not just the separator insertion.
+ */
+export function formatKcalDisplay(value: number | null | undefined): string {
+  const rounded = formatMacroValue(value, "calories");
+  const sign = rounded < 0 ? "-" : "";
+  const abs = Math.abs(rounded);
+  const digits = String(abs);
+  let withCommas = "";
+  for (let i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 === 0) withCommas += ",";
+    withCommas += digits[i];
+  }
+  return `${sign}${withCommas}`;
+}

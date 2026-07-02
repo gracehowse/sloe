@@ -17,6 +17,7 @@ import {
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import { cn } from "../ui/utils";
+import { formatKcalDisplay } from "@/lib/nutrition/formatMacro";
 
 export interface CoachScreenProps {
   narrative: string;
@@ -73,7 +74,12 @@ function CoachCandidateRow({
           ) : null}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-          Est. {candidate.predictedCalories.toLocaleString()} kcal · {candidate.predictedProtein}g protein
+          {/* ENG-1305: predictedCalories/Protein are Coach's own derived
+              estimate (mealCoach.ts: "OUR numbers, never the model's"), not a
+              verified match — mark it "~" like every other predicted-meal
+              kcal display (plan-portion-dialog.tsx), and use the
+              locale-independent formatter instead of bare .toLocaleString(). */}
+          ~{formatKcalDisplay(candidate.predictedCalories)} kcal · {candidate.predictedProtein}g protein
         </p>
         {candidate.whyLine ? (
           <p className="mt-1 text-xs leading-snug text-muted-foreground">{candidate.whyLine}</p>

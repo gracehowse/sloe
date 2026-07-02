@@ -7,6 +7,20 @@ import {
 } from "../../src/lib/nutrition/verifyRecipeResponse";
 import { MIN_ACCEPT_CONFIDENCE } from "../../src/lib/nutrition/verifyConfidencePolicy";
 
+describe("isVerifiedFromVerifyRow — accept floor (ENG-1305)", () => {
+  it("uses the shared 0.55 accept floor, not the stale hardcoded 0.5", () => {
+    expect(MIN_ACCEPT_CONFIDENCE).toBe(0.55);
+    expect(isVerifiedFromVerifyRow(0.52, "USDA")).toBe(false);
+    expect(isVerifiedFromVerifyRow(0.55, "USDA")).toBe(true);
+    expect(isVerifiedFromVerifyRow(0.6, "USDA")).toBe(true);
+  });
+
+  it("still requires a structured source", () => {
+    expect(isVerifiedFromVerifyRow(0.9, "Estimated")).toBe(false);
+    expect(isVerifiedFromVerifyRow(0.9, "Unverified")).toBe(false);
+  });
+});
+
 describe("verifyRecipeResponse", () => {
   it("maps canonical verify API verified[] + macros", () => {
     const json = {

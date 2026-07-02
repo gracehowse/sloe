@@ -5,6 +5,7 @@ import {
 } from "./offServingPortions.ts";
 import { parseOffMicrosPer100g } from "./parseOffMicros.ts";
 import { reconcileOffPer100g, extractOffMacrosPerServing } from "./reconcilePer100g.ts";
+import { isOffDataStale } from "./offStaleness.ts";
 
 export type { OffServingOption };
 
@@ -43,6 +44,15 @@ export interface OffProductMacros {
   /** ENG-774 — per-serving label with no gram mass; scale by serving count. */
   macrosPerServing?: { calories: number; protein: number; carbs: number; fat: number };
   servingNoMass?: boolean;
+  /** ENG-1305 — Unix seconds, OFF's last-edit timestamp. See `offStaleness.ts`. */
+  lastModifiedT?: number | null;
+  /** ENG-1305 — true when `lastModifiedT` is older than the staleness
+   *  threshold. Data plumbing only here (barcode scans are a direct
+   *  product-identity match, not a confidence-scored candidate list like
+   *  `verifyIngredients.ts`'s OFF search path, which gates on this) —
+   *  callers may surface a "may be outdated" caveat alongside the existing
+   *  `basisCorrected` warning. */
+  staleData?: boolean;
 }
 
 export async function fetchProductByBarcode(code: string): Promise<
@@ -75,6 +85,8 @@ export async function fetchProductByBarcode(code: string): Promise<
         /** P0 (2026-05-26) — "100g" | "serving"; drives per-100g reconcile. */
         nutrition_data_per?: string;
         nutriments?: Record<string, number | undefined>;
+        /** ENG-1305 — OFF's last-edit timestamp, Unix seconds. */
+        last_modified_t?: number;
       };
     };
     if (data.status !== 1 || !data.product) {
@@ -137,6 +149,7 @@ export async function fetchProductByBarcode(code: string): Promise<
         ? 1
         : pickDefaultServingGrams(servingOptions);
     const rawServing = (p.serving_size ?? "").trim();
+    const lastModifiedT = typeof p.last_modified_t === "number" ? p.last_modified_t : null;
     return {
       ok: true,
       product: {
@@ -157,6 +170,8 @@ export async function fetchProductByBarcode(code: string): Promise<
         basisCorrected: recon.corrected,
         ...(macrosPerServing ? { macrosPerServing } : {}),
         ...(recon.servingNoMass ? { servingNoMass: true } : {}),
+        lastModifiedT,
+        staleData: isOffDataStale(lastModifiedT),
       },
     };
   } catch (e) {

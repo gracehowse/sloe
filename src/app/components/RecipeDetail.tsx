@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
 import { toast } from "sonner";
-import {
-  formatContainsLine,
-  normaliseAllergenIds,
-} from "../../constants/regulatedAllergens";
+import { formatContainsLine, normaliseAllergenIds } from "../../constants/regulatedAllergens";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { IngredientOverride, IngredientRow, RecipeCard, UserTier } from "../../types/recipe.ts";
@@ -78,7 +75,6 @@ import {
 import { saveVerifiedIngredientsRpc } from "../../lib/nutrition/saveVerifiedIngredientsRpc.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
-import { CookIngredientChecklist } from "./cook/CookIngredientChecklist.tsx";
 import { AddToShoppingListAction } from "./recipe/AddToShoppingListAction.tsx";
 import {
   AlertDialog,
@@ -402,8 +398,6 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   // lockstep with mobile's unconditional `useCardElevation` soft lift.)
   const redesignColours = isFeatureEnabled("design_system_colours");
   const winFeedback = isFeatureEnabled("redesign_winmoment");
-  /** ENG-946 — tap-to-check ingredient checklist on the Ingredients tab. */
-  const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
   /** ENG-943 — "Add to shopping list" action (default-ON). */
   const recipeShoppingListEnabled = isFeatureEnabled("recipe_shopping_list_v1");
   // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON → hero
@@ -482,6 +476,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [verifyIndex, setVerifyIndex] = useState<number | null>(null);
   /** USDA / OFF / FatSecret / Edamam via `/api/nutrition/verify-recipe`. */
   const [autoVerifyingIngredients, setAutoVerifyingIngredients] = useState(false);
+  // ENG-1329 — the fetch below had no timeout/error state; a hung request left "Matching…" showing forever.
+  const [autoVerifyFailed, setAutoVerifyFailed] = useState(false);
+  const [autoVerifyRetryToken, setAutoVerifyRetryToken] = useState(0);
   const autoVerifySucceededForRecipeId = useRef<string | null>(null);
   // Batch 2.7 — add-ingredient + per-ingredient override dialogs.
   const [addIngOpen, setAddIngOpen] = useState(false);
@@ -1103,11 +1100,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
 
     (async () => {
       setAutoVerifyingIngredients(true);
+      setAutoVerifyFailed(false);
       try {
         const res = await fetch("/api/nutrition/verify-recipe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
+          // ENG-1329 — was unbounded; a hung request left this stuck true forever.
+          signal: AbortSignal.timeout(30_000),
           body: JSON.stringify({
             ingredients: structuredIngredientsForVerify(snap),
             servings: baseServings,
@@ -1241,7 +1241,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           });
         }
       } catch {
-        /* silent — user can still verify manually */
+        // ENG-1329 — was silent; Ingredients tab still shows unverified rows + the manual Verify CTA.
+        if (!cancelled) setAutoVerifyFailed(true);
       } finally {
         if (!cancelled) setAutoVerifyingIngredients(false);
       }
@@ -1266,6 +1267,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     dbMacros,
     baseServings,
     isMyRecipe,
+    autoVerifyRetryToken,
   ]);
 
   const prepDisplay =
@@ -2796,29 +2798,25 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         {/* Ingredients Tab */}
         {activeTab === "ingredients" && (
           <>
+          {/* ENG-1329 — used to sit above a duplicate, always-unchecked CookIngredientChecklist
+              that read as a second, stalled progress indicator; that checklist now lives in
+              Cook Mode only, since the Ingredients grid below already carries per-row state. */}
           {autoVerifyingIngredients ? (
             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
               Matching each line against the food database (USDA / Open Food Facts / FatSecret / Edamam when configured)…
             </p>
-          ) : null}
-          {cookIngredientChecklistEnabled && ingredients.length > 0 ? (
-            <div className="mb-4">
-              <CookIngredientChecklist
-                recipeId={String(recipe.id)}
-                items={ingredients.map((ingredient) => {
-                  const amountLine = ingredient.amount
-                    ? formatIngredientAmountUnit(
-                        formatIngredientAmount((parseFloat(ingredient.amount) * servings) / baseServings),
-                        ingredient.unit,
-                      )
-                    : ingredient.unit;
-                  return {
-                    name: cleanIngredientDisplayName(ingredient.name) || ingredient.name,
-                    amountLabel: amountLine || null,
-                  };
-                })}
-                surface="recipe_detail"
-              />
+          ) : autoVerifyFailed ? (
+            <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30">
+              <p className="text-xs text-warning-solid leading-relaxed">
+                Couldn’t match ingredients against the food database.
+              </p>
+              <button
+                type="button"
+                onClick={() => setAutoVerifyRetryToken((n) => n + 1)}
+                className="text-xs font-semibold text-warning-solid underline shrink-0"
+              >
+                Retry
+              </button>
             </div>
           ) : null}
           {/* Figma 332:2 — ingredient photo-card grid (mirrors the

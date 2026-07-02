@@ -21,6 +21,7 @@ import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { SavedMealItem } from "@suppr/nutrition-core/savedMeals";
@@ -400,11 +401,9 @@ function DigestLegacy(props: DigestProps) {
           style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 10 }}
         >
           Closest to target —{" "}
-          <Text style={{ fontWeight: "700", color: colors.text }}>
-            {narrative.closestToTarget.label}
-          </Text>
+          <Text style={{ fontWeight: "700", color: colors.text }}>{narrative.closestToTarget.label}</Text>
           {" · "}
-          {narrative.closestToTarget.protein}g protein, {narrative.closestToTarget.calories} kcal
+          {narrative.closestToTarget.protein}g protein, {formatKcalDisplay(narrative.closestToTarget.calories)} kcal
         </Text>
       ) : null}
 

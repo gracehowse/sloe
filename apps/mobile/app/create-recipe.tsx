@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
 import {
   ActivityIndicator,
   Alert,
@@ -1168,9 +1169,7 @@ export default function CreateRecipeScreen() {
             <View key={ing.id} style={styles.ingCard}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.ingName}>{ing.name}</Text>
-                <Text style={styles.ingDetail}>
-                  {ing.amount} {ing.unit} · {ing.calories} kcal · {ing.source}
-                </Text>
+                <Text style={styles.ingDetail}>{ing.amount} {ing.unit} · {formatKcalDisplay(ing.calories)} kcal · {ing.source}</Text>
               </View>
               <Pressable
                 style={styles.removeBtn}

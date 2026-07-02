@@ -16,6 +16,7 @@ import {
   COACH_ASK_CHIPS,
   type CoachAskChipId,
 } from "@suppr/nutrition-core/coachAsk";
+import { formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
 
 export interface CoachScreenViewProps {
   narrative: string;
@@ -88,7 +89,12 @@ function CoachCandidateRow({
           ) : null}
         </View>
         <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: Spacing.xs }}>
-          Est. {candidate.predictedCalories.toLocaleString()} kcal · {candidate.predictedProtein}g protein
+          {/* ENG-1305: predictedCalories/Protein are Coach's own derived
+              estimate (mealCoach.ts: "OUR numbers, never the model's"), not a
+              verified match — mark it "~" like every other predicted-meal
+              kcal display (planner.tsx, SwapMealSheet.tsx), and use the
+              locale-independent formatter instead of bare .toLocaleString(). */}
+          ~{formatKcalDisplay(candidate.predictedCalories)} kcal · {candidate.predictedProtein}g protein
         </Text>
         {candidate.whyLine ? (
           <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: Spacing.xs }}>
