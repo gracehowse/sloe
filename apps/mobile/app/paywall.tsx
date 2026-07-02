@@ -51,6 +51,10 @@ import { PaywallNoPaymentChip } from "@/components/paywall/PaywallNoPaymentChip"
 import { PaywallTrustStrip } from "@/components/paywall/PaywallTrustStrip";
 import { PaywallPersonalisedPlanCard } from "@/components/paywall/PaywallPersonalisedPlanCard";
 import { PaywallTrajectoryChart } from "@/components/paywall/PaywallTrajectoryChart";
+import {
+  TrialEndReminderDayPicker,
+  DEFAULT_TRIAL_END_REMINDER_DAY,
+} from "@/components/paywall/TrialEndReminderDayPicker";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
@@ -60,6 +64,10 @@ import {
   shouldLeadPaywallWithPersonalisedPlan,
   type PersonalisedPlanPaywallSummary,
 } from "@suppr/shared/paywall/personalisedPlanSummary";
+import {
+  computeTrialEndReminderFireDate,
+  type TrialEndReminderDay,
+} from "@suppr/shared/push/trialEndReminder";
 
 /**
  * Mobile paywall — sells both Base and Pro across monthly + annual.
@@ -294,6 +302,27 @@ export default function PaywallScreen() {
     redeem: redeemPromo,
   } = usePromoCode({ userId });
 
+  const trialReminderFlag = isFeatureEnabled("trial_end_reminder_v1");
+  const [trialReminderDay, setTrialReminderDay] = useState<TrialEndReminderDay>(
+    DEFAULT_TRIAL_END_REMINDER_DAY,
+  );
+  const [trialReminderPermitted, setTrialReminderPermitted] = useState(false);
+
+  useEffect(() => {
+    if (!trialReminderFlag) return;
+    let cancelled = false;
+    void (async () => {
+      const { hasTrialReminderNotificationPermission } = await import(
+        "@/lib/trialEndReminderPush"
+      );
+      const ok = await hasTrialReminderNotificationPermission();
+      if (!cancelled) setTrialReminderPermitted(ok);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [trialReminderFlag]);
+
   // ENG-1241 — where a forward-only entry lands on finish (purchase /
   // restore / skip / close). Onboarding lands STRAIGHT on Today, no
   // notifications-prompt detour (decision 2 / legal C4); trial-end keeps
@@ -469,6 +498,8 @@ export default function PaywallScreen() {
   const periodWord = billing === "annual" ? "per year" : "per month";
 
   const trialApplies = billing === "annual"; // 7-day trial only on Pro annual
+  const trialReminderUiVisible =
+    trialReminderFlag && trialReminderPermitted && trialApplies && Boolean(currentProPkg);
   const subscriptionsUnavailable = offeringsReady && packages.length === 0;
 
   // DC4 (premium-bar audit 2026-05-14): platform-correct trust chips
@@ -480,6 +511,23 @@ export default function PaywallScreen() {
   const trustChips = useMemo(() => getPaywallTrustChips("mobile"), []);
 
   // ─── Interaction handlers ───────────────────────────────────────
+
+  async function commitTrialEndReminderOnTrialStart() {
+    if (!trialReminderUiVisible) return;
+    const fireDate = computeTrialEndReminderFireDate(new Date(), trialReminderDay);
+    const { scheduleTrialEndReminder } = await import("@/lib/trialEndReminderPush");
+    void scheduleTrialEndReminder(fireDate);
+    if (userId) {
+      const { persistTrialEndReminderPref } = await import(
+        "@suppr/shared/push/persistTrialEndReminderPref"
+      );
+      void persistTrialEndReminderPref(supabase, userId, trialReminderDay);
+    }
+    track(AnalyticsEvents.trial_end_reminder_day_selected, {
+      day: trialReminderDay,
+      surface: "mobile_paywall",
+    });
+  }
 
   async function onSelectTier(tier: "pro") {
     if (purchasing) return;
@@ -577,6 +625,7 @@ export default function PaywallScreen() {
             from: paywallFrom,
             trialApplied: trialOnThisPurchase,
           });
+          if (trialOnThisPurchase) void commitTrialEndReminderOnTrialStart();
           // Trust-explicit confirmation Alert (audit 2026-04-30,
           // user-sentiment pain #1). Lead with cancel-anytime, then
           // trial-end + first-charge, then refund window + zero-email
@@ -616,6 +665,7 @@ export default function PaywallScreen() {
               from: paywallFrom,
               trialApplied: trialOnThisPurchase,
             });
+            if (trialOnThisPurchase) void commitTrialEndReminderOnTrialStart();
             const cancelPath =
               Platform.OS === "ios"
                 ? "Settings > Apple ID > Subscriptions"
@@ -1206,6 +1256,11 @@ export default function PaywallScreen() {
               </View>
               );
             })}
+            <TrialEndReminderDayPicker
+              visible={trialReminderUiVisible}
+              value={trialReminderDay}
+              onChange={setTrialReminderDay}
+            />
           </View>
         ) : null}
 

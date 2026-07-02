@@ -63,6 +63,14 @@ import { AnalyticsEvents, type PaywallViewedFrom } from "../../../lib/analytics/
 import { track, isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { PRICING_TIERS } from "../../../lib/landing/pricingTiers.ts";
 import { PaywallTrustStrip } from "../../../../app/pricing/PaywallTrustStrip.tsx";
+import {
+  TrialEndReminderDayPicker,
+  DEFAULT_TRIAL_END_REMINDER_DAY,
+} from "../paywall/TrialEndReminderDayPicker.tsx";
+import {
+  persistTrialEndReminderPref,
+} from "../../../lib/push/persistTrialEndReminderPref.ts";
+import type { TrialEndReminderDay } from "../../../lib/push/trialEndReminder.ts";
 
 const supabase = createClient(supabasePublicUrl(), supabasePublicAnonKey());
 
@@ -209,6 +217,10 @@ export function UpgradePaywallDialog({
   // so the trial-eligible SKU is preselected (Decision 4). Re-sync when the
   // dialog re-opens so the preselection isn't lost after a dismiss+reopen.
   const [period, setPeriod] = useState<"monthly" | "annual">(defaultPeriod);
+  const trialReminderFlag = isFeatureEnabled("trial_end_reminder_v1");
+  const [trialReminderDay, setTrialReminderDay] = useState<TrialEndReminderDay>(
+    DEFAULT_TRIAL_END_REMINDER_DAY,
+  );
   useEffect(() => {
     if (open) setPeriod(defaultPeriod);
   }, [open, defaultPeriod]);
@@ -224,6 +236,7 @@ export function UpgradePaywallDialog({
   const proTier = useMemo(() => PRICING_TIERS.find((t) => t.name === "Pro"), []);
 
   const isAnnual = period === "annual";
+  const trialReminderUiVisible = trialReminderFlag && isAnnual;
 
   const proMonthlyPrice = proTier?.price ?? "£7.99";
   const proAnnualPrice = proTier?.annualPrice ?? "£59.99";
@@ -362,6 +375,16 @@ export function UpgradePaywallDialog({
         alert(data.message ?? data.error ?? "Checkout is unavailable right now. Please try again.");
         return;
       }
+      if (trialReminderUiVisible) {
+        const userId = sessionData.session?.user?.id;
+        if (userId) {
+          void persistTrialEndReminderPref(supabase, userId, trialReminderDay);
+        }
+        track(AnalyticsEvents.trial_end_reminder_day_selected, {
+          day: trialReminderDay,
+          surface: "upgrade_dialog",
+        });
+      }
       // Legacy `checkout_started` — unchanged shape.
       track(AnalyticsEvents.checkout_started, { tier: "pro", period, from });
       // New `upsell_variant_converted` — always `free_to_pro` post-PR-01.
@@ -380,7 +403,7 @@ export function UpgradePaywallDialog({
     } finally {
       setBusy(false);
     }
-  }, [busy, from, variant, userTier, period]);
+  }, [busy, from, variant, userTier, period, trialReminderDay, trialReminderUiVisible]);
 
   // Pro users, or anyone hitting the session cap without explicit
   // bypass, render nothing. We do the cap check at render time (not in
@@ -581,6 +604,12 @@ export function UpgradePaywallDialog({
               <p className="text-[11px] text-muted-foreground mt-1">{periodLabel}</p>
             </div>
           </div>
+
+          <TrialEndReminderDayPicker
+            visible={trialReminderUiVisible}
+            value={trialReminderDay}
+            onChange={setTrialReminderDay}
+          />
         </div>
 
         {/* Footer — renewal note pinned above CTAs so it is visible

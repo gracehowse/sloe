@@ -569,6 +569,11 @@ export const AnalyticsEvents = {
    *  (`weigh_in_reminder_v1`). Payload: `{ enabled: boolean, weekday?: number,
    *  hour?: number }` — weekday/hour present when the cadence is also set. */
   weigh_in_reminder_enabled_toggled: "weigh_in_reminder_enabled_toggled",
+  /** ENG-968 — user picked a trial-end reminder day (Day 5/6/7) on a trial
+   *  paywall surface and started a trial. Mobile schedules a local push;
+   * web persists the pref for a future email/cron rail. Flag
+   *  `trial_end_reminder_v1`. Payload: `{ day: 5 | 6 | 7, surface: string }`. */
+  trial_end_reminder_day_selected: "trial_end_reminder_day_selected",
   /** ENG-713 — user toggled the body-neutral "Trend-only weight" display
    *  preference (hides the numeric weight chart + figures on Progress, shows a
    *  neutral direction instead). Same name web + mobile. Fires once per
