@@ -6,10 +6,11 @@
  * Part of the Sloe image system (2026-06-08,
  * `docs/decisions/2026-06-08-recipe-ingredient-image-system.md`).
  *
- * Auth + tier mirror `/api/recipe-import/image`:
+ * Auth + tier (ENG-865 Option A):
  *   - must be signed in (401 otherwise)
- *   - Pro-gated — image GENERATION is a Pro feature (free tier still
- *     gets the on-brand placeholder + any imported/YouTube thumbnail).
+ *   - first base Sloe hero is FREE (including fire-and-forget on create/import)
+ *   - regenerate / restyle when `image_source='ai_generated'` is Pro-only
+ *   - remove Sloe image → gradient is free for everyone
  *
  * GRACEFUL DEGRADATION (load-bearing): fal.ai is currently OUT OF
  * BALANCE (account locked). This route NEVER crashes and is safe to
@@ -20,7 +21,7 @@
  *   - only on a real success does it update `recipes.image_url` and
  *     return `{ ok:true, url }`.
  *
- * Body: `{ recipeId: string, title?: string, ingredients?: string[] }`.
+ * Body: `{ recipeId, title?, ingredients?, preview?, remove?, regenerate? }`.
  * Ownership is enforced — the caller may only set the hero on a recipe
  * they authored.
  */
@@ -30,6 +31,10 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
 import { IMAGE_GEN_ERROR_COPY, importErrorResponse } from "@/lib/recipes/importErrorCopy";
+import {
+  imageGenAbuseGuardDailyLimit,
+  requiresProForImageGen,
+} from "@/lib/recipes/imageGenAccess";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import {
@@ -48,6 +53,7 @@ type Payload = {
   ingredients?: unknown;
   preview?: unknown;
   remove?: unknown;
+  regenerate?: unknown;
 };
 
 /** 200 + `skipped` so a fire-and-forget caller treats this as a no-op,
@@ -70,42 +76,6 @@ export async function POST(req: Request) {
     return NextResponse.json(importErrorResponse("unauthorized"), { status: 401 });
   }
 
-  // Pro-gated (parity with the image-extraction route). Free users get
-  // the placeholder + any imported thumbnail — never a 5xx here.
-  const tier = await getUserTier(userId);
-  if (tier === "free") {
-    // ENG-1328: same stable code + 403 (gating unchanged, ENG-865), but
-    // the message is image-GENERATION copy — the shared `pro_required`
-    // default describes photo imports, which is not what the user tapped.
-    return NextResponse.json(
-      importErrorResponse("pro_required", IMAGE_GEN_ERROR_COPY.pro_required),
-      { status: 403 },
-    );
-  }
-
-  // Per-user rate limit — generation is expensive; cap it.
-  const limited = await rateLimit({
-    keyPrefix: "api:recipe-import-image-hero",
-    userId,
-    limit: 10,
-    windowMs: 60_000,
-  });
-  if (!limited.ok) {
-    return NextResponse.json(
-      {
-        ...importErrorResponse("rate_limited", IMAGE_GEN_ERROR_COPY.rate_limited),
-        retryAfterSec: limited.retryAfterSec,
-      },
-      { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
-    );
-  }
-
-  // If fal isn't even configured, no-op cleanly without touching the DB
-  // or making a network call.
-  if (!isFalConfigured()) {
-    return skipped("fal_not_configured");
-  }
-
   let body: Payload;
   try {
     body = (await req.json()) as Payload;
@@ -123,6 +93,7 @@ export async function POST(req: Request) {
   const title = typeof body.title === "string" ? body.title.trim() : "";
   const preview = body.preview === true;
   const remove = body.remove === true;
+  const regenerate = body.regenerate === true;
   const ingredients = Array.isArray(body.ingredients)
     ? body.ingredients.map((s) => String(s).trim()).filter(Boolean).slice(0, 6)
     : [];
@@ -133,8 +104,7 @@ export async function POST(req: Request) {
     return skipped("storage_not_configured");
   }
 
-  // Ownership check + fetch the title we'll generate for (and confirm the
-  // recipe still wants a generated hero — only overwrite a null/default).
+  // Ownership check + fetch the title we'll generate for.
   const { data: recipeRow, error: fetchError } = await admin
     .from("recipes")
     .select("id, title, author_id, image_url, image_source, published")
@@ -150,11 +120,36 @@ export async function POST(req: Request) {
     return NextResponse.json(importErrorResponse("unauthorized"), { status: 403 });
   }
 
+  const recipeImageSource = (recipeRow as { image_source?: string | null }).image_source ?? null;
+
+  const tier = await getUserTier(userId);
+  if (requiresProForImageGen(tier, { image_source: recipeImageSource }, { regenerate, remove })) {
+    return NextResponse.json(
+      importErrorResponse("pro_required", IMAGE_GEN_ERROR_COPY.pro_required),
+      { status: 403 },
+    );
+  }
+
+  // Hidden abuse guard — applies to all tiers (ENG-865).
+  const limited = await rateLimit({
+    keyPrefix: "api:recipe-import-image-hero:daily",
+    userId,
+    limit: imageGenAbuseGuardDailyLimit(),
+    windowMs: 24 * 60 * 60 * 1000,
+  });
+  if (!limited.ok) {
+    return NextResponse.json(
+      {
+        ...importErrorResponse("rate_limited", IMAGE_GEN_ERROR_COPY.rate_limited),
+        retryAfterSec: limited.retryAfterSec,
+      },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+    );
+  }
+
   if ((recipeRow as { published?: boolean | null }).published === true) {
     return skipped("published_no_ai_image");
   }
-
-  const effectiveTitle = title || String((recipeRow as { title?: string }).title ?? "");
 
   if (remove) {
     const { error: removeError } = await admin
@@ -176,6 +171,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, removed: true }, { status: 200 });
   }
+
+  // If fal isn't even configured, no-op cleanly without touching the DB
+  // or making a network call.
+  if (!isFalConfigured()) {
+    return skipped("fal_not_configured");
+  }
+
+  const effectiveTitle = title || String((recipeRow as { title?: string }).title ?? "");
 
   let result;
   try {

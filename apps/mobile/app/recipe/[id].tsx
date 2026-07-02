@@ -60,6 +60,7 @@ import { useRecipeReport } from "@/hooks/useRecipeReport";
 import { SloeImageNotice } from "@/components/recipe/SloeImageNotice";
 import { getSupprApiBase } from "@/lib/supprWeb";
 import { mapPersistenceError, userFacingImageGenError, userFacingImportError } from "@suppr/shared/recipes/importErrorCopy";
+import { normaliseCachedTier } from "@/lib/cachedUserTier";
 import { authedFetch } from "@/lib/authedFetch";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -299,6 +300,7 @@ export default function RecipeDetailScreen() {
   // detail's Carbs ↔ Net carbs label without requiring a remount. Tester
   // feedback: "toggling net carbs on and off in setting not working".
   const [netCarbsLensEnabled, setNetCarbsLensEnabled] = useState(false);
+  const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
   const refreshNetCarbsLens = useCallback(async () => {
     if (!userId) return;
     const { data } = await supabase
@@ -316,11 +318,12 @@ export default function RecipeDetailScreen() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("net_carbs_lens_enabled")
+        .select("net_carbs_lens_enabled, user_tier")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled) return;
       setNetCarbsLensEnabled(Boolean((data as { net_carbs_lens_enabled?: boolean } | null)?.net_carbs_lens_enabled));
+      setUserTier(normaliseCachedTier((data as { user_tier?: string | null } | null)?.user_tier));
     })().catch(() => { /* preserve default */ });
     return () => {
       cancelled = true;
@@ -1563,8 +1566,13 @@ export default function RecipeDetailScreen() {
   const canGenerateSloeHero =
     sloeImageRuntimeEnabled && isRecipeOwner && !heroImageUrl && !isSeedRecipeId(recipeId);
 
-  const generateSloeHero = useCallback(async () => {
+  const generateSloeHero = useCallback(async (opts?: { regenerate?: boolean }) => {
     if (!recipe || heroGenerating) return;
+    const regenerate = opts?.regenerate === true;
+    if (regenerate && userTier !== "pro") {
+      router.push("/paywall?from=recipe_import" as never);
+      return;
+    }
     const apiBase = getSupprApiBase();
     if (!apiBase) return Alert.alert("Image generation unavailable", "Sloe's image service is not configured in this build.");
     setHeroGenerating(true);
@@ -1576,6 +1584,7 @@ export default function RecipeDetailScreen() {
           title: recipe.title,
           ingredients: ingredients.map((ing) => ing.name).filter(Boolean).slice(0, 12),
           preview: true,
+          ...(regenerate ? { regenerate: true } : {}),
         }),
       });
       const preview = (await previewRes.json()) as { ok?: boolean; url?: string; message?: string; reason?: string; error?: string };
@@ -1624,7 +1633,7 @@ export default function RecipeDetailScreen() {
     } finally {
       setHeroGenerating(false);
     }
-  }, [heroGenerating, ingredients, recipe, userId]);
+  }, [heroGenerating, ingredients, recipe, router, userId, userTier]);
 
   // Defensive normalisation: some imports (and at least one historical
   // seed, TestFlight `AO4NtyNBpP4FJRgq7mCV5cs`) store newlines as literal
@@ -1843,6 +1852,10 @@ export default function RecipeDetailScreen() {
       menu.push({ text: "Edit recipe", onPress: () => setRecipeEditOpen(true) });
     }
     if (isAiGeneratedHero) {
+      menu.push({
+        text: "Try another look",
+        onPress: () => void generateSloeHero({ regenerate: true }),
+      });
       menu.push({
         text: "Remove Sloe image",
         style: "destructive",

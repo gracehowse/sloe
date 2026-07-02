@@ -13,6 +13,8 @@ describe("ENG-863 runtime Sloe image generation", () => {
     expect(src).toContain("sloeImageRuntimeEnabled && isMyRecipe && !heroSrc");
     expect(src).toContain("Generate an image");
     expect(src).toContain("preview: true");
+    expect(src).toContain("Try another look");
+    expect(src).toContain("regenerate: true");
     expect(src).toContain("Approve");
     expect(src).toContain("Sloe image");
     expect(src).toContain("Nutrition is");
@@ -28,6 +30,8 @@ describe("ENG-863 runtime Sloe image generation", () => {
     expect(screen).toContain("canGenerateSloeHero");
     expect(screen).toContain("Generate an image");
     expect(screen).toContain("preview: true");
+    expect(screen).toContain("Try another look");
+    expect(screen).toContain("regenerate: true");
     expect(screen).toContain("Remove Sloe image");
     expect(screen).toContain("Nutrition is");
     expect(screen).toContain("showSloeImageLabel={isAiGeneratedHero}");
@@ -35,11 +39,14 @@ describe("ENG-863 runtime Sloe image generation", () => {
     expect(hero).toContain("Sloe image");
   });
 
-  it("the image route supports preview-before-save, provenance writes, and removal nulling", () => {
+  it("the image route supports preview-before-save, provenance writes, removal, and ENG-865 tier gating", () => {
     const route = read("app/api/recipe-import/image-hero/route.ts");
 
     expect(route).toContain("preview?: unknown");
     expect(route).toContain("remove?: unknown");
+    expect(route).toContain("regenerate?: unknown");
+    expect(route).toContain("requiresProForImageGen");
+    expect(route).toContain("imageGenAbuseGuardDailyLimit");
     expect(route).toContain("preview: true");
     expect(route).toContain('image_source: "ai_generated"');
     expect(route).toContain("image_model");

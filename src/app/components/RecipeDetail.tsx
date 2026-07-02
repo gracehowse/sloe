@@ -25,7 +25,7 @@ import {
   isSeedRecipeId,
 } from "../../lib/recipes/seedRecipesV2";
 import { isRetiredStockImageUrl, pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
-import { mapPersistenceError, userFacingImageGenError, userFacingImportError } from "../../lib/recipes/importErrorCopy.ts";
+import { mapPersistenceError, userFacingImageGenError, userFacingImportError, IMAGE_GEN_ERROR_COPY } from "../../lib/recipes/importErrorCopy.ts";
 import { isImportedRecipe, importSourceDisclaimer } from "../../lib/recipes/importSourceDisclaimer.ts";
 import {
   OFFICIAL_MACROS_CLAIM_BLOCKER_COPY,
@@ -229,6 +229,8 @@ interface RecipeDetailProps {
   recipe: RecipeCard;
   userTier: UserTier;
   onBack: () => void;
+  /** Opens the upgrade paywall when a Pro-only Sloe action is tapped. */
+  onUpgrade?: () => void;
   /** Auto-open cook mode when recipe loads (from planner "Cook" button). */
   autoOpenCookMode?: boolean;
   /** Pre-fill servings from planner portion multiplier. */
@@ -335,7 +337,7 @@ function RecipeHeroImage({
   );
 }
 
-export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initialServings, onViewTracker }: RecipeDetailProps) {
+export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCookMode, initialServings, onViewTracker }: RecipeDetailProps) {
   const {
     toggleSaveRecipe,
     isRecipeSaved,
@@ -950,8 +952,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const heroImageSource = dbImageSource;
   const isAiGeneratedHero = sloeImageRuntimeEnabled && heroImageSource === "ai_generated";
 
-  const generateHeroPreview = useCallback(async () => {
+  const generateHeroPreview = useCallback(async (opts?: { regenerate?: boolean }) => {
     if (!authUserId || !isMyRecipe || heroGenerating) return;
+    const regenerate = opts?.regenerate === true;
+    if (regenerate && userTier !== "pro") {
+      if (onUpgrade) onUpgrade();
+      else toast.error(IMAGE_GEN_ERROR_COPY.pro_required);
+      return;
+    }
     setHeroGenerating(true);
     try {
       const res = await fetch("/api/recipe-import/image-hero", {
@@ -963,6 +971,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           title: recipe.title,
           ingredients: ingredients.map((ing) => ing.name).filter(Boolean).slice(0, 12),
           preview: true,
+          ...(regenerate ? { regenerate: true } : {}),
         }),
       });
       const json = (await res.json()) as { ok?: boolean; url?: string; message?: string; reason?: string; error?: string };
@@ -978,7 +987,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     } finally {
       setHeroGenerating(false);
     }
-  }, [authUserId, heroGenerating, ingredients, isMyRecipe, recipe.id, recipe.title]);
+  }, [authUserId, heroGenerating, ingredients, isMyRecipe, onUpgrade, recipe.id, recipe.title, userTier]);
 
   const approveHeroPreview = useCallback(async () => {
     if (!authUserId || !isMyRecipe || !heroPreviewUrl || heroSaving) return;
@@ -2064,6 +2073,14 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                   <DropdownMenuContent align="end">
                     {isMyRecipe && !isCatalogRecipe ? (
                       <DropdownMenuItem onSelect={() => setRecipeEditOpen(true)}>Edit</DropdownMenuItem>
+                    ) : null}
+                    {isMyRecipe && isAiGeneratedHero ? (
+                      <DropdownMenuItem
+                        disabled={heroSaving || heroGenerating}
+                        onSelect={() => void generateHeroPreview({ regenerate: true })}
+                      >
+                        Try another look
+                      </DropdownMenuItem>
                     ) : null}
                     {isMyRecipe && isAiGeneratedHero ? (
                       <DropdownMenuItem disabled={heroSaving} onSelect={() => void removeGeneratedHero()}>

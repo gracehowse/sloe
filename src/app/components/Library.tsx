@@ -221,6 +221,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
         recipe={selectedRecipe}
         userTier={userTier}
         onBack={() => setSelectedRecipe(null)}
+        onUpgrade={_onUpgrade}
       />
     );
   }
