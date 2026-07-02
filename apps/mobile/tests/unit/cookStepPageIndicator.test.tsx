@@ -13,11 +13,10 @@ describe("ENG-947 cook swipe wiring", () => {
     expect(src).toContain("cook_step_swiped");
   });
 
-  it("recipe cook overlay gates swipe + segment indicator", () => {
+  it("recipe detail routes cook swipe to canonical /cook (ENG-945 — inline overlay retired)", () => {
     const src = readFileSync(join(REPO, "apps/mobile/app/recipe/[id].tsx"), "utf8");
-    expect(src).toContain('isFeatureEnabled("cook_swipe_steps_v1")');
-    expect(src).toContain("CookStepSwipeSurface");
-    expect(src).toContain("CookStepPageIndicator");
+    expect(src).toContain("buildCookModeHref(");
+    expect(src).not.toContain("CookStepSwipeSurface");
   });
 
   it("web CookMode gates touch swipe", () => {

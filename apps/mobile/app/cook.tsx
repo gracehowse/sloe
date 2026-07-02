@@ -123,6 +123,7 @@ export default function CookModeScreen() {
     // recipe with unknown yield). `servings` is parsed safely; any
     // non-positive integer is treated as missing.
     servings: servingsParam,
+    portion: portionParam,
     // ENG-944 — the recipe's structured ingredients, threaded in as a
     // JSON array of `{ name, amount, unit }` so the "For this step" chip
     // matcher has data to work with. Optional + fail-safe parsed: an
@@ -130,11 +131,8 @@ export default function CookModeScreen() {
     // also flag-gated). A caller serialises only the three fields the
     // matcher needs — no macros / PII in the deep link.
     //
-    // NOTE: this standalone `/cook` route has no live caller in the
-    // current app — the active cook surface is the inline overlay in
-    // `app/recipe/[id].tsx` (which has ingredients in scope already). The
-    // param is consumed here so the route is symmetric + ready the moment
-    // a navigation to `/cook` is wired (intentional — not a pending gap).
+    // ENG-945 — canonical cook surface; all entry points route here via
+    // `buildCookModeHref` (recipe detail footer, batch-cook `?cook=1`, deep links).
     ingredients: ingredientsJson,
   } = useLocalSearchParams<{
     recipeId: string;
@@ -143,6 +141,7 @@ export default function CookModeScreen() {
     sourceVideoUrl?: string;
     sourceUrl?: string;
     servings?: string;
+    portion?: string;
     ingredients?: string;
   }>();
   /** Base recipe yield, parsed once from the route query. Null when
@@ -508,11 +507,19 @@ export default function CookModeScreen() {
   }, []);
 
   /** Hydrate the persisted scale factor for this (userId, recipeId).
-   *  Storage-only, no network. Falls back to 1 when the key is missing
-   *  / malformed. Re-runs when userId resolves so a signed-in user
-   *  picks up their account-scoped scale on first auth tick. */
+   *  A deep-link `portion` wins over storage so batch-cook / planner
+   *  handoffs open at the intended multiplier. Storage-only otherwise;
+   *  falls back to 1 when the key is missing / malformed. */
   useEffect(() => {
     if (!recipeId) return;
+    const fromUrl =
+      typeof portionParam === "string" && portionParam.trim()
+        ? Number.parseFloat(portionParam)
+        : NaN;
+    if (Number.isFinite(fromUrl) && fromUrl > 0) {
+      setScale(clampCookScale(fromUrl));
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -529,7 +536,7 @@ export default function CookModeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [recipeId, userId]);
+  }, [recipeId, userId, portionParam]);
 
   /** Hydrate the latest 3 cook-history rows for the "Last time" card.
    *  Network read; failures fall back to an empty array (no card).

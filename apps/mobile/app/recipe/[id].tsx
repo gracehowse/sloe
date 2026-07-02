@@ -1,11 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
-import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
-import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
-import { CookMiseEnPlace } from "@/components/cook/CookMiseEnPlace";
 import { CookIngredientChecklist } from "@/components/cook/CookIngredientChecklist";
-import { CookTimerPanel } from "@/components/cook/CookTimerPanel";
 import { formatMultiplier } from "@/components/today/PortionStepper";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
@@ -15,7 +11,6 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -26,7 +21,6 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Play, X } from "lucide-react-native";
 
 import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
@@ -77,10 +71,7 @@ import {
   canShowOfficialVersion,
   officialMacrosClaimBlocker,
 } from "@suppr/shared/recipes/officialRecipeClaim";
-import {
-  pickHeroImageUrl,
-  extractVideoHost,
-} from "@suppr/shared/recipes/heroImageFallback";
+import { pickHeroImageUrl } from "@suppr/shared/recipes/heroImageFallback";
 import { formatMacroValue } from "@suppr/nutrition-core/formatMacro";
 // GW-08 (audit 2026-04-28): `computeRecipeFitPercent` import dropped
 // when the always-85% pill was removed. Helper is still callable from
@@ -102,17 +93,8 @@ import {
   normaliseAllergenIds,
 } from "../../../../src/constants/regulatedAllergens";
 import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
-import { scaleStepText } from "@suppr/nutrition-core/scaleStepText";
 import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
-import {
-  canDecreaseCookTextScale,
-  canIncreaseCookTextScale,
-  clampCookTextScale,
-  cookStepFontSize,
-  cookTextScaleStorageKey,
-  stepCookTextScale,
-} from "@suppr/nutrition-core/cookTextScale";
-import { cookStepIngredientChips } from "@suppr/shared/recipe-ingredients/stepIngredients";
+import { buildCookModeHref } from "@/lib/navigateToCookMode";
 import {
   deriveIngredientVerificationTier,
   ingredientShouldShowVerifyCta,
@@ -247,11 +229,12 @@ type Ingredient = {
 };
 
 export default function RecipeDetailScreen() {
-  const { id, portion, autoLog, logServings } = useLocalSearchParams<{
+  const { id, portion, autoLog, logServings, cook } = useLocalSearchParams<{
     id: string;
     portion?: string;
     autoLog?: string;
     logServings?: string;
+    cook?: string;
   }>();
   // PR1 (Paprika parity, 2026-05-02): the deep-link `?portion=N` value
   // is now consumed by the viewing-servings stepper seed (effect
@@ -290,12 +273,7 @@ export default function RecipeDetailScreen() {
   // ENG-949 — in-cook A−/A+ text-size control, behind a flag (default-OFF).
   // Flag-off keeps the overlay byte-identical and skips re-applying a
   // previously-persisted size, so flipping it off is a clean revert.
-  const cookTextSizeControlEnabled = isFeatureEnabled("cook_text_size_control_v1");
-  /** ENG-947 — horizontal swipe + quiet segment indicator in the cook
-   *  overlay. Default-OFF for byte-identical revert. */
-  const cookSwipeStepsEnabled = isFeatureEnabled("cook_swipe_steps_v1");
-  /** ENG-946 — tap-to-check ingredient checklist + optional mise en place
-   *  in the cook overlay. Default-OFF for byte-identical revert. */
+  /** ENG-946 — tap-to-check ingredient checklist on recipe detail. Default-OFF. */
   const cookIngredientChecklistEnabled = isFeatureEnabled("cook_ingredient_checklist_v1");
   /** ENG-943 — "Add to shopping list" action (default-ON). */
   const recipeShoppingListEnabled = isFeatureEnabled("recipe_shopping_list_v1");
@@ -362,87 +340,7 @@ export default function RecipeDetailScreen() {
   const autoVerifySucceededForRecipeId = useRef<string | null>(null);
   /** At most one low-confidence alert per recipe per mount for auto-verify (avoid nag on focus). */
   const lowConfidenceAutoNudgeShown = useRef<Set<string>>(new Set());
-  const [cookMode, setCookMode] = useState(false);
-  const [cookStep, setCookStep] = useState(0);
-  const [cookPhase, setCookPhase] = useState<"mise" | "steps">("steps");
-  /** ENG-949 — per-user cook-mode text scale (A−/A+). Persisted to
-   *  AsyncStorage keyed on the user (not the recipe), so the size
-   *  preference follows the cook across every recipe. Default 1× keeps
-   *  the step text byte-identical to pre-ENG-949 until the user opts in. */
-  const [cookTextScale, setCookTextScale] = useState(1);
-
-  /** ENG-949 — hydrate the per-user cook text scale from AsyncStorage.
-   *  Keyed on the user, so it follows the cook across recipes. Re-reads
-   *  when userId resolves. Falls back to 1× silently. Declared up here
-   *  (with the other top-level hooks) so it never sits behind an early
-   *  return — rules-of-hooks. */
-  useEffect(() => {
-    if (!cookTextSizeControlEnabled) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(cookTextScaleStorageKey(userId));
-        if (!raw || cancelled) return;
-        const clamped = clampCookTextScale(Number.parseFloat(raw));
-        if (clamped !== 1) setCookTextScale(clamped);
-      } catch {
-        /* storage flaky — leave at 1× */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, cookTextSizeControlEnabled]);
-
-  /** Step the cook text size and persist it. `direction` > 0 grows,
-   *  <= 0 shrinks; the step helper clamps at the ends so a tap on a
-   *  disabled control is a no-op. */
-  const handleCookTextScaleStep = useCallback(
-    (direction: number) => {
-      setCookTextScale((prev) => {
-        const next = stepCookTextScale(prev, direction);
-        if (next === prev) return prev;
-        void AsyncStorage.setItem(
-          cookTextScaleStorageKey(userId),
-          String(next),
-        ).catch(() => {
-          /* storage flaky — keep the in-memory size */
-        });
-        try {
-          track(AnalyticsEvents.cook_text_scale_changed, {
-            scale: next,
-            direction: direction > 0 ? "up" : "down",
-            platform: "ios",
-          });
-        } catch {
-          /* analytics fire-and-forget */
-        }
-        return next;
-      });
-    },
-    [userId],
-  );
-
-  const changeCookStep = useCallback(
-    (nextIndex: number, via: "button" | "swipe" = "button") => {
-      setCookStep((prev) => {
-        if (nextIndex < 0 || nextIndex === prev) return prev;
-        void Haptics.selectionAsync();
-        if (via === "swipe") {
-          try {
-            track(AnalyticsEvents.cook_step_swiped, {
-              direction: nextIndex > prev ? "next" : "prev",
-              platform: "ios",
-            });
-          } catch {
-            /* analytics fire-and-forget */
-          }
-        }
-        return nextIndex;
-      });
-    },
-    [],
-  );
+  const cookAutoOpenedRef = useRef(false);
 
   const [userTargets, setUserTargets] = useState({ calories: NUTRITION_DEFAULTS.calories, protein: NUTRITION_DEFAULTS.protein, carbs: NUTRITION_DEFAULTS.carbs, fat: NUTRITION_DEFAULTS.fat, fiber: NUTRITION_DEFAULTS.fiber });
   const [trackedMacros, setTrackedMacros] = useState<string[]>([...DEFAULT_TRACKED_MACROS]);
@@ -1582,32 +1480,6 @@ export default function RecipeDetailScreen() {
     }
   }, [heroGenerating, ingredients, recipe, userId]);
 
-  /** Recime parity (2026-04-30): "Watch original" affordance in the
-   *  inline cook overlay. Renders only when the recipe has a usable
-   *  source URL (we don't have a separate `source_video_url` column
-   *  yet — `source_url` carries the YT/IG/TT URL when the recipe
-   *  was imported from a video page). Tap → emit analytics with the
-   *  host classification, open the link in the system handler. */
-  const watchOriginalUrl = recipe?.source_url ?? null;
-  const onWatchOriginalPress = useCallback(() => {
-    if (!watchOriginalUrl || !recipe) return;
-    const host = extractVideoHost(watchOriginalUrl);
-    try {
-      track(AnalyticsEvents.cook_watch_original_tapped, {
-        recipeId: recipe.id,
-        videoHost: host,
-      });
-    } catch {
-      /* analytics fire-and-forget */
-    }
-    Linking.openURL(watchOriginalUrl).catch(() => {
-      Alert.alert(
-        "Couldn't open video",
-        "The original video link couldn't be opened on this device.",
-      );
-    });
-  }, [watchOriginalUrl, recipe]);
-
   // Defensive normalisation: some imports (and at least one historical
   // seed, TestFlight `AO4NtyNBpP4FJRgq7mCV5cs`) store newlines as literal
   // "/n" or escaped "\n" 2-char sequences. The shared
@@ -1619,6 +1491,45 @@ export default function RecipeDetailScreen() {
     .split(/\n+/)
     .map((s) => s.trim())
     .filter(Boolean);
+
+  const openCookMode = useCallback(
+    (opts?: { portionOverride?: number }) => {
+      if (!recipe || instructionSteps.length === 0) return;
+      const cleanedSteps = instructionSteps.map((s) =>
+        s.replace(/^\d+[\.\)\-]\s*/, ""),
+      );
+      const scaleSource =
+        opts?.portionOverride ??
+        (Number.isFinite(logPortion) && logPortion > 0 ? logPortion : 1);
+      router.push(
+        buildCookModeHref({
+          recipeId: recipe.id,
+          title: decodeEntities(recipe.title),
+          steps: cleanedSteps,
+          servings: recipe.servings ?? null,
+          portion: scaleSource !== 1 ? scaleSource : undefined,
+          sourceUrl: recipe.source_url,
+          ingredients: ingredientsForIngredientsTab.map((ing) => ({
+            name: ing.name,
+            amount: ing.amount,
+            unit: ing.unit,
+          })),
+        }) as never,
+      );
+    },
+    [recipe, instructionSteps, logPortion, router, ingredientsForIngredientsTab],
+  );
+
+  useEffect(() => {
+    if (cook !== "1" || cookAutoOpenedRef.current || !recipe || instructionSteps.length === 0) {
+      return;
+    }
+    cookAutoOpenedRef.current = true;
+    const p = portion != null ? parseFloat(String(portion)) : NaN;
+    openCookMode({
+      portionOverride: Number.isFinite(p) && p > 0 ? p : undefined,
+    });
+  }, [cook, portion, recipe, instructionSteps.length, openCookMode]);
 
   const recipeNeedsImportReview = useMemo(
     () => recipeIngredientsNeedReview(ingredients),
@@ -2035,16 +1946,6 @@ export default function RecipeDetailScreen() {
     };
   });
 
-  const openCookMode = () => {
-    setCookStep(0);
-    setCookPhase(
-      cookIngredientChecklistEnabled && ingredientsForIngredientsTab.length > 0
-        ? "mise"
-        : "steps",
-    );
-    setCookMode(true);
-  };
-
   const cleanDescription = sanitizeRecipeDescription(recipe.description);
   const allergenLine = formatContainsLine(normaliseAllergenIds(recipe.allergens ?? []));
 
@@ -2443,338 +2344,13 @@ export default function RecipeDetailScreen() {
         />
       ) : null}
 
-      {/* Cook Mode Overlay — Modal so Android hardware-back dismisses the
-          overlay rather than routing away from the recipe (audit 2026-04-30
-          modal-dismiss sweep). Servings handoff (P0, 2026-05-01): when the
-          user scaled via the portion stepper (`logPortion`), every step runs
-          through `scaleStepText` (`cookScaleFactor = logPortion`) and the
-          top banner names the actual serving count. Auto-log on Done uses
-          `logPortion` too, so logged calories match what was cooked. */}
-      {(() => {
-        const cookScaleFactor = Number.isFinite(logPortion) && logPortion > 0 ? logPortion : 1;
-        const cookViewServings = Math.max(
-          1,
-          Math.round((recipe?.servings ?? 1) * cookScaleFactor * 100) / 100,
-        );
-        const rawStep = instructionSteps[cookStep] ?? "";
-        const cleanedStep = rawStep.replace(/^\d+[\.\)\-]\s*/, "");
-        const scaledStep =
-          cookScaleFactor !== 1
-            ? scaleStepText(cleanedStep, cookScaleFactor)
-            : cleanedStep;
-        // ENG-944 — "For this step" chips. Pure matcher against the recipe's
-        // display ingredients; gated behind `cook_step_ingredients_v1`
-        // (default-OFF yields [] → nothing renders). Quantities scaled by
-        // `cookScaleFactor`; matched off the RAW cleaned step so tokens stay
-        // stable across scale changes. Web parity: `CookMode.tsx`.
-        const stepChips = cookStepIngredientChips(
-          isFeatureEnabled("cook_step_ingredients_v1"),
-          cleanedStep,
-          ingredientsForIngredientsTab,
-          cookScaleFactor,
-        );
-        const cookV3Shell = recipeDetailV3;
-        const cookBg = cookV3Shell ? Accent.primaryDeep : colors.background;
-        const cookTextPrimary = cookV3Shell ? Accent.frostBright : colors.text;
-        const cookTextMuted = cookV3Shell ? Accent.frost : colors.textSecondary;
-        return (
-          <Modal
-            visible={cookMode && instructionSteps.length > 0}
-            animationType="slide"
-            presentationStyle="fullScreen"
-            testID={cookV3Shell ? "cook-mode-v3" : "cook-mode"}
-            onRequestClose={() => {
-              setCookMode(false);
-              setCookStep(0);
-              setCookPhase("steps");
-            }}
-          >
-            {cookPhase === "mise" && cookIngredientChecklistEnabled ? (
-              <CookMiseEnPlace
-                recipeId={recipeId}
-                recipeTitle={recipe?.title}
-                items={ingredientsForIngredientsTab.map((ing) => {
-                  const scaledAmount =
-                    ing.amount != null
-                      ? Math.round(ing.amount * cookScaleFactor * 100) / 100
-                      : null;
-                  return {
-                    name: ing.name,
-                    amountLabel:
-                      scaledAmount != null || ing.unit
-                        ? formatIngredientAmountUnit(scaledAmount, ing.unit)
-                        : null,
-                  };
-                })}
-                onContinueToSteps={() => setCookPhase("steps")}
-              />
-            ) : (
-            <View style={{ flex: 1, backgroundColor: cookBg, paddingTop: insets.top + 20, paddingHorizontal: Spacing.xl, justifyContent: "space-between", paddingBottom: insets.bottom + 20 }}>
-              <View style={{ flex: 1 /* ENG-1230: CookStepSwipeSurface wraps the step body in a flex:1 view that collapses in a non-flex parent — this group must provide flex height. */ }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.lg }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: cookV3Shell ? cookTextMuted : accent.primary, letterSpacing: 2 }}>COOK MODE</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                    {/* Recime parity (2026-04-30): "Watch original" pill —
-                        only renders when `recipe.source_url` is set so the
-                        user can flip to the source video while cooking.
-                        See `src/lib/recipes/heroImageFallback.ts` for host
-                        classification used in the analytics payload. */}
-                    {watchOriginalUrl ? (
-                      <Pressable
-                        onPress={onWatchOriginalPress}
-                        accessibilityRole="link"
-                        accessibilityLabel="Watch original video"
-                        testID="cook-watch-original"
-                        hitSlop={6}
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 4,
-                          paddingHorizontal: Spacing.sm,
-                          paddingVertical: Spacing.xs,
-                          borderRadius: Radius.full,
-                          borderWidth: 1,
-                          borderColor: accent.primary,
-                          backgroundColor: accent.primary + "14",
-                        }}
-                      >
-                        <Play size={14} color={accent.primary} />
-                        <Text style={{ color: accent.primarySolid, fontSize: 12, fontWeight: "700" }}>
-                          Watch original
-                        </Text>
-                      </Pressable>
-                    ) : null}
-                    {/* ENG-949 — A−/A+ text-size control. Quiet muted
-                        track; disabled at the size bounds. The persisted
-                        size follows the user across recipes. Flag-gated
-                        (default-OFF). */}
-                    {cookTextSizeControlEnabled ? (
-                    <View
-                      accessibilityRole="adjustable"
-                      accessibilityLabel="Cook text size"
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        backgroundColor: colors.card,
-                        borderRadius: Radius.md,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                      }}
-                    >
-                      <Pressable
-                        onPress={() => handleCookTextScaleStep(-1)}
-                        disabled={!canDecreaseCookTextScale(cookTextScale)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Decrease text size"
-                        accessibilityState={{ disabled: !canDecreaseCookTextScale(cookTextScale) }}
-                        hitSlop={8}
-                        style={{
-                          paddingHorizontal: Spacing.dense,
-                          paddingVertical: 6,
-                          opacity: canDecreaseCookTextScale(cookTextScale) ? 1 : 0.3,
-                        }}
-                      >
-                        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.textSecondary }}>
-                          A−
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => handleCookTextScaleStep(1)}
-                        disabled={!canIncreaseCookTextScale(cookTextScale)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Increase text size"
-                        accessibilityState={{ disabled: !canIncreaseCookTextScale(cookTextScale) }}
-                        hitSlop={8}
-                        style={{
-                          paddingHorizontal: Spacing.dense,
-                          paddingVertical: 6,
-                          opacity: canIncreaseCookTextScale(cookTextScale) ? 1 : 0.3,
-                        }}
-                      >
-                        <Text style={{ fontSize: 17, fontWeight: "700", color: colors.textSecondary }}>
-                          A+
-                        </Text>
-                      </Pressable>
-                    </View>
-                    ) : null}
-                    <Pressable
-                      onPress={() => {
-                        setCookMode(false);
-                        setCookStep(0);
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel="Exit cook mode"
-                      hitSlop={12}
-                    >
-                      <X size={28} color={cookTextMuted} strokeWidth={2.25} />
-                    </Pressable>
-                  </View>
-                </View>
-                {cookScaleFactor !== 1 && (
-                  <View
-                    accessibilityRole="text"
-                    accessibilityLabel={`Recipe scaled for ${cookViewServings} servings`}
-                    style={{
-                      backgroundColor: accent.primary + "15",
-                      borderRadius: Radius.md,
-                      borderWidth: 1,
-                      borderColor: accent.primary + "30",
-                      paddingVertical: 8,
-                      paddingHorizontal: Spacing.dense,
-                      marginBottom: Spacing.md,
-                    }}
-                  >
-                    <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 13, textAlign: "center" }}>
-                      Scaled for {cookViewServings} serving{cookViewServings !== 1 ? "s" : ""}
-                    </Text>
-                  </View>
-                )}
-                {cookSwipeStepsEnabled ? (
-                  <View style={{ marginBottom: Spacing.md }}>
-                    <CookStepPageIndicator
-                      currentIndex={cookStep}
-                      totalSteps={instructionSteps.length}
-                    />
-                  </View>
-                ) : null}
-                <CookStepSwipeSurface
-                  enabled={cookSwipeStepsEnabled}
-                  stepIndex={cookStep}
-                  stepCount={instructionSteps.length}
-                  onStepIndexChange={(index) => changeCookStep(index, "swipe")}
-                >
-                <Text style={{ fontSize: 14, color: cookTextMuted, marginBottom: 8 }}>
-                  Step {cookStep + 1} of {instructionSteps.length}
-                </Text>
-                {/* ENG-949 — flag-ON: base 24 (matches the /cook screen)
-                    scaled by the per-user A−/A+ size, lineHeight ~1.4×.
-                    Flag-OFF: the legacy 22 / 32 exactly. */}
-                <Text
-                  style={{
-                    fontSize: cookV3Shell
-                      ? cookStepFontSize(38, cookTextScale)
-                      : cookStepFontSize(
-                          cookTextSizeControlEnabled ? 24 : 22,
-                          cookTextScale,
-                        ),
-                    fontWeight: cookV3Shell ? "500" : "600",
-                    fontFamily: cookV3Shell ? FontFamily.serifSemibold : undefined,
-                    color: cookTextPrimary,
-                    lineHeight: cookV3Shell
-                      ? Math.round(cookStepFontSize(38, cookTextScale) * 1.2)
-                      : cookTextSizeControlEnabled
-                        ? Math.round(cookStepFontSize(24, cookTextScale) * 1.4)
-                        : 32,
-                    textAlign: "center",
-                    maxWidth: cookV3Shell ? 280 : undefined,
-                    alignSelf: cookV3Shell ? "center" : undefined,
-                  }}
-                >
-                  {scaledStep}
-                </Text>
-                {/* ENG-944 — "For this step" ingredient chips. Quiet
-                    uppercase tracked caption (mirrors the cook.tsx
-                    `lastTimeLabel` treatment) over calm serif amount+name
-                    chips — no loud accent fill. Renders nothing (no empty
-                    label) when the matcher finds no ingredient or the flag
-                    is OFF. */}
-                {stepChips.length > 0 && (
-                  <View style={{ marginTop: Spacing.lg, gap: Spacing.sm }} testID="cook-step-ingredients">
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "700",
-                        letterSpacing: 1.5,
-                        color: colors.textTertiary,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      For this step
-                    </Text>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
-                      {stepChips.map((chip) => (
-                        <View
-                          key={chip.key}
-                          style={{
-                            paddingHorizontal: Spacing.dense,
-                            paddingVertical: 6,
-                            borderRadius: Radius.full,
-                            backgroundColor: colors.card,
-                            borderWidth: 1,
-                            borderColor: colors.border,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: FontFamily.serifRegular,
-                              fontSize: 14,
-                              lineHeight: 18,
-                              color: colors.text,
-                            }}
-                          >
-                            {chip.label}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-                {/* ENG-1230 parity fix — cook-mode step timers. This live
-                    overlay (the path "Start Cooking" opens) had ZERO timers;
-                    the orphaned `/cook` screen + web `CookMode.tsx` have them.
-                    `CookTimerPanel` owns the timer hook + pills + running
-                    strip, gated behind `cook_multi_timers_v1` (flag-off =
-                    nothing). Parsed off RAW `cleanedStep` (web parity). */}
-                <CookTimerPanel
-                  recipeId={recipeId ?? ""}
-                  stepIndex={cookStep}
-                  stepText={cleanedStep}
-                  enabled={isFeatureEnabled("cook_multi_timers_v1")}
-                />
-                </CookStepSwipeSurface>
-              </View>
-              <View style={{ flexDirection: "row", gap: Spacing.md }}>
-                <SupprButton
-                  variant="ghost"
-                  style={{ flex: 1 }}
-                  label="Previous"
-                  onPress={() => changeCookStep(Math.max(0, cookStep - 1), "button")}
-                  disabled={cookStep === 0}
-                />
-                {cookStep < instructionSteps.length - 1 ? (
-                  // Step-by-step "Next" is the stepper's ONE action — solid
-                  // aubergine primary. `Done!` (final step) keeps its sage
-                  // success fill below as a deliberate landmark.
-                  <SupprButton
-                    variant="primary"
-                    style={{ flex: 1 }}
-                    label="Next"
-                    onPress={() => changeCookStep(cookStep + 1, "button")}
-                  />
-                ) : (
-                  <Pressable
-                    style={{ flex: 1, backgroundColor: Accent.success, borderRadius: Radius.md, paddingVertical: 16, alignItems: "center" }}
-                    onPress={() => {
-                      setCookMode(false);
-                      setCookStep(0);
-                    }}
-                  >
-                    <Text style={{ fontWeight: "700", color: colors.primaryForeground }}>Done!</Text>
-                  </Pressable>
-                )}
-              </View>
-            </View>
-            )}
-          </Modal>
-        );
-      })()}
 
       {/* 8. Sticky footer — yield + servings stepper (left) + Cook Mode (right).
           ENG-1247 flag-ON: the bar also carries the filled Log primary (Cook
           Mode → outline) as the one consolidated commit bar; flag-OFF keeps Log
           in the action-pill row above. The stepper is the canonical servings
-          control. Hidden during cook mode (the overlay owns the bottom). */}
-      {recipe && !cookMode ? (
+          control. Cook mode opens the standalone `/cook` screen (ENG-945). */}
+      {recipe ? (
         <RecipeServingsFooter
           servings={viewServings}
           canDecrease={viewServings > RECIPE_VIEW_SERVINGS_MIN}
