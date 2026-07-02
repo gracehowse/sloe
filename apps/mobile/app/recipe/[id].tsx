@@ -1492,6 +1492,45 @@ export default function RecipeDetailScreen() {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const openCookMode = useCallback(
+    (opts?: { portionOverride?: number }) => {
+      if (!recipe || instructionSteps.length === 0) return;
+      const cleanedSteps = instructionSteps.map((s) =>
+        s.replace(/^\d+[\.\)\-]\s*/, ""),
+      );
+      const scaleSource =
+        opts?.portionOverride ??
+        (Number.isFinite(logPortion) && logPortion > 0 ? logPortion : 1);
+      router.push(
+        buildCookModeHref({
+          recipeId: recipe.id,
+          title: decodeEntities(recipe.title),
+          steps: cleanedSteps,
+          servings: recipe.servings ?? null,
+          portion: scaleSource !== 1 ? scaleSource : undefined,
+          sourceUrl: recipe.source_url,
+          ingredients: ingredientsForIngredientsTab.map((ing) => ({
+            name: ing.name,
+            amount: ing.amount,
+            unit: ing.unit,
+          })),
+        }) as never,
+      );
+    },
+    [recipe, instructionSteps, logPortion, router, ingredientsForIngredientsTab],
+  );
+
+  useEffect(() => {
+    if (cook !== "1" || cookAutoOpenedRef.current || !recipe || instructionSteps.length === 0) {
+      return;
+    }
+    cookAutoOpenedRef.current = true;
+    const p = portion != null ? parseFloat(String(portion)) : NaN;
+    openCookMode({
+      portionOverride: Number.isFinite(p) && p > 0 ? p : undefined,
+    });
+  }, [cook, portion, recipe, instructionSteps.length, openCookMode]);
+
   const recipeNeedsImportReview = useMemo(
     () => recipeIngredientsNeedReview(ingredients),
     [ingredients],
@@ -1906,45 +1945,6 @@ export default function RecipeDetailScreen() {
           : null,
     };
   });
-
-  const openCookMode = useCallback(
-    (opts?: { portionOverride?: number }) => {
-      if (!recipe || instructionSteps.length === 0) return;
-      const cleanedSteps = instructionSteps.map((s) =>
-        s.replace(/^\d+[\.\)\-]\s*/, ""),
-      );
-      const scaleSource =
-        opts?.portionOverride ??
-        (Number.isFinite(logPortion) && logPortion > 0 ? logPortion : 1);
-      router.push(
-        buildCookModeHref({
-          recipeId: recipe.id,
-          title: decodeEntities(recipe.title),
-          steps: cleanedSteps,
-          servings: recipe.servings ?? null,
-          portion: scaleSource !== 1 ? scaleSource : undefined,
-          sourceUrl: recipe.source_url,
-          ingredients: ingredientsForIngredientsTab.map((ing) => ({
-            name: ing.name,
-            amount: ing.amount,
-            unit: ing.unit,
-          })),
-        }) as never,
-      );
-    },
-    [recipe, instructionSteps, logPortion, router, ingredientsForIngredientsTab],
-  );
-
-  useEffect(() => {
-    if (cook !== "1" || cookAutoOpenedRef.current || !recipe || instructionSteps.length === 0) {
-      return;
-    }
-    cookAutoOpenedRef.current = true;
-    const p = portion != null ? parseFloat(String(portion)) : NaN;
-    openCookMode({
-      portionOverride: Number.isFinite(p) && p > 0 ? p : undefined,
-    });
-  }, [cook, portion, recipe, instructionSteps.length, openCookMode]);
 
   const cleanDescription = sanitizeRecipeDescription(recipe.description);
   const allergenLine = formatContainsLine(normaliseAllergenIds(recipe.allergens ?? []));
