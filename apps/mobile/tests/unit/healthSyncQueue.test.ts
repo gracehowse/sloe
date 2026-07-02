@@ -50,11 +50,22 @@ vi.mock("../../lib/supabase", () => ({
 // minimal stand-in here (non-store env → not Expo Go, which is irrelevant to
 // the queue but lets the module finish loading).
 vi.mock("expo-constants", () => ({
-  default: { executionEnvironment: "standalone", appOwnership: "standalone", expoConfig: { extra: {} } },
-  ExecutionEnvironment: { Standalone: "standalone", StoreClient: "storeClient", Bare: "bare" },
+  default: {
+    executionEnvironment: "standalone",
+    appOwnership: "standalone",
+    expoConfig: { extra: {} },
+  },
+  ExecutionEnvironment: {
+    Standalone: "standalone",
+    StoreClient: "storeClient",
+    Bare: "bare",
+  },
 }));
 
-import { _hkQueueTestHooks } from "../../lib/healthSync";
+import {
+  _hkQueueTestHooks,
+  getHealthSyncStatusForDebug,
+} from "../../lib/healthSync";
 
 /** Deferred promise we can resolve/reject from the test to model a slow/hung native call. */
 function defer<T>() {
@@ -98,7 +109,11 @@ describe("ENG-1019 — global HealthKit call mutex (enqueueHk)", () => {
 
     // Enqueue out of duration order: a slow first call must still finish
     // before the second starts (proves serialization, not just async).
-    const results = await Promise.all([make("A", 30), make("B", 5), make("C", 1)]);
+    const results = await Promise.all([
+      make("A", 30),
+      make("B", 5),
+      make("C", 1),
+    ]);
 
     expect(maxConcurrent).toBe(1); // never two native calls at once
     expect(results).toEqual(["A", "B", "C"]);
@@ -135,10 +150,13 @@ describe("ENG-1019 — global HealthKit call mutex (enqueueHk)", () => {
         return `caught:${e.message}`;
       });
 
-    const second = _hkQueueTestHooks.enqueue("getDailyStepCountSamples", async () => {
-      order.push("second:ran");
-      return "second-ok";
-    });
+    const second = _hkQueueTestHooks.enqueue(
+      "getDailyStepCountSamples",
+      async () => {
+        order.push("second:ran");
+        return "second-ok";
+      },
+    );
 
     // The first call is still hung — the second must NOT have run yet (queue
     // is serial). Give the microtask queue a tick to prove it's blocked.
@@ -147,7 +165,11 @@ describe("ENG-1019 — global HealthKit call mutex (enqueueHk)", () => {
 
     // Now the leaf timeout fires (reject). The chain must advance so the
     // second call runs to completion.
-    hung.reject(new Error("HealthKit getDailyStepCountSamples did not respond within 15000ms"));
+    hung.reject(
+      new Error(
+        "HealthKit getDailyStepCountSamples did not respond within 15000ms",
+      ),
+    );
 
     const [firstOut, secondOut] = await Promise.all([first, second]);
     expect(firstOut).toContain("did not respond within");
@@ -158,15 +180,21 @@ describe("ENG-1019 — global HealthKit call mutex (enqueueHk)", () => {
   });
 
   it("a rejected call surfaces to its own awaiter but does not poison the chain", async () => {
-    const boom = _hkQueueTestHooks.enqueue("initHealthKit(body_metrics_init)", async () => {
-      throw new Error("native init exploded");
-    });
+    const boom = _hkQueueTestHooks.enqueue(
+      "initHealthKit(body_metrics_init)",
+      async () => {
+        throw new Error("native init exploded");
+      },
+    );
 
     // The rejection belongs to THIS awaiter only.
     await expect(boom).rejects.toThrow("native init exploded");
 
     // The very next call still resolves normally — the chain wasn't poisoned.
-    const after = await _hkQueueTestHooks.enqueue("getWeightSamples", async () => "weights");
+    const after = await _hkQueueTestHooks.enqueue(
+      "getWeightSamples",
+      async () => "weights",
+    );
     expect(after).toBe("weights");
     expect(_hkQueueTestHooks.depth()).toBe(0);
   });
@@ -180,7 +208,10 @@ describe("ENG-1019 — global HealthKit call mutex (enqueueHk)", () => {
     });
     await expect(sync).rejects.toThrow("sync boom");
 
-    const next = await _hkQueueTestHooks.enqueue("getFiberSamples", async () => "fiber");
+    const next = await _hkQueueTestHooks.enqueue(
+      "getFiberSamples",
+      async () => "fiber",
+    );
     expect(next).toBe("fiber");
   });
 
@@ -216,8 +247,14 @@ describe("ENG-1019 — global HealthKit call mutex (enqueueHk)", () => {
     await _hkQueueTestHooks.enqueue("getActiveEnergyBurned", async () => "ok");
 
     const lines = logSpy.mock.calls.map((c) => String(c[0]));
-    expect(lines.some((l) => l.includes("[hk.queue] getActiveEnergyBurned start"))).toBe(true);
-    expect(lines.some((l) => l.includes("[hk.queue] getActiveEnergyBurned settled ok"))).toBe(true);
+    expect(
+      lines.some((l) => l.includes("[hk.queue] getActiveEnergyBurned start")),
+    ).toBe(true);
+    expect(
+      lines.some((l) =>
+        l.includes("[hk.queue] getActiveEnergyBurned settled ok"),
+      ),
+    ).toBe(true);
   });
 
   it("logs a TIMEOUT warning (not a generic error) when a leaf timeout rejects", async () => {
@@ -225,11 +262,31 @@ describe("ENG-1019 — global HealthKit call mutex (enqueueHk)", () => {
 
     await _hkQueueTestHooks
       .enqueue("getProteinSamples", async () => {
-        throw new Error("HealthKit getProteinSamples did not respond within 15000ms");
+        throw new Error(
+          "HealthKit getProteinSamples did not respond within 15000ms",
+        );
       })
       .catch(() => undefined);
 
     const warnLines = warnSpy.mock.calls.map((c) => String(c[0]));
-    expect(warnLines.some((l) => l.includes("[hk.queue] getProteinSamples TIMEOUT"))).toBe(true);
+    expect(
+      warnLines.some((l) => l.includes("[hk.queue] getProteinSamples TIMEOUT")),
+    ).toBe(true);
+  });
+
+  it("exposes queue depth and timeout breadcrumbs for the debug status surface", async () => {
+    await _hkQueueTestHooks
+      .enqueue("getProteinSamples", async () => {
+        throw new Error(
+          "HealthKit getProteinSamples did not respond within 30000ms",
+        );
+      })
+      .catch(() => undefined);
+
+    const status = getHealthSyncStatusForDebug();
+    expect(status.queueDepth).toBe(0);
+    expect(status.sampleTimeoutMs).toBe(30000);
+    expect(status.lastError?.method).toBe("getProteinSamples");
+    expect(status.lastError?.error).toContain("did not respond within");
   });
 });

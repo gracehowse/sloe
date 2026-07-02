@@ -94,12 +94,18 @@ const forcedFlagListeners = new Set<ForcedFlagListener>();
 export function onForcedFlagChange(cb: ForcedFlagListener): () => void {
   if (typeof __DEV__ === "undefined" || !__DEV__) return () => {};
   forcedFlagListeners.add(cb);
-  return () => { forcedFlagListeners.delete(cb); };
+  return () => {
+    forcedFlagListeners.delete(cb);
+  };
 }
 
 function notifyForcedFlagListeners() {
   for (const cb of forcedFlagListeners) {
-    try { cb(); } catch { /* listener shouldn't throw, but guard anyway */ }
+    try {
+      cb();
+    } catch {
+      /* listener shouldn't throw, but guard anyway */
+    }
   }
 }
 
@@ -309,7 +315,10 @@ export function track(
   }
 }
 
-export function identify(userId: string, traits?: Record<string, unknown>): void {
+export function identify(
+  userId: string,
+  traits?: Record<string, unknown>,
+): void {
   const c = getPostHogClient();
   if (!c) return;
   c.identify(userId, traits as CaptureProps);
@@ -324,7 +333,9 @@ export function identify(userId: string, traits?: Record<string, unknown>): void
   // the flag-off variant because flags hadn't refreshed yet.
   // `reloadFeatureFlagsAsync` triggers an immediate /decide call so
   // the next render sees the right value.
-  c.reloadFeatureFlagsAsync().catch(() => { /* swallow */ });
+  c.reloadFeatureFlagsAsync().catch(() => {
+    /* swallow */
+  });
 }
 
 export function reset(): void {
@@ -531,8 +542,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // builds flipped default-ON so the solo tester sees them; each keeps its
   // legacy/empty else as the kill switch (remove here / PostHog). Web + mobile.
   "progress_plateau_insight_v1", // ENG-954 — calm plateau insight line
-  "weigh_in_reminder_v1",        // ENG-955 — opt-in weigh-in reminder Settings surface
-  "portion_fit_hint_v1",         // ENG-854 — portion-fit hint in food-search preview
+  "weigh_in_reminder_v1", // ENG-955 — opt-in weigh-in reminder Settings surface
+  "portion_fit_hint_v1", // ENG-854 — portion-fit hint in food-search preview
   // ENG-855 / make-anything-fit Mode B — distribute-around-anchor on the Plan
   // tab. When the user drops a meal they *want* into the plan, the remaining
   // day budget spreads across the other open slots as per-slot calorie + macro
@@ -628,6 +639,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // breaking the live PostHog funnel dashboards keyed on it. Mirror of the
   // web entry in src/lib/analytics/track.ts.
   "onboarding_conversion_funnel_v1",
+  // ENG-1023 — Apple Health meal-import kill switch. Default-ON so existing
+  // nutrition import continues after separating core body permissions from
+  // dietary import authorization; OFF skips dietary permission requests and
+  // nutrition reads without affecting steps / weight / burn sync. Mobile-only.
+  "health_nutrition_import_enabled",
   // ENG-974 — "Refine by describing" conversational correction on photo +
   // voice log review (docs/decisions/2026-07-01-log-refine-by-describing.md
   // ratified it Shipped default-ON, but the flag was never added here, so it
@@ -791,9 +807,9 @@ export function getFeatureFlagPayload(flag: string): unknown {
   if (!c) return null;
   try {
     return (
-      (c as { getFeatureFlagPayload?: (f: string) => unknown }).getFeatureFlagPayload?.(
-        flag,
-      ) ?? null
+      (
+        c as { getFeatureFlagPayload?: (f: string) => unknown }
+      ).getFeatureFlagPayload?.(flag) ?? null
     );
   } catch {
     return null;

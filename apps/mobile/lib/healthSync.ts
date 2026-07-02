@@ -9,6 +9,7 @@
  */
 
 import { NativeModules, Platform } from "react-native";
+import { isFeatureEnabled } from "./analytics";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { supabase } from "./supabase";
 import { refreshAdaptiveTdeeForUser } from "./refreshAdaptiveTdee";
@@ -36,7 +37,10 @@ import {
 } from "./nutritionImportSummary";
 
 export type { ImportedMeal } from "./healthSyncTypes";
-export { formatNutritionImportSummary, type NutritionImportResult } from "./nutritionImportSummary";
+export {
+  formatNutritionImportSummary,
+  type NutritionImportResult,
+} from "./nutritionImportSummary";
 import { evaluateHealthImportSkip } from "./nutritionImportDedup";
 import {
   bucketEnergyShares,
@@ -68,58 +72,173 @@ type AppleHealthKitNative = {
   ): void;
   getDailyStepCountSamples(
     options: { startDate: string; endDate: string },
-    callback: (err: string, results: { value: number; startDate: string }[]) => void,
+    callback: (
+      err: string,
+      results: { value: number; startDate: string }[],
+    ) => void,
   ): void;
   getWeightSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: { value: number; startDate: string }[]) => void,
+    callback: (
+      err: string,
+      results: { value: number; startDate: string }[],
+    ) => void,
   ): void;
   getBodyFatPercentageSamples(
-    options: { startDate: string; endDate: string; ascending?: boolean; limit?: number },
-    callback: (err: string, results: { value: number; startDate: string; endDate?: string }[]) => void,
+    options: {
+      startDate: string;
+      endDate: string;
+      ascending?: boolean;
+      limit?: number;
+    },
+    callback: (
+      err: string,
+      results: { value: number; startDate: string; endDate?: string }[],
+    ) => void,
   ): void;
   getActiveEnergyBurned(
     options: { startDate: string; endDate: string },
-    callback: (err: string, results: { value: number; startDate: string }[]) => void,
+    callback: (
+      err: string,
+      results: { value: number; startDate: string }[],
+    ) => void,
   ): void;
   getEnergyConsumedSamples(
     options: { startDate: string; endDate: string },
-    callback: (err: string, results: { value: number; startDate: string; metadata?: { HKFoodType?: string }; sourceName?: string; sourceBundleId?: string }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        value: number;
+        startDate: string;
+        metadata?: { HKFoodType?: string };
+        sourceName?: string;
+        sourceBundleId?: string;
+      }[],
+    ) => void,
   ): void;
   getProteinSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: { value: number; startDate: string; sourceName?: string; sourceBundleId?: string }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        value: number;
+        startDate: string;
+        sourceName?: string;
+        sourceBundleId?: string;
+      }[],
+    ) => void,
   ): void;
   getCarbohydratesSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: { value: number; startDate: string; sourceName?: string; sourceBundleId?: string }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        value: number;
+        startDate: string;
+        sourceName?: string;
+        sourceBundleId?: string;
+      }[],
+    ) => void,
   ): void;
   getFatTotalSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: { value: number; startDate: string; sourceName?: string; sourceBundleId?: string }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        value: number;
+        startDate: string;
+        sourceName?: string;
+        sourceBundleId?: string;
+      }[],
+    ) => void,
   ): void;
   getFiberSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        value: number;
+        startDate: string;
+        endDate?: string;
+        id?: string;
+        sourceName?: string;
+        sourceBundleId?: string;
+        sourceId?: string;
+        metadata?: Record<string, unknown>;
+      }[],
+    ) => void,
   ): void;
   getSugarSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        value: number;
+        startDate: string;
+        endDate?: string;
+        id?: string;
+        sourceName?: string;
+        sourceBundleId?: string;
+        sourceId?: string;
+        metadata?: Record<string, unknown>;
+      }[],
+    ) => void,
   ): void;
   getSodiumSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        value: number;
+        startDate: string;
+        endDate?: string;
+        id?: string;
+        sourceName?: string;
+        sourceBundleId?: string;
+        sourceId?: string;
+        metadata?: Record<string, unknown>;
+      }[],
+    ) => void,
   ): void;
   getFatSaturatedSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        value: number;
+        startDate: string;
+        endDate?: string;
+        id?: string;
+        sourceName?: string;
+        sourceBundleId?: string;
+        sourceId?: string;
+        metadata?: Record<string, unknown>;
+      }[],
+    ) => void,
   ): void;
   getCholesterolSamples(
     options: { startDate: string; endDate: string; unit: string },
-    callback: (err: string, results: { value: number; startDate: string; endDate?: string; id?: string; sourceName?: string; sourceBundleId?: string; sourceId?: string; metadata?: Record<string, unknown> }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        value: number;
+        startDate: string;
+        endDate?: string;
+        id?: string;
+        sourceName?: string;
+        sourceBundleId?: string;
+        sourceId?: string;
+        metadata?: Record<string, unknown>;
+      }[],
+    ) => void,
   ): void;
   getDietaryQuantitySamplesForPermission?: (
-    options: { startDate: string; endDate: string; permissionKey: string; unit: string },
+    options: {
+      startDate: string;
+      endDate: string;
+      permissionKey: string;
+      unit: string;
+    },
     callback: (
       err: string,
       results: {
@@ -161,15 +280,26 @@ type AppleHealthKitNative = {
   ) => void;
   getSamples(
     options: { startDate: string; endDate: string; type: string },
-    callback: (err: string, results: {
-      start: string; end: string; value: number;
-      activityName?: string; sourceName?: string; sourceBundleId?: string;
-      calories?: number; distance?: number;
-    }[]) => void,
+    callback: (
+      err: string,
+      results: {
+        start: string;
+        end: string;
+        value: number;
+        activityName?: string;
+        sourceName?: string;
+        sourceBundleId?: string;
+        calories?: number;
+        distance?: number;
+      }[],
+    ) => void,
   ): void;
   getBasalEnergyBurned(
     options: { startDate: string; endDate: string },
-    callback: (err: string, results: { value: number; startDate: string }[]) => void,
+    callback: (
+      err: string,
+      results: { value: number; startDate: string }[],
+    ) => void,
   ): void;
 };
 
@@ -188,7 +318,11 @@ function loadAppleHealthKit(): AppleHealthKitNative | null {
     const native =
       (NativeModules.AppleHealthKit as AppleHealthKitNative | undefined) ??
       (NativeModules.RCTAppleHealthKit as AppleHealthKitNative | undefined);
-    if (native && typeof native.initHealthKit === "function" && typeof native.isAvailable === "function") {
+    if (
+      native &&
+      typeof native.initHealthKit === "function" &&
+      typeof native.isAvailable === "function"
+    ) {
       cachedNative = native;
       return native;
     }
@@ -231,7 +365,9 @@ const HEALTH_KIT_NUTRITION_WRITE = [
  *
  * **Do not** request `FoodCorrelation` — see module docblock on `syncNutritionFromHealth`.
  */
-const HEALTH_KIT_DIETARY_INIT_READ: readonly string[] = [...HEALTH_DIETARY_CORE_PERMISSION_KEYS];
+const HEALTH_KIT_DIETARY_INIT_READ: readonly string[] = [
+  ...HEALTH_DIETARY_CORE_PERMISSION_KEYS,
+];
 
 /**
  * GLOBAL HEALTHKIT CALL MUTEX (ENG-1019, 2026-06-10)
@@ -282,12 +418,22 @@ function enqueueHk<T>(label: string, fn: () => Promise<T>): Promise<T> {
     console.log(`[hk.queue] ${label} start (depth ${hkQueueDepth})`);
     try {
       const out = await fn();
-      console.log(`[hk.queue] ${label} settled ok (${Date.now() - startedAt}ms, depth ${hkQueueDepth})`);
+      console.log(
+        `[hk.queue] ${label} settled ok (${Date.now() - startedAt}ms, depth ${hkQueueDepth})`,
+      );
       return out;
     } catch (err) {
       const elapsed = Date.now() - startedAt;
+      recordHealthSyncBridgeCall({
+        method: label,
+        timestamp: new Date(startedAt).toISOString(),
+        durationMs: elapsed,
+        error: err instanceof Error ? err.message : stringifyBridgeUnknown(err),
+      });
       if (isHealthTimeoutError(err)) {
-        console.warn(`[hk.queue] ${label} TIMEOUT after ${elapsed}ms — chain released (depth ${hkQueueDepth})`);
+        console.warn(
+          `[hk.queue] ${label} TIMEOUT after ${elapsed}ms — chain released (depth ${hkQueueDepth})`,
+        );
       } else {
         console.log(
           `[hk.queue] ${label} settled error (${elapsed}ms, depth ${hkQueueDepth}): ${
@@ -317,12 +463,15 @@ function enqueueHk<T>(label: string, fn: () => Promise<T>): Promise<T> {
  * the native bridge. Not for production use.
  */
 export const _hkQueueTestHooks = {
-  enqueue: <T>(label: string, fn: () => Promise<T>): Promise<T> => enqueueHk(label, fn),
+  enqueue: <T>(label: string, fn: () => Promise<T>): Promise<T> =>
+    enqueueHk(label, fn),
   depth: (): number => hkQueueDepth,
   /** Reset the chain to idle between tests so a prior test's queue can't bleed in. */
   reset: (): void => {
     hkQueue = Promise.resolve();
     hkQueueDepth = 0;
+    healthSyncBridgeCallBreadcrumbs.splice(0);
+    lastHealthSyncBridgeError = null;
   },
 };
 
@@ -333,7 +482,9 @@ function logHealthPermission(message: string, detail?: string): void {
 
 const HEALTH_IS_AVAILABLE_TIMEOUT_MS = 20_000;
 
-function isAvailableDetailed(hk: AppleHealthKitNative): Promise<{ ok: true } | { ok: false; error: string }> {
+function isAvailableDetailed(
+  hk: AppleHealthKitNative,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   // Leaf native call — routes through the global HK mutex so it can't overlap a
   // concurrent read/init from another screen. The timeout settles the promise
   // (and releases the queue) if the bridge never calls back.
@@ -356,7 +507,11 @@ function isAvailableDetailed(hk: AppleHealthKitNative): Promise<{ ok: true } | {
         }, HEALTH_IS_AVAILABLE_TIMEOUT_MS);
         hk.isAvailable((err, results) => {
           if (err) finish({ ok: false, error: stringifyBridgeUnknown(err) });
-          else if (!results) finish({ ok: false, error: "HealthKit reported not available on this device." });
+          else if (!results)
+            finish({
+              ok: false,
+              error: "HealthKit reported not available on this device.",
+            });
           else finish({ ok: true });
         });
       }),
@@ -375,7 +530,12 @@ const HEALTH_PERMISSION_INIT_TIMEOUT_MS = 180_000;
  * sandbox glitches; without this race the awaiting promise hangs
  * forever and stranded the `loadingMore` / cold-load paths.
  */
-const HEALTH_SAMPLE_TIMEOUT_MS = 15_000;
+const DEFAULT_HEALTH_SAMPLE_TIMEOUT_MS = 30_000;
+const HEALTH_SAMPLE_TIMEOUT_MS = Number.isFinite(
+  Number(process.env.EXPO_PUBLIC_HEALTH_SYNC_CALL_TIMEOUT_MS),
+)
+  ? Math.max(1, Number(process.env.EXPO_PUBLIC_HEALTH_SYNC_CALL_TIMEOUT_MS))
+  : DEFAULT_HEALTH_SAMPLE_TIMEOUT_MS;
 
 /**
  * Wrap an HK native callback in a timeout race. Treat as the canonical
@@ -384,9 +544,81 @@ const HEALTH_SAMPLE_TIMEOUT_MS = 15_000;
  * own, so we settle our promise on whichever fires first (callback or
  * timeout) and let the bridge invoke the callback into a no-op.
  */
+
+type HealthSyncBridgeCallBreadcrumb = {
+  method: string;
+  timestamp: string;
+  durationMs: number | null;
+  error: string | null;
+  dateRange?: { startDate: string; endDate: string };
+  permissionKey?: string;
+};
+
+const HEALTH_SYNC_BREADCRUMB_LIMIT = 10;
+const healthSyncBridgeCallBreadcrumbs: HealthSyncBridgeCallBreadcrumb[] = [];
+let lastHealthSyncBridgeError: HealthSyncBridgeCallBreadcrumb | null = null;
+
+function recordHealthSyncBridgeCall(
+  call: HealthSyncBridgeCallBreadcrumb,
+): void {
+  healthSyncBridgeCallBreadcrumbs.unshift(call);
+  if (healthSyncBridgeCallBreadcrumbs.length > HEALTH_SYNC_BREADCRUMB_LIMIT) {
+    healthSyncBridgeCallBreadcrumbs.splice(HEALTH_SYNC_BREADCRUMB_LIMIT);
+  }
+  if (call.error) lastHealthSyncBridgeError = call;
+}
+
+function formatHealthSyncDateRange(options?: {
+  startDate: string;
+  endDate: string;
+}): string {
+  return options ? `${options.startDate}..${options.endDate}` : "no date range";
+}
+
+function logHealthSyncBridgeError(
+  method: string,
+  error: unknown,
+  context: {
+    dateRange?: { startDate: string; endDate: string };
+    permissionKey?: string;
+  } = {},
+): Error {
+  const message = stringifyBridgeUnknown(error);
+  console.warn(
+    `[healthSync:${method}] bridge error @ ${new Date().toISOString()}`,
+    {
+      error: message,
+      dateRange: context.dateRange,
+      permissionKey: context.permissionKey,
+    },
+  );
+  console.warn(
+    `[healthSync:${method}] HKError: ${message} on ${context.permissionKey ?? method} ${formatHealthSyncDateRange(context.dateRange)}.`,
+  );
+  return new Error(message);
+}
+
+export function getHealthSyncStatusForDebug(): {
+  queueDepth: number;
+  lastCalls: HealthSyncBridgeCallBreadcrumb[];
+  lastError: HealthSyncBridgeCallBreadcrumb | null;
+  sampleTimeoutMs: number;
+} {
+  return {
+    queueDepth: hkQueueDepth,
+    lastCalls: [...healthSyncBridgeCallBreadcrumbs],
+    lastError: lastHealthSyncBridgeError,
+    sampleTimeoutMs: HEALTH_SAMPLE_TIMEOUT_MS,
+  };
+}
+
 function withHealthCallbackTimeout<T>(
   label: string,
   exec: (resolve: (val: T) => void, reject: (err: Error) => void) => void,
+  context: {
+    dateRange?: { startDate: string; endDate: string };
+    permissionKey?: string;
+  } = {},
 ): Promise<T> {
   // Universal leaf for every `hk.getX` / `saveFood` / `getFoodCorrelation`
   // read — routes through the global HK mutex (one native call in flight
@@ -398,23 +630,58 @@ function withHealthCallbackTimeout<T>(
     () =>
       new Promise<T>((outerResolve, outerReject) => {
         let settled = false;
+        const startedAt = Date.now();
+        const timestamp = new Date(startedAt).toISOString();
         const t = setTimeout(() => {
           if (settled) return;
           settled = true;
-          outerReject(
-            new Error(`HealthKit ${label} did not respond within ${HEALTH_SAMPLE_TIMEOUT_MS}ms`),
+          const timeoutError = new Error(
+            `HealthKit ${label} did not respond within ${HEALTH_SAMPLE_TIMEOUT_MS}ms`,
           );
+          recordHealthSyncBridgeCall({
+            method: label,
+            timestamp,
+            durationMs: Date.now() - startedAt,
+            error: timeoutError.message,
+            dateRange: context.dateRange,
+            permissionKey: context.permissionKey,
+          });
+          console.warn(
+            `[healthSync:${label}] bridge timeout @ ${new Date().toISOString()}`,
+            {
+              error: timeoutError.message,
+              dateRange: context.dateRange,
+              permissionKey: context.permissionKey,
+            },
+          );
+          outerReject(timeoutError);
         }, HEALTH_SAMPLE_TIMEOUT_MS);
         const resolveOnce = (val: T) => {
           if (settled) return;
           settled = true;
           clearTimeout(t);
+          recordHealthSyncBridgeCall({
+            method: label,
+            timestamp,
+            durationMs: Date.now() - startedAt,
+            error: null,
+            dateRange: context.dateRange,
+            permissionKey: context.permissionKey,
+          });
           outerResolve(val);
         };
         const rejectOnce = (err: Error) => {
           if (settled) return;
           settled = true;
           clearTimeout(t);
+          recordHealthSyncBridgeCall({
+            method: label,
+            timestamp,
+            durationMs: Date.now() - startedAt,
+            error: err.message,
+            dateRange: context.dateRange,
+            permissionKey: context.permissionKey,
+          });
           outerReject(err);
         };
         try {
@@ -431,7 +698,10 @@ function initHealthKitPromiseWithTimeout(
   permissions: { permissions: { read: string[]; write?: string[] } },
   stepLabel: string,
 ): Promise<void> {
-  const waitMin = Math.max(1, Math.round(HEALTH_PERMISSION_INIT_TIMEOUT_MS / 60_000));
+  const waitMin = Math.max(
+    1,
+    Math.round(HEALTH_PERMISSION_INIT_TIMEOUT_MS / 60_000),
+  );
   // Leaf native call — routes through the global HK mutex. This is the call the
   // concurrent-probe crash on iOS 26+ was specifically about; serialising it
   // means no read/probe can be in flight while the permission sheet is open.
@@ -460,40 +730,72 @@ function getDailyStepCountSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<{ value: number; startDate: string }[]> {
-  return withHealthCallbackTimeout("getDailyStepCountSamples", (resolve, reject) => {
-    hk.getDailyStepCountSamples(options, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getDailyStepCountSamples",
+    (resolve, reject) => {
+      hk.getDailyStepCountSamples(options, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getDailyStepCountSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 function getWeightSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string; unit: string },
 ): Promise<{ value: number; startDate: string }[]> {
-  return withHealthCallbackTimeout("getWeightSamples", (resolve, reject) => {
-    hk.getWeightSamples(options, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getWeightSamples",
+    (resolve, reject) => {
+      hk.getWeightSamples(options, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getWeightSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 function getBodyFatPercentageSamplesPromise(
   hk: AppleHealthKitNative,
-  options: { startDate: string; endDate: string; ascending?: boolean; limit?: number },
+  options: {
+    startDate: string;
+    endDate: string;
+    ascending?: boolean;
+    limit?: number;
+  },
 ): Promise<{ value: number; startDate: string; endDate?: string }[]> {
-  return withHealthCallbackTimeout("getBodyFatPercentageSamples", (resolve, reject) => {
-    if (!hk.getBodyFatPercentageSamples) {
-      resolve([]);
-      return;
-    }
-    hk.getBodyFatPercentageSamples(options, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getBodyFatPercentageSamples",
+    (resolve, reject) => {
+      if (!hk.getBodyFatPercentageSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getBodyFatPercentageSamples(options, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getBodyFatPercentageSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 /** HK `percent` unit is 0–1; UI / `profiles.body_fat_pct` store 0–100. */
@@ -508,44 +810,82 @@ function getActiveEnergyBurnedPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<{ value: number; startDate: string }[]> {
-  return withHealthCallbackTimeout("getActiveEnergyBurned", (resolve, reject) => {
-    hk.getActiveEnergyBurned(options, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getActiveEnergyBurned",
+    (resolve, reject) => {
+      hk.getActiveEnergyBurned(options, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getActiveEnergyBurned", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 type WorkoutSample = {
-  start: string; end: string; value: number;
-  activityName?: string; sourceName?: string; sourceBundleId?: string;
-  calories?: number; distance?: number;
+  start: string;
+  end: string;
+  value: number;
+  activityName?: string;
+  sourceName?: string;
+  sourceBundleId?: string;
+  calories?: number;
+  distance?: number;
 };
 
 function getWorkoutSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<WorkoutSample[]> {
-  return withHealthCallbackTimeout("getSamples (Workout)", (resolve, reject) => {
-    if (!hk.getSamples) { resolve([]); return; }
-    hk.getSamples({ ...options, type: "Workout" }, (err, results) => {
-      if (err) reject(new Error(stringifyBridgeUnknown(err)));
-      else resolve((results ?? []) as WorkoutSample[]);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getSamples (Workout)",
+    (resolve, reject) => {
+      if (!hk.getSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getSamples({ ...options, type: "Workout" }, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getSamples (Workout)", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve((results ?? []) as WorkoutSample[]);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 function getBasalEnergyBurnedPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<{ value: number; startDate: string }[]> {
-  return withHealthCallbackTimeout("getBasalEnergyBurned", (resolve, reject) => {
-    if (!hk.getBasalEnergyBurned) { resolve([]); return; }
-    hk.getBasalEnergyBurned(options, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getBasalEnergyBurned",
+    (resolve, reject) => {
+      if (!hk.getBasalEnergyBurned) {
+        resolve([]);
+        return;
+      }
+      hk.getBasalEnergyBurned(options, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getBasalEnergyBurned", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 type DietarySample = {
@@ -582,7 +922,10 @@ function metadataValueAsString(v: unknown): string | null {
   return null;
 }
 
-function firstMetadataString(meta: Record<string, unknown> | undefined, keys: string[]): string | null {
+function firstMetadataString(
+  meta: Record<string, unknown> | undefined,
+  keys: string[],
+): string | null {
   if (!meta) return null;
   for (const k of keys) {
     const s = metadataValueAsString(meta[k]);
@@ -595,117 +938,231 @@ function getEnergyConsumedSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return withHealthCallbackTimeout("getEnergyConsumedSamples", (resolve, reject) => {
-    if (!hk.getEnergyConsumedSamples) { resolve([]); return; }
-    hk.getEnergyConsumedSamples(options, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getEnergyConsumedSamples",
+    (resolve, reject) => {
+      if (!hk.getEnergyConsumedSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getEnergyConsumedSamples(options, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getEnergyConsumedSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 function getProteinSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return withHealthCallbackTimeout("getProteinSamples", (resolve, reject) => {
-    if (!hk.getProteinSamples) { resolve([]); return; }
-    hk.getProteinSamples({ ...options, unit: "gram" }, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getProteinSamples",
+    (resolve, reject) => {
+      if (!hk.getProteinSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getProteinSamples({ ...options, unit: "gram" }, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getProteinSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 function getCarbsSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return withHealthCallbackTimeout("getCarbohydratesSamples", (resolve, reject) => {
-    if (!hk.getCarbohydratesSamples) { resolve([]); return; }
-    hk.getCarbohydratesSamples({ ...options, unit: "gram" }, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getCarbohydratesSamples",
+    (resolve, reject) => {
+      if (!hk.getCarbohydratesSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getCarbohydratesSamples(
+        { ...options, unit: "gram" },
+        (err, results) => {
+          if (err)
+            reject(
+              logHealthSyncBridgeError("getCarbohydratesSamples", err, {
+                dateRange: options,
+              }),
+            );
+          else resolve(results ?? []);
+        },
+      );
+    },
+    { dateRange: options },
+  );
 }
 
 function getFatSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return withHealthCallbackTimeout("getFatTotalSamples", (resolve, reject) => {
-    if (!hk.getFatTotalSamples) { resolve([]); return; }
-    hk.getFatTotalSamples({ ...options, unit: "gram" }, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getFatTotalSamples",
+    (resolve, reject) => {
+      if (!hk.getFatTotalSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getFatTotalSamples({ ...options, unit: "gram" }, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getFatTotalSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 function getFiberSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return withHealthCallbackTimeout("getFiberSamples", (resolve, reject) => {
-    if (!hk.getFiberSamples) { resolve([]); return; }
-    hk.getFiberSamples({ ...options, unit: "gram" }, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve((results ?? []) as DietarySample[]);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getFiberSamples",
+    (resolve, reject) => {
+      if (!hk.getFiberSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getFiberSamples({ ...options, unit: "gram" }, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getFiberSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve((results ?? []) as DietarySample[]);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 function getSugarSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return withHealthCallbackTimeout("getSugarSamples", (resolve, reject) => {
-    if (!hk.getSugarSamples) { resolve([]); return; }
-    hk.getSugarSamples({ ...options, unit: "gram" }, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve((results ?? []) as DietarySample[]);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getSugarSamples",
+    (resolve, reject) => {
+      if (!hk.getSugarSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getSugarSamples({ ...options, unit: "gram" }, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getSugarSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve((results ?? []) as DietarySample[]);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 function getSodiumSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return withHealthCallbackTimeout("getSodiumSamples", (resolve, reject) => {
-    if (!hk.getSodiumSamples) { resolve([]); return; }
-    hk.getSodiumSamples({ ...options, unit: "gram" }, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve((results ?? []) as DietarySample[]);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getSodiumSamples",
+    (resolve, reject) => {
+      if (!hk.getSodiumSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getSodiumSamples({ ...options, unit: "gram" }, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getSodiumSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve((results ?? []) as DietarySample[]);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 function getFatSaturatedSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return withHealthCallbackTimeout("getFatSaturatedSamples", (resolve, reject) => {
-    if (!hk.getFatSaturatedSamples) { resolve([]); return; }
-    hk.getFatSaturatedSamples({ ...options, unit: "gram" }, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve((results ?? []) as DietarySample[]);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getFatSaturatedSamples",
+    (resolve, reject) => {
+      if (!hk.getFatSaturatedSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getFatSaturatedSamples(
+        { ...options, unit: "gram" },
+        (err, results) => {
+          if (err)
+            reject(
+              logHealthSyncBridgeError("getFatSaturatedSamples", err, {
+                dateRange: options,
+              }),
+            );
+          else resolve((results ?? []) as DietarySample[]);
+        },
+      );
+    },
+    { dateRange: options },
+  );
 }
 
 function getCholesterolSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<DietarySample[]> {
-  return withHealthCallbackTimeout("getCholesterolSamples", (resolve, reject) => {
-    if (!hk.getCholesterolSamples) { resolve([]); return; }
-    hk.getCholesterolSamples({ ...options, unit: "gram" }, (err, results) => {
-      if (err) reject(new Error(String(err)));
-      else resolve((results ?? []) as DietarySample[]);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getCholesterolSamples",
+    (resolve, reject) => {
+      if (!hk.getCholesterolSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getCholesterolSamples({ ...options, unit: "gram" }, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getCholesterolSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve((results ?? []) as DietarySample[]);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 async function getDietaryQuantitySamplesForPermissionPromise(
@@ -721,11 +1178,22 @@ async function getDietaryQuantitySamplesForPermissionPromise(
         hk.getDietaryQuantitySamplesForPermission!(
           { ...options, permissionKey, unit },
           (err, results) => {
-            if (err) reject(new Error(stringifyBridgeUnknown(err)));
+            if (err)
+              reject(
+                logHealthSyncBridgeError(
+                  `getDietaryQuantitySamplesForPermission(${permissionKey})`,
+                  err,
+                  {
+                    dateRange: options,
+                    permissionKey,
+                  },
+                ),
+              );
             else resolve((results ?? []) as DietarySample[]);
           },
         );
       },
+      { dateRange: options, permissionKey },
     );
   }
   switch (permissionKey) {
@@ -759,8 +1227,16 @@ async function getDietaryImportSamplesSafe(
 ): Promise<DietarySample[]> {
   const unit = unitForDietaryImportKey(permissionKey);
   try {
-    return await getDietaryQuantitySamplesForPermissionPromise(hk, permissionKey, unit, options);
-  } catch {
+    return await getDietaryQuantitySamplesForPermissionPromise(
+      hk,
+      permissionKey,
+      unit,
+      options,
+    );
+  } catch (err) {
+    logHealthSyncBridgeError("getFoodCorrelationSamplesSafe", err, {
+      dateRange: options,
+    });
     return [];
   }
 }
@@ -784,11 +1260,22 @@ function saveFoodPromise(
 ): Promise<boolean> {
   return withHealthCallbackTimeout("saveFood", (resolve, reject) => {
     if (!hk.saveFood) {
-      reject(new Error("HealthKit bridge does not expose `saveFood`. Update react-native-health or rebuild the iOS bundle."));
+      reject(
+        new Error(
+          "HealthKit bridge does not expose `saveFood`. Update react-native-health or rebuild the iOS bundle.",
+        ),
+      );
       return;
     }
     hk.saveFood(options, (err, result) => {
-      if (err) reject(new Error(String(err)));
+      if (err)
+        reject(
+          logHealthSyncBridgeError("saveFood", err, {
+            dateRange: options.date
+              ? { startDate: options.date, endDate: options.date }
+              : undefined,
+          }),
+        );
       else resolve(!!result);
     });
   });
@@ -858,9 +1345,18 @@ function isMealLabelString(value: string): boolean {
 }
 
 /** HealthKit `HKMetadataKeyFoodMeal` (often bridged as `HKFoodMeal`) — preferred over clock-time for slot. */
-function mealSlotFromMetadata(meta: Record<string, unknown> | undefined): JournalMealSlot | null {
+function mealSlotFromMetadata(
+  meta: Record<string, unknown> | undefined,
+): JournalMealSlot | null {
   if (!meta) return null;
-  const keys = ["HKFoodMeal", "HKMetadataKeyFoodMeal", "mealType", "MealType", "meal", "MEAL_TYPE"];
+  const keys = [
+    "HKFoodMeal",
+    "HKMetadataKeyFoodMeal",
+    "mealType",
+    "MealType",
+    "meal",
+    "MEAL_TYPE",
+  ];
   for (const key of keys) {
     const raw = meta[key];
     if (raw == null) continue;
@@ -876,7 +1372,8 @@ function mealSlotFromMetadata(meta: Record<string, unknown> | undefined): Journa
         if (m) return m;
       }
       const lower = str.toLowerCase();
-      if (lower.includes("breakfast") || lower.includes("brunch")) return "Breakfast";
+      if (lower.includes("breakfast") || lower.includes("brunch"))
+        return "Breakfast";
       if (lower.includes("lunch")) return "Lunch";
       if (lower.includes("dinner")) return "Dinner";
       if (lower.includes("snack") || lower.includes("dessert")) return "Snacks";
@@ -906,14 +1403,23 @@ const METADATA_KEYS_EXCLUDED_FROM_FOOD_GUESS: ReadonlySet<string> = new Set(
   ].map((k) => k.toLowerCase()),
 );
 
-function longestPlausibleFoodMetadataValue(meta: Record<string, unknown>, sourceApp: string): string | null {
+function longestPlausibleFoodMetadataValue(
+  meta: Record<string, unknown>,
+  sourceApp: string,
+): string | null {
   let best: string | null = null;
   const src = sourceApp.trim();
   for (const [rawKey, val] of Object.entries(meta)) {
     const keyLower = rawKey.toLowerCase();
     if (METADATA_KEYS_EXCLUDED_FROM_FOOD_GUESS.has(keyLower)) continue;
-    if (keyLower.includes("uuid") || keyLower.includes("syncidentifier")) continue;
-    if (keyLower.includes("barcode") || keyLower.includes("gtin") || keyLower.includes("upc")) continue;
+    if (keyLower.includes("uuid") || keyLower.includes("syncidentifier"))
+      continue;
+    if (
+      keyLower.includes("barcode") ||
+      keyLower.includes("gtin") ||
+      keyLower.includes("upc")
+    )
+      continue;
     const s = metadataValueAsString(val);
     if (!s) continue;
     if (s.length < 3 || s.length > 220) continue;
@@ -935,14 +1441,21 @@ function mergeCorrelationMetadataIntoSampleMetadata(
   correlationMeta: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
   const base =
-    sampleMeta && typeof sampleMeta === "object" && !Array.isArray(sampleMeta) ? { ...sampleMeta } : {};
-  if (!correlationMeta || typeof correlationMeta !== "object" || Array.isArray(correlationMeta)) {
+    sampleMeta && typeof sampleMeta === "object" && !Array.isArray(sampleMeta)
+      ? { ...sampleMeta }
+      : {};
+  if (
+    !correlationMeta ||
+    typeof correlationMeta !== "object" ||
+    Array.isArray(correlationMeta)
+  ) {
     return Object.keys(base).length > 0 ? base : sampleMeta;
   }
   const out: Record<string, unknown> = { ...base };
   for (const [k, v] of Object.entries(correlationMeta)) {
     const cur = out[k];
-    const curEmpty = cur == null || (typeof cur === "string" && cur.trim() === "");
+    const curEmpty =
+      cur == null || (typeof cur === "string" && cur.trim() === "");
     if (curEmpty && v != null) {
       if (typeof v === "string" && !v.trim()) continue;
       out[k] = v;
@@ -963,15 +1476,19 @@ function parseFoodCorrelationRows(raw: unknown): FoodCorrelationSampleRow[] {
       : [];
     const metaRaw = o.metadata;
     const metadata =
-      metaRaw && typeof metaRaw === "object" && !Array.isArray(metaRaw) ? (metaRaw as Record<string, unknown>) : {};
-    if (typeof o.startDate !== "string" || typeof o.endDate !== "string") continue;
+      metaRaw && typeof metaRaw === "object" && !Array.isArray(metaRaw)
+        ? (metaRaw as Record<string, unknown>)
+        : {};
+    if (typeof o.startDate !== "string" || typeof o.endDate !== "string")
+      continue;
     out.push({
       id: typeof o.id === "string" ? o.id : "",
       startDate: o.startDate,
       endDate: o.endDate,
       quantitySampleIds,
       metadata,
-      sourceBundleId: typeof o.sourceBundleId === "string" ? o.sourceBundleId : "",
+      sourceBundleId:
+        typeof o.sourceBundleId === "string" ? o.sourceBundleId : "",
       sourceName: typeof o.sourceName === "string" ? o.sourceName : "",
     });
   }
@@ -979,7 +1496,9 @@ function parseFoodCorrelationRows(raw: unknown): FoodCorrelationSampleRow[] {
 }
 
 /** Map HKQuantitySample UUID → merged metadata from every food correlation that references it. */
-function buildQuantitySampleIdToCorrelationMetadata(rows: FoodCorrelationSampleRow[]): Map<string, Record<string, unknown>> {
+function buildQuantitySampleIdToCorrelationMetadata(
+  rows: FoodCorrelationSampleRow[],
+): Map<string, Record<string, unknown>> {
   const map = new Map<string, Record<string, unknown>>();
   for (const row of rows) {
     for (const qid of row.quantitySampleIds) {
@@ -994,16 +1513,25 @@ function getFoodCorrelationSamplesPromise(
   hk: AppleHealthKitNative,
   options: { startDate: string; endDate: string },
 ): Promise<unknown[]> {
-  return withHealthCallbackTimeout("getFoodCorrelationSamples", (resolve, reject) => {
-    if (typeof hk.getFoodCorrelationSamples !== "function") {
-      resolve([]);
-      return;
-    }
-    hk.getFoodCorrelationSamples!(options, (err, results) => {
-      if (err) reject(new Error(stringifyBridgeUnknown(err)));
-      else resolve(results ?? []);
-    });
-  });
+  return withHealthCallbackTimeout(
+    "getFoodCorrelationSamples",
+    (resolve, reject) => {
+      if (typeof hk.getFoodCorrelationSamples !== "function") {
+        resolve([]);
+        return;
+      }
+      hk.getFoodCorrelationSamples!(options, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getFoodCorrelationSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
 }
 
 async function getFoodCorrelationSamplesSafe(
@@ -1013,7 +1541,10 @@ async function getFoodCorrelationSamplesSafe(
   try {
     const raw = await getFoodCorrelationSamplesPromise(hk, options);
     return parseFoodCorrelationRows(raw);
-  } catch {
+  } catch (err) {
+    logHealthSyncBridgeError("getFoodCorrelationSamplesSafe", err, {
+      dateRange: options,
+    });
     return [];
   }
 }
@@ -1093,7 +1624,8 @@ function resolveFoodLabelFromHealthMetadata(
     if (maybeName && !isMealLabelString(maybeName)) label = maybeName;
   }
 
-  if (!label) label = meta ? longestPlausibleFoodMetadataValue(meta, sourceApp) : null;
+  if (!label)
+    label = meta ? longestPlausibleFoodMetadataValue(meta, sourceApp) : null;
 
   // N1 (2026-05-03): the legacy fallback `Food log (250 kcal)` reads
   // as a literal food item ("a thing called Food log"). For users
@@ -1122,12 +1654,19 @@ function inferMealSlotFromLocalTime(when: Date): JournalMealSlot {
   return "Snacks";
 }
 
-function journalMealSlotForSample(sample: DietarySample, when: Date, meta: Record<string, unknown> | undefined): JournalMealSlot {
+function journalMealSlotForSample(
+  sample: DietarySample,
+  when: Date,
+  meta: Record<string, unknown> | undefined,
+): JournalMealSlot {
   return mealSlotFromMetadata(meta) ?? inferMealSlotFromLocalTime(when);
 }
 
 /** Prefer HK food-correlation parent id; else legacy minute|bundle (`healthSyncCorrelation.ts`). */
-function dietaryCorrelationKey(s: DietarySample, quantityIdToCorrelationId: ReadonlyMap<string, string> | null): string {
+function dietaryCorrelationKey(
+  s: DietarySample,
+  quantityIdToCorrelationId: ReadonlyMap<string, string> | null,
+): string {
   return dietaryCorrelationKeyForSample(s, quantityIdToCorrelationId).key;
 }
 
@@ -1153,7 +1692,9 @@ const DEFAULT_HEALTH_BODY_LOOKBACK_DAYS = 366;
 
 export async function getHealthBodyLookbackDays(): Promise<number> {
   try {
-    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    const AsyncStorage = (
+      await import("@react-native-async-storage/async-storage")
+    ).default;
     const raw = await AsyncStorage.getItem(HEALTH_BODY_LOOKBACK_STORAGE_KEY);
     const n = raw != null ? parseInt(raw, 10) : NaN;
     if (Number.isFinite(n) && n >= 30 && n <= 5000) return n;
@@ -1166,8 +1707,13 @@ export async function getHealthBodyLookbackDays(): Promise<number> {
 export async function setHealthBodyLookbackDays(days: number): Promise<void> {
   const clamped = Math.max(30, Math.min(5000, Math.round(days)));
   try {
-    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    await AsyncStorage.setItem(HEALTH_BODY_LOOKBACK_STORAGE_KEY, String(clamped));
+    const AsyncStorage = (
+      await import("@react-native-async-storage/async-storage")
+    ).default;
+    await AsyncStorage.setItem(
+      HEALTH_BODY_LOOKBACK_STORAGE_KEY,
+      String(clamped),
+    );
   } catch {
     /* ignore */
   }
@@ -1247,8 +1793,12 @@ function formatHealthKitStepError(error: unknown, step: string): string {
 export async function requestHealthPermissions(): Promise<HealthKitPermissionOutcome> {
   const hk = loadAppleHealthKit();
   if (!hk) {
-    const debugDetail = "AppleHealthKit native module not loaded (rebuild dev client with HealthKit).";
-    logHealthPermission("requestHealthPermissions: no native module", debugDetail);
+    const debugDetail =
+      "AppleHealthKit native module not loaded (rebuild dev client with HealthKit).";
+    logHealthPermission(
+      "requestHealthPermissions: no native module",
+      debugDetail,
+    );
     return {
       ok: false,
       bodySyncReady: false,
@@ -1261,7 +1811,10 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
 
   const available = await isAvailableDetailed(hk);
   if (!available.ok) {
-    logHealthPermission("requestHealthPermissions: isAvailable false", available.error);
+    logHealthPermission(
+      "requestHealthPermissions: isAvailable false",
+      available.error,
+    );
     return {
       ok: false,
       bodySyncReady: false,
@@ -1285,10 +1838,14 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
     );
   } catch (e) {
     const debugDetail = formatHealthKitStepError(e, "body_metrics_init");
-    logHealthPermission("initHealthKit failed (stage 1: body metrics)", debugDetail);
+    logHealthPermission(
+      "initHealthKit failed (stage 1: body metrics)",
+      debugDetail,
+    );
     const detailLower = debugDetail.toLowerCase();
     const looksLikeTimeout =
-      detailLower.includes("did not respond within") || detailLower.includes("healthkit did not respond");
+      detailLower.includes("did not respond within") ||
+      detailLower.includes("healthkit did not respond");
     return {
       ok: false,
       bodySyncReady: false,
@@ -1321,6 +1878,16 @@ export async function requestHealthPermissions(): Promise<HealthKitPermissionOut
  * (deadlock — see ENG-1019).
  */
 export async function requestDietaryHealthPermissions(): Promise<HealthKitPermissionOutcome> {
+  if (!isFeatureEnabled("health_nutrition_import_enabled")) {
+    return {
+      ok: true,
+      bodySyncReady: true,
+      dietaryImportReady: false,
+      userMessage: "Meal import from Health is currently disabled.",
+      debugDetail: "health_nutrition_import_enabled=false",
+    };
+  }
+
   const hk = loadAppleHealthKit();
   if (!hk) {
     return {
@@ -1367,7 +1934,8 @@ export async function requestDietaryHealthPermissions(): Promise<HealthKitPermis
       ok: true,
       bodySyncReady: true,
       dietaryImportReady: false,
-      userMessage: "Couldn’t enable meal import from Apple Health. You can try again after checking Settings.",
+      userMessage:
+        "Couldn’t enable meal import from Apple Health. You can try again after checking Settings.",
       debugDetail,
     };
   }
@@ -1418,12 +1986,28 @@ export async function syncHealthData(
       .eq("id", userId)
       .maybeSingle();
 
-    const existingSteps = (profile?.steps_by_day ?? {}) as Record<string, number>;
-    const existingWeight = (profile?.weight_kg_by_day ?? {}) as Record<string, number>;
-    const existingBodyFatByDay = (profile?.body_fat_pct_by_day ?? {}) as Record<string, number>;
-    const existingActivityBurn = (profile?.activity_burn_by_day ?? {}) as Record<string, number>;
-    const existingWorkouts = (profile?.workouts_by_day ?? {}) as Record<string, unknown[]>;
-    const existingBasalBurn = (profile?.basal_burn_by_day ?? {}) as Record<string, number>;
+    const existingSteps = (profile?.steps_by_day ?? {}) as Record<
+      string,
+      number
+    >;
+    const existingWeight = (profile?.weight_kg_by_day ?? {}) as Record<
+      string,
+      number
+    >;
+    const existingBodyFatByDay = (profile?.body_fat_pct_by_day ?? {}) as Record<
+      string,
+      number
+    >;
+    const existingActivityBurn = (profile?.activity_burn_by_day ??
+      {}) as Record<string, number>;
+    const existingWorkouts = (profile?.workouts_by_day ?? {}) as Record<
+      string,
+      unknown[]
+    >;
+    const existingBasalBurn = (profile?.basal_burn_by_day ?? {}) as Record<
+      string,
+      number
+    >;
 
     try {
       const stepSamples = await getDailyStepCountSamplesPromise(hk, {
@@ -1438,7 +2022,8 @@ export async function syncHealthData(
       const fromHealthSteps: Record<string, number> = {};
       for (const sample of stepSamples) {
         const dk = dateKey(sample.startDate);
-        fromHealthSteps[dk] = (fromHealthSteps[dk] ?? 0) + Math.round(sample.value);
+        fromHealthSteps[dk] =
+          (fromHealthSteps[dk] ?? 0) + Math.round(sample.value);
       }
       const stepsByDay: Record<string, number> = { ...existingSteps };
       for (const [dk, v] of Object.entries(fromHealthSteps)) {
@@ -1446,7 +2031,10 @@ export async function syncHealthData(
       }
 
       if (JSON.stringify(stepsByDay) !== JSON.stringify(existingSteps)) {
-        await supabase.from("profiles").update({ steps_by_day: stepsByDay }).eq("id", userId);
+        await supabase
+          .from("profiles")
+          .update({ steps_by_day: stepsByDay })
+          .eq("id", userId);
         stepsUpdated = true;
       }
     } catch {
@@ -1487,7 +2075,10 @@ export async function syncHealthData(
         const rounded = Math.round(sample.value * 10) / 10;
         fromHealthWeight[dk] = rounded;
       }
-      const weightByDay: Record<string, number> = { ...existingWeight, ...fromHealthWeight };
+      const weightByDay: Record<string, number> = {
+        ...existingWeight,
+        ...fromHealthWeight,
+      };
 
       if (JSON.stringify(weightByDay) !== JSON.stringify(existingWeight)) {
         const { error } = await supabase.rpc("upsert_body_metric_days", {
@@ -1531,7 +2122,9 @@ export async function syncHealthData(
         ...fromHealthBodyFat,
       });
       const mostRecentBfSample =
-        sortedBfSamples.length > 0 ? sortedBfSamples[sortedBfSamples.length - 1]! : null;
+        sortedBfSamples.length > 0
+          ? sortedBfSamples[sortedBfSamples.length - 1]!
+          : null;
       const mostRecentBfPct = mostRecentBfSample
         ? bodyFatPercentFromHealthKitValue(Number(mostRecentBfSample.value))
         : null;
@@ -1544,11 +2137,15 @@ export async function syncHealthData(
         existingBf != null && Number.isFinite(Number(existingBf))
           ? Math.round(Number(existingBf) * 10) / 10
           : null;
-      const mapChanged = JSON.stringify(bodyFatByDay) !== JSON.stringify(existingBodyFatByDay);
+      const mapChanged =
+        JSON.stringify(bodyFatByDay) !== JSON.stringify(existingBodyFatByDay);
       const scalarChanged =
         mostRecentBfPct != null && existingRounded !== mostRecentBfPct;
 
-      if ((mapChanged || scalarChanged) && Object.keys(fromHealthBodyFat).length > 0) {
+      if (
+        (mapChanged || scalarChanged) &&
+        Object.keys(fromHealthBodyFat).length > 0
+      ) {
         const { error } = await supabase.rpc("upsert_body_metric_days", {
           p_body_fat_patch: pruneBodyFatPctByDay(fromHealthBodyFat),
         });
@@ -1572,14 +2169,20 @@ export async function syncHealthData(
       const fromHealthActivity: Record<string, number> = {};
       for (const sample of energySamples) {
         const dk = dateKey(sample.startDate);
-        fromHealthActivity[dk] = (fromHealthActivity[dk] ?? 0) + Math.round(sample.value);
+        fromHealthActivity[dk] =
+          (fromHealthActivity[dk] ?? 0) + Math.round(sample.value);
       }
-      const activityBurnByDay: Record<string, number> = { ...existingActivityBurn };
+      const activityBurnByDay: Record<string, number> = {
+        ...existingActivityBurn,
+      };
       for (const [dk, v] of Object.entries(fromHealthActivity)) {
         activityBurnByDay[dk] = v;
       }
 
-      if (JSON.stringify(activityBurnByDay) !== JSON.stringify(existingActivityBurn)) {
+      if (
+        JSON.stringify(activityBurnByDay) !==
+        JSON.stringify(existingActivityBurn)
+      ) {
         const { error } = await supabase
           .from("profiles")
           .update({ activity_burn_by_day: activityBurnByDay })
@@ -1597,7 +2200,12 @@ export async function syncHealthData(
         endDate: endDate.toISOString(),
       });
 
-      type WorkoutEntry = { type: string; minutes: number; calories: number; source: string };
+      type WorkoutEntry = {
+        type: string;
+        minutes: number;
+        calories: number;
+        source: string;
+      };
       // Audit B03 (2026-05-05) — sort each day's workouts most-recent-
       // first so burn-detail render order matches Apple Health's own
       // day view. Was undefined-by-`react-native-health`-callback,
@@ -1606,7 +2214,10 @@ export async function syncHealthData(
       // they cross-check). We sort at write time on the source array,
       // so the persisted shape stays identical — only the order
       // changes.
-      type WorkoutSampleWithStart = { sample: typeof workoutSamples[number]; startMs: number };
+      type WorkoutSampleWithStart = {
+        sample: (typeof workoutSamples)[number];
+        startMs: number;
+      };
       const samplesWithStart: WorkoutSampleWithStart[] = workoutSamples
         .map((s) => ({ sample: s, startMs: new Date(s.start).getTime() }))
         .filter((x) => Number.isFinite(x.startMs))
@@ -1657,14 +2268,17 @@ export async function syncHealthData(
       const fromHealthBasal: Record<string, number> = {};
       for (const sample of basalSamples) {
         const dk = dateKey(sample.startDate);
-        fromHealthBasal[dk] = (fromHealthBasal[dk] ?? 0) + Math.round(sample.value);
+        fromHealthBasal[dk] =
+          (fromHealthBasal[dk] ?? 0) + Math.round(sample.value);
       }
       const basalBurnByDay: Record<string, number> = { ...existingBasalBurn };
       for (const [dk, v] of Object.entries(fromHealthBasal)) {
         basalBurnByDay[dk] = v;
       }
 
-      if (JSON.stringify(basalBurnByDay) !== JSON.stringify(existingBasalBurn)) {
+      if (
+        JSON.stringify(basalBurnByDay) !== JSON.stringify(existingBasalBurn)
+      ) {
         const { error } = await supabase
           .from("profiles")
           .update({ basal_burn_by_day: basalBurnByDay })
@@ -1708,7 +2322,11 @@ export async function syncHealthDataThrottled(
     return;
   }
   const now = Date.now();
-  if (!opts?.bypassThrottle && now - lastThrottledHealthBodySyncAt < HEALTH_BODY_SYNC_MIN_MS) return;
+  if (
+    !opts?.bypassThrottle &&
+    now - lastThrottledHealthBodySyncAt < HEALTH_BODY_SYNC_MIN_MS
+  )
+    return;
   // Tab-focus + pull-to-refresh stay on a short window. Full-year reads
   // (user preference, up to 366d) are reserved for Health Sync → Sync Now
   // (`syncHealthData` direct), which was wedging the dev client on device.
@@ -1774,7 +2392,9 @@ function bumpCorrelatedTotals(
   inner.set(permissionKey, (inner.get(permissionKey) ?? 0) + delta);
 }
 
-function totalsRecordFromInner(inner: Map<string, number> | undefined): Record<string, number> {
+function totalsRecordFromInner(
+  inner: Map<string, number> | undefined,
+): Record<string, number> {
   const o: Record<string, number> = {};
   if (!inner) return o;
   for (const [k, v] of inner) o[k] = v;
@@ -1787,7 +2407,9 @@ export function getLastNutritionImportError(): string | null {
   return lastNutritionImportError;
 }
 
-function emptyNutritionImportResult(overrides?: Partial<NutritionImportResult>): NutritionImportResult {
+function emptyNutritionImportResult(
+  overrides?: Partial<NutritionImportResult>,
+): NutritionImportResult {
   return {
     imported: [],
     skippedOwn: 0,
@@ -1808,9 +2430,7 @@ function emptyNutritionImportResult(overrides?: Partial<NutritionImportResult>):
  * Read-only diagnostic: count external dietary-energy samples HealthKit
  * would see (last N days). Mirrors export-side `probeNutritionWrite`.
  */
-export async function probeNutritionImport(
-  lookbackDays = 7,
-): Promise<
+export async function probeNutritionImport(lookbackDays = 7): Promise<
   | {
       ok: true;
       /** All dietary-energy samples HealthKit returned (any source). */
@@ -1823,7 +2443,11 @@ export async function probeNutritionImport(
 > {
   const hk = loadAppleHealthKit();
   if (!hk) {
-    return { ok: false, reason: "HealthKit isn't available on this device (loadAppleHealthKit returned null)." };
+    return {
+      ok: false,
+      reason:
+        "HealthKit isn't available on this device (loadAppleHealthKit returned null).",
+    };
   }
   // The single native read routes through the global HK mutex inside
   // `getDietaryImportSamplesSafe` → … → `withHealthCallbackTimeout` → `enqueueHk`;
@@ -1831,12 +2455,17 @@ export async function probeNutritionImport(
   try {
     const startDate = daysAgo(lookbackDays).toISOString();
     const endDate = new Date().toISOString();
-    const energy = await getDietaryImportSamplesSafe(hk, "EnergyConsumed", { startDate, endDate });
+    const energy = await getDietaryImportSamplesSafe(hk, "EnergyConsumed", {
+      startDate,
+      endDate,
+    });
     const extEnergy = energy.filter((s) => !isOwnAppSample(s));
     const sourceApps = [
       ...new Set(
         extEnergy
-          .map((s) => s.sourceName?.trim() || sourceBundleIdOf(s) || "Unknown app")
+          .map(
+            (s) => s.sourceName?.trim() || sourceBundleIdOf(s) || "Unknown app",
+          )
           .filter(Boolean),
       ),
     ].slice(0, 8);
@@ -1875,6 +2504,13 @@ async function syncNutritionFromHealthImpl(
   userId: string,
   lookbackDays = 120,
 ): Promise<NutritionImportResult> {
+  if (!isFeatureEnabled("health_nutrition_import_enabled")) {
+    console.log(
+      "[healthSync] nutrition import skipped: health_nutrition_import_enabled=false",
+    );
+    return emptyNutritionImportResult();
+  }
+
   const hk = loadAppleHealthKit();
   if (!hk) {
     return emptyNutritionImportResult({ healthKitUnavailable: true });
@@ -1882,8 +2518,11 @@ async function syncNutritionFromHealthImpl(
 
   let genericHealthImportLabels = false;
   try {
-    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    genericHealthImportLabels = (await AsyncStorage.getItem("health_import_generic_labels")) === "true";
+    const AsyncStorage = (
+      await import("@react-native-async-storage/async-storage")
+    ).default;
+    genericHealthImportLabels =
+      (await AsyncStorage.getItem("health_import_generic_labels")) === "true";
   } catch {
     /* ignore */
   }
@@ -1903,23 +2542,35 @@ async function syncNutritionFromHealthImpl(
     getFoodCorrelationSamplesSafe(hk, opts),
   ]);
 
-  const quantityIdToFoodCorrelationMeta = buildQuantitySampleIdToCorrelationMetadata(foodCorrelationRows);
-  const correlationParentRows: CorrelationParentRow[] = foodCorrelationRows.map((row) => ({
-    id: row.id,
-    quantitySampleIds: row.quantitySampleIds,
-  }));
-  const quantityIdToCorrelationId = buildQuantityIdToCorrelationId(correlationParentRows);
+  const quantityIdToFoodCorrelationMeta =
+    buildQuantitySampleIdToCorrelationMetadata(foodCorrelationRows);
+  const correlationParentRows: CorrelationParentRow[] = foodCorrelationRows.map(
+    (row) => ({
+      id: row.id,
+      quantitySampleIds: row.quantitySampleIds,
+    }),
+  );
+  const quantityIdToCorrelationId = buildQuantityIdToCorrelationId(
+    correlationParentRows,
+  );
 
   const correlated = newCorrelatedTotalsMap();
   for (let i = 0; i < HEALTH_DIETARY_IMPORT_PERMISSION_KEYS.length; i++) {
     const permissionKey = HEALTH_DIETARY_IMPORT_PERMISSION_KEYS[i]!;
     const rows = dietaryFetches[i] ?? [];
     for (const s of rows.filter(isExternal)) {
-      bumpCorrelatedTotals(correlated, dietaryCorrelationKey(s, quantityIdToCorrelationId), permissionKey, s.value);
+      bumpCorrelatedTotals(
+        correlated,
+        dietaryCorrelationKey(s, quantityIdToCorrelationId),
+        permissionKey,
+        s.value,
+      );
     }
   }
 
-  const energyIdx = HEALTH_DIETARY_IMPORT_PERMISSION_KEYS.findIndex((k) => k === "EnergyConsumed");
+  const energyIdx = HEALTH_DIETARY_IMPORT_PERMISSION_KEYS.findIndex(
+    (k) => k === "EnergyConsumed",
+  );
   const energy = (energyIdx >= 0 ? dietaryFetches[energyIdx] : []) ?? [];
   const extEnergy = energy.filter(isExternal);
   let skippedOwn = energy.length - extEnergy.length;
@@ -1941,7 +2592,9 @@ async function syncNutritionFromHealthImpl(
   const windowStart = dateKey(daysAgo(lookbackDays));
   const { data: existingRows } = await supabase
     .from("nutrition_entries")
-    .select("date_key, name, recipe_title, calories, created_at, health_sample_id")
+    .select(
+      "date_key, name, recipe_title, calories, created_at, health_sample_id",
+    )
     .eq("user_id", userId)
     .eq("source", "apple_health")
     .gte("date_key", windowStart);
@@ -1959,9 +2612,13 @@ async function syncNutritionFromHealthImpl(
       health_sample_id?: string | null;
     };
     if (row.health_sample_id) existingHkIds.add(row.health_sample_id);
-    const ct = row.created_at ? parseSampleInstant(row.created_at).getTime() : NaN;
+    const ct = row.created_at
+      ? parseSampleInstant(row.created_at).getTime()
+      : NaN;
     const minute = Number.isFinite(ct) ? Math.floor(ct / 60000) : 0;
-    existingSet.add(`${row.date_key}|${row.recipe_title}|${row.calories}|${minute}`);
+    existingSet.add(
+      `${row.date_key}|${row.recipe_title}|${row.calories}|${minute}`,
+    );
   }
 
   // F-130 (2026-05-07) — tombstone set kept separate from journal rows so
@@ -1970,8 +2627,11 @@ async function syncNutritionFromHealthImpl(
   // always recent and must stay honored offline.
   let tombstoneIds = new Set<string>();
   try {
-    const { loadDeletedHealthSampleIds } = await import("./deletedHealthSamples");
-    tombstoneIds = new Set(await loadDeletedHealthSampleIds({ since: daysAgo(lookbackDays) }));
+    const { loadDeletedHealthSampleIds } =
+      await import("./deletedHealthSamples");
+    tombstoneIds = new Set(
+      await loadDeletedHealthSampleIds({ since: daysAgo(lookbackDays) }),
+    );
   } catch (err) {
     console.warn("[healthSync] failed to load delete tombstone:", err);
   }
@@ -1996,7 +2656,8 @@ async function syncNutritionFromHealthImpl(
   }[] = [];
 
   for (const sample of extEnergy) {
-    const sourceApp = sample.sourceName?.trim() || sourceBundleIdOf(sample) || "Unknown app";
+    const sourceApp =
+      sample.sourceName?.trim() || sourceBundleIdOf(sample) || "Unknown app";
     const when = effectiveConsumptionInstant(sample);
     const cal = Math.round(sample.value);
     if (cal <= 0) {
@@ -2007,8 +2668,13 @@ async function syncNutritionFromHealthImpl(
     const dk = dateKey(when);
 
     const rawMeta = sample.metadata as Record<string, unknown> | undefined;
-    const correlationOverlay = sample.id ? quantityIdToFoodCorrelationMeta.get(sample.id) : undefined;
-    const meta = mergeCorrelationMetadataIntoSampleMetadata(rawMeta, correlationOverlay);
+    const correlationOverlay = sample.id
+      ? quantityIdToFoodCorrelationMeta.get(sample.id)
+      : undefined;
+    const meta = mergeCorrelationMetadataIntoSampleMetadata(
+      rawMeta,
+      correlationOverlay,
+    );
 
     const foodLabel = genericHealthImportLabels
       ? `Imported food (${cal} kcal)`
@@ -2041,7 +2707,10 @@ async function syncNutritionFromHealthImpl(
     if (!sample.id) existingSet.add(dedupKey);
     if (sample.id) existingHkIds.add(sample.id);
 
-    const correlationKey = dietaryCorrelationKey(sample, quantityIdToCorrelationId);
+    const correlationKey = dietaryCorrelationKey(
+      sample,
+      quantityIdToCorrelationId,
+    );
     const inner = correlated.get(correlationKey);
     const rawTotals = totalsRecordFromInner(inner);
     const share = energyShares.shareForSample(sample.id, correlationKey);
@@ -2051,11 +2720,15 @@ async function syncNutritionFromHealthImpl(
         : (Object.fromEntries(
             Object.entries(rawTotals).map(([k, v]) => [k, (v ?? 0) * share]),
           ) as typeof rawTotals);
-    const { fiberG, micros: builtMicros } = buildFiberAndMicrosFromHealthTotals(totals);
+    const { fiberG, micros: builtMicros } =
+      buildFiberAndMicrosFromHealthTotals(totals);
     const microsJson = builtMicros;
 
     const slot = journalMealSlotForSample(sample, when, meta);
-    const timeLabel = when.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    const timeLabel = when.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
 
     // `name` = meal slot; `recipe_title` = food line; `created_at` = when logged in Health
     // so the journal orders chronologically like manual entries.
@@ -2112,24 +2785,34 @@ async function syncNutritionFromHealthImpl(
       const withoutHkId = batch.filter((row) => !row.health_sample_id);
 
       if (withHkId.length > 0) {
-        const { error } = await supabase.from("nutrition_entries").upsert(withHkId, {
-          onConflict: "user_id,health_sample_id",
-          ignoreDuplicates: true,
-        });
+        const { error } = await supabase
+          .from("nutrition_entries")
+          .upsert(withHkId, {
+            onConflict: "user_id,health_sample_id",
+            ignoreDuplicates: true,
+          });
         if (error) {
           insertFailed += withHkId.length;
           importError = error.message;
           lastNutritionImportError = error.message;
-          console.warn("[healthSync] nutrition import upsert failed:", error.message);
+          console.warn(
+            "[healthSync] nutrition import upsert failed:",
+            error.message,
+          );
         }
       }
       if (withoutHkId.length > 0) {
-        const { error } = await supabase.from("nutrition_entries").insert(withoutHkId);
+        const { error } = await supabase
+          .from("nutrition_entries")
+          .insert(withoutHkId);
         if (error) {
           insertFailed += withoutHkId.length;
           importError = error.message;
           lastNutritionImportError = error.message;
-          console.warn("[healthSync] nutrition import insert failed:", error.message);
+          console.warn(
+            "[healthSync] nutrition import insert failed:",
+            error.message,
+          );
         }
       }
     }
@@ -2157,11 +2840,16 @@ let lastNutritionImportSyncAt = 0;
  * When the user has enabled “Import meals from Health” in Connected, pull dietary energy
  * samples on a modest throttle (Today tab focus + manual sync).
  */
-export async function syncNutritionFromHealthThrottled(userId: string): Promise<void> {
+export async function syncNutritionFromHealthThrottled(
+  userId: string,
+): Promise<void> {
   if (!userId || !isHealthSyncAvailable()) return;
   try {
-    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    if ((await AsyncStorage.getItem("health_import_nutrition")) !== "true") return;
+    const AsyncStorage = (
+      await import("@react-native-async-storage/async-storage")
+    ).default;
+    if ((await AsyncStorage.getItem("health_import_nutrition")) !== "true")
+      return;
   } catch {
     return;
   }
@@ -2221,7 +2909,8 @@ export async function writeNutritionToHealth(
 ): Promise<number> {
   const hk = loadAppleHealthKit();
   if (!hk) {
-    lastWriteError = "HealthKit native module not available (loadAppleHealthKit returned null).";
+    lastWriteError =
+      "HealthKit native module not available (loadAppleHealthKit returned null).";
     return 0;
   }
 
@@ -2240,7 +2929,8 @@ export async function writeNutritionToHealth(
         date: meal.date,
       });
       if (ok) written++;
-      else if (!lastWriteError) lastWriteError = "saveFood returned false without an error code.";
+      else if (!lastWriteError)
+        lastWriteError = "saveFood returned false without an error code.";
     } catch (e) {
       lastWriteError = e instanceof Error ? e.message : String(e);
     }
@@ -2254,18 +2944,22 @@ export async function writeNutritionToHealth(
  * tell the user *why* the write failed instead of guessing at
  * permissions. Used by `apps/mobile/app/health-sync.tsx`.
  */
-export async function probeNutritionWrite(): Promise<{ ok: true } | { ok: false; reason: string }> {
+export async function probeNutritionWrite(): Promise<
+  { ok: true } | { ok: false; reason: string }
+> {
   const hk = loadAppleHealthKit();
   if (!hk) {
     return {
       ok: false,
-      reason: "HealthKit isn't available on this device (loadAppleHealthKit returned null).",
+      reason:
+        "HealthKit isn't available on this device (loadAppleHealthKit returned null).",
     };
   }
   if (!hk.saveFood) {
     return {
       ok: false,
-      reason: "HealthKit bridge does not expose `saveFood`. The iOS bundle needs a rebuild against react-native-health.",
+      reason:
+        "HealthKit bridge does not expose `saveFood`. The iOS bundle needs a rebuild against react-native-health.",
     };
   }
   try {
@@ -2282,7 +2976,8 @@ export async function probeNutritionWrite(): Promise<{ ok: true } | { ok: false;
     if (ok) return { ok: true };
     return {
       ok: false,
-      reason: "Apple Health accepted the call but reported the write was not saved. The most common cause is that one of the five WRITE toggles (Dietary Energy / Protein / Carbohydrates / Fat / Dietary Fiber) is still off in Settings → Health → Data Access & Devices → Sloe.",
+      reason:
+        "Apple Health accepted the call but reported the write was not saved. The most common cause is that one of the five WRITE toggles (Dietary Energy / Protein / Carbohydrates / Fat / Dietary Fiber) is still off in Settings → Health → Data Access & Devices → Sloe.",
     };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) };
@@ -2306,7 +3001,9 @@ export async function exportDayToHealth(
 ): Promise<number> {
   const { data: entries } = await supabase
     .from("nutrition_entries")
-    .select("name, recipe_title, calories, protein, carbs, fat, fiber_g, created_at, source")
+    .select(
+      "name, recipe_title, calories, protein, carbs, fat, fiber_g, created_at, source",
+    )
     .eq("user_id", userId)
     .eq("date_key", dateKeyStr);
 
@@ -2322,7 +3019,8 @@ export async function exportDayToHealth(
       date: e.created_at,
     }));
 
-  const mealsWritten = meals.length > 0 ? await writeNutritionToHealth(meals) : 0;
+  const mealsWritten =
+    meals.length > 0 ? await writeNutritionToHealth(meals) : 0;
 
   // Caffeine: write today's quick-add total as a single HK food sample.
   // Writing only when the total is positive avoids empty placeholder rows
@@ -2333,8 +3031,12 @@ export async function exportDayToHealth(
       .select("extra_caffeine_by_day")
       .eq("id", userId)
       .maybeSingle();
-    const map = (profile?.extra_caffeine_by_day as Record<string, number> | null) ?? null;
-    const mg = map && typeof map === "object" ? Math.max(0, Math.round(Number(map[dateKeyStr] ?? 0))) : 0;
+    const map =
+      (profile?.extra_caffeine_by_day as Record<string, number> | null) ?? null;
+    const mg =
+      map && typeof map === "object"
+        ? Math.max(0, Math.round(Number(map[dateKeyStr] ?? 0)))
+        : 0;
     if (mg > 0) {
       const hk = loadAppleHealthKit();
       if (hk) {
@@ -2371,7 +3073,9 @@ export async function syncCaffeineFromHealth(
   const hk = loadAppleHealthKit();
   if (!hk || !userId) return { daysTouched: 0 };
   try {
-    const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+    const AsyncStorage = (
+      await import("@react-native-async-storage/async-storage")
+    ).default;
     const imp = await AsyncStorage.getItem("health_import_nutrition");
     if (imp !== "true") return { daysTouched: 0 };
   } catch {
@@ -2383,7 +3087,10 @@ export async function syncCaffeineFromHealth(
 
   // `Caffeine` uses the `gram` unit in `unitForDietaryImportKey`, but HK
   // stores caffeine in grams — converted back to mg before we persist.
-  const samples = await getDietaryImportSamplesSafe(hk, "Caffeine", { startDate, endDate });
+  const samples = await getDietaryImportSamplesSafe(hk, "Caffeine", {
+    startDate,
+    endDate,
+  });
 
   const byDay: Record<string, number> = {};
   for (const s of samples) {
@@ -2408,11 +3115,15 @@ export async function syncCaffeineFromHealth(
     .select("extra_caffeine_by_day")
     .eq("id", userId)
     .maybeSingle();
-  const existing = (prof?.extra_caffeine_by_day as Record<string, number> | null) ?? {};
+  const existing =
+    (prof?.extra_caffeine_by_day as Record<string, number> | null) ?? {};
   const merged: Record<string, number> = { ...existing };
   for (const [k, v] of Object.entries(byDay)) {
     merged[k] = Math.max(existing[k] ?? 0, v);
   }
-  await supabase.from("profiles").update({ extra_caffeine_by_day: merged }).eq("id", userId);
+  await supabase
+    .from("profiles")
+    .update({ extra_caffeine_by_day: merged })
+    .eq("id", userId);
   return { daysTouched: Object.keys(byDay).length };
 }
