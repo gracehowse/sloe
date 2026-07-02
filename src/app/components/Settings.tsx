@@ -963,11 +963,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             Sloe Pro
           </span>
         </span>
-        {/* Manage / Upgrade — decorative ghost pill (canon 2026-06-12; the
-            whole banner is the <Link>). ENG-1297: visible label is
-            tier-conditional to match the aria-label + href routing —
-            free → "Upgrade" (/pricing), pro → "Manage" (/account/billing).
-            Mirrors the mobile Pro-banner pill. */}
+        {/* Manage / Upgrade ghost pill — tier label matches aria + href (ENG-1297). */}
         <span
           className="rounded-full px-3.5 py-1.5 text-sm font-semibold"
           style={{ color: "var(--accent-primary-solid)" }}
@@ -1930,8 +1926,6 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           Download your nutrition log in a spreadsheet-friendly CSV, or take a full JSON backup for developers and migrations.
         </p>
         <div className="space-y-3">
-          {/* ENG-1318 — consent lives with the other privacy controls;
-              mirrors mobile's AnalyticsConsentRow. */}
           <AnalyticsConsentToggle />
           {/* G-6 (2026-04-19, TestFlight `AC4oDEnQ0SuPruUtCr_Lvyc`) —
               CSV is the primary, one-click path so regular users can
