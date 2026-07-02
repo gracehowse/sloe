@@ -58,6 +58,7 @@ import {
   type SectionedSearchRows,
 } from "@suppr/nutrition-core/foodSearchRanking";
 import { mergeFoodSearchRows } from "@suppr/shared/nutrition/foodSearchMerge";
+import { perServingMicrosFromRows } from "@suppr/shared/nutrition/recipeMicros";
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE, MIN_ACCEPT_CONFIDENCE };
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`
@@ -164,6 +165,22 @@ export type VerifiableIngredient = {
    *  `saveVerifiedIngredients`. */
   caffeineMg: number;
   alcoholG: number;
+  /**
+   * ENG-1299 — micronutrient panel for this row, ABSOLUTE at the current
+   * amount/portion (canonical `nutrition_micros` camelCase keys). Rolled up
+   * to `recipes.nutrition_micros` (per serving) and persisted per row on
+   * `recipe_ingredients.nutrition_micros` by `saveVerifiedIngredients`.
+   * Absent when the matched source published none.
+   */
+  micros?: Record<string, number>;
+  /**
+   * ENG-1299 — per-100g basis for `micros`, kept so amount/portion edits
+   * rescale the panel exactly like `macrosPer100g` rescales the macros.
+   * When absent (e.g. rows hydrated from DB without gram grounding), an
+   * amount edit CLEARS `micros` instead of rescaling — never keep values
+   * that no longer match the quantity (no-guessing rule).
+   */
+  microsPer100g?: Record<string, number>;
   source: string | null;
   confidence: number;
   matchedName: string | null;
@@ -382,7 +399,8 @@ export async function fetchIngredientsForVerification(
     .select(
       // GW-08 P2 (audit 2026-04-28): added `confidence`.
       // F-74 cross-device (2026-05-08): added caffeine_mg, alcohol_g.
-      "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, caffeine_mg, alcohol_g, is_verified, source, override_macros, added_by_user, confidence",
+      // ENG-1299: added nutrition_micros.
+      "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, caffeine_mg, alcohol_g, nutrition_micros, is_verified, source, override_macros, added_by_user, confidence",
     )
     .eq("recipe_id", recipeId);
 
@@ -423,6 +441,23 @@ export async function fetchIngredientsForVerification(
       sugarG: Math.round(((r.sugar_g ?? 0) / factor) * 10) / 10,
       sodiumMg: Math.round((r.sodium_mg ?? 0) / factor),
     } : null;
+    // ENG-1299 — hydrate the persisted micros panel (absolute at the stored
+    // amount) and back-derive its per-100g basis with the SAME grams used
+    // for the macro back-calc above, so amount edits rescale micros exactly
+    // like macros. Non-numeric jsonb junk is dropped.
+    const storedMicros: Record<string, number> = {};
+    if (r.nutrition_micros && typeof r.nutrition_micros === "object" && !Array.isArray(r.nutrition_micros)) {
+      for (const [k, v] of Object.entries(r.nutrition_micros as Record<string, unknown>)) {
+        if (typeof v === "number" && Number.isFinite(v) && v > 0) storedMicros[k] = v;
+      }
+    }
+    const hasMicros = Object.keys(storedMicros).length > 0;
+    const microsPer100g: Record<string, number> | undefined =
+      hasMicros && factor > 0
+        ? Object.fromEntries(
+            Object.entries(storedMicros).map(([k, v]) => [k, v / factor]),
+          )
+        : undefined;
     const ov = r.override_macros && typeof r.override_macros === "object" ? r.override_macros : null;
     const overrideMacros: IngredientOverride | undefined =
       ov &&
@@ -481,6 +516,8 @@ export async function fetchIngredientsForVerification(
       isVerified: r.is_verified ?? false,
       isDirty: false,
       macrosPer100g: per100g,
+      ...(hasMicros ? { micros: storedMicros } : {}),
+      ...(microsPer100g ? { microsPer100g } : {}),
       portions: [],
       chosenPortion:
         unit === "g" || unit === "ml"
@@ -1930,6 +1967,14 @@ export async function saveVerifiedIngredients(
     alcoholG: Math.round((totals.alcoholG / safeServings) * 10) / 10,
   };
 
+  // ENG-1299 — roll the per-row micros panels up to the per-serving panel
+  // persisted on `recipes.nutrition_micros`. Rows without micros simply
+  // contribute nothing (partial panel by design, same as sugar/sodium).
+  const microsPerServing = perServingMicrosFromRows(
+    ingredients.map((i) => i.micros),
+    safeServings,
+  );
+
   // T12 (2026-04-24): infer regulated allergens from ingredient names
   // at ≥0.70 match confidence. Closes DI-P0-01 on the verify path
   // (import path is wired in the same commit via the same helper).
@@ -1967,6 +2012,9 @@ export async function saveVerifiedIngredients(
         // per ingredient so the recipe-level rollup re-computes correctly.
         caffeine_mg: Math.round((ing.caffeineMg ?? 0) * 10) / 10,
         alcohol_g: Math.round((ing.alcoholG ?? 0) * 10) / 10,
+        // ENG-1299 — persist the row's micros panel ({} clears a stale one,
+        // e.g. after an amount edit with no per-100g micros basis).
+        nutrition_micros: ing.micros ?? {},
         is_verified: rowIsVerified,
         source: ing.source,
         confidence:
@@ -1990,6 +2038,10 @@ export async function saveVerifiedIngredients(
       sodium_mg: perServing.sodiumMg,
       caffeine_mg: perServing.caffeineMg,
       alcohol_g: perServing.alcoholG,
+      // ENG-1299 — per-serving micros panel (empty object when no row
+      // carried micros; the RPC writes it verbatim, keeping recipe-level
+      // state consistent with the rows saved in the same transaction).
+      nutrition_micros: microsPerServing,
       allergens: inferredAllergens,
     },
     p_ingredient_updates: ingredientUpdates,
@@ -2021,6 +2073,8 @@ export async function addUserIngredient(
     /** F-74 cross-device (2026-05-08) — optional. Defaults to 0 when omitted. */
     caffeineMg?: number;
     alcoholG?: number;
+    /** ENG-1299 — absolute micros panel from the verify match (optional). */
+    micros?: Record<string, number>;
     source: string;
     confidence: number;
     hasMatch: boolean;
@@ -2053,6 +2107,12 @@ export async function addUserIngredient(
     confidence: payload.confidence,
     added_by_user: true,
   };
+  // ENG-1299 — include the micros panel only when the match carried one, so
+  // this insert stays compatible with a not-yet-migrated DB (same
+  // spread-conditional convention as submitFoodCorrection's F-30 columns).
+  if (payload.micros && Object.keys(payload.micros).length > 0) {
+    insertRow.nutrition_micros = payload.micros;
+  }
   if (payload.overrideMacros) insertRow.override_macros = payload.overrideMacros;
 
   const { data, error } = await supabase

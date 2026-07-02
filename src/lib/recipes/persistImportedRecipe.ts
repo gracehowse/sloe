@@ -37,6 +37,13 @@ export type ApiImportedRecipe = {
     carbsG: number | null;
     fatG: number | null;
   } | null;
+  /**
+   * ENG-1299 — per-serving micronutrient panel from the verify pipeline
+   * (`VerifyResult.microsPerServing`; accept-floor rows already excluded
+   * server-side). Canonical `nutrition_micros` camelCase keys. Persisted to
+   * `recipes.nutrition_micros`. Absent/empty = no source published micros.
+   */
+  nutritionMicros?: Record<string, number> | null;
   ingredientMacros?: {
     name: string;
     amount?: string;
@@ -48,10 +55,48 @@ export type ApiImportedRecipe = {
     fiberG?: number;
     sugarG?: number;
     sodiumMg?: number;
+    /** ENG-1299 — absolute micros panel at this row's scaled grams. */
+    micros?: Record<string, number> | null;
     source?: string;
     confidence?: number;
   }[];
 };
+
+/**
+ * ENG-1299 — defensive sanitiser for micros maps arriving through API JSON:
+ * keep only finite positive numbers so arbitrary payload junk can never
+ * reach the jsonb columns. Empty object when nothing survives.
+ */
+function sanitizeMicros(raw: unknown): Record<string, number> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * ENG-1299 — true when a Postgres/PostgREST error means the staged
+ * `nutrition_micros` migration (20260702127100) has not been applied yet.
+ * Import is the viral wedge; it must degrade to "no micros" rather than
+ * fail outright on a not-yet-migrated database (same tolerance pattern as
+ * `fetchPlannedMealMicros`'s 42703 fallback).
+ */
+function isMicrosColumnMissing(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: string }).code;
+  const msg = String((err as { message?: string }).message ?? "");
+  return (code === "42703" || code === "PGRST204") && msg.includes("nutrition_micros");
+}
+
+/** Strip the ENG-1299 micros column from row payloads (legacy-DB retry). */
+function withoutMicrosColumn<T extends { nutrition_micros?: unknown }>(rows: T[]): Omit<T, "nutrition_micros">[] {
+  return rows.map((r) => {
+    const { nutrition_micros: _dropped, ...rest } = r;
+    return rest;
+  });
+}
 
 function normalizeIngredients(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -141,9 +186,7 @@ export async function saveImportedRecipe(
     if (existingId) return { recipeId: existingId };
   }
 
-  const { data: row, error: insErr } = await supabase
-    .from("recipes")
-    .insert({
+  const recipeInsertPayload: Record<string, unknown> = {
       author_id: userId,
       title,
       description: recipe.description ?? null,
@@ -168,6 +211,8 @@ export async function saveImportedRecipe(
       fiber_g: Math.round((recipe.fiberG ?? 0) * 10) / 10,
       sugar_g: Math.round((recipe.sugarG ?? 0) * 10) / 10,
       sodium_mg: Math.round(recipe.sodiumMg ?? 0),
+      // ENG-1299 — per-serving micros panel from the verify pipeline.
+      nutrition_micros: sanitizeMicros(recipe.nutritionMicros),
       caption_nutrition_claim:
         recipe.captionNutrition &&
         (recipe.captionNutrition.caloriesPerServing != null ||
@@ -176,9 +221,21 @@ export async function saveImportedRecipe(
           recipe.captionNutrition.fatG != null)
           ? recipe.captionNutrition
           : null,
-    })
+  };
+
+  let { data: row, error: insErr } = await supabase
+    .from("recipes")
+    .insert(recipeInsertPayload)
     .select("id")
     .single();
+  if (insErr && isMicrosColumnMissing(insErr)) {
+    // ENG-1299 legacy-DB tolerance — retry without the staged column.
+    ({ data: row, error: insErr } = await supabase
+      .from("recipes")
+      .insert(withoutMicrosColumn([recipeInsertPayload as { nutrition_micros?: unknown }])[0]!)
+      .select("id")
+      .single());
+  }
 
   if (insErr || !row) {
     // ENG-1306 — idempotent re-import. The pre-check above races: two
@@ -215,6 +272,8 @@ export async function saveImportedRecipe(
         fiber_g: Math.round((m?.fiberG ?? 0) * 10) / 10,
         sugar_g: Math.round((m?.sugarG ?? 0) * 10) / 10,
         sodium_mg: Math.round(m?.sodiumMg ?? 0),
+        // ENG-1299 — absolute micros panel at this row's scaled grams.
+        nutrition_micros: sanitizeMicros(m?.micros),
         is_verified: isStructuredSource(m?.source),
         source: m?.source ?? null,
         confidence:
@@ -224,7 +283,13 @@ export async function saveImportedRecipe(
       };
     });
 
-    const { error: ingErr } = await supabase.from("recipe_ingredients").insert(ingRows);
+    let { error: ingErr } = await supabase.from("recipe_ingredients").insert(ingRows);
+    if (ingErr && isMicrosColumnMissing(ingErr)) {
+      // ENG-1299 legacy-DB tolerance — retry without the staged column.
+      ({ error: ingErr } = await supabase
+        .from("recipe_ingredients")
+        .insert(withoutMicrosColumn(ingRows)));
+    }
     if (ingErr) {
       console.error("[saveImport] ingredient insert failed, rolling back recipe:", ingErr.message);
       try {
@@ -291,9 +356,7 @@ export async function updateImportedRecipe(
     sourceUrl,
   });
 
-  const { error: updErr } = await supabase
-    .from("recipes")
-    .update({
+  const recipeUpdatePayload: Record<string, unknown> = {
       title,
       description: recipe.description ?? null,
       instructions,
@@ -316,6 +379,9 @@ export async function updateImportedRecipe(
       fiber_g: Math.round((recipe.fiberG ?? 0) * 10) / 10,
       sugar_g: Math.round((recipe.sugarG ?? 0) * 10) / 10,
       sodium_mg: Math.round(recipe.sodiumMg ?? 0),
+      // ENG-1299 — the refine flow replaces ingredient rows wholesale, so
+      // the recipe-level panel is rewritten with them (stale-panel guard).
+      nutrition_micros: sanitizeMicros(recipe.nutritionMicros),
       caption_nutrition_claim:
         recipe.captionNutrition &&
         (recipe.captionNutrition.caloriesPerServing != null ||
@@ -324,9 +390,21 @@ export async function updateImportedRecipe(
           recipe.captionNutrition.fatG != null)
           ? recipe.captionNutrition
           : null,
-    })
+  };
+
+  let { error: updErr } = await supabase
+    .from("recipes")
+    .update(recipeUpdatePayload)
     .eq("id", recipeId)
     .eq("author_id", userId);
+  if (updErr && isMicrosColumnMissing(updErr)) {
+    // ENG-1299 legacy-DB tolerance — retry without the staged column.
+    ({ error: updErr } = await supabase
+      .from("recipes")
+      .update(withoutMicrosColumn([recipeUpdatePayload as { nutrition_micros?: unknown }])[0]!)
+      .eq("id", recipeId)
+      .eq("author_id", userId));
+  }
 
   if (updErr) {
     console.error("[saveImport] recipe update failed:", updErr.message, "recipeId:", recipeId);
@@ -359,6 +437,8 @@ export async function updateImportedRecipe(
         fiber_g: Math.round((m?.fiberG ?? 0) * 10) / 10,
         sugar_g: Math.round((m?.sugarG ?? 0) * 10) / 10,
         sodium_mg: Math.round(m?.sodiumMg ?? 0),
+        // ENG-1299 — absolute micros panel at this row's scaled grams.
+        nutrition_micros: sanitizeMicros(m?.micros),
         is_verified: isStructuredSource(m?.source),
         source: m?.source ?? null,
         confidence:
@@ -368,7 +448,13 @@ export async function updateImportedRecipe(
       };
     });
 
-    const { error: ingErr } = await supabase.from("recipe_ingredients").insert(ingRows);
+    let { error: ingErr } = await supabase.from("recipe_ingredients").insert(ingRows);
+    if (ingErr && isMicrosColumnMissing(ingErr)) {
+      // ENG-1299 legacy-DB tolerance — retry without the staged column.
+      ({ error: ingErr } = await supabase
+        .from("recipe_ingredients")
+        .insert(withoutMicrosColumn(ingRows)));
+    }
     if (ingErr) {
       console.error("[saveImport] ingredient re-insert failed:", ingErr.message, "recipeId:", recipeId);
       return { error: IMPORT_ERROR_COPY[mapPersistenceError(ingErr)] };

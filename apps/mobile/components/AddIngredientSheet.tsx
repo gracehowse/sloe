@@ -64,6 +64,8 @@ export type AddIngredientPayload = {
   fiberG: number;
   sugarG: number;
   sodiumMg: number;
+  /** ENG-1299 — absolute micros panel from the verify match (optional). */
+  micros?: Record<string, number>;
   source: string;
   hasMatch: boolean;
   confidence: number;
@@ -83,6 +85,8 @@ type Match = {
     sugarG: number;
     sodiumMg: number;
   } | null;
+  /** ENG-1299 — absolute micros panel at the row's scaled grams (optional). */
+  micros?: Record<string, number>;
 };
 
 type Props = {
@@ -239,6 +243,10 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
         fiberG: baseFiber,
         sugarG: baseSugar,
         sodiumMg: baseSodium,
+        // ENG-1299 — carry the match's micros panel with its macros (manual
+        // rows have none; overrides keep the match's panel, mirroring how
+        // sugar/sodium stay match-sourced under an override).
+        ...(mm && match?.micros ? { micros: match.micros } : {}),
         source,
         hasMatch: Boolean(mm),
         confidence,

@@ -19,6 +19,12 @@ export type SaveVerifiedIngredientRow = {
   sodium_mg: number;
   caffeine_mg?: number;
   alcohol_g?: number;
+  /**
+   * ENG-1299 — absolute micros panel at this row's scaled grams (canonical
+   * `nutrition_micros` keys). Omit to leave the stored value untouched
+   * (the RPC coalesces); pass `{}` to clear.
+   */
+  nutrition_micros?: Record<string, number>;
   is_verified: boolean;
   source?: string | null;
   confidence?: number | null;
@@ -36,6 +42,8 @@ export type SaveVerifiedRecipeUpdate = {
   sodium_mg: number;
   caffeine_mg?: number;
   alcohol_g?: number;
+  /** ENG-1299 — per-serving micros panel. Omit to keep stored; `{}` clears. */
+  nutrition_micros?: Record<string, number>;
   allergens?: unknown;
 };
 

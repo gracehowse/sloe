@@ -21,6 +21,8 @@ type VerifiedLike = {
   macros: MacroBlock | null;
   source: string;
   confidence: number;
+  /** ENG-1299 — absolute micros panel at the row's scaled grams (optional). */
+  micros?: Record<string, number>;
 };
 
 /** One ingredient line after verification (whole-recipe totals per line). */
@@ -34,7 +36,22 @@ export type FlatVerifiedMacroRow = {
   sodium: number;
   source: string;
   confidence: number;
+  /**
+   * ENG-1299 — absolute micros panel at the row's scaled grams, canonical
+   * `nutrition_micros` camelCase keys. Absent when the source published none.
+   */
+  micros?: Record<string, number>;
 };
+
+/** ENG-1299 — keep only finite positive numbers from an untyped micros map. */
+function sanitizeMicrosMap(raw: unknown): Record<string, number> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 function macrosFromVerified(v: VerifiedLike): FlatVerifiedMacroRow {
   const m = v.macros;
@@ -51,6 +68,7 @@ function macrosFromVerified(v: VerifiedLike): FlatVerifiedMacroRow {
       confidence: v.confidence,
     };
   }
+  const micros = sanitizeMicrosMap(v.micros);
   return {
     calories: Math.max(0, Math.round(Number(m.calories) || 0)),
     protein: Math.max(0, Math.round((Number(m.protein) || 0) * 10) / 10),
@@ -61,6 +79,7 @@ function macrosFromVerified(v: VerifiedLike): FlatVerifiedMacroRow {
     sodium: Math.max(0, Math.round(Number(m.sodiumMg) || 0)),
     source: v.source,
     confidence: typeof v.confidence === "number" ? v.confidence : Number(v.confidence) || 0,
+    ...(micros ? { micros } : {}),
   };
 }
 
@@ -147,6 +166,18 @@ function macroBlockFromPerServingField(ps: unknown): MacroBlock | null {
     sugarG: Math.max(0, Math.round((Number(o.sugarG) || 0) * 10) / 10),
     sodiumMg: Math.max(0, Math.round(Number(o.sodiumMg) || 0)),
   };
+}
+
+/**
+ * ENG-1299 — per-serving micros panel from `/api/nutrition/verify-recipe`
+ * JSON (`microsPerServing`, accept-floor already applied server-side).
+ * Empty object when the response carried none — callers can persist it
+ * directly to `recipes.nutrition_micros`.
+ */
+export function microsPerServingFromVerifyJson(
+  json: Record<string, unknown>,
+): Record<string, number> {
+  return sanitizeMicrosMap(json.microsPerServing) ?? {};
 }
 
 export function perServingFromVerifyJson(

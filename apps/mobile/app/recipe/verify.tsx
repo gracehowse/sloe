@@ -48,6 +48,8 @@ import AddIngredientSheet, {
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
 import Badge from "@/components/Badge";
 import { importReviewBannerCopy } from "@suppr/shared/nutrition/recipeImportReview";
+import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
+import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
 import {
   effectiveMacros,
   hasOverride,
@@ -284,12 +286,21 @@ export default function VerifyScreen() {
             sodiumMg: 0,
           }
         : scaleMacrosByGrams(result.macrosPer100g!, grams);
+      // ENG-1299 — carry the selected food's micros panel, scaled exactly
+      // like the macros (per-serving × quantity, or per-100g × grams).
+      // Explicitly overwrite both micro fields so a re-match never keeps
+      // the PREVIOUS match's panel.
+      const nextMicros = isPerServingOnly
+        ? scaleMicrosPerServing(result.microsPerServing, q)
+        : scaleMicrosForGrams(result.microsPer100g ?? {}, grams);
       updateIngredient(searchIndex, {
         matchedName: result.name,
         source: result.source,
         confidence: 1.0,
         isVerified: true,
         macrosPer100g: result.macrosPer100g,
+        micros: Object.keys(nextMicros).length > 0 ? nextMicros : undefined,
+        microsPer100g: isPerServingOnly ? undefined : result.microsPer100g,
         portions: result.portions,
         chosenPortion: result.chosenPortion,
         amount: result.quantity,
@@ -333,10 +344,16 @@ export default function VerifyScreen() {
       const mergedPortions = [...offPortions, ...STANDARD_UNITS.filter((s) => !seen.has(s.label))];
       const chosenPortion: FoodPortion = { label: "g", gramWeight: 1, amount: 1 };
       const scaled = scaleMacrosByGrams(per100g, defaultGrams);
+      // ENG-1299 — carry the scanned product's micros panel scaled with the
+      // same grams as the macros; overwrite both micro fields so the
+      // previous match's panel never survives a re-scan.
+      const nextMicros = scaleMicrosForGrams(product.microsPer100g ?? {}, defaultGrams);
       updateIngredient(barcodeIndex, {
         matchedName: product.name, source: "OFF",
         confidence: 1.0, isVerified: true,
         macrosPer100g: per100g,
+        micros: Object.keys(nextMicros).length > 0 ? nextMicros : undefined,
+        microsPer100g: product.microsPer100g,
         portions: mergedPortions,
         chosenPortion,
         unit: "g",
@@ -358,7 +375,17 @@ export default function VerifyScreen() {
       if (ing.macrosPer100g && num != null && num > 0) {
         const grams = totalGramsForVerifyScale({ ...ing, amount: num }, num);
         const scaled = scaleMacrosByGrams(ing.macrosPer100g, grams);
-        updateIngredient(index, { amount: num, ...scaled });
+        // ENG-1299 — rescale the micros panel with the same grams when its
+        // per-100g basis is known; otherwise CLEAR it (stale absolute
+        // micros must never survive a quantity change).
+        const nextMicros = ing.microsPer100g
+          ? scaleMicrosForGrams(ing.microsPer100g, grams)
+          : {};
+        updateIngredient(index, {
+          amount: num,
+          micros: Object.keys(nextMicros).length > 0 ? nextMicros : undefined,
+          ...scaled,
+        });
       } else {
         updateIngredient(index, { amount: num });
       }
@@ -384,6 +411,12 @@ export default function VerifyScreen() {
         const nextIng: VerifiableIngredient = { ...ing, ...updates, amount: qty };
         const grams = totalGramsForVerifyScale(nextIng, qty);
         Object.assign(updates, scaleMacrosByGrams(ing.macrosPer100g, grams));
+        // ENG-1299 — rescale-or-clear the micros panel alongside the macros
+        // (stale absolute micros must never survive a portion change).
+        const nextMicros = ing.microsPer100g
+          ? scaleMicrosForGrams(ing.microsPer100g, grams)
+          : {};
+        updates.micros = Object.keys(nextMicros).length > 0 ? nextMicros : undefined;
       }
       updateIngredient(index, updates);
     },
@@ -406,6 +439,8 @@ export default function VerifyScreen() {
         fiberG: payload.fiberG,
         sugarG: payload.sugarG,
         sodiumMg: payload.sodiumMg,
+        // ENG-1299 — forward the match's micros panel when present.
+        micros: payload.micros,
         source: payload.source,
         confidence: payload.confidence,
         hasMatch: payload.hasMatch,
@@ -436,6 +471,10 @@ export default function VerifyScreen() {
           // working.
           caffeineMg: 0,
           alcoholG: 0,
+          // ENG-1299 — keep the match's micros on the local row so the
+          // next save's rollup includes it (no per-100g basis → an amount
+          // edit clears it, same as DB-hydrated rows without grounding).
+          ...(payload.micros ? { micros: payload.micros } : {}),
           source: payload.source,
           confidence: payload.confidence,
           matchedName: payload.hasMatch ? payload.name : null,

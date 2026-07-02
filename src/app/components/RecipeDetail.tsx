@@ -60,6 +60,7 @@ import {
   isVerifiedFromVerifyRow,
   mergeVerifiedMacroRows,
   overallConfidenceFromVerifyJson,
+  microsPerServingFromVerifyJson,
   perServingFromVerifyJson,
   verifyJsonNeedsReview,
 } from "../../lib/nutrition/verifyRecipeResponse.ts";
@@ -1162,6 +1163,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               fiber_g: Math.round(r.fiber * 10) / 10,
               sugar_g: Math.round(r.sugar * 10) / 10,
               sodium_mg: Math.round(r.sodium),
+              // ENG-1299 — micros panel travels (and scrubs) with the macros.
+              nutrition_micros: r.micros ?? {},
               source: r.source,
               confidence: r.confidence,
               is_verified: isVerifiedFromVerifyRow(r.confidence, r.source ?? ""),
@@ -1182,6 +1185,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
               sodium_mg: scrubbed.sodium_mg as number,
               caffeine_mg: 0,
               alcohol_g: 0,
+              nutrition_micros: (scrubbed.nutrition_micros ?? {}) as Record<string, number>,
               is_verified: rowIsVerified,
               source: scrubbed.source as string | undefined,
               confidence: r.confidence ?? null,
@@ -1220,6 +1224,9 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 sodium_mg: 0,
                 caffeine_mg: 0,
                 alcohol_g: 0,
+                // ENG-1299 — mixed-FatSecret aggregates zero micros too
+                // (same T19 Path B cache rule as the macro columns).
+                nutrition_micros: {},
                 allergens: [],
               }
             : {
@@ -1232,6 +1239,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
                 sodium_mg: perServing.sodiumMg != null ? Math.round(perServing.sodiumMg) : 0,
                 caffeine_mg: 0,
                 alcohol_g: 0,
+                // ENG-1299 — per-serving micros panel from the verify response.
+                nutrition_micros: microsPerServingFromVerifyJson(json),
                 allergens: inferredAllergens,
               };
 

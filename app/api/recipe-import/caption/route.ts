@@ -241,6 +241,8 @@ export async function POST(req: Request) {
         fiberG: v.macros?.fiberG ?? 0,
         sugarG: v.macros?.sugarG ?? 0,
         sodiumMg: v.macros?.sodiumMg ?? 0,
+        // ENG-1299 — absolute micros at this row's scaled grams.
+        ...(v.micros ? { micros: v.micros } : {}),
         source: v.source,
         confidence: v.confidence,
         matchedName: v.matchedName ?? null,
@@ -287,6 +289,8 @@ export async function POST(req: Request) {
       fiberG: nutrition?.perServing.fiberG ?? 0,
       sugarG: nutrition?.perServing.sugarG ?? 0,
       sodiumMg: nutrition?.perServing.sodiumMg ?? 0,
+      // ENG-1299 — per-serving micros panel (accept-floor already applied).
+      nutritionMicros: nutrition?.microsPerServing ?? null,
       ingredientMacros,
       primarySource: nutrition?.primarySource ?? "Unverified",
       captionNutrition: extractCaptionNutrition(trimmed),
