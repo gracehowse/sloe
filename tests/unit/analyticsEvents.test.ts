@@ -60,6 +60,28 @@ describe("AnalyticsEvents registry", () => {
     expect(AnalyticsEvents.fit_this_in_previewed).toBe("fit_this_in_previewed");
   });
 
+  it("registers the ENG-1288 Coach analytics cluster (client + server)", () => {
+    // Wired 2026-07-01 (ENG-1288): `meal_coach_suggestion_shown` gained
+    // its first real emit sites (both Coach screens, source-attributed
+    // after the AI re-rank settles) and `coach_ask_answered` completes
+    // the ask funnel that `coach_ask_chip_tapped` opens. The
+    // `*_api_completed` trio is the server-side latency / source / tier
+    // read on the three coach routes (voice_log_api_completed pattern).
+    // A rename to any of these breaks the coach AI hit-rate and spend
+    // dashboards.
+    expect(AnalyticsEvents.meal_coach_suggestion_shown).toBe(
+      "meal_coach_suggestion_shown",
+    );
+    expect(AnalyticsEvents.coach_ask_answered).toBe("coach_ask_answered");
+    expect(AnalyticsEvents.coach_api_completed).toBe("coach_api_completed");
+    expect(AnalyticsEvents.coach_ask_api_completed).toBe(
+      "coach_ask_api_completed",
+    );
+    expect(AnalyticsEvents.coach_day_narrative_api_completed).toBe(
+      "coach_day_narrative_api_completed",
+    );
+  });
+
   it("registers weekly_recap_push_enabled_toggled with the canonical value", () => {
     // Added 2026-04-18 (H6 audit fix): surfaces the Settings toggle for
     // the weekly recap push so the opt-out rate can be tracked directly.
