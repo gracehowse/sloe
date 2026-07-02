@@ -25,7 +25,6 @@ import {
   Star,
   Timer as TimerIcon,
   CheckCircle2,
-  ListChecks,
 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { Accent, Spacing, Radius, FontFamily } from "@/constants/theme";
@@ -37,7 +36,8 @@ import { CookLogServingsSheet } from "@/components/cook/CookLogServingsSheet";
 import { CookStepPageIndicator } from "@/components/cook/CookStepPageIndicator";
 import { CookStepSwipeSurface } from "@/components/cook/CookStepSwipeSurface";
 import { CookMiseEnPlace } from "@/components/cook/CookMiseEnPlace";
-import { CookIngredientPanelSheet } from "@/components/cook/CookIngredientPanelSheet";
+import { useCookIngredientPanelUi } from "@/hooks/useCookIngredientPanelUi";
+import { CookHandsfreeBanner } from "@/components/cook/CookHandsfreeBanner";
 import { CookRunningTimerStrip } from "@/components/cook/CookRunningTimerStrip";
 import { CookStepTimerPills } from "@/components/cook/CookStepTimerPills";
 import { useCookRunningTimers } from "@/hooks/useCookRunningTimers";
@@ -251,8 +251,6 @@ export default function CookModeScreen() {
   const [savedRating, setSavedRating] = useState<number | null>(null);
   const [addedToRegulars, setAddedToRegulars] = useState(false);
   const [logServingsOpen, setLogServingsOpen] = useState(false);
-  /** ENG-942 — in-step ingredient peek sheet (mobile parity with web sidebar). */
-  const [ingredientPanelOpen, setIngredientPanelOpen] = useState(false);
   /** Latest in a small recent-cook history per recipe, hydrated lazily
    *  when the completion card mounts so we can preview "you usually cook
    *  this in N min" once the surface lands. */
@@ -347,25 +345,19 @@ export default function CookModeScreen() {
     [stepIngredients, scale],
   );
 
-  /** ENG-942 — header ListChecks opens the in-step ingredient peek sheet. */
-  const showIngredientPanel =
-    cookIngredientChecklistEnabled &&
-    checklistItems.length > 0 &&
-    cookPhase === "steps" &&
-    !isDone;
-
-  const ingredientPanelScaleLabel = useMemo(
-    () => cookScaleCaption(scale, baseServings),
-    [scale, baseServings],
-  );
-
-  useEffect(() => {
-    if (cookIngredientChecklistEnabled && checklistItems.length > 0) {
-      setCookPhase("mise");
-    } else {
-      setCookPhase("steps");
-    }
-  }, [recipeId, cookIngredientChecklistEnabled, checklistItems.length]);
+  const ingredientPanel = useCookIngredientPanelUi({
+    checklistEnabled: cookIngredientChecklistEnabled,
+    checklistItems,
+    cookPhase,
+    isDone,
+    scale,
+    baseServings,
+    recipeId: recipeId ?? "",
+    accentInk: accent.primarySolid,
+    handsfreeVisible: COOK_HANDSFREE_FEATURE_ENABLED,
+    onMiseBootstrap: setCookPhase,
+    recipeIdForMise: recipeId,
+  });
 
   /** Parse durations out of the current step text. First match wins —
    *  if the step contains multiple ("simmer 10 minutes, then bake 25
@@ -1367,19 +1359,6 @@ export default function CookModeScreen() {
       marginTop: Spacing.lg,
     },
 
-    // ENG-942 — header ListChecks opens the in-step ingredient sheet.
-    ingredientPanelToggle: {
-      width: 40,
-      height: 32,
-      borderRadius: Radius.sm,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.card,
-    },
-    ingredientPanelToggleActive: {
-      backgroundColor: accent.primary + "18",
-    },
-
     // Voice handsfree toggle (Paprika parity, 2026-05-01). The mic
     // sits in the right slot of the header where the layout
     // previously held a 40-width spacer balancing the Exit button.
@@ -1398,28 +1377,6 @@ export default function CookModeScreen() {
     // Accent tint when on so the active state is unmistakable
     // even from across the kitchen.
     micToggleOn: { backgroundColor: accent.primary + "22" },
-    handsfreeBanner: {
-      marginHorizontal: Spacing.xl,
-      marginTop: Spacing.sm,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.sm,
-      borderRadius: Radius.sm,
-      backgroundColor: accent.primary + "10",
-      borderWidth: 1,
-      borderColor: accent.primary + "30",
-    },
-    handsfreeBannerText: {
-      color: colors.text,
-      fontSize: 12,
-      lineHeight: 17,
-      fontWeight: "600",
-    },
-    handsfreeBannerSub: {
-      color: colors.textSecondary,
-      fontSize: 11,
-      lineHeight: 15,
-      marginTop: 2,
-    },
   }), [colors, accent, cookV3]);
 
   if (steps.length === 0) {
@@ -1494,26 +1451,7 @@ export default function CookModeScreen() {
               <Text style={styles.watchOriginalText}>Watch original</Text>
             </SupprButton>
           ) : null}
-          {showIngredientPanel ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Ingredients"
-              accessibilityState={{ expanded: ingredientPanelOpen }}
-              testID="cook-ingredient-panel-toggle"
-              onPress={() => setIngredientPanelOpen(true)}
-              hitSlop={8}
-              style={[
-                styles.ingredientPanelToggle,
-                ingredientPanelOpen && styles.ingredientPanelToggleActive,
-              ]}
-            >
-              <ListChecks
-                size={20}
-                color={ingredientPanelOpen ? accent.primarySolid : colors.textSecondary}
-                strokeWidth={2}
-              />
-            </Pressable>
-          ) : null}
+          {ingredientPanel.headerToggle}
           {COOK_HANDSFREE_FEATURE_ENABLED ? (
             <Pressable
               accessibilityRole="switch"
@@ -1535,13 +1473,8 @@ export default function CookModeScreen() {
                 <MicOff size={18} color={colors.textSecondary} strokeWidth={2} />
               )}
             </Pressable>
-          ) : showIngredientPanel ? null : (
-            // Spacer keeps the centered step counter centred when
-            // the toggle is hidden behind the feature flag.
-            <View
-              style={{ width: 40, height: 32 }}
-              testID="cook-handsfree-toggle-placeholder"
-            />
+          ) : (
+            ingredientPanel.headerSpacer
           )}
         </View>
       </View>
@@ -1576,27 +1509,7 @@ export default function CookModeScreen() {
         </View>
       )}
 
-      {/* Voice handsfree banner — only renders when the toggle is ON.
-          v1 transparency: tells the user voice listening isn't live
-          yet, but the screen-stays-on bit IS. Better to ship honest
-          copy than to fake a pulsing mic the listener can't fulfil
-          (CLAUDE.md: never fake-implement). v2 swap-in: replace the
-          banner with a "Listening — say next, repeat, pause…" hint
-          + a real pulse on the mic icon when the listener is active. */}
-      {handsfreeOn && (
-        <View
-          style={styles.handsfreeBanner}
-          accessibilityLiveRegion="polite"
-          testID="cook-handsfree-banner"
-        >
-          <Text style={styles.handsfreeBannerText}>
-            Screen stays awake while you cook.
-          </Text>
-          <Text style={styles.handsfreeBannerSub}>
-            Voice control (say &quot;next&quot;, &quot;back&quot;, &quot;repeat&quot;) is coming soon. We don&apos;t record audio yet.
-          </Text>
-        </View>
-      )}
+      <CookHandsfreeBanner visible={handsfreeOn} />
 
       {/* "Last time" preview card — only when we have prior cook history.
           Renders above the active step so the user walks in reminded of
@@ -1966,13 +1879,7 @@ export default function CookModeScreen() {
           />
         </ScrollView>
       )}
-      <CookIngredientPanelSheet
-        visible={ingredientPanelOpen}
-        recipeId={recipeId}
-        items={checklistItems}
-        scaleLabel={ingredientPanelScaleLabel}
-        onClose={() => setIngredientPanelOpen(false)}
-      />
+      {ingredientPanel.sheet}
       <CookLogServingsSheet
         visible={logServingsOpen}
         batchScale={scale}
