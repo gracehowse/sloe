@@ -10,6 +10,31 @@ Engineering shipped the product path (`app/dmca/page.tsx`, `app/api/dmca-takedow
 - [ ] Registered postal address for the entity (must match `app/dmca/page.tsx` byte-for-byte)
 - [ ] DMCA contact email live and monitored (`legal@` or equivalent on the public page)
 
+## Fill-ready field sheet (copyright.gov Designated Agent Directory)
+
+Key these straight into the copyright.gov DMCA Designated Agent registration form.
+Values marked **[PENDING]** only exist once the entity is incorporated
+(`docs/planning/incorporation-sequence-checklist.md`); everything else is final
+and matches the live `/dmca` page today.
+
+| Form field | Value to enter |
+|---|---|
+| **Service Provider — legal name** | **[PENDING — incorporated entity legal name]** (e.g. "Sloe LLC" / the Delaware LLC or UK Ltd name once formed) |
+| **Alternative names** (all names the public knows the service by — file every one, or notices under an unlisted name may not count) | `Sloe`, `Suppr`, `getsloe.com`, `suppr-club.com` — include any others live at launch |
+| **Physical/postal address of service provider** | **[PENDING — registered office address from incorporation]** (must match `app/dmca/page.tsx` byte-for-byte after filing) |
+| **Designated Agent — name** | Grace Howse (or the entity officer title you prefer, e.g. "DMCA Agent, Sloe") |
+| **Designated Agent — physical address** | same as service provider address above — **[PENDING]** |
+| **Designated Agent — telephone** | **[PENDING — a monitored contact number]** |
+| **Designated Agent — email** | `dmca@getsloe.com` (already live + monitored on the public page) |
+| **Filing fee** | $6 (confirm current on copyright.gov) |
+
+**After you file:** record the registration number below **and set it as
+`DMCA_AGENT_REG_NUMBER` in the launch environment (Vercel production)** — that
+clears the DMCA launch gate in `npm run prelaunch:checklist`, which is RED until
+then (it gates the public launch flip only, never the build).
+
+- Registration number: _______________  ·  Effective date: _______________
+
 ## Filing steps (copyright.gov)
 
 1. Create / sign in to a copyright.gov account.

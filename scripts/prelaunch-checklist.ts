@@ -21,6 +21,11 @@ function line(ok: boolean, label: string, detail?: string) {
 
 console.log("=== Repository (migrations on disk) ===\n");
 let allMigrationsOk = true;
+// Launch gate flag (GROW-47). Set true by any gate that must block the public
+// launch flip. This script is launch-time only (NOT in `npm run ci`), so a
+// non-zero exit here gates the launch, never the build — per Grace 2026-07-02:
+// "legal never blocks the build, but we won't launch until we have legal."
+let launchGateFailed = false;
 for (const f of expectedMigrations) {
   const p = path.join(migrationsDir, f);
   const ok = fs.existsSync(p);
@@ -138,6 +143,33 @@ console.log("\n=== Legal page placeholders (P1-15) ===\n");
   }
 }
 
+console.log("\n=== DMCA designated agent (LAUNCH GATE) ===\n");
+{
+  // §512(c) safe harbour for the recipe-import surface is not effective until
+  // a designated agent is filed with the U.S. Copyright Office. Filing is
+  // founder-owned + fast (~$6, ~10 min) but needs the incorporated entity's
+  // legal name + registered address to exist first — see
+  // docs/operations/eng-859-dmca-filing-checklist.md and
+  // docs/planning/incorporation-sequence-checklist.md.
+  //
+  // Signal: once filed, the copyright.gov registration number is set as
+  // DMCA_AGENT_REG_NUMBER in the launch environment. Until then this gate is
+  // RED and fails the checklist's exit code — gating the public launch flip,
+  // never the build (this script is not in `npm run ci`).
+  const reg = (process.env.DMCA_AGENT_REG_NUMBER ?? "").trim();
+  if (reg) {
+    line(true, "DMCA designated agent registered", `reg # ${reg}`);
+  } else {
+    launchGateFailed = true;
+    line(
+      false,
+      "DMCA designated agent NOT filed — launch gate RED",
+      "set DMCA_AGENT_REG_NUMBER in the launch env once filed at copyright.gov " +
+        "(see docs/operations/eng-859-dmca-filing-checklist.md). Build is unaffected — this only blocks the public launch flip.",
+    );
+  }
+}
+
 console.log("\n=== RevenueCat webhook idempotency (live replay smoke) ===\n");
 {
   // P1-14 (2026-04-25): proves the deployed webhook authenticates +
@@ -192,6 +224,6 @@ for (const s of outstanding) {
 console.log("\n=== Suggested next command (with production env loaded) ===\n");
 console.log("  npm run verify:production-env\n");
 
-if (!allMigrationsOk) {
+if (!allMigrationsOk || launchGateFailed) {
   process.exit(1);
 }
