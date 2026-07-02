@@ -25,9 +25,11 @@
  */
 
 import * as React from "react";
-import { Check, ChevronRight, Clock, Flame, Sparkles, X } from "lucide-react";
+import { ChevronRight, Sparkles, X } from "lucide-react";
 
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { NorthStarFigmaHeroBlock } from "./north-star-figma-hero";
+import { QuickLogButton } from "./quick-log-button";
 import { SupprButton } from "./suppr-button";
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
@@ -91,6 +93,11 @@ export interface NorthStarBlockProps {
   /** Time-of-day-adaptive primary CTA label. */
   ctaLabel?: string;
   onPrimaryCta?: () => void;
+  /** ENG-1301 (VERIFIED V13) — compact secondary "Log": one-tap logs the
+   *  suggested recipe to the suggested slot. The primary CTA keeps routing
+   *  to the recipe. Host reuses the existing quick-log insert helper and
+   *  owns success feedback; the button owns the loading state. */
+  onLogCta?: () => Promise<void> | void;
   /** Skip this suggestion; caller picks the next-best. Web has no
    *  swipe gesture — uses the small `X` button at top-right per
    *  reduce-motion fallback in spec §A-northstar. */
@@ -110,6 +117,7 @@ export function NorthStarBlock({
   suggestion,
   ctaLabel = "Log it",
   onPrimaryCta,
+  onLogCta,
   onSkip,
   onBrowse,
   onOpenLibrary,
@@ -212,6 +220,7 @@ export function NorthStarBlock({
         suggestion={suggestion}
         slotEyebrow={slotEyebrow}
         onPrimaryCta={onPrimaryCta}
+        onLogCta={onLogCta}
         onSkip={onSkip}
         testID={testID}
       />
@@ -223,136 +232,29 @@ export function NorthStarBlock({
       suggestion={suggestion}
       ctaLabel={ctaLabel}
       onPrimaryCta={onPrimaryCta}
+      onLogCta={onLogCta}
       onSkip={onSkip}
       testID={testID}
     />
   );
 }
 
-function NorthStarFigmaHeroBlock({
-  suggestion,
-  slotEyebrow,
-  onPrimaryCta,
-  onSkip,
-  testID,
-}: {
-  suggestion: NorthStarBlockSuggestion;
-  slotEyebrow: string;
-  onPrimaryCta?: () => void;
-  onSkip?: () => void;
-  testID?: string;
-}) {
-  const showFitsBadge = suggestion.bandTight || suggestion.bandLabel.toLowerCase().includes("close");
-  const cookMin =
-    typeof suggestion.cookTimeMin === "number" && suggestion.cookTimeMin > 0
-      ? suggestion.cookTimeMin
-      : null;
-
-  return (
-    <section className="mb-10" data-testid={testID ?? "north-star-figma-hero"}>
-      <h3 className="font-[family-name:var(--font-headline)] text-2xl text-foreground-brand mb-4">
-        What to eat next
-      </h3>
-      {/* ENG-1266 a11y (axe nested-interactive): card is a plain <div>; the
-          whole-card tap is a full-bleed <button> (z-15) under the Skip
-          <button> (z-20); badge + footer are pointer-events-none overlays. */}
-      <div
-        className={cn(
-          // Flat-card surfaces (2026-06-12): hero lift retired — mobile twin
-          // NorthStarBlock.figmaHeroCard flattened in the same wave.
-          "relative block w-full h-80 rounded-2xl overflow-hidden",
-        )}
-      >
-        <div className="absolute inset-0 z-0">
-          {suggestion.thumbnail ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={suggestion.thumbnail}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <RecipeHeroFallback
-              id={suggestion.recipeId}
-              title={suggestion.title}
-              iconSize={48}
-              className="h-full w-full"
-            />
-          )}
-        </div>
-        {/* Two-layer scrim per Figma 654:165-166: a flat base overlay
-            (z-5) under the bottom-up gradient (z-10) so the footer text
-            keeps contrast even where the photo is light at the bottom. */}
-        <div className="absolute inset-0 z-[5] bg-[rgba(34,27,38,0.2)]" aria-hidden />
-        <div
-          className="absolute inset-0 z-10 bg-gradient-to-t from-[#221B26]/90 via-[#221B26]/20 to-transparent"
-          aria-hidden
-        />
-        {/* Whole-card primary action — full-bleed, sits under the Skip
-            button in z-order so Skip stays tappable. */}
-        <button
-          type="button"
-          onClick={onPrimaryCta}
-          aria-label={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}
-          className={cn(
-            "absolute inset-0 z-[15] rounded-2xl",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
-          )}
-        />
-        {showFitsBadge ? (
-          <span className="pointer-events-none absolute top-4 left-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-success/90 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md">
-            <Check width={14} height={14} aria-hidden />
-            Fits your day
-          </span>
-        ) : null}
-        {onSkip ? (
-          <button
-            type="button"
-            aria-label="Skip this suggestion"
-            onClick={onSkip}
-            className="absolute right-3 top-3 z-20 grid h-7 w-7 place-items-center rounded-full bg-black/30 text-white/90 hover:bg-black/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <X width={14} height={14} aria-hidden />
-          </button>
-        ) : null}
-        <div className="pointer-events-none absolute bottom-0 left-0 z-20 w-full p-5 text-white">
-          <p className="text-[10px] uppercase tracking-[1px] text-[rgba(201,194,214,0.9)] mb-1 font-medium">
-            {slotEyebrow}
-          </p>
-          <h4 className="font-[family-name:var(--font-headline)] text-2xl mb-1 text-white line-clamp-2">
-            {suggestion.title}
-          </h4>
-          <div className="flex items-center gap-2 text-sm text-white/80">
-            <span className="inline-flex items-center gap-1">
-              <Flame width={14} height={14} aria-hidden />
-              {suggestion.predictedCalories} kcal
-            </span>
-            {cookMin !== null ? (
-              <>
-                <span className="inline-block h-1 w-1 rounded-full bg-white/40" aria-hidden />
-                <span className="inline-flex items-center gap-1">
-                  <Clock width={14} height={14} aria-hidden />
-                  {cookMin} min
-                </span>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
+// NorthStarFigmaHeroBlock extracted to `north-star-figma-hero.tsx` (ENG-1301)
+// so this file stays under its screen-budget pin; behaviour unchanged there
+// apart from the new compact secondary Log action.
 
 function NorthStarDefaultBlock({
   suggestion,
   ctaLabel,
   onPrimaryCta,
+  onLogCta,
   onSkip,
   testID,
 }: {
   suggestion: NorthStarBlockSuggestion;
   ctaLabel: string;
   onPrimaryCta?: () => void;
+  onLogCta?: () => Promise<void> | void;
   onSkip?: () => void;
   testID?: string;
 }) {
@@ -479,13 +381,25 @@ function NorthStarDefaultBlock({
             weak/floating on the flat cream ground. The FAB stays the
             screen-level loudest pixel (FAB-excepted from one-per-screen).
             Mirror of mobile `NorthStarBlock.tsx`. */}
-        <SupprButton
-          variant="primary"
-          onClick={onPrimaryCta}
-          className="mt-1 h-9 self-start"
-        >
-          {ctaLabel}
-        </SupprButton>
+        <div className="mt-1 flex items-center gap-2 self-start">
+          <SupprButton
+            variant="primary"
+            onClick={onPrimaryCta}
+            className="h-9"
+          >
+            {ctaLabel}
+          </SupprButton>
+          {/* ENG-1301 — compact secondary Log (ghost, per the 2026-06-12
+              button system): one-tap logs the suggested recipe to the
+              suggested slot; the primary keeps routing to the recipe. */}
+          {onLogCta ? (
+            <QuickLogButton
+              testID="north-star-log-cta"
+              onLog={onLogCta}
+              ariaLabel={`Log ${suggestion.title}`}
+            />
+          ) : null}
+        </div>
       </div>
     </SupprCard>
   );

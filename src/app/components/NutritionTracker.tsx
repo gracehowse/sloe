@@ -2903,10 +2903,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         return null;
       })()}
 
-      {/* RemainingMacrosBar removed 2026-04-20 — duplicated the 2x2
-          TodayDashboardMacroTiles grid below. Mobile parity: removed
-          same day in apps/mobile/app/(tabs)/index.tsx. See
-          feedback_no_duplicate_today_hero_content.md. */}
+      {/* RemainingMacrosBar removed 2026-04-20 — duplicated the macro tiles
+          below (feedback_no_duplicate_today_hero_content.md; mobile parity). */}
 
       {/* 3. Dashboard macro tiles — profile `tracked_macros` (Settings),
           same keys as mobile. Phase 4 / Top-5 #2 (2026-04-28): the
@@ -3009,9 +3007,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           present on Today via the Net tile (`TodayHeroStats`) and the
           Activity Bonus card. */}
 
-      {/* Eat-again block retired (ENG-984, 2026-06-17) — removed from
-          Today on 2026-05-22 (v4) and never re-surfaced; the dead
-          component is gone. Mobile parity: apps/mobile/app/(tabs)/index.tsx. */}
+      {/* Eat-again block retired (ENG-984, 2026-06-17); mobile parity. */}
 
       {/* Quick add panel — Usual meals / Recent / Frequent / Favourites
           tabs with one-tap log. Ship M1 (2026-04-18) reordered so Usual
@@ -3037,6 +3033,13 @@ export const NutritionTracker = memo(function NutritionTracker({
           onPrimaryCta={(_recipeId) => {
             setMealSlot(slotForHour(new Date().getHours()));
             setLogSheetOpen(true);
+          }}
+          // ENG-1301 — compact secondary Log: reuses the existing quick-log
+          // insert primitive (addLoggedMealForDate), attributed
+          // `source: "north_star"`; toast = the standard success feedback.
+          onLogSuggestion={({ meal, slotName, title }) => {
+            addLoggedMealForDate(selectedDateKey, meal, "north_star");
+            toast.success(`${title} logged to ${slotName}`);
           }}
           onBrowseLibrary={() => {
             setMealSlot(slotForHour(new Date().getHours()));

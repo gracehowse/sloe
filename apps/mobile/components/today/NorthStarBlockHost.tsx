@@ -26,8 +26,33 @@ import {
   whyLineForSuggestion,
   type NorthStarRecipe,
 } from "@suppr/nutrition-core/northStarSuggestion";
+import { normaliseMealSlot } from "@suppr/nutrition-core/mealSlots";
+import { fallbackSlotFromTimeOfDay } from "@suppr/nutrition-core/recipeJournalSlot";
 
 import { NorthStarBlock } from "./NorthStarBlock";
+
+/**
+ * ENG-1301 — payload for the compact secondary "Log" action: the suggested
+ * recipe's predicted macros as a quick-log item plus the suggested journal
+ * slot, ready for the host screen's existing quick-log insert helper
+ * (`logHistoryItemToSlot` on mobile / `addLoggedMealForDate` on web — no new
+ * logging path).
+ */
+export interface NorthStarLogPayload {
+  item: {
+    recipeTitle: string;
+    recipeId?: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    source?: string;
+    count: number;
+  };
+  /** Canonical journal slot ("Breakfast" | "Lunch" | "Dinner" | "Snacks")
+   *  derived from the suggestion's time-of-day slot. */
+  slotName: string;
+}
 
 const NORTH_STAR_SKIP_KEY_PREFIX = "suppr.northstar.skipped.";
 
@@ -72,6 +97,10 @@ export interface NorthStarBlockHostProps {
    *  Receives the suggestion's recipe id so the parent can route
    *  directly to that recipe (or open the log sheet, on web). */
   onPrimaryCta: (recipeId: string) => void;
+  /** ENG-1301 — compact secondary "Log": one-tap logs the suggested recipe
+   *  to the suggested slot via the parent's existing quick-log insert
+   *  helper. Absent → the Log action doesn't render. */
+  onLogSuggestion?: (payload: NorthStarLogPayload) => Promise<void> | void;
   onBrowseLibrary: () => void;
   /** Date scope for the skip ledger. Should match the host screen's
    *  selectedDateKey so the set resets daily. */
@@ -99,6 +128,7 @@ function NorthStarBlockHostImpl({
   remainingFat,
   dailyCalorieTarget,
   onPrimaryCta,
+  onLogSuggestion,
   onBrowseLibrary,
   selectedDateKey,
   userCreatedAt,
@@ -199,6 +229,27 @@ function NorthStarBlockHostImpl({
         whyLine: whyLineForSuggestion(suggestion, remaining),
       }}
       onPrimaryCta={() => onPrimaryCta(suggestion.recipe.id)}
+      // ENG-1301 — the Log payload carries the SAME predicted macros the
+      // card shows, targeted at the suggested slot (falls back to the
+      // time-of-day slot outside the four windows).
+      onLogCta={
+        onLogSuggestion
+          ? () =>
+              onLogSuggestion({
+                item: {
+                  recipeTitle: suggestion.recipe.title,
+                  recipeId: suggestion.recipe.id,
+                  calories: suggestion.predictedCalories,
+                  protein: suggestion.predictedProtein,
+                  carbs: suggestion.predictedCarbs,
+                  fat: suggestion.predictedFat,
+                  source: "Recipe",
+                  count: 1,
+                },
+                slotName: normaliseMealSlot(slot) ?? fallbackSlotFromTimeOfDay(now),
+              })
+          : undefined
+      }
       onSkip={() => handleSkip(suggestion.recipe.id)}
     />
   );
