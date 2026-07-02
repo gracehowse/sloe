@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { UtensilsCrossed } from "lucide-react";
+import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 
 import type { RecipeCard } from "@/types/recipe";
 
@@ -10,8 +10,8 @@ import type { RecipeCard } from "@/types/recipe";
  *
  * WEB parity twin of `apps/mobile/components/library/RecipeCardWide.tsx`
  * (prototype `rcard--wide` ~L4176, `.rcard--wide{width:188px}` /
- * `.rcard-img{height:128px}`): a fixed 188px card with a 128px photo (or a tinted
- * box + utensil glyph when none), the recipe name (2 lines), and a
+ * `.rcard-img{height:128px}`): a fixed 188px card with a 128px photo (or the deterministic
+ * RecipeHeroFallback tint + glyph when none — honest imagery, ENG-1287), the recipe name (2 lines), and a
  * "{kcal} kcal · {protein}g P · {time}m" meta line — or "Nutrition pending · {time}m"
  * when calories are 0. Used inside {@link EditorialShelf}; behind
  * `sloe_v3_editorial_shelves` (host-gated).
@@ -55,7 +55,7 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
         className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-[var(--radius-card-lg)]"
         style={{ backgroundColor: "var(--background-secondary)" }}
       >
-        {showImage ? (
+        {showImage && recipe.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={recipe.image}
@@ -64,10 +64,7 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
             onError={() => setBroken(true)}
           />
         ) : (
-          <UtensilsCrossed
-            className="size-5 opacity-55"
-            style={{ color: "var(--foreground-tertiary)" }}
-          />
+          <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={28} />
         )}
       </span>
       <span className="block pt-2">

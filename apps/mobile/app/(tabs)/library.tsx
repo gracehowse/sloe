@@ -792,24 +792,15 @@ export default function LibraryScreen() {
           accessibilityLabel={`${item.title}, ${Math.round(item.calories)} calories.`}
         >
           <View style={styles.cardImageWrap}>
-            {/* Audit 2026-05-04 #28: when a recipe has no image (e.g.
-                user-imported recipe with no thumbnail captured) OR the
-                fetched image fails to load (network blip, expired
-                Unsplash URL), the blank white area reads as a broken
-                card next to siblings that did have photos. Render a
-                neutral placeholder surface (soft grey + utensils glyph)
-                so cards stay visually consistent in both cases.
-
-                NOTE: `useSavedLibraryRecipes` resolves `item.image` to a
-                stock URL via `pickDefaultImage` when `image_url` is
-                missing, so the empty-string branch only fires for
-                pathological data; the on-error branch is the actually-
-                live fallback path. */}
+            {/* Honest imagery (ENG-1287): a recipe with no image carries
+                `image: null` — never a substituted stock photo — and
+                renders the deterministic RecipeHeroFallback (cuisine-
+                tinted gradient + glyph), matching Discover cards. The
+                same fallback fires when a real URL errors at load. */}
             <RecipeCardImage
               uri={item.image}
               cardImageStyle={styles.cardImage}
               fallbackBg={colors.card}
-              fallbackTint={colors.textTertiary}
               recipeId={item.id}
               recipeTitle={item.title}
             />

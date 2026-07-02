@@ -16,7 +16,9 @@ describe("ENG-864 AI hero generation public-plane guard", () => {
   });
 
   it("web and mobile create flows do not auto-post AI heroes for published recipes", () => {
-    expect(read("src/app/components/RecipeUpload.tsx")).toMatch(/if \(!effectivePublished && \(finalImageUrl \|\| DEFAULT_COVER_IMAGE\) === DEFAULT_COVER_IMAGE\)/);
+    // ENG-1287: photo-less recipes persist image_url NULL (no stock default),
+    // so the guard is now a plain "private draft with no image" check.
+    expect(read("src/app/components/RecipeUpload.tsx")).toMatch(/if \(!effectivePublished && !finalImageUrl\)/);
     expect(read("apps/mobile/app/create-recipe.tsx")).toMatch(/if \(!publish && !imgUrl\)/);
     expect(read("apps/mobile/components/recipe/CreateRecipeWizard.tsx")).toMatch(/if \(!publishOnSave && !imgUrl\)/);
   });

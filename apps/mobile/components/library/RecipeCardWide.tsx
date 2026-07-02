@@ -50,7 +50,6 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
           uri={recipe.image}
           cardImageStyle={styles.image}
           fallbackBg={colors.backgroundSecondary}
-          fallbackTint={colors.textTertiary}
           recipeId={recipe.id}
           recipeTitle={recipe.title}
         />

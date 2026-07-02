@@ -27,7 +27,7 @@ import {
   findSeedRecipeById,
   isSeedRecipeId,
 } from "../../lib/recipes/seedRecipesV2";
-import { pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
+import { isRetiredStockImageUrl, pickHeroImageUrl } from "../../lib/recipes/heroImageFallback.ts";
 import { isImportedRecipe, importSourceDisclaimer } from "../../lib/recipes/importSourceDisclaimer.ts";
 import {
   OFFICIAL_MACROS_CLAIM_BLOCKER_COPY,
@@ -44,7 +44,6 @@ import {
   resolveIngredientTileImage,
 } from "../../lib/recipe/ingredientImageTile.ts";
 import { cleanIngredientDisplayName } from "../../lib/recipe/cleanIngredientDisplayName.ts";
-import { DEFAULT_UPLOADED_RECIPE_IMAGE } from "../../context/appData/constants.ts";
 import { RecipeNotesCard } from "./suppr/recipe-notes-card";
 import { Badge } from "./suppr/badge";
 import {
@@ -452,11 +451,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [dbPrepMin, setDbPrepMin] = useState<number | null>(null);
   const [dbCookMin, setDbCookMin] = useState<number | null>(null);
   const [dbMealType, setDbMealType] = useState<string[] | null>(null);
-  const [dbImageUrl, setDbImageUrl] = useState<string | null>(
-    typeof recipe.image === "string" && recipe.image !== DEFAULT_UPLOADED_RECIPE_IMAGE
-      ? recipe.image
-      : null,
-  );
+  const [dbImageUrl, setDbImageUrl] = useState<string | null>(recipe.image ?? null);
   const [dbImageSource, setDbImageSource] = useState<string | null>(
     (recipe as { imageSource?: string | null; image_source?: string | null }).imageSource ??
       (recipe as { image_source?: string | null }).image_source ??
@@ -849,7 +844,10 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       setDbCookMin(Number.isFinite(cookRaw) && cookRaw > 0 ? Math.round(cookRaw) : null);
 
       setDbDescription((row.description as string | null) ?? null);
-      setDbImageUrl((row.image_url as string | null) ?? null);
+      // ENG-1287 — legacy rows may still persist a retired fabricated
+      // stock URL (pre-fix RecipeUpload default); treat it as no image.
+      const rowImageUrl = (row.image_url as string | null) ?? null;
+      setDbImageUrl(isRetiredStockImageUrl(rowImageUrl) ? null : rowImageUrl);
       setDbImageSource((row.image_source as string | null) ?? null);
       setDbInstructionsText((row.instructions as string | null) ?? null);
       setDbServings((row.servings as number) ?? recipe.servings);
@@ -1382,9 +1380,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const heroHasPhoto = (() => {
     const effectiveImage = heroPreviewUrl ?? dbImageUrl ?? recipe.image;
     const hasRealImage =
-      typeof effectiveImage === "string" &&
-      effectiveImage !== "" &&
-      effectiveImage !== DEFAULT_UPLOADED_RECIPE_IMAGE;
+      typeof effectiveImage === "string" && effectiveImage !== "";
     const ladderSrc = pickHeroImageUrl({
       image_url: hasRealImage ? effectiveImage : null,
       source_url: recipe.sourceUrl ?? null,
@@ -1797,9 +1793,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       {(() => {
         const effectiveImage = heroPreviewUrl ?? dbImageUrl ?? recipe.image;
         const hasRealImage =
-          typeof effectiveImage === "string" &&
-          effectiveImage !== "" &&
-          effectiveImage !== DEFAULT_UPLOADED_RECIPE_IMAGE;
+          typeof effectiveImage === "string" && effectiveImage !== "";
         const ladderSrc = pickHeroImageUrl({
           image_url: hasRealImage ? effectiveImage : null,
           source_url: recipe.sourceUrl ?? null,

@@ -208,7 +208,6 @@ function EditorialProfileBlockImpl({
                   uri={recipe.image}
                   cardImageStyle={styles.tileImage}
                   fallbackBg={colors.cardBorder}
-                  fallbackTint={colors.textTertiary}
                   recipeId={recipe.id}
                   recipeTitle={recipe.title}
                 />

@@ -48,9 +48,6 @@ vi.mock("@/lib/offlineCache", () => ({
 vi.mock("@/lib/recipes/normalizeRecipeTitle", () => ({
   normalizeRecipeTitle: (s: string) => s,
 }));
-vi.mock("@/lib/recipes/pickDefaultImage", () => ({
-  pickDefaultImage: () => "data:image/png;base64,",
-}));
 
 // Promise.all([saves.order(), recipes.order()]) short-circuits on the
 // first rejection, leaving the second rejected promise without a handler

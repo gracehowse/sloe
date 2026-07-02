@@ -32,6 +32,38 @@
 export type RecipeVideoHost = "youtube" | "instagram" | "tiktok" | "other";
 export type RecipeImageSource = "user_upload" | "imported" | "ai_generated" | (string & {});
 
+/**
+ * Retired fabricated stock-photo URLs (ENG-1287, 2026-07-01). Before the
+ * honest-imagery fix, two client fallbacks assigned these Unsplash photos to
+ * recipes that had no image (the mobile `pickDefaultImage` 6-photo pool in
+ * `apps/mobile/lib/recipes.ts` and web `DEFAULT_UPLOADED_RECIPE_IMAGE` in
+ * `src/context/appData/constants.ts`), and web `RecipeUpload` PERSISTED the
+ * first one into `recipes.image_url` for photo-less creations. They are
+ * someone else's dish presented as the recipe's real photo, so the ladder
+ * treats them as absent — legacy DB rows and offline caches that still carry
+ * them render the deterministic `RecipeHeroFallback` instead.
+ *
+ * Exact-URL match on purpose: two of these photo ids also appear (with
+ * different query params) as curated per-dish seed heroes in
+ * `seedRecipesV2.ts`, which remain legitimate attributed imagery.
+ *
+ * DB cleanup for the persisted rows:
+ * `supabase/migrations/20260702090000_null_fabricated_recipe_stock_images.sql`.
+ */
+export const RETIRED_STOCK_IMAGE_URLS: ReadonlySet<string> = new Set([
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop", // green bowl (also web default + RecipeUpload cover)
+  "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&h=600&fit=crop", // pasta
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=600&fit=crop", // salad
+  "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&h=600&fit=crop", // buddha bowl
+  "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=800&h=600&fit=crop", // sandwich
+  "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800&h=600&fit=crop", // breakfast
+]);
+
+/** True when `url` is one of the retired fabricated stock photos. */
+export function isRetiredStockImageUrl(url: string | null | undefined): boolean {
+  return typeof url === "string" && RETIRED_STOCK_IMAGE_URLS.has(url.trim());
+}
+
 /** Subset of recipe shape this module needs. Both web `RecipeCard`
  *  and mobile `FullRecipe` (apps/mobile/app/recipe/[id].tsx) carry
  *  more fields, but we only read these. `source_video_url` is the
@@ -56,7 +88,9 @@ export interface HeroImageRecipeInput {
  * instant; a 404 is a flash of broken-image then layout shift).
  */
 export function pickHeroImageUrl(recipe: HeroImageRecipeInput): string | null {
-  const imageUrl = typeof recipe.image_url === "string" ? recipe.image_url.trim() : "";
+  const rawImageUrl = typeof recipe.image_url === "string" ? recipe.image_url.trim() : "";
+  // ENG-1287 — a retired fabricated stock photo is "no image", not a photo.
+  const imageUrl = isRetiredStockImageUrl(rawImageUrl) ? "" : rawImageUrl;
   const imageSource = typeof recipe.image_source === "string" ? recipe.image_source : null;
 
   // 1. Creator real photo. User uploads must always outrank generated

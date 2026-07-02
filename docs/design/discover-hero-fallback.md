@@ -18,6 +18,20 @@
 > `docs/decisions/2026-05-26-discover-image-next-image-optimizer-allowlist.md`
 > for the optimizer-allowlist decision (why arbitrary user-imported image
 > hosts render `unoptimized`).
+>
+> **2026-07-01 (ENG-1287, launch-blocker):** this fallback is now the
+> app-wide null-image treatment for EVERY recipe card + thumbnail on both
+> platforms. The data-layer fabrication that used to starve it — the mobile
+> `pickDefaultImage` 6-photo Unsplash pool and web
+> `DEFAULT_UPLOADED_RECIPE_IMAGE` — was deleted: a recipe with no image now
+> carries `image: null` end-to-end, and Library (web + mobile
+> `RecipeCardImage`), FeaturedHero/RecipeCardWide (web), profile grids,
+> coach rows and the NorthStar card all render this fallback. Retired
+> fabricated stock URLs (incl. rows RecipeUpload persisted to the DB) are
+> blocklisted in `pickHeroImageUrl` via `RETIRED_STOCK_IMAGE_URLS`
+> (`src/lib/recipes/heroImageFallback.ts`) and nulled at source by
+> `supabase/migrations/20260702120900_eng1287_null_fabricated_recipe_stock_images.sql`.
+> Decision record: `docs/decisions/2026-07-01-honest-recipe-imagery-eng1287.md`.
 
 Target file: `apps/mobile/app/(tabs)/discover.tsx:224` (and the equivalent web Discover card when a recipe has no image).
 

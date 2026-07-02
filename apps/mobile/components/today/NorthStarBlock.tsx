@@ -75,7 +75,7 @@ export type NorthStarKind =
 export interface NorthStarBlockSuggestion {
   recipeId: string;
   title: string;
-  thumbnail?: string;
+  thumbnail?: string | null;
   predictedCalories: number;
   predictedProtein: number;
   predictedCarbs: number;

@@ -67,7 +67,7 @@ export const COACH_RECENCY_PENALTY = 40 as const;
 export interface CoachCandidate {
   recipeId: string;
   title: string;
-  thumbnail?: string;
+  thumbnail?: string | null;
   /** ONE serving — identical to the recipe detail + north-star card. */
   predictedCalories: number;
   predictedProtein: number;

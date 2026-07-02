@@ -16,7 +16,12 @@ export const PLANNER_MEAL_SLOT_LABELS: readonly PlannerMealSlot[] = [
 export interface RecipeCard {
   id: string;
   title: string;
-  image: string;
+  /**
+   * Hero image URL, or `null` when the recipe has no real image
+   * (ENG-1287 — never substitute a stock photo; card surfaces render
+   * the deterministic `RecipeHeroFallback` instead).
+   */
+  image: string | null;
   imageSource?: string | null;
   creatorName: string;
   creatorImage: string;

@@ -56,7 +56,7 @@ import {
   newId,
   type MealPlanNamedSlot,
 } from "./appData/persistence.ts";
-import { DEFAULT_UPLOADED_RECIPE_IMAGE, FREE_SAVE_LIMIT } from "./appData/constants.ts";
+import { FREE_SAVE_LIMIT } from "./appData/constants.ts";
 import { NEUTRAL_AVATAR_DATA_URI } from "@/lib/ui/neutralAvatar";
 import { fetchPublicRecipeSaveCounts } from "../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import { normalizeRecipeTitle } from "../lib/recipes/normalizeRecipeTitle.ts";
@@ -951,7 +951,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           image_url: row.image_url as string | null,
           image_source: (row as { image_source?: string | null }).image_source ?? null,
           source_url: (row as { source_url?: string | null }).source_url ?? null,
-        }) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
+        }) ?? null, // ENG-1287 — no image stays null (RecipeHeroFallback renders)
         servings: (row.servings as number) ?? 1,
         calories: (row.calories as number) ?? 0,
         protein: (row.protein as number) ?? 0,
@@ -1029,7 +1029,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           image_url: row.image_url as string | null,
           image_source: (row as { image_source?: string | null }).image_source ?? null,
           source_url: (row as { source_url?: string | null }).source_url ?? null,
-        }) ?? DEFAULT_UPLOADED_RECIPE_IMAGE,
+        }) ?? null, // ENG-1287 — no image stays null (RecipeHeroFallback renders)
         servings: (row.servings as number) ?? 1,
         calories: (row.calories as number) ?? 0,
         protein: (row.protein as number) ?? 0,

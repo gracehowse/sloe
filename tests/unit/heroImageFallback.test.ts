@@ -21,7 +21,9 @@ import {
   extractVideoHost,
   extractYoutubeThumbnail,
   extractYoutubeVideoId,
+  isRetiredStockImageUrl,
   pickHeroImageUrl,
+  RETIRED_STOCK_IMAGE_URLS,
 } from "../../src/lib/recipes/heroImageFallback";
 
 describe("pickHeroImageUrl — fallback ladder", () => {
@@ -134,6 +136,41 @@ describe("pickHeroImageUrl — fallback ladder", () => {
     expect(extractYoutubeVideoId("https://youtu.be/short")).toBeNull();
     expect(extractYoutubeVideoId("https://youtu.be/way_too_long_for_yt_id"))
       .toBeNull();
+  });
+});
+
+describe("retired fabricated stock photos (ENG-1287)", () => {
+  const RETIRED_GREEN_BOWL =
+    "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop";
+
+  it("treats every retired pool URL as no-image (null, gradient renders)", () => {
+    for (const url of RETIRED_STOCK_IMAGE_URLS) {
+      expect(isRetiredStockImageUrl(url), url).toBe(true);
+      expect(pickHeroImageUrl({ image_url: url }), url).toBeNull();
+    }
+  });
+
+  it("falls through to the YouTube thumbnail when image_url is a retired stock URL", () => {
+    const got = pickHeroImageUrl({
+      image_url: RETIRED_GREEN_BOWL,
+      source_url: "https://youtu.be/dQw4w9WgXcQ",
+    });
+    expect(got).toBe("https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg");
+  });
+
+  it("does NOT retire the curated seed heroes that share a photo id with different params", () => {
+    // seedRecipesV2.ts legitimately uses photo-1546069901 / photo-1512621776951
+    // with `auto=format&fit=crop&w=900&q=70` params — exact-URL match only.
+    const seedHero =
+      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&q=70";
+    expect(isRetiredStockImageUrl(seedHero)).toBe(false);
+    expect(pickHeroImageUrl({ image_url: seedHero })).toBe(seedHero);
+  });
+
+  it("null / undefined / arbitrary URLs are not retired", () => {
+    expect(isRetiredStockImageUrl(null)).toBe(false);
+    expect(isRetiredStockImageUrl(undefined)).toBe(false);
+    expect(isRetiredStockImageUrl("https://cdn.example.com/photo.jpg")).toBe(false);
   });
 });
 

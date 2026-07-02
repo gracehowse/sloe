@@ -7,6 +7,7 @@ import { PageViewTracker } from "../../../src/app/components/PageViewTracker.tsx
 import { AnalyticsEvents } from "../../../src/lib/analytics/events.ts";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions.ts";
 import { RecipeHeroFallback } from "../../../src/app/components/suppr/RecipeHeroFallback.tsx";
+import { isRetiredStockImageUrl } from "../../../src/lib/recipes/heroImageFallback.ts";
 
 function getServerClient() {
   return createClient(supabasePublicUrl(), supabasePublicAnonKey());
@@ -82,12 +83,11 @@ async function fetchRecipe(id: string) {
       id: row.id,
       title: row.title,
       description: row.description,
-      // Audit C1 (2026-05-05): when no image, return null so the
-      // page renders a gradient fallback block instead of an Unsplash
-      // stock photo of stranger food. The caller (page render below)
-      // branches on null vs string. The OpenGraph image (line ~124)
-      // also takes a null-safe fallback below.
-      image: row.image_url ?? null,
+      // Audit C1 (2026-05-05): no image → null, so the page renders the
+      // gradient fallback instead of stranger-food stock; OG + JSON-LD
+      // below are null-safe too. ENG-1287: legacy rows that persisted a
+      // retired fabricated stock cover count as image-less (never lie).
+      image: isRetiredStockImageUrl(row.image_url) ? null : row.image_url ?? null,
       servings: row.servings,
       calories: row.calories,
       protein: row.protein,
