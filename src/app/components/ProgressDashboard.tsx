@@ -207,6 +207,7 @@ function ProgressDashboardContent() {
   const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
   const [bodyFatPct, setBodyFatPct] = useState<number | null>(null);
   const [bodyFatPctByDay, setBodyFatPctByDay] = useState<Record<string, number>>({});
+  const [bodyCompositionRefreshKey, setBodyCompositionRefreshKey] = useState(0);
   const [userGoal, setUserGoal] = useState<string | null>(null);
 
   // Adaptive TDEE state
@@ -307,7 +308,7 @@ function ProgressDashboardContent() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, body_fat_pct, body_fat_pct_by_day, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, milestone_30_shown_at",
+        "weight_kg, goal_weight_kg, plan_pace, weight_kg_by_day, steps_by_day, daily_steps_goal, goal, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, week_start_day, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, milestone_30_shown_at",
       )
       .eq("id", authedUserId)
       .maybeSingle();
@@ -326,9 +327,6 @@ function ProgressDashboardContent() {
       setStepsByDay(parseNumMap(data.steps_by_day));
       const sg = data.daily_steps_goal != null ? Number(data.daily_steps_goal) : DEFAULT_STEPS_GOAL;
       setDailyStepsGoal(Number.isFinite(sg) && sg > 0 ? Math.round(sg) : DEFAULT_STEPS_GOAL);
-      const bf = data.body_fat_pct != null ? Number(data.body_fat_pct) : null;
-      setBodyFatPct(Number.isFinite(bf) ? bf : null);
-      setBodyFatPctByDay(parseNumMap(data.body_fat_pct_by_day));
       setUserGoal((data as any).goal ?? null);
       const wsd = String((data as { week_start_day?: string }).week_start_day ?? "").toLowerCase();
       setWeekStartDay(wsd === "sunday" ? "sunday" : "monday");
@@ -648,6 +646,7 @@ function ProgressDashboardContent() {
     const merged = await persistWeightDayPatch({ supabase, userId: authedUserId, patch: { [tk]: kg } });
     setWeightKgByDay(merged.weightKgByDay);
     setWeightKg(merged.weightKg);
+    setBodyCompositionRefreshKey((v) => v + 1);
   }, [weightInput, profileMeasurementSystem, weightKgByDay, goalWeightKg, authedUserId, fireCelebration]);
 
   const saveTodaySteps = useCallback(async () => {
@@ -683,6 +682,7 @@ function ProgressDashboardContent() {
     const mergedMap = (data as { body_fat_pct_by_day?: Record<string, number> } | null)
       ?.body_fat_pct_by_day;
     if (mergedMap) setBodyFatPctByDay(pruneBodyFatPctByDay(mergedMap));
+    setBodyCompositionRefreshKey((v) => v + 1);
   }, [bodyFatInput, bodyFatPctByDay, authedUserId]);
 
   const formatWeight = (kg: number) =>
@@ -2231,12 +2231,7 @@ function ProgressDashboardContent() {
       <ExpenditureTrendCard adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
 
       {/* ENG-1237 — body fat + lean-mass trends (Pro-gated). */}
-      <BodyCompositionTrendCard
-        userTier={profileTier}
-        bodyFatPctByDay={bodyFatPctByDay}
-        weightKgByDay={weightKgByDay}
-        bodyFatPctLatest={bodyFatPct}
-      />
+      <BodyCompositionTrendCard userTier={profileTier} refreshKey={bodyCompositionRefreshKey} />
 
       {/* WEIGHT TRACKING card — RELOCATED to frame position 4 above
           (Sloe Figma 492:2: Newsreader headline + Trend/Scale toggle +

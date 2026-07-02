@@ -92,7 +92,7 @@ function deriveLeanMassSeries(
   const weightByKey = new Map(weightEntries);
   const out: Array<[string, number]> = [];
   for (const [dk, bf] of bodyFatEntries) {
-    const w = weightByKey.get(dk) ?? valueOnOrBefore(weightEntries, dk);
+    const w = weightByKey.get(dk);
     if (w == null || !Number.isFinite(w) || w <= 0) continue;
     if (!Number.isFinite(bf) || bf <= 0 || bf >= 100) continue;
     out.push([dk, round1(w * (1 - bf / 100))]);

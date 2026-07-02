@@ -30,7 +30,8 @@ describe("ENG-1306 — mobile body-metric writers use the per-day RPC", () => {
 
   it("healthSync sends only the HealthKit-reported days as patches", () => {
     expect(HEALTH_SYNC).toContain("p_weight_patch: fromHealthWeight");
-    expect(HEALTH_SYNC).toContain("p_body_fat_patch: fromHealthBodyFat");
+    expect(HEALTH_SYNC).toContain("p_body_fat_patch: pruneBodyFatPctByDay(fromHealthBodyFat)");
+    expect(HEALTH_SYNC).toContain("import { pruneBodyFatPctByDay }");
     // no client-side full-map writes of either metric map remain
     expect(HEALTH_SYNC).not.toMatch(/update\(\{\s*\n?\s*weight_kg_by_day/);
     expect(HEALTH_SYNC).not.toMatch(/update\(\{\s*\n?\s*body_fat_pct_by_day/);

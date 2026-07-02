@@ -52,4 +52,16 @@ describe("buildBodyCompositionTrendCopy (ENG-1237)", () => {
     expect(copy.bodyFat.current).toBe(20);
     expect(copy.leanMass.current).toBeNull();
   });
+
+  it("does not derive lean mass from a non-same-day weight", () => {
+    const copy = buildBodyCompositionTrendCopy({
+      bodyFatPctByDay: { "2026-07-01": 20 },
+      weightKgByDay: { "2026-06-30": 70 },
+      bodyFatPctLatest: 20,
+      now,
+    });
+
+    expect(copy.bodyFat.current).toBe(20);
+    expect(copy.leanMass.current).toBeNull();
+  });
 });
