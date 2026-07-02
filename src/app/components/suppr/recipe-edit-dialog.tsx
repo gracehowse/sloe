@@ -29,6 +29,13 @@ import {
   type RecipeAggregate,
   type RecipeMetadataUpdate,
 } from "../../../lib/recipes/recipeEdit.ts";
+import {
+  buildRecipeYieldPersistence,
+  recipeYieldEditorDraftFromDb,
+  validateRecipeYieldEditorDraft,
+  type RecipeYieldEditorDraft,
+} from "../../../lib/recipes/recipeYieldEditor.ts";
+import { RecipeYieldEditorFields } from "./recipe-yield-editor-fields.tsx";
 import { effectiveMacros } from "../../../lib/nutrition/ingredientOverrides.ts";
 import type { IngredientRow } from "../../../types/recipe.ts";
 import {
@@ -52,9 +59,11 @@ export type RecipeEditDialogInitial = {
   meal_type: string[] | null;
   prep_time_min: number | null;
   cook_time_min: number | null;
+  yield?: unknown;
 };
 
-export type RecipeEditDialogSavePayload = RecipeMetadataUpdate & RecipeAggregate;
+export type RecipeEditDialogSavePayload = RecipeMetadataUpdate &
+  RecipeAggregate & { yield?: unknown };
 
 export type RecipeEditDialogProps = {
   open: boolean;
@@ -103,6 +112,10 @@ export function RecipeEditDialog({
   );
   const [instructions, setInstructions] = React.useState(initial.instructions ?? "");
   const [saving, setSaving] = React.useState(false);
+  const yieldPortionEnabled = isFeatureEnabled("recipe_yield_portion_v1");
+  const [yieldDraft, setYieldDraft] = React.useState<RecipeYieldEditorDraft>(() =>
+    recipeYieldEditorDraftFromDb(initial.yield, initial.servings),
+  );
 
   React.useEffect(() => {
     if (!open) return;
@@ -113,6 +126,7 @@ export function RecipeEditDialog({
     setPrepTime(initial.prep_time_min != null ? String(initial.prep_time_min) : "");
     setCookTime(initial.cook_time_min != null ? String(initial.cook_time_min) : "");
     setInstructions(initial.instructions ?? "");
+    setYieldDraft(recipeYieldEditorDraftFromDb(initial.yield, initial.servings));
     setSaving(false);
   }, [open, initial]);
 
@@ -129,6 +143,13 @@ export function RecipeEditDialog({
       toast.error("Add a title before saving.");
       return;
     }
+    if (yieldPortionEnabled) {
+      const yieldErr = validateRecipeYieldEditorDraft(yieldDraft);
+      if (yieldErr) {
+        toast.error(yieldErr);
+        return;
+      }
+    }
     setSaving(true);
     try {
       const metadata = buildRecipeMetadataUpdate({
@@ -140,14 +161,29 @@ export function RecipeEditDialog({
         cookTimeMin: cookTime,
         instructions,
       });
+      const yieldPersistence = yieldPortionEnabled
+        ? buildRecipeYieldPersistence(yieldDraft)
+        : { servings: metadata.servings, yield: null };
+      const effectiveServings = yieldPortionEnabled
+        ? yieldPersistence.servings
+        : metadata.servings;
       const aggregate = recomputeRecipeAggregate(
         ingredientsForAggregate(ingredients),
-        metadata.servings,
+        effectiveServings,
       );
+
+      const updatePayload: Record<string, unknown> = {
+        ...metadata,
+        servings: effectiveServings,
+        ...aggregate,
+      };
+      if (yieldPortionEnabled) {
+        updatePayload.yield = yieldPersistence.yield;
+      }
 
       const { error } = await supabase
         .from("recipes")
-        .update({ ...metadata, ...aggregate })
+        .update(updatePayload)
         .eq("id", recipeId)
         .eq("author_id", authorId);
 
@@ -156,7 +192,12 @@ export function RecipeEditDialog({
         return;
       }
 
-      const payload: RecipeEditDialogSavePayload = { ...metadata, ...aggregate };
+      const payload: RecipeEditDialogSavePayload = {
+        ...metadata,
+        servings: effectiveServings,
+        ...aggregate,
+        ...(yieldPortionEnabled ? { yield: yieldPersistence.yield } : {}),
+      };
       await onSaved(payload);
       onOpenChange(false);
       toast.success("Recipe updated");
@@ -227,7 +268,7 @@ export function RecipeEditDialog({
                 variant="outline"
                 size="icon"
                 onClick={() => stepServings(-1)}
-                disabled={servings <= 1 || saving}
+                disabled={servings <= 1 || saving || yieldPortionEnabled}
                 aria-label="Decrease servings"
               >
                 <Minus className="h-4 w-4" />
@@ -240,13 +281,31 @@ export function RecipeEditDialog({
                 variant="outline"
                 size="icon"
                 onClick={() => stepServings(1)}
-                disabled={servings >= 48 || saving}
+                disabled={servings >= 48 || saving || yieldPortionEnabled}
                 aria-label="Increase servings"
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
+            {yieldPortionEnabled ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                When batch yield is set below, servings sync from the yield editor.
+              </p>
+            ) : null}
           </div>
+
+          {yieldPortionEnabled ? (
+            <RecipeYieldEditorFields
+              draft={yieldDraft}
+              onChange={(next) => {
+                setYieldDraft(next);
+                if (next.mode !== "servings_only") {
+                  setServings(clampRecipeServings(next.servings));
+                }
+              }}
+              disabled={saving}
+            />
+          ) : null}
 
           <div>
             <p className={sectionCls}>Meal type</p>

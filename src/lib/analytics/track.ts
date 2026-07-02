@@ -494,6 +494,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "onboarding_progressive_text",
   "onboarding-why-now",
   "trial_end_reminder_v1", // ENG-968 — Duolingo-style trial-end reminder day picker
+  "recipe_yield_portion_v1", // ENG-736 — structured recipe yield + portion-style logging
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

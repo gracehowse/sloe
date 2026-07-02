@@ -75,6 +75,14 @@ import {
 import { saveVerifiedIngredientsRpc } from "../../lib/nutrition/saveVerifiedIngredientsRpc.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { RecipeLogPortionDialog } from "./suppr/recipe-log-portion-dialog.tsx";
+import {
+  recipeLogMicrosMultiplier,
+  recipeSupportsStructuredPortionLog,
+  recipeYieldDefinitionFromRecipe,
+} from "../../lib/recipes/recipeLogPortion.ts";
+import { type RecipePortionSelection } from "../../lib/nutrition/recipeYield.ts";
+import { CookIngredientChecklist } from "./cook/CookIngredientChecklist.tsx";
 import { AddToShoppingListAction } from "./recipe/AddToShoppingListAction.tsx";
 import {
   AlertDialog,
@@ -435,6 +443,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   const [dbDescription, setDbDescription] = useState<string | null>(null);
   const [dbInstructionsText, setDbInstructionsText] = useState<string | null>(null);
   const [dbServings, setDbServings] = useState<number | null>(null);
+  const [dbYield, setDbYield] = useState<unknown>(null);
+  const [structuredLogOpen, setStructuredLogOpen] = useState(false);
   const [dbMacros, setDbMacros] = useState<{
     calories: number;
     protein: number;
@@ -815,7 +825,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       let recipeRes = await supabase
         .from("recipes")
         .select(
-          "description, instructions, servings, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, meal_type, prep_time_min, cook_time_min, image_url, image_source",
+          "description, instructions, servings, yield, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, meal_type, prep_time_min, cook_time_min, image_url, image_source",
         )
         .eq("id", recipe.id)
         .maybeSingle();
@@ -828,6 +838,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
           .eq("id", recipe.id)
           .maybeSingle();
       }
+
       const { data: row, error: recipeError } = recipeRes;
 
       if (cancelled) return;
@@ -850,6 +861,8 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
       setDbImageSource((row.image_source as string | null) ?? null);
       setDbInstructionsText((row.instructions as string | null) ?? null);
       setDbServings((row.servings as number) ?? recipe.servings);
+      const rowYield = (row as { yield?: unknown }).yield;
+      setDbYield(rowYield ?? null);
       const mt = (row as { meal_type?: string[] | string | null }).meal_type;
       setDbMealType(
         Array.isArray(mt) ? mt : mt != null && mt !== "" ? [String(mt)] : null,
@@ -1069,6 +1082,13 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   );
 
   const baseServings = dbServings ?? recipe.servings;
+  const yieldPortionEnabled = isFeatureEnabled("recipe_yield_portion_v1");
+  const recipeYieldDef = useMemo(
+    () => recipeYieldDefinitionFromRecipe(dbYield, baseServings),
+    [dbYield, baseServings],
+  );
+  const structuredPortionLogEnabled =
+    yieldPortionEnabled && recipeSupportsStructuredPortionLog(recipeYieldDef);
   const ingredientsHaveNutrition = useMemo(
     () =>
       ingredients.some(
@@ -1396,7 +1416,11 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
   // logging a fabricated split. Macros/micros are scaled to the viewing
   // servings (the stepper), so what you log matches what you're looking at.
   const logRecipeToToday = async () => {
-    if (loggingRecipe) return; // no double-submit
+    if (loggingRecipe) return;
+    if (structuredPortionLogEnabled) {
+      setStructuredLogOpen(true);
+      return;
+    }
     const kcal = Math.round(scaledMacros.calories);
     if (kcal <= 0 && scaledMacros.protein <= 0 && scaledMacros.carbs <= 0 && scaledMacros.fat <= 0) {
       if (typeof window !== "undefined") {
@@ -1452,6 +1476,73 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
     }
   };
 
+  const logRecipeStructuredPortion = async (macros: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiberG?: number;
+  }, portion: RecipePortionSelection) => {
+    if (loggingRecipe) return;
+    setLoggingRecipe(true);
+    try {
+      const mult = recipeLogMicrosMultiplier(
+        {
+          calories: dbMacros?.calories ?? recipe.calories,
+          protein: dbMacros?.protein ?? recipe.protein,
+          carbs: dbMacros?.carbs ?? recipe.carbs,
+          fat: dbMacros?.fat ?? recipe.fat,
+          fiberG: dbMacros?.fiberG,
+        },
+        baseServings,
+        recipeYieldDef,
+        portion,
+      );
+      const microsRes = await fetchPlannedMealMicros(
+        supabase as unknown as SupabaseLike,
+        recipe.id,
+        mult,
+      );
+      if (microsRes.macrosAreCoerced) {
+        if (typeof window !== "undefined") {
+          window.alert(
+            "Verify this recipe first.\n\nThis recipe has calories but no ingredient macros yet. Logging now would save estimated values. Open the recipe and tap Verify to match ingredients for accurate nutrition.",
+          );
+        }
+        return;
+      }
+      const slot = journalSlotFromMealTypes(
+        Array.isArray(recipe.mealSlots) ? (recipe.mealSlots as string[]) : null,
+      );
+      const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      addLoggedMealForDate(
+        dateKeyFromDate(new Date()),
+        {
+          name: slot,
+          recipeTitle: normalizeRecipeTitle(recipe.title),
+          time: timeLabel,
+          calories: Math.round(macros.calories),
+          protein: macros.protein,
+          carbs: macros.carbs,
+          fat: macros.fat,
+          ...(microsRes.fiberG != null ? { fiberG: microsRes.fiberG } : macros.fiberG != null ? { fiberG: macros.fiberG } : {}),
+          ...(Object.keys(microsRes.micros).length > 0 ? { micros: microsRes.micros } : {}),
+          source: "Recipe",
+          recipeId: recipe.id,
+        },
+        "recipe",
+      );
+      setStructuredLogOpen(false);
+      try {
+        toast.success(`Logged ${normaliseRecipeDisplayTitle(recipe.title)} to ${slot}.`);
+      } catch {
+        /* toast availability is not a blocker for the journal write */
+      }
+    } finally {
+      setLoggingRecipe(false);
+    }
+  };
+
   // True when any ingredient in this recipe was matched against the
   // FatSecret database — drives the attribution badge per FatSecret ToS.
   const hasFatSecretIngredients = useMemo(
@@ -1487,6 +1578,7 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
         sodiumMg: updated.sodium_mg,
       });
       setRecipeYieldDraft(String(updated.servings));
+      setDbYield((updated as { yield?: unknown }).yield ?? null);
       await refreshMyLibraryRecipes();
     },
     [refreshMyLibraryRecipes],
@@ -2054,9 +2146,30 @@ export function RecipeDetail({ recipe, userTier, onBack, autoOpenCookMode, initi
             meal_type: dbMealType,
             prep_time_min: dbPrepMin,
             cook_time_min: dbCookMin,
+            yield: dbYield,
           }}
           ingredients={ingredients}
           onSaved={handleRecipeEditSaved}
+        />
+      ) : null}
+      {structuredPortionLogEnabled && dbMacros ? (
+        <RecipeLogPortionDialog
+          open={structuredLogOpen}
+          onOpenChange={setStructuredLogOpen}
+          recipeTitle={normaliseRecipeDisplayTitle(recipe.title)}
+          perServing={{
+            calories: dbMacros.calories,
+            protein: dbMacros.protein,
+            carbs: dbMacros.carbs,
+            fat: dbMacros.fat,
+            fiberG: dbMacros.fiberG,
+          }}
+          baseServings={baseServings}
+          yieldDef={recipeYieldDef}
+          logging={loggingRecipe}
+          onConfirm={async ({ portion, macros }) => {
+            await logRecipeStructuredPortion(macros, portion);
+          }}
         />
       ) : null}
 

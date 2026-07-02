@@ -25,6 +25,14 @@ import { useAuth } from "@/context/auth";
 import { useSavedRecipes } from "@/lib/recipes";
 import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
 import RecipeEditSheet, { type RecipeEditSavePayload } from "@/components/recipe/RecipeEditSheet";
+import RecipeLogPortionSheet from "@/components/recipe/RecipeLogPortionSheet";
+import {
+  recipeLogMicrosMultiplier,
+  recipeSupportsStructuredPortionLog,
+  recipeYieldDefinitionFromRecipe,
+} from "@suppr/shared/recipes/recipeLogPortion";
+import { fetchPlannedMealMicros, type SupabaseLike } from "@suppr/shared/planning/plannedMealMicros";
+import type { RecipePortionSelection } from "@suppr/nutrition-core/recipeYield";
 import { canEditRecipe } from "@suppr/shared/recipes/recipeEdit";
 import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 import { supabase } from "@/lib/supabase";
@@ -179,6 +187,7 @@ type FullRecipe = {
   content_origin?: string | null;
   /** T12 (2026-04-24) — regulated allergens from recipes.allergens. */
   allergens: string[] | null;
+  yield?: unknown;
 };
 
 // Build 41 (TestFlight `AB1PYpfPjbd9li7jtnlAsIE`, 2026-05-01) — slot
@@ -339,6 +348,7 @@ export default function RecipeDetailScreen() {
   const [trackedMacros, setTrackedMacros] = useState<string[]>([...DEFAULT_TRACKED_MACROS]);
   const [logPortion, setLogPortion] = useState(1);
   const [loggingJournal, setLoggingJournal] = useState(false);
+  const [structuredLogOpen, setStructuredLogOpen] = useState(false);
   const [recipeEditOpen, setRecipeEditOpen] = useState(false);
   const [officialClaiming, setOfficialClaiming] = useState(false);
   // Figma 332:2 §6 — the ingredient grid shows a preview then expands via the
@@ -701,7 +711,7 @@ export default function RecipeDetailScreen() {
         let recipeRes = await supabase
           .from("recipes")
           .select(
-            "id, title, description, instructions, image_url, image_source, image_model, image_generated_at, servings, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, published, content_origin, allergens",
+            "id, title, description, instructions, image_url, image_source, image_model, image_generated_at, servings, yield, prep_time_min, cook_time_min, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, meal_type, source_url, source_name, author_id, creator_id, published, content_origin, allergens",
           )
           .eq("id", recipeId)
           .maybeSingle();
@@ -892,6 +902,7 @@ export default function RecipeDetailScreen() {
               fiber_g: updated.fiber_g,
               sugar_g: updated.sugar_g,
               sodium_mg: updated.sodium_mg,
+              yield: (updated as { yield?: unknown }).yield ?? prev.yield,
             }
           : prev,
       );
@@ -1250,6 +1261,14 @@ export default function RecipeDetailScreen() {
     return ordered.length > 0 ? ordered : [...DEFAULT_TRACKED_MACROS];
   }, [trackedMacros]);
 
+  const yieldPortionEnabled = isFeatureEnabled("recipe_yield_portion_v1");
+  const recipeYieldDef = useMemo(
+    () => recipeYieldDefinitionFromRecipe(recipe?.yield, recipe?.servings ?? 1),
+    [recipe?.yield, recipe?.servings],
+  );
+  const structuredPortionLogEnabled =
+    yieldPortionEnabled && recipe != null && recipeSupportsStructuredPortionLog(recipeYieldDef);
+
   const scaledForLog = useMemo(
     () => ({
       calories: Math.round(macros.calories * logPortion),
@@ -1265,6 +1284,10 @@ export default function RecipeDetailScreen() {
 
   const addRecipeToTodayJournal = useCallback(async () => {
     if (!userId || !recipe) return;
+    if (structuredPortionLogEnabled) {
+      setStructuredLogOpen(true);
+      return;
+    }
 
     // P0-3 (2026-04-25): refuse to log fabricated macros. If the in-memory
     // ingredient sum has stated calories that the gram columns don't
@@ -1368,7 +1391,104 @@ export default function RecipeDetailScreen() {
     } finally {
       setLoggingJournal(false);
     }
-  }, [userId, recipe, scaledForLog, logPortion, router]);
+  }, [userId, recipe, scaledForLog, logPortion, router, structuredPortionLogEnabled]);
+
+  const logRecipeStructuredPortion = useCallback(
+    async (
+      portionMacros: {
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+        fiberG?: number;
+      },
+      portion: RecipePortionSelection,
+    ) => {
+      if (!userId || !recipe) return;
+      if (
+        wouldCoerceMacros({
+          calories: portionMacros.calories,
+          protein: portionMacros.protein,
+          carbs: portionMacros.carbs,
+          fat: portionMacros.fat,
+        })
+      ) {
+        Alert.alert(
+          "Verify this recipe first",
+          "We don't have full macros for this recipe yet — open the verifier before logging.",
+        );
+        return;
+      }
+      setLoggingJournal(true);
+      try {
+        const mult = recipeLogMicrosMultiplier(
+          {
+            calories: recipe.calories,
+            protein: recipe.protein,
+            carbs: recipe.carbs,
+            fat: recipe.fat,
+            fiberG: recipe.fiber_g,
+          },
+          recipe.servings,
+          recipeYieldDef,
+          portion,
+        );
+        const microsRes = await fetchPlannedMealMicros(
+          supabase as unknown as SupabaseLike,
+          recipe.id,
+          mult,
+        );
+        const dk = dateKeyFromDate(new Date());
+        const slot = journalSlotFromMealTypes(recipe.meal_type);
+        const newId = newMealId();
+        const journalMeal: JournalMeal = {
+          id: newId,
+          name: slot,
+          recipeTitle: normalizeRecipeTitle(recipe.title),
+          time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+          calories: Math.round(portionMacros.calories),
+          protein: portionMacros.protein,
+          carbs: portionMacros.carbs,
+          fat: portionMacros.fat,
+          fiberG: microsRes.fiberG ?? portionMacros.fiberG ?? undefined,
+          micros: Object.keys(microsRes.micros).length > 0 ? microsRes.micros : undefined,
+          source: "Recipe",
+          recipeId: recipe.id,
+        } as JournalMeal;
+        const { error } = await supabase
+          .from("nutrition_entries")
+          .insert(buildNutritionEntryRow(journalMeal, dk, userId));
+        if (error) {
+          Alert.alert("Could not log", error.message);
+          return;
+        }
+        void snapshotDailyTargetIfMissing(supabase, userId);
+        void writeMealToHealthKitIfEnabled({
+          mealId: newId,
+          userId,
+          name: recipe.title,
+          calories: Math.round(portionMacros.calories),
+          protein: portionMacros.protein,
+          carbs: portionMacros.carbs,
+          fat: portionMacros.fat,
+          fiberG: microsRes.fiberG ?? portionMacros.fiberG ?? null,
+          date: new Date().toISOString(),
+          source: "Recipe",
+          origin: "recipe",
+        });
+        setStructuredLogOpen(false);
+        Alert.alert(`${recipe.title} logged`, `Logged to ${slot}.`, [
+          { text: "Stay", style: "cancel" },
+          { text: "View Today", onPress: () => router.push("/(tabs)" as any) },
+        ]);
+      } catch (e) {
+        Alert.alert("Could not log", e instanceof Error ? e.message : "Please try again.");
+      } finally {
+        setLoggingJournal(false);
+      }
+    },
+    [userId, recipe, recipeYieldDef],
+  );
 
   // P2-24 (2026-04-25): when navigated here from cook mode's "Log this
   // meal" CTA (`?autoLog=1`), trigger the journal write once on mount.
@@ -2324,10 +2444,32 @@ export default function RecipeDetailScreen() {
             cook_time_min: recipe.cook_time_min,
             meal_type: recipe.meal_type,
             author_id: recipe.author_id,
+            yield: recipe.yield,
           }}
           userId={userId}
           onClose={() => setRecipeEditOpen(false)}
           onSave={handleRecipeEditSaved}
+        />
+      ) : null}
+
+      {structuredPortionLogEnabled && recipe ? (
+        <RecipeLogPortionSheet
+          visible={structuredLogOpen}
+          onClose={() => setStructuredLogOpen(false)}
+          recipeTitle={normaliseRecipeDisplayTitle(recipe.title)}
+          perServing={{
+            calories: recipe.calories,
+            protein: recipe.protein,
+            carbs: recipe.carbs,
+            fat: recipe.fat,
+            fiberG: recipe.fiber_g,
+          }}
+          baseServings={recipe.servings}
+          yieldDef={recipeYieldDef}
+          logging={loggingJournal}
+          onConfirm={async ({ portion, macros }) => {
+            await logRecipeStructuredPortion(macros, portion);
+          }}
         />
       ) : null}
 
