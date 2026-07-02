@@ -77,6 +77,10 @@ const MOBILE_ONLY = new Set([
   // ENG-1300 — SmartImage expo-image adoption (memory-disk cache, recycling,
   // fade). expo-image is a native module; web has no equivalent surface.
   "expo_image_adoption_v1",
+  // ENG-1023 — Apple Health meal-import kill switch. HealthKit doesn't exist
+  // on web, so this flag is mobile-only by construction (see
+  // docs/decisions/2026-07-02-healthkit-nutrition-import-hardening.md).
+  "health_nutrition_import_enabled",
 ]);
 
 /** Gate 1.5 redesign surfaces that must ship default-on on both platforms. */
