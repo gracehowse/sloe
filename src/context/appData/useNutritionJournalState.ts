@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import type { LoggedMeal } from "../../types/recipe.ts";
@@ -20,6 +20,16 @@ import {
   loadJournalWriteQueue,
   saveJournalWriteQueue,
 } from "../../lib/nutrition/journalWriteQueueStorage.web.ts";
+import { journalBootWindowStartKey } from "../../lib/nutrition/journalWindow.ts";
+
+/**
+ * Column list shared by the boot window query and the out-of-window
+ * single-day fetch (ENG-1290) so the two read paths cannot drift.
+ * Schema refactor Phase 2 (2026-05-11) — includes recipe_id so the
+ * loaded LoggedMeal carries the typed FK link, mirrors the mobile read.
+ */
+const NUTRITION_ENTRY_SELECT_COLUMNS =
+  "id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros, recipe_id, eaten_at, created_at";
 
 type NutritionEntryRow = {
   id: string;
@@ -144,6 +154,14 @@ export function useNutritionJournalState(opts: {
     return () => window.removeEventListener("online", onOnline);
   }, [flushQueuedJournalWrites]);
 
+  /**
+   * ENG-1290 — inclusive lower bound of the boot-load window (35 days,
+   * mirrors mobile ENG-542). Memoised once per mount: the window is a
+   * boot concept, not a live clock — re-deriving it mid-session would
+   * churn the load effect for no benefit.
+   */
+  const bootWindowStartKey = useMemo(() => journalBootWindowStartKey(), []);
+
   // Load from DB on mount
   useEffect(() => {
     if (!authedUserId) {
@@ -160,11 +178,13 @@ export function useNutritionJournalState(opts: {
       // If sodium/sugar targets are added, this jsonb read must be replaced with a column query for index performance
       const { data, error } = await supabase
         .from("nutrition_entries")
-        // Schema refactor Phase 2 (2026-05-11) — select recipe_id so
-        // the loaded LoggedMeal carries the typed FK link, mirrors
-        // the mobile read path.
-        .select("id, date_key, name, recipe_title, time_label, calories, protein, carbs, fat, fiber_g, water_ml, portion_multiplier, source, nutrition_micros, recipe_id, eaten_at, created_at")
+        .select(NUTRITION_ENTRY_SELECT_COLUMNS)
         .eq("user_id", authedUserId)
+        // ENG-1290 — window the boot load to the last 35 days (mobile
+        // parity, ENG-542). The full history is NOT loaded on boot;
+        // older days are fetched on demand when the user navigates to
+        // them (see the out-of-window effect below).
+        .gte("date_key", bootWindowStartKey)
         .order("created_at", { ascending: true });
 
       if (cancelled) return;
@@ -195,7 +215,59 @@ export function useNutritionJournalState(opts: {
       }
     })();
     return () => { cancelled = true; };
-  }, [authedUserId, dbNutritionEnabled, dbNutritionWarned]);
+  }, [authedUserId, dbNutritionEnabled, dbNutritionWarned, bootWindowStartKey]);
+
+  /**
+   * ENG-1290 — days requested via the out-of-window single-day fetch.
+   * One fetch per day key per mount (empty days included) so browsing a
+   * historical week doesn't refetch the same day on every re-render. A
+   * failed or abandoned fetch removes its key so revisiting retries.
+   */
+  const outOfWindowFetchedRef = useRef<Set<string>>(new Set());
+
+  // ENG-1290 — out-of-window day navigation. The boot query only carries
+  // the last 35 days, but the calendar picker can jump up to
+  // JOURNAL_HISTORY_DAYS_BACK (1095) days back. When the selected day
+  // predates the boot window, fetch that single day on demand and merge
+  // it into the in-memory journal so historical browsing keeps working.
+  useEffect(() => {
+    if (!authedUserId || !dbNutritionEnabled) return;
+    if (selectedDateKey >= bootWindowStartKey) return;
+    // Stable per-mount Set; captured locally so the cleanup reads the
+    // same instance (react-hooks/exhaustive-deps ref-in-cleanup rule).
+    const fetchedDays = outOfWindowFetchedRef.current;
+    if (fetchedDays.has(selectedDateKey)) return;
+    fetchedDays.add(selectedDateKey);
+    let cancelled = false;
+    let settled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("nutrition_entries")
+        .select(NUTRITION_ENTRY_SELECT_COLUMNS)
+        .eq("user_id", authedUserId)
+        .eq("date_key", selectedDateKey)
+        .order("created_at", { ascending: true });
+      if (error) {
+        // Retry on the next visit rather than caching the failure.
+        fetchedDays.delete(selectedDateKey);
+        return;
+      }
+      settled = true;
+      if (cancelled) return;
+      if (data && data.length > 0) {
+        const byDay: Record<string, LoggedMeal[]> = {
+          [selectedDateKey]: (data as NutritionEntryRow[]).map(rowToLoggedMeal),
+        };
+        setNutritionByDay((prev) => mergeJournalByDay(byDay, prev));
+      }
+    })();
+    return () => {
+      cancelled = true;
+      // Navigated away before the fetch settled — allow a refetch when
+      // the user returns to this day.
+      if (!settled) fetchedDays.delete(selectedDateKey);
+    };
+  }, [authedUserId, dbNutritionEnabled, selectedDateKey, bootWindowStartKey]);
 
   /**
    * Build a `nutrition_entries` insert row from a LoggedMeal + known dayKey.

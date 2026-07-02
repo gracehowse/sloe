@@ -48,6 +48,8 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
         const chain: any = {
           limit: () => result,
           eq: () => chain,
+          // ENG-1290 — the boot load windows on `.gte("date_key", …)`.
+          gte: () => chain,
           order: () => result,
           maybeSingle: () => Promise.resolve({ data: null, error: null }),
         };
