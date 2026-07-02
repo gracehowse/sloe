@@ -58,6 +58,7 @@ import {
   primeForcedFlags,
   setForcedFlag,
 } from "../../lib/analytics";
+import { setAnalyticsConsent } from "../../lib/analyticsConsent";
 
 const FLAG = "qa_neutral_test_flag";
 const STORAGE_KEY = "__SUPPR_FORCE_FLAGS__";
@@ -67,6 +68,9 @@ describe("mobile runtime flag-force override (ENG-840)", () => {
     isEnabledMock.mockReset();
     isEnabledMock.mockReturnValue(false);
     await AsyncStorage.clear();
+    // ENG-1286 — the consent gate now guards getPostHogClient; accept
+    // so the live-client fallback paths under test still construct it.
+    await setAnalyticsConsent("accepted");
     __resetForcedFlagsForTests();
     vi.stubGlobal("__DEV__", true);
   });

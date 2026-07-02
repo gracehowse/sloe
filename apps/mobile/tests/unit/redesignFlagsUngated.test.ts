@@ -15,7 +15,7 @@
  *  - non-redesign flags are unaffected (still follow PostHog).
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest";
 
 vi.hoisted(() => {
   process.env.EXPO_PUBLIC_POSTHOG_KEY = "phc_mobile_test_key";
@@ -42,6 +42,13 @@ vi.mock("posthog-react-native", () => {
 });
 
 import { isFeatureEnabled } from "../../lib/analytics";
+import { setAnalyticsConsent } from "../../lib/analyticsConsent";
+
+// ENG-1286 — analytics is consent-gated; accept so the non-redesign
+// PostHog-follow test below still reaches the FakePostHog client.
+beforeAll(async () => {
+  await setAnalyticsConsent("accepted");
+});
 
 const REDESIGN_FLAGS = [
   "design_system_elevation",

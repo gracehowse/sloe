@@ -63,7 +63,14 @@ describe("ENG-841 — isFeatureEnabled bootstrap cannot leak an unhandled reject
   });
 
   it("constructing the client via a flag read does not emit an unhandled rejection", async () => {
-    const { isFeatureEnabled } = await import("@/lib/analytics");
+    // Relative import — the `@/lib/analytics` alias points at the vitest
+    // WRAPPER shim, which would make this self-test vacuous. The relative
+    // path loads the real module (same tactic as isFeatureDisabled.test.ts).
+    const { isFeatureEnabled } = await import("../../lib/analytics");
+    // ENG-1286 — analytics is consent-gated; accept so the flag read below
+    // actually constructs the client (unset consent short-circuits to null).
+    const { setAnalyticsConsent } = await import("../../lib/analyticsConsent");
+    await setAnalyticsConsent("accepted");
     // A non-redesign flag falls through to getPostHogClient() → constructs
     // the stub → its rejecting bootstrap must be caught by the production
     // `void client.ready().catch(...)` guard.

@@ -103,10 +103,7 @@ import {
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { saveDisplayName } from "@suppr/shared/account/displayName";
 import { track, isFeatureEnabled } from "@/lib/analytics";
-import {
-  nutritionLogToCsv,
-  nutritionLogCsvFilename,
-} from "@suppr/shared/export/nutritionLogToCsv";
+import { nutritionLogToCsv, nutritionLogCsvFilename } from "@suppr/shared/export/nutritionLogToCsv";
 import { exportEverythingToFile } from "@/lib/exportEverything";
 import { MobileMfpCsvImportCard } from "../imports/MfpCsvImportCard";
 import {
@@ -127,6 +124,7 @@ import {
 } from "@suppr/shared/household/sharingGridStorage";
 import { IconBox, SettingsRow } from "./SettingsRow";
 import { BarcodeContributionsSection } from "./BarcodeContributionsSection";
+import { AnalyticsConsentRow } from "./AnalyticsConsentRow";
 
 /**
  * SettingsBundleContent — shared body of the legacy "More" tab.
@@ -2408,6 +2406,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }}
         />
         <BarcodeContributionsSection userId={userId} />
+        <AnalyticsConsentRow /> {/* ENG-1286 — usage analytics + replay consent */}
         <SettingsRow
           testID="settings-bundle-help-row"
           icon={HelpCircle}

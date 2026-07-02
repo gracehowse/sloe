@@ -48,6 +48,15 @@ vi.mock("posthog-react-native", () => {
 });
 
 import { isFeatureDisabled, isFeatureEnabled } from "../../lib/analytics";
+import { setAnalyticsConsent } from "../../lib/analyticsConsent";
+import { beforeAll } from "vitest";
+
+// ENG-1286 — analytics is consent-gated; accept so the PostHog client
+// path under test constructs the FakePostHog (unset consent = null
+// client, covered in analyticsConsentGate.test.ts).
+beforeAll(async () => {
+  await setAnalyticsConsent("accepted");
+});
 
 const FLAG = "onboarding_default_seeds";
 const FORCE_ENV = "EXPO_PUBLIC_FLAG_FORCE_ONBOARDING_DEFAULT_SEEDS";
