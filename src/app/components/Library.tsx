@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
@@ -7,7 +7,9 @@ import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { SupprButton } from "./suppr/suppr-button";
 import { SupprCard } from "./ui/suppr-card";
 import { LibraryDesktopHeader } from "./library/LibraryDesktopHeader";
+import { LibraryLoadingSkeleton } from "./library/LibraryLoadingSkeleton.tsx";
 import { LibraryShelvesHeader } from "./library/LibraryShelvesHeader";
+import { useLibraryDiscoverRedirect } from "./library/useLibraryDiscoverRedirect.ts";
 import { useRouter } from "next/navigation";
 import {
   LIBRARY_CATEGORY_PILLS,
@@ -121,7 +123,7 @@ function kindLabel(kind: LibraryEntryKind): string {
 }
 
 export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, onGoDiscover }: LibraryProps) {
-  const { savedRecipesForLibrary, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft, toggleSaveRecipe, nutritionTargets } = useAppData();
+  const { savedRecipesForLibrary, libraryDataReady, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft, toggleSaveRecipe, nutritionTargets } = useAppData();
   const uid = userId;
   const router = useRouter();
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
@@ -131,18 +133,14 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   // — filter loops, render of the input, clear-button — stay untouched.
   const { query: searchQuery, setQuery: setSearchQuery } = useLibraryDiscoverSearch();
 
-  // ENG-100 (2026-05-16, Grace decision = "default to Discover only"):
-  // Library is empty for new users — the first thing a user sees when
-  // they click into the Recipes group is a blank slate that doesn't
-  // tell the product story. Redirect to /discover while saved
-  // recipes = 0. After the first save, the normal Library landing
-  // kicks in. Mirrors the mobile `useFocusEffect` in
-  // `apps/mobile/app/(tabs)/library.tsx`.
-  useEffect(() => {
-    if (savedRecipesForLibrary.length === 0 && onGoDiscover) {
-      onGoDiscover();
-    }
-  }, [savedRecipesForLibrary.length, onGoDiscover]);
+  // ENG-100 empty-library → Discover, guarded on `libraryDataReady` so a
+  // transiently-empty list on a cold load can never bounce a user with
+  // recipes to Discover (ENG-1313 — rationale lives in the hook).
+  useLibraryDiscoverRedirect({
+    ready: libraryDataReady,
+    savedCount: savedRecipesForLibrary.length,
+    onGoDiscover,
+  });
   // ENG-921 (Grace) — CATEGORY filters per Figma `527:2`, shared with mobile via
   // `recipeCategoryFilters.ts`. ENG-1247 (Grace 2026-06-26 "Both rows") re-added
   // the entry-kind buckets as the visible provenance row above the category row.
@@ -215,6 +213,8 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
     return sorted;
   }, [savedRecipesForLibrary, searchQuery, category, entryKind, planImportPill, libraryEntryKindByRecipeId, uid, sortKey]);
 
+  // ENG-1313: the loading state IS the Library skeleton — never Discover.
+  if (!libraryDataReady && savedRecipesForLibrary.length === 0) return <LibraryLoadingSkeleton />;
   if (selectedRecipe) {
     return (
       <RecipeDetail

@@ -23,6 +23,13 @@ export interface AuthSessionValue {
    * greeting reads the same metadata off the auth session.
    */
   authUserMetadata: Record<string, unknown>;
+  /**
+   * ENG-1313 — true once the FIRST `getSession()` / auth-state emission
+   * has landed. Until then `authedUserId === null` means "don't know
+   * yet", not "signed out" — route guards that redirect on empty data
+   * (e.g. Library → Discover) must wait for this before deciding.
+   */
+  authResolved: boolean;
 }
 
 const AuthSessionContext = createContext<AuthSessionValue | null>(null);
@@ -38,11 +45,13 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   const [authUserCreatedAt, setAuthUserCreatedAt] = useState<string | null>(null);
   const [authUserMetadata, setAuthUserMetadata] =
     useState<Record<string, unknown>>(EMPTY_METADATA);
+  const [authResolved, setAuthResolved] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
+      setAuthResolved(true);
       const userId = data.session?.user.id ?? null;
       const email = data.session?.user.email ?? null;
       const createdAt = data.session?.user.created_at ?? null;
@@ -63,6 +72,7 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       if (userId) void syncProfileTimezone(supabase, userId);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthResolved(true);
       const userId = session?.user.id ?? null;
       const email = session?.user.email ?? null;
       const createdAt = session?.user.created_at ?? null;
@@ -88,8 +98,8 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ authedUserId, authEmail, authUserCreatedAt, authUserMetadata }),
-    [authedUserId, authEmail, authUserCreatedAt, authUserMetadata],
+    () => ({ authedUserId, authEmail, authUserCreatedAt, authUserMetadata, authResolved }),
+    [authedUserId, authEmail, authUserCreatedAt, authUserMetadata, authResolved],
   );
 
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
@@ -120,6 +130,9 @@ export function useAuthSessionOptional(): AuthSessionValue {
       authEmail: null,
       authUserCreatedAt: null,
       authUserMetadata: EMPTY_METADATA,
+      // Provider-less renders (isolated unit tests) are unambiguously
+      // anonymous — treat auth as settled.
+      authResolved: true,
     }
   );
 }
