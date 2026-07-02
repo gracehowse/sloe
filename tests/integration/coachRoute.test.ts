@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromRequest: vi.fn(),
+  getUserTier: vi.fn(),
   createSupabaseServiceRoleClient: vi.fn(),
 }));
 vi.mock("@/lib/server/serverEnv", () => ({
@@ -37,6 +38,7 @@ vi.mock("@/lib/server/aiProvider", () => ({
 import { POST } from "../../app/api/nutrition/coach/route";
 import {
   getUserIdFromRequest,
+  getUserTier,
   createSupabaseServiceRoleClient,
 } from "@/lib/supabase/serverAnonClient";
 import {
@@ -45,6 +47,7 @@ import {
 } from "@/lib/server/aiProvider";
 
 const mockGetUserId = getUserIdFromRequest as ReturnType<typeof vi.fn>;
+const mockGetUserTier = getUserTier as ReturnType<typeof vi.fn>;
 const mockCreateClient = createSupabaseServiceRoleClient as ReturnType<typeof vi.fn>;
 const mockAi = callAiText as ReturnType<typeof vi.fn>;
 
@@ -116,6 +119,9 @@ describe("POST /api/nutrition/coach", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetUserId.mockResolvedValue("user-1");
+    // Pro by default — the AI branch is Pro-only (ENG-1292); the tier
+    // gate itself is exercised in the dedicated tests below.
+    mockGetUserTier.mockResolvedValue("pro");
     mockCreateClient.mockReturnValue(
       buildClient([
         recipeRow({ id: "a", calories: 510 }),
