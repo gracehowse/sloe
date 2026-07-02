@@ -27,10 +27,11 @@ import {
   ONBOARDING_REVEAL_TDEE_LABEL_GLOSS,
   ONBOARDING_REVEAL_TDEE_LABEL_PLAIN,
 } from "@suppr/shared/onboarding/figmaCopy";
-import { useOnboarding } from "../context";
+import { useOnboarding, CONVERSION_FUNNEL_FLAG } from "../context";
 import { MobileMethodologyNote } from "../scaffold";
 import { ProgressiveText } from "../ProgressiveText";
 import { RevealWhyNowReflection } from "./reveal-why-now";
+import { OnboardingRevealProjectionChart } from "../OnboardingRevealProjectionChart";
 
 /**
  * Mobile Reveal — animated count-up + macro tiles. Mirrors the web
@@ -182,6 +183,7 @@ export function MobileRevealStep() {
     paceKgPerWeek: state.paceKgPerWeek,
     weightSkipped: state.weightSkipped,
   });
+  const conversionFunnelOn = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
 
   const SIZE = 220;
 
@@ -345,20 +347,26 @@ export function MobileRevealStep() {
           {goalBlurb}
         </Text>
         {revealProjection ? (
-          <Text
-            testID="onboarding-reveal-projection"
-            style={{
-              fontSize: 13,
-              fontWeight: "500",
-              color: colors.textSecondary,
-              textAlign: "center",
-              marginTop: 12,
-              lineHeight: 19,
-              maxWidth: 340,
-            }}
-          >
-            {revealProjection.sentence}
-          </Text>
+          conversionFunnelOn ? (
+            <View style={{ width: "100%", maxWidth: 340, marginTop: 12 }}>
+              <OnboardingRevealProjectionChart projection={revealProjection} />
+            </View>
+          ) : (
+            <Text
+              testID="onboarding-reveal-projection"
+              style={{
+                fontSize: 13,
+                fontWeight: "500",
+                color: colors.textSecondary,
+                textAlign: "center",
+                marginTop: 12,
+                lineHeight: 19,
+                maxWidth: 340,
+              }}
+            >
+              {revealProjection.sentence}
+            </Text>
+          )
         ) : null}
         <RevealWhyNowReflection whyNow={state.whyNow} />
       </View>

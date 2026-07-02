@@ -45,4 +45,13 @@ describe("computeOnboardingRevealProjection (ENG-964)", () => {
     expect(result?.dateLabel).toMatch(/\d{1,2} \w+ \d{4}/);
     expect(result?.sentence).toContain(result!.dateLabel);
   });
+
+  it("includes chart geometry for the reveal trendline (ENG-1233)", () => {
+    const result = computeOnboardingRevealProjection({ ...base, goal: "lose" });
+    expect(result?.startKg).toBe(80);
+    expect(result?.endKg).toBe(74);
+    expect(result?.weeks).toBe(ONBOARDING_PROJECTION_WEEKS);
+    expect(result?.polylinePoints).toMatch(/^\d/);
+    expect(result?.startMarker.x).toBeLessThan(result!.endMarker.x);
+  });
 });

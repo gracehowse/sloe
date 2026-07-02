@@ -14,11 +14,12 @@ import {
   ONBOARDING_REVEAL_TDEE_LABEL_GLOSS,
   ONBOARDING_REVEAL_TDEE_LABEL_PLAIN,
 } from "../../../../lib/onboarding/figmaCopy";
-import { useOnboarding } from "../context";
+import { CONVERSION_FUNNEL_FLAG, useOnboarding } from "../context";
 import { MethodologyNote } from "../scaffold";
 import { ProgressiveText } from "../progressive-text";
 import { CalorieRingDial } from "../../suppr/calorie-ring-dial";
 import { RevealWhyNowReflection } from "./reveal-why-now";
+import { OnboardingRevealProjectionChart } from "../OnboardingRevealProjectionChart";
 
 /**
  * Reveal — step 11. The "aha" moment. Animated count-up on the daily
@@ -126,6 +127,7 @@ export function RevealStep({ compact = false }: RevealProps) {
     paceKgPerWeek: state.paceKgPerWeek,
     weightSkipped: state.weightSkipped,
   });
+  const conversionFunnelOn = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
 
   // Ring geometry
 
@@ -217,13 +219,22 @@ export function RevealStep({ compact = false }: RevealProps) {
           {goalBlurb}
         </p>
         {revealProjection ? (
-          <p
-            className="text-sm font-medium text-foreground-secondary mx-auto mt-3 leading-relaxed max-w-[340px]"
-            data-testid="onboarding-reveal-projection"
-            style={{ textWrap: "pretty" } as React.CSSProperties}
-          >
-            {revealProjection.sentence}
-          </p>
+          conversionFunnelOn ? (
+            <div className="mx-auto mt-3 max-w-[340px]">
+              <OnboardingRevealProjectionChart
+                projection={revealProjection}
+                animate={revealStarted}
+              />
+            </div>
+          ) : (
+            <p
+              className="text-sm font-medium text-foreground-secondary mx-auto mt-3 leading-relaxed max-w-[340px]"
+              data-testid="onboarding-reveal-projection"
+              style={{ textWrap: "pretty" } as React.CSSProperties}
+            >
+              {revealProjection.sentence}
+            </p>
+          )
         ) : null}
         <RevealWhyNowReflection whyNow={state.whyNow} />
       </div>
