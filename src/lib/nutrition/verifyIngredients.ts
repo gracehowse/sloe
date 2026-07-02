@@ -20,11 +20,11 @@ import {
 import { scaleMicrosForGrams } from "@/lib/openFoodFacts/parseOffMicros";
 import { perServingMicrosFromRows } from "@/lib/nutrition/recipeMicros";
 import { fdcConfigFromEnv, fdcFoodGet, fdcFoodsSearch } from "@/lib/usda/fdcClient";
-import { fdcFoodMacrosPer100g } from "@/lib/nutrition/usdaNormalize";
+import { fdcFoodMacrosPer100g, fdcFoodMicrosPer100g } from "@/lib/nutrition/usdaNormalize";
 import { fetchProductByBarcode } from "@/lib/openFoodFacts/fetchProductByBarcode";
 import { searchOffProducts } from "@/lib/openFoodFacts/searchProducts";
 import { isOffDataStale } from "@/lib/openFoodFacts/offStaleness";
-import { edamamConfigFromEnv, edamamFoodSearch, edamamFoodMacrosPer100g } from "@/lib/edamam/client";
+import { edamamConfigFromEnv, edamamFoodSearch, edamamFoodMacrosPer100g, edamamFoodMicrosPer100g } from "@/lib/edamam/client";
 import { hasFatSecretConfig, hasEdamamConfig, hasUsdaConfig, hasSupabaseServiceConfig } from "@/lib/server/serverEnv";
 import { estimateLineMacros } from "@/lib/nutrition/estimateIngredientMacros";
 import { searchUserFoods } from "@/lib/nutrition/userFoodsLookup";
@@ -663,6 +663,9 @@ export async function verifyIngredients(opts: {
           const food = await fdcFoodGet(usdaCfg, usdaOverride.fdcId as number);
           if (food?.foodNutrients?.length) {
             const per100g = fdcFoodMacrosPer100g(food);
+            // ENG-1332 — carry the USDA micro panel, scaled with the SAME grams
+            // the macros use so micros ∝ macros exactly (absent ≠ zero).
+            const usdaMicros = scaleMicrosForGrams(fdcFoodMicrosPer100g(food), grams);
             return {
               input: raw, resolved,
               fatSecretFoodId: String(usdaOverride.fdcId),
@@ -670,6 +673,7 @@ export async function verifyIngredients(opts: {
               confidence: 1,
               source: "USDA",
               macros: scaleMacros(per100g, grams / 100),
+              ...(Object.keys(usdaMicros).length > 0 ? { micros: usdaMicros } : {}),
             };
           }
         }
@@ -789,6 +793,10 @@ export async function verifyIngredients(opts: {
               // the per-100g panel cross-check.
               if (!checkScaledLogPlausibility(usdaMacros, effectiveGrams, per100g).ok) return null;
 
+              // ENG-1332 — carry the USDA micro panel, scaled with the SAME
+              // `effectiveGrams` the macros use (portion-aware), so micros ∝
+              // macros exactly. Absent ≠ zero.
+              const usdaMicros = scaleMicrosForGrams(fdcFoodMicrosPer100g(food), effectiveGrams);
               return {
                 input: raw, resolved,
                 fatSecretFoodId: String(hit.fdcId),
@@ -796,6 +804,7 @@ export async function verifyIngredients(opts: {
                 confidence: Math.min(0.98, conf + 0.03),
                 source: "USDA",
                 macros: usdaMacros,
+                ...(Object.keys(usdaMicros).length > 0 ? { micros: usdaMicros } : {}),
               };
             } catch {
               return null;
@@ -843,6 +852,13 @@ export async function verifyIngredients(opts: {
           if (!scaledMacrosPlausible(edamamMacros)) continue;
           // P0 (2026-05-26) — post-scale physical-plausibility guard.
           if (!checkScaledLogPlausibility(edamamMacros, grams, per100g).ok) continue;
+          // ENG-1332 — carry the Edamam micro panel from the SEARCH HIT only
+          // (fiber/sugar/sodium — the minimal block the /parser hit already
+          // holds). The full 35-field panel needs a per-hit /nutrients POST
+          // (`fetchEdamamMicrosPer100g`); deliberately NOT fetched here to keep
+          // latency off the recipe-import critical path (ENG-1332 decision).
+          // Scaled with the same grams as the macros; absent ≠ zero.
+          const edamamMicros = scaleMicrosForGrams(edamamFoodMicrosPer100g(hit.food), grams);
           return {
             input: raw, resolved,
             fatSecretFoodId: hit.food.foodId,
@@ -850,6 +866,7 @@ export async function verifyIngredients(opts: {
             confidence: Math.min(0.92, conf),
             source: "Edamam" as const,
             macros: edamamMacros,
+            ...(Object.keys(edamamMicros).length > 0 ? { micros: edamamMicros } : {}),
           };
         }
       } catch (e) {
