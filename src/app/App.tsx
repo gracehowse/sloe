@@ -714,10 +714,28 @@ export default function App() {
           </div>
         </header>
 
-        {/* Content Area — reserve space for fixed bottom tabs on
+        {/* Content Area — reserve space for the fixed bottom tabs on
             mobile-web; on desktop the bottom tabs are hidden so no
-            reservation is needed. */}
-        <main id="main-content" className="flex-1 overflow-auto pb-20 md:pb-0" role="main">
+            reservation is needed.
+
+            ENG-1323: the reservation must clear the FULL overlay — the tab
+            bar (~57px content) PLUS the raised Log button projecting 16px
+            above the bar line PLUS the device safe-area inset (the nav pads
+            itself with env(safe-area-inset-bottom), which the old static
+            pb-20 = 80px ignored — on a notched phone the overlay is ~107px,
+            so resting content, e.g. the centered Carbs dial at 390px, sat
+            under the FAB). 5rem + the inset covers both cases. The matching
+            scroll-padding-bottom keeps programmatic scrolls (scrollIntoView /
+            anchor jumps) from LANDING content under the FAB. Honest residual:
+            content still passes under the fixed centered FAB mid-scroll —
+            inherent to any fixed overlay; the structural alternative (the
+            frosted-pill tab bar family) is judged in the ENG-1317 deep design
+            pass. */}
+        <main
+          id="main-content"
+          className="flex-1 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] scroll-pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 md:scroll-pb-0"
+          role="main"
+        >
           {renderView()}
         </main>
 
