@@ -61,7 +61,7 @@
     {
       "id": "21482999",
       "localizations": [],
-      "name": "Suppr Pro",
+      "name": "Sloe Pro",
       "subscriptions": [
         {
           "adHocOffers": [],
@@ -98,7 +98,7 @@
           },
           "localizations": [
             {
-              "description": "Pro annual \u2014 best value for the full Suppr loop.",
+              "description": "Pro annual \u2014 best value for the full Sloe loop.",
               "displayName": "Pro Annual",
               "locale": "en_GB"
             }

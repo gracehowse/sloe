@@ -28,6 +28,15 @@ const SOURCE_DISPLAY: Record<string, string> = {
   photo: "photo log",
   photo_correction: "photo log",
   voice: "voice log",
+  // ENG-1298 — "Suppr" is the canonical DB/verify-pipeline value for our own
+  // food database (pinned by the nutrition_entries CHECK constraint, so the
+  // stored value must NOT be renamed); the live brand is Sloe, remapped here
+  // at the display boundary — same pattern as recipes/displayAttribution.
+  suppr: "Sloe",
+  // The verify pipeline emits ALL-CAPS "USDA"; the de-snake fallback would
+  // render it as "Usda". Pin the correct casing for both USDA ids.
+  usda: "USDA",
+  "usda fooddata central": "USDA FoodData Central",
 };
 
 /**

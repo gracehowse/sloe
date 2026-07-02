@@ -1,6 +1,6 @@
 # Attributions
 
-Suppr is built on the work of open-source contributors and the maintainers of public food-data databases.
+Sloe is built on the work of open-source contributors and the maintainers of public food-data databases.
 
 The full, user-facing attribution and licence list ships at [**/licences**](https://suppr-club.com/licences) inside the product. The points below summarise the obligations we meet there.
 
@@ -12,7 +12,7 @@ The full, user-facing attribution and licence list ships at [**/licences**](http
 
 ## Data
 
-- **USDA FoodData Central** — public-domain data from the U.S. Department of Agriculture. USDA does not endorse Suppr.
+- **USDA FoodData Central** — public-domain data from the U.S. Department of Agriculture. USDA does not endorse Sloe.
 - **Open Food Facts** — product data © Open Food Facts contributors, provided under the [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
 - **Edamam** — restaurant and branded-food nutrition data under the Edamam Food Database API commercial terms. Food-search results that come from Edamam are *Powered by Edamam*.
 - **FatSecret Platform API** — food and nutrition database under FatSecret Platform commercial terms.
@@ -23,4 +23,4 @@ The full, user-facing attribution and licence list ships at [**/licences**](http
 
 ## Trademarks
 
-All product and company names mentioned in Suppr are trademarks of their respective owners. Mention does not imply partnership, sponsorship, or endorsement. See [/licences](https://suppr-club.com/licences) for the full list.
+All product and company names mentioned in Sloe are trademarks of their respective owners. Mention does not imply partnership, sponsorship, or endorsement. See [/licences](https://suppr-club.com/licences) for the full list.

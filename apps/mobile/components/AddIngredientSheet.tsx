@@ -37,6 +37,7 @@ import {
 } from "@suppr/nutrition-core/ingredientOverrides";
 import { ingredientVerifyNeedsReview } from "@suppr/nutrition-core/verifyConfidencePolicy";
 import { formatMacro } from "@suppr/nutrition-core/formatMacro";
+import { formatNutritionSourceLabel } from "@/lib/sourceLabel";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -390,11 +391,10 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
 
             {match?.macros ? (
               <View style={styles.matchCard}>
-                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 2 }}>
-                  Match: {match.matchedName ?? name.trim()}
-                </Text>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 2 }}>Match: {match.matchedName ?? name.trim()}</Text>
                 <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                  {match.source} · {Math.round(match.macros.calories)} kcal ·{" "}
+                  {/* ENG-1298 — source id → display label ("Suppr" → "Sloe"). */}
+                  {formatNutritionSourceLabel(match.source) ?? match.source} · {Math.round(match.macros.calories)} kcal ·{" "}
                   {formatMacro(match.macros.protein, "protein")}P /{" "}
                   {formatMacro(match.macros.carbs, "carbs")}C /{" "}
                   {formatMacro(match.macros.fat, "fat")}F

@@ -4,7 +4,7 @@ import { SupprLogoMark } from "../components/SupprLogoMark.tsx";
 import { ROADMAP, type RoadmapStatus } from "../../src/lib/landing/content";
 
 export const metadata: Metadata = {
-  title: "Roadmap — Suppr",
+  title: "Roadmap — Sloe",
   description:
     "What we’re building next on Sloe — mobile, creators, discovery, and macro-first meal planning.",
 };
@@ -54,9 +54,13 @@ export default function RoadmapPage() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-background/90 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="inline-flex items-center gap-2 font-semibold">
-            <SupprLogoMark className="h-8 w-8" />
-            Suppr
+          {/* ENG-1298 — the mark IS the lowercase wordmark; the old-brand
+              literal beside it rendered a double lockup. Header stays
+              deliberately minimal (wordmark + one link), matching its nearest
+              sibling standalone-page header in app/pricing/page.tsx — it is
+              NOT the full landing nav element. */}
+          <Link href="/" className="inline-flex items-center text-[22px]" aria-label="Sloe">
+            <SupprLogoMark />
           </Link>
           <Link
             href="/pricing"
@@ -69,7 +73,7 @@ export default function RoadmapPage() {
       <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
         <h1 className="text-3xl font-semibold tracking-tight">Roadmap</h1>
         <p className="mt-4 text-muted-foreground leading-relaxed">
-          Suppr is evolving quickly — here’s the direction of travel. Everything
+          Sloe is evolving quickly — here’s the direction of travel. Everything
           below is read from the same source of truth that powers our landing
           page, so what you see is what’s actually in (or coming to) the app.
         </p>

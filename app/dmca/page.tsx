@@ -22,8 +22,8 @@ const DMCA_SECTIONS = [
 // completes. See the IP-counsel memo dated 2026-04-19.
 
 export const metadata: Metadata = {
-  title: "DMCA / Copyright takedown — Suppr",
-  description: "How to submit a copyright takedown notice, counter-notice, and Suppr's repeat-infringer policy.",
+  title: "DMCA / Copyright takedown — Sloe",
+  description: "How to submit a copyright takedown notice, counter-notice, and Sloe's repeat-infringer policy.",
 };
 
 const DMCA_EMAIL = "dmca@getsloe.com";
@@ -39,7 +39,7 @@ export default function DmcaPage() {
     >
         <div className="prose prose-slate dark:prose-invert prose-sm max-w-none space-y-4 text-slate-700 dark:text-slate-300">
           <p>
-            Suppr respects copyright. If you believe that content on Suppr infringes your copyright, you can ask us
+            Sloe respects copyright. If you believe that content on Sloe infringes your copyright, you can ask us
             to take it down using the procedure below. This page describes how to submit a notice under the Digital
             Millennium Copyright Act (&ldquo;DMCA&rdquo;, 17 U.S.C. &sect; 512) and the equivalent notice-and-action
             processes in the UK and EU.
@@ -88,7 +88,7 @@ export default function DmcaPage() {
             <li>your physical or electronic signature (typed name is acceptable for email);</li>
             <li>identification of the copyrighted work you claim has been infringed (or, for multiple works, a representative list);</li>
             <li>
-              identification of the material on Suppr that you claim is infringing &mdash; please include the
+              identification of the material on Sloe that you claim is infringing &mdash; please include the
               full URL (for example{" "}
               <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">https://getsloe.com/recipe/...</code>
               ) or any other information that lets us locate it;
@@ -123,7 +123,7 @@ export default function DmcaPage() {
             <li>your name, address, and telephone number;</li>
             <li>
               a statement that you consent to the jurisdiction of the US federal district court for the district in
-              which your address is located (or, if outside the US, any judicial district in which Suppr may be found)
+              which your address is located (or, if outside the US, any judicial district in which Sloe may be found)
               and that you will accept service of process from the person who submitted the original notice.
             </li>
           </ol>
@@ -137,7 +137,7 @@ export default function DmcaPage() {
             Repeat-infringer policy
           </h2>
           <p>
-            In accordance with 17 U.S.C. &sect; 512(i), Suppr will terminate the accounts of users who are the
+            In accordance with 17 U.S.C. &sect; 512(i), Sloe will terminate the accounts of users who are the
             subject of repeated copyright takedown notices in appropriate circumstances. A &ldquo;repeat
             infringer&rdquo; generally means a user whose account has been the subject of three or more valid
             takedown notices.

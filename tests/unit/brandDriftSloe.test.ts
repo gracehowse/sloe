@@ -183,7 +183,7 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
     expect(src).not.toContain("via Suppr");
   });
 
-  it("web help/legal product copy uses Sloe while preserving operational endpoints", () => {
+  it("web help/legal product copy uses Sloe while preserving operational endpoints (mailboxes live on getsloe.com — suppr.app is dead)", () => {
     const helpPage = readFileSync(join(ROOT, "app/help/page.tsx"), "utf8");
     const helpClient = readFileSync(join(ROOT, "app/help/HelpClient.tsx"), "utf8");
     const terms = readFileSync(join(ROOT, "app/terms/page.tsx"), "utf8");
@@ -261,5 +261,118 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
     // Every brand-bearing subject (all but the brand-neutral
     // "Confirm your new email address") must actually carry the new mark.
     expect(subjects.filter((s) => s.includes("Sloe"))).toHaveLength(5);
+  });
+});
+
+// ── ENG-1298 — stale-Suppr brand sweep (2026-07-01) ─────────────────────────
+// Pixel-confirmed regressions from the July launch sweep: /roadmap rendered
+// "sloe Suppr" side by side, /licences and /dmca were fully Suppr-branded,
+// terms still pointed legal notices at the dead suppr.app mailbox, the web
+// recipe-detail creator card bypassed the displayAttribution calm-over, and
+// the ingredient-match rows rendered the raw DB source id "Suppr". Each fixed
+// surface is pinned here so it cannot silently regress. Kept as its own
+// describe block — the email-template lane extends this file separately.
+describe("ENG-1298 — stale-Suppr sweep (user-facing surfaces)", () => {
+  it("/roadmap header renders the wordmark only (no literal 'Suppr' beside it) and copy says Sloe", () => {
+    const page = readFileSync(join(ROOT, "app/roadmap/page.tsx"), "utf8");
+    expect(page).toContain('title: "Roadmap — Sloe"');
+    expect(page).toContain("Sloe is evolving quickly");
+    // The lockup bug: SupprLogoMark already renders "sloe"; a literal brand
+    // word next to it reads "sloe Suppr". No bare Suppr token may render.
+    expect(page).not.toMatch(/>\s*Suppr\s*</);
+    expect(page).not.toMatch(/"[^"]*\bSuppr\b[^"]*"/);
+  });
+
+  it("/licences page is Sloe-branded and preserves the ODbL + trademark attributions", () => {
+    const page = readFileSync(join(ROOT, "app/licences/page.tsx"), "utf8");
+    expect(page).toContain('title: "Open-source licences — Sloe"');
+    expect(page).toContain("USDA does not endorse Sloe.");
+    expect(page).toContain("The software Sloe ships and the data Sloe displays");
+    expect(page).not.toMatch(/\bSuppr\b/);
+    // Attribution obligations must survive the rebrand byte-for-byte.
+    expect(page).toContain("Open Database License 1.0 (ODbL)");
+    expect(page).toContain("Data © Open Food Facts contributors.");
+    expect(page).toContain("opendatacommons.org/licenses/odbl/1-0");
+    expect(page).toMatch(/trademarks\s+of Apple Inc\./);
+  });
+
+  it("terms statutory legal contact is legal@getsloe.com (suppr.app is a dead domain)", () => {
+    const terms = readFileSync(join(ROOT, "app/terms/page.tsx"), "utf8");
+    expect(terms).toContain("legal@getsloe.com");
+    expect(terms).not.toContain("legal@suppr.app");
+  });
+
+  it("/dmca page + takedown form are Sloe-branded", () => {
+    const page = readFileSync(join(ROOT, "app/dmca/page.tsx"), "utf8");
+    const form = readFileSync(join(ROOT, "app/dmca/_form/DmcaTakedownForm.tsx"), "utf8");
+    expect(page).toContain("Sloe respects copyright");
+    expect(page).toContain('title: "DMCA / Copyright takedown — Sloe"');
+    expect(form).toContain("Sloe recipe ID or link");
+    expect(form).not.toContain("Suppr recipe ID");
+  });
+
+  it("public recipe + creator SSR pages carry the Sloe title suffix and wordmark", () => {
+    const recipe = readFileSync(join(ROOT, "app/recipe/[id]/page.tsx"), "utf8");
+    const creator = readFileSync(join(ROOT, "app/creator/[id]/page.tsx"), "utf8");
+    expect(recipe).toContain("— Sloe`");
+    expect(recipe).toContain("Sloe plans your week from recipes like this one");
+    expect(recipe).not.toMatch(/>\s*Suppr\s*</);
+    expect(creator).toContain("— Sloe`");
+    expect(creator).not.toMatch(/— Suppr/);
+  });
+
+  it("web recipe-detail creator card routes the name through displayAttribution (Suppr Kitchen → Sloe Kitchen)", async () => {
+    const detail = readFileSync(join(ROOT, "src/app/components/RecipeDetail.tsx"), "utf8");
+    // The card must not render recipe.creatorName raw — the DB seed keeps the
+    // LEGAL string "Suppr Kitchen" (discoverSeedCopyright contract); the remap
+    // happens at the display boundary only.
+    expect(detail).toContain(
+      "displayAttribution({ creatorName: recipe.creatorName }) || recipe.creatorName",
+    );
+    const { displayAttribution } = await import("../../src/lib/recipes/displayAttribution");
+    expect(displayAttribution({ creatorName: "Suppr Kitchen" })).toBe("Sloe Kitchen");
+  });
+
+  it("settings Apple Health copy says Sloe on web (row subtitle + explainer dialog)", () => {
+    const settings = readFileSync(join(ROOT, "src/app/components/Settings.tsx"), "utf8");
+    const dialogs = readFileSync(
+      join(ROOT, "src/app/components/settings/SettingsDialogs.tsx"),
+      "utf8",
+    );
+    expect(settings).toContain("syncs from the Sloe app");
+    expect(settings).not.toContain("the Suppr app");
+    expect(dialogs).toContain("Apple Health connects in the Sloe iOS app");
+    expect(dialogs).not.toContain("Suppr iOS app");
+  });
+
+  it("nutrition source display label maps the canonical 'Suppr' DB value to Sloe (and fixes USDA casing)", async () => {
+    const { formatNutritionSourceLabel } = await import("../../src/lib/nutrition/sourceLabel");
+    // "Suppr" stays canonical in the DB (CHECK constraint) — display remaps.
+    expect(formatNutritionSourceLabel("Suppr")).toBe("Sloe");
+    expect(formatNutritionSourceLabel("USDA")).toBe("USDA");
+    expect(formatNutritionSourceLabel("USDA FoodData Central")).toBe("USDA FoodData Central");
+    // Both add-ingredient match rows must route through the mapper.
+    for (const rel of [
+      "src/app/components/suppr/add-ingredient-dialog.tsx",
+      "apps/mobile/components/AddIngredientSheet.tsx",
+    ]) {
+      const src = readFileSync(join(ROOT, rel), "utf8");
+      expect(src, rel).toContain("formatNutritionSourceLabel(match.source) ?? match.source");
+    }
+  });
+
+  it("mobile image-generation alert says Sloe", () => {
+    const src = readFileSync(join(ROOT, "apps/mobile/app/recipe/[id].tsx"), "utf8");
+    expect(src).toContain("Sloe's image service is not configured");
+    expect(src).not.toContain("Suppr's image service");
+  });
+
+  it("StoreKit test configs sell the subscription group as Sloe Pro", () => {
+    for (const rel of ["apps/mobile/storekit/Suppr.storekit", "apps/mobile/ios/Suppr.storekit"]) {
+      const src = readFileSync(join(ROOT, rel), "utf8");
+      expect(src, rel).toContain('"name": "Sloe Pro"');
+      expect(src, rel).toContain("best value for the full Sloe loop");
+      expect(src, rel).not.toContain("Suppr Pro");
+    }
   });
 });

@@ -1,8 +1,30 @@
-# Rebrand checklist: Suppr
+# Rebrand checklist: Suppr → Sloe
 
-Product: **Suppr** (Suppr Ltd). Public site: **supprclub.com**. App Store subtitle: **Suppr — Recipes. Plan. Shop. Track.**
+Product: **Sloe** (mid-flight rebrand from Suppr, 2026-06). Live domain: **getsloe.com** (legacy **suppr-club.com** still serves). Not yet incorporated — "Suppr Ltd" was aspirational, see `docs/planning/ip-followups-2026-04-19.md`.
 
-This repo is rebranded in code and docs. **You still need to update external systems** to match.
+## Status (2026-07-01, ENG-1298 stale-brand sweep)
+
+**The user-facing brand is Sloe; the plumbing is still suppr.** Current reality:
+
+- **Sloe (live):** wordmark on web + mobile, all user-facing product copy, page
+  titles/metadata, legal pages (terms / privacy / dmca / licences), paywall
+  ("SLOE PRO"), share/notification strings, `getsloe.com` mailboxes
+  (support@ / privacy@ / dmca@ / legal@). Guarded by
+  `tests/unit/brandDriftSloe.test.ts`.
+- **Still suppr (intentional, infra not brand):** bundle id
+  `com.supprclub.supprapp`, URL scheme `suppr://`, `@suppr/shared` +
+  `@suppr/nutrition-core` package aliases, `suppr-*` localStorage keys,
+  `suppr-club.com` legacy domain/links, `Suppr*` component export names,
+  DB-canonical source value `"Suppr"` (CHECK-constraint pinned; remapped to
+  "Sloe" at display via `src/lib/nutrition/sourceLabel.ts` and
+  `src/lib/recipes/displayAttribution.ts`), the recipe crawler UA `SupprBot`,
+  and the `Suppr.storekit` file identifier/Xcode scheme.
+- **Dashboard-side renames still owed (Grace):** App Store Connect
+  subscription-group display name "Suppr Pro" → "Sloe Pro" (repo `.storekit`
+  test configs already renamed), App Store listing name/subtitle, Stripe
+  Customer Portal branding, PostHog / Sentry project names (cosmetic).
+
+**You still need to update external systems** to match.
 
 ## GitHub
 
@@ -14,7 +36,7 @@ This repo is rebranded in code and docs. **You still need to update external sys
 
 - **Bundle / application ID** in `apps/mobile/app.json` is **`com.supprclub.suppr`** for both `ios.bundleIdentifier` and `android.package`. It must match Apple Developer, App Store Connect, and Google Play after prebuild. If the portal still uses another id, either migrate the app id or align `app.json` and regenerate native projects (`npx expo prebuild --clean --platform ios` / `android`).
 - **Associated domains / universal links** and **Sign in with Apple**: update Services IDs and redirect URLs if they referenced the old app name or bundle id.
-- **App Store listing**: name, subtitle, description, keywords, screenshots, support URL (**supprclub.com** or your chosen support path).
+- **App Store listing**: name, subtitle, description, keywords, screenshots, support URL (**getsloe.com** or your chosen support path).
 
 ## Vercel & hosting
 
@@ -37,7 +59,9 @@ This repo is rebranded in code and docs. **You still need to update external sys
 
 ## Storage keys (web) — intentional legacy
 
-All localStorage keys now use the `suppr-*` prefix. Rebrand complete.
+All localStorage keys use the `suppr-*` prefix. Intentionally kept through the
+Sloe rebrand — renaming would orphan existing users' local state for zero
+user-visible gain. Not a gap.
 
 ## Package names
 

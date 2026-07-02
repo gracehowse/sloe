@@ -18,7 +18,7 @@ describe("DmcaTakedownForm", () => {
     render(<DmcaTakedownForm />);
     expect(screen.getByLabelText(/Your email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Original post URL/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Suppr recipe ID or link/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Sloe recipe ID or link/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Description/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Submit takedown request/i })).toBeInTheDocument();
   });
@@ -36,7 +36,7 @@ describe("DmcaTakedownForm", () => {
     fireEvent.change(screen.getByLabelText(/Original post URL/i), {
       target: { value: "https://www.instagram.com/p/ABC/" },
     });
-    fireEvent.change(screen.getByLabelText(/Suppr recipe ID or link/i), {
+    fireEvent.change(screen.getByLabelText(/Sloe recipe ID or link/i), {
       target: { value: "https://suppr-club.com/recipe/abc" },
     });
     fireEvent.change(screen.getByLabelText(/Description/i), {
@@ -86,7 +86,7 @@ describe("DmcaTakedownForm", () => {
     fireEvent.change(screen.getByLabelText(/Original post URL/i), {
       target: { value: "https://www.instagram.com/p/ABC/" },
     });
-    fireEvent.change(screen.getByLabelText(/Suppr recipe ID or link/i), {
+    fireEvent.change(screen.getByLabelText(/Sloe recipe ID or link/i), {
       target: { value: "x" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Submit takedown request/i }));
@@ -108,7 +108,7 @@ describe("DmcaTakedownForm", () => {
     fireEvent.change(screen.getByLabelText(/Original post URL/i), {
       target: { value: "https://www.instagram.com/p/ABC/" },
     });
-    fireEvent.change(screen.getByLabelText(/Suppr recipe ID or link/i), {
+    fireEvent.change(screen.getByLabelText(/Sloe recipe ID or link/i), {
       target: { value: "x" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Submit takedown request/i }));
@@ -132,7 +132,7 @@ describe("DmcaTakedownForm", () => {
     fireEvent.change(screen.getByLabelText(/Original post URL/i), {
       target: { value: "https://www.instagram.com/p/ABC/" },
     });
-    fireEvent.change(screen.getByLabelText(/Suppr recipe ID or link/i), {
+    fireEvent.change(screen.getByLabelText(/Sloe recipe ID or link/i), {
       target: { value: "x" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Submit takedown request/i }));
