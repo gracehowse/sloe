@@ -1,0 +1,70 @@
+# Scheduled production crons — moved here from vercel.json (2026-07-01).
+#
+# Why not Vercel crons:
+#   1. Hobby plan rejects sub-daily schedules — the hourly weigh-in cron made
+#      EVERY deployment fail ("Deployment failed" on main since ENG-955 / #649;
+#      the same limit was hit once before in b6b3fe95).
+#   2. Vercel cron invocations cannot send custom headers, and all three cron
+#      routes fail closed without `X-Cron-Secret` — so these schedules had
+#      never successfully run in production at all.
+# GitHub Actions can do both: sub-daily schedules and custom headers.
+#
+# Auth: `SUPPR_CRON_SECRET` repo secret (mirrors the Vercel production env
+# var of the same name, minted 2026-07-01). Rotate in BOTH places together.
+#
+# Schedule → target mapping (a tick that matches several entries fires one
+# run per entry; `github.event.schedule` says which):
+#   0 * * * *  → /api/push/weigh-in-reminder   (hourly; per-user tz windows)
+#   0 23 * * * → /api/push/weekly-recap        (daily 23:00 UTC, as before)
+#   0 6 * * *  → /api/cron/supabase-advisor-check (daily 06:00 UTC, ENG-509 alarm 6)
+
+name: Scheduled crons
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+    - cron: "0 23 * * *"
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which cron endpoint to invoke"
+        required: true
+        type: choice
+        options:
+          - weigh-in-reminder
+          - weekly-recap
+          - supabase-advisor-check
+
+concurrency:
+  group: scheduled-crons-${{ github.event.schedule || inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  invoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve target path
+        id: target
+        run: |
+          case "${{ github.event.schedule || inputs.target }}" in
+            "0 23 * * *"|"weekly-recap")            echo "path=/api/push/weekly-recap" >> "$GITHUB_OUTPUT" ;;
+            "0 6 * * *"|"supabase-advisor-check")   echo "path=/api/cron/supabase-advisor-check" >> "$GITHUB_OUTPUT" ;;
+            "0 * * * *"|"weigh-in-reminder")        echo "path=/api/push/weigh-in-reminder" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unknown trigger '${{ github.event.schedule || inputs.target }}'" >&2; exit 1 ;;
+          esac
+      - name: Invoke ${{ steps.target.outputs.path }}
+        run: |
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /tmp/cron-body.json -w "%{http_code}" \
+              --max-time 120 \
+              -X POST "https://suppr-club.com${{ steps.target.outputs.path }}" \
+              -H "X-Cron-Secret: ${{ secrets.SUPPR_CRON_SECRET }}")
+            echo "attempt $attempt → HTTP $code"
+            cat /tmp/cron-body.json; echo
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then exit 0; fi
+            sleep $((attempt * 20))
+          done
+          echo "cron invocation failed after 3 attempts" >&2
+          exit 1
