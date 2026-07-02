@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Icons } from "./ui/icons";
 import { Switch } from "./ui/switch";
+import { FilterChip } from "./ui/filter-chip";
 import { SettingsSegmented } from "./ui/settings-segmented";
 import { toast } from "sonner";
 import { STORAGE_KEY } from "../../context/appData/persistence.ts";
@@ -1657,23 +1658,25 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
           <div>
             <label className="block mb-3 text-sm font-medium text-foreground">Dietary Restrictions</label>
             <div className="flex flex-wrap gap-2">
-              {DIETARY_PREFERENCE_ENTRIES.map((diet) => (
-                <button
-                  key={diet.id}
-                  onClick={() => {
-                    const next = dietary.includes(diet.id) ? dietary.filter(d => d !== diet.id) : [...dietary, diet.id];
-                    setDietary(next);
-                    void savePref({ dietary: next.length > 0 ? next : null });
-                  }}
-                  className={`px-4 py-2 rounded-lg border-2 transition-all capitalize ${
-                    dietary.includes(diet.id)
-                      ? "border-primary bg-primary/10 text-primary-solid"
-                      : "border-border hover:border-primary/30 text-foreground"
-                  }`}
-                >
-                  {diet.label}
-                </button>
-              ))}
+              {DIETARY_PREFERENCE_ENTRIES.map((diet) => {
+                const active = dietary.includes(diet.id);
+                return (
+                  <FilterChip
+                    key={diet.id}
+                    size="md"
+                    label={diet.label}
+                    selected={active}
+                    data-testid={`settings-dietary-${diet.id}`}
+                    onClick={() => {
+                      const next = active
+                        ? dietary.filter((d) => d !== diet.id)
+                        : [...dietary, diet.id];
+                      setDietary(next);
+                      void savePref({ dietary: next.length > 0 ? next : null });
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
 

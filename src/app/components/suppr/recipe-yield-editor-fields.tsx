@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Input } from "../ui/input.tsx";
+import { FilterChip } from "../ui/filter-chip.tsx";
 import { Label } from "../ui/label.tsx";
 import {
   type RecipeYieldEditorDraft,
@@ -42,21 +43,15 @@ export function RecipeYieldEditorFields({ draft, onChange, disabled }: RecipeYie
           {MODES.map((m) => {
             const active = draft.mode === m.id;
             return (
-              <button
+              <FilterChip
                 key={m.id}
-                type="button"
+                label={m.label}
+                selected={active}
+                size="md"
                 data-testid={`recipe-yield-mode-${m.id}`}
-                aria-pressed={active}
                 disabled={disabled}
                 onClick={() => setMode(m.id)}
-                className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
-                  active
-                    ? "border-primary bg-primary/10 text-primary-solid"
-                    : "border-border bg-background text-foreground hover:bg-muted/60"
-                }`}
-              >
-                {m.label}
-              </button>
+              />
             );
           })}
         </div>

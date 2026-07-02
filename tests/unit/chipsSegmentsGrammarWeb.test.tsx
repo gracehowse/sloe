@@ -28,6 +28,9 @@ import { describe, expect, it } from "vitest";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf8");
 
+const FILTER_CHIP = read("src/app/components/ui/filter-chip.tsx");
+const SETTINGS = read("src/app/components/Settings.tsx");
+const FOOD_SEARCH = read("src/app/components/food-search/FoodSearchPanel.tsx");
 const LOG_SHEET = read("src/app/components/suppr/log-sheet.tsx");
 const QUICK_ADD = read("src/app/components/suppr/quick-add-panel.tsx");
 const MEAL_PLANNER = read("src/app/components/MealPlanner.tsx");
@@ -83,5 +86,23 @@ describe("§7 option/filter chips — tint IS the signal, no solid accent ring",
     expect(tintRing.length).toBeGreaterThanOrEqual(3);
     // The pre-ENG-1022 solid accent ring on these round pills is gone.
     expect(MEAL_PLANNER).not.toMatch(/"border-primary bg-primary\/10 text-primary-solid"/);
+  });
+
+  it("FilterChip primitive: rounded-full + primary-soft selected, card rest, no border-primary ring", () => {
+    expect(FILTER_CHIP).toMatch(/rounded-full/);
+    expect(FILTER_CHIP).toMatch(/bg-primary-soft text-primary-solid font-semibold/);
+    expect(FILTER_CHIP).toMatch(/bg-card text-muted-foreground font-medium/);
+    expect(FILTER_CHIP).not.toMatch(/border-primary/);
+  });
+
+  it("Settings dietary restrictions use FilterChip (no rounded-lg border-2 drift)", () => {
+    expect(SETTINGS).toMatch(/<FilterChip/);
+    expect(SETTINGS).toMatch(/settings-dietary-/);
+    expect(SETTINGS).not.toMatch(/rounded-lg border-2[\s\S]{0,120}border-primary bg-primary\/10/);
+  });
+
+  it("FoodSearchPanel category filters use FilterChip", () => {
+    expect(FOOD_SEARCH).toMatch(/<FilterChip/);
+    expect(FOOD_SEARCH).toMatch(/food-search-category-/);
   });
 });
