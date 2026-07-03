@@ -42,6 +42,10 @@ export type LogSheetDescribeFlowProps = {
   onPaywall?: () => void;
   onReviewActiveChange?: (active: boolean) => void;
   inputHidden?: boolean;
+  /** ENG-1303 — the Describe method tile bumps this to expand the flow EMPTY
+   *  (distinct from `seedText`, which pre-fills from the search-row NL CTA).
+   *  A change > 0 expands; the initial `0` is inert so it doesn't auto-open. */
+  expandSignal?: number;
 };
 
 export function LogSheetDescribeFlow({
@@ -54,6 +58,7 @@ export function LogSheetDescribeFlow({
   onPaywall,
   onReviewActiveChange,
   inputHidden = false,
+  expandSignal = 0,
 }: LogSheetDescribeFlowProps) {
   const [stage, setStage] = React.useState<Stage>("input");
   const [text, setText] = React.useState("");
@@ -81,6 +86,13 @@ export function LogSheetDescribeFlow({
     setExpanded(true);
     onSeedConsumed?.();
   }, [seedText, onSeedConsumed]);
+
+  // ENG-1303 — expand (empty) when the Describe method tile bumps the signal.
+  // Guard the initial 0 so a freshly-mounted flow doesn't auto-open. The host
+  // already gates the bump on `locked` (it paywalls instead of bumping).
+  React.useEffect(() => {
+    if (expandSignal > 0) setExpanded(true);
+  }, [expandSignal]);
 
   const runParse = React.useCallback(
     async (raw: string) => {

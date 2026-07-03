@@ -77,8 +77,10 @@ function open(props?: Partial<LogSheetProps>) {
 
 describe("LogSheet (web) — primitive shape", () => {
   it("renders the canonical title when open", () => {
+    // ENG-1303 — `sloe_v3_log` defaults ON, so the header reads "Add to today"
+    // (was "Log a meal", still the flag-off kill-switch copy).
     open();
-    expect(screen.getByText("Log a meal")).toBeDefined();
+    expect(screen.getByText("Add to today")).toBeDefined();
     expect(screen.getByRole("button", { name: "Close log sheet" })).toBeDefined();
   });
 });

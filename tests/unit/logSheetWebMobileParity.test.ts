@@ -183,6 +183,74 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
   });
 });
 
+describe("LogSheet v3 method-grid tile grammar — web ↔ mobile parity (ENG-1303)", () => {
+  const webRow = read(WEB_INPUT_MODE_ROW);
+  const mobileRow = read(MOBILE_INPUT_MODE_ROW);
+  const web = read(WEB_LOG_SHEET);
+  const mobile = read(MOBILE_LOG_SHEET);
+
+  it("both rows gate the tile grammar on the shared `sloe_v3_log` flag", () => {
+    for (const src of [webRow, mobileRow]) {
+      expect(src).toContain('isFeatureEnabled("sloe_v3_log")');
+    }
+  });
+
+  it("both rows ship a first-class Describe method tile", () => {
+    for (const src of [webRow, mobileRow]) {
+      expect(src).toContain('key: "describe"');
+      expect(src).toContain("Describe");
+      // The tile fires the host-owned describe callback.
+      expect(src).toMatch(/onDescribe/);
+    }
+  });
+
+  it("both rows render the v3 order Scan / Photo / Voice / Describe / Quick add when the flag is on", () => {
+    // The `v3 ? [...] : [...]` split lists the grid order photo-before-voice.
+    for (const src of [webRow, mobileRow]) {
+      expect(src).toMatch(
+        /v3\s*\?\s*\[\s*scan,\s*photoMode,\s*voiceMode,\s*describeMode,\s*quick\s*\]/,
+      );
+    }
+  });
+
+  it("both rows emit per-method + lock-badge test handles", () => {
+    for (const src of [webRow, mobileRow]) {
+      expect(src).toContain("log-sheet-method-${key}");
+      expect(src).toContain("log-sheet-method-lock-${key}");
+    }
+  });
+
+  it("both rows replace the PRO text pill with a Lock glyph in the v3 render", () => {
+    // The v3 branch imports + renders the lucide `Lock` glyph; the legacy
+    // branch keeps the "PRO" text pill as the flag-off kill switch.
+    for (const src of [webRow, mobileRow]) {
+      expect(src).toMatch(/\bLock\b/);
+      // The legacy pill copy survives (kill-switch path).
+      expect(src).toContain("PRO");
+    }
+  });
+
+  it("both sheets swap the header copy to 'Add to today' behind the same flag", () => {
+    for (const src of [web, mobile]) {
+      expect(src).toContain('isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal"');
+    }
+  });
+
+  it("both sheets thread `describe` + `onDescribe` into the input-mode row", () => {
+    for (const src of [web, mobile]) {
+      expect(src).toContain("onDescribe={describe ? onDescribe : undefined}");
+      expect(src).toMatch(/describe=\{describe \? \{ locked: describe\.locked \} : undefined\}/);
+    }
+  });
+
+  it("both describe flows accept the `expandSignal` prop (empty-expand from the tile)", () => {
+    for (const src of [read(WEB_DESCRIBE_FLOW), read(MOBILE_DESCRIBE_FLOW)]) {
+      expect(src).toMatch(/expandSignal\?:\s*number/);
+      expect(src).toContain("if (expandSignal > 0) setExpanded(true)");
+    }
+  });
+});
+
 describe("LogSheet slot selector — web ↔ mobile parity (ENG-773)", () => {
   const web = read(WEB_LOG_SHEET);
   const mobile = read(MOBILE_LOG_SHEET);

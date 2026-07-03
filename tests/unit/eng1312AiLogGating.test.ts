@@ -45,10 +45,14 @@ describe("ENG-1312 — voice log host gate (free → paywall, Pro → sheet)", (
 });
 
 describe("ENG-1312 — single PRO-badge affordance on Pro-only surfaces", () => {
-  it("input-mode rows use PRO badge when locked (not lock icons)", () => {
+  it("input-mode rows: PRO pill in the legacy path, v3 frost Lock badge gated behind sloe_v3_log (ENG-1303)", () => {
     for (const src of [WEB_INPUT_ROW, MOBILE_INPUT_ROW]) {
+      // Legacy (sloe_v3_log OFF) render keeps the ENG-1312 "PRO" text pill.
       expect(src).toContain("PRO");
-      expect(src).not.toMatch(/\bLock\b/);
+      // ENG-1303 (sloe_v3_log ON) swaps it for the prototype's circular frost
+      // Lock badge — so the Lock icon is legitimately present, gated by the flag.
+      expect(src).toContain("sloe_v3_log");
+      expect(src).toMatch(/\bLock\b/);
     }
   });
 

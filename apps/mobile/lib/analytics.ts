@@ -651,6 +651,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // review without the refine input (kill switch: remove here / PostHog).
   // Mirror of the web entry in src/lib/analytics/track.ts. M+W.
   "log_refine_describe_v1",
+  // ENG-1303 — the v3 method-grid TILE grammar for the LogSheet input-method
+  // row (rounded secondary-surface tiles: Scan / Photo / Voice / Describe /
+  // Quick add, frost lock badge in place of the "PRO" text pill) + the sheet
+  // header copy "Add to today" (was "Log a meal"). Describe is a first-class
+  // tile that expands the inline describe flow. DEFAULT-ON per the beta-window
+  // "always flag on" policy (Grace 2026-07-02) — off → the legacy circular
+  // input chips + "Log a meal" header render byte-for-byte (kill switch:
+  // remove here / PostHog). Mirror of the web entry in
+  // src/lib/analytics/track.ts. M+W.
+  "sloe_v3_log",
 ]);
 
 /**

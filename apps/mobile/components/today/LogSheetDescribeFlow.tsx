@@ -46,6 +46,10 @@ export type LogSheetDescribeFlowProps = {
   inputHidden?: boolean;
   /** Active meal slot label (Breakfast/Lunch/…) shown on the review summary. */
   slotLabel?: string;
+  /** ENG-1303 — the Describe method tile bumps this to expand the flow EMPTY
+   *  (distinct from `seedText`, which pre-fills from the search-row NL CTA).
+   *  A change > 0 expands; the initial `0` is inert so it doesn't auto-open. */
+  expandSignal?: number;
 };
 
 function LogSheetDescribeFlowImpl({
@@ -59,6 +63,7 @@ function LogSheetDescribeFlowImpl({
   onReviewActiveChange,
   inputHidden = false,
   slotLabel,
+  expandSignal = 0,
 }: LogSheetDescribeFlowProps) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -88,6 +93,13 @@ function LogSheetDescribeFlowImpl({
     setExpanded(true);
     onSeedConsumed?.();
   }, [seedText, onSeedConsumed]);
+
+  // ENG-1303 — expand (empty) when the Describe method tile bumps the signal.
+  // Guard the initial 0 so a freshly-mounted flow doesn't auto-open. The host
+  // already gates the bump on `locked` (it paywalls instead of bumping).
+  React.useEffect(() => {
+    if (expandSignal > 0) setExpanded(true);
+  }, [expandSignal]);
 
   const runParse = React.useCallback(
     async (raw: string) => {
