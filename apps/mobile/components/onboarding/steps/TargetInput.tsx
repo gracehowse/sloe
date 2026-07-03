@@ -57,7 +57,7 @@ export function TargetInput({
           fontVariant: ["tabular-nums"],
           color: colors.text,
           paddingVertical: 0,
-          marginTop: 2,
+          marginTop: Spacing.xs,
         }}
       />
     </View>
