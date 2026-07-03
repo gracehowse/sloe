@@ -212,9 +212,8 @@ function EditEntryV2(props: TodayEditMealModalProps) {
   const portionNum = parsePortion(editPortion);
   const portionLabel = formatMultiplier(portionNum);
 
-  // Quiet selection haptic on portion recalc (the ±/chip-committed value,
-  // never raw keystrokes) — a Light stepper beat. The durable Save CTA fires
-  // the heavier Medium ("confirm") commit beat (ENG-1016).
+  // Confirm haptic on portion recalc (the ±/chip-committed value, never raw
+  // keystrokes) — Medium commit weight via useHaptics (ENG-1016 / ENG-1342).
   const onPortionChange = (next: number) => {
     if (motionEnabled) {
       haptics.confirm();

@@ -30,7 +30,7 @@ import {
   Plus,
   Search,
 } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
+import { useHaptics } from "@/hooks/useHaptics";
 import { decode } from "base64-arraybuffer";
 
 import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
@@ -192,6 +192,7 @@ function ingredientsFromImageResponse(
 }
 
 export default function CreateRecipeScreen() {
+  const haptics = useHaptics();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const goBackOrCancel = useSafeBack("/(tabs)/settings");
@@ -375,7 +376,7 @@ export default function CreateRecipeScreen() {
         }
         setPasteModalOpen(false);
         setPasteDraft("");
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.success();
         if (needsReview) {
           Alert.alert(
             "Review nutrition matches",
@@ -484,7 +485,7 @@ export default function CreateRecipeScreen() {
       } else {
         setIngredients(merged);
       }
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     } catch {
       Alert.alert("Error", "Network error while scanning the photo.");
     } finally {
@@ -570,7 +571,7 @@ export default function CreateRecipeScreen() {
     setSearchReplaceId(null);
     setSearchOpen(false);
     // ENG-1016 — adding / replacing an ingredient is a commit → Medium.
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.confirm();
   }, [searchReplaceId]);
 
   // F-128 — AI items (voice/photo) → recipe ingredients. Same shape
@@ -606,7 +607,7 @@ export default function CreateRecipeScreen() {
     ]);
     setVoiceLogOpen(false);
     setPhotoLogOpen(false);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.success();
   }, []);
 
   const onBarcodeScanned = useCallback(
@@ -631,7 +632,7 @@ export default function CreateRecipeScreen() {
         },
       ]);
       setBarcodeOpen(false);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     },
     [],
   );
@@ -678,7 +679,7 @@ export default function CreateRecipeScreen() {
       const next = Math.min(99, Math.max(1, (parseInt(prev, 10) || 1) + delta));
       return String(next);
     });
-    void Haptics.selectionAsync();
+    haptics.select();
   }, []);
 
   const pickImage = useCallback(async () => {
@@ -831,7 +832,7 @@ export default function CreateRecipeScreen() {
         }
       }
 
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
       router.replace(`/recipe/${recipeId}`);
     } catch {
       Alert.alert("Error", "Something went wrong.");

@@ -28,9 +28,9 @@
  * `onCelebrationComplete()` when it finishes to unmount it.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { useHaptics } from "@/hooks/useHaptics";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
@@ -75,6 +75,7 @@ export function useWinMoment({
   isToday,
   ready,
 }: UseWinMomentArgs): UseWinMoment {
+  const haptics = useHaptics();
   const winEnabled = isFeatureEnabled("redesign_winmoment");
   const motionEnabled = isFeatureEnabled("redesign_motion");
 
@@ -134,9 +135,9 @@ export function useWinMoment({
     // SPEC 1 (2026-06-09) sequenced win beat: Medium impact, then the
     // Success notification 80ms later — a tap-then-bloom that reads as a
     // deliberate celebration instead of a single buzz.
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics.confirm();
     setTimeout(() => {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     }, 80);
 
     try {
@@ -148,7 +149,7 @@ export function useWinMoment({
     } catch {
       /* analytics fire-and-forget */
     }
-  }, [winEnabled, isToday, ready, dayKey, snapshot]);
+  }, [winEnabled, isToday, ready, dayKey, snapshot, haptics]);
 
   const onCelebrationComplete = useCallback(() => {
     setActiveCelebration(null);
@@ -161,8 +162,8 @@ export function useWinMoment({
     // A durable log is a commit, so it fires the same Medium beat as the
     // PressableScale `haptic="confirm"` primitive. NOT the loud success
     // notification, which stays reserved for the win-moment landmark.
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [motionEnabled]);
+    haptics.confirm();
+  }, [motionEnabled, haptics]);
 
   return { activeCelebration, activeMilestone, onCelebrationComplete, confirmLog };
 }

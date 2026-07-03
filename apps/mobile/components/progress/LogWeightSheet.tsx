@@ -12,12 +12,12 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import { X } from "lucide-react-native";
 
 import { FontFamily, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useHaptics } from "@/hooks/useHaptics";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { kgToLb, lbToKg } from "@suppr/shared/units/imperial";
 import { resolveWeightSaveCelebration } from "@suppr/nutrition-core/weightWinMoment";
@@ -100,6 +100,7 @@ export function LogWeightSheet({
   onSaved,
 }: LogWeightSheetProps) {
   const colors = useThemeColors();
+  const haptics = useHaptics();
   const insets = useSafeAreaInsets();
   const [input, setInput] = React.useState("");
   const [saving, setSaving] = React.useState(false);
@@ -176,15 +177,13 @@ export function LogWeightSheet({
     if (winMomentEnabled || milestoneEnabled) {
       if (newLow) {
         // Loud landmark — the reserved success notification.
-        void Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
+        haptics.success();
       } else if (milestoneCrossed != null) {
-        // ENG-952 — quieter milestone tier: a soft Light tap, not the loud
+        // ENG-952 — quieter milestone tier: a soft select tap, not the loud
         // Success notification reserved for a new all-time low.
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        haptics.select();
       } else {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        haptics.confirm();
       }
     }
     onSaved({
@@ -205,6 +204,7 @@ export function LogWeightSheet({
     onSaveWeight,
     onSaved,
     onClose,
+    haptics,
   ]);
 
   return (

@@ -9,8 +9,8 @@ import {
   Sparkles,
   Target,
 } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 import { CalorieRingDial } from "@/components/charts/CalorieRingDial";
+import { useHaptics } from "@/hooks/useHaptics";
 import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { Layout } from "@/constants/layout";
 import { useAccent, useResolvedScheme } from "@/context/theme";
@@ -41,6 +41,7 @@ import { OnboardingRevealProjectionChart } from "../OnboardingRevealProjectionCh
 
 export function MobileRevealStep() {
   const { targets, state } = useOnboarding();
+  const haptics = useHaptics();
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the target-reveal
   // ring gradient, the weight-skipped Scale glyph, and the "Log meals" next-step
@@ -91,7 +92,7 @@ export function MobileRevealStep() {
       // honours per-device haptic settings; on Android the call is
       // a no-op (we ship iOS-only via TestFlight today anyway).
       try {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.success();
       } catch {
         /* silent — haptics aren't critical to the flow */
       }
@@ -111,7 +112,7 @@ export function MobileRevealStep() {
       clearTimeout(beatTimer);
       cancelAnimationFrame(raf);
     };
-  }, [target]);
+  }, [target, haptics]);
 
   if (targets == null) {
     // 2026-05-14 (premium-bar audit B5 #4): weight-skipped branch is

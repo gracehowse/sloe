@@ -251,7 +251,8 @@ describe("TodayEditMealModal V2 — ENG-813 redesign", () => {
     const { getByTestId, onApplyPortionMultiplier } = renderModal();
     fireEvent.press(getByTestId("edit-entry-portion-chip-2"));
     expect(onApplyPortionMultiplier).toHaveBeenCalledWith(2);
-    expect(H.impactAsync).toHaveBeenCalledWith("light");
+    // ENG-1342 — portion commit routes through useHaptics().confirm() (Medium).
+    expect(H.impactAsync).toHaveBeenCalledWith("medium");
   });
 
   it("motion OFF — recalc still applies but fires no haptic", async () => {

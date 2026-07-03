@@ -175,7 +175,6 @@ import {
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { useCalmMode } from "@/lib/calmMode";
-import * as Haptics from "expo-haptics";
 import { HouseholdSummaryRow } from "@/components/HouseholdSummaryRow";
 import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
@@ -1406,7 +1405,7 @@ export default function PlannerScreen() {
         // ENG-820 — settle haptic so a moved meal landing in its new slot is
         // felt. Behind `redesign_winmoment`; flag-off keeps the silent move.
         if (winMomentsEnabled) {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          haptics.confirm();
         }
         // ENG-1150 — re-resolve per-row fibre on both affected days before
         // persist so the day-total fibre cell follows the moved meal: mobile
@@ -1572,7 +1571,7 @@ export default function PlannerScreen() {
         withSpring(1.06, SPRING_SNAPPY),
         withSpring(1, SPRING_DEFAULT),
       );
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     }
   }, [winMomentsEnabled, summaryTone, summaryPulse]);
   const summaryTitleAnimStyle = useAnimatedStyle(() => ({
@@ -2558,7 +2557,7 @@ export default function PlannerScreen() {
       // this is a Medium *impact* settle. Behind `redesign_winmoment`; flag-off
       // keeps the silent generate.
       if (winMomentsEnabled) {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        haptics.confirm();
       }
 
       // Group E Card 4 (premium-bar audit 2026-05-14): count how
@@ -3613,7 +3612,7 @@ export default function PlannerScreen() {
                   // bottom sheet. Long-press keeps its haptic since it
                   // was already the most-discoverable gesture for the
                   // action menu.
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  haptics.confirm();
                   setRowMenu({ dayIdx, mealIndexInDay });
                 }}
                 onPress={() => {
@@ -3946,7 +3945,7 @@ export default function PlannerScreen() {
                         key={slot}
                         onPress={() => {
                           // ENG-1016 — adding a meal slot to the plan is a commit → Medium.
-                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          haptics.confirm();
                           setPlan((prev) => {
                             if (!prev) return prev;
                             const next = prev.map((dpRow, di) => {
