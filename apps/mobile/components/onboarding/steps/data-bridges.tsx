@@ -18,10 +18,16 @@
  *   3. Notifications — gentle reminders on by default for retention.
  *      Lazy-import `expo-notifications` so Expo Go doesn't crash on
  *      mount.
- *   4. Recipe URL — preserves the legacy `import.tsx` Instagram-link
- *      parser as a card. Idle / parsing / done phases lifted from the
- *      legacy step (kept intact on disk) so the demo affordance stays
- *      familiar.
+ *   4. Recipe import + MFP CSV — real `POST /api/recipe-import` call via
+ *      `MobileOnboardingRecipeImportCard` (ENG-1304, 2026-07-03), replacing
+ *      the earlier "try after setup" stub (the legacy `import.tsx` demo
+ *      step is now dormant/unreachable, see its own file header). Order
+ *      between the recipe-import and CSV cards is gated by
+ *      `appChoiceDisplayName()`: CSV leads when app-choice named an
+ *      importable app (self-identified refugee — CSV is their most
+ *      relevant next step); recipe import leads otherwise (the
+ *      default/majority path, and the product's acquisition-wedge growth
+ *      bet).
  *
  * Each card is independently skippable; the user can pick any one,
  * several, or none. A fifth "Maybe later" affordance lets them advance

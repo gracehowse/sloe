@@ -10,6 +10,10 @@
  *   3. Apple Health card renders on iOS (Platform.OS shim defaults to
  *      "ios" via the react-native shim).
  *   4. "Maybe later" — sets dataBridgeChosen = "skip".
+ *   5. Recipe import card (ENG-1304, 2026-07-03) exposes real import
+ *      affordances (URL input, import button, sample link) — the card
+ *      now calls the real pipeline instead of the earlier
+ *      "try after setup" preview stub.
  *
  * The HealthKit + notifications permission flows are NOT exercised
  * (Platform-native bridges that don't survive jsdom) — those paths
@@ -83,6 +87,14 @@ vi.mock("@/lib/supprWeb", () => ({
   getSupprApiBase: () => "https://suppr-club.com",
   getSupprWebBase: () => "https://suppr-club.com",
 }));
+// ENG-1304 — OnboardingRecipeImportCard imports `@/lib/saveImportedRecipe`,
+// which imports `@/lib/supabase` at module scope; that client validates its
+// URL at construction, so without a stub it throws under vitest.
+vi.mock("@/lib/saveImportedRecipe", () => ({
+  saveImportedRecipe: vi.fn(async () => ({ error: "not exercised in this test" })),
+  updateImportedRecipe: vi.fn(async () => ({ error: "not exercised in this test" })),
+  coercePositiveMinutes: (n: unknown) => (typeof n === "number" && n > 0 ? n : null),
+}));
 
 beforeEach(() => {
   try {
@@ -129,9 +141,6 @@ describe("MobileDataBridgesStep — smoke render", () => {
     expect(getByText("I already know my targets")).toBeTruthy();
     expect(getByText("Connect Apple Health")).toBeTruthy();
     expect(getByText("Gentle reminders")).toBeTruthy();
-    // Pre-launch P0 (2026-05-11): the recipe card no longer simulates an
-    // import on tap. Title changed from "Try a recipe import" to
-    // "Recipe import" — honest preview, no input field, no fake success.
     expect(getByText("Recipe import")).toBeTruthy();
   });
 
@@ -139,6 +148,17 @@ describe("MobileDataBridgesStep — smoke render", () => {
     const { queryByText } = withProvider(<MobileDataBridgesStep />);
     expect(queryByText("Maybe later")).toBeNull();
     expect(queryByText("Skipped")).toBeNull();
+  });
+});
+
+describe("MobileDataBridgesStep — recipe import card (ENG-1304)", () => {
+  it("exposes real import affordances — URL input, import button, sample link", () => {
+    const { getByLabelText, getByText } = withProvider(
+      <MobileDataBridgesStep />,
+    );
+    expect(getByLabelText("Recipe URL")).toBeTruthy();
+    expect(getByText("Paste a link to import")).toBeTruthy();
+    expect(getByText("Try a sample recipe")).toBeTruthy();
   });
 });
 

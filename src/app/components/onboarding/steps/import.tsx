@@ -8,12 +8,15 @@ import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 import type { ImportSource } from "@/lib/onboarding/state";
 
 /**
- * Import — step 13. The "show, don't tell" close to the flow: paste a
- * link or pick a source, watch the parser do its thing.
+ * Import — dormant since 2026-04-30 (Customer-lens shrink removed it from
+ * STEP_IDS/STEP_COMPONENTS' live order); kept only for a future post-launch
+ * nudge surface (see the steps barrel `index.ts`). Not reachable in the
+ * current onboarding flow — the live recipe-import surface is now
+ * `OnboardingRecipeImportCard` on the data-bridges step (ENG-1304).
  *
- * The actual recipe-import handshake is wired by Stage E (it routes
- * through the existing `recipeImportPipeline`). This step is the
- * presentation layer + a state-machine for the parsing demo.
+ * The parse below is still simulated (never wired to the real
+ * `recipeImportPipeline`) — tracked as ENG-1341, not a live gap since this
+ * step is unreachable today.
  */
 
 type Phase = "idle" | "parsing" | "done";
@@ -27,8 +30,9 @@ export function ImportStep() {
   const runImport = (src: ImportSource) => {
     set({ importSource: src });
     setPhase("parsing");
-    // Simulated parse latency. Stage E will replace this with the real
-    // pipeline call (recipeImportPipeline.parseUrl(...)).
+    // Simulated parse latency — this step is dormant/unreachable (see file
+    // header). Wire the real pipeline call here per ENG-1341 if/when a
+    // post-launch nudge surface reactivates this step.
     const t = setTimeout(() => setPhase("done"), 2200);
     return () => clearTimeout(t);
   };

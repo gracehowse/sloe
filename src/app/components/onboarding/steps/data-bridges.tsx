@@ -14,7 +14,14 @@
  *   1. Manual targets — paste-in 4-input form (MFP / MacroFactor refugee)
  *   2. Notifications — browser push (kept simple — `permissions.tsx`
  *      step's existing logic is the right level)
- *   3. Recipe URL — preserves the legacy `import.tsx` parser flow
+ *   3. Recipe import — real `POST /api/recipe-import` call via
+ *      `OnboardingRecipeImportCard` (ENG-1304, 2026-07-03), replacing the
+ *      earlier "try after setup" stub. Card order with #4 is gated by
+ *      `appChoiceDisplayName()`: CSV leads when the app-choice step named
+ *      an importable app (MFP / Lose It / Cronometer / MacroFactor —
+ *      self-identified refugee, CSV is their most relevant next step);
+ *      recipe import leads otherwise (the default/majority path, and the
+ *      product's acquisition-wedge growth bet).
  *   4. MFP CSV — bulk-import history (added 2026-05-02; closes the
  *      MFP-refugee history-bridge gap surfaced in customer-lens P1)
  *

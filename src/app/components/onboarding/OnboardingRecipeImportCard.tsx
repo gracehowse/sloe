@@ -95,7 +95,7 @@ export function OnboardingRecipeImportCard() {
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex gap-3 items-start">
-        <div className="size-9 rounded-lg flex items-center justify-center shrink-0 text-emerald-500 bg-emerald-500/15">
+        <div className="size-9 rounded-lg flex items-center justify-center shrink-0 text-success-solid bg-success-soft">
           <Link2 className="size-4" />
         </div>
         <div className="flex-1 min-w-0">
@@ -104,7 +104,7 @@ export function OnboardingRecipeImportCard() {
               Recipe import
             </h3>
             {flow.phase === "success" ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
+              <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold text-success-solid">
                 <Check className="size-2.5" />
                 Saved
               </span>
@@ -136,7 +136,7 @@ export function OnboardingRecipeImportCard() {
             </div>
           </label>
           {flow.phase === "error" && flow.errorMessage ? (
-            <p className="mt-2 text-[11px] text-amber-500 leading-relaxed">
+            <p className="mt-2 text-[11px] text-warning-solid leading-relaxed">
               {flow.errorMessage}
             </p>
           ) : null}
@@ -241,10 +241,10 @@ function ImportSuccess({
     .join(" · ");
 
   return (
-    <div className="mt-3 rounded-xl border border-emerald-500/30 overflow-hidden">
+    <div className="mt-3 rounded-xl border border-success-soft/60 overflow-hidden">
       {summary.calories != null ? (
         <div className="p-4">
-          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-emerald-500 mb-2">
+          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-success-solid mb-2">
             <Check className="size-3.5" strokeWidth={2.5} />
             Saved to your Library
           </div>

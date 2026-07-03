@@ -78,6 +78,14 @@ vi.mock("@/lib/supprWeb", () => ({
   getSupprApiBase: () => "https://suppr-club.com",
   getSupprWebBase: () => "https://suppr-club.com",
 }));
+// ENG-1304 — OnboardingRecipeImportCard imports `@/lib/saveImportedRecipe`,
+// which imports `@/lib/supabase` at module scope; that client validates its
+// URL at construction, so without a stub it throws under vitest.
+vi.mock("@/lib/saveImportedRecipe", () => ({
+  saveImportedRecipe: vi.fn(async () => ({ error: "not exercised in this test" })),
+  updateImportedRecipe: vi.fn(async () => ({ error: "not exercised in this test" })),
+  coercePositiveMinutes: (n: unknown) => (typeof n === "number" && n > 0 ? n : null),
+}));
 
 function withProvider(ui: React.ReactNode, initial?: Partial<OnboardingState>) {
   const seed = initial ?? { ...DEFAULT_ONBOARDING_STATE };

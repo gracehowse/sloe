@@ -16,6 +16,17 @@ import { useOnboarding } from "../context";
 import type { ImportSource } from "@/lib/onboarding";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
+/**
+ * Import — dormant since 2026-04-30 (Customer-lens shrink removed it from
+ * STEP_IDS/STEP_COMPONENTS' live order); kept only for a future post-launch
+ * nudge surface (see the steps barrel `index.ts`). Not reachable in the
+ * current onboarding flow — the live recipe-import surface is now
+ * `MobileOnboardingRecipeImportCard` on the data-bridges step (ENG-1304).
+ *
+ * The parse below is still simulated (never wired to the real import
+ * pipeline) — tracked as ENG-1341, not a live gap since this step is
+ * unreachable today.
+ */
 type Phase = "idle" | "parsing" | "done";
 
 export function MobileImportStep() {
@@ -28,6 +39,9 @@ export function MobileImportStep() {
   const runImport = (src: ImportSource) => {
     set({ importSource: src });
     setPhase("parsing");
+    // Simulated parse latency — this step is dormant/unreachable (see file
+    // header). Wire the real pipeline call here per ENG-1341 if/when a
+    // post-launch nudge surface reactivates this step.
     const t = setTimeout(() => setPhase("done"), 2200);
     return () => clearTimeout(t);
   };

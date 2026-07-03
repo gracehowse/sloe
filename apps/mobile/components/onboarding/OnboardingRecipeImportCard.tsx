@@ -156,7 +156,7 @@ export function MobileOnboardingRecipeImportCard() {
                   backgroundColor: Accent.success + "26",
                   paddingHorizontal: 8,
                   paddingVertical: Spacing.xs,
-                  borderRadius: 999,
+                  borderRadius: Radius.full,
                 }}
               >
                 <Check size={10} strokeWidth={2.5} color={Accent.successLight} />
@@ -344,7 +344,7 @@ function ImportProgress() {
                 style={{
                   width: 14,
                   height: 14,
-                  borderRadius: 7,
+                  borderRadius: Radius.full,
                   borderWidth: 1.5,
                   borderColor:
                     i === cur ? accent.primaryLight : colors.cardBorder,
