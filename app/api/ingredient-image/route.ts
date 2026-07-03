@@ -35,6 +35,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { canonicalImageKey } from "@/lib/recipe/canonicalImageKey";
+import { recordReadyAliases } from "@/lib/recipe/recordReadyAliases";
 import { cleanIngredientDisplayName } from "@/lib/recipe/cleanIngredientDisplayName";
 import {
   selectIngredientImageCandidates,
@@ -78,43 +79,9 @@ function skipped(reason: string, extra: Record<string, unknown> = {}) {
   return NextResponse.json({ ok: false, skipped: true, reason, ...extra }, { status: 200 });
 }
 
-/**
- * ENG-1276 — record `(alias_key, name_key)` into `ingredient_image_aliases`
- * for every ready tile key that carries a trusted alias. Idempotent
- * (`on conflict (alias_key) do update set name_key = excluded.name_key`), so
- * a re-key or repeat call is a no-op. Best-effort + never throws: the alias
- * is decorative metadata, and the table may not be migrated yet — a failure
- * here must never fail the image response. `readyKeys` are canonical tile
- * keys known to be `ready` (already-ready or freshly generated).
- */
-async function recordReadyAliases(
-  admin: NonNullable<ReturnType<typeof getSupabaseAdminClient>>,
-  readyKeys: Iterable<string>,
-  aliasKeyByCanonicalKey: ReadonlyMap<string, string>,
-): Promise<void> {
-  if (aliasKeyByCanonicalKey.size === 0) return;
-  const rows: Array<{ alias_key: string; name_key: string }> = [];
-  const seen = new Set<string>();
-  for (const nameKey of readyKeys) {
-    const aliasKey = aliasKeyByCanonicalKey.get(nameKey);
-    if (aliasKey && !seen.has(aliasKey)) {
-      seen.add(aliasKey);
-      rows.push({ alias_key: aliasKey, name_key: nameKey });
-    }
-  }
-  if (rows.length === 0) return;
-  try {
-    const { error } = await admin
-      .from("ingredient_image_aliases")
-      .upsert(rows, { onConflict: "alias_key" });
-    if (error) {
-      // Table not migrated yet / RLS / transient — decorative, swallow.
-      captureRouteError(error, "/api/ingredient-image", { stage: "alias_upsert" });
-    }
-  } catch (err) {
-    captureRouteError(err, "/api/ingredient-image", { stage: "alias_upsert" });
-  }
-}
+// `recordReadyAliases` (the poison-corroborated alias write) lives in
+// src/lib/recipe/recordReadyAliases.ts (imported above) so this route file
+// exports only Next route fields and the security check is unit-testable.
 
 export async function POST(req: Request) {
   const originErr = assertOrigin(req);

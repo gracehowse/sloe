@@ -101,3 +101,12 @@ alter table public.recipe_ingredients
 
 comment on column public.recipe_ingredients.matched_alias_key is
   'ENG-1276: matchedAliasKey({name, matchedSource: source, matchedFoodId: fatsecret_food_id, confidence}) = "source:food_id" (lowercased) when confidence >= 0.85 and both parts present; null otherwise. Feeds the ingredient_image_aliases fallback (canonicalImageKey text key stays primary). src/lib/recipe/canonicalImageKey.ts.';
+
+-- Corroboration lookup: the ingredient-image endpoint verifies a client-
+-- supplied alias against real persisted matches by scanning rows with a given
+-- matched_alias_key (recordReadyAliases, app/api/ingredient-image/route.ts) —
+-- keeps that server-side poison check cheap. Partial: only rows carrying a
+-- trusted alias participate.
+create index if not exists recipe_ingredients_matched_alias_key_idx
+  on public.recipe_ingredients (matched_alias_key)
+  where matched_alias_key is not null;

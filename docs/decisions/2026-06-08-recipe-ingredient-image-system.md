@@ -340,9 +340,18 @@ over-counts unknown models.
     The text key stays the primary path; a missing alias table/row/tile changes nothing.
   - **Alias write on generate:** `/api/ingredient-image` accepts an optional `aliases: [{ name, aliasKey }]`
     and idempotently upserts `(alias_key, name_key)` (`on conflict (alias_key) do update`) once a tile is
-    ready — the alias library grows itself alongside the image library.
+    ready — the alias library grows itself alongside the image library. **SECURITY:** the pairs are
+    client-supplied and the table is global + public-read + service-role-write, so `recordReadyAliases`
+    (extracted to `src/lib/recipe/recordReadyAliases.ts` for testability) **corroborates** every pair
+    against `recipe_ingredients` server-side — an alias is recorded only if a real row (persisted from a
+    trusted ≥0.85 match) already establishes that same `matched_alias_key → canonicalImageKey(name)`
+    mapping. A fabricated pair won't corroborate (no cross-user image cache-poisoning); fails closed on any
+    query error. Backed by a partial index `recipe_ingredients_matched_alias_key_idx`.
   - Web + mobile share the read/enqueue via the new `useIngredientTileImages` hook and
-    `ingredientAliasInputs` helper. Additive + null-safe: with zero alias rows today nothing changes.
+    `ingredientAliasInputs` helper. All three mobile recipe-detail ingredient selects (initial load,
+    reload-after-verify, edit-save reload) route through the shared `loadRecipeIngredientRows` helper so
+    `matched_alias_key` hydrates on iOS's primary path too (not just after an edit-save) — web/mobile parity.
+    Additive + null-safe: with zero alias rows today nothing changes.
 - **Matched-food-name label (still OPEN, ENG-987).** The tile label should *prefer the matched food name*
   (e.g. the FatSecret match's name) but `recipe_ingredients` has no `matched_food_name` column — v1 uses
   `cleanIngredientDisplayName(name)` (the spec's documented fallback), correct but not the matched name.

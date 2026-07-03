@@ -43,10 +43,13 @@ const SRC = {
 
 describe("Bug 1 — verified state persists past manual verify", () => {
   it("mobile recipe-detail row reads is_verified from the DB SELECT", () => {
-    // Pre-fix the SELECT only pulled `confidence, source` — leaving
-    // the row UI to derive its label from the stale numeric column.
+    // Pre-fix the SELECT only pulled `confidence, source` — leaving the row UI
+    // to derive its label from the stale numeric column. ENG-1276 routed the
+    // mobile ingredient loads through the shared `loadRecipeIngredientRows`
+    // helper (web/mobile parity), so is_verified now lives in the base-column
+    // argument passed to that helper rather than a raw `.select("…")`.
     expect(SRC.mobileRecipe).toMatch(
-      /\.select\("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified[^"]*"\)/,
+      /loadRecipeIngredientRows\(\s*supabase,\s*recipeId,\s*"[^"]*confidence, source, is_verified[^"]*"/,
     );
   });
 

@@ -47,6 +47,7 @@ import {
 import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
 import { useIngredientTileImages } from "@suppr/shared/recipe/useIngredientTileImages";
+import { loadRecipeIngredientRows } from "@suppr/shared/recipe/loadRecipeIngredientRows";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
@@ -655,18 +656,14 @@ export default function RecipeDetailScreen() {
       }
 
       if (opts.reloadAfter && opts.persist && !persistHadError) {
-        let reloadRes = await supabase
-          .from("recipe_ingredients")
-          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified, fatsecret_food_id")
-          .eq("recipe_id", recipeId)
-          .order("created_at", { ascending: true });
-        if (reloadRes.error && String(reloadRes.error.message).includes("column")) {
-          reloadRes = await supabase
-            .from("recipe_ingredients")
-            .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
-            .eq("recipe_id", recipeId)
-            .order("created_at", { ascending: true }) as any;
-        }
+        // ENG-1276 — shared helper so mobile hydrates matched_alias_key on the
+        // reload-after-verify path (parity with web), retrying without the alias
+        // column on a pre-migration DB rather than dropping to a lossy set.
+        const reloadRes = await loadRecipeIngredientRows(
+          supabase,
+          recipeId,
+          "name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified, fatsecret_food_id",
+        );
         if (!reloadRes.error && reloadRes.data) setIngredients(reloadRes.data as Ingredient[]);
       }
 
@@ -758,17 +755,15 @@ export default function RecipeDetailScreen() {
             .eq("id", recipeId)
             .maybeSingle();
         }
-        // Try with confidence/source columns, fall back without if columns don't exist yet
-        let ingRes = await supabase
-          .from("recipe_ingredients")
-          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified")
-          .eq("recipe_id", recipeId);
-        if (ingRes.error && String(ingRes.error.message).includes("column")) {
-          ingRes = await supabase
-            .from("recipe_ingredients")
-            .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
-            .eq("recipe_id", recipeId) as any;
-        }
+        // ENG-1276 — shared helper hydrates matched_alias_key on the PRIMARY
+        // screen-open load (parity with web's loadRecipeIngredientRows) so the
+        // alias image-fallback isn't silently inert on iOS. Retries without the
+        // alias column on a pre-migration DB.
+        const ingRes = await loadRecipeIngredientRows(
+          supabase,
+          recipeId,
+          "name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified",
+        );
         if (cancelled) return;
         if (recipeRes.data) {
           const row = recipeRes.data as Record<string, unknown>;
@@ -901,18 +896,12 @@ export default function RecipeDetailScreen() {
 
   const reloadRecipeIngredients = useCallback(async () => {
     if (!recipeId || isSeedRecipeId(recipeId)) return;
-    const ingRes = await supabase
-      .from("recipe_ingredients")
-      .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified, matched_alias_key")
-      .eq("recipe_id", recipeId);
-    if (ingRes.error?.code === "42703") {
-      const fallbackRes = await supabase
-        .from("recipe_ingredients")
-        .select("name, amount, unit, calories, protein, carbs, fat")
-        .eq("recipe_id", recipeId);
-      if (fallbackRes.data) setIngredients(fallbackRes.data as Ingredient[]);
-      return;
-    }
+    // ENG-1276 — shared helper (parity with web + the load/verify paths above).
+    const ingRes = await loadRecipeIngredientRows(
+      supabase,
+      recipeId,
+      "name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified",
+    );
     if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
   }, [recipeId]);
 
