@@ -330,12 +330,13 @@ export function coerceImportErrorCode(
  * importing ("Recipe imports from photos are a Pro feature.") — the wrong
  * story when the user tapped "Generate an image". This map is the
  * image-gen channel's own honest copy; codes not listed here fall through
- * to the shared resolver. Gating itself is unchanged (ENG-865).
+ * to the shared resolver. ENG-865: `pro_required` copy is for regenerate;
+ * first base Sloe hero is free.
  */
 export const IMAGE_GEN_ERROR_COPY = {
-  pro_required: "Generating recipe images is a Pro feature. Upgrade to create one.",
+  pro_required: "Trying another Sloe look is a Pro feature. Upgrade to regenerate.",
   unauthorized: "Sign in to generate a recipe image.",
-  rate_limited: "You've generated a lot of images. Try again in a minute.",
+  rate_limited: "You've generated a lot of images today. Try again tomorrow.",
   invalid_body: "We couldn't start that image. Try again.",
   service_unavailable: "Image generation is temporarily unavailable. Try again shortly.",
 } satisfies Partial<Record<ImportErrorCode, string>>;

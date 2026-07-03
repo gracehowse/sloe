@@ -1,6 +1,8 @@
 # Image generation strategy — design-time + runtime (2026-06-03)
 
 **Status:** Proposed — specialist reviews IN (2026-06-03): legal, monetisation, brand **all APPROVE-with-changes** (see §Specialist sign-offs). Pending Grace's call on the open product questions + implementing the required changes (esp. the legal premise correction, already applied below).
+
+**ENG-865 ratified (2026-07-02, Grace):** Option A shipped — **first base Sloe hero is free** for every signed-in author; **Pro gates regenerate / restyle** (`regenerate: true` or existing `image_source='ai_generated'`). Hidden abuse guard only: `IMAGE_GEN_ABUSE_GUARD_DAILY=25` (all tiers). Removal stays free. Implementation: `src/lib/recipes/imageGenAccess.ts`, `/api/recipe-import/image-hero`.
 **Owner:** Grace
 **Context:** We've been generating Sloe imagery (ingredients, allergens, food) via **Stitch** for the redesign — good results, but two needs have emerged: (1) a repeatable way to generate brand imagery *as we go* at design-time, and (2) a **runtime product feature** — let a user generate a recipe image on import when their own recipe has no photo, or when an Instagram/TikTok import's photo is poor. Julienne (Afternoon Labs) ships exactly this ("recipe image generation so you no longer have default images"), so it's table stakes for the import/viral hook.
 

@@ -330,8 +330,10 @@ describe("ENG-1328 — image-generation error channel", () => {
     });
     expect(out).toBe(IMAGE_GEN_ERROR_COPY.pro_required);
     expect(out).not.toBe(IMPORT_ERROR_COPY.pro_required);
-    expect(out).toMatch(/image/i);
+    expect(out).toMatch(/Sloe/i);
     expect(out).not.toMatch(/photo/i);
+    expect(out).toMatch(/Pro/i);
+    expect(out).toMatch(/regenerat/i);
   });
 
   it("override map outranks the server message for every shared code", () => {
