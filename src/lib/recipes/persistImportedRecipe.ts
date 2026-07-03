@@ -5,6 +5,7 @@ import { normaliseSource } from "./persistSourceAttribution";
 import { normalizeRecipeTitle } from "./normalizeRecipeTitle";
 import { deriveImportedRecipeTitle } from "./deriveImportedRecipeTitle";
 import { isStructuredSource } from "../nutrition/structuredSourceGate";
+import { matchedAliasKeyForRow } from "../recipe/matchedAliasPersist";
 import {
   IMPORT_ERROR_COPY,
   mapPersistenceError,
@@ -59,6 +60,13 @@ export type ApiImportedRecipe = {
     micros?: Record<string, number> | null;
     source?: string;
     confidence?: number;
+    /**
+     * ENG-1276 — the matched food id (`VerifiedIngredient.fatSecretFoodId`)
+     * from the verify pipeline. Persisted to
+     * `recipe_ingredients.fatsecret_food_id` and folded (with source +
+     * confidence) into `matched_alias_key` when the match is trusted.
+     */
+    fatsecretFoodId?: string | null;
   }[];
 };
 
@@ -90,10 +98,33 @@ function isMicrosColumnMissing(err: unknown): boolean {
   return (code === "42703" || code === "PGRST204") && msg.includes("nutrition_micros");
 }
 
+/**
+ * ENG-1276 — true when the error means the staged `matched_alias_key`
+ * migration (20260702130200) has not been applied yet. Same viral-wedge
+ * tolerance as the ENG-1299 micros column: degrade to "no alias" rather than
+ * fail the whole import on a not-yet-migrated database.
+ */
+function isMatchedAliasColumnMissing(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: string }).code;
+  const msg = String((err as { message?: string }).message ?? "");
+  return (code === "42703" || code === "PGRST204") && msg.includes("matched_alias_key");
+}
+
 /** Strip the ENG-1299 micros column from row payloads (legacy-DB retry). */
 function withoutMicrosColumn<T extends { nutrition_micros?: unknown }>(rows: T[]): Omit<T, "nutrition_micros">[] {
   return rows.map((r) => {
     const { nutrition_micros: _dropped, ...rest } = r;
+    return rest;
+  });
+}
+
+/** Strip the ENG-1276 alias column from row payloads (legacy-DB retry). */
+function withoutMatchedAliasColumn<T extends { matched_alias_key?: unknown }>(
+  rows: T[],
+): Omit<T, "matched_alias_key">[] {
+  return rows.map((r) => {
+    const { matched_alias_key: _dropped, ...rest } = r;
     return rest;
   });
 }
@@ -280,6 +311,15 @@ export async function saveImportedRecipe(
           typeof m?.confidence === "number" && Number.isFinite(m.confidence)
             ? m.confidence
             : null,
+        // ENG-1276 — carry the matched food id + its alias key (null unless
+        // the match is trusted: confidence ≥ 0.85 with source + id present).
+        fatsecret_food_id: m?.fatsecretFoodId ?? null,
+        matched_alias_key: matchedAliasKeyForRow({
+          name,
+          source: m?.source,
+          fatsecretFoodId: m?.fatsecretFoodId,
+          confidence: m?.confidence,
+        }),
       };
     });
 
@@ -289,6 +329,13 @@ export async function saveImportedRecipe(
       ({ error: ingErr } = await supabase
         .from("recipe_ingredients")
         .insert(withoutMicrosColumn(ingRows)));
+    }
+    if (ingErr && isMatchedAliasColumnMissing(ingErr)) {
+      // ENG-1276 legacy-DB tolerance — retry without the staged alias column
+      // (also drop micros so a DB missing BOTH staged columns still lands).
+      ({ error: ingErr } = await supabase
+        .from("recipe_ingredients")
+        .insert(withoutMatchedAliasColumn(withoutMicrosColumn(ingRows))));
     }
     if (ingErr) {
       console.error("[saveImport] ingredient insert failed, rolling back recipe:", ingErr.message);
@@ -445,6 +492,15 @@ export async function updateImportedRecipe(
           typeof m?.confidence === "number" && Number.isFinite(m.confidence)
             ? m.confidence
             : null,
+        // ENG-1276 — carry the matched food id + its alias key (null unless
+        // the match is trusted: confidence ≥ 0.85 with source + id present).
+        fatsecret_food_id: m?.fatsecretFoodId ?? null,
+        matched_alias_key: matchedAliasKeyForRow({
+          name,
+          source: m?.source,
+          fatsecretFoodId: m?.fatsecretFoodId,
+          confidence: m?.confidence,
+        }),
       };
     });
 
@@ -454,6 +510,13 @@ export async function updateImportedRecipe(
       ({ error: ingErr } = await supabase
         .from("recipe_ingredients")
         .insert(withoutMicrosColumn(ingRows)));
+    }
+    if (ingErr && isMatchedAliasColumnMissing(ingErr)) {
+      // ENG-1276 legacy-DB tolerance — retry without the staged alias column
+      // (also drop micros so a DB missing BOTH staged columns still lands).
+      ({ error: ingErr } = await supabase
+        .from("recipe_ingredients")
+        .insert(withoutMatchedAliasColumn(withoutMicrosColumn(ingRows))));
     }
     if (ingErr) {
       console.error("[saveImport] ingredient re-insert failed:", ingErr.message, "recipeId:", recipeId);

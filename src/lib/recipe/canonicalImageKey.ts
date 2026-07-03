@@ -27,9 +27,11 @@
  *   - The matched-food identity (`source` + `fatsecret_food_id`, when
  *     `confidence ≥ 0.85`) is recorded as an OPTIONAL alias signal so a
  *     differently-spelled future ingredient that matched the SAME food can
- *     reuse the tile. v1 ships the text-only path (no alias storage yet —
- *     ENG-987); `matchedAliasKey()` is exported for that fast-follow. We
- *     NEVER key off a weak match (CLAUDE.md: reject low-confidence collapses).
+ *     reuse the tile. The text key is ALWAYS the primary path; the alias is a
+ *     fallback only. Alias STORAGE + read fallback shipped in ENG-1276
+ *     (`ingredient_image_aliases` table + `recipe_ingredients.matched_alias_key`;
+ *     wired via `matchedAliasPersist.ts` + `ingredientImages.fetchIngredientImages`).
+ *     We NEVER key off a weak match (CLAUDE.md: reject low-confidence collapses).
  *
  * Granularity (image key only — raw/cooked do NOT split; a grain of rice
  * looks like rice either way):
@@ -294,8 +296,9 @@ export function deriveTextKey(name: string | null | undefined): string {
 /**
  * Build the matched-food alias key — `source:food_id` — ONLY when the match
  * is trustworthy (`confidence ≥ MATCHED_ALIAS_MIN_CONFIDENCE` and both parts
- * present). Returns `null` otherwise. v1 has no alias storage (ENG-987); this
- * is exported for the fast-follow + so callers wire the inputs through now.
+ * present). Returns `null` otherwise. ENG-1276 persists this on
+ * `recipe_ingredients.matched_alias_key` (via `matchedAliasPersist.ts`) and
+ * resolves it through the `ingredient_image_aliases` table.
  */
 export function matchedAliasKey(input: CanonicalImageKeyInput): string | null {
   const conf = typeof input.confidence === "number" ? input.confidence : null;

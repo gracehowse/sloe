@@ -12,6 +12,7 @@ import { parseIngredientLine } from "../../lib/recipe-ingredients/parseIngredien
 import { consumePendingImportText } from "../../lib/recipe-import/pendingImportText.ts";
 import { resolveStructuredIngredient } from "../../lib/recipe-ingredients/structuredIngredientsForVerify.ts";
 import { isStructuredSource } from "../../lib/nutrition/structuredSourceGate.ts";
+import { matchedAliasKeyForRow } from "../../lib/recipe/matchedAliasPersist.ts";
 import { estimateLineMacros, sumMacros } from "../../lib/nutrition/estimateIngredientMacros.ts";
 import { effectiveFoodSearchQuery } from "../../lib/nutrition/foodSearchQuery.ts";
 import { inferAllergensFromIngredients } from "../../lib/nutrition/inferAllergens.ts";
@@ -1676,13 +1677,11 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         return;
       }
 
-      // T19 Path B — every row goes through `scrubFatSecretMacros`
-      // before insert. If `v.source === 'FatSecret'` the row's macros
-      // are zeroed and `source` is rewritten to 'Unverified'; the
-      // `fatsecret_food_id` survives so the runtime re-fetch on
-      // recipe-detail load can match against FatSecret again. Rows
-      // from USDA / OFF / Edamam pass through untouched (those sources
-      // permit caching).
+      // T19 Path B — every row goes through `scrubFatSecretMacros` before
+      // insert: a `FatSecret` row's macros are zeroed + `source` → 'Unverified',
+      // but `fatsecret_food_id` (+ ENG-1276 `matched_alias_key`) survive so the
+      // runtime re-fetch on recipe-detail load can re-match. USDA / OFF / Edamam
+      // rows pass through untouched (those sources permit caching).
       const inserts = cleanedIngredients.map((i, idx) => {
         const est = lineEstimates[idx]!;
         const v = verifiedOk ? verifiedLines![idx] : null;
@@ -1708,6 +1707,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           // ENG-1299 — micros travel (and scrub) with the macros.
           nutrition_micros: v?.micros ?? {},
           fatsecret_food_id: v?.fatSecretFoodId ?? null,
+          matched_alias_key: matchedAliasKeyForRow({ name: i.name, source: v?.source ?? rowSource, fatsecretFoodId: v?.fatSecretFoodId, confidence: v?.confidence }), // ENG-1276
           confidence: v?.confidence ?? null,
           is_verified: isStructuredSource(rowSource) && Boolean(macros),
           source: rowSource,

@@ -64,6 +64,12 @@ export type PlanImportVerifiedRecipe = PlanImportParsedRecipe & {
     fiberG?: number;
     source?: string;
     confidence?: number;
+    /**
+     * ENG-1276 — matched food id (`VerifiedIngredient.fatSecretFoodId`).
+     * Persisted to `recipe_ingredients.fatsecret_food_id` and folded into
+     * `matched_alias_key` when the match is trusted (confidence ≥ 0.85).
+     */
+    fatsecretFoodId?: string | null;
   }>;
 };
 

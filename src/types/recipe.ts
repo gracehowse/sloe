@@ -141,6 +141,14 @@ export interface IngredientRow {
    * legacy fallback (0.9 / 0.3) when the column is null.
    */
   confidence?: number | null;
+  /**
+   * ENG-1276 — persisted `recipe_ingredients.matched_alias_key`
+   * (`"source:food_id"`, non-null only when the match was trusted:
+   * confidence ≥ 0.85). Feeds the ingredient-image alias fallback so a
+   * differently-spelled ingredient that matched the same food can reuse
+   * its tile. Null for weak/absent matches and legacy rows.
+   */
+  matchedAliasKey?: string | null;
 }
 
 export interface ShoppingItem {

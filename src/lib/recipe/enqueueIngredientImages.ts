@@ -23,9 +23,17 @@
 
 import { canonicalImageKey } from "./canonicalImageKey";
 
+/** ENG-1276 — one alias pairing sent alongside names so the endpoint can
+ *  record `matched_alias_key → tile` once a tile is ready. `name` is keyed
+ *  the same way tiles are; `aliasKey` is the persisted trusted alias key. */
+export type IngredientImageAlias = { name: string; aliasKey: string };
+
 /** The POST transport. Returns nothing useful — callers ignore it. Must not
  *  throw (wrap your fetch in a `.catch`). */
-export type IngredientImagePost = (body: { names: string[] }) => Promise<unknown>;
+export type IngredientImagePost = (body: {
+  names: string[];
+  aliases?: IngredientImageAlias[];
+}) => Promise<unknown>;
 
 /** Process-lifetime set of canonical keys already enqueued this session, so a
  *  re-render of the same recipe doesn't re-POST. Cleared only on reload. */
@@ -41,16 +49,22 @@ const enqueuedKeys = new Set<string>();
  *   simply all ingredient names — the endpoint skips any already `ready`).
  * @param post    platform transport. Wrapped here so a throw/reject is
  *   swallowed — a failed cache-fill is never worth surfacing.
+ * @param aliases ENG-1276 — optional `{ name, aliasKey }` pairs for the
+ *   ingredients that carry a trusted `matched_alias_key`. Forwarded to the
+ *   endpoint so it records the alias once a tile is ready. Filtered to the
+ *   names actually being sent this call. Absent = pre-ENG-1276 behaviour.
  * @returns the canonical keys newly enqueued (for tests / telemetry).
  */
 export function enqueueIngredientImages(
   names: ReadonlyArray<string | null | undefined>,
   post: IngredientImagePost,
+  aliases?: ReadonlyArray<IngredientImageAlias>,
 ): string[] {
   // Distinct raw names whose canonical key is new this session.
   const seenKeys = new Set<string>();
   const toSend: string[] = [];
   const newKeys: string[] = [];
+  const newKeySet = new Set<string>();
   for (const raw of names) {
     if (typeof raw !== "string" || raw.trim() === "") continue;
     const key = canonicalImageKey(raw);
@@ -58,8 +72,25 @@ export function enqueueIngredientImages(
     seenKeys.add(key);
     toSend.push(raw);
     newKeys.push(key);
+    newKeySet.add(key);
   }
   if (toSend.length === 0) return [];
+
+  // ENG-1276 — only carry aliases for the tiles actually being requested this
+  // call (dedupe by canonical key). Absent/empty → omit the field entirely so
+  // the body is byte-identical to the pre-ENG-1276 shape.
+  const aliasesToSend: IngredientImageAlias[] = [];
+  if (aliases && aliases.length > 0) {
+    const seenAliasKeys = new Set<string>();
+    for (const a of aliases) {
+      if (!a || typeof a.name !== "string" || typeof a.aliasKey !== "string") continue;
+      if (a.name.trim() === "" || a.aliasKey.trim() === "") continue;
+      const key = canonicalImageKey(a.name);
+      if (!key || !newKeySet.has(key) || seenAliasKeys.has(a.aliasKey)) continue;
+      seenAliasKeys.add(a.aliasKey);
+      aliasesToSend.push({ name: a.name, aliasKey: a.aliasKey });
+    }
+  }
 
   // Mark enqueued up-front so a synchronous re-render can't double-fire while
   // the request is in flight.
@@ -68,8 +99,12 @@ export function enqueueIngredientImages(
   // Fire-and-forget: call `post` now (not awaited, so it never blocks render).
   // Any throw/rejection is swallowed — and on failure we RELEASE the keys so a
   // later visit can retry (the endpoint is idempotent anyway).
+  const body =
+    aliasesToSend.length > 0
+      ? { names: toSend, aliases: aliasesToSend }
+      : { names: toSend };
   try {
-    Promise.resolve(post({ names: toSend })).catch(() => {
+    Promise.resolve(post(body)).catch(() => {
       for (const k of newKeys) enqueuedKeys.delete(k);
     });
   } catch {

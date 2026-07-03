@@ -36,8 +36,8 @@ import {
 } from "../../lib/recipes/officialRecipeClaim.ts";
 import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
-import { fetchIngredientImages } from "../../lib/recipe/ingredientImages.ts";
-import { enqueueIngredientImages } from "../../lib/recipe/enqueueIngredientImages.ts";
+import { useIngredientTileImages } from "../../lib/recipe/useIngredientTileImages.ts";
+import { loadRecipeIngredientRows } from "../../lib/recipe/loadRecipeIngredientRows.ts";
 import {
   getIngredientTilePlaceholder,
   resolveIngredientTileImage,
@@ -259,6 +259,8 @@ type DbIngredientRow = {
   added_by_user?: boolean | null;
   /** GW-08 P2 (2026-04-28) — real persisted match confidence (0..1). */
   confidence?: number | null;
+  /** ENG-1276 — persisted matched-food alias key ("source:food_id"). */
+  matched_alias_key?: string | null;
 };
 
 function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
@@ -282,6 +284,11 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
     confidence:
       typeof row.confidence === "number" && Number.isFinite(row.confidence)
         ? row.confidence
+        : null,
+    // ENG-1276 — carry the persisted alias key for the tile fallback.
+    matchedAliasKey:
+      typeof row.matched_alias_key === "string" && row.matched_alias_key.length > 0
+        ? row.matched_alias_key
         : null,
   };
   if (row.override_macros && typeof row.override_macros === "object") {
@@ -336,6 +343,18 @@ function RecipeHeroImage({
     // eslint-disable-next-line @next/next/no-img-element
     <img src={src} alt={alt} className={className} style={style} onError={() => setBroken(true)} />
   );
+}
+
+/** Web transport for the ingredient-image lazy generate-on-miss endpoint —
+ *  module-level + stable so `useIngredientTileImages`'s effect deps can safely
+ *  exclude it. */
+function postIngredientImage(body: { names: string[]; aliases?: Array<{ name: string; aliasKey: string }> }) {
+  return fetch("/api/ingredient-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  });
 }
 
 export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCookMode, initialServings, onViewTracker }: RecipeDetailProps) {
@@ -482,9 +501,6 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
   // ingredient tiles, hydrated from the global `ingredient_images` table.
   // Empty until the fal-funded backfill runs; missing keys fall back to
   // the calm cream placeholder. Never blocks render (async load effect).
-  const [ingredientImageMap, setIngredientImageMap] = useState<ReadonlyMap<string, string>>(
-    () => new Map(),
-  );
   const [dbFetchFailed, setDbFetchFailed] = useState(false);
   const [verifySearchOpen, setVerifySearchOpen] = useState(false);
   const [verifyIndex, setVerifyIndex] = useState<number | null>(null);
@@ -882,18 +898,20 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
         sodiumMg: Number((row as { sodium_mg?: unknown }).sodium_mg) || 0,
       });
 
-      const { data: ingRows, error: ingError } = await supabase
-        .from("recipe_ingredients")
-        .select(
-          "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user, confidence",
-        )
-        .eq("recipe_id", recipe.id)
-        .order("created_at", { ascending: true });
+      // ENG-1276 — select incl. the staged `matched_alias_key`, with a
+      // graceful fallback to the pre-ENG-1276 column set on a not-yet-migrated
+      // DB (helper handles the 42703 retry).
+      const { data: ingRows, error: ingError } = await loadRecipeIngredientRows(
+        supabase,
+        recipe.id,
+        "id, name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, is_verified, source, override_macros, added_by_user, confidence",
+      );
 
       if (cancelled) return;
-      if (!ingError && ingRows?.length) {
-        setDbIngredients(ingRows.map((r) => mapDbIngredientToRow(r as DbIngredientRow)));
-        setDbIngredientIds(ingRows.map((r: any) => r.id));
+      const rows = (ingRows as unknown[] | null) ?? [];
+      if (!ingError && rows.length) {
+        setDbIngredients(rows.map((r) => mapDbIngredientToRow(r as DbIngredientRow)));
+        setDbIngredientIds(rows.map((r) => (r as { id: string }).id));
       } else {
         setDbIngredients([]);
         setDbIngredientIds([]);
@@ -1041,40 +1059,13 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
     }
   }, [authUserId, heroSaving, isMyRecipe, recipe.id, refreshMyLibraryRecipes]);
 
-  // Sloe image system (2026-06-08) — hydrate the ingredient tile images
-  // by `name_key`. Keyed on the joined names so it only re-fetches when
-  // the ingredient set actually changes (not on every render). Degrades
-  // to an empty map (calm placeholders) on any error; never throws.
-  const ingredientNamesKey = ingredients.map((i) => i.name).join("");
-  useEffect(() => {
-    const names = ingredients.map((i) => i.name);
-    if (names.length === 0) {
-      setIngredientImageMap(new Map());
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const { map, missingKeys } = await fetchIngredientImages(supabase, names);
-      if (cancelled) return;
-      setIngredientImageMap(map);
-      // Lazy generate-on-miss: enqueue the tiles that have no ready image
-      // (fire-and-forget; never blocks render). The library fills itself.
-      if (missingKeys.length > 0) {
-        enqueueIngredientImages(names, (b) =>
-          fetch("/api/ingredient-image", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "same-origin",
-            body: JSON.stringify(b),
-          }),
-        );
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ingredientNamesKey]);
+  // Sloe image system (2026-06-08) + ENG-1276 alias fallback — hydrate the
+  // ingredient tile images by `name_key`. Shared hook keeps web/mobile in sync.
+  const ingredientImageMap = useIngredientTileImages(
+    supabase,
+    ingredients,
+    postIngredientImage,
+  );
 
   const instructionSteps = useMemo(() => {
     // Shared normaliser handles `\n` / `/n` typos + whitespace trimming

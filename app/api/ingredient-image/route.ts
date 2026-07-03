@@ -51,11 +51,69 @@ export const maxDuration = 60;
  *  per visit; the rest fill in on the next visit). */
 const MAX_KEYS_PER_REQUEST = 6;
 
-type Payload = { names?: unknown };
+type Payload = { names?: unknown; aliases?: unknown };
+
+/** ENG-1276 — one alias pairing the client already knows: the ingredient's
+ *  raw name (keyed here the same way tiles are) + its persisted trusted
+ *  `matched_alias_key`. Recorded so a differently-spelled future ingredient
+ *  that matched the same food reuses this tile. */
+type AliasInput = { name: string; aliasKey: string };
+
+/** Parse the optional `aliases` payload into `{ name, aliasKey }` pairs.
+ *  Skips anything malformed — an alias is purely additive metadata. */
+function parseAliases(raw: unknown): AliasInput[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AliasInput[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const name = String((item as { name?: unknown }).name ?? "").trim();
+    const aliasKey = String((item as { aliasKey?: unknown }).aliasKey ?? "").trim();
+    if (name && aliasKey) out.push({ name, aliasKey });
+  }
+  return out;
+}
 
 /** 200 + `skipped` so the fire-and-forget caller treats this as a no-op. */
 function skipped(reason: string, extra: Record<string, unknown> = {}) {
   return NextResponse.json({ ok: false, skipped: true, reason, ...extra }, { status: 200 });
+}
+
+/**
+ * ENG-1276 — record `(alias_key, name_key)` into `ingredient_image_aliases`
+ * for every ready tile key that carries a trusted alias. Idempotent
+ * (`on conflict (alias_key) do update set name_key = excluded.name_key`), so
+ * a re-key or repeat call is a no-op. Best-effort + never throws: the alias
+ * is decorative metadata, and the table may not be migrated yet — a failure
+ * here must never fail the image response. `readyKeys` are canonical tile
+ * keys known to be `ready` (already-ready or freshly generated).
+ */
+async function recordReadyAliases(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdminClient>>,
+  readyKeys: Iterable<string>,
+  aliasKeyByCanonicalKey: ReadonlyMap<string, string>,
+): Promise<void> {
+  if (aliasKeyByCanonicalKey.size === 0) return;
+  const rows: Array<{ alias_key: string; name_key: string }> = [];
+  const seen = new Set<string>();
+  for (const nameKey of readyKeys) {
+    const aliasKey = aliasKeyByCanonicalKey.get(nameKey);
+    if (aliasKey && !seen.has(aliasKey)) {
+      seen.add(aliasKey);
+      rows.push({ alias_key: aliasKey, name_key: nameKey });
+    }
+  }
+  if (rows.length === 0) return;
+  try {
+    const { error } = await admin
+      .from("ingredient_image_aliases")
+      .upsert(rows, { onConflict: "alias_key" });
+    if (error) {
+      // Table not migrated yet / RLS / transient — decorative, swallow.
+      captureRouteError(error, "/api/ingredient-image", { stage: "alias_upsert" });
+    }
+  } catch (err) {
+    captureRouteError(err, "/api/ingredient-image", { stage: "alias_upsert" });
+  }
 }
 
 export async function POST(req: Request) {
@@ -119,6 +177,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "no_keys" }, { status: 400 });
   }
 
+  // ENG-1276 — canonical tile key → trusted matched-food alias key. Keyed the
+  // same way tiles are (`canonicalImageKey`) so we know which tile each alias
+  // points at once it's ready. Only the first alias seen per canonical key is
+  // kept (they should agree — a trusted match resolves to one food identity).
+  const aliasKeyByCanonicalKey = new Map<string, string>();
+  for (const { name, aliasKey } of parseAliases(body.aliases)) {
+    const key = canonicalImageKey(name);
+    if (key && !aliasKeyByCanonicalKey.has(key)) {
+      aliasKeyByCanonicalKey.set(key, aliasKey);
+    }
+  }
+
   const admin = getSupabaseAdminClient();
   if (!admin) {
     return skipped("storage_not_configured");
@@ -151,6 +221,10 @@ export async function POST(req: Request) {
     MAX_KEYS_PER_REQUEST,
   );
   if (candidates.length === 0) {
+    // ENG-1276 — even when nothing needs generating, record aliases for the
+    // already-ready tiles so a trusted match's identity is captured on the
+    // first visit that carries it.
+    await recordReadyAliases(admin, alreadyReady, aliasKeyByCanonicalKey);
     return NextResponse.json(
       { ok: true, generated: [], alreadyReady, claimed: 0 },
       { status: 200 },
@@ -225,6 +299,15 @@ export async function POST(req: Request) {
     }
     generated.push(key);
   }
+
+  // ENG-1276 — record aliases for every tile now ready (already-ready +
+  // freshly generated) so the alias library grows itself alongside the image
+  // library. Best-effort; never affects the response.
+  await recordReadyAliases(
+    admin,
+    [...alreadyReady, ...generated],
+    aliasKeyByCanonicalKey,
+  );
 
   return NextResponse.json(
     { ok: true, generated, failed, alreadyReady, claimed: candidates.length },
