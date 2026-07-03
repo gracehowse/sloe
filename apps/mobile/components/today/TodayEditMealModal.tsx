@@ -437,8 +437,6 @@ function EditEntryV2(props: TodayEditMealModalProps) {
               ) : null}
             </ScrollView>
 
-            {/* Sticky footer — destructive-left / primary-right (blue per
-                Phase 0). Quiet log-confirm haptic on Save when motion is on. */}
             <View style={[v2.footer, { borderTopColor: colors.border }]}>
               <PressableScale
                 onPress={onDelete}
@@ -746,9 +744,6 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
             />
           </View>
           <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.md }}>
-            {/* ENG-1016 — Save is a commit → Medium ("confirm") haptic via the
-                canonical PressableScale primitive, matching the redesigned
-                EditEntryV2 Save CTA. */}
             <PressableScale
               haptic="confirm"
               style={[styles.submitBtn, { flex: 1 }]}

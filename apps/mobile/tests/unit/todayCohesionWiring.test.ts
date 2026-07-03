@@ -67,11 +67,11 @@ describe("Today cohesion — TodayMealsSection ENG-1099 M5", () => {
 describe("Today cohesion — TodayHeroRing ENG-1099 RC-3", () => {
   const src = read("../../components/today/TodayHeroRing.tsx");
 
-  it("uses PressableScale for macro-rings toggle when tierV1 is on", () => {
+  it("ENG-1342: macro-rings toggle always uses PressableScale haptic selection", () => {
     expect(src).toMatch(/today-macro-rings-toggle/);
-    expect(src).toMatch(/tierV1 \?/);
     expect(src).toMatch(/PressableScale/);
     expect(src).toMatch(/haptic="selection"/);
+    expect(src).not.toMatch(/tierV1 \?[\s\S]{0,120}today-macro-rings-toggle/);
   });
 });
 
