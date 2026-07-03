@@ -110,6 +110,10 @@ const GATE_15_SHARED = [
   // beta-window house rule; this is the flag the ENG-1241 brief called
   // "onboarding-see-pro" (reused, not renamed).
   "onboarding_conversion_funnel_v1",
+  // ENG-1303 — the v3 LogSheet method-grid tile grammar + "Add to today"
+  // header. Default-ON both platforms; off → the legacy circular chips +
+  // "Log a meal" header (kill switch).
+  "sloe_v3_log",
 ] as const;
 
 describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {

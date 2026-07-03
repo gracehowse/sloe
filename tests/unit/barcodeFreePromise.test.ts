@@ -40,15 +40,26 @@ describe("barcodeFreePromise (ENG-932 / ENG-973)", () => {
     expect(mobileTrustStrip).toContain("BARCODE_FREE_PAYWALL_CHIP");
   });
 
-  it("LogSheet hosts wire loud barcode CTA test id", () => {
+  it("LogSheet loud barcode CTA carries its test id + copy constant", () => {
+    // ENG-1303 — the loud CTA + free-forever line were extracted from the
+    // flagship LogSheet into a sibling `LogSheetBarcodeFreePromise` on each
+    // platform (to hold the screen-line budget as the v3 method grid landed).
+    // The testid + copy constant now live there; the hosts wire the component.
     const root = process.cwd();
+    for (const rel of [
+      "src/app/components/suppr/log-sheet-barcode-free-promise.tsx",
+      "apps/mobile/components/today/LogSheetBarcodeFreePromise.tsx",
+    ]) {
+      const src = readFileSync(join(root, rel), "utf8");
+      expect(src).toContain("log-sheet-loud-barcode-cta");
+      expect(src).toContain("BARCODE_LOUD_CTA_LABEL");
+    }
     for (const rel of [
       "src/app/components/suppr/log-sheet.tsx",
       "apps/mobile/components/today/LogSheet.tsx",
     ]) {
       const src = readFileSync(join(root, rel), "utf8");
-      expect(src).toContain("log-sheet-loud-barcode-cta");
-      expect(src).toContain("BARCODE_LOUD_CTA_LABEL");
+      expect(src).toContain("LogSheetBarcodeFreePromise");
     }
   });
 });

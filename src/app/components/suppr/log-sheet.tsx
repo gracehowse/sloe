@@ -1,11 +1,7 @@
 "use client";
 
-import {
-  BARCODE_FREE_FOREVER_DETAIL,
-  BARCODE_FREE_FOREVER_HEADLINE,
-  BARCODE_LOUD_CTA_LABEL,
-} from "../../../lib/nutrition/barcodeFreePromise.ts";
 import { looksLikeMealDescription } from "../../../lib/nutrition/parseMealDescription.ts";
+import { LogSheetBarcodeFreePromise } from "./log-sheet-barcode-free-promise.tsx";
 import { LogSheetDescribeFlow } from "./log-sheet-describe-flow.tsx";
 import {
   LogHubQuickActions,
@@ -467,6 +463,8 @@ export function LogSheet({
   // the flag-OFF else, consistent with the sibling dialog gating (CLAUDE.md
   // feature-flag non-negotiable).
   const elevated = isFeatureEnabled("design_system_elevation");
+  // ENG-1303 — v3 sheet header copy. OFF → the legacy "Log a meal" (kill switch).
+  const sheetTitle = isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal";
   const sheetShadowCls = elevated
     ? "shadow-[var(--elev-sheet)]"
     : "shadow-[0_-8px_32px_rgba(0,0,0,0.12)]";
@@ -550,7 +548,7 @@ export function LogSheet({
             className="flex items-center justify-between px-4 pb-3 pt-3"
           >
             <DrawerPrimitive.Title className="font-[family-name:var(--font-headline)] text-[22px] font-medium tracking-tight text-foreground-brand">
-              Log a meal
+              {sheetTitle}
             </DrawerPrimitive.Title>
             <DrawerPrimitive.Close
               aria-label="Close log sheet"
@@ -760,6 +758,14 @@ function DefaultComposition({
 }) {
   const [describeReviewActive, setDescribeReviewActive] = React.useState(false);
   const [describeSeedText, setDescribeSeedText] = React.useState<string | null>(null);
+  // ENG-1303 — the Describe method tile expands the inline describe flow. A
+  // monotonically-bumped signal (not seed text) so the flow opens EMPTY; the
+  // handler paywalls a locked describe exactly as the collapsed entry does.
+  const [describeExpandSignal, setDescribeExpandSignal] = React.useState(0);
+  const onDescribe = React.useCallback(() => {
+    if (describe?.locked) return void describe.onPaywall?.();
+    setDescribeExpandSignal((n) => n + 1);
+  }, [describe]);
   const showRecent = !!recent;
   const showSaved = !!saved;
   const showLibrary = !!library;
@@ -890,29 +896,15 @@ function DefaultComposition({
           barcode={barcode}
           voice={voice}
           photo={photo}
+          describe={describe ? { locked: describe.locked } : undefined}
           aiMethodTooltipVisible={aiMethodTooltipVisible}
           onQuickAdd={onAddManually}
+          onDescribe={describe ? onDescribe : undefined}
         />
       </div>
 
       {showBarcodeFreePromise && barcode?.onOpen ? (
-        <div className="mx-3 mt-2 flex w-[calc(100%-1.5rem)] flex-col gap-1.5">
-          <button
-            type="button"
-            data-testid="log-sheet-loud-barcode-cta"
-            onClick={() => barcode.onOpen?.()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary/10 px-4 py-3 text-[15px] font-semibold text-primary-solid hover:bg-primary/15 transition-colors"
-          >
-            <ScanBarcode width={18} height={18} className="shrink-0" aria-hidden />
-            <span>{BARCODE_LOUD_CTA_LABEL}</span>
-          </button>
-          <p
-            data-testid="log-sheet-barcode-free-promise"
-            className="text-center text-[11px] text-foreground-secondary leading-snug"
-          >
-            {BARCODE_FREE_FOREVER_HEADLINE} {BARCODE_FREE_FOREVER_DETAIL}
-          </p>
-        </div>
+        <LogSheetBarcodeFreePromise onOpen={() => barcode.onOpen?.()} />
       ) : null}
         </>
       ) : null}
@@ -923,6 +915,7 @@ function DefaultComposition({
           locked={describe.locked}
           seedText={describeSeedText}
           onSeedConsumed={() => setDescribeSeedText(null)}
+          expandSignal={describeExpandSignal}
           onParse={describe.onParse}
           onCommit={describe.onCommit}
           onPaywall={describe.onPaywall}

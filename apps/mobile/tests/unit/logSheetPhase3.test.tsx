@@ -107,8 +107,10 @@ function open(props?: Partial<LogSheetProps>) {
 
 describe("LogSheet (mobile) — primitive shape", () => {
   it("renders the canonical title when visible", () => {
+    // ENG-1303 — `sloe_v3_log` defaults ON, so the header reads "Add to today"
+    // (was "Log a meal", still the flag-off kill-switch copy).
     const { getByText } = open();
-    expect(getByText("Log a meal")).toBeTruthy();
+    expect(getByText("Add to today")).toBeTruthy();
   });
 
   it("renders nothing when not visible", () => {
@@ -119,7 +121,7 @@ describe("LogSheet (mobile) — primitive shape", () => {
         search={{ onOpen: () => {} }}
       />,
     );
-    expect(queryByText("Log a meal")).toBeNull();
+    expect(queryByText("Add to today")).toBeNull();
   });
 
   it("close button fires onClose", () => {

@@ -44,12 +44,9 @@ import FoodSearchPanel, {
 } from "@/components/food-search/FoodSearchPanel";
 import type { FavoriteSearchItem as InlineFavoriteSearchItem } from "@suppr/nutrition-core/favoriteFoodsSearch";
 import type { MacroConsumed, MacroTargets } from "@suppr/nutrition-core/remainingMacros";
-import {
-  BARCODE_FREE_FOREVER_DETAIL,
-  BARCODE_FREE_FOREVER_HEADLINE,
-  BARCODE_LOUD_CTA_LABEL,
-} from "@suppr/nutrition-core/barcodeFreePromise";
 import { looksLikeMealDescription } from "@suppr/nutrition-core/parseMealDescription";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { LogSheetBarcodeFreePromise } from "@/components/today/LogSheetBarcodeFreePromise";
 import { LogSheetDescribeFlow } from "@/components/today/LogSheetDescribeFlow";
 import { LogSheetInputModeRow } from "@/components/today/LogSheetInputModeRow";
 import {
@@ -487,6 +484,8 @@ function LogSheetImpl({
 
   const inManualEntryMode = !!barcode?.manualEntry;
   const inConfirmationMode = !!confirmation;
+  // ENG-1303 — v3 sheet header copy. OFF → the legacy "Log a meal" (kill switch).
+  const sheetTitle = isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal";
 
   return (
     <Modal
@@ -532,7 +531,7 @@ function LogSheetImpl({
                 (`navPrimary`), the editorial-heading grammar shared with
                 the Today section headers. */}
             <View style={styles.header}>
-              <Text style={[Type.title, { color: colors.navPrimary }]}>Log a meal</Text>
+              <Text style={[Type.title, { color: colors.navPrimary }]}>{sheetTitle}</Text>
               <Pressable
                 onPress={onClose}
                 accessibilityRole="button"
@@ -781,6 +780,13 @@ function DefaultComposition({
   const accent = useAccent();
   const [describeReviewActive, setDescribeReviewActive] = React.useState(false);
   const [describeSeedText, setDescribeSeedText] = React.useState<string | null>(null);
+  // ENG-1303 — the Describe method tile expands the inline describe flow via a
+  // monotonically-bumped signal (opens EMPTY); paywalls a locked describe.
+  const [describeExpandSignal, setDescribeExpandSignal] = React.useState(0);
+  const onDescribe = React.useCallback(() => {
+    if (describe?.locked) return void describe.onPaywall?.();
+    setDescribeExpandSignal((n) => n + 1);
+  }, [describe]);
   const showRecent = !!recent;
   const showSaved = !!saved;
   const showLibrary = !!library;
@@ -900,57 +906,15 @@ function DefaultComposition({
           barcode={barcode}
           voice={voice}
           photo={photo}
+          describe={describe ? { locked: describe.locked } : undefined}
           aiMethodTooltipVisible={aiMethodTooltipVisible}
           onQuickAdd={onAddManually}
+          onDescribe={describe ? onDescribe : undefined}
         />
       </View>
 
       {showBarcodeFreePromise && barcode?.onOpen ? (
-        <View style={{ marginHorizontal: Spacing.md, marginTop: Spacing.sm, gap: Spacing.sm }}>
-          <Pressable
-            testID="log-sheet-loud-barcode-cta"
-            accessibilityRole="button"
-            accessibilityLabel={BARCODE_LOUD_CTA_LABEL}
-            onPress={() => barcode.onOpen?.()}
-            style={({ pressed }) => ({
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: Spacing.sm,
-              paddingHorizontal: Spacing.md,
-              paddingVertical: Spacing.md,
-              borderRadius: Radius.xl,
-              borderWidth: 2,
-              borderColor: accent.primary,
-              backgroundColor: accent.primarySoft,
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <ScanBarcode size={18} color={accent.primary} />
-            <Text
-              style={{
-                fontFamily: Type.bodyLarge.fontFamily,
-                fontSize: Type.bodyLarge.fontSize,
-                lineHeight: Type.bodyLarge.lineHeight,
-                fontWeight: "600",
-                color: accent.primarySolid,
-              }}
-            >
-              {BARCODE_LOUD_CTA_LABEL}
-            </Text>
-          </Pressable>
-          <Text
-            testID="log-sheet-barcode-free-promise"
-            style={{
-              fontSize: 11,
-              color: colors.textSecondary,
-              textAlign: "center",
-              lineHeight: 16,
-            }}
-          >
-            {BARCODE_FREE_FOREVER_HEADLINE} {BARCODE_FREE_FOREVER_DETAIL}
-          </Text>
-        </View>
+        <LogSheetBarcodeFreePromise onOpen={() => barcode.onOpen?.()} />
       ) : null}
         </>
       ) : null}
@@ -962,6 +926,7 @@ function DefaultComposition({
           slotLabel={describe.slotLabel}
           seedText={describeSeedText}
           onSeedConsumed={() => setDescribeSeedText(null)}
+          expandSignal={describeExpandSignal}
           onParse={describe.onParse}
           onCommit={describe.onCommit}
           onPaywall={describe.onPaywall}
