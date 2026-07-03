@@ -10,6 +10,9 @@ import { LibraryDesktopHeader } from "./library/LibraryDesktopHeader";
 import { LibraryLoadingSkeleton } from "./library/LibraryLoadingSkeleton.tsx";
 import { LibraryShelvesHeader } from "./library/LibraryShelvesHeader";
 import { useLibraryDiscoverRedirect } from "./library/useLibraryDiscoverRedirect.ts";
+import { LibraryCollectionsBar } from "./library/LibraryCollectionsBar.tsx";
+import { RecipeCardOverlayControls } from "./library/RecipeCardOverlayControls.tsx";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useRouter } from "next/navigation";
 import {
   LIBRARY_CATEGORY_PILLS,
@@ -123,7 +126,7 @@ function kindLabel(kind: LibraryEntryKind): string {
 }
 
 export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, onGoDiscover }: LibraryProps) {
-  const { savedRecipesForLibrary, libraryDataReady, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft, toggleSaveRecipe, nutritionTargets } = useAppData();
+  const { savedRecipesForLibrary, libraryDataReady, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft, toggleSaveRecipe, nutritionTargets, collectionMembershipByRecipeId } = useAppData();
   const uid = userId;
   const router = useRouter();
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
@@ -151,6 +154,8 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   // entry-kind; mobile parity). Holds a `plan-import:<source>` id or null;
   // only meaningful when `entryKind === "imported"`.
   const [planImportPill, setPlanImportPill] = useState<string | null>(null);
+  const collectionsEnabled = isFeatureEnabled("recipe_collections_v1"); // ENG-1126
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   // Mobile parity: a cycle button switches the sort key between
   // Recent (default) / Calories / Protein. See
   // `apps/mobile/app/(tabs)/library.tsx` 24-57.
@@ -198,6 +203,9 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
     if (entryKind === "imported" && planImportPill) {
       list = list.filter((r) => matchesPlanImportPill(planImportPill, r.sourceName));
     }
+    if (selectedCollectionId) { // ENG-1126
+      list = list.filter((r) => (collectionMembershipByRecipeId[r.id] ?? []).includes(selectedCollectionId));
+    }
     // Apply sort. Higher-is-better for Calories / Protein; Recent uses
     // `savedAt` if present (some entries don't carry it — those go to
     // the bottom). Stable ordering for ties via slice() before sort.
@@ -211,7 +219,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
       // so no-op (just preserve existing order).
     }
     return sorted;
-  }, [savedRecipesForLibrary, searchQuery, category, entryKind, planImportPill, libraryEntryKindByRecipeId, uid, sortKey]);
+  }, [savedRecipesForLibrary, searchQuery, category, entryKind, planImportPill, selectedCollectionId, collectionMembershipByRecipeId, libraryEntryKindByRecipeId, uid, sortKey]);
 
   // ENG-1313: the loading state IS the Library skeleton — never Discover.
   if (!libraryDataReady && savedRecipesForLibrary.length === 0) return <LibraryLoadingSkeleton />;
@@ -357,6 +365,10 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                 );
               })}
             </div>
+          ) : null}
+          {/* ENG-1126 — collections, flag-gated, old path unaffected. */}
+          {collectionsEnabled ? (
+            <LibraryCollectionsBar selectedCollectionId={selectedCollectionId} onSelectCollection={setSelectedCollectionId} />
           ) : null}
           {/* Count line + quiet controls — Figma `527:2` ("24 saved
               recipes"). Mobile-web only (desktop shows a subtitle in its
@@ -566,34 +578,13 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={30} />
                       </div>
                     )}
-                    {/* Bookmark overlay — circular translucent, top-right.
-                        Filled clay when saved; outline when not (e.g. an
-                        imported recipe you authored but un-saved — bookmark
-                        stays honest per composeLibraryEntries F-7). Tapping
-                        toggles the save without opening the recipe. */}
-                    <button
-                      type="button"
-                      data-testid={`library-bookmark-${recipe.id}`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        toggleSaveRecipe(recipe.id, userTier, kind);
-                      }}
-                      className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm grid place-items-center shadow-md ring-1 ring-black/5 hover:bg-white transition-colors"
-                      aria-pressed={recipe.isSaved}
-                      aria-label={recipe.isSaved ? `Saved: ${recipe.title}. Tap to remove` : `Save ${recipe.title}`}
-                    >
-                      {recipe.isSaved ? (
-                        <Icons.saved className="w-[15px] h-[15px] text-primary" />
-                      ) : (
-                        <Icons.save className="w-[15px] h-[15px] text-foreground/60" />
-                      )}
-                    </button>
-                    {kind !== "saved" && recipe.isPublished === false ? (
-                      <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md text-[10px] font-semibold shadow-sm bg-foreground/80 text-background">
-                        Draft
-                      </div>
-                    ) : null}
+                    <RecipeCardOverlayControls
+                      recipe={recipe}
+                      kind={kind}
+                      userTier={userTier}
+                      toggleSaveRecipe={toggleSaveRecipe}
+                      collectionsEnabled={collectionsEnabled}
+                    />
                   </div>
                   <div className="px-1 pt-2.5 pb-1">
                     <h3 className="font-[family-name:var(--font-headline)] text-[15px] font-medium leading-snug text-foreground line-clamp-2">

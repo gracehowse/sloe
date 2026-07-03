@@ -127,6 +127,7 @@ import {
   Users,
   PanelLeftClose,
   PanelLeftOpen,
+  FolderPlus,
   type LucideIcon,
 } from "lucide-react";
 
@@ -192,6 +193,7 @@ export const Icons = {
   cook: CookingPot,
   save: Bookmark,
   saved: BookmarkCheck,
+  addToCollection: FolderPlus,
   share: Share2,
   heart: Heart,
   like: ThumbsUp,

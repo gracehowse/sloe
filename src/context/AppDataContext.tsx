@@ -76,6 +76,8 @@ import { useNutritionJournalState } from "./appData/useNutritionJournalState.ts"
 import { usePersistLocalAppSnapshot } from "./appData/usePersistLocalAppSnapshot.ts";
 import { useRetryEnableDbTable } from "./appData/useRetryEnableDbTable.ts";
 import { useShoppingListState } from "./appData/useShoppingListState.ts";
+import { useRecipeCollectionsState } from "./appData/useRecipeCollectionsState.ts";
+import type { RecipeCollection } from "../lib/recipes/recipeCollections.ts";
 import { fingerprintMealPlanForShopping } from "../lib/planning/mealPlanFingerprint.ts";
 import { getMyHousehold } from "../lib/household/householdClient.ts";
 import {
@@ -203,6 +205,15 @@ interface AppDataContextValue {
    * redirect on it, and the Library renders its loading skeleton.
    */
   libraryDataReady: boolean;
+  /** ENG-1126 — user-created recipe collections (Paprika parity). */
+  recipeCollections: RecipeCollection[];
+  /** Per-recipe collection membership; keys are recipe ids, values are collection ids. */
+  collectionMembershipByRecipeId: Readonly<Record<string, string[]>>;
+  createCollection: (name: string) => Promise<boolean>;
+  renameCollection: (collectionId: string, name: string) => Promise<boolean>;
+  deleteCollection: (collectionId: string) => Promise<boolean>;
+  addRecipeToCollection: (collectionId: string, recipeId: string) => Promise<boolean>;
+  removeRecipeFromCollection: (collectionId: string, recipeId: string) => Promise<boolean>;
   shoppingItems: ShoppingItem[];
   setShoppingItems: Dispatch<SetStateAction<ShoppingItem[]>>;
   toggleShoppingChecked: (itemId: string) => void;
@@ -540,6 +551,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     initialItems: initial.shoppingItems,
     activeHouseholdId,
   });
+
+  const {
+    recipeCollections,
+    collectionMembershipByRecipeId,
+    createCollection,
+    renameCollection,
+    deleteCollection,
+    addRecipeToCollection,
+    removeRecipeFromCollection,
+  } = useRecipeCollectionsState({ authedUserId });
 
   const [shoppingListSourceFingerprint, setShoppingListSourceFingerprint] = useState<string | null>(
     initial.shoppingListSourceFingerprint ?? null,
@@ -2378,6 +2399,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       isRecipeSaved,
       savedRecipesForLibrary,
       libraryDataReady,
+      recipeCollections,
+      collectionMembershipByRecipeId,
+      createCollection,
+      renameCollection,
+      deleteCollection,
+      addRecipeToCollection,
+      removeRecipeFromCollection,
       shoppingItems,
       setShoppingItems,
       toggleShoppingChecked,
@@ -2476,6 +2504,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       isRecipeSaved,
       savedRecipesForLibrary,
       libraryDataReady,
+      recipeCollections,
+      collectionMembershipByRecipeId,
+      createCollection,
+      renameCollection,
+      deleteCollection,
+      addRecipeToCollection,
+      removeRecipeFromCollection,
       shoppingItems,
       setShoppingItems,
       toggleShoppingChecked,
