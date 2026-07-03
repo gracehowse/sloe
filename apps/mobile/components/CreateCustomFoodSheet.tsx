@@ -782,11 +782,7 @@ export default function CreateCustomFoodSheet({
                   opacity: scanLoading ? 0.7 : 1,
                 }}
               >
-                {scanLoading ? (
-                  <ActivityIndicator size="small" color={accent.primary} />
-                ) : (
-                  <Camera size={18} color={accent.primary} />
-                )}
+                {scanLoading ? <ActivityIndicator size="small" color={accent.primary} /> : <Camera size={18} color={accent.primary} />}
                 <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
                   {scanLoading ? "Reading label…" : "Scan label"}
                 </Text>
@@ -1327,11 +1323,7 @@ export default function CreateCustomFoodSheet({
                 <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
                   {detailsOpen ? "Hide detailed nutrition" : "Add detailed nutrition"}
                 </Text>
-                {detailsOpen ? (
-                  <ChevronUp size={16} color={colors.textSecondary} />
-                ) : (
-                  <ChevronDown size={16} color={colors.textSecondary} />
-                )}
+                {detailsOpen ? <ChevronUp size={16} color={colors.textSecondary} /> : <ChevronDown size={16} color={colors.textSecondary} />}
               </Pressable>
 
               {detailsOpen && (

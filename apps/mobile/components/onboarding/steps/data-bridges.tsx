@@ -41,7 +41,6 @@ import {
   Platform,
   Pressable,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import {
@@ -69,6 +68,7 @@ import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";
 import { appChoiceDisplayName } from "@suppr/shared/onboarding/appChoiceOptions";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { TargetInput } from "./TargetInput";
 
 export function MobileDataBridgesStep() {
   const overline = useStepOverline();
@@ -208,62 +208,6 @@ function ManualTargetsCard() {
         Set all four to override; partial values are ignored.
       </Text>
     </BridgeCard>
-  );
-}
-
-function TargetInput({
-  label,
-  value,
-  onChangeText,
-  onBlur,
-  color,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (s: string) => void;
-  onBlur: () => void;
-  color: string;
-}) {
-  const colors = useThemeColors();
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.inputBg,
-        borderRadius: Radius.sm,
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 8,
-        borderWidth: 1,
-        borderColor: colors.border,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 10,
-          fontWeight: "600",
-          textTransform: "uppercase",
-          letterSpacing: 0.6,
-          color,
-        }}
-      >
-        {label}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        onBlur={onBlur}
-        keyboardType="numeric"
-        accessibilityLabel={`Manual ${label} target`}
-        style={{
-          fontSize: 16,
-          fontWeight: "700",
-          fontVariant: ["tabular-nums"],
-          color: colors.text,
-          paddingVertical: 0,
-          marginTop: 2,
-        }}
-      />
-    </View>
   );
 }
 

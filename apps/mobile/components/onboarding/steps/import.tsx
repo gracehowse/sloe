@@ -6,8 +6,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-// ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons"; // ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
 import { Check, Globe, Link2 } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -121,24 +120,12 @@ export function MobileImportStep() {
           </Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <SourceTile
-              icon={
-                <Ionicons
-                  name="logo-instagram"
-                  size={22}
-                  color={colors.textSecondary}
-                />
-              }
+              icon={<Ionicons name="logo-instagram" size={22} color={colors.textSecondary} />}
               name="Instagram"
               onPress={() => runImport("instagram")}
             />
             <SourceTile
-              icon={
-                <Ionicons
-                  name="logo-tiktok"
-                  size={22}
-                  color={colors.textSecondary}
-                />
-              }
+              icon={<Ionicons name="logo-tiktok" size={22} color={colors.textSecondary} />}
               name="TikTok"
               onPress={() => runImport("tiktok")}
             />

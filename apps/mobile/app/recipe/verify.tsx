@@ -925,11 +925,7 @@ export default function VerifyScreen() {
           const over = (delta.caloriesDelta ?? 0) > 0;
           return (
             <View style={styles.claimBanner}>
-              <CircleAlert
-                size={18}
-                color={Accent.warningSolid}
-                style={{ marginRight: 8, marginTop: 1 }}
-              />
+              <CircleAlert size={18} color={Accent.warningSolid} style={{ marginRight: 8, marginTop: 1 }} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.claimBannerTitle}>
                   Creator says {captionClaim.caloriesPerServing} kcal/serving — we calculated{" "}
@@ -1025,6 +1021,7 @@ export default function VerifyScreen() {
                 ? Accent.warning
                 : Accent.destructive;
           const showConfBar = !rowHasOverride && !rowAdded && ing.isVerified !== undefined;
+          const ExpandChevron = expanded ? ChevronDown : ChevronRight;
 
           return (
             <View key={ing.id}>
@@ -1085,11 +1082,7 @@ export default function VerifyScreen() {
                 >
                   <Text style={styles.swapPillText}>Swap</Text>
                 </Pressable>
-                {expanded ? (
-                  <ChevronDown size={18} color={colors.textTertiary} style={styles.chevron} />
-                ) : (
-                  <ChevronRight size={18} color={colors.textTertiary} style={styles.chevron} />
-                )}
+                <ExpandChevron size={18} color={colors.textTertiary} style={styles.chevron} />
               </Pressable>
 
               {/* Expanded detail */}
@@ -1247,15 +1240,8 @@ export default function VerifyScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`Edit nutrition for ${displayName}`}
                     >
-                      {/* ENG-120: lucide has no filled variant — the
-                          override-pinned state (was solid `create`) is
-                          preserved via `fill` so the glyph still reads as
-                          "on" versus the outline `create-outline` default. */}
-                      <SquarePen
-                        size={16}
-                        color={accent.primary}
-                        fill={rowHasOverride ? accent.primary + "33" : "none"}
-                      />
+                      {/* ENG-120: no filled lucide variant — override-pinned state (was solid `create`) preserved via `fill` (reads "on" vs outline default). */}
+                      <SquarePen size={16} color={accent.primary} fill={rowHasOverride ? accent.primary + "33" : "none"} />
                       <Text style={styles.actionBtnText}>
                         {rowHasOverride ? "Edit values" : "Edit nutrition"}
                       </Text>

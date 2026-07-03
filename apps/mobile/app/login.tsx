@@ -13,8 +13,7 @@ import { Redirect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { sha256 } from "js-sha256";
-// ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons"; // ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
 import { Check, ChevronLeft, Mail, X as CloseIcon } from "lucide-react-native";
 
 import { useAuth } from "@/context/auth";
