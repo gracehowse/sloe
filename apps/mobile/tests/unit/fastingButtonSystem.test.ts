@@ -47,14 +47,19 @@ describe("Fasting (mobile) — CTA migration to SupprButton", () => {
   });
 
   it("'End fast' (in-progress) is a SOLID primary with hold-to-confirm preserved", () => {
-    expect(FASTING).toMatch(/<SupprButton\s+variant="primary"\s+style=\{styles\.endBtn\}/);
+    // ENG-1342 — haptic="none" so the programmatic warn/success beats aren't
+    // doubled by SupprButton's default press haptic.
+    expect(FASTING).toMatch(
+      /<SupprButton\s+variant="primary"\s+haptic="none"\s+style=\{styles\.endBtn\}/,
+    );
     // Hold-to-confirm gesture preserved: long-press ends, tap surfaces the hint.
     expect(FASTING).toMatch(
       /<SupprButton\s+variant="primary"[\s\S]{0,600}onLongPress=\{\(\) => \{[\s\S]{0,200}endFast\(\);/,
     );
     expect(FASTING).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,800}delayLongPress=\{650\}/);
-    // Warning-haptic-on-tap + confirm Alert preserved.
-    expect(FASTING).toMatch(/NotificationFeedbackType\.Warning/);
+    // Warning-haptic-on-tap + confirm Alert preserved (via useHaptics).
+    expect(FASTING).toContain("haptics.warn()");
+    expect(FASTING).toContain("haptics.success()");
   });
 
   it("'Complete fast' keeps the sage Accent.success celebration fill (NOT migrated, NOT outline)", () => {

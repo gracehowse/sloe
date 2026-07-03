@@ -232,7 +232,6 @@ export default function PaywallScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
   const haptics = useHaptics();
-
   const params = useLocalSearchParams<{ from?: string | string[] }>();
   const paywallFrom = useMemo(
     () => normalisePaywallFrom(params.from),

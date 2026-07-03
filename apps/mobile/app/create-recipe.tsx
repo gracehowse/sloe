@@ -192,8 +192,7 @@ function ingredientsFromImageResponse(
 }
 
 export default function CreateRecipeScreen() {
-  const haptics = useHaptics();
-  const insets = useSafeAreaInsets();
+  const haptics = useHaptics(), insets = useSafeAreaInsets();
   const router = useRouter();
   const goBackOrCancel = useSafeBack("/(tabs)/settings");
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;

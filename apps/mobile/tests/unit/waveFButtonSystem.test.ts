@@ -58,8 +58,10 @@ describe("Wave F (mobile) — Fasting CTAs", () => {
   });
 
   it("'End fast' (in-progress) is a SOLID primary", () => {
+    // ENG-1342 — haptic="none" suppresses the default press beat; warn/success
+    // fire programmatically on tap / long-press.
     expect(FASTING).toMatch(
-      /<SupprButton\s+variant="primary"\s+style=\{styles\.endBtn\}/,
+      /<SupprButton\s+variant="primary"\s+haptic="none"\s+style=\{styles\.endBtn\}/,
     );
   });
 

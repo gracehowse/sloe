@@ -41,8 +41,7 @@ import { OnboardingRevealProjectionChart } from "../OnboardingRevealProjectionCh
 
 export function MobileRevealStep() {
   const { targets, state } = useOnboarding();
-  const haptics = useHaptics();
-  const colors = useThemeColors();
+  const haptics = useHaptics(), colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the target-reveal
   // ring gradient, the weight-skipped Scale glyph, and the "Log meals" next-step
   // icon. The "Watch the ring fill" row keeps `Accent.success` (green status),

@@ -104,8 +104,7 @@ function showToast(message: string): void {
 
 export default function CookModeScreen() {
   useKeepAwake();
-  const haptics = useHaptics();
-  const colors = useThemeColors();
+  const haptics = useHaptics(), colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the step-progress
   // rail, active step, primary "Next/Done" CTAs, and timer chips. Threaded
   // into the memoised StyleSheet via the dep array below. Completion/"Cooked

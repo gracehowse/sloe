@@ -290,8 +290,7 @@ export default function CalorieRing({
   onToggleDisplayMode,
   onLongPressExplain,
 }: Props) {
-  const haptics = useHaptics();
-  const diff = Math.round(goal - consumed);
+  const haptics = useHaptics(), diff = Math.round(goal - consumed);
   const isOver = consumed > goal;
   // Premium-feel papercut #2 (audit 2026-04-29): the empty-state ring
   // dominates Today's first impression — a giant `0` and "LOGGED"
