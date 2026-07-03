@@ -30,10 +30,11 @@ describe("F-131 — TodayActivityBonusCard exposes onShowBurnProvenance", () => 
     expect(code).toMatch(/onShowBurnProvenance\?:\s*\(\)\s*=>\s*void/);
   });
 
-  it("renders an Info icon (information-circle-outline) when the prop is wired", () => {
+  it("renders an Info icon when the prop is wired", () => {
+    // ENG-120 (Lucide migration): information-circle-outline → <Info>.
     // The icon appears inside the conditional ternary on the prop.
     // Looser pattern — assert presence of both the prop check and the icon name.
-    expect(code).toMatch(/information-circle-outline/);
+    expect(code).toMatch(/\bInfo\b/);
     expect(code).toMatch(/onShowBurnProvenance/);
   });
 

@@ -49,10 +49,11 @@ describe("F-138 — Correct-Product post-submit success state", () => {
     expect(CODE).toMatch(/correctionMode\s*&&\s*!corrSubmitted/);
   });
 
-  it("success card uses Accent.success ring + checkmark-circle icon", () => {
+  it("success card uses Accent.success ring + CircleCheck icon", () => {
+    // ENG-120 (Lucide migration): checkmark-circle → <CircleCheck>.
     // Both should appear inside the success-card render block.
     expect(CODE).toMatch(/correctionSuccessCard/);
-    expect(CODE).toMatch(/checkmark-circle/);
+    expect(CODE).toMatch(/CircleCheck/);
     expect(CODE).toMatch(/Accent\.success/);
   });
 

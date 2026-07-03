@@ -43,8 +43,13 @@ function iconStub(name) {
  *  added Award/CheckCheck/CheckCircle/ClipboardList/Cloud/EyeOff/LayoutList/
  *  SlidersHorizontal/Sprout/User after a programmatic diff caught them missing
  *  (Sprout = the Today fibre-tile glyph, which crashed
- *  `todayMacroTilesProgressBar.test.tsx`). Keep this in sync by re-running the
- *  named-import diff when adding new glyphs. */
+ *  `todayMacroTilesProgressBar.test.tsx`). The 2026-07-02 ENG-120 (Ionicons →
+ *  Lucide migration) reconciliation added Ellipsis/ExternalLink/Flower2/Gem/
+ *  Gift/Globe/ListChecks/LockOpen/Newspaper/Package/PenLine/Share/Shuffle/
+ *  SquarePen — the migration named-imported them across mobile surfaces and
+ *  their absence crashed the Digest + HydrationStimulantsCard render tests
+ *  (Share → Digest, Ellipsis → HydrationStimulantsCard). Keep this in sync by
+ *  re-running the named-import diff when adding new glyphs. */
 const ICON_NAMES = [
   "Activity",
   "AlertCircle",
@@ -102,14 +107,20 @@ const ICON_NAMES = [
   "Droplet",
   "Droplets",
   "Dumbbell",
+  "Ellipsis",
+  "ExternalLink",
   "EyeOff",
   "FileSpreadsheet",
   "FileText",
   "Fish",
   "Flag",
   "Flame",
+  "Flower2",
   "Footprints",
   "Gauge",
+  "Gem",
+  "Gift",
+  "Globe",
   "Globe2",
   "Heart",
   "HeartPulse",
@@ -125,7 +136,9 @@ const ICON_NAMES = [
   "Link",
   "Link2",
   "List",
+  "ListChecks",
   "Lock",
+  "LockOpen",
   "LogIn",
   "LogOut",
   "Mail",
@@ -135,7 +148,10 @@ const ICON_NAMES = [
   "Moon",
   "MoreHorizontal",
   "MoreVertical",
+  "Newspaper",
+  "Package",
   "Palette",
+  "PenLine",
   "Pencil",
   "PencilLine",
   "Pizza",
@@ -153,11 +169,13 @@ const ICON_NAMES = [
   "SearchX",
   "Settings",
   "Settings2",
+  "Share",
   "Share2",
   "Shield",
   "ShieldAlert",
   "ShieldCheck",
   "ShoppingCart",
+  "Shuffle",
   "Sliders",
   "SlidersHorizontal",
   "Smartphone",
@@ -166,6 +184,7 @@ const ICON_NAMES = [
   "Sparkles",
   "Sprout",
   "Square",
+  "SquarePen",
   "Star",
   "Sun",
   "Sunrise",
