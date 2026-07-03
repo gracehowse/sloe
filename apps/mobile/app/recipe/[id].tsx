@@ -7,7 +7,6 @@ import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import {
-  ActivityIndicator,
   Alert,
   Linking,
   Platform,
@@ -139,6 +138,7 @@ import {
   computeFitsYourDayVerdict,
 } from "../../lib/recipe/recipeDetailLayout";
 import { RecipeDetailHero } from "../../components/recipe/RecipeDetailHero";
+import { RecipeDetailLoadingSkeleton } from "../../components/recipe/RecipeDetailLoadingSkeleton";
 import { RecipeTitleBlock } from "../../components/recipe/RecipeTitleBlock";
 import { RecipeStandfirst } from "../../components/recipe/RecipeStandfirst";
 import { RecipeActionPills } from "../../components/recipe/RecipeActionPills";
@@ -1781,10 +1781,8 @@ export default function RecipeDetailScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={accent.primary} />
-        </View>
+      <View style={styles.container}>
+        <RecipeDetailLoadingSkeleton topInset={insets.top} />
       </View>
     );
   }
