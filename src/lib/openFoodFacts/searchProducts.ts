@@ -60,8 +60,8 @@ export async function searchOffProducts(
     // P0 (2026-05-26) — request `nutrition_data_per` + `serving_quantity` so
     // we can detect rows whose `*_100g` fields actually hold per-serving
     // values and reconstruct a genuine per-100g basis (reconcileOffPer100g).
-    // ENG-1305 — last_modified_t powers the staleness demotion in
-    // verifyIngredients.ts (see offStaleness.ts).
+    // ENG-1305 / ENG-1326 — last_modified_t powers corpus-derived staleness demotion
+    // in verifyIngredients.ts (see offStaleness.ts).
     fields:
       "code,product_name,brands,nutriments,image_small_url,serving_size,nutrition_data_per,serving_quantity,last_modified_t",
   });

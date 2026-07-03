@@ -1,0 +1,730 @@
+{
+  "ticket": "ENG-1326",
+  "corpusQueries": 30,
+  "productionOffCodesSampled": 0,
+  "productionSampleNote": "supabase_sample",
+  "hitsSampled": 80,
+  "hitsWithTimestamp": 80,
+  "hitsMissingTimestamp": 0,
+  "errors": [
+    {
+      "query": "plain flour",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "cheddar cheese",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "coconut milk",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "oats",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "avocado",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "tesco chicken",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "nutella",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "coca cola",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "whole milk",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "salmon fillet",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "black pepper",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "garlic",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "onion",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "courgette",
+      "error": "OFF search HTTP 503"
+    },
+    {
+      "query": "aubergine",
+      "error": "OFF search HTTP 503"
+    }
+  ],
+  "curve": {
+    "analyzedAt": "2026-07-03T03:26:42.037Z",
+    "percentilesDays": {
+      "p50": 38.401180983796294,
+      "p75": 93.6644332986111,
+      "p90": 110.75395297453704,
+      "p95": 112.44269776620368,
+      "p99": 301.30758850694417,
+      "max": 334.80341478009257
+    },
+    "recommended": {
+      "penaltyStartMs": 8121600000,
+      "penaltyFullMs": 10713600000,
+      "maxPenalty": 0.08,
+      "rationale": "Linear confidence downgrade from 0 at P75 age to maxPenalty at P95+ age; missing last_modified_t → 0 penalty."
+    }
+  },
+  "samples": [
+    {
+      "query": "chicken breast",
+      "code": "3095757047108",
+      "name": "Blanc de Poulet",
+      "brand": "fleury Michon",
+      "lastModifiedT": 1782473010,
+      "ageDays": 6.668889317129629
+    },
+    {
+      "query": "chicken breast",
+      "code": "3302740059186",
+      "name": "Blanc de Poulet Nature Sans Nitrite",
+      "brand": "Fleury Michon",
+      "lastModifiedT": 1781168146,
+      "ageDays": 21.771481909722223
+    },
+    {
+      "query": "chicken breast",
+      "code": "3154230801023",
+      "name": "HERTA Blanc Poulet Broche conservation sans nitrite x4 -140g",
+      "brand": "Herta",
+      "lastModifiedT": 1774473589,
+      "ageDays": 99.25478052083334
+    },
+    {
+      "query": "chicken breast",
+      "code": "8480000566614",
+      "name": "tiras pollo",
+      "brand": "Hacendado",
+      "lastModifiedT": 1780161121,
+      "ageDays": 33.42686385416667
+    },
+    {
+      "query": "chicken breast",
+      "code": "3302740057113",
+      "name": "Blanc de poulet 100% filet",
+      "brand": "Fleury Michon",
+      "lastModifiedT": 1774487596,
+      "ageDays": 99.09266246527778
+    },
+    {
+      "query": "olive oil",
+      "code": "6111099000247",
+      "name": "Hule D'olive",
+      "brand": "زيت الزيتون واد سوس",
+      "lastModifiedT": 1773482757,
+      "ageDays": 110.7227434837963
+    },
+    {
+      "query": "olive oil",
+      "code": "6191509900671",
+      "name": "EXTRA VIRGIN OLIVE OIL",
+      "brand": "TERRA DELYSSA",
+      "lastModifiedT": 1780291270,
+      "ageDays": 31.9205096875
+    },
+    {
+      "query": "olive oil",
+      "code": "6191509900855",
+      "name": "Organic Extra Virgin Olive Oil",
+      "brand": "Terra Delyssa",
+      "lastModifiedT": 1780659333,
+      "ageDays": 27.660521261574075
+    },
+    {
+      "query": "olive oil",
+      "code": "4056489166856",
+      "name": "Olivenöl",
+      "brand": "Primadonna",
+      "lastModifiedT": 1774464593,
+      "ageDays": 99.3589008912037
+    },
+    {
+      "query": "olive oil",
+      "code": "8410660098804",
+      "name": null,
+      "brand": "La Española",
+      "lastModifiedT": 1762084693,
+      "ageDays": 242.64478052083334
+    },
+    {
+      "query": "olive oil",
+      "code": "8858867829676",
+      "name": "Ham And Cheese Parmesan Bread",
+      "brand": "EZYGO Brand",
+      "lastModifiedT": 1783049186,
+      "ageDays": 0.00018561342592592593
+    },
+    {
+      "query": "olive oil",
+      "code": "8005647007209",
+      "name": "bio junior",
+      "brand": "germinal bio",
+      "lastModifiedT": 1783049156,
+      "ageDays": 0.0005328356481481482
+    },
+    {
+      "query": "olive oil",
+      "code": "8851351386853",
+      "name": "Shrimp And Kale Fried Rice",
+      "brand": "Ezygo",
+      "lastModifiedT": 1783049142,
+      "ageDays": 0.0006948726851851852
+    },
+    {
+      "query": "olive oil",
+      "code": "8445290070937",
+      "name": "Purina One",
+      "brand": "Purina",
+      "lastModifiedT": 1783049105,
+      "ageDays": 0.0011231134259259258
+    },
+    {
+      "query": "olive oil",
+      "code": "0978469017719",
+      "name": "Pizza Provolone-Mozzarella",
+      "brand": "Bofrost",
+      "lastModifiedT": 1783049064,
+      "ageDays": 0.001597650462962963
+    },
+    {
+      "query": "caster sugar",
+      "code": "3174660000896",
+      "name": "Sucre Poudre",
+      "brand": "Béghin SayTereos",
+      "lastModifiedT": 1773370370,
+      "ageDays": 112.02351894675925
+    },
+    {
+      "query": "caster sugar",
+      "code": "3250392947026",
+      "name": "Sucre blanc en poudre 750g doypack",
+      "brand": "Chabrior",
+      "lastModifiedT": 1773429728,
+      "ageDays": 111.33650505787037
+    },
+    {
+      "query": "caster sugar",
+      "code": "20624477",
+      "name": "Zucker",
+      "brand": "Belbake",
+      "lastModifiedT": 1773455792,
+      "ageDays": 111.0348383912037
+    },
+    {
+      "query": "caster sugar",
+      "code": "3165432491608",
+      "name": "Muscovado blond",
+      "brand": "Daddy",
+      "lastModifiedT": 1778079205,
+      "ageDays": 57.52311385416667
+    },
+    {
+      "query": "caster sugar",
+      "code": "5010067331509",
+      "name": "Sugar",
+      "brand": "Silver spoon",
+      "lastModifiedT": 1774621118,
+      "ageDays": 97.54726894675926
+    },
+    {
+      "query": "greek yogurt",
+      "code": "20047559",
+      "name": "Yogurt Greek Style",
+      "brand": "Pilos",
+      "lastModifiedT": 1780299225,
+      "ageDays": 31.828437928240742
+    },
+    {
+      "query": "greek yogurt",
+      "code": "20416690",
+      "name": "Greek Style Natural Light 2% fat",
+      "brand": "Milbona",
+      "lastModifiedT": 1781605792,
+      "ageDays": 16.7061346875
+    },
+    {
+      "query": "greek yogurt",
+      "code": "4056489148739",
+      "name": "Creamy Greek Style Natural Yogurt",
+      "brand": "Milbona",
+      "lastModifiedT": 1782559538,
+      "ageDays": 5.667407835648148
+    },
+    {
+      "query": "greek yogurt",
+      "code": "4088600060941",
+      "name": "Greek 0% Fat Authentic Greek Yogurt",
+      "brand": "Brooklea",
+      "lastModifiedT": 1779206007,
+      "ageDays": 44.48142403935185
+    },
+    {
+      "query": "greek yogurt",
+      "code": "5201054017432",
+      "name": "Total 5% Fat Greek Yogurt",
+      "brand": "FAGE",
+      "lastModifiedT": 1782490354,
+      "ageDays": 6.468148576388889
+    },
+    {
+      "query": "tinned tomatoes",
+      "code": "4088600478425",
+      "name": "Chopped Tomatoes in a Rich Tomato Juice",
+      "brand": "Cucina",
+      "lastModifiedT": 1779288994,
+      "ageDays": 43.52092635416667
+    },
+    {
+      "query": "tinned tomatoes",
+      "code": "00821964",
+      "name": "Chopped Tomatoes",
+      "brand": "M&S Food",
+      "lastModifiedT": 1781090515,
+      "ageDays": 22.669988854166668
+    },
+    {
+      "query": "tinned tomatoes",
+      "code": "5057753124861",
+      "name": "Tesco - The Growers Harvest - Plum Tomatoes",
+      "brand": "The growers harvest",
+      "lastModifiedT": 1774619826,
+      "ageDays": 97.56222265046296
+    },
+    {
+      "query": "tinned tomatoes",
+      "code": "4056489602910",
+      "name": "Tomaten Stücke",
+      "brand": "Baresa",
+      "lastModifiedT": 1774523746,
+      "ageDays": 98.6742596875
+    },
+    {
+      "query": "tinned tomatoes",
+      "code": "4088600478364",
+      "name": "everyday essentials",
+      "brand": "Aldi",
+      "lastModifiedT": 1774644113,
+      "ageDays": 97.28112311342592
+    },
+    {
+      "query": "soy sauce",
+      "code": "8715035110809",
+      "name": "Sójová omáčka",
+      "brand": "KIKKOMAN",
+      "lastModifiedT": 1781520109,
+      "ageDays": 17.69783607638889
+    },
+    {
+      "query": "soy sauce",
+      "code": "3229820762050",
+      "name": "Sauce soja",
+      "brand": "Tanoshi",
+      "lastModifiedT": 1773358490,
+      "ageDays": 112.16101894675926
+    },
+    {
+      "query": "soy sauce",
+      "code": "20521493",
+      "name": "SOS DE SOIA",
+      "brand": "Kania",
+      "lastModifiedT": 1780162542,
+      "ageDays": 33.41041709490741
+    },
+    {
+      "query": "soy sauce",
+      "code": "3259010108047",
+      "name": "Seitan en tranches",
+      "brand": "Soy",
+      "lastModifiedT": 1779149550,
+      "ageDays": 45.13486153935185
+    },
+    {
+      "query": "soy sauce",
+      "code": "0078895126396",
+      "name": "Premium Soy Sauce",
+      "brand": "Lee Kum Kee",
+      "lastModifiedT": 1782615849,
+      "ageDays": 5.0156601504629625
+    },
+    {
+      "query": "butter",
+      "code": "3229820100234",
+      "name": "Fourrés Chocolat Noir",
+      "brand": "Bjorg",
+      "lastModifiedT": 1779412178,
+      "ageDays": 42.095185613425926
+    },
+    {
+      "query": "butter",
+      "code": "3284230006408",
+      "name": "Brioche Tranchée Bio 400g",
+      "brand": "La Boulangère",
+      "lastModifiedT": 1779416002,
+      "ageDays": 42.05092635416667
+    },
+    {
+      "query": "butter",
+      "code": "6111099003897",
+      "name": "",
+      "brand": "lilia",
+      "lastModifiedT": 1754122187,
+      "ageDays": 334.80341478009257
+    },
+    {
+      "query": "butter",
+      "code": "3608580124047",
+      "name": "Be Nuts ! - Pâte à tartiner Cacahuète",
+      "brand": "Andros",
+      "lastModifiedT": 1779503448,
+      "ageDays": 41.03881987268519
+    },
+    {
+      "query": "butter",
+      "code": "6111037000599",
+      "name": "Familia 200g",
+      "brand": null,
+      "lastModifiedT": 1779647977,
+      "ageDays": 39.366030520833334
+    },
+    {
+      "query": "banana",
+      "code": "6111242102941",
+      "name": "Yogurt Bnine BANANA",
+      "brand": "Jaouda",
+      "lastModifiedT": 1780742896,
+      "ageDays": 26.693356909722223
+    },
+    {
+      "query": "banana",
+      "code": "3175681272941",
+      "name": "Gerble - Organic Chocolate Cookie Flavored w/ Banana, 132g (4.7oz)",
+      "brand": "Gerblé",
+      "lastModifiedT": 1772871749,
+      "ageDays": 117.79459533564815
+    },
+    {
+      "query": "banana",
+      "code": "8718403887518",
+      "name": "Banana chips",
+      "brand": "suny bites",
+      "lastModifiedT": 1782486237,
+      "ageDays": 6.515799039351852
+    },
+    {
+      "query": "banana",
+      "code": "5900617002617",
+      "name": "Sante Crunchy Crispy Muesli Banana With Chocolate 350G",
+      "brand": "Santé",
+      "lastModifiedT": 1777467124,
+      "ageDays": 64.6073846875
+    },
+    {
+      "query": "banana",
+      "code": "5900617015938",
+      "name": "Crunchy Banana - Santé",
+      "brand": "Santé",
+      "lastModifiedT": 1780843990,
+      "ageDays": 25.52328746527778
+    },
+    {
+      "query": "hummus",
+      "code": "8480000808585",
+      "name": "Hummus Classic",
+      "brand": "Hacendado",
+      "lastModifiedT": 1779699246,
+      "ageDays": 38.77263931712963
+    },
+    {
+      "query": "hummus",
+      "code": "3292070008551",
+      "name": "Houmous bio",
+      "brand": "L'atelier Blini",
+      "lastModifiedT": 1779763434,
+      "ageDays": 38.029722650462965
+    },
+    {
+      "query": "hummus",
+      "code": "5060228323799",
+      "name": "Heavenly Houmous",
+      "brand": "Ramona's",
+      "lastModifiedT": 1779026687,
+      "ageDays": 46.55688700231482
+    },
+    {
+      "query": "hummus",
+      "code": "3292070009947",
+      "name": "Houmous à la libanaise, thym et sésame doré",
+      "brand": "L'Atelier Blini",
+      "lastModifiedT": 1777878774,
+      "ageDays": 59.842917094907406
+    },
+    {
+      "query": "hummus",
+      "code": "20757809",
+      "name": "Hummus Classic",
+      "brand": "Vemondo",
+      "lastModifiedT": 1781710139,
+      "ageDays": 15.498414780092592
+    },
+    {
+      "query": "sainsbury hummus",
+      "code": "00349222",
+      "name": "Organic Houmous",
+      "brand": "Sainsbury's",
+      "lastModifiedT": 1780086363,
+      "ageDays": 34.292118483796294
+    },
+    {
+      "query": "sainsbury hummus",
+      "code": "00349215",
+      "name": "Classic Houmous",
+      "brand": "Sainsbury's",
+      "lastModifiedT": 1782317124,
+      "ageDays": 8.47312542824074
+    },
+    {
+      "query": "sainsbury hummus",
+      "code": "00426800",
+      "name": "Classic Houmous",
+      "brand": "Sainsbury's",
+      "lastModifiedT": 1774636196,
+      "ageDays": 97.37275505787036
+    },
+    {
+      "query": "sainsbury hummus",
+      "code": "01175424",
+      "name": "Smooth & Sweet Red Pepper Houmous",
+      "brand": "Sainsbury's",
+      "lastModifiedT": 1778106056,
+      "ageDays": 57.2123383912037
+    },
+    {
+      "query": "sainsbury hummus",
+      "code": "00384322",
+      "name": "Classic houmous",
+      "brand": "Sainsbury's",
+      "lastModifiedT": 1777307295,
+      "ageDays": 66.45725737268519
+    },
+    {
+      "query": "heinz baked beans",
+      "code": "5000157024671",
+      "name": "Beanz in a rich tomato sauce",
+      "brand": "Heinz",
+      "lastModifiedT": 1782892094,
+      "ageDays": 1.8183800578703704
+    },
+    {
+      "query": "heinz baked beans",
+      "code": "5000157078773",
+      "name": "BEANZ in a rich tomato sauce",
+      "brand": "Heinz",
+      "lastModifiedT": 1780039708,
+      "ageDays": 34.83210690972222
+    },
+    {
+      "query": "heinz baked beans",
+      "code": "5000157024886",
+      "name": "Beanz in a rich tomato sauce",
+      "brand": "Heinz",
+      "lastModifiedT": 1780688626,
+      "ageDays": 27.321481909722223
+    },
+    {
+      "query": "heinz baked beans",
+      "code": "5000157024855",
+      "name": "In a rich tomato sauce",
+      "brand": "HEINZ BEANZ",
+      "lastModifiedT": 1776947097,
+      "ageDays": 70.62621570601851
+    },
+    {
+      "query": "heinz baked beans",
+      "code": "5000157150431",
+      "name": "Heinz Beanz In a rich tomato sauce",
+      "brand": "Heinz",
+      "lastModifiedT": 1780159998,
+      "ageDays": 33.43986153935185
+    },
+    {
+      "query": "weetabix",
+      "code": "5010029000023",
+      "name": "Original",
+      "brand": "Weetabix",
+      "lastModifiedT": 1782378741,
+      "ageDays": 7.7599657060185185
+    },
+    {
+      "query": "weetabix",
+      "code": "5010029229110",
+      "name": "Crispy Minis Choco",
+      "brand": "Weetabix",
+      "lastModifiedT": 1782548261,
+      "ageDays": 5.7979286689814815
+    },
+    {
+      "query": "weetabix",
+      "code": "5010029000016",
+      "name": "Weetabix",
+      "brand": "Weetabix",
+      "lastModifiedT": 1780593586,
+      "ageDays": 28.42148190972222
+    },
+    {
+      "query": "weetabix",
+      "code": "5010029000801",
+      "name": "Weetabix",
+      "brand": "Weetabix",
+      "lastModifiedT": 1782855147,
+      "ageDays": 2.246007372685185
+    },
+    {
+      "query": "weetabix",
+      "code": "5010029000504",
+      "name": "Whole wheat cereal with added vitamins and iron. 12 Biscuits",
+      "brand": "Weetabix",
+      "lastModifiedT": 1780127149,
+      "ageDays": 33.82005829861111
+    },
+    {
+      "query": "digestive biscuits",
+      "code": "8410376026962",
+      "name": "Digestive Avena Choco",
+      "brand": "gullón",
+      "lastModifiedT": 1779355840,
+      "ageDays": 42.74724579861111
+    },
+    {
+      "query": "digestive biscuits",
+      "code": "8410376033267",
+      "name": "Digestive Avena",
+      "brand": "gullón",
+      "lastModifiedT": 1777220682,
+      "ageDays": 67.45972265046296
+    },
+    {
+      "query": "digestive biscuits",
+      "code": "8410376026979",
+      "name": "Digestive Muesli",
+      "brand": "Gullón",
+      "lastModifiedT": 1773937192,
+      "ageDays": 105.46307913194444
+    },
+    {
+      "query": "digestive biscuits",
+      "code": "5000168036755",
+      "name": "Digestives The ORIGINAL",
+      "brand": "McVitie's",
+      "lastModifiedT": 1781695827,
+      "ageDays": 15.66406292824074
+    },
+    {
+      "query": "digestive biscuits",
+      "code": "8410376074307",
+      "name": "Digestive Biscuits",
+      "brand": "gullón",
+      "lastModifiedT": 1780552746,
+      "ageDays": 28.894167094907406
+    },
+    {
+      "query": "brown rice",
+      "code": "4056489729426",
+      "name": "Riz complet",
+      "brand": "Golden Sun",
+      "lastModifiedT": 1774527062,
+      "ageDays": 98.63588005787037
+    },
+    {
+      "query": "brown rice",
+      "code": "8480000051844",
+      "name": "Arroz integral largo",
+      "brand": "Hacendado",
+      "lastModifiedT": 1779016949,
+      "ageDays": 46.66959533564815
+    },
+    {
+      "query": "brown rice",
+      "code": "5011157992662",
+      "name": "Basmati & Wild Rice",
+      "brand": "Tilda",
+      "lastModifiedT": 1780942999,
+      "ageDays": 24.377349965277777
+    },
+    {
+      "query": "brown rice",
+      "code": "3800233070071",
+      "name": "Brown rice cakes",
+      "brand": "Rice Up",
+      "lastModifiedT": 1779989052,
+      "ageDays": 35.41840320601852
+    },
+    {
+      "query": "brown rice",
+      "code": "0748404287947",
+      "name": "Organic Quinoa & Brown Rice with Garlic",
+      "brand": "Seeds of Change",
+      "lastModifiedT": 1782852261,
+      "ageDays": 2.279410150462963
+    },
+    {
+      "query": "za'atar",
+      "code": "0060383050740",
+      "name": "Za'atar Hummus",
+      "brand": "President's Choice",
+      "lastModifiedT": 1775059925,
+      "ageDays": 92.46848422453704
+    },
+    {
+      "query": "za'atar",
+      "code": "5010338301767",
+      "name": "Al'fez | Za'atar Flatbreads",
+      "brand": "Al'fez",
+      "lastModifiedT": 1774646605,
+      "ageDays": 97.25228052083334
+    },
+    {
+      "query": "za'atar",
+      "code": "0044115403448",
+      "name": "Organic Hommus Labanese Za’atar & Tahini",
+      "brand": "Cedar’s Reserve",
+      "lastModifiedT": 1757785528,
+      "ageDays": 292.4036346875
+    },
+    {
+      "query": "za'atar",
+      "code": "0893594001849",
+      "name": "Pita Chips Mediterranean Za'atar",
+      "brand": "Cedar Valley",
+      "lastModifiedT": 1775069084,
+      "ageDays": 92.36247728009259
+    },
+    {
+      "query": "za'atar",
+      "code": "5710175131298",
+      "name": "Mill & Mortar Za'atar",
+      "brand": "Mill & Mortar",
+      "lastModifiedT": 1782209515,
+      "ageDays": 9.718599965277777
+    }
+  ]
+}
