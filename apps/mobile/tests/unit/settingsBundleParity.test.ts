@@ -305,10 +305,12 @@ describe("Settings — Figma `335:2` frame reskin", () => {
     expect(bundle).toMatch(/"Pro plan"\s*:\s*"Free plan"/);
   });
 
-  it("renders the peach Sloe Pro upsell banner with a Manage affordance", () => {
+  it("renders the peach Sloe Pro upsell banner with a tier-conditional Manage/Upgrade affordance", () => {
+    // ENG-1297: label is tier-conditional (free → "Upgrade", pro → "Manage")
+    // to match the a11y label + onPress routing — was a bare "Manage" string.
     expect(bundle).toContain('testID="settings-sloe-pro-banner"');
     expect(bundle).toMatch(/>\s*Sloe Pro\s*</);
-    expect(bundle).toMatch(/>\s*Manage\s*</);
+    expect(bundle).toMatch(/profileData\.userTier === "pro" \? "Manage" : "Upgrade"/);
   });
 
   it("groups reminder rows under a dedicated REMINDERS section", () => {

@@ -98,14 +98,15 @@ describe("Wave D (mobile) — SettingsBundleContent CTAs", () => {
     );
   });
 
-  it("the Sloe Pro banner Manage is a GHOST pill (decorative — plum label, no border)", () => {
-    // The whole banner row is the Pressable, so Manage stays a decorative pill
-    // carrying the ghost grammar by hand (transparent, no border, plum label).
+  it("the Sloe Pro banner Manage/Upgrade is a GHOST pill (decorative — plum label, no border)", () => {
+    // The whole banner row is the Pressable, so Manage/Upgrade stays a decorative
+    // pill carrying the ghost grammar by hand (transparent, no border, plum
+    // label). ENG-1297 made the label tier-conditional (was a bare "Manage").
     expect(BUNDLE).toMatch(
-      /Manage — GHOST treatment[\s\S]{0,600}color:\s*accent\.primarySolid\s*\}\}>\s*Manage/,
+      /Manage \/ Upgrade — decorative ghost pill[\s\S]{0,600}color:\s*accent\.primarySolid\s*\}\}>\s*\{profileData\.userTier/,
     );
     expect(BUNDLE).not.toMatch(
-      /Manage — GHOST treatment[\s\S]{0,600}borderWidth:\s*1\.5[\s\S]{0,120}Manage/,
+      /Manage \/ Upgrade — decorative ghost pill[\s\S]{0,600}borderWidth:\s*1\.5[\s\S]{0,120}profileData\.userTier/,
     );
   });
 

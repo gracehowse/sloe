@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 import path from "path";
 
 // Diagnostic vite plugin: rewrites every bare `react-native` specifier to
@@ -140,6 +140,17 @@ export default defineConfig({
       "tests/**/*.test.ts",
       "tests/**/*.test.tsx",
     ],
+    // ENG-1337 — this file hangs vitest indefinitely during COLLECTION
+    // (module import, before any test body runs — confirmed via
+    // console.error instrumentation that never fired, and unaffected by the
+    // 10s testTimeout below since that only bounds a running test, not
+    // import). `it.skip()` alone would NOT fix this (skipped tests still
+    // get collected/imported), so the file must be excluded from discovery
+    // entirely until ENG-1337 lands a root cause. Remove this exclude once
+    // that ticket resolves and the test runs clean again. Spreads vitest's
+    // own default excludes (node_modules etc.) — a bare custom `exclude`
+    // array would silently replace them, not merge.
+    exclude: [...configDefaults.exclude, "tests/unit/settingsBundleNoStrayText.test.tsx"],
     // Inline RNTL + RN so vitest applies the `react-native` alias to
     // their internal CJS requires. Without inlining, the externalised
     // CJS path bypasses aliases and `require("react-native")` hits the
