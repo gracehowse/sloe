@@ -4,7 +4,7 @@ import { AlertTriangle } from "lucide-react-native";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { importReviewBannerCopy } from "@suppr/shared/nutrition/recipeImportReview";
+import { importReviewBannerCopy } from "@suppr/nutrition-core/recipeImportReview";
 
 export interface RecipeImportReviewBannerProps {
   sourceName?: string | null;

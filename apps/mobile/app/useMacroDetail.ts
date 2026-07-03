@@ -17,7 +17,7 @@ import {
   NUTRITION_ENTRY_INGREDIENTS_FLAG,
   NUTRITION_ENTRY_INGREDIENTS_TABLE,
   type NutritionEntryIngredientRow,
-} from "@suppr/shared/nutrition/nutritionEntryIngredients";
+} from "@suppr/nutrition-core/nutritionEntryIngredients";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { mealContributedFiberG } from "@/lib/healthDietaryNutrients";
 import { parseNutritionMicrosJson } from "@/lib/nutritionJournal";

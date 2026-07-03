@@ -57,9 +57,9 @@ import AddIngredientSheet, {
 } from "@/components/AddIngredientSheet";
 import OverrideIngredientSheet from "@/components/OverrideIngredientSheet";
 import Badge from "@/components/Badge";
-import { importReviewBannerCopy } from "@suppr/shared/nutrition/recipeImportReview";
+import { importReviewBannerCopy } from "@suppr/nutrition-core/recipeImportReview";
 import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
-import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
+import { scaleMicrosPerServing } from "@suppr/nutrition-core/scaleMicrosPerServing";
 import {
   effectiveMacros,
   hasOverride,

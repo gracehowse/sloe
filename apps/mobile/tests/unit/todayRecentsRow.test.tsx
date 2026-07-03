@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import { TodayRecentsRow } from "../../components/today/TodayRecentsRow";
-import type { FoodHistoryItem } from "@suppr/shared/nutrition/foodHistory";
+import type { FoodHistoryItem } from "@suppr/nutrition-core/foodHistory";
 
 void React;
 

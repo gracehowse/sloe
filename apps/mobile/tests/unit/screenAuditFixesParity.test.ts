@@ -217,7 +217,9 @@ describe("F-91 — name-based natural-serving inference for verified USDA rows",
 describe("F-89 + F-90 — bare-noun + low-relevance filters applied at merge", () => {
   it("mobile mergeResults routes through shared mergeFoodSearchRows (ENG-1113)", () => {
     expect(SRC.verify).toMatch(/mergeFoodSearchRows\(/);
-    expect(SRC.verify).toMatch(/from "@suppr\/shared\/nutrition\/foodSearchMerge"/);
+    // ENG-1345 — mobile now imports nutrition modules from the single
+    // @suppr/nutrition-core/* boundary (was @suppr/shared/nutrition/*).
+    expect(SRC.verify).toMatch(/from "@suppr\/nutrition-core\/foodSearchMerge"/);
   });
 
   it("shared merge module applies isBareGenericNounRow + isLowRelevanceNonVerifiedRow", () => {

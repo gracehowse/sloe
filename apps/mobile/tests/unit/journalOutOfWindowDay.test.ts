@@ -78,7 +78,7 @@ vi.mock("@/lib/supabase", () => ({
 
 import { useOutOfWindowJournalDay } from "@/hooks/useOutOfWindowJournalDay";
 import { dateKeyFromDate, type ByDay, type JournalMeal } from "@/lib/nutritionJournal";
-import { journalBootWindowStartKey } from "@suppr/shared/nutrition/journalWindow";
+import { journalBootWindowStartKey } from "@suppr/nutrition-core/journalWindow";
 
 /** A `nutrition_entries` row as `NUTRITION_ENTRY_SELECT_COLUMNS` returns it. */
 function dbRow(dateKey: string, id: string): Record<string, unknown> {

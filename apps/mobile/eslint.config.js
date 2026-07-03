@@ -115,6 +115,20 @@ module.exports = defineConfig([
                 'Use lucide-react-native instead. The team standardised on Lucide on both platforms (2026-04-28, Top-5 #4 in docs/ux/teardown-2026-04-28-daily-loop.md). Existing Ionicons usages migrate opportunistically; new code uses Lucide.',
             },
           ],
+          // ENG-1345 — collapse the dual nutrition-import alias to ONE mobile
+          // boundary. Mobile imports nutrition modules from
+          // `@suppr/nutrition-core/*` (the curated, server-free barrel; its
+          // shims re-export `src/lib/nutrition/*`), never `@suppr/shared/
+          // nutrition/*`. Verified zero-violation baseline after the codemod,
+          // so any new dual-spelled import is flagged. Warn-level to match the
+          // Ionicons guard's opportunistic-migration posture.
+          patterns: [
+            {
+              group: ['@suppr/shared/nutrition/*'],
+              message:
+                'Import mobile nutrition modules from @suppr/nutrition-core/* (the single curated boundary), not @suppr/shared/nutrition/*. ENG-1345 collapsed the dual spelling; nutrition-core re-exports src/lib/nutrition/*.',
+            },
+          ],
         },
       ],
     },
