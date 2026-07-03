@@ -8,11 +8,12 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { Lock, PencilLine, ChevronDown, ChevronUp } from "lucide-react-native";
+import { PencilLine, ChevronDown, ChevronUp } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -30,6 +31,15 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 type Stage = "input" | "parsing" | "review" | "error";
+
+/** ENG-1312 — same PRO chip as `LogSheetInputModeRow` locked Voice / Photo. */
+function ProMethodBadge() {
+  return (
+    <View style={styles.proBadge}>
+      <Text style={styles.proBadgeText}>PRO</Text>
+    </View>
+  );
+}
 
 export type LogSheetDescribeFlowProps = {
   sheetOpen: boolean;
@@ -223,7 +233,7 @@ function LogSheetDescribeFlowImpl({
         <Text style={[Type.body, { color: colors.text, fontWeight: "600", flex: 1, fontSize: 13 }]}>
           Describe what you ate
         </Text>
-        {locked ? <Lock size={14} color={colors.textTertiary} /> : null}
+        {locked ? <ProMethodBadge /> : null}
         <ChevronDown size={16} color={colors.textTertiary} />
       </Pressable>
     );
@@ -253,7 +263,7 @@ function LogSheetDescribeFlowImpl({
         <Text style={[Type.body, { color: colors.text, fontWeight: "600", flex: 1, fontSize: 13 }]}>
           Describe what you ate
         </Text>
-        {locked ? <Lock size={14} color={colors.textTertiary} /> : null}
+        {locked ? <ProMethodBadge /> : null}
         <ChevronUp size={16} color={colors.textTertiary} />
       </Pressable>
       <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
@@ -313,3 +323,18 @@ function LogSheetDescribeFlowImpl({
 }
 
 export const LogSheetDescribeFlow = memo(LogSheetDescribeFlowImpl);
+
+const styles = StyleSheet.create({
+  proBadge: {
+    backgroundColor: Accent.primary,
+    borderRadius: Radius.full,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  proBadgeText: {
+    color: Accent.primaryForeground,
+    fontSize: 8,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+});

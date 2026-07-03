@@ -141,6 +141,9 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
     }
     expect(web).toContain("log-sheet-describe-from-search");
     expect(mobile).toContain("log-sheet-describe-from-search");
+    // ENG-1312 — Pro-only describe uses the same PRO badge as Voice / Photo chips.
+    expect(webDescribe).toContain("ProMethodBadge");
+    expect(mobileDescribe).toContain("ProMethodBadge");
   });
 
   it("both surfaces declare an optional `describe` prop (ENG-972)", () => {
