@@ -12,12 +12,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { ActivityIndicator, Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Share, StyleSheet, Text, View } from "react-native";
 import { Bookmark, Share as ShareIcon, X } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
@@ -155,7 +155,6 @@ function DigestLegacy(props: DigestProps) {
   }, [weekKey, state]);
 
   const handleShare = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     track(AnalyticsEvents.weekly_recap_shared, {
       weekKey,
       platform: Platform.OS,
@@ -169,7 +168,6 @@ function DigestLegacy(props: DigestProps) {
   }, [weekKey, shareText, onShare]);
 
   const handleDismiss = useCallback(() => {
-    Haptics.selectionAsync().catch(() => {});
     track(AnalyticsEvents.weekly_recap_dismissed, { weekKey });
     onDismiss();
   }, [weekKey, onDismiss]);
@@ -305,7 +303,8 @@ function DigestLegacy(props: DigestProps) {
       }}
     >
       {/* Dismiss */}
-      <Pressable
+      <PressableScale
+        haptic="selection"
         onPress={handleDismiss}
         accessibilityRole="button"
         accessibilityLabel="Dismiss week digest"
@@ -313,7 +312,7 @@ function DigestLegacy(props: DigestProps) {
         style={{ position: "absolute", right: 12, top: 12, padding: 4, width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
       >
         <X size={18} color={colors.textSecondary} />
-      </Pressable>
+      </PressableScale>
 
       {/* Eyebrow */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
@@ -476,13 +475,14 @@ function DigestLegacy(props: DigestProps) {
 
       {/* Footer */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={handleShare}
           disabled={shareDisabled}
           accessibilityRole="button"
           accessibilityLabel="Share week digest"
           accessibilityState={{ disabled: shareDisabled }}
-          style={({ pressed }) => ({
+          style={{
             flexDirection: "row",
             alignItems: "center",
             gap: 6,
@@ -492,8 +492,8 @@ function DigestLegacy(props: DigestProps) {
             backgroundColor: shareDisabled ? colors.cardBorder + "22" : Accent.success + "18",
             borderWidth: 1,
             borderColor: shareDisabled ? colors.cardBorder : Accent.success + "30",
-            opacity: shareDisabled ? 0.4 : pressed ? 0.85 : 1,
-          })}
+            opacity: shareDisabled ? 0.4 : 1,
+          }}
         >
           <ShareIcon
             size={14}
@@ -510,19 +510,19 @@ function DigestLegacy(props: DigestProps) {
           >
             Share week
           </Text>
-        </Pressable>
-        <Pressable
+        </PressableScale>
+        <PressableScale
+          haptic="selection"
           onPress={handleDismiss}
           accessibilityRole="button"
           accessibilityLabel="Dismiss week digest and continue"
-          style={({ pressed }) => ({
+          style={{
             paddingHorizontal: 10,
             paddingVertical: 8,
-            opacity: pressed ? 0.7 : 1,
-          })}
+          }}
         >
           <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>Got it</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {isOffline && offlineSyncedLabel ? (

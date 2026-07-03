@@ -1,12 +1,12 @@
 import React from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 import { useAccent, useTheme } from "@/context/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import {
   TAB_BAR_METRICS,
   tabBarOuterHeight,
@@ -208,9 +208,6 @@ export function SupprTabBar({
               const isFocused = state.index === realIndex;
 
               const onPress = () => {
-                if (process.env.EXPO_OS === "ios") {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }
                 const event = navigation.emit({
                   type: "tabPress",
                   target: route.key,
@@ -238,7 +235,8 @@ export function SupprTabBar({
 
               return (
                 <React.Fragment key={route.key}>
-                  <Pressable
+                  <PressableScale
+                    haptic={isFocused ? "none" : "selection"}
                     onPress={onPress}
                     onLongPress={onLongPress}
                     accessibilityRole="button"
@@ -281,7 +279,7 @@ export function SupprTabBar({
                         {label}
                       </Text>
                     ) : null}
-                  </Pressable>
+                  </PressableScale>
                   {showLogButtonAfterThis ? (
                     <LogTabBarButton onPress={handleLogButtonPress} />
                   ) : null}

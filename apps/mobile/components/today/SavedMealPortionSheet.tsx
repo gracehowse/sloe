@@ -12,11 +12,11 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import * as Haptics from "expo-haptics";
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { Elevation, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useHaptics } from "@/hooks/useHaptics";
 import { useMacroColors } from "@/lib/macroColors";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -74,6 +74,7 @@ function SavedMealPortionSheetImpl({
   // accent so deep plum stays legible on dark (hook inverts to aubergine).
   const accent = useAccent();
   const card = useCardElevation();
+  const haptics = useHaptics();
   const [mult, setMult] = useState(1);
 
   // ENG-813 (Redesign — Design Direction 2026): the element→sheet morph on
@@ -95,11 +96,7 @@ function SavedMealPortionSheetImpl({
   // `PressableScale haptic="confirm"`.
   const onPortionChange = (next: number) => {
     if (motionEnabled) {
-      try {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      } catch {
-        /* haptics unavailable (e.g. Expo Go) — silent */
-      }
+      haptics.confirm();
     }
     setMult(next);
   };
