@@ -46,9 +46,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 
 import { Radius, Spacing } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -168,10 +168,6 @@ export default function AiPaywallSheet({
       feature,
       action: "see_plans",
     });
-    // Selection haptic — matches the other primary-action chips on Today.
-    Haptics.selectionAsync().catch(() => {
-      /* haptics is best-effort */
-    });
     onSeePlans(feature);
   }, [feature, onSeePlans]);
 
@@ -227,7 +223,8 @@ export default function AiPaywallSheet({
           </View>
 
           {/* Close icon top-right (32x32). */}
-          <Pressable
+          <PressableScale
+            haptic="selection"
             accessibilityRole="button"
             accessibilityLabel="Close"
             hitSlop={8}
@@ -244,7 +241,7 @@ export default function AiPaywallSheet({
             }}
           >
             <X size={20} color={colors.textSecondary} strokeWidth={2} />
-          </Pressable>
+          </PressableScale>
 
           {/* PRO badge, left-aligned. */}
           <View style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>
@@ -276,7 +273,8 @@ export default function AiPaywallSheet({
           <View style={{ height: Spacing.xl }} />
 
           {/* Primary CTA — See Pro plans. */}
-          <Pressable
+          <PressableScale
+            haptic="confirm"
             accessibilityRole="button"
             accessibilityLabel="See Pro plans"
             onPress={handleSeePlans}
@@ -291,10 +289,11 @@ export default function AiPaywallSheet({
             <Text style={{ fontSize: 15, fontWeight: "700", color: colors.primaryForeground }}>
               See Pro plans
             </Text>
-          </Pressable>
+          </PressableScale>
 
           {/* Secondary CTA — Not now (ghost). */}
-          <Pressable
+          <PressableScale
+            haptic="none"
             accessibilityRole="button"
             accessibilityLabel="Not now"
             onPress={() => dismiss("not_now")}
@@ -314,7 +313,7 @@ export default function AiPaywallSheet({
             >
               Not now
             </Text>
-          </Pressable>
+          </PressableScale>
         </Pressable>
       </Pressable>
     </Modal>

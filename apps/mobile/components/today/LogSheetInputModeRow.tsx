@@ -23,7 +23,7 @@
  * (the host paywalls it when locked, exactly as for the collapsed entry).
  */
 
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import {
   Camera,
   Lock,
@@ -32,9 +32,9 @@ import {
   ScanBarcode,
   type Search,
 } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -117,30 +117,21 @@ export function LogSheetInputModeRow({
     ? modes.find((m) => m.aiMethod && m.locked && m.onPress)?.key ?? null
     : null;
 
-  const press = (fn: () => void) => () => {
-    if (process.env.EXPO_OS === "ios") {
-      void Haptics.selectionAsync();
-    }
-    fn();
-  };
-
   if (v3) {
     return (
       <View style={styles.grid} testID="log-sheet-input-mode-row">
         {modes.map(({ key, label, Icon, onPress, locked }) =>
           onPress ? (
             <View key={key} style={styles.gridCell}>
-              <Pressable
-                onPress={press(onPress)}
+              <PressableScale
+                haptic="selection"
+                onPress={onPress}
                 accessibilityRole="button"
                 accessibilityLabel={locked ? `${label} (Pro)` : label}
                 testID={`log-sheet-method-${key}`}
-                style={({ pressed }) => [
+                style={[
                   styles.tile,
-                  {
-                    backgroundColor: colors.backgroundSecondary,
-                    opacity: pressed ? 0.85 : 1,
-                  },
+                  { backgroundColor: colors.backgroundSecondary },
                 ]}
               >
                 <Icon size={22} color={accent.primary} strokeWidth={2} />
@@ -153,7 +144,7 @@ export function LogSheetInputModeRow({
                     <Lock size={11} color={accent.primary} strokeWidth={2} />
                   </View>
                 ) : null}
-              </Pressable>
+              </PressableScale>
               {key === tooltipKey ? (
                 <Text
                   testID="log-sheet-ai-method-tooltip"
@@ -175,22 +166,22 @@ export function LogSheetInputModeRow({
       {modes.map(({ key, label, Icon, onPress, locked }) =>
         onPress ? (
           <View key={key} style={styles.inputModeCell}>
-            <Pressable
-              onPress={press(onPress)}
+            <PressableScale
+              haptic="selection"
+              onPress={onPress}
               accessibilityRole="button"
               accessibilityLabel={locked ? `${label} (Pro)` : label}
-              style={({ pressed }) => [
+              style={[
                 styles.inputModeButton,
                 {
                   backgroundColor: colors.card,
                   borderColor: colors.border,
-                  opacity: pressed ? 0.85 : 1,
                 },
               ]}
             >
               <Icon size={22} color={accent.primary} strokeWidth={2} />
               {locked ? <ProMethodBadge style={styles.proBadgeAnchor} /> : null}
-            </Pressable>
+            </PressableScale>
             <Text style={[styles.inputModeLabel, { color: colors.textSecondary }]}>{label}</Text>
             {key === tooltipKey ? (
               <Text

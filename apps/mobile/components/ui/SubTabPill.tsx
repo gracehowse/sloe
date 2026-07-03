@@ -1,8 +1,8 @@
 import React from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import * as Haptics from "expo-haptics";
+import { ScrollView, Text, View } from "react-native";
 
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -44,9 +44,6 @@ export function SubTabPill<TId extends string>({
 
   const handleSelect = (id: TId) => {
     if (id === activeId) return;
-    if (process.env.EXPO_OS === "ios") {
-      void Haptics.selectionAsync();
-    }
     onSelect(id);
   };
 
@@ -62,8 +59,9 @@ export function SubTabPill<TId extends string>({
       {items.map((item) => {
         const active = item.id === activeId;
         return (
-          <Pressable
+          <PressableScale
             key={item.id}
+            haptic={active ? "none" : "selection"}
             onPress={() => handleSelect(item.id)}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
@@ -118,7 +116,7 @@ export function SubTabPill<TId extends string>({
                 </Text>
               </View>
             ) : null}
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>

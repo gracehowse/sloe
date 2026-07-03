@@ -22,9 +22,9 @@ import {
   Text,
   View,
 } from "react-native";
-import * as Haptics from "expo-haptics";
 import { Star, UtensilsCrossed } from "lucide-react-native";
 import { Radius, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -140,16 +140,10 @@ export function SwapMealSheet({
               const deltaLabel =
                 Math.abs(delta) < 25 ? "on target" : delta > 0 ? `+${delta}` : `${delta}`;
               return (
-                <Pressable
+                <PressableScale
                   key={c.id}
-                  onPress={() => {
-                    if (process.env.EXPO_OS === "ios") {
-                      // Medium impact — committing a plan change, one tier
-                      // above selection (same weight as MoveMealSheet picks).
-                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    }
-                    onPick(c.id);
-                  }}
+                  haptic="confirm"
+                  onPress={() => onPick(c.id)}
                   accessibilityRole="button"
                   accessibilityLabel={`Swap to ${c.title}, ${c.calories} kcal${c.isSaved ? ", from your library" : ""}`}
                   style={[
@@ -206,7 +200,7 @@ export function SwapMealSheet({
                   >
                     {deltaLabel}
                   </Text>
-                </Pressable>
+                </PressableScale>
               );
             })
           )}

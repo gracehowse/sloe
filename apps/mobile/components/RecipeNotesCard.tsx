@@ -12,16 +12,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import { Flame, Star } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { supabase } from "@/lib/supabase";
@@ -170,7 +169,6 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
 
   const onRatingPress = useCallback(
     (n: number) => {
-      void Haptics.selectionAsync().catch(() => {});
       const next = rating === n ? null : n;
       setRating(next);
       void saveNow(notesDraft, next);
@@ -179,7 +177,6 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
   );
 
   const onClearRating = useCallback(() => {
-    void Haptics.selectionAsync().catch(() => {});
     setRating(null);
     void saveNow(notesDraft, null);
   }, [notesDraft, saveNow]);
@@ -303,8 +300,9 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
           {[1, 2, 3, 4, 5].map((n) => {
             const active = rating != null && n <= rating;
             return (
-              <Pressable
+              <PressableScale
                 key={n}
+                haptic="selection"
                 onPress={() => onRatingPress(n)}
                 style={styles.starBtn}
                 disabled={loading}
@@ -318,12 +316,13 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
                   color={active ? accent.primary : colors.textTertiary}
                   fill={active ? accent.primary : "none"}
                 />
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>
         {rating != null && (
-          <Pressable
+          <PressableScale
+            haptic="selection"
             onPress={onClearRating}
             style={styles.clearBtn}
             accessibilityRole="button"
@@ -331,7 +330,7 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
             hitSlop={6}
           >
             <Text style={styles.clearText}>Clear</Text>
-          </Pressable>
+          </PressableScale>
         )}
       </View>
 
