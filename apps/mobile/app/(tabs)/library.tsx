@@ -25,15 +25,18 @@ import {
 } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useLibrarySearchStore } from "@/hooks/useLibrarySearchStore";
-import { useSavedLibraryRecipes, useSavedRecipes } from "@/lib/recipes";
+import { useSavedLibraryRecipes, useSavedRecipes, useRecipeCollections } from "@/lib/recipes";
 import { setRecipePublishedWithPrompt } from "@/lib/goPublicRecipe";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { RecipeCollectionsBar } from "@/components/recipe/RecipeCollectionsBar";
+import { RecipeCardOverlayControls } from "@/components/recipe/RecipeCardOverlayControls";
 import { LibraryLoadingSkeleton } from "@/components/library/LibraryLoadingSkeleton";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
-import { FontFamily, Spacing, Radius, ShadowColor, Type } from "@/constants/theme";
+import { FontFamily, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -138,6 +141,15 @@ export default function LibraryScreen() {
 
   const { recipes: savedRecipes, loading, refreshing, refresh } = useSavedLibraryRecipes(userId);
   const { toggleSave: persistSaveToggle } = useSavedRecipes(userId);
+  const collectionsEnabled = isFeatureEnabled("recipe_collections_v1"); // ENG-1126
+  const {
+    collections: recipeCollections,
+    membership: collectionMembership,
+    createCollection,
+    addRecipeToCollection,
+    removeRecipeFromCollection,
+  } = useRecipeCollections(userId);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
   /** Reload rows after yield/macros edits on recipe detail (list state is otherwise stale). */
   useFocusEffect(
@@ -249,13 +261,17 @@ export default function LibraryScreen() {
         list = list.filter((r) => entryKindForCard(r, userId) === secondary);
       }
     }
+    if (selectedCollectionId) {
+      // ENG-1126 — orthogonal to category/entry-kind, layers on top.
+      list = list.filter((r) => (collectionMembership[r.id] ?? []).includes(selectedCollectionId));
+    }
     if (sortKey === "calories") {
       list = [...list].sort((a, b) => b.calories - a.calories);
     } else if (sortKey === "protein") {
       list = [...list].sort((a, b) => b.protein - a.protein);
     }
     return list;
-  }, [savedRecipes, search, sortKey, category, secondary, userId]);
+  }, [savedRecipes, search, sortKey, category, secondary, userId, selectedCollectionId, collectionMembership]);
 
   const handleGoPublic = useCallback(
     async (item: RecipeCard) => {
@@ -602,25 +618,9 @@ export default function LibraryScreen() {
       bottom: 0,
       height: 0,
     },
-    // Bookmark overlay (Figma `527:2`) — circular translucent-white pill
-    // top-right of the photo, NOT the card-surface tier. White-on-photo
-    // so it reads over any image; the only card overlay now (the `…`
-    // overflow was removed).
-    bookmarkDot: {
-      position: "absolute",
-      top: Spacing.sm,
-      right: Spacing.sm,
-      width: 32,
-      height: 32,
-      borderRadius: Radius.full,
-      backgroundColor: "rgba(255,255,255,0.9)",
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: ShadowColor.cast,
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      shadowOffset: { width: 0, height: 1 },
-    },
+    // Bookmark + ENG-1126 collection overlay geometry now lives in
+    // `RecipeCardOverlayControls.tsx` (extracted for the screen-line
+    // budget); this file no longer defines that style directly.
     cardBody: {
       paddingHorizontal: Spacing.md,
       paddingTop: Spacing.sm,
@@ -672,23 +672,8 @@ export default function LibraryScreen() {
       color: colors.textSecondary,
       fontVariant: ["tabular-nums"],
     },
-    // Draft badge sits top-left of the photo. The old `+ 52` offset
-    // cleared the kind badge that used to share the corner; that badge is
-    // gone (Figma `527:2`), so the draft chip returns to the normal inset.
-    draftBadge: {
-      position: "absolute",
-      top: Spacing.sm,
-      left: Spacing.sm,
-      paddingHorizontal: Spacing.sm,
-      paddingVertical: Spacing.xs,
-      borderRadius: Radius.full, // tags census 2026-06-10 — tag family is round
-      backgroundColor: colors.text + "CC",
-    },
-    draftBadgeText: {
-      fontSize: 11,
-      fontWeight: "700",
-      color: colors.background,
-    },
+    // Draft badge (top-left) also moved into `RecipeCardOverlayControls.tsx`
+    // — mutually exclusive with the ENG-1126 add-to-collection affordance.
     // Inline "Go public" — LAYOUT-ONLY override for the ghost SupprButton
     // (2026-06-12 button system). The CTA colour/label come from the ghost
     // variant; this trims the CTA's default padding + left-aligns it so it reads
@@ -807,31 +792,23 @@ export default function LibraryScreen() {
               recipeTitle={item.title}
             />
             <View style={styles.cardGradient} pointerEvents="none" />
-            {showDraft ? (
-              <View style={styles.draftBadge} pointerEvents="none">
-                <Text style={styles.draftBadgeText}>Draft</Text>
-              </View>
-            ) : null}
-            {/* Bookmark overlay — Figma `527:2`: the ONLY card overlay
-                (the `…` overflow was removed; long-press still opens the
-                remove/actions sheet for power users). Tapping toggles the
-                save without opening the recipe; filled clay when saved,
-                outline when not (e.g. an imported recipe you authored but
-                un-saved — bookmark stays honest per composeLibraryEntries). */}
-            <Pressable
-              style={styles.bookmarkDot}
-              onPress={() => toggleCardSave(item)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: item.isSaved }}
-              accessibilityLabel={item.isSaved ? `Saved: ${item.title}. Tap to remove` : `Save ${item.title}`}
-              hitSlop={8}
-            >
-              <Bookmark
-                size={15}
-                color={item.isSaved ? accent.primary : colors.textSecondary}
-                fill={item.isSaved ? accent.primary : "transparent"}
-              />
-            </Pressable>
+            {/* Bookmark overlay (Figma `527:2`) + ENG-1126 collection
+                affordance — extracted so this cluster can grow without
+                pushing `library.tsx` over its screen-line-budget pin. */}
+            <RecipeCardOverlayControls
+              recipeTitle={item.title}
+              isSaved={item.isSaved}
+              onToggleSave={() => toggleCardSave(item)}
+              showDraft={showDraft}
+              collectionsEnabled={collectionsEnabled}
+              collections={recipeCollections}
+              memberOf={collectionMembership[item.id] ?? []}
+              onToggleCollection={(collectionId, member) =>
+                void (member
+                  ? removeRecipeFromCollection(collectionId, item.id)
+                  : addRecipeToCollection(collectionId, item.id))
+              }
+            />
           </View>
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
@@ -911,7 +888,21 @@ export default function LibraryScreen() {
         </View>
       );
     },
-    [router, confirmRemove, toggleCardSave, handleGoPublic, userId, colors, styles, accent],
+    [
+      router,
+      confirmRemove,
+      toggleCardSave,
+      handleGoPublic,
+      userId,
+      colors,
+      styles,
+      accent,
+      collectionsEnabled,
+      recipeCollections,
+      collectionMembership,
+      addRecipeToCollection,
+      removeRecipeFromCollection,
+    ],
   );
 
   const isLoading = loading;
@@ -1017,6 +1008,14 @@ export default function LibraryScreen() {
                   );
                 })}
               </ScrollView>
+              {collectionsEnabled ? (
+                <RecipeCollectionsBar
+                  collections={recipeCollections}
+                  selectedCollectionId={selectedCollectionId}
+                  onSelectCollection={setSelectedCollectionId}
+                  onCreateCollection={createCollection}
+                />
+              ) : null}
               {/* ENG-1225 Block 5 — v3 editorial shelves above the grid (All only). */}
               <LibraryShelvesHeader
                 filtered={filtered}

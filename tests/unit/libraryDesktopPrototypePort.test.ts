@@ -12,10 +12,16 @@ const ROOT = resolve(__dirname, "../..");
 const LIBRARY_PATH = resolve(ROOT, "src/app/components/Library.tsx");
 const FILTERS_PATH = resolve(ROOT, "src/lib/recipes/recipeCategoryFilters.ts");
 const MOBILE_LIBRARY_PATH = resolve(ROOT, "apps/mobile/app/(tabs)/library.tsx");
+// ENG-1126: the bookmark overlay + toggleSaveRecipe() call moved out of
+// Library.tsx into this extracted component (screen-line-budget pin left
+// zero slack for the new add-to-collection affordance). SRC alone no
+// longer contains the overlay markup — OVERLAY_SRC covers it.
+const OVERLAY_PATH = resolve(ROOT, "src/app/components/library/RecipeCardOverlayControls.tsx");
 
 const SRC = readFileSync(LIBRARY_PATH, "utf8");
 const FILTERS_SRC = readFileSync(FILTERS_PATH, "utf8");
 const MOBILE_SRC = readFileSync(MOBILE_LIBRARY_PATH, "utf8");
+const OVERLAY_SRC = readFileSync(OVERLAY_PATH, "utf8");
 
 describe("Library — Sloe Figma 527:2 grid (ENG-896)", () => {
   describe("unified recipe grid", () => {
@@ -29,7 +35,7 @@ describe("Library — Sloe Figma 527:2 grid (ENG-896)", () => {
     });
 
     it("renders bookmark overlay per card (`library-bookmark-{id}`)", () => {
-      expect(SRC).toMatch(/library-bookmark-\$\{recipe\.id\}/);
+      expect(OVERLAY_SRC).toMatch(/library-bookmark-\$\{recipe\.id\}/);
     });
   });
 
@@ -93,10 +99,11 @@ describe("Library — Sloe Figma 527:2 grid (ENG-896)", () => {
       });
 
       it("renders a bookmark overlay toggle per card and no `…` overflow on the card", () => {
-        expect(SRC).toMatch(/library-bookmark-\$\{recipe\.id\}/);
-        expect(SRC).toMatch(/toggleSaveRecipe\(/);
+        expect(OVERLAY_SRC).toMatch(/library-bookmark-\$\{recipe\.id\}/);
+        expect(OVERLAY_SRC).toMatch(/toggleSaveRecipe\(/);
         // No three-dot overflow menu on the mobile-web card.
         expect(SRC).not.toMatch(/MoreHorizontal/);
+        expect(OVERLAY_SRC).not.toMatch(/MoreHorizontal/);
       });
 
       it("surfaces a provenance row above the category row (ENG-1247 'Both rows')", () => {

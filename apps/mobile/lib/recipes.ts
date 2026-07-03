@@ -18,6 +18,17 @@ import {
   isRetiredStockImageUrl,
   pickHeroImageUrl,
 } from "@suppr/shared/recipes/heroImageFallback";
+import {
+  addRecipeToCollection as addRecipeToCollectionShared,
+  createRecipeCollection as createRecipeCollectionShared,
+  deleteRecipeCollection as deleteRecipeCollectionShared,
+  fetchCollectionMembership,
+  fetchRecipeCollections,
+  removeRecipeFromCollection as removeRecipeFromCollectionShared,
+  renameRecipeCollection as renameRecipeCollectionShared,
+  type RecipeCollection,
+} from "@suppr/shared/recipes/recipeCollections";
+import { looksLikeMissingTableError } from "./supabaseErrors";
 
 // ENG-1287 (2026-07-01, launch-blocker): the old F-21 fallback rotated a
 // 6-photo Unsplash pool keyed by recipe id, presenting someone else's dish
@@ -669,6 +680,145 @@ export function useSavesHeadCount(userId: string | null): number {
     };
   }, [userId]);
   return count;
+}
+
+/**
+ * ENG-1126 — user-created recipe collections. Calls the SAME shared CRUD
+ * functions as web's `useRecipeCollectionsState` (`@suppr/shared/recipes/
+ * recipeCollections`, path-mapped to `src/lib/recipes/recipeCollections.ts`)
+ * so there is exactly one implementation of the query logic, not two
+ * hand-mirrored ones. Degrades silently (no blocking `Alert`) if the
+ * migration hasn't landed on this environment's DB yet — matches
+ * `looksLikeMissingTableError`'s existing "sync disabled, don't interrupt"
+ * convention (see `TodayScreen.tsx`'s journal fallback). CRUD failures
+ * during an explicit user action DO surface via `Alert.alert`, matching
+ * the existing mobile error-surface convention for this class of write.
+ */
+export function useRecipeCollections(userId: string | null) {
+  const [collections, setCollections] = useState<RecipeCollection[]>([]);
+  const [membership, setMembership] = useState<Record<string, string[]>>({});
+  const [enabled, setEnabled] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    const [cols, mem] = await Promise.all([
+      fetchRecipeCollections(supabase),
+      fetchCollectionMembership(supabase),
+    ]);
+    setCollections(cols);
+    setMembership(mem);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      setCollections([]);
+      setMembership({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { error } = await supabase.from("recipe_collections").select("id").limit(1);
+      if (cancelled) return;
+      if (error) {
+        if (looksLikeMissingTableError(error.message ?? "")) setEnabled(false);
+        return;
+      }
+      await refresh();
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  const createCollection = useCallback(
+    async (name: string): Promise<boolean> => {
+      if (!userId) return false;
+      const result = await createRecipeCollectionShared(supabase, userId, name);
+      if ("error" in result) {
+        Alert.alert("Couldn't create collection", result.error);
+        return false;
+      }
+      setCollections((prev) => [...prev, result.collection]);
+      return true;
+    },
+    [userId],
+  );
+
+  const renameCollection = useCallback(async (collectionId: string, name: string): Promise<boolean> => {
+    const result = await renameRecipeCollectionShared(supabase, collectionId, name);
+    if ("error" in result) {
+      Alert.alert("Couldn't rename collection", result.error);
+      return false;
+    }
+    setCollections((prev) => prev.map((c) => (c.id === collectionId ? { ...c, name: name.trim() } : c)));
+    return true;
+  }, []);
+
+  const deleteCollection = useCallback(async (collectionId: string): Promise<boolean> => {
+    const result = await deleteRecipeCollectionShared(supabase, collectionId);
+    if ("error" in result) {
+      Alert.alert("Couldn't delete collection", result.error);
+      return false;
+    }
+    setCollections((prev) => prev.filter((c) => c.id !== collectionId));
+    setMembership((prev) => {
+      const next: Record<string, string[]> = {};
+      for (const [recipeId, ids] of Object.entries(prev)) {
+        const filtered = ids.filter((id) => id !== collectionId);
+        if (filtered.length > 0) next[recipeId] = filtered;
+      }
+      return next;
+    });
+    return true;
+  }, []);
+
+  const addRecipeToCollection = useCallback(async (collectionId: string, recipeId: string): Promise<boolean> => {
+    setMembership((prev) => {
+      const existing = prev[recipeId] ?? [];
+      if (existing.includes(collectionId)) return prev;
+      return { ...prev, [recipeId]: [...existing, collectionId] };
+    });
+    const result = await addRecipeToCollectionShared(supabase, collectionId, recipeId);
+    if ("error" in result) {
+      Alert.alert("Couldn't add to collection", result.error);
+      setMembership((prev) => ({
+        ...prev,
+        [recipeId]: (prev[recipeId] ?? []).filter((id) => id !== collectionId),
+      }));
+      return false;
+    }
+    return true;
+  }, []);
+
+  const removeRecipeFromCollection = useCallback(
+    async (collectionId: string, recipeId: string): Promise<boolean> => {
+      const previousIds = membership[recipeId] ?? [];
+      setMembership((prev) => ({
+        ...prev,
+        [recipeId]: (prev[recipeId] ?? []).filter((id) => id !== collectionId),
+      }));
+      const result = await removeRecipeFromCollectionShared(supabase, collectionId, recipeId);
+      if ("error" in result) {
+        Alert.alert("Couldn't remove from collection", result.error);
+        setMembership((prev) => ({ ...prev, [recipeId]: previousIds }));
+        return false;
+      }
+      return true;
+    },
+    [membership],
+  );
+
+  return {
+    collections,
+    membership,
+    enabled,
+    createCollection,
+    renameCollection,
+    deleteCollection,
+    addRecipeToCollection,
+    removeRecipeFromCollection,
+  };
 }
 
 /** Fetch a single recipe with ingredients. */
