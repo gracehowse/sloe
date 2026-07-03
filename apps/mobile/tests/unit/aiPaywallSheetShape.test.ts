@@ -126,8 +126,9 @@ describe("AiPaywallSheet module contract (Ship M2)", () => {
     expect(SHEET_SOURCE).toMatch(/animationType/);
   });
 
-  it("uses Haptics.selectionAsync on the primary CTA", () => {
-    expect(SHEET_SOURCE).toMatch(/Haptics\.selectionAsync/);
+  it("routes primary CTA haptic through PressableScale confirm (ENG-1342)", () => {
+    expect(SHEET_SOURCE).toMatch(/PressableScale[\s\S]{0,200}haptic="confirm"[\s\S]{0,200}See Pro plans/);
+    expect(SHEET_SOURCE).not.toMatch(/Haptics\.selectionAsync/);
   });
 });
 

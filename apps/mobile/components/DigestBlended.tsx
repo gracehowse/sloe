@@ -22,16 +22,15 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Platform,
-  Pressable,
   Share,
   Text,
   View,
 } from "react-native";
 import { Share2, X } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled, track } from "@/lib/analytics";
@@ -81,7 +80,6 @@ export function DigestBlended(props: DigestProps) {
   }, [weekKey, state]);
 
   const handleShare = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     track(AnalyticsEvents.weekly_recap_shared, { weekKey, platform: Platform.OS });
     onShare();
     try {
@@ -92,7 +90,6 @@ export function DigestBlended(props: DigestProps) {
   }, [weekKey, shareText, onShare]);
 
   const handleDismiss = useCallback(() => {
-    Haptics.selectionAsync().catch(() => {});
     track(AnalyticsEvents.weekly_recap_dismissed, { weekKey });
     onDismiss();
   }, [weekKey, onDismiss]);
@@ -222,14 +219,15 @@ export function DigestBlended(props: DigestProps) {
         <Text style={{ ...Type.label, color: colors.textSecondary }}>
           WEEK DIGEST · {weekLabel.toUpperCase()}
         </Text>
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={handleDismiss}
           accessibilityRole="button"
           accessibilityLabel="Dismiss week digest"
           hitSlop={12}
         >
           <X size={17} color={colors.textTertiary} />
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* HERO — the one soft-filled region */}
@@ -418,9 +416,9 @@ export function DigestBlended(props: DigestProps) {
               {narrative.maintenanceLine}
             </Text>
             {onAdjustPace ? (
-              <Pressable onPress={onAdjustPace} testID="digest-adjust-pace" hitSlop={8}>
+              <PressableScale haptic="selection" onPress={onAdjustPace} testID="digest-adjust-pace" hitSlop={8}>
                 <Text style={{ fontSize: 11.5, fontWeight: "600", color: accent.primarySolid }}>Adjust pace →</Text>
-              </Pressable>
+              </PressableScale>
             ) : null}
           </View>
         </>
@@ -428,13 +426,14 @@ export function DigestBlended(props: DigestProps) {
 
       {/* Footer */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 14 }}>
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={handleShare}
           disabled={shareDisabled}
           accessibilityRole="button"
           accessibilityLabel="Share week digest"
           accessibilityState={{ disabled: shareDisabled }}
-          style={({ pressed }) => ({
+          style={{
             flexDirection: "row",
             alignItems: "center",
             gap: 7,
@@ -442,22 +441,22 @@ export function DigestBlended(props: DigestProps) {
             paddingVertical: 11,
             borderRadius: 12,
             backgroundColor: shareDisabled ? colors.cardBorder + "22" : Accent.success + "1f",
-            opacity: shareDisabled ? 0.4 : pressed ? 0.85 : 1,
-          })}
+            opacity: shareDisabled ? 0.4 : 1,
+          }}
         >
           <Share2 size={14} color={shareDisabled ? colors.textSecondary : Accent.success} />
           <Text style={{ fontSize: 14, fontWeight: "700", color: shareDisabled ? colors.textSecondary : Accent.success }}>
             Share week
           </Text>
-        </Pressable>
-        <Pressable
+        </PressableScale>
+        <PressableScale
+          haptic="selection"
           onPress={handleDismiss}
           accessibilityRole="button"
           accessibilityLabel="Dismiss week digest and continue"
-          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
           <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>Got it</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {isOffline && offlineSyncedLabel ? (

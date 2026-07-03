@@ -1,7 +1,7 @@
-import { Pressable, Text, View, StyleSheet } from "react-native";
+import { Text, View, StyleSheet } from "react-native";
 import { Check } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCookIngredientChecklist } from "@/hooks/useCookIngredientChecklist";
 import { track } from "@/lib/analytics";
@@ -37,14 +37,14 @@ export function CookIngredientChecklist({
       {items.map((item, index) => {
         const checked = isChecked(index);
         return (
-          <Pressable
+          <PressableScale
             key={`${index}:${item.name}`}
+            haptic="selection"
             accessibilityRole="checkbox"
             accessibilityState={{ checked }}
             accessibilityLabel={`${item.name}${item.amountLabel ? `, ${item.amountLabel}` : ""}`}
             onPress={() => {
               const next = toggle(index);
-              void Haptics.selectionAsync();
               try {
                 track(AnalyticsEvents.cook_ingredient_checked, {
                   recipeId,
@@ -57,10 +57,10 @@ export function CookIngredientChecklist({
                 /* analytics fire-and-forget */
               }
             }}
-            style={({ pressed }) => [
+            style={[
               styles.row,
               {
-                backgroundColor: pressed ? colors.card : colors.backgroundSecondary,
+                backgroundColor: colors.backgroundSecondary,
                 borderColor: colors.border,
               },
             ]}
@@ -105,7 +105,7 @@ export function CookIngredientChecklist({
                 </Text>
               ) : null}
             </View>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>

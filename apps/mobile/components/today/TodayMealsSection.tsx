@@ -36,8 +36,8 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 import { Accent, Elevation, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { useHaptics } from "@/hooks/useHaptics";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -634,6 +634,8 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
     quickAddPanel,
   } = props;
 
+  const haptics = useHaptics();
+
   // 2026-05-23 (Grace): "usuals etc can just be in the logging section"
   // — the collapsible "Your usuals" header + Duplicate-day pill above
   // the slots were reading as clutter. The same content is reachable
@@ -729,7 +731,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
 
   const handleMealLongPress = (m: JournalMeal) => {
     if (brandedSheets) {
-      void Haptics.selectionAsync();
+      haptics.select();
       setActionSheetMeal(m);
       return;
     }
@@ -1218,7 +1220,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                       onLongPress={() => {
                         if (brandedSheets) {
                           // ENG-799 — flag ON: branded cream action sheet.
-                          void Haptics.selectionAsync();
+                          haptics.select();
                           setActionSheetMeal(m);
                           return;
                         }

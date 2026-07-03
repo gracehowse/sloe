@@ -19,7 +19,6 @@ import {
   Text,
   View,
 } from "react-native";
-import * as Haptics from "expo-haptics";
 import {
   Coffee,
   Cookie,
@@ -28,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { DayPlan } from "../../../src/types/recipe";
@@ -175,23 +175,11 @@ export function MoveMealSheet({
               const Glyph = resolveSlotGlyph(r.slotName);
               const tint = resolveSlotTint(r.slotName);
               return (
-                <Pressable
+                <PressableScale
                   key={key}
+                  haptic="selection"
                   disabled={r.isSource}
-                  onPress={() => {
-                    // 2026-05-13 (premium-bar audit Plan Card 3 #3):
-                    // selection haptic on every destination tap so
-                    // the pick lands as a deliberate moment. Matches
-                    // Apple's "selection feedback on row pick" pattern
-                    // and the Today FAB's medium-impact tap haptic
-                    // (one tier above selection for higher-stakes
-                    // actions). iOS-only — RN ignores on Android but
-                    // we're iOS-only today per project memory.
-                    if (process.env.EXPO_OS === "ios") {
-                      void Haptics.selectionAsync();
-                    }
-                    onMove({ day: r.day, slotIndex: r.slotIndex });
-                  }}
+                  onPress={() => onMove({ day: r.day, slotIndex: r.slotIndex })}
                   accessibilityRole="button"
                   accessibilityLabel={label}
                   accessibilityState={{ disabled: r.isSource }}
@@ -262,7 +250,7 @@ export function MoveMealSheet({
                       FROM
                     </Text>
                   ) : null}
-                </Pressable>
+                </PressableScale>
               );
             })
           )}

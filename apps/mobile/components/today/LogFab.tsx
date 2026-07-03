@@ -1,9 +1,9 @@
 import React, { memo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { Plus } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 
 import { Accent, Colors, Elevation } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 
 /**
@@ -54,13 +54,6 @@ function LogFabImpl({ visible = true, onPress, bottom = 100, right = 18 }: LogFa
   const accent = useAccent();
   if (!visible) return null;
 
-  const handlePress = () => {
-    if (process.env.EXPO_OS === "ios") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    onPress();
-  };
-
   return (
     <View
       pointerEvents="box-none"
@@ -71,14 +64,16 @@ function LogFabImpl({ visible = true, onPress, bottom = 100, right = 18 }: LogFa
         zIndex: 60,
       }}
     >
-      <Pressable
-        onPress={handlePress}
+      <PressableScale
+        haptic="confirm"
+        scaleTo={0.94}
+        onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel="Log a meal"
         accessibilityHint="Opens the log sheet for searching foods, scanning barcodes, or quick logging"
         testID="today-log-fab"
         hitSlop={8}
-        style={({ pressed }) => [
+        style={[
           {
             width: 56,
             height: 56,
@@ -86,13 +81,12 @@ function LogFabImpl({ visible = true, onPress, bottom = 100, right = 18 }: LogFa
             backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
-            transform: [{ scale: pressed ? 0.94 : 1 }],
           },
           Elevation.floatPrimary,
         ]}
       >
         <Plus size={28} color={Colors.light.primaryForeground} strokeWidth={2.25} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

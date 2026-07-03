@@ -9,8 +9,7 @@
  * `src/lib/nutrition/tdee.ts` — this file never duplicates multipliers
  * or BMR formulae.
  */
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import * as Haptics from "expo-haptics";
+import { StyleSheet, Text, View } from "react-native";
 import {
   ACTIVITY_SHORT_LABELS,
   activityLevelPreviewKcal,
@@ -18,6 +17,7 @@ import {
   type Sex,
 } from "@suppr/nutrition-core/tdee";
 import { Radius, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -65,11 +65,6 @@ export default function ActivityLevelPreview({
   const accent = useAccent();
   const preview = activityLevelPreviewKcal(sex, weightKg, heightCm, age);
 
-  const handlePress = (lvl: ActivityLevel) => {
-    onSelect(lvl);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
   return (
     <View testID="activity-level-preview" style={{ gap: Spacing.sm }}>
       {renderOptions ? (
@@ -78,12 +73,13 @@ export default function ActivityLevelPreview({
             const active = lvl === selected;
             const kcal = preview ? preview[lvl] : null;
             return (
-              <Pressable
+              <PressableScale
                 key={lvl}
+                haptic="selection"
                 testID={`activity-level-option-${lvl}`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
-                onPress={() => handlePress(lvl)}
+                onPress={() => onSelect(lvl)}
                 style={[
                   styles.option,
                   {
@@ -122,7 +118,7 @@ export default function ActivityLevelPreview({
                     Maintenance ≈ {kcal.toLocaleString()} kcal
                   </Text>
                 ) : null}
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>

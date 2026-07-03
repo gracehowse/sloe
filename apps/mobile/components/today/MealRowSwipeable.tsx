@@ -1,10 +1,10 @@
 import { memo } from "react";
 import * as React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { Trash2 } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 import { Accent, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /** Swipe-left delete affordance for Today meal rows and Figma summary cards. */
@@ -24,11 +24,9 @@ function MealRowSwipeableImpl({
       friction={2}
       renderRightActions={() => (
         <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-          <Pressable
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onDeleteMeal(mealId);
-            }}
+          <PressableScale
+            haptic="destructive"
+            onPress={() => onDeleteMeal(mealId)}
             style={{
               width: 88,
               backgroundColor: Accent.destructive,
@@ -42,7 +40,7 @@ function MealRowSwipeableImpl({
             <Text style={{ ...Type.caption, color: colors.destructiveForeground, marginTop: 4 }}>
               Remove
             </Text>
-          </Pressable>
+          </PressableScale>
         </View>
       )}
     >

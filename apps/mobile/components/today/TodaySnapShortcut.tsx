@@ -1,11 +1,11 @@
 import React, { memo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Camera, Lock } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 
 import { FontWeight, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -51,27 +51,16 @@ function TodaySnapShortcutImpl({
 
   return (
     <View style={{ marginBottom: Spacing.md }}>
-      <Pressable
+      <PressableScale
+        haptic="confirm"
         accessibilityRole="button"
         accessibilityLabel={
           locked ? "Snap a meal (Pro)" : "Snap a meal"
         }
         accessibilityHint="Opens the photo log so you can capture a meal in one tap"
         testID={testID ?? "today-snap-shortcut"}
-        onPress={() => {
-          // 2026-05-13 (premium-bar audit Today F3 #5): upgraded from
-          // `selectionAsync` (lightest) to medium impact so the tap
-          // feels like a shutter press — matches the iOS Camera app's
-          // tap-the-shutter feedback. The card is the entry point to a
-          // photo-log capture flow; a heftier confirmation is honest
-          // about what's about to happen (camera permission prompt or
-          // capture sheet).
-          if (process.env.EXPO_OS === "ios") {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          }
-          onPress();
-        }}
-        style={({ pressed }) => ({
+        onPress={onPress}
+        style={{
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.sm,
@@ -81,8 +70,7 @@ function TodaySnapShortcutImpl({
           backgroundColor: colors.card,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.cardBorder,
-          opacity: pressed ? 0.7 : 1,
-        })}
+        }}
       >
         {/* Sloe treatment system (2026-06-08): the shutter affordance
             is a soft-tint icon container (Accent.primarySoft + primarySolid
@@ -180,7 +168,7 @@ function TodaySnapShortcutImpl({
             ~3 seconds · AI estimates macros, review before saving.
           </Text>
         </View>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

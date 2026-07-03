@@ -18,7 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { ChevronRight, Sparkles, X } from "lucide-react-native";
 import { isFeatureEnabled } from "@/lib/analytics";
-import * as Haptics from "expo-haptics";
+import { useHaptics } from "@/hooks/useHaptics";
 
 // 2026-05-12 (premium-bar audit motion polish): use the reanimated
 // `createAnimatedComponent` pattern so the resolved component goes
@@ -301,6 +301,7 @@ function NorthStarDefault({
   colors,
   testID,
 }: NorthStarDefaultProps) {
+  const haptics = useHaptics();
   // Secondary accent (Frost flag → damson, else clay) for the "What to eat
   // next" overline + the suggestion CTA. The band-fit green chip + plum keep
   // their own tokens.
@@ -335,14 +336,12 @@ function NorthStarDefault({
         gesture: PanResponderGestureState,
       ) => {
         if (gesture.dx <= -SKIP_THRESHOLD && onSkip) {
-          if (process.env.EXPO_OS === "ios") {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          }
+          haptics.confirm();
           onSkip();
         }
       },
     });
-  }, [onSkip, reduceMotion]);
+  }, [haptics, onSkip, reduceMotion]);
 
   // 2026-05-12 (premium-bar audit DC2 polish — Cal AI 200ms fade-up
   // on first paint): the suggestion card eases in over 220ms with a
