@@ -5,15 +5,19 @@
  * signal. ENG-1305 wired the field through adapters; ENG-1326 replaces the
  * guessed 3-year binary gate with a corpus-derived linear downgrade curve.
  *
- * Corpus: `docs/testing/off-staleness-corpus-2026-07-03.json` (80 live-search
- * hits across 30 Suppr-shaped queries; 0 production OFF rows at analysis time).
- * Re-run: `npm run analyze:off-staleness-corpus`.
+ * Corpus: `docs/testing/off-staleness-corpus-2026-07-03.json` (80 live OFF
+ * search-hit samples across 30 Suppr-shaped queries — real OFF data, but 0
+ * production OFF rows at analysis time (empty pre-launch tables), so this
+ * reflects search-hit staleness, not actual production match frequency.
+ * Re-run on real production traffic post-launch: see ENG-1340.
+ * Re-run script: `npm run analyze:off-staleness-corpus`.
  *
  * Policy: confidence DOWNGRADE only — never blocks a match outright.
  */
 /** P75 age from corpus — penalty begins (94 days). */
 export const OFF_STALENESS_PENALTY_START_MS = 8_121_600_000;
-/** P95 age from corpus — full penalty reached (124 days). */
+/** max(P75 + 30d floor, P95) from corpus — full penalty reached (124 days;
+ * corpus P95 was 112 days, but the P75+30d floor dominated). */
 export const OFF_STALENESS_PENALTY_FULL_MS = 10_713_600_000;
 /** Max confidence subtracted at/above {@link OFF_STALENESS_PENALTY_FULL_MS}. */
 export const OFF_STALENESS_MAX_PENALTY = 0.08;

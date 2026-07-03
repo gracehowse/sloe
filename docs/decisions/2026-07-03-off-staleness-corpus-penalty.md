@@ -26,15 +26,17 @@ Script: `npm run analyze:off-staleness-corpus` → `docs/testing/off-staleness-c
 Linear confidence downgrade only — **never blocks** a match:
 
 - **0 penalty** when age ≤ P75 (**94 days**)
-- **Ramp** from 0 → **0.08** between P75 and P95 (**94–124 days**)
-- **0.08 cap** at/above P95 (**124 days**)
+- **Ramp** from 0 → **0.08** between P75 and the P75+30d floor (**94–124 days**;
+  corpus P95 was 112 days, but the +30d floor over P75 dominated — see
+  `deriveCurve()` in the analysis script)
+- **0.08 cap** at/above **124 days**
 - **Missing timestamp** → 0 penalty (can't assert freshness)
 
 Constants live in `src/lib/openFoodFacts/offStaleness.ts` (`offStalenessConfidencePenalty`). Wired in `verifyIngredients.ts` OFF search path and `fetchProductByBarcode.ts` `staleData` flag.
 
 ## Re-calibration
 
-Re-run the corpus script after meaningful OFF traffic accumulates in production (`recipe_ingredients.source = 'OFF'` / `barcode_mappings`). Update constants + parity test when the report date changes.
+Re-run the corpus script after meaningful OFF traffic accumulates in production (`recipe_ingredients.source = 'OFF'` / `barcode_mappings`). Update constants + parity test when the report date changes. This corpus is 80 live OFF **search-hit** samples, not production match frequency (0 production rows existed at analysis time, pre-launch) — tracked as ENG-1340.
 
 ## Alternatives rejected
 
