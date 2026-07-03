@@ -11,7 +11,17 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Barcode,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  CircleCheck,
+  Search,
+  SquarePen,
+  Trash2,
+} from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { decodeEntities } from "@/lib/decodeEntities";
@@ -85,7 +95,7 @@ function VerifyTopBar({ onBack, colors, accessibilityLabel = "Back" }: { onBack:
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
       <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={{ width: 40 }}>
-        <Ionicons name="chevron-back" size={26} color={colors.text} />
+        <ChevronLeft size={26} color={colors.text} />
       </Pressable>
       <Text style={{ color: colors.text, fontFamily: FontFamily.serifSemibold, fontSize: 18 }}>Verify ingredients</Text>
       <View style={{ width: 40 }} />
@@ -915,8 +925,7 @@ export default function VerifyScreen() {
           const over = (delta.caloriesDelta ?? 0) > 0;
           return (
             <View style={styles.claimBanner}>
-              <Ionicons
-                name="alert-circle-outline"
+              <CircleAlert
                 size={18}
                 color={Accent.warningSolid}
                 style={{ marginRight: 8, marginTop: 1 }}
@@ -965,7 +974,7 @@ export default function VerifyScreen() {
         {hasUnverified && (
           <View style={styles.reviewBanner} testID="verify-import-review-banner">
             <View style={styles.reviewBannerIcon}>
-              <Ionicons name="alert-circle" size={20} color={colors.primaryForeground} />
+              <CircleAlert size={20} color={colors.primaryForeground} />
             </View>
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
@@ -1076,12 +1085,11 @@ export default function VerifyScreen() {
                 >
                   <Text style={styles.swapPillText}>Swap</Text>
                 </Pressable>
-                <Ionicons
-                  name={expanded ? "chevron-down" : "chevron-forward"}
-                  size={18}
-                  color={colors.textTertiary}
-                  style={styles.chevron}
-                />
+                {expanded ? (
+                  <ChevronDown size={18} color={colors.textTertiary} style={styles.chevron} />
+                ) : (
+                  <ChevronRight size={18} color={colors.textTertiary} style={styles.chevron} />
+                )}
               </Pressable>
 
               {/* Expanded detail */}
@@ -1218,7 +1226,7 @@ export default function VerifyScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`Search alternative for ${displayName}`}
                     >
-                      <Ionicons name="search" size={16} color={accent.primary} />
+                      <Search size={16} color={accent.primary} />
                       <Text style={styles.actionBtnText}>Search alternative</Text>
                     </Pressable>
                     <Pressable
@@ -1227,7 +1235,7 @@ export default function VerifyScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`Scan barcode for ${displayName}`}
                     >
-                      <Ionicons name="barcode-outline" size={16} color={accent.primary} />
+                      <Barcode size={16} color={accent.primary} />
                       <Text style={styles.actionBtnText}>Scan</Text>
                     </Pressable>
                   </View>
@@ -1239,10 +1247,14 @@ export default function VerifyScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`Edit nutrition for ${displayName}`}
                     >
-                      <Ionicons
-                        name={rowHasOverride ? "create" : "create-outline"}
+                      {/* ENG-120: lucide has no filled variant — the
+                          override-pinned state (was solid `create`) is
+                          preserved via `fill` so the glyph still reads as
+                          "on" versus the outline `create-outline` default. */}
+                      <SquarePen
                         size={16}
                         color={accent.primary}
+                        fill={rowHasOverride ? accent.primary + "33" : "none"}
                       />
                       <Text style={styles.actionBtnText}>
                         {rowHasOverride ? "Edit values" : "Edit nutrition"}
@@ -1254,7 +1266,7 @@ export default function VerifyScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`Remove ${displayName} from recipe`}
                     >
-                      <Ionicons name="trash-outline" size={16} color={Accent.destructive} />
+                      <Trash2 size={16} color={Accent.destructive} />
                       <Text style={[styles.actionBtnText, { color: Accent.destructive }]}>Remove</Text>
                     </Pressable>
                   </View>
@@ -1302,7 +1314,7 @@ export default function VerifyScreen() {
             <ActivityIndicator size="small" color={colors.primaryForeground} />
           ) : (
             <>
-              <Ionicons name="checkmark-circle" size={20} color={colors.primaryForeground} />
+              <CircleCheck size={20} color={colors.primaryForeground} />
               <Text style={styles.confirmBtnText}>
                 Calculate nutrition
               </Text>

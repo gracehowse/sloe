@@ -13,8 +13,9 @@ import { Redirect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { sha256 } from "js-sha256";
+// ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
 import { Ionicons } from "@expo/vector-icons";
-import { ChevronLeft, Mail, X as CloseIcon } from "lucide-react-native";
+import { Check, ChevronLeft, Mail, X as CloseIcon } from "lucide-react-native";
 
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
@@ -516,7 +517,7 @@ export default function LoginScreen() {
                   accessibilityLabel="Agree to Terms of Service and Privacy Policy"
                 >
                   <View style={[styles.termsCheckbox, acceptedTerms && styles.termsCheckboxChecked]}>
-                    {acceptedTerms ? <Ionicons name="checkmark" size={12} color={colors.primaryForeground} /> : null}
+                    {acceptedTerms ? <Check size={12} color={colors.primaryForeground} strokeWidth={3} /> : null}
                   </View>
                   <Text style={styles.termsText}>
                     I agree to the{" "}

@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, StatusBar, Text, View } 
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { ChevronLeft } from "lucide-react-native";
 import { Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAccent } from "@/context/theme";
@@ -535,7 +535,7 @@ export function MobileFlow() {
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Ionicons name="chevron-back" size={18} color={colors.text} />
+            <ChevronLeft size={18} color={colors.text} />
           </Pressable>
 
           {/* Customer-lens shrink (2026-04-30): the numeric counter

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Platform, Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Bell, Check, Heart, type LucideIcon } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
@@ -113,7 +113,7 @@ export function MobilePermissionsStep() {
         subtitle="Both are optional and you can change them later in Settings."
       />
       <PermissionCard
-        icon="heart-outline"
+        icon={Heart}
         iconColor={macro.fat}
         title="Apple Health"
         body="Read your active energy and steps to refine your adaptive TDEE. Sloe does not write to Health."
@@ -127,7 +127,7 @@ export function MobilePermissionsStep() {
         }}
       />
       <PermissionCard
-        icon="notifications-outline"
+        icon={Bell}
         iconColor={Accent.warning}
         title="Notifications"
         body="Gentle reminders only — an evening nudge when you're off-target, plus a Sunday recap of your week."
@@ -147,7 +147,7 @@ export function MobilePermissionsStep() {
 }
 
 function PermissionCard({
-  icon,
+  icon: Icon,
   iconColor,
   title,
   body,
@@ -157,7 +157,7 @@ function PermissionCard({
   onAllow,
   onSkip,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
   iconColor: string;
   title: string;
   body: string;
@@ -197,7 +197,7 @@ function PermissionCard({
             backgroundColor: iconColor + "26",
           }}
         >
-          <Ionicons name={icon} size={20} color={iconColor} />
+          <Icon size={20} color={iconColor} />
         </View>
         <View style={{ flex: 1 }}>
           <Text
@@ -226,7 +226,7 @@ function PermissionCard({
       </View>
       {granted === true ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Ionicons name="checkmark" size={14} color={Accent.successLight} />
+          <Check size={14} color={Accent.successLight} />
           <Text style={{ fontSize: 12, fontWeight: "700", color: Accent.successLight }}>
             Allowed
           </Text>

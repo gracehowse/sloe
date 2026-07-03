@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Spacing, Type } from "@/constants/theme";
 import { View, Text } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Dumbbell, Flame, Leaf, type LucideIcon, Scale } from "lucide-react-native";
 import { OptionCard } from "@/components/OptionCard";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -25,7 +25,7 @@ interface StrategyOption {
   id: NutritionStrategy;
   title: string;
   subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
 }
 
 const STRATEGIES: StrategyOption[] = [
@@ -33,25 +33,25 @@ const STRATEGIES: StrategyOption[] = [
     id: "balanced",
     title: "Balanced",
     subtitle: "Even split, flexible across cuisines.",
-    icon: "scale-outline",
+    icon: Scale,
   },
   {
     id: "high_protein",
     title: "High protein",
     subtitle: "~2.2 g/kg, muscle-building leaning.",
-    icon: "barbell-outline",
+    icon: Dumbbell,
   },
   {
     id: "high_satisfaction",
     title: "High satisfaction",
     subtitle: "Filling meals, easier in a deficit.",
-    icon: "leaf-outline",
+    icon: Leaf,
   },
   {
     id: "low_carb",
     title: "Low carb",
     subtitle: "Carbs minimised, fat-led.",
-    icon: "flame-outline",
+    icon: Flame,
   },
 ];
 
@@ -76,14 +76,14 @@ export function MobileStrategyStep() {
         {STRATEGIES.map((s) => {
           const isSelected = selected === s.id;
           const isRecommended = s.id === recommended;
+          const Icon = s.icon;
           return (
             <OptionCard
               key={s.id}
               selected={isSelected}
               onPress={() => set({ nutritionStrategy: s.id })}
               icon={
-                <Ionicons
-                  name={s.icon}
+                <Icon
                   size={20}
                   color={isSelected ? accent.primaryLight : colors.icon}
                 />

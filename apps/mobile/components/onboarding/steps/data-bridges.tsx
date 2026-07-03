@@ -44,7 +44,15 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Bell,
+  Calculator,
+  Check,
+  CircleAlert,
+  Heart,
+  Link2,
+  type LucideIcon,
+} from "lucide-react-native";
 import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -152,7 +160,7 @@ function ManualTargetsCard() {
 
   return (
     <BridgeCard
-      icon="calculator-outline"
+      icon={Calculator}
       iconColor={accent.primaryLight}
       title="I already know my targets"
       body="Paste them in — we'll use these instead of the BMR estimate. You can re-calibrate any time in Settings."
@@ -311,7 +319,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
 
   return (
     <BridgeCard
-      icon="heart-outline"
+      icon={Heart}
       iconColor={mc.fat}
       title="Connect Apple Health"
       body="Read active energy + steps so your adaptive TDEE calibrates from day 1. If you opt in later, logged meals can also sync back to Health."
@@ -330,7 +338,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
             paddingVertical: 8,
           }}
         >
-          <Ionicons name="alert-circle-outline" size={14} color={Accent.warningSolid} />
+          <CircleAlert size={14} color={Accent.warningSolid} />
           <Text style={{ flex: 1, fontSize: 11, color: colors.textSecondary, lineHeight: 16 }}>
             {error}
           </Text>
@@ -423,7 +431,7 @@ function NotificationsCard({ userId }: { userId: string | null }) {
 
   return (
     <BridgeCard
-      icon="notifications-outline"
+      icon={Bell}
       iconColor={Accent.warning}
       title="Gentle reminders"
       body="Off-target evening nudge + a Sunday recap. Two notifications max per week."
@@ -474,7 +482,7 @@ function RecipeUrlCard() {
   const colors = useThemeColors();
   return (
     <BridgeCard
-      icon="link-outline"
+      icon={Link2}
       iconColor={Accent.successLight}
       title="Recipe import"
       body="Sloe parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
@@ -501,14 +509,14 @@ function RecipeUrlCard() {
 /* ---------------------------------------------------------------- */
 
 function BridgeCard({
-  icon,
+  icon: Icon,
   iconColor,
   title,
   body,
   grantedBadge,
   children,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
   iconColor: string;
   title: string;
   body: string;
@@ -540,7 +548,7 @@ function BridgeCard({
             backgroundColor: iconColor + "26",
           }}
         >
-          <Ionicons name={icon} size={18} color={iconColor} />
+          <Icon size={18} color={iconColor} />
         </View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -567,7 +575,7 @@ function BridgeCard({
                   borderRadius: 999,
                 }}
               >
-                <Ionicons name="checkmark" size={10} color={Accent.successLight} />
+                <Check size={10} strokeWidth={2.5} color={Accent.successLight} />
                 <Text
                   style={{
                     fontSize: 10,

@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Users } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
@@ -180,7 +180,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
             borderRadius: Radius.full,
           }}
         >
-          <Ionicons name="people-outline" size={12} color={allChip.fg} />
+          <Users size={12} color={allChip.fg} />
           <Text style={{ fontSize: 12, fontWeight: "600", color: allChip.fg }}>
             All {members.length}
           </Text>

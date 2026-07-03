@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StyleProp, Text, TextStyle, View, ViewStyle } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Info } from "lucide-react-native";
 import { Accent, Radius, Type } from "@/constants/theme";
 
 /**
@@ -97,7 +97,7 @@ export function SponsoredDisclosure({
           style,
         ]}
       >
-        <Ionicons name="information-circle-outline" size={14} color={fg} />
+        <Info size={14} color={fg} strokeWidth={2} />
         <Text
           style={[
             {
@@ -137,7 +137,7 @@ export function SponsoredDisclosure({
         style,
       ]}
     >
-      <Ionicons name="information-circle-outline" size={11} color={fg} />
+      <Info size={11} color={fg} strokeWidth={2.25} />
       <Text
         style={[
           {

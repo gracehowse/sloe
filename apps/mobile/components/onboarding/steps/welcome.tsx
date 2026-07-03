@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
-import { Ionicons } from "@expo/vector-icons";
+import { Clock, Lock, type LucideIcon } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { Accent, FontFamily, Spacing } from "@/constants/theme";
 import { isFeatureEnabled, track } from "@/lib/analytics";
@@ -145,8 +145,8 @@ export function MobileWelcomeStep() {
             marginTop: Spacing.sm,
           }}
         >
-          <TrustItem icon="lock-closed-outline" label="Private by default" />
-          <TrustItem icon="time-outline" label="About a minute" />
+          <TrustItem icon={Lock} label="Private by default" />
+          <TrustItem icon={Clock} label="About a minute" />
         </View>
       </View>
     </View>
@@ -154,15 +154,15 @@ export function MobileWelcomeStep() {
 }
 
 function TrustItem({
-  icon,
+  icon: Icon,
   label,
 }: {
-  icon: React.ComponentProps<typeof Ionicons>["name"];
+  icon: LucideIcon;
   label: string;
 }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-      <Ionicons name={icon} size={12} color={Accent.frost} />
+      <Icon size={12} color={Accent.frost} />
       <Text style={{ fontSize: 13, color: Accent.frost, fontWeight: "500" }}>{label}</Text>
     </View>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -82,7 +82,7 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
               accessibilityRole="button"
               accessibilityLabel="Previous month"
             >
-              <Ionicons name="chevron-back" size={22} color={colors.text} />
+              <ChevronLeft size={22} color={colors.text} />
             </Pressable>
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>{monthLabel}</Text>
             <Pressable
@@ -91,7 +91,7 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
               accessibilityRole="button"
               accessibilityLabel="Next month"
             >
-              <Ionicons name="chevron-forward" size={22} color={colors.text} />
+              <ChevronRight size={22} color={colors.text} />
             </Pressable>
           </View>
           <View style={{ flexDirection: "row", marginBottom: Spacing.sm }}>

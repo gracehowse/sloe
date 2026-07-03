@@ -27,8 +27,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { X } from "lucide-react-native";
+import { ChevronDown, ChevronUp, X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -374,7 +373,7 @@ export default function SaveMealSheet({
                         accessibilityState={{ disabled: i === 0 }}
                         style={{ padding: 4, opacity: i === 0 ? 0.35 : 1 }}
                       >
-                        <Ionicons name="chevron-up" size={18} color={colors.textSecondary} />
+                        <ChevronUp size={18} color={colors.textSecondary} />
                       </Pressable>
                       <Pressable
                         onPress={() => moveItem(i, 1)}
@@ -388,11 +387,7 @@ export default function SaveMealSheet({
                           opacity: i === items.length - 1 ? 0.35 : 1,
                         }}
                       >
-                        <Ionicons
-                          name="chevron-down"
-                          size={18}
-                          color={colors.textSecondary}
-                        />
+                        <ChevronDown size={18} color={colors.textSecondary} />
                       </Pressable>
                       <Pressable
                         onPress={() => removeItem(i)}
@@ -401,7 +396,7 @@ export default function SaveMealSheet({
                         accessibilityLabel={`Remove ${title} from usual meal`}
                         style={{ padding: 4 }}
                       >
-                        <Ionicons name="close" size={18} color={Accent.destructive} />
+                        <X size={18} color={Accent.destructive} />
                       </Pressable>
                     </View>
                   );

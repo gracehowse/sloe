@@ -48,7 +48,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CircleCheck,
+  UtensilsCrossed,
+} from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatMacro, formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
@@ -276,7 +281,7 @@ export default function CreatorProfileScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top + Spacing.md }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backHit}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <ChevronLeft size={24} color={colors.text} />
         </Pressable>
         <View style={styles.centered}>
           <ActivityIndicator color={colors.text} />
@@ -289,7 +294,7 @@ export default function CreatorProfileScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top + Spacing.md }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backHit}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <ChevronLeft size={24} color={colors.text} />
         </Pressable>
         <View style={styles.centered}>
           <Text style={styles.emptyTitle}>Creator not available</Text>
@@ -311,7 +316,7 @@ export default function CreatorProfileScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backHit}>
-        <Ionicons name="chevron-back" size={24} color={colors.text} />
+        <ChevronLeft size={24} color={colors.text} />
       </Pressable>
 
       {/* Header — avatar, name, handle, bio, follower count, follow CTA. */}
@@ -328,8 +333,7 @@ export default function CreatorProfileScreen() {
         <View style={styles.headerNameRow}>
           <Text style={styles.displayName}>{decodeEntities(creator.display_name)}</Text>
           {creator.is_verified ? (
-            <Ionicons
-              name="checkmark-circle"
+            <CircleCheck
               size={18}
               color={accent.primary}
               accessibilityLabel="Verified creator"
@@ -399,7 +403,7 @@ export default function CreatorProfileScreen() {
                 />
               ) : (
                 <View style={[styles.recipeThumb, styles.recipeThumbFallback]}>
-                  <Ionicons name="restaurant-outline" size={20} color={colors.textSecondary} />
+                  <UtensilsCrossed size={20} color={colors.textSecondary} />
                 </View>
               )}
               <View style={{ flex: 1 }}>
@@ -412,7 +416,7 @@ export default function CreatorProfileScreen() {
                   {r.cook_time_min ? ` · ${r.cook_time_min} min` : ""}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              <ChevronRight size={18} color={colors.textTertiary} />
             </Pressable>
           ))}
         </View>
