@@ -20,6 +20,7 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { AI_METHOD_TOOLTIP_TEXT } from "@suppr/shared/today/aiMethodTooltip";
+import { ProMethodBadge } from "@/components/today/ProMethodBadge";
 import type { LogSheetProps } from "./LogSheet";
 
 export function LogSheetInputModeRow({
@@ -105,11 +106,7 @@ export function LogSheetInputModeRow({
               ]}
             >
               <Icon size={22} color={accent.primary} strokeWidth={2} />
-              {locked ? (
-                <View style={styles.proBadge}>
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </View>
-              ) : null}
+              {locked ? <ProMethodBadge style={styles.proBadgeAnchor} /> : null}
             </Pressable>
             <Text style={[styles.inputModeLabel, { color: colors.textSecondary }]}>{label}</Text>
             {key === tooltipKey ? (
@@ -161,19 +158,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "center",
   },
-  proBadge: {
+  proBadgeAnchor: {
     position: "absolute",
     top: -2,
     right: -2,
-    backgroundColor: Accent.primary,
-    borderRadius: Radius.full,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  proBadgeText: {
-    color: Accent.primaryForeground,
-    fontSize: 8,
-    fontWeight: "700",
-    letterSpacing: 0.2,
   },
 });

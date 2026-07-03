@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -16,6 +15,7 @@ import {
 import { PencilLine, ChevronDown, ChevronUp } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { ProMethodBadge } from "@/components/today/ProMethodBadge";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -31,15 +31,6 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 
 type Stage = "input" | "parsing" | "review" | "error";
-
-/** ENG-1312 — same PRO chip as `LogSheetInputModeRow` locked Voice / Photo. */
-function ProMethodBadge() {
-  return (
-    <View style={styles.proBadge}>
-      <Text style={styles.proBadgeText}>PRO</Text>
-    </View>
-  );
-}
 
 export type LogSheetDescribeFlowProps = {
   sheetOpen: boolean;
@@ -323,18 +314,3 @@ function LogSheetDescribeFlowImpl({
 }
 
 export const LogSheetDescribeFlow = memo(LogSheetDescribeFlowImpl);
-
-const styles = StyleSheet.create({
-  proBadge: {
-    backgroundColor: Accent.primary,
-    borderRadius: Radius.full,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  proBadgeText: {
-    color: Accent.primaryForeground,
-    fontSize: 8,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-});
