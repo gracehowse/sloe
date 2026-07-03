@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { Check, ChevronRight, Package, Share2, ShoppingCart, Trash2, Users } from "lucide-react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/context/auth";
@@ -57,6 +56,8 @@ import {
   type ShoppingScope,
 } from "@suppr/shared/household/shoppingScope";
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { useHaptics } from "@/hooks/useHaptics";
 import { useAccent } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
@@ -114,6 +115,7 @@ export default function ShoppingListScreen() {
   const goBack = useSafeBack("/(tabs)/planner");
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const haptics = useHaptics();
 
   const progressEntrance = useEntranceAnimation({ delay: 0 });
   const listEntrance = useEntranceAnimation({ delay: 80 });
@@ -458,9 +460,9 @@ export default function ShoppingListScreen() {
       if (!name) return;
       await savePantryStaples(appendPantryStaple(pantryStaples, name));
       for (const item of group.items) removeItem(item.id);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     },
-    [pantryStaples, removeItem, savePantryStaples],
+    [pantryStaples, removeItem, savePantryStaples, haptics],
   );
 
   const clearAll = useCallback(() => {
@@ -1022,13 +1024,9 @@ export default function ShoppingListScreen() {
                         friction={2}
                         renderLeftActions={() => (
                           <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-                            <Pressable
-                              onPress={() => {
-                                // ENG-1016 — marking a staple commits + removes
-                                // rows → Medium, matching the Delete sibling.
-                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                void markGroupAsStaple(group);
-                              }}
+                            <PressableScale
+                              haptic="confirm"
+                              onPress={() => void markGroupAsStaple(group)}
                               style={{
                                 width: 88,
                                 backgroundColor: accent.primarySoft,
@@ -1043,14 +1041,14 @@ export default function ShoppingListScreen() {
                               <Text style={{ color: accent.primarySolid, fontSize: 11, fontWeight: "700", marginTop: 4 }}>
                                 Staple
                               </Text>
-                            </Pressable>
+                            </PressableScale>
                           </View>
                         )}
                         renderRightActions={() => (
                           <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-                            <Pressable
+                            <PressableScale
+                              haptic="destructive"
                               onPress={() => {
-                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                 for (const item of group.items) removeItem(item.id);
                               }}
                               style={{
@@ -1067,7 +1065,7 @@ export default function ShoppingListScreen() {
                               <Text style={{ color: colors.destructiveForeground, fontSize: 11, fontWeight: "700", marginTop: 4 }}>
                                 Delete
                               </Text>
-                            </Pressable>
+                            </PressableScale>
                           </View>
                         )}
                       >

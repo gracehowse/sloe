@@ -5,7 +5,6 @@ import { formatMultiplier } from "@/components/today/PortionStepper";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Haptics from "expo-haptics";
 import {
   Alert,
   Linking,

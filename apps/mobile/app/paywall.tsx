@@ -19,10 +19,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // unavailable" card it iconified was removed per Grace decision
 // ("remove entirely; just show the Pro tier value ladder").
 import { X, CheckCircle2, ChefHat, BarChart3, Flag, Tag, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 import type { PurchasesPackage } from "react-native-purchases";
 
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { useHaptics } from "@/hooks/useHaptics";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -231,6 +231,7 @@ export default function PaywallScreen() {
   const accent = useAccent();
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const haptics = useHaptics();
 
   const params = useLocalSearchParams<{ from?: string | string[] }>();
   const paywallFrom = useMemo(
@@ -516,7 +517,7 @@ export default function PaywallScreen() {
 
   async function onSelectTier(tier: "pro") {
     if (purchasing) return;
-    void Haptics.selectionAsync();
+    haptics.select();
 
     // PR-01 (audit 2026-04-28): only Pro is selectable. Focus-shift
     // dedup logic from the prior two-tier era is now a no-op — Pro
@@ -590,7 +591,7 @@ export default function PaywallScreen() {
             }
           })();
         }
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.success();
         // Entitlement check before celebrating — syncTierToSupabase can
         // race with the customerInfo refresh. For Pro we gate on
         // `isProEntitled`; for Base we accept any active entitlement
@@ -610,7 +611,7 @@ export default function PaywallScreen() {
           const polledInfo = await pollUntilEntitled(tier);
           if (polledInfo) {
             // Entitlement arrived during the poll window — treat as success.
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            haptics.success();
             celebrateEntitledPurchase({
               tier,
               trialOnPurchase: trialOnThisPurchase,
@@ -720,7 +721,7 @@ export default function PaywallScreen() {
 
   function onToggleBilling(next: BillingPeriod) {
     if (next === billing) return;
-    void Haptics.selectionAsync();
+    haptics.select();
     // Fire `paywall_period_changed` on every committed toggle flip so
     // annual-adoption rate is measurable without polluting F2. The
     // no-op early-return above guarantees "committed change only".

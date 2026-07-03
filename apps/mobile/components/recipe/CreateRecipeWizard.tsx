@@ -44,7 +44,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import { decode } from "base64-arraybuffer";
 import {
   ArrowDown,
@@ -72,6 +71,8 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { useHaptics } from "@/hooks/useHaptics";
 import FoodSearchModal, {
   type SelectedFood,
 } from "@/components/FoodSearchModal";
@@ -138,6 +139,7 @@ export default function CreateRecipeWizard() {
   const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const haptics = useHaptics();
 
   // Wizard state (single state object so step-machine helpers can
   // operate on it directly — see `src/lib/recipes/createRecipeWizard.ts`).
@@ -223,7 +225,6 @@ export default function CreateRecipeWizard() {
       platform: platformProp(),
     });
     setStep(target);
-    void Haptics.selectionAsync();
   }, [step, wizardState]);
 
   const goBack = useCallback(() => {
@@ -261,7 +262,6 @@ export default function CreateRecipeWizard() {
       platform: platformProp(),
     });
     setStep(target);
-    void Haptics.selectionAsync();
   }, [step, title, ingredients, steps, imageUri, router]);
 
   // ---- Step 1 helpers ---------------------------------------------------
@@ -337,10 +337,9 @@ export default function CreateRecipeWizard() {
       setMacroOverrides({});
       setSearchReplaceId(null);
       setSearchOpen(false);
-      // ENG-1016 — adding / replacing an ingredient is a commit → Medium.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
     },
-    [searchReplaceId],
+    [searchReplaceId, haptics],
   );
 
   const removeIngredient = useCallback((id: string) => {
@@ -387,8 +386,8 @@ export default function CreateRecipeWizard() {
     setMacroOverrides({});
     setVoiceLogOpen(false);
     setPhotoLogOpen(false);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, []);
+    haptics.success();
+  }, [haptics]);
 
   // F-128 — handle a scanned product. Mirrors `onBarcodeScanned` in
   // `apps/mobile/app/create-recipe.tsx`: 100 g default portion, OFF
@@ -414,9 +413,9 @@ export default function CreateRecipeWizard() {
       ]);
       setMacroOverrides({});
       setBarcodeOpen(false);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     },
-    [],
+    [haptics],
   );
 
   // ---- Step 3 helpers ---------------------------------------------------
@@ -644,9 +643,7 @@ export default function CreateRecipeWizard() {
           has_macro_overrides: hasMacroOverrides({ macroOverrides }),
           platform: platformProp(),
         });
-        void Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
+        haptics.success();
         router.replace(`/recipe/${recipeId}`);
       } catch (e) {
         Alert.alert(
@@ -665,6 +662,7 @@ export default function CreateRecipeWizard() {
       perServing,
       macroOverrides,
       router,
+      haptics,
     ],
   );
 
@@ -997,7 +995,8 @@ export default function CreateRecipeWizard() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.topBar}>
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={goBack}
           hitSlop={12}
           style={styles.backHit}
@@ -1006,7 +1005,7 @@ export default function CreateRecipeWizard() {
           }
         >
           <ChevronLeft size={24} color={colors.text} />
-        </Pressable>
+        </PressableScale>
         <View
           style={styles.topMeta}
           accessible

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, Pressable, Text, TurboModuleRegistry, View } from "react-native";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import * as Haptics from "expo-haptics";
+import { useHaptics } from "@/hooks/useHaptics";
 import { PostHogMaskView } from "posthog-react-native";
 import Svg, { Circle, G } from "react-native-svg";
 import Animated, {
@@ -290,6 +290,7 @@ export default function CalorieRing({
   onToggleDisplayMode,
   onLongPressExplain,
 }: Props) {
+  const haptics = useHaptics();
   const diff = Math.round(goal - consumed);
   const isOver = consumed > goal;
   // Premium-feel papercut #2 (audit 2026-04-29): the empty-state ring
@@ -416,17 +417,17 @@ export default function CalorieRing({
     prevPhaseRef.current = next;
     if (!ev) return;
     if (ev === "near") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
     } else if (ev === "hit") {
       setGoalHitCount((c) => c + 1);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
       setTimeout(() => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.success();
       }, 80);
     } else if (ev === "overflow") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
     }
-  }, [consumed, goal, SkiaArcs]);
+  }, [consumed, goal, SkiaArcs, haptics]);
 
   // Brightening-plum overflow stops + win glow tone (2026-06-09 decision —
   // amber rejected; scheme-resolved).
@@ -464,10 +465,10 @@ export default function CalorieRing({
   const prevConsumedRef = useRef(consumed);
   useEffect(() => {
     if (consumed !== prevConsumedRef.current && consumed > 0) {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      haptics.select();
     }
     prevConsumedRef.current = consumed;
-  }, [consumed]);
+  }, [consumed, haptics]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: mainCirc * (1 - progress.value),
