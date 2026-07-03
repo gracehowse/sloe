@@ -12,9 +12,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Lock, PencilLine, ChevronDown, ChevronUp } from "lucide-react-native";
+import { PencilLine, ChevronDown, ChevronUp } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { ProMethodBadge } from "@/components/today/ProMethodBadge";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -223,7 +224,7 @@ function LogSheetDescribeFlowImpl({
         <Text style={[Type.body, { color: colors.text, fontWeight: "600", flex: 1, fontSize: 13 }]}>
           Describe what you ate
         </Text>
-        {locked ? <Lock size={14} color={colors.textTertiary} /> : null}
+        {locked ? <ProMethodBadge /> : null}
         <ChevronDown size={16} color={colors.textTertiary} />
       </Pressable>
     );
@@ -253,7 +254,7 @@ function LogSheetDescribeFlowImpl({
         <Text style={[Type.body, { color: colors.text, fontWeight: "600", flex: 1, fontSize: 13 }]}>
           Describe what you ate
         </Text>
-        {locked ? <Lock size={14} color={colors.textTertiary} /> : null}
+        {locked ? <ProMethodBadge /> : null}
         <ChevronUp size={16} color={colors.textTertiary} />
       </Pressable>
       <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>

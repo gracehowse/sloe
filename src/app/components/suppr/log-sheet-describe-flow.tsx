@@ -2,7 +2,7 @@
  * ENG-972 — inline natural-language describe flow inside the web Log sheet.
  */
 import * as React from "react";
-import { Lock, PencilLine, ChevronDown, ChevronUp } from "lucide-react";
+import { PencilLine, ChevronDown, ChevronUp } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -22,6 +22,15 @@ import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { cn } from "../ui/utils";
 
 type Stage = "input" | "parsing" | "review" | "error";
+
+/** ENG-1312 — same PRO chip as `InputModeRow` locked Voice / Photo (not a lock icon). */
+function ProMethodBadge() {
+  return (
+    <span className="rounded-full bg-primary px-1.5 py-0.5 text-[8px] font-bold leading-none text-primary-foreground">
+      PRO
+    </span>
+  );
+}
 
 export type LogSheetDescribeFlowProps = {
   sheetOpen: boolean;
@@ -236,7 +245,7 @@ export function LogSheetDescribeFlow({
       >
         <PencilLine className="size-4 shrink-0 text-primary" aria-hidden />
         <span className="flex-1 text-[13px] font-semibold text-foreground">Describe what you ate</span>
-        {locked ? <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-hidden /> : null}
+        {locked ? <ProMethodBadge /> : null}
         <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       </button>
     );
@@ -255,7 +264,7 @@ export function LogSheetDescribeFlow({
       >
         <PencilLine className="size-4 text-primary" aria-hidden />
         <span className="flex-1 text-[13px] font-semibold text-foreground">Describe what you ate</span>
-        {locked ? <Lock className="size-3.5 text-muted-foreground" aria-hidden /> : null}
+        {locked ? <ProMethodBadge /> : null}
         <ChevronUp className="size-4 text-muted-foreground" aria-hidden />
       </button>
       <div className="flex items-start gap-2">
