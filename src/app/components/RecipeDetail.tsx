@@ -18,6 +18,7 @@ import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { classifyConfidence } from "../../lib/nutrition/aiLogging";
 import { AddIngredientDialog, type AddIngredientPayload } from "./suppr/add-ingredient-dialog";
 import { OverrideIngredientDialog } from "./suppr/override-ingredient-dialog";
+import { RecipeVerifyModal } from "./suppr/recipe-verify-modal";
 import { useRecipeReport } from "./suppr/use-recipe-report";
 import { normaliseRecipeDisplayTitle } from "../../lib/recipe/normaliseDisplayTitle";
 import {
@@ -53,6 +54,7 @@ import { formatIngredientAmountUnit } from "../../lib/recipe-ingredients/formatI
 import {
   deriveIngredientVerificationTier,
   ingredientShouldShowVerifyCta,
+  type IngredientVerificationTier,
 } from "../../lib/recipe-ingredients/ingredientVerificationStatus.ts";
 import { structuredIngredientsForVerify } from "../../lib/recipe-ingredients/structuredIngredientsForVerify.ts";
 import {
@@ -297,16 +299,15 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
   return out;
 }
 
-// Audit 2026-04-30 visual-qa P1 #6 — ingredient amount float overflow.
-// `(parseFloat(amount) * servings) / baseServings` produced strings
-// like "0.6666666666666666 cup" when the user changed the servings
-// stepper. Round to 2dp, drop trailing zeros, return integers as-is.
-function formatIngredientAmount(raw: number): string {
-  if (!Number.isFinite(raw)) return "";
-  const rounded = Math.round(raw * 100) / 100;
-  if (Number.isInteger(rounded)) return rounded.toString();
-  return rounded.toFixed(2).replace(/\.?0+$/, "");
-}
+// Inline ingredient-card tier → colour token + badge label (F-120 categorical).
+const ING_TIER_COLOR: Record<IngredientVerificationTier, string> = {
+  verified: "var(--success)", partial: "var(--warning)",
+  estimated: "var(--destructive)", unverified: "var(--foreground-tertiary)",
+};
+const ING_TIER_LABEL: Record<IngredientVerificationTier, string> = {
+  verified: "Structured", partial: "Partial match",
+  estimated: "Estimated", unverified: "Unverified",
+};
 
 function RecipeHeroImage({
   src,
@@ -487,6 +488,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
   const [dbFetchFailed, setDbFetchFailed] = useState(false);
   const [verifySearchOpen, setVerifySearchOpen] = useState(false);
   const [verifyIndex, setVerifyIndex] = useState<number | null>(null);
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   /** USDA / OFF / FatSecret / Edamam via `/api/nutrition/verify-recipe`. */
   const [autoVerifyingIngredients, setAutoVerifyingIngredients] = useState(false);
   // ENG-1329 — the fetch below had no timeout/error state; a hung request left "Matching…" showing forever.
@@ -2396,7 +2398,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
           <RecipeImportReviewBanner
             sourceName={recipe.sourceName}
             sourceUrl={recipe.sourceUrl}
-            onVerify={() => setActiveTab("ingredients")}
+            onVerify={() => { if (recipeDetailV3) setVerifyModalOpen(true); else setActiveTab("ingredients"); }}
           />
         ) : recipeDetailV3 ? (
           <p
@@ -2992,27 +2994,12 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                     source: ingredient.source ?? null,
                   });
                   const showVerifyCta = ingredientShouldShowVerifyCta(verificationTier);
-                  const tierColorVar =
-                    verificationTier === "verified"
-                      ? "var(--success)"
-                      : verificationTier === "partial"
-                        ? "var(--warning)"
-                        : verificationTier === "estimated"
-                          ? "var(--destructive)"
-                          : "var(--foreground-tertiary)";
-                  const tierLabel =
-                    verificationTier === "verified"
-                      ? "Structured"
-                      : verificationTier === "partial"
-                        ? "Partial match"
-                        : verificationTier === "estimated"
-                          ? "Estimated"
-                          : "Unverified";
+                  const tierColorVar = ING_TIER_COLOR[verificationTier];
+                  const tierLabel = ING_TIER_LABEL[verificationTier];
+                  // formatIngredientAmountUnit rounds numeric amounts to 2dp
+                  // (audit 2026-04-30 P1 #6 — no "0.6666… cup" servings drift).
                   const amountLine = ingredient.amount
-                    ? formatIngredientAmountUnit(
-                        formatIngredientAmount((parseFloat(ingredient.amount) * servings) / baseServings),
-                        ingredient.unit,
-                      )
+                    ? formatIngredientAmountUnit((parseFloat(ingredient.amount) * servings) / baseServings, ingredient.unit)
                     : ingredient.unit;
                   // Sloe image system (2026-06-08) — on-brand tile image
                   // (Template B, white-bg) when `ingredient_images` has a
@@ -3433,6 +3420,19 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
           setVerifyIndex(null);
         }}
       />
+
+      {/* ENG-1333 — web ingredient-verification review modal (v3 WebVerify).
+          Rows share the inline grid's deriveIngredientVerificationTier. */}
+      {recipeDetailV3 ? (
+        <RecipeVerifyModal
+          open={verifyModalOpen} onOpenChange={setVerifyModalOpen}
+          recipeName={normaliseRecipeDisplayTitle(recipe.title)}
+          ingredients={ingredients} ingredientIds={dbIngredientIds}
+          servings={servings} baseServings={baseServings}
+          onFixRow={(index) => { setVerifyModalOpen(false); setVerifyIndex(index); setVerifySearchOpen(true); }}
+          onCalculate={() => setVerifyModalOpen(false)}
+        />
+      ) : null}
 
       {/* Batch 2.7 — Add ingredient (user-added row) */}
       <AddIngredientDialog
