@@ -206,40 +206,14 @@ function TodayHeroRingImpl({
           web `today-hero-ring.tsx`'s `today-macro-rings-toggle` button + shares
           the `MACRO_RING_TOGGLE` copy so the two surfaces can't drift. Fires
           the same `onToggleExpanded` the long-press does. */}
-      {tierV1 ? (
-        <PressableScale
-          testID="today-macro-rings-toggle"
-          haptic="selection"
-          onPress={onToggleExpanded}
-          accessibilityRole="button"
-          accessibilityLabel={expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
-          hitSlop={8}
-          style={{ marginTop: Spacing.xs }}
-        >
-          <Text
-            numberOfLines={1}
-            style={{
-              fontSize: 11,
-              fontWeight: "600",
-              color: isDark ? accent.primarySolidDark : accent.primarySolid,
-              minWidth: 84,
-              textAlign: "center",
-            }}
-          >
-            {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
-          </Text>
-        </PressableScale>
-      ) : (
-      <Pressable
+      <PressableScale
         testID="today-macro-rings-toggle"
+        haptic="selection"
         onPress={onToggleExpanded}
         accessibilityRole="button"
         accessibilityLabel={expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
         hitSlop={8}
-        style={({ pressed }) => ({
-          marginTop: Spacing.xs,
-          opacity: pressed ? 0.7 : 1,
-        })}
+        style={{ marginTop: Spacing.xs }}
       >
         <Text
           numberOfLines={1}
@@ -258,8 +232,7 @@ function TodayHeroRingImpl({
         >
           {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
         </Text>
-      </Pressable>
-      )}
+      </PressableScale>
     </>
   );
 

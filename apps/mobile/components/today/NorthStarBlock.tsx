@@ -141,7 +141,6 @@ function NorthStarBlockImpl({
   // returns so the hook is always called. The band-fit green chip + plum keep
   // their own tokens.
   const accent = useAccent();
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
 
   if (kind === "over-budget") {
     return (
@@ -183,7 +182,7 @@ function NorthStarBlockImpl({
     // chevron. Same grammar as the Discover "Import from TikTok" row
     // and the Today section dividers — much quieter, doesn't compete
     // with the meal slots above. The whole row is the tap target.
-    return tierV1 ? (
+    return (
       <PressableScale
         testID={testID ?? "north-star-library-empty"}
         haptic="selection"
@@ -210,31 +209,6 @@ function NorthStarBlockImpl({
         </Text>
         <ChevronRight size={18} color={colors.textSecondary} />
       </PressableScale>
-    ) : (
-      <Pressable
-        testID={testID ?? "north-star-library-empty"}
-        accessibilityRole="button"
-        accessibilityLabel="Pick recipes for your library"
-        onPress={onOpenLibrary}
-        style={({ pressed }) => [
-          styles.libraryEmptyRow,
-          { backgroundColor: colors.fillQuiet, opacity: pressed ? 0.6 : 1 },
-        ]}
-      >
-        {/* ENG-1198: see tierV1 branch above — sparkle → primarySolid,
-            chevron → textSecondary, row in a quiet-fill affordance. Kept in
-            parity with the tierV1 render path. */}
-        <Sparkles size={18} color={accent.primarySolid} />
-        <Text
-          style={[
-            Type.body,
-            { color: colors.textSecondary, flex: 1, fontSize: 14 },
-          ]}
-        >
-          {"Pick a few recipes — we'll suggest from there."}
-        </Text>
-        <ChevronRight size={18} color={colors.textSecondary} />
-      </Pressable>
     );
   }
 
@@ -251,25 +225,8 @@ function NorthStarBlockImpl({
         <Text style={[Type.body, { color: colors.textSecondary, flex: 1 }]}>
           Library has nothing under your remaining macros today.
         </Text>
-        {tierV1 ? (
-          <PressableScale
-            haptic="selection"
-            accessibilityRole="button"
-            accessibilityLabel="Browse"
-            onPress={onBrowse}
-            hitSlop={6}
-          >
-            <Text
-              style={[
-                Type.caption,
-                { color: accent.primarySolid, fontWeight: "700" },
-              ]}
-            >
-              Browse →
-            </Text>
-          </PressableScale>
-        ) : (
-        <Pressable
+        <PressableScale
+          haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Browse"
           onPress={onBrowse}
@@ -283,8 +240,7 @@ function NorthStarBlockImpl({
           >
             Browse →
           </Text>
-        </Pressable>
-        )}
+        </PressableScale>
       </SupprCard>
     );
   }

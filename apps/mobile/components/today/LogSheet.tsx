@@ -1110,22 +1110,18 @@ function LogSheetBasketBar({ basket }: { basket: NonNullable<LogSheetProps["bask
 
 function CopyYesterdayRow({ count, onTap }: { count: number; onTap: () => void }) {
   const colors = useThemeColors();
-  const accent = useAccent();
   const label = count === 1 ? "1 meal" : `${count} meals`;
   return (
-    <Pressable
+    <PressableScale
+      haptic="selection"
       accessibilityRole="button"
       accessibilityLabel={`Copy yesterday's ${label} to today`}
       testID="copy-yesterday-row"
-      onPress={() => {
-        void Haptics.selectionAsync();
-        onTap();
-      }}
-      style={({ pressed }) => [
+      onPress={onTap}
+      style={[
         styles.copyYesterdayRow,
         {
           borderBottomColor: colors.border,
-          opacity: pressed ? 0.7 : 1,
         },
       ]}
     >
@@ -1135,7 +1131,7 @@ function CopyYesterdayRow({ count, onTap }: { count: number; onTap: () => void }
       </Text>
       <Text style={[Type.caption, { color: colors.textSecondary }]}>{label}</Text>
       <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -1206,14 +1202,12 @@ function BrowseAndFooter({
             const showSavedDot = id === "saved" && savedCount >= 3;
             const baseLabel = labelFor(id);
             return (
-              <Pressable
+              <PressableScale
                 key={id}
+                haptic="selection"
                 onPress={() => {
                   if (id === activeTab) return;
                   onBrowseTabChange(id);
-                  if (process.env.EXPO_OS === "ios") {
-                    void Haptics.selectionAsync();
-                  }
                 }}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
@@ -1254,7 +1248,7 @@ function BrowseAndFooter({
                     style={[styles.savedDot, { backgroundColor: accent.primary }]}
                   />
                 ) : null}
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>
