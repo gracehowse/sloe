@@ -45,7 +45,7 @@ import {
   findNodeHandle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { Radius, Spacing } from "@/constants/theme";
@@ -243,7 +243,7 @@ export default function AiPaywallSheet({
               borderRadius: Radius.full,
             }}
           >
-            <Ionicons name="close" size={20} color={colors.textSecondary} />
+            <X size={20} color={colors.textSecondary} strokeWidth={2} />
           </Pressable>
 
           {/* PRO badge, left-aligned. */}

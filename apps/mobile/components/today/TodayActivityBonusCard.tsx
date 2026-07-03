@@ -1,8 +1,7 @@
 import React, { memo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { Ionicons } from "@expo/vector-icons";
-import { Flame, Target, TrendingUp, Utensils } from "lucide-react-native";
+import { ChevronRight, Flame, Info, Target, TrendingUp, Utensils } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, Colors, FontFamily, FontWeight, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -346,7 +345,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
               hitSlop={8}
               style={{ padding: 4 }}
             >
-              <Ionicons name="information-circle-outline" size={18} color={textSecondaryColor} />
+              <Info size={18} color={textSecondaryColor} />
             </Pressable>
           ) : null}
           <View
@@ -577,8 +576,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
                     accessibilityLabel="Where this number comes from"
                     testID="today-burn-provenance-info"
                   >
-                    <Ionicons
-                      name="information-circle-outline"
+                    <Info
                       size={IconSize.md}
                       color={textTertiaryColor}
                     />
@@ -610,7 +608,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
                 )}
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={IconSize.base} color={textTertiaryColor} />
+            <ChevronRight size={IconSize.base} color={textTertiaryColor} />
           </SupprCard>
         </Pressable>
       ) : null}

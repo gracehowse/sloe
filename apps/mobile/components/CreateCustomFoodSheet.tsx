@@ -41,7 +41,14 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  ArrowLeftRight,
+  Camera,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  X,
+} from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import Constants from "expo-constants";
@@ -778,7 +785,7 @@ export default function CreateCustomFoodSheet({
                 {scanLoading ? (
                   <ActivityIndicator size="small" color={accent.primary} />
                 ) : (
-                  <Ionicons name="camera-outline" size={18} color={accent.primary} />
+                  <Camera size={18} color={accent.primary} />
                 )}
                 <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
                   {scanLoading ? "Reading label…" : "Scan label"}
@@ -920,7 +927,7 @@ export default function CreateCustomFoodSheet({
                     marginBottom: 4,
                   }}
                 >
-                  <Ionicons name="swap-horizontal" size={16} color={accent.primary} />
+                  <ArrowLeftRight size={16} color={accent.primary} />
                   <Text style={{ fontSize: 13, color: accent.primarySolid, fontWeight: "600" }}>
                     Convert {volumeConversion.unitLabel} → {formatNumber(volumeConversion.grams)} g
                   </Text>
@@ -990,7 +997,7 @@ export default function CreateCustomFoodSheet({
                     testID={`custom-food-additional-serving-remove-${idx}`}
                     style={{ paddingHorizontal: 6, paddingVertical: 4 }}
                   >
-                    <Ionicons name="close" size={20} color={colors.textTertiary} />
+                    <X size={20} color={colors.textTertiary} />
                   </Pressable>
                 </View>
               ))}
@@ -1009,7 +1016,7 @@ export default function CreateCustomFoodSheet({
                   marginBottom: 4,
                 }}
               >
-                <Ionicons name="add" size={16} color={accent.primary} />
+                <Plus size={16} color={accent.primary} />
                 <Text style={{ fontSize: 13, color: accent.primarySolid, fontWeight: "600" }}>
                   Add another serving
                 </Text>
@@ -1320,11 +1327,11 @@ export default function CreateCustomFoodSheet({
                 <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
                   {detailsOpen ? "Hide detailed nutrition" : "Add detailed nutrition"}
                 </Text>
-                <Ionicons
-                  name={detailsOpen ? "chevron-up" : "chevron-down"}
-                  size={16}
-                  color={colors.textSecondary}
-                />
+                {detailsOpen ? (
+                  <ChevronUp size={16} color={colors.textSecondary} />
+                ) : (
+                  <ChevronDown size={16} color={colors.textSecondary} />
+                )}
               </Pressable>
 
               {detailsOpen && (

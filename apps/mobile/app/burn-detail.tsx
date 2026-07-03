@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { Flame, Footprints, Moon } from "lucide-react-native";
+import { CircleAlert, Dumbbell, Flame, Footprints, Moon } from "lucide-react-native";
 
 import { Accent, FontFamily, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -244,7 +243,7 @@ export default function BurnDetailScreen() {
       >
         {!data && loadError ? (
           <View style={{ alignItems: "center", paddingVertical: 40, gap: Spacing.md }}>
-            <Ionicons name="alert-circle-outline" size={28} color={colors.textTertiary} />
+            <CircleAlert size={28} color={colors.textTertiary} strokeWidth={2} />
             <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: "center", maxWidth: 260 }}>
               {loadError}
             </Text>
@@ -362,7 +361,7 @@ export default function BurnDetailScreen() {
                       borderTopColor: colors.border,
                     }}
                   >
-                    <Ionicons name="barbell-outline" size={14} color={accent.primary} />
+                    <Dumbbell size={14} color={accent.primary} strokeWidth={2} />
                     <Text style={{ fontSize: 13, color: colors.text, flex: 1 }}>{w.type}</Text>
                     {w.minutes > 0 ? (
                       <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>{w.minutes} min</Text>

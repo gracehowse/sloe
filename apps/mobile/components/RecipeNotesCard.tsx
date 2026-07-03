@@ -18,7 +18,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Flame, Star } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
@@ -313,10 +313,10 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
                 accessibilityLabel={`Rate ${n} ${n === 1 ? "star" : "stars"}`}
                 hitSlop={6}
               >
-                <Ionicons
-                  name={active ? "star" : "star-outline"}
+                <Star
                   size={22}
                   color={active ? accent.primary : colors.textTertiary}
+                  fill={active ? accent.primary : "none"}
                 />
               </Pressable>
             );
@@ -354,7 +354,7 @@ export function RecipeNotesCard({ recipeId, userId, colors }: RecipeNotesCardPro
 
       {lastCookedLabel && (
         <View style={styles.lastCookedRow}>
-          <Ionicons name="flame-outline" size={12} color={colors.textTertiary} />
+          <Flame size={12} color={colors.textTertiary} strokeWidth={2.25} />
           <Text style={styles.lastCookedText}>{lastCookedLabel}</Text>
         </View>
       )}

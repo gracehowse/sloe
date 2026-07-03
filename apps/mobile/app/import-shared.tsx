@@ -15,18 +15,28 @@ import {
   ScrollView,
   Share,
 } from "react-native";
+// ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
 import { Ionicons } from "@expo/vector-icons";
 import {
   AlertCircle,
+  ArrowRight,
+  Bookmark,
+  CircleAlert,
+  CircleCheck,
   Clipboard as ClipboardIcon,
   Camera as CameraIcon,
+  Check,
   ChevronRight,
+  Cookie,
   FileText,
   Link,
   Link2,
   ScanLine,
   Lock,
   Share2,
+  SquarePen,
+  User,
+  UtensilsCrossed,
   X,
 } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -2125,7 +2135,7 @@ export default function ImportSharedScreen() {
               accessibilityLabel="Looks right, import"
               testID="caption-preview-confirm"
             >
-              <Ionicons name="checkmark" size={18} color={colors.primaryForeground} />
+              <Check size={18} color={colors.primaryForeground} />
               <Text style={styles.primaryBtnText}>Looks right? Import</Text>
             </Pressable>
 
@@ -2206,7 +2216,7 @@ export default function ImportSharedScreen() {
                 </Text>
               </View>
             ) : null}
-            <Ionicons name="restaurant-outline" size={36} color={accent.primary} />
+            <UtensilsCrossed size={36} color={accent.primary} strokeWidth={1.75} />
             <Text style={styles.panelTitle}>{decodeEntities(title ?? "Imported recipe")}</Text>
             {previewNutrition != null && pendingRecipe.calories != null && (
               <Text style={styles.panelSub}>
@@ -2242,7 +2252,7 @@ export default function ImportSharedScreen() {
                     Per-serving macros scale when you change portions.
                   </Text>
                 </View>
-                <Ionicons name="create-outline" size={22} color={accent.primary} />
+                <SquarePen size={22} color={accent.primary} />
               </Pressable>
             ) : (
               <View style={{ alignSelf: "stretch", marginBottom: Spacing.md, gap: Spacing.sm }}>
@@ -2328,7 +2338,7 @@ export default function ImportSharedScreen() {
                     gap: 10,
                   }}
                 >
-                  <Ionicons name="alert-circle-outline" size={20} color={Accent.warningSolid} style={{ marginTop: 1 }} />
+                  <CircleAlert size={20} color={Accent.warningSolid} style={{ marginTop: 1 }} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14, marginBottom: 2 }}>
                       {headline}
@@ -2412,8 +2422,7 @@ export default function ImportSharedScreen() {
                       accessibilityHint="Tap to search a different food. Long-press to edit macros manually."
                     >
                       {needsReview && (
-                        <Ionicons
-                          name="alert-circle"
+                        <CircleAlert
                           size={18}
                           color={Accent.warningSolid}
                           style={{ marginRight: 8, marginTop: 2 }}
@@ -2429,8 +2438,7 @@ export default function ImportSharedScreen() {
                           {m.source ? ` · ${m.source}` : ""}
                         </Text>
                       </View>
-                      <Ionicons
-                        name="chevron-forward"
+                      <ChevronRight
                         size={18}
                         color={colors.textTertiary}
                       />
@@ -2459,7 +2467,7 @@ export default function ImportSharedScreen() {
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
                 <>
-                  <Ionicons name="bookmark" size={18} color={colors.primaryForeground} />
+                  <Bookmark size={18} color={colors.primaryForeground} />
                   <Text style={styles.primaryBtnText}>
                     {savedRecipeId && isFeatureEnabled(IMPORT_SAVE_FIRST_FLAG)
                       ? IMPORT_SAVE_FIRST_UPDATE_CTA
@@ -2473,7 +2481,7 @@ export default function ImportSharedScreen() {
 
         {state === "success" && title && savedRecipeId && (
           <ImportSuccessCelebration sheetStyle={styles.successSheet}>
-            <Ionicons name="checkmark-circle" size={72} color={Accent.success} style={styles.successIconWrap} />
+            <CircleCheck size={72} color={Accent.success} style={styles.successIconWrap} strokeWidth={1.5} />
             <Text style={styles.successKicker}>SAVED</Text>
             <Text style={styles.successRecipeTitle} numberOfLines={4}>
               {decodeEntities(title)}
@@ -2485,7 +2493,7 @@ export default function ImportSharedScreen() {
               <Text style={styles.successCreditLine}>{successShareCard.creditLine}</Text>
             ) : null}
             <View style={styles.libraryChip}>
-              <Ionicons name="bookmark" size={18} color={accent.primary} />
+              <Bookmark size={18} color={accent.primary} />
               <Text style={styles.libraryChipText}>In your library</Text>
             </View>
             <Pressable
@@ -2493,7 +2501,7 @@ export default function ImportSharedScreen() {
               onPress={() => router.replace(`/recipe/${savedRecipeId}`)}
             >
               <Text style={styles.primaryBtnText}>View recipe</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.primaryForeground} style={styles.btnIconRight} />
+              <ArrowRight size={20} color={colors.primaryForeground} style={styles.btnIconRight} />
             </Pressable>
             {successShareCard ? (
               <Pressable
@@ -2510,7 +2518,7 @@ export default function ImportSharedScreen() {
               style={({ pressed }) => [styles.outlineBtn, pressed && styles.outlineBtnPressed]}
               onPress={() => router.replace(`/recipe/verify?id=${savedRecipeId}`)}
             >
-              <Ionicons name="nutrition-outline" size={18} color={accent.primary} style={{ marginRight: 6 }} />
+              <Cookie size={18} color={accent.primary} style={{ marginRight: 6 }} />
               <Text style={styles.outlineBtnText}>Review ingredients</Text>
             </Pressable>
           </ImportSuccessCelebration>
@@ -2519,7 +2527,7 @@ export default function ImportSharedScreen() {
         {!authLoading && !userId && state === "idle" && (
           <View style={styles.panelCard}>
             <View style={styles.errorIconCircle}>
-              <Ionicons name="person-outline" size={40} color={accent.primary} />
+              <User size={40} color={accent.primary} strokeWidth={1.75} />
             </View>
             <Text style={styles.panelTitle}>Sign in to import</Text>
             <Text style={styles.panelSub}>
@@ -2592,7 +2600,7 @@ export default function ImportSharedScreen() {
           ) : (
             <View style={styles.panelCard}>
               <View style={styles.errorIconCircle}>
-                <Ionicons name="alert-circle" size={44} color={Accent.destructive} />
+                <CircleAlert size={44} color={Accent.destructive} strokeWidth={1.75} />
               </View>
               <Text style={styles.panelTitle}>{`Couldn't import`}</Text>
               <Text style={styles.errorBody}>{error ?? "Something went wrong."}</Text>
@@ -2841,7 +2849,7 @@ export default function ImportSharedScreen() {
                   label="Import"
                 />
                 <Pressable style={styles.textLinkBtn} onPress={onPasteFromClipboard}>
-                  <Ionicons name="clipboard-outline" size={18} color={accent.primary} />
+                  <ClipboardIcon size={18} color={accent.primary} />
                   <Text style={styles.textLinkLabel}>Use clipboard</Text>
                 </Pressable>
                 {ImagePicker && (
@@ -2852,7 +2860,7 @@ export default function ImportSharedScreen() {
                       isFreeTier ? `${photoImportLabel} (Pro)` : photoImportLabel
                     }
                   >
-                    <Ionicons name="camera-outline" size={18} color={accent.primary} />
+                    <CameraIcon size={18} color={accent.primary} />
                     <Text style={styles.textLinkLabel}>{photoImportLabel}</Text>
                     {isFreeTier && (
                       <View style={styles.proPill}>

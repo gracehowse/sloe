@@ -8,7 +8,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Coffee, Droplet, Ellipsis, Wine, type LucideIcon } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, Radius, Spacing, StimulantColors, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -149,7 +149,7 @@ function SloeCard({
  */
 function Row({
   label,
-  icon,
+  icon: Icon,
   tone,
   value,
   unitSuffix,
@@ -163,7 +163,7 @@ function Row({
   onReset,
 }: {
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
   tone: "water" | "caffeine" | "alcohol";
   value: string;
   unitSuffix: string;
@@ -201,7 +201,7 @@ function Row({
         }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
-          <Ionicons name={icon} size={18} color={tone$[tone]} />
+          <Icon size={18} color={tone$[tone]} />
           <Text numberOfLines={1} style={{ ...Type.bodyLarge, color: colors.text }}>
             {label}
           </Text>
@@ -226,7 +226,7 @@ function Row({
             hitSlop={8}
             style={{ padding: 2 }}
           >
-            <Ionicons name="ellipsis-horizontal" size={16} color={colors.textSecondary} />
+            <Ellipsis size={16} color={colors.textSecondary} />
           </Pressable>
         </View>
       </View>
@@ -424,7 +424,7 @@ export function HydrationStimulantsCard({
         <Row
           tone="water"
           label="Water"
-          icon="water-outline"
+          icon={Droplet}
           value={waterValueLine}
           unitSuffix=""
           emphasizeValue
@@ -460,7 +460,7 @@ export function HydrationStimulantsCard({
             <Row
               tone="caffeine"
               label="Caffeine"
-              icon="cafe-outline"
+              icon={Coffee}
               value={`${Math.round(caffeineTotalMg)} / ${targets.caffeineMg}`}
               unitSuffix="mg"
               pct={caffeinePct}
@@ -484,7 +484,7 @@ export function HydrationStimulantsCard({
             <Row
               tone="alcohol"
               label="Alcohol"
-              icon="wine-outline"
+              icon={Wine}
               value={`${weeklyAlcohol} / ${targets.alcoholGWeekly}`}
               unitSuffix="g this week"
               pct={alcoholPct}

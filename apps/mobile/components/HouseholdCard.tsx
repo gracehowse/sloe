@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { View, Text, Pressable, TextInput, Alert, Switch } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons";
+import { Users, Lock, X } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Accent, Radius, MacroColors, MacroColorsDark, Type } from "@/constants/theme";
@@ -297,7 +297,7 @@ export function HouseholdCard() {
         {SCOPE_NARROWING_NOTICE_COPY}
       </Text>
       <Pressable onPress={dismissScopeNotice} accessibilityLabel="Dismiss notice" hitSlop={8}>
-        <Ionicons name="close" size={16} color={t.sub} />
+        <X size={16} color={t.sub} />
       </Pressable>
     </View>
   ) : null;
@@ -316,7 +316,7 @@ export function HouseholdCard() {
         <ReceivedInvitesBanner onAccepted={load} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <View style={{ width: 28, height: 28, borderRadius: Radius.full, backgroundColor: t.accent + "18", alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="people-outline" size={14} color={t.accent} />
+            <Users size={14} color={t.accent} />
           </View>
           <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Household Meals</Text>
         </View>
@@ -385,7 +385,7 @@ export function HouseholdCard() {
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <View style={{ width: 28, height: 28, borderRadius: Radius.full, backgroundColor: t.accent + "18", alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="people-outline" size={14} color={t.accent} />
+            <Users size={14} color={t.accent} />
           </View>
           <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>{data.household.name}</Text>
         </View>
@@ -538,7 +538,7 @@ export function HouseholdCard() {
                   style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 }}
                   accessibilityLabel={TARGETS_PRIVATE_LABEL}
                 >
-                  <Ionicons name="lock-closed-outline" size={10} color={t.dim} />
+                  <Lock size={10} color={t.dim} />
                   <Text style={{ fontSize: 10, color: t.dim }}>
                     {TARGETS_PRIVATE_LABEL}
                   </Text>

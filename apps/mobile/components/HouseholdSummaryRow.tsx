@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Users, ChevronRight } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { Radius, Spacing } from "@/constants/theme";
@@ -131,14 +131,14 @@ export function HouseholdSummaryRow() {
       accessibilityRole="button"
       accessibilityLabel={`Open household settings — ${summary}`}
     >
-      <Ionicons name="people-outline" size={16} color={accent.primary} />
+      <Users size={16} color={accent.primary} />
       <Text
         style={{ flex: 1, fontSize: 13, color: colors.text, fontWeight: "500" }}
         numberOfLines={1}
       >
         {summary}
       </Text>
-      <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+      <ChevronRight size={16} color={colors.textTertiary} />
     </Pressable>
   );
 }

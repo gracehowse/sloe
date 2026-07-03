@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Spacing, Type } from "@/constants/theme";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Info } from "lucide-react-native";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "../context";
@@ -59,11 +59,7 @@ export function MobileAgeStep() {
           gap: 8,
         }}
       >
-        <Ionicons
-          name="information-circle-outline"
-          size={14}
-          color={accent.primaryLight}
-        />
+        <Info size={14} color={accent.primaryLight} />
         <Text
           style={{
             fontSize: 13,

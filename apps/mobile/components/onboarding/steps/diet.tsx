@@ -1,24 +1,36 @@
 import * as React from "react";
 import { Spacing } from "@/constants/theme";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  Cookie,
+  Fish,
+  Flame,
+  Flower2,
+  Gem,
+  Leaf,
+  type LucideIcon,
+  Moon,
+  Star,
+  Sun,
+  UtensilsCrossed,
+} from "lucide-react-native";
 import { OptionCard } from "@/components/OptionCard";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
-const DIETS: { id: string; title: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { id: "anything", title: "Anything goes", icon: "restaurant-outline" },
-  { id: "vegetarian", title: "Vegetarian", icon: "leaf-outline" },
-  { id: "vegan", title: "Vegan", icon: "nutrition-outline" },
-  { id: "pescatarian", title: "Pescatarian", icon: "fish-outline" },
-  { id: "keto", title: "Keto / low-carb", icon: "flame-outline" },
-  { id: "mediterranean", title: "Mediterranean", icon: "sunny-outline" },
-  { id: "halal", title: "Halal", icon: "moon-outline" },
-  { id: "kosher", title: "Kosher", icon: "star-outline" },
-  { id: "jain", title: "Jain", icon: "diamond-outline" },
-  { id: "hindu-veg", title: "Hindu vegetarian", icon: "flower-outline" },
+const DIETS: { id: string; title: string; icon: LucideIcon }[] = [
+  { id: "anything", title: "Anything goes", icon: UtensilsCrossed },
+  { id: "vegetarian", title: "Vegetarian", icon: Leaf },
+  { id: "vegan", title: "Vegan", icon: Cookie },
+  { id: "pescatarian", title: "Pescatarian", icon: Fish },
+  { id: "keto", title: "Keto / low-carb", icon: Flame },
+  { id: "mediterranean", title: "Mediterranean", icon: Sun },
+  { id: "halal", title: "Halal", icon: Moon },
+  { id: "kosher", title: "Kosher", icon: Star },
+  { id: "jain", title: "Jain", icon: Gem },
+  { id: "hindu-veg", title: "Hindu vegetarian", icon: Flower2 },
 ];
 
 // T12 (2026-04-24) — 14 EU FIC / UK FSA regulated allergens. Mirrors
@@ -85,6 +97,7 @@ export function MobileDietStep() {
       >
         {DIETS.map((d) => {
           const selected = state.diet.includes(d.id);
+          const Icon = d.icon;
           return (
             <View
               key={d.id}
@@ -95,8 +108,7 @@ export function MobileDietStep() {
                 selected={selected}
                 onPress={() => toggleDiet(d.id)}
                 icon={
-                  <Ionicons
-                    name={d.icon}
+                  <Icon
                     size={17}
                     color={selected ? accent.primaryLight : colors.icon}
                   />

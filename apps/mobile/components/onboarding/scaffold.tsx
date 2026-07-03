@@ -1,6 +1,6 @@
 import * as React from "react";
 import { ScrollView, Text, View, ViewStyle, StyleProp } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Sparkles } from "lucide-react-native";
 import { FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -145,8 +145,7 @@ export function MobileMethodologyNote({
         alignItems: "flex-start",
       }}
     >
-      <Ionicons
-        name="sparkles-outline"
+      <Sparkles
         size={14}
         color={accent.primaryLight}
         style={{ marginTop: 1 }}

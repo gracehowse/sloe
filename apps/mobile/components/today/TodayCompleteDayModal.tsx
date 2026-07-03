@@ -2,8 +2,7 @@ import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { X } from "lucide-react-native";
+import { Check, X } from "lucide-react-native";
 import { Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -126,7 +125,7 @@ function TodayCompleteDayModalImpl({
                 alignSelf: "center",
               }}
             >
-              <Ionicons name="checkmark" size={40} color={accent.primary} />
+              <Check size={40} color={accent.primary} strokeWidth={1.75} />
             </View>
           ) : null}
 

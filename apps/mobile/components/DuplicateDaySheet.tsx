@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -207,7 +207,7 @@ export default function DuplicateDaySheet({
                 accessibilityRole="button"
                 accessibilityLabel="Previous month"
               >
-                <Ionicons name="chevron-back" size={20} color={colors.text} />
+                <ChevronLeft size={20} color={colors.text} />
               </Pressable>
               <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>{monthLabel}</Text>
               <Pressable
@@ -216,7 +216,7 @@ export default function DuplicateDaySheet({
                 accessibilityRole="button"
                 accessibilityLabel="Next month"
               >
-                <Ionicons name="chevron-forward" size={20} color={colors.text} />
+                <ChevronRight size={20} color={colors.text} />
               </Pressable>
             </View>
             <View style={{ flexDirection: "row", marginBottom: 4 }}>

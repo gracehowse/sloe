@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Check } from "lucide-react-native";
 
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -107,7 +107,7 @@ export function ImportLoadingSkeleton({
                     backgroundColor: isDone ? Accent.success : colors.border,
                   }}
                 >
-                  {isDone ? <Ionicons name="checkmark" size={14} color={colors.primaryForeground} /> : null}
+                  {isDone ? <Check size={14} strokeWidth={2.75} color={colors.primaryForeground} /> : null}
                 </View>
                 <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text }}>
                   {stepLabels[step]}

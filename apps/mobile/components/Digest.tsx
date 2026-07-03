@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ActivityIndicator, Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Bookmark, Share as ShareIcon, X } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -312,7 +312,7 @@ function DigestLegacy(props: DigestProps) {
         hitSlop={12}
         style={{ position: "absolute", right: 12, top: 12, padding: 4, width: 40, height: 40, justifyContent: "center", alignItems: "center" }}
       >
-        <Ionicons name="close" size={18} color={colors.textSecondary} />
+        <X size={18} color={colors.textSecondary} />
       </Pressable>
 
       {/* Eyebrow */}
@@ -465,7 +465,7 @@ function DigestLegacy(props: DigestProps) {
               accessibilityLabel={`Save ${promptSlot} as a usual meal`}
               style={{ alignSelf: "flex-start", marginTop: 8 }}
             >
-              <Ionicons name="bookmark-outline" size={12} color="#fff" />
+              <Bookmark size={12} color="#fff" strokeWidth={2.25} />
               <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff", marginLeft: 4 }}>
                 Save {promptSlot} as a meal
               </Text>
@@ -495,8 +495,7 @@ function DigestLegacy(props: DigestProps) {
             opacity: shareDisabled ? 0.4 : pressed ? 0.85 : 1,
           })}
         >
-          <Ionicons
-            name="share-outline"
+          <ShareIcon
             size={14}
             color={shareDisabled ? colors.textSecondary : Accent.success}
           />

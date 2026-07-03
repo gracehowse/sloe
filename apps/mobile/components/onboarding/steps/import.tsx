@@ -6,7 +6,9 @@ import {
   TextInput,
   View,
 } from "react-native";
+// ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
 import { Ionicons } from "@expo/vector-icons";
+import { Check, Globe, Link2 } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
@@ -67,7 +69,7 @@ export function MobileImportStep() {
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
             >
-              <Ionicons name="link-outline" size={14} color={colors.textTertiary} />
+              <Link2 size={14} color={colors.textTertiary} />
               <TextInput
                 value={url}
                 onChangeText={setUrl}
@@ -119,17 +121,29 @@ export function MobileImportStep() {
           </Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <SourceTile
-              icon="logo-instagram"
+              icon={
+                <Ionicons
+                  name="logo-instagram"
+                  size={22}
+                  color={colors.textSecondary}
+                />
+              }
               name="Instagram"
               onPress={() => runImport("instagram")}
             />
             <SourceTile
-              icon="logo-tiktok"
+              icon={
+                <Ionicons
+                  name="logo-tiktok"
+                  size={22}
+                  color={colors.textSecondary}
+                />
+              }
               name="TikTok"
               onPress={() => runImport("tiktok")}
             />
             <SourceTile
-              icon="globe-outline"
+              icon={<Globe size={22} color={colors.textSecondary} />}
               name="Any blog"
               onPress={() => runImport("blog")}
             />
@@ -149,7 +163,7 @@ function SourceTile({
   name,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ReactNode;
   name: string;
   onPress: () => void;
 }) {
@@ -171,7 +185,7 @@ function SourceTile({
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <Ionicons name={icon} size={22} color={colors.textSecondary} />
+      {icon}
       <Text
         style={{ fontSize: 12, fontWeight: "600", color: colors.text }}
       >
@@ -239,7 +253,7 @@ function ImportParsing() {
             }}
           >
             {i < cur ? (
-              <Ionicons name="checkmark" size={14} color={Accent.successLight} />
+              <Check size={14} color={Accent.successLight} />
             ) : (
               <View
                 style={{
@@ -317,7 +331,7 @@ function ImportDone({ source }: { source: ImportSource }) {
             marginBottom: 8,
           }}
         >
-          <Ionicons name="checkmark" size={14} color={Accent.successLight} />
+          <Check size={14} color={Accent.successLight} />
           <Text
             style={{
               fontSize: 11,

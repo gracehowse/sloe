@@ -6,7 +6,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Check } from "lucide-react-native";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -182,7 +182,7 @@ export function OptionCard({
               }}
             >
               {selected ? (
-                <Ionicons name="checkmark" size={12} color={colors.primaryForeground} />
+                <Check size={12} strokeWidth={3} color={colors.primaryForeground} />
               ) : null}
             </View>
           )}

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Info, ShieldCheck } from "lucide-react-native";
 import { OptionCard } from "@/components/OptionCard";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -141,11 +141,7 @@ export function MobileSexStep() {
           gap: 8,
         }}
       >
-        <Ionicons
-          name="information-circle-outline"
-          size={14}
-          color={accent.primaryLight}
-        />
+        <Info size={14} color={accent.primaryLight} />
         <Text
           style={{
             fontSize: 13,
@@ -229,11 +225,7 @@ export function MobileSexStep() {
           paddingTop: 16,
         }}
       >
-        <Ionicons
-          name="shield-checkmark-outline"
-          size={12}
-          color={colors.textTertiary}
-        />
+        <ShieldCheck size={12} color={colors.textTertiary} />
         <Text
           style={{
             flex: 1,

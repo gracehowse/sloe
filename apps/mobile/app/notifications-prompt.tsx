@@ -10,8 +10,14 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { X } from "lucide-react-native";
+import {
+  Bell,
+  CircleCheck,
+  Moon,
+  Newspaper,
+  X,
+  type LucideIcon,
+} from "lucide-react-native";
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -194,7 +200,7 @@ export default function NotificationsPromptScreen() {
       </Pressable>
 
       <View style={styles.badge}>
-        <Ionicons name="notifications" size={48} color={Accent.success} />
+        <Bell size={48} color={Accent.success} strokeWidth={1.75} />
         <View style={styles.notifBadge}>
           <Text style={styles.notifBadgeText}>1</Text>
         </View>
@@ -210,19 +216,19 @@ export default function NotificationsPromptScreen() {
       <View style={styles.bullets}>
         <BulletRow
           colors={colors}
-          icon="moon-outline"
+          icon={Moon}
           title="Evening nudge"
           sub="A quiet poke if you're off your daily target."
         />
         <BulletRow
           colors={colors}
-          icon="newspaper-outline"
+          icon={Newspaper}
           title="Sunday weekly recap"
           sub="Where the week landed in numbers — no judgment, just the data."
         />
         <BulletRow
           colors={colors}
-          icon="checkmark-circle-outline"
+          icon={CircleCheck}
           title="Two nudges a week, max"
           sub="That's the cap for these nudges — no marketing, no surprises."
         />
@@ -240,12 +246,12 @@ export default function NotificationsPromptScreen() {
 
 function BulletRow({
   colors,
-  icon,
+  icon: Icon,
   title,
   sub,
 }: {
   colors: ReturnType<typeof useThemeColors>;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
   title: string;
   sub: string;
 }) {
@@ -269,7 +275,7 @@ function BulletRow({
           marginTop: 1,
         }}
       >
-        <Ionicons name={icon} size={18} color={Accent.success} />
+        <Icon size={18} color={Accent.success} strokeWidth={2} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>{title}</Text>
