@@ -43,7 +43,6 @@
   "apps/mobile/components/HydrationStimulantsCard.tsx": 511,
   "apps/mobile/components/onboarding/mobile-flow.tsx": 672,
   "apps/mobile/components/onboarding/steps/data-bridges.tsx": 606,
-  "apps/mobile/components/onboarding/steps/import.tsx": 413,
   "apps/mobile/components/onboarding/steps/pace.tsx": 527,
   "apps/mobile/components/onboarding/steps/reveal.tsx": 839,
   "apps/mobile/components/PhotoLogSheet.tsx": 958,

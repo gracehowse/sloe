@@ -42,7 +42,6 @@ import { DataBridgesStep } from "./data-bridges";
 import { UpgradeStep } from "./upgrade";
 import { FirstLogStep } from "./first-log";
 import { PermissionsStep } from "./permissions";
-import { ImportStep } from "./import";
 
 /** Step components MAY accept a `compact` prop (used by mobile); the
  *  shell passes it via spread so platform-specific layouts can still
@@ -87,7 +86,6 @@ export {
   StrategyStep,
   RevealStep,
   DataBridgesStep,
-  // Out-of-flow components — kept for a post-launch nudge surface.
+  // Out-of-flow component — kept for a post-launch nudge surface.
   PermissionsStep,
-  ImportStep,
 };

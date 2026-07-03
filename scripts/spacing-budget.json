@@ -85,7 +85,6 @@
     "apps/mobile/components/onboarding/scaffold.tsx": 1,
     "apps/mobile/components/onboarding/segmented.tsx": 2,
     "apps/mobile/components/onboarding/steps/app-choice.tsx": 1,
-    "apps/mobile/components/onboarding/steps/import.tsx": 1,
     "apps/mobile/components/onboarding/steps/pace.tsx": 3,
     "apps/mobile/components/onboarding/steps/reveal.tsx": 3,
     "apps/mobile/components/onboarding/steps/strategy.tsx": 1,
