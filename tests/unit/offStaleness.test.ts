@@ -1,30 +1,46 @@
 import { describe, it, expect } from "vitest";
-import { isOffDataStale, OFF_STALE_THRESHOLD_MS } from "../../src/lib/openFoodFacts/offStaleness";
+import {
+  isOffDataStale,
+  offStalenessConfidencePenalty,
+  OFF_STALENESS_MAX_PENALTY,
+  OFF_STALENESS_PENALTY_FULL_MS,
+  OFF_STALENESS_PENALTY_START_MS,
+  OFF_STALE_THRESHOLD_MS,
+} from "../../src/lib/openFoodFacts/offStaleness";
 
-describe("isOffDataStale (ENG-1305)", () => {
-  const now = new Date("2026-07-02T00:00:00Z").getTime();
+describe("offStalenessConfidencePenalty (ENG-1326)", () => {
+  const now = new Date("2026-07-03T00:00:00Z").getTime();
+  const day = 24 * 60 * 60 * 1000;
 
-  it("flags a product last edited well past the threshold", () => {
-    const fourYearsAgoSec = (now - 4 * 365 * 24 * 60 * 60 * 1000) / 1000;
-    expect(isOffDataStale(fourYearsAgoSec, now)).toBe(true);
+  it("returns 0 for a fresh product below the corpus P75 knee", () => {
+    const thirtyDaysAgoSec = (now - 30 * day) / 1000;
+    expect(offStalenessConfidencePenalty(thirtyDaysAgoSec, now)).toBe(0);
+    expect(isOffDataStale(thirtyDaysAgoSec, now)).toBe(false);
   });
 
-  it("does not flag a recently-edited product", () => {
-    const oneMonthAgoSec = (now - 30 * 24 * 60 * 60 * 1000) / 1000;
-    expect(isOffDataStale(oneMonthAgoSec, now)).toBe(false);
+  it("ramps linearly between P75 and P95 ages", () => {
+    const midAgeMs = OFF_STALENESS_PENALTY_START_MS + (OFF_STALENESS_PENALTY_FULL_MS - OFF_STALENESS_PENALTY_START_MS) / 2;
+    const midSec = (now - midAgeMs) / 1000;
+    const penalty = offStalenessConfidencePenalty(midSec, now);
+    expect(penalty).toBeGreaterThan(0);
+    expect(penalty).toBeLessThan(OFF_STALENESS_MAX_PENALTY);
+    expect(penalty).toBeCloseTo(OFF_STALENESS_MAX_PENALTY / 2, 5);
   });
 
-  it("straddles the threshold correctly", () => {
-    const justUnderSec = (now - (OFF_STALE_THRESHOLD_MS - 1000)) / 1000;
-    const justOverSec = (now - (OFF_STALE_THRESHOLD_MS + 1000)) / 1000;
-    expect(isOffDataStale(justUnderSec, now)).toBe(false);
-    expect(isOffDataStale(justOverSec, now)).toBe(true);
+  it("caps at maxPenalty for very old products", () => {
+    const fiveYearsAgoSec = (now - 5 * 365 * day) / 1000;
+    expect(offStalenessConfidencePenalty(fiveYearsAgoSec, now)).toBe(OFF_STALENESS_MAX_PENALTY);
+    expect(isOffDataStale(fiveYearsAgoSec, now)).toBe(true);
   });
 
-  it("does not penalize a row OFF simply didn't publish a timestamp for", () => {
-    expect(isOffDataStale(null, now)).toBe(false);
-    expect(isOffDataStale(undefined, now)).toBe(false);
-    expect(isOffDataStale(0, now)).toBe(false);
-    expect(isOffDataStale(Number.NaN, now)).toBe(false);
+  it("does not penalize missing timestamps", () => {
+    expect(offStalenessConfidencePenalty(null, now)).toBe(0);
+    expect(offStalenessConfidencePenalty(undefined, now)).toBe(0);
+    expect(offStalenessConfidencePenalty(0, now)).toBe(0);
+    expect(offStalenessConfidencePenalty(Number.NaN, now)).toBe(0);
+  });
+
+  it("keeps OFF_STALE_THRESHOLD_MS aligned with penalty full knee", () => {
+    expect(OFF_STALE_THRESHOLD_MS).toBe(OFF_STALENESS_PENALTY_FULL_MS);
   });
 });

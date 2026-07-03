@@ -21,6 +21,7 @@
     "check:screen-budget": "node scripts/check-screen-line-budget.mjs",
     "check:screen-budget:write": "node scripts/check-screen-line-budget.mjs --write",
     "check:spacing-scale": "node scripts/check-spacing-scale.mjs",
+    "analyze:off-staleness-corpus": "node scripts/analyze-off-staleness-corpus.mjs",
     "check:spacing-scale:write": "node scripts/check-spacing-scale.mjs --write",
     "check:token-scale": "node scripts/check-token-scale.mjs",
     "check:token-scale:write": "node scripts/check-token-scale.mjs --write",

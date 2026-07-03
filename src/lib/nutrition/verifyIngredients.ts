@@ -23,7 +23,7 @@ import { fdcConfigFromEnv, fdcFoodGet, fdcFoodsSearch } from "@/lib/usda/fdcClie
 import { fdcFoodMacrosPer100g, fdcFoodMicrosPer100g } from "@/lib/nutrition/usdaNormalize";
 import { fetchProductByBarcode } from "@/lib/openFoodFacts/fetchProductByBarcode";
 import { searchOffProducts } from "@/lib/openFoodFacts/searchProducts";
-import { isOffDataStale } from "@/lib/openFoodFacts/offStaleness";
+import { offStalenessConfidencePenalty } from "@/lib/openFoodFacts/offStaleness";
 import { edamamConfigFromEnv, edamamFoodSearch, edamamFoodMacrosPer100g, edamamFoodMicrosPer100g } from "@/lib/edamam/client";
 import { hasFatSecretConfig, hasEdamamConfig, hasUsdaConfig, hasSupabaseServiceConfig } from "@/lib/server/serverEnv";
 import { estimateLineMacros } from "@/lib/nutrition/estimateIngredientMacros";
@@ -925,17 +925,14 @@ export async function verifyIngredients(opts: {
             const offConfBase = hit._basisCorrected
               ? Math.min(0.6, conf - 0.1)
               : Math.max(MIN_ACCEPT_CONFIDENCE, Math.min(0.9, conf - 0.03));
-            // ENG-1305 — OFF staleness gate. Applied AFTER the clean-row
-            // floor clamp above (not folded into it): staleness is a softer
-            // signal than a basis correction (the row's own math is fine,
-            // it just hasn't been re-verified recently in the crowd-sourced
-            // database), so a stale-but-otherwise-strong match should still
-            // be ABLE to fall below the accept floor and get excluded/
-            // flagged — not artificially propped back up to 0.55 by the
-            // clamp meant for fresh rows.
-            const offConf = isOffDataStale(hit.lastModifiedT)
-              ? Math.max(0, offConfBase - 0.08)
-              : offConfBase;
+            // ENG-1305 / ENG-1326 — OFF staleness penalty (corpus-derived curve).
+            // Applied AFTER the clean-row floor clamp: staleness is softer than
+            // basis correction, so a stale-but-strong match may still fall below
+            // the accept floor and get flagged — not propped back up by the clamp.
+            const offConf = Math.max(
+              0,
+              offConfBase - offStalenessConfidencePenalty(hit.lastModifiedT),
+            );
             // ENG-1299 — carry the OFF micros panel. `hit.microsPer100g` is
             // already on the reconciled per-100g basis (searchProducts applies
             // `per100gFactor` inside `parseOffMicrosPer100g`), so scaling by
