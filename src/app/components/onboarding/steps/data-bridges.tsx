@@ -23,13 +23,14 @@
  */
 
 import * as React from "react";
-import { Bell, Calculator, Check, Link2, Loader2 } from "lucide-react";
+import { Bell, Calculator, Check, Loader2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { useOnboarding } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 import { track } from "@/lib/analytics/track";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { MfpCsvImportCard } from "@/app/components/imports/MfpCsvImportCard";
+import { OnboardingRecipeImportCard } from "@/app/components/onboarding/OnboardingRecipeImportCard";
 import { appChoiceDisplayName } from "@/lib/onboarding/appChoiceOptions";
 
 export function DataBridgesStep() {
@@ -45,6 +46,7 @@ export function DataBridgesStep() {
   const csvCard = (
     <MfpCsvImportCard surface="onboarding" highlightApp={highlightApp} />
   );
+  const recipeCard = <OnboardingRecipeImportCard />;
 
   return (
     <StepBody>
@@ -55,10 +57,18 @@ export function DataBridgesStep() {
       />
 
       <div className="flex flex-col gap-3">
-        {highlightApp ? csvCard : null}
+        {highlightApp ? (
+          <>
+            {csvCard}
+            {recipeCard}
+          </>
+        ) : (
+          <>
+            {recipeCard}
+          </>
+        )}
         <ManualTargetsCard />
         <NotificationsCard />
-        <RecipeUrlCard />
         {highlightApp ? null : csvCard}
       </div>
 
@@ -220,28 +230,6 @@ function NotificationsCard() {
           {busy ? <Loader2 className="size-3 animate-spin" /> : "Turn on"}
         </Button>
       ) : null}
-    </BridgeCard>
-  );
-}
-
-/* ---------------------------------------------------------------- */
-/* Recipe URL card                                                  */
-/* ---------------------------------------------------------------- */
-
-function RecipeUrlCard() {
-  return (
-    <BridgeCard
-      icon={<Link2 className="size-4" />}
-      iconClassName="text-emerald-500 bg-emerald-500/15"
-      title="Recipe import"
-      body="Sloe parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
-      grantedBadge={null}
-    >
-      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-        Try it after setup — open the Library tab and tap the Import button to
-        paste a link, or share any recipe to Sloe from inside Instagram /
-        TikTok / your browser.
-      </p>
     </BridgeCard>
   );
 }

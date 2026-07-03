@@ -49,7 +49,6 @@ import {
   Check,
   CircleAlert,
   Heart,
-  Link2,
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
@@ -66,6 +65,7 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";
+import { MobileOnboardingRecipeImportCard } from "../OnboardingRecipeImportCard";
 import { appChoiceDisplayName } from "@suppr/shared/onboarding/appChoiceOptions";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { TargetInput } from "./TargetInput";
@@ -82,6 +82,7 @@ export function MobileDataBridgesStep() {
   const csvCard = (
     <MobileMfpCsvImportCard surface="onboarding" highlightApp={highlightApp} />
   );
+  const recipeCard = <MobileOnboardingRecipeImportCard />;
 
   return (
     <MobileStepBody>
@@ -91,13 +92,17 @@ export function MobileDataBridgesStep() {
         subtitle="Skip any of these — or all of them. You can always set this up later in Settings."
       />
 
-      {/* ENG-990 — when the user is switching from an importable app the
-          CSV import is their primary next action; float it to the top. */}
-      {highlightApp ? csvCard : null}
+      {highlightApp ? (
+        <>
+          {csvCard}
+          {recipeCard}
+        </>
+      ) : (
+        recipeCard
+      )}
       <ManualTargetsCard />
       {Platform.OS === "ios" ? <AppleHealthCard userId={userId} /> : null}
       <NotificationsCard userId={userId} />
-      <RecipeUrlCard />
       {highlightApp ? null : csvCard}
 
       {/*
@@ -414,36 +419,6 @@ function NotificationsCard({ userId }: { userId: string | null }) {
           )}
         </Pressable>
       ) : null}
-    </BridgeCard>
-  );
-}
-
-/* ---------------------------------------------------------------- */
-/* Recipe URL card — preserves legacy import demo                   */
-/* ---------------------------------------------------------------- */
-
-function RecipeUrlCard() {
-  const colors = useThemeColors();
-  return (
-    <BridgeCard
-      icon={Link2}
-      iconColor={Accent.successLight}
-      title="Recipe import"
-      body="Sloe parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
-      grantedBadge={null}
-    >
-      <Text
-        style={{
-          ...Type.captionSmall,
-          color: colors.textSecondary,
-          marginTop: Spacing.dense,
-          lineHeight: 17,
-        }}
-      >
-        Try it after setup — open the Library tab and tap the share icon to
-        paste a link, or share any recipe to Sloe from inside Instagram /
-        TikTok / Safari.
-      </Text>
     </BridgeCard>
   );
 }
