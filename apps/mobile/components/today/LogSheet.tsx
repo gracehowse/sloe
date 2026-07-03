@@ -712,12 +712,7 @@ function LoggedConfirmation({
         <SupprButton
           variant="primary"
           accessibilityLabel="Done"
-          onPress={() => {
-            if (process.env.EXPO_OS === "ios") {
-              void Haptics.selectionAsync();
-            }
-            onDone();
-          }}
+          onPress={onDone}
           label="Done"
           style={styles.confirmPrimary}
         />
