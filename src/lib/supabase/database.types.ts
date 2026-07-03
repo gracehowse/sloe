@@ -790,6 +790,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ingredient_image_aliases: {
+        Row: {
+          alias_key: string
+          created_at: string
+          name_key: string
+          updated_at: string
+        }
+        Insert: {
+          alias_key: string
+          created_at?: string
+          name_key: string
+          updated_at?: string
+        }
+        Update: {
+          alias_key?: string
+          created_at?: string
+          name_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ingredient_images: {
         Row: {
           created_at: string
@@ -1564,6 +1585,7 @@ export type Database = {
           id: string
           ingredient_id: string | null
           is_verified: boolean
+          matched_alias_key: string | null
           name: string
           nutrition_micros: Json
           override_macros: Json | null
@@ -1590,6 +1612,7 @@ export type Database = {
           id?: string
           ingredient_id?: string | null
           is_verified?: boolean
+          matched_alias_key?: string | null
           name: string
           nutrition_micros?: Json
           override_macros?: Json | null
@@ -1616,6 +1639,7 @@ export type Database = {
           id?: string
           ingredient_id?: string | null
           is_verified?: boolean
+          matched_alias_key?: string | null
           name?: string
           nutrition_micros?: Json
           override_macros?: Json | null

@@ -2,10 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { normaliseInstructions } from "../../recipes/normaliseInstructions";
 import { normalizeRecipeTitle } from "../../recipes/normalizeRecipeTitle";
 import { isStructuredSource } from "../../nutrition/structuredSourceGate";
+import { matchedAliasKeyForRow } from "../../recipe/matchedAliasPersist";
 import {
   IMPORT_ERROR_COPY,
   mapPersistenceError,
 } from "../../recipes/importErrorCopy";
+import {
+  isMatchedAliasColumnMissing,
+  withoutMatchedAliasColumn,
+} from "./matchedAliasLegacyDb";
 import { PLAN_IMPORT_SOURCE_PREFIX } from "./types";
 import type { PlanImportNutritionMode, PlanImportVerifiedRecipe } from "./types";
 
@@ -84,9 +89,24 @@ export async function persistImportRecipe(
           typeof m?.confidence === "number" && Number.isFinite(m.confidence)
             ? m.confidence
             : null,
+        // ENG-1276 — carry the matched food id + its alias key (null unless
+        // the match is trusted: confidence ≥ 0.85 with source + id present).
+        fatsecret_food_id: m?.fatsecretFoodId ?? null,
+        matched_alias_key: matchedAliasKeyForRow({
+          name,
+          source: m?.source,
+          fatsecretFoodId: m?.fatsecretFoodId,
+          confidence: m?.confidence,
+        }),
       };
     });
-    const { error: ingErr } = await supabase.from("recipe_ingredients").insert(ingRows);
+    let { error: ingErr } = await supabase.from("recipe_ingredients").insert(ingRows);
+    if (ingErr && isMatchedAliasColumnMissing(ingErr)) {
+      // ENG-1276 legacy-DB tolerance — retry without the staged alias column.
+      ({ error: ingErr } = await supabase
+        .from("recipe_ingredients")
+        .insert(withoutMatchedAliasColumn(ingRows)));
+    }
     if (ingErr) {
       await supabase.from("recipes").delete().eq("id", recipeId);
       return { error: IMPORT_ERROR_COPY[mapPersistenceError(ingErr)] };

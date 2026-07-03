@@ -46,8 +46,8 @@ import {
 } from "@suppr/nutrition-core/fatsecretCacheGuard";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { normaliseRecipeDisplayTitle } from "@suppr/shared/recipe/normaliseDisplayTitle";
-import { fetchIngredientImages } from "@suppr/shared/recipe/ingredientImages";
-import { enqueueIngredientImages } from "@suppr/shared/recipe/enqueueIngredientImages";
+import { useIngredientTileImages } from "@suppr/shared/recipe/useIngredientTileImages";
+import { loadRecipeIngredientRows } from "@suppr/shared/recipe/loadRecipeIngredientRows";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { Accent, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
@@ -238,7 +238,26 @@ type Ingredient = {
       under Basic-tier ToS, so the recipe-detail render path can detect a
       zeroed FatSecret cache and trigger a runtime re-fetch. */
   fatsecret_food_id?: string | null;
+  /** ENG-1276 — persisted matched-food alias key ("source:food_id", trusted
+      matches only). Feeds the ingredient-image alias fallback. */
+  matched_alias_key?: string | null;
 };
+
+/** Mobile transport for the ingredient-image lazy generate-on-miss endpoint —
+ *  module-level + stable so `useIngredientTileImages`'s effect deps can safely
+ *  exclude it. No-ops (resolves) when the API base is unset. */
+async function postIngredientImage(body: {
+  names: string[];
+  aliases?: Array<{ name: string; aliasKey: string }>;
+}): Promise<unknown> {
+  const apiBase = getSupprApiBase();
+  if (!apiBase) return undefined;
+  return authedFetch(`${apiBase}/api/ingredient-image`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
 
 export default function RecipeDetailScreen() {
   const { id, portion, autoLog, logServings, cook } = useLocalSearchParams<{
@@ -375,11 +394,6 @@ export default function RecipeDetailScreen() {
   const [ingredientInfoVerifyHref, setIngredientInfoVerifyHref] = useState<string | null>(null);
   // Sloe image system (2026-06-08) — `name_key → image_url` for the
   // ingredient tiles, hydrated from the global `ingredient_images` table.
-  // Empty until the fal-funded backfill runs; missing keys fall back to the
-  // calm cream placeholder. Never blocks render (async load effect).
-  const [ingredientImageMap, setIngredientImageMap] = useState<ReadonlyMap<string, string>>(
-    () => new Map(),
-  );
   // PR1 (Paprika parity, 2026-05-02): viewing-servings stepper. Defaults
   // to the recipe's authored yield. The multiplier
   // (`viewServings / recipe.servings`) drives ingredient amount
@@ -642,18 +656,14 @@ export default function RecipeDetailScreen() {
       }
 
       if (opts.reloadAfter && opts.persist && !persistHadError) {
-        let reloadRes = await supabase
-          .from("recipe_ingredients")
-          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified, fatsecret_food_id")
-          .eq("recipe_id", recipeId)
-          .order("created_at", { ascending: true });
-        if (reloadRes.error && String(reloadRes.error.message).includes("column")) {
-          reloadRes = await supabase
-            .from("recipe_ingredients")
-            .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
-            .eq("recipe_id", recipeId)
-            .order("created_at", { ascending: true }) as any;
-        }
+        // ENG-1276 — shared helper so mobile hydrates matched_alias_key on the
+        // reload-after-verify path (parity with web), retrying without the alias
+        // column on a pre-migration DB rather than dropping to a lossy set.
+        const reloadRes = await loadRecipeIngredientRows(
+          supabase,
+          recipeId,
+          "name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified, fatsecret_food_id",
+        );
         if (!reloadRes.error && reloadRes.data) setIngredients(reloadRes.data as Ingredient[]);
       }
 
@@ -745,17 +755,15 @@ export default function RecipeDetailScreen() {
             .eq("id", recipeId)
             .maybeSingle();
         }
-        // Try with confidence/source columns, fall back without if columns don't exist yet
-        let ingRes = await supabase
-          .from("recipe_ingredients")
-          .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified")
-          .eq("recipe_id", recipeId);
-        if (ingRes.error && String(ingRes.error.message).includes("column")) {
-          ingRes = await supabase
-            .from("recipe_ingredients")
-            .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg")
-            .eq("recipe_id", recipeId) as any;
-        }
+        // ENG-1276 — shared helper hydrates matched_alias_key on the PRIMARY
+        // screen-open load (parity with web's loadRecipeIngredientRows) so the
+        // alias image-fallback isn't silently inert on iOS. Retries without the
+        // alias column on a pre-migration DB.
+        const ingRes = await loadRecipeIngredientRows(
+          supabase,
+          recipeId,
+          "name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified",
+        );
         if (cancelled) return;
         if (recipeRes.data) {
           const row = recipeRes.data as Record<string, unknown>;
@@ -888,18 +896,12 @@ export default function RecipeDetailScreen() {
 
   const reloadRecipeIngredients = useCallback(async () => {
     if (!recipeId || isSeedRecipeId(recipeId)) return;
-    const ingRes = await supabase
-      .from("recipe_ingredients")
-      .select("name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified")
-      .eq("recipe_id", recipeId);
-    if (ingRes.error?.code === "42703") {
-      const fallbackRes = await supabase
-        .from("recipe_ingredients")
-        .select("name, amount, unit, calories, protein, carbs, fat")
-        .eq("recipe_id", recipeId);
-      if (fallbackRes.data) setIngredients(fallbackRes.data as Ingredient[]);
-      return;
-    }
+    // ENG-1276 — shared helper (parity with web + the load/verify paths above).
+    const ingRes = await loadRecipeIngredientRows(
+      supabase,
+      recipeId,
+      "name, amount, unit, calories, protein, carbs, fat, fiber_g, sugar_g, sodium_mg, confidence, source, is_verified",
+    );
     if (ingRes.data) setIngredients(ingRes.data as Ingredient[]);
   }, [recipeId]);
 
@@ -1069,42 +1071,21 @@ export default function RecipeDetailScreen() {
     });
   }, [ingredients, ingredientsHaveNutrition, recipe, autoVerifyingIngredients]);
 
-  // Sloe image system (2026-06-08) — hydrate ingredient tile images by
-  // `name_key`. Keyed on the joined names so it only re-fetches when the
-  // ingredient set changes. Degrades to an empty map (calm placeholders)
-  // on any error; never throws.
-  const ingredientNamesKey = ingredientsForIngredientsTab.map((i) => i.name).join("");
-  useEffect(() => {
-    const names = ingredientsForIngredientsTab.map((i) => i.name);
-    if (names.length === 0) {
-      setIngredientImageMap(new Map());
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const { map, missingKeys } = await fetchIngredientImages(supabase, names);
-      if (cancelled) return;
-      setIngredientImageMap(map);
-      // Lazy generate-on-miss: enqueue the tiles that have no ready image
-      // (fire-and-forget; never blocks render). Parity with web RecipeDetail.
-      if (missingKeys.length > 0) {
-        const apiBase = getSupprApiBase();
-        if (apiBase) {
-          enqueueIngredientImages(names, (b) =>
-            authedFetch(`${apiBase}/api/ingredient-image`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(b),
-            }),
-          );
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ingredientNamesKey]);
+  // Sloe image system (2026-06-08) + ENG-1276 alias fallback — hydrate the
+  // ingredient tile images by `name_key`. Shared hook keeps web/mobile in sync.
+  const ingredientAliasSources = useMemo(
+    () =>
+      ingredientsForIngredientsTab.map((i) => ({
+        name: i.name,
+        matchedAliasKey: i.matched_alias_key ?? null,
+      })),
+    [ingredientsForIngredientsTab],
+  );
+  const ingredientImageMap = useIngredientTileImages(
+    supabase,
+    ingredientAliasSources,
+    postIngredientImage,
+  );
 
   useEffect(() => {
     autoVerifySucceededForRecipeId.current = null;

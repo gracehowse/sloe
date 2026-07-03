@@ -157,8 +157,11 @@ corpus + idempotency, so the key can never silently drift again.
   → the herb; meat mince → `ground X`; regional synonyms (courgette→zucchini, prawns→shrimp,
   coriander→cilantro). Real corpus: **51 raw names → 43 canonical keys** (down from 51 polluted keys).
 - **Matched-food alias** (`matchedAliasKey`, `confidence ≥ 0.85`) is computed + wired through the input
-  type but NOT folded into the key (a weak match can never corrupt grouping). v1 has no alias storage —
-  fast-follow ENG-987.
+  type but NOT folded into the key (a weak match can never corrupt grouping). v1 had no alias storage —
+  the storage + read fallback shipped in **ENG-1276** (see §6 below): a new `ingredient_image_aliases`
+  table + `recipe_ingredients.matched_alias_key` column, an alias-aware read fallback in
+  `fetchIngredientImages`, and an idempotent alias-record write on generate. The canonical text key stays
+  the PRIMARY path throughout; the alias is a fallback only.
 
 ### 2. Ingredient engine → Nano Banana Pro (Template B)
 
@@ -320,15 +323,39 @@ over-counts unknown models.
   Pro (4:3/2K/jpeg, no seed, house style + guards on the FIXED `DISH_SYSTEM_PROMPT`); and (c) the §2
   ingredient ENGINE move FLUX → Nano + the FIXED `system_prompt`/seed. All affected prompt-doc sections
   carry a PENDING-SIGN-OFF banner. `brand-manager` to formally ratify and record in `docs/decisions/`.
-- **Matched-food-name persistence + alias storage** (ENG-987, fast-follow). Two related gaps: (1) the
-  tile label should *prefer the matched food name* (e.g. the FatSecret match's name) but
-  `recipe_ingredients` has no `matched_food_name` column — v1 uses `cleanIngredientDisplayName(name)` (the
-  spec's documented fallback), correct but not the matched name; (2) `canonicalImageKey` computes a
-  high-confidence `matchedAliasKey(source, food_id)` but there is no alias storage
-  (`ingredient_image_aliases` / `ingredient_images.matched_*` columns) — so a differently-spelled future
-  ingredient that matched the SAME food doesn't yet share a tile via the alias path (it still shares via
-  the text key when those converge). Both need a deliberate schema + persistence change; the matched id is
-  null across the whole seed corpus today, so neither fires yet.
+- **~~Alias storage~~ — SHIPPED 2026-07-03 (ENG-1276).** `canonicalImageKey` computes a high-confidence
+  `matchedAliasKey(source, food_id)` (confidence ≥ 0.85); ENG-1276 gives it durable storage + a read
+  fallback:
+  - Migration `20260702130200_eng1276_ingredient_image_aliases.sql` (STAGED — `supabase db push --linked`,
+    never MCP): a global public-read/service-role-write `ingredient_image_aliases` table
+    (`alias_key text primary key → name_key`) + a `recipe_ingredients.matched_alias_key text` column.
+  - **Persistence:** every import insert path (`persistImportedRecipe.saveImportedRecipe` +
+    `updateImportedRecipe`, plan-import `persistImportRecipe` + `commitPlanImport`, web create-recipe
+    `RecipeUpload`) writes `matched_alias_key = matchedAliasKeyForRow(...)` (null unless the match is
+    trusted) via the shared `src/lib/recipe/matchedAliasPersist.ts` gate. The verify pipeline's
+    `fatSecretFoodId` is now forwarded through the `ingredientMacros` payloads (it was dropped before).
+  - **Read fallback:** `fetchIngredientImages(supabase, names, { aliasKeyByCanonicalKey })` — for a text-key
+    MISS whose ingredient carries a trusted alias key, it consults `ingredient_image_aliases` for the
+    `name_key` that food resolved to and surfaces THAT tile under the missed ingredient's own canonical key.
+    The text key stays the primary path; a missing alias table/row/tile changes nothing.
+  - **Alias write on generate:** `/api/ingredient-image` accepts an optional `aliases: [{ name, aliasKey }]`
+    and idempotently upserts `(alias_key, name_key)` (`on conflict (alias_key) do update`) once a tile is
+    ready — the alias library grows itself alongside the image library. **SECURITY:** the pairs are
+    client-supplied and the table is global + public-read + service-role-write, so `recordReadyAliases`
+    (extracted to `src/lib/recipe/recordReadyAliases.ts` for testability) **corroborates** every pair
+    against `recipe_ingredients` server-side — an alias is recorded only if a real row (persisted from a
+    trusted ≥0.85 match) already establishes that same `matched_alias_key → canonicalImageKey(name)`
+    mapping. A fabricated pair won't corroborate (no cross-user image cache-poisoning); fails closed on any
+    query error. Backed by a partial index `recipe_ingredients_matched_alias_key_idx`.
+  - Web + mobile share the read/enqueue via the new `useIngredientTileImages` hook and
+    `ingredientAliasInputs` helper. All three mobile recipe-detail ingredient selects (initial load,
+    reload-after-verify, edit-save reload) route through the shared `loadRecipeIngredientRows` helper so
+    `matched_alias_key` hydrates on iOS's primary path too (not just after an edit-save) — web/mobile parity.
+    Additive + null-safe: with zero alias rows today nothing changes.
+- **Matched-food-name label (still OPEN, ENG-987).** The tile label should *prefer the matched food name*
+  (e.g. the FatSecret match's name) but `recipe_ingredients` has no `matched_food_name` column — v1 uses
+  `cleanIngredientDisplayName(name)` (the spec's documented fallback), correct but not the matched name.
+  Separate from the alias storage above; needs its own column + persistence.
 - **~~Ingredient-key quantity pollution~~ — RESOLVED 2026-06-08.** `canonicalImageKey` strips leading
   quantities + brand prefixes at write + read (51 raw → 43 keys), guarded by
   `tests/unit/canonicalImageKey.test.ts`.

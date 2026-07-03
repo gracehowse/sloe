@@ -70,6 +70,9 @@ async function verifyRecipe(recipe: PlanImportParsedRecipe): Promise<PlanImportV
     fiberG: Math.round((v.macros?.fiberG ?? 0) * 10) / 10,
     source: v.source,
     confidence: v.confidence,
+    // ENG-1276 — forward the matched food id so the persist layer can store
+    // it + derive matched_alias_key (dropped before).
+    fatsecretFoodId: v.fatSecretFoodId ?? null,
   }));
   return {
     ...recipe,

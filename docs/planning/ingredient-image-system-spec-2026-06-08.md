@@ -61,7 +61,7 @@ Generate ONE representative, identical treatment every time:
 ## 6. Wiring + tests
 - Repoint writer `scripts/backfill-images.ts` (key call ~line 215) + readers `src/lib/recipe/ingredientImageTile.ts` + `ingredientImages.ts` (web + mobile via `@suppr/shared`) to `canonicalImageKey`.
 - **Leave `src/lib/planning/ingredientNameKey.ts` UNTOUCHED** (shopping/plan still use it).
-- Optional alias schema: `ingredient_images.matched_source/matched_food_id` + `ingredient_image_aliases(source, food_id, name_key)`. Ship text-only path first; alias is a fast-follow.
+- Optional alias schema — **SHIPPED as ENG-1276 (2026-07-03).** Final shape: an `ingredient_image_aliases(alias_key text primary key → name_key)` table (`alias_key` = `matchedAliasKey()` `"source:food_id"`, not a composite) + a `recipe_ingredients.matched_alias_key` column persisted on every import insert path. Read fallback lives in `fetchIngredientImages(..., { aliasKeyByCanonicalKey })`; the alias is recorded on generate via `/api/ingredient-image`'s optional `aliases` body. Text-only path stays PRIMARY. See `docs/decisions/2026-06-08-recipe-ingredient-image-system.md` §"Alias storage".
 - One-time re-key of the existing 51 rows (re-run backfill with the new key; orphan-clean old keys).
 - **MANDATORY guard test** (mirror `tests/unit/ingredientImageTile.test.ts`): writer key == reader key for ~40 real corpus strings; `canonicalImageKey` idempotent + stable.
 

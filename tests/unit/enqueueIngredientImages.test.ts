@@ -76,4 +76,58 @@ describe("enqueueIngredientImages", () => {
     expect(out).toEqual([]);
     expect(post).not.toHaveBeenCalled();
   });
+
+  // ── ENG-1276 alias forwarding ──
+
+  it("omits the aliases field entirely when none are passed (unchanged body)", () => {
+    const post = vi.fn().mockResolvedValue(undefined);
+    enqueueIngredientImages(["spinach"], post);
+    expect(post).toHaveBeenCalledWith({ names: ["spinach"] });
+  });
+
+  it("forwards aliases for names being sent, deduped by alias key", () => {
+    const post = vi.fn().mockResolvedValue(undefined);
+    enqueueIngredientImages(
+      ["120g baby spinach", "chicken breast"],
+      post,
+      [
+        { name: "120g baby spinach", aliasKey: "fatsecret:4001" },
+        { name: "chicken breast", aliasKey: "usda:999" },
+      ],
+    );
+    const body = post.mock.calls[0]![0] as {
+      names: string[];
+      aliases?: Array<{ name: string; aliasKey: string }>;
+    };
+    expect(body.aliases).toEqual([
+      { name: "120g baby spinach", aliasKey: "fatsecret:4001" },
+      { name: "chicken breast", aliasKey: "usda:999" },
+    ]);
+  });
+
+  it("drops aliases whose name is not in this call's send set", () => {
+    const post = vi.fn().mockResolvedValue(undefined);
+    // Only "spinach" is new/sent; the "salt" alias must be filtered out.
+    enqueueIngredientImages(
+      ["spinach"],
+      post,
+      [
+        { name: "spinach", aliasKey: "fatsecret:4001" },
+        { name: "salt", aliasKey: "fatsecret:5000" },
+      ],
+    );
+    const body = post.mock.calls[0]![0] as {
+      aliases?: Array<{ name: string; aliasKey: string }>;
+    };
+    expect(body.aliases).toEqual([{ name: "spinach", aliasKey: "fatsecret:4001" }]);
+  });
+
+  it("omits the aliases field when the provided aliases are all empty/blank", () => {
+    const post = vi.fn().mockResolvedValue(undefined);
+    enqueueIngredientImages(["spinach"], post, [
+      { name: "spinach", aliasKey: "  " },
+      { name: "", aliasKey: "fatsecret:1" },
+    ]);
+    expect(post).toHaveBeenCalledWith({ names: ["spinach"] });
+  });
 });

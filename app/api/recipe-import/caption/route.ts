@@ -246,6 +246,9 @@ export async function POST(req: Request) {
         source: v.source,
         confidence: v.confidence,
         matchedName: v.matchedName ?? null,
+        // ENG-1276 — forward the matched food id so the persist layer can
+        // store it + derive matched_alias_key (dropped before).
+        fatsecretFoodId: v.fatSecretFoodId ?? null,
       }))
     : parsedIngs.map((p) => ({
         name: p.name,

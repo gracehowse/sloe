@@ -40,12 +40,32 @@ type LooseSupabase = {
         col: string,
         values: string[],
       ) => Promise<{
-        data: Array<{ name_key?: string | null; image_url?: string | null; status?: string | null }> | null;
+        data: Array<{
+          name_key?: string | null;
+          image_url?: string | null;
+          status?: string | null;
+          alias_key?: string | null;
+        }> | null;
         error: unknown;
       }>;
     };
   };
 };
+
+/**
+ * ENG-1276 — options for the alias-aware fallback. `aliasKeyByCanonicalKey`
+ * maps each ingredient's CANONICAL text key (`canonicalImageKey(name)`) to
+ * its trusted `matched_alias_key` (`"source:food_id"`, persisted on the
+ * `recipe_ingredients.matched_alias_key` column, non-null only when
+ * confidence ≥ 0.85). It is consulted ONLY for canonical keys that MISSED the
+ * `ingredient_images` map — the text key stays the primary path. When two
+ * differently-spelled names matched the same food, this lets the missed one
+ * reuse the tile the other resolved to. Absent / empty = identical behaviour
+ * to the pre-ENG-1276 text-only path.
+ */
+export interface IngredientImagesOptions {
+  aliasKeyByCanonicalKey?: ReadonlyMap<string, string | null | undefined>;
+}
 
 /**
  * Build a `name_key → image_url` map for the given ingredient names.
@@ -63,8 +83,9 @@ type LooseSupabase = {
 export async function fetchIngredientImageMap(
   supabase: unknown,
   names: ReadonlyArray<string | null | undefined>,
+  opts?: IngredientImagesOptions,
 ): Promise<Map<string, string>> {
-  const { map } = await fetchIngredientImages(supabase, names);
+  const { map } = await fetchIngredientImages(supabase, names, opts);
   return map;
 }
 
@@ -92,6 +113,7 @@ export function canonicalKeysForNames(
 export async function fetchIngredientImages(
   supabase: unknown,
   names: ReadonlyArray<string | null | undefined>,
+  opts?: IngredientImagesOptions,
 ): Promise<{ map: Map<string, string>; missingKeys: string[] }> {
   const out = new Map<string, string>();
   const keys = canonicalKeysForNames(names);
@@ -122,12 +144,104 @@ export async function fetchIngredientImages(
         readyKeys.add(key);
       }
     }
-    const missingKeys = keys.filter((k) => !readyKeys.has(k));
+    let missingKeys = keys.filter((k) => !readyKeys.has(k));
+
+    // ── ENG-1276 alias fallback (additive; text key stays primary) ──
+    // For any canonical key that MISSED the text-key lookup AND carries a
+    // trusted `matched_alias_key`, resolve the tile the matched food already
+    // owns via `ingredient_image_aliases` and surface it under the ORIGINAL
+    // canonical key (so `resolveIngredientTileImage(name, map)` finds it
+    // unchanged). A missing alias table / row / tile changes nothing.
+    if (missingKeys.length > 0 && opts?.aliasKeyByCanonicalKey?.size) {
+      const resolved = await resolveMissingViaAliases(
+        client,
+        missingKeys,
+        opts.aliasKeyByCanonicalKey,
+      );
+      for (const [canonicalKey, url] of resolved) {
+        out.set(canonicalKey, url);
+        readyKeys.add(canonicalKey);
+      }
+      missingKeys = keys.filter((k) => !readyKeys.has(k));
+    }
+
     return { map: out, missingKeys };
   } catch {
     // Network throw / unexpected shape — return whatever we have (likely
     // empty) + no missing keys. Never let the ingredient grid crash over a
     // decorative tile, and never enqueue on an error path.
     return { map: out, missingKeys: [] };
+  }
+}
+
+/**
+ * ENG-1276 — resolve missed canonical keys through the alias table. For the
+ * subset of `missingKeys` that have a non-null alias key, look up
+ * `ingredient_image_aliases` (`alias_key → name_key`), then fetch those
+ * resolved tiles' ready images from `ingredient_images`. Returns a map of
+ * `original canonical key → image_url` (only for keys the alias fully
+ * resolved to a ready tile). Never throws; returns an empty map on any error
+ * or absent table so the primary path is completely unaffected.
+ */
+async function resolveMissingViaAliases(
+  client: LooseSupabase,
+  missingKeys: string[],
+  aliasKeyByCanonicalKey: ReadonlyMap<string, string | null | undefined>,
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+
+  // canonicalKey → aliasKey (only missed keys that carry a trusted alias).
+  const aliasByCanonical = new Map<string, string>();
+  for (const canonicalKey of missingKeys) {
+    const aliasKey = aliasKeyByCanonicalKey.get(canonicalKey);
+    if (typeof aliasKey === "string" && aliasKey.length > 0) {
+      aliasByCanonical.set(canonicalKey, aliasKey);
+    }
+  }
+  if (aliasByCanonical.size === 0) return out;
+
+  try {
+    const aliasKeys = Array.from(new Set(aliasByCanonical.values()));
+    const { data: aliasRows, error: aliasErr } = await client
+      .from("ingredient_image_aliases")
+      .select("alias_key, name_key")
+      .in("alias_key", aliasKeys);
+    // Table missing / RLS / error → no fallback (primary path unchanged).
+    if (aliasErr || !Array.isArray(aliasRows)) return out;
+
+    // aliasKey → resolved tile name_key.
+    const nameKeyByAlias = new Map<string, string>();
+    for (const row of aliasRows) {
+      const aliasKey = typeof row?.alias_key === "string" ? row.alias_key : "";
+      const nameKey = typeof row?.name_key === "string" ? row.name_key : "";
+      if (aliasKey && nameKey) nameKeyByAlias.set(aliasKey, nameKey);
+    }
+    if (nameKeyByAlias.size === 0) return out;
+
+    // Fetch the ready images for the resolved tile keys.
+    const resolvedNameKeys = Array.from(new Set(nameKeyByAlias.values()));
+    const { data: imgRows, error: imgErr } = await client
+      .from("ingredient_images")
+      .select("name_key, image_url, status")
+      .in("name_key", resolvedNameKeys);
+    if (imgErr || !Array.isArray(imgRows)) return out;
+
+    const urlByNameKey = new Map<string, string>();
+    for (const row of imgRows) {
+      const key = typeof row?.name_key === "string" ? row.name_key : "";
+      const url = typeof row?.image_url === "string" ? row.image_url.trim() : "";
+      const status = typeof row?.status === "string" ? row.status : "ready";
+      if (key && url && status === "ready") urlByNameKey.set(key, url);
+    }
+
+    // Map each missed canonical key → its aliased tile's ready image.
+    for (const [canonicalKey, aliasKey] of aliasByCanonical) {
+      const nameKey = nameKeyByAlias.get(aliasKey);
+      const url = nameKey ? urlByNameKey.get(nameKey) : undefined;
+      if (url) out.set(canonicalKey, url);
+    }
+    return out;
+  } catch {
+    return out;
   }
 }
