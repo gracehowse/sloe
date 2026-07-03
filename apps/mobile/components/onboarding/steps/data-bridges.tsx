@@ -18,10 +18,16 @@
  *   3. Notifications — gentle reminders on by default for retention.
  *      Lazy-import `expo-notifications` so Expo Go doesn't crash on
  *      mount.
- *   4. Recipe URL — preserves the legacy `import.tsx` Instagram-link
- *      parser as a card. Idle / parsing / done phases lifted from the
- *      legacy step (kept intact on disk) so the demo affordance stays
- *      familiar.
+ *   4. Recipe import + MFP CSV — real `POST /api/recipe-import` call via
+ *      `MobileOnboardingRecipeImportCard` (ENG-1304, 2026-07-03), replacing
+ *      the earlier "try after setup" stub (the legacy `import.tsx` demo
+ *      step is now dormant/unreachable, see its own file header). Order
+ *      between the recipe-import and CSV cards is gated by
+ *      `appChoiceDisplayName()`: CSV leads when app-choice named an
+ *      importable app (self-identified refugee — CSV is their most
+ *      relevant next step); recipe import leads otherwise (the
+ *      default/majority path, and the product's acquisition-wedge growth
+ *      bet).
  *
  * Each card is independently skippable; the user can pick any one,
  * several, or none. A fifth "Maybe later" affordance lets them advance
@@ -49,7 +55,6 @@ import {
   Check,
   CircleAlert,
   Heart,
-  Link2,
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
@@ -66,6 +71,7 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 import { MobileMfpCsvImportCard } from "../../imports/MfpCsvImportCard";
+import { MobileOnboardingRecipeImportCard } from "../OnboardingRecipeImportCard";
 import { appChoiceDisplayName } from "@suppr/shared/onboarding/appChoiceOptions";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { TargetInput } from "./TargetInput";
@@ -82,6 +88,7 @@ export function MobileDataBridgesStep() {
   const csvCard = (
     <MobileMfpCsvImportCard surface="onboarding" highlightApp={highlightApp} />
   );
+  const recipeCard = <MobileOnboardingRecipeImportCard />;
 
   return (
     <MobileStepBody>
@@ -91,13 +98,17 @@ export function MobileDataBridgesStep() {
         subtitle="Skip any of these — or all of them. You can always set this up later in Settings."
       />
 
-      {/* ENG-990 — when the user is switching from an importable app the
-          CSV import is their primary next action; float it to the top. */}
-      {highlightApp ? csvCard : null}
+      {highlightApp ? (
+        <>
+          {csvCard}
+          {recipeCard}
+        </>
+      ) : (
+        recipeCard
+      )}
       <ManualTargetsCard />
       {Platform.OS === "ios" ? <AppleHealthCard userId={userId} /> : null}
       <NotificationsCard userId={userId} />
-      <RecipeUrlCard />
       {highlightApp ? null : csvCard}
 
       {/*
@@ -414,36 +425,6 @@ function NotificationsCard({ userId }: { userId: string | null }) {
           )}
         </Pressable>
       ) : null}
-    </BridgeCard>
-  );
-}
-
-/* ---------------------------------------------------------------- */
-/* Recipe URL card — preserves legacy import demo                   */
-/* ---------------------------------------------------------------- */
-
-function RecipeUrlCard() {
-  const colors = useThemeColors();
-  return (
-    <BridgeCard
-      icon={Link2}
-      iconColor={Accent.successLight}
-      title="Recipe import"
-      body="Sloe parses Instagram, TikTok, blog, and YouTube links — ingredients matched against USDA / OFF."
-      grantedBadge={null}
-    >
-      <Text
-        style={{
-          ...Type.captionSmall,
-          color: colors.textSecondary,
-          marginTop: Spacing.dense,
-          lineHeight: 17,
-        }}
-      >
-        Try it after setup — open the Library tab and tap the share icon to
-        paste a link, or share any recipe to Sloe from inside Instagram /
-        TikTok / Safari.
-      </Text>
     </BridgeCard>
   );
 }

@@ -155,25 +155,19 @@ describe("DataBridgesStep — no in-body skip CTA (footer is the single forward 
 });
 
 describe("DataBridgesStep — card structure", () => {
-  it("renders three cards on web (manual / notifications / recipe — Apple Health iOS-only)", () => {
+  it("renders refugee-capture cards on web (recipe import + manual + notifications + CSV)", () => {
     withProvider(<DataBridgesStep />);
     expect(screen.getByText("I already know my targets")).toBeTruthy();
     expect(screen.getByText("Gentle reminders")).toBeTruthy();
-    // Pre-launch P0 (2026-05-11): the recipe card no longer simulates an
-    // import on tap. Title changed from "Try a recipe import" to
-    // "Recipe import" — honest preview, no input field, no fake success.
     expect(screen.getByText("Recipe import")).toBeTruthy();
-    // Web does NOT include the Apple Health card.
+    expect(screen.getByLabelText("Recipe URL")).toBeTruthy();
+    expect(screen.getByText("Try a sample recipe")).toBeTruthy();
     expect(screen.queryByText(/Apple Health/i)).toBeNull();
   });
 
-  it("recipe card is a preview only — no input + no fake success state", () => {
+  it("recipe card exposes real import affordances — not the old post-setup-only copy", () => {
     withProvider(<DataBridgesStep />);
-    // The simulated input + button + dataBridgeChosen=recipe write were
-    // removed because the import never actually happened. Tester would
-    // see "Imported — open Library to see it" but nothing was in Library.
-    expect(screen.queryByLabelText("Recipe URL")).toBeNull();
-    expect(screen.queryByText("Try a sample recipe")).toBeNull();
-    expect(screen.queryByText(/Imported/)).toBeNull();
+    expect(screen.queryByText(/Try it after setup/i)).toBeNull();
+    expect(screen.getByText("Paste a link to import")).toBeTruthy();
   });
 });
