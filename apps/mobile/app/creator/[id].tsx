@@ -333,11 +333,7 @@ export default function CreatorProfileScreen() {
         <View style={styles.headerNameRow}>
           <Text style={styles.displayName}>{decodeEntities(creator.display_name)}</Text>
           {creator.is_verified ? (
-            <CircleCheck
-              size={18}
-              color={accent.primary}
-              accessibilityLabel="Verified creator"
-            />
+            <CircleCheck size={18} color={accent.primary} accessibilityLabel="Verified creator" />
           ) : null}
         </View>
         <Text style={styles.handle}>@{creator.handle}</Text>

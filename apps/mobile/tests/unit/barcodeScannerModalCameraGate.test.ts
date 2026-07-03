@@ -56,12 +56,14 @@ describe("F-135 — Log button text strips parenthetical + tidies decimal counts
 });
 
 describe("F-136 — Not-found empty state uses neutral icon + demoted CTAs", () => {
-  it("Not-found branch uses search-outline (neutral) instead of alert-circle (destructive)", () => {
-    // Search-outline appears in the Product-not-found ternary.
-    expect(CODE).toMatch(/error\s*===\s*"Product not found in database\.".*search-outline/s);
+  it("Not-found branch uses the neutral Search icon instead of the destructive CircleAlert", () => {
+    // ENG-120 (Lucide migration): search-outline → <Search>, alert-circle →
+    // <CircleAlert>. The neutral Search icon appears in the Product-not-found
+    // ternary; CircleAlert is the else branch (genuine errors).
+    expect(CODE).toMatch(/error\s*===\s*"Product not found in database\.".*Search/s);
   });
 
-  it("alert-circle remains for genuine errors (different branch)", () => {
-    expect(CODE).toMatch(/alert-circle/);
+  it("CircleAlert remains for genuine errors (different branch)", () => {
+    expect(CODE).toMatch(/CircleAlert/);
   });
 });

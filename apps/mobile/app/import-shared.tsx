@@ -2060,13 +2060,7 @@ export default function ImportSharedScreen() {
         {state === "captionPreview" && captionPlatform && (
           <View style={styles.panelCard}>
             <Ionicons
-              name={
-                captionPlatform === "tiktok"
-                  ? "logo-tiktok"
-                  : captionPlatform === "youtube"
-                    ? "logo-youtube"
-                    : "logo-instagram"
-              }
+              name={captionPlatform === "tiktok" ? "logo-tiktok" : captionPlatform === "youtube" ? "logo-youtube" : "logo-instagram"}
               size={36}
               color={accent.primary}
             />
@@ -2422,11 +2416,7 @@ export default function ImportSharedScreen() {
                       accessibilityHint="Tap to search a different food. Long-press to edit macros manually."
                     >
                       {needsReview && (
-                        <CircleAlert
-                          size={18}
-                          color={Accent.warningSolid}
-                          style={{ marginRight: 8, marginTop: 2 }}
-                        />
+                        <CircleAlert size={18} color={Accent.warningSolid} style={{ marginRight: 8, marginTop: 2 }} />
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={styles.importIngName} numberOfLines={1}>
@@ -2438,10 +2428,7 @@ export default function ImportSharedScreen() {
                           {m.source ? ` · ${m.source}` : ""}
                         </Text>
                       </View>
-                      <ChevronRight
-                        size={18}
-                        color={colors.textTertiary}
-                      />
+                      <ChevronRight size={18} color={colors.textTertiary} />
                     </Pressable>
                   );
                 })}
