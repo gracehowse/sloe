@@ -29,4 +29,9 @@ describe("ENG-948 cook multi-timers (mobile)", () => {
     expect(STRIP).toMatch(/timers\.map\(/);
     expect(STRIP).toContain("Reset");
   });
+
+  it("applies Type.captionSmall at render time, not in StyleSheet.create (module-init safe)", () => {
+    expect(STRIP).toContain("Type.captionSmall");
+    expect(STRIP).not.toMatch(/StyleSheet\.create\([\s\S]*Type\.captionSmall\.fontFamily/);
+  });
 });
