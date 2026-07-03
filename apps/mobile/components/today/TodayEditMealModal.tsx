@@ -437,17 +437,16 @@ function EditEntryV2(props: TodayEditMealModalProps) {
               ) : null}
             </ScrollView>
 
-            {/* Sticky footer — destructive-left / primary-right (blue per
-                Phase 0). Quiet log-confirm haptic on Save when motion is on. */}
             <View style={[v2.footer, { borderTopColor: colors.border }]}>
-              <Pressable
+              <PressableScale
                 onPress={onDelete}
+                haptic="warn"
                 accessibilityRole="button"
                 accessibilityLabel="Delete entry"
                 style={[v2.deleteBtn, { borderColor: Accent.destructive + "30" }]}
               >
                 <Text style={{ color: Accent.destructive, fontWeight: "700", fontSize: 14 }}>Delete</Text>
-              </Pressable>
+              </PressableScale>
               <PressableScale
                 onPress={onSave}
                 haptic={motionEnabled ? "confirm" : "none"}
@@ -745,9 +744,6 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
             />
           </View>
           <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.md }}>
-            {/* ENG-1016 — Save is a commit → Medium ("confirm") haptic via the
-                canonical PressableScale primitive, matching the redesigned
-                EditEntryV2 Save CTA. */}
             <PressableScale
               haptic="confirm"
               style={[styles.submitBtn, { flex: 1 }]}
@@ -755,7 +751,8 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
             >
               <Text style={styles.submitBtnText}>Save Changes</Text>
             </PressableScale>
-            <Pressable
+            <PressableScale
+              haptic="warn"
               style={{
                 flex: 1,
                 alignItems: "center",
@@ -766,9 +763,11 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
                 paddingVertical: Spacing.md,
               }}
               onPress={onDelete}
+              accessibilityRole="button"
+              accessibilityLabel="Delete entry"
             >
               <Text style={{ color: Accent.destructive, fontWeight: "700", fontSize: 14 }}>Delete</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
       </View>

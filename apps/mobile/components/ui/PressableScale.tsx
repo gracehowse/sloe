@@ -26,7 +26,13 @@ import Animated, {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export type PressableScaleHaptic = "selection" | "confirm" | "success" | "none";
+export type PressableScaleHaptic =
+  | "selection"
+  | "confirm"
+  | "success"
+  | "warn"
+  | "destructive"
+  | "none";
 
 export interface PressableScaleProps
   extends Omit<PressableProps, "style"> {
@@ -49,6 +55,10 @@ function fireHaptic(haptic: PressableScaleHaptic): void {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } else if (haptic === "success") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else if (haptic === "warn") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } else if (haptic === "destructive") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
   } catch {
     // Haptics unavailable (e.g. Expo Go without permission) — silent fail.

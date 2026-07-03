@@ -20,7 +20,7 @@ vi.mock("expo-haptics", () => ({
   impactAsync: vi.fn(async () => undefined),
   notificationAsync: vi.fn(async () => undefined),
   ImpactFeedbackStyle: { Light: "light", Medium: "medium" },
-  NotificationFeedbackType: { Success: "success" },
+  NotificationFeedbackType: { Success: "success", Warning: "warning" },
 }));
 
 describe("PressableScale (mobile)", () => {
@@ -79,6 +79,30 @@ describe("PressableScale (mobile)", () => {
       </PressableScale>,
     );
     fireEvent(getByText("confirm"), "pressIn");
+    expect(Haptics.impactAsync).toHaveBeenCalledWith("medium");
+  });
+
+  it("fires warning notification when haptic='warn'", async () => {
+    const Haptics = await import("expo-haptics");
+    (Haptics.notificationAsync as ReturnType<typeof vi.fn>).mockClear();
+    const { getByText } = render(
+      <PressableScale onPress={() => {}} haptic="warn">
+        <Text>warn</Text>
+      </PressableScale>,
+    );
+    fireEvent(getByText("warn"), "pressIn");
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith("warning");
+  });
+
+  it("fires medium impact when haptic='destructive'", async () => {
+    const Haptics = await import("expo-haptics");
+    (Haptics.impactAsync as ReturnType<typeof vi.fn>).mockClear();
+    const { getByText } = render(
+      <PressableScale onPress={() => {}} haptic="destructive">
+        <Text>delete</Text>
+      </PressableScale>,
+    );
+    fireEvent(getByText("delete"), "pressIn");
     expect(Haptics.impactAsync).toHaveBeenCalledWith("medium");
   });
 

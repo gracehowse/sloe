@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,6 +23,7 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, FontFamily, FontWeight, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
@@ -94,9 +94,9 @@ const STANDARD_UNITS: FoodPortion[] = [
 function VerifyTopBar({ onBack, colors, accessibilityLabel = "Back" }: { onBack: () => void; colors: ReturnType<typeof useThemeColors>; accessibilityLabel?: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
-      <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={{ width: 40 }}>
+      <PressableScale onPress={onBack} haptic="selection" hitSlop={12} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={{ width: 40 }}>
         <ChevronLeft size={26} color={colors.text} />
-      </Pressable>
+      </PressableScale>
       <Text style={{ color: colors.text, fontFamily: FontFamily.serifSemibold, fontSize: 18 }}>Verify ingredients</Text>
       <View style={{ width: 40 }} />
     </View>
@@ -1026,7 +1026,8 @@ export default function VerifyScreen() {
           return (
             <View key={ing.id}>
               {/* Collapsed row */}
-              <Pressable
+              <PressableScale
+                haptic="selection"
                 style={[
                   styles.ingRow,
                   i > 0 ? styles.ingRowDivider : null,
@@ -1069,21 +1070,22 @@ export default function VerifyScreen() {
                   )}
                 </View>
                 <Text style={styles.ingCals}>{rowCal}</Text>
-                <Pressable
+                <PressableScale
+                  haptic="selection"
+                  scaleTo={0.98}
                   style={styles.swapPill}
                   onPress={() => {
                     setSearchIndex(i);
                     setExpandedIndex(null);
-                    void Haptics.selectionAsync();
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={`Swap match for ${displayName}`}
                   testID={`verify-ingredient-swap-${i}`}
                 >
                   <Text style={styles.swapPillText}>Swap</Text>
-                </Pressable>
+                </PressableScale>
                 <ExpandChevron size={18} color={colors.textTertiary} style={styles.chevron} />
-              </Pressable>
+              </PressableScale>
 
               {/* Expanded detail */}
               {expanded && (
@@ -1139,8 +1141,10 @@ export default function VerifyScreen() {
                       const isActive = ing.chosenPortion?.label === p.label
                         || (!ing.chosenPortion && p.label === (ing.unit ?? "g"));
                       return (
-                        <Pressable
+                        <PressableScale
                           key={`${p.label}-${idx}`}
+                          haptic="selection"
+                          scaleTo={0.98}
                           onPress={() => onPortionChange(i, p)}
                           style={{
                             paddingHorizontal: Spacing.dense, paddingVertical: Spacing.xs,
@@ -1156,7 +1160,7 @@ export default function VerifyScreen() {
                           {p.gramWeight !== 1 && (
                             <Text style={{ fontSize: 9, color: colors.textTertiary }}>{p.gramWeight} g</Text>
                           )}
-                        </Pressable>
+                        </PressableScale>
                       );
                     })}
                   </ScrollView>
@@ -1187,11 +1191,11 @@ export default function VerifyScreen() {
                       const detail = totalGramsForVerifyScaleDetailed(ing, ing.amount ?? 0);
                       if (detail.densityRefused) {
                         return (
-                          <Pressable
+                          <PressableScale
+                            haptic="selection"
                             onPress={() => {
                               const gPortion: FoodPortion = { label: "g", gramWeight: 1, amount: 1 };
                               onPortionChange(i, gPortion);
-                              void Haptics.selectionAsync();
                             }}
                             accessibilityRole="button"
                             accessibilityLabel="Needs density — tap to switch to grams and scale this ingredient"
@@ -1200,7 +1204,7 @@ export default function VerifyScreen() {
                             <Text style={{ fontSize: 11, color: Accent.warningSolid, textDecorationLine: "underline" }}>
                               needs density — tap to switch to g
                             </Text>
-                          </Pressable>
+                          </PressableScale>
                         );
                       }
                       return (
@@ -1213,7 +1217,8 @@ export default function VerifyScreen() {
 
                   {/* Search / Scan */}
                   <View style={styles.actionRow}>
-                    <Pressable
+                    <PressableScale
+                      haptic="selection"
                       style={styles.actionBtn}
                       onPress={() => { setSearchIndex(i); setExpandedIndex(null); }}
                       accessibilityRole="button"
@@ -1221,8 +1226,9 @@ export default function VerifyScreen() {
                     >
                       <Search size={16} color={accent.primary} />
                       <Text style={styles.actionBtnText}>Search alternative</Text>
-                    </Pressable>
-                    <Pressable
+                    </PressableScale>
+                    <PressableScale
+                      haptic="selection"
                       style={styles.actionBtn}
                       onPress={() => { setBarcodeIndex(i); setExpandedIndex(null); }}
                       accessibilityRole="button"
@@ -1230,11 +1236,12 @@ export default function VerifyScreen() {
                     >
                       <Barcode size={16} color={accent.primary} />
                       <Text style={styles.actionBtnText}>Scan</Text>
-                    </Pressable>
+                    </PressableScale>
                   </View>
                   {/* Batch 2.7 — Override nutrition (pin label values) */}
                   <View style={styles.actionRow}>
-                    <Pressable
+                    <PressableScale
+                      haptic="selection"
                       style={styles.actionBtn}
                       onPress={() => { setOverrideIndex(i); setExpandedIndex(null); }}
                       accessibilityRole="button"
@@ -1245,8 +1252,9 @@ export default function VerifyScreen() {
                       <Text style={styles.actionBtnText}>
                         {rowHasOverride ? "Edit values" : "Edit nutrition"}
                       </Text>
-                    </Pressable>
-                    <Pressable
+                    </PressableScale>
+                    <PressableScale
+                      haptic="warn"
                       style={[styles.actionBtn, { borderColor: Accent.destructive + "40" }]}
                       onPress={() => onDeleteIngredient(i)}
                       accessibilityRole="button"
@@ -1254,7 +1262,7 @@ export default function VerifyScreen() {
                     >
                       <Trash2 size={16} color={Accent.destructive} />
                       <Text style={[styles.actionBtnText, { color: Accent.destructive }]}>Remove</Text>
-                    </Pressable>
+                    </PressableScale>
                   </View>
                 </View>
               )}
@@ -1264,7 +1272,8 @@ export default function VerifyScreen() {
         </View>
 
         {/* Batch 2.7 — Add ingredient row at the bottom of the list. */}
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={() => setAddSheetOpen(true)}
           style={{
             marginTop: Spacing.md,
@@ -1283,7 +1292,7 @@ export default function VerifyScreen() {
           <Text style={{ color: colors.textSecondary, ...Type.captionSmall, marginTop: 2, textAlign: "center" }}>
             Missed an ingredient during import? Add it here and totals update live.
           </Text>
-        </Pressable>
+        </PressableScale>
       </ScrollView>
 
       {/* Footer */}
@@ -1291,7 +1300,8 @@ export default function VerifyScreen() {
         <Text style={styles.footerLabel}>
           {totals.perServing.calories} calories per serving – {recipe?.servings ?? 1} servings
         </Text>
-        <Pressable
+        <PressableScale
+          haptic="confirm"
           style={[styles.confirmBtn, saving && { opacity: 0.6 }]}
           onPress={onConfirm}
           disabled={saving}
@@ -1306,7 +1316,7 @@ export default function VerifyScreen() {
               </Text>
             </>
           )}
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* Modals */}
@@ -1620,7 +1630,8 @@ function VerifyLoadingSkeleton({
 
         {/* Cancel affordance — bailing mid-verify is OK, the user
             shouldn't feel trapped while the AI runs. */}
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={onCancel}
           accessibilityRole="button"
           accessibilityLabel="Cancel verify and go back"
@@ -1642,7 +1653,7 @@ function VerifyLoadingSkeleton({
           >
             Cancel
           </Text>
-        </Pressable>
+        </PressableScale>
       </ScrollView>
     </View>
   );

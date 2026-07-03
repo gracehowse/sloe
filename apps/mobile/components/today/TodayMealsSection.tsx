@@ -62,24 +62,17 @@ type TodayMealRowPressableProps = PressableProps & {
   children: ReactNode;
 };
 
-/** ENG-1099 M6 — meal rows use PressableScale when the tracker tier flag is on. */
+/** ENG-1099 M6 / ENG-1342 — meal rows always use PressableScale haptics. */
 function TodayMealRowPressable({
-  tierV1,
+  tierV1: _tierV1,
   children,
   style,
   ...rest
 }: TodayMealRowPressableProps) {
-  if (tierV1) {
-    return (
-      <PressableScale haptic="selection" style={style} {...rest}>
-        {children}
-      </PressableScale>
-    );
-  }
   return (
-    <Pressable style={style} {...rest}>
+    <PressableScale haptic="selection" style={style} {...rest}>
       {children}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -89,42 +82,28 @@ type TodayAddFoodPressableProps = PressableProps & {
 };
 
 function TodayAddFoodPressable({
-  tierV1,
+  tierV1: _tierV1,
   children,
   style,
   ...rest
 }: TodayAddFoodPressableProps) {
-  if (tierV1) {
-    return (
-      <PressableScale haptic="selection" style={style} {...rest}>
-        {children}
-      </PressableScale>
-    );
-  }
   return (
-    <Pressable style={style} {...rest}>
+    <PressableScale haptic="selection" style={style} {...rest}>
       {children}
-    </Pressable>
+    </PressableScale>
   );
 }
 
 function TodayLogUsualPressable({
-  tierV1,
+  tierV1: _tierV1,
   children,
   style,
   ...rest
 }: PressableProps & { tierV1: boolean; children: ReactNode }) {
-  if (tierV1) {
-    return (
-      <PressableScale haptic="selection" style={style} {...rest}>
-        {children}
-      </PressableScale>
-    );
-  }
   return (
-    <Pressable style={style} {...rest}>
+    <PressableScale haptic="selection" style={style} {...rest}>
       {children}
-    </Pressable>
+    </PressableScale>
   );
 }
 

@@ -29,8 +29,12 @@ import * as Haptics from "expo-haptics";
  * Android: expo-haptics maps to the closest VibrationEffect.
  *
  * Usage:
+ *   Prefer `PressableScale`'s `haptic` prop for tap targets (ENG-1342).
+ *   Use this hook for programmatic feedback after async success/failure
+ *   (e.g. meal logged, save completed) where there is no press-in moment.
+ *
  *   const haptics = useHaptics();
- *   <Pressable onPress={() => { haptics.tap(); doThing(); }} />
+ *   await save(); haptics.success();
  */
 export function useHaptics() {
   const isIos = Platform.OS === "ios";
