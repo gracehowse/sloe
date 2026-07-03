@@ -97,7 +97,7 @@ import { SupprMark } from "@/components/SupprMark";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { scaleMacrosByGrams , parseIngredientForSearch, type BarcodeProduct } from "@/lib/verifyRecipe";
 import { scaleMicrosForGrams } from "@suppr/shared/openFoodFacts/parseOffMicros";
-import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
+import { scaleMicrosPerServing } from "@suppr/nutrition-core/scaleMicrosPerServing";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import {
   classifyImportSource,

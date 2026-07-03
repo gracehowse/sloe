@@ -3,7 +3,8 @@
  * 2026-06-17). The rule now lives in `src/lib/nutrition/barcodeConfidence.ts`
  * and is consumed by BOTH the web barcode result card
  * (`today-barcode-dialog.tsx`) and the mobile barcode result sheet
- * (via `@suppr/shared/nutrition/barcodeConfidence` → `lib/verifyRecipe.ts`).
+ * (via `@suppr/nutrition-core/barcodeConfidence` → `lib/verifyRecipe.ts`; the
+ * single mobile nutrition boundary since ENG-1345).
  *
  * This mirrors the mobile `apps/mobile/tests/unit/barcodeConfidenceTier.test.ts`
  * against the SAME implementation, so the two surfaces can never drift. It also

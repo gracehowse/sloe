@@ -98,7 +98,7 @@ import {
   verifyJsonNeedsReview,
 } from "@suppr/nutrition-core/verifyRecipeResponse";
 import { structuredIngredientsForVerify } from "@suppr/shared/recipe-ingredients/structuredIngredientsForVerify";
-import { scaleMicrosPerServing } from "@suppr/shared/nutrition/scaleMicrosPerServing";
+import { scaleMicrosPerServing } from "@suppr/nutrition-core/scaleMicrosPerServing";
 import { isStructuredSource } from "@suppr/nutrition-core/structuredSourceGate";
 import {
   formatContainsLine,
@@ -151,7 +151,7 @@ import {
 import { RecipeMethodSteps } from "../../components/recipe/RecipeMethodSteps";
 import { AddToShoppingListButton } from "../../components/recipe/AddToShoppingListButton";
 import { RecipeImportReviewBanner } from "../../components/recipe/RecipeImportReviewBanner";
-import { recipeIngredientsNeedReview } from "@suppr/shared/nutrition/recipeImportReview";
+import { recipeIngredientsNeedReview } from "@suppr/nutrition-core/recipeImportReview";
 import { RecipeServingsFooter } from "../../components/recipe/RecipeServingsFooter";
 import {
   IngredientInfoSheet,

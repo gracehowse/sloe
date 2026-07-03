@@ -57,8 +57,8 @@ import {
   type SearchRowConfidenceTier,
   type SectionedSearchRows,
 } from "@suppr/nutrition-core/foodSearchRanking";
-import { mergeFoodSearchRows } from "@suppr/shared/nutrition/foodSearchMerge";
-import { perServingMicrosFromRows } from "@suppr/shared/nutrition/recipeMicros";
+import { mergeFoodSearchRows } from "@suppr/nutrition-core/foodSearchMerge";
+import { perServingMicrosFromRows } from "@suppr/nutrition-core/recipeMicros";
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE, MIN_ACCEPT_CONFIDENCE };
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`

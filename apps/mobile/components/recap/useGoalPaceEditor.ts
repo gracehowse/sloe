@@ -53,7 +53,7 @@ import {
 import {
   DEFAULT_HIGH_DAYS,
   type DayTargetScheduleId,
-} from "@suppr/shared/nutrition/dayTargetSchedule";
+} from "@suppr/nutrition-core/dayTargetSchedule";
 import {
   cmToFeetInches,
   feetInchesToCm,

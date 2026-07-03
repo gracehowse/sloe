@@ -4,7 +4,7 @@ import { Camera, Clock, Plus, ScanBarcode, Sparkles, type LucideIcon } from "luc
 
 import { IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import type { FoodHistoryItem } from "@suppr/shared/nutrition/foodHistory";
+import type { FoodHistoryItem } from "@suppr/nutrition-core/foodHistory";
 
 /** Source → chip glyph (prototype `srcChip` map): a barcode/photo/AI item reads
  *  as such; plain recents use the clock. */

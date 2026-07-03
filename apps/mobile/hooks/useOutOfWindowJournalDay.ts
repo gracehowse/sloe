@@ -6,8 +6,8 @@ import {
   journalRowToMeal,
   NUTRITION_ENTRY_SELECT_COLUMNS,
 } from "@/lib/nutritionEntryRow";
-import { journalBootWindowStartKey } from "@suppr/shared/nutrition/journalWindow";
-import { mergeJournalByDay } from "@suppr/shared/nutrition/mergeJournalByDay";
+import { journalBootWindowStartKey } from "@suppr/nutrition-core/journalWindow";
+import { mergeJournalByDay } from "@suppr/nutrition-core/mergeJournalByDay";
 
 /**
  * ENG-1325 — out-of-window day navigation for the mobile journal (web
