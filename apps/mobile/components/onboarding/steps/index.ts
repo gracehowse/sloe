@@ -40,7 +40,6 @@ import { MobileDataBridgesStep } from "./data-bridges";
 import { UpgradeStep } from "./upgrade";
 import { FirstLogStep } from "./first-log";
 import { MobilePermissionsStep } from "./permissions";
-import { MobileImportStep } from "./import";
 
 export interface MobileStepComponentProps {
   compact?: boolean;
@@ -85,7 +84,6 @@ export {
   MobileStrategyStep,
   MobileRevealStep,
   MobileDataBridgesStep,
-  // Out-of-flow components — kept for a post-launch nudge surface.
+  // Out-of-flow component — kept for a post-launch nudge surface.
   MobilePermissionsStep,
-  MobileImportStep,
 };

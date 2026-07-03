@@ -29,7 +29,6 @@ const SWEPT_FILES = [
 const BRAND_CARVE_OUTS = new Set<string>([
   "app/login.tsx",
   "app/import-shared.tsx",
-  "components/onboarding/steps/import.tsx",
   "components/onboarding/steps/signup.tsx",
 ]);
 

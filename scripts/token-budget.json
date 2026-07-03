@@ -64,7 +64,6 @@
     "apps/mobile/components/onboarding/steps/data-bridges.tsx": 1,
     "apps/mobile/components/onboarding/steps/diet.tsx": 1,
     "apps/mobile/components/onboarding/steps/goal.tsx": 1,
-    "apps/mobile/components/onboarding/steps/import.tsx": 1,
     "apps/mobile/components/onboarding/steps/reveal.tsx": 6,
     "apps/mobile/components/onboarding/steps/weight.tsx": 1,
     "apps/mobile/components/onboarding/steps/welcome.tsx": 1,
