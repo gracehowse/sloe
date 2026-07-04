@@ -59,6 +59,7 @@ import {
 } from "@suppr/nutrition-core/foodSearchRanking";
 import { mergeFoodSearchRows } from "@suppr/nutrition-core/foodSearchMerge";
 import { perServingMicrosFromRows } from "@suppr/nutrition-core/recipeMicros";
+import { matchedAliasKeyForRow } from "@suppr/shared/recipe/matchedAliasPersist";
 export { RECIPE_INGREDIENT_REVIEW_CONFIDENCE, MIN_ACCEPT_CONFIDENCE };
 
 // Consolidation note (M4): shared parsing lives under `src/lib/recipe-ingredients/`
@@ -2079,6 +2080,9 @@ export async function addUserIngredient(
     confidence: number;
     hasMatch: boolean;
     overrideMacros?: IngredientOverride;
+    /** ENG-1346 — the matched food id (any source), when the caller's
+     *  search/match surfaced one. Feeds `matched_alias_key` below. */
+    fatsecretFoodId?: string | null;
   },
 ): Promise<{ ok: true; id: string } | { error: string }> {
   const insertRow: Record<string, unknown> = {
@@ -2106,6 +2110,15 @@ export async function addUserIngredient(
     source: payload.source,
     confidence: payload.confidence,
     added_by_user: true,
+    // ENG-1346 — carry the matched food id + its alias key (null unless the
+    // match is trusted: confidence >= 0.85 with source + id present).
+    fatsecret_food_id: payload.fatsecretFoodId ?? null,
+    matched_alias_key: matchedAliasKeyForRow({
+      name: payload.name,
+      source: payload.source,
+      fatsecretFoodId: payload.fatsecretFoodId,
+      confidence: payload.confidence,
+    }),
   };
   // ENG-1299 — include the micros panel only when the match carried one, so
   // this insert stays compatible with a not-yet-migrated DB (same

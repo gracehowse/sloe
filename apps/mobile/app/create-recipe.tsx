@@ -64,6 +64,7 @@ import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngre
 import { parseRawIngredients } from "@suppr/shared/recipe-ingredients/parseRawIngredients";
 import { splitPastedIngredientLines } from "@suppr/shared/recipe-ingredients/splitPastedIngredientLines";
 import { flatMacroRowsFromVerifyJson, verifyJsonNeedsReview } from "@suppr/nutrition-core/verifyRecipeResponse";
+import { resolveMatchedFoodId, buildManualIngredientRows } from "@suppr/shared/recipe/manualMatchedAlias";
 
 let ImagePicker: typeof import("expo-image-picker") | null = null;
 try {
@@ -83,6 +84,9 @@ type Ingredient = {
   fat: number;
   fiberG: number;
   source: string;
+  // ENG-1346 — matched food id + confidence, seeding `matched_alias_key` at insert.
+  fatSecretFoodId?: string | null;
+  confidence?: number | null;
 };
 
 let _nextId = 0;
@@ -560,6 +564,9 @@ export default function CreateRecipeScreen() {
         ? 0
         : Math.round((result.macrosPer100g?.fiberG ?? 0) * f * 10) / 10,
       source: result.source,
+      // ENG-1346 — a search pick is a direct user selection (confidence 1).
+      fatSecretFoodId: resolveMatchedFoodId(result),
+      confidence: 1,
     };
     setIngredients((prev) => {
       if (searchReplaceId) {
@@ -610,7 +617,7 @@ export default function CreateRecipeScreen() {
   }, []);
 
   const onBarcodeScanned = useCallback(
-    (_barcode: string, product: BarcodeProduct) => {
+    (barcode: string, product: BarcodeProduct) => {
       // Default to 100 g of the scanned product. The user can edit
       // the row afterward — same as Paste list / Scan photo paths.
       const grams = product.servingSizeG ?? 100;
@@ -628,6 +635,9 @@ export default function CreateRecipeScreen() {
           fat: Math.round(product.fat * f * 10) / 10,
           fiberG: Math.round(product.fiberG * f * 10) / 10,
           source: "OFF",
+          // ENG-1346 — the scanned barcode IS the OFF food id (exact-code lookup).
+          fatSecretFoodId: barcode,
+          confidence: 1,
         },
       ]);
       setBarcodeOpen(false);
@@ -791,19 +801,8 @@ export default function CreateRecipeScreen() {
         await supabase.from("recipes").update({ image_url: imgUrl }).eq("id", recipeId);
       }
 
-      const ingRows = ingredients.map((ing) => ({
-        recipe_id: recipeId,
-        name: ing.name,
-        amount: parseFloat(ing.amount) || null,
-        unit: ing.unit || null,
-        calories: Math.round(ing.calories),
-        protein: Math.round(ing.protein),
-        carbs: Math.round(ing.carbs),
-        fat: Math.round(ing.fat),
-        fiber_g: ing.fiberG,
-        is_verified: true,
-        source: ing.source,
-      }));
+      // ENG-1346 — the shared builder seeds each row's matched-alias columns.
+      const ingRows = buildManualIngredientRows(ingredients, recipeId);
 
       await supabase.from("recipe_ingredients").insert(ingRows);
       await supabase.from("saves").insert({ user_id: userId, recipe_id: recipeId });
