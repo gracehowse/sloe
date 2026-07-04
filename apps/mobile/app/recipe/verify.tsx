@@ -456,6 +456,9 @@ export default function VerifyScreen() {
         confidence: payload.confidence,
         hasMatch: payload.hasMatch,
         overrideMacros: payload.overrideMacros,
+        // ENG-1346 — forward the matched food id so the insert can seed
+        // `matched_alias_key` for a trusted match.
+        fatsecretFoodId: payload.fatSecretFoodId,
       });
       if ("error" in res) {
         Alert.alert("Couldn't add ingredient", res.error);

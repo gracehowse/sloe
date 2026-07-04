@@ -70,6 +70,9 @@ export type AddIngredientPayload = {
   hasMatch: boolean;
   confidence: number;
   overrideMacros?: IngredientOverride;
+  /** ENG-1346 — the matched food id (any source), when the verify match
+   *  carried one. Feeds `matched_alias_key` at the insert site. */
+  fatSecretFoodId?: string | null;
 };
 
 type Match = {
@@ -87,6 +90,9 @@ type Match = {
   } | null;
   /** ENG-1299 — absolute micros panel at the row's scaled grams (optional). */
   micros?: Record<string, number>;
+  /** ENG-1346 — the matched food id (any source), when the server-side
+   *  verify pipeline (`VerifiedIngredient.fatSecretFoodId`) returned one. */
+  fatSecretFoodId?: string | null;
 };
 
 type Props = {
@@ -250,6 +256,13 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
         source,
         hasMatch: Boolean(mm),
         confidence,
+        // ENG-1346 — only carry the matched food id when the match's own
+        // macros are being used unmodified; an override means the saved
+        // numbers no longer represent that exact food, so the alias key
+        // must not be seeded.
+        ...(mm && !override && match?.fatSecretFoodId
+          ? { fatSecretFoodId: match.fatSecretFoodId }
+          : {}),
       };
       if (override) payload.overrideMacros = override;
       await onAdd(payload);
