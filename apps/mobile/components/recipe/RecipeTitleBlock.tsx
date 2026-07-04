@@ -13,10 +13,10 @@
  */
 import { useEffect } from "react";
 import { Linking, Text, View } from "react-native";
-import * as Haptics from "expo-haptics";
 import { Check } from "lucide-react-native";
 
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { useHaptics } from "@/hooks/useHaptics";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import type { FitsYourDayVerdict } from "@/lib/recipe/recipeDetailLayout";
@@ -52,6 +52,7 @@ export function RecipeTitleBlock({
   hideTitle?: boolean;
 }) {
   const colors = useThemeColors();
+  const haptics = useHaptics();
 
   // ENG-1085 — the "Fits your day" differentiator is the screen's reason to
   // exist; render it as a confident SOLID verdict banner (white on a *Solid
@@ -64,9 +65,9 @@ export function RecipeTitleBlock({
   // re-fit; success notification haptic only.
   useEffect(() => {
     if (bannerOn && fits) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     }
-  }, [bannerOn, fits]);
+  }, [bannerOn, fits, haptics]);
   // Lead verb loud, the "% of your day" trailing quieter — split the shared
   // verdict label on its " · " separator (degrades to all-head if absent).
   const [bannerHead, ...bannerRest] = (verdict?.label ?? "").split(" · ");

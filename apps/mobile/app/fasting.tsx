@@ -6,7 +6,6 @@ import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { useHaptics } from "@/hooks/useHaptics";
 import { Flame, Moon } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
 import Svg, { Circle } from "react-native-svg";
 import Animated, {
   useSharedValue,
@@ -658,22 +657,19 @@ export default function FastingScreen() {
         // makes a stray hit unlikely there). Mirror of web `FastingTimer.tsx`.
         <SupprButton
           variant="primary"
+          haptic="none"
           style={styles.endBtn}
           accessibilityLabel="End fast — long-press to confirm"
           accessibilityHint="Long-press for one second to end your fast"
           onPress={() => {
-            if (process.env.EXPO_OS === "ios") {
-              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            }
+            haptics.warn();
             Alert.alert(
               "Hold to end fast",
               "Long-press the End fast button to confirm. This stops your active fast and saves the duration to your history.",
             );
           }}
           onLongPress={() => {
-            if (process.env.EXPO_OS === "ios") {
-              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
+            haptics.success();
             endFast();
           }}
           delayLongPress={650}

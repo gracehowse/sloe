@@ -16,7 +16,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
-import * as Haptics from "expo-haptics";
+import { useHaptics } from "@/hooks/useHaptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Mic,
@@ -104,7 +104,7 @@ function showToast(message: string): void {
 
 export default function CookModeScreen() {
   useKeepAwake();
-  const colors = useThemeColors();
+  const haptics = useHaptics(), colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the step-progress
   // rail, active step, primary "Next/Done" CTAs, and timer chips. Threaded
   // into the memoised StyleSheet via the dep array below. Completion/"Cooked
@@ -592,7 +592,7 @@ export default function CookModeScreen() {
       const clamped = clampCookScale(next);
       if (clamped === scale) return;
       setScale(clamped);
-      void Haptics.selectionAsync();
+      haptics.select();
       persistScale(clamped);
       try {
         track(AnalyticsEvents.recipe_scale_changed, {
@@ -648,7 +648,7 @@ export default function CookModeScreen() {
     if (timerElapsed < timerDurationSec) return;
     if (timerDoneFired) return;
     setTimerDoneFired(true);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.success();
     track(AnalyticsEvents.recipe_timer_completed, {
       recipeId,
       seconds: timerDurationSec,
@@ -725,7 +725,7 @@ export default function CookModeScreen() {
       Math.round((Date.now() - sessionStartRef.current) / 1000),
     );
     setCookDurationSec(elapsedSec);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.success();
     if (recipeId) {
       // Best-effort local-history write so the median + "Last time"
       // surfaces have data even when the user never taps Save. The
@@ -797,7 +797,7 @@ export default function CookModeScreen() {
       if (nextIndex < 0 || nextIndex > totalSteps || nextIndex === current) {
         return;
       }
-      void Haptics.selectionAsync();
+      haptics.select();
       if (via === "swipe") {
         track(AnalyticsEvents.cook_step_swiped, {
           direction: nextIndex > current ? "next" : "prev",
@@ -866,7 +866,7 @@ export default function CookModeScreen() {
   const handleRate = useCallback(
     (stars: number) => {
       setSavedRating(stars);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      haptics.select();
     },
     [],
   );
@@ -910,7 +910,7 @@ export default function CookModeScreen() {
       });
 
       setHistorySaved(true);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
       try {
         track(AnalyticsEvents.cook_history_saved, {
           recipeId,
@@ -1016,7 +1016,7 @@ export default function CookModeScreen() {
         ],
       });
       setAddedToRegulars(true);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
       try {
         track(AnalyticsEvents.saved_meal_created, {
           itemCount: 1,

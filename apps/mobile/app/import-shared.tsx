@@ -41,7 +41,7 @@ import {
 } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { safeGetClipboardString } from "@/lib/safeClipboard";
-import * as Haptics from "expo-haptics";
+import { useHaptics } from "@/hooks/useHaptics";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
@@ -213,6 +213,7 @@ type ImportState =
 type ProgressStep = "ingredients" | "nutrition" | "macros";
 
 export default function ImportSharedScreen() {
+  const haptics = useHaptics();
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the import CTAs,
   // outline/text-link buttons, source/share callouts, and the various entry-
@@ -1005,7 +1006,7 @@ export default function ImportSharedScreen() {
       });
       setSearchIngredientIdx(null);
       // ENG-1016 — replacing an ingredient's match is a commit → Medium.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
     },
     [searchIngredientIdx],
   );
@@ -1048,7 +1049,7 @@ export default function ImportSharedScreen() {
         return { ...prev, ingredientMacros: next };
       });
       setBarcodeIngredientIdx(null);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     },
     [barcodeIngredientIdx],
   );
@@ -1084,7 +1085,7 @@ export default function ImportSharedScreen() {
       });
       setOverrideIngredientIdx(null);
       // ENG-1016 — overwriting a row's macros is a commit → Medium.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
     },
     [overrideIngredientIdx],
   );
@@ -1116,12 +1117,12 @@ export default function ImportSharedScreen() {
     }
     setSavedRecipeId(saved.recipeId);
     setState("success");
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.success();
   }, [pendingRecipe, userId, mealTags, reviewServingsDraft, savedRecipeId, title]);
 
   const handleShareSuccessCard = useCallback(async () => {
     if (!successShareCard?.message) return;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptics.select();
     try {
       const result = await Share.share({
         message: successShareCard.message,

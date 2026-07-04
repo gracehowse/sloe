@@ -81,12 +81,11 @@ describe("Daily-loop haptics — LOG MEAL (Today)", () => {
 
   it("the confirm haptic is a Medium impact — the canonical commit weight (ENG-1016)", () => {
     // A durable log is a COMMIT, so the ordinary-log beat is Medium — the same
-    // weight as PressableScale haptic="confirm". The loud SUCCESS notification
-    // stays reserved for the win-moment landmark (asserted in winMomentLandmark
-    // tests).
-    expect(WIN_HOOK).toContain(
-      "void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);",
-    );
+    // weight as PressableScale haptic="confirm". Routed through useHaptics()
+    // (ENG-1342). The loud SUCCESS notification stays reserved for the
+    // win-moment landmark (asserted in winMomentLandmark tests).
+    expect(WIN_HOOK).toContain('import { useHaptics } from "@/hooks/useHaptics"');
+    expect(WIN_HOOK).toContain("haptics.confirm()");
   });
 
   it("the scattered raw per-call-site log haptics were removed (single funnel only)", () => {
@@ -103,10 +102,12 @@ describe("Daily-loop haptics — LOG MEAL (Today)", () => {
 
 describe("Daily-loop haptics — LOG WEIGHT", () => {
   it("save fires a confirm (Medium) and reserves SUCCESS for the new-low landmark", () => {
-    expect(LOG_WEIGHT).toMatch(/Haptics\.notificationAsync/);
-    expect(LOG_WEIGHT).toMatch(/NotificationFeedbackType\.Success/);
-    expect(LOG_WEIGHT).toMatch(/Haptics\.impactAsync/);
-    expect(LOG_WEIGHT).toMatch(/ImpactFeedbackStyle\.Medium/);
+    // ENG-1342 — tier block routes through useHaptics(): success for new-low,
+    // select for quieter milestone, confirm for ordinary save.
+    expect(LOG_WEIGHT).toContain('import { useHaptics } from "@/hooks/useHaptics"');
+    expect(LOG_WEIGHT).toContain("haptics.success()");
+    expect(LOG_WEIGHT).toContain("haptics.select()");
+    expect(LOG_WEIGHT).toContain("haptics.confirm()");
   });
 
   it("the weigh-in haptic stays gated so the flag-off path is silent", () => {

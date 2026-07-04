@@ -7,7 +7,7 @@ import * as Haptics from "expo-haptics";
  *
  * Premium products haptic on EVERY interaction. Cal AI does, MacroFactor
  * does, Apple's own apps do. Suppr had haptics in ~30 files but every
- * component invented its own `Haptics.notificationAsync(...)` call,
+ * component invented its own notification-async call,
  * leading to inconsistent intensities across the same interaction
  * category (e.g. some chips tap-haptic, others don't).
  *

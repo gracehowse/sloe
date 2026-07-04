@@ -29,11 +29,11 @@ import { FoodFallbackThumb } from "@/components/imagery/FoodFallbackThumb";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
-import * as Haptics from "expo-haptics";
 
 import { Accent, IconSize, MacroColors, MacroColorsDark, Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useHaptics } from "@/hooks/useHaptics";
 
 import { SourceDot, type SourceDotSource } from "@/components/ui/SourceDot";
 import { FatSecretBadge } from "@/components/ui/FatSecretBadge";
@@ -1668,6 +1668,7 @@ function BarcodeManualEntry({
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
+  const haptics = useHaptics();
   // The "Log it" commit CTA is now a solid-plum SupprButton (it owns its own
   // colour).
   const [portion, setPortion] = React.useState("100");
@@ -1798,9 +1799,7 @@ function BarcodeManualEntry({
         haptic="none"
         onPress={() => {
           if (!onConfirm) return;
-          if (process.env.EXPO_OS === "ios") {
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
+          haptics.success();
           onConfirm({
             ...entry,
             portionGrams: Number(portion) || 100,

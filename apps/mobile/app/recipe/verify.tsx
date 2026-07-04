@@ -21,7 +21,7 @@ import {
   SquarePen,
   Trash2,
 } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
+import { useHaptics } from "@/hooks/useHaptics";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { decodeEntities } from "@/lib/decodeEntities";
@@ -104,6 +104,7 @@ function VerifyTopBar({ onBack, colors, accessibilityLabel = "Back" }: { onBack:
 }
 
 export default function VerifyScreen() {
+  const haptics = useHaptics();
   const { id, fixture } = useLocalSearchParams<{ id?: string; fixture?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -319,7 +320,7 @@ export default function VerifyScreen() {
       });
       setSearchIndex(null);
       // ENG-1016 — replacing an ingredient match is a commit → Medium.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
     },
     [searchIndex, updateIngredient],
   );
@@ -371,7 +372,7 @@ export default function VerifyScreen() {
         ...scaled,
       });
       setBarcodeIndex(null);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     },
     [barcodeIndex, ingredients, updateIngredient],
   );
@@ -504,7 +505,7 @@ export default function VerifyScreen() {
         // classifier so buckets mirror the existing ConfidenceDot UI.
         confidence_bucket: classifyConfidence(payload.confidence),
       });
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics.success();
     },
     [recipeId],
   );
@@ -591,7 +592,7 @@ export default function VerifyScreen() {
       }
       if (newRows.length > 0) {
         setIngredients((prev) => [...prev, ...newRows]);
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.success();
       }
       setVoiceLogOpen(false);
       setPhotoLogOpen(false);
@@ -621,7 +622,7 @@ export default function VerifyScreen() {
         confidence_bucket: priorIng.isVerified ? "high" : "medium",
       });
       // ENG-1016 — pinning a manual macro override is a durable commit → Medium.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
     },
     [ingredients, recipeId],
   );
@@ -649,7 +650,7 @@ export default function VerifyScreen() {
               }
               setIngredients((prev) => prev.filter((_, i) => i !== index));
               setExpandedIndex(null);
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              haptics.confirm();
             },
           },
         ],
@@ -682,7 +683,7 @@ export default function VerifyScreen() {
         confidence_bucket: priorIng.isVerified ? "high" : "medium",
       });
       // ENG-1016 — clearing a saved override is a durable commit → Medium.
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics.confirm();
     },
     [ingredients, recipeId],
   );
@@ -701,7 +702,7 @@ export default function VerifyScreen() {
       Alert.alert("Save failed", result.error);
       return;
     }
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptics.success();
     router.replace(`/recipe/${recipeId}`);
   }, [isFixture, recipeId, recipe, ingredients, router]);
 

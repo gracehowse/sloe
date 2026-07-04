@@ -10,8 +10,8 @@
  *
  * This hook is that quiet confirm, in one place so health-sync + targets fire an
  * identical beat:
- *   - **Success haptic.** `Haptics.notificationAsync(Success)` — the same beat
- *     the win-moment uses, but with no overlay/Lottie. Distinct from the
+ *   - **Success haptic.** `useHaptics().success()` — the same beat the
+ *     win-moment uses, but with no overlay/Lottie. Distinct from the
  *     ordinary tap/select haptics.
  *   - **Win-colour flash.** `celebrate()` flips `active` true for ~1.4s; callers
  *     spread the returned `flashStyle` onto the just-saved card to wash it in
@@ -29,10 +29,10 @@
  * target save success).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, type ViewStyle } from "react-native";
-import * as Haptics from "expo-haptics";
+import { type ViewStyle } from "react-native";
 
 import { Accent } from "@/constants/theme";
+import { useHaptics } from "@/hooks/useHaptics";
 import { isFeatureEnabled } from "@/lib/analytics";
 
 /** How long the win-colour wash lingers before fading back to the resting card. */
@@ -50,6 +50,7 @@ export interface SettingsWinMoment {
 }
 
 export function useSettingsWinMoment(): SettingsWinMoment {
+  const haptics = useHaptics();
   const enabled = isFeatureEnabled("redesign_winmoment");
   const [active, setActive] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,13 +66,11 @@ export function useSettingsWinMoment(): SettingsWinMoment {
 
   const celebrate = useCallback(() => {
     if (!enabled) return;
-    if (Platform.OS === "ios" || Platform.OS === "android") {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    haptics.success();
     setActive(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setActive(false), FLASH_MS);
-  }, [enabled]);
+  }, [enabled, haptics]);
 
   const flashStyle: ViewStyle | undefined = active
     ? { backgroundColor: Accent.winSoft, borderColor: Accent.win }

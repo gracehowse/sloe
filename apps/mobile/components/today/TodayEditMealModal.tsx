@@ -14,8 +14,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import * as Haptics from "expo-haptics";
 import Animated from "react-native-reanimated";
+import { useHaptics } from "@/hooks/useHaptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, ChevronRight, Shuffle, Copy } from "lucide-react-native";
 import {
@@ -198,6 +198,7 @@ function EditEntryV2(props: TodayEditMealModalProps) {
     onSwapFood,
     onCopyMeal,
   } = props;
+  const haptics = useHaptics();
 
   // ENG-813 (Redesign — Design Direction 2026): element→sheet morph on open
   // + soft-elevation resting cards + quiet log-confirm haptic, all gated by
@@ -211,16 +212,11 @@ function EditEntryV2(props: TodayEditMealModalProps) {
   const portionNum = parsePortion(editPortion);
   const portionLabel = formatMultiplier(portionNum);
 
-  // Quiet selection haptic on portion recalc (the ±/chip-committed value,
-  // never raw keystrokes) — a Light stepper beat. The durable Save CTA fires
-  // the heavier Medium ("confirm") commit beat (ENG-1016).
+  // Confirm haptic on portion recalc (the ±/chip-committed value, never raw
+  // keystrokes) — Medium commit weight via useHaptics (ENG-1016 / ENG-1342).
   const onPortionChange = (next: number) => {
     if (motionEnabled) {
-      try {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      } catch {
-        /* haptics unavailable (e.g. Expo Go) — silent */
-      }
+      haptics.confirm();
     }
     onApplyPortionMultiplier(next);
   };

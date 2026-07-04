@@ -369,7 +369,8 @@ describe("Cook screen — FIX 2 (parsed-duration timer) source structure", () =>
   });
 
   it("fires Success haptic + step-done prompt when the countdown completes", () => {
-    expect(SOURCE).toMatch(/Haptics\.NotificationFeedbackType\.Success/);
+    // ENG-1342 — routed through useHaptics().success().
+    expect(SOURCE).toContain("haptics.success()");
     // The step-done prompt is an Alert with Restart / Next step
     // buttons. Anchor on both choices so a future tweak that only
     // shows one option still flags here.
@@ -387,8 +388,9 @@ describe("Cook screen — FIX 2 (parsed-duration timer) source structure", () =>
 });
 
 describe("Cook screen — FIX 3 (completion polish) source structure", () => {
-  it("imports expo-haptics for the on-completion success haptic", () => {
-    expect(SOURCE).toMatch(/from\s+["']expo-haptics["']/);
+  it("routes on-completion success haptic through useHaptics (ENG-1342)", () => {
+    expect(SOURCE).toContain('import { useHaptics } from "@/hooks/useHaptics"');
+    expect(SOURCE).toContain("haptics.success()");
   });
 
   it("captures cook session duration on isDone transition", () => {

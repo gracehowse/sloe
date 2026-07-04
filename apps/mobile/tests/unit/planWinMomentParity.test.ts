@@ -53,24 +53,21 @@ describe("Plan win-moment parity (ENG-820)", () => {
   });
 
   it("mobile fires the loud success haptic only on the rising edge into a 7/7 win", () => {
-    expect(MOBILE_SRC).toContain(
-      "Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)",
-    );
+    // ENG-1342 — routed through useHaptics().success().
+    expect(MOBILE_SRC).toContain("haptics.success()");
     // Rising-edge guard so re-mounting an already-7/7 plan never replays it.
     expect(MOBILE_SRC).toContain('summaryTone === "win" && prev !== null && prev !== "win"');
   });
 
   it("mobile fires a settle haptic on plan-generate and on move-meal commit (flag-gated)", () => {
-    // Both commits use a Medium impact (settle), reserving the loud success
-    // notification for the 7/7 landmark. Two distinct call-sites.
-    const settleHaptics = MOBILE_SRC.match(
-      /Haptics\.impactAsync\(Haptics\.ImpactFeedbackStyle\.Medium\)/g,
-    );
+    // Both commits use a Medium impact (settle) via useHaptics().confirm(),
+    // reserving the loud success notification for the 7/7 landmark.
+    const settleHaptics = MOBILE_SRC.match(/haptics\.confirm\(\)/g);
     expect(settleHaptics).not.toBeNull();
     expect((settleHaptics ?? []).length).toBeGreaterThanOrEqual(2);
     // Both must be behind the win flag (no haptic when the flag is off).
     expect(MOBILE_SRC).toContain(
-      "if (winMomentsEnabled) {\n        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);",
+      "if (winMomentsEnabled) {\n        haptics.confirm();",
     );
   });
 

@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
-import * as Haptics from "expo-haptics";
+import { useHaptics } from "@/hooks/useHaptics";
 import { useToday } from "./useToday";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -427,6 +427,7 @@ function formatMealTimeDisplay(
 // everywhere).
 export default function TrackerScreen() {
   const { router, params, insets, session, userId } = useToday();
+  const haptics = useHaptics();
   const householdMemberCount = useHouseholdMemberCount(userId);
   // ENG-1247 — pad main scroll by frosted (absolute) tab bar height to clear it.
   const tabBarHeight = useTabBarClearance();
@@ -2391,18 +2392,14 @@ export default function TrackerScreen() {
       // Fire the haptic + reveal the toast. Component handles the
       // 2.5s auto-fade.
       try {
-        if (Platform.OS === "ios") {
-          void Haptics.notificationAsync(
-            Haptics.NotificationFeedbackType.Success,
-          );
-        }
+        haptics.success();
       } catch {
         /* haptics not available — toast still renders. */
       }
       setFirstLogToastVisible(true);
     }
     firstLogPrevCountRef.current = curr;
-  }, [mealsToday.length, firstLogAckShown, isToday]);
+  }, [mealsToday.length, firstLogAckShown, isToday, haptics]);
 
   // Maintenance tile + popover + activity-bonus baseline. Resolves via
   // the shared `resolveMaintenance`: adaptive TDEE wins at medium/high
@@ -2956,7 +2953,7 @@ export default function TrackerScreen() {
     if (!prev && hit) {
       if (!celebrated[dayKey]) {
         setTargetCelebration(true);
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics.success();
         celebrated[dayKey] = true;
         const t = setTimeout(() => setTargetCelebration(false), 2500);
         map[dayKey] = hit;
@@ -2975,6 +2972,7 @@ export default function TrackerScreen() {
     targets.protein,
     totals.calories,
     totals.protein,
+    haptics,
   ]);
 
   const remaining = effectiveCalorieGoal - totals.calories;
@@ -5079,9 +5077,7 @@ export default function TrackerScreen() {
             refreshing={isPullToRefreshing}
             onRefresh={async () => {
               setIsPullToRefreshing(true);
-              if (process.env.EXPO_OS === "ios") {
-                void Haptics.selectionAsync();
-              }
+              haptics.select();
               try {
                 if (userId) {
                   await syncHealthDataThrottled(userId, { bypassThrottle: true });

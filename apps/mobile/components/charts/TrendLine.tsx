@@ -7,9 +7,9 @@ import {
   View,
 } from "react-native";
 import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
-import * as Haptics from "expo-haptics";
 
 import { Accent, Spacing } from "@/constants/theme";
+import { useHaptics } from "@/hooks/useHaptics";
 import { computeWeightChartDomain } from "@/lib/weightProjection";
 
 type DataPoint = { label: string; value: number };
@@ -39,6 +39,7 @@ export default function TrendLine({
   trackColor,
   formatValue,
 }: Props) {
+  const haptics = useHaptics();
   const [chartWidthPx, setChartWidthPx] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(() =>
     Math.max(0, data.length - 1),
@@ -84,7 +85,7 @@ export default function TrendLine({
       }
       setSelectedIndex((prev) => {
         if (prev !== bestI) {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          haptics.select();
         }
         return bestI;
       });
@@ -99,7 +100,7 @@ export default function TrendLine({
         if (chartWidthPx > 0) pick(e.nativeEvent.locationX, chartWidthPx);
       },
     });
-  }, [chartWidthPx, data.length, projectedLength]);
+  }, [chartWidthPx, data.length, projectedLength, haptics]);
 
   if (data.length === 0) return null;
 

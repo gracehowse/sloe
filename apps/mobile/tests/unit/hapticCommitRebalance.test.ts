@@ -104,27 +104,21 @@ describe("Haptic commit-rebalance — canonical commit primitives encode Medium"
       resolve(MOBILE_ROOT, "hooks/use-win-moment.ts"),
       "utf8",
     );
-    // The ordinary-log commit beat — Medium, NOT the old Light (ENG-1016).
-    expect(src).toContain(
-      "void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);",
-    );
-    expect(src).not.toContain(
-      "void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);",
-    );
+    // The ordinary-log commit beat — Medium via useHaptics().confirm()
+    // (ENG-1016 weight, ENG-1342 vehicle). No scattered Light impacts.
+    expect(src).toContain('import { useHaptics } from "@/hooks/useHaptics"');
+    expect(src).toContain("haptics.confirm()");
+    expect(src).not.toContain("expo-haptics");
+    expect(src).not.toContain("ImpactFeedbackStyle.Light");
   });
 });
 
 describe("Haptic commit-rebalance — raw expo-haptics ratchet (ENG-1016)", () => {
-  // Recorded ceiling after ENG-1016's consolidation pass. Census on main was
-  // ~112; this pass removed 8 scattered Today log haptics → 104. ENG-947 adds
-  // one raw selection haptic in `changeCookStep` (recipe cook overlay step nav
-  // previously had none) → 105. ENG-952 adds the quieter weight-milestone tier:
-  // a soft `impactAsync(Light)` in `LogWeightSheet`, co-located with the
-  // reserved new-low `notificationAsync(Success)` so all weight-save haptic
-  // weights resolve in one tier block (deliberately a softer Light, NOT the
-  // Medium commit weight, so it stays a raw call rather than routing through
-  // `useHaptics().confirm()`) → 106. Route further COMMIT taps through primitives.
-  const RAW_HAPTIC_CEILING = 106;
+  // ENG-1342 completed the migration: every production call-site now routes
+  // through `PressableScale` (5) or `useHaptics` (6). The only remaining
+  // `Haptics.*` invocations live in those two canonical vehicles — 11 total.
+  // Raising this ceiling means a new scattered raw call slipped in.
+  const RAW_HAPTIC_CEILING = 11;
 
   it("does not grow the number of raw Haptics call-sites in production code", () => {
     const count = countRawHapticCallSites();
