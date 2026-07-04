@@ -70,8 +70,7 @@ export type AddIngredientPayload = {
   hasMatch: boolean;
   confidence: number;
   overrideMacros?: IngredientOverride;
-  /** ENG-1346 — the matched food id (any source), when the verify match
-   *  carried one. Feeds `matched_alias_key` at the insert site. */
+  /** ENG-1346 — matched food id (any source); feeds `matched_alias_key` at insert. */
   fatSecretFoodId?: string | null;
 };
 
@@ -90,8 +89,7 @@ type Match = {
   } | null;
   /** ENG-1299 — absolute micros panel at the row's scaled grams (optional). */
   micros?: Record<string, number>;
-  /** ENG-1346 — the matched food id (any source), when the server-side
-   *  verify pipeline (`VerifiedIngredient.fatSecretFoodId`) returned one. */
+  /** ENG-1346 — matched food id (any source) from the verify pipeline. */
   fatSecretFoodId?: string | null;
 };
 
@@ -228,13 +226,6 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
     try {
       const mm = match?.macros;
       const override = showOverride ? sanitizeOverrideInput(overrideRaw) : null;
-      const baseCalories = mm?.calories ?? override?.calories ?? 0;
-      const baseProtein = mm?.protein ?? override?.protein ?? 0;
-      const baseCarbs = mm?.carbs ?? override?.carbs ?? 0;
-      const baseFat = mm?.fat ?? override?.fat ?? 0;
-      const baseFiber = mm?.fiberG ?? override?.fiber ?? 0;
-      const baseSugar = mm?.sugarG ?? 0;
-      const baseSodium = mm?.sodiumMg ?? 0;
       const source = match?.source ?? (override ? "Manual" : "Unverified");
       const confidence = match?.confidence ?? (override ? 0.5 : 0);
       const amt = parseFloat(amount);
@@ -242,13 +233,13 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
         name: match?.matchedName ?? name.trim(),
         amount: Number.isFinite(amt) && amt > 0 ? amt : null,
         unit: unit.trim() || null,
-        calories: baseCalories,
-        protein: baseProtein,
-        carbs: baseCarbs,
-        fat: baseFat,
-        fiberG: baseFiber,
-        sugarG: baseSugar,
-        sodiumMg: baseSodium,
+        calories: mm?.calories ?? override?.calories ?? 0,
+        protein: mm?.protein ?? override?.protein ?? 0,
+        carbs: mm?.carbs ?? override?.carbs ?? 0,
+        fat: mm?.fat ?? override?.fat ?? 0,
+        fiberG: mm?.fiberG ?? override?.fiber ?? 0,
+        sugarG: mm?.sugarG ?? 0,
+        sodiumMg: mm?.sodiumMg ?? 0,
         // ENG-1299 — carry the match's micros panel with its macros (manual
         // rows have none; overrides keep the match's panel, mirroring how
         // sugar/sodium stay match-sourced under an override).
@@ -256,13 +247,8 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
         source,
         hasMatch: Boolean(mm),
         confidence,
-        // ENG-1346 — only carry the matched food id when the match's own
-        // macros are being used unmodified; an override means the saved
-        // numbers no longer represent that exact food, so the alias key
-        // must not be seeded.
-        ...(mm && !override && match?.fatSecretFoodId
-          ? { fatSecretFoodId: match.fatSecretFoodId }
-          : {}),
+        // ENG-1346 — carry the matched food id only for an unmodified match (an override no longer represents that exact food).
+        ...(mm && !override && match?.fatSecretFoodId ? { fatSecretFoodId: match.fatSecretFoodId } : {}),
       };
       if (override) payload.overrideMacros = override;
       await onAdd(payload);

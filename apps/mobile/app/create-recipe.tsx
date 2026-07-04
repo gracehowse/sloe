@@ -64,7 +64,7 @@ import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngre
 import { parseRawIngredients } from "@suppr/shared/recipe-ingredients/parseRawIngredients";
 import { splitPastedIngredientLines } from "@suppr/shared/recipe-ingredients/splitPastedIngredientLines";
 import { flatMacroRowsFromVerifyJson, verifyJsonNeedsReview } from "@suppr/nutrition-core/verifyRecipeResponse";
-import { matchedAliasKeyForRow } from "@suppr/shared/recipe/matchedAliasPersist";
+import { resolveMatchedFoodId, buildManualIngredientRows } from "@suppr/shared/recipe/manualMatchedAlias";
 
 let ImagePicker: typeof import("expo-image-picker") | null = null;
 try {
@@ -84,10 +84,7 @@ type Ingredient = {
   fat: number;
   fiberG: number;
   source: string;
-  // ENG-1346 — the matched food id (any source) + match confidence, carried
-  // through to the insert so `matchedAliasKeyForRow` can seed
-  // `matched_alias_key` for trusted matches (>= MATCHED_ALIAS_MIN_CONFIDENCE).
-  // Absent (undefined) for rows with no upstream match (voice/photo/manual).
+  // ENG-1346 — matched food id + confidence, seeding `matched_alias_key` at insert.
   fatSecretFoodId?: string | null;
   confidence?: number | null;
 };
@@ -567,16 +564,8 @@ export default function CreateRecipeScreen() {
         ? 0
         : Math.round((result.macrosPer100g?.fiberG ?? 0) * f * 10) / 10,
       source: result.source,
-      // ENG-1346 — a search pick is a direct user selection (the user
-      // tapped this exact result), confidence 1 mirrors verify.tsx's
-      // onFoodSelected. Carry whichever id field the matched source
-      // populated — matchedAliasKeyForRow requires both parts anyway.
-      fatSecretFoodId:
-        result.fatSecretFoodId ??
-        (result.fdcId != null ? String(result.fdcId) : null) ??
-        result.barcode ??
-        result.customFoodId ??
-        null,
+      // ENG-1346 — a search pick is a direct user selection (confidence 1).
+      fatSecretFoodId: resolveMatchedFoodId(result),
       confidence: 1,
     };
     setIngredients((prev) => {
@@ -646,9 +635,7 @@ export default function CreateRecipeScreen() {
           fat: Math.round(product.fat * f * 10) / 10,
           fiberG: Math.round(product.fiberG * f * 10) / 10,
           source: "OFF",
-          // ENG-1346 — the scanned barcode IS the OFF food id (mirrors
-          // web's `fatSecretFoodId: override.barcode` convention). A
-          // barcode scan is an exact-code lookup, not a fuzzy match.
+          // ENG-1346 — the scanned barcode IS the OFF food id (exact-code lookup).
           fatSecretFoodId: barcode,
           confidence: 1,
         },
@@ -814,29 +801,8 @@ export default function CreateRecipeScreen() {
         await supabase.from("recipes").update({ image_url: imgUrl }).eq("id", recipeId);
       }
 
-      const ingRows = ingredients.map((ing) => ({
-        recipe_id: recipeId,
-        name: ing.name,
-        amount: parseFloat(ing.amount) || null,
-        unit: ing.unit || null,
-        calories: Math.round(ing.calories),
-        protein: Math.round(ing.protein),
-        carbs: Math.round(ing.carbs),
-        fat: Math.round(ing.fat),
-        fiber_g: ing.fiberG,
-        is_verified: true,
-        source: ing.source,
-        // ENG-1346 — carry the matched food id + its alias key (null unless
-        // the match is trusted: confidence >= 0.85 with source + id present).
-        fatsecret_food_id: ing.fatSecretFoodId ?? null,
-        confidence: ing.confidence ?? null,
-        matched_alias_key: matchedAliasKeyForRow({
-          name: ing.name,
-          source: ing.source,
-          fatsecretFoodId: ing.fatSecretFoodId,
-          confidence: ing.confidence,
-        }),
-      }));
+      // ENG-1346 — the shared builder seeds each row's matched-alias columns.
+      const ingRows = buildManualIngredientRows(ingredients, recipeId);
 
       await supabase.from("recipe_ingredients").insert(ingRows);
       await supabase.from("saves").insert({ user_id: userId, recipe_id: recipeId });
