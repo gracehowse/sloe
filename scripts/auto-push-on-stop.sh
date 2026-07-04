@@ -7,7 +7,8 @@
 # graveyard cleaned up on 2026-05-02 was the cost of that.
 #
 # Safety guards:
-# - Only operates on branches matching `claude/*` (Claude-owned).
+# - Only operates on branches matching `claude/*` or `agent/*` (Claude-owned;
+#   the latter covers the current agent/claude|cursor|codex/* convention).
 # - Never commits — only pushes commits that ALREADY exist locally.
 #   Half-finished code stays uncommitted; this hook does not paper over
 #   that.
@@ -33,9 +34,11 @@ set -uo pipefail
 git_dir="$(git rev-parse --git-common-dir 2>/dev/null)" || exit 0
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" || exit 0
 
-# Only act on claude/* branches.
+# Only act on claude/* or agent/* branches (current convention is
+# agent/claude|cursor|codex/<linear-id>-<slug>; claude/* kept for legacy
+# branches predating that rename).
 case "$branch" in
-  claude/*) ;;
+  claude/*|agent/*) ;;
   *) exit 0 ;;
 esac
 
