@@ -1,0 +1,73 @@
+# Scheduled live-RLS/security-advisor verification (ENG-1354).
+#
+# Why this exists
+#   13 of 172 migrations touch RLS, yet before this workflow the only live
+#   verification was scripts/verify-eng1244-live-rls.mts — a single
+#   ticket-scoped manual script wired to nothing. Policy correctness rested
+#   on eyeball review of SQL files. This workflow runs Supabase's own
+#   security advisors against the LIVE project daily and fails the run
+#   loudly (red check + clear log) if any ERROR-level lint is present.
+#
+# This is READ-ONLY verification — it never applies migrations or mutates
+# schema. It only runs `supabase db lint --linked`, which executes advisory
+# SELECT queries against the `lint.*` views (the same mechanism behind the
+# Supabase Dashboard's Advisors page and the MCP get_advisors tool).
+#
+# Relationship to the existing Alarm 6 cron (docs/operations/alerting.md):
+#   app/api/cron/supabase-advisor-check (invoked daily 06:00 UTC by
+#   scheduled-crons.yml) is a complementary, separate check — it polls the
+#   Management API and emits a Sentry issue per ERROR/WARN finding (a
+#   monitoring concern someone has to notice in Sentry). This workflow is a
+#   CI-visible gate: a red GitHub Actions run for ERROR-level findings,
+#   which shows up in the repo's check history without anyone having to go
+#   looking in Sentry.
+#
+# Required repo secrets (see .github/workflows/scheduled-rls-advisors.yml
+# history / PR for ENG-1354 — NOT YET SET as of this writing):
+#   - SUPABASE_ACCESS_TOKEN  Supabase CLI / Management API personal access
+#                            token (https://supabase.com/dashboard/account/tokens).
+#                            Read scope is sufficient for `db lint`.
+#   - SUPABASE_PROJECT_REF   Live project ref. Falls back to deriving it from
+#                            NEXT_PUBLIC_SUPABASE_URL (already a repo secret)
+#                            if unset — see scripts/verify-rls-advisors.mts.
+# Until SUPABASE_ACCESS_TOKEN is added, this workflow will run and fail
+# loudly with a clear "SUPABASE_ACCESS_TOKEN is not set" message rather than
+# silently passing — by design (fail closed, not open).
+
+name: Scheduled RLS advisors
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # daily 07:00 UTC — offset an hour from the existing 06:00 UTC advisor-check cron
+  workflow_dispatch: {}
+
+concurrency:
+  group: scheduled-rls-advisors
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Run live RLS/security-advisor verification
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        run: npm run verify:rls-advisors
