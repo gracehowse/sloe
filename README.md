@@ -25,11 +25,21 @@ Copy environment variables from your team vault or Vercel. See [`docs/environmen
 | `npm run build` | Production build |
 | `npm run start` | Run production server locally |
 | `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint (web `src/`, `app/`, `tests/`) |
 | `npm test` | Unit / integration tests (Vitest) |
 | `npm run test:e2e` | Playwright E2E |
 | `npm run smoke:production` | HTTP smoke against `PLAYWRIGHT_BASE_URL` |
 | `npm run db:types` | Regenerate Supabase types for web, then copy the canonical output to mobile |
 | `npm run db:types:check` | Fail if web and mobile Supabase type files have drifted; run `npm run db:types` to fix |
+| `npm run ci` | Full local gate mirroring CI: env verify, migrations, typecheck, lint, tests, every `check:*` ratchet below, web build, and the mobile checks — run once before every push |
+| `npm run check:type-scale` | Ratchet: off-ladder web `text-[Npx]` classes (ENG-119) |
+| `npm run check:type-scale-mobile` | Ratchet: raw mobile `fontSize: N` literals off the `Type` ramp (ENG-1002) |
+| `npm run check:spacing-scale` | Ratchet: off-scale mobile spacing literals (ENG-1007) |
+| `npm run check:token-scale` | Ratchet: raw hexes / off-scale Tailwind colours / border-radius, web + mobile (ENG-1007) |
+| `npm run check:screen-budget` | Ratchet: no screen file over the pinned 400-line budget (ENG-717) |
+| `npm run mobile:lint` | ESLint for `apps/mobile` |
+| `npm run mobile:typecheck` | TypeScript check for `apps/mobile` |
+| `npm run mobile:test` | Unit tests for `apps/mobile` (Vitest) |
 
 ## Documentation
 
