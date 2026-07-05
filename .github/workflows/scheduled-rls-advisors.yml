@@ -1,4 +1,5 @@
-# Scheduled live-RLS/security-advisor verification (ENG-1354).
+# Scheduled live-RLS/security-advisor verification (ENG-1354), plus a
+# merged-but-unapplied-migration gate (ENG-1394).
 #
 # Why this exists
 #   13 of 172 migrations touch RLS, yet before this workflow the only live
@@ -7,6 +8,20 @@
 #   on eyeball review of SQL files. This workflow runs Supabase's own
 #   security advisors against the LIVE project daily and fails the run
 #   loudly (red check + clear log) if any ERROR-level lint is present.
+#
+# ENG-1394 (2026-07-05 deep audit, SEC-04/DI-03): the ENG-1126 recipe_collections
+# migration merged to main (PR #754) but its SQL was invalid (an expression
+# inside an inline UNIQUE constraint), so `supabase db push --linked` silently
+# no-opped on it every time — the shipped web+mobile Collections feature threw
+# "relation does not exist" for every production user for two days, and
+# `npm run check:migrations:static` (the only migration gate wired into CI)
+# only checks filename structure, not whether a migration actually landed on
+# the live project. This workflow's existing Supabase CLI link (below) is
+# reused to additionally run `check:migrations --strict`, which fails the run
+# if any committed migration file has no corresponding
+# `supabase_migrations.schema_migrations` row on the live project — turning
+# "merged but never applied" into a same-day red check instead of a silent gap
+# discovered by a user-facing error weeks later.
 #
 # This is READ-ONLY verification — it never applies migrations or mutates
 # schema. It only runs `supabase db lint --linked`, which executes advisory
@@ -71,3 +86,12 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
         run: npm run verify:rls-advisors
+
+      - name: Fail on merged-but-unapplied migrations (ENG-1394)
+        # Reuses the `supabase link` state the previous step already
+        # established (persisted to supabase/.temp/project-ref, gitignored,
+        # readable by any subsequent CLI invocation in this job) — no
+        # second link call needed. --strict exits 1 if any committed
+        # migration file has no corresponding row in
+        # supabase_migrations.schema_migrations on the live project.
+        run: npm run check:migrations -- --strict
