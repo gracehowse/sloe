@@ -1,6 +1,6 @@
 # Visual regression — web + mobile
 
-**Web:** Playwright snapshots (committed baselines) + optional **Applitools Eyes** (hosted AI diff when `APPLITOOLS_API_KEY` is set) + **Storybook** (component isolation). **Mobile:** Maestro deeplink sweep + pixel diff. **Beta feedback:** Centercode (qualitative — not layout QA). Optional **PostHog Visual Review** on PRs.
+**Web:** Playwright snapshots (committed baselines) + **Chromatic** (hosted PR review, informs not gates) + **Storybook** (component isolation). **Mobile:** Maestro deeplink sweep + pixel diff. **Beta feedback:** Centercode (qualitative — not layout QA). Optional **PostHog Visual Review** on PRs.
 
 ## Process — when you change a sub-page
 
@@ -76,29 +76,6 @@ npm run mobile:test:screens:update-baseline   # after approving diffs
 4. Install/configure the VR CLI per [PostHog Visual Review docs](https://posthog.com/docs/visual-review) (`playwright/snapshots.yml` is the manifest stub).
 
 Until then, PRs still get Playwright snapshot failures + HTML report artifacts from the `playwright-visual` job.
-
----
-
-## Applitools Eyes (optional hosted AI diff)
-
-Complements committed Playwright PNGs — baselines live in the Applitools dashboard, not in git.
-
-```bash
-# .env.local
-APPLITOOLS_API_KEY=your-key
-
-npm run test:e2e:applitools
-```
-
-| Env | Purpose |
-|-----|---------|
-| `APPLITOOLS_API_KEY` | Required to run Eyes specs |
-| `APPLITOOLS_BATCH_NAME` | Optional batch label in dashboard |
-| `APPLITOOLS_SERVER_URL` | Optional private Eyes server |
-
-**Spec:** `tests/e2e/visual-applitools.spec.ts` (public shell subset). **CI:** `applitools-eyes` job in `.github/workflows/visual-review.yml` when the repo secret is set.
-
-Use when in-repo snapshots + PostHog VR still miss regressions (smart diff, cross-browser expansion).
 
 ---
 

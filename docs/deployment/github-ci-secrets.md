@@ -30,7 +30,6 @@ Local: add the same name to `.env.local` (never commit) for `npm run chromatic`.
 
 | Secret | Purpose |
 |--------|---------|
-| `APPLITOOLS_API_KEY` | Hosted AI diff job in `.github/workflows/visual-review.yml`. |
 | `VR_API_TOKEN` | PostHog Visual Review (job commented out until enabled). |
 | `CENTERCODE_*` | See `docs/operations/centercode-beta-feedback.md` for beta release workflow. |
 
