@@ -1,5 +1,7 @@
 # Suppr — Master TODO
 
+> **Status:** Historical snapshot (consolidated 2026-04-19) — not the live worklist. **Linear is the canonical task tracker now**; work from there, not this file. This file is kept as a historical record of the April 2026 consolidated worklist.
+
 **The single worklist.** Consolidated 2026-04-19 from 6 scattered lists (see [Sources](#sources) at bottom). Work from this file. Update as items land. Historical source files are at [docs/planning/archive/](docs/planning/archive/).
 
 **Also read:** [CONTRIBUTING.md](CONTRIBUTING.md) — how this file fits next to the audit checklist (`docs/planning/consolidated-audit-todos-2026-04-24.md`), product parity queue, and executor backlog so work is not duplicated.

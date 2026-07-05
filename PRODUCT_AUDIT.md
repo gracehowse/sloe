@@ -1,5 +1,7 @@
 # Product Audit — Suppr
 
+> **Status:** Historical audit snapshot (2026-04-19) — reflects the product as of that date, not current state. Kept as a historical record; do not action its findings as live. **Linear is the canonical task tracker** for anything still outstanding.
+
 **Date**: 2026-04-19
 **Previous audit**: 2026-04-12 (see section "What changed in the last 7 days")
 **Verdict**: **Shippable core, content-starved shell** — reliability gaps from the prior audit are substantially closed. The new ship-blockers are distribution (empty Discover feed) and monetisation (mobile IAP offerings not provisioned, server-side Pro gate leak on photo-log).

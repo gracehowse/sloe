@@ -1,5 +1,7 @@
 # Suppr Documentation
 
+> **Status:** Reference index — some entries below are historical (last meaningful update to this index: April 2026). For the live task list, **Linear is the canonical task tracker** (not any `TODO.md` in this repo). Individual docs carry their own dates; treat undated planning entries as historical.
+
 Single source of truth for the Suppr product, codebase, and operations.
 
 ### Documentation system (Genesis)
