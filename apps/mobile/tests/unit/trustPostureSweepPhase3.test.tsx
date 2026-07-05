@@ -79,12 +79,15 @@ describe("Phase 3 trust posture sweep — mobile source pins", () => {
     const src = fs.readFileSync(filePath, "utf8");
     expect(src).toMatch(/import\s*\{\s*SourceDot/);
     expect(src).toMatch(/mapMealSourceToDot/);
-    // 2026-05-24 — inline 6pt success dot on meal rows (SourceDot
-    // import retained for parity with LogSheet; row chrome uses the
-    // compact dot so the header doesn't compete with MacroIconRow).
-    // ENG-1141 — the dot's corner snapped from the off-scale `borderRadius: 3`
-    // to the on-scale `Radius.full` token (still a perfect circle on a 6×6).
-    expect(src).toMatch(/width:\s*6,\s*height:\s*6,\s*borderRadius:\s*Radius\.full/);
+    // ENG-1418 (2026-07-05 deep audit, finding tl-F2/label-F2) — the
+    // 2026-05-24 decision kept SourceDot's import "for parity" but
+    // rendered a hardcoded Accent.success dot instead, so EVERY
+    // non-thumbnail meal row showed a green "verified" dot regardless
+    // of actual source (AI-estimated and manual entries included).
+    // Fixed to actually call SourceDot with the mapped source, matching
+    // the RecipeIngredientGrid / web today-meals-section pattern.
+    expect(src).toMatch(/<SourceDot\s+source=\{mapMealSourceToDot\([^)]*\)\}\s+size=\{6\}\s*\/>/);
+    expect(src).not.toMatch(/backgroundColor:\s*Accent\.success/);
   });
 
   it("LogSheet (mobile) imports SourceDot + TrustChip", () => {

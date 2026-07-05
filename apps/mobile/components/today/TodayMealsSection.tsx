@@ -1270,7 +1270,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                             );
                           }
                           return (
-                            <View style={{ width: 6, height: 6, borderRadius: Radius.full, backgroundColor: Accent.success, flexShrink: 0 }} />
+                            <SourceDot source={mapMealSourceToDot(m.source)} size={6} />
                           );
                         })()}
                         <View style={{ flex: 1, gap: Spacing.xs, minWidth: 0 }}>
