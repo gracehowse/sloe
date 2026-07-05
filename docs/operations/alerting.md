@@ -114,6 +114,27 @@ Every row below must be `Wired` before App Store submission. `Pending Grace` is 
 - **What to do when it fires:** Open the Sentry issue → read the `detail` + `remediation` link in the issue body. Most critical findings are RLS gaps (table without RLS, RLS without a deny-default policy, function-with-elevated-privs callable by `anon`). Drop a fix migration the same day — these are entitlement-leak risks.
 - **Status:** ✅ Wired 2026-05-16 (`SUPABASE_PAT` env var still to be set on Vercel by Grace).
 
+**Complementary CI gate (ENG-1354, 2026-07-05):** Alarm 6 above is a
+monitoring concern — findings land as Sentry issues someone has to notice.
+`.github/workflows/scheduled-rls-advisors.yml` adds a second, independent
+check: a **daily (07:00 UTC) GitHub Actions workflow** that runs
+`scripts/verify-rls-advisors.mts` (`supabase db lint --linked --fail-on
+error`, read-only) against the live project and turns the run **red** if
+any ERROR-level advisor finding is present. This exists because 13 of 172
+migrations touch RLS and the only prior live check
+(`scripts/verify-eng1244-live-rls.mts`) was a single ticket-scoped manual
+script wired to nothing (not in `npm run ci`, not in any workflow).
+Requires repo secrets `SUPABASE_ACCESS_TOKEN` (Management API PAT — same
+kind of token as `SUPABASE_PAT` above, separate secret store since Vercel
+env vars and GitHub Actions repo secrets don't share a namespace) and
+`SUPABASE_PROJECT_REF` (falls back to deriving from
+`NEXT_PUBLIC_SUPABASE_URL`, already a repo secret, if unset). **Status: workflow +
+script shipped 2026-07-05; `SUPABASE_ACCESS_TOKEN` / `SUPABASE_PROJECT_REF`
+not yet added as GitHub Actions repo secrets** (confirmed via `gh secret
+list` at ship time) — until Grace adds them the workflow runs daily and
+fails loudly with a clear "SUPABASE_ACCESS_TOKEN is not set" message
+(fail-closed, not a silent pass).
+
 ---
 
 ## Nice-to-haves (post-launch)
