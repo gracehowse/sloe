@@ -63,6 +63,7 @@ import {
 } from "./appData/persistence.ts";
 import { FREE_SAVE_LIMIT } from "./appData/constants.ts";
 import { NEUTRAL_AVATAR_DATA_URI } from "@/lib/ui/neutralAvatar";
+import { isFreeTierPlanCapError } from "@/lib/mealPlan/planPersistError";
 import { fetchPublicRecipeSaveCounts } from "../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import { normalizeRecipeTitle } from "../lib/recipes/normalizeRecipeTitle.ts";
 import { SEED_RECIPES_V2 } from "../lib/recipes/seedRecipesV2.ts";
@@ -1789,6 +1790,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             setDbMealPlanWarned(true);
             toast.warning(syncDisabledBecauseSchemaMessage("Meal plan"));
           }
+          return;
+        }
+        // ENG-1387 — the RPC now enforces the Free-tier 1-day cap
+        // server-side. Unreachable through the UI (the client clamps
+        // generation to 1 day first); fires on a stale-cached-tier
+        // desync or a Pro→Free downgrade holding a multi-day plan.
+        // The rejection is atomic, so the existing cloud plan is
+        // untouched — tell the user their edit didn't sync rather
+        // than failing silently.
+        if (isFreeTierPlanCapError({ code: (error as { code?: string }).code, message: msg })) {
+          toast.error(
+            "Free plan is limited to 1-day meal plans, so this plan couldn't sync. Upgrade to plan your full week.",
+          );
           return;
         }
         console.error("[mealPlan] save_meal_plan failed:", msg);
