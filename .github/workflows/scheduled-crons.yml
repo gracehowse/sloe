@@ -40,6 +40,10 @@ concurrency:
   group: scheduled-crons-${{ github.event.schedule || inputs.target }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  issues: write # open / comment the failure-alert issue (ENG-1400)
+
 jobs:
   invoke:
     runs-on: ubuntu-latest
@@ -68,3 +72,52 @@ jobs:
           done
           echo "cron invocation failed after 3 attempts" >&2
           exit 1
+
+      # --- Failure alerting: deduped GitHub issue, no external secret ---
+      # ENG-1400 (2026-07-05 deep audit, PRA-002/IM-05): the advisor-check
+      # cron 503'd silently every day from 2026-07-02 (SUPABASE_PAT unset)
+      # because a red run here had no observer — nothing paged anyone.
+      # Mirrors production-smoke.yml's dedup-by-label pattern so a run of
+      # daily failures becomes ONE actionable issue, not 30.
+      - name: Open or update failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TARGET: ${{ steps.target.outputs.path || github.event.schedule || inputs.target }}
+        run: |
+          set -euo pipefail
+
+          gh label create scheduled-cron-failure --color B60205 \
+            --description "A scheduled cron (scheduled-crons.yml) failed (ENG-1400)" 2>/dev/null || true
+
+          # One issue per TARGET path, not one for the whole workflow — a
+          # broken weekly-recap and a broken advisor-check are unrelated
+          # failures and shouldn't dedup onto the same thread.
+          safe_target=$(echo "$TARGET" | tr -c 'a-zA-Z0-9' '-')
+          existing=$(gh issue list --label scheduled-cron-failure --state open \
+            --search "\"cron-target:$safe_target\" in:body" \
+            --json number --jq '.[0].number // empty')
+
+          if [ -n "$existing" ]; then
+            echo "Existing open issue #$existing for $TARGET — commenting instead of opening a duplicate."
+            gh issue comment "$existing" --body \
+              "🔴 \`$TARGET\` failed again — run: $RUN_URL (\`$(date -u '+%Y-%m-%d %H:%M UTC')\`)."
+          else
+            echo "No open issue for $TARGET — opening one."
+            gh issue create \
+              --title "🚨 Scheduled cron failing: $TARGET" \
+              --label scheduled-cron-failure \
+              --body "$(printf '%s\n' \
+                "The scheduled cron \`$TARGET\` (invoked by \`.github/workflows/scheduled-crons.yml\`) failed after 3 retries." \
+                "" \
+                "**Failing run:** $RUN_URL" \
+                "" \
+                "Open the run log for the HTTP status + response body from each attempt." \
+                "" \
+                "This issue is deduped per cron target: while it stays open, further failures of \`$TARGET\` comment here rather than opening new issues. Close it once the cron is healthy and a run is green again." \
+                "" \
+                "cron-target:$safe_target" \
+                "" \
+                "_Opened automatically by \`.github/workflows/scheduled-crons.yml\` (ENG-1400)._")"
+          fi
