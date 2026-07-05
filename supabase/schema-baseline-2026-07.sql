@@ -1,0 +1,40 @@
+-- ============================================================================
+-- PLACEHOLDER — NOT YET GENERATED. Do not treat this file as a schema dump.
+-- ============================================================================
+--
+-- ENG-1369: this file is reserved for the schema-only baseline dump of the
+-- live Suppr database (project ref fnfgxsignmuepshbebrl), but it has not been
+-- generated yet. The agent session that authored the surrounding doc
+-- (docs/operations/eng-1369-schema-baseline.md) had no `pg_dump`/`psql`
+-- binary and no linked Supabase CLI session in its sandbox, so it could not
+-- produce a faithful `pg_dump --schema-only` output. Hand-reconstructing full
+-- DDL from `information_schema` introspection was deliberately rejected —
+-- an incomplete or subtly-wrong reconstruction (missing a constraint, a
+-- trigger, a default expression, a policy) is worse than no baseline at all,
+-- because it would silently fail to reproduce the live schema while looking
+-- authoritative.
+--
+-- TO GENERATE THE REAL BASELINE, run (from repo root, with the Supabase CLI
+-- linked/authenticated locally):
+--
+--   supabase db dump --schema-only -f supabase/schema-baseline-2026-07.sql --linked
+--
+-- This overwrites this placeholder with the real `pg_dump` schema-only
+-- output for the live DB. After generating it:
+--
+--   1. Confirm the file starts with real `CREATE TABLE` / `CREATE POLICY` /
+--      etc. statements (not this placeholder banner) before committing.
+--   2. Update docs/operations/eng-1369-schema-baseline.md if the dump date
+--      or filename changes from what's documented there.
+--   3. Do NOT rename this file to match the migration naming convention
+--      (`YYYYMMDDHHMMSS_description.sql` under supabase/migrations/) — it
+--      must stay inert to `supabase migration` / `supabase db push` tooling.
+--      See the doc for why.
+--
+-- This file is deliberately NOT under supabase/migrations/ and deliberately
+-- does NOT match that directory's `YYYYMMDDHHMMSS_description.sql` naming
+-- convention, so the Supabase CLI's migration runner never picks it up as a
+-- migration to apply. `supabase/config.toml`'s `[db.migrations] schema_paths`
+-- is also empty, so nothing auto-includes this file either. It is a
+-- reference artifact only.
+-- ============================================================================
