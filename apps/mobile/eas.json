@@ -24,7 +24,7 @@
       "channel": "production",
       "env": {
         "EXPO_NO_METRO_WORKSPACE_ROOT": "1",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_ALLOW_FAILURE": "true"
       }
     }
   },
