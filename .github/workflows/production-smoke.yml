@@ -1,0 +1,89 @@
+# Scheduled production smoke — "something watches production" (ENG-1348).
+#
+# Runs the unauthenticated smoke checks in scripts/production-smoke.ts against
+# real production (https://getsloe.com) every 2 hours. On failure it (a) goes
+# red, and (b) opens ONE deduped GitHub issue so the regression is actionable —
+# consecutive failures comment on the existing issue instead of spamming new
+# ones. All GitHub-native: no external alerting secret required.
+#
+# Cadence: every 2h balances coverage against Actions minutes (Grace watches
+# these). Bump the cron if a tighter SLA is ever needed.
+#
+# Target: https://getsloe.com (hard-pinned as PLAYWRIGHT_BASE_URL, the var the
+# smoke script reads).
+
+name: Production smoke
+
+on:
+  schedule:
+    - cron: "0 */2 * * *" # every 2 hours, on the hour
+  workflow_dispatch: {} # manual run from the Actions tab
+
+# Overlapping runs cancel — a queued run should reflect the latest prod state,
+# not pile up (mirrors the repo concurrency convention).
+concurrency:
+  group: production-smoke
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write # open / comment the failure-alert issue
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run production smoke
+        run: npm run smoke:production
+        env:
+          PLAYWRIGHT_BASE_URL: https://getsloe.com
+
+      # --- Failure alerting: deduped GitHub issue, no external secret ---
+      - name: Open or update failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # Labels may not exist yet — create idempotently so `gh issue` calls
+          # never fail on a missing label.
+          gh label create production-smoke --color B60205 \
+            --description "Production smoke monitor (ENG-1348)" 2>/dev/null || true
+          gh label create P0 --color B60205 \
+            --description "Drop-everything severity" 2>/dev/null || true
+
+          # Dedup: is there already an open production-smoke issue?
+          existing=$(gh issue list --label production-smoke --state open \
+            --json number --jq '.[0].number // empty')
+
+          if [ -n "$existing" ]; then
+            echo "Existing open issue #$existing — commenting instead of opening a duplicate."
+            gh issue comment "$existing" --body \
+              "🔴 Production smoke failed again — run: $RUN_URL (\`$(date -u '+%Y-%m-%d %H:%M UTC')\`)."
+          else
+            echo "No open production-smoke issue — opening one."
+            gh issue create \
+              --title "🚨 Production smoke failing" \
+              --label production-smoke \
+              --label P0 \
+              --body "$(printf '%s\n' \
+                "The scheduled production smoke check is failing against https://getsloe.com." \
+                "" \
+                "**Failing run:** $RUN_URL" \
+                "" \
+                "Open the run log for the exact check(s) that failed (path → actual vs expected status)." \
+                "" \
+                "This issue is deduped: while it stays open, further failures comment here rather than opening new issues. Close it once prod is healthy and the smoke run is green again." \
+                "" \
+                "_Opened automatically by \`.github/workflows/production-smoke.yml\` (ENG-1348)._")"
+          fi
