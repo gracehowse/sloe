@@ -26,6 +26,7 @@ import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { normaliseCachedTier } from "@/lib/cachedUserTier";
+import { handlePlanPersistError } from "@/lib/mealPlanErrors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
@@ -1118,11 +1119,9 @@ export default function PlannerScreen() {
       if (error) {
         // Schema refactor Phase 3 (2026-05-11) — legacy JSONB upsert
         // fallback removed (table dropped 2026-04-21; RPC has been in
-        // production since 2026-04-24). 42883 / missing-table now
-        // surface as a real save failure that we log.
-        if (__DEV__) {
-          console.warn("[persistPlan] save_meal_plan failed:", error.message);
-        }
+        // production since 2026-04-24). ENG-1387: the free-tier day-cap
+        // rejection (42501) gets a user-facing alert; the rest log in dev.
+        handlePlanPersistError(error, "persistPlan");
       } else {
         setPlanStartDate(startDate);
         try {
@@ -2621,10 +2620,8 @@ export default function PlannerScreen() {
           } as never);
           if (error) {
             // Schema refactor Phase 3 (2026-05-11) — legacy JSONB
-            // upsert fallback removed.
-            if (__DEV__) {
-              console.warn("[persistPlan/regenerate] save_meal_plan failed:", error.message);
-            }
+            // upsert fallback removed. ENG-1387: 42501 day-cap → alert.
+            handlePlanPersistError(error, "persistPlan/regenerate");
           }
         })();
       }
