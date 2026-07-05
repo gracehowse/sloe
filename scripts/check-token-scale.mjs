@@ -43,13 +43,26 @@
  *
  * Exit 0 on clean, exit 1 with a `file:line current → nearest-legal`
  * report otherwise. Wired into `npm run check:token-scale` and CI.
+ *
+ * The `stripComments`/`walk`/`loadBudget`/`writeBudget`/`evaluate`/CLI
+ * scaffolding is shared with the spacing, type-scale-mobile, and
+ * screen-line-budget gates — see `scripts/lib/ratchet.mjs` (ENG-1363).
+ * Only the token-specific regex + theme parsing lives here.
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { join, relative, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+import {
+  REPO_ROOT,
+  stripComments,
+  walk as sharedWalk,
+  nearestLegal,
+  evaluateKeyed as evaluate,
+  runKeyedCli,
+  isInvokedDirectly,
+} from "./lib/ratchet.mjs";
+
 const BUDGET_FILE = join(REPO_ROOT, "scripts", "token-budget.json");
 const THEME_FILE = join(REPO_ROOT, "apps", "mobile", "constants", "theme.ts");
 
@@ -99,40 +112,7 @@ export function readLegalRadius(themeSrc = readFileSync(THEME_FILE, "utf8")) {
   return values;
 }
 
-/** Blank out block + line comments so doc-comment hexes/radii never
- *  false-positive — WHILE preserving line numbers (newlines kept, comment
- *  bodies become spaces) so the reported `file:line` is accurate. */
-export function stripComments(src) {
-  let s = src.replace(/\/\*[\s\S]*?\*\//g, (match) =>
-    match.replace(/[^\n]/g, " "),
-  );
-  s = s
-    .split("\n")
-    .map((line) => {
-      const idx = line.indexOf("//");
-      return idx === -1 ? line : line.slice(0, idx);
-    })
-    .join("\n");
-  return s;
-}
-
-function nearestLegal(value, legal) {
-  return [...legal].sort((a, b) => Math.abs(a - value) - Math.abs(b - value))[0];
-}
-
-function walk(dir, acc) {
-  if (!existsSync(dir)) return acc;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || entry.name === ".expo") continue;
-      walk(full, acc);
-    } else if (entry.isFile() && SCAN_EXTS.some((e) => entry.name.endsWith(e))) {
-      acc.push(full);
-    }
-  }
-  return acc;
-}
+export { stripComments };
 
 /**
  * Scan a single source file's text and return its token findings as
@@ -175,7 +155,7 @@ export function findViolations(src, legalRadius) {
 export function scanTree(repoRoot = REPO_ROOT, scanDirs = SCAN_DIRS, legalRadius = readLegalRadius()) {
   const byFile = {};
   for (const d of scanDirs) {
-    for (const abs of walk(join(repoRoot, d), [])) {
+    for (const abs of sharedWalk(join(repoRoot, d), [], SCAN_EXTS)) {
       const rel = relative(repoRoot, abs);
       if (TOKEN_DEF_FILES.has(rel)) continue;
       const hits = findViolations(readFileSync(abs, "utf8"), legalRadius);
@@ -185,54 +165,7 @@ export function scanTree(repoRoot = REPO_ROOT, scanDirs = SCAN_DIRS, legalRadius
   return byFile;
 }
 
-function loadBudget() {
-  if (!existsSync(BUDGET_FILE)) return { pins: {}, allow: {} };
-  const parsed = JSON.parse(readFileSync(BUDGET_FILE, "utf8"));
-  return { pins: parsed.pins ?? {}, allow: parsed.allow ?? {} };
-}
-
-function writeBudget(pins, allow) {
-  const sortedPins = Object.fromEntries(
-    Object.entries(pins).sort(([a], [b]) => a.localeCompare(b)),
-  );
-  writeFileSync(
-    BUDGET_FILE,
-    JSON.stringify({ allow, pins: sortedPins }, null, 2) + "\n",
-    "utf8",
-  );
-}
-
-/** Pure evaluator — identical contract to the spacing gate. */
-export function evaluate(byFile, pins, allow = {}) {
-  const failures = [];
-  const shrinks = [];
-
-  const badAllow = [];
-  for (const [path, reason] of Object.entries(allow)) {
-    if (typeof reason !== "string" || reason.trim().length < 6) {
-      badAllow.push(path);
-    }
-  }
-
-  for (const [path, hits] of Object.entries(byFile)) {
-    if (allow[path] !== undefined) continue;
-    const count = hits.length;
-    const pin = pins[path];
-    if (pin === undefined) {
-      failures.push({ path, count, hits, kind: "new" });
-    } else if (count > pin) {
-      failures.push({ path, count, pin, hits, kind: "grew" });
-    } else if (count < pin) {
-      shrinks.push({ path, count, pin });
-    }
-  }
-
-  const droppedOut = Object.keys(pins).filter(
-    (p) => byFile[p] === undefined && allow[p] === undefined,
-  );
-
-  return { failures, shrinks, droppedOut, badAllow };
-}
+export { evaluate };
 
 function describeHit(h) {
   if (h.kind === "radius") return `borderRadius ${h.token.split(": ")[1]} → ${h.nearest}`;
@@ -240,90 +173,29 @@ function describeHit(h) {
   return `${h.token} → semantic token`;
 }
 
-function printHits(hits, indent = "      ") {
-  for (const h of hits.slice(0, 5)) {
-    console.error(`${indent}${h.line}: ${describeHit(h)}`);
-  }
-  if (hits.length > 5) console.error(`${indent}... and ${hits.length - 5} more`);
-}
-
 function main() {
-  const write = process.argv.includes("--write");
   const legalRadius = readLegalRadius();
-  const byFile = scanTree(REPO_ROOT, SCAN_DIRS, legalRadius);
-  const { allow } = loadBudget();
-
-  if (write) {
-    const pins = Object.fromEntries(
-      Object.entries(byFile)
-        .filter(([p]) => allow[p] === undefined)
-        .map(([p, hits]) => [p, hits.length]),
-    );
-    writeBudget(pins, allow);
-    const total = Object.values(pins).reduce((a, b) => a + b, 0);
-    console.log(
-      `[check:token-scale] wrote ${Object.keys(pins).length} pinned files ` +
-        `(${total} raw colour/radius literals) to ${relative(REPO_ROOT, BUDGET_FILE)}. ` +
-        `Legal radius: ${[...legalRadius].sort((a, b) => a - b).join(" / ")}.`,
-    );
-    return;
-  }
-
-  const { pins } = loadBudget();
-  const { failures, shrinks, droppedOut, badAllow } = evaluate(byFile, pins, allow);
-
-  if (shrinks.length > 0) {
-    console.log("[check:token-scale] These files shed raw literals — tighten with `--write`:");
-    for (const s of shrinks) console.log(`  ${s.path}: ${s.count} (pinned ${s.pin})`);
-  }
-  if (droppedOut.length > 0) {
-    console.log(
-      `[check:token-scale] ${droppedOut.length} file(s) are now fully tokenised — remove from the pin with \`--write\`:`,
-    );
-    for (const p of droppedOut) console.log(`  ${p}`);
-  }
-
-  if (badAllow.length > 0) {
-    console.error(
-      `\n[check:token-scale] ${badAllow.length} allow-list entr(y/ies) lack a rationale ` +
-        `(needs an ENG ref or explicit "intentional ..." reason — no silent carve-outs):`,
-    );
-    for (const p of badAllow) console.error(`  x ${p}`);
-  }
-
-  if (failures.length === 0 && badAllow.length === 0) {
-    const total = Object.values(pins).reduce((a, b) => a + b, 0);
-    console.log(
-      `[check:token-scale] OK — ${Object.keys(pins).length} pinned files ` +
-        `(${total} legacy raw colour/radius literals), none grew; no new file introduced one. ` +
-        `Legal radius: ${[...legalRadius].sort((a, b) => a - b).join(" / ")}.`,
-    );
-    return;
-  }
-
-  if (failures.length > 0) {
-    console.error(`\n[check:token-scale] ${failures.length} file(s) over budget:\n`);
-    for (const f of failures) {
-      if (f.kind === "new") {
-        console.error(`  x ${f.path} — introduces ${f.count} raw colour/radius literal(s); not pinned:`);
-      } else {
-        console.error(`  x ${f.path} — grew to ${f.count} raw literal(s) (pinned ${f.pin}):`);
-      }
-      printHits(f.hits);
-    }
-    console.error(
-      `\nColour + radius come from tokens: a literal hex / Tailwind palette class is a finding;\n` +
-        `borderRadius snaps to ${[...legalRadius].sort((a, b) => a - b).join(" / ")} (\`Radius.*\`).\n` +
-        `Route the value to a semantic token (theme.ts / theme.css / the Tailwind theme). The gate\n` +
-        `is a ratchet — it can only ever tighten. If you are legitimately shrinking a pinned file,\n` +
-        `re-pin it lower with:\n` +
-        `  node scripts/check-token-scale.mjs --write\n`,
-    );
-  }
-  process.exit(1);
+  const sortedRadius = [...legalRadius].sort((a, b) => a - b).join(" / ");
+  runKeyedCli({
+    name: "check:token-scale",
+    budgetFile: BUDGET_FILE,
+    scan: () => scanTree(REPO_ROOT, SCAN_DIRS, legalRadius),
+    describeHit,
+    writeNoun: "raw colour/radius literals",
+    shedNoun: "raw literals",
+    droppedOutLabel: "fully tokenised",
+    okNoun: "legacy raw colour/radius literals",
+    newHitNoun: (count) => `${count} raw colour/radius literal(s)`,
+    grewHitNoun: (count) => `${count} raw literal(s)`,
+    legalLabel: `Legal radius: ${sortedRadius}.`,
+    guidance:
+      `Colour + radius come from tokens: a literal hex / Tailwind palette class is a finding;\n` +
+      `borderRadius snaps to ${sortedRadius} (\`Radius.*\`).\n` +
+      `Route the value to a semantic token (theme.ts / theme.css / the Tailwind theme). The gate\n` +
+      `is a ratchet — it can only ever tighten. If you are legitimately shrinking a pinned file,\n` +
+      `re-pin it lower with:\n` +
+      `  node scripts/check-token-scale.mjs --write`,
+  });
 }
 
-const invokedDirectly =
-  process.argv[1] && statSync(process.argv[1]).isFile() &&
-  fileURLToPath(import.meta.url) === process.argv[1];
-if (invokedDirectly) main();
+if (isInvokedDirectly(import.meta.url)) main();

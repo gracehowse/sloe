@@ -43,13 +43,26 @@
  *
  * Exit 0 on clean, exit 1 with a `file:line current → nearest-legal`
  * report otherwise. Wired into `npm run check:spacing-scale` and CI.
+ *
+ * The `stripComments`/`walk`/`loadBudget`/`writeBudget`/`evaluate`/CLI
+ * scaffolding is shared with the token, type-scale-mobile, and
+ * screen-line-budget gates — see `scripts/lib/ratchet.mjs` (ENG-1363).
+ * Only the spacing-specific regex + theme parsing lives here.
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { join, relative, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+import {
+  REPO_ROOT,
+  stripComments,
+  walk as sharedWalk,
+  nearestLegal,
+  evaluateKeyed as evaluate,
+  runKeyedCli,
+  isInvokedDirectly,
+} from "./lib/ratchet.mjs";
+
 const BUDGET_FILE = join(REPO_ROOT, "scripts", "spacing-budget.json");
 const THEME_FILE = join(REPO_ROOT, "apps", "mobile", "constants", "theme.ts");
 
@@ -111,44 +124,7 @@ export function readLegalSpacing(themeSrc = readFileSync(THEME_FILE, "utf8")) {
   return values;
 }
 
-/** Blank out block + line comments so doc-comment numbers never
- *  false-positive — WHILE preserving line numbers (newlines are kept, comment
- *  bodies become spaces) so the reported `file:line` is accurate. Conservative
- *  on line comments: blanks everything after `//`; this loses the rare case of
- *  `//` inside a string, but spacing props are never written that way. */
-export function stripComments(src) {
-  // Replace each block comment with the same number of newlines it spanned
-  // (plus spaces for the rest), so subsequent line indexing is unchanged.
-  let s = src.replace(/\/\*[\s\S]*?\*\//g, (match) =>
-    match.replace(/[^\n]/g, " "),
-  );
-  s = s
-    .split("\n")
-    .map((line) => {
-      const idx = line.indexOf("//");
-      return idx === -1 ? line : line.slice(0, idx);
-    })
-    .join("\n");
-  return s;
-}
-
-function nearestLegal(value, legal) {
-  return [...legal].sort((a, b) => Math.abs(a - value) - Math.abs(b - value))[0];
-}
-
-function walk(dir, acc) {
-  if (!existsSync(dir)) return acc;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || entry.name === ".expo") continue;
-      walk(full, acc);
-    } else if (entry.isFile() && entry.name.endsWith(SCAN_EXT)) {
-      acc.push(full);
-    }
-  }
-  return acc;
-}
+export { stripComments };
 
 /**
  * Scan a single source file's text and return its off-scale findings as
@@ -176,7 +152,7 @@ export function findOffScale(src, legal) {
 export function scanTree(repoRoot = REPO_ROOT, scanDirs = SCAN_DIRS, legal = readLegalSpacing()) {
   const byFile = {};
   for (const d of scanDirs) {
-    for (const abs of walk(join(repoRoot, d), [])) {
+    for (const abs of sharedWalk(join(repoRoot, d), [], [SCAN_EXT])) {
       const hits = findOffScale(readFileSync(abs, "utf8"), legal);
       if (hits.length > 0) byFile[relative(repoRoot, abs)] = hits;
     }
@@ -184,146 +160,34 @@ export function scanTree(repoRoot = REPO_ROOT, scanDirs = SCAN_DIRS, legal = rea
   return byFile;
 }
 
-function loadBudget() {
-  if (!existsSync(BUDGET_FILE)) return { pins: {}, allow: {} };
-  const parsed = JSON.parse(readFileSync(BUDGET_FILE, "utf8"));
-  return { pins: parsed.pins ?? {}, allow: parsed.allow ?? {} };
-}
+export { evaluate };
 
-function writeBudget(pins, allow) {
-  const sortedPins = Object.fromEntries(
-    Object.entries(pins).sort(([a], [b]) => a.localeCompare(b)),
-  );
-  writeFileSync(
-    BUDGET_FILE,
-    JSON.stringify({ allow, pins: sortedPins }, null, 2) + "\n",
-    "utf8",
-  );
-}
-
-/**
- * Pure evaluator (side-effect-free, exported for tests). Given the per-file
- * findings, the pinned counts, and the allow-list, returns violations +
- * shrink notices + dropped-out pins + any silent (rationale-less) carve-outs.
- */
-export function evaluate(byFile, pins, allow = {}) {
-  const failures = [];
-  const shrinks = [];
-
-  // Silent carve-outs are themselves a failure: an allow entry must explain
-  // itself (ENG ref or explicit "intentional" reason).
-  const badAllow = [];
-  for (const [path, reason] of Object.entries(allow)) {
-    if (typeof reason !== "string" || reason.trim().length < 6) {
-      badAllow.push(path);
-    }
-  }
-
-  for (const [path, hits] of Object.entries(byFile)) {
-    if (allow[path] !== undefined) continue; // allow-listed (rationale checked above)
-    const count = hits.length;
-    const pin = pins[path];
-    if (pin === undefined) {
-      failures.push({ path, count, hits, kind: "new" });
-    } else if (count > pin) {
-      failures.push({ path, count, pin, hits, kind: "grew" });
-    } else if (count < pin) {
-      shrinks.push({ path, count, pin });
-    }
-  }
-
-  // Pins for files that no longer have any off-scale literal can be removed.
-  const droppedOut = Object.keys(pins).filter(
-    (p) => byFile[p] === undefined && allow[p] === undefined,
-  );
-
-  return { failures, shrinks, droppedOut, badAllow };
-}
-
-function printHits(hits, indent = "      ") {
-  // Show up to 5 hits per file in `file:line current → nearest-legal` form.
-  for (const h of hits.slice(0, 5)) {
-    console.error(`${indent}${h.line}: ${h.prop}: ${h.value} → ${h.nearest}`);
-  }
-  if (hits.length > 5) console.error(`${indent}... and ${hits.length - 5} more`);
+function describeHit(h) {
+  return `${h.prop}: ${h.value} → ${h.nearest}`;
 }
 
 function main() {
-  const write = process.argv.includes("--write");
   const legal = readLegalSpacing();
-  const byFile = scanTree(REPO_ROOT, SCAN_DIRS, legal);
-  const { allow } = loadBudget();
-
-  if (write) {
-    const pins = Object.fromEntries(
-      Object.entries(byFile)
-        .filter(([p]) => allow[p] === undefined)
-        .map(([p, hits]) => [p, hits.length]),
-    );
-    writeBudget(pins, allow);
-    const total = Object.values(pins).reduce((a, b) => a + b, 0);
-    console.log(
-      `[check:spacing-scale] wrote ${Object.keys(pins).length} pinned files ` +
-        `(${total} off-scale literals) to ${relative(REPO_ROOT, BUDGET_FILE)}. ` +
-        `Legal scale: ${[...legal].sort((a, b) => a - b).join(" / ")}.`,
-    );
-    return;
-  }
-
-  const { pins } = loadBudget();
-  const { failures, shrinks, droppedOut, badAllow } = evaluate(byFile, pins, allow);
-
-  if (shrinks.length > 0) {
-    console.log("[check:spacing-scale] These files shed off-scale literals — tighten with `--write`:");
-    for (const s of shrinks) console.log(`  ${s.path}: ${s.count} (pinned ${s.pin})`);
-  }
-  if (droppedOut.length > 0) {
-    console.log(
-      `[check:spacing-scale] ${droppedOut.length} file(s) are now fully on-scale — remove from the pin with \`--write\`:`,
-    );
-    for (const p of droppedOut) console.log(`  ${p}`);
-  }
-
-  if (badAllow.length > 0) {
-    console.error(
-      `\n[check:spacing-scale] ${badAllow.length} allow-list entr(y/ies) lack a rationale ` +
-        `(needs an ENG ref or explicit "intentional ..." reason — no silent carve-outs):`,
-    );
-    for (const p of badAllow) console.error(`  x ${p}`);
-  }
-
-  if (failures.length === 0 && badAllow.length === 0) {
-    const total = Object.values(pins).reduce((a, b) => a + b, 0);
-    console.log(
-      `[check:spacing-scale] OK — ${Object.keys(pins).length} pinned files ` +
-        `(${total} legacy off-scale literals), none grew; no new file introduced one. ` +
-        `Legal scale: ${[...legal].sort((a, b) => a - b).join(" / ")}.`,
-    );
-    return;
-  }
-
-  if (failures.length > 0) {
-    console.error(`\n[check:spacing-scale] ${failures.length} file(s) over budget:\n`);
-    for (const f of failures) {
-      if (f.kind === "new") {
-        console.error(`  x ${f.path} — introduces ${f.count} off-scale spacing literal(s); not pinned:`);
-      } else {
-        console.error(`  x ${f.path} — grew to ${f.count} off-scale literal(s) (pinned ${f.pin}):`);
-      }
-      printHits(f.hits);
-    }
-    console.error(
-      `\nSpacing snaps to the scale: ${[...legal].sort((a, b) => a - b).join(" / ")} ` +
-        `(use \`Spacing.*\` from apps/mobile/constants/theme.ts). The gate is a ratchet — it can\n` +
-        `only ever tighten. Move the literal onto a token, or if you are legitimately shrinking\n` +
-        `a pinned file, re-pin it lower with:\n` +
-        `  node scripts/check-spacing-scale.mjs --write\n`,
-    );
-  }
-  process.exit(1);
+  const sortedLegal = [...legal].sort((a, b) => a - b).join(" / ");
+  runKeyedCli({
+    name: "check:spacing-scale",
+    budgetFile: BUDGET_FILE,
+    scan: () => scanTree(REPO_ROOT, SCAN_DIRS, legal),
+    describeHit,
+    writeNoun: "off-scale spacing literals",
+    shedNoun: "off-scale literals",
+    droppedOutLabel: "fully on-scale",
+    okNoun: "legacy off-scale literals",
+    newHitNoun: (count) => `${count} off-scale spacing literal(s)`,
+    grewHitNoun: (count) => `${count} off-scale literal(s)`,
+    legalLabel: `Legal scale: ${sortedLegal}.`,
+    guidance:
+      `Spacing snaps to the scale: ${sortedLegal} ` +
+      `(use \`Spacing.*\` from apps/mobile/constants/theme.ts). The gate is a ratchet — it can\n` +
+      `only ever tighten. Move the literal onto a token, or if you are legitimately shrinking\n` +
+      `a pinned file, re-pin it lower with:\n` +
+      `  node scripts/check-spacing-scale.mjs --write`,
+  });
 }
 
-const invokedDirectly =
-  process.argv[1] && statSync(process.argv[1]).isFile() &&
-  fileURLToPath(import.meta.url) === process.argv[1];
-if (invokedDirectly) main();
+if (isInvokedDirectly(import.meta.url)) main();
