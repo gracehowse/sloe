@@ -62,7 +62,23 @@ After saving, complete the OAuth prompt once. Scope to a single org or project s
 
 ## Synthetic checks
 
-- **Production smoke:** `npm run smoke:production` (requires `PLAYWRIGHT_BASE_URL`). Hits public routes; extend as needed.
+- **Production smoke:** `npm run smoke:production` (targets `PLAYWRIGHT_BASE_URL`,
+  default `http://127.0.0.1:3000`). Fires ~12 unauthenticated status-code
+  assertions — no Playwright, no auth, no writes — across public routes
+  (`/`, `/login`, `/pricing`, legal pages), the auth-gated app shell
+  (`/home` and `/account/billing` must redirect anon → `/login`), and deployed
+  API guards (`/api/stripe/subscription-status`, `/api/stripe/checkout`,
+  `/api/plan-import/{parse,extract}` must return `401`). Each expectation is
+  validated against real production before shipping so the monitor never cries
+  wolf. Extend by adding to the `CHECKS` array in
+  `scripts/production-smoke.ts` — validate any new check against prod first.
+- **Scheduled runner:** `.github/workflows/production-smoke.yml` runs the smoke
+  against `https://getsloe.com` **every 2 hours** (plus manual
+  `workflow_dispatch`). On failure it goes red **and** opens a single deduped
+  GitHub issue (`production-smoke` + `P0` labels); consecutive failures comment
+  on the open issue rather than spamming new ones. Close the issue once prod is
+  healthy and the run is green again. GitHub-native — no external alerting
+  secret. (ENG-1348)
 
 ## Supabase
 

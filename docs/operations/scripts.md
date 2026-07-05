@@ -32,7 +32,7 @@ All scripts run from the project root with `npx tsx scripts/<name>.ts`. They loa
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | `verify-production-env.ts` | Check Stripe / Supabase production vars (warns; exits 1 only with `VERIFY_STRICT=1` when Stripe is misconfigured) | `npm run verify:production-env` — on `main` CI sets `VERIFY_STRICT=1` |
-| `production-smoke.ts` | HTTP smoke test against production URL | `npm run smoke:production` |
+| `production-smoke.ts` | Unauthenticated status-code smoke (public routes, auth-gate redirects, deployed API 401s) against `PLAYWRIGHT_BASE_URL`. Run on a 2h schedule by `.github/workflows/production-smoke.yml`, which opens a deduped `production-smoke`/`P0` issue on failure (ENG-1348) | `npm run smoke:production` (or `PLAYWRIGHT_BASE_URL=https://getsloe.com npm run smoke:production`) |
 
 ### Audits
 
