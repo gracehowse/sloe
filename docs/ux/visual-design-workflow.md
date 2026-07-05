@@ -127,7 +127,6 @@ Since **web looks better**, treat **`src/styles/theme.css` as canonical** until 
 | **Figma** | Only if you re-import from prototype HTML once |
 
 | **Storybook** | Component primitives (`npm run storybook`) |
-| **Applitools** | Optional hosted AI diff (`npm run test:e2e:applitools`) |
 | **Centercode** | Beta tester feedback — not layout QA |
 
 See [`docs/testing/VISUAL_REGRESSION.md`](../testing/VISUAL_REGRESSION.md).
