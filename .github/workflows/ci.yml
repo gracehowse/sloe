@@ -76,6 +76,18 @@ jobs:
         run: npm run check:today-captures
       - name: Type scale lint (ENG-119)
         run: npm run check:type-scale
+      - name: Spacing scale ratchet (ENG-1007)
+        # Gives teeth to "Spacing snaps to the scale" (4/8/12/16/20/24/32/40).
+        # Flags off-scale mobile spacing literals. Legacy offenders are pinned
+        # in scripts/spacing-budget.json and may only shrink; any new
+        # off-scale value (or a pinned file gaining one) fails.
+        run: npm run check:spacing-scale
+      - name: Token scale ratchet (ENG-1007)
+        # Gives teeth to "Tokens only" — flags raw hexes, raw Tailwind palette
+        # colour classes, and off-scale borderRadius across web + mobile.
+        # Legacy offenders are pinned in scripts/token-budget.json and may
+        # only shrink; any new off-token value fails.
+        run: npm run check:token-scale
       - name: Mobile type-scale ratchet (ENG-1002)
         # Mobile counterpart of the ENG-119 web type-scale gate above. Gives
         # teeth to "Type comes from the ramp" on mobile: flags raw `fontSize: N`
@@ -93,6 +105,11 @@ jobs:
         # offenders are pinned in scripts/screen-line-budget.json and may
         # only shrink; any new file crossing 400 lines fails.
         run: npm run check:screen-budget
+      - name: Redesign foundation touch ratchet (ENG-1247)
+        # Flags edits to Sloe v3 redesign-foundation files that skip the
+        # required conformance/verification pass. Runs on the web job since
+        # the checkout includes apps/mobile.
+        run: npm run check:redesign-foundation-touch
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build
