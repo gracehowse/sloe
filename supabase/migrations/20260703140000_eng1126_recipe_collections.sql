@@ -21,9 +21,14 @@ create table if not exists public.recipe_collections (
   name text not null,
   sort_order int not null default 0,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (user_id, lower(name))
+  updated_at timestamptz not null default now()
 );
+
+-- Case-insensitive per-user name uniqueness. This must be an expression
+-- index, not an inline UNIQUE constraint — Postgres rejects expressions
+-- like lower(name) inside table constraints.
+create unique index if not exists recipe_collections_user_lower_name_key
+  on public.recipe_collections (user_id, lower(name));
 
 create index if not exists recipe_collections_user_sort_idx
   on public.recipe_collections (user_id, sort_order);
