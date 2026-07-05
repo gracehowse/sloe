@@ -19,22 +19,28 @@ Two separate coverage tracks — do not mix them:
 | Command | Scope | Target |
 |---------|--------|--------|
 | `npm run test:storybook:coverage` | 10 UI primitives with stories (`vitest.storybook.config.ts`) | **100%** on scoped files |
-| `npm run test:coverage` | All of `src/**` (web + shared lib) | **Baseline gate** in CI (see below) |
-| `npm run mobile:test:coverage` | `apps/mobile/app/**` + `lib/**` | Mobile workspace gate |
+| `npm run test:coverage` | All of `src/**` **and root `app/**`** (web + shared lib + Next.js routes) | **Baseline gate** in CI (see below) |
+| `npm run mobile:test:coverage` | `apps/mobile/app/**` + `lib/**` | **Baseline gate** — mobile workspace (see below) |
 
 ### Whole-app baseline (`npm run test:coverage`)
 
-As of 2026-05-28 (plan-import lib tests, `normalizeImageForAi`, shared `weightTrend`, CSV import fix):
+**ENG-1351 (2026-07-05):** root `app/**` (123 files — routes, billing/checkout pages, the DMCA
+form, error boundaries) was previously neither included nor excluded from the coverage `include`
+glob, so it was silently unmeasured and could never fail the gate below. It is now folded into
+`include` alongside `src/**`. Honest combined actuals after folding it in:
 
-| Metric | `src/**` | `src/lib/**` only |
-|--------|----------|-------------------|
-| Lines / statements | ~57% | ~84% |
-| Branches | ~82% | ~84% |
-| Functions | ~76% | ~86% |
+| Metric | Combined (`src/**` + `app/**`) |
+|--------|----------------------------------|
+| Lines / statements | 59.52% |
+| Branches | 79.4% |
+| Functions | 76.34% |
 
-CI enforces minimum thresholds in `vitest.unit.config.ts` (lines/statements 56%, branches 80%, functions 74%). **Ratchet these up** as coverage improves — never lower without explicit decision.
+CI enforces minimum thresholds in `vitest.unit.config.ts` — **lines/statements 59%, branches 79%,
+functions 76%** (lowered from the old `src/**`-only 56/56/80/74 on 2026-07-05 to reflect the newly
+measured `app/**` volume — see the ENG-1351 comment in that file for the full rationale). **Ratchet
+these up** as coverage improves — never lower without explicit decision.
 
-**Why headline % looks low:** ~45k lines live in React components (`NutritionTracker`, `ProgressDashboard`, `AppDataContext`, …) with little or no render coverage. Shared business logic under `src/lib/**` is already strong; closing the gap means component/integration tests on critical surfaces, not more parser unit tests.
+**Why headline % looks low:** ~45k lines live in React components (`NutritionTracker`, `ProgressDashboard`, `AppDataContext`, …) with little or no render coverage, and root `app/**` route/page files are mostly thin wrappers with no render tests yet. Shared business logic under `src/lib/**` is already strong; closing the gap means component/integration tests on critical surfaces, not more parser unit tests.
 
 **Phased backlog (whole-app):**
 
@@ -42,9 +48,27 @@ CI enforces minimum thresholds in `vitest.unit.config.ts` (lines/statements 56%,
 2. **API route integration** — extend `tests/integration/*` for routes still at 0% (auth-adjacent, imports, webhooks).
 3. **Critical components** — RNTL/Playwright component tests for Today, food search, paywall, onboarding (highest user-impact, largest uncovered line count).
    - ENG-1140 adds `tests/unit/loadBearingCtaBehaviour.test.tsx` as the render-level home for load-bearing CTA behaviour (end-fast, LogSheet manual log commit, and onboarding terminal commit). Source-grep button/card tests are anti-drift token/variant pins only; rendered click/disabled/loading behaviour must be covered in RTL tests.
-4. **Mobile** — `npm run mobile:test:coverage` separately; keep web/mobile parity tests aligned via `@suppr/shared` → `src/lib`.
+4. **Root `app/**` routes** — now measured (ENG-1351); largely untested Next.js route/page files (billing, DMCA, error boundaries) are the next largest uncovered block after React components.
+5. **Mobile** — `npm run mobile:test:coverage` separately; keep web/mobile parity tests aligned via `@suppr/shared` → `src/lib`.
 
 HTML report: `coverage/index.html` after `npm run test:coverage`.
+
+### Mobile baseline (`npm run mobile:test:coverage`)
+
+**ENG-1351 (2026-07-05):** `apps/mobile/vitest.config.ts` previously had no `coverage.thresholds`
+block, so mobile coverage could regress freely with nothing to fail against. It now enforces a
+floor at the honest actuals measured the same day (istanbul provider, `app/**` + `lib/**` —
+mostly large untested RN screens under `app/**`, e.g. `TodayScreen.tsx`, `planner.tsx`):
+
+| Metric | Actual | Enforced floor |
+|--------|--------|-----------------|
+| Lines | 17.27% | 17% |
+| Statements | 16.7% | 16% |
+| Branches | 11.3% | 11% |
+| Functions | 14.74% | 14% |
+
+**Ratchet these up** as `apps/mobile/app/**` screens get test coverage — never lower without
+explicit decision.
 
 ### Unit Tests (510+ files; run `npm test` for current counts)
 

@@ -178,6 +178,21 @@ export default defineConfig({
         ".expo/**",
         "dist/**",
       ],
+      // ENG-1351 (2026-07-05): this config previously had NO thresholds
+      // block, so mobile coverage could regress freely with nothing to
+      // fail against. Honest baseline from `test:coverage` (istanbul
+      // provider, app/** + lib/** — mostly large untested RN screens under
+      // app/**, e.g. TodayScreen.tsx, planner.tsx): lines 17.27%,
+      // statements 16.7%, branches 11.3%, functions 14.74%. Set at those
+      // actuals (rounded down slightly for float-rounding headroom) purely
+      // to stop further regression — ratchet up as app/** screens get test
+      // coverage, see docs/testing/overview.md.
+      thresholds: {
+        lines: 17,
+        statements: 16,
+        branches: 11,
+        functions: 14,
+      },
     },
   },
   resolve: {

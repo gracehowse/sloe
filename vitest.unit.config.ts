@@ -29,20 +29,30 @@ export default defineConfig({
       provider: "v8",
       reportsDirectory: "./coverage",
       reporter: ["text", "json-summary", "html"],
-      include: ["src/**/*.{ts,tsx}"],
+      include: ["src/**/*.{ts,tsx}", "app/**/*.{ts,tsx}"],
       exclude: [
         "src/**/*.d.ts",
         "src/**/types/**",
+        "app/**/*.d.ts",
         "**/node_modules/**",
         ".next/**",
       ],
-      // Whole-app baseline (~57% lines as of 2026-05-27). Ratchet up as
-      // lib + route + component tests land — see docs/testing/overview.md.
+      // Whole-app baseline (ENG-1351, 2026-07-05): include now folds in root
+      // app/** (routes, billing/checkout pages, DMCA form, error boundaries —
+      // 123 files) alongside src/**, which was previously the only measured
+      // tree. app/** was unmeasured before, not excluded, so it could never
+      // fail these gates. Combined actuals after folding it in: lines/
+      // statements 59.52%, branches 79.39%, functions 76.34% — thresholds
+      // below are set at those honest actuals (rounded down slightly for
+      // float-rounding headroom), a real drop from the old src/**-only
+      // 56/56/80/74 on branches because app/** brings a large volume of
+      // untested route/page/component code. Ratchet up as app/** gets test
+      // coverage — see docs/testing/overview.md.
       thresholds: {
-        lines: 56,
-        statements: 56,
-        branches: 80,
-        functions: 74,
+        lines: 59,
+        statements: 59,
+        branches: 79,
+        functions: 76,
       },
     },
   },
