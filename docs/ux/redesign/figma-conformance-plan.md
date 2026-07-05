@@ -1,5 +1,8 @@
 # Full-app Figma conformance — program plan
 
+> **Status:** CANCELED / Historical — do not action. The Figma is **dead as a source of truth** (Grace's call, 2026-06-24); the v3 prototype [`v3/Sloe-App.html`](v3/Sloe-App.html) is canonical and supersedes it. The Figma-conformance project was **Canceled 2026-06-11** (all its open issues canceled); conformance now runs against the prototype under **ENG-1247**. This file is historical record only.
+> **Current source:** [`../../../.claude/CLAUDE.md`](../../../.claude/CLAUDE.md) (Redesign — Design Direction 2026 initiative).
+
 **Owner:** Claude (implements web **and** mobile directly, owns all commits; Cursor not involved for this program).
 **Goal:** every app surface (iOS-primary, web parity) matches the canonical Figma file, with no loss of wired functionality.
 **Figma source of truth:** `https://www.figma.com/design/B3UdOFup7ITersgNuoXh0l` (page `0:1 · Sloe · Screens`). Canonical Today = `654:2` (flat borderless `#F6F5F2`, no resting shadow — see `docs/decisions/2026-06-04-figma-flat-borderless-slab.md`).

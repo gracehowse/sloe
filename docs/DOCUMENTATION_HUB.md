@@ -1,8 +1,10 @@
 # Documentation Hub
 
+> **Status:** Historical index — the "Recently shipped" log below stopped being maintained after April 2026. **Linear is the canonical task tracker.** Treat this hub as a historical pointer index, not a live plan.
+
 This is the single source of truth for the product.
 
-**Active worklist:** [/TODO.md](../TODO.md) — the master TODO consolidates everything Grace needs to action (Sept 2025 → ongoing). Orchestrator/executor queue is separate at [planning/sweep-2026-04-executor-backlog.md](planning/sweep-2026-04-executor-backlog.md). **Contributors:** [CONTRIBUTING.md](../CONTRIBUTING.md) (lint, migrations, types, how worklists relate).
+**Active worklist:** **Linear** is the canonical task tracker — work from there. (The old [/TODO.md](../TODO.md) master worklist is a historical April 2026 snapshot, no longer maintained.) **Contributors:** [CONTRIBUTING.md](../CONTRIBUTING.md) (lint, migrations, types, how worklists relate).
 
 ## Sections
 - `planning/` Sequenced backlogs (e.g. orchestrator-full-sweep → executor)

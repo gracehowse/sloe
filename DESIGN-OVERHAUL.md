@@ -1,5 +1,7 @@
 # Suppr Design Overhaul: Spec + Implementation Brief
 
+> **Status:** Historical — superseded. This redesign-planning brief has been superseded by the v3 prototype [`docs/ux/redesign/v3/Sloe-App.html`](docs/ux/redesign/v3/Sloe-App.html) (canonical, per Grace 2026-06-24) and the shipped Sloe redesign work. Kept as a historical record of the original design direction — do not action.
+
 > **Purpose:** This document is both a design direction spec and an actionable implementation prompt. Use it to guide a ground-up visual and UX redesign of Suppr across web (Next.js) and mobile (Expo/React Native).
 
 > **Positioning:** The first app that lets you import recipes from your favourite social media creators (TikTok, Instagram, YouTube, Pinterest) AND gives you full MFP-level macro tracking with intelligent auto-fitting to your daily targets. ReciMe proved people want social recipe saving. MFP proved people want macro tracking. Nobody has fused them. Suppr does. And with its built-in discovery feed and creator publishing tools, Suppr is building toward becoming the LTK of food — a creator commerce platform where food creators publish macro-calculated recipes and build audiences, not just a tracking tool.
