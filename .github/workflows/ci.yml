@@ -178,6 +178,9 @@ jobs:
         # `@suppr/shared/*` path is caught before push. The script also fixes a
         # latent bug here — the old resolve loop ran in a `grep | while` pipe
         # subshell, so `FAIL=1` never escaped and a MISSING import still passed.
+        # ENG-1358 (2026-07-05): also runs check-mobile-relative-src-reach.mjs,
+        # an only-shrink ratchet flagging raw `(../)+src/...` reaches that
+        # bypass the alias entirely (the other half of this boundary).
         working-directory: ${{ github.workspace }}
         run: npm run check:mobile-shared-imports
       - name: Mobile unit tests (with coverage report)

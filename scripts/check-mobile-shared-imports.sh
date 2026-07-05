@@ -55,3 +55,8 @@ if [ "$fail" = "1" ]; then
 fi
 
 echo "OK — mobile @suppr/shared and @suppr/nutrition-core re-exports + cross-boundary imports resolve."
+
+# 3. ENG-1358 — flag raw `(../)+src/...` relative reaches that bypass the
+#    @suppr/shared alias (only-shrink ratchet over the legacy population;
+#    see check-mobile-relative-src-reach.mjs).
+node "$ROOT/scripts/check-mobile-relative-src-reach.mjs"

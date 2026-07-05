@@ -16,28 +16,26 @@
  *
  * Entries auto-expire after 90 days so a stale "always 30 g" doesn't
  * follow a user forever after they switch product variants.
+ *
+ * Key building, TTL, payload validation, and the clamp algorithm are
+ * shared with the web wrapper (`src/lib/barcodePortionMemory.ts`, ENG-1358
+ * — was a byte-identical hand-mirrored copy). The async, AsyncStorage-based
+ * public API stays mobile-only because web's `localStorage` is sync and its
+ * call sites don't await — see that file's header comment for why the two
+ * public APIs can't be merged.
  */
 
-const KEY_PREFIX = "barcode_portion_v1:";
-const TTL_MS = 90 * 24 * 60 * 60 * 1000;
+import {
+  barcodePortionStorageKey,
+  barcodePortionKeyPrefix,
+  clampRememberedToServingOptions,
+  isBarcodePortionExpired,
+  isStoredBarcodePortion,
+  normaliseBarcode,
+  type StoredBarcodePortion,
+} from "@suppr/shared/barcodePortionMemory";
 
-type Stored = { grams: number; ts: number };
-
-function isStored(value: unknown): value is Stored {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return typeof v.grams === "number" && Number.isFinite(v.grams) && v.grams > 0
-    && typeof v.ts === "number" && Number.isFinite(v.ts);
-}
-
-function normaliseBarcode(raw: string): string | null {
-  const t = String(raw ?? "").trim();
-  if (!t) return null;
-  // Conservative cap so a malicious / accidental long string can't blow
-  // up AsyncStorage. Real EAN/UPC barcodes are <= 14 digits.
-  if (t.length > 64) return null;
-  return t;
-}
+export { clampRememberedToServingOptions };
 
 /**
  * Record the grams the user committed for this barcode.
@@ -50,8 +48,8 @@ export async function recordPortion(barcode: string, grams: number): Promise<voi
   if (!Number.isFinite(grams) || grams <= 0) return;
   try {
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    const payload: Stored = { grams: Math.round(grams * 10) / 10, ts: Date.now() };
-    await AsyncStorage.setItem(KEY_PREFIX + code, JSON.stringify(payload));
+    const payload: StoredBarcodePortion = { grams: Math.round(grams * 10) / 10, ts: Date.now() };
+    await AsyncStorage.setItem(barcodePortionStorageKey(code), JSON.stringify(payload));
   } catch {
     // ignore — non-critical
   }
@@ -66,13 +64,13 @@ export async function getRememberedPortion(barcode: string): Promise<number | nu
   if (!code) return null;
   try {
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-    const raw = await AsyncStorage.getItem(KEY_PREFIX + code);
+    const raw = await AsyncStorage.getItem(barcodePortionStorageKey(code));
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    if (!isStored(parsed)) return null;
-    if (Date.now() - parsed.ts > TTL_MS) {
+    if (!isStoredBarcodePortion(parsed)) return null;
+    if (isBarcodePortionExpired(parsed)) {
       // Expired — drop it so we don't keep returning it.
-      await AsyncStorage.removeItem(KEY_PREFIX + code);
+      await AsyncStorage.removeItem(barcodePortionStorageKey(code));
       return null;
     }
     return parsed.grams;
@@ -81,39 +79,13 @@ export async function getRememberedPortion(barcode: string): Promise<number | nu
   }
 }
 
-/**
- * Clamp a remembered portion to one of the food's available serving
- * options when servings are defined. If the remembered grams matches
- * an option (within 0.5 g), use it as-is; otherwise return the closest
- * option's grams. When no servingOptions are provided, the remembered
- * grams pass through unchanged (the picker is a free numeric input).
- */
-export function clampRememberedToServingOptions(
-  remembered: number,
-  servingOptions: readonly { grams: number }[] | null | undefined,
-): number {
-  if (!Number.isFinite(remembered) || remembered <= 0) return remembered;
-  if (!servingOptions || servingOptions.length === 0) return remembered;
-  let bestGrams = remembered;
-  let bestDelta = Number.POSITIVE_INFINITY;
-  for (const opt of servingOptions) {
-    if (!Number.isFinite(opt.grams) || opt.grams <= 0) continue;
-    const delta = Math.abs(opt.grams - remembered);
-    if (delta < 0.5) { bestGrams = opt.grams; break; }
-    if (delta < bestDelta) {
-      bestDelta = delta;
-      bestGrams = opt.grams;
-    }
-  }
-  return bestGrams;
-}
-
 /** Test-only — clear all remembered barcode portions. */
 export async function _resetRememberedPortionsForTests(): Promise<void> {
   try {
     const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
     const keys = await AsyncStorage.getAllKeys();
-    const ours = keys.filter((k) => k.startsWith(KEY_PREFIX));
+    const prefix = barcodePortionKeyPrefix();
+    const ours = keys.filter((k) => k.startsWith(prefix));
     if (ours.length > 0) await AsyncStorage.multiRemove(ours);
   } catch {
     // ignore

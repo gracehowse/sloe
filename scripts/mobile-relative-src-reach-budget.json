@@ -1,0 +1,14 @@
+{
+  "apps/mobile/app/profile.tsx": 1,
+  "apps/mobile/app/recipe/[id].tsx": 1,
+  "apps/mobile/components/MoveMealSheet.tsx": 1,
+  "apps/mobile/components/settings/SettingsBundleContent.tsx": 1,
+  "apps/mobile/constants/nutritionDefaults.ts": 1,
+  "apps/mobile/hooks/use-meal-plan-slots.ts": 1,
+  "apps/mobile/lib/planImportPendingApply.ts": 1,
+  "apps/mobile/tests/unit/barcodeMealSlot.test.ts": 1,
+  "apps/mobile/tests/unit/importRouting.test.ts": 1,
+  "apps/mobile/tests/unit/logSheetSlotHonoured.test.ts": 1,
+  "apps/mobile/tests/unit/nutritionEntryRowPersistence.test.ts": 1,
+  "apps/mobile/tests/unit/trackerStats.test.ts": 1
+}
