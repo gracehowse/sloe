@@ -1,75 +1,65 @@
 /**
- * Barcode portion memory — web mirror of `apps/mobile/lib/barcodePortionMemory.ts`.
- * Same shape, same TTL, same clamp logic; storage backend is `localStorage`
- * (per-browser) so the web barcode dialog also pre-fills the user's last
- * portion size. Audit/2026-04-30 — competitive parity vs MFP / Cal AI.
+ * Barcode portion memory (audit/2026-04-30 — competitive parity vs MFP / Cal AI).
  *
- * Falls back to a no-op when `localStorage` is unavailable (SSR, private
- * mode, exotic embeds) so callers can use it unconditionally.
+ * When the same barcode is logged repeatedly, the portion picker should
+ * default to the user's previously-chosen grams instead of the food's
+ * reference serving. Entries auto-expire after 90 days so a stale "always
+ * 30 g" doesn't follow a user forever after they switch product variants.
+ *
+ * This module is the canonical home for the storage-independent pieces
+ * (key building, TTL, payload validation, the clamp-to-serving-options
+ * algorithm) — shared with mobile's `apps/mobile/lib/barcodePortionMemory.ts`
+ * (ENG-1358; the two were previously a byte-identical hand-mirrored copy).
+ * The read/write functions below stay **synchronous** and web-only on
+ * purpose: `window.localStorage` is sync, and
+ * `src/app/components/suppr/today-barcode-dialog.tsx` calls
+ * `getRememberedPortion` / `recordPortion` without `await`. Making the
+ * public API async here would silently turn a `number | null` return into
+ * an un-awaited `Promise` at that call site. Mobile's AsyncStorage is
+ * inherently async, so its wrapper stays async and imports the shared pure
+ * helpers below — see that file for the parallel contract.
  */
 
 const KEY_PREFIX = "barcode_portion_v1:";
 const TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
-type Stored = { grams: number; ts: number };
+export type StoredBarcodePortion = { grams: number; ts: number };
 
-function isStored(value: unknown): value is Stored {
+export function isStoredBarcodePortion(value: unknown): value is StoredBarcodePortion {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return typeof v.grams === "number" && Number.isFinite(v.grams) && v.grams > 0
     && typeof v.ts === "number" && Number.isFinite(v.ts);
 }
 
-function normaliseBarcode(raw: string): string | null {
+/** Conservative cap so a malicious / accidental long string can't blow up
+ *  storage. Real EAN/UPC barcodes are <= 14 digits. */
+export function normaliseBarcode(raw: string): string | null {
   const t = String(raw ?? "").trim();
   if (!t) return null;
   if (t.length > 64) return null;
   return t;
 }
 
-function getStorage(): Storage | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
+export function barcodePortionStorageKey(code: string): string {
+  return KEY_PREFIX + code;
 }
 
-export function recordPortion(barcode: string, grams: number): void {
-  const code = normaliseBarcode(barcode);
-  if (!code) return;
-  if (!Number.isFinite(grams) || grams <= 0) return;
-  const ls = getStorage();
-  if (!ls) return;
-  try {
-    const payload: Stored = { grams: Math.round(grams * 10) / 10, ts: Date.now() };
-    ls.setItem(KEY_PREFIX + code, JSON.stringify(payload));
-  } catch {
-    // ignore — non-critical
-  }
+export function barcodePortionKeyPrefix(): string {
+  return KEY_PREFIX;
 }
 
-export function getRememberedPortion(barcode: string): number | null {
-  const code = normaliseBarcode(barcode);
-  if (!code) return null;
-  const ls = getStorage();
-  if (!ls) return null;
-  try {
-    const raw = ls.getItem(KEY_PREFIX + code);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (!isStored(parsed)) return null;
-    if (Date.now() - parsed.ts > TTL_MS) {
-      try { ls.removeItem(KEY_PREFIX + code); } catch { /* ignore */ }
-      return null;
-    }
-    return parsed.grams;
-  } catch {
-    return null;
-  }
+export function isBarcodePortionExpired(stored: StoredBarcodePortion, now: number = Date.now()): boolean {
+  return now - stored.ts > TTL_MS;
 }
 
+/**
+ * Clamp a remembered portion to one of the food's available serving
+ * options when servings are defined. If the remembered grams matches
+ * an option (within 0.5 g), use it as-is; otherwise return the closest
+ * option's grams. When no servingOptions are provided, the remembered
+ * grams pass through unchanged (the picker is a free numeric input).
+ */
 export function clampRememberedToServingOptions(
   remembered: number,
   servingOptions: ReadonlyArray<{ grams: number }> | null | undefined,
@@ -88,6 +78,49 @@ export function clampRememberedToServingOptions(
     }
   }
   return bestGrams;
+}
+
+function getStorage(): Storage | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function recordPortion(barcode: string, grams: number): void {
+  const code = normaliseBarcode(barcode);
+  if (!code) return;
+  if (!Number.isFinite(grams) || grams <= 0) return;
+  const ls = getStorage();
+  if (!ls) return;
+  try {
+    const payload: StoredBarcodePortion = { grams: Math.round(grams * 10) / 10, ts: Date.now() };
+    ls.setItem(barcodePortionStorageKey(code), JSON.stringify(payload));
+  } catch {
+    // ignore — non-critical
+  }
+}
+
+export function getRememberedPortion(barcode: string): number | null {
+  const code = normaliseBarcode(barcode);
+  if (!code) return null;
+  const ls = getStorage();
+  if (!ls) return null;
+  try {
+    const raw = ls.getItem(barcodePortionStorageKey(code));
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isStoredBarcodePortion(parsed)) return null;
+    if (isBarcodePortionExpired(parsed)) {
+      try { ls.removeItem(barcodePortionStorageKey(code)); } catch { /* ignore */ }
+      return null;
+    }
+    return parsed.grams;
+  } catch {
+    return null;
+  }
 }
 
 /** Test-only — clear all remembered barcode portions. */

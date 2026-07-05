@@ -30,6 +30,7 @@
     "check:redesign-foundation-touch": "node scripts/check-redesign-foundation-touch.mjs",
     "check:redesign-foundation-touch:strict": "node scripts/check-redesign-foundation-touch.mjs --strict",
     "check:mobile-shared-imports": "bash scripts/check-mobile-shared-imports.sh",
+    "check:mobile-shared-imports:write": "node scripts/check-mobile-relative-src-reach.mjs --write",
     "check:nutrition-claims": "node scripts/check-nutrition-claims.mjs",
     "env:doctor": "node scripts/env-doctor.mjs",
     "test": "vitest run --config vitest.unit.config.ts",

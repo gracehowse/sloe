@@ -6,18 +6,20 @@
  * launch; write errors are swallowed (worst case the banner shows
  * twice, which is preferable to silently hiding it forever).
  *
+ * Key builder is shared with the web wrapper
+ * (`src/lib/today/weeklyCheckinBannerDismissal.ts`, ENG-1358) so both
+ * platforms key identically; the async/StorageLike public API here stays
+ * mobile-only because AsyncStorage is inherently async (web's
+ * `localStorage` is sync and its call sites don't await — see that file's
+ * header comment for why the two public APIs can't be merged).
+ *
  * Spec: extended-competitor-audit task (2026-04-30, Step 3).
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const STORAGE_PREFIX = "weekly_checkin_banner_dismissed_v1";
+import { buildCheckinBannerDismissalKey } from "@suppr/shared/today/weeklyCheckinBannerDismissal";
 
 type StorageLike = Pick<typeof AsyncStorage, "getItem" | "setItem">;
-
-function buildKey(userId: string, weekKey: string): string {
-  return `${STORAGE_PREFIX}:${userId}:${weekKey}`;
-}
 
 export async function isCheckinBannerDismissed(
   userId: string,
@@ -26,7 +28,7 @@ export async function isCheckinBannerDismissed(
 ): Promise<boolean> {
   if (!userId || !weekKey) return false;
   try {
-    const raw = await storage.getItem(buildKey(userId, weekKey));
+    const raw = await storage.getItem(buildCheckinBannerDismissalKey(userId, weekKey));
     return raw === "1";
   } catch {
     return false;
@@ -40,7 +42,7 @@ export async function markCheckinBannerDismissed(
 ): Promise<void> {
   if (!userId || !weekKey) return;
   try {
-    await storage.setItem(buildKey(userId, weekKey), "1");
+    await storage.setItem(buildCheckinBannerDismissalKey(userId, weekKey), "1");
   } catch {
     /* swallow */
   }
