@@ -4,6 +4,10 @@ export const meta = {
   phases: [{ title: 'Triage', detail: 'one agent per failing test file' }],
 }
 
+// Override with SUPPR_REPO_ROOT for a non-standard checkout location; falls
+// back to cwd (the harness runs these from the repo root).
+const REPO_ROOT = process.env.SUPPR_REPO_ROOT || process.cwd()
+
 const FILES = [{"file":"tests/unit/cardElevationVariants.test.tsx","failed":1,"model":"sonnet"},{"file":"tests/unit/trajectoryCard.test.tsx","failed":1,"model":"sonnet"},{"file":"tests/unit/calorieRingOverageArc.test.tsx","failed":2,"model":"sonnet"},{"file":"tests/unit/todayActivityCardTd1.test.tsx","failed":1,"model":"sonnet"},{"file":"tests/unit/recipeDetailV3SourcePins.test.ts","failed":19,"model":"opus"},{"file":"tests/unit/sloeCardHairlineBorders.test.tsx","failed":2,"model":"sonnet"},{"file":"tests/unit/logWeightSheetWiring.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/designTokensPhase1.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/accentTokens.test.ts","failed":4,"model":"sonnet"},{"file":"tests/unit/createRecipeWizard.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/screenAuditFixesParity.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/todayFlatCardFigma.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/trustPostureSweepPhase4.test.tsx","failed":2,"model":"sonnet"},{"file":"tests/unit/hexTokenSweep.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/progressRangePicker.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/todayRhythmLayout.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/recipeSourceCardParity.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/barcodeVoiceResultRedesign.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/settingsLaneAubergineOutline.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/todayLayoutTokens.test.ts","failed":1,"model":"sonnet"}]
 
 const SCHEMA = {
@@ -23,7 +27,7 @@ phase('Triage')
 
 const results = await parallel(FILES.map((f)=> ()=>
   agent([
-    'You are triaging + fixing failures in ONE unit-test file of the Sloe iOS app (apps/mobile). Work from /Users/graceturner/Suppr-1/apps/mobile.',
+    'You are triaging + fixing failures in ONE unit-test file of the Sloe iOS app (apps/mobile). Work from '+REPO_ROOT+'/apps/mobile.',
     '',
     'CONTEXT: A canonical "aubergine" redesign (accent #3B2A4D, clay = carbs macro only) was just reconciled with a parity-fix sweep. The aubergine work was mid-flight, so its own guard tests have '+f.failed+' failing assertion(s) in this file. Pre-reconcile (clay) source of any file is available via: git show e5b7f8fd:<path>. The aubergine direction is canonical and LOCKED.',
     '',

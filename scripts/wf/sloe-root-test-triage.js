@@ -4,6 +4,10 @@ export const meta = {
   phases: [{ title: 'Triage', detail: 'one agent per failing root-unit file' }],
 }
 
+// Override with SUPPR_REPO_ROOT for a non-standard checkout location; falls
+// back to cwd (the harness runs these from the repo root).
+const REPO_ROOT = process.env.SUPPR_REPO_ROOT || process.cwd()
+
 const FILES = [{"file":"tests/unit/recipeDetailMetaAndVerdict.test.ts","failed":21,"model":"opus"},{"file":"tests/unit/recipeDetailLayoutWeb.test.tsx","failed":15,"model":"opus"},{"file":"tests/unit/recipeDetailFigmaReskin.test.ts","failed":9,"model":"opus"},{"file":"tests/unit/recipeIngredientVerifyAndAmountFixes.test.ts","failed":4,"model":"sonnet"},{"file":"tests/unit/recipeViewScaleScreens.test.tsx","failed":4,"model":"sonnet"},{"file":"tests/unit/uiConsistencyRound2.test.ts","failed":4,"model":"sonnet"},{"file":"tests/unit/frostFlagTokens.test.ts","failed":3,"model":"sonnet"},{"file":"tests/unit/uiConsistencyPolishRound.test.ts","failed":3,"model":"sonnet"},{"file":"tests/unit/paywallDarkContrast.test.ts","failed":2,"model":"sonnet"},{"file":"tests/unit/importVerifySkeleton.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/libraryFilterPillPadding.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/progressPhase2Cards.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/todayAboveMealsCap.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/todayCardElevationSweep.test.ts","failed":1,"model":"sonnet"},{"file":"tests/unit/trustPostureSweepPhase4.test.tsx","failed":1,"model":"sonnet"}]
 
 const SCHEMA = {
@@ -21,7 +25,7 @@ phase('Triage')
 
 const results = await parallel(FILES.map((f)=> ()=>
   agent([
-    'You are greening failures in ONE ROOT web/shared unit-test file of the Sloe app. Work from /Users/graceturner/Suppr-1 (repo root).',
+    'You are greening failures in ONE ROOT web/shared unit-test file of the Sloe app. Work from '+REPO_ROOT+' (repo root).',
     '',
     'CONTEXT: The canonical "aubergine" redesign is the shipped direction — accent = deep plum #3B2A4D (NOT clay), clay survives ONLY as the carbs macro colour, the brand_frost_secondary flag is RETIRED (decision: docs/decisions/2026-06-08-aubergine-accent-system.md). Recipe-detail was redesigned to the Figma 332:2 structure: the subtitle row was REMOVED, kcal moved to the leading CAL column of RecipeMacroStrip (serif 24px), serif titles, warm cream base. The canonical re-pinned reference for recipe-detail structure is tests/unit/recipeDetailV3SourcePins.test.ts (already updated to 332:2 and passing) — read it to learn the current canonical source shape. Many failing tests still pin the SUPERSEDED state (clay accent, recipe-detail v4 subtitle/kcal-line). Those are STALE TESTS.',
     '',
