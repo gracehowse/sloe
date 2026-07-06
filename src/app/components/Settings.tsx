@@ -75,6 +75,7 @@ import {
 import { MACRO_COLOR_VARS } from "../../lib/theme/macroColors.ts";
 import { MfpCsvImportCard } from "./imports/MfpCsvImportCard";
 import { SubscriptionCard } from "./settings/SubscriptionCard";
+import { SettingsProfileHeaderCard } from "./settings/SettingsProfileHeaderCard";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import { useCalmMode } from "../../lib/preferences/useCalmMode";
 import { TrendOnlyWeightToggle } from "./settings/TrendOnlyWeightToggle.tsx";
@@ -874,62 +875,17 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     </div>
   );
 
-  // Profile header card — Group G IA Batch C (2026-04-29). Avatar +
-  // display name + tier pill + "Edit profile" link to /profile.
+  // Profile header card — Group G IA Batch C (2026-04-29). Extracted to
+  // `SettingsProfileHeaderCard` (ENG-1458 — narrow-width reflow fix; this
+  // file's line-budget pin had no headroom for the fix inline).
   const profileHeaderCard = (
-      <SupprCard
-        data-testid="settings-profile-header-card"
-        padding="xl"
-        radius="xl"
-        className="mb-6 flex items-center gap-4"
-      >
-        <div
-          aria-hidden
-          className="w-14 h-14 rounded-full grid place-items-center text-lg font-bold text-white shrink-0"
-          style={{
-            background: "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #DF5EBC) 100%)",
-            boxShadow: "0 2px 8px color-mix(in srgb, var(--primary) 25%, transparent)",
-          }}
-        >
-          {profileAvatarInitial}
-        </div>
-        <div className="flex-1 min-w-0">
-          {/* Sloe DS (Figma 09 Settings `335:2`): the user's name is an
-              editorial identity header — it reads in the Newsreader serif
-              display face (plum-ink), not sans. */}
-          <p className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand leading-tight truncate">
-            {profileDisplayLabel}
-          </p>
-          {/* Plan label — pinned by settingsProfileHeaderCardParity. Pro
-              keeps the clay-tint pill (reward signal); email gets its own
-              `truncate` line so the tld doesn't run under the avatar
-              (2026-04-30 visual-qa P1 #9). ENG-1247: kept two-line on web
-              (NOT the prototype's single "email · plan") — web's card has
-              an Edit-profile button, so a merged line truncates to
-              "gracemt…" (seen in sim 2026-06-24). Deliberate divergence. */}
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide mt-1 ${
-            userTier === "pro"
-              ? "bg-primary/10 text-primary-solid"
-              : "bg-muted text-muted-foreground"
-          }`}>
-            {profileTierLabel} plan
-          </span>
-          {authEmail ? (
-            <p className="text-xs text-muted-foreground truncate mt-1">
-              {authEmail}
-            </p>
-          ) : null}
-        </div>
-        <Link
-          href="/profile"
-          data-testid="settings-edit-profile-link"
-          className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          aria-label="Edit profile"
-        >
-          Edit profile
-          <Icons.forward className="w-4 h-4" aria-hidden />
-        </Link>
-      </SupprCard>
+    <SettingsProfileHeaderCard
+      avatarInitial={profileAvatarInitial}
+      displayLabel={profileDisplayLabel}
+      tierLabel={profileTierLabel}
+      userTier={userTier}
+      authEmail={authEmail}
+    />
   );
 
   // Sloe Pro upsell banner — Sloe DS (Figma 09 Settings `335:2`/`335:23`).

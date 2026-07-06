@@ -23,6 +23,7 @@ import {
   persistOnboarding,
 } from "@suppr/shared/onboarding/persist";
 import { clearLogsAndWeightHistory } from "@suppr/shared/account/nukeAccountData";
+import { firstLogDeepLinkQs } from "@suppr/shared/onboarding/conversionFunnel";
 import {
   STEP_IDS,
   canAdvance as canAdvanceStep,
@@ -351,19 +352,17 @@ export function MobileFlow() {
         /* non-fatal */
       }
 
-      // Activation hook (audit 2026-04-30): always pass `firstRun=1` on
-      // the post-onboarding land so Today can fire its first-run
-      // polish (push-permission explainer, ring-celebration, etc.)
-      // without re-querying `onboarding_completed`. For a refresh-plan
-      // flow we drop `firstRun` (this user already saw the polish) and
-      // tag the navigation with `refresh=1` so analytics can split
-      // first-time vs refresh completions.
+      // Activation hook (audit 2026-04-30): `firstRun=1` triggers Today's
+      // first-run polish; refresh-plan flow uses `refresh=1` instead (this
+      // user already saw it). ENG-1450: `firstLogDeepLinkQs` appends the
+      // `?openLog=1` LogSheet deep-link so a chip pick on "One quick win"
+      // isn't silently dropped (see helper doc for the full rationale).
       const baseQs = planFailed
         ? "?onboarding_complete=1&plan_build=failed"
         : "?onboarding_complete=1";
-      const homeQs = refreshPlanPending
-        ? `${baseQs}&refresh=1`
-        : `${baseQs}&firstRun=1`;
+      const homeQs =
+        (refreshPlanPending ? `${baseQs}&refresh=1` : `${baseQs}&firstRun=1`) +
+        firstLogDeepLinkQs(state.firstLogChoice);
 
       if (refreshPlanPending) {
         Alert.alert(

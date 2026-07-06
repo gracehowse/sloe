@@ -51,15 +51,23 @@ function setup(params: LogSheetDeepLinkParams) {
   const setFabSheetOpen = vi.fn();
   const setActiveMealSlot = vi.fn();
   const clearOpenLogParams = vi.fn();
+  const setInitialSearchQuery = vi.fn();
   const view = renderHook(() =>
     useLogSheetDeepLinks({
       params,
       setFabSheetOpen,
       setActiveMealSlot,
       clearOpenLogParams,
+      setInitialSearchQuery,
     }),
   );
-  return { setFabSheetOpen, setActiveMealSlot, clearOpenLogParams, view };
+  return {
+    setFabSheetOpen,
+    setActiveMealSlot,
+    clearOpenLogParams,
+    setInitialSearchQuery,
+    view,
+  };
 }
 
 /** Simulate tab blur by firing every captured focus cleanup. */
@@ -148,5 +156,48 @@ describe("useLogSheetDeepLinks", () => {
     const { setFabSheetOpen } = setup({ date: "not-a-date" });
 
     expect(setFabSheetOpen).not.toHaveBeenCalled();
+  });
+
+  // ENG-1450 — onboarding's "One quick win" Breakfast/Coffee chips pre-scope
+  // the LogSheet's search via `?openLogQuery=`; "Search food" (or the
+  // generic tab-bar `+`) leaves it undefined so the sheet opens empty.
+  it("(f) ?openLog=1&openLogQuery=Breakfast seeds the search query before opening", () => {
+    const { setInitialSearchQuery, setActiveMealSlot, setFabSheetOpen } = setup({
+      openLog: "1",
+      openLogQuery: "Breakfast",
+      _t: "1700000000003",
+    });
+
+    expect(setInitialSearchQuery).toHaveBeenCalledWith("Breakfast");
+    // Ordering guard (pinned statically in logSheetSlotHonoured.test.ts):
+    // slot reset → query seed → sheet open.
+    expect(setActiveMealSlot).toHaveBeenCalledTimes(1);
+    expect(setFabSheetOpen).toHaveBeenCalledWith(true);
+  });
+
+  it("(g) ?openLog=1 with no openLogQuery seeds an undefined query (empty search)", () => {
+    const { setInitialSearchQuery } = setup({
+      openLog: "1",
+      _t: "1700000000004",
+    });
+
+    expect(setInitialSearchQuery).toHaveBeenCalledWith(undefined);
+  });
+
+  it("(h) setInitialSearchQuery is optional — omitting it does not throw", () => {
+    const setFabSheetOpen = vi.fn();
+    const setActiveMealSlot = vi.fn();
+    const clearOpenLogParams = vi.fn();
+    expect(() =>
+      renderHook(() =>
+        useLogSheetDeepLinks({
+          params: { openLog: "1", openLogQuery: "Coffee", _t: "1700000000005" },
+          setFabSheetOpen,
+          setActiveMealSlot,
+          clearOpenLogParams,
+        }),
+      ),
+    ).not.toThrow();
+    expect(setFabSheetOpen).toHaveBeenCalledWith(true);
   });
 });

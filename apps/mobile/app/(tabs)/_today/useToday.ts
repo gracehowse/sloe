@@ -7,6 +7,13 @@ type TodayRouteParams = {
   _t?: string;
   editMealId?: string;
   openLog?: string;
+  /** ENG-1450 — paired with `openLog=1` from the onboarding "One quick
+   *  win" step (Breakfast / Coffee chips). Pre-fills the LogSheet's
+   *  search query with the chip label so the user picks a real food
+   *  match instead of us inventing preset nutrition. Absent (or paired
+   *  with the "Search food" chip) → LogSheet opens with an empty,
+   *  focused search input. */
+  openLogQuery?: string;
   /** Activation hook (audit 2026-04-30): set by `notifications-prompt`
    *  + onboarding completion → triggers first-run polish (push
    *  explainer, ring celebration). */

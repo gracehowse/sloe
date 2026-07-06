@@ -32,6 +32,8 @@
  * mount + LogSheet's panel hand-off) is NOT re-pinned here.
  */
 import * as React from "react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   afterEach,
   beforeEach,
@@ -774,5 +776,42 @@ describe("FoodSearchPanel — Premier-tier autocomplete row", () => {
       String(u).includes("/api/fatsecret/autocomplete"),
     );
     expect(autocompleteCalls.length).toBe(0);
+  });
+});
+
+describe("FoodSearchPanel — ENG-1445 sticky commit CTA layout", () => {
+  // JSDOM doesn't run a real layout/flex engine, so the "Use this" footer
+  // staying pinned at the sheet bottom on scroll can't be asserted from a
+  // rendered tree here — it's verified visually (see
+  // docs/ux/captures/eng1445-sticky-commit/). This is a source-pin guard
+  // against the specific regression that motivated the fix: the preview
+  // root reverting to `h-full`, which lets `min-height: auto` win inside
+  // the log-sheet's `flex min-h-0 flex-1 flex-col` chain and pushes the
+  // footer below the visible sheet.
+  const src = readFileSync(
+    resolve(__dirname, "../../src/app/components/food-search/FoodSearchPanel.tsx"),
+    "utf8",
+  );
+  // Scope to just the `if (preview && scaled) { ... }` branch — the
+  // sibling default-results branch further down legitimately still uses
+  // `flex flex-col h-full` (it has no sticky footer below it, so the
+  // min-height:auto pitfall doesn't apply there).
+  const previewBranchStart = src.indexOf("if (preview && scaled) {");
+  const previewBranch = src.slice(previewBranchStart, previewBranchStart + 1200);
+
+  it("the preview root uses min-h-0 + flex-1, not h-full", () => {
+    expect(previewBranchStart).toBeGreaterThan(-1);
+    expect(previewBranch).toMatch(/flex min-h-0 flex-1 flex-col \$\{px\}/);
+    expect(previewBranch).not.toMatch(/flex flex-col h-full \$\{px\}/);
+  });
+
+  it("the preview body scrolls independently (flex-1 overflow-y-auto)", () => {
+    expect(previewBranch).toMatch(/flex-1 overflow-y-auto pb-3 space-y-4/);
+  });
+
+  it("the 'Use this' CTA footer stays out of the scroll region (shrink-0)", () => {
+    expect(src).toMatch(
+      /border-t border-border bg-card -mx-3 px-3 py-3 shrink-0 flex gap-2/,
+    );
   });
 });

@@ -708,6 +708,9 @@ export default function TrackerScreen() {
   // Non-IF users see no pill at all.
   const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const [fabSheetOpen, setFabSheetOpen] = useState(false);
+  // ENG-1450 — onboarding's Breakfast/Coffee "One quick win" chips pre-scope
+  // the LogSheet's search via `?openLogQuery=`, threaded by useLogSheetDeepLinks.
+  const [logSheetInitialQuery, setLogSheetInitialQuery] = useState<string | undefined>(undefined);
   const [logSheetConfirmation, setLogSheetConfirmation] = useState<
     NonNullable<React.ComponentProps<typeof LogSheet>["confirmation"]> | null
   >(null);
@@ -871,12 +874,14 @@ export default function TrackerScreen() {
     params,
     setFabSheetOpen,
     setActiveMealSlot,
+    setInitialSearchQuery: setLogSheetInitialQuery,
     clearOpenLogParams: useCallback(
       () =>
-        router.setParams({ openLog: undefined, _t: undefined } as Record<
-          string,
-          undefined
-        >),
+        router.setParams({
+          openLog: undefined,
+          openLogQuery: undefined,
+          _t: undefined,
+        } as Record<string, undefined>),
       [router],
     ),
   });
@@ -5902,6 +5907,7 @@ export default function TrackerScreen() {
         visible={fabSheetOpen}
         onClose={() => setFabSheetOpen(false)}
         confirmation={logSheetConfirmation ?? undefined}
+        initialQuery={logSheetInitialQuery}
         showBarcodeFreePromise
         // ENG-773 — log-time meal-slot selector (web parity with
         // `src/app/components/NutritionTracker.tsx`). Flag-gated visual
