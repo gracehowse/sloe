@@ -589,6 +589,10 @@ export const NutritionTracker = memo(function NutritionTracker({
   const trackerRouter = useRouter();
   const trackerSearchParams = useSearchParams();
   const openLogParam = trackerSearchParams.get("openLog");
+  // ENG-1450 — paired `openLogQuery` pre-fills LogSheet's search (web
+  // parity with mobile). Absent → LogSheet opens with empty search.
+  const [logSheetInitialQuery, setLogSheetInitialQuery] = useState<string | undefined>(undefined);
+  const openLogQueryParam = trackerSearchParams.get("openLogQuery") ?? undefined;
   useEffect(() => {
     if (openLogParam !== "1") return;
     // 2026-05-08 build-47 fix — generic `?openLog=1` deep-link is
@@ -596,12 +600,14 @@ export const NutritionTracker = memo(function NutritionTracker({
     // header + the pick-handlers default to the right slot. The
     // slot-specific `+ Breakfast` path (onOpenAddForSlot) overrides this.
     setMealSlot(slotForHour(new Date().getHours()));
+    setLogSheetInitialQuery(openLogQueryParam);
     setLogSheetOpen(true);
     const params = new URLSearchParams(trackerSearchParams.toString());
     params.delete("openLog");
+    params.delete("openLogQuery");
     const q = params.toString();
     trackerRouter.replace(q ? `/home?${q}` : "/home", { scroll: false });
-  }, [openLogParam, trackerRouter, trackerSearchParams]);
+  }, [openLogParam, openLogQueryParam, trackerRouter, trackerSearchParams]);
   // Phase 4 / B3.Y — desktop (≥1024px) renders the LogSheet as a
   // centred 480×640 modal per spec §Surface B; below that, the
   // primitive falls back to the mobile bottom-sheet layout.
@@ -3901,6 +3907,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         open={logSheetOpen}
         onOpenChange={setLogSheetOpen}
         confirmation={logSheetConfirmation ?? undefined}
+        initialQuery={logSheetInitialQuery}
         showBarcodeFreePromise
         // ENG-773 — log-time meal-slot selector (web parity with mobile
         // `apps/mobile/app/(tabs)/index.tsx`). Flag-gated visual element

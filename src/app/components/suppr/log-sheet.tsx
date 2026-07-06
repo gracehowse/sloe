@@ -187,6 +187,7 @@ export interface LogSheetProps {
   onOpenChange: (open: boolean) => void;
   /** Ignored post-2026-04-28 — kept for backwards compat only. */
   initialTab?: LogSheetTab;
+  initialQuery?: string; // ENG-1450 — pre-fills inline search on open (`?openLogQuery=`)
   /** Search foods.
    *
    *  INLINE MODE (preferred, 2026-04-30):
@@ -443,6 +444,7 @@ export function LogSheet({
   basket,
   showBarcodeFreePromise = false,
   describe,
+  initialQuery,
 }: LogSheetProps) {
   const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
   React.useEffect(() => {
@@ -631,6 +633,7 @@ export function LogSheet({
               basket={basket}
               showBarcodeFreePromise={showBarcodeFreePromise}
               describe={describe}
+              initialQuery={initialQuery}
             />
           )}
         </DrawerPrimitive.Content>
@@ -736,6 +739,7 @@ function DefaultComposition({
   basket,
   showBarcodeFreePromise,
   describe,
+  initialQuery,
 }: {
   open: boolean;
   search: LogSheetProps["search"];
@@ -755,6 +759,7 @@ function DefaultComposition({
   basket?: LogSheetProps["basket"];
   showBarcodeFreePromise?: boolean;
   describe?: LogSheetProps["describe"];
+  initialQuery?: string;
 }) {
   const [describeReviewActive, setDescribeReviewActive] = React.useState(false);
   const [describeSeedText, setDescribeSeedText] = React.useState<string | null>(null);
@@ -803,18 +808,17 @@ function DefaultComposition({
   // `onOpen`).
   const inlineMode = !!search?.onSelect;
 
-  // Local query state — owned by LogSheet so the input is controlled
-  // and `<FoodSearchPanel>` reacts in lock-step. Reset every time the
-  // sheet opens so a returning user lands on an empty input, not the
-  // previous query.
-  const [query, setQuery] = React.useState("");
+  // Controlled query; resets on open to `initialQuery` (ENG-1450) or empty.
+  const [query, setQuery] = React.useState(initialQuery ?? "");
   React.useEffect(() => {
     if (!open) {
       setQuery("");
       setDescribeReviewActive(false);
       setDescribeSeedText(null);
+    } else if (initialQuery) {
+      setQuery(initialQuery);
     }
-  }, [open]);
+  }, [open, initialQuery]);
 
   return (
     <>
