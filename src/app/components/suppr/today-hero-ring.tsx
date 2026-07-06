@@ -68,9 +68,11 @@ function HeroStatusChip({
     state === "over"
       ? {
           label: todayStatusChip("over"),
-          className: tierV1
-            ? "bg-warning-soft text-warning-solid"
-            : "bg-destructive/10 text-destructive-solid",
+          // ENG-1453: over-budget is AMBER in every state of every branch
+          // (ENG-1296 — red retired product-wide). Semantic over-budget
+          // tokens alias the warning family, so pixels match the previous
+          // tierV1 pill exactly.
+          className: "bg-over-budget-soft text-over-budget-fg",
           Icon: CircleAlert,
         }
       : state === "empty"
@@ -140,14 +142,15 @@ function HeroCoachChip({ onPress }: { onPress: () => void }) {
 /**
  * RingStatusLine — the de-carded v3 hero's status indicator (ENG-1247): a
  * centered dot + label BELOW the ring (prototype `.ring-status`), replacing the
- * carded hero's chip-above-the-ring. Sage when under, red when over (Grace's
- * calorie-colour rule — over=red, mirrors mobile); hidden on empty days. Copy
- * from the shared `todayStatusChip` helper (no drift). Web twin of mobile
- * `RingStatusLine` in `TodayHeroRing.tsx`.
+ * carded hero's chip-above-the-ring. Sage when under, over-budget AMBER when
+ * over (ENG-1453 — the old over=red rule was retired by ENG-1296; mirrors
+ * mobile); hidden on empty days. Copy from the shared `todayStatusChip`
+ * helper (no drift). Web twin of mobile `RingStatusLine` in
+ * `TodayHeroChips.tsx`.
  */
 function RingStatusLine({ state }: { state: ChipState }) {
   if (state === "empty") return null;
-  const colorClass = state === "over" ? "text-destructive-solid" : "text-success-solid";
+  const colorClass = state === "over" ? "text-over-budget-fg" : "text-success-solid";
   return (
     <div
       data-testid="today-ring-status-line"

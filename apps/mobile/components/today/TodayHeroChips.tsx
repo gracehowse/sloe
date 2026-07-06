@@ -24,7 +24,10 @@ import { todayStatusChip } from "@suppr/shared/copy/today";
  * frame, chip-left). Three states with Sloe tints + a lucide glyph:
  *   - empty → "Fresh start" (plum text; fill only when tier-v1 flag OFF)
  *   - under → "Under budget" (sage tint, circle-check)
- *   - over  → "Over budget"  (destructive tint, circle-alert)
+ *   - over  → "Over budget"  (over-budget AMBER tint, circle-alert —
+ *     ENG-1453; red retired product-wide per ENG-1296, this chip was
+ *     the surviving red. Same tokens as the web pill: overBudgetFg /
+ *     overBudgetSoft ↔ --over-budget-fg / --over-budget-soft.)
  * Copy comes from the shared `todayStatusChip` helper (Figma `01 · Today`).
  */
 export function StatusChip({
@@ -46,11 +49,11 @@ export function StatusChip({
   // read at a glance, not hide).
   const sageFill = isDark ? Accent.successLight : Accent.success;
   const sageInk = isDark ? Accent.successLight : Accent.successSolid;
-  const red = isDark ? Accent.destructiveLight : Accent.destructive;
-  const plum = useThemeColors().navPrimary; // ENG-1010: one scheme-resolved plum source
+  const colors = useThemeColors();
+  const plum = colors.navPrimary; // ENG-1010: one scheme-resolved plum source
   const config =
     state === "over"
-      ? { fg: red, bg: `${red}1A`, Icon: CircleAlert }
+      ? { fg: colors.overBudgetFg, bg: colors.overBudgetSoft, Icon: CircleAlert }
       : state === "empty"
         ? {
             fg: plum,
@@ -106,8 +109,10 @@ export function StatusChip({
 /**
  * RingStatusLine — the de-carded v3 hero's status indicator (ENG-1247): a
  * centered dot + label BELOW the ring (prototype `.ring-status`), replacing the
- * carded hero's chip-above-the-ring. Sage when under budget, red when over;
- * hidden on empty days. Copy from the shared `todayStatusChip` helper (no drift).
+ * carded hero's chip-above-the-ring. Sage when under budget, over-budget AMBER
+ * when over (ENG-1453 — red retired product-wide per ENG-1296; matches the ring
+ * itself + the web status line); hidden on empty days. Copy from the shared
+ * `todayStatusChip` helper (no drift).
  */
 export function RingStatusLine({
   state,
@@ -118,12 +123,11 @@ export function RingStatusLine({
   overByKcal: number;
   isDark: boolean;
 }) {
+  const colors = useThemeColors();
   if (state === "empty") return null;
   const color =
     state === "over"
-      ? isDark
-        ? Accent.destructiveLight
-        : Accent.destructive
+      ? colors.overBudgetFg
       : isDark
         ? Accent.successLight
         : Accent.successSolid;

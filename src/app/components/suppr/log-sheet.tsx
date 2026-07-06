@@ -1189,6 +1189,9 @@ function LogSheetDailyProgress({
 }) {
   const kcalTarget = Math.round(macroTargets.calories);
   const kcalConsumed = Math.round(macroConsumed.calories);
+  // ENG-1453: the kcal figure carries state colour like its P/C/F siblings —
+  // over-budget amber past target, neutral otherwise (mirrors mobile + dial).
+  const kcalOver = kcalTarget > 0 && kcalConsumed > kcalTarget;
   return (
     <div
       data-testid="log-sheet-daily-progress"
@@ -1198,7 +1201,7 @@ function LogSheetDailyProgress({
         <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Daily progress
         </p>
-        <p className="font-[family-name:var(--font-headline)] text-xl text-foreground">
+        <p className={cn("font-[family-name:var(--font-headline)] text-xl", kcalOver ? "text-over-budget-fg" : "text-foreground")}>
           {kcalConsumed}{" "}
           <span className="text-sm font-[family-name:var(--font-body)] text-muted-foreground">
             / {kcalTarget} kcal

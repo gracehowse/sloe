@@ -333,9 +333,10 @@ function HeroStatusChip({
     state === "over"
       ? {
           label: todayStatusChip("over"),
-          className: tierV1
-            ? "bg-warning-soft text-warning-solid"
-            : "bg-destructive/10 text-destructive",
+          // ENG-1453: over-budget is AMBER in both flag branches
+          // (ENG-1296 — red retired product-wide). Semantic over-budget
+          // tokens alias the warning family — same pixels as the tierV1 pill.
+          className: "bg-over-budget-soft text-over-budget-fg",
           Icon: CircleAlert,
         }
       : state === "empty"
