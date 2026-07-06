@@ -969,9 +969,8 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
   }, [recipeYieldEditing]);
 
   const ingredients = dbIngredients;
-  const sloeImageRuntimeEnabled = isFeatureEnabled("recipe_runtime_image_generation_v1");
   const heroImageSource = dbImageSource;
-  const isAiGeneratedHero = sloeImageRuntimeEnabled && heroImageSource === "ai_generated";
+  const isAiGeneratedHero = heroImageSource === "ai_generated";
 
   const generateHeroPreview = useCallback(async (opts?: { regenerate?: boolean }) => {
     if (!authUserId || !isMyRecipe || heroGenerating) return;
@@ -1932,7 +1931,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                 Sloe image
               </div>
             ) : null}
-            {sloeImageRuntimeEnabled && isMyRecipe && !heroSrc ? (
+            {isMyRecipe && !heroSrc ? (
               <button
                 type="button"
                 onClick={() => void generateHeroPreview()}

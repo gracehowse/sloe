@@ -9,8 +9,11 @@ describe("ENG-863 runtime Sloe image generation", () => {
   it("web detail gates the author-only gradient CTA, preview approval, label, caption, and removal", () => {
     const src = read("src/app/components/RecipeDetail.tsx");
 
-    expect(src).toContain('isFeatureEnabled("recipe_runtime_image_generation_v1")');
-    expect(src).toContain("sloeImageRuntimeEnabled && isMyRecipe && !heroSrc");
+    // ENG-1356 — recipe_runtime_image_generation_v1 was always-on in
+    // production (REDESIGN_DEFAULT_ON) and is now collapsed: no flag check
+    // remains, only the always-true (feature-on) affordance.
+    expect(src).not.toContain('isFeatureEnabled("recipe_runtime_image_generation_v1")');
+    expect(src).toContain("isMyRecipe && !heroSrc");
     expect(src).toContain("Generate an image");
     expect(src).toContain("preview: true");
     expect(src).toContain("Try another look");
@@ -26,7 +29,7 @@ describe("ENG-863 runtime Sloe image generation", () => {
     const screen = read("apps/mobile/app/recipe/[id].tsx");
     const hero = read("apps/mobile/components/recipe/RecipeDetailHero.tsx");
 
-    expect(screen).toContain('isFeatureEnabled("recipe_runtime_image_generation_v1")');
+    expect(screen).not.toContain('isFeatureEnabled("recipe_runtime_image_generation_v1")');
     expect(screen).toContain("canGenerateSloeHero");
     expect(screen).toContain("Generate an image");
     expect(screen).toContain("preview: true");

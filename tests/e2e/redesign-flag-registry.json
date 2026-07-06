@@ -10,7 +10,6 @@
     "design_system_elevation",
     "design_system_icons",
     "discover_import_above_carousels_v1",
-    "discover_import_hero_v1",
     "import-progress-v2",
     "import_caption_preview_v1",
     "landing_hero_hybrid_v1",
@@ -38,7 +37,6 @@
     "ring_empty_macro_parity_v1",
     "today-status-pills",
     "today-weekly-insight-mobile",
-    "today_coach_in_hero_v1",
     "today_log_usual_row_v2",
     "today_meals_all_slots_v1",
     "today_meals_figma_654",
@@ -77,7 +75,6 @@
     "paywall-default-monthly",
     "plan_import_enabled",
     "plan_meal_lock_v1",
-    "recipe_runtime_image_generation_v1",
     "some_other_flag",
     "today_log_again",
     "web_logged_meal_edit"
