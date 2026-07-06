@@ -180,7 +180,9 @@ function getMealIcon(name: string): {
   return { icon: Icons.add as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "primary" };
 }
 
-/** Slot-tinted pill chrome — avoids ink (`text-primary`) on every row. */
+/** Slot-tinted pill chrome — avoids ink (`text-primary`) on every row.
+ *  ENG-1109 — text stays `text-foreground-secondary` (AA-safe), never the
+ *  slot hue as text (slot hue alone fails AA at caption size). */
 function slotPillClassName(_sectionName: string): string {
   return "border-border bg-background-secondary text-foreground-secondary hover:bg-muted/60";
 }

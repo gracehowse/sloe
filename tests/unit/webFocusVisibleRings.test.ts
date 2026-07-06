@@ -15,12 +15,12 @@ const todayMealsSection = readFileSync(
 );
 
 describe("ENG-1138 web focus-visible rings", () => {
-  it("keeps both Discover import hero branches visibly keyboard-focusable", () => {
+  it("keeps the Discover import hero visibly keyboard-focusable (discover_import_hero_v1 collapsed ENG-1356 — legacy branch removed, only the hero remains)", () => {
     const importHeroBlocks = discoverImportCard.match(
       /data-testid="discover-import-cta-top"[\s\S]*?className="([^"]+)"/g,
     );
 
-    expect(importHeroBlocks).toHaveLength(2);
+    expect(importHeroBlocks).toHaveLength(1);
     for (const block of importHeroBlocks ?? []) {
       expect(block).toContain("focus-visible:outline-none");
       expect(block).toContain("focus-visible:ring-2");
