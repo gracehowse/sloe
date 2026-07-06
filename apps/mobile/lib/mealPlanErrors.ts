@@ -2,7 +2,7 @@
  * ENG-1387 — client handling for `save_meal_plan` RPC failures.
  *
  * The RPC enforces the Free-tier 1-day plan cap server-side
- * (20260705120000_eng1387_save_meal_plan_free_tier_day_cap.sql):
+ * (20260706090000_eng1387_save_meal_plan_free_tier_day_cap.sql):
  * 42501 + a message containing 'limited to 1-day plans'. Normal UI
  * flows never hit it (generation is clamped to 1 day for free users
  * before the call) — it fires on a stale-cached-tier desync or a

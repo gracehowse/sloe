@@ -17,7 +17,7 @@ import { FREE_TIER_PLAN_CAP_MESSAGE_FRAGMENT } from "../../src/lib/mealPlan/plan
 const SQL = readFileSync(
   resolve(
     process.cwd(),
-    "supabase/migrations/20260705120000_eng1387_save_meal_plan_free_tier_day_cap.sql",
+    "supabase/migrations/20260706090000_eng1387_save_meal_plan_free_tier_day_cap.sql",
   ),
   "utf-8",
 );
