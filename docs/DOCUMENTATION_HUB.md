@@ -8,7 +8,7 @@ This is the single source of truth for the product.
 
 ## Sections
 - `planning/` Sequenced backlogs (e.g. orchestrator-full-sweep → executor)
-- `decisions/` Product and release verdicts / decision log
+- `decisions/` Product and release verdicts / decision log (327+ docs) — browse via [INDEX.md](decisions/INDEX.md), not grep/date-guessing. Regenerate after adding or editing a decision doc: `npm run docs:decisions-index` (`scripts/generate-decisions-index.mjs`, ENG-1370).
 - `product/` Feature and behaviour documentation
 - `user/` End-user guides
 - `journeys/` End-to-end user journeys — [index](journeys/README.md)
