@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { todayHealthConnectEnergyEmptyHint } from "../../src/lib/copy/today";
+import { PROMO_CODE_PLACEHOLDER } from "../../src/lib/copy/promo";
 import { PLAN_SOURCE_ROW_META } from "../../src/lib/planning/planSource";
 
 const ROOT = join(__dirname, "../..");
@@ -137,9 +138,19 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
   });
 
   it("promo code placeholder example says SLOE_PRO (D3)", () => {
-    const src = readFileSync(join(ROOT, "src/app/components/Settings.tsx"), "utf8");
-    expect(src).toContain('placeholder="e.g. SLOE_PRO"');
-    expect(src).not.toContain("SUPPR_PRO");
+    // ENG-1457: the placeholder is a shared constant now — the pricing
+    // page still said SUPPR_PRO a month after Settings was reworded,
+    // because this pin only watched Settings. Pin the constant's value
+    // AND that both consumers reference it (no literal drift possible).
+    expect(PROMO_CODE_PLACEHOLDER).toBe("e.g. SLOE_PRO");
+    for (const rel of [
+      "src/app/components/Settings.tsx",
+      "app/pricing/PromoCodeBlock.tsx",
+    ]) {
+      const src = readFileSync(join(ROOT, rel), "utf8");
+      expect(src, rel).toContain("placeholder={PROMO_CODE_PLACEHOLDER}");
+      expect(src, rel).not.toContain("SUPPR_PRO");
+    }
   });
 
   it("DR outage banner default body says Sloe on BOTH platforms (D4)", () => {
