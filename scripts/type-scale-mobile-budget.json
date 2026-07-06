@@ -20,7 +20,6 @@
     "apps/mobile/components/recipe/RecipeMethodSteps.tsx": 1,
     "apps/mobile/components/recipe/RecipeTitleBlock.tsx": 1,
     "apps/mobile/components/tabs/SupprTabBar.tsx": 1,
-    "apps/mobile/components/today/TodayHeroStats.tsx": 1,
     "apps/mobile/components/today/WhyNumberV3Section.tsx": 1
   }
 }

@@ -120,7 +120,6 @@
     "src/app/components/onboarding/steps/data-bridges.tsx": 8,
     "src/app/components/onboarding/steps/weight.tsx": 1,
     "src/app/components/plan/PlanV3Surface.stories.tsx": 1,
-    "src/app/components/RecipeDetail.tsx": 1,
     "src/app/components/RecipeUpload.tsx": 28,
     "src/app/components/Settings.tsx": 1,
     "src/app/components/ShoppingList.tsx": 1,
