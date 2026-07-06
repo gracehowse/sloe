@@ -27,6 +27,8 @@
  * same index on every client.
  */
 
+import { avatarInitials } from "../avatarInitials";
+
 const PRIMARY_PALETTE = [
   "#5e574e", // warm stone (was brand blue — clashes with premium chrome)
   "#4cd080", // green (prototype Sam)
@@ -62,18 +64,15 @@ export function householdMemberAccent(index: number): string {
  * "Alex" → "AL", "Sam Taylor" → "ST", "" → "?" (never empty — a
  * chip with a blank avatar reads as a broken row, parity-pinned by
  * `tests/unit/householdMemberAccents.test.ts`).
+ *
+ * ENG-1383: delegates to the ONE shared `avatarInitials` util so every
+ * initials chip (household, sidebar account row, Progress header)
+ * derives identically — the old first+LAST-chunk rule here rendered
+ * "Data-Rich Tester (persona)" as "D(". Kept as a named alias so the
+ * household call sites (and their parity pins) stay stable.
  */
 export function householdMemberInitials(name: string | null | undefined): string {
-  const raw = (name ?? "").trim();
-  if (!raw) return "?";
-  const parts = raw.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) {
-    // Single-word — take first two letters (or repeat if 1-char).
-    const word = parts[0];
-    return (word.slice(0, 2) || word).toUpperCase().padEnd(1, "").slice(0, 2) || "?";
-  }
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return avatarInitials(name);
 }
 
 /**
