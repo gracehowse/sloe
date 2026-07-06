@@ -21,6 +21,7 @@
 import { describe, expect, it } from "vitest";
 import {
   composeRecipeMeta,
+  computeCreatorDiscrepancy,
   computeFitsYourDayVerdict,
 } from "../../src/lib/recipe/recipeDetailLayout";
 
@@ -111,5 +112,68 @@ describe("computeFitsYourDayVerdict — tone thresholds + frame copy", () => {
     // 410/2000 = 20.5% → rounds to nearest 5 → 20.
     expect(v.pct).toBe(20);
     expect(v.a11y).toMatch(/20 percent of your daily calorie target/);
+  });
+});
+
+describe("computeCreatorDiscrepancy — ENG-1416 (2026-07-05 deep audit rt-F2/fill-F2)", () => {
+  it("returns null when calories is zero (was: Infinity% divide-by-zero)", () => {
+    // Math.abs(creatorCalories - 0) / 0 === Infinity, which is always > 0.1 —
+    // the old inline check both fired incorrectly AND rendered "Infinity%".
+    expect(
+      computeCreatorDiscrepancy({ creatorCalories: 500, calories: 0, isVerified: true }),
+    ).toBeNull();
+  });
+
+  it("returns null when calories is negative or nullish", () => {
+    expect(
+      computeCreatorDiscrepancy({ creatorCalories: 500, calories: null, isVerified: true }),
+    ).toBeNull();
+    expect(
+      computeCreatorDiscrepancy({ creatorCalories: 500, calories: -10, isVerified: true }),
+    ).toBeNull();
+  });
+
+  it("returns null when there is no creator-claimed calorie figure", () => {
+    expect(
+      computeCreatorDiscrepancy({ creatorCalories: null, calories: 400, isVerified: true }),
+    ).toBeNull();
+    expect(
+      computeCreatorDiscrepancy({ creatorCalories: 0, calories: 400, isVerified: true }),
+    ).toBeNull();
+  });
+
+  it("returns null when the difference is within the 10% tolerance band", () => {
+    // |440 - 400| / 400 = 10% exactly — at the boundary, not over it.
+    expect(
+      computeCreatorDiscrepancy({ creatorCalories: 440, calories: 400, isVerified: true }),
+    ).toBeNull();
+  });
+
+  it("flags a >10% discrepancy with the rounded percentage", () => {
+    // |500 - 400| / 400 = 25%.
+    const d = computeCreatorDiscrepancy({ creatorCalories: 500, calories: 400, isVerified: true });
+    expect(d).not.toBeNull();
+    expect(d!.pctDifference).toBe(25);
+  });
+
+  it("claims 'Verified value' only when isVerified is true", () => {
+    const verified = computeCreatorDiscrepancy({ creatorCalories: 500, calories: 400, isVerified: true });
+    expect(verified!.copy).toBe("Verified value calculated from ingredient data");
+
+    const unverified = computeCreatorDiscrepancy({ creatorCalories: 500, calories: 400, isVerified: false });
+    expect(unverified!.copy).toBe("Estimated value calculated from ingredient data — not yet verified");
+    expect(unverified!.copy).not.toMatch(/^Verified/);
+
+    // Nullish/undefined isVerified must NOT default to the "Verified" claim —
+    // that would silently re-introduce the over-trust bug for rows with no
+    // verify status recorded at all.
+    const unknown = computeCreatorDiscrepancy({ creatorCalories: 500, calories: 400, isVerified: undefined });
+    expect(unknown!.copy).not.toMatch(/^Verified/);
+  });
+
+  it("works symmetrically when the creator's figure is lower than the computed total", () => {
+    // |300 - 400| / 400 = 25% — creator understated, not overstated.
+    const d = computeCreatorDiscrepancy({ creatorCalories: 300, calories: 400, isVerified: true });
+    expect(d!.pctDifference).toBe(25);
   });
 });

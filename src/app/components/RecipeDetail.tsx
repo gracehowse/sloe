@@ -109,6 +109,7 @@ import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
 import {
   composeRecipeMeta,
   composeSubtitleParts,
+  computeCreatorDiscrepancy,
   computeFitsYourDayVerdict,
   shouldRenderTimeStats,
 } from "../../lib/recipe/recipeDetailLayout.ts";
@@ -2893,21 +2894,29 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
           );
         })()}
 
-        {/* Creator Discrepancy */}
+        {/* Creator Discrepancy — logic extracted to computeCreatorDiscrepancy
+            (ENG-1416, 2026-07-05 deep audit rt-F2/fill-F2) so it's unit-testable
+            and shares the fix with any future caller. */}
         {isCatalogRecipe &&
-          recipe.creatorCalories &&
-          Math.abs(recipe.creatorCalories - recipe.calories) / recipe.calories > 0.1 && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
-              <Icons.caution className="w-4 h-4 text-warning-solid mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-warning-solid">
-                  Creator stated {recipe.creatorCalories} kcal (
-                  {Math.round(((recipe.creatorCalories - recipe.calories) / recipe.calories) * 100)}% difference)
-                </p>
-                <p className="text-xs text-warning-solid/80 mt-0.5">Verified value calculated from ingredient data</p>
+          (() => {
+            const discrepancy = computeCreatorDiscrepancy({
+              creatorCalories: recipe.creatorCalories,
+              calories: recipe.calories,
+              isVerified: recipe.isVerified,
+            });
+            if (!discrepancy) return null;
+            return (
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
+                <Icons.caution className="w-4 h-4 text-warning-solid mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-warning-solid">
+                    Creator stated {recipe.creatorCalories} kcal ({discrepancy.pctDifference}% difference)
+                  </p>
+                  <p className="text-xs text-warning-solid/80 mt-0.5">{discrepancy.copy}</p>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
         {/* Tab Bar — Ingredients / Steps / Nutrition (matches mobile) */}
         <div className="flex rounded-xl bg-muted p-1 gap-1">
