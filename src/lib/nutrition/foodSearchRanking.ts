@@ -595,8 +595,14 @@ function hasVerifiableProvenance(source: FoodSearchTrustSource, verified: boolea
  * Minimum match score a verifiable-provenance row must clear to earn the
  * structured tier chip. Below this the name match is too weak to honestly claim
  * the row IS what the user typed — it renders "Estimated" instead.
+ *
+ * ENG-1431 (2026-07-06): renamed from `VERIFIED_TIER_MIN_SCORE` — it happens
+ * to share the same numeric value (0.55) as `MIN_ACCEPT_CONFIDENCE`
+ * (verifyConfidencePolicy.ts), but the two measure unrelated things (text
+ * search relevance vs. nutrition-match confidence). The old name implied a
+ * shared floor that didn't actually exist.
  */
-export const VERIFIED_TIER_MIN_SCORE = 0.55;
+export const SEARCH_MATCH_MIN_SCORE = 0.55;
 
 /**
  * Derive the honest confidence tier for a search row from BOTH provenance and
@@ -611,7 +617,7 @@ export function searchRowConfidenceTier(input: {
   matchScore: number;
 }): SearchRowConfidenceTier {
   const provenanceOk = hasVerifiableProvenance(input.source, Boolean(input.verified));
-  if (provenanceOk && input.matchScore >= VERIFIED_TIER_MIN_SCORE) return "verified";
+  if (provenanceOk && input.matchScore >= SEARCH_MATCH_MIN_SCORE) return "verified";
   return "estimated";
 }
 

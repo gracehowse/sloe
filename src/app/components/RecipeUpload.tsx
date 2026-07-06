@@ -47,6 +47,7 @@ import { normalizeRecipeTitle } from "../../lib/recipes/normalizeRecipeTitle.ts"
 import { parseRawIngredients } from "../../lib/recipe-ingredients/parseRawIngredients.ts";
 import { splitPastedIngredientLines } from "../../lib/recipe-ingredients/splitPastedIngredientLines.ts";
 import { verifyJsonNeedsReview } from "../../lib/nutrition/verifyRecipeResponse.ts";
+import { persistVerifiedRecipeAggregate } from "../../lib/recipes/persistVerifiedRecipeAggregate.ts";
 import { stripSectionPrefix } from "../../lib/recipe-import/socialUrlHelpers.ts";
 import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
 import { ImportSuccessSheet } from "./suppr/import-success-sheet.tsx";
@@ -517,12 +518,6 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       setTimeout(() => void startScanner(), 0);
     }
   }, [mode, createInitialMethod, startScanner]);
-
-  // PR-01 (audit 2026-04-28): Base tier folded into Pro. Any legacy
-  // `userTier === "base"` row keeps publish access here as a
-  // grace-grant — they paid at some point. Free users still cannot
-  // publish, gating preserved.
-  const isCreator = userTier === "base" || userTier === "pro";
 
   const resetForm = () => {
     setRecipeId(null);
@@ -1459,8 +1454,11 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   };
 
   // Auto-run best-available verification (USDA → FatSecret → fallback) when ingredients change.
+  // ENG-1415 — un-gated from `isCreator`: free tier never got auto-verify, so
+  // saveRecipe always fell back to the raw estimator for them. Verification
+  // is data integrity, not a premium differentiator (publish still requires
+  // is_verified + paid tier via RLS, unchanged).
   useEffect(() => {
-    if (!isCreator) return;
     const hasAny = ingredients.some((i) => i.name.trim().length > 0);
     if (!hasAny) return;
     const t = setTimeout(() => {
@@ -1470,7 +1468,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     // verifyWithProvider is intentionally excluded: it closes over fresh
     // ingredients state each render; listing it would retrigger every tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- verifyWithProvider omitted deliberately (comment above)
-  }, [ingredients, servings, isCreator, lineOverrides]);
+  }, [ingredients, servings, lineOverrides]);
 
   const saveRecipe = async (published: boolean) => {
     const effectivePublished = mode === "import" ? false : published;
@@ -1521,6 +1519,11 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         return;
       }
 
+      // ENG-1415 — estimateLineMacros's confidence ceiling (0.35) can never
+      // clear the accept floor (0.55, verifyConfidencePolicy.ts), so its sum
+      // is never trustworthy as the recipe's authoritative nutrition.
+      // lineEstimates still feeds the per-ingredient insert (each row keeps
+      // its own honest tier) but no longer the recipe-level aggregate.
       const lineEstimates = cleanedIngredients.map((i) =>
         estimateLineMacros({
           name: i.name,
@@ -1528,16 +1531,11 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           unit: i.unit,
         }),
       );
-      const dishTotals = sumMacros(lineEstimates);
       const s = Math.max(1, Math.round(servings) || 1);
-      const perServing = {
-        calories: Math.max(0, Math.round(dishTotals.calories / s)),
-        protein: Math.max(0, Math.round(dishTotals.protein / s)),
-        carbs: Math.max(0, Math.round(dishTotals.carbs / s)),
-        fat: Math.max(0, Math.round(dishTotals.fat / s)),
-      };
 
       const verifiedOk = verifiedLines != null && verifiedLines.length === cleanedIngredients.length && verifiedTotals != null;
+      // null (not 0/an estimator guess) until verify resolves — "unknown"
+      // stays distinguishable from "known zero" (renders "Nutrition pending").
       const chosenPerServing = verifiedOk
         ? {
             calories: verifiedTotals.perServing.calories,
@@ -1545,7 +1543,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             carbs: verifiedTotals.perServing.carbs,
             fat: verifiedTotals.perServing.fat,
           }
-        : perServing;
+        : null;
 
       // T12 (2026-04-24) — regulated allergens inferred from matched
       // ingredient names at ≥0.70 confidence. Uses `matchedName` when
@@ -1616,35 +1614,14 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             source_url: attributionUrl,
             source_name: attributionName,
             content_origin: attributionUrl ? "imported_stub" : "first_party",
-            // F-72 (2026-05-08) — recipes.{calories,protein,carbs,fat}
-            // are NUMERIC(10, 2). Round at the boundary to 1 decimal so
-            // values written from web match the wizard write shape and
-            // the seeded-recipes backfill rounding.
-            calories: roundCalories(aggregateScrub ? aggregateScrub.calories : chosenPerServing.calories),
-            protein: roundMacro(aggregateScrub ? aggregateScrub.protein : chosenPerServing.protein),
-            carbs: roundMacro(aggregateScrub ? aggregateScrub.carbs : chosenPerServing.carbs),
-            fat: roundMacro(aggregateScrub ? aggregateScrub.fat : chosenPerServing.fat),
-            fiber_g: roundMacro(
-              aggregateScrub
-                ? aggregateScrub.fiber_g
-                : verifiedOk
-                  ? verifiedTotals.perServing.fiberG
-                  : 0,
-            ),
-            sugar_g: roundMacro(
-              aggregateScrub
-                ? aggregateScrub.sugar_g
-                : verifiedOk
-                  ? verifiedTotals.perServing.sugarG
-                  : 0,
-            ),
-            sodium_mg: roundMacro(
-              aggregateScrub
-                ? aggregateScrub.sodium_mg
-                : verifiedOk
-                  ? verifiedTotals.perServing.sodiumMg
-                  : 0,
-            ),
+            // F-72 NUMERIC(10,2). ENG-1415: null until verify resolves (the column's own "not yet computed" sentinel).
+            calories: aggregateScrub ? aggregateScrub.calories : chosenPerServing ? roundCalories(chosenPerServing.calories) : null,
+            protein: aggregateScrub ? aggregateScrub.protein : chosenPerServing ? roundMacro(chosenPerServing.protein) : null,
+            carbs: aggregateScrub ? aggregateScrub.carbs : chosenPerServing ? roundMacro(chosenPerServing.carbs) : null,
+            fat: aggregateScrub ? aggregateScrub.fat : chosenPerServing ? roundMacro(chosenPerServing.fat) : null,
+            fiber_g: aggregateScrub ? aggregateScrub.fiber_g : verifiedOk ? roundMacro(verifiedTotals.perServing.fiberG) : null,
+            sugar_g: aggregateScrub ? aggregateScrub.sugar_g : verifiedOk ? roundMacro(verifiedTotals.perServing.sugarG) : null,
+            sodium_mg: aggregateScrub ? aggregateScrub.sodium_mg : verifiedOk ? roundMacro(verifiedTotals.perServing.sodiumMg) : null,
             // ENG-1299 — per-serving micros panel. Zeroed with the rest of
             // the aggregate when any line is FatSecret-sourced (T19 Path B);
             // empty when the recipe was saved without a verify pass.
@@ -1654,7 +1631,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           },
           { onConflict: "id" },
         )
-        .select("id")
+        .select("id, caffeine_mg, alcohol_g")
         .single();
 
       if (recipeError) {
@@ -1715,13 +1692,32 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         return scrubFatSecretMacros(baseRow);
       });
 
-      const { error: insertError } = await supabase.from("recipe_ingredients").insert(inserts);
+      const { data: insertedRows, error: insertError } = await supabase
+        .from("recipe_ingredients")
+        .insert(inserts)
+        .select("id");
       if (insertError) {
         // Audit I01 (2026-05-05) — Postgrest leak.
         console.error("[RecipeUpload] insert ingredients failed:", insertError.message);
         toast.error(IMPORT_ERROR_COPY[mapPersistenceError(insertError)]);
         return;
       }
+
+      // ENG-1415/1417 — flips recipes.is_verified server-side when every
+      // ingredient verified; no-ops otherwise. See persistVerifiedRecipeAggregate.
+      await persistVerifiedRecipeAggregate({
+        supabase,
+        recipeId: id,
+        verifiedOk,
+        chosenPerServing,
+        verifiedTotals,
+        aggregateScrub,
+        allergensPayload,
+        existingCaffeineMg: recipeRow.caffeine_mg,
+        existingAlcoholG: recipeRow.alcohol_g,
+        insertedIds: insertedRows ?? [],
+        insertRows: inserts,
+      });
 
       await refreshDiscoverRecipes();
       await refreshMyLibraryRecipes();
@@ -1751,18 +1747,21 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
         });
       }
 
+      // ENG-1415 — no more guessed number labelled "estimated"; honest state
+      // is "still working it out" until verify resolves.
+      const savedMacroLine = chosenPerServing
+        ? `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (verified)`
+        : "Nutrition pending — we're still verifying this recipe's macros.";
       if (mode === "import") {
         setImportSuccess({
           recipeId: id,
           title: trimmedTitle,
-          macroLine: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
+          macroLine: savedMacroLine,
         });
       } else {
         toast.success(
           effectivePublished ? "Recipe published" : "Draft saved",
-          {
-            description: `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${verifiedOk ? "verified" : "estimated"})`,
-          },
+          { description: savedMacroLine },
         );
       }
     } finally {

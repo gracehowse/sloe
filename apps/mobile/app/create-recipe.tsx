@@ -133,7 +133,7 @@ function ingredientsFromLinesAndVerify(
         carbs: Math.round(r.carbs * 10) / 10,
         fat: Math.round(r.fat * 10) / 10,
         fiberG: Math.round(r.fiber * 10) / 10,
-        source: r.source || "Verified",
+        source: r.source || "Estimated", // ENG-1415 — was inverted fallback `|| "Verified"`
       });
     } else {
       out.push({
@@ -190,7 +190,8 @@ function ingredientsFromImageResponse(
       carbs: Math.round((m?.carbs ?? 0) * 10) / 10,
       fat: Math.round((m?.fat ?? 0) * 10) / 10,
       fiberG: Math.round((m?.fiberG ?? 0) * 10) / 10,
-      source: row?.source ?? (m ? "Verified" : "Pending"),
+      // ENG-1415 — was `m ? "Verified" : "Pending"`, over-claimed for any AI-estimated row.
+      source: row?.source ?? (m ? "Estimated" : "Pending"),
     });
   }
   return out;

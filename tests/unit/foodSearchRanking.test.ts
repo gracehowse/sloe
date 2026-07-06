@@ -15,7 +15,7 @@ import {
   searchRowConfidenceTier,
   splitBestMatches,
   RECENTLY_LOGGED_BOOST,
-  VERIFIED_TIER_MIN_SCORE,
+  SEARCH_MATCH_MIN_SCORE,
   BEST_MATCH_MIN_SCORE,
 } from "@/lib/nutrition/foodSearchRanking";
 
@@ -182,14 +182,14 @@ describe("searchRowConfidenceTier — honest confidence (ENG-807, ENG-1110)", ()
       searchRowConfidenceTier({
         source: "USDA",
         verified: true,
-        matchScore: VERIFIED_TIER_MIN_SCORE - 0.01,
+        matchScore: SEARCH_MATCH_MIN_SCORE - 0.01,
       }),
     ).toBe("estimated");
     expect(
       searchRowConfidenceTier({
         source: "USDA",
         verified: true,
-        matchScore: VERIFIED_TIER_MIN_SCORE,
+        matchScore: SEARCH_MATCH_MIN_SCORE,
       }),
     ).toBe("verified");
   });

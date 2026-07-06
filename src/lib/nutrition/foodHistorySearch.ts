@@ -68,7 +68,7 @@ export type HistorySearchMatch<T extends HistorySearchItem = HistorySearchItem> 
 
 /**
  * Minimum name-match score a history row must clear to surface in the
- * "Past logged" group. Lower than the database `VERIFIED_TIER_MIN_SCORE`
+ * "Past logged" group. Lower than the database `SEARCH_MATCH_MIN_SCORE`
  * (0.55) on purpose: history is the user's OWN data, so a looser substring /
  * stemmed hit is still a high-value, low-risk suggestion (re-logging
  * something they've eaten before). Set just above 0 so a single-token recall
