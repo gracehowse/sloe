@@ -75,19 +75,39 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+// ENG-1413 — the `saves` fetch now goes through `fetchAllUserSaves`
+// (`.select().eq().order().limit()`, terminal on `.limit()`), while the
+// `recipes` (authored) fetch stays terminal on `.order()`. The two tables
+// need differently-shaped chains from the same `supabaseFromMock`, branched
+// on the table name `.from()` was called with.
+function tableAwareRejectingMock() {
+  const rejection = new TypeError("Network request failed");
+  return (table: string) => {
+    if (table === "saves") {
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockRejectedValue(rejection),
+        gt: vi.fn().mockReturnThis(),
+      };
+    }
+    return {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockRejectedValue(rejection),
+    };
+  };
+}
+
 describe("useSavedLibraryRecipes — perpetual spinner regression", () => {
   it("flips loading=false when the supabase query rejects (try/finally)", async () => {
     // Build a chain that throws on the awaited terminal operation.
-    // The hook calls `Promise.all([saves.order(...), recipes.order(...)])`
+    // The hook calls `Promise.all([saves fetch, recipes.order(...)])`
     // — both inner chains must reject for the outer Promise.all to reject.
     // The `process.on("unhandledRejection")` listener at the top of the
     // file swallows the orphan-second-rejection noise.
-    const rejectingChain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockRejectedValue(new TypeError("Network request failed")),
-    };
-    supabaseFromMock.mockReturnValue(rejectingChain);
+    supabaseFromMock.mockImplementation(tableAwareRejectingMock());
 
     // Lazy import AFTER the mocks are in place.
     const { useSavedLibraryRecipes } = await import("@/lib/recipes");
@@ -119,12 +139,7 @@ describe("useSavedLibraryRecipes — perpetual spinner regression", () => {
     getCachedSavedRecipesMock.mockResolvedValue(cached);
 
     // The live saves+recipes fetch fails (flaky network / hung PostgREST).
-    const rejectingChain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockRejectedValue(new TypeError("Network request failed")),
-    };
-    supabaseFromMock.mockReturnValue(rejectingChain);
+    supabaseFromMock.mockImplementation(tableAwareRejectingMock());
 
     const { useSavedLibraryRecipes } = await import("@/lib/recipes");
     const { result } = renderHook(() =>
@@ -154,18 +169,29 @@ describe("useSavedLibraryRecipes — perpetual spinner regression", () => {
     const cached = [{ id: "cached-1", title: "Cached Meal" }];
     getCachedSavedRecipesMock.mockResolvedValue(cached);
 
-    const slowChain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(() => resolve({ data: [], error: null }), 200);
-          }),
-      ),
-      in: vi.fn().mockResolvedValue({ data: [], error: null }),
-    };
-    supabaseFromMock.mockReturnValue(slowChain);
+    const slowResolve = () =>
+      new Promise((resolve) => {
+        setTimeout(() => resolve({ data: [], error: null }), 200);
+      });
+    // saves fetch is now terminal on `.limit()` (fetchAllUserSaves);
+    // recipes fetch stays terminal on `.order()` — branch on table name.
+    supabaseFromMock.mockImplementation((table: string) => {
+      if (table === "saves") {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockImplementation(slowResolve),
+          gt: vi.fn().mockReturnThis(),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockImplementation(slowResolve),
+        in: vi.fn().mockResolvedValue({ data: [], error: null }),
+      };
+    });
 
     const { useSavedLibraryRecipes } = await import("@/lib/recipes");
     const { result } = renderHook(() =>

@@ -62,6 +62,7 @@ import {
   type MealPlanNamedSlot,
 } from "./appData/persistence.ts";
 import { FREE_SAVE_LIMIT } from "./appData/constants.ts";
+import { fetchAllUserSaves } from "@/lib/recipes/fetchAllUserSaves";
 import { NEUTRAL_AVATAR_DATA_URI } from "@/lib/ui/neutralAvatar";
 import { isFreeTierPlanCapError } from "@/lib/mealPlan/planPersistError";
 import { fetchPublicRecipeSaveCounts } from "../lib/recipes/fetchPublicRecipeSaveCounts.ts";
@@ -1662,19 +1663,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setSavesResolved(false);
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("saves")
-        .select("recipe_id, created_at")
-        .order("created_at", { ascending: false });
+      // ENG-1413 — page to exhaustion (fetchAllUserSaves) instead of one
+      // unbounded fetch; sort by created_at after all pages land since
+      // display order downstream assumes newest-first.
+      const { rows: unsorted, error: pageError } = await fetchAllUserSaves(supabase, authedUserId);
+      const rows = [...unsorted].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
       if (cancelled) {
         return;
       }
       // Any settled outcome (data, error, schema-fallback) unblocks the
       // Library guard — the error branches below still show their toasts.
       setSavesResolved(true);
-      if (error) {
+      if (pageError) {
         // If schema cache doesn't include the table yet, fall back to localStorage so the app stays usable.
-        const msg = error.message ?? "";
+        const msg = pageError.message ?? "";
         if (looksLikeMissingTableError(msg)) {
           setDbSavesEnabled(false);
           if (!dbSavesWarned) {
@@ -1686,10 +1688,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         toast.error(syncFailedRetryMessage("saved recipes", msg));
         return;
       }
-      const rawIds = (data ?? []).map((r) => r.recipe_id as string);
+      rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+      const rawIds = rows.map((r) => r.recipe_id);
       const savedAt: Record<string, string> = {};
-      for (const r of data ?? []) {
-        savedAt[r.recipe_id as string] = (r.created_at as string) ?? new Date().toISOString();
+      for (const r of rows) {
+        savedAt[r.recipe_id] = r.created_at ?? new Date().toISOString();
       }
 
       // F-8 (TestFlight `AAHS7CjeXNC-mwzyLgWFuKQ`, 2026-04-18): drop

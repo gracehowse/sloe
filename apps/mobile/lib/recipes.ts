@@ -28,6 +28,7 @@ import {
   renameRecipeCollection as renameRecipeCollectionShared,
   type RecipeCollection,
 } from "@suppr/shared/recipes/recipeCollections";
+import { fetchAllUserSaves } from "@suppr/shared/recipes/fetchAllUserSaves";
 import { looksLikeMissingTableError } from "./supabaseErrors";
 
 // ENG-1287 (2026-07-01, launch-blocker): the old F-21 fallback rotated a
@@ -300,14 +301,8 @@ export function useSavedRecipes(userId: string | null) {
     // try/finally so loading flips false even if supabase throws —
     // see useSavedLibraryRecipes below for the same pattern + rationale.
     try {
-      const { data } = await supabase
-        .from("saves")
-        .select("recipe_id")
-        .eq("user_id", userId);
-
-      if (data) {
-        setSavedIds(new Set(data.map((r: any) => r.recipe_id)));
-      }
+      const { rows } = await fetchAllUserSaves(supabase, userId);
+      setSavedIds(new Set(rows.map((r) => r.recipe_id)));
     } finally {
       setLoading(false);
     }
@@ -462,12 +457,14 @@ export function useSavedLibraryRecipes(userId: string | null) {
 
     const initialOut = await Promise.race([
       Promise.all([
-        (async () =>
-          await supabase
-            .from("saves")
-            .select("recipe_id, created_at")
-            .eq("user_id", userId)
-            .order("created_at", { ascending: false }))(),
+        (async () => {
+          // ENG-1413 — page to exhaustion (see fetchAllSaves) rather than
+          // one unbounded fetch; sort by created_at after all pages land
+          // since the fixed display order below still assumes newest-first.
+          const { rows, error } = await fetchAllUserSaves(supabase, userId);
+          rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+          return { data: error ? null : rows, error };
+        })(),
         (async () =>
           await supabase
             .from("recipes")
