@@ -1202,6 +1202,14 @@ export const AnalyticsEvents = {
    * source contract as `coach_api_completed`. Payload:
    * `{ latency_ms, source: "ai" | "template" | "error", tier }`. */
   coach_day_narrative_api_completed: "coach_day_narrative_api_completed",
+  /** ENG-1447 — the durable journal write-ahead queue could not fully
+   *  drain: either a terminal RLS/permission denial dropped the whole
+   *  sent batch (`dropQueue: true`), or one-or-more rows exhausted their
+   *  retry budget and were evicted as poison (`droppedPoisonIds.length`).
+   *  Previously silent (`droppedPoisonIds` / `dropQueue` were computed but
+   *  never read by any caller) — a logged meal could vanish with no
+   *  telemetry at all. Payload: `{ droppedCount, dropQueue, platform }`. */
+  journal_write_queue_drop: "journal_write_queue_drop",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

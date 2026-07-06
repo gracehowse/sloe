@@ -122,4 +122,109 @@ describe("flushJournalWriteQueue", () => {
     expect(result.remaining.entries.every((e) => e.attempts === 1)).toBe(true);
     expect(fn).toHaveBeenCalledTimes(1); // single bulk attempt, no isolation
   });
+
+  describe("ENG-1447 — 42501 single-row / session re-verify handling", () => {
+    it("with no refreshSession passed, behaves exactly as before (terminal drop, no regression)", async () => {
+      const { client } = makeSupabase(() => ({
+        error: { message: "permission denied for table nutrition_entries", code: "42501" },
+      }));
+      const queue = queueOf(["a"]);
+      const result = await flushJournalWriteQueue(client, queue);
+      expect(result.dropQueue).toBe(true);
+      expect(result.remaining.entries).toHaveLength(0);
+    });
+
+    it("a merely-stale session: refresh succeeds, retry succeeds — rows flush, queue is NOT dropped", async () => {
+      let callCount = 0;
+      const { client, fn } = makeSupabase(() => {
+        callCount += 1;
+        // First call (pre-refresh) hits the stale-session 42501; the retry
+        // after a successful refresh succeeds.
+        return callCount === 1
+          ? { error: { message: "permission denied for table nutrition_entries", code: "42501" } }
+          : { error: null };
+      });
+      const refreshSession = vi.fn(async () => ({ refreshed: true }));
+      const queue = queueOf(["a", "b"]);
+
+      const result = await flushJournalWriteQueue(client, queue, refreshSession);
+
+      expect(refreshSession).toHaveBeenCalledTimes(1);
+      expect(fn).toHaveBeenCalledTimes(2); // original attempt + one retry
+      expect(result.dropQueue).toBe(false);
+      expect(result.flushedIds.sort()).toEqual(["a", "b"]);
+      expect(result.remaining.entries).toHaveLength(0);
+    });
+
+    it("refresh succeeds but the retry is STILL denied — genuinely terminal, queue drops", async () => {
+      const { client, fn } = makeSupabase(() => ({
+        error: { message: "permission denied for table nutrition_entries", code: "42501" },
+      }));
+      const refreshSession = vi.fn(async () => ({ refreshed: true }));
+      const queue = queueOf(["a"]);
+
+      const result = await flushJournalWriteQueue(client, queue, refreshSession);
+
+      expect(refreshSession).toHaveBeenCalledTimes(1);
+      expect(fn).toHaveBeenCalledTimes(2); // original attempt + one retry, then terminal
+      expect(result.dropQueue).toBe(true);
+      expect(result.remaining.entries).toHaveLength(0);
+    });
+
+    it("refresh fails outright (refreshed: false) — terminal drop without a second network attempt", async () => {
+      const { client, fn } = makeSupabase(() => ({
+        error: { message: "permission denied for table nutrition_entries", code: "42501" },
+      }));
+      const refreshSession = vi.fn(async () => ({ refreshed: false }));
+      const queue = queueOf(["a"]);
+
+      const result = await flushJournalWriteQueue(client, queue, refreshSession);
+
+      expect(refreshSession).toHaveBeenCalledTimes(1);
+      expect(fn).toHaveBeenCalledTimes(1); // no retry attempted — refresh itself failed
+      expect(result.dropQueue).toBe(true);
+    });
+
+    it("refreshSession throwing is treated the same as refreshed: false (never propagates)", async () => {
+      const { client, fn } = makeSupabase(() => ({
+        error: { message: "permission denied for table nutrition_entries", code: "42501" },
+      }));
+      const refreshSession = vi.fn(async () => {
+        throw new Error("network down");
+      });
+      const queue = queueOf(["a"]);
+
+      const result = await flushJournalWriteQueue(client, queue, refreshSession);
+
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(result.dropQueue).toBe(true);
+    });
+
+    it("refresh succeeds but the retry fails for a DIFFERENT (transient) reason — falls through to bump-and-retry, not a drop", async () => {
+      // First call: 42501 to trigger the refresh path. The retry then fails
+      // for an unrelated transient reason (not 42501), which must fall
+      // through to the normal bump-and-retry path rather than being dropped.
+      let callCount = 0;
+      const statefulFn = vi.fn(() => {
+        callCount += 1;
+        if (callCount === 1) {
+          return Promise.resolve({
+            error: { message: "permission denied for table nutrition_entries", code: "42501" },
+          });
+        }
+        return Promise.resolve({ error: { message: "network error" } });
+      });
+      const statefulClient = { from: () => ({ upsert: statefulFn }) } as unknown as SupabaseClient;
+      const refreshSession = vi.fn(async () => ({ refreshed: true }));
+      const queue = queueOf(["a"]);
+
+      const result = await flushJournalWriteQueue(statefulClient, queue, refreshSession);
+
+      expect(result.dropQueue).toBe(false);
+      expect(result.flushedIds).toHaveLength(0);
+      // Bumped attempts via the normal transient path, not evicted/dropped.
+      expect(result.remaining.entries).toHaveLength(1);
+      expect(result.remaining.entries[0]?.attempts).toBe(1);
+    });
+  });
 });
