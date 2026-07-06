@@ -19,9 +19,19 @@
  *     row coming from a verified source.
  *   - Else fall back to confidence buckets:
  *       confidence >= 0.75 → "verified"
- *       confidence >= 0.50 → "partial"  (orange dot + Verify CTA)
- *       confidence > 0      → "estimated" (red dot + Verify CTA)
+ *       confidence >= 0.55 → "partial"  (amber dot + Verify CTA)
+ *       confidence > 0      → "estimated" (amber dot + Verify CTA)
  *       confidence null     → "unverified"
+ *
+ * ENG-1431 (2026-07-06 trust-vocabulary pass): the partial floor moved
+ * 0.50 → 0.55 to align with `MIN_ACCEPT_CONFIDENCE`
+ * (verifyConfidencePolicy.ts) — a row at confidence 0.52 used to render
+ * "Partial match" here while simultaneously being rejected by the
+ * accept-floor pipeline elsewhere, a real cross-system contradiction.
+ * "Estimated" also moved from a red dot to amber (RecipeDetail.tsx's
+ * `ING_TIER_COLOR`) — red is reserved for errors/destructive actions
+ * per the 2026-07-01 calorie-ring red retirement (ENG-1296); a
+ * low-confidence nutrition estimate is not an error state.
  *
  * Cross-platform: shared lib so web `RecipeDetail.tsx` and mobile
  * `apps/mobile/app/recipe/[id].tsx` derive identical tiers.
@@ -73,7 +83,7 @@ export function deriveIngredientVerificationTier(input: {
       : null;
   if (c == null) return "unverified";
   if (c >= 0.75) return "verified";
-  if (c >= 0.5) return "partial";
+  if (c >= 0.55) return "partial";
   if (c > 0) return "estimated";
   return "unverified";
 }

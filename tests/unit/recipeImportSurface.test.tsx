@@ -82,7 +82,9 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
       if (table === "recipe_ingredients") {
         return {
           delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
-          insert: () => Promise.resolve({ error: null }),
+          // ENG-1415 — saveRecipe now chains `.select("id")` after the
+          // insert to correlate rows for an optional verify-RPC follow-up.
+          insert: () => ({ select: () => Promise.resolve({ data: [], error: null }) }),
           select: () => ({
             eq: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
           }),
@@ -91,7 +93,13 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
       // recipes — upsert/single for save + recent-imports list (ENG-898)
       return {
         upsert: () => ({
-          select: () => ({ single: () => Promise.resolve({ data: { id: "recipe-789" }, error: null }) }),
+          select: () => ({
+            single: () =>
+              Promise.resolve({
+                data: { id: "recipe-789", caffeine_mg: 0, alcohol_g: 0 },
+                error: null,
+              }),
+          }),
         }),
         select: () => ({
           eq: () => ({

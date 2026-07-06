@@ -58,7 +58,7 @@ export type FavoriteSearchMatch<T extends FavoriteSearchItem = FavoriteSearchIte
  * "Favourites" group. Mirrors {@link HISTORY_MATCH_MIN_SCORE} (0.15) so the
  * two groups qualify rows the same way — a single-token recall hit ("sour" →
  * "Sourdough") qualifies, genuinely unrelated rows (recall 0) are excluded.
- * Looser than the DB `VERIFIED_TIER_MIN_SCORE` because a favourite is the
+ * Looser than the DB `SEARCH_MATCH_MIN_SCORE` because a favourite is the
  * user's own deliberately-starred data: a partial hit is high-value, low-risk.
  */
 export const FAVORITE_MATCH_MIN_SCORE = 0.15;

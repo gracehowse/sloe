@@ -45,7 +45,7 @@ describe("ENG-807 — shared ranking module owns the tier + split", () => {
     // The provenance check and a numeric score threshold must both appear in
     // searchRowConfidenceTier — guarding against a regression to source-only.
     expect(RANKING_SRC).toMatch(/hasVerifiableProvenance/);
-    expect(RANKING_SRC).toMatch(/matchScore >= VERIFIED_TIER_MIN_SCORE/);
+    expect(RANKING_SRC).toMatch(/matchScore >= SEARCH_MATCH_MIN_SCORE/);
   });
 
   it("foodSearchRankScore supports the recently-logged tie-break boost", () => {

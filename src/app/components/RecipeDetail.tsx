@@ -307,10 +307,10 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
   return out;
 }
 
-// Inline ingredient-card tier → colour token + badge label (F-120 categorical).
+// Inline ingredient-card tier → colour + label (F-120; ENG-1431: estimated is amber, not red — ENG-1296).
 const ING_TIER_COLOR: Record<IngredientVerificationTier, string> = {
   verified: "var(--success)", partial: "var(--warning)",
-  estimated: "var(--destructive)", unverified: "var(--foreground-tertiary)",
+  estimated: "var(--warning)", unverified: "var(--foreground-tertiary)",
 };
 const ING_TIER_LABEL: Record<IngredientVerificationTier, string> = {
   verified: "Structured", partial: "Partial match",

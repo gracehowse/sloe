@@ -85,7 +85,7 @@ describe("deriveIngredientVerificationTier", () => {
     ).toBe("verified");
   });
 
-  it("returns 'partial' for unverified rows with confidence in [0.5, 0.75)", () => {
+  it("returns 'partial' for unverified rows with confidence in [0.55, 0.75)", () => {
     expect(
       deriveIngredientVerificationTier({
         isVerified: false,
@@ -95,11 +95,28 @@ describe("deriveIngredientVerificationTier", () => {
     ).toBe("partial");
   });
 
-  it("returns 'estimated' for unverified rows with confidence in (0, 0.5)", () => {
+  it("returns 'estimated' for unverified rows with confidence in (0, 0.55)", () => {
     expect(
       deriveIngredientVerificationTier({
         isVerified: false,
         confidence: 0.3,
+        source: "ai",
+      }),
+    ).toBe("estimated");
+  });
+
+  it("ENG-1431 — 0.50-0.549 no longer reads 'partial' (was a contradiction: MIN_ACCEPT_CONFIDENCE also rejects this band)", () => {
+    expect(
+      deriveIngredientVerificationTier({
+        isVerified: false,
+        confidence: 0.5,
+        source: "ai",
+      }),
+    ).toBe("estimated");
+    expect(
+      deriveIngredientVerificationTier({
+        isVerified: false,
+        confidence: 0.549,
         source: "ai",
       }),
     ).toBe("estimated");
@@ -123,7 +140,7 @@ describe("deriveIngredientVerificationTier", () => {
     ).toBe("unverified");
   });
 
-  it("treats numeric confidence boundaries inclusively at 0.5 and 0.75", () => {
+  it("treats numeric confidence boundaries inclusively at 0.55 and 0.75", () => {
     expect(
       deriveIngredientVerificationTier({
         isVerified: false,
@@ -135,7 +152,7 @@ describe("deriveIngredientVerificationTier", () => {
     expect(
       deriveIngredientVerificationTier({
         isVerified: false,
-        confidence: 0.5,
+        confidence: 0.55,
         source: null,
       }),
     ).toBe("partial");
