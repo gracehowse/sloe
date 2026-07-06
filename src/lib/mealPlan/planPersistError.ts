@@ -2,7 +2,7 @@
  * ENG-1387 — shared detection for the `save_meal_plan` free-tier
  * day-cap rejection.
  *
- * The RPC (20260705120000_eng1387_save_meal_plan_free_tier_day_cap.sql)
+ * The RPC (20260706090000_eng1387_save_meal_plan_free_tier_day_cap.sql)
  * enforces the Free = 1-day plan cap server-side and rejects with
  * errcode 42501 and a message containing the fragment below. 42501 is
  * also the RPC's unauthenticated errcode, so the message fragment —
