@@ -190,8 +190,7 @@ function ingredientsFromImageResponse(
       carbs: Math.round((m?.carbs ?? 0) * 10) / 10,
       fat: Math.round((m?.fat ?? 0) * 10) / 10,
       fiberG: Math.round((m?.fiberG ?? 0) * 10) / 10,
-      // ENG-1415 — was `m ? "Verified" : "Pending"`, over-claimed for any AI-estimated row.
-      source: row?.source ?? (m ? "Estimated" : "Pending"),
+      source: row?.source ?? (m ? "Estimated" : "Pending"), // ENG-1415 — was over-claiming "Verified"
     });
   }
   return out;
