@@ -2,17 +2,7 @@ import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-
-type SourceTier = "verified" | "estimated" | "manual";
-
-function classifySource(source?: string | null): SourceTier {
-  if (source == null || typeof source !== "string") return "manual";
-  const s = source.trim().toLowerCase();
-  if (!s) return "manual";
-  if (s.includes("usda") || s.includes("fdc") || s.includes("openfoodfacts") || s.includes("off")) return "verified";
-  if (s.includes("ai") || s.includes("photo") || s.includes("voice") || s.includes("import") || s.includes("openai") || s.includes("recipe")) return "estimated";
-  return "manual";
-}
+import { classifySource, type SourceTier } from "@suppr/nutrition-core/classifySource";
 
 const CONFIG: Record<SourceTier, { label: string; abbr: string }> = {
   verified: { label: "Structured", abbr: "✓" },
