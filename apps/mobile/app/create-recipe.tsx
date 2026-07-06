@@ -47,6 +47,7 @@ import {
   mapPersistenceError,
   userFacingImportError,
 } from "@suppr/shared/recipes/importErrorCopy";
+import { alertApiNotConfigured } from "@/lib/importApiGuard";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
@@ -319,7 +320,7 @@ export default function CreateRecipeScreen() {
     }
     const apiBase = getSupprApiBase();
     if (!apiBase) {
-      Alert.alert("API not configured", "Set supprApiUrl in app config.");
+      alertApiNotConfigured("Set supprApiUrl in app config."); // ENG-1456: dev-only detail
       return;
     }
     const lines = splitPastedIngredientLines(pasteDraft);
@@ -423,7 +424,7 @@ export default function CreateRecipeScreen() {
     }
     const apiBase = getSupprApiBase();
     if (!apiBase) {
-      Alert.alert("API not configured", "Set supprApiUrl in app config.");
+      alertApiNotConfigured("Set supprApiUrl in app config."); // ENG-1456: dev-only detail
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

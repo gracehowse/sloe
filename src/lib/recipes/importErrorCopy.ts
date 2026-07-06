@@ -109,7 +109,12 @@ export type ImportErrorCode =
   | "client_url_required"
   | "client_unsupported_url"
   | "client_image_pick_failed"
-  | "client_offline";
+  | "client_offline"
+  // ENG-1456 — mobile build has no API base (missing supprApiUrl /
+  // EXPO_PUBLIC_API_URL). A config problem on OUR side, not the
+  // user's; production copy says so in user language. Dev builds keep
+  // the diagnostic Alert at the call sites (`__DEV__` branch).
+  | "client_api_not_configured";
 
 /**
  * User-facing copy keyed by stable error code. Tone: calm,
@@ -175,7 +180,16 @@ export const IMPORT_ERROR_COPY: Record<ImportErrorCode, string> = {
   client_unsupported_url: "We don't support that link. Paste a recipe URL or use image import.",
   client_image_pick_failed: "We couldn't open the image picker. Try again.",
   client_offline: "You're offline. Reconnect and try again.",
+  client_api_not_configured: "Something's wrong on our side. Try again later.",
 };
+
+/**
+ * ENG-1456 — Alert title paired with `client_api_not_configured` on the
+ * mobile import surfaces (plan-import, cookbook-import, create-recipe).
+ * Lives here so the title + body ship as one register entry and can't
+ * drift per-surface.
+ */
+export const IMPORT_UNAVAILABLE_ALERT_TITLE = "Import isn't available";
 
 /**
  * Patterns that indicate a vendor name, raw HTTP status, or

@@ -26,15 +26,11 @@ import { getSupprApiBase } from "@/lib/supprWeb";
 import { authedFetch } from "@/lib/authedFetch";
 import { commitPlanImport } from "@/lib/planImportCommit";
 import { consumePendingImportText } from "@suppr/shared/recipe-import/pendingImportText";
+import { alertApiNotConfigured } from "@/lib/importApiGuard";
 import { setPendingImportDayPlan } from "@/lib/planImportPendingApply";
 import { rebalanceImportedPlanDays } from "@suppr/shared/planning/planImport/rebalanceImportedPlan";
 import { DEFAULT_PLANNER_BANDS } from "@suppr/nutrition-core/mealPlanAlgo";
-import type {
-  PlanImportCompiledSlot,
-  PlanImportNutritionMode,
-  PlanImportParseResult,
-  PlanImportVerifiedRecipe,
-} from "@suppr/shared/planning/planImport/types";
+import type { PlanImportCompiledSlot, PlanImportNutritionMode, PlanImportParseResult, PlanImportVerifiedRecipe } from "@suppr/shared/planning/planImport/types";
 import { MEAL_PREP_WEEK1_PASTE } from "@suppr/shared/planning/planImport/fixtures/mealPrepWeek1";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -142,7 +138,7 @@ export default function PlanImportScreen() {
       return;
     }
     if (!apiBase) {
-      Alert.alert("API not configured", "Set supprApiUrl in app config or EXPO_PUBLIC_API_URL.");
+      alertApiNotConfigured(); // ENG-1456: env detail is dev-only
       return;
     }
     let text = (textOverride ?? pasteText).trim();
