@@ -23,14 +23,9 @@ import { getSupprApiBase } from "@/lib/supprWeb";
 import { authedFetch } from "@/lib/authedFetch";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { supabase } from "@/lib/supabase";
-import {
-  commitCookbookImport,
-  COOKBOOK_IMPORT_FREE_SAVE_CAP,
-} from "@suppr/shared/planning/planImport/commitCookbookImport";
-import type {
-  PlanImportNutritionMode,
-  PlanImportVerifiedRecipe,
-} from "@suppr/shared/planning/planImport/types";
+import { alertApiNotConfigured, apiNotConfiguredMessage } from "@/lib/importApiGuard";
+import { commitCookbookImport, COOKBOOK_IMPORT_FREE_SAVE_CAP } from "@suppr/shared/planning/planImport/commitCookbookImport";
+import type { PlanImportNutritionMode, PlanImportVerifiedRecipe } from "@suppr/shared/planning/planImport/types";
 import { CookbookParsingView } from "@/components/cookbook/CookbookParsingView";
 import { CookbookSuccessView } from "@/components/cookbook/CookbookSuccessView";
 import { CookbookReviewRow } from "@/components/cookbook/CookbookReviewRow";
@@ -186,10 +181,11 @@ export default function CookbookImportScreen() {
       return;
     }
     if (!apiBase) {
+      // ENG-1456: env detail is dev-only — production gets register copy.
       if (redesignOn) {
-        setBanner({ kind: "error", message: "API not configured — contact support." });
+        setBanner({ kind: "error", message: apiNotConfiguredMessage() });
       } else {
-        Alert.alert("API not configured", "Set supprApiUrl in app config or EXPO_PUBLIC_API_URL.");
+        alertApiNotConfigured();
       }
       return;
     }

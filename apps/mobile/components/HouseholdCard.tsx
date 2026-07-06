@@ -20,6 +20,7 @@ import {
   setHouseholdShareLunch,
   type HouseholdData,
 } from "@suppr/shared/household/householdClient";
+import { avatarInitials } from "@suppr/shared/avatarInitials";
 import ReceivedInvitesBanner from "@/components/household/ReceivedInvitesBanner";
 // Legal-approved copy + storage key (F-16, 2026-04-25). Imported from
 // the shared module so web + mobile can never silently diverge — the
@@ -468,14 +469,10 @@ export function HouseholdCard() {
         const isSelf = m.userId === userId;
         // F-32: coloured circular initials avatar (prototype-aligned).
         // Deterministic hue from userId so the same member keeps the
-        // same colour across renders. Initials: first letter of first
-        // two whitespace-split chunks; fall back to first char alone.
-        const initials = (() => {
-          const parts = (m.displayName ?? "").trim().split(/\s+/).filter(Boolean);
-          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-          if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "?";
-          return "?";
-        })();
+        // same colour across renders. Initials from the shared
+        // `avatarInitials` util (ENG-1383) — same derivation as every
+        // other initials chip on both platforms.
+        const initials = avatarInitials(m.displayName);
         const avatarHue = (() => {
           let h = 0;
           const key = m.userId ?? m.displayName ?? "";

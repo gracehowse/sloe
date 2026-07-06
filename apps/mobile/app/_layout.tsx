@@ -6,7 +6,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { AccessibilityInfo, AppState, LogBox, Platform, Text, View } from 'react-native';
+import { AccessibilityInfo, AppState, LogBox, Platform } from 'react-native';
 
 // 2026-05-04 audit (#3 in `docs/audits/2026-05-04-full-sweep-audit.md`):
 // `TypeError: Network request failed` from the bundled whatwg-fetch polyfill
@@ -89,7 +89,8 @@ import { AuthProvider } from '@/context/auth';
 import { AnalyticsProvider } from '@/context/AnalyticsProvider';
 import { ThemeProvider as SupprThemeProvider, useTheme } from '@/context/theme';
 import { DrOutageBanner } from '@/components/ops/DrOutageBanner';
-import { Colors, Type } from "@/constants/theme";
+import { SupabaseNotConfiguredScreen } from '@/components/ops/SupabaseNotConfiguredScreen';
+import { Colors } from "@/constants/theme";
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { consumeNewSocialRecipeUrlFromClipboard } from '@/lib/clipboardShareForward';
 import { initErrorTracking } from '@/lib/errorTracking';
@@ -515,22 +516,10 @@ function RootLayoutInner() {
   // Misconfigured dev builds use `createClient("", "")` — every fetch
   // fails with RN's generic "Network request failed" and the UI can
   // look like a blank grey screen with only a dev toast. Surface the
-  // real problem up front (same signal as `app/login.tsx`).
+  // real problem up front (same signal as `app/login.tsx`). ENG-1456:
+  // the vendor-naming diagnostic inside the screen is dev-only.
   if (!hasSupabaseConfig()) {
-    const palette = resolved === 'dark' ? Colors.dark : Colors.light;
-    const bg = palette.background;
-    const fg = palette.text;
-    const sub = palette.textSecondary;
-    return (
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: bg }}>
-        <View style={{ flex: 1, paddingHorizontal: 28, justifyContent: 'center', gap: 12 }}>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: fg }}>Supabase is not configured</Text>
-          <Text style={{ ...Type.bodyLarge, lineHeight: 22, color: sub }}>
-            This build is missing `supabaseUrl` and `supabaseAnonKey` under `expo.extra` (see `app.json` or your local `app.config`). Rebuild the dev client after fixing env.
-          </Text>
-        </View>
-      </GestureHandlerRootView>
-    );
+    return <SupabaseNotConfiguredScreen resolved={resolved} />;
   }
 
   // ENG-1247 — react-navigation's raw DefaultTheme.colors.background is #F2F2F2

@@ -1301,6 +1301,10 @@ function LogSheetDailyProgress({
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   const kcalTarget = Math.round(macroTargets.calories);
   const kcalConsumed = Math.round(macroConsumed.calories);
+  // ENG-1453: the kcal figure carries state colour like its P/C/F
+  // siblings — over-budget amber when past target, neutral otherwise
+  // (same treatment as the calorie figure in CalorieRingDial).
+  const kcalOver = kcalTarget > 0 && kcalConsumed > kcalTarget;
   return (
     <View
       testID="log-sheet-daily-progress"
@@ -1310,7 +1314,12 @@ function LogSheetDailyProgress({
         <Text style={[Type.label, { color: colors.textTertiary, fontSize: 10 }]}>
           Daily progress
         </Text>
-        <Text style={[Type.title, { color: colors.text, fontSize: 20, marginTop: 2 }]}>
+        <Text
+          style={[
+            Type.title,
+            { color: kcalOver ? colors.overBudgetFg : colors.text, fontSize: 20, marginTop: 2 },
+          ]}
+        >
           {kcalConsumed}{" "}
           <Text style={{ fontSize: 14, color: colors.textSecondary, fontFamily: Type.body.fontFamily }}>
             / {kcalTarget} kcal

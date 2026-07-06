@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "../../src/context/AppDataContext.tsx";
+import { PROMO_CODE_PLACEHOLDER } from "../../src/lib/copy/promo.ts";
 
 /**
  * Promo-code redemption surface for `/pricing` (D9 Option 3, task W1).
@@ -88,7 +89,7 @@ export function PromoCodeBlock() {
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="e.g. SUPPR_PRO"
+              placeholder={PROMO_CODE_PLACEHOLDER}
               autoComplete="off"
               aria-label="Promo code"
               className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-card/80 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"

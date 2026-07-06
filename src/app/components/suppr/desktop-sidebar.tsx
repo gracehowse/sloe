@@ -7,12 +7,10 @@ import { Icons } from "../ui/icons";
 import { SupprWordmark } from "../ui/suppr-mark";
 import type { UserTier } from "../../../types/recipe";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { avatarInitials } from "../../../lib/avatarInitials";
 import { formatSidebarBadge } from "../../../lib/navigation/sidebarBadge.ts";
 import { SidebarUpgradeSlot } from "./sidebar-upgrade-slot";
-import {
-  NAV_TAB_ORDER_FLAG,
-  canonicalNavOrderEnabled,
-} from "../../../lib/navigation/primaryNav";
+import { NAV_TAB_ORDER_FLAG, canonicalNavOrderEnabled } from "../../../lib/navigation/primaryNav";
 
 /**
  * DesktopSidebar — left-hand navigation for the web app on desktop +
@@ -471,9 +469,10 @@ function SidebarProfileEntry({
   authEmail: string | null;
   onNavigate: (view: SidebarView) => void;
 }) {
-  const initial = (
-    displayName?.trim()?.[0] ?? authEmail?.trim()?.[0] ?? "U"
-  ).toUpperCase();
+  // ENG-1383: shared avatar-initials util (same derivation as the household /
+  // Progress-header chips). Email fallback uses the local part, like the label.
+  const initialsSource = displayName?.trim() || authEmail?.split("@")[0]?.trim();
+  const initial = initialsSource ? avatarInitials(initialsSource) : "U";
   const label =
     displayName?.trim() ||
     authEmail?.split("@")[0]?.trim() ||

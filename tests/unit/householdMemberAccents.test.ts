@@ -37,10 +37,16 @@ describe("householdMemberAccent", () => {
 });
 
 describe("householdMemberInitials", () => {
-  it("takes the first letter of first + last for multi-word names", () => {
+  // ENG-1383: now a delegate of the shared `avatarInitials` util — first
+  // letters of the first TWO alphabetic words (was first + LAST, which
+  // rendered "Data-Rich Tester (persona)" as "D("). Full behaviour is
+  // pinned in `tests/unit/avatarInitials.test.ts`; these pins keep the
+  // household alias honest.
+  it("takes the first letter of the first two words for multi-word names", () => {
     expect(householdMemberInitials("Sam Taylor")).toBe("ST");
     expect(householdMemberInitials("grace howse")).toBe("GH");
-    expect(householdMemberInitials("Mary Jane Watson")).toBe("MW");
+    expect(householdMemberInitials("Mary Jane Watson")).toBe("MJ");
+    expect(householdMemberInitials("Data-Rich Tester (persona)")).toBe("DR");
   });
 
   it("takes the first two letters for single-word names", () => {

@@ -31,10 +31,8 @@ import {
 // replaces JSON as the primary export for regular users. JSON stays as
 // a secondary "full backup" option. Shared helper so web + mobile emit
 // identical bytes (pin: `tests/unit/nutritionLogToCsv.test.ts`).
-import {
-  nutritionLogToCsv,
-  nutritionLogCsvFilename,
-} from "../../lib/export/nutritionLogToCsv.ts";
+import { nutritionLogToCsv, nutritionLogCsvFilename } from "../../lib/export/nutritionLogToCsv.ts";
+import { PROMO_CODE_PLACEHOLDER } from "../../lib/copy/promo.ts";
 // ENG-1262 — shared "Export everything" client helper. The standalone Settings
 // row AND the DeleteAccount "Download a copy first" action both call this so
 // the COMPLETE server-authoritative archive (`/api/export/me`) is the single
@@ -1867,7 +1865,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             type="text"
             value={promoCode}
             onChange={(e) => setPromoCode(e.target.value)}
-            placeholder="e.g. SLOE_PRO"
+            placeholder={PROMO_CODE_PLACEHOLDER}
             autoComplete="off"
             className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-card/80 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />

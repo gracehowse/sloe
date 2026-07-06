@@ -1,7 +1,6 @@
 {
   "allow": {},
   "pins": {
-    "apps/mobile/app/_layout.tsx": 1,
     "apps/mobile/app/(tabs)/_today/TodayScreen.tsx": 5,
     "apps/mobile/app/(tabs)/discover.tsx": 4,
     "apps/mobile/app/(tabs)/library.tsx": 3,
