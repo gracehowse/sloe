@@ -91,6 +91,7 @@
     "linear:sync-eng1247-issues": "node scripts/linear/sync-eng1247-issues.mjs",
     "linear:sync-eng1247-issues:dry-run": "node scripts/linear/sync-eng1247-issues.mjs --dry-run",
     "sync:agent-docs": "node scripts/sync-agent-docs.mjs",
+    "docs:decisions-index": "node scripts/generate-decisions-index.mjs",
     "backfill:fatsecret": "node scripts/backfill-fatsecret-premier.mjs",
     "mobile:dev": "npm run start --prefix apps/mobile",
     "mobile:dev:local": "EXPO_PUBLIC_API_URL=http://127.0.0.1:3000 npm run start --prefix apps/mobile",
