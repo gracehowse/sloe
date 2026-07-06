@@ -23,8 +23,6 @@ import {
 } from "../../../lib/nutrition/progressStoryGate";
 import { SupprCard } from "../ui/suppr-card";
 import { Icons } from "../ui/icons";
-import { PROGRESS_INSIGHT_LILAC_STYLE } from "./progress-headline";
-import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 
 export interface ProgressStoryGateProps {
   /** Days with ≥1 logged meal in the CURRENT WEEK (the card's window). */
@@ -58,11 +56,11 @@ export function ProgressStoryGate({
   const segmentCount = STORY_DATA_FLOOR_DAYS;
   const segmentLen = Math.max(2, circumference / segmentCount - SEGMENT_GAP);
   const gapDeg = (SEGMENT_GAP / circumference) * 360;
-  // ENG-1081 — white slab by default (cohesion); lilac wash behind the flag-off
-  // path. Twin of ProgressHeadline so the slot doesn't change tone on unlock.
-  const cohesionWhite = isFeatureEnabled("card_cohesion_white_v1");
 
   return (
+    // ENG-1081 — white slab (cohesion), unconditional since ENG-1356 collapsed
+    // the always-on card_cohesion_white_v1 flag. Twin of ProgressHeadline so
+    // the slot doesn't change tone on unlock.
     <SupprCard
       data-slot="progress-story-gate"
       data-testid="progress-story-gate"
@@ -73,7 +71,6 @@ export function ProgressStoryGate({
          stack below it. Was radius="xl" (16px), a detectable 8px mismatch. */
       radius="lg"
       className={className}
-      style={cohesionWhite ? undefined : PROGRESS_INSIGHT_LILAC_STYLE}
       aria-label={`This week: ${placeholder.headline}. ${placeholder.body} ${placeholder.ringLabel} days logged.`}
     >
       {/* Sloe Figma 492:2 — sparkle glyph by the clay eyebrow, matching the

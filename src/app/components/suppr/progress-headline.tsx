@@ -30,16 +30,6 @@ import {
 } from "../../../lib/nutrition/progressCommentary";
 import { SupprCard } from "../ui/suppr-card";
 import { Icons } from "../ui/icons";
-import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
-
-// Sloe Figma 492:2 — the THIS WEEK insight card sits on a soft LILAC
-// (damson-soft) wash with a hairline damson border. Exported so the
-// story-gate placeholder shares the exact same tone (the card never
-// changes wash when the user crosses the data floor).
-export const PROGRESS_INSIGHT_LILAC_STYLE: React.CSSProperties = {
-  background: "var(--slot-dinner-soft)",
-  borderColor: "rgba(106, 75, 122, 0.16)",
-};
 
 export interface ProgressHeadlineProps {
   commentary: ProgressCommentaryResult;
@@ -51,20 +41,18 @@ export function ProgressHeadline({
   className,
 }: ProgressHeadlineProps) {
   const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
-  // ENG-1081 (Grace 2026-06-13: "flat white for now"): the ~12% lilac wash read
-  // as a lone grey card beside white siblings. Drop the override so SupprCard's
-  // white slab shows; the ✦ + THIS WEEK eyebrow + serif headline carry the
-  // insight role. Flag-gated so the lilac accent can be revisited (Option C).
-  const cohesionWhite = isFeatureEnabled("card_cohesion_white_v1");
 
   return (
+    // ENG-1081 (Grace 2026-06-13: "flat white for now"): the ~12% lilac wash
+    // read as a lone grey card beside white siblings — SupprCard's white slab
+    // shows unstyled; the ✦ + THIS WEEK eyebrow + serif headline carry the
+    // insight role. Was flag-gated (card_cohesion_white_v1); collapsed ENG-1356.
     <SupprCard
       data-slot="progress-headline"
       data-regime={commentary.regime}
       padding="xl"
       radius="xl"
       className={className}
-      style={cohesionWhite ? undefined : PROGRESS_INSIGHT_LILAC_STYLE}
       aria-label="This week"
     >
       {/* Sloe Figma 492:2 — sparkle glyph by the clay THIS WEEK eyebrow. */}

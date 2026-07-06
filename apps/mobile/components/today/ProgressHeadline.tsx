@@ -7,20 +7,11 @@ import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { isFeatureEnabled } from "@/lib/analytics";
 import { ConfidenceChip } from "@/components/ui/ConfidenceChip";
 import {
   splitBodyIntoSegments,
   type ProgressCommentaryResult,
 } from "@/lib/progressCommentary";
-
-// Sloe Figma 492:2 — the THIS WEEK insight card sits on a soft LILAC
-// (damson at ~12% alpha) wash with a hairline damson border. Mirrors web
-// `PROGRESS_INSIGHT_LILAC_STYLE` (`--slot-dinner-soft` ≈ #6A4B7A12). The
-// story-gate placeholder shares the exact same wash so the card never
-// changes tone when the user crosses the 3-day data floor.
-export const PROGRESS_INSIGHT_LILAC_BG = "rgba(106, 75, 122, 0.12)";
-export const PROGRESS_INSIGHT_LILAC_BORDER = "rgba(106, 75, 122, 0.16)";
 
 /**
  * Mobile `<ProgressHeadline>` — production design spec Surface E
@@ -51,12 +42,6 @@ function ProgressHeadlineImpl({
   const cardElevation = useCardElevation({ variant: "soft" });
   const accent = useAccent();
   const segments = splitBodyIntoSegments(commentary.body, commentary.numerals);
-  // ENG-1081 — card-fill cohesion (Grace 2026-06-13: "flat white for now, maybe
-  // circle back"). The ~12% lilac wash read as a lone grey card beside the white
-  // siblings; render the insight card as a white slab (the ✦ + THIS WEEK eyebrow
-  // + serif headline carry the insight role). Flag-gated so the lilac accent can
-  // be revisited (Option C) without a revert.
-  const cohesionWhite = isFeatureEnabled("card_cohesion_white_v1");
 
   return (
     <View
@@ -67,12 +52,12 @@ function ProgressHeadlineImpl({
         styles.card,
         cardElevation.shadowStyle,
         {
-          // ENG-1081: white slab (cohesion) by default; lilac wash kept behind
-          // the flag-off path (Figma 492:2) for a possible Option-C revisit.
-          backgroundColor: cohesionWhite
-            ? cardElevation.liftBg ?? colors.card
-            : PROGRESS_INSIGHT_LILAC_BG,
-          borderColor: cohesionWhite ? colors.cardBorder : PROGRESS_INSIGHT_LILAC_BORDER,
+          // ENG-1081 — card-fill cohesion (Grace 2026-06-13): white slab so the
+          // insight card matches its white siblings (the ✦ + THIS WEEK eyebrow +
+          // serif headline carry the insight role). Was flag-gated; collapsed in
+          // ENG-1356 (the always-on flag never rendered the legacy lilac wash).
+          backgroundColor: cardElevation.liftBg ?? colors.card,
+          borderColor: colors.cardBorder,
           borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
         },
         style,

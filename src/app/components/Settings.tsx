@@ -831,13 +831,6 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     profileDisplayName?.trim()?.[0] ?? authEmail?.[0] ?? "S"
   ).toUpperCase();
   const profileTierLabel = userTier === "pro" ? "Pro" : "Free";
-  // ENG-1081 (Grace 2026-06-13: "flat white for now, maybe circle back"): the
-  // Pro banner's ~16% primary tint read as a lone grey card beside white
-  // siblings. White slab by default; tint kept behind the flag-off path. NOTE:
-  // this is a CONVERSION surface — flat white may soften its upgrade pull, so
-  // it's the likeliest candidate for an Option-C accent revisit; the flag lets
-  // that happen without a revert.
-  const cohesionWhite = isFeatureEnabled("card_cohesion_white_v1");
   const profileDisplayLabel =
     // Prefer the name the user set (profileDisplayName, then the resolved
     // storedName — same `user_metadata` the "Your name" field writes) before
@@ -942,6 +935,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   // Sloe Pro upsell banner — Sloe DS (Figma 09 Settings `335:2`/`335:23`).
   // Free users route to /pricing; Pro users route to /account/billing.
   // Mirrors the mobile Pro banner in SettingsBundleContent.tsx.
+  // ENG-1081 (Grace 2026-06-13): flat white slab — was flag-gated behind
+  // card_cohesion_white_v1 (a ~16% primary tint in the else); the always-on
+  // flag was collapsed in ENG-1356.
   const proBanner = (
       <Link
         href={userTier === "pro" ? "/account/billing" : "/pricing"}
@@ -949,10 +945,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         aria-label={userTier === "pro" ? "Manage your Sloe Pro subscription" : "Get Sloe Pro"}
         className="mb-6 flex items-center justify-between rounded-[var(--radius-card-lg)] px-4 py-4 transition-colors"
         style={{
-          backgroundColor: cohesionWhite
-            ? "var(--card)"
-            : "color-mix(in srgb, var(--primary) 16%, transparent)",
-          ...(cohesionWhite ? { border: "0.5px solid var(--border)" } : {}),
+          backgroundColor: "var(--card)",
+          border: "0.5px solid var(--border)",
         }}
       >
         <span className="flex items-center gap-2.5">
