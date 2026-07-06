@@ -121,7 +121,6 @@
     "src/app/components/onboarding/steps/weight.tsx": 1,
     "src/app/components/plan/PlanV3Surface.stories.tsx": 1,
     "src/app/components/RecipeUpload.tsx": 28,
-    "src/app/components/Settings.tsx": 1,
     "src/app/components/ShoppingList.tsx": 1,
     "src/app/components/suppr/calorie-ring-dial.stories.tsx": 1,
     "src/app/components/suppr/daily-ring.stories.tsx": 1,

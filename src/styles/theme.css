@@ -143,6 +143,13 @@
      Flat-card law holds: the tint IS the separation, just louder. */
   --accent-primary-soft-strong: rgba(91, 59, 110, 0.2);
   --accent-primary-ring: rgba(91, 59, 110, 0.24);
+  /** Avatar gradient accent — the pink `color-mix` endpoint in the
+   *  identity-card avatar gradient (Settings header card). Same value in
+   *  light + dark (a fixed brand accent, not theme-resolved). desktop-sidebar.tsx
+   *  has the same literal gradient but is legacy-pinned in token-budget.json
+   *  (only-shrink ratchet) — out of scope for ENG-1458; migrate it to this
+   *  token in a follow-up token-scale pass. */
+  --avatar-gradient-accent: #DF5EBC;
 
   /** Legacy aliases — old token names still resolve to new values so
    *  callers can be migrated in passes without breaking compile. */

@@ -4,9 +4,8 @@
  * as the full editor; the header card is the new entry point.
  *
  * This test pins the load-bearing structural contract:
- *   1. The header card lives in Settings.tsx and carries the
- *      `data-testid="settings-profile-header-card"` selector so any
- *      future visual rework can preserve the e2e hook.
+ *   1. The header card carries the `data-testid="settings-profile-header-card"`
+ *      selector so any future visual rework can preserve the e2e hook.
  *   2. The "Edit profile" affordance routes to /profile so
  *      bookmarks and the existing App.tsx view-router resolve.
  *   3. Desktop sidebar: Settings via bottom profile entry, not a Progress
@@ -16,6 +15,13 @@
  *
  * Source-level structural check — no React rendering. (The full
  * sidebar render-test lives in `desktopSidebar.test.tsx`.)
+ *
+ * ENG-1458: the card's JSX was extracted to
+ * `src/app/components/settings/SettingsProfileHeaderCard.tsx` (narrow-width
+ * reflow fix; Settings.tsx's line-budget pin had no headroom for it inline).
+ * `settings` still owns the label-computation logic (`profileTierLabel`
+ * etc.) and passes it as props — those assertions stay on `settings`;
+ * the card-markup assertions moved to `headerCard`.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -23,6 +29,10 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = resolve(__dirname, "..", "..");
 const SETTINGS_PATH = resolve(ROOT, "src/app/components/Settings.tsx");
+const HEADER_CARD_PATH = resolve(
+  ROOT,
+  "src/app/components/settings/SettingsProfileHeaderCard.tsx",
+);
 const SIDEBAR_PATH = resolve(
   ROOT,
   "src/app/components/suppr/desktop-sidebar.tsx",
@@ -30,23 +40,24 @@ const SIDEBAR_PATH = resolve(
 const APP_PATH = resolve(ROOT, "src/app/App.tsx");
 
 const settings = readFileSync(SETTINGS_PATH, "utf8");
+const headerCard = readFileSync(HEADER_CARD_PATH, "utf8");
 const sidebar = readFileSync(SIDEBAR_PATH, "utf8");
 const app = readFileSync(APP_PATH, "utf8");
 
 describe("Settings — profile header card (Group G IA Batch C)", () => {
   it("renders the profile header card with the canonical testID", () => {
-    expect(settings).toContain('data-testid="settings-profile-header-card"');
+    expect(headerCard).toContain('data-testid="settings-profile-header-card"');
   });
 
   it("Edit-profile link routes to /profile", () => {
-    expect(settings).toMatch(
+    expect(headerCard).toMatch(
       /href="\/profile"[\s\S]*?data-testid="settings-edit-profile-link"/,
     );
   });
 
   it("avatar uses gradient (matches mobile GradientAvatar)", () => {
-    expect(settings).toContain("linear-gradient");
-    expect(settings).toContain("var(--primary)");
+    expect(headerCard).toContain("linear-gradient");
+    expect(headerCard).toContain("var(--primary)");
   });
 
   it("tier label collapses base → Free per the Free+Pro consolidation", () => {
@@ -70,14 +81,16 @@ describe("Settings — Figma `335:2` frame reskin (web parity)", () => {
 
   it("the profile name reads in the Newsreader serif display face", () => {
     // Frame `335:2`: the user's name is an editorial identity header in
-    // the serif display face (plum ink), not sans-bold.
-    expect(settings).toMatch(
-      /font-\[family-name:var\(--font-headline\)\][^"]*text-foreground-brand[^"]*"[^>]*>\s*\{profileDisplayLabel\}/,
+    // the serif display face (plum ink), not sans-bold. ENG-1458: the
+    // card now renders it twice (narrow-stack + `sm:` row); either match
+    // proves the contract.
+    expect(headerCard).toMatch(
+      /font-\[family-name:var\(--font-headline\)\][^"]*text-foreground-brand[^"]*"[^>]*>\s*\{displayLabel\}/,
     );
   });
 
   it("the plan label reads 'Free plan' / 'Pro plan'", () => {
-    expect(settings).toMatch(/\{profileTierLabel\} plan/);
+    expect(headerCard).toMatch(/\{tierLabel\} plan/);
   });
 });
 
