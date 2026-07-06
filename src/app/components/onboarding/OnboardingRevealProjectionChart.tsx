@@ -13,6 +13,16 @@ export interface OnboardingRevealProjectionChartProps {
 /**
  * ENG-1233 — projected weight trend on the onboarding Reveal step (web).
  * Mirrors the Sloe v3 prototype `.ob-proj` card + mobile twin.
+ *
+ * ENG-1451: compacted — the full reveal stack (hero + ring + this card)
+ * was clipping under the fixed Continue bar at 390×844. Dropped the
+ * separate "X kg now / ~N weeks" footer row (the sparkline's own start/
+ * end dots plus the one summary line already carry that) and tightened
+ * the card padding + sparkline height, so this is sparkline + a single
+ * "~{weight} by {date}" line with no dead space, per the design
+ * contract. Chart geometry (`revealProjection.ts`) still authors a
+ * 300×86 viewBox; `preserveAspectRatio="none"` lets the shorter
+ * rendered height vertically compress it — legible at sparkline scale.
  */
 export function OnboardingRevealProjectionChart({
   projection,
@@ -23,10 +33,10 @@ export function OnboardingRevealProjectionChart({
 
   return (
     <div
-      className="mt-4 rounded-2xl border border-border bg-card p-4 text-left shadow-[var(--shadow-card)]"
+      className="mt-4 rounded-2xl border border-border bg-card p-3 text-left shadow-[var(--shadow-card)]"
       data-testid="onboarding-reveal-projection-chart"
     >
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="mb-1.5 flex items-center justify-between gap-3">
         <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           Projected trend
         </span>
@@ -38,7 +48,7 @@ export function OnboardingRevealProjectionChart({
       <svg
         viewBox="0 0 300 86"
         preserveAspectRatio="none"
-        className="h-[86px] w-full"
+        className="h-[52px] w-full"
         aria-hidden
       >
         <polyline
@@ -63,10 +73,6 @@ export function OnboardingRevealProjectionChart({
           fill="var(--success-solid)"
         />
       </svg>
-      <div className="mt-1.5 flex items-center justify-between text-xs tabular-nums text-muted-foreground">
-        <span>{fmt(projection.startKg)} now</span>
-        <span>~{projection.weeks} weeks</span>
-      </div>
     </div>
   );
 }

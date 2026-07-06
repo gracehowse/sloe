@@ -13,6 +13,12 @@ export interface OnboardingRevealProjectionChartProps {
 /**
  * ENG-1233 — projected weight trend on the onboarding Reveal step (mobile).
  * Mirror: `src/app/components/onboarding/OnboardingRevealProjectionChart.tsx`.
+ *
+ * ENG-1451: compacted — the full reveal stack (hero + ring + this card)
+ * was clipping under the fixed Continue bar. Dropped the separate
+ * "X kg now / ~N weeks" footer row and tightened the card padding +
+ * sparkline height, so this is sparkline + a single "~{weight} by
+ * {date}" line with no dead space, matching the web parity fix.
  */
 export function OnboardingRevealProjectionChart({
   projection,
@@ -36,7 +42,7 @@ export function OnboardingRevealProjectionChart({
           <Text style={{ color: colors.text, fontWeight: "600" }}>{projection.dateLabel}</Text>
         </Text>
       </View>
-      <Svg width="100%" height={86} viewBox="0 0 300 86" preserveAspectRatio="none">
+      <Svg width="100%" height={52} viewBox="0 0 300 86" preserveAspectRatio="none">
         <Polyline
           points={projection.polylinePoints}
           fill="none"
@@ -48,28 +54,18 @@ export function OnboardingRevealProjectionChart({
         <Circle cx={startMarker.x} cy={startMarker.y} r={3.5} fill={colors.textTertiary} />
         <Circle cx={endMarker.x} cy={endMarker.y} r={4} fill={Accent.successSolid} />
       </Svg>
-      <View style={styles.footer}>
-        <Text style={[Type.caption, { color: colors.textTertiary }]}>{fmt(projection.startKg)} now</Text>
-        <Text style={[Type.caption, { color: colors.textTertiary }]}>~{projection.weeks} weeks</Text>
-      </View>
     </SupprCard>
   );
 }
 
 const styles = StyleSheet.create({
   card: { marginTop: Spacing.md },
-  cardInner: { padding: Spacing.md },
+  cardInner: { padding: Spacing.dense },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: Spacing.sm,
     marginBottom: Spacing.sm,
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: Spacing.xs,
   },
 });

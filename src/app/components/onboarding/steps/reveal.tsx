@@ -40,10 +40,8 @@ interface RevealProps {
 export function RevealStep({ compact = false }: RevealProps) {
   const { targets, state } = useOnboarding();
 
-  // ENG-1187 — gloss BMR / TDEE / Mifflin-St Jeor on first use behind
-  // `onboarding_jargon_gloss_v1` (default-OFF). Glossed copy leads with the
-  // plain phrase; the "Show the maths" expander stays on the acronyms. Shared
-  // web ↔ mobile via `figmaCopy.ts`.
+  // ENG-1187 — gloss BMR/TDEE/Mifflin-St Jeor behind `onboarding_jargon_gloss_v1`
+  // (default-OFF); "Show the maths" keeps the acronyms. Shared via `figmaCopy.ts`.
   const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
   const bmrLabel = glossOn
     ? ONBOARDING_REVEAL_BMR_LABEL_GLOSS
@@ -57,12 +55,10 @@ export function RevealStep({ compact = false }: RevealProps) {
   // ENG-720 — staggered "Your plan is ready." reveal (default-OFF flag; `ProgressiveText` also gates reduced-motion → instant fallback).
   const progressiveText = isFeatureEnabled("onboarding_progressive_text");
 
-  // Animated count-up — easeOutCubic over ~1.2s.
-  const [displayCals, setDisplayCals] = React.useState(0);
-  // 2026-05-12 (premium-bar audit DC1 — Cal AI plan-reveal borrow,
-  // web parity with mobile reveal.tsx): ~700ms anticipation beat
-  // before the count-up + ring sweep begin. Reads as "the engine is
-  // crunching your numbers" instead of "the page just loaded".
+  const [displayCals, setDisplayCals] = React.useState(0); // easeOutCubic count-up, ~1.2s
+  // 2026-05-12 (premium-bar audit DC1, web parity w/ mobile reveal.tsx):
+  // ~700ms anticipation beat before count-up + ring sweep — "engine is
+  // crunching" not "page just loaded".
   const [revealStarted, setRevealStarted] = React.useState(false);
   const target = targets?.target ?? 0;
   React.useEffect(() => {
@@ -95,10 +91,8 @@ export function RevealStep({ compact = false }: RevealProps) {
   }, [target]);
 
   if (targets == null) {
-    // Diversity-inclusion Stage F — when the user opted out of
-    // entering a weight, show a calibrate-from-logs message instead
-    // of the body-stats prompt. Same null-targets branch otherwise
-    // catches mid-flow tweaks (e.g. design preview deep-links).
+    // Diversity-inclusion Stage F — weight-skipped users see a
+    // calibrate-from-logs message; branch also catches mid-flow tweaks.
     const calibrateCopy = state.weightSkipped
       ? "Your targets will calibrate from your meal logs over the first couple of weeks. You can add a weight any time from Settings."
       : "Answer the body-stats steps to see your daily targets.";
@@ -129,8 +123,6 @@ export function RevealStep({ compact = false }: RevealProps) {
   });
   const conversionFunnelOn = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
 
-  // Ring geometry
-
   return (
     <div
       className="h-full overflow-auto"
@@ -151,12 +143,13 @@ export function RevealStep({ compact = false }: RevealProps) {
           Your daily target
         </div>
         {/* "Your plan is ready." (2026-05-12 premium-bar audit B5 #2 re-title;
-            Sloe reskin plum Newsreader serif). ENG-720 wraps it in
-            ProgressiveText for the staggered reveal beat (default-OFF). */}
+            Sloe reskin plum Newsreader serif; ENG-720 stagger, default-OFF).
+            ENG-1451: `md:hidden` — desktop's narrative column already owns
+            this headline (narrative.tsx `reveal.head`); was duplicating. */}
         <ProgressiveText
           as="h1"
           animate={progressiveText}
-          className={`font-[family-name:var(--font-headline)] font-medium tracking-tight m-0 mb-5 text-foreground-brand leading-tight ${compact ? "text-[24px]" : "text-[24px]"}`}
+          className={`md:hidden font-[family-name:var(--font-headline)] font-medium tracking-tight m-0 mb-5 text-foreground-brand leading-tight ${compact ? "text-[24px]" : "text-[24px]"}`}
           style={{ letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties}
         >
           Your plan is ready.
@@ -326,6 +319,13 @@ export function RevealStep({ compact = false }: RevealProps) {
           />
         </div>
       </div>
+      {/* ENG-1451 — shorter viewports still overflow this step's internal
+          scroll; a sticky fade (not a hard clip) signals "more below". */}
+      <div
+        aria-hidden
+        className="sticky bottom-0 left-0 right-0 h-8 pointer-events-none"
+        style={{ background: "linear-gradient(to bottom, transparent, var(--card))" }}
+      />
     </div>
   );
 }
