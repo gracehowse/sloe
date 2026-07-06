@@ -2894,31 +2894,29 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
           );
         })()}
 
-        {/* Creator Discrepancy — ENG-1416 (2026-07-05 deep audit, rt-F2/fill-F2):
-            `recipe.calories > 0` guards both the divide-by-zero in the percentage
-            (a zero-calorie recipe previously showed "Infinity% difference") and the
-            trigger condition itself (Math.abs(x - 0) / 0 is Infinity, which is always
-            > 0.1). The footer copy is now conditioned on isVerified — an unverified
-            recipe's ingredient total is a rough estimate, not a "verified value". */}
+        {/* Creator Discrepancy — logic extracted to computeCreatorDiscrepancy
+            (ENG-1416, 2026-07-05 deep audit rt-F2/fill-F2) so it's unit-testable
+            and shares the fix with any future caller. */}
         {isCatalogRecipe &&
-          recipe.creatorCalories &&
-          recipe.calories > 0 &&
-          Math.abs(recipe.creatorCalories - recipe.calories) / recipe.calories > 0.1 && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
-              <Icons.caution className="w-4 h-4 text-warning-solid mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-warning-solid">
-                  Creator stated {recipe.creatorCalories} kcal (
-                  {Math.round(((recipe.creatorCalories - recipe.calories) / recipe.calories) * 100)}% difference)
-                </p>
-                <p className="text-xs text-warning-solid/80 mt-0.5">
-                  {recipe.isVerified
-                    ? "Verified value calculated from ingredient data"
-                    : "Estimated value calculated from ingredient data — not yet verified"}
-                </p>
+          (() => {
+            const discrepancy = computeCreatorDiscrepancy({
+              creatorCalories: recipe.creatorCalories,
+              calories: recipe.calories,
+              isVerified: recipe.isVerified,
+            });
+            if (!discrepancy) return null;
+            return (
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30">
+                <Icons.caution className="w-4 h-4 text-warning-solid mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-warning-solid">
+                    Creator stated {recipe.creatorCalories} kcal ({discrepancy.pctDifference}% difference)
+                  </p>
+                  <p className="text-xs text-warning-solid/80 mt-0.5">{discrepancy.copy}</p>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
         {/* Tab Bar — Ingredients / Steps / Nutrition (matches mobile) */}
         <div className="flex rounded-xl bg-muted p-1 gap-1">

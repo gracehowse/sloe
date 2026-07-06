@@ -167,6 +167,45 @@ export function composeRecipeMeta(args: {
   return out;
 }
 
+/**
+ * Compute the "creator stated a different calorie count" discrepancy banner
+ * (web-only, catalog/seed recipes with a creator-claimed calorie figure).
+ *
+ * ENG-1416 (2026-07-05 deep audit, rt-F2/fill-F2): the inline JSX version of
+ * this check divided by `recipe.calories` unguarded — a zero-calorie recipe
+ * (nutrition never computed) produced `Math.abs(x - 0) / 0 === Infinity`,
+ * which is always `> 0.1`, so the banner both fired incorrectly AND rendered
+ * "Infinity% difference". `calories <= 0` now short-circuits to null before
+ * any division happens.
+ *
+ * The footer copy previously claimed "Verified value calculated from
+ * ingredient data" unconditionally — misleading when the ingredient total is
+ * actually an unverified client-side estimate. Copy now branches on
+ * `isVerified`.
+ */
+export type CreatorDiscrepancy = {
+  pctDifference: number;
+  copy: string;
+};
+
+export function computeCreatorDiscrepancy(args: {
+  creatorCalories: number | null | undefined;
+  calories: number | null | undefined;
+  isVerified: boolean | null | undefined;
+}): CreatorDiscrepancy | null {
+  const creatorCalories = args.creatorCalories;
+  const calories = args.calories;
+  if (!creatorCalories || calories == null || calories <= 0) return null;
+  const ratio = Math.abs(creatorCalories - calories) / calories;
+  if (ratio <= 0.1) return null;
+  return {
+    pctDifference: Math.round(ratio * 100),
+    copy: args.isVerified
+      ? "Verified value calculated from ingredient data"
+      : "Estimated value calculated from ingredient data — not yet verified",
+  };
+}
+
 export function computeFitsYourDayVerdict(args: {
   kcal: number | null | undefined;
   targetCals: number | null | undefined;
