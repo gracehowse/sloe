@@ -2817,7 +2817,6 @@ export const NutritionTracker = memo(function NutritionTracker({
           surfaces inline as a caption inside the hero block via
           `aiSourcedCount` (Phase 4). */}
       {(() => {
-        const coachInHero = isFeatureEnabled("today_coach_in_hero_v1");
         const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
         const coachScreenEnabled = isFeatureEnabled("coach_screen_v1");
         const coachLineEl =
@@ -2862,44 +2861,23 @@ export const NutritionTracker = memo(function NutritionTracker({
         // in every hero state on mobile-web (`< md`); desktop gets the sidebar
         // item. Same `coach_screen_v1` gate; the deficit-line deep-link stays.
         onPressCoach={coachScreenEnabled ? () => trackerRouter.push("/coach") : undefined}
-        coachLine={coachInHero ? coachLineEl : undefined}
+        coachLine={coachLineEl}
       />
         );
       })()}
 
-      {/* Single context block — priority order: fasting > deficit.
-          Mutually exclusive (mobile parity, 2026-06-06). Eat-again removed
-          from Today scroll (2026-05-22 v4) and fully retired (ENG-984,
-          2026-06-17); logging shortcuts live in the Log sheet. */}
-      {(() => {
-        // 1. Active fast wins outright (both hero variants).
-        if (activeFast) {
-          return (
-            <TodayFastingPill
-              activeFastElapsedLabel={fastingElapsedLabel}
-              fastingOptedIn={fastingOptedIn}
-            />
-          );
-        }
-        // Coach-in-hero: the deficit line renders INSIDE the hero, so no
-        // standalone context block below it.
-        if (isFeatureEnabled("today_coach_in_hero_v1")) return null;
-        const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
-        if (
-          viewMode === "day" &&
-          selectedDateKey === todayKey() &&
-          remainingToday > 0
-        ) {
-          return (
-            <TodayDeficitInsight
-              remaining={remainingToday}
-              selectedDate={selectedDate}
-              byDay={nutritionByDay}
-            />
-          );
-        }
-        return null;
-      })()}
+      {/* Single context block — active fast only (mobile parity, 2026-06-06).
+          Eat-again removed from Today scroll (2026-05-22 v4) and fully
+          retired (ENG-984, 2026-06-17); logging shortcuts live in the Log
+          sheet. The deficit line (the other historical context block) now
+          renders INSIDE the hero unconditionally — the flag that gated that
+          move (ENG-889) was collapsed as always-on in ENG-1356. */}
+      {activeFast ? (
+        <TodayFastingPill
+          activeFastElapsedLabel={fastingElapsedLabel}
+          fastingOptedIn={fastingOptedIn}
+        />
+      ) : null}
 
       {/* RemainingMacrosBar removed 2026-04-20 — duplicated the macro tiles
           below (feedback_no_duplicate_today_hero_content.md; mobile parity). */}

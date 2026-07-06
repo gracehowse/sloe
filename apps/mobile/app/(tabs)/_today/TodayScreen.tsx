@@ -5319,10 +5319,9 @@ export default function TrackerScreen() {
                 focuses are no-ops (latched via `hasMountedFocusRef`). */}
             <ReAnimated.View style={heroEntrance.style}>
               {(() => {
-                const coachInHero = isFeatureEnabled("today_coach_in_hero_v1");
                 const coachScreenEnabled = isFeatureEnabled("coach_screen_v1");
                 const heroCoachLine =
-                  coachInHero && !activeFastStart && isToday && remaining > 0 ? (
+                  !activeFastStart && isToday && remaining > 0 ? (
                     <TodayDeficitInsight
                       remaining={remaining}
                       selectedDate={selectedDate}
@@ -5371,47 +5370,22 @@ export default function TrackerScreen() {
               })()}
             </ReAnimated.View>
 
-            {/* Single context block — priority order: fasting >
-                deficit. Mutually exclusive. Pre-Phase-4 these rendered
-                as 4 separate stacked conditionals (sometimes multiple
-                at once); the cap rule (teardown §2) is "never more than
-                one prompt above the meals". */}
+            {/* Single context block — active fast only. Pre-Phase-4 this
+                rendered up to 4 separate stacked conditionals (sometimes
+                multiple at once); the cap rule (teardown §2) is "never more
+                than one prompt above the meals". The deficit line (the other
+                historical context block) now renders INSIDE the hero
+                unconditionally (ENG-1099, collapsed ENG-1356) — idle
+                "Start fast", eat-again, and north-star were removed/moved
+                separately (2026-05-19 / 2026-06-17). */}
             <ReAnimated.View style={contextEntrance.style}>
-            {(() => {
-              // 1. Active fast wins outright (both hero variants).
-              if (activeFastStart) {
-                return (
-                  <TodayFastingPill
-                    startedAt={activeFastStart}
-                    nowTick={fastingTick}
-                    onPress={() => router.push("/fasting")}
-                  />
-                );
-              }
-              // Coach-in-hero: the deficit line renders INSIDE the hero, so
-              // no standalone context block below it.
-              if (isFeatureEnabled("today_coach_in_hero_v1")) return null;
-              // 1b. Idle "Start fast" removed (Today premium sprint 2026-05-19).
-              // 2. Eat-again card removed from Today (2026-05-22 v4) and
-              //    fully retired (ENG-984, 2026-06-17).
-              // 3. North-star moved below meals (Today premium sprint 2026-05-19).
-              // 4. Remaining budget today — the forward "Room for {meal}"
-              //    coach line (Sloe 01 · Today). The component self-guards
-              //    the ≥50 kcal honesty floor and picks the next unlogged
-              //    slot from `byDay`; the backward energy-balance trend
-              //    lives in the Energy balance section below, not here.
-              if (isToday && remaining > 0) {
-                return (
-                  <TodayDeficitInsight
-                    remaining={remaining}
-                    selectedDate={selectedDate}
-                    byDay={byDay}
-                  />
-                );
-              }
-              // No context block fits this state.
-              return null;
-            })()}
+              {activeFastStart ? (
+                <TodayFastingPill
+                  startedAt={activeFastStart}
+                  nowTick={fastingTick}
+                  onPress={() => router.push("/fasting")}
+                />
+              ) : null}
             </ReAnimated.View>
 
             {/* Macro tiles — 2x2 grid. The standalone all-nutrients
