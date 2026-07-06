@@ -31,7 +31,10 @@ scripts
 /supabase/
 
 # Local / Vercel metadata
-.git
+# NOTE: .git is intentionally NOT ignored (ENG-1366) — vercel.json's
+# ignoreCommand runs `git diff` against the previous commit to skip builds
+# for mobile-only pushes, and needs the shallow clone history Vercel already
+# fetches (depth=10) to still be present at that step.
 .vercel
 .cursor
 .DS_Store
