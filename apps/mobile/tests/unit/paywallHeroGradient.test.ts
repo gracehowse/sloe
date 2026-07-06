@@ -73,6 +73,15 @@ describe("mobile paywall — Sloe Pro photo hero (no brand-gradient hero)", () =
     expect(hero).toMatch(/const\s+accent\s*=\s*useAccent\(\)/);
     expect(hero).toContain("accent.primarySolid");
   });
+
+  it("ENG-1382/ENG-1374: has a tinted fallback background so a failed/slow image load never renders blank white", () => {
+    // The outer hero View must carry a theme-token backgroundColor
+    // (Sloe Deep, the same dark-plum brand ground used on the onboarding
+    // welcome screen) so the image container is never bare/transparent —
+    // structural guarantee, not dependent on the Image resolving.
+    expect(hero).toContain("Accent.primaryDeep");
+    expect(hero).toMatch(/backgroundColor:\s*Accent\.primaryDeep/);
+  });
 });
 
 describe("mobile paywall — plan selector active-row treatment (Sloe)", () => {

@@ -1,7 +1,7 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 
-import { FontFamily, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -60,7 +60,17 @@ export function PaywallHero({
   const bg = colors.background;
 
   return (
-    <View style={{ height: heroHeight }}>
+    <View
+      style={{
+        height: heroHeight,
+        // ENG-1382 / ENG-1374 structural guarantee — a tinted background
+        // layer beneath the image so a failed/slow image load (or a
+        // future regression) never collapses to blank white. Sloe Deep
+        // (#241733) matches the photo's dark-plum tonal range, so the
+        // fade below still reads correctly even before the image paints.
+        backgroundColor: Accent.primaryDeep,
+      }}
+    >
       <Image
         source={HERO_IMAGE}
         // Decorative — the headline carries the meaning for VoiceOver.
