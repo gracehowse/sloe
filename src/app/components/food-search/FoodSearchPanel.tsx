@@ -2153,10 +2153,10 @@ export function FoodSearchPanel({
     );
   };
 
-  // Preview takes over the panel when set.
+  // Preview takes over when set. ENG-1445: `min-h-0 flex-1`, not `h-full` (which lost to min-height:auto and pushed "Use this" off-screen).
   if (preview && scaled) {
     return (
-      <div className={`flex flex-col h-full ${px}`}>
+      <div className={`flex min-h-0 flex-1 flex-col ${px}`}>
         <div className="flex-1 overflow-y-auto pb-3 space-y-4">
           <button onClick={() => setPreview(null)} className="text-sm text-primary-solid hover:underline flex items-center gap-1">
             <Icons.forward className="h-3 w-3 rotate-180" /> Back to results
