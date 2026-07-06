@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { DailyRing } from "./daily-ring";
 import { CalorieRingDial } from "./calorie-ring-dial";
 import { LogConfirmCheck } from "./log-confirm-check";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
@@ -145,13 +144,6 @@ function DesktopHeroStats({
     : isOver
       ? "over"
       : "under";
-  // Sloe v3 (ENG-1225): swap the concentric ring for the jewel watch-dial on
-  // the desktop hero too — mirrors mobile-web `TodayHeroRing`. The dial is
-  // calorie-only (macros move to the separate Tiles/Bars/Rings section, so the
-  // expand toggle no longer drives the ring). Transient flag, collapsed once
-  // verified.
-  const v3Ring = isFeatureEnabled("sloe_v3_ring");
-
   return (
     // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
     // adopts soft elevation (and drops its border) under
@@ -176,37 +168,11 @@ function DesktopHeroStats({
         {/* ENG-722 — `relative` so the log-confirm checkmark overlays whichever
             ring variant renders. */}
         <div className="relative flex items-center justify-center">
-          {v3Ring ? (
-            <CalorieRingDial
-              consumed={consumed}
-              target={target}
-              size={DESKTOP_RING_GEOMETRY.size}
-            />
-          ) : (
-            <DailyRing
-              consumed={consumed}
-              target={target}
-              size={DESKTOP_RING_GEOMETRY.size}
-              // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
-              // the macro stroke; the collapsed lone ring keeps the confident bold
-              // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
-              strokeWidth={
-                expanded
-                  ? DESKTOP_RING_GEOMETRY.strokeWidth
-                  : DESKTOP_RING_GEOMETRY.strokeWidthBold
-              }
-              ringRadius={DESKTOP_RING_GEOMETRY.radius}
-              macroRadii={DESKTOP_RING_GEOMETRY.macroRadii}
-              macroStroke={DESKTOP_RING_GEOMETRY.macroStroke}
-              proteinPct={proteinPct}
-              carbsPct={carbsPct}
-              fatPct={fatPct}
-              expanded={expanded}
-              onToggle={onToggleExpanded}
-              pulse={pulse}
-              commitPulse={commitPulse}
-            />
-          )}
+          <CalorieRingDial
+            consumed={consumed}
+            target={target}
+            size={DESKTOP_RING_GEOMETRY.size}
+          />
           <LogConfirmCheck visible={logConfirmVisible} />
         </div>
 
@@ -300,7 +266,6 @@ function StatCell({
   // now just neutral (default) and positive (earned Bonus headroom = sage).
   valueTone?: "neutral" | "positive";
 }) {
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const valueColor =
     valueTone === "positive" ? "text-success" : "text-foreground";
   return (
@@ -309,11 +274,7 @@ function StatCell({
         {label}
       </div>
       <div
-        className={
-          tierV1
-            ? `mt-1 font-[family-name:var(--font-headline)] text-[18px] font-normal tabular-nums leading-tight ${valueColor}`
-            : `mt-1 text-[18px] font-extrabold tabular-nums tracking-tight leading-none ${valueColor}`
-        }
+        className={`mt-1 font-[family-name:var(--font-headline)] text-[18px] font-normal tabular-nums leading-tight ${valueColor}`}
       >
         {value}
       </div>
@@ -328,7 +289,6 @@ function HeroStatusChip({
   state: "empty" | "under" | "over";
   onPress?: () => void;
 }) {
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const config =
     state === "over"
       ? {
@@ -342,14 +302,12 @@ function HeroStatusChip({
       : state === "empty"
         ? {
             label: todayStatusChip("empty"),
-            className: tierV1
-              ? "text-foreground-brand"
-              : "bg-ring-bg text-foreground-brand",
+            className: "text-foreground-brand",
             Icon: Sparkles,
           }
         : {
             label: todayStatusChip("under"),
-            className: tierV1 ? "text-success" : "bg-success/15 text-success",
+            className: "text-success",
             Icon: CircleCheck,
           };
   const { label, className, Icon } = config;

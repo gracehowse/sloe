@@ -278,8 +278,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   // historic UI; `bars` is the Cronometer/Lose It-style list (Settings
   // → Display → Macro display). Pref persists via localStorage.
   const [macroDisplayStyle] = useMacroDisplayStyle();
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
-  const todaySectionBreakClass = tierV1 ? "" : "mt-10";
   // ENG-1252 — first-session AI-method discoverability tooltip gate.
   const aiMethodTooltipVisible = useAiMethodTooltip(userTier);
   const {
@@ -2703,8 +2701,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         <div
           className={
             viewMode === "day"
-              ? `flex-1 min-w-0 lg:max-w-[480px] ${tierV1 ? "space-y-6" : "space-y-3"}`
-              : `flex-1 min-w-0 ${tierV1 ? "space-y-6" : "space-y-3"}`
+              ? "flex-1 min-w-0 lg:max-w-[480px] space-y-6"
+              : "flex-1 min-w-0 space-y-6"
           }
         >
       {viewMode === "day" ? (
@@ -3054,7 +3052,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       )}
 
       {/* 5. Meals Section — larger top break vs hero cluster (ENG-871). */}
-      <div className={todaySectionBreakClass}>
+      <div>
       <TodayMealsSection
         mealsGrouped={mealsGrouped}
         slotLabels={enabledMealSlots}
@@ -3232,7 +3230,7 @@ export const NutritionTracker = memo(function NutritionTracker({
 
       {/* Figma TD1 — Activity & energy (mobile parity: section shell always on day view). */}
       {viewMode === "day" ? (
-        <section className={`${todaySectionBreakClass} flex flex-col gap-5`.trim()} data-testid="today-td1-section">
+        <section className="flex flex-col gap-5" data-testid="today-td1-section">
           <TodayScrollSectionHeader
             title="Activity & energy"
             testID="today-td1-section-header"
@@ -3304,7 +3302,7 @@ export const NutritionTracker = memo(function NutritionTracker({
 
       {/* Figma TD2 — Hydration & stimulants (mobile parity: header always on day view). */}
       {viewMode === "day" ? (
-        <section className={`${todaySectionBreakClass} flex flex-col gap-5`.trim()} data-testid="today-td2-section">
+        <section className="flex flex-col gap-5" data-testid="today-td2-section">
           <TodayScrollSectionHeader
             title="Hydration & stimulants"
             testID="today-td2-section-header"
@@ -3361,7 +3359,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           variant="primary"
           label="Complete Day"
           onClick={() => setCompleteDayOpen(true)}
-          className={`${todaySectionBreakClass} w-full`.trim()}
+          className="w-full"
         />
       )}
 

@@ -27,8 +27,8 @@ import { useHaptics } from "@/hooks/useHaptics";
 // vitest shim). Mirrors `PressableScale.tsx`.
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-import { Accent, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent, useResolvedScheme } from "@/context/theme";
+import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
@@ -159,8 +159,8 @@ function NorthStarBlockImpl({
   if (kind === "new-user") {
     return (
       <SupprCard
-        // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-        lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"}
+        // Recipe-tier flat (Grace 2026-06-09 one-treatment, superseded by ENG-1099 flat).
+        lift="flat"
         testID={testID ?? "north-star-new-user"}
         tone="primary"
         padding="md"
@@ -215,8 +215,8 @@ function NorthStarBlockImpl({
   if (kind === "no-fit") {
     return (
       <SupprCard
-        // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-        lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"}
+        // Recipe-tier flat (Grace 2026-06-09 one-treatment, superseded by ENG-1099 flat).
+        lift="flat"
         testID={testID ?? "north-star-no-fit"}
         tone="neutral"
         padding="md"
@@ -305,8 +305,7 @@ function NorthStarDefault({
   // Secondary accent (Frost flag → damson, else clay) for the "What to eat
   // next" overline + the suggestion CTA. The band-fit green chip + plum keep
   // their own tokens.
-  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
+  const accent = useAccent();
   // Pan responder for swipe-to-skip. We use raw PanResponder rather
   // than reanimated here because the block is a single-state gesture
   // (commit on release > threshold) — the simplicity of PanResponder
@@ -375,8 +374,8 @@ function NorthStarDefault({
       testID={testID ?? "north-star-default"}
       style={fadeStyle}
     >
-      {/* Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09). */}
-      <SupprCard lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"} tone="primary" padding="md" innerStyle={styles.defaultCard}>
+      {/* Sits on the Today scroll ground → recipe-tier flat (Grace 2026-06-09 one-treatment, superseded by ENG-1099 flat). */}
+      <SupprCard lift="flat" tone="primary" padding="md" innerStyle={styles.defaultCard}>
         {reduceMotion && onSkip ? (
           <Pressable
             accessibilityRole="button"
@@ -474,9 +473,7 @@ function NorthStarDefault({
                 styles.chip,
                 {
                   backgroundColor: suggestion.bandTight
-                    ? tierV1
-                      ? Accent.success + "1A"
-                      : "rgba(34,168,96,0.10)"
+                    ? Accent.success + "1A"
                     : colors.cardBorder,
                 },
               ]}
@@ -486,9 +483,7 @@ function NorthStarDefault({
                   fontSize: 11,
                   fontWeight: "600",
                   color: suggestion.bandTight
-                    ? tierV1
-                      ? Accent.successSolid
-                      : mc.calories
+                    ? Accent.successSolid
                     : colors.textSecondary,
                 }}
               >

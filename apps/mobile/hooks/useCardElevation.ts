@@ -26,8 +26,9 @@ import { useTheme } from "@/context/theme";
  * FLAT (the no-arg default, and `useTodayCardElevation()`) stays for the
  * surfaces the prototype keeps recessed/flush: macro tiles (`size="tile"`,
  * recessed `--bg-secondary` slab), inset card-on-card panels (`size="inset"`,
- * no double-shadow), and the Today tracker-half cards still flat under
- * `today_tracker_tier_v1` (ENG-1099).
+ * no double-shadow), and the Today tracker-half cards — ENG-1099's recipe-tier
+ * flat treatment, unconditional since the always-on `today_tracker_tier_v1`
+ * flag was collapsed (ENG-1356, 2026-07-06).
  *
  * Why neither variant is flag-gated. The treatment USED to gate on
  * `design_system_elevation`, but that read is removed here for two reasons:

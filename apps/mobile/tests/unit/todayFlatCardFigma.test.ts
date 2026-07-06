@@ -50,23 +50,25 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
   });
 
   // ENG-1099 (Grace 2026-06-14, "flatten all"): the TRACKER-HALF cards
-  // (hero ring, meal slots, north-star) flatten to recipe-screen grammar behind
-  // `today_tracker_tier_v1` — superseding the 2026-06-09 soft-lift for these
-  // three. The flag-gated form (`lift={... today_tracker_tier_v1? "flat":"soft"}`)
-  // keeps the soft path alive in the else. The OTHER page-ground cards (below the
-  // tracker half) stay soft — ENG-1099 is scoped to the tracker half.
-  const TODAY_TIER_FLAGGED_SURFACES = [
+  // (hero ring, meal slots, north-star) flatten to recipe-screen grammar —
+  // superseding the 2026-06-09 soft-lift for these three. This was flag-gated
+  // behind `today_tracker_tier_v1` (`lift={... today_tracker_tier_v1 ?
+  // "flat":"soft"}`, soft in the else) until the always-on flag was collapsed
+  // in ENG-1356 — the lift is now the unconditional "flat". The OTHER
+  // page-ground cards (below the tracker half) stay soft — ENG-1099 was
+  // scoped to the tracker half.
+  const TODAY_TIER_FLAT_SURFACES = [
     "components/today/TodayHeroRing.tsx",
     "components/today/TodayMealsSection.tsx",
     "components/today/NorthStarBlock.tsx",
   ];
 
-  it.each(TODAY_TIER_FLAGGED_SURFACES)(
-    "%s flag-gates its SupprCard lift on today_tracker_tier_v1 (ENG-1099 flat, soft in the else)",
+  it.each(TODAY_TIER_FLAT_SURFACES)(
+    "%s uses the unconditional flat SupprCard lift (ENG-1099, collapsed ENG-1356)",
     (relPath) => {
       const src = readFileSync(join(ROOT, relPath), "utf8");
-      expect(src).toMatch(/today_tracker_tier_v1/);
-      expect(src).toMatch(/lift=\{[\s\S]*?"flat"[\s\S]*?"soft"/);
+      expect(src).not.toMatch(/today_tracker_tier_v1/);
+      expect(src).toMatch(/lift="flat"/);
     },
   );
 

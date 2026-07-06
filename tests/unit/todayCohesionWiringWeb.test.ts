@@ -22,8 +22,10 @@ describe("Today cohesion — NutritionTracker web host wiring", () => {
   it("F-158: Complete-Day CTA is a SupprButton primary on the section rhythm, not old mt-4", () => {
     expect(src).toMatch(/Complete Day/);
     // ENG-1079: now <SupprButton variant="primary"> on the section cadence.
-    // ENG-1099 M1: tierV1 drops mt-10 — parent space-y-6 owns spacing.
-    expect(src).toMatch(/todaySectionBreakClass/);
+    // ENG-1099 M1 dropped mt-10 (parent space-y-6 owns spacing) behind
+    // `today_tracker_tier_v1`; the always-on flag was collapsed in ENG-1356 —
+    // `todaySectionBreakClass` no longer exists, the CTA just takes `w-full`.
+    expect(src).not.toMatch(/todaySectionBreakClass/);
     expect(src).toMatch(/<SupprButton[\s\S]{0,160}label="Complete Day"/);
     expect(src).not.toMatch(/transition-colors mt-4/);
   });
@@ -32,9 +34,10 @@ describe("Today cohesion — NutritionTracker web host wiring", () => {
 describe("Today cohesion — web TodayMealsSection ENG-1099 M6", () => {
   const src = read("../../src/app/components/suppr/today-meals-section.tsx");
 
-  it("applies PressableScale-style press feedback on meal rows when tierV1 is on", () => {
+  it("applies PressableScale-style press feedback on meal rows unconditionally (ENG-1356 collapse)", () => {
     expect(src).toMatch(/todayMealRowPressClass/);
     expect(src).toMatch(/active:scale-\[0\.97\]/);
+    expect(src).not.toMatch(/tierV1/);
   });
 });
 

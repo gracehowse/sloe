@@ -824,11 +824,6 @@ export default function TrackerScreen() {
   // entry point. Flag-OFF preserves the auto-opening modal (both the gate at
   // the eligibility effect and the modal render below are guarded by this).
   const checkinAsCard = isFeatureEnabled("redesign_winmoment");
-  // ENG-1099 M1 — unify the Today scroll rhythm to one 24 cadence (the
-  // recipe-body grammar): the inter-block scroll gap becomes Spacing.xl and the
-  // 32 section-break margins collapse to 0, so blocks breathe at one rhythm
-  // instead of 8/32 stacking. Flag-off keeps the legacy 8 gap + 32 breaks.
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const weeklyCheckinHandledRef = useRef(false);
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
@@ -3814,7 +3809,7 @@ export default function TrackerScreen() {
         scroll: {
           paddingHorizontal: Layout.todayScreenPaddingX,
           paddingBottom: Layout.screenPaddingBottom,
-          gap: tierV1 ? Spacing.xl : Layout.todayScrollGap,
+          gap: Spacing.xl,
           paddingTop: Spacing.sm,
         },
 
@@ -5516,7 +5511,7 @@ export default function TrackerScreen() {
 
         {viewMode === "day" && (
           <ReAnimated.View
-            style={[mealsEntrance.style, { marginTop: tierV1 ? 0 : Layout.todaySectionBreak }]}
+            style={[mealsEntrance.style, { marginTop: 0 }]}
           >
           <TodayMealsSection
             slots={MEAL_SLOTS}
@@ -5591,7 +5586,7 @@ export default function TrackerScreen() {
             Today (day view). Household headcount comes from
             `useHouseholdMemberCount` (solo → 1). */}
         {viewMode === "day" && (
-          <View style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak }}>
+          <View style={{ marginTop: 0 }}>
           <WeeklyInsightCard
             householdSize={householdMemberCount}
             loggedDaysInWeek={weekData.days.filter((d) => d.totals.calories > 0).length}
@@ -5665,11 +5660,12 @@ export default function TrackerScreen() {
             Today scroll keeps its section grammar whether or not a plan exists.
             Flag OFF keeps the old hide-when-empty behaviour exactly. The card
             itself owns the empty/populated render fork off `plannedMeals.length`.
-            Section break is the standard `Layout.todaySectionBreak` (F-159) so it
-            sits on the same 32pt rhythm as Meals / Activity / Hydration. */}
+            Section break is `marginTop: 0` (ENG-1099/ENG-1356) — the one 24
+            `Spacing.xl` `styles.scroll` gap carries the rhythm now, matching
+            Meals / Activity / Hydration. */}
         {viewMode === "day" &&
           (plannedMeals.length > 0 || isFeatureEnabled("today_planned_empty_state")) && (
-            <View style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak }}>
+            <View style={{ marginTop: 0 }}>
               <TodayPlannedMealsCard
                 plannedMeals={plannedMeals}
                 onLogPlannedMealWithPortion={(pm, p) => void logPlannedMealWithPortion(pm, p)}
@@ -5707,7 +5703,7 @@ export default function TrackerScreen() {
         {viewMode === "day" && (
           <View
             testID="today-activity-section"
-            style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
+            style={{ marginTop: 0, gap: Layout.todaySectionCardGap }}
           >
             <TodayScrollSectionHeader
               title="Activity & energy"
@@ -5798,7 +5794,7 @@ export default function TrackerScreen() {
         {viewMode === "day" && (
           <View
             testID="today-hydration-section"
-            style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak, gap: Layout.todaySectionCardGap }}
+            style={{ marginTop: 0, gap: Layout.todaySectionCardGap }}
           >
             <TodayScrollSectionHeader
               title="Hydration & stimulants"
@@ -5846,12 +5842,12 @@ export default function TrackerScreen() {
         )}
 
         {/* Complete Day — only when viewing today with logged meals. Extracted
-            to <TodayCompleteDayButton> (ENG-1065 / F-158): it now sits in a
-            section wrapper on the standard `todaySectionBreak` (32) cadence as
-            the day's terminal section, fixing the "out of place / floating in
-            dead space" report (was an off-rhythm `marginTop: 20`, no wrapper).
-            Outline tier + HealthKit auto-export behaviour preserved inside the
-            component. Mirror of web NutritionTracker. */}
+            to <TodayCompleteDayButton> (ENG-1065 / F-158): it sits in a section
+            wrapper (marginTop: 0, ENG-1099/ENG-1356 — the one 24 scroll gap
+            carries the rhythm) as the day's terminal section, fixing the "out
+            of place / floating in dead space" report (was an off-rhythm
+            `marginTop: 20`, no wrapper). HealthKit auto-export behaviour
+            preserved inside the component. Mirror of web NutritionTracker. */}
         {viewMode === "day" && isToday && mealsToday.length > 0 && !addOpen && (
           <TodayCompleteDayButton
             userId={userId ?? null}

@@ -32,17 +32,21 @@ describe("ENG-889 S5 — Fresh start empty Today", () => {
     expect(todayColdOpenCoachLine(14)).toBe("Fresh start — what's for lunch?");
   });
 
-  it("web hero chip de-tints Fresh start when today_tracker_tier_v1 is on", () => {
+  it("web hero chip de-tints Fresh start (today_tracker_tier_v1 collapsed ENG-1356, always-on tint)", () => {
+    // `today_tracker_tier_v1` was always-on in production (REDESIGN_DEFAULT_ON)
+    // and was collapsed in ENG-1356 — no flag check remains, only the
+    // de-tinted (tier-on) "Fresh start" chip.
     const src = read("src/app/components/suppr/today-hero-ring.tsx");
-    expect(src).toMatch(/today_tracker_tier_v1/);
+    expect(src).not.toMatch(/today_tracker_tier_v1/);
     expect(src).toMatch(/state === "empty"[\s\S]*text-foreground-brand/);
-    expect(src).not.toMatch(/state === "empty"[\s\S]*bg-ring-bg[\s\S]*today_tracker_tier_v1/);
+    expect(src).not.toMatch(/state === "empty"[\s\S]*bg-ring-bg/);
   });
 
-  it("mobile hero chip de-tints Fresh start when today_tracker_tier_v1 is on", () => {
+  it("mobile hero chip de-tints Fresh start (today_tracker_tier_v1 collapsed ENG-1356, always-on tint)", () => {
     const src = read("apps/mobile/components/today/TodayHeroChips.tsx");
-    expect(src).toMatch(/today_tracker_tier_v1/);
-    expect(src).toMatch(/tierV1\s*\?\s*"transparent"/);
+    expect(src).not.toMatch(/today_tracker_tier_v1/);
+    expect(src).not.toMatch(/tierV1/);
+    expect(src).toMatch(/bg:\s*"transparent"/);
   });
 
   it("empty hero keeps honest Goal/Eaten/Bonus stats (Grace 2026-06-10)", () => {

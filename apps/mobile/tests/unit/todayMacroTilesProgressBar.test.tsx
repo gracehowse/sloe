@@ -5,14 +5,22 @@
  *
  * The thin macro-coloured bar under each tile's value row was the founder's
  * #1 structural gap: the mock tiles carry a `h-1 … rounded-full` bar (a
- * frost-mist track + macro-colour fill at %-width), but it had been dropped
- * in the interim "Figma 01" pass. This test renders the tiles and pins the
- * bar back as OBSERVABLE behaviour, so removing it again breaks CI:
+ * frost-mist track + macro-colour fill at %-width). This test renders the
+ * tiles and pins the bar back as OBSERVABLE behaviour, so removing it again
+ * breaks CI:
  *   - every tracked macro renders its bar element, and
  *   - the fill width reflects min(current/target, 1), and
  *   - reference-only macros (sugar/sodium — generic reference, not a
  *     personal target) render a DE-EMPHASISED fill so the bar never reads as
  *     a hit goal.
+ *
+ * ENG-1356 (flag-collapse sweep, 2026-07-06): `today_tracker_tier_v1` was
+ * always-on in production (REDESIGN_DEFAULT_ON) and is now collapsed —
+ * the recipe-tier tile (no per-tile caption row, over/under signal on the
+ * value colour) is the ONLY tile MacroStatTile renders. The legacy
+ * flag-off caption row + plain-ink zero-softening this file used to pin
+ * (by forcing the flag off) no longer exist as a live code path, so those
+ * assertions were removed rather than kept alive against dead code.
  *
  * Harness mirrors `todayHeroRingSloeChipStats.test.tsx` (jsdom +
  * @testing-library/react-native, no provider). This test asserts only the
@@ -21,22 +29,10 @@
  * `cardElevationVariants.test.tsx`.
  */
 import * as React from "react";
-import { Text } from "react-native";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react-native";
 
-// ENG-1099: the per-tile bar + the value-softening are the LEGACY (flag-off)
-// path — the recipe-tier tile (today_tracker_tier_v1, default-on) drops the bar
-// and uses macro-hue value colour. Force the flag OFF so these tests exercise
-// the legacy bar/value they pin.
-vi.mock("@/lib/analytics", async (orig) => ({
-  ...(await orig<typeof import("@/lib/analytics")>()),
-  isFeatureEnabled: (flag: string) =>
-    flag === "today_tracker_tier_v1" ? false : true,
-}));
-
 import { TodayDashboardMacroTiles } from "../../components/today/TodayDashboardMacroTiles";
-import { Accent } from "../../constants/theme";
 
 void React;
 
@@ -119,114 +115,11 @@ describe("TodayDashboardMacroTiles — per-tile progress bar", () => {
     // Reference-only → quieter fill so it never reads as a hit personal goal.
     expect(fillStyle(bar).opacity).toBe(0.45);
   });
-});
 
-/** Helper — read a caption node's rendered text + colour. */
-function captionOf(node: { props: { children?: unknown; style?: unknown } }) {
-  const style = (node.props.style ?? {}) as { color?: string };
-  return { text: String(node.props.children ?? ""), color: style.color };
-}
-
-describe("TodayDashboardMacroTiles — per-tile caption (audit gap 4)", () => {
-  // Caption colours are token-driven and theme-branched in the component:
-  //   under target → `isDark ? Accent.successLight : Accent.success`
-  //   over target  → `isDark ? Accent.warningLight : Accent.warningSolid`
-  // The vitest react-native shim's `useColorScheme()` returns "dark", so the
-  // component renders the DARK branch here. Assert the SAME tokens the component
-  // reads (never a hardcoded hex) so the test can't drift from the theme.
-  const SAGE = Accent.successLight; // #83A57E — dark-branch caption-under
-  const AMBER = Accent.warningLight; // #D6A24A — dark-branch caption-over
-  const MUTED = "#9B93A3"; // textTertiaryColor — passed in as a prop, theme-independent
-
-  it('shows "N g remaining" in sage when a tracked macro is under target', () => {
-    const { getByTestId } = render(
+  it("no per-tile caption row renders — the recipe-tier tile signals via value colour only", () => {
+    const { queryByTestId } = render(
       <TodayDashboardMacroTiles {...baseProps} trackedMacros={["protein"]} />,
     );
-    // 140 − 96 = 44 g remaining.
-    const cap = captionOf(getByTestId("today-macro-tile-caption-protein"));
-    expect(cap.text).toBe("44g remaining");
-    expect(cap.color).toBe(SAGE);
-  });
-
-  it('shows "N g over" in amber when a tracked macro is over target', () => {
-    const { getByTestId } = render(
-      <TodayDashboardMacroTiles
-        {...baseProps}
-        totals={{ protein: 210, carbs: 0, fat: 0, fiber: 0 }}
-        trackedMacros={["protein"]}
-      />,
-    );
-    // 210 − 140 = 70 g over.
-    const cap = captionOf(getByTestId("today-macro-tile-caption-protein"));
-    expect(cap.text).toBe("70g over");
-    expect(cap.color).toBe(AMBER);
-  });
-
-  it('shows a muted "ref" caption for reference-only macros (sugar)', () => {
-    const { getByTestId } = render(
-      <TodayDashboardMacroTiles {...baseProps} trackedMacros={["sugar"]} />,
-    );
-    const cap = captionOf(getByTestId("today-macro-tile-caption-sugar"));
-    expect(cap.text).toBe("ref 50g");
-    expect(cap.color).toBe(MUTED);
-  });
-
-  it('shows full remaining on an unlogged tile (current = 0) — ENG-938', () => {
-    const { getByTestId } = render(
-      <TodayDashboardMacroTiles
-        {...baseProps}
-        totals={{ protein: 0, carbs: 0, fat: 0, fiber: 0 }}
-        trackedMacros={["protein"]}
-      />,
-    );
-    const cap = captionOf(getByTestId("today-macro-tile-caption-protein"));
-    expect(cap.text).toBe("140g remaining");
-    expect(cap.color).toBe(SAGE);
-  });
-});
-
-describe("TodayDashboardMacroTiles — serif zero softening (audit gap 8)", () => {
-  const INK = "#221B26"; // textColor — full editorial ink
-  const MUTED = "#9B93A3"; // textTertiaryColor — softened zero
-
-  /** Walk the value Text (the serif numeral) for one macro and read its
-   *  colour. The value Text is the node whose first child is the rendered
-   *  number string. */
-  function valueColor(totals: typeof baseProps.totals): string | undefined {
-    const { UNSAFE_getAllByType } = render(
-      <TodayDashboardMacroTiles {...baseProps} totals={totals} trackedMacros={["protein"]} />,
-    );
-    // The serif value Text carries `fontVariant: ['tabular-nums']` AND a
-    // numeric first child — uniquely identifies it vs the caption/label Texts.
-    // `Text` is imported top-of-file so vite-node resolves it through the alias
-    // chain to the react-native shim; an inline `require("react-native")` here
-    // bypasses that resolver and loads the real (ESM) RN entrypoint, throwing
-    // "Cannot use import statement outside a module".
-    const texts = UNSAFE_getAllByType(Text) as Array<{ props: { style?: unknown; children?: unknown } }>;
-    const valueNode = texts.find((t) => {
-      const style = Array.isArray(t.props.style)
-        ? Object.assign({}, ...t.props.style)
-        : (t.props.style as { fontVariant?: unknown; fontSize?: number } | undefined) ?? {};
-      const firstChild = Array.isArray(t.props.children) ? t.props.children[0] : t.props.children;
-      return (
-        // The `.mtile` value numeral (Grace 2026-06-25 hairline-grid conform)
-        // is fontSize 18 (was 20 before the icon-left restructure).
-        Array.isArray((style as { fontVariant?: unknown }).fontVariant) &&
-        (style as { fontSize?: number }).fontSize === 18 &&
-        typeof firstChild === "string"
-      );
-    });
-    const style = Array.isArray(valueNode?.props.style)
-      ? Object.assign({}, ...(valueNode!.props.style as object[]))
-      : ((valueNode?.props.style as { color?: string }) ?? {});
-    return (style as { color?: string }).color;
-  }
-
-  it("renders the serif value in full ink when the macro has data", () => {
-    expect(valueColor({ protein: 96, carbs: 0, fat: 0, fiber: 0 })).toBe(INK);
-  });
-
-  it("softens the serif value to muted while the macro is a zero", () => {
-    expect(valueColor({ protein: 0, carbs: 0, fat: 0, fiber: 0 })).toBe(MUTED);
+    expect(queryByTestId("today-macro-tile-caption-protein")).toBeNull();
   });
 });

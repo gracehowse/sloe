@@ -188,9 +188,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "redesign_search_results",
   "today-weekly-insight-mobile",
   "today_meals_figma_654",
-  // ENG-1085 — recipe-detail "Fits your day" confident verdict banner (mirror
-  // of the mobile default-on; legacy 10%-wash pill stays as the kill switch).
-  "fit_verdict_banner_v1",
   // ENG-1087 — Discover import-from-Reel card promoted to a hero affordance
   // (stronger tint + solid plum icon + "Paste link" pill). Legacy nav-row slab
   // stays in the `else` as the kill switch.
@@ -209,10 +206,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // exactly, just empty (Grace 2026-06-13). Collapsed-empty keeps the ENG-1086
   // loop. Default-on; off → empty always shows the single loop (pre-ENG-1093).
   "ring_empty_macro_parity_v1",
-  // ENG-1081 — card-fill cohesion: Progress "This Week" insight card + Settings
-  // "Sloe Pro" banner render as flat WHITE slabs (mirror of mobile; legacy lilac
-  // insight wash / aubergine Pro tint kept behind the flag-off path).
-  "card_cohesion_white_v1",
   // ENG-1095 — web Today meals render the four standard slots (Breakfast/Lunch/
   // Dinner/Snacks) ALWAYS, matching mobile's fixed `slots` list. Web-only (mobile
   // already does this). Default-on; off → the legacy populated-only list + the
@@ -227,11 +220,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // collapse behind one "Adjust plan" popover (parity with mobile). Default-on
   // (Grace 2026-06-14: ship + roll back if disliked). OFF → the three inline rows.
   "plan_adjust_collapsed_v1",
-  // ENG-1099 — Today tracker → recipe-tier craft pass (M1–M6: one 24 rhythm,
-  // flat cards, stripped macro tiles w/ value-colour over-signal, two serif
-  // tiers, quieted washes, de-chromed meal log). Default-on; OFF → the
-  // pre-ENG-1099 tracker. Rollback = remove from this set / PostHog off.
-  "today_tracker_tier_v1",
   // ENG-863 — user-tapped Sloe image generation, labelling, nutrition-decouple
   // copy, and removal on recipe heroes. Default-on with PostHog as kill switch.
   "recipe_runtime_image_generation_v1",
@@ -272,10 +260,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // macros) on the landing Free column + paywall comparison matrix. Default-on;
   // off → the legacy copy without the two free callouts.
   "paywall_free_mfp_wins_v1",
-  // ENG-1225 — the v3 jewel watch-dial as the Today hero ring (desktop +
-  // mobile-web). Default-on; off → the legacy concentric DailyRing (kill switch).
-  // Keep in sync with the mobile set in apps/mobile/lib/analytics.ts.
-  "sloe_v3_ring",
   // ENG-1225 Block 5 — the v3 Cookbook editorial shelves (Tonight's pick hero +
   // Fits-your-day / Quick / High-protein) above the Library grid on the All
   // filter. Default-on; off → the flat grid only (kill switch). Mobile + web.

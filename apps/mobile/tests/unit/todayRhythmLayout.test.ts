@@ -20,9 +20,12 @@ describe("Today rhythm layout (ENG-871)", () => {
 
   it("pins section breaks on meals, insight, and TD1/TD2 in Today host", () => {
     const src = readFileSync(join(ROOT, "app/(tabs)/_today/TodayScreen.tsx"), "utf8");
-    // ENG-1099 M1 flag-gated the break (`tierV1 ? 0 : Layout.todaySectionBreak`);
-    // the token is still wired as the rhythm source (flag-off path).
-    expect(src).toContain("Layout.todaySectionBreak");
+    // ENG-1099 M1 flag-gated the break (`tierV1 ? 0 : Layout.todaySectionBreak`).
+    // `today_tracker_tier_v1` was always-on in production and was collapsed in
+    // ENG-1356 — the break is now the unconditional `marginTop: 0`; the one 24
+    // `Spacing.xl` scroll gap on `styles.scroll` carries the rhythm instead.
+    expect(src).not.toContain("Layout.todaySectionBreak");
+    expect(src).not.toContain("tierV1");
     expect(src).toContain("TodayMealsSection");
     expect(src).toContain("WeeklyInsightCard");
     expect(src).toContain('title="Activity & energy"');

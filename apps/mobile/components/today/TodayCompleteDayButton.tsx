@@ -1,10 +1,8 @@
 import React, { memo } from "react";
 import { View } from "react-native";
-import { Layout } from "@/constants/layout";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { exportDayToHealth, isHealthSyncAvailable } from "@/lib/healthSync";
-import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
  * TodayCompleteDayButton — the day's terminal action on the Today scroll.
@@ -46,9 +44,8 @@ function TodayCompleteDayButtonImpl({
   selectedDate,
   onComplete,
 }: TodayCompleteDayButtonProps) {
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   return (
-    <View style={{ marginTop: tierV1 ? 0 : Layout.todaySectionBreak }}>
+    <View style={{ marginTop: 0 }}>
       <SupprButton
         variant="primary"
         accessibilityLabel="Complete day"
