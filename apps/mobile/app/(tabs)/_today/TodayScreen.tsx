@@ -18,6 +18,7 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
+import { useJournalWriteAhead, reportDroppedJournalWrites } from "@/hooks/useJournalWriteAhead";
 import { mergeJournalByDay } from "@suppr/nutrition-core/mergeJournalByDay";
 import {
   resolveEffectiveDayTargets,
@@ -25,7 +26,7 @@ import {
   type DayTargetSchedule,
   type WeekdayIndex,
 } from "@suppr/nutrition-core/dayTargetSchedule";
-import { subscribeJournalRefresh } from "@/lib/journalRefresh";
+import { subscribeJournalRefresh, requestJournalRefresh } from "@/lib/journalRefresh";
 import { normaliseCachedTier, loadCachedUserTier } from "@/lib/cachedUserTier";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
@@ -144,7 +145,6 @@ import {
 import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
 import { refreshExpoPushTokenIfChanged , registerExpoPushTokenForUser } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
-import { flushJournalWriteQueue, reconcileQueueAfterFlush } from "@suppr/nutrition-core/flushJournalWriteQueue";
 import { enqueueJournalUpserts } from "@suppr/nutrition-core/journalWriteQueue";
 import {
   loadJournalWriteQueue,
@@ -429,6 +429,11 @@ export default function TrackerScreen() {
   const { router, params, insets, session, userId } = useToday();
   const haptics = useHaptics();
   const householdMemberCount = useHouseholdMemberCount(userId);
+  // ENG-1447 — write-ahead journal persistence (enqueue-before-upsert,
+  // timeout race, ack-on-success, cold-start queue hydration). All retry /
+  // storage logic lives in the hook + shared lib; TodayScreen call sites
+  // only delegate (screen-budget pinned, may not grow).
+  const { writeAhead, flushQueue, loadQueuedByDay } = useJournalWriteAhead(supabase);
   // ENG-1247 — pad main scroll by frosted (absolute) tab bar height to clear it.
   const tabBarHeight = useTabBarClearance();
   // ENG-1076 — declared here (above persistMealsImmediate /
@@ -469,26 +474,12 @@ export default function TrackerScreen() {
   const confirmLogHapticRef = useRef<() => void>(() => {});
 
   /**
-   * 2026-05-08 data-loss hotfix — fire-and-forget immediate persist of
-   * one or more newly-logged meals to `nutrition_entries`. Pre-fix, all
-   * the "log a meal" entry-points (addMeal / quickAddMeal / search /
-   * saved-meal / barcode / AI commit) wrote ONLY to local `byDay`
-   * state and relied on the 600ms debounced upsert further down to
-   * drain to Supabase. That timer's cleanup cancels the sync any
-   * time `byDay`/`selectedDate`/userId/hydrated change before it
-   * fires — including app backgrounding, day navigation, or even a
-   * follow-up state mutation. ~25 days of journal data was lost on
-   * Grace's TestFlight reinstall because of this.
-   *
-   * Post-fix: every add-meal call site now calls this primitive
-   * IMMEDIATELY after its `setByDay` (no debounce). On error we roll
-   * back the optimistic UI and surface an Alert — same shape as the
-   * existing `insertClonedRowsIntoDay` and `logPlannedMealWithPortion`
-   * paths that already worked correctly.
-   *
-   * The 600ms debounced effect stays as a backstop (cheap re-upsert
-   * of the current day on every render), but is no longer the only
-   * path to durable storage.
+   * 2026-05-08 data-loss hotfix; write-ahead-ified 2026-07-06 (ENG-1447 —
+   * fixes "relaunch silently reverts a committed food log"). Immediate
+   * persist of newly-logged meals via `writeAhead` (queue-then-upsert-then-
+   * ack, bounded timeout — see `useJournalWriteAhead` / `journalWriteAhead.ts`
+   * for the full history/rationale). The 600ms debounced effect stays as a
+   * backstop, no longer load-bearing for durability.
    */
   const persistMealsImmediate = useCallback(
     async (targetDayKey: string, meals: JournalMeal[]): Promise<boolean> => {
@@ -505,28 +496,10 @@ export default function TrackerScreen() {
       const dbRows = meals.map((m) =>
         buildNutritionEntryRow(m, targetDayKey, userId, profileTimeZone),
       );
-      // Upsert (not insert) so a race with the 600ms debounced journal sync
-      // never throws duplicate-key and rolls back an optimistic log.
-      const { error } = await supabase
-        .from("nutrition_entries")
-        .upsert(dbRows, { onConflict: "id" });
-      if (error) {
-        console.error("[tracker] persistMealsImmediate failed:", error.message);
-        // ENG-1125 — queue for retry; keep optimistic rows visible.
-        const queue = await loadJournalWriteQueue();
-        await saveJournalWriteQueue(
-          enqueueJournalUpserts(
-            queue,
-            targetDayKey,
-            dbRows as ReadonlyArray<Record<string, unknown>>,
-          ),
-        );
-        Alert.alert(
-          "Saved on this device",
-          "We'll sync this log when you're back online.",
-        );
-        return false;
-      }
+      // onConflict: "id" — a race with the 600ms debounced journal sync (or
+      // a retried write-ahead flush) never throws duplicate-key.
+      const { persisted } = await writeAhead(targetDayKey, dbRows);
+      if (!persisted) return false;
       // ENG-798 / ENG-722 — the meal is durably saved: fire ONE quiet confirm
       // beat (Medium haptic + log-confirm check) through the funnel. The loud
       // SUCCESS notification stays reserved for the win-moment landmark.
@@ -536,22 +509,25 @@ export default function TrackerScreen() {
       scheduleAdaptiveTdeeRefresh(supabase, userId);
       return true;
     },
-    [profileTimeZone, userId],
+    [profileTimeZone, userId, writeAhead],
   );
 
+  /** ENG-1447 — drain the write-ahead queue via `useJournalWriteAhead`
+   *  (retry / 42501-reverify / poison-isolation all live there). A
+   *  successful flush requests a journal reload (flushed rows re-hydrate
+   *  through the normal `loadJournal` merge); a poison eviction or
+   *  terminal drop surfaces to the user instead of vanishing silently. */
   const flushQueuedJournalWrites = useCallback(async () => {
     if (!userId) return;
-    const queue = await loadJournalWriteQueue();
-    if (queue.entries.length === 0) return;
-    const result = await flushJournalWriteQueue(supabase, queue);
-    // Re-load to capture any row enqueued during the flush round-trip, then
-    // reconcile rather than blind-overwrite (ENG-1125 data-loss fix).
-    const latest = await loadJournalWriteQueue();
-    await saveJournalWriteQueue(reconcileQueueAfterFlush(queue, latest, result));
-    if (result.flushedIds.length > 0) {
+    const { flushedIds, droppedPoisonIds, dropQueue } = await flushQueue();
+    if (flushedIds.length > 0) {
       scheduleAdaptiveTdeeRefresh(supabase, userId);
+      requestJournalRefresh();
     }
-  }, [userId]);
+    if (droppedPoisonIds.length > 0 || dropQueue) {
+      reportDroppedJournalWrites({ droppedPoisonIds, dropQueue });
+    }
+  }, [userId, flushQueue]);
 
   /**
    * 2026-05-08 data-loss hotfix — sister primitive for `saveEditMeal`.
@@ -4098,7 +4074,16 @@ export default function TrackerScreen() {
       // Schema refactor Phase 3 (2026-05-11) — legacy by_day JSONB
       // fallback removed. An empty `nutrition_entries` just means an
       // empty journal; we no longer try the deleted legacy table.
-      setByDay((prev) => mergeJournalByDay(loaded, prev));
+      //
+      // ENG-1447 — layer in write-ahead-queued-but-unflushed rows as a second
+      // "local" pass so a queued meal survives even a genuine cold start
+      // (`prev` is `{}` after a kill, not just a backgrounding).
+      const queuedByDay = await loadQueuedByDay();
+      const queuedMeals: ByDay = {};
+      for (const [k, queueRows] of Object.entries(queuedByDay)) {
+        queuedMeals[k] = queueRows.map((r) => journalRowToMeal(r));
+      }
+      setByDay((prev) => mergeJournalByDay(loaded, mergeJournalByDay(queuedMeals, prev)));
       // Audit/2026-04-30 — pre-populate the HealthKit-meal-write dedupe
       // set with every meal that already exists in the journal at load
       // time. This ensures the debounced sync effect only writes meals
@@ -4195,7 +4180,7 @@ export default function TrackerScreen() {
         /* analytics is best-effort */
       }
     }
-  }, [userId, selectedDate]);
+  }, [userId, selectedDate, loadQueuedByDay]);
 
   // Re-resolve planned meals when the journal date changes (focus alone
   // does not re-run when the user stays on this tab and swipes dates).
@@ -4525,15 +4510,15 @@ export default function TrackerScreen() {
 
   /**
    * Shared insert primitive for batch 1.4 "copy meal" / "duplicate day".
+   * Optimistically adds rows to `byDay[targetDayKey]`, then routes the
+   * durable write through the same `writeAhead` helper every log-commit
+   * path uses (can't reuse the debounced selected-day sync — the target
+   * day may not be the selected day). `rows` are clones from
+   * `cloneMealWithoutId` (no id yet); a fresh `newMealId()` is minted per row.
    *
-   * Optimistically adds rows to `byDay[targetDayKey]` and writes them
-   * straight to `nutrition_entries`. We cannot reuse the debounced
-   * selected-day sync effect because the target day may not be the
-   * currently selected day — without the explicit insert those rows
-   * would only persist once the user navigates to that day.
-   *
-   * `rows` are clones produced by `cloneMealWithoutId`, so there is no
-   * id on them yet; a fresh `newMealId()` is minted per row.
+   * ENG-1447 — previously fired its confirm haptic right after the
+   * optimistic `setByDay`, before any write at all; now fires from
+   * `writeAhead`'s `onEnqueued`, once the row is durably queued.
    */
   const insertClonedRowsIntoDay = useCallback(
     async (targetDayKey: string, clones: Omit<JournalMeal, "id">[]): Promise<number> => {
@@ -4554,10 +4539,6 @@ export default function TrackerScreen() {
         ...prev,
         [targetDayKey]: [...(prev[targetDayKey] ?? []), ...withIds],
       }));
-      // Copy / duplicate is a log commit — this path inserts directly (below)
-      // instead of via `persistMealsImmediate`, so fire the shared confirm
-      // funnel (Medium haptic + log-confirm check) here.
-      confirmLogHapticRef.current();
       if (!userId) return withIds.length;
       // Single shared row shape (launch-audit P1-2 consolidation) — the
       // builder guarantees `eaten_at` + the eaten-derived `date_key` are
@@ -4566,24 +4547,13 @@ export default function TrackerScreen() {
       const dbRows = withIds.map((m) =>
         buildNutritionEntryRow(m, targetDayKey, userId, profileTimeZone),
       );
-      const { error } = await supabase.from("nutrition_entries").insert(dbRows);
-      if (error) {
-        console.error("[tracker] copy/duplicate insert failed:", error.message);
-        // ENG-1125 — queue for retry; keep optimistic rows visible.
-        const queue = await loadJournalWriteQueue();
-        await saveJournalWriteQueue(
-          enqueueJournalUpserts(
-            queue,
-            targetDayKey,
-            dbRows as ReadonlyArray<Record<string, unknown>>,
-          ),
-        );
-        Alert.alert(
-          "Saved on this device",
-          "We'll sync this log when you're back online.",
-        );
-        return withIds.length;
-      }
+      // onConflict: "id" (via writeAhead's upsert) — copy/duplicate is a
+      // log commit like any other; a retried write-ahead flush of the same
+      // ids must never duplicate-key.
+      const { persisted } = await writeAhead(targetDayKey, dbRows, {
+        onEnqueued: () => confirmLogHapticRef.current(),
+      });
+      if (!persisted) return withIds.length;
       void refreshAdaptiveTdeeForUser(supabase, userId);
       // F-2 — snapshot today's target regardless of `targetDayKey`
       // (back-dating a snapshot would defeat the purpose).
@@ -4614,7 +4584,7 @@ export default function TrackerScreen() {
       }
       return withIds.length;
     },
-    [profileTimeZone, userId],
+    [profileTimeZone, userId, writeAhead],
   );
 
   const copyMealToDate = useCallback(

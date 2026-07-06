@@ -22,6 +22,19 @@ export type FlushJournalWriteQueueResult = {
   lastError: string | null;
 };
 
+/**
+ * ENG-1447 — optional session re-verification hook. `flushJournalWriteQueue`
+ * calls this at most once per flush, only on a 42501/permission-denied
+ * response, before treating it as terminal. A stale-but-refreshable JWT can
+ * surface as `42501` (not just as an "expired" message) depending on the
+ * PostgREST/RLS path taken, so a single re-verify-and-retry pass prevents a
+ * merely-stale session from evicting rows that would have written fine a
+ * moment later. Callers pass their platform's `supabase.auth.refreshSession`
+ * (or equivalent); omitting it preserves the pre-ENG-1447 terminal-drop
+ * behaviour.
+ */
+export type SessionRefresher = () => Promise<{ refreshed: boolean }>;
+
 function isPermissionDenied(error: { message?: string; code?: string } | null): boolean {
   if (!error) return false;
   const msg = error.message ?? "";
@@ -35,6 +48,7 @@ function isPermissionDenied(error: { message?: string; code?: string } | null): 
 export async function flushJournalWriteQueue(
   supabase: SupabaseClient,
   queue: JournalWriteQueue,
+  refreshSession?: SessionRefresher,
 ): Promise<FlushJournalWriteQueueResult> {
   const rows = journalQueueUpsertRows(queue);
   if (rows.length === 0) {
@@ -65,15 +79,54 @@ export async function flushJournalWriteQueue(
   const msg = error.message ?? "unknown error";
 
   // Terminal RLS / permission denial — these rows will never write under the
-  // current policy, so drop them rather than spin forever.
+  // current policy, so drop them rather than spin forever. ENG-1447: a 42501
+  // can also be a merely-stale (refreshable) session, so give the caller ONE
+  // chance to re-verify + retry before treating it as terminal.
   if (isPermissionDenied(error as { message?: string; code?: string })) {
-    return {
-      flushedIds: [],
-      droppedPoisonIds: [],
-      remaining: emptyJournalWriteQueue(),
-      dropQueue: true,
-      lastError: msg,
-    };
+    if (refreshSession) {
+      const { refreshed } = await refreshSession().catch(() => ({ refreshed: false }));
+      if (refreshed) {
+        const retry = await supabase.from("nutrition_entries").upsert(rows, { onConflict: "id" });
+        if (!retry.error) {
+          const flushedIds = rows.map((r) => String(r.id));
+          return {
+            flushedIds,
+            droppedPoisonIds: [],
+            remaining: removeJournalQueuedIds(queue, flushedIds),
+            dropQueue: false,
+            lastError: null,
+          };
+        }
+        // Still denied after a real session refresh — genuinely terminal.
+        if (isPermissionDenied(retry.error as { message?: string; code?: string })) {
+          return {
+            flushedIds: [],
+            droppedPoisonIds: [],
+            remaining: emptyJournalWriteQueue(),
+            dropQueue: true,
+            lastError: retry.error.message ?? msg,
+          };
+        }
+        // Retry failed for a different (transient) reason — fall through to
+        // the normal bump-and-retry path below rather than dropping.
+      } else {
+        return {
+          flushedIds: [],
+          droppedPoisonIds: [],
+          remaining: emptyJournalWriteQueue(),
+          dropQueue: true,
+          lastError: msg,
+        };
+      }
+    } else {
+      return {
+        flushedIds: [],
+        droppedPoisonIds: [],
+        remaining: emptyJournalWriteQueue(),
+        dropQueue: true,
+        lastError: msg,
+      };
+    }
   }
 
   // Transient (network / 5xx / expired JWT) OR a single poison row failing the

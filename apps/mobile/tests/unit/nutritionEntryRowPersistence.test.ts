@@ -282,6 +282,14 @@ describe("wiring pin — every nutrition_entries write builds via buildNutrition
       "intentionally eaten_at-less: dedupes on created_at + health_sample_id; " +
       "needs created_at/health_sample_id which the journal row shape omits " +
       "(documented at the call site)",
+    "hooks/useJournalWriteAhead.ts":
+      "ENG-1447 — a generic write-ahead TRANSPORT (enqueue-then-upsert-then-ack " +
+      "+ timeout), not a row-builder: every call site (TodayScreen's " +
+      "persistMealsImmediate / insertClonedRowsIntoDay) builds its rows via " +
+      "buildNutritionEntryRow BEFORE calling writeAhead(dayKey, dbRows) — pinned " +
+      "in journalSupabasePersistence.test.ts. The hook only ever forwards " +
+      "already-built rows, so requiring it to import the builder itself would " +
+      "just be a redundant re-assertion, not a real safety net.",
   };
 
   function walk(dir: string): string[] {
@@ -324,6 +332,7 @@ describe("wiring pin — every nutrition_entries write builds via buildNutrition
         "app/(tabs)/planner.tsx",
         "app/recipe/[id].tsx",
         "hooks/useNutritionEntriesSync.ts",
+        "hooks/useJournalWriteAhead.ts",
         "lib/healthSync.ts",
       ].sort(),
     );
