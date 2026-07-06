@@ -407,10 +407,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // styling?"). iOS-only (the nudge has no web surface). Default-on; off → the
   // legacy clay-wash + 1px border + outline CTA (kill switch).
   "import_nudge_flat_white_v1",
-  // ENG-1087 — Discover import-from-Reel card promoted to a hero affordance
-  // (stronger tint + solid plum icon + "Paste link" pill). Legacy nav-row slab
-  // stays in the component `else` as the kill switch.
-  "discover_import_hero_v1",
   // ENG-898 — CreateRecipeActionSheet 2×2 Julienne-style source grid (import.md
   // §3.1). Default-on; off → legacy stacked ActionRow list.
   "create_recipe_action_sheet_grid_v1",
@@ -441,23 +437,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "today_planned_empty_state",
   // ENG-901 — Figma `284:2` inline trust row on paywall. Default-on; off → pills.
   "paywall_trust_inline_v1",
-  // ENG-889 — coach line inside Today hero card (Figma `654:2`). Default-on.
-  "today_coach_in_hero_v1",
   // ENG-1203 — merchandise the free MFP-switch wins (barcode scanning + custom
   // macros) on the paywall comparison matrix. Default-on; off → legacy four-row
   // matrix without the two free callouts. Keep in sync with track.ts (web).
   "paywall_free_mfp_wins_v1",
-  // ENG-863 — user-tapped Sloe image generation, labelling, nutrition-decouple
-  // copy, and removal on recipe heroes. Default-on with PostHog as kill switch.
-  "recipe_runtime_image_generation_v1",
   // ENG-1225 #3 — unified "import anything" sheet (detect-anything classifier +
   // single front door). Default-on per the "turn everything on" rule; off → the
   // legacy per-surface nav (Discover card → /import-shared), kept as kill switch.
   "sloe_v3_unified_import",
-  // ENG-1225 Block 5 — the v3 Cookbook editorial shelves (Tonight's pick hero +
-  // Fits-your-day / Quick / High-protein) above the Library grid on the All
-  // filter. Default-on; off → the flat grid only (kill switch). Keep in sync w/ web.
-  "sloe_v3_editorial_shelves",
   // ENG-1225 Block 6 — the v3 Discover editorial sections (Quick weeknight
   // no-photo cards + Collections) above the cuisine clusters. Default-on; off →
   // the legacy feed without those sections (kill switch). Keep in sync w/ web.

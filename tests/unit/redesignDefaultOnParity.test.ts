@@ -89,7 +89,6 @@ const GATE_15_SHARED = [
   "plan_today_aim_empty_v1",
   "ring_empty_gradient_v1",
   "ring_empty_macro_parity_v1",
-  "discover_import_hero_v1",
   "log-sheet-slot-selector",
   "today_log_again",
   "today_log_usual_row_v2",
