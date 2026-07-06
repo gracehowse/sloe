@@ -126,21 +126,21 @@ export function OptionCard({
         {typeof title === "string" ? (
           <Text
             numberOfLines={compact ? 1 : 2}
-            adjustsFontSizeToFit
-            minimumFontScale={compact ? 0.7 : 0.85}
-            // Compact fontSize lowered from 14 → 13 (Grace cohort 2026-05-12):
-            // single-word labels like "Mediterranean" in the 2-col diet grid
-            // (card width ~48% of viewport) exceeded the text container at
-            // 14pt and RN broke them mid-word ("Mediterranea / n"). At 13pt
-            // with the existing 0.7 minimumFontScale floor, the engine can
-            // both fit at full size for shorter labels AND shrink long ones
-            // to ~9pt for the rare overflow case. Non-compact stays 15pt.
+            // ENG-1452: `adjustsFontSizeToFit` (floor 0.7) removed. iOS's
+            // fit engine shrank labels that comfortably fit ("Very active",
+            // "Halal", "Kosher") to ~70% of their siblings — stale/fractional
+            // width measurement, not real overflow — so option lists rendered
+            // with visibly mismatched title sizes. Titles now sit on the Type
+            // ramp at a fixed size (captionStrong 13 compact / bodyLarge 15,
+            // the sizes the shrink build targeted; web mirror is fixed
+            // text-sm / text-[15px] with no shrink either). A genuinely
+            // overflowing compact label (none today — "Mediterranean" fits at
+            // 13pt per the 2026-05-12 cohort check) ellipsizes predictably
+            // instead of silently changing size.
             style={{
+              ...(compact ? Type.captionStrong : Type.bodyLarge),
               color: colors.text,
-              fontSize: compact ? 13 : 15,
               fontWeight: "600",
-              letterSpacing: -0.2,
-              lineHeight: 20,
             }}
           >
             {title}
