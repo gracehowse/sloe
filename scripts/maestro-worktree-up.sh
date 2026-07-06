@@ -39,7 +39,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKTREE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$WORKTREE_ROOT"
 
-MAIN_CLONE="${MAIN_CLONE:-/Users/graceturner/Suppr-1}"
+# Default: derive the main clone from this worktree's git common-dir (the
+# shared .git that all worktrees of the same repo point at lives inside the
+# main clone at <main-clone>/.git). Falls back to cwd if that lookup fails
+# (e.g. not a worktree at all). Override with MAIN_CLONE=/path/to/clone for
+# a non-standard layout.
+MAIN_CLONE="${MAIN_CLONE:-$(cd "$(git -C "$WORKTREE_ROOT" rev-parse --git-common-dir 2>/dev/null)/.." && pwd 2>/dev/null || pwd)}"
 MOBILE_DIR="$WORKTREE_ROOT/apps/mobile"
 STATE_DIR="$WORKTREE_ROOT/.maestro"
 STATE_FILE="$STATE_DIR/.metro-state"

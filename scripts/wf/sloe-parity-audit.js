@@ -4,9 +4,12 @@ export const meta = {
   phases: [{ title: 'Audit', detail: 'one senior reviewer per surface, pixel-grounded' }],
 }
 
-const CAP = '/Users/graceturner/Suppr-1/apps/mobile/screenshots/agent/sweep-2026-06-09'
-const DS = '/Users/graceturner/Suppr-1/docs/ux/redesign/_design-system.md'
-const SPEC = '/Users/graceturner/Suppr-1/docs/ux/redesign/'
+// Override with SUPPR_REPO_ROOT for a non-standard checkout location; falls
+// back to cwd (the harness runs these from the repo root).
+const REPO_ROOT = process.env.SUPPR_REPO_ROOT || process.cwd()
+const CAP = `${REPO_ROOT}/apps/mobile/screenshots/agent/sweep-2026-06-09`
+const DS = `${REPO_ROOT}/docs/ux/redesign/_design-system.md`
+const SPEC = `${REPO_ROOT}/docs/ux/redesign/`
 
 // Spacing scale is the explicit lever (Grace: spacing is a recurring weak spot).
 const SPACING = 'xs:4 · sm:8 · md:16 · lg:20 · xl:24 · xxl:32 · xxxl:40 (apps/mobile/constants/theme.ts `Spacing`). Card gaps + padding MUST be on this scale, consistent, and matched to the Figma. Flag any off-scale value (e.g. 12) or any gap that reads too tight / too loose.'
