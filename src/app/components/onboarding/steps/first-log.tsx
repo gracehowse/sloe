@@ -54,7 +54,7 @@ export function FirstLogStep() {
             subtitle={
               chip.id === "search"
                 ? "Opens food search on Today"
-                : `We'll nudge ${chip.label.toLowerCase()} on Today`
+                : `Opens food search on Today, scoped to "${chip.label}"`
             }
             icon={CHIP_ICONS[chip.id]}
           />

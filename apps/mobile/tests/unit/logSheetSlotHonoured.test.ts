@@ -115,7 +115,10 @@ describe("build-47 — generic FAB-open paths reset activeMealSlot to time-of-da
     expect(dismissIdx).toBeGreaterThan(-1);
     const openerIdx = hookSrc.indexOf('params.openLog === "1"', dismissIdx + 1);
     expect(openerIdx).toBeGreaterThan(-1);
-    const slice = hookSrc.slice(openerIdx, openerIdx + 600);
+    // Window widened 600 → 750 (ENG-1450): a `setInitialSearchQuery` call
+    // + its comment now sits between the slot-reset and the sheet-open,
+    // pushing `setFabSheetOpen(true)` further into the slice.
+    const slice = hookSrc.slice(openerIdx, openerIdx + 750);
     const setActiveIdx = slice.indexOf("setActiveMealSlot(slotForHour");
     const setOpenIdx = slice.indexOf("setFabSheetOpen(true)");
     expect(setActiveIdx).toBeGreaterThan(-1);

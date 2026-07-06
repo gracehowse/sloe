@@ -209,6 +209,9 @@ export interface LogSheetProps {
   onClose: () => void;
   /** Ignored post-2026-04-28 — kept for backwards compat only. */
   initialTab?: LogSheetTab;
+  /** ENG-1450 — pre-fills the inline search on open (onboarding deep-link
+   *  via `openLogQuery`, web parity). Consumed once per open. */
+  initialQuery?: string;
   /** Search foods.
    *
    *  INLINE MODE (preferred, 2026-04-30):
@@ -467,6 +470,7 @@ function LogSheetImpl({
   basket,
   showBarcodeFreePromise = false,
   describe,
+  initialQuery,
 }: LogSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
@@ -630,6 +634,7 @@ function LogSheetImpl({
                 basket={basket}
                 showBarcodeFreePromise={showBarcodeFreePromise}
                 describe={describe}
+                initialQuery={initialQuery}
               />
             )}
           </View>
@@ -751,6 +756,7 @@ function DefaultComposition({
   basket,
   showBarcodeFreePromise,
   describe,
+  initialQuery,
 }: {
   visible: boolean;
   search: LogSheetProps["search"];
@@ -770,6 +776,8 @@ function DefaultComposition({
   basket?: LogSheetProps["basket"];
   showBarcodeFreePromise?: boolean;
   describe?: LogSheetProps["describe"];
+  /** ENG-1450 — pre-fills the inline search on open (onboarding deep-link). */
+  initialQuery?: LogSheetProps["initialQuery"];
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -807,15 +815,18 @@ function DefaultComposition({
   // Local query state — owned by LogSheet so the TextInput is
   // controlled and `<FoodSearchPanel>` reacts in lock-step. Reset
   // every time the sheet opens so a returning user lands on an
-  // empty input, not their previous query.
-  const [query, setQuery] = React.useState("");
+  // empty input, not their previous query — or to ENG-1450's
+  // `initialQuery` (onboarding deep-link) when set.
+  const [query, setQuery] = React.useState(initialQuery ?? "");
   React.useEffect(() => {
     if (!visible) {
       setQuery("");
       setDescribeReviewActive(false);
       setDescribeSeedText(null);
+    } else if (initialQuery) {
+      setQuery(initialQuery);
     }
-  }, [visible]);
+  }, [visible, initialQuery]);
 
   return (
     <View style={{ flex: 1 }}>

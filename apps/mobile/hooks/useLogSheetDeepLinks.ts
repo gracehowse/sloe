@@ -49,6 +49,9 @@ export interface LogSheetDeepLinkParams {
   _t?: string;
   editMealId?: string;
   openLog?: string;
+  /** ENG-1450 — paired with `openLog=1` from onboarding's "One quick win"
+   *  Breakfast/Coffee chips; pre-fills the LogSheet's search query. */
+  openLogQuery?: string;
 }
 
 export interface UseLogSheetDeepLinksArgs {
@@ -65,6 +68,8 @@ export interface UseLogSheetDeepLinksArgs {
    * the generic tab-bar `+` opens the sheet (build-47 follow-up).
    */
   setActiveMealSlot: (slot: string) => void;
+  /** ENG-1450 — seeds the LogSheet's `initialQuery` prop from `openLogQuery`. */
+  setInitialSearchQuery?: (query: string | undefined) => void;
 }
 
 export function useLogSheetDeepLinks({
@@ -72,6 +77,7 @@ export function useLogSheetDeepLinks({
   clearOpenLogParams,
   setFabSheetOpen,
   setActiveMealSlot,
+  setInitialSearchQuery,
 }: UseLogSheetDeepLinksArgs): void {
   // (2) Launch queue #8 (PR #391) — dismiss LogSheet when an in-tab deep
   // link arrives while the sheet is open (date jump, edit-meal). Tab-blur
@@ -106,10 +112,21 @@ export function useLogSheetDeepLinks({
         // The slot-specific `+ Breakfast` path overrides this immediately
         // via its own setActiveMealSlot in onOpenFabForSlot.
         setActiveMealSlot(slotForHour(new Date().getHours()));
+        // ENG-1450 — pre-scopes search from onboarding's Breakfast/Coffee
+        // chips; undefined (Search food / generic `+`) opens empty.
+        setInitialSearchQuery?.(params.openLogQuery);
         setFabSheetOpen(true);
         clearOpenLogParams();
       }
-    }, [params.openLog, params._t, clearOpenLogParams, setFabSheetOpen, setActiveMealSlot]),
+    }, [
+      params.openLog,
+      params._t,
+      params.openLogQuery,
+      clearOpenLogParams,
+      setFabSheetOpen,
+      setActiveMealSlot,
+      setInitialSearchQuery,
+    ]),
   );
 
   // (3) Launch queue #8 / F-171 (ENG-1061) — LogSheet is a Modal on Today.

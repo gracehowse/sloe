@@ -29,6 +29,7 @@ import {
   saveResolvedSeeds,
 } from "@/lib/onboarding/onboardingSeedResolver";
 import { buildFirstWeekFromSeeds } from "@/lib/onboarding/onboardingFirstWeek";
+import { firstLogDeepLinkQs } from "@/lib/onboarding/conversionFunnel";
 import { redeemPendingReferral, storePendingReferralFromLocation } from "@/lib/referrals/pendingReferral";
 
 export function WebFlow() {
@@ -297,13 +298,12 @@ export function WebFlow() {
           /* storage may be disabled — non-fatal */
         }
 
-        // Per spec Surface F state: success → 600ms loader → Today.
-        // Plan failure → caller surfaces "We saved your recipes but
-        // couldn't build a plan" toast on /home (read from query
-        // string param).
-        const homeQs = planFailed
-          ? "?onboarding_complete=1&plan_build=failed"
-          : "?onboarding_complete=1";
+        // Per spec Surface F: success → 600ms loader → Today; plan failure
+        // → toast on /home. ENG-1450: `firstLogDeepLinkQs` appends the
+        // `?openLog=1` deep-link (mobile parity) so a chip pick isn't dropped.
+        const homeQs =
+          (planFailed ? "?onboarding_complete=1&plan_build=failed" : "?onboarding_complete=1") +
+          firstLogDeepLinkQs(state.firstLogChoice);
         window.location.href = `/home${homeQs}`;
       } else {
         // ENG-672 (2026-05-26) — anonymous completer. With the Signup

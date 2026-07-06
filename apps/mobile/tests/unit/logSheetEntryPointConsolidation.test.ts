@@ -82,11 +82,14 @@ describe("LogSheet entry-point consolidation (mobile)", () => {
       /useLogSheetDeepLinks\(\{[\s\S]{0,400}?params,[\s\S]{0,400}?setFabSheetOpen,/,
     );
     expect(indexSrc).toMatch(/clearOpenLogParams:/);
-    // The param-clear still routes through router.setParams clearing both
-    // openLog + the _t cache-buster, so back-nav doesn't re-open the sheet.
+    // The param-clear still routes through router.setParams clearing
+    // openLog + the _t cache-buster (+ openLogQuery, ENG-1450), so
+    // back-nav doesn't re-open the sheet or replay a stale search scope.
+    // Matched loosely (whitespace-tolerant) since the call is multi-line.
     expect(indexSrc).toMatch(
-      /router\.setParams\(\{ openLog: undefined, _t: undefined \}/,
+      /router\.setParams\(\{\s*openLog:\s*undefined,[\s\S]{0,80}?_t:\s*undefined,?\s*\}/,
     );
+    expect(indexSrc).toMatch(/openLogQuery:\s*undefined/);
   });
 
   it("the hook opens the canonical sheet via `?openLog=1` (replaces the side <LogFab>, 2026-04-30)", () => {
