@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, type ImageStyle } from "react-native";
+import { StyleSheet, View, type ImageStyle } from "react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 
@@ -34,9 +34,28 @@ export function RecipeCardImage({
   const [errored, setErrored] = useState(false);
   const showPlaceholder = !uri || errored;
   if (showPlaceholder) {
+    // ENG-1382 — most consumers pass a plain `{width:"100%", height:"100%"}`
+    // `cardImageStyle` sized by a fixed-height wrapper `View`, which needs
+    // `position: "relative"` here to establish its own box. But
+    // `FeaturedHero` passes `StyleSheet.absoluteFillObject`
+    // (`position: "absolute", top/left/right/bottom: 0`) to fill an
+    // already-sized, already-`position:"relative"` wrapper — appending
+    // `{ position: "relative" }` after it in the style array clobbered that
+    // `"absolute"`, collapsing the fallback to zero size (RN style arrays
+    // merge left-to-right, last write wins). Only default to "relative"
+    // when the caller hasn't already declared a position, so every current
+    // and future `cardImageStyle` (absolute-fill or width/height) keeps its
+    // own positioning intact.
+    const flattened = StyleSheet.flatten(cardImageStyle);
+    const positionStyle = flattened.position ? null : { position: "relative" as const };
     return (
       <View
-        style={[cardImageStyle, { position: "relative", overflow: "hidden" }]}
+        // ENG-1374 structural guarantee — `fallbackBg` paints the wrapper
+        // itself (not just `SmartImage`'s loading placeholder below), so
+        // even if `RecipeHeroFallback`'s SVG failed to mount for any
+        // reason, this box is never bare/transparent over the page
+        // background.
+        style={[cardImageStyle, positionStyle, { overflow: "hidden", backgroundColor: fallbackBg }]}
         testID={`recipe-card-image-fallback-${recipeId}`}
       >
         <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={28} />

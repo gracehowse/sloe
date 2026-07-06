@@ -150,7 +150,11 @@ export const StyleSheet = {
   },
   hairlineWidth: 1,
   absoluteFill: {},
-  absoluteFillObject: {},
+  // ENG-1382 — kept in sync with the `.cjs` shim (the one actually wired
+  // into `vitest.config.ts`): the real RN constant is `position:
+  // "absolute"` + zeroed inset, not `{}`. See that file's comment for why
+  // the empty-object version hid a real style-array-clobber bug.
+  absoluteFillObject: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
 };
 
 export const Platform = {

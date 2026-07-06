@@ -6,7 +6,7 @@
  */
 import { fireEvent, render } from "@testing-library/react-native";
 import React from "react";
-import { Image, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../components/RecipeHeroFallback", () => ({
@@ -63,5 +63,60 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
     fireEvent(UNSAFE_getByType(Image), "error");
     expect(UNSAFE_queryByType(Image)).toBeNull();
     expect(getByTestId("recipe-hero-fallback-abc-123")).toBeTruthy();
+  });
+
+  describe("ENG-1382 — absolute-fill cardImageStyle must not collapse the fallback", () => {
+    it("preserves position:'absolute' when cardImageStyle is StyleSheet.absoluteFillObject (FeaturedHero's usage)", () => {
+      // Regression: the fallback wrapper used to append
+      // `{ position: "relative" }` unconditionally after the caller's
+      // style in the array, which clobbered an incoming
+      // `position: "absolute"` (RN style arrays merge left-to-right,
+      // last write wins) and collapsed the fallback to zero size inside
+      // FeaturedHero's photo slot.
+      const { getByTestId } = render(
+        <RecipeCardImage
+          uri={null}
+          cardImageStyle={StyleSheet.absoluteFillObject}
+          fallbackBg="#eee"
+          recipeId="hero-1"
+          recipeTitle="Tonight's pick"
+        />,
+      );
+      const wrapper = getByTestId("recipe-card-image-fallback-hero-1");
+      const flattened = StyleSheet.flatten(wrapper.props.style);
+      expect(flattened.position).toBe("absolute");
+      expect(flattened.top).toBe(0);
+      expect(flattened.bottom).toBe(0);
+    });
+
+    it("still defaults to position:'relative' for a plain width/height cardImageStyle (the other consumers' usage)", () => {
+      const { getByTestId } = render(
+        <RecipeCardImage
+          uri={null}
+          cardImageStyle={cardImageStyle}
+          fallbackBg="#eee"
+          recipeId="grid-1"
+          recipeTitle="Grid card"
+        />,
+      );
+      const wrapper = getByTestId("recipe-card-image-fallback-grid-1");
+      const flattened = StyleSheet.flatten(wrapper.props.style);
+      expect(flattened.position).toBe("relative");
+    });
+
+    it("ENG-1374: paints fallbackBg on the wrapper itself as a structural guarantee against blank white", () => {
+      const { getByTestId } = render(
+        <RecipeCardImage
+          uri={null}
+          cardImageStyle={StyleSheet.absoluteFillObject}
+          fallbackBg="#3B2A4D"
+          recipeId="hero-2"
+          recipeTitle="Tonight's pick"
+        />,
+      );
+      const wrapper = getByTestId("recipe-card-image-fallback-hero-2");
+      const flattened = StyleSheet.flatten(wrapper.props.style);
+      expect(flattened.backgroundColor).toBe("#3B2A4D");
+    });
   });
 });

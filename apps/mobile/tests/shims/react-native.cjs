@@ -175,7 +175,15 @@ const StyleSheet = {
   },
   hairlineWidth: 1,
   absoluteFill: {},
-  absoluteFillObject: {},
+  // ENG-1382 — was `{}`, which doesn't match the real RN constant
+  // (`position: "absolute"` + zeroed inset) and silently hid a real bug:
+  // `RecipeCardImage`'s fallback wrapper appended a trailing
+  // `{ position: "relative" }` after an incoming `cardImageStyle`,
+  // clobbering `absoluteFillObject`'s `"absolute"` in production (RN style
+  // arrays merge left-to-right) but never surfacing in tests because the
+  // shim's empty object had no `position` to clobber. Real value below so
+  // this class of bug is testable going forward.
+  absoluteFillObject: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
 };
 
 const Platform = {
