@@ -8,6 +8,50 @@ export const STORAGE_KEY = "suppr-app-v1";
 /** Default slot id for users without `mealPlanSlots` in localStorage yet. */
 export const DEFAULT_MEAL_PLAN_SLOT_ID = "plan-slot-default";
 
+/**
+ * ENG-1446 — one-time migration constants for the retired `defaultSnapshot()`
+ * demo fixtures. An existing real user whose localStorage snapshot was
+ * written before this fix will still have these literal rows persisted
+ * (they were seeded on first load, then carried forward by every
+ * `loadSnapshot()` merge since). Strip them here so they disappear on next
+ * load instead of resurfacing forever. IDs are distinctive enough to match
+ * on their own ("seed-breakfast"/"seed-lunch" are not a format any real
+ * logged meal uses), but the fixture shopping-item ids ("1".."9") are bare
+ * digit strings — real shopping items are keyed by
+ * `normalizeIngredientNameKey|unit` (see `shoppingMergeKey` in
+ * `lib/planning/generateShoppingList.ts`), which never produces a bare
+ * digit, so a name+id match is already safe. Belt-and-braces: also require
+ * the fixture's exact `from` value so a same-id real row is never dropped.
+ */
+const SEED_MEAL_IDS: ReadonlySet<string> = new Set(["seed-breakfast", "seed-lunch"]);
+
+/** The two fixed demo-recipe UUIDs `defaultSnapshot()` used to seed into
+ *  `savedRecipeIds` (same historical `supabase/seed.sql` rows as
+ *  `scripts/delete-seeded-recipes.ts`'s `DEMO_RECIPE_IDS`). UUIDs, so no
+ *  bare-id collision risk — safe to match on their own. */
+const SEED_SAVED_RECIPE_IDS: ReadonlySet<string> = new Set([
+  "cccccccc-cccc-cccc-cccc-cccccccccccc",
+  "dddddddd-dddd-dddd-dddd-dddddddddddd",
+]);
+
+const SEED_SHOPPING_ITEMS: ReadonlySet<string> = new Set(
+  [
+    ["1", "Chicken Breast", "High-Protein Chicken Bowl"],
+    ["2", "Brown Rice", "High-Protein Chicken Bowl"],
+    ["3", "Broccoli", "High-Protein Chicken Bowl"],
+    ["4", "Rolled Oats", "Overnight Protein Oats"],
+    ["5", "Protein Powder", "Overnight Protein Oats"],
+    ["6", "Almond Milk", "Overnight Protein Oats"],
+    ["7", "Salmon Fillet", "Grilled Salmon"],
+    ["8", "Sweet Potato", "Grilled Salmon"],
+    ["9", "Olive Oil", "Multiple recipes"],
+  ].map(([id, name, from]) => `${id} ${name} ${from}`),
+);
+
+function isSeedShoppingItem(item: ShoppingItem): boolean {
+  return SEED_SHOPPING_ITEMS.has(`${item.id} ${item.name} ${item.from ?? ""}`);
+}
+
 export type MealPlanNamedSlot = {
   id: string;
   name: string;
@@ -111,123 +155,28 @@ export function normalizeLoggedMealRow(m: unknown): LoggedMeal | null {
 }
 
 export function defaultSnapshot(): PersistedSnapshot {
-  const today = dateKey(new Date());
-  const initialMeals: LoggedMeal[] = [
-    {
-      id: "seed-breakfast",
-      name: "Breakfast",
-      recipeTitle: "Overnight Protein Oats",
-      time: "8:30 AM",
-      calories: 387,
-      protein: 32,
-      carbs: 48,
-      fat: 8,
-    },
-    {
-      id: "seed-lunch",
-      name: "Lunch",
-      recipeTitle: "High-Protein Chicken & Rice Bowl",
-      time: "12:45 PM",
-      calories: 542,
-      protein: 48,
-      carbs: 52,
-      fat: 12,
-    },
-  ];
   return {
-    savedRecipeIds: [
-      "cccccccc-cccc-cccc-cccc-cccccccccccc",
-      "dddddddd-dddd-dddd-dddd-dddddddddddd",
-    ],
-    savedAtById: {
-      "cccccccc-cccc-cccc-cccc-cccccccccccc": new Date("2026-04-05").toISOString(),
-      "dddddddd-dddd-dddd-dddd-dddddddddddd": new Date("2026-04-03").toISOString(),
-    },
+    // ENG-1446 — a fresh account must start empty. `savedRecipeIds` used
+    // to hard-code two fixed demo-recipe UUIDs (historical `supabase/
+    // seed.sql` rows, see `scripts/delete-seeded-recipes.ts`), which made
+    // a brand-new user's library look like they'd already saved two
+    // recipes. Genuinely neutral defaults (targets, prefs) still seed
+    // below; anything presenting fabricated user *activity* does not.
+    savedRecipeIds: [],
+    savedAtById: {},
     savedRecipeMetaById: {},
-    shoppingItems: [
-      {
-        id: "1",
-        name: "Chicken Breast",
-        amount: "1.5",
-        unit: "lb",
-        category: "Protein",
-        checked: false,
-        from: "High-Protein Chicken Bowl",
-      },
-      {
-        id: "2",
-        name: "Brown Rice",
-        amount: "2",
-        unit: "cups",
-        category: "Grains",
-        checked: false,
-        from: "High-Protein Chicken Bowl",
-      },
-      {
-        id: "3",
-        name: "Broccoli",
-        amount: "1",
-        unit: "head",
-        category: "Vegetables",
-        checked: false,
-        from: "High-Protein Chicken Bowl",
-      },
-      {
-        id: "4",
-        name: "Rolled Oats",
-        amount: "1",
-        unit: "cup",
-        category: "Grains",
-        checked: false,
-        from: "Overnight Protein Oats",
-      },
-      {
-        id: "5",
-        name: "Protein Powder",
-        amount: "2",
-        unit: "scoops",
-        category: "Protein",
-        checked: true,
-        from: "Overnight Protein Oats",
-      },
-      {
-        id: "6",
-        name: "Almond Milk",
-        amount: "1",
-        unit: "cup",
-        category: "Dairy",
-        checked: true,
-        from: "Overnight Protein Oats",
-      },
-      {
-        id: "7",
-        name: "Salmon Fillet",
-        amount: "8",
-        unit: "oz",
-        category: "Protein",
-        checked: false,
-        from: "Grilled Salmon",
-      },
-      {
-        id: "8",
-        name: "Sweet Potato",
-        amount: "2",
-        unit: "medium",
-        category: "Vegetables",
-        checked: false,
-        from: "Grilled Salmon",
-      },
-      {
-        id: "9",
-        name: "Olive Oil",
-        amount: "2",
-        unit: "tbsp",
-        category: "Oils",
-        checked: false,
-        from: "Multiple recipes",
-      },
-    ],
-    nutritionByDay: { [today]: initialMeals },
+    // ENG-1446 — was 9 hard-coded fixture grocery items ("from: High-
+    // Protein Chicken Bowl" / "Overnight Protein Oats" / "Grilled
+    // Salmon") implying meals/plans the user never created. The
+    // shopping screen already has a real empty state ("Your shopping
+    // list builds itself" — `src/app/components/ShoppingList.tsx`), so
+    // no code depends on a non-empty default.
+    shoppingItems: [],
+    // ENG-1446 — was two hard-coded demo meals ("seed-breakfast" /
+    // "seed-lunch": Overnight Protein Oats / High-Protein Chicken & Rice
+    // Bowl) logged for "today" on every fresh account. A brand-new user
+    // must see zero logged meals, not fabricated activity.
+    nutritionByDay: {},
     mealPlan: null,
     mealPlanSlots: [{ id: DEFAULT_MEAL_PLAN_SLOT_ID, name: "This week", plan: null }],
     activeMealPlanSlotId: DEFAULT_MEAL_PLAN_SLOT_ID,
@@ -254,7 +203,12 @@ export function loadSnapshot(): PersistedSnapshot {
       const next: Record<string, LoggedMeal[]> = {};
       for (const [k, day] of Object.entries(parsed.nutritionByDay)) {
         if (!Array.isArray(day)) continue;
-        next[k] = day.map((row) => normalizeLoggedMealRow(row)).filter((x): x is LoggedMeal => Boolean(x));
+        // ENG-1446 — one-time migration: drop the retired demo-fixture
+        // rows ("seed-breakfast"/"seed-lunch") from any existing user's
+        // stored snapshot so they stop resurfacing on every load.
+        next[k] = day
+          .map((row) => normalizeLoggedMealRow(row))
+          .filter((x): x is LoggedMeal => Boolean(x) && !SEED_MEAL_IDS.has(x!.id));
       }
       nutritionByDay = next;
     }
@@ -316,17 +270,41 @@ export function loadSnapshot(): PersistedSnapshot {
           }
         : base.notificationPrefs ?? { ...DEFAULT_NOTIFICATION_PREFS };
 
+    // ENG-1446 — one-time migration: drop the retired demo-fixture saved-
+    // recipe ids from any existing user's stored snapshot.
+    const savedRecipeIds = Array.isArray(parsed.savedRecipeIds)
+      ? parsed.savedRecipeIds.filter((id) => !SEED_SAVED_RECIPE_IDS.has(id))
+      : base.savedRecipeIds;
+
     return {
-      savedRecipeIds: Array.isArray(parsed.savedRecipeIds) ? parsed.savedRecipeIds : base.savedRecipeIds,
+      savedRecipeIds,
       savedAtById:
         parsed.savedAtById && typeof parsed.savedAtById === "object"
-          ? { ...base.savedAtById, ...parsed.savedAtById }
+          ? Object.fromEntries(
+              Object.entries({ ...base.savedAtById, ...parsed.savedAtById }).filter(
+                ([id]) => !SEED_SAVED_RECIPE_IDS.has(id),
+              ),
+            )
           : base.savedAtById,
       savedRecipeMetaById:
         parsed.savedRecipeMetaById && typeof parsed.savedRecipeMetaById === "object"
           ? { ...base.savedRecipeMetaById, ...(parsed.savedRecipeMetaById as any) }
           : base.savedRecipeMetaById,
-      shoppingItems: Array.isArray(parsed.shoppingItems) ? parsed.shoppingItems : base.shoppingItems,
+      // ENG-1446 — one-time migration: drop the retired demo-fixture
+      // shopping items (ids "1".."9", "from" a fixture recipe name) from
+      // any existing user's stored snapshot.
+      shoppingItems: Array.isArray(parsed.shoppingItems)
+        ? parsed.shoppingItems.filter(
+            (row): row is ShoppingItem =>
+              !(
+                row &&
+                typeof row === "object" &&
+                typeof (row as Partial<ShoppingItem>).id === "string" &&
+                typeof (row as Partial<ShoppingItem>).name === "string" &&
+                isSeedShoppingItem(row as ShoppingItem)
+              ),
+          )
+        : base.shoppingItems,
       shoppingListSourceFingerprint:
         typeof parsed.shoppingListSourceFingerprint === "string" || parsed.shoppingListSourceFingerprint === null
           ? parsed.shoppingListSourceFingerprint
