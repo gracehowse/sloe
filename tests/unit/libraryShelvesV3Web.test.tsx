@@ -7,14 +7,18 @@
  *     "Nutrition pending" fallback when calories are 0, and onPress.
  *   - EditorialShelf: section head title + subtitle + a card per recipe + tap.
  *   - FeaturedHero: kick badge / "From your cookbook" kicker / serif title / meta.
- *   - LibraryShelvesHeader: renders the hero + shelves on the All filter (flag on),
- *     and returns null when the category is not "all".
+ *   - LibraryShelvesHeader: renders the hero + shelves on the All filter, and
+ *     returns null when the category is not "all".
+ *
+ * ENG-1356 (flag-collapse sweep, 2026-07-06): `sloe_v3_editorial_shelves` was
+ * always-on in production (REDESIGN_DEFAULT_ON) and is now collapsed —
+ * LibraryShelvesHeader no longer reads it, so the "flag off" test this file
+ * used to pin was removed rather than kept alive against dead code.
  */
 import * as React from "react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 import { RecipeCardWide } from "../../src/app/components/library/RecipeCardWide";
 import { EditorialShelf } from "../../src/app/components/library/EditorialShelf";
 import { FeaturedHero } from "../../src/app/components/library/FeaturedHero";
@@ -22,12 +26,6 @@ import { LibraryShelvesHeader } from "../../src/app/components/library/LibrarySh
 import type { RecipeCard } from "../../src/types/recipe";
 
 void React;
-
-vi.mock("../../src/lib/analytics/track.ts", () => ({
-  isFeatureEnabled: vi.fn(() => true),
-}));
-
-const flagFn = isFeatureEnabled as unknown as ReturnType<typeof vi.fn>;
 
 const rc = (id: string, o: Partial<RecipeCard> = {}): RecipeCard =>
   ({
@@ -48,11 +46,6 @@ const rc = (id: string, o: Partial<RecipeCard> = {}): RecipeCard =>
     cookTimeMin: 10,
     ...o,
   }) as RecipeCard;
-
-beforeEach(() => {
-  flagFn.mockReset();
-  flagFn.mockReturnValue(true);
-});
 
 describe("RecipeCardWide (web)", () => {
   it("renders name + kcal/protein/time meta and fires onPress", () => {
@@ -131,8 +124,7 @@ describe("FeaturedHero (web)", () => {
 });
 
 describe("LibraryShelvesHeader (web)", () => {
-  it("renders the hero + shelves on the All filter when the flag is on", () => {
-    flagFn.mockReturnValue(true);
+  it("renders the hero + shelves on the All filter", () => {
     render(
       <LibraryShelvesHeader
         filtered={[rc("Tahini bowl"), rc("Miso salmon", { calories: 560, protein: 38 })]}
@@ -146,23 +138,10 @@ describe("LibraryShelvesHeader (web)", () => {
   });
 
   it("returns null when the category is not 'all'", () => {
-    flagFn.mockReturnValue(true);
     const { container } = render(
       <LibraryShelvesHeader
         filtered={[rc("Tahini bowl")]}
         category="saved"
-        onPressRecipe={() => {}}
-      />,
-    );
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it("returns null when the flag is off (even on the All filter)", () => {
-    flagFn.mockReturnValue(false);
-    const { container } = render(
-      <LibraryShelvesHeader
-        filtered={[rc("Tahini bowl")]}
-        category="all"
         onPressRecipe={() => {}}
       />,
     );

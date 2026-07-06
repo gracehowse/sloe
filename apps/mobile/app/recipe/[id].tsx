@@ -1540,11 +1540,9 @@ export default function RecipeDetailScreen() {
     }
     return picked;
   }, [recipe?.image_source, recipe?.image_url, recipe?.source_url]);
-  const sloeImageRuntimeEnabled = isFeatureEnabled("recipe_runtime_image_generation_v1");
-  const isAiGeneratedHero =
-    sloeImageRuntimeEnabled && recipe?.image_source === "ai_generated";
+  const isAiGeneratedHero = recipe?.image_source === "ai_generated";
   const canGenerateSloeHero =
-    sloeImageRuntimeEnabled && isRecipeOwner && !heroImageUrl && !isSeedRecipeId(recipeId);
+    isRecipeOwner && !heroImageUrl && !isSeedRecipeId(recipeId);
 
   const generateSloeHero = useCallback(async (opts?: { regenerate?: boolean }) => {
     if (!recipe || heroGenerating) return;

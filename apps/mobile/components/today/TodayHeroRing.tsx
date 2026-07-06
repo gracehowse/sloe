@@ -120,7 +120,6 @@ function TodayHeroRingImpl({
 }: TodayHeroRingProps) {
   const accent = useAccent();
   const isDark = useColorScheme() === "dark";
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const isEmpty = consumed === 0 || goal <= 0;
   const isOver = goal > 0 && consumed > goal;
   const overByKcal = isOver ? consumed - goal : 0;
@@ -254,10 +253,9 @@ function TodayHeroRingImpl({
   }
 
   return (
-    // Carded hero (Grace 2026-06-04 shared <SupprCard>; lift soft = audit-gap-6
-    // separation, tier-v1 flat-on-cream). The flag-OFF path.
+    // Carded hero (Grace 2026-06-04 shared <SupprCard>; recipe-tier flat-on-cream).
     <SupprCard
-      lift={isFeatureEnabled("today_tracker_tier_v1") ? "flat" : "soft"}
+      lift="flat"
       padding="md"
       innerStyle={{ alignItems: "center", gap: Layout.todayScrollGap }}
     >

@@ -7,7 +7,6 @@ import { useColorScheme } from "react-native";
 import {
   macroStatCaption,
   macroStatProgressRatio,
-  type MacroStatCaptionTone,
 } from "@suppr/nutrition-core/macroStatCaption";
 import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 
@@ -28,32 +27,9 @@ export interface MacroStatTileProps {
   onPress?: () => void;
   testID?: string;
   style?: StyleProp<ViewStyle>;
-  /** ENG-1099 — recipe-tier macro tile: drop the bar + caption, move the
-   *  over/under signal onto the value colour. */
-  tierV1?: boolean;
   /** ENG-1098 Calm mode — when on, neutralise the over-signal (value stays the
    *  macro-identity hue, no amber/weight) so the tile reads numeric-neutral. */
   calmMode?: boolean;
-}
-
-function captionColorForTone(
-  tone: MacroStatCaptionTone,
-  isDark: boolean,
-  textTertiaryColor: string,
-): string {
-  switch (tone) {
-    case "under":
-      return isDark ? Accent.successLight : Accent.success;
-    case "over":
-      return isDark ? Accent.warningLight : Accent.warningSolid;
-    case "reference":
-    case "none":
-      return textTertiaryColor;
-    default: {
-      const _exhaustive: never = tone;
-      return _exhaustive;
-    }
-  }
 }
 
 /** Canonical Today macro tile — ENG-1014 leaf primitive. */
@@ -67,44 +43,39 @@ export function MacroStatTile({
   color,
   referenceOnly = false,
   overIsFlag = true,
-  textColor,
+  textColor: _textColor,
   textSecondaryColor,
   textTertiaryColor,
   barTrackColor,
   onPress,
   testID,
   style,
-  tierV1 = false,
   calmMode = false,
 }: MacroStatTileProps) {
   const isDark = useColorScheme() === "dark";
   const value = formatMacro(current, macroKey);
   const pct = macroStatProgressRatio(current, target) * 100;
-  const { text: captionText, tone } = macroStatCaption({
+  const { tone } = macroStatCaption({
     current,
     target,
     unit,
     referenceOnly,
     overIsFlag,
   });
-  const captionColor = captionColorForTone(tone, isDark, textTertiaryColor);
 
   // ENG-1099 value-colour over/under signal (recipe-strip precedent): empty →
   // tertiary; on/under → the macro identity hue; over a flagged macro → amber +
   // a weight bump (the second channel so the Fat tile, whose identity hue is
   // already amber, still reads as "over"). Calm mode neutralises the over-signal.
-  const overSignal = tierV1 && tone === "over" && !calmMode;
-  const valueColor = tierV1
-    ? current <= 0
+  const overSignal = tone === "over" && !calmMode;
+  const valueColor =
+    current <= 0
       ? textTertiaryColor
       : overSignal
         ? isDark
           ? Accent.warningLight
           : Accent.warningSolid
-        : color
-    : current > 0
-      ? textColor
-      : textTertiaryColor;
+        : color;
   const valueWeight: "500" | "600" = overSignal ? "600" : "500";
 
   // Proto `.mtile` cell (Grace 2026-06-25 full conform): NO card — a hairline-
@@ -150,8 +121,8 @@ export function MacroStatTile({
       </View>
       {/* Proto `.mtile-track`: the COLORED progress bar (colour + fill = the
           macro's progress) — the prototype's defining tile element, full-width
-          under the icon+value row. Caption stays tier-gated (the proto tile has
-          no caption row). */}
+          under the icon+value row. No caption row (the proto tile drops it —
+          the over/under signal lives in the value colour above). */}
       <View
         testID={`today-macro-tile-bar-${macroKey}`}
         style={{
@@ -172,23 +143,6 @@ export function MacroStatTile({
           }}
         />
       </View>
-      {tierV1 ? null : (
-        <Text
-          testID={`today-macro-tile-caption-${macroKey}`}
-          style={{
-            ...Type.caption,
-            fontSize: 11,
-            lineHeight: 14,
-            color: captionColor,
-            marginTop: Spacing.xs,
-            minHeight: 14,
-            fontVariant: ["tabular-nums"],
-          }}
-          numberOfLines={1}
-        >
-          {captionText}
-        </Text>
-      )}
     </View>
   );
 

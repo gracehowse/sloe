@@ -15,23 +15,23 @@ const read = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8");
 describe("Today cohesion — index.tsx host wiring", () => {
   const src = read("../../app/(tabs)/_today/TodayScreen.tsx");
 
-  it("F-159: every page-ground section break uses Layout.todaySectionBreak (one rhythm)", () => {
+  it("F-159 / ENG-1356: every page-ground section break collapsed to the ENG-1099 recipe-body rhythm (marginTop 0, one 24 scroll gap)", () => {
     // Meals, Weekly insight, Planned, Activity, Hydration all introduce on the
-    // same cadence. ENG-1099 M1 flag-gated the break — `tierV1 ? 0 :
-    // Layout.todaySectionBreak` (the 24 scroll gap is the rhythm when the tier
-    // flag is on; the 32 break stays in the else) — so the token is still the
-    // single rhythm source at every section.
-    const breaks = src.match(/marginTop:\s*tierV1\s*\?\s*0\s*:\s*Layout\.todaySectionBreak/g) ?? [];
+    // same cadence. ENG-1099 M1 flag-gated the break (`tierV1 ? 0 :
+    // Layout.todaySectionBreak`); `today_tracker_tier_v1` was always-on in
+    // production (REDESIGN_DEFAULT_ON) and was collapsed in ENG-1356 — the
+    // break is now the unconditional `marginTop: 0` (the 24 Spacing.xl scroll
+    // gap on `styles.scroll` carries the rhythm instead).
+    const breaks = src.match(/marginTop:\s*0(?!\s*:)/g) ?? [];
     // 5 page-ground sections (Meals / Weekly insight / Planned / Activity /
     // Hydration). The Complete-Day section break lives in its extracted
     // component (TodayCompleteDayButton), not here.
     expect(breaks.length).toBeGreaterThanOrEqual(5);
+    expect(src).not.toMatch(/tierV1/);
   });
 
   it("F-178/F-179: Planned card mounts when populated OR the empty-state flag is on", () => {
     expect(src).toMatch(/plannedMeals\.length > 0 \|\| isFeatureEnabled\("today_planned_empty_state"\)/);
-    // The Planned section sits on the standard section break (no longer bare gap).
-    expect(src).toMatch(/Section break is the standard `Layout\.todaySectionBreak`/);
   });
 
   it("F-158: Complete-Day is the extracted <TodayCompleteDayButton>, not an inline floating Pressable", () => {
@@ -42,13 +42,17 @@ describe("Today cohesion — index.tsx host wiring", () => {
   });
 });
 
-describe("Today cohesion — TodayMealsSection ENG-1099 M5", () => {
+describe("Today cohesion — TodayMealsSection ENG-1099 M5 (collapsed ENG-1356)", () => {
   const src = read("../../components/today/TodayMealsSection.tsx");
 
-  it("quiets slot icon chip tint and log-usual pill when today_tracker_tier_v1 is on", () => {
-    expect(src).toMatch(/today_tracker_tier_v1/);
-    expect(src).toMatch(/tierV1 \? col \+ "12" : col \+ "18"/);
-    expect(src).toMatch(/tierV1 \? colors\.fillQuiet : col \+ "18"/);
+  it("slot icon chip tint and log-usual pill use the quiet recipe-tier treatment unconditionally", () => {
+    // `today_tracker_tier_v1` was always-on in production (REDESIGN_DEFAULT_ON)
+    // and was collapsed in ENG-1356 — no flag check remains, only the tier-on
+    // (quiet fill, no border) styling.
+    expect(src).not.toMatch(/today_tracker_tier_v1/);
+    expect(src).not.toMatch(/tierV1/);
+    expect(src).toMatch(/backgroundColor: col \+ "12"/);
+    expect(src).toMatch(/backgroundColor: colors\.fillQuiet/);
   });
 
   it("ENG-1099 M6: meal rows use PressableScale when tierV1 is on", () => {
@@ -75,12 +79,15 @@ describe("Today cohesion — TodayHeroRing ENG-1099 RC-3", () => {
   });
 });
 
-describe("Today cohesion — NorthStarBlock ENG-1099 RC-4", () => {
+describe("Today cohesion — NorthStarBlock ENG-1099 RC-4 (collapsed ENG-1356)", () => {
   const src = read("../../components/today/NorthStarBlock.tsx");
   // ENG-1293/1301: the figma hero card was extracted into NorthStarFigmaHero.
   const heroSrc = read("../../components/today/NorthStarFigmaHero.tsx");
 
-  it("uses on-family sage tokens for the band-tight chip when tierV1 is on", () => {
+  it("uses on-family sage tokens for the band-tight chip unconditionally", () => {
+    // `today_tracker_tier_v1` was always-on in production and was collapsed
+    // in ENG-1356 — no flag check remains, only the tier-on sage tokens.
+    expect(src).not.toMatch(/today_tracker_tier_v1/);
     expect(src).toMatch(/Accent\.success \+ "1A"/);
     expect(src).toMatch(/Accent\.successSolid/);
   });
@@ -90,12 +97,14 @@ describe("Today cohesion — NorthStarBlock ENG-1099 RC-4", () => {
   });
 });
 
-describe("Today cohesion — TodayCompleteDayButton component", () => {
+describe("Today cohesion — TodayCompleteDayButton component (collapsed ENG-1356)", () => {
   const src = read("../../components/today/TodayCompleteDayButton.tsx");
 
   it("F-158: anchors the CTA in a section wrapper on the standard rhythm", () => {
-    expect(src).toMatch(/today_tracker_tier_v1/);
-    expect(src).toMatch(/marginTop:\s*tierV1\s*\?\s*0\s*:\s*Layout\.todaySectionBreak/);
+    // `today_tracker_tier_v1` was always-on in production and was collapsed
+    // in ENG-1356 — the wrapper's marginTop is now the unconditional 0.
+    expect(src).not.toMatch(/today_tracker_tier_v1/);
+    expect(src).toMatch(/marginTop:\s*0/);
   });
 
   it("is a SOLID primary CTA via SupprButton (ENG-1079 — was outline)", () => {

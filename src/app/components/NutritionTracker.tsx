@@ -278,8 +278,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   // historic UI; `bars` is the Cronometer/Lose It-style list (Settings
   // → Display → Macro display). Pref persists via localStorage.
   const [macroDisplayStyle] = useMacroDisplayStyle();
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
-  const todaySectionBreakClass = tierV1 ? "" : "mt-10";
   // ENG-1252 — first-session AI-method discoverability tooltip gate.
   const aiMethodTooltipVisible = useAiMethodTooltip(userTier);
   const {
@@ -2703,8 +2701,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         <div
           className={
             viewMode === "day"
-              ? `flex-1 min-w-0 lg:max-w-[480px] ${tierV1 ? "space-y-6" : "space-y-3"}`
-              : `flex-1 min-w-0 ${tierV1 ? "space-y-6" : "space-y-3"}`
+              ? "flex-1 min-w-0 lg:max-w-[480px] space-y-6"
+              : "flex-1 min-w-0 space-y-6"
           }
         >
       {viewMode === "day" ? (
@@ -2819,7 +2817,6 @@ export const NutritionTracker = memo(function NutritionTracker({
           surfaces inline as a caption inside the hero block via
           `aiSourcedCount` (Phase 4). */}
       {(() => {
-        const coachInHero = isFeatureEnabled("today_coach_in_hero_v1");
         const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
         const coachScreenEnabled = isFeatureEnabled("coach_screen_v1");
         const coachLineEl =
@@ -2864,44 +2861,23 @@ export const NutritionTracker = memo(function NutritionTracker({
         // in every hero state on mobile-web (`< md`); desktop gets the sidebar
         // item. Same `coach_screen_v1` gate; the deficit-line deep-link stays.
         onPressCoach={coachScreenEnabled ? () => trackerRouter.push("/coach") : undefined}
-        coachLine={coachInHero ? coachLineEl : undefined}
+        coachLine={coachLineEl}
       />
         );
       })()}
 
-      {/* Single context block — priority order: fasting > deficit.
-          Mutually exclusive (mobile parity, 2026-06-06). Eat-again removed
-          from Today scroll (2026-05-22 v4) and fully retired (ENG-984,
-          2026-06-17); logging shortcuts live in the Log sheet. */}
-      {(() => {
-        // 1. Active fast wins outright (both hero variants).
-        if (activeFast) {
-          return (
-            <TodayFastingPill
-              activeFastElapsedLabel={fastingElapsedLabel}
-              fastingOptedIn={fastingOptedIn}
-            />
-          );
-        }
-        // Coach-in-hero: the deficit line renders INSIDE the hero, so no
-        // standalone context block below it.
-        if (isFeatureEnabled("today_coach_in_hero_v1")) return null;
-        const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
-        if (
-          viewMode === "day" &&
-          selectedDateKey === todayKey() &&
-          remainingToday > 0
-        ) {
-          return (
-            <TodayDeficitInsight
-              remaining={remainingToday}
-              selectedDate={selectedDate}
-              byDay={nutritionByDay}
-            />
-          );
-        }
-        return null;
-      })()}
+      {/* Single context block — active fast only (mobile parity, 2026-06-06).
+          Eat-again removed from Today scroll (2026-05-22 v4) and fully
+          retired (ENG-984, 2026-06-17); logging shortcuts live in the Log
+          sheet. The deficit line (the other historical context block) now
+          renders INSIDE the hero unconditionally — the flag that gated that
+          move (ENG-889) was collapsed as always-on in ENG-1356. */}
+      {activeFast ? (
+        <TodayFastingPill
+          activeFastElapsedLabel={fastingElapsedLabel}
+          fastingOptedIn={fastingOptedIn}
+        />
+      ) : null}
 
       {/* RemainingMacrosBar removed 2026-04-20 — duplicated the macro tiles
           below (feedback_no_duplicate_today_hero_content.md; mobile parity). */}
@@ -3054,7 +3030,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       )}
 
       {/* 5. Meals Section — larger top break vs hero cluster (ENG-871). */}
-      <div className={todaySectionBreakClass}>
+      <div>
       <TodayMealsSection
         mealsGrouped={mealsGrouped}
         slotLabels={enabledMealSlots}
@@ -3232,7 +3208,7 @@ export const NutritionTracker = memo(function NutritionTracker({
 
       {/* Figma TD1 — Activity & energy (mobile parity: section shell always on day view). */}
       {viewMode === "day" ? (
-        <section className={`${todaySectionBreakClass} flex flex-col gap-5`.trim()} data-testid="today-td1-section">
+        <section className="flex flex-col gap-5" data-testid="today-td1-section">
           <TodayScrollSectionHeader
             title="Activity & energy"
             testID="today-td1-section-header"
@@ -3304,7 +3280,7 @@ export const NutritionTracker = memo(function NutritionTracker({
 
       {/* Figma TD2 — Hydration & stimulants (mobile parity: header always on day view). */}
       {viewMode === "day" ? (
-        <section className={`${todaySectionBreakClass} flex flex-col gap-5`.trim()} data-testid="today-td2-section">
+        <section className="flex flex-col gap-5" data-testid="today-td2-section">
           <TodayScrollSectionHeader
             title="Hydration & stimulants"
             testID="today-td2-section-header"
@@ -3361,7 +3337,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           variant="primary"
           label="Complete Day"
           onClick={() => setCompleteDayOpen(true)}
-          className={`${todaySectionBreakClass} w-full`.trim()}
+          className="w-full"
         />
       )}
 

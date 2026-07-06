@@ -10,30 +10,23 @@
  * the magenta `MacroColors.fat` value.
  *
  * The component renders the wrapper as
- *   `<View style={{ backgroundColor: col + "18", ... }}>`
- * where `col = SLOT_COLOR[slot]`. Sloe Phase 0 (dossier D-4): snack tint is
- * teal (`#4A7878`); Fat macro is amber (`#C9892C`). We assert the snack
- * wrapper's bg uses the teal prefix and is explicitly NOT the fat-macro hue —
- * that snack↔fat collision (the original 2026-05-01 bug) must never regress.
+ *   `<View style={{ backgroundColor: col + "12", ... }}>`
+ * where `col = SLOT_COLOR[slot]`. (ENG-1099's recipe-tier `"12"` alpha was the
+ * only live value once `today_tracker_tier_v1` — always-on in production —
+ * was collapsed in ENG-1356; the legacy `"18"` flag-off tint no longer
+ * renders anywhere.) Sloe Phase 0 (dossier D-4): snack tint is teal
+ * (`#4A7878`); Fat macro is amber (`#C9892C`). We assert the snack wrapper's
+ * bg uses the teal prefix and is explicitly NOT the fat-macro hue — that
+ * snack↔fat collision (the original 2026-05-01 bug) must never regress.
  */
 import * as React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react-native";
 import { View } from "react-native";
 
 import { TodayMealsSection } from "../../components/today/TodayMealsSection";
 import { MacroColors, SlotColors } from "../../constants/theme";
 import type { JournalMeal } from "../../lib/nutritionJournal";
-
-// Per-slot icon TINTS, the micros-fibre chip, and the collapse/add affordances
-// pinned here live in the per-slot TD4 meal layout — now the sole layout after
-// ENG-1096 deleted the dead `today_meals_figma_layout` summary path. This suite
-// keeps `today_tracker_tier_v1` OFF (the slot icon tints differ in tier-v1), so
-// the mock forces just that flag off and leaves every other flag on.
-vi.mock("../../lib/analytics", () => ({
-  track: vi.fn(),
-  isFeatureEnabled: (flag: string) => flag !== "today_tracker_tier_v1",
-}));
 
 void React;
 
@@ -76,11 +69,11 @@ const BASE_PROPS = {
 } as const;
 
 /**
- * Pull every distinct `<col>18` backgroundColor from rendered Views.
+ * Pull every distinct `<col>12` backgroundColor from rendered Views.
  *
  * The slot icon wrapper renders as
- *   `<View style={{ backgroundColor: col + "18", ... }}>`
- * (TodayMealsSection.tsx). A 9-char hex with trailing `18` is the
+ *   `<View style={{ backgroundColor: col + "12", ... }}>`
+ * (TodayMealsSection.tsx). A 9-char hex with trailing `12` is the
  * tint signature. Returns the lower-cased set so we can assert
  * exactly the four SlotColors values appear.
  */
@@ -94,8 +87,8 @@ function collectIconWrapperBackgrounds(
     if (!style || typeof style !== "object") continue;
     const bg = (style as { backgroundColor?: string }).backgroundColor;
     if (typeof bg !== "string") continue;
-    // 9-char hex with `18` alpha suffix is the wrapper tint signature.
-    if (bg.length === 9 && bg.toLowerCase().endsWith("18")) {
+    // 9-char hex with `12` alpha suffix is the wrapper tint signature.
+    if (bg.length === 9 && bg.toLowerCase().endsWith("12")) {
       out.add(bg.toLowerCase());
     }
   }
@@ -115,7 +108,7 @@ describe("TodayMealsSection — slot icon tint (ui-critic P2 #10)", () => {
     const tree = render(<TodayMealsSection {...BASE_PROPS} />);
     const tints = collectIconWrapperBackgrounds(tree);
     // The teal snack tint MUST be present (Sloe D-4).
-    expect(tints).toContain(`${SlotColors.snack.toLowerCase()}18`);
+    expect(tints).toContain(`${SlotColors.snack.toLowerCase()}12`);
     // The original 2026-05-01 bug was Snacks borrowing MacroColors.fat — so
     // the invariant is that the snack tint is NOT the fat hue. In Sloe snack
     // is teal and fat is amber, so they're distinct by construction.
@@ -130,10 +123,10 @@ describe("TodayMealsSection — slot icon tint (ui-critic P2 #10)", () => {
   it("renders the canonical SlotColors tints for Breakfast / Lunch / Dinner / Snacks", () => {
     const tree = render(<TodayMealsSection {...BASE_PROPS} />);
     const tints = collectIconWrapperBackgrounds(tree);
-    expect(tints).toContain(`${SlotColors.breakfast.toLowerCase()}18`);
-    expect(tints).toContain(`${SlotColors.lunch.toLowerCase()}18`);
-    expect(tints).toContain(`${SlotColors.dinner.toLowerCase()}18`);
-    expect(tints).toContain(`${SlotColors.snack.toLowerCase()}18`);
+    expect(tints).toContain(`${SlotColors.breakfast.toLowerCase()}12`);
+    expect(tints).toContain(`${SlotColors.lunch.toLowerCase()}12`);
+    expect(tints).toContain(`${SlotColors.dinner.toLowerCase()}12`);
+    expect(tints).toContain(`${SlotColors.snack.toLowerCase()}12`);
   });
 });
 

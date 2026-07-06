@@ -20,17 +20,8 @@
  *   - sugar/sodium do NOT render as buttons (plain static element,
  *     no role=button, no "Open … breakdown" aria-label)
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
-
-// Force the per-tile bar+caption (legacy) path on for the tiles component so the
-// tile DOM is fully exercised — matches todayDashboardMacroTilesCaption.test.tsx.
-// (Unrelated to the affordance under test, which is flag-independent.)
-vi.mock("../../src/lib/analytics/track", async (orig) => ({
-  ...(await orig<typeof import("../../src/lib/analytics/track")>()),
-  isFeatureEnabled: (flag: string) =>
-    flag === "today_tracker_tier_v1" ? false : true,
-}));
 
 import { TodayDashboardMacroTiles } from "../../src/app/components/suppr/today-dashboard-macro-tiles";
 import { TodayDashboardMacroBars } from "../../src/app/components/suppr/today-dashboard-macro-bars";

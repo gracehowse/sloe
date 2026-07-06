@@ -36,8 +36,6 @@ const REDESIGN_FLAGS = [
 /** Gate 1.5 surfaces — must resolve ON without PostHog (see redesignDefaultOnParity.test.ts). */
 const GATE_15_FLAGS = [
   "today_meals_figma_654",
-  "today_tracker_tier_v1",
-  "card_cohesion_white_v1",
   "log_sheet_nl_text_v1",
   "log-sheet-slot-selector",
 ] as const;

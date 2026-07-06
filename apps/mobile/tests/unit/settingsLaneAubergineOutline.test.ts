@@ -166,14 +166,17 @@ describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
     );
   });
 
-  it("Sloe Pro banner: white by default (ENG-1081), aubergine soft tint kept as the flag-off path, never a hardcoded clay rgba", () => {
+  it("Sloe Pro banner: unconditional white slab (ENG-1081, card_cohesion_white_v1 collapsed ENG-1356), never a hardcoded clay rgba", () => {
     // ENG-1081 (Grace 2026-06-13: "flat white for now"): card-fill cohesion —
-    // the banner is a flat WHITE slab by default; the aubergine tint
-    // (accent.primarySoft) lives behind the card_cohesion_white_v1 flag-off path.
+    // the banner is a flat WHITE slab. Was flag-gated behind
+    // card_cohesion_white_v1 (aubergine tint in the else); the always-on flag
+    // was collapsed in ENG-1356 — only the white-slab path remains.
     expect(BUNDLE).toMatch(/testID="settings-sloe-pro-banner"/);
-    expect(BUNDLE).toMatch(/isFeatureEnabled\("card_cohesion_white_v1"\)/);
-    // Both paths present: flag-on white (colors.card) → flag-off tint (accent.primarySoft).
-    expect(BUNDLE).toMatch(/cohesionWhite[\s\S]{0,120}colors\.card[\s\S]{0,120}accent\.primarySoft/);
+    expect(BUNDLE).not.toMatch(/card_cohesion_white_v1/);
+    expect(BUNDLE).not.toMatch(/cohesionWhite/);
+    expect(BUNDLE).toMatch(
+      /testID="settings-sloe-pro-banner"[\s\S]{0,700}backgroundColor:\s*statTileElevation\.liftBg \?\? colors\.card/,
+    );
     // Off-token clay rgba never returns either way.
     expect(BUNDLE).not.toContain("rgba(200, 121, 78, 0.16)");
   });

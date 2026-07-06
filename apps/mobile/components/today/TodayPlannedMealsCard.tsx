@@ -6,7 +6,6 @@ import { useMacroColors } from "@/lib/macroColors";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
-import { isFeatureEnabled } from "@/lib/analytics";
 import { formatPlannedMealMacroParts } from "@suppr/nutrition-core/plannedMealDisplay";
 import { PortionPickerSheet } from "./PortionPickerSheet";
 
@@ -93,8 +92,7 @@ function TodayPlannedMealsCardImpl({
   // Secondary accent (Frost flag → damson, else clay) for the "Log today" CTA.
   const accent = useAccent();
   const [picker, setPicker] = useState<{ meal: TodayPlannedMealEntry } | null>(null);
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
-  const cardLift = tierV1 ? "flat" : "soft";
+  const cardLift = "flat";
 
   const isEmpty = plannedMeals.length === 0;
 

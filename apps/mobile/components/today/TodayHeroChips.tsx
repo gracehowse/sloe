@@ -3,9 +3,8 @@ import { Pressable, Text, View } from "react-native";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { isFeatureEnabled } from "@/lib/analytics";
 import { todayStatusChip } from "@suppr/shared/copy/today";
 
 /**
@@ -41,13 +40,9 @@ export function StatusChip({
   isDark: boolean;
   onPress?: () => void;
 }) {
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
-  // Split the sage into a FILL hue (tint bg) and an INK hue (text/icon). The
-  // base sage (#5E7C5A) is only 4.0:1 as text on its own tint — borderline; the
-  // solid sage (#466046, 6.95:1) carries the label/icon, the lighter sage tints
-  // the pill (design-director 2026-06-16: the "Under budget" state cue should
-  // read at a glance, not hide).
-  const sageFill = isDark ? Accent.successLight : Accent.success;
+  // Solid sage (#466046, 6.95:1) carries the label/icon — the base sage
+  // (#5E7C5A) is only 4.0:1 as text, borderline for AA (design-director
+  // 2026-06-16: the "Under budget" state cue should read at a glance).
   const sageInk = isDark ? Accent.successLight : Accent.successSolid;
   const colors = useThemeColors();
   const plum = colors.navPrimary; // ENG-1010: one scheme-resolved plum source
@@ -57,16 +52,12 @@ export function StatusChip({
       : state === "empty"
         ? {
             fg: plum,
-            bg: tierV1
-              ? "transparent"
-              : isDark
-                ? Colors.dark.backgroundSecondary
-                : Colors.light.ringTrack,
+            bg: "transparent",
             Icon: Sparkles,
           }
         : {
             fg: sageInk,
-            bg: tierV1 ? "transparent" : `${sageFill}2E`,
+            bg: "transparent",
             Icon: CircleCheck,
           };
   const { fg, bg, Icon } = config;

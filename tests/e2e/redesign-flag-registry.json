@@ -1,7 +1,6 @@
 {
   "_doc": "Canonical registry for the 2026 redesign visual-flag capture gate (docs/planning/2026-06-20-redesign-execution-protocol.md §3; enforcement ENG-1221). The capture spec (tests/e2e/screenshots/redesign-flags-capture.spec.ts) and the capture:redesign:* scripts READ capturedWeb from here, so there is no array to drift. `npm run check:redesign-flags` asserts the buckets are disjoint and that EVERY isFeatureEnabled(...) literal in code is classified — a new flag fails CI until placed. capturedWeb = web/both flags that change look/layout/motion → forced ON in the WEB Playwright capture sweep so flag-ON pixels are verified. capturedMobile = mobile-only visual flags → must be verified by a MOBILE capture sweep (Maestro/sim); NOT in the web spec (no web surface). Wiring a mobile capture that consumes this list is tracked in ENG-1221. excluded = logic / capability gate / behavior / no redesign-look surface / test-and-doc artifacts. Classification is judgment per flag (platform from a code scan); errors are low-consequence and reversible — a mis-excluded flag just isn't captured (status quo), a mis-captured one is harmlessly forced on. Review and re-bucket freely.",
   "capturedWeb": [
-    "card_cohesion_white_v1",
     "cook_ingredient_checklist_v1",
     "cook_step_ingredients_v1",
     "cook_swipe_steps_v1",
@@ -11,8 +10,6 @@
     "design_system_elevation",
     "design_system_icons",
     "discover_import_above_carousels_v1",
-    "discover_import_hero_v1",
-    "fit_verdict_banner_v1",
     "import-progress-v2",
     "import_caption_preview_v1",
     "landing_hero_hybrid_v1",
@@ -40,12 +37,10 @@
     "ring_empty_macro_parity_v1",
     "today-status-pills",
     "today-weekly-insight-mobile",
-    "today_coach_in_hero_v1",
     "today_log_usual_row_v2",
     "today_meals_all_slots_v1",
     "today_meals_figma_654",
     "today_planned_empty_state",
-    "today_tracker_tier_v1",
     "web-subscription-card",
     "web_macro_detail_panel",
     "web_meal_nutrition_detail",
@@ -80,7 +75,6 @@
     "paywall-default-monthly",
     "plan_import_enabled",
     "plan_meal_lock_v1",
-    "recipe_runtime_image_generation_v1",
     "some_other_flag",
     "today_log_again",
     "web_logged_meal_edit"

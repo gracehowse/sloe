@@ -1,32 +1,22 @@
 /**
- * TodayDashboardMacroTiles (web) — per-tile caption + serif zero softening
- * (audit gaps 4 + 8, 2026-06-09; mobile parity).
- *
- * Gap 4: each tile shows the spec'd caption under the bar (today.md §3.3/§4 —
- * the at-a-glance "how much left" warm-coaching payoff):
- *   - under target → "N g remaining" in sage (`text-success`)
- *   - over target  → "N g over" in amber (`--accent-warning-solid`, AA-safe)
- *   - reference-only (sugar/sodium) → muted "ref N"
- *   - unlogged (current = 0) → full target as "N g remaining" (ENG-938 — refugee scannable gap)
- * The copy is the canonical "remaining" (matches mobile so the two surfaces
- * can't drift).
+ * TodayDashboardMacroTiles (web) — serif zero softening (audit gap 8,
+ * 2026-06-09; mobile parity).
  *
  * Gap 8: the serif value softens to `text-foreground-tertiary` while the macro
  * is still a zero, so the editorial numeral only earns its full ink weight when
  * there's data.
+ *
+ * ENG-1356 (flag-collapse sweep, 2026-07-06): `today_tracker_tier_v1` was
+ * always-on in production (REDESIGN_DEFAULT_ON) and is now collapsed — the
+ * recipe-tier tile (no per-tile caption row; the over/under signal lives in
+ * the value colour) is the ONLY tile this component renders. The legacy
+ * flag-off caption row (audit gap 4: "N g remaining" / "N g over" / "ref Ng")
+ * this file used to pin (by forcing the flag off) no longer exists as a live
+ * code path, so those assertions were removed rather than kept alive against
+ * dead code.
  */
 import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
-
-// ENG-1099: the per-tile bar + caption are the LEGACY (flag-off) path — the
-// recipe-tier tile (today_tracker_tier_v1, default-on) drops them and moves the
-// signal onto the value colour. Force the flag OFF here so these tests exercise
-// the legacy caption they're about; a separate describe covers the tier-on case.
-vi.mock("../../src/lib/analytics/track", async (orig) => ({
-  ...(await orig<typeof import("../../src/lib/analytics/track")>()),
-  isFeatureEnabled: (flag: string) =>
-    flag === "today_tracker_tier_v1" ? false : true,
-}));
 
 import { TodayDashboardMacroTiles } from "../../src/app/components/suppr/today-dashboard-macro-tiles";
 
@@ -48,40 +38,10 @@ const baseProps = {
   onAddWaterMl: () => {},
 };
 
-describe("TodayDashboardMacroTiles (web) — per-tile caption (gap 4)", () => {
-  it('shows "N g remaining" (sage) under target', () => {
-    const { getByTestId } = render(<TodayDashboardMacroTiles {...baseProps} />);
-    const cap = getByTestId("today-macro-tile-caption-protein");
-    expect(cap.textContent).toBe("44g remaining");
-    expect(cap.className).toMatch(/text-success/);
-  });
-
-  it('shows "N g over" (amber) over target', () => {
-    const { getByTestId } = render(
-      <TodayDashboardMacroTiles {...baseProps} proteinCurrent={210} />,
-    );
-    const cap = getByTestId("today-macro-tile-caption-protein");
-    expect(cap.textContent).toBe("70g over");
-    // Amber as text uses the AA-safe solid token (inline style).
-    expect((cap as HTMLElement).style.color).toBe("var(--accent-warning-solid)");
-  });
-
-  it("shows a muted 'ref' caption for reference-only macros (sugar)", () => {
-    const { getByTestId } = render(
-      <TodayDashboardMacroTiles {...baseProps} trackedMacros={["sugar"]} />,
-    );
-    const cap = getByTestId("today-macro-tile-caption-sugar");
-    expect(cap.textContent).toBe("ref 50g");
-    expect(cap.className).toMatch(/text-foreground-tertiary/);
-  });
-
-  it('shows full remaining on an unlogged tile (current = 0) — ENG-938', () => {
-    const { getByTestId } = render(
-      <TodayDashboardMacroTiles {...baseProps} proteinCurrent={0} />,
-    );
-    const cap = getByTestId("today-macro-tile-caption-protein");
-    expect(cap.textContent).toBe("140g remaining");
-    expect(cap.className).toMatch(/text-success/);
+describe("TodayDashboardMacroTiles (web) — no per-tile caption row (ENG-1356 collapse)", () => {
+  it("renders no caption element — the recipe-tier tile signals via value colour only", () => {
+    const { queryByTestId } = render(<TodayDashboardMacroTiles {...baseProps} />);
+    expect(queryByTestId("today-macro-tile-caption-protein")).toBeNull();
   });
 });
 

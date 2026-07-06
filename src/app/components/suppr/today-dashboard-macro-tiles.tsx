@@ -12,7 +12,6 @@ import { formatMacro } from "../../../lib/nutrition/formatMacro";
 import { macroStatCaption } from "../../../lib/nutrition/macroStatCaption";
 import { MACRO_ICONS } from "../../../lib/macroIconsLucide";
 import { MACRO_COLOR_VARS, macroTextColorVarFor } from "../../../lib/theme/macroColors";
-import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { useCalmMode } from "../../../lib/preferences/useCalmMode";
 import { isMacroDetailSupported } from "../MacroDetailPanel";
 
@@ -294,9 +293,6 @@ export function buildMacroTile(
 
 export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
   const { trackedMacros, onAddWaterMl, nutrientRows, onPressViewAllNutrients, viewAllNutrientsCount, onPressMacro } = props;
-  // ENG-1099 — recipe-tier macro tiles (strip bar+caption, value-colour
-  // over-signal). ENG-1098 Calm mode neutralises the over-signal.
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const [calmMode] = useCalmMode();
 
   return (
@@ -309,14 +305,12 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
         // ENG-1099 value-colour signal: empty → tertiary; on/under → macro hue;
         // over a flagged macro → amber + semibold (the second channel so Fat,
         // whose hue is already amber, still reads "over"). Calm mode neutralises.
-        const overSignal = tierV1 && tile.captionTone === "over" && !calmMode;
-        const tierValueStyle: React.CSSProperties = !tierV1
-          ? {}
-          : !tile.hasValue
-            ? { color: "var(--foreground-tertiary)" }
-            : overSignal
-              ? { color: "var(--accent-warning-solid)", fontWeight: 600 }
-              : { color: macroTextColorVarFor(macroKey) };
+        const overSignal = tile.captionTone === "over" && !calmMode;
+        const tierValueStyle: React.CSSProperties = !tile.hasValue
+          ? { color: "var(--foreground-tertiary)" }
+          : overSignal
+            ? { color: "var(--accent-warning-solid)", fontWeight: 600 }
+            : { color: macroTextColorVarFor(macroKey) };
         const content = (
           <>
             {/* Proto `.mtile`: colored icon on the LEFT, then value/goal + label.
@@ -352,8 +346,8 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
             {/* Proto `.mtile` track: the COLORED progress bar ALWAYS shows — the
                 prototype's defining macro-tile element (colour + fill = progress).
                 Grace 2026-06-25: the bar-less tile read "flat". Un-strips ENG-1099's
-                bar removal; the caption text stays tier-gated (the prototype tile
-                has no caption row). */}
+                bar removal. No caption row (the prototype tile drops it — the
+                over/under signal lives in the value colour above). */}
             <div
               className="mt-2 h-1 rounded-full overflow-hidden bg-border"
             >
@@ -366,25 +360,6 @@ export function TodayDashboardMacroTiles(props: TodayDashboardMacroTilesProps) {
                 }}
               />
             </div>
-            {tierV1 ? null : (
-              <span
-                data-testid={`today-macro-tile-caption-${macroKey}`}
-                className={`mt-1 block min-h-[14px] text-[11px] leading-[14px] tabular-nums ${
-                  tile.captionTone === "under"
-                    ? "text-success"
-                    : tile.captionTone === "over"
-                      ? ""
-                      : "text-foreground-tertiary"
-                }`}
-                style={
-                  tile.captionTone === "over"
-                    ? { color: "var(--accent-warning-solid)" }
-                    : undefined
-                }
-              >
-                {tile.caption}
-              </span>
-            )}
           </>
         );
         // Proto `.mtile` hairline cell (Grace 2026-06-25): NO card — a grid cell

@@ -43,8 +43,8 @@ import { TodayScrollSectionHeader } from "./today-scroll-section-header";
 import { SwipeDeleteRow } from "../ui/swipe-delete-row";
 
 /** ENG-1099 M6 — recipe-tier meal rows get PressableScale-style press feedback. */
-function todayMealRowPressClass(tierV1: boolean, clickable: boolean): string {
-  if (!tierV1 || !clickable) return "";
+function todayMealRowPressClass(clickable: boolean): string {
+  if (!clickable) return "";
   return " transition-transform duration-150 ease-out active:scale-[0.97] origin-left";
 }
 
@@ -180,35 +180,17 @@ function getMealIcon(name: string): {
   return { icon: Icons.add as React.ComponentType<React.SVGProps<SVGSVGElement>>, tone: "primary" };
 }
 
-/** Slot-tinted pill chrome — avoids ink (`text-primary`) on every row. */
-function slotPillClassName(sectionName: string, tierV1 = false): string {
-  if (tierV1) {
-    return "border-border bg-background-secondary text-foreground-secondary hover:bg-muted/60";
-  }
-  const { tone } = getMealIcon(sectionName);
-  // ENG-1109 — 11px slot pills use secondary foreground on soft tints
-  // (slot hue alone fails WCAG AA at caption size).
-  const label = "text-foreground-secondary";
-  switch (tone) {
-    case "slot-breakfast":
-      return `border-slot-breakfast/30 bg-slot-breakfast-soft ${label} hover:opacity-90`;
-    case "slot-lunch":
-      return `border-slot-lunch/30 bg-slot-lunch-soft ${label} hover:opacity-90`;
-    case "slot-dinner":
-      return `border-slot-dinner/30 bg-slot-dinner-soft ${label} hover:opacity-90`;
-    case "slot-snack":
-      return `border-slot-snack/30 bg-slot-snack-soft ${label} hover:opacity-90`;
-    default:
-      return "border-border bg-muted text-foreground-secondary";
-  }
+/** Slot-tinted pill chrome — avoids ink (`text-primary`) on every row.
+ *  ENG-1109 — text stays `text-foreground-secondary` (AA-safe), never the
+ *  slot hue as text (slot hue alone fails AA at caption size). */
+function slotPillClassName(_sectionName: string): string {
+  return "border-border bg-background-secondary text-foreground-secondary hover:bg-muted/60";
 }
 
 /** ENG-1099 M5 — lighter slot glyph chip (18% → 12% tint). */
 function slotIconTierClass(
   tone: ReturnType<typeof getMealIcon>["tone"],
-  tierV1: boolean,
 ): string | undefined {
-  if (!tierV1) return undefined;
   switch (tone) {
     case "slot-breakfast":
       return "!bg-slot-breakfast/12";
@@ -364,7 +346,6 @@ export function TodayMealsSection({
   // Mirrors the mobile change. See
   // `docs/decisions/2026-05-15-today-log-usual-row-v2.md`.
   const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2");
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
 
   // ENG-797 / P5 parity (#6, #7, #27) — branded meal-management chrome.
   // When ON, the kebab dropdown gains a quiet SupprMark + thumbnail/title/
@@ -557,7 +538,7 @@ export function TodayMealsSection({
                 <IconBox
                   size="sm"
                   tone={mealIconInfo.tone}
-                  className={slotIconTierClass(mealIconInfo.tone, tierV1)}
+                  className={slotIconTierClass(mealIconInfo.tone)}
                 >
                   <mealIconInfo.icon />
                 </IconBox>
@@ -616,7 +597,7 @@ export function TodayMealsSection({
                         onLogSavedMeal(primarySaved, sectionName);
                       }
                     }}
-                    className={`mr-1 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${slotPillClassName(sectionName, tierV1)}`}
+                    className={`mr-1 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${slotPillClassName(sectionName)}`}
                     aria-label={
                       slotSavedMeals.length >= 2
                         ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
@@ -699,7 +680,7 @@ export function TodayMealsSection({
                         onLogSavedMeal(primarySaved, sectionName);
                       }
                     }}
-                    className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${slotPillClassName(sectionName, tierV1)}`}
+                    className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${slotPillClassName(sectionName)}`}
                     aria-label={
                       slotSavedMeals.length >= 2
                         ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
@@ -739,7 +720,7 @@ export function TodayMealsSection({
                       // visual connector. Align to the slot header so
                       // meals read as flat list items under the header.
                       className={`flex items-center justify-between py-2.5 pl-3.5 pr-4 border-b border-border/10${
-                        todayMealRowPressClass(tierV1, Boolean(onOpenMealNutrition))
+                        todayMealRowPressClass(Boolean(onOpenMealNutrition))
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">

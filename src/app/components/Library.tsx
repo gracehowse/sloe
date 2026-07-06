@@ -514,9 +514,10 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
         </div>
       )}
 
-      {/* ENG-1225 Block 5 — v3 editorial shelves above the grid (All only,
-          behind sloe_v3_editorial_shelves). Self-gating; the shelf recipes
-          carry savedAt (from filteredRecipes) so the open cast is safe. */}
+      {/* ENG-1225 Block 5 — v3 editorial shelves above the grid (All only).
+          Self-gating; the shelf recipes carry savedAt (from filteredRecipes)
+          so the open cast is safe. The sloe_v3_editorial_shelves flag that
+          gated this was collapsed as always-on in ENG-1356. */}
       <LibraryShelvesHeader
         filtered={filteredRecipes}
         category={category}

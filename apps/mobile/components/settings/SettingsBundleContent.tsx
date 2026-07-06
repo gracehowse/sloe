@@ -103,7 +103,7 @@ import {
 } from "@suppr/nutrition-core/weekSummaryWindow";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { saveDisplayName } from "@suppr/shared/account/displayName";
-import { track, isFeatureEnabled } from "@/lib/analytics";
+import { track } from "@/lib/analytics";
 import { nutritionLogToCsv, nutritionLogCsvFilename } from "@suppr/shared/export/nutritionLogToCsv";
 import { exportEverythingToFile } from "@/lib/exportEverything";
 import { MobileMfpCsvImportCard } from "../imports/MfpCsvImportCard";
@@ -406,12 +406,6 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // tiles (Recipes / Streak), matching the SettingsCard sections around them.
   // Tile-class rule (2026-06-10): stat tiles are flat-tonal, not lifted.
   const statTileElevation = useCardElevation();
-  // ENG-1081 (Grace 2026-06-13: "flat white for now, maybe circle back"): the Pro
-  // banner's aubergine soft-tint read as a lone grey card beside white siblings.
-  // White slab by default; tint kept behind the flag-off path. NOTE: conversion
-  // surface — flat white may soften the upgrade pull; the flag enables an
-  // Option-C accent revisit without a revert. Web parity: Settings.tsx.
-  const cohesionWhite = isFeatureEnabled("card_cohesion_white_v1");
   const userId = session?.user?.id ?? null;
 
   const [profileData, setProfileData] = useState<{
@@ -1476,12 +1470,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           paddingVertical: 16,
           paddingHorizontal: 16,
           borderRadius: SETTINGS_CARD_RADIUS,
-          backgroundColor: cohesionWhite
-            ? statTileElevation.liftBg ?? colors.card
-            : accent.primarySoft,
-          ...(cohesionWhite
-            ? { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.cardBorder }
-            : null),
+          backgroundColor: statTileElevation.liftBg ?? colors.card,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.cardBorder,
           marginTop: 18,
         }}
       >

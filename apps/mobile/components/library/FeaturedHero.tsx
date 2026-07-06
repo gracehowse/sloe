@@ -12,8 +12,9 @@ import type { RecipeCard } from "@/lib/types";
  * `cook-feat` ~L4283): a full-width card with a 150px photo carrying a
  * "Tonight's pick" kick badge, then a "From your cookbook" plum overline, the
  * recipe title (serif), and a kcal/protein/time meta line. Sits above the
- * editorial shelves when the All filter is active. Behind
- * `sloe_v3_editorial_shelves` (Block 5).
+ * editorial shelves when the All filter is active. (ENG-1225 Block 5; the
+ * `sloe_v3_editorial_shelves` flag that gated this was collapsed as
+ * always-on in ENG-1356.)
  */
 export interface FeaturedHeroProps {
   recipe: RecipeCard;

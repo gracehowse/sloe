@@ -1,4 +1,3 @@
-import { isFeatureEnabled } from "@/lib/analytics";
 import { useLibraryShelves } from "@/hooks/useLibraryShelves";
 import type { RecipeCard } from "@/lib/types";
 import { FeaturedHero } from "./FeaturedHero";
@@ -7,10 +6,10 @@ import { EditorialShelf } from "./EditorialShelf";
 /**
  * LibraryShelvesHeader — the Sloe v3 Cookbook editorial header (ENG-1225 Block
  * 5): a "Tonight's pick" hero + the Fits-your-day / Quick / High-protein shelves
- * derived from the filtered library, shown above the grid ONLY on the All filter
- * and behind `sloe_v3_editorial_shelves`. Self-gating so the pinned `library.tsx`
- * just drops it into its FlatList ListHeader. Tonight's pick = the first
- * "fits your day" recipe (else the first card).
+ * derived from the filtered library, shown above the grid ONLY on the All
+ * filter. Self-gating so the pinned `library.tsx` just drops it into its
+ * FlatList ListHeader. Tonight's pick = the first "fits your day" recipe
+ * (else the first card).
  */
 export interface LibraryShelvesHeaderProps {
   /** The already-filtered library list. */
@@ -25,9 +24,8 @@ export function LibraryShelvesHeader({
   category,
   onPressRecipe,
 }: LibraryShelvesHeaderProps) {
-  const enabled = isFeatureEnabled("sloe_v3_editorial_shelves");
   const shelves = useLibraryShelves(filtered);
-  if (!enabled || category !== "all") return null;
+  if (category !== "all") return null;
   const featured = shelves[0]?.recipes[0] ?? filtered[0] ?? null;
   return (
     <>

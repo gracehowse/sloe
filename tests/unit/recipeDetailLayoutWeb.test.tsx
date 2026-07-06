@@ -204,46 +204,30 @@ describe("web recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2)",
     expect(SRC).toMatch(/computeFitsYourDayVerdict\(\{/);
   });
 
-  it("verdict is flag-gated (ENG-1085): confident banner (on) + legacy pill (off), exactly one renders", () => {
-    // ENG-1085 re-introduces the flag pattern per CLAUDE.md: gate the new
-    // banner, keep the old pill alive in the `else` as the kill switch. So the
-    // SOURCE now carries two `recipe-fits-your-day` blocks; only one renders.
+  it("verdict banner is unconditional (ENG-1085, fit_verdict_banner_v1 collapsed ENG-1356) — exactly one block", () => {
+    // ENG-1085's confident SOLID banner was flag-gated (legacy 10%-wash pill
+    // in the `else`, ENG-1356's target). The always-on flag was collapsed in
+    // ENG-1356 — only the confident banner block remains in source.
     const matches = SRC.match(/data-testid="recipe-fits-your-day"/g) ?? [];
-    expect(matches.length).toBe(2); // flag-on banner + flag-off legacy pill
-    expect(SRC).toMatch(/isFeatureEnabled\("fit_verdict_banner_v1"\)/);
-    expect(SRC).toMatch(/verdictBannerOn \? \(/);
+    expect(matches.length).toBe(1);
+    expect(SRC).not.toMatch(/isFeatureEnabled\("fit_verdict_banner_v1"\)/);
+    expect(SRC).not.toMatch(/verdictBannerOn/);
     // Still NOT wrapped in a design_system_colours branch.
     expect(SRC).not.toMatch(/if \(redesignColours\) \{[\s\S]{0,400}recipe-fits-your-day/);
   });
 
-  it("the chip palette is tinted INLINE from `verdict.tone`, not a shared helper or win-amber", () => {
-    // The chip colours flow from a `verdictChip` derived off `verdict.tone`.
-    expect(SRC).toMatch(/verdict\.tone === "success"/);
-    expect(SRC).toMatch(/verdict\.tone === "destructive"/);
-    // No shared `fitsYourDayChipStyle` helper and no inline win-amber token.
-    expect(SRC).not.toMatch(/fitsYourDayChipStyle\(/);
-    expect(SRC).not.toMatch(/var\(--accent-win\)/);
-    // Success leads with the sage token; over-budget tones use the
-    // warning / destructive CSS vars (never a raw hex for the over states).
-    // The warning chip text uses the AA-safe `--accent-warning-solid` (the
-    // 2026-06-23 amber-text a11y fix), not the bright `--warning` fill.
-    expect(SRC).toMatch(/\{ fg: "#5E7C5A", bg: "rgba\(94,124,90,0\.1\)" \}/);
-    expect(SRC).toMatch(/fg: "var\(--destructive\)"/);
-    expect(SRC).toMatch(/fg: "var\(--accent-warning-solid\)"/);
-  });
-
-  it("verdict renders as a confident full-width solid banner (ENG-1085); legacy pill kept as the flag-off path", () => {
+  it("verdict renders as a confident full-width solid banner (ENG-1085); legacy 10%-wash pill is gone (ENG-1356)", () => {
     const fitsIdx = SRC.indexOf('data-testid="recipe-fits-your-day"');
     expect(fitsIdx).toBeGreaterThan(0);
-    // Flag-on path (default-on): full-width, rounded-xl, solid scheme-constant
-    // tone fill, white text — not the old 10%-wash pill.
+    // Full-width, rounded-xl, solid scheme-constant tone fill, white text —
+    // not the legacy 10%-wash pill.
     const banner = SRC.slice(fitsIdx, fitsIdx + 420);
     expect(banner).toMatch(/w-full/);
     expect(banner).toMatch(/rounded-xl/);
     expect(banner).toMatch(/verdictBannerBg/);
     expect(banner).toMatch(/text-white/);
-    // Legacy 10%-wash pill is still present as the flag-off / kill-switch path.
-    expect(SRC).toMatch(/rounded-full[\s\S]{0,160}verdictChip\.bg/);
+    // Legacy 10%-wash pill (verdictChip) is fully removed.
+    expect(SRC).not.toMatch(/verdictChip/);
   });
 
   it("a11y contract preserved — role='status' + aria-label from the verdict", () => {

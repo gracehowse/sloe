@@ -173,13 +173,15 @@ describe("ENG-1286 — consent gate on getPostHogClient", () => {
   it("isFeatureEnabled: default-ON flags resolve true pre-consent; PostHog flags stay false", async () => {
     const { analytics } = await loadFreshModules();
     // Redesign default-ON short-circuits before the client — no consent needed.
-    expect(analytics.isFeatureEnabled("sloe_v3_ring")).toBe(true);
+    // (`ring_skia_v1` stands in for any REDESIGN_DEFAULT_ON member; `sloe_v3_ring`
+    // was collapsed out of the set in the ENG-1356 flag-collapse sweep.)
+    expect(analytics.isFeatureEnabled("ring_skia_v1")).toBe(true);
     // A PostHog-resolved flag has no client to consult → safe false.
     expect(analytics.isFeatureEnabled("qa_neutral_test_flag")).toBe(false);
     // isFeatureDisabled: no client → "not disabled" (kill switches are
     // inert for un-consented users — the documented cost, same shape as
     // a cold client).
-    expect(analytics.isFeatureDisabled("sloe_v3_ring")).toBe(false);
+    expect(analytics.isFeatureDisabled("ring_skia_v1")).toBe(false);
     expect(harness.constructed).toHaveLength(0);
   });
 });

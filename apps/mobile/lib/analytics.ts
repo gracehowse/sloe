@@ -384,21 +384,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // exactly, just empty (Grace 2026-06-13). Collapsed-empty keeps the ENG-1086
   // loop. Default-on; off → empty always shows the single loop (pre-ENG-1093).
   "ring_empty_macro_parity_v1",
-  // ENG-1081 — card-fill cohesion: the Progress "This Week" insight card + the
-  // Settings "Sloe Pro" banner render as flat WHITE slabs (Grace 2026-06-13:
-  // "flat white for now, maybe circle back"). Default-on; off → the legacy lilac
-  // insight wash / aubergine Pro tint (kept for a possible Option-C accent).
-  "card_cohesion_white_v1",
   // ENG-1092 — "Purposeful empties": empty meal slots (Today + Plan) show a
   // tinted icon + "Aim ~X kcal" (redistributed budget) instead of a bare name /
   // "Empty slot", and empty slots render at full opacity (matching web). Default
   // on; off → pre-ENG-1092 empties (bare name + the 0.55 dim on Today).
   "plan_today_aim_empty_v1",
-  // ENG-1099 — Today tracker → recipe-tier craft pass (M1–M6: one 24 rhythm,
-  // flat cards, stripped macro tiles w/ value-colour over-signal, two serif
-  // tiers, quieted washes, de-chromed meal log). Default-on; OFF → pre-ENG-1099
-  // tracker. Rollback = remove from this set / PostHog off. (web twin same flag)
-  "today_tracker_tier_v1",
   // ENG-1225 #22 — Progress weight card "No weigh-ins yet" sparse state
   // (WeightSparseState 0-branch) replaces the broken "—" hero/chart/dashes-row
   // for never-logged users. Default-on; OFF → legacy dashes. Web parity twin is
@@ -417,14 +407,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // styling?"). iOS-only (the nudge has no web surface). Default-on; off → the
   // legacy clay-wash + 1px border + outline CTA (kill switch).
   "import_nudge_flat_white_v1",
-  // ENG-1085 — recipe-detail "Fits your day" confident verdict banner.
-  // Default ON (Grace ratified the design-review direction 2026-06-13); the
-  // legacy 10%-wash pill stays in the component `else` as the kill switch.
-  "fit_verdict_banner_v1",
-  // ENG-1087 — Discover import-from-Reel card promoted to a hero affordance
-  // (stronger tint + solid plum icon + "Paste link" pill). Legacy nav-row slab
-  // stays in the component `else` as the kill switch.
-  "discover_import_hero_v1",
   // ENG-898 — CreateRecipeActionSheet 2×2 Julienne-style source grid (import.md
   // §3.1). Default-on; off → legacy stacked ActionRow list.
   "create_recipe_action_sheet_grid_v1",
@@ -455,28 +437,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "today_planned_empty_state",
   // ENG-901 — Figma `284:2` inline trust row on paywall. Default-on; off → pills.
   "paywall_trust_inline_v1",
-  // ENG-889 — coach line inside Today hero card (Figma `654:2`). Default-on.
-  "today_coach_in_hero_v1",
   // ENG-1203 — merchandise the free MFP-switch wins (barcode scanning + custom
   // macros) on the paywall comparison matrix. Default-on; off → legacy four-row
   // matrix without the two free callouts. Keep in sync with track.ts (web).
   "paywall_free_mfp_wins_v1",
-  // ENG-863 — user-tapped Sloe image generation, labelling, nutrition-decouple
-  // copy, and removal on recipe heroes. Default-on with PostHog as kill switch.
-  "recipe_runtime_image_generation_v1",
   // ENG-1225 #3 — unified "import anything" sheet (detect-anything classifier +
   // single front door). Default-on per the "turn everything on" rule; off → the
   // legacy per-surface nav (Discover card → /import-shared), kept as kill switch.
   "sloe_v3_unified_import",
-  // ENG-1225 — the v3 jewel watch-dial as the Today hero ring. Default-on; the
-  // dial handles cold-start (goal<=0 → logged kcal + "LOGGED", real numbers
-  // always per 2026-06-10) so it has legacy parity with CalorieRing.
-  // OFF → the legacy concentric CalorieRing (kill switch). Keep in sync w/ web.
-  "sloe_v3_ring",
-  // ENG-1225 Block 5 — the v3 Cookbook editorial shelves (Tonight's pick hero +
-  // Fits-your-day / Quick / High-protein) above the Library grid on the All
-  // filter. Default-on; off → the flat grid only (kill switch). Keep in sync w/ web.
-  "sloe_v3_editorial_shelves",
   // ENG-1225 Block 6 — the v3 Discover editorial sections (Quick weeknight
   // no-photo cards + Collections) above the cuisine clusters. Default-on; off →
   // the legacy feed without those sections (kill switch). Keep in sync w/ web.

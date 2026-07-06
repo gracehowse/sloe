@@ -252,35 +252,36 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       expect(WEB_SRC).not.toMatch(/border-primary-solid[\s\S]{0,40}data-testid="discover-category/);
     });
 
-    it("mobile import banner is a token-sourced soft-tint affordance with NO border or off-token hex", () => {
-      // Markup now lives in the extracted `DiscoverImportCard` component.
-      expect(MOBILE_IMPORT_CARD_SRC).toMatch(/backgroundColor: accent\.primarySoft/);
-      // The pre-fix off-token literal-hex fill + tint border are gone.
+    it("mobile import banner never regresses to the pre-fix off-token literal-hex fill or tint border", () => {
+      // ENG-1356 — the legacy soft-tint (accent.primarySoft) nav-row slab this
+      // used to pin was collapsed along with discover_import_hero_v1; the hero
+      // affordance (see the describe block below) is the only path now.
       expect(MOBILE_IMPORT_CARD_SRC).not.toMatch(/backgroundColor: t\.accent \+ "08"/);
       expect(MOBILE_IMPORT_CARD_SRC).not.toMatch(/borderColor: t\.accent \+ "22"/);
     });
 
-    it("web import banner is a token-sourced soft-tint affordance with NO ring border", () => {
-      // Legacy (flag-off) path keeps the 12% soft-tint fill (extracted component).
-      expect(WEB_IMPORT_CARD_SRC).toMatch(/background: "var\(--accent-primary-soft\)"/);
-      // Border ring dropped per the flat-surface law.
+    it("web import banner never regresses to a ring border", () => {
+      // ENG-1356 — the legacy soft-tint (var(--accent-primary-soft)) nav-row
+      // slab this used to pin was collapsed along with discover_import_hero_v1;
+      // the hero affordance (see the describe block below) is the only path now.
       expect(WEB_IMPORT_CARD_SRC).not.toMatch(/borderColor: "var\(--accent-primary-ring\)"/);
     });
   });
 
   // ENG-1087 — the import-from-Reel card promoted from a settings-row slab to a
-  // hero affordance: flag-gated (default-on) with the legacy nav row kept as the
-  // kill switch. Treatment-only (the rendered POSITION on web mobile-web is
+  // hero affordance. Treatment-only (the rendered POSITION on web mobile-web is
   // tracked separately in ENG-1089). Source-structural, both platforms.
-  describe("import card → hero affordance (ENG-1087, flag-gated)", () => {
-    it("mobile gates the hero on `discover_import_hero_v1`, legacy nav row in the else", () => {
-      // Host still reads the flag (→ `importHero`); the hero/legacy branch moved
-      // into `DiscoverImportCard` (ENG-1225 #14 screen-budget).
-      expect(MOBILE_SRC).toMatch(/isFeatureEnabled\("discover_import_hero_v1"\)/);
-      expect(MOBILE_IMPORT_CARD_SRC).toMatch(/if \(hero\)/);
-      // Two import-cta blocks now exist (hero + legacy); only one renders.
+  //
+  // ENG-1356 (2026-07-06) — `discover_import_hero_v1` was always-on in
+  // production (REDESIGN_DEFAULT_ON) and is now collapsed: no flag check
+  // remains on either platform, and the legacy nav-row slab (the kill switch)
+  // was deleted along with it — only the hero affordance renders.
+  describe("import card → hero affordance (ENG-1087, collapsed ENG-1356)", () => {
+    it("mobile: no flag check, no legacy nav row — exactly one import-cta block", () => {
+      expect(MOBILE_SRC).not.toMatch(/isFeatureEnabled\("discover_import_hero_v1"\)/);
+      expect(MOBILE_IMPORT_CARD_SRC).not.toMatch(/if \(hero\)/);
       const ctas = MOBILE_IMPORT_CARD_SRC.match(/testID="discover-import-cta"/g) ?? [];
-      expect(ctas.length).toBe(2);
+      expect(ctas.length).toBe(1);
     });
 
     it("mobile hero raises the weight: confident lavender-plum accent + solid plum icon + 'Paste link' pill (ENG-1094)", () => {
@@ -294,12 +295,10 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
       expect(MOBILE_IMPORT_CARD_SRC).toMatch(/Paste link/);
     });
 
-    it("web gates the hero on `discover_import_hero_v1`, legacy nav row in the else", () => {
-      // The hero/legacy branch moved into `DiscoverImportCard`.
-      expect(WEB_IMPORT_CARD_SRC).toMatch(/isFeatureEnabled\("discover_import_hero_v1"\)/);
-      // Two import-cta blocks now exist (hero + legacy); only one renders.
+    it("web: no flag check, no legacy nav row — exactly one import-cta block", () => {
+      expect(WEB_IMPORT_CARD_SRC).not.toMatch(/isFeatureEnabled\("discover_import_hero_v1"\)/);
       const ctas = WEB_IMPORT_CARD_SRC.match(/data-testid="discover-import-cta-top"/g) ?? [];
-      expect(ctas.length).toBe(2);
+      expect(ctas.length).toBe(1);
     });
 
     it("web hero raises the weight: confident lavender-plum accent + solid plum icon + 'Paste link' pill (ENG-1094)", () => {

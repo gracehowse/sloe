@@ -386,12 +386,6 @@ export default function DiscoverScreen() {
   const accentInk = accent.primarySolid;
   const accentSoft = accent.primarySoft;
 
-  // ENG-1087 — the import-from-Reel card is the viral-hook acquisition surface;
-  // promote it from a settings-row slab to a hero affordance (stronger tint,
-  // solid plum icon, "Paste link" pill). Flag-gated; the legacy nav row stays
-  // in the `else` as the kill switch.
-  const importHero = isFeatureEnabled("discover_import_hero_v1");
-
   // F-11: fit badge removed. Hero gradient now uses a single neutral
   // accent — the previous per-recipe colour came from the dropped
   // fit score and read as decorative noise.
@@ -793,10 +787,8 @@ export default function DiscoverScreen() {
             recipe rows. Mirrors Recime's import-link pattern. testID
             preserved for the Maestro 25_import_shared flow. */}
         {/* Import slab extracted to `DiscoverImportCard` (ENG-1225 #14
-            screen-budget). `importHero` = `discover_import_hero_v1`. */}
+            screen-budget). */}
         <DiscoverImportCard
-          hero={importHero}
-          accentColor={t.accent}
           onOpenUnified={() => setUnifiedImportOpen(true)}
           onOpenLegacyImport={() => router.push("/import-shared" as Href)}
         />

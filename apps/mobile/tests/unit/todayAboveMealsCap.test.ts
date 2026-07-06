@@ -77,11 +77,12 @@ describe("Today above-meals cap (mobile) — context block dispatch", () => {
     expect(countMatches(HOST_SRC, /<NorthStarBlockHost[\s/]/g)).toBeLessThanOrEqual(1);
   });
 
-  it("TodayDeficitInsight appears in hero coachLine and legacy context dispatch only (ENG-889: one path renders)", () => {
-    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBeLessThanOrEqual(2);
-    expect(HOST_SRC).toMatch(
-      /isFeatureEnabled\("today_coach_in_hero_v1"\)[\s\S]+?return null;/,
-    );
+  it("TodayDeficitInsight renders exactly once, inside the hero coachLine (today_coach_in_hero_v1 collapsed ENG-1356)", () => {
+    // `today_coach_in_hero_v1` was always-on in production (REDESIGN_DEFAULT_ON)
+    // and is now collapsed — the legacy standalone context-block dispatch for
+    // the deficit line is gone; only the hero coachLine path renders.
+    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBe(1);
+    expect(HOST_SRC).not.toMatch(/isFeatureEnabled\("today_coach_in_hero_v1"\)/);
   });
 });
 
@@ -286,8 +287,8 @@ describe("Today above-meals cap (mobile) — context dispatch shape", () => {
 });
 
 describe("ENG-889 — coach line inside hero card (mobile)", () => {
-  it("index passes coachLine into TodayHero behind today_coach_in_hero_v1", () => {
-    expect(HOST_SRC).toMatch(/today_coach_in_hero_v1/);
+  it("index passes coachLine into TodayHero unconditionally (today_coach_in_hero_v1 collapsed ENG-1356)", () => {
+    expect(HOST_SRC).not.toMatch(/today_coach_in_hero_v1/);
     expect(HOST_SRC).toMatch(/coachLine=\{heroCoachLine/);
   });
 

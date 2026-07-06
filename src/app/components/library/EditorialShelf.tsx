@@ -13,8 +13,9 @@ import { RecipeCardWide } from "./RecipeCardWide";
  * scroll-snap-type:x mandatory}`): a section head (18px serif title + muted
  * 11px subtitle) above a horizontal snap-scroll of {@link RecipeCardWide} cards
  * that edge-bleeds the host's 20px padding (`-mx-5` / `px-5`). Memoized — a
- * shelf only re-renders when its recipe list changes. Behind
- * `sloe_v3_editorial_shelves` (host-gated).
+ * shelf only re-renders when its recipe list changes. (Host-gated on the
+ * category filter; the `sloe_v3_editorial_shelves` flag that gated this was
+ * collapsed as always-on in ENG-1356.)
  */
 export interface EditorialShelfProps {
   title: string;

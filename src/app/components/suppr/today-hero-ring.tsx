@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
-import { DailyRing, type CalorieRingDisplayMode } from "./daily-ring";
+import type { CalorieRingDisplayMode } from "./daily-ring";
 import { CalorieRingDial } from "./calorie-ring-dial";
 import { LogConfirmCheck } from "./log-confirm-check";
 import { MACRO_RING_TOGGLE, todayStatusChip } from "../../../lib/copy/today";
@@ -63,7 +63,6 @@ function HeroStatusChip({
   state: ChipState;
   onPress?: () => void;
 }) {
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   const config =
     state === "over"
       ? {
@@ -78,9 +77,7 @@ function HeroStatusChip({
       : state === "empty"
         ? {
             label: todayStatusChip("empty"),
-            className: tierV1
-              ? "text-foreground-brand"
-              : "bg-ring-bg text-foreground-brand",
+            className: "text-foreground-brand",
             Icon: Sparkles,
           }
         : {
@@ -88,9 +85,7 @@ function HeroStatusChip({
             // AA fix (2026-06-16, mirror mobile sageInk): the "Under budget"
             // cue uses the SOLID sage (#466046, 6.95:1) for text/icon — the
             // lighter success (#5E7C5A) was only ~4:1 on its own tint.
-            className: tierV1
-              ? "text-success-solid"
-              : "bg-success/20 text-success-solid",
+            className: "text-success-solid",
             Icon: CircleCheck,
           };
   const { label, className, Icon } = config;
@@ -220,11 +215,6 @@ export function TodayHeroRing({
   const isOver = target > 0 && consumed > target;
   const chipState: ChipState = isEmpty ? "empty" : isOver ? "over" : "under";
   const ringGeometry = useCalorieRingGeometry();
-  // Sloe v3 (ENG-1222 P1): swap the concentric ring for the jewel watch-dial
-  // (calorie-only; macros move to the separate Tiles/Bars/Rings section). The
-  // surrounding hero structure is unchanged here — the de-carded v3 hero layout
-  // lands in P2. Transient flag, collapsed once verified in sim.
-  const v3Ring = isFeatureEnabled("sloe_v3_ring");
   const bonusKcal =
     baseGoal && baseGoal < target ? Math.round(target - baseGoal) : 0;
 
@@ -256,36 +246,12 @@ export function TodayHeroRing({
       {/* ENG-722 — `relative` so the log-confirm checkmark overlays the ring
           regardless of which ring variant renders. */}
       <div className="relative flex items-center justify-center">
-        {v3Ring ? (
-          <CalorieRingDial
-            consumed={consumed}
-            target={target}
-            size={ringGeometry.size}
-            numeralLarge={decard}
-          />
-        ) : (
-          <DailyRing
-            consumed={consumed}
-            target={target}
-            size={ringGeometry.size}
-            // ENG-1064 (TF57 F-164/165): multi-ring (expanded) hero stroke matches
-            // the macro stroke; the collapsed lone ring keeps the confident bold
-            // stroke. Mirrors mobile `ringGeometry(false, !expanded)`.
-            strokeWidth={
-              expanded ? ringGeometry.strokeWidth : ringGeometry.strokeWidthBold
-            }
-            ringRadius={ringGeometry.radius}
-            macroRadii={ringGeometry.macroRadii}
-            macroStroke={ringGeometry.macroStroke}
-            proteinPct={proteinPct}
-            carbsPct={carbsPct}
-            fatPct={fatPct}
-            expanded={expanded}
-            onToggle={onToggleExpanded}
-            pulse={pulse}
-            commitPulse={commitPulse}
-          />
-        )}
+        <CalorieRingDial
+          consumed={consumed}
+          target={target}
+          size={ringGeometry.size}
+          numeralLarge={decard}
+        />
         <LogConfirmCheck visible={logConfirmVisible} />
       </div>
       {decard ? <RingStatusLine state={chipState} /> : null}

@@ -13,8 +13,9 @@ import type { RecipeCard } from "@/types/recipe";
  * `.rcard-img{height:128px}`): a fixed 188px card with a 128px photo (or the deterministic
  * RecipeHeroFallback tint + glyph when none — honest imagery, ENG-1287), the recipe name (2 lines), and a
  * "{kcal} kcal · {protein}g P · {time}m" meta line — or "Nutrition pending · {time}m"
- * when calories are 0. Used inside {@link EditorialShelf}; behind
- * `sloe_v3_editorial_shelves` (host-gated).
+ * when calories are 0. Used inside {@link EditorialShelf} (host-gated on the
+ * category filter; the `sloe_v3_editorial_shelves` flag that gated this was
+ * collapsed as always-on in ENG-1356).
  */
 export interface RecipeCardWideProps {
   recipe: RecipeCard;

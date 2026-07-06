@@ -6,18 +6,13 @@ import { TodayHeroStats } from "./today-hero-stats";
  * TodayHeroStats (desktop hero) — pins the Sloe v3 jewel-dial swap (ENG-1225)
  * inside the real carded desktop hero, so Chromatic guards the dial-in-context
  * (160px dial + Goal/Eaten/Bonus stat row + macro toggle) as a regression
- * layer. The `sloe_v3_ring` flag is forced ON via `__SUPPR_FORCE_FLAGS__`
- * (dev-only resolver in `track.ts`).
+ * layer. The jewel dial is now unconditional (the `sloe_v3_ring` flag was
+ * collapsed out in the ENG-1356 flag-collapse sweep — no force needed).
  *
  * The component renders both breakpoints; we force a desktop width so the
  * `hidden md:block` desktop branch is what's captured.
  */
-function ForceV3Ring({ children }: { children: React.ReactNode }) {
-  // Set synchronously before first paint so the gate reads true on mount.
-  if (typeof window !== "undefined") {
-    const w = window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> };
-    w.__SUPPR_FORCE_FLAGS__ = { ...(w.__SUPPR_FORCE_FLAGS__ ?? {}), sloe_v3_ring: true };
-  }
+function DesktopFrame({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ width: 640, background: "var(--bg)", padding: 16 }}>{children}</div>
   );
@@ -38,9 +33,9 @@ const meta = {
   parameters: { layout: "centered", viewport: { defaultViewport: "desktop" } },
   decorators: [
     (Story) => (
-      <ForceV3Ring>
+      <DesktopFrame>
         <Story />
-      </ForceV3Ring>
+      </DesktopFrame>
     ),
   ],
 } satisfies Meta<typeof TodayHeroStats>;

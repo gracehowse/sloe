@@ -14,6 +14,16 @@
  *        progress stroke pulses (`data-pulse="true"`) on the target-hit —
  *        the web colour/motion analog of mobile's success haptic.
  *
+ * ENG-1356 (2026-07-06) note on gap #2: `pulse`/`commitPulse` were only ever
+ * wired to the legacy `DailyRing` (the `sloe_v3_ring`-off branch); the v3
+ * `CalorieRingDial` that replaced it never accepted those props or rendered
+ * a `daily-ring-progress` / `data-pulse` node. Since `sloe_v3_ring` was
+ * already permanently on in production, gap #2's ring-pulse was ALREADY
+ * dark before the flag was collapsed — this file's DOM-querying tests were
+ * unknowingly asserting a dead legacy branch. Tracked as ENG-1465; the
+ * ring-pulse assertions below were removed rather than kept green against
+ * dead code. The overlay-mount assertions (gap #1, still fully live) stay.
+ *
  * The win-moment fires on the rising edge (prev → after) via the shared
  * `detectWinMoment` math, so each landmark test renders an empty baseline
  * first, then rerenders with a goal-band meal so the snapshot crosses the
@@ -23,33 +33,11 @@
  * are mocked so we exercise the real composition root without Supabase.
  * `WinMomentPlayer` is mocked to a tiny stub so the test never pulls the
  * dotLottie WASM runtime — we assert the *wiring* (mount + props), which is
- * what gaps #1/#2 are about; the player's own render is covered by its own
- * suite.
+ * what gap #1 is about; the player's own render is covered by its own suite.
  */
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
-
-/**
- * `TodayHeroStats` renders the calorie ring on BOTH breakpoints (the
- * mobile-web `md:hidden` ring + the desktop `hidden md:block` ring) — CSS,
- * not conditional render, hides one. jsdom mounts both, so there are two
- * `daily-ring-progress` nodes. The pulse prop is threaded to both, so
- * assert via "every ring agrees" rather than a single node.
- */
-function ringPulse(getAll: (id: string) => HTMLElement[]): string | null {
-  const rings = getAll("daily-ring-progress");
-  if (rings.length === 0) throw new Error("no daily-ring-progress rendered");
-  const pulses = rings.map((r) => r.getAttribute("data-pulse"));
-  // All rings share the same source prop, so they must agree.
-  const first = pulses[0];
-  for (const p of pulses) {
-    if (p !== first) {
-      throw new Error(`ring pulse disagreement: ${JSON.stringify(pulses)}`);
-    }
-  }
-  return first;
-}
 
 void React;
 
@@ -236,16 +224,13 @@ describe("Today win-moment wiring (gaps #1 + #2)", { timeout: 15_000 }, () => {
     vi.useRealTimers();
   });
 
-  it("flag ON + landmark crossed → mounts WinMomentPlayer and pulses the ring", () => {
+  it("flag ON + landmark crossed → mounts WinMomentPlayer", () => {
     flagState.current = { redesign_winmoment: true };
 
     // 1) Empty baseline render — the hook captures consumed=0 as `prev` and
     //    must NOT fire (no landmark yet).
-    const { rerender, queryByTestId, getByTestId, getAllByTestId } = render(
-      freshTracker(),
-    );
+    const { rerender, queryByTestId, getByTestId } = render(freshTracker());
     expect(queryByTestId("today-win-moment")).toBeNull();
-    expect(ringPulse(getAllByTestId)).toBeNull();
 
     // 2) Log a goal-band meal — consumed crosses 0 → 1700 (>= 0.85 * 1800,
     //    <= 1800), the rising edge into the calorie goal-hit band.
@@ -257,39 +242,32 @@ describe("Today win-moment wiring (gaps #1 + #2)", { timeout: 15_000 }, () => {
     expect(player).toBeInTheDocument();
     expect(player.getAttribute("data-celebration")).toBe("goal-hit");
 
-    // #2 — the calorie ring receives the pulse (gold-gradient celebration
-    //      stroke, the web colour/motion analog of mobile's success haptic).
-    expect(ringPulse(getAllByTestId)).toBe("true");
+    // #2 (ring pulse) is currently dark on the v3 CalorieRingDial — see the
+    // file header note and ENG-1465; not asserted here.
   });
 
-  it("flag OFF → old path: no overlay, no ring pulse even when at target", () => {
+  it("flag OFF → old path: no overlay even when at target", () => {
     flagState.current = {}; // redesign_winmoment OFF
 
-    const { rerender, queryByTestId, getAllByTestId } = render(
-      freshTracker(),
-    );
+    const { rerender, queryByTestId } = render(freshTracker());
     setMeals([goalBandMeal]);
     rerender(freshTracker());
 
     // The whole win-moment path is inert when the flag is off.
     expect(queryByTestId("today-win-moment")).toBeNull();
-    expect(ringPulse(getAllByTestId)).toBeNull();
   });
 
-  it("flag ON but no landmark crossed → no overlay, no pulse (not every log fires)", () => {
+  it("flag ON but no landmark crossed → no overlay (not every log fires)", () => {
     flagState.current = { redesign_winmoment: true };
 
     // A small snack keeps consumed well below the 0.85 * target band, so
     // no landmark is crossed — the reserved moment must stay silent.
     const snack = { ...goalBandMeal, calories: 300, protein: 5, carbs: 40, fat: 10 };
 
-    const { rerender, queryByTestId, getAllByTestId } = render(
-      freshTracker(),
-    );
+    const { rerender, queryByTestId } = render(freshTracker());
     setMeals([snack]);
     rerender(freshTracker());
 
     expect(queryByTestId("today-win-moment")).toBeNull();
-    expect(ringPulse(getAllByTestId)).toBeNull();
   });
 });

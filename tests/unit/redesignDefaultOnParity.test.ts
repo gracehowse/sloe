@@ -86,13 +86,9 @@ const MOBILE_ONLY = new Set([
 /** Gate 1.5 redesign surfaces that must ship default-on on both platforms. */
 const GATE_15_SHARED = [
   "today_meals_figma_654",
-  "today_tracker_tier_v1",
-  "card_cohesion_white_v1",
   "plan_today_aim_empty_v1",
   "ring_empty_gradient_v1",
   "ring_empty_macro_parity_v1",
-  "fit_verdict_banner_v1",
-  "discover_import_hero_v1",
   "log-sheet-slot-selector",
   "today_log_again",
   "today_log_usual_row_v2",

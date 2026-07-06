@@ -41,15 +41,18 @@ describe("Today hero layout parity", () => {
     expect(WEB_STATS).not.toMatch(/grid-cols-\[auto_1fr\]/);
   });
 
-  it("macro rings have an explicit toggle; the ring also taps to toggle (654:2 parity)", () => {
-    // The explicit toggle button is always present (the guaranteed affordance).
+  it("macro rings have an explicit toggle button (the guaranteed affordance)", () => {
+    // ENG-1356 (2026-07-06): `sloe_v3_ring` was always-on in production
+    // (REDESIGN_DEFAULT_ON) and is now collapsed — `CalorieRingDial` is the
+    // only ring rendered; the legacy `DailyRing`'s tap-to-toggle
+    // (`onToggle={onToggleExpanded}`) lived only in the flag-off branch that
+    // never rendered in production, so this was a source-grep pinning dead
+    // code, not live behaviour. `CalorieRingDial` (web) and its mobile
+    // equivalent both lack a tap-to-toggle handler today — tracked as
+    // ENG-1465, out of scope here.
     expect(WEB_STATS).toMatch(/data-testid="today-macro-rings-toggle"/);
     expect(WEB_STATS).toMatch(/MACRO_RING_TOGGLE/);
     expect(WEB_RING).toMatch(/today-macro-rings-toggle/);
-    // Closing Figma 654:2 parity (commit e7790278) made the web ring tappable
-    // to toggle the macro arcs, matching mobile — so the ring now wires
-    // `onToggle` in addition to the explicit button.
-    expect(WEB_RING).toMatch(/onToggle=\{onToggleExpanded\}/);
   });
 
   it("mobile defaults ringExpanded to EXPANDED (Sloe multi-ring); web stays collapsed pending its parity slot", () => {

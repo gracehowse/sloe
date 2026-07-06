@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { Accent, Spacing, Type } from "@/constants/theme";
-import { isFeatureEnabled } from "@/lib/analytics";
 
 interface StatProps {
   label: string;
@@ -23,7 +22,6 @@ interface StatProps {
  * sage when positive).
  */
 function Stat({ label, value, valueColor, labelColor, textSecondaryColor, dividerColor, testID }: StatProps) {
-  const tierV1 = isFeatureEnabled("today_tracker_tier_v1");
   return (
     <View
       testID={testID}
@@ -39,7 +37,7 @@ function Stat({ label, value, valueColor, labelColor, textSecondaryColor, divide
       <Text style={{ ...Type.statLabel, color: labelColor ?? textSecondaryColor }}>{label}</Text>
       <Text
         style={{
-          ...(tierV1 ? Type.statValue : { ...Type.title, fontSize: 19, lineHeight: 23 }),
+          ...Type.statValue,
           color: valueColor,
           fontVariant: ["tabular-nums"],
         }}
