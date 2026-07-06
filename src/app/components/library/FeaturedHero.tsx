@@ -13,8 +13,9 @@ import type { RecipeCard } from "@/types/recipe";
  * RecipeHeroFallback tint + glyph when none — honest imagery, ENG-1287) carrying a "Tonight's pick" kick badge, then a
  * "From your cookbook" plum overline, the recipe title (serif), and a
  * "{kcal} kcal · {protein}g protein · {time} min" meta line. Sits above the
- * editorial shelves when the All filter is active. Behind
- * `sloe_v3_editorial_shelves` (host-gated).
+ * editorial shelves when the All filter is active. (Host-gated on the
+ * category filter; the `sloe_v3_editorial_shelves` flag that gated this was
+ * collapsed as always-on in ENG-1356.)
  */
 export interface FeaturedHeroProps {
   recipe: RecipeCard;

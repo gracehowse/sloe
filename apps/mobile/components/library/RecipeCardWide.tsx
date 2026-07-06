@@ -11,7 +11,8 @@ import type { RecipeCard } from "@/lib/types";
  * RecipeCardWide — the Sloe v3 Cookbook editorial-shelf card (prototype
  * `rcard--wide` ~L4176): a fixed 188px card (128px photo) with the recipe name
  * and a "{kcal} kcal · {protein}g P · {time}m" meta line. Used inside
- * {@link EditorialShelf}; behind `sloe_v3_editorial_shelves` (Block 5).
+ * {@link EditorialShelf} (ENG-1225 Block 5; the `sloe_v3_editorial_shelves`
+ * flag that gated this was collapsed as always-on in ENG-1356).
  */
 export interface RecipeCardWideProps {
   recipe: RecipeCard;

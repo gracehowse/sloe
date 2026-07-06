@@ -10,8 +10,9 @@ import { RecipeCardWide } from "./RecipeCardWide";
  * EditorialShelf — a Sloe v3 Cookbook shelf (prototype `cook-shelf` ~L4295): a
  * section head (serif-adjacent 18px title + muted subtitle) above a horizontal
  * snap-scroll of {@link RecipeCardWide} cards that edge-bleeds the host's 20px
- * padding. Memoized — shelves only change when their recipe list does. Behind
- * `sloe_v3_editorial_shelves` (Block 5).
+ * padding. Memoized — shelves only change when their recipe list does.
+ * (ENG-1225 Block 5; the `sloe_v3_editorial_shelves` flag that gated this was
+ * collapsed as always-on in ENG-1356.)
  */
 export interface EditorialShelfProps {
   title: string;
