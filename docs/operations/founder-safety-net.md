@@ -72,9 +72,10 @@ The bet: the product **degrades gracefully on its own** for the four most likely
 
 ### 4b. RevenueCat webhook fails
 - **Symptom:** mobile entitlements (`profiles.user_tier`) not updating after purchase; `revenuecat_events` stalls.
-- **Automatic:** RevenueCat **retries webhooks** and is itself canonical for entitlements; the app re-syncs entitlement state from RC on launch, so a missed webhook self-corrects on the user's next open.
-- **Manual (only if persistent):** replay per the [RevenueCat webhook runbook](revenuecat-webhook-runbook.md).
-- **Trusted-contact action:** none.
+- **Automatic:** RevenueCat **retries webhooks** with backoff. That is the only automatic recovery.
+- **Correction (2026-07-06):** this section previously claimed the app "re-syncs entitlement state from RC on launch, so a missed webhook self-corrects on the user's next open." That is **not true today** — `syncTierToSupabase` (`apps/mobile/lib/purchases.ts`) attempts exactly that client-side write, but the `profiles.user_tier` column has been client-write-locked since the tier-lockdown migration (ENG-1035-era hardening); the write is unconditionally rejected with `42501` and the code's own comment says so ("Tier sync arrives via RevenueCat webhook (T6)"). So there is **no reconciliation path at all** if a webhook is missed — the customer is stuck on the wrong tier until someone manually corrects it in Supabase. This was caught while evaluating ENG-1433 (launch-sequencing decision, 2026-07-06); see that decision doc. A real reconciliation job (a scheduled cron comparing RevenueCat's truth to `profiles.user_tier` and correcting drift server-side) is filed as a fast-follow, not yet built.
+- **Manual (today, the only path):** replay per the [RevenueCat webhook runbook](revenuecat-webhook-runbook.md), or manually correct the affected user's tier in Supabase once identified.
+- **Trusted-contact action:** none (this one needs Grace or an engineer, not just the contact).
 
 ### 4c. AI quota burns (LLM spend spike)
 - **Symptom:** recipe-import / photo-log / voice-log start failing with quota errors; LLM cost dashboard spikes.
