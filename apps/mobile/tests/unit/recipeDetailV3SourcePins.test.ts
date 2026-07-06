@@ -216,15 +216,14 @@ describe("mobile recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2
     expect(SRC).toMatch(/computeFitsYourDayVerdict\(\{/);
   });
 
-  it("verdict is flag-gated (ENG-1085): confident banner (on) + legacy pill (off), exactly one renders", () => {
-    // ENG-1085 re-introduces the flag pattern per CLAUDE.md: gate the new
-    // confident SOLID banner, keep the old 10%-wash pill alive in the `else`
-    // as the kill switch. So the title block now carries TWO
-    // `recipe-fits-your-day` blocks; only one renders at runtime.
+  it("verdict banner is unconditional (ENG-1085, fit_verdict_banner_v1 collapsed ENG-1356) — exactly one block", () => {
+    // ENG-1085's confident SOLID banner was flag-gated (legacy 10%-wash pill in
+    // the `else`, ENG-1356's target). The always-on flag was collapsed in
+    // ENG-1356 — only the confident banner block remains.
     const matches = TITLE_BLOCK.match(/testID="recipe-fits-your-day"/g) ?? [];
-    expect(matches.length).toBe(2); // flag-on banner + flag-off legacy pill
-    expect(TITLE_BLOCK).toMatch(/isFeatureEnabled\("fit_verdict_banner_v1"\)/);
-    expect(TITLE_BLOCK).toMatch(/bannerOn \? \(/);
+    expect(matches.length).toBe(1);
+    expect(TITLE_BLOCK).not.toMatch(/isFeatureEnabled\("fit_verdict_banner_v1"\)/);
+    expect(TITLE_BLOCK).not.toMatch(/bannerOn/);
   });
 
   it("the chip palette is tinted from `verdict.tone`, not an inline win-amber lookup", () => {
@@ -237,14 +236,14 @@ describe("mobile recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2
     expect(TITLE_BLOCK).toMatch(/Accent\.destructiveSolid/);
   });
 
-  it("verdict renders as a confident solid banner (ENG-1085); legacy pill kept as the flag-off path", () => {
-    // Flag-on (default): a full-bleed (alignSelf stretch) Radius.xl banner
-    // filled with the SOLID tone token + white text — not the 10%-wash pill.
+  it("verdict renders as a confident solid banner (ENG-1085); legacy 10%-wash pill is gone (ENG-1356)", () => {
+    // A full-bleed (alignSelf stretch) Radius.xl banner filled with the SOLID
+    // tone token + white text — not the legacy 10%-wash pill.
     expect(TITLE_BLOCK).toMatch(/alignSelf:\s*"stretch"/);
     expect(TITLE_BLOCK).toMatch(/borderRadius:\s*Radius\.xl,\s*\n\s*backgroundColor:\s*bannerBg/);
     expect(TITLE_BLOCK).toMatch(/color:\s*Accent\.primaryForeground/);
-    // Legacy 10%-wash pill is still present as the flag-off / kill-switch path.
-    expect(TITLE_BLOCK).toMatch(/borderRadius:\s*Radius\.full,\s*\n\s*backgroundColor:\s*verdictTone\.bg/);
+    // Legacy 10%-wash pill (verdictTone.bg) is fully removed.
+    expect(TITLE_BLOCK).not.toMatch(/verdictTone/);
   });
 
   it("a11y contract preserved — accessibilityLabel from the verdict", () => {
