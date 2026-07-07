@@ -105,12 +105,7 @@ import { TodayMacroSection } from "./suppr/today-macro-section";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
-import {
-  MacroDetailPanel,
-  isMacroDetailSupported,
-  type MacroKey,
-  type MacroMeal,
-} from "./MacroDetailPanel";
+import { MacroDetailPanel, isMacroDetailSupported } from "./MacroDetailPanel";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayRecentsRow } from "./suppr/today-recents-row";
@@ -139,19 +134,8 @@ import { newId } from "../../context/appData/persistence";
 import { isHealthImportFallbackTitle } from "../../lib/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap";
 import { buildMealEntriesFromSavedMeal, selectUsualSavedMeal } from "../../lib/nutrition/savedMealsLogic";
-import {
-  toBreakdownIngredientRow,
-  toBreakdownSnapshotRow,
-  type BreakdownIngredientRow,
-  type BreakdownSnapshotRow,
-} from "../../lib/nutrition/macroIngredientBreakdown";
-import {
-  isSnapshotRowLowConfidence,
-  persistEntryIngredientSnapshot,
-  NUTRITION_ENTRY_INGREDIENTS_FLAG,
-  NUTRITION_ENTRY_INGREDIENTS_TABLE,
-  type NutritionEntryIngredientRow,
-} from "../../lib/nutrition/nutritionEntryIngredients";
+import { persistEntryIngredientSnapshot } from "../../lib/nutrition/nutritionEntryIngredients";
+import { useMacroDetailPanelData } from "../../lib/nutrition/useMacroDetailPanelData.ts";
 import {
   createSavedMeal,
   incrementLogCount,
@@ -363,12 +347,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   // `mealsGrouped`) via the shared helpers. Mirrors the mobile `?slot=&date=`
   // screen mode.
   const [slotNutritionTarget, setSlotNutritionTarget] = useState<string | null>(null);
-  const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
-  const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
-  // ENG-751 — persisted AI/photo/voice per-item snapshot rows for the open
-  // day's entries. Gated by the display flag; flag-OFF leaves this empty so the
-  // panel keeps today's single-line fallback (data backfills while dark).
-  const [macroDetailSnapshotRows, setMacroDetailSnapshotRows] = useState<BreakdownSnapshotRow[]>([]);
   const [editMealTargetId, setEditMealTargetId] = useState<string | null>(null);
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
@@ -384,152 +362,21 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [recipeId, setRecipeId] = useState("");
   const [timeLabel, setTimeLabel] = useState("12:00 PM");
 
-  const macroDetailFlagEnabled = isFeatureEnabled("web_macro_detail_panel");
-  const openMacroDetail = useCallback((macro: string) => {
-    if (!macroDetailFlagEnabled) return;
-    // Shared affordance/handler source of truth (ENG-848): the same
-    // `isMacroDetailSupported` set gates which tiles/bars render as buttons, so
-    // a tappable tile can never resolve to a macro this handler ignores.
-    if (isMacroDetailSupported(macro)) {
-      setMacroDetailTarget(macro);
-    }
-  }, [macroDetailFlagEnabled]);
-
-  // ENG-1247 — `.md-totalgrid` cell tap: close the dialog, open macro-detail.
-  // Undefined when the panel is off → cells render static (no dead tap, ENG-848).
-  const macroTapFromDialog = useCallback(
-    (closeDialog: () => void) =>
-      macroDetailFlagEnabled
-        ? (macro: string) => {
-            closeDialog();
-            openMacroDetail(macro);
-          }
-        : undefined,
-    [macroDetailFlagEnabled, openMacroDetail],
-  );
-
-  const macroDetailMeals = useMemo<MacroMeal[]>(
-    () =>
-      mealsForSelectedDate.map((meal) => ({
-        id: meal.id,
-        name: meal.name,
-        recipeTitle: meal.recipeTitle,
-        recipeId: meal.recipeId ?? null,
-        portionMultiplier: meal.portionMultiplier ?? 1,
-        calories: meal.calories,
-        protein: meal.protein,
-        carbs: meal.carbs,
-        fat: meal.fat,
-        fiberG: mealContributedFiberG(meal),
-        // ENG-1213 web↔mobile water-breakdown parity: carry per-meal water so
-        // the macro-detail panel's By-meal view can total water for macro="water"
-        // (mirrors mobile useMacroDetail's `water_ml` → waterMl mapping). The
-        // source value already flows DB → LoggedMeal via useNutritionJournalState
-        // (`water_ml` → `waterMl`).
-        waterMl: meal.waterMl ?? 0,
-        micros: meal.micros ?? null,
-      })),
-    [mealsForSelectedDate],
-  );
-
-  useEffect(() => {
-    if (!macroDetailFlagEnabled || macroDetailTarget == null) {
-      setMacroDetailIngredientRows([]);
-      return;
-    }
-    const recipeIds = Array.from(
-      new Set(macroDetailMeals.map((meal) => meal.recipeId).filter((id): id is string => Boolean(id))),
-    );
-    if (recipeIds.length === 0) {
-      setMacroDetailIngredientRows([]);
-      return;
-    }
-    let cancelled = false;
-    supabase
-      .from("recipe_ingredients")
-      .select("recipe_id, name, calories, protein, carbs, fat, fiber_g")
-      .in("recipe_id", recipeIds)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.warn("[macro-detail] recipe_ingredients fetch failed:", error.message);
-          setMacroDetailIngredientRows([]);
-          return;
-        }
-        setMacroDetailIngredientRows(
-          (data ?? []).map((row: Record<string, unknown>) =>
-            toBreakdownIngredientRow({
-              recipeId: String(row.recipe_id ?? ""),
-              name: String(row.name ?? "Item"),
-              calories: Number(row.calories) || 0,
-              protein: Number(row.protein) || 0,
-              carbs: Number(row.carbs) || 0,
-              fat: Number(row.fat) || 0,
-              fiberG: Number(row.fiber_g) || 0,
-            }),
-          ),
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [macroDetailFlagEnabled, macroDetailMeals, macroDetailTarget]);
-
-  // ENG-751 — fetch persisted AI snapshot rows for the open day's entries,
-  // gated by the display flag. Fully defensive: a missing table (pre-push) or a
-  // failed query swallows + leaves the rows empty, so the panel degrades to the
-  // recipe / single-line fallback path. Covers EVERY entry id (AI meals have no
-  // recipe_id, so the recipe-id set above would miss them).
-  useEffect(() => {
-    if (
-      !macroDetailFlagEnabled ||
-      macroDetailTarget == null ||
-      !isFeatureEnabled(NUTRITION_ENTRY_INGREDIENTS_FLAG)
-    ) {
-      setMacroDetailSnapshotRows([]);
-      return;
-    }
-    const entryIds = Array.from(
-      new Set(macroDetailMeals.map((meal) => meal.id).filter((id): id is string => Boolean(id))),
-    );
-    if (entryIds.length === 0) {
-      setMacroDetailSnapshotRows([]);
-      return;
-    }
-    let cancelled = false;
-    supabase
-      .from(NUTRITION_ENTRY_INGREDIENTS_TABLE)
-      .select("entry_id, name, calories, protein, carbs, fat, fiber_g, confidence")
-      .in("entry_id", entryIds)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.warn(
-            "[macro-detail] nutrition_entry_ingredients fetch failed:",
-            error.message,
-          );
-          setMacroDetailSnapshotRows([]);
-          return;
-        }
-        setMacroDetailSnapshotRows(
-          ((data ?? []) as NutritionEntryIngredientRow[]).map((row) =>
-            toBreakdownSnapshotRow({
-              entryId: row.entry_id,
-              name: row.name,
-              lowConfidence: isSnapshotRowLowConfidence(row),
-              calories: row.calories,
-              protein: row.protein,
-              carbs: row.carbs,
-              fat: row.fat,
-              fiberG: row.fiber_g,
-            }),
-          ),
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [macroDetailFlagEnabled, macroDetailMeals, macroDetailTarget]);
+  // ENG-1360 (second extraction pass) — the macro-detail panel state,
+  // meal-projection memo, and the two Supabase fetch effects (recipe
+  // ingredients + persisted AI snapshot rows) moved to
+  // `useMacroDetailPanelData`. Same queries, same parsing, same setters —
+  // just relocated so this component's local state list shrinks.
+  const {
+    macroDetailFlagEnabled,
+    macroDetailTarget,
+    setMacroDetailTarget,
+    macroDetailMeals,
+    macroDetailIngredientRows,
+    macroDetailSnapshotRows,
+    openMacroDetail,
+    macroTapFromDialog,
+  } = useMacroDetailPanelData(mealsForSelectedDate, isMacroDetailSupported);
 
   useEffect(() => {
     if (!isFeatureEnabled("editable_eaten_at")) return;
