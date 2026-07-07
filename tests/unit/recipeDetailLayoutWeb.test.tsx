@@ -635,3 +635,39 @@ describe("web recipe-detail — Figma 332:2 helper-driven render assertions", ()
     expect(verdict.style.color).toBe("var(--destructive)");
   });
 });
+
+describe("web recipe-detail — loading skeleton has a terminal contract (ENG-1380)", () => {
+  // ENG-1380 (P0, 2026-07-05 UI critique): the loading pulse must always
+  // settle — to content or to the explicit "could not be loaded" state — never
+  // spin forever. The non-catalog fetch effect had two ways to strand it: a
+  // hung socket (promise never resolves) and a thrown rejection (the async IIFE
+  // had no catch). Both are now closed. These pins break if either regresses.
+  it("a watchdog bounds the fetch and falls back to the error state", () => {
+    // A module-level budget + a setTimeout that flips to dbFetchFailed.
+    expect(SRC).toMatch(/const RECIPE_FETCH_TIMEOUT_MS = 12_000;/);
+    const watchdog = SRC.slice(SRC.indexOf("const watchdog = setTimeout("));
+    expect(watchdog).toContain("setDbFetchFailed(true)");
+    expect(watchdog).toContain("setDbLoading(false)");
+    expect(watchdog.slice(0, 400)).toContain("RECIPE_FETCH_TIMEOUT_MS");
+  });
+
+  it("a thrown fetch rejection lands in the error state, not a hung skeleton", () => {
+    // The fetch IIFE carries a `.catch` that surfaces the explicit error state.
+    expect(SRC).toMatch(/\}\)\(\)\s*\n\s*\.catch\(\(\) => \{/);
+    const tail = SRC.slice(SRC.indexOf(".catch(() => {"));
+    expect(tail.slice(0, 260)).toContain("setDbFetchFailed(true)");
+  });
+
+  it("the watchdog timer is always cleared (finally + effect cleanup)", () => {
+    // No leaked timers: cleared when the fetch settles and on unmount/re-run.
+    expect(SRC).toMatch(/\.finally\(\(\) => clearTimeout\(watchdog\)\)/);
+    expect(SRC).toMatch(/cancelled = true;\s*\n\s*clearTimeout\(watchdog\);/);
+  });
+
+  it("the terminal error state renders an explicit, actionable message", () => {
+    // dbFetchFailed → a real 'could not be loaded' screen with a Back button,
+    // not a bare blank or an eternal pulse.
+    expect(SRC).toMatch(/if \(!isCatalogRecipe && dbFetchFailed\)/);
+    expect(SRC).toContain("This recipe could not be loaded.");
+  });
+});

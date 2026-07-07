@@ -138,7 +138,11 @@ function slug(route) {
 
 async function assertDevServerUp() {
   try {
-    const res = await fetch(BASE_URL, { method: "HEAD", signal: AbortSignal.timeout(4000) });
+    // GET, not HEAD: this Next.js dev server never responds to HEAD (hangs
+    // indefinitely rather than erroring), and first-hit Turbopack compiles
+    // can legitimately take tens of seconds — a short timeout here reads as
+    // "server down" when it's just slow.
+    const res = await fetch(BASE_URL, { method: "GET", signal: AbortSignal.timeout(45000) });
     // Any HTTP response (even 4xx) means a server is listening.
     void res;
   } catch {
@@ -265,9 +269,12 @@ async function withPage(opts, fn) {
 async function goto(page, route) {
   const url = routeToUrl(route);
   try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 25_000 });
+    // Generous timeouts: a route's first hit after a dev-server restart can
+    // cost tens of seconds compiling under Turbopack, independent of the
+    // page's own runtime cost.
+    await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
   } catch {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15_000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
   }
   await page.waitForLoadState("domcontentloaded");
   await page.evaluate(() => document.fonts?.ready).catch(() => undefined);
@@ -372,8 +379,17 @@ async function cmdFlow(route, steps, opts) {
       } else if (verb === "shot") {
         const out = path.isAbsolute(rest) ? rest : path.join(DEFAULT_OUT_DIR, rest);
         console.log(`captured ${await takeShot(page, out, opts)}`);
+      } else if (verb === "scroll") {
+        // Center a selector in its scroll container — the only way to capture
+        // below-fold content on pages that scroll inside a fixed-height inner
+        // region (e.g. recipe detail) rather than the document body, and to
+        // pull content out from under a sticky footer before an element shot.
+        await page.locator(stripQuotes(rest)).first().evaluate((el) =>
+          el.scrollIntoView({ block: "center", inline: "center" }),
+        );
+        await page.waitForTimeout(400);
       } else {
-        die(2, `Unknown flow step "${step}". Verbs: click fill wait goto shot.`);
+        die(2, `Unknown flow step "${step}". Verbs: click fill wait goto shot scroll.`);
       }
     }
     // Always leave a final capture so the agent can SEE the end state.
