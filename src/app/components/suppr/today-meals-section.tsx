@@ -80,6 +80,8 @@ export type TodayMealSectionMeal = {
 export interface TodayMealsSectionProps {
   mealsGrouped: Array<{ name: string; meals: TodayMealSectionMeal[] }>;
   mealsForSelectedDate: TodayMealSectionMeal[];
+  /** ENG-1373 — heading bound to the viewed date by the caller (`mealsSectionTitle`); defaults to "Today's Meals". */
+  title?: string;
   effectiveCalorieTarget: number;
   fiberTarget: number;
   collapsedSlots: Set<string>;
@@ -114,21 +116,10 @@ export interface TodayMealsSectionProps {
    */
   onEditMeal?: (mealId: string) => void;
   /**
-   * Empty-state primary CTA — opens the unified `<LogSheet>`.
-   *
-   * 2026-05-02 parity sweep: the prior empty state collage (3 buttons —
-   * Add custom meal / Photo log / Voice log — plus a duplicate
-   * "Log from today's plan" rows block) diverged from mobile, which
-   * has no in-meals-card empty-state collage at all (mobile uses the
-   * raised "+" tab-bar button + per-slot "Tap to add" affordances +
-   * the standalone `<TodayPlannedMealsCard>` rendered above). Web
-   * now matches: a single primary CTA that opens the canonical
-   * LogSheet — same entry the bottom-bar raised "+" uses on
-   * mobile-web. The LogSheet's right-edge icons cover the
-   * scan / voice / photo modes.
-   *
-   * Mirror: `apps/mobile/components/today/TodayMealsSection.tsx` (no
-   * collage rendered; raised "+" + per-slot rows do the same job).
+   * Empty-state primary CTA — opens the unified `<LogSheet>` (the same entry
+   * the bottom-bar raised "+" uses on mobile-web; its right-edge icons cover
+   * scan / voice / photo). Mirror: `apps/mobile/components/today/
+   * TodayMealsSection.tsx` renders no collage — raised "+" + per-slot rows.
    */
   onOpenLogSheet: () => void;
   /** Ship M1 — all saved meals the authed user owns, sorted newest-logged-first. */
@@ -300,6 +291,7 @@ export function savedMealsForSlot(meals: readonly SavedMeal[], slot: string): Sa
 export function TodayMealsSection({
   mealsGrouped,
   mealsForSelectedDate,
+  title = "Today's Meals",
   effectiveCalorieTarget,
   fiberTarget,
   collapsedSlots,
@@ -407,7 +399,7 @@ export function TodayMealsSection({
     <div className="mb-6" data-testid="today-meals-section">
       <div className="flex items-start justify-between gap-3">
         <TodayScrollSectionHeader
-          title="Today's Meals"
+          title={title}
           testID="today-meals-section-header"
           className="mb-4 flex-1 min-w-0"
         />
