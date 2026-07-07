@@ -6,6 +6,8 @@ import type { BillingPeriod, PricingTier } from "../../src/lib/landing/content.t
 import {
   computeAnnualSavingsBadge,
   FREE_CUSTOM_MACROS_FEATURE,
+  FREE_ADAPTIVE_TDEE_FEATURE_PLAIN,
+  FREE_ADAPTIVE_TDEE_FEATURE_GLOSS,
   PAYWALL_FREE_MFP_WINS_FLAG,
 } from "../../src/lib/landing/content.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
@@ -128,6 +130,11 @@ export function PricingTiersGrid({
   // gated behind the default-on `paywall_free_mfp_wins_v1` flag; off →
   // the bullet is suppressed (kill switch), leaving the legacy list.
   const mfpWinsEnabled = isFeatureEnabled(PAYWALL_FREE_MFP_WINS_FLAG);
+
+  // ENG-1461 — jargon gloss (product-wide extension of ENG-1187). Same
+  // flag + grammar as Progress/the weekly check-in so "TDEE" never carries
+  // more than one label across the product.
+  const jargonGlossEnabled = isFeatureEnabled("onboarding_jargon_gloss_v1");
 
   // Phase 5 / B1.3 (D-2026-04-27-05) — pricing collapses to Free + Pro.
   // PR-01 (audit 2026-04-28): the Base filter is now a no-op — Base
@@ -316,26 +323,35 @@ export function PricingTiersGrid({
                     (feature) =>
                       mfpWinsEnabled || feature !== FREE_CUSTOM_MACROS_FEATURE,
                   )
-                  .map((feature) => (
-                  <li
-                    key={feature}
-                    className={`flex items-start gap-2 text-sm text-foreground`}
-                  >
-                    {/* SLOE DS: feature checks — sage on highlighted/Pro
-                        (the "included" tick in the Figma paywall table),
-                        muted on the Free tier. */}
-                    <Check
-                      className="w-4 h-4 shrink-0 mt-0.5"
-                      style={{
-                        color:
-                          tier.highlighted || tier.name === "Pro"
-                            ? "var(--accent-success-solid)"
-                            : "var(--foreground-tertiary)",
-                      }}
-                    />
-                    {feature}
-                  </li>
-                ))}
+                  .map((feature) => {
+                    // ENG-1461 — swap the plain "Adaptive TDEE" bullet for its
+                    // glossed sibling behind `onboarding_jargon_gloss_v1`, the
+                    // same per-bullet-swap pattern as the MFP-wins bullet above.
+                    const displayFeature =
+                      jargonGlossEnabled && feature === FREE_ADAPTIVE_TDEE_FEATURE_PLAIN
+                        ? FREE_ADAPTIVE_TDEE_FEATURE_GLOSS
+                        : feature;
+                    return (
+                      <li
+                        key={feature}
+                        className={`flex items-start gap-2 text-sm text-foreground`}
+                      >
+                        {/* SLOE DS: feature checks — sage on highlighted/Pro
+                            (the "included" tick in the Figma paywall table),
+                            muted on the Free tier. */}
+                        <Check
+                          className="w-4 h-4 shrink-0 mt-0.5"
+                          style={{
+                            color:
+                              tier.highlighted || tier.name === "Pro"
+                                ? "var(--accent-success-solid)"
+                                : "var(--foreground-tertiary)",
+                          }}
+                        />
+                        {displayFeature}
+                      </li>
+                    );
+                  })}
               </ul>
 
               {/* SLOE DS: nutrition note pill — cream slab with plum

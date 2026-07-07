@@ -24,6 +24,10 @@ import * as React from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { SupprCard } from "../ui/suppr-card";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
+import {
+  PRODUCT_TDEE_LABEL_GLOSS,
+  PRODUCT_TDEE_LABEL_PLAIN,
+} from "../../../lib/onboarding/figmaCopy";
 
 export interface ProgressEnergyTriadProps {
   /** Range average calories/day. Null → "—". */
@@ -75,6 +79,13 @@ export function ProgressEnergyTriad({
       : null;
   const isSurplus = deficitKcal != null && deficitKcal < 0;
 
+  // ENG-1461 — jargon gloss (product-wide extension of ENG-1187). Leads
+  // with plain English, acronym secondary; shared pair + flag with pricing
+  // + the weekly check-in so the concept never has more than one label.
+  const tdeeCellLabel = isFeatureEnabled("onboarding_jargon_gloss_v1")
+    ? PRODUCT_TDEE_LABEL_GLOSS
+    : PRODUCT_TDEE_LABEL_PLAIN;
+
   // Sloe v3 (ENG-1225 #23): the prototype's Progress energy balance is an
   // EQUATION (intake − maintenance = deficit/day) with a "How maintenance works"
   // explainer, not a 3-cell triad (Sloe-App.html L5001-5018). Transient flag;
@@ -102,7 +113,7 @@ export function ProgressEnergyTriad({
           {avgIntakeKcal != null ? avgIntakeKcal.toLocaleString() : "—"}
         </p>
       </Cell>
-      <Cell label="Est. TDEE" testId="progress-energy-tdee">
+      <Cell label={tdeeCellLabel} testId="progress-energy-tdee">
         <p
           className="mt-1.5 font-[family-name:var(--font-headline)] text-[22px] font-medium tabular-nums"
           style={{ color: "var(--accent-success-solid)" }}

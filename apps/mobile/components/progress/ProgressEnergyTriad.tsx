@@ -4,6 +4,10 @@ import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { isFeatureEnabled } from "@/lib/analytics";
+import {
+  PRODUCT_TDEE_LABEL_GLOSS,
+  PRODUCT_TDEE_LABEL_PLAIN,
+} from "@suppr/shared/onboarding/figmaCopy";
 import { ProgressEnergyEquation } from "./ProgressEnergyEquation";
 
 /**
@@ -58,6 +62,14 @@ export function ProgressEnergyTriad({
       ? Math.round(maintenanceKcal - avgIntakeKcal)
       : null;
   const isSurplus = deficitKcal != null && deficitKcal < 0;
+
+  // ENG-1461 — jargon gloss (product-wide extension of ENG-1187). Leads
+  // with plain English, acronym secondary; shared pair + flag with web,
+  // pricing, and the weekly check-in so the concept never has more than
+  // one label. Mirror of `src/app/components/suppr/progress-energy-triad.tsx`.
+  const tdeeCellLabel = isFeatureEnabled("onboarding_jargon_gloss_v1")
+    ? PRODUCT_TDEE_LABEL_GLOSS
+    : PRODUCT_TDEE_LABEL_PLAIN;
 
   // Sloe v3 (ENG-1225, Block 8): the prototype's Progress energy balance is an
   // EQUATION (intake − maintenance = deficit/day) with a "How maintenance works"
@@ -114,7 +126,7 @@ export function ProgressEnergyTriad({
         innerStyle={{ alignItems: "center", paddingVertical: 16, paddingHorizontal: 8 }}
         style={{ flex: 1 }}
       >
-        <Text style={eyebrow}>Est. TDEE</Text>
+        <Text style={eyebrow}>{tdeeCellLabel}</Text>
         <Text style={[value, { color: sage }]}>
           {maintenanceKcal != null && maintenanceKcal > 0
             ? maintenanceKcal.toLocaleString()

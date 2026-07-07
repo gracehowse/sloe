@@ -10,6 +10,7 @@ import {
 } from "../ui/dialog";
 import { SupprButton } from "./suppr-button";
 import type { WeeklyCheckinContent } from "../../../lib/nutrition/weeklyCheckin";
+import { WEEKLY_CHECKIN_BURN_DELTA_LABEL } from "../../../lib/onboarding/figmaCopy";
 
 /**
  * WeeklyCheckinDialog — web parity for the mobile WeeklyCheckinModal
@@ -18,6 +19,14 @@ import type { WeeklyCheckinContent } from "../../../lib/nutrition/weeklyCheckin"
  * Surfaces the adaptive-vs-formula TDEE delta + the suggested new
  * daily target. Soft prompt — every dismiss path persists the
  * decision via the host's `onDismiss` handler.
+ *
+ * ENG-1461 (2026-07-07 copy verdict): the delta row now renders
+ * `WEEKLY_CHECKIN_BURN_DELTA_LABEL` ("Estimated burn change") instead of
+ * the raw "TDEE delta" jargon, matching what mobile `WeeklyCheckinModal`
+ * already shipped un-gated on 2026-05-11 (P1 customer-lens finding) — this
+ * was the one remaining web/mobile label mismatch the ENG-1461 copy-verdict
+ * flagged. Ungated by the jargon-gloss flag on purpose: mobile's un-gated
+ * precedent already proved the plain wording is correct for every user.
  *
  * Pure presentation; gating + content build live in
  * `src/lib/nutrition/weeklyCheckin.ts`.
@@ -68,7 +77,7 @@ export function WeeklyCheckinDialog({
           ) : null}
           {content.tdeeDeltaKcal != null ? (
             <Row
-              label="TDEE delta"
+              label={WEEKLY_CHECKIN_BURN_DELTA_LABEL}
               value={
                 content.tdeeDeltaKcal === 0
                   ? "0 kcal"

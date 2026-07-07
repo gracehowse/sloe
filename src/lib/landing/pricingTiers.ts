@@ -63,6 +63,22 @@ export type PricingTier = {
 export const FREE_CUSTOM_MACROS_FEATURE = "Custom macros — free forever";
 
 /**
+ * ENG-1461 — jargon-gloss product-wide extension (2026-07-06 copy verdict).
+ * "Adaptive TDEE" leads the Free-tier differentiator bullet below; the
+ * acronym is unglossed to a first-time reader (only MacroFactor refugees
+ * recognise "TDEE"). "Adaptive" stays as the established feature-brand
+ * prefix (matches the roadmap + Today surfaces); only the bare acronym
+ * gets the plain-English gloss, same grammar as every other TDEE site
+ * (`onboarding_jargon_gloss_v1`, shared with `figmaCopy.ts`). Exported so
+ * `PricingTiersGrid` can swap just this bullet behind the flag, the same
+ * way `paywall_free_mfp_wins_v1` swaps `FREE_CUSTOM_MACROS_FEATURE`.
+ */
+export const FREE_ADAPTIVE_TDEE_FEATURE_PLAIN =
+  "Adaptive TDEE — your target re-tunes as we learn your real maintenance";
+export const FREE_ADAPTIVE_TDEE_FEATURE_GLOSS =
+  "Adaptive daily burn (TDEE) — your target re-tunes as we learn your real maintenance";
+
+/**
  * Pricing matches the actual gating in code. Any feature claimed
  * in a tier must have a real gate (server check or client guard);
  * claims without a gate are treated as monetisation bugs and are
@@ -100,7 +116,10 @@ export const PRICING_TIERS: PricingTier[] = [
       // Suppr learns your real maintenance over 7+ days of logging
       // and ≥ 3 weight entries, then replaces the formula with the
       // empirical TDEE. Strongest single Free-tier reason to switch.
-      "Adaptive TDEE — your target re-tunes as we learn your real maintenance",
+      // Plain default; `PricingTiersGrid` swaps to
+      // `FREE_ADAPTIVE_TDEE_FEATURE_GLOSS` behind `onboarding_jargon_gloss_v1`
+      // (ENG-1461) the same way it swaps the custom-macros bullet.
+      FREE_ADAPTIVE_TDEE_FEATURE_PLAIN,
       "Recipe import from URL, Instagram, TikTok, YouTube",
       // ENG-1203 — the two MFP-switch wins called out explicitly on the
       // Free column. MyFitnessPal paywalled barcode scanning + custom

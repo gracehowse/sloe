@@ -1,8 +1,15 @@
 /**
- * Onboarding plan-ready reveal copy (Figma 192:2) + the ENG-1187 jargon
- * gloss pairs. Shared web ↔ mobile so conformance can't drift. (The v3
- * welcome is now a pure brand screen — wordmark + tagline only — so its
- * eyebrow / body / TDEE-bullet copy was removed here, ENG-1247.)
+ * Onboarding plan-ready reveal copy (Figma 192:2) + the jargon gloss
+ * pairs (ENG-1187 onboarding sites, ENG-1461 product-wide extension).
+ * Shared web ↔ mobile so conformance can't drift. (The v3 welcome is now
+ * a pure brand screen — wordmark + tagline only — so its eyebrow / body /
+ * TDEE-bullet copy was removed here, ENG-1247.)
+ *
+ * File name is a historical artefact (the system started onboarding-only);
+ * it is now the ONE canonical jargon-gloss module for the whole product —
+ * new non-onboarding gloss pairs live in the "product-wide" section below
+ * rather than a second file, so there is exactly one place a TDEE/BMR
+ * label can be defined.
  */
 
 export const ONBOARDING_REVEAL_SUBTITLE =
@@ -73,3 +80,46 @@ export const ONBOARDING_REVEAL_WHY_NOW_REFLECTION: Record<
   event: "A plan built around what you've got coming up.",
   curious: "A plan you can explore at your own pace.",
 };
+
+/**
+ * ENG-1461 — product-wide jargon-gloss extension (2026-07-07 ratified
+ * decision, ENG-1461). The onboarding pairs above cover the pace + reveal
+ * trust moments; the 2026-07-06 copy verdict found the SAME "TDEE" concept
+ * unglossed at three more sites, each with its own historical label:
+ * Progress "Est. TDEE", pricing "Adaptive TDEE", the web weekly check-in's
+ * "TDEE delta" (mobile already carries the fix — see below).
+ *
+ * ONE canonical label per concept, product-wide (the ratified scope):
+ * plain form leads with "Estimated burn"; the glossed form keeps the
+ * acronym secondary in parentheses, same grammar as the onboarding pairs.
+ * All three non-onboarding sites below share this ONE pair — no
+ * per-surface label variants — gated behind the same
+ * `onboarding_jargon_gloss_v1` flag (default-ON, ENG-1461).
+ */
+export const PRODUCT_TDEE_LABEL_PLAIN = "Est. TDEE";
+export const PRODUCT_TDEE_LABEL_GLOSS = "Est. daily burn (TDEE)";
+
+/**
+ * Weekly check-in "delta" row — mobile already shipped the plain label
+ * ("Estimated burn change", 2026-05-11 customer-lens finding, P1) as an
+ * un-gated permanent fix; web still rendered the raw "TDEE delta" jargon
+ * (ENG-1461 copy-verdict finding). Both platforms now render this ONE
+ * label ungated by the gloss flag — mobile's un-gated precedent already
+ * proved the plain wording is correct for every user, not just a ramped
+ * cohort, so there's no reason to re-introduce jargon behind a flag-OFF
+ * branch on web. Kept here (not a PLAIN/GLOSS pair) because there is no
+ * acronym-secondary variant — "TDEE delta" was retired outright, not glossed.
+ */
+export const WEEKLY_CHECKIN_BURN_DELTA_LABEL = "Estimated burn change";
+
+/**
+ * Weekly-recap "Your adaptive TDEE" section eyebrow (mobile-only straggler
+ * caught by the ENG-1461 grep sweep — the ticket's named sites were
+ * Progress / pricing / the check-in modal; this fourth site uses the same
+ * bare-acronym-first grammar the copy verdict flagged everywhere else).
+ * Same PRODUCT_TDEE_LABEL_GLOSS grammar, reworded for the "Your ___" eyebrow
+ * phrasing this section already used.
+ */
+export const WEEKLY_RECAP_TDEE_SECTION_LABEL_PLAIN = "Your adaptive TDEE";
+export const WEEKLY_RECAP_TDEE_SECTION_LABEL_GLOSS =
+  "Your adaptive daily burn (TDEE)";

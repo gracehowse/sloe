@@ -7,6 +7,7 @@ import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import type { WeeklyCheckinContent } from "@/lib/weeklyCheckin";
+import { WEEKLY_CHECKIN_BURN_DELTA_LABEL } from "@suppr/shared/onboarding/figmaCopy";
 
 /**
  * WeeklyCheckinModal — the MacroFactor-style weekly TDEE check-in
@@ -180,11 +181,14 @@ function WeeklyCheckinModalImpl({
               ±X kcal higher/lower than the formula"), so this row's
               label is the only jargon left. Renamed to
               "Estimated burn change" — same number, accessible
-              vocabulary.
+              vocabulary. ENG-1461 (2026-07-07): now the shared
+              `WEEKLY_CHECKIN_BURN_DELTA_LABEL` constant so web's
+              WeeklyCheckinDialog (which still rendered raw "TDEE delta"
+              until this fix) can never drift from this wording again.
             */}
             {content.tdeeDeltaKcal != null ? (
               <Row
-                label="Estimated burn change"
+                label={WEEKLY_CHECKIN_BURN_DELTA_LABEL}
                 value={
                   content.tdeeDeltaKcal === 0
                     ? "0 kcal"
