@@ -80,9 +80,11 @@ describe("ENG-1449 — every add path commits immediately with the Logged/Done/U
   it("mobile: search.onSelect commits the log and presents the confirmation card synchronously (no staging step)", () => {
     // The handler must call commitLogSheetFoodSelection AND
     // presentLogSheetConfirmation in the same onSelect body — there is no
-    // branch that instead stages the pick for a later commit.
+    // branch that instead stages the pick for a later commit. Window is
+    // generous (the handler validates nutrition data with two Alert.alert
+    // guards before the commit call).
     expect(MOBILE_TODAY_SCREEN).toMatch(
-      /onSelect:\s*\(result\)\s*=>\s*\{[\s\S]{0,600}?commitLogSheetFoodSelection\(result\)[\s\S]{0,200}?presentLogSheetConfirmation\(/,
+      /onSelect:\s*\(result\)\s*=>\s*\{[\s\S]{0,1200}?commitLogSheetFoodSelection\(result\)[\s\S]{0,200}?presentLogSheetConfirmation\(/,
     );
   });
 
