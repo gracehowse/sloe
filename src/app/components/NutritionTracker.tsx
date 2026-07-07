@@ -4,9 +4,8 @@ import { WifiOff } from "lucide-react";
 
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
-import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
-import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
-import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
+import { normalizeMacroTargets } from "../../types/profile.ts";
+import { useNutritionTrackerProfile } from "../../lib/nutrition/useNutritionTrackerProfile.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
 import { scaleMacroTargetsForCalorieBudget } from "../../lib/nutrition/scaleMacroTargetsForCalorieBudget.ts";
 import {
@@ -26,7 +25,6 @@ import { useAiMethodTooltip } from "../../lib/today/useAiMethodTooltip.ts";
 import {
   buildWeeklyCheckinContent,
   shouldShowWeeklyCheckin,
-  type WeeklyCheckinConfidence,
   type WeeklyCheckinContent,
 } from "../../lib/nutrition/weeklyCheckin.ts";
 import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
@@ -58,11 +56,7 @@ import {
 } from "../../lib/nutrition/mealEatenAt.ts";
 import { type OffProductMacros } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
-import {
-  computeProtectedStreak,
-  readFreezeLedger,
-  type FreezeLedger,
-} from "../../lib/nutrition/streakFreeze.ts";
+import { computeProtectedStreak } from "../../lib/nutrition/streakFreeze.ts";
 import { didStreakReset } from "../../lib/nutrition/streakReset.ts";
 import {
   normalizeWeekSummaryMode,
@@ -94,8 +88,6 @@ import { buildPostLogSuggestion } from "../../lib/nutrition/postLogSuggestion";
 import {
   dayActivityBudgetAddonWeb,
   loadRecentFoods,
-  normalizeTrackedDashboardMacros,
-  parseStepsDayMap,
   pushRecentFood,
 } from "../../lib/nutrition/trackerLocalState.ts";
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
@@ -198,8 +190,6 @@ import { isMealSlot, type MealSlot } from "../../lib/nutrition/mealSlots";
 import {
   enabledMealSlotLabels,
   mealSectionSortOrder,
-  parseUserMealSlotConfig,
-  type UserMealSlotConfig,
 } from "../../lib/nutrition/userMealSlotConfig";
 import {
   journalSlotFromMealTypes,
@@ -260,8 +250,6 @@ export {
 // open bucketed differently on web vs mobile. Both now agree via the
 // shared ladder. Net behaviour change: a 10:30am open now seeds
 // Breakfast (was Lunch); a 2:30pm open now seeds Lunch (was Snacks).
-
-type FastingSessionRow = { start: string; end: string | null };
 
 interface NutritionTrackerProps {
   userTier: UserTier;
@@ -326,6 +314,45 @@ export const NutritionTracker = memo(function NutritionTracker({
   } = useAppData();
   void _extraCaffeineByDay; // unused — caffeine shown only via today's number
 
+  const { authedUserId, authUserCreatedAt } = useAuthSession();
+  // ENG-1360 (first extraction pass) — the profiles-row fetch (weight,
+  // goal, TDEE/maintenance, activity basics, meal-slot config, steps,
+  // fasting, streak-freeze ledger, tracked macros, weekly check-in
+  // shown-at) moved to `useNutritionTrackerProfile`. Same query, same
+  // parsing, same setters — just relocated so this component's local
+  // state list shrinks. `useAuthSession()` moved up alongside it
+  // (previously declared much further down the component) so
+  // `authedUserId` is available before this call and before the several
+  // early memos (`enabledMealSlots`, `protectedStreakInfo`, etc.) that
+  // read this hook's outputs.
+  const {
+    weekStartDay,
+    freezeLedger,
+    freezeBudgetMax,
+    trackedDashboardMacros,
+    userMealSlotConfig,
+    stepsByDay,
+    dailyStepsGoal,
+    fastingSessions,
+    fastingOptedIn,
+    profileWeightKg,
+    profileGoal,
+    profilePlanPace,
+    profileMaintenanceTdee,
+    profileWeightKgByDay,
+    weeklyCheckinShownAt,
+    setWeeklyCheckinShownAt,
+    profileFormulaTdee,
+    profileAdaptiveTdeeRaw,
+    profileAdaptiveTdeeConfidenceRaw,
+    profileMaintenanceSource,
+    profileMaintenanceConfidence,
+    profileSex,
+    profileHeightCm,
+    profileAge,
+    profileActivityLevel,
+  } = useNutritionTrackerProfile(authedUserId);
+
   // ENG-798 (Redesign — Design Direction 2026) — gate the Today win-moment
   // detection until after first paint so the initial snapshot is captured
   // as the baseline (the hook treats the first snapshot as `prev` and never
@@ -376,9 +403,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState("Breakfast");
-  const [userMealSlotConfig, setUserMealSlotConfig] = useState<UserMealSlotConfig | null>(
-    null,
-  );
   const enabledMealSlots = useMemo(
     () => enabledMealSlotLabels(userMealSlotConfig),
     [userMealSlotConfig],
@@ -634,7 +658,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [barcodeEditPro, setBarcodeEditPro] = useState("");
   const [barcodeEditCarb, setBarcodeEditCarb] = useState("");
   const [barcodeEditFat, setBarcodeEditFat] = useState("");
-  const [trackedDashboardMacros, setTrackedDashboardMacros] = useState<string[]>(["protein", "carbs", "fat"]);
   const [recentFoods, setRecentFoods] = useState<string[]>(() =>
     typeof window !== "undefined" ? loadRecentFoods() : [],
   );
@@ -662,53 +685,14 @@ export const NutritionTracker = memo(function NutritionTracker({
    *  `TodayDashboardMacroTiles` after the Today-canvas
    *  `TodayMicrosWidget` was removed (revert PR #30). */
   const [fullNutrientPanelOpen, setFullNutrientPanelOpen] = useState(false);
-  const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
-  const [profileGoal, setProfileGoal] = useState<string | null>(null);
-  /** `plan_pace` preset enum from `profiles.plan_pace` — used by the
-   *  WhyThisNumberDialog to compute the user's weekly kg pace. Stored
-   *  loosely as `string | null` to mirror the column's nullable nature. */
-  const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
-  const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
-  const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Mirrors mobile state shape.
   // `weeklyCheckinHandledRef` suppresses re-fires within the session.
-  const [weeklyCheckinShownAt, setWeeklyCheckinShownAt] = useState<string | null>(null);
   const [weeklyCheckinOpen, setWeeklyCheckinOpen] = useState(false);
   const [weeklyCheckinContent, setWeeklyCheckinContent] =
     useState<WeeklyCheckinContent | null>(null);
-  const [profileFormulaTdee, setProfileFormulaTdee] = useState<number | null>(null);
-  // Raw adaptive TDEE + confidence from the profile row. Distinct from
-  // `profileMaintenanceTdee`, which is the resolver-collapsed value
-  // (adaptive when confident, else formula). The weekly check-in gate
-  // wants the adaptive value specifically.
-  const [profileAdaptiveTdeeRaw, setProfileAdaptiveTdeeRaw] = useState<number | null>(null);
-  const [profileAdaptiveTdeeConfidenceRaw, setProfileAdaptiveTdeeConfidenceRaw] =
-    useState<WeeklyCheckinConfidence | null>(null);
   const weeklyCheckinHandledRef = useRef(false);
-  // F-3 (2026-04-19) — track the source + confidence so the Activity
-  // Bonus card's info popover can render the canonical copy shared
-  // with Progress. `null` source means "popover will fall back to the
-  // richer BMR × multiplier breakdown" (for users on the narrow
-  // fallback profile select where adaptive columns aren't available).
-  const [profileMaintenanceSource, setProfileMaintenanceSource] = useState<
-    "measured" | "adaptive" | "formula" | null
-  >(null);
-  const [profileMaintenanceConfidence, setProfileMaintenanceConfidence] = useState<
-    "low" | "medium" | "high" | null
-  >(null);
-  // Cached profile basics (sex / height / age / activity_level) needed
-  // by the activity-bonus info popover so it can show "BMR × multiplier"
-  // without a second profile fetch (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ`,
-  // 2026-04-18).
-  const [profileSex, setProfileSex] = useState<"male" | "female" | "unspecified" | null>(null);
-  const [profileHeightCm, setProfileHeightCm] = useState<number | null>(null);
-  const [profileAge, setProfileAge] = useState<number | null>(null);
-  const [profileActivityLevel, setProfileActivityLevel] = useState<
-    "sedentary" | "light" | "moderate" | "active" | "very_active" | null
-  >(null);
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
-  const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [activityBudgetDiscoverDismissed, setActivityBudgetDiscoverDismissed] = useState(true);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -720,13 +704,9 @@ export const NutritionTracker = memo(function NutritionTracker({
       setActivityBudgetDiscoverDismissed(false);
     }
   }, []);
-  // Batch 4.11 — streak freeze state. Ledger is loaded from `profiles`
-  // alongside `week_start_day`; budget defaults to 3.
-  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
-    earnedAt: [],
-    usedHistory: [],
-  });
-  const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
+  // Batch 4.11 — streak freeze state (`freezeLedger` / `freezeBudgetMax`
+  // now come from `useNutritionTrackerProfile` above — loaded from
+  // `profiles` alongside `week_start_day`; budget defaults to 3).
   // 2026-04-18 audit H7 — `DayStrip` renders a ❄ glyph on each tile whose
   // date was absorbed by a freeze. The parent computes the set once so
   // both DayStrip instances (day + week view) read the same value.
@@ -764,16 +744,10 @@ export const NutritionTracker = memo(function NutritionTracker({
       }
     }
   }, [protectedStreakLength]);
-  const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
-  const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
-  const [fastingSessions, setFastingSessions] = useState<FastingSessionRow[]>([]);
+  // `stepsByDay` / `dailyStepsGoal` / `fastingSessions` / `fastingOptedIn`
+  // now come from `useNutritionTrackerProfile` above.
   const [fastingNowTick, setFastingNowTick] = useState(() => Date.now());
-  // F-109 (TestFlight `AFHtAQRAWad1w8bDvSgZkUg`, 2026-05-06): web parity
-  // for the IF opt-in gate. The "Start fast" idle pill on Today only
-  // renders when `profiles.fasting_window != null` (Grace, 2026-05-07).
-  const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const calendarInputRef = useRef<HTMLInputElement>(null);
-  const { authedUserId, authUserCreatedAt } = useAuthSession();
   // ENG-805 — in-feed banner dismissal (web parity with mobile AsyncStorage gate).
   const [checkinBannerDismissed, setCheckinBannerDismissed] = useState<boolean | null>(
     null,
@@ -1401,167 +1375,9 @@ export const NutritionTracker = memo(function NutritionTracker({
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    if (!authedUserId) return;
-    supabase
-      .from("profiles")
-      .select(
-        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, meal_slot_config, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, last_weekly_checkin_shown_at",
-      )
-      .eq("id", authedUserId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        const wsd = (data as { week_start_day?: string }).week_start_day;
-        if (wsd === "sunday" || wsd === "monday") setWeekStartDay(wsd);
-
-        // Batch 4.11 — freeze ledger loads alongside other profile bits.
-        const rawEarned = (data as { streak_freezes_earned_at?: unknown })
-          .streak_freezes_earned_at;
-        const rawUsed = (data as { streak_freezes_used_history?: unknown })
-          .streak_freezes_used_history;
-        setFreezeLedger(
-          readFreezeLedger({ earnedAt: rawEarned, usedHistory: rawUsed }),
-        );
-        const rawBudget = Number(
-          (data as { streak_freeze_budget_max?: number }).streak_freeze_budget_max,
-        );
-        setFreezeBudgetMax(
-          Number.isFinite(rawBudget) ? Math.max(0, Math.min(10, rawBudget)) : 3,
-        );
-        setTrackedDashboardMacros(
-          normalizeTrackedDashboardMacros((data as { tracked_macros?: unknown }).tracked_macros),
-        );
-        setUserMealSlotConfig(
-          parseUserMealSlotConfig((data as { meal_slot_config?: unknown }).meal_slot_config),
-        );
-        setStepsByDay(parseStepsDayMap((data as { steps_by_day?: unknown }).steps_by_day));
-        const sg = (data as { daily_steps_goal?: number }).daily_steps_goal;
-        const sgN = sg != null ? Number(sg) : DEFAULT_STEPS_GOAL;
-        setDailyStepsGoal(Number.isFinite(sgN) && sgN > 0 ? Math.round(sgN) : DEFAULT_STEPS_GOAL);
-        const fs = (data as { fasting_sessions?: unknown }).fasting_sessions;
-        if (Array.isArray(fs)) {
-          setFastingSessions(fs as FastingSessionRow[]);
-        }
-        // F-109: hydrate the IF opt-in flag from `profiles.fasting_window`.
-        // Non-null = user picked a window (onboarding or /fasting preset
-        // chip) → idle "Start fast" pill renders on Today.
-        const fwRaw = (data as { fasting_window?: unknown }).fasting_window;
-        setFastingOptedIn(typeof fwRaw === "string" && fwRaw.length > 0);
-        const w = data.weight_kg != null ? Number(data.weight_kg) : null;
-        setProfileWeightKg(Number.isFinite(w) ? w : null);
-        setProfileGoal((data as any).goal ?? null);
-        setProfilePlanPace(
-          typeof (data as any).plan_pace === "string" ? (data as any).plan_pace : null,
-        );
-        // Cache basics for the activity-bonus info popover (TestFlight
-        // `AAtW7dYcCBPyBdsMU6UqiQQ`, 2026-04-18).
-        const sexRaw = (data.sex ?? null) as string | null;
-        setProfileSex(
-          sexRaw === "male" || sexRaw === "female" || sexRaw === "unspecified" ? sexRaw : null,
-        );
-        const hCmRaw = data.height_cm != null ? Number(data.height_cm) : null;
-        setProfileHeightCm(Number.isFinite(hCmRaw) && hCmRaw && hCmRaw > 0 ? hCmRaw : null);
-        const ageRaw = data.age != null ? Number(data.age) : null;
-        setProfileAge(Number.isFinite(ageRaw) && ageRaw && ageRaw > 0 ? ageRaw : null);
-        const actRaw = (data.activity_level ?? null) as string | null;
-        if (
-          actRaw === "sedentary" ||
-          actRaw === "light" ||
-          actRaw === "moderate" ||
-          actRaw === "active" ||
-          actRaw === "very_active"
-        ) {
-          setProfileActivityLevel(actRaw);
-        } else {
-          setProfileActivityLevel(null);
-        }
-        // F-3 (2026-04-19, TestFlight `ADFYpDgEEb0QH-j3BXshPTo`):
-        // single source of truth for the Activity Bonus Maintenance
-        // tile + the Progress "Maintenance" card. Previously Today
-        // used raw adaptive with no confidence gate while Progress
-        // used `getEffectiveTDEE`'s gate — two surfaces, two numbers.
-        // `resolveMaintenance` is the shared gate: adaptive wins at
-        // medium/high confidence AND not stale, else formula.
-        const resolved = resolveMaintenance(
-          {
-            adaptive_tdee: (data as any).adaptive_tdee,
-            adaptive_tdee_confidence: (data as any).adaptive_tdee_confidence,
-            adaptive_tdee_updated_at: (data as any).adaptive_tdee_updated_at,
-            measured_tdee: (data as any).measured_tdee,
-            measured_tdee_confidence: (data as any).measured_tdee_confidence,
-            measured_tdee_updated_at: (data as any).measured_tdee_updated_at,
-            sex: (data.sex ?? "unspecified") as any,
-            weight_kg: Number(data.weight_kg),
-            height_cm: Number(data.height_cm),
-            age: Number(data.age),
-            activity_level: (data.activity_level ?? "sedentary") as any,
-          },
-          { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
-        );
-        if (resolved) {
-          setProfileMaintenanceTdee(resolved.kcal);
-          setProfileMaintenanceSource(resolved.source);
-          setProfileMaintenanceConfidence(resolved.confidence);
-          // Capture the Mifflin formula baseline so the weekly check-in
-          // ritual can compute the adaptive-vs-formula delta even when
-          // the resolver landed on adaptive (in which case
-          // `resolved.kcal` is the adaptive value and `formulaKcal` is
-          // the prior baseline).
-          setProfileFormulaTdee(resolved.formulaKcal ?? null);
-        }
-        // Raw adaptive TDEE + confidence — the weekly check-in gate
-        // wants these specifically (resolver-collapsed maintenance
-        // doesn't tell us whether adaptive_tdee itself is medium/high).
-        const aTdeeRaw = (data as { adaptive_tdee?: unknown }).adaptive_tdee;
-        const aTdeeNum =
-          typeof aTdeeRaw === "number"
-            ? aTdeeRaw
-            : aTdeeRaw == null
-              ? null
-              : Number(aTdeeRaw);
-        setProfileAdaptiveTdeeRaw(
-          aTdeeNum != null && Number.isFinite(aTdeeNum) ? aTdeeNum : null,
-        );
-        const aConfRaw = (data as { adaptive_tdee_confidence?: unknown })
-          .adaptive_tdee_confidence;
-        setProfileAdaptiveTdeeConfidenceRaw(
-          aConfRaw === "low" || aConfRaw === "medium" || aConfRaw === "high"
-            ? aConfRaw
-            : null,
-        );
-        // Weekly check-in shown-at hydration. Drives the 6-day cooldown.
-        const lastCheckin = (data as { last_weekly_checkin_shown_at?: unknown })
-          .last_weekly_checkin_shown_at;
-        setWeeklyCheckinShownAt(typeof lastCheckin === "string" ? lastCheckin : null);
-        const wkbdRaw = (data as { weight_kg_by_day?: unknown }).weight_kg_by_day;
-        if (wkbdRaw && typeof wkbdRaw === "object" && !Array.isArray(wkbdRaw)) {
-          const out: Record<string, number> = {};
-          for (const [k, v] of Object.entries(wkbdRaw as Record<string, unknown>)) {
-            const n = typeof v === "number" ? v : Number(v);
-            if (Number.isFinite(n) && n > 0) out[k] = n;
-          }
-          setProfileWeightKgByDay(out);
-        }
-      });
-  }, [authedUserId]);
-
-  const refreshTrackedDashboardMacros = useCallback(async () => {
-    if (!authedUserId) return;
-    const { data } = await supabase.from("profiles").select("tracked_macros").eq("id", authedUserId).maybeSingle();
-    if (data) {
-      setTrackedDashboardMacros(normalizeTrackedDashboardMacros((data as { tracked_macros?: unknown }).tracked_macros));
-    }
-  }, [authedUserId]);
-
-  useEffect(() => {
-    const onVis = () => {
-      if (typeof document === "undefined" || document.visibilityState !== "visible") return;
-      void refreshTrackedDashboardMacros();
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [refreshTrackedDashboardMacros]);
+  // ENG-1360 — the profiles-row fetch + `refreshTrackedDashboardMacros`
+  // visibility-change refetch that used to live here both moved to
+  // `useNutritionTrackerProfile` (called near the top of this component).
 
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== "undefined" ? navigator.onLine : true,
