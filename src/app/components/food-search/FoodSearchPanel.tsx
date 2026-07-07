@@ -65,7 +65,8 @@ import { matchGenericBeverage } from "@/lib/nutrition/genericBeverages";
 import { matchGenericFood } from "@/lib/nutrition/genericFoods";
 import { genericFoodMicrosPer100g } from "@/lib/nutrition/genericFoodMicros";
 import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
-import { sanitizeMicrosPer100g, optionalSanitizedMicrosPer100g } from "@/lib/nutrition/microPlausibility";
+import { optionalSanitizedMicrosPer100g } from "@/lib/nutrition/microPlausibility";
+import { mergeFetchedMicrosPer100g } from "@/lib/nutrition/foodSearchMicrosMerge";
 import {
   projectRemaining,
   portionFitHintForPreview,
@@ -124,20 +125,14 @@ import {
 import { foodSearchSourceLabel, mergeFoodSearchRows } from "@/lib/nutrition/foodSearchMerge";
 import { foodSearchPreviewPlausibilityWarning } from "@/lib/nutrition/portionPicker";
 import {
-  matchHistoryFoods,
-  historyMatchNameSet,
-  dedupeDbAgainstHistory,
-  normalizeHistoryName,
-  type HistorySearchMatch,
-} from "@/lib/nutrition/foodHistorySearch";
-import {
-  matchFavoriteFoods,
-  favoriteFoodKeySet,
   isFavoriteRow,
   type FavoriteSearchItem,
-  type FavoriteSearchMatch,
 } from "@/lib/nutrition/favoriteFoodsSearch";
 import { favoriteKey } from "@/lib/nutrition/favoriteFoods";
+import {
+  computeFoodSearchHistoryAndFavorites,
+  resolveFavoriteToggleId,
+} from "@/lib/nutrition/foodSearchHistoryAndFavorites";
 import { Star } from "lucide-react";
 import { formatMacroTrailer } from "@/lib/nutrition/macroFormat";
 
@@ -1418,7 +1413,7 @@ export function FoodSearchPanel({
         ? await fetchEdamamMicros(item._edamamFoodId)
         : {};
       setLoadingKey(null);
-      const mergedMicros = sanitizeMicrosPer100g({ ...(item.microsPer100g ?? {}), ...fetchedMicros });
+      const mergedMicros = mergeFetchedMicrosPer100g(item.microsPer100g, fetchedMicros);
       const portions = buildPortions([], item.primaryServing);
       const { portion, quantity } = item.primaryServing
         ? { portion: portions[0], quantity: 1 }
@@ -1829,48 +1824,38 @@ export function FoodSearchPanel({
     return shouldShowBarcodeFallbackHint(locale ?? null);
   }, [inBarcodeMode, onScanBarcodePressed, localeOverride]);
 
-  // ── History-first search (ENG-1033) ──────────────────────────────────
-  // MFP grammar: when the user has TYPED a query, surface matching items from
-  // their own logging history FIRST, as a visually-distinct "Past logged"
-  // group above the database results. The shared matcher ranks + de-dupes +
-  // caps `recentFoods` (newest-first). Group renders only on the All /
-  // Recents filters (Branded/Generic/Custom intents are "search-result
-  // shape"). Mobile sections identically off the same shared functions.
-  const historyMatches = useMemo<HistorySearchMatch[]>(() => {
-    if (!query.trim() || !recentFoods || recentFoods.length === 0) return [];
-    // Only on the "All" filter — Branded / Generic / Custom intents are
-    // explicitly "search-result shape" and shouldn't be topped with history.
-    if (activeCategory !== "All") return [];
-    return matchHistoryFoods(recentFoods, query);
-  }, [query, recentFoods, activeCategory]);
-
-  // ── Favourites-in-search (teardown #1, ENG-1041) ─────────────────────
-  // Per-row star state (filled vs outline) on every history-style row,
-  // without a per-row Supabase call.
-  const favoriteKeys = useMemo(
-    () => favoriteFoodKeySet(favoriteFoods ?? []),
-    [favoriteFoods],
-  );
-  // Typed-query "Favourites" group — favourites matching the query, ranked +
-  // capped, rendered ABOVE "Past logged" (same All-only gate as history).
-  const favoriteMatches = useMemo<FavoriteSearchMatch[]>(() => {
-    if (!query.trim() || !favoriteFoods || favoriteFoods.length === 0) return [];
-    if (activeCategory !== "All") return [];
-    return matchFavoriteFoods(favoriteFoods, query);
-  }, [query, favoriteFoods, activeCategory]);
-  // A food that's BOTH favourite and in history shows once, in Favourites
-  // (favourites win — the user deliberately starred it).
-  const favoriteMatchKeys = useMemo(
+  // ── History-first search (ENG-1033) + Favourites-in-search (ENG-1041) ──
+  // MFP grammar: when the user has TYPED a query, surface matching items
+  // from their own logging history + starred favourites ABOVE the database
+  // results, de-duped against each other (favourites win) and against the
+  // broad catalogue (history wins). Group renders only on the "All" filter
+  // (Branded/Generic/Custom intents are explicitly "search-result shape").
+  //
+  // ENG-1362 (round 2 of the ENG-550 extraction): this composition used to
+  // be five separate `useMemo`s reimplemented near-byte-for-byte in both
+  // panels. It's now one shared pure function
+  // (`computeFoodSearchHistoryAndFavorites`) wrapped in a single local
+  // `useMemo` — see that module's docstring for why it's a pure function
+  // and not a cross-platform hook. Mobile computes the identical shape via
+  // the same shared function, gated on ITS OWN category set (which
+  // includes "Recents" — a deliberate divergence, not collapsed here).
+  const isHistoryVisibleCategory = activeCategory === "All";
+  const {
+    favoriteKeys,
+    favoriteMatches,
+    historyMatchesDeduped,
+    dedupedResults,
+  } = useMemo(
     () =>
-      new Set(favoriteMatches.map((m) => favoriteKey(m.item.recipeTitle, m.item.calories))),
-    [favoriteMatches],
+      computeFoodSearchHistoryAndFavorites({
+        query,
+        results,
+        recentFoods,
+        favoriteFoods,
+        isHistoryVisibleCategory,
+      }),
+    [query, results, recentFoods, favoriteFoods, isHistoryVisibleCategory],
   );
-  const historyMatchesDeduped = useMemo<HistorySearchMatch[]>(() => {
-    if (favoriteMatchKeys.size === 0) return historyMatches;
-    return historyMatches.filter(
-      (m) => !favoriteMatchKeys.has(favoriteKey(m.item.recipeTitle, m.item.calories)),
-    );
-  }, [historyMatches, favoriteMatchKeys]);
 
   // Toggle a star from any history-style row — resolve the favourite id (when
   // unstarring) so the host can remove by id.
@@ -1885,24 +1870,13 @@ export function FoodSearchPanel({
       source?: string;
     }) => {
       if (!onToggleFavorite) return;
-      const key = favoriteKey(food.recipeTitle, food.calories);
-      const existing = (favoriteFoods ?? []).find(
-        (f) => favoriteKey(f.recipeTitle, f.calories) === key,
-      );
-      onToggleFavorite({ ...food, favoriteId: existing?.id });
+      onToggleFavorite({
+        ...food,
+        favoriteId: resolveFavoriteToggleId(food, favoriteFoods),
+      });
     },
     [onToggleFavorite, favoriteFoods],
   );
-
-  // De-dupe DB results against the history group — a database row whose name
-  // exactly matches a "Past logged" row shows once (history wins). Catalogue
-  // kcal is per-100g and never matches the per-serving history kcal, so the
-  // honest cross-source identity is the EXACT normalized name.
-  const historyNames = useMemo(() => historyMatchNameSet(historyMatches), [historyMatches]);
-  const dedupedResults = useMemo<SearchResult[]>(() => {
-    if (historyNames.size === 0) return results;
-    return dedupeDbAgainstHistory(results, historyNames, (r) => normalizeHistoryName(r.name));
-  }, [results, historyNames]);
 
   // ENG-815 — apply the active category filter, then split into Best/More via
   // the shared `splitFoodSearchResults` (same threshold + scorer as mobile).
