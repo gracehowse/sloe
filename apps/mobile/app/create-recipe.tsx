@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { showSignInAlert } from "@/lib/authAlertCopy";
 import { formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
 import {
   ActivityIndicator,
@@ -315,7 +316,7 @@ export default function CreateRecipeScreen() {
 
   const matchPastedIngredients = useCallback(async () => {
     if (!session?.access_token) {
-      Alert.alert("Sign in", "You need to be signed in to match ingredients.");
+      showSignInAlert("match ingredients");
       return;
     }
     const apiBase = getSupprApiBase();
@@ -419,7 +420,7 @@ export default function CreateRecipeScreen() {
       return;
     }
     if (!session?.access_token) {
-      Alert.alert("Sign in", "Sign in to scan a recipe photo.");
+      showSignInAlert("scan a recipe photo");
       return;
     }
     const apiBase = getSupprApiBase();
@@ -733,13 +734,11 @@ export default function CreateRecipeScreen() {
 
       const { data } = supabase.storage.from("recipe-images").getPublicUrl(path);
       return data.publicUrl;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
   const onSave = useCallback(async () => {
-    if (!userId) { Alert.alert("Sign in", "You need to be signed in to create a recipe."); return; }
+    if (!userId) { showSignInAlert("create a recipe"); return; }
     if (!title.trim()) { Alert.alert("Missing title", "Give your recipe a name."); return; }
     if (ingredients.length === 0) { Alert.alert("No ingredients", "Add at least one ingredient."); return; }
 

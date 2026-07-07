@@ -130,7 +130,7 @@ export function AnalyticsConsentPrompt() {
             {privacyBase ? (
               <Text
                 accessibilityRole="link"
-                accessibilityLabel="Privacy policy"
+                accessibilityLabel="Privacy Policy"
                 style={{
                   color: accent.primarySolid,
                   textDecorationLine: "underline",
@@ -142,7 +142,7 @@ export function AnalyticsConsentPrompt() {
                 }}
               >
                 {" "}
-                Privacy policy
+                Privacy Policy
               </Text>
             ) : null}
           </Text>

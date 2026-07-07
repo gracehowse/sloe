@@ -13,6 +13,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useHaptics } from "@/hooks/useHaptics";
+import { showSignInAlert } from "@/lib/authAlertCopy";
 import { useToday } from "./useToday";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -1032,7 +1033,7 @@ export default function TrackerScreen() {
       favoriteId?: string;
     }) => {
       if (!userId) {
-        Alert.alert("Sign in", "Sign in to save favourites.");
+        showSignInAlert("save favourites");
         return;
       }
       const key = favoriteFoodKey(food.recipeTitle, food.calories);
@@ -1424,7 +1425,7 @@ export default function TrackerScreen() {
   const openSaveMealSheetForSlot = useCallback(
     (slotName: string) => {
       if (!userId) {
-        Alert.alert("Sign in", "Sign in to save a usual meal.");
+        showSignInAlert("save a usual meal");
         return;
       }
       const normalised = normalizeJournalSlotName(slotName);
@@ -1476,7 +1477,7 @@ export default function TrackerScreen() {
       items: Omit<SavedMealItem, "id" | "position">[],
     ) => {
       if (!userId) {
-        Alert.alert("Sign in", "Sign in to save a usual meal.");
+        showSignInAlert("save a usual meal");
         return;
       }
       if (!Array.isArray(items) || items.length < 2) {

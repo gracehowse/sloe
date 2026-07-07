@@ -17,6 +17,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useKeepAwake } from "expo-keep-awake";
 import { useHaptics } from "@/hooks/useHaptics";
+import { showSignInAlert } from "@/lib/authAlertCopy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Mic,
@@ -961,15 +962,14 @@ export default function CookModeScreen() {
     if (!recipeId) return;
     if (addedToRegulars) return; // idempotent — disable button after first add
     try {
-      // Use the hydrated userId when available, fall back to a fresh
-      // read for the case where the auth tick hasn't landed yet.
+      // Use the hydrated userId when available, fall back to a fresh read for the case where the auth tick hasn't landed yet.
       let resolvedUserId = userId;
       if (!resolvedUserId) {
         const { data: authData } = await supabase.auth.getUser();
         resolvedUserId = authData?.user?.id ?? null;
       }
       if (!resolvedUserId) {
-        Alert.alert("Sign in needed", "Sign in to save this recipe as a regular.");
+        showSignInAlert("save this recipe as a regular");
         return;
       }
       const { data: recipe, error } = await supabase

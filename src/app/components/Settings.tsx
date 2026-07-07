@@ -1562,7 +1562,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
 
           {/* Dashboard widgets (tracked macros) */}
           <div>
-            <label className="block mb-1 text-sm font-medium text-foreground">Dashboard Widgets</label>
+            <label className="block mb-1 text-sm font-medium text-foreground">Dashboard widgets</label>
             <p className="text-xs text-muted-foreground mb-3">
               Choose which nutrients appear on your Today screen
             </p>
@@ -1922,7 +1922,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             href="/privacy"
             className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
-            Privacy policy
+            Privacy Policy
           </Link>
           <Link
             href="/help"
@@ -1934,7 +1934,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             href="/terms"
             className="block w-full text-left px-4 py-3 bg-muted hover:bg-muted/80 rounded-lg transition-all text-foreground"
           >
-            Terms of service
+            Terms of Service
           </Link>
           {/* Reset or start over (web parity to mobile, 2026-04-30 #15).
               Reset targets = inline; Erase everything = wipe + re-onboard.

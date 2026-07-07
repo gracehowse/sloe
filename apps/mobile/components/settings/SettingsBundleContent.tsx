@@ -2435,7 +2435,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           isFirst
           icon={FileText}
           iconColor={t.accent}
-          label="Privacy policy"
+          label="Privacy Policy"
           sub="How we use your data"
           onPress={() => openLegalPath("/privacy")}
         />
@@ -2443,7 +2443,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           testID="settings-bundle-terms-row"
           icon={BookOpen}
           iconColor={t.accent}
-          label="Terms of use"
+          label="Terms of Service"
           sub="Service agreement"
           onPress={() => openLegalPath("/terms")}
         />
@@ -2956,7 +2956,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 marginBottom: 4,
               }}
             >
-              Dashboard Widgets
+              Dashboard widgets
             </Text>
             <Text
               style={{

@@ -55,6 +55,7 @@ import {
   summariseSavedMeal,
 } from "@suppr/nutrition-core/savedMealsLogic";
 import { track } from "@/lib/analytics";
+import { showSignInAlert, signInToMessage } from "@/lib/authAlertCopy";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import EmptyState from "@/components/EmptyState";
 import { resolveQuickAddDefaultTab } from "@suppr/nutrition-core/usualMealHint";
@@ -318,7 +319,7 @@ export function QuickAddPanel({
   const toggleFavorite = useCallback(
     async (row: Row) => {
       if (!userId) {
-        Alert.alert("Sign in", "Sign in to save favourites.");
+        showSignInAlert("save favourites");
         return;
       }
       const key = favoriteKey(row.recipeTitle, row.calories);
@@ -599,10 +600,8 @@ export function QuickAddPanel({
           )}
           {!savedMealsLoading && !userId && (
             <EmptyState
-              illustration={
-                <LogIn size={ILLUSTRATION_SIZE} color={accent.primary} strokeWidth={2.25} />
-              }
-              title="Sign in to save a usual meal for one-tap re-logging."
+              illustration={<LogIn size={ILLUSTRATION_SIZE} color={accent.primary} strokeWidth={2.25} />}
+              title={signInToMessage("save a usual meal for one-tap re-logging")}
             />
           )}
           {!savedMealsLoading && userId && savedMeals.length === 0 && (

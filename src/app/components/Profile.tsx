@@ -613,7 +613,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
               <Icons.layoutGrid className="w-4 h-4" />
             </IconBox>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-foreground">Dashboard Widgets</p>
+              <p className="text-[13px] font-semibold text-foreground">Dashboard widgets</p>
               <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                 {profileTrackedMacros.length > 0
                   ? profileTrackedMacros.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join(", ")
