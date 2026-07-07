@@ -196,14 +196,15 @@ export default defineConfig({
     },
   },
   resolve: {
-    // Mirror Metro's `extraNodeModules.react` dedupe (see metro.config.js):
-    // shared `src/lib/*` files are watched from ../../src and would otherwise
-    // resolve `react` by walking up to the monorepo root (React 18, for
-    // Next.js), while the mobile renderer + components use apps/mobile's
-    // React 19. A shared hook (`useCsvImportFlow`, ENG-1234) is the first
-    // src/lib module to call React hooks, so without this the two copies
-    // collide → "Invalid hook call". Force every `react` import to the mobile
-    // copy, exactly as Metro does at runtime.
+    // Root and apps/mobile have SEPARATE node_modules trees, so even after
+    // the ENG-1365 React 18->19 version convergence, they hold two distinct
+    // physical copies of react. Shared `src/lib/*` hooks (e.g. useCsvImportFlow,
+    // useOnboardingRecipeImport) called from mobile components still collide
+    // across those two copies -> "Cannot read properties of null (reading
+    // 'useState')" -- confirmed by removing this and re-running the suite.
+    // Version convergence alone does not remove the need for this; it stays
+    // until root and mobile share one node_modules tree (real workspace
+    // hoisting), not just one react version number.
     dedupe: ["react", "react/jsx-runtime", "react/jsx-dev-runtime"],
     alias: [
       { find: /^react$/, replacement: path.resolve(__dirname, "node_modules/react") },
