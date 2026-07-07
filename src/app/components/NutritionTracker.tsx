@@ -221,16 +221,9 @@ export {
 // 2026-05-08 build-47 fix — Grace TF: tapping "+ Breakfast" in
 // the afternoon was logging picks as Snacks. Pick-handlers must use
 // `mealSlot` (the user's choice), and the generic LogSheet-open paths
-// must reset `mealSlot` to a fresh time-of-day default.
-//
-// ENG-773 (2026-05-30): `slotForHour` is now imported from the shared
-// `recipeJournalSlot` lib (single source of truth) instead of a local
-// copy. The old local copy used 10/14/17 cutoffs while the shared
-// helper (and mobile) used 11/15/17, so the same clock time seeded a
-// different default slot depending on platform — a 10–11am / 2–3pm
-// open bucketed differently on web vs mobile. Both now agree via the
-// shared ladder. Net behaviour change: a 10:30am open now seeds
-// Breakfast (was Lunch); a 2:30pm open now seeds Lunch (was Snacks).
+// must reset `mealSlot` to a fresh time-of-day default. `slotForHour`
+// comes from the shared `recipeJournalSlot` ladder — web and mobile
+// must bucket the same clock time into the same slot.
 
 interface NutritionTrackerProps {
   userTier: UserTier;
@@ -2649,9 +2642,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         // item. Same `coach_screen_v1` gate; the deficit-line deep-link stays.
         onPressCoach={coachScreenEnabled ? () => trackerRouter.push("/coach") : undefined}
         coachLine={coachLineEl}
-        // ENG-1372 — fresh-day pill only on TODAY with zero logged entries (a
-        // past day with nothing logged is a gap, not a fresh start); reuses
-        // the existing openLog slot-scoping mechanism (ENG-1450).
+        // ENG-1372 — fresh-day pill: TODAY with zero entries only (a past
+        // empty day is a gap, not a fresh start); reuses the openLog slot reset.
         isFreshDay={selectedDateKey === todayKey() && mealsForSelectedDate.length === 0}
         onLogFreshDaySlot={() => {
           setMealSlot(slotForHour(new Date().getHours()));
