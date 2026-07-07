@@ -3,6 +3,7 @@
 import * as React from "react";
 import { CalorieRingDial } from "./calorie-ring-dial";
 import { LogConfirmCheck } from "./log-confirm-check";
+import { TodayFreshDayLogPill } from "./today-fresh-day-log-pill";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 import {
   MACRO_RING_TOGGLE,
@@ -88,6 +89,8 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     commitPulse,
     logConfirmVisible,
     coachLine,
+    isFreshDay,
+    onLogFreshDaySlot,
   } = props;
   return {
     consumed,
@@ -105,6 +108,8 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     commitPulse,
     logConfirmVisible,
     coachLine,
+    isFreshDay,
+    onLogFreshDaySlot,
   };
 }
 
@@ -130,6 +135,8 @@ function DesktopHeroStats({
   logConfirmVisible = false,
   onPressStatusChip,
   coachLine,
+  isFreshDay = false,
+  onLogFreshDaySlot,
 }: TodayHeroStatsProps) {
   // Stat row now renders on EMPTY days too (web ring parity 2026-06-10) — the
   // empty page mirrors a populated day with honest zeros. Gated on a real
@@ -144,6 +151,11 @@ function DesktopHeroStats({
     : isOver
       ? "over"
       : "under";
+  // ENG-1372 — same gating as mobile-web `TodayHeroRing`: only a true fresh
+  // day (host-confirmed zero logged entries) behind the flag qualifies.
+  const emptyStateGrammarOn = isFeatureEnabled("empty_state_grammar_v1");
+  const showFreshDayGrammar = emptyStateGrammarOn && isFreshDay;
+  const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0;
   return (
     // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
     // adopts soft elevation (and drops its border) under
@@ -172,13 +184,20 @@ function DesktopHeroStats({
             consumed={consumed}
             target={target}
             size={DESKTOP_RING_GEOMETRY.size}
+            emptyTrackWarm={showFreshDayGrammar}
           />
           <LogConfirmCheck visible={logConfirmVisible} />
         </div>
 
+        {/* ENG-1372 (law 2) — the fresh-day hero's ONE filled invitation,
+            inside the hero (not floating beside a ghost of the data). */}
+        {showFreshDayGrammar && onLogFreshDaySlot ? (
+          <TodayFreshDayLogPill hour={new Date().getHours()} onPress={onLogFreshDaySlot} />
+        ) : null}
+
         {showStatRow ? (
           <div
-            className="grid w-full max-w-lg grid-cols-3 gap-2 border-t border-border pt-3"
+            className={`grid w-full max-w-lg gap-2 border-t border-border pt-3 ${hideBonusCell ? "grid-cols-2" : "grid-cols-3"}`}
             data-testid="today-hero-stat-row"
           >
             <StatCell
@@ -192,12 +211,16 @@ function DesktopHeroStats({
             {/* The right stat is ALWAYS Bonus (web ring parity 2026-06-10):
                 the over amount reads in the ring centre + the status chip, and
                 the old slot-switch hid the earned-burn number exactly when an
-                over-budget user most wants to see it. 0 when no bonus. */}
-            <StatCell
-              label={TODAY_HERO_STAT_LABELS.bonus}
-              value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
-              valueTone={bonusKcal > 0 ? "positive" : "neutral"}
-            />
+                over-budget user most wants to see it. 0 when no bonus —
+                unless suppressed on a fresh day (ENG-1372), which also
+                collapses the grid to 2 columns above. */}
+            {hideBonusCell ? null : (
+              <StatCell
+                label={TODAY_HERO_STAT_LABELS.bonus}
+                value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
+                valueTone={bonusKcal > 0 ? "positive" : "neutral"}
+              />
+            )}
           </div>
         ) : null}
 

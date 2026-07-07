@@ -317,6 +317,31 @@ export function todayColdOpenCoachLine(hour: number): string {
   return "Fresh start — log when you're ready.";
 }
 
+/** ENG-1372 (empty-state grammar contract, law 2) — the fresh-day hero's
+ *  ONE filled, time-aware invitation pill. Distinct 2-boundary ladder from
+ *  `slotForHour` (11 / 15 / 17 → Breakfast/Lunch/Snacks/Dinner) per the
+ *  Fable design contract's explicit spec: before 11 / 11–16 / after 16
+ *  collapses to just the three named meals a fresh-day pill should ever
+ *  offer (a "Log snacks" pill would read oddly as the ONLY hero action).
+ *  Slot + label always agree — {@link todayFreshDayLogPillSlot} returns the
+ *  slot this label names, so the pill's tap target and its copy can never
+ *  drift apart. */
+export function todayFreshDayLogPillLabel(hour: number): string {
+  if (hour < 11) return "Log breakfast";
+  if (hour < 16) return "Log lunch";
+  return "Log dinner";
+}
+
+/** The journal slot the fresh-day pill's tap opens the LogSheet scoped to.
+ *  Same 11 / 16 boundary as {@link todayFreshDayLogPillLabel} — kept as a
+ *  separate export (not a derived parse of the label) so callers get a
+ *  typed `TodayMealSlot` directly. */
+export function todayFreshDayLogPillSlot(hour: number): TodayMealSlot {
+  if (hour < 11) return "Breakfast";
+  if (hour < 16) return "Lunch";
+  return "Dinner";
+}
+
 export function todayRoomForMeal(
   remainingKcal: number,
   nextMeal: TodayMealSlot | null,

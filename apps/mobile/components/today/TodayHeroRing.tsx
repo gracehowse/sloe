@@ -10,6 +10,7 @@ import {
   TodayCoachChip,
 } from "@/components/today/TodayHeroChips";
 import { TodayHeroStats } from "@/components/today/TodayHeroStats";
+import { TodayFreshDayLogPill } from "@/components/today/TodayFreshDayLogPill";
 import { LogConfirmCheck } from "@/components/today/LogConfirmCheck";
 import { Layout } from "@/constants/layout";
 import { Spacing } from "@/constants/theme";
@@ -86,6 +87,16 @@ export interface TodayHeroRingProps {
   /** ENG-722 — log-confirm checkmark play counter; overlays a calm sage check
    *  on the ring graphic each time it increments (a durable commit). */
   logConfirmBump?: number;
+  /** ENG-1372 — true iff today has zero logged entries (host-computed from
+   *  `mealsToday.length === 0`, NOT `consumed === 0` — a 0-kcal logged item
+   *  should still count as "logged"). Behind `empty_state_grammar_v1`: swaps
+   *  the empty ring track to the warm-tint token, renders the time-aware
+   *  {@link TodayFreshDayLogPill} inside the hero, and suppresses the BONUS
+   *  stat cell. */
+  isFreshDay?: boolean;
+  /** Opens the LogSheet scoped to the time-appropriate meal slot from the
+   *  fresh-day pill. Required when `isFreshDay` is true. */
+  onLogFreshDaySlot?: () => void;
 }
 
 // StatusChip / RingStatusLine extracted to `TodayHeroChips.tsx` (ENG-1293) so
@@ -117,9 +128,21 @@ function TodayHeroRingImpl({
   onPressCoach,
   coachLine,
   logConfirmBump = 0,
+  isFreshDay = false,
+  onLogFreshDaySlot,
 }: TodayHeroRingProps) {
   const accent = useAccent();
   const isDark = useColorScheme() === "dark";
+  // ENG-1372 (empty-state grammar, law 1): on a fresh day the ring's empty
+  // track sits on the warm-tint elevation step, not the plum-tinted default
+  // — never invisible-on-background. Threaded to the jewel dial itself
+  // (`CalorieRingDial`'s `emptyTrackColor` override) since that component
+  // resolves `ringTick` from its OWN `useThemeColors()` call, not this
+  // prop's now-vestigial `trackColor` (unused by `TodayHeroRingGraphic`
+  // since the ENG-1225 jewel-dial swap). Only the FRESH-day case (zero
+  // logged entries) qualifies; a merely-under-target-but-logged day keeps
+  // the standard tick track.
+  const emptyStateGrammarOn = isFeatureEnabled("empty_state_grammar_v1");
   const isEmpty = consumed === 0 || goal <= 0;
   const isOver = goal > 0 && consumed > goal;
   const overByKcal = isOver ? consumed - goal : 0;
@@ -180,11 +203,18 @@ function TodayHeroRingImpl({
           expanded={expanded}
           onToggleExpanded={onToggleExpanded}
           numeralLarge={decard}
+          emptyTrackWarm={emptyStateGrammarOn && isFreshDay}
         />
         <LogConfirmCheck bump={logConfirmBump} />
       </View>
       {decard ? (
         <RingStatusLine state={chipState} overByKcal={overByKcal} isDark={isDark} />
+      ) : null}
+      {/* ENG-1372 (law 2) — the fresh-day hero's ONE filled invitation,
+          inside the hero (not floating beside a ghost of the data). Only
+          when the flag is on AND the host confirms zero logged entries. */}
+      {emptyStateGrammarOn && isFreshDay && onLogFreshDaySlot ? (
+        <TodayFreshDayLogPill hour={new Date().getHours()} onPress={onLogFreshDaySlot} />
       ) : null}
       {/* Goal / Eaten / Bonus stats row (extracted → TodayHeroStats so the
           carded + de-carded heroes share one source). */}
@@ -196,6 +226,7 @@ function TodayHeroRingImpl({
         secondaryColor={secondaryColor}
         borderColor={borderColor}
         isDark={isDark}
+        suppressZeroBonus={emptyStateGrammarOn && isFreshDay}
       />
       {coachLine}
       {/* Macro-rings toggle (audit gap 5) — a tap-accessible counterpart to

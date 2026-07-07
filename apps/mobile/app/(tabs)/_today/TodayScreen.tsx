@@ -5340,6 +5340,15 @@ export default function TrackerScreen() {
                 }
                 coachLine={heroCoachLine ?? undefined}
                 logConfirmBump={logConfirmBump}
+                // ENG-1372 — fresh-day pill only on TODAY with zero logged
+                // entries (a past day with nothing logged is a gap, not a
+                // fresh start; reuses the existing slot-open mechanism the
+                // per-slot "+" rows already use, ENG-1450).
+                isFreshDay={isToday && mealsToday.length === 0}
+                onLogFreshDaySlot={() => {
+                  setActiveMealSlot(slotForHour(new Date().getHours()));
+                  setFabSheetOpen(true);
+                }}
               />
                 );
               })()}

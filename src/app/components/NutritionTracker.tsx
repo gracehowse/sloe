@@ -2649,6 +2649,14 @@ export const NutritionTracker = memo(function NutritionTracker({
         // item. Same `coach_screen_v1` gate; the deficit-line deep-link stays.
         onPressCoach={coachScreenEnabled ? () => trackerRouter.push("/coach") : undefined}
         coachLine={coachLineEl}
+        // ENG-1372 — fresh-day pill only on TODAY with zero logged entries (a
+        // past day with nothing logged is a gap, not a fresh start); reuses
+        // the existing openLog slot-scoping mechanism (ENG-1450).
+        isFreshDay={selectedDateKey === todayKey() && mealsForSelectedDate.length === 0}
+        onLogFreshDaySlot={() => {
+          setMealSlot(slotForHour(new Date().getHours()));
+          setLogSheetOpen(true);
+        }}
       />
         );
       })()}

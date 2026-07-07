@@ -5,6 +5,7 @@ import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import type { CalorieRingDisplayMode } from "./daily-ring";
 import { CalorieRingDial } from "./calorie-ring-dial";
 import { LogConfirmCheck } from "./log-confirm-check";
+import { TodayFreshDayLogPill } from "./today-fresh-day-log-pill";
 import { MACRO_RING_TOGGLE, todayStatusChip } from "../../../lib/copy/today";
 import { useCalorieRingGeometry } from "../../../lib/hooks/useCalorieRingGeometry";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
@@ -52,6 +53,15 @@ export interface TodayHeroRingProps {
   logConfirmVisible?: boolean;
   /** ENG-889 — optional coach line rendered inside the hero card below stats. */
   coachLine?: React.ReactNode;
+  /** ENG-1372 — true iff today has zero logged entries (host-computed, NOT
+   *  `consumed === 0` — a 0-kcal logged item should still count as
+   *  "logged"). Behind `empty_state_grammar_v1`: swaps the empty ring track
+   *  to the warm-tint token, renders the time-aware fresh-day log pill
+   *  inside the hero, and suppresses the BONUS stat cell. */
+  isFreshDay?: boolean;
+  /** Opens the LogSheet scoped to the time-appropriate meal slot from the
+   *  fresh-day pill. Required when `isFreshDay` is true. */
+  onLogFreshDaySlot?: () => void;
 }
 
 type ChipState = "empty" | "under" | "over";
@@ -210,6 +220,8 @@ export function TodayHeroRing({
   commitPulse = false,
   logConfirmVisible = false,
   coachLine,
+  isFreshDay = false,
+  onLogFreshDaySlot,
 }: TodayHeroRingProps) {
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;
@@ -217,6 +229,13 @@ export function TodayHeroRing({
   const ringGeometry = useCalorieRingGeometry();
   const bonusKcal =
     baseGoal && baseGoal < target ? Math.round(target - baseGoal) : 0;
+  // ENG-1372 (empty-state grammar): only the FRESH-day case (zero logged
+  // entries, host-confirmed) qualifies for the warm track / pill / BONUS
+  // suppression — a merely-under-target-but-logged day keeps the standard
+  // rendering.
+  const emptyStateGrammarOn = isFeatureEnabled("empty_state_grammar_v1");
+  const showFreshDayGrammar = emptyStateGrammarOn && isFreshDay;
+  const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0;
 
   // De-carded v3 hero (ENG-1247, flag today_hero_decard_v3, default OFF). The
   // prototype `.ring-hero` is a BARE centered block — no card chrome — with the
@@ -251,17 +270,26 @@ export function TodayHeroRing({
           target={target}
           size={ringGeometry.size}
           numeralLarge={decard}
+          emptyTrackWarm={showFreshDayGrammar}
         />
         <LogConfirmCheck visible={logConfirmVisible} />
       </div>
       {decard ? <RingStatusLine state={chipState} /> : null}
+      {/* ENG-1372 (law 2) — the fresh-day hero's ONE filled invitation, inside
+          the hero (not floating beside a ghost of the data). */}
+      {showFreshDayGrammar && onLogFreshDaySlot ? (
+        <TodayFreshDayLogPill hour={new Date().getHours()} onPress={onLogFreshDaySlot} />
+      ) : null}
       {/* Goal / Eaten / Bonus stats row — renders on EMPTY days too (web ring
           parity 2026-06-10): the empty page mirrors a populated day, so Eaten 0
           and Bonus +0 are honest numbers, not noise. Gated on `target > 0`
-          (no profile target yet → no row), mirroring mobile `TodayHeroRing`. */}
+          (no profile target yet → no row), mirroring mobile `TodayHeroRing`.
+          BONUS itself collapses when `showFreshDayGrammar` and there's no
+          real bonus to show (ENG-1372 law 3 — numbers suppressed until
+          earned; Goal/Eaten stay, those are honest earned zeros). */}
       {target > 0 ? (
         <div
-          className="grid w-full grid-cols-3 border-t border-border pt-2"
+          className={`grid w-full border-t border-border pt-2 ${hideBonusCell ? "grid-cols-2" : "grid-cols-3"}`}
           data-testid="today-ring-stats-row"
         >
           <RingStatCell
@@ -276,14 +304,18 @@ export function TodayHeroRing({
           {/* The right stat is ALWAYS Bonus (web ring parity 2026-06-10): the
               over amount reads in the ring centre + the status chip, and the
               old slot-switch hid the earned-burn number exactly when an
-              over-budget user most wants to see it. 0 when no bonus. */}
-          <RingStatCell
-            label="Bonus"
-            value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
-            labelClassName={bonusKcal > 0 ? "text-success" : "text-foreground-secondary"}
-            valueClassName={bonusKcal > 0 ? "text-success" : "text-foreground-secondary"}
-            divider
-          />
+              over-budget user most wants to see it. 0 when no bonus — unless
+              suppressed on a fresh day (ENG-1372), which also collapses the
+              grid to 2 columns above so the row stays balanced. */}
+          {hideBonusCell ? null : (
+            <RingStatCell
+              label="Bonus"
+              value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
+              labelClassName={bonusKcal > 0 ? "text-success" : "text-foreground-secondary"}
+              valueClassName={bonusKcal > 0 ? "text-success" : "text-foreground-secondary"}
+              divider
+            />
+          )}
         </div>
       ) : null}
       {coachLine}
