@@ -14,13 +14,13 @@ import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSna
 import { mergeJournalByDay } from "../../lib/nutrition/mergeJournalByDay.ts";
 import { nutritionEntryDateKeyAndEatenAt, reanchorMealEatenAt } from "../../lib/nutrition/mealEatenAt.ts";
 import { buildNutritionEntryUpdatePayload } from "../../lib/nutrition/nutritionEntryUpdatePayload.ts";
-import { flushJournalWriteQueue, reconcileQueueAfterFlush } from "../../lib/nutrition/flushJournalWriteQueue.ts";
-import { enqueueJournalUpserts } from "../../lib/nutrition/journalWriteQueue.ts";
+import { enqueueJournalUpserts, removeJournalQueuedIds } from "../../lib/nutrition/journalWriteQueue.ts";
 import {
   loadJournalWriteQueue,
   saveJournalWriteQueue,
 } from "../../lib/nutrition/journalWriteQueueStorage.web.ts";
 import { journalBootWindowStartKey } from "../../lib/nutrition/journalWindow.ts";
+import { useWebJournalWriteAhead, reportDroppedJournalWrites } from "../../hooks/useWebJournalWriteAhead.ts";
 
 /**
  * Column list shared by the boot window query and the out-of-window
@@ -101,6 +101,10 @@ export function useNutritionJournalState(opts: {
   const [dbNutritionWarned, setDbNutritionWarned] = useState(false);
   /** ENG-889 — flips once the first Supabase journal read settles (parity with mobile `hydrated`). */
   const [journalHydrated, setJournalHydrated] = useState(() => !opts.authedUserId);
+  /** ENG-1466 — bumped after a successful write-ahead flush so the load
+   *  effect below re-runs and picks up the freshly-flushed rows via the
+   *  normal server merge (mirrors mobile's `requestJournalRefresh`). */
+  const [journalRefreshNonce, setJournalRefreshNonce] = useState(0);
 
   const tryEnableDbNutrition = useCallback(async () => {
     if (!authedUserId) return false;
@@ -130,19 +134,35 @@ export function useNutritionJournalState(opts: {
     [],
   );
 
+  /**
+   * ENG-1466 — web port of ENG-1447's write-ahead journal fix. Every
+   * `nutrition_entries` INSERT (single log + bulk copy/duplicate) now
+   * enqueues to the durable localStorage queue BEFORE attempting the
+   * network write, races the upsert against a bounded timeout, and acks
+   * exactly the confirmed ids on success — see `useWebJournalWriteAhead`
+   * for the full sequencing + rationale. `updateLoggedMeal` / `removeLoggedMeal`
+   * intentionally keep the pre-existing optimistic + enqueue-ON-FAILURE
+   * shape (mirrors mobile: write-ahead targets the "committed log vanishes"
+   * P0 on the insert/log-commit path, not edit/delete).
+   */
+  const { writeAhead, flushQueue, loadQueuedByDay } = useWebJournalWriteAhead(supabase);
+
+  /** ENG-1466 — drain the write-ahead queue via `useWebJournalWriteAhead`
+   *  (retry / 42501-reverify / poison-isolation all live there). A
+   *  successful flush requests a journal reload (flushed rows re-hydrate
+   *  through the normal `mergeJournalByDay` merge); a poison eviction or
+   *  terminal drop surfaces to the user instead of vanishing silently. */
   const flushQueuedJournalWrites = useCallback(async () => {
     if (!authedUserId || !dbNutritionEnabled) return;
-    const queue = await loadJournalWriteQueue();
-    if (queue.entries.length === 0) return;
-    const result = await flushJournalWriteQueue(supabase, queue);
-    // Re-load to capture any row enqueued during the flush round-trip, then
-    // reconcile rather than blind-overwrite (ENG-1125 data-loss fix).
-    const latest = await loadJournalWriteQueue();
-    await saveJournalWriteQueue(reconcileQueueAfterFlush(queue, latest, result));
-    if (result.flushedIds.length > 0) {
+    const { flushedIds, droppedPoisonIds, dropQueue } = await flushQueue();
+    if (flushedIds.length > 0) {
       void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+      setJournalRefreshNonce((n) => n + 1);
     }
-  }, [authedUserId, dbNutritionEnabled]);
+    if (droppedPoisonIds.length > 0 || dropQueue) {
+      reportDroppedJournalWrites({ droppedPoisonIds, dropQueue });
+    }
+  }, [authedUserId, dbNutritionEnabled, flushQueue]);
 
   useEffect(() => {
     void flushQueuedJournalWrites();
@@ -201,21 +221,32 @@ export function useNutritionJournalState(opts: {
         return;
       }
 
+      const byDay: Record<string, LoggedMeal[]> = {};
       if (data && data.length > 0) {
-        const byDay: Record<string, LoggedMeal[]> = {};
         for (const row of data as NutritionEntryRow[]) {
           const key = row.date_key;
           if (!byDay[key]) byDay[key] = [];
           byDay[key].push(rowToLoggedMeal(row));
         }
-        setNutritionByDay((prev) => mergeJournalByDay(byDay, prev));
+      }
+      // ENG-1466 — layer in write-ahead-queued-but-unflushed rows as a
+      // second "local" pass so a queued meal survives even a genuine
+      // cold load (`prev` is `{}` on first mount, not just a stale tab).
+      // Mirrors mobile TodayScreen's `loadJournal` (ENG-1447 part 5).
+      const queuedByDay = await loadQueuedByDay();
+      const queuedMeals: Record<string, LoggedMeal[]> = {};
+      for (const [key, queueRows] of Object.entries(queuedByDay)) {
+        queuedMeals[key] = queueRows.map((row) => rowToLoggedMeal(row as unknown as NutritionEntryRow));
+      }
+      if (data && data.length > 0 || Object.keys(queuedMeals).length > 0) {
+        setNutritionByDay((prev) => mergeJournalByDay(byDay, mergeJournalByDay(queuedMeals, prev)));
       }
       } finally {
         if (!cancelled) setJournalHydrated(true);
       }
     })();
     return () => { cancelled = true; };
-  }, [authedUserId, dbNutritionEnabled, dbNutritionWarned, bootWindowStartKey]);
+  }, [authedUserId, dbNutritionEnabled, dbNutritionWarned, bootWindowStartKey, loadQueuedByDay, journalRefreshNonce]);
 
   /**
    * ENG-1324 — extended-history window for surfaces whose stats look past
@@ -386,45 +417,44 @@ export function useNutritionJournalState(opts: {
       return { ...prev, [resolvedDateKey]: [...day, newMeal] };
     });
 
-    // Persist to relational table
+    // ENG-1466 — write-ahead the durable queue BEFORE attempting the
+    // network write (was: optimistic-first, queue-only-on-failure — a tab
+    // close/kill between "user tapped log" and "network resolved" could
+    // silently drop a committed log). See `useWebJournalWriteAhead` for the
+    // full enqueue -> bounded-upsert -> ack sequencing.
     if (authedUserId && dbNutritionEnabled) {
-      supabase
-        .from("nutrition_entries")
-        .insert(row)
-        .then(({ error }) => {
-          if (error) {
-            const msg = error.message ?? "";
-            if (looksLikeMissingTableError(msg)) {
-              setDbNutritionEnabled(false);
-              onPersisted?.(false, id);
-              return;
-            }
-            // ENG-1125 — keep optimistic UI; queue for retry instead of rollback.
-            void enqueueFailedUpsert(resolvedDateKey, [row]);
-            toast.warning(
-              "Saved on this device — we'll sync when you're back online.",
-            );
-            onPersisted?.(false, id);
-            return;
+      void writeAhead(resolvedDateKey, [row]).then(async (result) => {
+        if (!result.persisted) {
+          if (looksLikeMissingTableError(result.errorMessage ?? "")) {
+            // Never-writable table — flip the feature off and purge this
+            // row from the retry queue rather than leaving it parked
+            // forever (write-ahead has no concept of "missing table";
+            // that classification is web-only legacy-schema fallout).
+            setDbNutritionEnabled(false);
+            const queue = await loadJournalWriteQueue();
+            await saveJournalWriteQueue(removeJournalQueuedIds(queue, [id]));
           }
-          void refreshAdaptiveTdeeForUser(supabase, authedUserId);
-          // F-2 (2026-04-19) — freeze today's target on first log of
-          // the day. Past days stop moving when the user later edits
-          // activity_level / plan_pace / goal. Fire-and-forget — a
-          // snapshot write failure must never roll back the log.
-          void snapshotDailyTargetIfMissing(supabase, authedUserId);
-          // ENG-751 — parent insert confirmed; let the caller write the per-item
-          // snapshot now that the FK target row exists on the server.
-          onPersisted?.(true, id);
-          // F-74 / F-103 fix (2026-05-07): per-meal `micros.caffeineMg`
-          // / `alcoholG` is the canonical SoT — `NutritionTracker`
-          // re-sums it at render via `caffeineFromMealsMgToday` /
-          // `alcoholByDayMerged`. The previous bump here was duplicating
-          // the value into `extra_caffeine_by_day`, then the read merged
-          // both → 2× display. Quick-add still writes the ledger
-          // directly (different code path); ledger now holds quick-add
-          // only.
-        });
+          onPersisted?.(false, id);
+          return;
+        }
+        void refreshAdaptiveTdeeForUser(supabase, authedUserId);
+        // F-2 (2026-04-19) — freeze today's target on first log of
+        // the day. Past days stop moving when the user later edits
+        // activity_level / plan_pace / goal. Fire-and-forget — a
+        // snapshot write failure must never roll back the log.
+        void snapshotDailyTargetIfMissing(supabase, authedUserId);
+        // ENG-751 — parent insert confirmed; let the caller write the per-item
+        // snapshot now that the FK target row exists on the server.
+        onPersisted?.(true, id);
+        // F-74 / F-103 fix (2026-05-07): per-meal `micros.caffeineMg`
+        // / `alcoholG` is the canonical SoT — `NutritionTracker`
+        // re-sums it at render via `caffeineFromMealsMgToday` /
+        // `alcoholByDayMerged`. The previous bump here was duplicating
+        // the value into `extra_caffeine_by_day`, then the read merged
+        // both → 2× display. Quick-add still writes the ledger
+        // directly (different code path); ledger now holds quick-add
+        // only.
+      });
     }
 
     // If the caller tagged the meal as a Planner row (time === "Planned"),
@@ -439,7 +469,7 @@ export function useNutritionJournalState(opts: {
       fromPlanner: meal.time === "Planned",
     });
     return id;
-  }, [authedUserId, dbNutritionEnabled, buildNutritionEntryRow, enqueueFailedUpsert]);
+  }, [authedUserId, dbNutritionEnabled, buildNutritionEntryRow, writeAhead]);
 
   /**
    * Bulk insert variant used by `duplicateDay` / `duplicateDayToDateRange`
@@ -452,8 +482,11 @@ export function useNutritionJournalState(opts: {
    * fire their own batch event (`meal_copied`, `day_duplicated`, or
    * `food_logged { count }`) so the event taxonomy isn't duplicated.
    *
-   * On error the optimistic rows are queued for retry (ENG-1125), matching
-   * the mobile `insertClonedRowsIntoDay` semantics.
+   * ENG-1466 — the durable write now goes through `writeAhead` (enqueue
+   * BEFORE the network attempt, bounded-timeout upsert, ack-on-success)
+   * instead of a bare `.insert()` that only queued AFTER a rejection —
+   * matching mobile's `insertClonedRowsIntoDay` (ENG-1447 part 5), the
+   * diagnosis's original direct-insert bypass site.
    *
    * Returns the array of inserted rows with their fresh ids.
    */
@@ -471,21 +504,18 @@ export function useNutritionJournalState(opts: {
       if (!authedUserId || !dbNutritionEnabled) return withIds;
 
       const rows = withIds.map((m) => buildNutritionEntryRow(dayKey, m, authedUserId));
-      const { error } = await supabase.from("nutrition_entries").insert(rows);
-      if (error) {
-        const msg = error.message ?? "";
-        if (looksLikeMissingTableError(msg)) {
+      const result = await writeAhead(dayKey, rows);
+      if (!result.persisted) {
+        if (looksLikeMissingTableError(result.errorMessage ?? "")) {
+          // Never-writable table — flip the feature off and purge these
+          // rows from the retry queue (write-ahead has no concept of
+          // "missing table"; web-only legacy-schema fallout).
           setDbNutritionEnabled(false);
-          return withIds;
+          const queue = await loadJournalWriteQueue();
+          await saveJournalWriteQueue(
+            removeJournalQueuedIds(queue, withIds.map((m) => m.id)),
+          );
         }
-        // ENG-1125 — queue failed bulk inserts; keep optimistic rows visible.
-        void enqueueFailedUpsert(
-          dayKey,
-          rows as ReadonlyArray<NutritionEntryRow>,
-        );
-        toast.warning(
-          "Saved on this device — we'll sync when you're back online.",
-        );
         return withIds;
       }
       void refreshAdaptiveTdeeForUser(supabase, authedUserId);
@@ -502,7 +532,7 @@ export function useNutritionJournalState(opts: {
       // at render. No ledger bump.
       return withIds;
     },
-    [authedUserId, dbNutritionEnabled, buildNutritionEntryRow, enqueueFailedUpsert],
+    [authedUserId, dbNutritionEnabled, buildNutritionEntryRow, writeAhead],
   );
 
   const addLoggedMeal = useCallback(

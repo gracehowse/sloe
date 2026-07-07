@@ -1,6 +1,14 @@
 /**
  * ENG-1048 / ENG-1125 — web journal optimistic UI on persist failure.
  * Inserts queue for retry (keep visible); deletes still roll back.
+ *
+ * ENG-1466 (2026-07-06) — `addLoggedMealForDate`'s durable write now goes
+ * through `useWebJournalWriteAhead`'s write-ahead `.upsert(rows, {onConflict:
+ * "id"})`, not a bare `.insert()`. `insertShouldFail` drives the mock's
+ * `upsert()` (not `insert()`) accordingly; `ackJournalQueuedIds` is mocked
+ * on `flushJournalWriteQueue.ts` because `journalWriteAhead.ts`'s
+ * `ackWrittenIds` imports it for the confirmed-write ack path, which now
+ * fires on every successful `addLoggedMealForDate` (not just on flush).
  */
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,13 +33,14 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
         };
         return chain;
       },
-      insert: () =>
+      insert: () => Promise.resolve({ error: null }),
+      // ENG-1466 — write-ahead's durable write is an upsert, not an insert.
+      upsert: () =>
         Promise.resolve(
           insertShouldFail
             ? { error: { message: "insert failed" } }
             : { error: null },
         ),
-      upsert: () => Promise.resolve({ error: null }),
       delete: () => ({
         eq: () =>
           Promise.resolve(
@@ -78,6 +87,10 @@ vi.mock("../../src/lib/nutrition/flushJournalWriteQueue.ts", () => ({
   flushJournalWriteQueue: () =>
     Promise.resolve({ remaining: { entries: [] }, flushedIds: [], droppedPoisonIds: [], dropQueue: false }),
   reconcileQueueAfterFlush: () => ({ version: 1, entries: [] }),
+  // ENG-1466 — `journalWriteAhead.ts`'s `ackWrittenIds` imports this to ack
+  // a confirmed write off the queue; a successful `writeAhead` call (every
+  // successful `addLoggedMealForDate`, not just a flush) now reaches it.
+  ackJournalQueuedIds: (queue: unknown) => queue,
 }));
 
 vi.mock("../../src/context/appData/useRetryEnableDbTable.ts", () => ({

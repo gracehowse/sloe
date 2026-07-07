@@ -6,36 +6,49 @@ import { act, renderHook } from "@testing-library/react";
 void React;
 
 /**
- * Bulk insert tests for `useNutritionJournalState` (audit M3, 2026-04-18).
+ * Bulk insert tests for `useNutritionJournalState` (audit M3, 2026-04-18;
+ * write-ahead-ified 2026-07-06, ENG-1466 — web port of mobile's ENG-1447).
  *
  * Verifies that `duplicateDay`, `duplicateDayToDateRange`, and
- * `copyMealToDateRange` call the Supabase insert primitive with an
+ * `copyMealToDateRange` call the write-ahead upsert primitive with an
  * **array** rather than looping row-by-row. For a 7-day × 4-meal
- * duplicate, this collapses 28 sequential single-row inserts into 7
- * batched inserts (one per target day), with exactly 1 `food_logged`
+ * duplicate, this collapses 28 sequential single-row upserts into 7
+ * batched upserts (one per target day), with exactly 1 `food_logged`
  * analytics event for the whole batch.
  *
+ * ENG-1466 — every `nutrition_entries` write (single-meal + bulk) now goes
+ * through `useWebJournalWriteAhead`'s `writeAhead`, which enqueues to
+ * localStorage BEFORE calling `.upsert(rows, { onConflict: "id" })` (was:
+ * a bare `.insert()` with no durable-before-attempt guarantee). This suite
+ * asserts on the resulting `nutrition_entries` `.upsert()` calls.
+ *
  * Fakes:
- *  - `supabase` browser client is mocked to record every `.insert()`
- *    call and resolve successfully.
+ *  - `supabase` browser client is mocked table-aware: `.upsert()` against
+ *    `nutrition_entries` is recorded as a "write" call; `.upsert()` against
+ *    `daily_targets` (the F-2 snapshot helper) is swallowed so it can't be
+ *    confused with a journal write.
+ *  - `journalWriteQueueStorage.web.ts` is NOT mocked — it persists to real
+ *    jsdom `localStorage`, which the write-ahead hook enqueues to before
+ *    every upsert attempt. Cleared before/after every test so a queued row
+ *    from one case can't leak into the next.
  *  - `track()` is mocked to capture analytics events.
  *  - `refreshAdaptiveTdeeForUser` is stubbed so the test doesn't touch
  *    Supabase for the adaptive TDEE side-effect.
  *  - `toast` is stubbed.
  */
 
-type InsertCall = { rows: unknown };
-const insertCalls: InsertCall[] = [];
+type WriteCall = { rows: unknown };
+const writeCalls: WriteCall[] = [];
 const analyticsCalls: Array<{ event: string; payload?: Record<string, unknown> }> = [];
 
 function resetFakes() {
-  insertCalls.length = 0;
+  writeCalls.length = 0;
   analyticsCalls.length = 0;
 }
 
 vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
   supabase: {
-    from: (_table: string) => ({
+    from: (table: string) => ({
       // `.select(...)` is used both in the hook's one-time probe
       // (`.select("id").limit(1)`) and in the initial load effect
       // (`.select(...).eq("user_id", …).order("created_at", …)`).
@@ -55,15 +68,27 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
         };
         return chain;
       },
-      insert: (rows: unknown) => {
-        insertCalls.push({ rows });
+      // ENG-1466 — the durable write path now upserts (write-ahead's
+      // `onConflict: "id"` upsert), not a bare insert. Only record
+      // `nutrition_entries` calls as journal writes; the F-2 snapshot
+      // helper's `daily_targets` upsert is swallowed here (its own shape
+      // is covered by `dailyTargetSnapshot.test.ts`).
+      upsert: (rows: unknown, _opts?: unknown) => {
+        if (table === "nutrition_entries") {
+          writeCalls.push({ rows });
+        }
         return Promise.resolve({ error: null });
       },
-      // F-2 snapshot helper uses `.upsert(row, { onConflict, ignoreDuplicates })`.
-      // Swallow the call — the bulk-insert suite doesn't need to
-      // assert its shape (those live in `dailyTargetSnapshot.test.ts`).
-      upsert: (_rows: unknown, _opts?: unknown) =>
-        Promise.resolve({ error: null }),
+      insert: (rows: unknown) => {
+        // No call site should reach a bare `.insert()` on nutrition_entries
+        // post-ENG-1466 — if this fires it's tracked as a write too so a
+        // regression back to the old bare-insert path still surfaces here
+        // (the assertions below pin upsert-shaped calls specifically).
+        if (table === "nutrition_entries") {
+          writeCalls.push({ rows });
+        }
+        return Promise.resolve({ error: null });
+      },
       delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
     }),
   },
@@ -118,9 +143,14 @@ function meal(overrides: Partial<LoggedMeal> = {}): LoggedMeal {
 describe("useNutritionJournalState bulk insert (audit M3)", () => {
   beforeEach(() => {
     resetFakes();
+    // ENG-1466 — write-ahead persists to real jsdom localStorage; clear the
+    // write-ahead queue between tests so an ack from one case can't leak
+    // into (or be mistaken for state in) the next.
+    window.localStorage.clear();
   });
   afterEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
   });
 
   it("duplicateDay sends a single array insert rather than N single inserts", async () => {
@@ -143,8 +173,8 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
     });
 
     // Exactly ONE insert call, not 4.
-    expect(insertCalls).toHaveLength(1);
-    const rows = insertCalls[0]!.rows;
+    expect(writeCalls).toHaveLength(1);
+    const rows = writeCalls[0]!.rows;
     expect(Array.isArray(rows)).toBe(true);
     expect((rows as unknown[]).length).toBe(4);
 
@@ -188,8 +218,8 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
     });
 
     // One insert per target day — 7, not 28.
-    expect(insertCalls).toHaveLength(7);
-    for (const call of insertCalls) {
+    expect(writeCalls).toHaveLength(7);
+    for (const call of writeCalls) {
       expect(Array.isArray(call.rows)).toBe(true);
       expect((call.rows as unknown[]).length).toBe(4);
     }
@@ -236,8 +266,8 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
     });
 
     // One insert per target — 7 single-row inserts.
-    expect(insertCalls).toHaveLength(7);
-    for (const call of insertCalls) {
+    expect(writeCalls).toHaveLength(7);
+    for (const call of writeCalls) {
       expect(Array.isArray(call.rows)).toBe(true);
       expect((call.rows as unknown[]).length).toBe(1);
     }
@@ -260,7 +290,7 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
     });
   });
 
-  it("single-meal addLoggedMealForDate still uses the single-row insert and one food_logged event", async () => {
+  it("single-meal addLoggedMealForDate write-aheads a single-row batch and fires one food_logged event", async () => {
     const { result } = renderHook(() =>
       useNutritionJournalState({
         authedUserId: "user-1",
@@ -279,11 +309,19 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
         carbs: 10,
         fat: 5,
       });
+      // ENG-1466 — addLoggedMealForDate returns synchronously (the id),
+      // firing writeAhead's enqueue -> upsert -> ack chain fire-and-forget.
+      // Flush microtasks so the (mocked, immediately-resolving) upsert
+      // settles before asserting on writeCalls.
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
-    // Manual logging remains a single-row (object) insert, not an array.
-    expect(insertCalls).toHaveLength(1);
-    expect(Array.isArray(insertCalls[0]!.rows)).toBe(false);
+    // Write-ahead always upserts a ROW ARRAY (mirrors mobile's `writeAhead`
+    // contract), even for a single manual log — one call, one-element array.
+    expect(writeCalls).toHaveLength(1);
+    expect(Array.isArray(writeCalls[0]!.rows)).toBe(true);
+    expect((writeCalls[0]!.rows as unknown[]).length).toBe(1);
 
     // And a single food_logged event with the meal calories — unchanged
     // contract so we don't regress the manual-log analytics path.
@@ -307,7 +345,7 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
       await result.current.duplicateDayToDateRange("2026-04-17", ["2026-04-17"]); // source only
     });
 
-    expect(insertCalls).toHaveLength(0);
+    expect(writeCalls).toHaveLength(0);
     expect(analyticsCalls.filter((c) => c.event === "food_logged")).toHaveLength(0);
   });
 
@@ -328,8 +366,8 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
       await result.current.duplicateDay("2026-06-14", "2026-06-16");
     });
 
-    expect(insertCalls).toHaveLength(1);
-    const rows = insertCalls[0]!.rows as Array<Record<string, unknown>>;
+    expect(writeCalls).toHaveLength(1);
+    const rows = writeCalls[0]!.rows as Array<Record<string, unknown>>;
     expect(rows[0]!.date_key).toBe("2026-06-16");
     expect(String(rows[0]!.eaten_at)).toMatch(/^2026-06-16T/);
   });
@@ -355,7 +393,7 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
       await result.current.duplicateDay("2026-06-14", "2026-06-15");
     });
 
-    const rows = insertCalls[0]!.rows as Array<Record<string, unknown>>;
+    const rows = writeCalls[0]!.rows as Array<Record<string, unknown>>;
     expect(rows[0]!.nutrition_micros).toEqual(stimulantMicros);
   });
 
@@ -378,7 +416,7 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
       await result.current.copyMealToDateRange("2026-06-10", "m1", ["2026-06-11"]);
     });
 
-    const rows = insertCalls[0]!.rows as Array<Record<string, unknown>>;
+    const rows = writeCalls[0]!.rows as Array<Record<string, unknown>>;
     expect(rows[0]!.date_key).toBe("2026-06-11");
     expect(String(rows[0]!.eaten_at)).toMatch(/^2026-06-11T/);
     expect(rows[0]!.nutrition_micros).toEqual(stimulantMicros);

@@ -25,6 +25,10 @@ const REPO = resolve(__dirname, "../..");
 // `.insert` may sit on the next line after the launch-audit P1-2 builder
 // consolidation (`.from("nutrition_entries")\n  .insert(buildNutritionEntryRow(...))`).
 const INSERT_RE = /from\(\s*["']nutrition_entries["']\s*\)\s*\.insert/;
+// ENG-1466 — the web write-ahead port's durable write is an upsert
+// (`.upsert(rows, {onConflict: "id"})`), not a bare insert; sites that
+// delegate to `useWebJournalWriteAhead` match this instead of `INSERT_RE`.
+const UPSERT_RE = /from\(\s*["']nutrition_entries["']\s*\)\s*\.upsert/;
 const GUARD_RE = /macrosAreCoerced|wouldCoerceMacros|fetchPlannedMealMicros/;
 
 type Site = {
@@ -39,6 +43,13 @@ type Site = {
     | "caller-resolved";
   /** When reason is "guarded-upstream", which file is the guard layer. */
   upstreamGuardFile?: string;
+  /**
+   * ENG-1466 — set when the write site's durable persistence has moved to
+   * a write-ahead upsert (in a different file than `file` above) rather
+   * than an inline `.insert()`. The sanity check matches `UPSERT_RE`
+   * against THIS file instead of `INSERT_RE` against `file`.
+   */
+  writeAheadFile?: string;
 };
 
 /**
@@ -59,15 +70,21 @@ const INVENTORY: Site[] = [
   // addRecipeToTodayJournal — P0-3 added inline guard before insert.
   { file: "apps/mobile/app/recipe/[id].tsx", reason: "guarded-inline" },
 
-  // useNutritionJournalState owns the SQL insert; the guard runs in the
-  // upstream caller (NutritionTracker.tsx onLogPlanMeal) which calls
-  // fetchPlannedMealMicros and refuses before invoking addLoggedMeal.
-  // Other callers of addLoggedMeal* pass already-resolved per-100g
-  // macros from FoodSearch / barcode / verify — no coercion path.
+  // useNutritionJournalState builds the row + guard-checks upstream; the
+  // guard runs in the upstream caller (NutritionTracker.tsx onLogPlanMeal)
+  // which calls fetchPlannedMealMicros and refuses before invoking
+  // addLoggedMeal. Other callers of addLoggedMeal* pass already-resolved
+  // per-100g macros from FoodSearch / barcode / verify — no coercion path.
+  // ENG-1466 (2026-07-06) — the durable write itself moved to
+  // `useWebJournalWriteAhead.ts`'s write-ahead `.upsert(rows, {onConflict:
+  // "id"})` (enqueue-before-network-attempt), so the write-site sanity
+  // check now matches UPSERT_RE against that file instead of INSERT_RE
+  // against useNutritionJournalState.ts.
   {
     file: "src/context/appData/useNutritionJournalState.ts",
     reason: "guarded-upstream",
     upstreamGuardFile: "src/app/components/NutritionTracker.tsx",
+    writeAheadFile: "src/hooks/useWebJournalWriteAhead.ts",
   },
 
   // External provenance — Apple Health.
@@ -84,8 +101,15 @@ describe("nutrition_entries insert guard inventory", () => {
     it(`${site.file} — ${site.reason}`, () => {
       const text = readFileSync(resolve(REPO, site.file), "utf8");
 
-      // Sanity: each listed site must actually insert into nutrition_entries.
-      expect(text).toMatch(INSERT_RE);
+      // Sanity: each listed site must actually write into nutrition_entries
+      // — either inline (INSERT_RE) or, post-ENG-1466, via a write-ahead
+      // upsert in a delegate file (UPSERT_RE against `writeAheadFile`).
+      if (site.writeAheadFile) {
+        const writeAheadText = readFileSync(resolve(REPO, site.writeAheadFile), "utf8");
+        expect(writeAheadText).toMatch(UPSERT_RE);
+      } else {
+        expect(text).toMatch(INSERT_RE);
+      }
 
       if (site.reason === "guarded-inline") {
         expect(text).toMatch(GUARD_RE);
