@@ -1,15 +1,17 @@
 /**
- * Food-selection → meal macros (teardown #2 basket, ENG-1042, 2026-06-11).
+ * Food-selection → meal macros (originally extracted for the ENG-1042 basket
+ * teardown; the log-sheet staging basket itself was retired in ENG-1449 —
+ * see the one-commit-model note in `apps/mobile/components/today/LogSheet.tsx`
+ * — but this scaling core stays as the single source of truth for every
+ * commit path).
  *
  * The math that turns a `SelectedFood` / `FoodSearchSelection` (the payload the
  * food-search panel emits on pick) into the scaled per-meal macros + micros was
  * duplicated verbatim between mobile `handleFoodSearchSelect`
  * (`apps/mobile/app/(tabs)/index.tsx`) and web `commitFoodSearchSelection`
- * (`src/app/components/NutritionTracker.tsx`). The multi-add basket needs to
- * build the SAME row for each pick (so a basketed item logs identically to an
- * instant-logged one), and a basket of N items must not re-implement the math a
- * third time. So the scaling core is extracted here — pure, shared, one source
- * of truth — and both hosts (instant-log AND basket-add) call it.
+ * (`src/app/components/NutritionTracker.tsx`). Extracting it here — pure,
+ * shared, one source of truth — keeps every commit path (instant-log on both
+ * platforms) byte-for-byte identical.
  *
  * Pure: no React, no Supabase, no `Date`. Mobile imports via
  * `@suppr/shared/nutrition/foodSelectionToMeal`.
@@ -104,7 +106,7 @@ export function foodSelectionAnalyticsSource(
 
 /**
  * Scale a food-search selection into per-meal macros + micros. Single source of
- * truth for instant-log AND basket-add on both platforms.
+ * truth for every instant-log commit path on both platforms.
  *
  * - **Per-serving path** (FatSecret no-metric / count servings like "1 large
  *   tomato"): `gramWeight === 0` + `macrosPerServing` present →

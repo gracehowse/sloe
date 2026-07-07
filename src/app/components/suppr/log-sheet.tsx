@@ -161,13 +161,6 @@ export interface LogSheetGoToEntry {
   count: number;
 }
 
-/** ENG-929 — staged basket row (host-owned id). */
-export interface LogSheetBasketItem {
-  id: string;
-  title: string;
-  kcal: number;
-}
-
 export interface LogSheetBarcodeManualEntry {
   productName: string;
   brand?: string;
@@ -249,8 +242,6 @@ export interface LogSheetProps {
     }) => void;
     /** Keys of favourite toggles in flight (no double-submit). */
     favoritePendingKeys?: Set<string>;
-    /** Multi-add basket (ENG-929) — stage into host basket instead of instant log. */
-    onAddToBasket?: (result: LogSheetInlineSelectedFood) => void;
     /** Legacy mode — tap-to-open the host's separate FoodSearch dialog. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;
@@ -367,14 +358,6 @@ export interface LogSheetProps {
     entries: LogSheetGoToEntry[];
     onPick: (entry: LogSheetGoToEntry) => void;
   };
-  /** ENG-929 — staged multi-add basket bar (host owns items + commit). */
-  basket?: {
-    items: LogSheetBasketItem[];
-    totalKcal: number;
-    onRemove: (id: string) => void;
-    onCommit: () => void;
-    onClear: () => void;
-  };
   /** ENG-973 — show "Barcode scan is free — always" under the search row. */
   showBarcodeFreePromise?: boolean;
   /** ENG-972 — inline natural-language describe + parse inside the sheet. */
@@ -441,7 +424,6 @@ export function LogSheet({
   slot,
   confirmation,
   goTos,
-  basket,
   showBarcodeFreePromise = false,
   describe,
   initialQuery,
@@ -630,7 +612,6 @@ export function LogSheet({
               copyYesterday={copyYesterday}
               quickActions={quickActions}
               goTos={goTos}
-              basket={basket}
               showBarcodeFreePromise={showBarcodeFreePromise}
               describe={describe}
               initialQuery={initialQuery}
@@ -736,7 +717,6 @@ function DefaultComposition({
   copyYesterday,
   quickActions,
   goTos,
-  basket,
   showBarcodeFreePromise,
   describe,
   initialQuery,
@@ -756,7 +736,6 @@ function DefaultComposition({
   copyYesterday?: LogSheetProps["copyYesterday"];
   quickActions?: LogSheetProps["quickActions"];
   goTos?: LogSheetProps["goTos"];
-  basket?: LogSheetProps["basket"];
   showBarcodeFreePromise?: boolean;
   describe?: LogSheetProps["describe"];
   initialQuery?: string;
@@ -960,7 +939,6 @@ function DefaultComposition({
             favoriteFoods={search?.favoriteFoods}
             onToggleFavorite={search?.onToggleFavorite}
             favoritePendingKeys={search?.favoritePendingKeys}
-            onAddToBasket={search?.onAddToBasket}
             mode="compact"
             onSelect={(result) => {
               search?.onSelect?.(result);
@@ -1108,10 +1086,6 @@ function DefaultComposition({
               macroConsumed={search.macroConsumed}
             />
           ) : null}
-
-          {basket && basket.items.length > 0 ? (
-            <LogSheetBasketBar basket={basket} />
-          ) : null}
         </>
       )}
       </div>
@@ -1145,39 +1119,6 @@ function GoToList({
           onPick={() => goTos.onPick(entry)}
         />
       ))}
-    </div>
-  );
-}
-
-/* -------------------------- Multi-add basket bar (ENG-929) -------------------------- */
-
-function LogSheetBasketBar({ basket }: { basket: NonNullable<LogSheetProps["basket"]> }) {
-  const count = basket.items.length;
-  return (
-    <div
-      data-testid="log-sheet-basket-bar"
-      className="mx-3 mb-3 mt-2 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary-soft/40 px-3 py-2"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-semibold text-foreground">
-          {count === 1 ? "1 item staged" : `${count} items staged`}
-        </p>
-        <p className="text-[11px] tabular-nums text-muted-foreground">
-          {Math.round(basket.totalKcal)} kcal total
-        </p>
-      </div>
-      <SupprButton
-        variant="ghost"
-        label="Clear"
-        onClick={basket.onClear}
-        className="shrink-0"
-      />
-      <SupprButton
-        variant="primary"
-        label={count === 1 ? "Log item" : `Log ${count} items`}
-        onClick={basket.onCommit}
-        className="shrink-0"
-      />
     </div>
   );
 }

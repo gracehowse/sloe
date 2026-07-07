@@ -151,13 +151,6 @@ export interface LogSheetGoToEntry {
   count: number;
 }
 
-/** ENG-929 — staged basket row (host-owned id). */
-export interface LogSheetBasketItem {
-  id: string;
-  title: string;
-  kcal: number;
-}
-
 export interface LogSheetSavedMeal {
   id: string;
   title: string;
@@ -273,11 +266,6 @@ export interface LogSheetProps {
     }) => void;
     /** Keys of favourite toggles currently in flight (no double-submit). */
     favoritePendingKeys?: Set<string>;
-    /** Multi-add basket (teardown #2, ENG-1042) — stage the picked food into
-     *  the host's basket instead of committing immediately. Threaded to
-     *  `<FoodSearchPanel>`; surfaces an "Add" action in the portion preview.
-     *  When omitted, only the instant "Use this" log shows. */
-    onAddToBasket?: (result: LogSheetInlineSelectedFood) => void;
     /** Legacy mode — tap-to-open the host's separate FoodSearchModal. */
     onOpen?: () => void;
     /** @deprecated */ query?: string;
@@ -392,14 +380,6 @@ export interface LogSheetProps {
     entries: LogSheetGoToEntry[];
     onPick: (entry: LogSheetGoToEntry) => void;
   };
-  /** ENG-929 — staged multi-add basket bar. */
-  basket?: {
-    items: LogSheetBasketItem[];
-    totalKcal: number;
-    onRemove: (id: string) => void;
-    onCommit: () => void;
-    onClear: () => void;
-  };
   /** ENG-973 — show free-barcode promise under search row. */
   showBarcodeFreePromise?: boolean;
   /** ENG-972 — inline natural-language describe + parse inside the sheet. */
@@ -467,7 +447,6 @@ function LogSheetImpl({
   slot,
   confirmation,
   goTos,
-  basket,
   showBarcodeFreePromise = false,
   describe,
   initialQuery,
@@ -631,7 +610,6 @@ function LogSheetImpl({
                 copyYesterday={copyYesterday}
                 quickActions={quickActions}
                 goTos={goTos}
-                basket={basket}
                 showBarcodeFreePromise={showBarcodeFreePromise}
                 describe={describe}
                 initialQuery={initialQuery}
@@ -753,7 +731,6 @@ function DefaultComposition({
   copyYesterday,
   quickActions,
   goTos,
-  basket,
   showBarcodeFreePromise,
   describe,
   initialQuery,
@@ -773,7 +750,6 @@ function DefaultComposition({
   copyYesterday?: LogSheetProps["copyYesterday"];
   quickActions?: LogSheetProps["quickActions"];
   goTos?: LogSheetProps["goTos"];
-  basket?: LogSheetProps["basket"];
   showBarcodeFreePromise?: boolean;
   describe?: LogSheetProps["describe"];
   /** ENG-1450 — pre-fills the inline search on open (onboarding deep-link). */
@@ -986,7 +962,6 @@ function DefaultComposition({
             favoriteFoods={search?.favoriteFoods}
             onToggleFavorite={search?.onToggleFavorite}
             favoritePendingKeys={search?.favoritePendingKeys}
-            onAddToBasket={search?.onAddToBasket}
             onSelect={(result) => {
               search?.onSelect?.(result);
               // After a successful pick the user has logged something —
@@ -1021,9 +996,6 @@ function DefaultComposition({
             macroTargets={search?.macroTargets}
             macroConsumed={search?.macroConsumed}
           />
-          {basket && basket.items.length > 0 ? (
-            <LogSheetBasketBar basket={basket} />
-          ) : null}
         </>
       )}
       </View>
@@ -1071,48 +1043,6 @@ function GoToList({
           onPick={() => goTos.onPick(entry)}
         />
       ))}
-    </View>
-  );
-}
-
-/* -------------------------- Multi-add basket (ENG-929) -------------------------- */
-
-function LogSheetBasketBar({ basket }: { basket: NonNullable<LogSheetProps["basket"]> }) {
-  const colors = useThemeColors();
-  const accent = useAccent();
-  const count = basket.items.length;
-  return (
-    <View
-      testID="log-sheet-basket-bar"
-      style={{
-        marginHorizontal: Spacing.md,
-        marginBottom: Spacing.md,
-        marginTop: Spacing.sm,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: Spacing.sm,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderRadius: Radius.xl,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: colors.border,
-        backgroundColor: accent.primarySoft,
-      }}
-    >
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }} numberOfLines={1}>
-          {count === 1 ? "1 item staged" : `${count} items staged`}
-        </Text>
-        <Text style={{ fontSize: 11, color: colors.textSecondary }}>
-          {Math.round(basket.totalKcal)} kcal total
-        </Text>
-      </View>
-      <SupprButton variant="ghost" label="Clear" onPress={basket.onClear} />
-      <SupprButton
-        variant="primary"
-        label={count === 1 ? "Log item" : `Log ${count} items`}
-        onPress={basket.onCommit}
-      />
     </View>
   );
 }

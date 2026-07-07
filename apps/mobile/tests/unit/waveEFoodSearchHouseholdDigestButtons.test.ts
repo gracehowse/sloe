@@ -21,17 +21,14 @@
  * settings-page grammar is also pinned in
  * `tests/unit/settingsLaneAubergineOutline.test.ts` and the import-shared
  * grammar in `tests/unit/todayLaneAubergineOutline.test.ts` (this file pins
- * the surfaces those didn't reach: FoodSearchPanel, PlanTemplatesSheet,
- * Digest, weekly-recap, HouseholdCard).
+ * the surfaces those didn't reach: PlanTemplatesSheet, Digest, weekly-recap,
+ * HouseholdCard).
  *
- * IMPORTANT — FoodSearchPanel "Add" is a GHOST, not primary. The preview
- * footer pairs a dominant solid "Use this" log-commit with a secondary "Add to
- * basket" stage action. Per the one-filled-CTA law (root CLAUDE.md), the
- * SECOND button cannot also be a solid primary — it would erase the
- * log-vs-stage hierarchy. So "Add" is `variant="ghost"`. The original task
- * brief said "FoodSearchPanel Add = primary"; the sanctioned in-source
- * treatment is ghost (the solid commit in that row is "Use this"). This pin
- * follows the source's documented one-CTA rationale rather than the brief.
+ * ENG-1449 (2026-07-07): the FoodSearchPanel preview footer's "Add to basket"
+ * secondary CTA was removed with the log-sheet staging basket (one-commit
+ * model — every add now logs immediately via "Use this" with the sheet's
+ * Logged/Done/Undo ceremony). The describe block that pinned its
+ * ghost-vs-solid CTA hierarchy is retired along with it.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -39,7 +36,6 @@ import { describe, expect, it } from "vitest";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf8");
 
-const FOOD_SEARCH = read("components/food-search/FoodSearchPanel.tsx");
 const GOAL_CONTROLS = read("components/recap/GoalPaceControls.tsx");
 const GOAL_RETUNE = read("components/recap/GoalPaceRetuneSheet.tsx");
 const PLAN_TEMPLATES = read("components/PlanTemplatesSheet.tsx");
@@ -52,26 +48,6 @@ const HOUSEHOLD_SETTINGS = read("app/household-settings.tsx");
 // Retired aubergine-OUTLINE signature on a *named* CTA.
 const outlineNear = (testidOrLabel: string) =>
   new RegExp(`${testidOrLabel}[\\s\\S]{0,300}borderColor:\\s*(?:accent|Accent)\\.primarySolid`);
-
-describe("Wave E (mobile) — FoodSearchPanel preview footer", () => {
-  it("imports the shared mobile SupprButton primitive", () => {
-    expect(FOOD_SEARCH).toMatch(
-      /import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/,
-    );
-  });
-
-  it("'Add' (basket stage action) is a GHOST beside the solid 'Use this' commit (one-CTA law)", () => {
-    // The dominant log commit "Use this" owns the solid fill; "Add" stages to
-    // the basket as the secondary → ghost (transparent, plum label + glyph).
-    expect(FOOD_SEARCH).toMatch(
-      /<SupprButton\s+variant="ghost"[\s\S]{0,200}testID="food-search-preview-add-to-basket"/,
-    );
-    // Must NOT regress to the retired aubergine outline.
-    expect(FOOD_SEARCH).not.toMatch(
-      outlineNear('testID="food-search-preview-add-to-basket"'),
-    );
-  });
-});
 
 describe("Wave E (mobile) — Goal-pace sheet commits", () => {
   it("editor 'Save' is a SOLID primary; 'Cancel' is a GHOST", () => {
