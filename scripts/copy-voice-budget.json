@@ -1,0 +1,40 @@
+{
+  "allow": {
+    "app/licences/page.tsx": "OSS attributions/licences page — library names ARE the content (ENG-1378 legal-disclosure carve-out)",
+    "app/checkout/success/page.tsx": "billing factual disclosure — where a Stripe-billed subscription can be managed (ENG-1378 legal/billing carve-out)",
+    "app/pricing/page.tsx": "billing factual disclosure — refund processor name in the pricing FAQ (ENG-1378 legal/billing carve-out)",
+    "apps/mobile/components/ops/SupabaseNotConfiguredScreen.tsx": "ENG-1456 (Done) — vendor string is __DEV__-gated; production users see 'Something went wrong', never the vendor name",
+    "app/dev/health-import-labels/page.tsx": "/dev/* route, blocked from production at the Vercel routing layer; 'Lose It!' is a competitor app's actual proper name, not our copy",
+    "apps/mobile/app/dev/health-import-labels.tsx": "dev-only harness screen (apps/mobile/app/dev/**); 'Lose It!' is a competitor app's actual proper name, not our copy"
+  },
+  "pins": {
+    "app/pricing/CheckoutButton.tsx": 1,
+    "apps/mobile/app/(tabs)/barcode.tsx": 1,
+    "apps/mobile/app/cook.tsx": 2,
+    "apps/mobile/app/create-recipe.tsx": 2,
+    "apps/mobile/app/health-sync.tsx": 4,
+    "apps/mobile/app/import-shared.tsx": 3,
+    "apps/mobile/app/login.tsx": 3,
+    "apps/mobile/app/notifications-prompt.tsx": 1,
+    "apps/mobile/app/recipe/[id].tsx": 1,
+    "apps/mobile/components/BarcodeScannerModal.tsx": 2,
+    "apps/mobile/components/FoodSearchModal.tsx": 1,
+    "apps/mobile/components/onboarding/steps/data-bridges.tsx": 1,
+    "apps/mobile/components/onboarding/steps/permissions.tsx": 1,
+    "apps/mobile/components/recipe/CreateRecipeWizard.tsx": 1,
+    "apps/mobile/components/settings/SettingsBundleContent.tsx": 1,
+    "apps/mobile/components/today/StreakPip.tsx": 2,
+    "apps/mobile/components/today/TodayCompleteDayModal.tsx": 1,
+    "apps/mobile/components/ui/WinMomentPlayer.tsx": 1,
+    "src/app/components/FirstRunChecklist.tsx": 1,
+    "src/app/components/FoodSearch.tsx": 1,
+    "src/app/components/RecipeDetail.tsx": 3,
+    "src/app/components/RecipeUpload.tsx": 2,
+    "src/app/components/suppr/streak-pip.tsx": 2,
+    "src/app/components/suppr/today-complete-day-dialog.tsx": 1,
+    "src/app/components/suppr/upgrade-paywall-dialog.tsx": 1,
+    "src/app/components/TodayAtAGlance.tsx": 1,
+    "src/app/components/TodayDesktopFrame.tsx": 1,
+    "src/app/components/ui/win-moment-player.tsx": 1
+  }
+}
