@@ -358,6 +358,12 @@ function postIngredientImage(body: { names: string[]; aliases?: Array<{ name: st
   });
 }
 
+// ENG-1380 — terminal contract for the recipe-detail loading skeleton: bound
+// the wait before the non-catalog fetch falls back to the explicit "could not
+// be loaded" state, so a hung socket (no response, no error) never strands the
+// pulse. Generous enough not to false-trip a slow-but-alive mobile connection.
+const RECIPE_FETCH_TIMEOUT_MS = 12_000;
+
 export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCookMode, initialServings, onViewTracker }: RecipeDetailProps) {
   const {
     toggleSaveRecipe,
@@ -839,6 +845,14 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
       return;
     }
     let cancelled = false;
+    // ENG-1380 — watchdog so the skeleton always settles even if the fetch
+    // promise never resolves (hung socket): fall back to the explicit error
+    // state rather than pulsing forever.
+    const watchdog = setTimeout(() => {
+      if (cancelled) return;
+      setDbFetchFailed(true);
+      setDbLoading(false);
+    }, RECIPE_FETCH_TIMEOUT_MS);
     (async () => {
       setDbLoading(true);
       setDbFetchFailed(false);
@@ -918,9 +932,18 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
         setDbIngredientIds([]);
       }
       setDbLoading(false);
-    })();
+    })()
+      .catch(() => {
+        // A thrown fetch rejection (vs a returned {error}) must also land in
+        // the explicit error state, not hang the skeleton (ENG-1380).
+        if (cancelled) return;
+        setDbFetchFailed(true);
+        setDbLoading(false);
+      })
+      .finally(() => clearTimeout(watchdog));
     return () => {
       cancelled = true;
+      clearTimeout(watchdog);
     };
   }, [recipe.id, recipe.servings, isCatalogRecipe]);
 
