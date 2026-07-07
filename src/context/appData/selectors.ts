@@ -22,6 +22,7 @@
  */
 import { useAppData } from "../AppDataContext.tsx";
 import { useHousehold } from "../HouseholdContext.tsx";
+import { useRecipeCollections } from "../RecipeCollectionsContext.tsx";
 
 /** Notifications inbox: unread count, prefs, and the read/clear actions. */
 export function useNotificationsData() {
@@ -52,6 +53,16 @@ export function useNotificationsData() {
  * user-created collections (ENG-1126). Collections are part of the library
  * domain, not a separate one — they're always keyed by recipe id and only
  * ever consumed alongside the rest of the library surface.
+ *
+ * ENG-1364 (phase 2) — the collections slice now reads from
+ * `RecipeCollectionsContext` (split out of the monolith: it's a pure
+ * function of `authedUserId` with no reads from `generateMealPlan` /
+ * `generateShoppingListFromPlan`, unlike the rest of this domain). The
+ * saved/discover recipe slice stays on `useAppData()` — it's read directly,
+ * at multiple call sites, inside meal-plan generation, which makes it a
+ * materially riskier split than this PR's scope covers (see the phase-2 PR
+ * description). This hook's own signature/return shape is unchanged, so
+ * every existing consumer of `useRecipeLibraryData()` sees zero code change.
  */
 export function useRecipeLibraryData() {
   const {
@@ -67,6 +78,8 @@ export function useRecipeLibraryData() {
     isRecipeSaved,
     savedRecipesForLibrary,
     libraryDataReady,
+  } = useAppData();
+  const {
     recipeCollections,
     collectionMembershipByRecipeId,
     createCollection,
@@ -74,7 +87,7 @@ export function useRecipeLibraryData() {
     deleteCollection,
     addRecipeToCollection,
     removeRecipeFromCollection,
-  } = useAppData();
+  } = useRecipeCollections();
   return {
     discoverRecipes,
     communityFeedCount,

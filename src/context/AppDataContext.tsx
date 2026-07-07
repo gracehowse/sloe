@@ -79,8 +79,8 @@ import { useNutritionJournalState } from "./appData/useNutritionJournalState.ts"
 import { usePersistLocalAppSnapshot } from "./appData/usePersistLocalAppSnapshot.ts";
 import { useRetryEnableDbTable } from "./appData/useRetryEnableDbTable.ts";
 import { useShoppingListState } from "./appData/useShoppingListState.ts";
-import { useRecipeCollectionsState } from "./appData/useRecipeCollectionsState.ts";
 import type { RecipeCollection } from "../lib/recipes/recipeCollections.ts";
+import { useRecipeCollections } from "./RecipeCollectionsContext.tsx";
 import { fingerprintMealPlanForShopping } from "../lib/planning/mealPlanFingerprint.ts";
 import {
   shoppingScopeFor,
@@ -533,6 +533,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     activeHouseholdId,
   });
 
+  // ENG-1364 (phase 2) — recipe collections now owned by
+  // `RecipeCollectionsContext` (mounted above `AppDataProvider` in
+  // `app/providers.tsx`). Re-exposed on `AppDataContextValue` below as a
+  // backward-compat passthrough for the raw `useAppData()` consumers that
+  // mix collections fields with other domains (e.g. `Library.tsx` reading
+  // `collectionMembershipByRecipeId` alongside `nutritionTargets`) — a
+  // deliberate, temporary passthrough, not a new permanent pattern.
   const {
     recipeCollections,
     collectionMembershipByRecipeId,
@@ -541,7 +548,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     deleteCollection,
     addRecipeToCollection,
     removeRecipeFromCollection,
-  } = useRecipeCollectionsState({ authedUserId });
+  } = useRecipeCollections();
 
   const [shoppingListSourceFingerprint, setShoppingListSourceFingerprint] = useState<string | null>(
     initial.shoppingListSourceFingerprint ?? null,
