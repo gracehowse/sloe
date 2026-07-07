@@ -8,6 +8,8 @@ import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib
 import { detectRegion, resolveRenderedVatNote } from "../../src/lib/region/detectRegion.ts";
 import { isEurStripePricingConfigured } from "../../src/lib/stripe/resolveProStripePrice.ts";
 import { PricingHero } from "./PricingHero.tsx";
+import { PricingHeroCta } from "./PricingHeroCta.tsx";
+import { PricingHeaderAuth } from "./PricingHeaderAuth.tsx";
 import { PricingPaywallHonesty } from "./PricingPaywallHonesty.tsx";
 import { PricingTiersGrid } from "./PricingTiersGrid.tsx";
 import { PaywallTrustStrip } from "./PaywallTrustStrip.tsx";
@@ -189,12 +191,16 @@ export default async function PricingPage({
           >
             sloe
           </Link>
-          <Link
-            href="/login"
-            className="px-5 py-2 rounded-xl border border-border text-foreground text-sm font-semibold hover:bg-card transition-colors"
-          >
-            Sign in
-          </Link>
+          {/* ENG-1460 part 2 (2026-07-07 decision): the header must reflect
+              auth state — a signed-in user seeing "Sign in" on the surface
+              that asks for money is a wrong-identity moment at the exact
+              point trust converts. `PricingHeaderAuth` self-gates behind
+              the default-ON `pricing_conversion_pair_v1` flag (a client
+              component, so it reads `isFeatureEnabled` itself rather than
+              this server component branching before render — `track.ts`
+              is "use client" and cannot be called from a server function)
+              and renders the legacy "Sign in" link when the flag is off. */}
+          <PricingHeaderAuth />
         </div>
       </header>
 
@@ -206,6 +212,21 @@ export default async function PricingPage({
             page body stays focused on the value grid + comparison +
             tier + FAQ composition. Same hero copy as the mobile paywall. */}
         <PricingHero />
+
+        {/* ENG-1460 part 1 (2026-07-07 decision): price + ONE filled CTA in
+            the first viewport. Previously the tier cards with prices and
+            CTAs were five sections deep — a visitor scrolled two full
+            screens of feature restatement before meeting a single number
+            or button. Reads the same PRICING_TIERS SSOT as the grid below
+            (no new claims, just surfacing existing content earlier).
+            `PricingHeroCta` self-gates behind `pricing_conversion_pair_v1`
+            (same reasoning as `PricingHeaderAuth` above) and renders
+            nothing when the flag is off. */}
+        <PricingHeroCta
+          proTier={TIERS_FOR_GRID.find((t) => t.checkoutTier === "pro") ?? TIERS_FOR_GRID[0]}
+          paywallFrom={paywallFrom}
+          regionCurrency={region.currency}
+        />
 
         <PricingPaywallHonesty paywallFrom={paywallFrom} />
 

@@ -442,6 +442,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (pre-gloss) label at each site — never a broken render, so still a safe
   // kill switch. Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
   "onboarding_jargon_gloss_v1",
+  // ENG-1460 — /pricing conversion pair (2026-07-05 critique, DECIDED Fable
+  // 2026-07-07): hero billing selector + ONE filled "Start free trial" CTA
+  // in the first viewport (`PricingHeroCta`), tier-card CTAs demoted to
+  // outline so they don't compete, and the header reflects auth state
+  // (avatar/account instead of "Sign in" for signed-in visitors,
+  // `PricingHeaderAuth`). WEB-ONLY (mobile paywall already has a persistent
+  // CTA + never shows a wrong-identity header). Off → the pre-ENG-1460
+  // "Sign in" header + tier cards five sections deep with no early CTA
+  // (kill switch).
+  "pricing_conversion_pair_v1",
 ]);
 
 /**
