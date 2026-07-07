@@ -325,8 +325,6 @@ export type FoodSearchPanelProps = {
   }) => void;
   /** Keys of favourite toggles in flight (disabled + dimmed star). */
   favoritePendingKeys?: Set<string>;
-  /** Multi-add basket (ENG-929) — stage preview into host basket; sheet stays open. */
-  onAddToBasket?: (selection: FoodSearchSelection) => void;
 };
 
 // ── Helpers (carried over verbatim from FoodSearch.tsx) ─────────────
@@ -891,7 +889,6 @@ export function FoodSearchPanel({
   favoriteFoods,
   onToggleFavorite,
   favoritePendingKeys,
-  onAddToBasket,
 }: FoodSearchPanelProps) {
   // 2026-05-31 design-direction (LANE: commit-colour CTAs): blue is the
   // single commit-action colour. The "Use this" log commit CTA below used
@@ -1686,33 +1683,6 @@ export function FoodSearchPanel({
     setPreview(null);
   }, [preview, onSelect, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
 
-  const onAddPreviewToBasket = useCallback(() => {
-    if (!onAddToBasket || !preview) return;
-    const selection: FoodSearchSelection = {
-      name: preview.name,
-      source: preview.source,
-      macrosPer100g: preview.macrosPer100g,
-      ...(preview.macrosPerServing ? { macrosPerServing: preview.macrosPerServing } : {}),
-      ...(preview.microsPer100g ? { microsPer100g: preview.microsPer100g } : {}),
-      ...(preview.microsPerServing ? { microsPerServing: preview.microsPerServing } : {}),
-      portions: preview.portions,
-      chosenPortion: preview.chosenPortion,
-      quantity: preview.quantity,
-      ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
-      ...(previewEatenAtEnabled && logDateKey
-        ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime) }
-        : {}),
-    };
-    if (preview.source === "CUSTOM") {
-      selection.customFoodId = preview.customFoodId;
-      if (preview.chosenPortion.label !== "g") {
-        selection.servingLabel = preview.chosenPortion.label;
-      }
-    }
-    onAddToBasket(selection);
-    setPreview(null);
-  }, [onAddToBasket, preview, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
-
   const scaled = useMemo(() => {
     if (!preview) return null;
     // 2026-05-06 audit (D1): per-serving-only path (FatSecret no-
@@ -2333,20 +2303,10 @@ export function FoodSearchPanel({
             P0 fix from 2026-04-30) so on short viewports the button is
             always reachable without scrolling. */}
         <div className="border-t border-border bg-card -mx-3 px-3 py-3 shrink-0 flex gap-2">
-          {onAddToBasket ? (
-            <button
-              type="button"
-              data-testid="food-search-preview-add-to-basket"
-              onClick={onAddPreviewToBasket}
-              className="flex-1 py-3 rounded-xl border border-border bg-transparent text-primary-solid font-semibold transition-colors hover:bg-muted/60"
-            >
-              Add
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={onConfirm}
-            className={`${onAddToBasket ? "flex-[2]" : "w-full"} py-3 rounded-xl ${commitCtaClass} font-semibold transition-colors flex items-center justify-center gap-2`}
+            className={`w-full py-3 rounded-xl ${commitCtaClass} font-semibold transition-colors flex items-center justify-center gap-2`}
           >
             <Icons.check className="h-4 w-4" />
             Use this

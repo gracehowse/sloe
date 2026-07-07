@@ -126,6 +126,15 @@ vi.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+// ENG-1454 — mutable per-test override so the staged-recap tests can flip
+// `coaching_stages_v1` ON without affecting the other flag-off tests in
+// this file (which must keep rendering the exact legacy copy).
+let coachingStagesOn = false;
+vi.mock("@/lib/analytics", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: (flag: string) => (flag === "coaching_stages_v1" ? coachingStagesOn : false),
+}));
+
 // ── Helpers ────────────────────────────────────────────────────────
 function setMode(mode: MockMode) {
   harness.mode = mode;
@@ -500,5 +509,60 @@ describe("WeeklyRecap screen — render states", () => {
     const { findByTestId, getByText } = render(<WeeklyRecapScreen />);
     await findByTestId("weekly-recap-error");
     expect(getByText(/Couldn’t load your week\./)).toBeTruthy();
+  });
+});
+
+describe("ENG-1454 — staged broken-streak grace (behind coaching_stages_v1)", () => {
+  afterEach(() => {
+    coachingStagesOn = false;
+    setMode("ready");
+  });
+
+  it("flag OFF: renders the exact legacy 'N days in a row' + definition line (kill switch)", async () => {
+    coachingStagesOn = false;
+    setMode("ready");
+    loadFixture5of7();
+    const { findByTestId, getByText, queryByTestId } = render(<WeeklyRecapScreen />);
+    await findByTestId("weekly-recap-streak-card");
+    expect(getByText(/in a row/)).toBeTruthy();
+    expect(queryByTestId("weekly-recap-streak-definition")).toBeNull();
+    expect(queryByTestId("weekly-recap-freeze-mechanic-line")).toBeNull();
+  });
+
+  it("flag ON + a broken day this week (Sat/Sun blank): achievement headline + reset + freeze-mechanic + definition moved to info affordance + one 'Log today' CTA", async () => {
+    coachingStagesOn = true;
+    setMode("ready");
+    loadFixture5of7();
+    const { findByTestId, getByText, getByLabelText } = render(<WeeklyRecapScreen />);
+    await findByTestId("weekly-recap-streak-card");
+
+    // Achievement-led headline replaces "N days in a row".
+    expect(getByText(/of 7 days — a strong week\./)).toBeTruthy();
+    // One-clause reset naming the broken day.
+    expect(getByText(/Your streak reset on \w+day\. One missed day doesn't undo the habit/)).toBeTruthy();
+    // The mechanic is surfaced (either freeze-covered or the earn-path line) —
+    // never silently omitted the way the pre-1454 recap did.
+    const freezeLine = await findByTestId("weekly-recap-freeze-mechanic-line");
+    expect(freezeLine).toBeTruthy();
+    // Definition moved out of the headline into an info-affordance read.
+    const definition = await findByTestId("weekly-recap-streak-definition");
+    expect(definition).toBeTruthy();
+    // The recap's ONE CTA.
+    const cta = getByLabelText("Log today");
+    expect(cta).toBeTruthy();
+    fireEvent.press(cta);
+    expect(routerNavigateSpy).toHaveBeenCalledWith({
+      pathname: "/(tabs)",
+      params: { openLog: "1", _t: expect.stringMatching(/^\d+$/) },
+    });
+  });
+
+  it("flag ON: protein row uses the digest cascade's 'easiest fix' line, not the bare 0-of-7 framing", async () => {
+    coachingStagesOn = true;
+    setMode("ready");
+    loadFixture5of7();
+    const { findByTestId, getByText } = render(<WeeklyRecapScreen />);
+    await findByTestId("weekly-recap-protein-card");
+    expect(getByText(/A high-protein breakfast is the easiest fix\./)).toBeTruthy();
   });
 });

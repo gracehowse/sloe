@@ -561,13 +561,9 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [logSheetConfirmation, setLogSheetConfirmation] = useState<
     NonNullable<React.ComponentProps<typeof LogSheet>["confirmation"]> | null
   >(null);
-  const [logBasket, setLogBasket] = useState<
-    Array<{ basketId: string; selection: FoodSearchSelection }>
-  >([]);
   useEffect(() => {
     if (!logSheetOpen) {
       setLogSheetConfirmation(null);
-      setLogBasket([]);
     }
   }, [logSheetOpen]);
   // 2026-04-30 (web mobile-web parity with mobile commit `6633d2d`):
@@ -1497,7 +1493,7 @@ export const NutritionTracker = memo(function NutritionTracker({
     (selection: FoodSearchSelection): { id: string; title: string; kcal: number } => {
       const sourceLabel = foodSelectionSourceLabel(selection.source);
 
-      // ENG-1046 — shared scaling core (instant-log + basket-add, mobile parity).
+      // ENG-1046 — shared scaling core (mobile parity).
       const {
         calories: mealCalories,
         protein: mealProtein,
@@ -1592,35 +1588,6 @@ export const NutritionTracker = memo(function NutritionTracker({
       count: item.count,
     }));
   }, [nutritionByDay, mealSlot]);
-
-  const logBasketSummary = useMemo(() => {
-    let totalKcal = 0;
-    const items = logBasket.map(({ basketId, selection }) => {
-      const kcal = foodSelectionToMealMacros(selection).calories;
-      totalKcal += kcal;
-      return { id: basketId, title: selection.name, kcal: Math.round(kcal) };
-    });
-    return { items, totalKcal };
-  }, [logBasket]);
-
-  const commitLogBasket = useCallback(() => {
-    if (logBasket.length === 0) return;
-    const mealIds: string[] = [];
-    let totalKcal = 0;
-    let firstTitle = "";
-    for (const { selection } of logBasket) {
-      const result = commitFoodSearchSelection(selection);
-      mealIds.push(result.id);
-      totalKcal += result.kcal;
-      if (!firstTitle) firstTitle = result.title;
-    }
-    setLogBasket([]);
-    presentLogSheetConfirmation({
-      title: logBasket.length === 1 ? firstTitle : `${logBasket.length} items`,
-      kcal: totalKcal,
-      mealIds,
-    });
-  }, [logBasket, commitFoodSearchSelection, presentLogSheetConfirmation]);
 
   const recipeOptions = useMemo((): RecipeCard[] => {
     return savedRecipesForLibrary.map((r) => ({ ...r, isSaved: true }));
@@ -2771,7 +2738,6 @@ export const NutritionTracker = memo(function NutritionTracker({
           Activity Bonus card. */}
 
       {/* Eat-again block retired (ENG-984, 2026-06-17); mobile parity. */}
-
       {/* Quick add panel — Usual meals / Recent / Frequent / Favourites
           tabs with one-tap log. Ship M1 (2026-04-18) reordered so Usual
           meals is the primary re-log surface and renames the "My meals"
@@ -2793,6 +2759,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
           remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
           dailyCalorieTarget={effectiveCalorieTarget}
+          consumedCalories={totals.calories} localHour={new Date().getHours()} /* ENG-1454 */
           onPrimaryCta={(_recipeId) => {
             setMealSlot(slotForHour(new Date().getHours()));
             setLogSheetOpen(true);
@@ -3591,12 +3558,6 @@ export const NutritionTracker = memo(function NutritionTracker({
               mealIds: [result.id],
             });
           },
-          onAddToBasket: (selection) => {
-            setLogBasket((prev) => [
-              ...prev,
-              { basketId: newId("basket"), selection },
-            ]);
-          },
         }}
         goTos={
           logSheetGoTos.length > 0
@@ -3610,18 +3571,6 @@ export const NutritionTracker = memo(function NutritionTracker({
                   if (!item) return;
                   logHistoryItemFromSheet(item, mealSlot);
                 },
-              }
-            : undefined
-        }
-        basket={
-          logBasketSummary.items.length > 0
-            ? {
-                items: logBasketSummary.items,
-                totalKcal: logBasketSummary.totalKcal,
-                onRemove: (id) =>
-                  setLogBasket((prev) => prev.filter((row) => row.basketId !== id)),
-                onCommit: commitLogBasket,
-                onClear: () => setLogBasket([]),
               }
             : undefined
         }

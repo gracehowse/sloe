@@ -746,13 +746,9 @@ export default function TrackerScreen() {
   const [logSheetConfirmation, setLogSheetConfirmation] = useState<
     NonNullable<React.ComponentProps<typeof LogSheet>["confirmation"]> | null
   >(null);
-  const [logBasket, setLogBasket] = useState<
-    Array<{ basketId: string; selection: FoodSearchSelectedFood }>
-  >([]);
   useEffect(() => {
     if (!fabSheetOpen) {
       setLogSheetConfirmation(null);
-      setLogBasket([]);
     }
   }, [fabSheetOpen]);
   // Batch 5.13 — Pro-gated Voice + AI photo logging state.
@@ -4123,35 +4119,6 @@ export default function TrackerScreen() {
     }));
   }, [byDay, activeMealSlot]);
 
-  const logBasketSummary = useMemo(() => {
-    let totalKcal = 0;
-    const items = logBasket.map(({ basketId, selection }) => {
-      const kcal = foodSelectionToMealMacros(selection).calories;
-      totalKcal += kcal;
-      return { id: basketId, title: selection.name, kcal: Math.round(kcal) };
-    });
-    return { items, totalKcal };
-  }, [logBasket]);
-
-  const commitLogBasket = useCallback(() => {
-    if (logBasket.length === 0) return;
-    const mealIds: string[] = [];
-    let totalKcal = 0;
-    let firstTitle = "";
-    for (const { selection } of logBasket) {
-      const result = commitLogSheetFoodSelection(selection);
-      mealIds.push(result.id);
-      totalKcal += result.kcal;
-      if (!firstTitle) firstTitle = result.title;
-    }
-    setLogBasket([]);
-    presentLogSheetConfirmation({
-      title: logBasket.length === 1 ? firstTitle : `${logBasket.length} items`,
-      kcal: totalKcal,
-      mealIds,
-    });
-  }, [logBasket, commitLogSheetFoodSelection, presentLogSheetConfirmation]);
-
   /**
    * Shared insert primitive for batch 1.4 "copy meal" / "duplicate day".
    * Optimistically adds rows to `byDay[targetDayKey]`, then routes the
@@ -5076,7 +5043,6 @@ export default function TrackerScreen() {
             Top-5 #2, 2026-04-28). Eat-again card retired (ENG-984). */}
 
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
-
         {/* Figma `654:2` — What to eat next sits above Today's Meals. */}
         {showAboveMealsNorthStar && (
           <NorthStarBlockHost
@@ -5087,6 +5053,7 @@ export default function TrackerScreen() {
             remainingCarbs={remainingCarbs}
             remainingFat={remainingFat}
             dailyCalorieTarget={effectiveCalorieGoal}
+            consumedCalories={totals.calories} localHour={new Date().getHours()} /* ENG-1454 */
             onPrimaryCta={(recipeId) => {
               router.push(`/recipe/${recipeId}` as any);
             }}
@@ -5606,9 +5573,6 @@ export default function TrackerScreen() {
               mealIds: [committed.id],
             });
           },
-          onAddToBasket: (selection) => {
-            setLogBasket((prev) => [...prev, { basketId: newMealId(), selection }]);
-          },
           macroTargets: {
             calories: effectiveCalorieGoal,
             protein: effectiveMacroTargets.protein,
@@ -5661,18 +5625,6 @@ export default function TrackerScreen() {
                   if (!item) return;
                   logHistoryItemFromSheet(item);
                 },
-              }
-            : undefined
-        }
-        basket={
-          logBasketSummary.items.length > 0
-            ? {
-                items: logBasketSummary.items,
-                totalKcal: logBasketSummary.totalKcal,
-                onRemove: (id) =>
-                  setLogBasket((prev) => prev.filter((row) => row.basketId !== id)),
-                onCommit: commitLogBasket,
-                onClear: () => setLogBasket([]),
               }
             : undefined
         }

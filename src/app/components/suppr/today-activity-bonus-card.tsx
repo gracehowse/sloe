@@ -13,19 +13,14 @@ import {
   type Sex,
 } from "../../../lib/nutrition/tdee";
 import { WEEKLY_ROLLING_DENOMINATOR_HINT } from "../../../lib/copy/today";
-import { weekSummaryHeading } from "../../../lib/nutrition/weekSummaryWindow";
-import type { WeekSummaryMode } from "../../../lib/nutrition/weekSummaryWindow";
+import { weekSummaryHeading, type WeekSummaryMode } from "../../../lib/nutrition/weekSummaryWindow";
 import {
   buildMaintenancePopoverCopy,
   type MaintenanceConfidence,
   type MaintenanceSource,
 } from "../../../lib/nutrition/resolveMaintenance";
 import { weekDeficitToKg } from "../../../lib/nutrition/maintenanceChain";
-import {
-  ACTIVITY_BUDGET_DISCOVER_BODY,
-  ACTIVITY_BUDGET_DISCOVER_CTA,
-  ACTIVITY_BUDGET_DISCOVER_TITLE,
-} from "../../../lib/nutrition/activityBudgetDiscoverability";
+import { ACTIVITY_BUDGET_DISCOVER_BODY, ACTIVITY_BUDGET_DISCOVER_CTA, ACTIVITY_BUDGET_DISCOVER_TITLE } from "../../../lib/nutrition/activityBudgetDiscoverability";
 import { todayKey } from "../../../lib/nutrition/trackerDate";
 import {
   NET_ENERGY_CHIP_BG,
@@ -36,6 +31,7 @@ import {
   netEnergyMarkerFraction,
   netEnergySubline,
 } from "../../../lib/nutrition/netEnergyBalance";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 
 /**
  * TodayActivityBonusCard — Figma TD1 Energy balance + 7-day rolling.
@@ -170,6 +166,7 @@ export function TodayActivityBonusCard({
     eatenKcal: consumedCalories,
     isToday,
     netKcal: net,
+    stagedNeutralSurplusFraming: isFeatureEnabled("coaching_stages_v1"), // ENG-1454
   });
 
   let weekBurn = 0;

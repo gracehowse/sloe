@@ -128,7 +128,6 @@ import CreateCustomFoodSheet, {
 } from "../CreateCustomFoodSheet";
 import Badge from "../Badge";
 import { SearchResultConfidenceChip } from "../ui/SearchResultConfidenceChip";
-import { SupprButton } from "@/components/ui/SupprButton";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -330,15 +329,6 @@ export type FoodSearchPanelProps = {
   /** Keys of favourite toggles currently in flight (disabled + dimmed star —
    *  no double-submit). Optional; host owns the pending set. */
   favoritePendingKeys?: Set<string>;
-  /**
-   * Multi-add basket (teardown #2, ENG-1042). When wired, the portion preview
-   * shows an "Add" action alongside "Use this": "Add" stages the selection into
-   * the host's basket (the panel returns to results so the user keeps building)
-   * WITHOUT committing or closing the sheet; "Use this" stays the instant
-   * single-item log. The host commits the whole basket in one round-trip via
-   * the LogSheet's basket bar. When omitted, only "Use this" shows (today's
-   * behaviour). Same `SelectedFood` payload as `onSelect`. */
-  onAddToBasket?: (result: SelectedFood) => void;
 };
 
 // 2026-05-15 (ENG-550): inline `resolveInitialPortion` extracted to
@@ -372,7 +362,6 @@ export default function FoodSearchPanel({
   favoriteFoods,
   onToggleFavorite,
   favoritePendingKeys,
-  onAddToBasket,
 }: FoodSearchPanelProps) {
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for this panel's CTAs,
@@ -1127,11 +1116,8 @@ export default function FoodSearchPanel({
     setPreview((p) => p ? { ...p, quantityText: text, quantity: Math.max(0, num) } : p);
   }, [parseQuantityText]);
 
-  // Build the canonical SelectedFood payload from the current preview. Shared
-  // by "Use this" (instant log) and "Add" (basket-stage, teardown #2) so the
-  // two paths emit an identical selection — a basketed item logs exactly like
-  // an instant-logged one. Fires the custom-food-logged analytics for the
-  // CUSTOM source on either path.
+  // Build the canonical SelectedFood payload from the current preview. Fires
+  // the custom-food-logged analytics for the CUSTOM source.
   const buildSelectionFromPreview = useCallback((): SelectedFood | null => {
     if (!preview) return null;
     const servingLabel =
@@ -1178,17 +1164,6 @@ export default function FoodSearchPanel({
     onSelect(selection);
     setPreview(null);
   }, [buildSelectionFromPreview, onSelect]);
-
-  // Multi-add basket (teardown #2): stage the current preview into the host's
-  // basket and return to the results list (the sheet stays open). The host
-  // commits the whole basket in one round-trip via the LogSheet basket bar.
-  const onAddPreviewToBasket = useCallback(() => {
-    if (!onAddToBasket) return;
-    const selection = buildSelectionFromPreview();
-    if (!selection) return;
-    onAddToBasket(selection);
-    setPreview(null);
-  }, [buildSelectionFromPreview, onAddToBasket]);
 
   const previewMacros = useMemo(() => {
     if (!preview) return null;
@@ -2159,24 +2134,6 @@ export default function FoodSearchPanel({
             <Check size={18} color={colors.primaryForeground} />
             <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 15 }}>Use this</Text>
           </Pressable>
-          {onAddToBasket ? (
-            // Sloe button-system canon (2026-06-12): "Add" is the secondary
-            // basket-stage action sitting beside the dominant solid "Use this"
-            // log commit — so it is variant="ghost" (transparent, NO border,
-            // plum label + plum icon), the treatment that retires the old
-            // aubergine OUTLINE. NOT primary: two solid CTAs in one row would
-            // break the one-filled-CTA rule and erase the log/stage hierarchy.
-            <SupprButton
-              variant="ghost"
-              testID="food-search-preview-add-to-basket"
-              accessibilityLabel={`Add ${preview.name} to basket`}
-              style={{ flex: 1 }}
-              onPress={onAddPreviewToBasket}
-            >
-              <Plus size={18} color={accent.primarySolid} />
-              <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15, marginLeft: Spacing.sm }}>Add</Text>
-            </SupprButton>
-          ) : null}
         </View>
         <Pressable
           style={{ borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center" }}

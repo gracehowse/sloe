@@ -17,6 +17,12 @@ import {
 } from "../../../lib/nutrition/trackerLocalState.ts";
 import { normaliseMealSlot } from "../../../lib/nutrition/mealSlots";
 import { fallbackSlotFromTimeOfDay } from "../../../lib/nutrition/recipeJournalSlot";
+import {
+  isSingleDayUnderEating,
+  overBudgetStage,
+  underEatingCoachLine,
+} from "../../../lib/nutrition/coachOverBudgetStage";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import type { LoggedMeal } from "../../../types/recipe";
 
 /**
@@ -50,6 +56,8 @@ export function NorthStarBlockHost({
   remainingCarbs,
   remainingFat,
   dailyCalorieTarget,
+  consumedCalories,
+  localHour,
   onPrimaryCta,
   onLogSuggestion,
   onBrowseLibrary,
@@ -67,6 +75,15 @@ export function NorthStarBlockHost({
    *  Threaded into the scorer so the per-meal budget is a share of the
    *  day, never the whole remaining day. */
   dailyCalorieTarget: number;
+  /** ENG-1454 — today's raw eaten calories (unclamped — unlike
+   *  `remainingCalories`, which the caller floors at 0). Needed to derive
+   *  the staged over-budget coach line's magnitude. Optional for
+   *  back-compat; omitting it falls to the legacy caption (same as
+   *  flag-off). Mirror of mobile `NorthStarBlockHostProps`. */
+  consumedCalories?: number;
+  /** ENG-1454 — the user's LOCAL hour (0-23), for the single-day
+   *  under-eating gate's "~8pm local" threshold. Mirror of mobile. */
+  localHour?: number;
   /** Called when the user taps the primary CTA on the suggestion card.
    *  Receives the suggestion's recipe id so the parent can route
    *  directly (mobile) or open the log sheet (web — arg ignored). */
@@ -115,9 +132,38 @@ export function NorthStarBlockHost({
 
   if (viewMode !== "day") return null;
 
+  // ENG-1454 — single-day under-eating nudge, behind `coaching_stages_v1`.
+  // Mutually exclusive with the over-budget branch below. Flagged for
+  // diversity-inclusion + nutrition-engine review before ramp.
+  if (
+    remainingCalories > 0 &&
+    consumedCalories != null &&
+    localHour != null &&
+    isFeatureEnabled("coaching_stages_v1") &&
+    isSingleDayUnderEating(consumedCalories, dailyCalorieTarget, localHour)
+  ) {
+    return <NorthStarBlock kind="under-eating" underEatingLine={underEatingCoachLine("single-day")} />;
+  }
+
   // Over-budget — hide block, show calm caption.
   if (remainingCalories <= 0) {
-    return <NorthStarBlock kind="over-budget" />;
+    // ENG-1454 — resolve the stage when the caller has threaded the raw
+    // eaten total (consumedCalories is optional for back-compat).
+    const stage =
+      consumedCalories != null
+        ? (overBudgetStage(consumedCalories, dailyCalorieTarget) ?? undefined)
+        : undefined;
+    return (
+      <NorthStarBlock
+        kind="over-budget"
+        overBudgetStage={stage}
+        overBudgetCalories={
+          consumedCalories != null
+            ? { consumed: consumedCalories, goal: dailyCalorieTarget }
+            : undefined
+        }
+      />
+    );
   }
 
   // ENG-94 (2026-05-13): true day-1 user — no log history yet.

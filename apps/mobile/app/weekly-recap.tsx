@@ -62,6 +62,7 @@ import {
 import { SupprButton } from "@/components/ui/SupprButton";
 import { WeeklyRecapShareButton } from "@/components/recap/WeeklyRecapShareButton";
 import { WeeklyRecapDetailRows } from "@/components/recap/WeeklyRecapDetailRows";
+import { WeeklyRecapStreakGrace } from "@/components/recap/WeeklyRecapStreakGrace";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostHogMaskView } from "posthog-react-native";
@@ -91,6 +92,7 @@ import {
   weekKeyFor,
 } from "@/lib/weeklyRecap";
 import { deriveWeeklyRecapDetailRows } from "@suppr/shared/nutrition-core/weeklyRecapDetailRows";
+import { buildStagedRecapCopy } from "@suppr/nutrition-core/weeklyRecapBrokenStreakGrace";
 import { WEEKLY_RECAP_TDEE_SECTION_LABEL_GLOSS, WEEKLY_RECAP_TDEE_SECTION_LABEL_PLAIN } from "@suppr/shared/onboarding/figmaCopy";
 import {
   availableFreezes,
@@ -463,6 +465,18 @@ export default function WeeklyRecapScreen() {
   }, [weekStats.avgProtein, daysLogged]);
 
   const todayKey = useMemo(() => dateKeyFromDate(new Date()), []);
+
+  // ENG-1454 broken-streak grace (behind coaching_stages_v1) — thin call,
+  // logic in weeklyRecapBrokenStreakGrace.ts.
+  const stagedRecap = useMemo(() => buildStagedRecapCopy({
+    flagOn: isFeatureEnabled("coaching_stages_v1"),
+    daysLoggedThisWeek: daysLogged,
+    days: weekStats.days,
+    protectedDateKeys: protectedStreak.protectedDateKeys,
+    continuingStreakLength: streakDays,
+    avgProteinG: weekStats.avgProtein,
+    targetProteinG: targets.protein,
+  }), [daysLogged, weekStats.days, weekStats.avgProtein, protectedStreak.protectedDateKeys, streakDays, targets.protein]);
 
   // ── Weekly Check-in payload (MacroFactor parity, 2026-04-30) ──
   const currentTdeeKcal = useMemo<number | null>(() => {
@@ -1136,9 +1150,10 @@ export default function WeeklyRecapScreen() {
                   lineHeight: 18,
                 }}
               >
-                {targets.protein > 0
-                  ? `Hit your ${formatMacro(targets.protein, "protein", "g")} goal on ${proteinHitDays} of 7 days.`
-                  : "No protein target set."}
+                {stagedRecap.proteinLine ??
+                  (targets.protein > 0
+                    ? `Hit your ${formatMacro(targets.protein, "protein", "g")} goal on ${proteinHitDays} of 7 days.`
+                    : "No protein target set.")}
               </Text>
             </>,
             "weekly-recap-protein-card",
@@ -1180,13 +1195,13 @@ export default function WeeklyRecapScreen() {
               )
             : null}
 
-          {/* STREAK + FREEZES — calm ledger. Suppress the freeze line
-              entirely when the user has earned 0; gamifying it would
-              break the calm-streak posture. */}
+          {/* STREAK + FREEZES — calm ledger; suppress the freeze line at 0
+              earned. ENG-1454 staged grace rows: WeeklyRecapStreakGrace. */}
           {card(
             <>
               {sectionLabel("Streak")}
               <Text
+                testID="weekly-recap-streak-headline"
                 style={{
                   ...Type.heroValue,
                   fontSize: 22,
@@ -1196,37 +1211,21 @@ export default function WeeklyRecapScreen() {
                   fontVariant: ["tabular-nums"],
                 }}
               >
-                {`${streakDays} day${streakDays === 1 ? "" : "s"} in a row`}
+                {stagedRecap.headline ?? `${streakDays} day${streakDays === 1 ? "" : "s"} in a row`}
               </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: colors.textSecondary,
-                  lineHeight: 18,
-                }}
-              >
-                {streakDays === 0
-                  ? "Log on two different days this week to start it."
-                  : streakDays === 1
-                    ? "Log again tomorrow to keep it going."
-                    : "Counts every day with at least one meal logged."}
+              <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
+                {stagedRecap.resetLine ??
+                  (streakDays === 0
+                    ? "Log on two different days this week to start it."
+                    : streakDays === 1
+                      ? "Log again tomorrow to keep it going."
+                      : "Counts every day with at least one meal logged.")}
               </Text>
-              {freezesAvailableNow > 0 ? (
-                <Text
-                  testID="weekly-recap-freezes-line"
-                  style={{
-                    fontSize: 13,
-                    color: colors.textSecondary,
-                    lineHeight: 18,
-                    marginTop: Spacing.sm,
-                  }}
-                >
-                  {`${freezesAvailableNow} freeze${freezesAvailableNow === 1 ? "" : "s"} available`}
-                  {protectedStreak.freezesConsumed > 0
-                    ? ` (${protectedStreak.freezesConsumed} used to protect this streak).`
-                    : "."}
-                </Text>
-              ) : null}
+              <WeeklyRecapStreakGrace
+                stagedRecap={stagedRecap}
+                freezesAvailableNow={freezesAvailableNow}
+                freezesConsumed={protectedStreak.freezesConsumed}
+              />
             </>,
             "weekly-recap-streak-card",
           )}

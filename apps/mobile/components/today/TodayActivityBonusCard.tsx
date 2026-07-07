@@ -9,10 +9,7 @@ import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
-import {
-  weekSummaryHeading,
-  type WeekSummaryMode,
-} from "@suppr/nutrition-core/weekSummaryWindow";
+import { weekSummaryHeading, type WeekSummaryMode } from "@suppr/nutrition-core/weekSummaryWindow";
 import {
   buildTdeeExplainerCopy,
   calculateBMR,
@@ -45,6 +42,7 @@ import {
 } from "@suppr/nutrition-core/activityBudgetDiscoverability";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
  * TodayActivityBonusCard — net energy summary, burn breakdown card,
@@ -242,6 +240,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
     eatenKcal: consumedCalories,
     isToday,
     netKcal: net,
+    stagedNeutralSurplusFraming: isFeatureEnabled("coaching_stages_v1"), // ENG-1454
   });
 
   // 2026-05-26 fix (Grace): the daily AVERAGE divides by the days
