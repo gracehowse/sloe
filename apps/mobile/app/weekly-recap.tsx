@@ -91,6 +91,7 @@ import {
   weekKeyFor,
 } from "@/lib/weeklyRecap";
 import { deriveWeeklyRecapDetailRows } from "@suppr/shared/nutrition-core/weeklyRecapDetailRows";
+import { WEEKLY_RECAP_TDEE_SECTION_LABEL_GLOSS, WEEKLY_RECAP_TDEE_SECTION_LABEL_PLAIN } from "@suppr/shared/onboarding/figmaCopy";
 import {
   availableFreezes,
   computeProtectedStreak,
@@ -807,13 +808,12 @@ export default function WeeklyRecapScreen() {
         </View>
       ) : null}
 
-      {/* Weekly Check-in — TDEE delta + goal-pace re-tune (MacroFactor
-          parity, 2026-04-30). Shown above the existing recap rollups
-          so the user lands on the most actionable signal first. */}
+      {/* Weekly Check-in — TDEE delta + goal-pace re-tune (MacroFactor, 2026-04-30).
+          Eyebrow gloss-gated same as Progress/pricing/the check-in modal (ENG-1461). */}
       {checkin
         ? card(
             <View testID="weekly-checkin-card">
-              {sectionLabel("Your adaptive TDEE")}
+              {sectionLabel(isFeatureEnabled("onboarding_jargon_gloss_v1") ? WEEKLY_RECAP_TDEE_SECTION_LABEL_GLOSS : WEEKLY_RECAP_TDEE_SECTION_LABEL_PLAIN)}
               <Text
                 testID="weekly-checkin-headline"
                 style={{

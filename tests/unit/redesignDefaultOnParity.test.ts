@@ -57,6 +57,10 @@ const WEB_ONLY = new Set([
   "sloe_v3_settings",
   // ENG-1204 / D-07 — landing hero HYBRID (web-only).
   "landing_hero_hybrid_v1",
+  // ENG-1460 — /pricing conversion pair (hero CTA + auth-aware header).
+  // Web-only: mobile's native paywall isn't `/pricing` and already has a
+  // persistent CTA bar + never shows a wrong-identity "Sign in" header.
+  "pricing_conversion_pair_v1",
 ]);
 
 const MOBILE_ONLY = new Set([

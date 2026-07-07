@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import type { PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
-import { supabasePublicAnonKey, supabasePublicUrl } from "../../utils/supabase/publicConfig.ts";
+import { supabase } from "../../src/lib/supabase/browserClient.ts";
 import {
   buildPersonalisedPlanPaywallSummary,
   shouldLeadPaywallWithPersonalisedPlan,
@@ -11,7 +10,12 @@ import {
 } from "../../src/lib/paywall/personalisedPlanSummary.ts";
 import { PricingPersonalisedPlanCard } from "./PricingPersonalisedPlanCard.tsx";
 
-const supabase = createClient(supabasePublicUrl(), supabasePublicAnonKey());
+// ENG-1470: was `createClient(...)` from `@supabase/supabase-js` (default
+// localStorage session storage) — invisible to the real app's cookie-backed
+// session (`createBrowserClient` from `@supabase/ssr`, same client
+// `AuthSessionContext.tsx` uses), so this component silently never detected
+// a real logged-in user's session. Now imports the shared cookie-backed
+// client instead of instantiating its own.
 
 /**
  * ENG-966 — load onboarding-derived targets and lead the web paywall

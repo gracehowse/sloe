@@ -58,7 +58,7 @@ describe("WeeklyCheckinDialog (web parity)", () => {
     expect(screen.getByText(/higher than the formula/)).toBeInTheDocument();
   });
 
-  it("renders avg-this-week, weight delta, and TDEE delta rows", () => {
+  it("renders avg-this-week, weight delta, and estimated-burn-change rows", () => {
     render(
       <WeeklyCheckinDialog
         open
@@ -72,7 +72,10 @@ describe("WeeklyCheckinDialog (web parity)", () => {
     expect(screen.getByText("1,750 kcal/day")).toBeInTheDocument();
     expect(screen.getByText("Weight delta")).toBeInTheDocument();
     expect(screen.getByText("−0.4 kg")).toBeInTheDocument();
-    expect(screen.getByText("TDEE delta")).toBeInTheDocument();
+    // ENG-1461 (2026-07-07): the raw "TDEE delta" jargon was replaced with
+    // the shared `WEEKLY_CHECKIN_BURN_DELTA_LABEL` — matches what mobile
+    // WeeklyCheckinModal already shipped un-gated (2026-05-11 P1 finding).
+    expect(screen.getByText("Estimated burn change")).toBeInTheDocument();
     expect(screen.getByText("+200 kcal")).toBeInTheDocument();
   });
 

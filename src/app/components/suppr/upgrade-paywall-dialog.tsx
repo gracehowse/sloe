@@ -46,12 +46,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Sparkles,
-  X as XIcon,
-} from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
-import { supabasePublicAnonKey, supabasePublicUrl } from "../../../../utils/supabase/publicConfig.ts";
+import { Sparkles, X as XIcon } from "lucide-react";
+import { supabase } from "../../../lib/supabase/browserClient.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { PRICING_TIERS } from "../../../lib/landing/pricingTiers.ts";
@@ -59,7 +55,10 @@ import { PaywallTrustStrip } from "../../../../app/pricing/PaywallTrustStrip.tsx
 import { TrialEndReminderUpgradeBlock, type TrialEndReminderUpgradeBlockHandle } from "../paywall/TrialEndReminderUpgradeBlock.tsx";
 import { UPGRADE_PAYWALL_PRO_FEATURES } from "../paywall/upgradePaywallProFeatures.ts";
 
-const supabase = createClient(supabasePublicUrl(), supabasePublicAnonKey());
+// ENG-1470: was a plain supabase-js createClient (localStorage session) —
+// invisible to the real cookie-backed app session, so an already-logged-in
+// user clicking "Upgrade to Pro" here was silently bounced to /login instead
+// of Stripe checkout. Now imports the shared cookie-backed client.
 
 /**
  * sessionStorage key for the once-per-session frequency cap. PR-01

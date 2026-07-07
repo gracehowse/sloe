@@ -103,6 +103,8 @@ export {
   PRICING_TIERS,
   computeAnnualSavingsBadge,
   FREE_CUSTOM_MACROS_FEATURE,
+  FREE_ADAPTIVE_TDEE_FEATURE_PLAIN,
+  FREE_ADAPTIVE_TDEE_FEATURE_GLOSS,
 } from "./pricingTiers";
 
 /**

@@ -18,10 +18,11 @@
  *    string. Source-level pins so a regression that re-hardcodes a label
  *    or drops the flag gate breaks the build.
  *
- * 3. FLAG GATING — `onboarding_jargon_gloss_v1` is DEFAULT-OFF: it is not
- *    in either platform's `REDESIGN_DEFAULT_ON` set, resolves OFF when
- *    PostHog is cold, and the web `isFeatureEnabled` flips ON only when
- *    PostHog (or a dev force) says so.
+ * 3. FLAG GATING — `onboarding_jargon_gloss_v1` is DEFAULT-ON (ENG-1461,
+ *    DECIDED Fable 2026-07-07 per Grace's delegation): it IS in both
+ *    platforms' `REDESIGN_DEFAULT_ON` sets, so it resolves ON even when
+ *    PostHog is cold. PostHog remains a kill switch via `isFeatureDisabled`
+ *    / an explicit dev force still wins (test/QA capture posture).
  */
 
 import { readFileSync } from "node:fs";
@@ -188,8 +189,8 @@ describe("ENG-1187 — render sites pull shared constants behind the flag", () =
   });
 });
 
-describe("ENG-1187 — flag is default-OFF on both platforms", () => {
-  it("onboarding_jargon_gloss_v1 is NOT in either platform's REDESIGN_DEFAULT_ON set", () => {
+describe("ENG-1461 — flag is default-ON on both platforms", () => {
+  it("onboarding_jargon_gloss_v1 IS in both platforms' REDESIGN_DEFAULT_ON set", () => {
     const webTrack = readFileSync(
       resolve(ROOT, "src/lib/analytics/track.ts"),
       "utf8",
@@ -198,14 +199,16 @@ describe("ENG-1187 — flag is default-OFF on both platforms", () => {
       resolve(ROOT, "apps/mobile/lib/analytics.ts"),
       "utf8",
     );
-    // The flag must not be registered in any default-on registry — that
-    // would make meaning-changing copy ship un-ramped.
-    expect(webTrack).not.toContain(FLAG);
-    expect(mobileAnalytics).not.toContain(FLAG);
+    // DECIDED (Fable, 2026-07-07): the flag ships ON everywhere now — the
+    // system is built + tested (ENG-1187) and the copy verdict found the
+    // acronym unglossed at three more trust moments. PostHog stays the
+    // emergency kill switch via `isFeatureDisabled`.
+    expect(webTrack).toContain(`"${FLAG}"`);
+    expect(mobileAnalytics).toContain(`"${FLAG}"`);
   });
 });
 
-describe("ENG-1187 — web isFeatureEnabled gates the flag", () => {
+describe("ENG-1461 — web isFeatureEnabled resolves the flag ON by default", () => {
   beforeEach(() => {
     delete (window as { __SUPPR_FORCE_FLAGS__?: unknown }).__SUPPR_FORCE_FLAGS__;
     try {
@@ -223,29 +226,30 @@ describe("ENG-1187 — web isFeatureEnabled gates the flag", () => {
     }
   });
 
-  it("resolves OFF by default (cold PostHog, no force) — plain copy ships", async () => {
+  it("resolves ON by default (cold PostHog, no force) — glossed copy ships", async () => {
     const { isFeatureEnabled, __resetForcedFlagSeedForTests } = await import(
       "@/lib/analytics/track"
     );
     __resetForcedFlagSeedForTests();
-    // No NEXT_PUBLIC_POSTHOG_KEY in the unit env → un-registered flag
-    // resolves false (not in REDESIGN_DEFAULT_ON either). This is the
-    // default-OFF posture that ships the plain labels.
-    expect(isFeatureEnabled(FLAG)).toBe(false);
+    // No NEXT_PUBLIC_POSTHOG_KEY in the unit env → flag falls through to
+    // REDESIGN_DEFAULT_ON, which now contains it (ENG-1461) — resolves true
+    // even with PostHog cold. This is the default-ON posture that ships the
+    // glossed labels everywhere.
+    expect(isFeatureEnabled(FLAG)).toBe(true);
   });
 
-  it("flips ON when forced on via the dev/test force hook — glossed copy ships", async () => {
+  it("an explicit dev/test force-off still wins — plain copy ships (capture posture)", async () => {
     const { isFeatureEnabled, __resetForcedFlagSeedForTests } = await import(
       "@/lib/analytics/track"
     );
-    (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ =
-      { [FLAG]: true };
-    __resetForcedFlagSeedForTests();
-    expect(isFeatureEnabled(FLAG)).toBe(true);
-    // And an explicit force-off stays OFF (kill switch / pre-gloss capture).
     (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ =
       { [FLAG]: false };
     __resetForcedFlagSeedForTests();
     expect(isFeatureEnabled(FLAG)).toBe(false);
+    // And an explicit force-on is a no-op vs. the new default (already ON).
+    (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ =
+      { [FLAG]: true };
+    __resetForcedFlagSeedForTests();
+    expect(isFeatureEnabled(FLAG)).toBe(true);
   });
 });
