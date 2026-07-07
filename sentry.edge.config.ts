@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { redactPII } from "./src/lib/observability/sentryRedaction";
+import { resolveSentryEnvironment } from "./src/lib/observability/sentryEnvironment";
 
 /**
  * Edge runtime mirror of `sentry.server.config.ts` — middleware +
@@ -8,6 +9,8 @@ import { redactPII } from "./src/lib/observability/sentryRedaction";
  */
 Sentry.init({
   dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
+  // ENG-1404 — environment tag from VERCEL_ENV (see sentry.server.config.ts).
+  environment: resolveSentryEnvironment(),
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.05,
   enabled: Boolean(process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN),
   enableLogs: true,
