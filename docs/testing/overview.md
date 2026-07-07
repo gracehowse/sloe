@@ -194,7 +194,7 @@ npm run mobile:verify
 
 GitHub Actions (`.github/workflows/ci.yml`):
 
-**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm run test:coverage` → `check:today-captures` → `check:type-scale` → `check:spacing-scale` → `check:token-scale` → `check:screen-budget` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
+**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm run test:coverage` → `check:today-captures` → `check:type-scale` → `check:spacing-scale` → `check:token-scale` → `check:type-scale-mobile` → `check:copy-voice` → `check:screen-budget` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
 
 **Static line/scale ratchets (web job):**
 
@@ -216,6 +216,19 @@ GitHub Actions (`.github/workflows/ci.yml`):
   Sign-In brand carve-out). Per-file counts pinned in
   `scripts/token-budget.json`; only-shrink ratchet. Re-pin with
   `npm run check:token-scale:write`.
+- `check:copy-voice` (ENG-1378) — extends the no-"!"/no-praise/no-vendor
+  discipline already test-enforced on `weeklyRecapPushBody.ts` /
+  `weeklyDigestSuggestion.ts` / `importErrorCopy.ts` to every user-facing
+  string literal across web `src/app/components` + `app` and mobile
+  `apps/mobile/app` + `apps/mobile/components`. Flags: a bare "!" in a UI
+  string (Tailwind `className` important-modifier shapes and PostgREST
+  embed-hint shapes like `profiles!author_id` are excluded — see the script's
+  header comment for the exact precision tradeoffs); a vendor/env name
+  (Supabase/Expo/EXPO_PUBLIC_\*/Postgres/Upstash/RevenueCat/Stripe) inside a
+  prose string (an import-path-shaped string with no space never matches);
+  and literal `"..."` where the canonical ellipsis glyph `…` is expected.
+  Per-file counts pinned in `scripts/copy-voice-budget.json`; only-shrink
+  ratchet. Re-pin with `npm run check:copy-voice:write`.
 - `check:screen-budget` (ENG-717) — the "no screen file over 400 lines" rule;
   scans web `src/app/components` + `app` and mobile `apps/mobile/app` +
   `apps/mobile/components` `.tsx` surfaces, pins current offenders in
@@ -223,10 +236,14 @@ GitHub Actions (`.github/workflows/ci.yml`):
   shrink, fails on any new >400 file or a pinned file growing. Re-pin a shrunk
   file with `npm run check:screen-budget:write`.
 
-The spacing + token budgets each store an `allow` map alongside `pins`: a
-full-file carve-out keyed by path with a required rationale string (ENG-ref or
-explicit "intentional …" reason). A rationale-less (silent) carve-out is itself
-a CI failure — there are currently none.
+The spacing + token + copy-voice budgets each store an `allow` map alongside
+`pins`: a full-file carve-out keyed by path with a required rationale string
+(ENG-ref or explicit "intentional …" reason). A rationale-less (silent)
+carve-out is itself a CI failure. `copy-voice-budget.json`'s allow map has six
+entries (an OSS licences/attributions page, two billing/refund factual
+disclosures, a `/dev/*` mock-data harness naming a competitor app whose real
+name has a "!", and the already-`__DEV__`-gated `SupabaseNotConfiguredScreen`
+from ENG-1456) — all rationale'd, none silent.
 
 **Mobile job:** under `apps/mobile` — ESLint, TypeScript, import-path guards, `npm run test:coverage` (Vitest with Istanbul coverage for `app/**` and `lib/**`; HTML under `apps/mobile/coverage/`), `npm run test:e2e:verify-suite` (Maestro flow files + `config.yaml` manifest — does not run the simulator on CI).
 

@@ -18,6 +18,7 @@ deterministic CI gate:
 | Type-scale lint (ENG-119) | ✅ | `check:type-scale` |
 | Spacing-scale ratchet (ENG-1007) | ✅ | `check:spacing-scale` |
 | Colour/radius token ratchet (ENG-1007) | ✅ | `check:token-scale` |
+| Copy-voice ratchet (ENG-1378) | ✅ | `check:copy-voice` |
 | Screen line-count ratchet (ENG-717) | ✅ | `check:screen-budget` |
 | Web `next build` | ✅ | `build` |
 | Mobile ESLint | ✅ | `mobile:lint` |
