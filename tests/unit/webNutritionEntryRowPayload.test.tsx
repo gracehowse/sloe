@@ -11,7 +11,7 @@ void React;
  * The web `buildNutritionEntryRow` (src/context/appData/useNutritionJournalState.ts)
  * had NO direct payload test, while mobile is covered by
  * `apps/mobile/tests/unit/nutritionEntryRowPersistence.test.ts`. This pins the
- * single-meal insert row shape so the web builder can't silently drift from
+ * single-meal write row shape so the web builder can't silently drift from
  * the columns `nutrition_entries` expects — or from the mobile builder.
  *
  * NOTE (ENG-1124): the web builder deliberately uses `id: meal.id` (no
@@ -19,18 +19,23 @@ void React;
  * two builders — a blind merge would change web behaviour. This test guards
  * the *shape*, not a shared implementation.
  *
- * Mock harness mirrors `nutritionJournalBulkInsert.test.tsx`.
+ * ENG-1466 (2026-07-06) — the durable write now goes through
+ * `useWebJournalWriteAhead`'s write-ahead `.upsert(rows, {onConflict: "id"})`
+ * (table-aware: only `nutrition_entries` calls are recorded, mirroring
+ * `nutritionJournalBulkInsert.test.tsx`'s updated harness) instead of a bare
+ * `.insert()`. `addLoggedMealForDate` fires the write fire-and-forget, so
+ * each `act` flushes a couple of microtask turns before asserting.
  */
 
-const insertCalls: Array<{ rows: unknown }> = [];
+const writeCalls: Array<{ rows: unknown }> = [];
 
 function resetFakes() {
-  insertCalls.length = 0;
+  writeCalls.length = 0;
 }
 
 vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
   supabase: {
-    from: (_table: string) => ({
+    from: (table: string) => ({
       select: (_cols?: string) => {
         const result = Promise.resolve({ data: [], error: null });
         const chain: any = {
@@ -43,11 +48,14 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
         };
         return chain;
       },
-      insert: (rows: unknown) => {
-        insertCalls.push({ rows });
+      upsert: (rows: unknown, _opts?: unknown) => {
+        if (table === "nutrition_entries") writeCalls.push({ rows });
         return Promise.resolve({ error: null });
       },
-      upsert: () => Promise.resolve({ error: null }),
+      insert: (rows: unknown) => {
+        if (table === "nutrition_entries") writeCalls.push({ rows });
+        return Promise.resolve({ error: null });
+      },
       delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
     }),
   },
@@ -113,11 +121,27 @@ const NUTRITION_ENTRY_COLUMNS = [
   "eaten_at",
 ] as const;
 
-describe("ENG-1124 — web buildNutritionEntryRow single-meal payload", () => {
-  beforeEach(resetFakes);
-  afterEach(() => vi.clearAllMocks());
+/** `addLoggedMealForDate` fires its write-ahead write fire-and-forget (the
+ *  call itself returns the new id synchronously) — flush a couple of
+ *  microtask turns so the mocked (immediately-resolving) upsert settles
+ *  before assertions read `writeCalls`. */
+async function flushMicrotasks() {
+  await Promise.resolve();
+  await Promise.resolve();
+}
 
-  it("writes a single-row object carrying the full nutrition_entries column set", async () => {
+describe("ENG-1124 — web buildNutritionEntryRow single-meal payload", () => {
+  beforeEach(() => {
+    resetFakes();
+    // ENG-1466 — write-ahead persists to real jsdom localStorage.
+    window.localStorage.clear();
+  });
+  afterEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+  });
+
+  it("write-aheads a single-row-array batch carrying the full nutrition_entries column set", async () => {
     const { result } = setup();
     let returnedId = "";
     await act(async () => {
@@ -125,13 +149,16 @@ describe("ENG-1124 — web buildNutritionEntryRow single-meal payload", () => {
         ...baseMeal,
         fiberG: 7,
       });
+      await flushMicrotasks();
     });
 
-    expect(insertCalls).toHaveLength(1);
-    const row = insertCalls[0]!.rows as Record<string, unknown>;
-
-    // Single-meal path is an object insert, never the bulk array.
-    expect(Array.isArray(row)).toBe(false);
+    expect(writeCalls).toHaveLength(1);
+    // ENG-1466 — write-ahead always upserts a ROW ARRAY (mirrors mobile's
+    // `writeAhead` contract), even for a single manual log.
+    const rows = writeCalls[0]!.rows as Array<Record<string, unknown>>;
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows).toHaveLength(1);
+    const row = rows[0]!;
     // id is the id the call returned — NOT re-minted (deliberate web behaviour).
     expect(row.id).toBe(returnedId);
 
@@ -164,9 +191,10 @@ describe("ENG-1124 — web buildNutritionEntryRow single-meal payload", () => {
     const { result } = setup();
     await act(async () => {
       result.current.addLoggedMealForDate("2026-06-16", baseMeal);
+      await flushMicrotasks();
     });
 
-    const row = insertCalls[0]!.rows as Record<string, unknown>;
+    const row = (writeCalls[0]!.rows as Array<Record<string, unknown>>)[0]!;
     expect(row.nutrition_micros).toEqual({});
     expect(row.recipe_id).toBeNull();
     expect(row.fiber_g).toBeNull();
@@ -183,9 +211,10 @@ describe("ENG-1124 — web buildNutritionEntryRow single-meal payload", () => {
         recipeId: "rec-123",
         micros,
       });
+      await flushMicrotasks();
     });
 
-    const row = insertCalls[0]!.rows as Record<string, unknown>;
+    const row = (writeCalls[0]!.rows as Array<Record<string, unknown>>)[0]!;
     expect(row.recipe_id).toBe("rec-123");
     expect(row.nutrition_micros).toEqual(micros);
   });
@@ -200,9 +229,10 @@ describe("ENG-1124 — web buildNutritionEntryRow single-meal payload", () => {
         ...baseMeal,
         eatenAt: "2026-06-14T12:00:00.000Z",
       });
+      await flushMicrotasks();
     });
 
-    const row = insertCalls[0]!.rows as Record<string, unknown>;
+    const row = (writeCalls[0]!.rows as Array<Record<string, unknown>>)[0]!;
     // date_key follows eaten_at's day, NOT the selected anchor (2026-06-16).
     expect(row.date_key).not.toBe("2026-06-16");
     expect(row.date_key).toBe("2026-06-14");
