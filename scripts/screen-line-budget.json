@@ -59,7 +59,7 @@
   "apps/mobile/components/recipe/RecipeEditSheet.tsx": 706,
   "apps/mobile/components/settings/SettingsBundleContent.tsx": 3761,
   "apps/mobile/components/today/LogSheet.tsx": 1995,
-  "apps/mobile/components/today/NorthStarBlock.tsx": 618,
+  "apps/mobile/components/today/NorthStarBlock.tsx": 531,
   "apps/mobile/components/today/TodayActivityBonusCard.tsx": 747,
   "apps/mobile/components/today/TodayEditMealModal.tsx": 776,
   "apps/mobile/components/today/TodayMealsSection.tsx": 1666,
