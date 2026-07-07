@@ -426,6 +426,18 @@ export const Colors = {
     background: '#F7F6FA',          // whisper-cool plum-white canvas (ENG-1316)
     backgroundSecondary: '#F1F0F4', // recessed cool plum-grey (tracks, wells)
     backgroundGrouped: '#F5F4F7',   // faint cool-plum grouped ground (NOT beige)
+    /** ENG-1377 — warm-tint elevation step (2026-07-07). One rung above
+     *  `background`, but WARM instead of the family's cool-plum tilt: derived
+     *  by taking `background`'s per-channel delta-from-white MAGNITUDE (~one
+     *  `backgroundSecondary`-sized step) and redistributing it warm — R drops
+     *  least, B drops most (background/backgroundSecondary/backgroundGrouped
+     *  all drop B *least*, the cool tilt this token deliberately reverses).
+     *  Does NOT touch `background` itself — the global canvas hue is
+     *  unchanged (ENG-1377 is a token-level pass, not a re-skin). First
+     *  consumer: the empty-state grammar epic (ENG-1372) — empty ring
+     *  tracks, hero washes and placeholder grounds sit on this so they never
+     *  render at zero visual weight. ↔ web `--surface-warm`. */
+    surfaceWarm: '#F9F3EB',
     card: '#FFFFFF',                // white card — lift via Elevation.cardSoft
     cardElevated: '#FFFFFF',
     fillQuiet: '#F1F0F4',           // cool quiet fill (was warm cream); ↔ web --fill-quiet
@@ -515,6 +527,12 @@ export const Colors = {
     background: '#120D18',          // ↔ web --background (Nocturne deep plum-black)
     backgroundSecondary: '#1A1422', // ↔ web --background-secondary
     backgroundGrouped: '#161019',   // ↔ web --background-grouped
+    /** ENG-1377 — dark warm-tint elevation step. Same derivation as light
+     *  `surfaceWarm`: one rung above `background`, warm-tilted (R highest)
+     *  instead of the family's cool-plum tilt (B highest in bg/secondary/
+     *  grouped). Sits below `card`/`cardElevated` in the ladder — a ground,
+     *  not a card fill. ↔ web dark `--surface-warm`. */
+    surfaceWarm: '#241B18',
     card: '#211A2A',                // ↔ web --card (raised plum card)
     cardElevated: '#2A2233',        // ↔ web --card-elevated (one-step lift)
     fillQuiet: '#241C2E',           // quiet fill (dark) — ↔ web dark --muted
