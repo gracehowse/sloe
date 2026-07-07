@@ -27,11 +27,18 @@ import {
 } from "../../src/app/components/suppr/north-star-block";
 
 let figmaMealsLayout = true;
+// ENG-1454 — mutable per-test override so the staged-coaching tests can
+// flip `coaching_stages_v1` ON without affecting the other flag-off tests
+// in this file (which must keep rendering the exact legacy caption).
+let coachingStagesOn = false;
 
 vi.mock("../../src/lib/analytics/track", () => ({
   track: vi.fn(),
-  isFeatureEnabled: (flag: string) =>
-    flag === "today_meals_figma_654" ? figmaMealsLayout : false,
+  isFeatureEnabled: (flag: string) => {
+    if (flag === "today_meals_figma_654") return figmaMealsLayout;
+    if (flag === "coaching_stages_v1") return coachingStagesOn;
+    return false;
+  },
 }));
 
 const baseSuggestion: NorthStarBlockSuggestion = {
@@ -270,6 +277,10 @@ describe("NorthStarBlock (web) — whyLine + macro row do not overlap", () => {
 });
 
 describe("NorthStarBlock (web) — non-default kinds", () => {
+  beforeEach(() => {
+    coachingStagesOn = false;
+  });
+
   // ENG-1198: web library-empty brought into parity with mobile's flattened
   // tappable quiet-fill row. Copy aligned to mobile ("Pick a few recipes — we'll
   // suggest from there."); the whole row is the tap target (aria-label "Pick
@@ -295,6 +306,56 @@ describe("NorthStarBlock (web) — non-default kinds", () => {
       ),
     ).toBeDefined();
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  describe("ENG-1454 — staged over-budget coaching (behind coaching_stages_v1)", () => {
+    it("flag ON + stage/calories supplied: renders the staged line, not the legacy caption", () => {
+      coachingStagesOn = true;
+      render(
+        <NorthStarBlock
+          kind="over-budget"
+          overBudgetStage="big"
+          overBudgetCalories={{ consumed: 3450, goal: 2000 }}
+        />,
+      );
+      expect(
+        screen.getByText(
+          /A big day\. It happens — log it honestly and move on\. Tomorrow's a clean slate\./,
+        ),
+      ).toBeDefined();
+      expect(
+        screen.queryByText(
+          /You've hit your calories for today — eat freely, or save for tomorrow\./,
+        ),
+      ).toBeNull();
+    });
+
+    it("flag ON but no stage/calories supplied: falls through to the legacy caption (kill switch)", () => {
+      coachingStagesOn = true;
+      render(<NorthStarBlock kind="over-budget" />);
+      expect(
+        screen.getByText(
+          /You've hit your calories for today — eat freely, or save for tomorrow\./,
+        ),
+      ).toBeDefined();
+    });
+
+    it("flag OFF even with stage/calories supplied: still the legacy caption (kill switch)", () => {
+      coachingStagesOn = false;
+      render(
+        <NorthStarBlock
+          kind="over-budget"
+          overBudgetStage="over"
+          overBudgetCalories={{ consumed: 2500, goal: 2000 }}
+        />,
+      );
+      expect(
+        screen.getByText(
+          /You've hit your calories for today — eat freely, or save for tomorrow\./,
+        ),
+      ).toBeDefined();
+      expect(screen.queryByText(/Over by 500 today/)).toBeNull();
+    });
   });
 
   it("no-fit: renders the caption + Browse text button", () => {

@@ -28,6 +28,7 @@ import {
 } from "@suppr/nutrition-core/northStarSuggestion";
 import { normaliseMealSlot } from "@suppr/nutrition-core/mealSlots";
 import { fallbackSlotFromTimeOfDay } from "@suppr/nutrition-core/recipeJournalSlot";
+import { overBudgetStage } from "@suppr/nutrition-core/coachOverBudgetStage";
 
 import { NorthStarBlock } from "./NorthStarBlock";
 
@@ -93,6 +94,15 @@ export interface NorthStarBlockHostProps {
    *  Threaded into the scorer so the per-meal budget is a share of the
    *  day, never the whole remaining day. Mirror of the web host prop. */
   dailyCalorieTarget: number;
+  /** ENG-1454 — today's raw eaten calories (unclamped — unlike
+   *  `remainingCalories`, which the caller floors at 0). Needed to derive
+   *  the staged over-budget coach line's magnitude once the user has
+   *  crossed the target; `remainingCalories` alone can't tell "just over"
+   *  from "way over" because it's clamped to 0 the moment the user is at
+   *  or past target. Optional so older callers keep compiling — omitting
+   *  it just means the staged copy can't resolve (falls to the legacy
+   *  caption, same as flag-off). */
+  consumedCalories?: number;
   /** Called when the user taps the primary CTA on the suggestion card.
    *  Receives the suggestion's recipe id so the parent can route
    *  directly to that recipe (or open the log sheet, on web). */
@@ -127,6 +137,7 @@ function NorthStarBlockHostImpl({
   remainingCarbs,
   remainingFat,
   dailyCalorieTarget,
+  consumedCalories,
   onPrimaryCta,
   onLogSuggestion,
   onBrowseLibrary,
@@ -161,7 +172,24 @@ function NorthStarBlockHostImpl({
   if (viewMode !== "day") return null;
 
   if (remainingCalories <= 0) {
-    return <NorthStarBlock kind="over-budget" />;
+    // ENG-1454 — resolve the stage when the caller has threaded the raw
+    // eaten total (consumedCalories is optional for back-compat). When
+    // absent, `NorthStarBlock` falls through to the legacy caption anyway.
+    const stage =
+      consumedCalories != null
+        ? (overBudgetStage(consumedCalories, dailyCalorieTarget) ?? undefined)
+        : undefined;
+    return (
+      <NorthStarBlock
+        kind="over-budget"
+        overBudgetStage={stage}
+        overBudgetCalories={
+          consumedCalories != null
+            ? { consumed: consumedCalories, goal: dailyCalorieTarget }
+            : undefined
+        }
+      />
+    );
   }
 
   // ENG-94 (2026-05-13): on a true day-1 user (no historical log

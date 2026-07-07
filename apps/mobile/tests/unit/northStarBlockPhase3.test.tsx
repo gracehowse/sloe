@@ -8,10 +8,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
 
 let figmaMealsLayout = true;
+// ENG-1454 — mutable per-test override so the staged-coaching tests can
+// flip `coaching_stages_v1` ON without affecting the other flag-off tests
+// in this file (which must keep rendering the exact legacy caption).
+let coachingStagesOn = false;
 
 vi.mock("@/lib/analytics", () => ({
-  isFeatureEnabled: (flag: string) =>
-    flag === "today_meals_figma_654" ? figmaMealsLayout : false,
+  isFeatureEnabled: (flag: string) => {
+    if (flag === "today_meals_figma_654") return figmaMealsLayout;
+    if (flag === "coaching_stages_v1") return coachingStagesOn;
+    return false;
+  },
   track: vi.fn(),
 }));
 
@@ -124,6 +131,10 @@ describe("NorthStarBlock (mobile) — compact default kind", () => {
 });
 
 describe("NorthStarBlock (mobile) — non-default kinds", () => {
+  beforeEach(() => {
+    coachingStagesOn = false;
+  });
+
   it("library-empty: renders invitation copy + tappable row", () => {
     const onOpenLibrary = vi.fn();
     const { getByText, getByLabelText } = render(
@@ -161,6 +172,81 @@ describe("NorthStarBlock (mobile) — non-default kinds", () => {
     expect(queryByText("What to eat next")).toBeNull();
     expect(queryByText("Tofu poke bowl")).toBeNull();
     expect(queryByText("Log it")).toBeNull();
+  });
+
+  describe("ENG-1454 — staged over-budget coaching (behind coaching_stages_v1)", () => {
+    it("flag ON + stage/calories supplied: renders the staged line, not the legacy caption", () => {
+      coachingStagesOn = true;
+      const { getByText, queryByText } = render(
+        <NorthStarBlock
+          kind="over-budget"
+          overBudgetStage="big"
+          overBudgetCalories={{ consumed: 3450, goal: 2000 }}
+        />,
+      );
+      expect(
+        getByText(/A big day\. It happens — log it honestly and move on\. Tomorrow's a clean slate\./),
+      ).toBeTruthy();
+      expect(
+        queryByText(/You've hit your calories for today — eat freely, or save for tomorrow\./),
+      ).toBeNull();
+    });
+
+    it("flag ON but no stage/calories supplied: falls through to the legacy caption (kill switch)", () => {
+      coachingStagesOn = true;
+      const { getByText } = render(<NorthStarBlock kind="over-budget" />);
+      expect(
+        getByText(/You've hit your calories for today — eat freely, or save for tomorrow\./),
+      ).toBeTruthy();
+    });
+
+    it("flag OFF even with stage/calories supplied: still the legacy caption (kill switch)", () => {
+      coachingStagesOn = false;
+      const { getByText, queryByText } = render(
+        <NorthStarBlock
+          kind="over-budget"
+          overBudgetStage="over"
+          overBudgetCalories={{ consumed: 2500, goal: 2000 }}
+        />,
+      );
+      expect(
+        getByText(/You've hit your calories for today — eat freely, or save for tomorrow\./),
+      ).toBeTruthy();
+      expect(queryByText(/Over by 500 today/)).toBeNull();
+    });
+
+    it("renders each stage's exact staged string", () => {
+      coachingStagesOn = true;
+      const cases: Array<
+        [import("../../components/today/NorthStarBlock").NorthStarBlockProps["overBudgetStage"], number, number, RegExp]
+      > = [
+        ["approaching", 1850, 2000, /About 150 kcal left — a light dinner fits\./],
+        [
+          "landed",
+          2000,
+          2000,
+          /You've hit today's calories\. One day at the line is exactly how this is meant to work\./,
+        ],
+        ["over", 2450, 2000, /Over by 450 today\. Nothing to fix tonight — tomorrow starts fresh\./],
+        [
+          "big",
+          3450,
+          2000,
+          /A big day\. It happens — log it honestly and move on\. Tomorrow's a clean slate\./,
+        ],
+      ];
+      for (const [stage, consumed, goal, expected] of cases) {
+        const { getByText, unmount } = render(
+          <NorthStarBlock
+            kind="over-budget"
+            overBudgetStage={stage}
+            overBudgetCalories={{ consumed, goal }}
+          />,
+        );
+        expect(getByText(expected)).toBeTruthy();
+        unmount();
+      }
+    });
   });
 
   it("no-fit: renders caption + Browse button", () => {

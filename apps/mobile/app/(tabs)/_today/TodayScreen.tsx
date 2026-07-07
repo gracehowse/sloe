@@ -5042,7 +5042,6 @@ export default function TrackerScreen() {
             Top-5 #2, 2026-04-28). Eat-again card retired (ENG-984). */}
 
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
-
         {/* Figma `654:2` — What to eat next sits above Today's Meals. */}
         {showAboveMealsNorthStar && (
           <NorthStarBlockHost
@@ -5053,6 +5052,7 @@ export default function TrackerScreen() {
             remainingCarbs={remainingCarbs}
             remainingFat={remainingFat}
             dailyCalorieTarget={effectiveCalorieGoal}
+            consumedCalories={totals.calories} // ENG-1454 — staged coach-line input
             onPrimaryCta={(recipeId) => {
               router.push(`/recipe/${recipeId}` as any);
             }}

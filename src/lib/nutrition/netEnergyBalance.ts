@@ -6,6 +6,8 @@
  * Subline copy reads the same ±60 kcal band as `netEnergyChipState`, not binary net sign.
  */
 
+import { netEnergyOverBudgetLine } from "./coachOverBudgetStage";
+
 export type NetEnergyChipState = "deficit" | "surplus" | "maintenance";
 
 const CHIP_THRESHOLD_KCAL = 60;
@@ -91,8 +93,21 @@ export function netEnergySubline(args: {
   eatenKcal: number;
   isToday: boolean;
   netKcal: number;
+  /**
+   * ENG-1454 — behind `coaching_stages_v1`: while in surplus ("You've
+   * eaten more than you've burned"), swap the second-person accusation
+   * for the neutral, auditable "Net energy today: +{n} kcal" framing (the
+   * operands render beneath via the existing Burned/Eaten stat tiles —
+   * this sentence never restates them). Only the surplus branch changes;
+   * deficit/maintenance keep their existing calm phrasing unconditionally
+   * — they were never the tonal-whiplash complaint in ENG-1454. Callers
+   * pass `true` only when the flag resolves ON; the host owns the
+   * `isFeatureEnabled("coaching_stages_v1")` check so this module stays a
+   * pure function with no analytics import.
+   */
+  stagedNeutralSurplusFraming?: boolean;
 }): string {
-  const { burnedKcal, eatenKcal, isToday, netKcal } = args;
+  const { burnedKcal, eatenKcal, isToday, netKcal, stagedNeutralSurplusFraming } = args;
   if (eatenKcal === 0) {
     const tail = isToday ? "yet" : "for this day";
     return `${burnedKcal.toLocaleString()} kcal burned so far · no food logged ${tail}.`;
@@ -103,6 +118,9 @@ export function netEnergySubline(args: {
   }
   if (state === "deficit") {
     return `You've burned ${Math.abs(netKcal).toLocaleString()} more than you've eaten${isToday ? " today" : ""}.`;
+  }
+  if (stagedNeutralSurplusFraming) {
+    return netEnergyOverBudgetLine(Math.abs(netKcal));
   }
   return `You've eaten ${Math.abs(netKcal).toLocaleString()} more than you've burned${isToday ? " today" : ""}.`;
 }

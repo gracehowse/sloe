@@ -2738,7 +2738,6 @@ export const NutritionTracker = memo(function NutritionTracker({
           Activity Bonus card. */}
 
       {/* Eat-again block retired (ENG-984, 2026-06-17); mobile parity. */}
-
       {/* Quick add panel — Usual meals / Recent / Frequent / Favourites
           tabs with one-tap log. Ship M1 (2026-04-18) reordered so Usual
           meals is the primary re-log surface and renames the "My meals"
@@ -2760,6 +2759,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
           remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
           dailyCalorieTarget={effectiveCalorieTarget}
+          consumedCalories={totals.calories} // ENG-1454 — staged coach-line input
           onPrimaryCta={(_recipeId) => {
             setMealSlot(slotForHour(new Date().getHours()));
             setLogSheetOpen(true);

@@ -113,4 +113,57 @@ describe("netEnergyBalance", () => {
       }
     });
   });
+
+  describe("ENG-1454 — stagedNeutralSurplusFraming (behind coaching_stages_v1)", () => {
+    it("omitted/false → the legacy 2nd-person surplus line, byte-identical (kill switch)", () => {
+      const subline = netEnergySubline({
+        burnedKcal: 2000,
+        eatenKcal: 2061,
+        isToday: true,
+        netKcal: -61,
+      });
+      expect(subline).toBe("You've eaten 61 more than you've burned today.");
+
+      const explicitFalse = netEnergySubline({
+        burnedKcal: 2000,
+        eatenKcal: 2061,
+        isToday: true,
+        netKcal: -61,
+        stagedNeutralSurplusFraming: false,
+      });
+      expect(explicitFalse).toBe(subline);
+    });
+
+    it("true + surplus → the neutral 'Net energy today: +{n} kcal' framing", () => {
+      const subline = netEnergySubline({
+        burnedKcal: 2000,
+        eatenKcal: 4204,
+        isToday: true,
+        netKcal: -2204,
+        stagedNeutralSurplusFraming: true,
+      });
+      expect(subline).toBe("Net energy today: +2204 kcal");
+      expect(subline).not.toMatch(/you'?ve eaten/i);
+    });
+
+    it("true but deficit/maintenance → UNCHANGED (only the surplus branch is gated)", () => {
+      const deficitSubline = netEnergySubline({
+        burnedKcal: 2000,
+        eatenKcal: 1939,
+        isToday: true,
+        netKcal: 61,
+        stagedNeutralSurplusFraming: true,
+      });
+      expect(deficitSubline).toBe("You've burned 61 more than you've eaten today.");
+
+      const maintenanceSubline = netEnergySubline({
+        burnedKcal: 1500,
+        eatenKcal: 1500,
+        isToday: true,
+        netKcal: 0,
+        stagedNeutralSurplusFraming: true,
+      });
+      expect(maintenanceSubline).toContain("within 60 kcal of maintenance");
+    });
+  });
 });

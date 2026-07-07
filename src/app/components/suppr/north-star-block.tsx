@@ -4,23 +4,19 @@
  * NorthStarBlock — "What to eat next" permanent block on Today (web).
  *
  * Production design spec — 2026-04-27 Surface A §A-northstar.
- * Authority: D-2026-04-27-04.
+ * Authority: D-2026-04-27-04. "Promote the gated 'Dinner could hit'
+ * suggestion from a card to a permanent block on Today, second thing the
+ * eye lands on after the calorie ring. One suggested recipe at a time,
+ * swipeable to skip, one tap to log/cook."
  *
- * "Promote the gated 'Dinner could hit' suggestion from a card to a
- *  permanent block on Today, second thing the eye lands on after the
- *  calorie ring. One suggested recipe at a time, swipeable to skip,
- *  one tap to log/cook."
- *
- * The block has four state branches:
+ * Four state branches:
  *   - `default`         — gradient SupprCard with thumb / body / CTA.
  *   - `library-empty`   — primary-tinted invitation when library < 5.
  *   - `over-budget`     — calm caption replaces block when ring is over.
  *   - `no-fit`          — caption "Library has nothing under your
  *                         remaining macros today" + Browse link.
  *
- * The component is presentation-only. The caller decides which branch
- * to render based on `kind`.
- *
+ * Presentation-only — the caller decides which branch to render via `kind`.
  * Mobile mirror: `apps/mobile/components/today/NorthStarBlock.tsx`.
  */
 
@@ -28,18 +24,13 @@ import * as React from "react";
 import { ChevronRight, Sparkles, X } from "lucide-react";
 
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { resolveOverBudgetCaption, type OverBudgetStage } from "../../../lib/nutrition/coachOverBudgetStage.ts";
 import { NorthStarFigmaHeroBlock } from "./north-star-figma-hero";
 import { QuickLogButton } from "./quick-log-button";
 import { SupprButton } from "./suppr-button";
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { cn } from "../ui/utils";
 
 export type NorthStarKind =
@@ -90,6 +81,12 @@ export interface NorthStarBlockProps {
   kind: NorthStarKind;
   /** Required when `kind="default"`. */
   suggestion?: NorthStarBlockSuggestion;
+  /** ENG-1454 — staged over-budget copy for `kind="over-budget"`, behind
+   *  `coaching_stages_v1`. No stage/flag-off → legacy caption (kill
+   *  switch). See `coachOverBudgetStage.ts`. Mirrors mobile. */
+  overBudgetStage?: OverBudgetStage;
+  /** Consumed/goal calories for the staged line's `{n}`. */
+  overBudgetCalories?: { consumed: number; goal: number };
   /** Time-of-day-adaptive primary CTA label. */
   ctaLabel?: string;
   onPrimaryCta?: () => void;
@@ -115,6 +112,8 @@ export interface NorthStarBlockProps {
 export function NorthStarBlock({
   kind,
   suggestion,
+  overBudgetStage: stage,
+  overBudgetCalories,
   ctaLabel = "Log it",
   onPrimaryCta,
   onLogCta,
@@ -128,7 +127,7 @@ export function NorthStarBlock({
     return (
       <div data-slot="north-star-over-budget" data-testid={testID} className="px-1 py-2">
         <p className="text-[13px] text-muted-foreground">
-          You've hit your calories for today — eat freely, or save for tomorrow.
+          {resolveOverBudgetCaption(isFeatureEnabled("coaching_stages_v1"), stage, overBudgetCalories)}
         </p>
       </div>
     );

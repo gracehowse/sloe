@@ -487,6 +487,20 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   surface — Grace ramps in PostHog after a web + mobile glance. Off → both
  *   hosts render their legacy empty/fresh-day treatment exactly (kill
  *   switch). Web + mobile.
+ * - `coaching_stages_v1` (ENG-1454, 2026-07-06 Fable-day failure-moment
+ *   judgment) — staged over/under-budget Today coach line (approaching
+ *   85-100% / landed 100-110% / over 110-140% / big >140% of goal — see
+ *   `src/lib/nutrition/coachOverBudgetStage.ts`), the neutral net-energy
+ *   "Net energy today: +{n} kcal" reframe (replaces the 2nd-person "you've
+ *   eaten N more than you've burned" accusation), the two ED-safe
+ *   under-eating nudges, and the weekly-recap broken-streak grace rewrite
+ *   (achievement-led headline, one-clause reset, streak-freeze mechanic
+ *   surfaced at the break, protein digest line). DEFAULT-OFF: net-new copy
+ *   not yet sim-validated, AND the under-eating strings specifically need
+ *   the diversity-inclusion + nutrition-engine lens pass before ramping past
+ *   an internal glance (body-neutral framing is load-bearing). Off → every
+ *   gated surface renders its exact pre-ENG-1454 copy (kill switch). Web +
+ *   mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -502,6 +516,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "trial_end_reminder_v1", // ENG-968 — Duolingo-style trial-end reminder day picker
   "recipe_yield_portion_v1", // ENG-736 — structured recipe yield + portion-style logging
   "empty_state_grammar_v1", // ENG-1372 slice 1 — Today ring fresh-day + Plan empty-week
+  "coaching_stages_v1", // ENG-1454 — staged over/under-budget coach copy + broken-streak recap grace
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

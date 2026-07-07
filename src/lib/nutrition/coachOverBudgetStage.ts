@@ -104,6 +104,30 @@ export function overBudgetCoachLine(
   }
 }
 
+/** The retired state-blind over-budget caption — kept as a named export so
+ *  every call site (and both `NorthStarBlock` components) resolves the
+ *  exact same fallback string instead of re-typing the literal. */
+export const LEGACY_OVER_BUDGET_CAPTION =
+  "You've hit your calories for today — eat freely, or save for tomorrow.";
+
+/**
+ * One-call resolver for the `NorthStarBlock` over-budget caption — used by
+ * both platforms' components so the flag/stage/calories gate lives in one
+ * place instead of being re-typed at each call site. Returns the staged
+ * line when `flagOn` is true AND both `stage` and `calories` are supplied;
+ * otherwise the exact legacy caption (kill switch).
+ */
+export function resolveOverBudgetCaption(
+  flagOn: boolean,
+  stage: OverBudgetStage | undefined,
+  calories: { consumed: number; goal: number } | undefined,
+): string {
+  if (flagOn && stage && calories) {
+    return overBudgetCoachLine(stage, calories.consumed, calories.goal);
+  }
+  return LEGACY_OVER_BUDGET_CAPTION;
+}
+
 /**
  * Neutral, auditable net-energy framing for the "while over" state —
  * replaces the second-person accusation ("You've eaten {n} more than

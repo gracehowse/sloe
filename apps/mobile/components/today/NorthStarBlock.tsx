@@ -19,6 +19,10 @@ import Animated, {
 import { ChevronRight, Sparkles, X } from "lucide-react-native";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { useHaptics } from "@/hooks/useHaptics";
+import {
+  resolveOverBudgetCaption,
+  type OverBudgetStage,
+} from "@suppr/nutrition-core/coachOverBudgetStage";
 
 // 2026-05-12 (premium-bar audit motion polish): use the reanimated
 // `createAnimatedComponent` pattern so the resolved component goes
@@ -105,6 +109,12 @@ export interface NorthStarBlockSuggestion {
 export interface NorthStarBlockProps {
   kind: NorthStarKind;
   suggestion?: NorthStarBlockSuggestion;
+  /** ENG-1454 — staged over-budget copy for `kind="over-budget"`, behind
+   *  `coaching_stages_v1`. No stage/flag-off → legacy caption (kill
+   *  switch). See `coachOverBudgetStage.ts`. Mirrors web. */
+  overBudgetStage?: OverBudgetStage;
+  /** Consumed/goal calories for the staged line's `{n}`. */
+  overBudgetCalories?: { consumed: number; goal: number };
   ctaLabel?: string;
   onPrimaryCta?: () => void;
   /** ENG-1301 (VERIFIED V13) — compact secondary "Log": one-tap logs the
@@ -125,6 +135,8 @@ const SKIP_THRESHOLD = 50;
 function NorthStarBlockImpl({
   kind,
   suggestion,
+  overBudgetStage: stage,
+  overBudgetCalories,
   ctaLabel = "Log it",
   onPrimaryCta,
   onLogCta,
@@ -150,7 +162,7 @@ function NorthStarBlockImpl({
         style={{ paddingHorizontal: Spacing.xs, paddingVertical: Spacing.sm }}
       >
         <Text style={[Type.caption, { color: colors.textSecondary }]}>
-          {"You've hit your calories for today — eat freely, or save for tomorrow."}
+          {resolveOverBudgetCaption(isFeatureEnabled("coaching_stages_v1"), stage, overBudgetCalories)}
         </Text>
       </View>
     );
