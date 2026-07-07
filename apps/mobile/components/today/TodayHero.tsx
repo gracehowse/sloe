@@ -87,6 +87,12 @@ export interface TodayHeroProps {
   /** ENG-722 — log-confirm checkmark play counter. Each increment plays a calm
    *  sage check over the ring on a durable commit (from `useLogConfirmCheck`). */
   logConfirmBump?: number;
+  /** ENG-1372 — true iff today has zero logged entries. Forwarded to
+   *  `TodayHeroRing`; see its prop doc for the exact semantics/gating. */
+  isFreshDay?: boolean;
+  /** Opens the LogSheet scoped to the time-appropriate meal slot from the
+   *  fresh-day pill. Required when `isFreshDay` is true. */
+  onLogFreshDaySlot?: () => void;
 }
 
 function TodayHeroImpl(props: TodayHeroProps) {
@@ -117,6 +123,8 @@ function TodayHeroImpl(props: TodayHeroProps) {
     // on Progress.
     coachLine,
     logConfirmBump,
+    isFreshDay,
+    onLogFreshDaySlot,
   } = props;
 
   // ENG-753 — "On track" pill below the ring (prototype screens-web.jsx
@@ -155,6 +163,8 @@ function TodayHeroImpl(props: TodayHeroProps) {
         onPressCoach={onPressCoach}
         coachLine={coachLine}
         logConfirmBump={logConfirmBump}
+        isFreshDay={isFreshDay}
+        onLogFreshDaySlot={onLogFreshDaySlot}
       />
 
       {showPills ? (

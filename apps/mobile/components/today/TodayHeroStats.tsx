@@ -57,14 +57,23 @@ export interface TodayHeroStatsProps {
   secondaryColor: string;
   borderColor: string;
   isDark: boolean;
+  /** ENG-1372 (empty-state grammar, law 3) — hide the BONUS cell when it
+   *  would show a bare "0" (host gates this on `empty_state_grammar_v1` AND
+   *  a true fresh day). Goal/Eaten stay — those are honest earned zeros
+   *  (Grace 2026-06-10); BONUS at 0 on a day with nothing logged yet is a
+   *  derived non-fact with nothing to show, so it collapses to a 2-cell row. */
+  suppressZeroBonus?: boolean;
 }
 
 /**
  * The Goal / Eaten / Bonus stat row beneath the calorie ring. Shared by both the
  * carded hero (`TodayHeroRing`) and the de-carded v3 hero so the two layouts
  * never drift. Renders on EMPTY days too — Eaten 0 / Bonus +0 are honest numbers
- * (Grace 2026-06-10, supersedes the calm-empty divergence). The right stat is
- * ALWAYS Bonus: the over amount already reads in the centre + status line.
+ * (Grace 2026-06-10, supersedes the calm-empty divergence) — EXCEPT the BONUS
+ * cell specifically, which `suppressZeroBonus` hides when it would read 0 on a
+ * fresh day (ENG-1372 law 3: numbers suppressed until earned). The right stat
+ * is otherwise ALWAYS Bonus: the over amount already reads in the centre +
+ * status line.
  */
 export function TodayHeroStats({
   goal,
@@ -74,10 +83,12 @@ export function TodayHeroStats({
   secondaryColor,
   borderColor,
   isDark,
+  suppressZeroBonus = false,
 }: TodayHeroStatsProps) {
   if (goal <= 0) return null;
   const hasBonus = !!baseGoal && baseGoal < goal;
   const bonusColor = hasBonus ? (isDark ? Accent.successLight : Accent.success) : secondaryColor;
+  const hideBonus = suppressZeroBonus && !hasBonus;
   return (
     <View
       style={{
@@ -103,15 +114,17 @@ export function TodayHeroStats({
         textSecondaryColor={secondaryColor}
         dividerColor={borderColor}
       />
-      <Stat
-        label="Bonus"
-        testID="today-ring-bonus"
-        value={hasBonus ? `+${Math.round(goal - baseGoal!).toLocaleString()}` : "0"}
-        labelColor={bonusColor}
-        valueColor={bonusColor}
-        textSecondaryColor={secondaryColor}
-        dividerColor={borderColor}
-      />
+      {hideBonus ? null : (
+        <Stat
+          label="Bonus"
+          testID="today-ring-bonus"
+          value={hasBonus ? `+${Math.round(goal - baseGoal!).toLocaleString()}` : "0"}
+          labelColor={bonusColor}
+          valueColor={bonusColor}
+          textSecondaryColor={secondaryColor}
+          dividerColor={borderColor}
+        />
+      )}
     </View>
   );
 }

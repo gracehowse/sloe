@@ -661,6 +661,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   and drop it from the step counter, so the live flow is unchanged and the
  *   change is mergeable headless. Grace ramps it in PostHog after a sim + web
  *   glance at the new step's pixels. Web + mobile.
+ * - `empty_state_grammar_v1` (ENG-1372, slice 1) — the first-week empty-state
+ *   grammar contract: Today ring fresh-day (warm-tint empty track, time-aware
+ *   "Log breakfast/lunch/dinner" pill inside the hero, BONUS stat cell
+ *   suppressed at 0) + Plan empty-week (warm invitation card replaces the
+ *   dashed-box wall + zero-triad). DEFAULT-OFF: a new, not-yet-sim-validated
+ *   surface — Grace ramps in PostHog after a web + mobile glance. Off → both
+ *   hosts render their legacy empty/fresh-day treatment exactly (kill
+ *   switch). Web + mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -675,6 +683,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "onboarding-why-now",
   "trial_end_reminder_v1", // ENG-968 — Duolingo-style trial-end reminder day picker
   "recipe_yield_portion_v1", // ENG-736 — structured recipe yield + portion-style logging
+  "empty_state_grammar_v1", // ENG-1372 slice 1 — Today ring fresh-day + Plan empty-week
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

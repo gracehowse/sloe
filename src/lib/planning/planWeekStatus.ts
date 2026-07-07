@@ -54,6 +54,24 @@ export function countPlanDayMainSlotsFilled(
   ).length;
 }
 
+/**
+ * ENG-1372 (empty-state grammar, Plan empty-week) — true iff the ENTIRE week
+ * has zero real meals in ANY slot (Snacks included, unlike {@link
+ * computePlanDayStatus}'s B/L/D-only "lands" threshold — this is a stricter,
+ * simpler check: has the user planned literally nothing yet?). `null`/empty
+ * `week`, or a week where every day's every slot is a placeholder, both
+ * count as empty. Drives the warm invitation card that replaces the dashed-
+ * box wall + zero-triad ("0 of 7 days land" / "0 / 1,900" / "P 0g C 0g F
+ * 0g") — those numbers are derived noise on a week with nothing planned,
+ * not a real status (law 3).
+ */
+export function isPlanWeekEmpty(
+  week: readonly (readonly PlanStatusMeal[])[] | null | undefined,
+): boolean {
+  if (!week || week.length === 0) return true;
+  return week.every((day) => !day || day.every((m) => !isFilled(m)));
+}
+
 /** Per-day status ring state for the week strip. */
 export function computePlanDayStatus(
   meals: readonly PlanStatusMeal[] | null | undefined,

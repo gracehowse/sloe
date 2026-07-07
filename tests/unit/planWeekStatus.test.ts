@@ -11,6 +11,7 @@ import {
   computePlanDayStatus,
   computePlanWeekVerdict,
   countPlanDayMainSlotsFilled,
+  isPlanWeekEmpty,
   type PlanStatusMeal,
 } from "../../src/lib/planning/planWeekStatus";
 
@@ -159,4 +160,35 @@ describe("computePlanDayDetail", () => {
       "≈340 kcal short — room for more · 2 cooked",
     );
   });
-})
+});
+
+describe("isPlanWeekEmpty (ENG-1372 empty-state grammar)", () => {
+  it("true for null/absent/empty-array week", () => {
+    expect(isPlanWeekEmpty(null)).toBe(true);
+    expect(isPlanWeekEmpty(undefined)).toBe(true);
+    expect(isPlanWeekEmpty([])).toBe(true);
+  });
+
+  it("true when every day's every slot is empty/placeholder — Snacks included", () => {
+    const week = Array.from({ length: 7 }, () => emptyDay);
+    expect(isPlanWeekEmpty(week)).toBe(true);
+    // A day whose only meal is an empty Snacks slot still counts as empty.
+    expect(isPlanWeekEmpty([[meal("Snacks", null, true)]])).toBe(true);
+  });
+
+  it("false as soon as ANY slot in ANY day is filled — even just Snacks", () => {
+    // Stricter than computePlanDayStatus's B/L/D-only 'lands' threshold:
+    // isPlanWeekEmpty counts Snacks as a real meal too.
+    expect(isPlanWeekEmpty([[meal("Snacks")], emptyDay])).toBe(false);
+    expect(isPlanWeekEmpty([emptyDay, partDay, emptyDay])).toBe(false);
+  });
+
+  it("false once the week has ANY fully-landed day (mirrors computePlanWeekVerdict fixtures)", () => {
+    const week = [fullDay, emptyDay, emptyDay, emptyDay, emptyDay, emptyDay, emptyDay];
+    expect(isPlanWeekEmpty(week)).toBe(false);
+  });
+
+  it("treats a day with an empty meals array the same as a fully-placeholder day", () => {
+    expect(isPlanWeekEmpty([[], [], []])).toBe(true);
+  });
+});
