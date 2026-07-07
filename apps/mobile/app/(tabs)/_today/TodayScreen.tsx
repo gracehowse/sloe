@@ -36,6 +36,7 @@ import { useTrackingExtrasOnFocus } from "@/hooks/useTrackingExtrasOnFocus";
 import { useLogSheetDeepLinks } from "@/hooks/useLogSheetDeepLinks";
 import { useHouseholdMemberCount } from "@/hooks/useHouseholdMemberCount";
 import { useTodayHydrationStimulants } from "@/hooks/useTodayHydrationStimulants";
+import { useTodayStreakAndFreezes } from "@/hooks/useTodayStreakAndFreezes";
 import { useOutOfWindowJournalDay } from "@/hooks/useOutOfWindowJournalDay";
 import {
   dateKeyFromDate,
@@ -84,7 +85,6 @@ import DuplicateDaySheet from "@/components/DuplicateDaySheet";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
-import { computeLoggingStreak } from "@/lib/trackerStats";
 import {
   computeActivityBonusKcal,
   computeProjectedActivityBonusKcal,
@@ -98,12 +98,9 @@ import { fetchMobileCanonicalRecipeTitle } from "@/lib/recipeTitleLookup";
 import { foodSelectionAnalyticsSource, foodSelectionToMealMacros } from "@suppr/nutrition-core/foodSelectionToMeal";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/nutrition-core/activityBudgetDiscoverability";
 import {
-  availableFreezes,
-  computeProtectedStreak,
   readFreezeLedger,
   type FreezeLedger,
 } from "@/lib/streakFreeze";
-import { didStreakReset } from "@suppr/nutrition-core/streakReset";
 import {
   isBelowMealsPromptVisible,
 } from "@suppr/shared/today/belowMealsPromptSelection";
@@ -3111,29 +3108,19 @@ export default function TrackerScreen() {
   const macroTilesEntrance = useEntranceAnimation({ delay: 160 });
   const mealsEntrance = useEntranceAnimation({ delay: 240 });
 
-  const streakDays = useMemo(
-    () => computeLoggingStreak(byDay as any),
-    [byDay],
-  );
-  // Batch 4.11 — freeze sub-label on the streak insight card.
-  const freezesAvailableToday = useMemo(
-    () => availableFreezes(freezeLedger, freezeBudgetMax),
-    [freezeLedger, freezeBudgetMax],
-  );
-  // 2026-04-18 audit H7 — DayStrip tiles for days where a freeze was
-  // consumed render a ❄ glyph. Parent computes once so both DayStrips
-  // (day + week view) render identically.
-  //
-  // L6 G8 (2026-04-18) — the memo also exposes `streakLength` so the
-  // `streak_reset` effect below can detect >=1 → 0 transitions.
-  const protectedStreakInfo = useMemo(() => {
-    return computeProtectedStreak(byDay as never, freezeLedger, freezeBudgetMax);
-  }, [byDay, freezeLedger, freezeBudgetMax]);
-  const protectedDateKeys = useMemo(
-    () => new Set(protectedStreakInfo.protectedDateKeys),
-    [protectedStreakInfo],
-  );
-  const protectedStreakLength = protectedStreakInfo.streakLength;
+  // ENG-1361 — Today extract (round 2). Owns the logging-streak +
+  // freeze-ledger derivations, the "streak just reset" date-header copy
+  // state, and the one-time freeze-earned acknowledgment flow. See the
+  // hook's own doc comment for the full "why" + failure modes.
+  const {
+    streakDays,
+    freezesAvailableToday,
+    protectedDateKeys,
+    protectedStreakLength,
+    streakJustReset,
+    hasUnseenFreezeEarned,
+    dismissFreezeEarned,
+  } = useTodayStreakAndFreezes({ byDay, freezeLedger, freezeBudgetMax });
 
   // ENG-798 (Redesign — Design Direction 2026) — reserved win-moment. The
   // shared landmark math + once-per-day / flag gate live in `useWinMoment`;
@@ -3183,74 +3170,6 @@ export default function TrackerScreen() {
     confirmLogHaptic();
     triggerLogConfirm();
   };
-
-  // L6 G8 (2026-04-18) — fire `streak_reset` once when the protected streak
-  // goes >=1 → 0. Ref starts `null` so a zero-streak first render never fires.
-  const priorProtectedStreakRef = useRef<number | null>(null);
-  // Premium-bar audit DC8 polish (2026-05-14) — when the streak just
-  // reset, show a calm supportive line in the date-header row
-  // (Duolingo-style "Every expert was once a beginner"). Sticky
-  // until the user next renders a positive streak — at which point
-  // the StreakPip takes over again. Independent of analytics fire.
-  const [streakJustReset, setStreakJustReset] = useState(false);
-  useEffect(() => {
-    const prior = priorProtectedStreakRef.current;
-    priorProtectedStreakRef.current = protectedStreakLength;
-    if (didStreakReset(prior, protectedStreakLength)) {
-      try {
-        track(AnalyticsEvents.streak_reset, {
-          priorStreak: prior ?? 0,
-        });
-      } catch { /* analytics fire-and-forget */ }
-      setStreakJustReset(true);
-    } else if (protectedStreakLength > 0 && streakJustReset) {
-      // User logged again and climbed off zero — clear the reset
-      // copy so the pip surface returns.
-      setStreakJustReset(false);
-    }
-  }, [protectedStreakLength, streakJustReset]);
-  // 2026-04-18 audit H7 — one-time "You earned a freeze" row under the
-  // streak insight card. Newest `earnedAt` ISO from the ledger; the row
-  // shows until the user taps "Got it", which writes that ISO to
-  // AsyncStorage. No shame copy, no modal takeover.
-  const newestFreezeEarnedAt = useMemo(() => {
-    if (!Array.isArray(freezeLedger.earnedAt) || freezeLedger.earnedAt.length === 0) return null;
-    let newest = "";
-    for (const entry of freezeLedger.earnedAt) {
-      if (typeof entry?.earnedAt === "string" && entry.earnedAt > newest) newest = entry.earnedAt;
-    }
-    return newest || null;
-  }, [freezeLedger]);
-  const [lastSeenFreezeEarnedAt, setLastSeenFreezeEarnedAt] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-        const v = await AsyncStorage.getItem("suppr-last-seen-freeze-earned-at");
-        if (!cancelled) setLastSeenFreezeEarnedAt(v);
-      } catch { /* noop */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  const hasUnseenFreezeEarned =
-    freezesAvailableToday > 0 &&
-    newestFreezeEarnedAt !== null &&
-    (lastSeenFreezeEarnedAt === null || newestFreezeEarnedAt > lastSeenFreezeEarnedAt);
-  const dismissFreezeEarned = useCallback(async () => {
-    if (!newestFreezeEarnedAt) return;
-    setLastSeenFreezeEarnedAt(newestFreezeEarnedAt);
-    try {
-      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-      await AsyncStorage.setItem("suppr-last-seen-freeze-earned-at", newestFreezeEarnedAt);
-    } catch { /* noop */ }
-    try {
-      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. See plan doc §4.
-      const seenPayload = { earnedAt: newestFreezeEarnedAt };
-      track(AnalyticsEvents.streak_freeze_earned_seen, seenPayload);
-      track(AnalyticsEvents.streak_freeze_earned_acknowledged, seenPayload);
-    } catch { /* noop */ }
-  }, [newestFreezeEarnedAt]);
 
   /** Used for Today macro strip when "water" is enabled in dashboard widgets. */
   const totalWaterMl = extraWaterToday + waterFromMealsMl;
