@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { supabasePublicAnonKey, supabasePublicUrl } from "../../utils/supabase/publicConfig.ts";
-
-const supabase = createClient(supabasePublicUrl(), supabasePublicAnonKey());
+import { supabase } from "../../src/lib/supabase/browserClient.ts";
 
 /**
  * Client component rendered inside each pricing tier card.
  * Checks auth + profile to display "Your current plan" badge and disable upgrade buttons.
+ *
+ * ENG-1470: was `createClient(...)` from `@supabase/supabase-js` (default
+ * localStorage session storage) — invisible to the real app's cookie-backed
+ * session, so this badge silently never showed for real logged-in users.
+ * Now imports the shared cookie-backed client instead.
  */
 export function CurrentTierBadge({ tierName }: { tierName: string }) {
   const [currentTier, setCurrentTier] = useState<string | null>(null);
