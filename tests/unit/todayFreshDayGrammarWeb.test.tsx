@@ -73,7 +73,8 @@ describe("TodayFreshDayLogPill", () => {
 });
 
 describe("TodayHeroRing — fresh-day grammar gating (empty_state_grammar_v1)", () => {
-  it("flag OFF (default): no pill, BONUS cell present even at 0", () => {
+  it("flag OFF (kill switch, forced — default is ON since 2026-07-07): no pill, BONUS cell present even at 0", () => {
+    forceFlag("empty_state_grammar_v1", false);
     const { queryByTestId } = render(
       <TodayHeroRing {...baseProps} isFreshDay onLogFreshDaySlot={() => {}} />,
     );
