@@ -193,6 +193,7 @@ import {
   todayKey,
   clampDateKey,
   formatDateLabel,
+  mealsSectionTitle,
 } from "../../lib/nutrition/trackerDate.ts";
 import { countWeighInDaysInWindow } from "../../lib/nutrition/weighInDays.ts";
 import { dateKeyFromDate, journalRangeBounds } from "../../lib/nutrition/journalNavigation.ts";
@@ -2738,16 +2739,10 @@ export const NutritionTracker = memo(function NutritionTracker({
           Activity Bonus card. */}
 
       {/* Eat-again block retired (ENG-984, 2026-06-17); mobile parity. */}
-      {/* Quick add panel — Usual meals / Recent / Frequent / Favourites
-          tabs with one-tap log. Ship M1 (2026-04-18) reordered so Usual
-          meals is the primary re-log surface and renames the "My meals"
-          tab to "Usual meals". Batch 2.6 introduced saved meals; audit
-          H4 (2026-04-18) lifted `SaveMealDialog` up to this host and
-          wires opening via `onOpenSaveCombo` instead of the previous
-          `window.dispatchEvent` bridge.
-          Audit M4 (2026-04-18): collapsed behind a single "Quick add" CTA
-          above Meals. Default collapsed on first run; user's last choice
-          persists via localStorage (`suppr-quick-add-collapsed-v1`). */}
+      {/* Quick add panel — Usual meals / Recent / Frequent / Favourites tabs
+          with one-tap log; `SaveMealDialog` is hosted here. Collapsed behind a
+          single "Quick add" CTA above Meals (default collapsed first run; the
+          user's last choice persists via `suppr-quick-add-collapsed-v1`). */}
 
       {/* Figma `654:2` — What to eat next above Today's Meals. */}
       {showAboveMealsNorthStarWeb && (
@@ -2788,6 +2783,7 @@ export const NutritionTracker = memo(function NutritionTracker({
       <TodayMealsSection
         mealsGrouped={mealsGrouped}
         slotLabels={enabledMealSlots}
+        title={mealsSectionTitle(selectedDateKey, todayKey())}
         mealsForSelectedDate={mealsForSelectedDate}
         effectiveCalorieTarget={effectiveCalorieTarget}
         fiberTarget={targets.fiber}
