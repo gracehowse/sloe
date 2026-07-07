@@ -9,6 +9,7 @@ import {
   ArrowRight,
   ChevronRight,
   Flag,
+  Plus,
   Scale,
   TrendingDown,
   TrendingUp,
@@ -1318,7 +1319,7 @@ export default function ProgressScreen() {
       <ReAnimated.View style={[chartsEntrance.style, { gap: Spacing.lg }]}>
       {/* WEIGHT CARD (Sloe Figma 492:2) — serif kg headline + "↓ N this
           week" + Trend/Scale segmented toggle, clay sparkline, dashed goal
-          line, START/CURRENT/GOAL/RATE stat row, "＋ Log weight" button,
+          line, START/CURRENT/GOAL/RATE stat row, "Log weight" button,
           "View all measurements". The detailed Withings-style chart +
           all-data list stay reachable via the sheets (no feature lost).
           Gated on `show` — opt-out users saw the direction tile above. */}
@@ -1491,24 +1492,23 @@ export default function ProgressScreen() {
                 </View>
               ))}
             </View>
-            {/* ＋ Log weight (centred) — the weight card's calm action. v3
+            {/* Log weight (centred) — the weight card's calm action. v3
                 prototype (ENG-1247): a QUIET button (the app's `ghost` = the
                 retired bordered-secondary), not a filled primary — the chart
                 stays the hero. Compact footprint (Grace 2026-06-13: "feels like
-                a very big button"): tighter padding hugs the label. 44pt target. */}
+                a very big button"): tighter padding hugs the label. 44pt target.
+                Leading icon is a real `Plus` glyph (not a full-width "＋" string
+                character — that rendered oversized/misaligned next to the label). */}
             <SupprButton
               variant="ghost"
               testID="progress-log-weight"
               accessibilityLabel="Log weight"
               onPress={() => setLogWeightOpen(true)}
-              label="＋  Log weight"
-              style={{
-                marginTop: Spacing.md,
-                alignSelf: "center",
-                paddingVertical: Spacing.dense,
-                paddingHorizontal: Spacing.md,
-              }}
-            />
+              style={{ marginTop: Spacing.md, alignSelf: "center", paddingVertical: Spacing.dense, paddingHorizontal: Spacing.md }}
+            >
+              <Plus size={16} color={accent.primarySolid} />
+              <Text style={{ ...Type.button, color: accent.primarySolid, marginLeft: Spacing.sm }}>Log weight</Text>
+            </SupprButton>
             </>)}
             {Object.keys(weightKgByDay).length > 0 ? (
               <Pressable

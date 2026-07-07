@@ -27,6 +27,7 @@ import { useAuth } from "@/context/auth";
 import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
 import { normaliseCachedTier } from "@/lib/cachedUserTier";
 import { handlePlanPersistError } from "@/lib/mealPlanErrors";
+import { showSignInAlert, signInToMessage } from "@/lib/authAlertCopy";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
@@ -4090,7 +4091,7 @@ export default function PlannerScreen() {
         templates={planTemplates}
         loading={templatesLoading}
         onSave={async (name, dayCount) => {
-          if (!userId) return { ok: false, error: "Sign in to save templates." };
+          if (!userId) return { ok: false, error: signInToMessage("save templates") };
           const draft = buildTemplateFromWeek(plan, name, dayCount);
           if (!draft) return { ok: false, error: "This plan has no meals to save." };
           const { template, error } = await createPlanTemplate(supabase, userId, draft);
@@ -4355,9 +4356,8 @@ export default function PlannerScreen() {
               setRowMenu(null);
               try {
               if (!userId) {
-                // Pre-consolidation this inserted with a null user_id and
-                // failed at RLS; surface the real requirement instead.
-                Alert.alert("Sign in", "Sign in to log food to your tracker.");
+                // Pre-consolidation this inserted with a null user_id and failed at RLS; surface the real requirement instead.
+                showSignInAlert("log food to your tracker");
                 return;
               }
               const dayPlan = plan?.[dayIdx];

@@ -116,7 +116,7 @@ export function FoodSearch({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search foods..."
+              placeholder="Search foods…"
               className="pl-9"
               autoFocus
             />

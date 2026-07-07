@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CARD_RADIUS, SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { signInToMessage } from "@/lib/authAlertCopy";
 import {
   View,
   Text,
@@ -367,9 +368,7 @@ export default function HouseholdSettingsScreen() {
   if (!userId) {
     return (
       <View style={{ flex: 1, paddingTop: insets.top + 20, paddingHorizontal: Spacing.lg, backgroundColor: colors.background }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-          Sign in to manage your household.
-        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14 }}>{signInToMessage("manage your household")}</Text>
       </View>
     );
   }

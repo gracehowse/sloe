@@ -246,7 +246,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
       {/* Weekly bar chart — MacroFactor-tier: target rule + animated
           entrance + tap-to-scrub tooltip. */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Weekly Calories</Text>
+        <Text style={styles.cardTitle}>Weekly calories</Text>
 
         {/* Above-chart summary line. Only renders when at least one
             day has logged food (otherwise both numbers read as 0 / —
@@ -390,7 +390,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
 
       {/* Weekly summary */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Weekly Summary</Text>
+        <Text style={styles.cardTitle}>Weekly summary</Text>
         <View style={{ flexDirection: "row", justifyContent: "space-around", marginTop: Spacing.md }}>
           {/* SLOE Phase 0: the weekly-summary big stat numerals read in
               Newsreader serif (the design system reserves big numerals for
@@ -459,7 +459,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
 
       {/* Weekly macro averages */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Daily Averages</Text>
+        <Text style={styles.cardTitle}>Daily averages</Text>
         <Text style={{ fontSize: 11, color: textTertiaryColor, marginBottom: Spacing.sm }}>
           Based on {daysWithFood} day{daysWithFood !== 1 ? "s" : ""} with logged food
         </Text>
@@ -470,7 +470,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
 
       {/* Macro bars per day */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Macro Breakdown</Text>
+        <Text style={styles.cardTitle}>Macro breakdown</Text>
         <View style={{ gap: Spacing.sm, marginTop: Spacing.sm }}>
           {days.map((day) => (
             <Pressable

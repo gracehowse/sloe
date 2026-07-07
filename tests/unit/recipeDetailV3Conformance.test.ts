@@ -120,7 +120,7 @@ describe("ENG-1247 — consolidated sticky CTA bar (web)", () => {
 });
 
 describe("ENG-1247 — web Log gap-fill (REAL journal write, not a fake toast)", () => {
-  it("the v3 Log CTA calls the real logRecipeToToday handler, not the 'Marked as made!' toast", () => {
+  it("the v3 Log CTA calls the real logRecipeToToday handler, not the 'Marked as made.' toast", () => {
     // The sticky-bar Log fires the real write.
     expect(WEB_SRC).toContain("onClick={() => void logRecipeToToday()}");
     expect(WEB_SRC).toContain("const logRecipeToToday = async ()");
@@ -142,9 +142,9 @@ describe("ENG-1247 — web Log gap-fill (REAL journal write, not a fake toast)",
     expect(fn).toContain("journalSlotFromMealTypes");
   });
 
-  it("the legacy in-row 'Marked as made!' toast stays only in the flag-OFF branch", () => {
+  it("the legacy in-row 'Marked as made.' toast stays only in the flag-OFF branch", () => {
     // It must still exist (kill-switch path alive) …
-    expect(WEB_SRC).toContain('toast.success("Marked as made!")');
+    expect(WEB_SRC).toContain('toast.success("Marked as made.")');
     // … but the flag-ON action row collapses to the owner-only Edit pill.
     expect(WEB_SRC).toContain("recipeDetailV3 ? (");
   });

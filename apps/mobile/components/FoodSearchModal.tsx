@@ -226,7 +226,7 @@ export default function FoodSearchModal({
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search foods..."
+            placeholder="Search foods…"
             placeholderTextColor={colors.textTertiary}
             style={styles.searchInput}
             autoFocus

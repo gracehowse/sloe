@@ -16,6 +16,7 @@ import {
 import { useCameraPermissions } from "expo-camera";
 import { BarcodeCameraView } from "@/components/BarcodeCameraView";
 import { BarcodeShareOptIn, type BarcodeShareOptInEntry } from "@/components/barcode/BarcodeShareOptIn";
+import { showSignInAlert } from "@/lib/authAlertCopy";
 // 2026-04-29: migrated from `@expo/vector-icons` (Ionicons) to
 // `lucide-react-native` per the team standardisation set
 // 2026-04-28 (Top-5 #4 in docs/ux/teardown-2026-04-28-daily-loop.md).
@@ -236,9 +237,7 @@ export default function BarcodeScreen() {
       .from("nutrition_entries")
       .insert(buildNutritionEntryRow(barcodeMeal, dateKey, userId));
     setLogging(false);
-    if (dbErr) {
-      Alert.alert("Could not log", dbErr.message);
-    } else {
+    if (dbErr) { Alert.alert("Could not log", dbErr.message); } else {
       // F-2 — freeze today's target on first log of the day.
       void snapshotDailyTargetIfMissing(supabase, userId);
       // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT.
@@ -280,7 +279,7 @@ export default function BarcodeScreen() {
 
   const handleLog = useCallback(async () => {
     if (!scaled || !product || !userId) {
-      if (!userId) Alert.alert("Sign in", "Sign in to log food to your tracker.");
+      if (!userId) showSignInAlert("log food to your tracker");
       return;
     }
     // P0 (2026-05-26) — physical-plausibility guard before writing the row.
@@ -331,7 +330,7 @@ export default function BarcodeScreen() {
   const handleManualLog = useCallback(async () => {
     const cal = Number(manualCalories) || 0;
     if (!manualName.trim() || cal <= 0 || !userId) {
-      if (!userId) Alert.alert("Sign in", "Sign in to log food to your tracker.");
+      if (!userId) showSignInAlert("log food to your tracker");
       return;
     }
     setLogging(true);
