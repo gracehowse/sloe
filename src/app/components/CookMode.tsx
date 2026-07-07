@@ -684,7 +684,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
       batchScale: scaleFactor,
       servingsLogged: servingsToLog,
     });
-    toast.success(`Logged ${mealName} to your tracker!`);
+    toast.success(`Logged ${mealName}.`);
   }, [addLoggedMeal, recipe, scaleFactor]);
 
   const handleLogMeal = useCallback(() => {
@@ -997,7 +997,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               <span className="tabular-nums">{formatTimer(t.remainingSeconds)}</span>
               <span className="text-muted-foreground font-medium">· {t.label}</span>
               {t.done && (
-                <span role="alert" className="font-semibold">Done!</span>
+                <span role="alert" className="font-semibold">Done.</span>
               )}
               <button
                 type="button"

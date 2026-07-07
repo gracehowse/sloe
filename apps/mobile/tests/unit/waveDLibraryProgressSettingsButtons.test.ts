@@ -64,8 +64,13 @@ describe("Wave D (mobile) — Progress CTAs", () => {
   it("'Log weight' is a QUIET ghost (v3 prototype — the chart stays the hero)", () => {
     // ENG-1247: conformed from a filled primary to the app's `ghost` quiet
     // button (the prototype's calm `btn--secondary` Log-weight action).
+    // ENG-1378: the leading glyph moved from a full-width "＋" string
+    // character to a real `Plus` icon component (`children`, not `label`).
     expect(PROGRESS).toMatch(
-      /<SupprButton\s+variant="ghost"\s+testID="progress-log-weight"[\s\S]{0,160}label="＋  Log weight"/,
+      /<SupprButton\s+variant="ghost"\s+testID="progress-log-weight"[\s\S]{0,300}<Plus\s/,
+    );
+    expect(PROGRESS).toMatch(
+      /testID="progress-log-weight"[\s\S]{0,500}>Log weight<\/Text>/,
     );
   });
 

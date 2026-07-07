@@ -81,7 +81,7 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
           window.location.pathname.endsWith("/today"));
       if (toastGateOn && (alreadyShown || onToday)) return;
 
-      toast.success("You're all set! Keep logging on the Tracker; add recipes and plans whenever you like.", { duration: 5000 });
+      toast.success("You're all set. Keep logging on Today — recipes and plans are there when you want them.", { duration: 5000 });
       if (typeof window !== "undefined") localStorage.setItem(TOAST_SHOWN_KEY, "1");
     }
   }, [allDone, toastGateOn]);

@@ -2446,7 +2446,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
             </button>
             <button
               type="button"
-              onClick={() => toast.success("Marked as made!")}
+              onClick={() => toast.success("Marked as made.")}
               data-testid="recipe-action-log"
               className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-background-secondary border border-border text-foreground text-sm font-semibold hover:bg-muted transition-all ${commitCtaPayoffClass}`}
             >
@@ -3309,7 +3309,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
           )}
           <button
             type="button"
-            onClick={() => toast.success("Marked as made!")}
+            onClick={() => toast.success("Marked as made.")}
             className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-card border border-border text-foreground font-bold text-sm hover:bg-muted transition-all ${commitCtaPayoffClass}`}
           >
             <Icons.check className="w-4 h-4" />

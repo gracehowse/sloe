@@ -1473,7 +1473,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   const saveRecipe = async (published: boolean) => {
     const effectivePublished = mode === "import" ? false : published;
     if (published && mode === "import") {
-      toast.error("Imported recipes stay in your library only—you can't publish someone else's content as your own.");
+      toast.error("Imported recipes stay in your library only — you can't publish someone else's content as your own.");
       return;
     }
     if (effectivePublished && mode === "create" && !attestOriginalWork) {
