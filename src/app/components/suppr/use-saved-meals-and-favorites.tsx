@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { supabase } from "../../../lib/supabase/browserClient.ts";
 import { track } from "../../../lib/analytics/track.ts";
 import { AnalyticsEvents } from "../../../lib/analytics/events.ts";
-import { buildMealEntriesFromSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
 import {
   createSavedMeal,
   incrementLogCount,
@@ -13,28 +12,17 @@ import {
   type SavedMeal,
   type SavedMealItem,
 } from "../../../lib/nutrition/savedMeals";
-import {
-  addFavorite,
-  favoriteKey as favoriteFoodKey,
-  listFavorites,
-  removeFavorite,
-  type FavoriteFood,
-} from "../../../lib/nutrition/favoriteFoods";
+import { useFavoriteFoods } from "../../../lib/nutrition/useFavoriteFoods.ts";
+import { useUsualMealHint } from "../../../lib/nutrition/useUsualMealHint.ts";
+import { useMealLogging } from "../../../lib/nutrition/useMealLogging.ts";
 import { scaleMicrosPerServing } from "../../../lib/nutrition/scaleMicrosPerServing";
 import { isMealSlot, type MealSlot } from "../../../lib/nutrition/mealSlots";
 import { normalizeJournalSlotName } from "../../../lib/nutrition/journalSlot.ts";
 import { scaledMacro } from "../../../lib/nutrition/portionMultiplier.ts";
 import {
-  parseDismissedSlots,
-  serializeDismissedSlots,
-  shouldShowUsualMealHint,
-  USUAL_MEAL_HINT_STORAGE_KEY,
-} from "../../../lib/nutrition/usualMealHint";
-import {
   PENDING_USUAL_MEAL_SAVE_KEY,
   parsePendingUsualMealSave,
 } from "../../../lib/nutrition/pendingUsualMealSave";
-import type { FoodHistoryItem } from "../../../lib/nutrition/foodHistory";
 import type { LoggedMeal } from "../../../types/recipe.ts";
 import type { FoodLoggedSource } from "../../../lib/analytics/events.ts";
 import { SaveMealDialog } from "./save-meal-dialog";
@@ -76,70 +64,15 @@ export function useSavedMealsAndFavorites({
   addLoggedMeal,
   addLoggedMealForDate,
 }: UseSavedMealsAndFavoritesArgs) {
-  /** Log a history row (Favourite / Frequent / Recent) into the active
-   * meal slot. Shared by the QuickAddPanel history rows so the event
-   * shape is consistent. */
-  const logHistoryItem = React.useCallback(
-    (item: FoodHistoryItem, slot: string) => {
-      // Audit L6 G1 (2026-04-18) — the canonical `food_logged` event
-      // is now fired inside `addLoggedMeal` with the supplied source,
-      // so we pass "quick_add" here instead of double-emitting. Drops
-      // the prior secondary `track(food_logged, { source: "quick_add", slot })`
-      // call that could desync from the primitive's payload.
-      //
-      // Tracking-extras autoupdate (2026-05-01) — re-attach caffeine /
-      // alcohol micros so the journal-state insert path picks up the
-      // F-13 daily bump. `computeRecentMeals` / `computeFrequentMeals`
-      // average per-occurrence stimulant contribution into
-      // `item.caffeineMg` / `item.alcoholG`. Missing → no key in
-      // `micros` (and `addLoggedMeal` skips the bump).
-      const micros: Record<string, number> = item.micros ? { ...item.micros } : {};
-      if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
-      if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
-      addLoggedMeal(
-        {
-          name: slot,
-          recipeTitle: item.recipeTitle,
-          time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          ...(item.fiber != null ? { fiberG: item.fiber } : {}),
-          ...(item.source ? { source: item.source } : {}),
-          ...(Object.keys(micros).length > 0 ? { micros } : {}),
-        },
-        "quick_add",
-      );
-      toast.success(`Logged ${item.recipeTitle} to ${slot}.`);
-    },
-    [addLoggedMeal],
-  );
-
-  /** Expand a saved-meal combo into individual journal entries and
-   * insert each one via the same primitive as manual logs. Batch 2.6. */
-  const logSavedMeal = React.useCallback(
-    (meal: SavedMeal, slot: string) => {
-      const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-      // Build entries — makeId is swallowed because addLoggedMealForDate
-      // mints its own id. We pass `() => ""` here; the id field is
-      // discarded before insert. Using `newId` is impossible (it is
-      // file-local to persistence.ts) and unnecessary.
-      const entries = buildMealEntriesFromSavedMeal(meal, slot, timeLabel, () => "");
-      for (const entry of entries) {
-        const {
-          id: _discardedId,
-          sourceId: _discardedSourceId,
-          ...payload
-        } = entry;
-        void _discardedId;
-        void _discardedSourceId;
-        addLoggedMealForDate(selectedDateKey, payload, "saved_meal");
-      }
-      toast.success(`Logged ${meal.name} to ${slot}.`);
-    },
-    [addLoggedMealForDate, selectedDateKey],
-  );
+  // ENG-1360 — the two base logging primitives (logHistoryItem,
+  // logSavedMeal) moved to `useMealLogging` (split out to keep this file
+  // under the 400-line screen budget). Same analytics, same dependency
+  // arrays — just relocated.
+  const { logHistoryItem, logSavedMeal } = useMealLogging({
+    selectedDateKey,
+    addLoggedMeal,
+    addLoggedMealForDate,
+  });
 
   // -- Save-usual-meal dialog (audit H4, 2026-04-18; Ship M1, 2026-04-18) --
   //
@@ -186,130 +119,12 @@ export function useSavedMealsAndFavorites({
     };
   }, [authedUserId, savedMealsRefreshToken]);
 
-  /** Favourites-in-search (teardown #1, ENG-1041) — the user's starred foods,
-   *  loaded once and threaded into the LogSheet's inline FoodSearchPanel so
-   *  favourites surface IN search (a "Favourites" group above "Past logged"
-   *  + favourites-first in the empty-query Recent strip + a per-row star
-   *  toggle). The same `user_favorite_foods` model QuickAddPanel uses; the
-   *  host owns the list here because the LogSheet is a host-owned surface.
-   *  Mobile parity: `apps/mobile/app/(tabs)/index.tsx`. */
-  const [hostFavorites, setHostFavorites] = React.useState<FavoriteFood[]>([]);
-  const [favoritePendingKeys, setFavoritePendingKeys] = React.useState<Set<string>>(
-    () => new Set(),
-  );
-  React.useEffect(() => {
-    let cancelled = false;
-    if (!authedUserId) {
-      setHostFavorites([]);
-      return;
-    }
-    listFavorites(supabase, authedUserId)
-      .then((rows) => {
-        if (!cancelled) setHostFavorites(rows);
-      })
-      .catch((err) => {
-        console.warn("NutritionTracker listFavorites failed", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [authedUserId]);
-
-  /** Optimistic star/unstar from a food-search row. Mirrors the mobile host
-   *  + QuickAddPanel `toggleFavorite`: add/remove immediately, revert on
-   *  Supabase failure, guard double-submit via `favoritePendingKeys`. */
-  const toggleFoodFavorite = React.useCallback(
-    async (food: {
-      recipeTitle: string;
-      calories: number;
-      protein: number;
-      carbs: number;
-      fat: number;
-      fiber?: number;
-      source?: string;
-      favoriteId?: string;
-    }) => {
-      if (!authedUserId) return;
-      const key = favoriteFoodKey(food.recipeTitle, food.calories);
-      if (favoritePendingKeys.has(key)) return;
-      setFavoritePendingKeys((s) => new Set(s).add(key));
-      const snapshot = hostFavorites;
-      const wasStarred = Boolean(food.favoriteId);
-      try {
-        if (wasStarred && food.favoriteId) {
-          setHostFavorites((prev) => prev.filter((f) => f.id !== food.favoriteId));
-          await removeFavorite(supabase, authedUserId, food.favoriteId);
-        } else {
-          const tempId = `temp-${key}`;
-          const optimistic: FavoriteFood = {
-            id: tempId,
-            recipeTitle: food.recipeTitle,
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            ...(food.fiber != null ? { fiber: food.fiber } : {}),
-            ...(food.source ? { source: food.source } : {}),
-            count: 1,
-            createdAt: new Date().toISOString(),
-          };
-          setHostFavorites((prev) => [optimistic, ...prev]);
-          const saved = await addFavorite(supabase, authedUserId, {
-            recipeTitle: food.recipeTitle,
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            fiber: food.fiber,
-            source: food.source ?? null,
-          });
-          setHostFavorites((prev) => [saved, ...prev.filter((f) => f.id !== tempId)]);
-        }
-      } catch (err) {
-        setHostFavorites(snapshot);
-        console.warn("NutritionTracker food favourite toggle failed", err);
-      } finally {
-        setFavoritePendingKeys((s) => {
-          const n = new Set(s);
-          n.delete(key);
-          return n;
-        });
-      }
-    },
-    [authedUserId, hostFavorites, favoritePendingKeys],
-  );
-
-  /** Favourite key set — drives favourites-first ordering of the empty-query
-   *  Recent browse list (web's empty-query recent strip lives in the LogSheet
-   *  `recent` browse tab, not the panel, so the ordering is applied here). */
-  const favoriteKeySetForRecent = React.useMemo(
-    () =>
-      new Set(hostFavorites.map((f) => favoriteFoodKey(f.recipeTitle, f.calories))),
-    [hostFavorites],
-  );
-
-  // Ship M1 — usual-meal first-run hint dismiss state. Persisted under a
-  // versioned key; hydrated once on mount and rehydrated when a different
-  // tab writes to localStorage.
-  const [usualMealHintDismissed, setUsualMealHintDismissed] = React.useState<Set<string>>(
-    () => new Set<string>(),
-  );
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(USUAL_MEAL_HINT_STORAGE_KEY);
-      setUsualMealHintDismissed(parseDismissedSlots(raw));
-    } catch {
-      /* storage access can throw in private modes — ignore */
-    }
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === USUAL_MEAL_HINT_STORAGE_KEY) {
-        setUsualMealHintDismissed(parseDismissedSlots(e.newValue));
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  // ENG-1360 — favourites-in-search cluster (hostFavorites, the load
+  // effect, the optimistic toggle, the favourites-first key set) moved to
+  // `useFavoriteFoods` (split out to keep this file under the 400-line
+  // screen budget). Same behavior, same queries — just relocated.
+  const { hostFavorites, favoritePendingKeys, toggleFoodFavorite, favoriteKeySetForRecent } =
+    useFavoriteFoods(authedUserId);
 
   const savedMealSlots = React.useMemo(() => {
     const s = new Set<string>();
@@ -319,61 +134,14 @@ export function useSavedMealsAndFavorites({
     return s;
   }, [hostSavedMeals]);
 
-  const usualMealHintShownRef = React.useRef<Set<string>>(new Set());
-  const hintVisibleForSlot = React.useCallback(
-    (slot: string) => {
-      if (!isMealSlot(slot)) return false;
-      return shouldShowUsualMealHint({
-        byDay: nutritionByDay,
-        slot,
-        todayKey: selectedDateKey,
-        dismissedSlots: usualMealHintDismissed,
-        savedMealSlots,
-      });
-    },
-    [nutritionByDay, selectedDateKey, usualMealHintDismissed, savedMealSlots],
-  );
-  // Fire `usual_meal_hint_shown` once per (slot) per mount when it first
-  // passes the gate. `useEffect` runs after render so the impression
-  // matches what the user actually saw.
-  React.useEffect(() => {
-    for (const slot of ["Breakfast", "Lunch", "Dinner", "Snacks"] as const) {
-      if (hintVisibleForSlot(slot) && !usualMealHintShownRef.current.has(slot)) {
-        usualMealHintShownRef.current.add(slot);
-        try {
-          track(AnalyticsEvents.usual_meal_hint_shown, { slot });
-        } catch {
-          /* analytics fire-and-forget */
-        }
-      }
-    }
-  }, [hintVisibleForSlot]);
-
-  const dismissUsualMealHint = React.useCallback(
-    (slot: string) => {
-      if (!isMealSlot(slot)) return;
-      setUsualMealHintDismissed((prev) => {
-        const next = new Set(prev);
-        next.add(slot);
-        if (typeof window !== "undefined") {
-          try {
-            window.localStorage.setItem(
-              USUAL_MEAL_HINT_STORAGE_KEY,
-              serializeDismissedSlots(next),
-            );
-          } catch {
-            /* ignore storage failures */
-          }
-        }
-        return next;
-      });
-      try {
-        track(AnalyticsEvents.usual_meal_hint_dismissed, { slot });
-      } catch {
-        /* analytics fire-and-forget */
-      }
-    },
-    [],
+  // ENG-1360 — usual-meal first-run hint cluster (dismiss state, per-slot
+  // visibility check, shown-tracking, dismiss handler) moved to
+  // `useUsualMealHint` (split out to keep this file under the 400-line
+  // screen budget). Same storage key, same analytics, same gating logic.
+  const { hintVisibleForSlot, dismissUsualMealHint } = useUsualMealHint(
+    nutritionByDay,
+    selectedDateKey,
+    savedMealSlots,
   );
 
   /** Open the save-combo dialog with pre-filled `seedItems` + optional
