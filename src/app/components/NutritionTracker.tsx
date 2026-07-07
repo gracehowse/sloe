@@ -54,7 +54,6 @@ import {
   localTimeInputValueFromIso,
   parseLocalTimeInput,
 } from "../../lib/nutrition/mealEatenAt.ts";
-import { type OffProductMacros } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { computeProtectedStreak } from "../../lib/nutrition/streakFreeze.ts";
 import { didStreakReset } from "../../lib/nutrition/streakReset.ts";
@@ -62,8 +61,6 @@ import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
 } from "../../lib/nutrition/weekSummaryWindow.ts";
-import { scaleCaffeineAlcohol } from "../../lib/nutrition/scaleCaffeineAlcoholForGrams.ts";
-import { scaleMicrosForGrams } from "../../lib/openFoodFacts/parseOffMicros.ts";
 import { clampPortionMultiplier, scaledMacro } from "../../lib/nutrition/portionMultiplier.ts";
 import { scaleMicrosPerServing } from "../../lib/nutrition/scaleMicrosPerServing";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
@@ -79,17 +76,14 @@ import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
 import { useWeeklyRecap } from "./suppr/use-weekly-recap";
+import { useBarcodeLogging } from "./suppr/use-barcode-logging";
 import { LogSheet } from "./suppr/log-sheet";
 // Phase 4 / B3.Y — desktop modal mode for the LogSheet.
 import { useIsDesktop } from "./ui/use-mobile";
 import { NorthStarBlockHost } from "./suppr/north-star-block-host";
 import { type NorthStarRecipe } from "../../lib/nutrition/northStarSuggestion";
 import { buildPostLogSuggestion } from "../../lib/nutrition/postLogSuggestion";
-import {
-  dayActivityBudgetAddonWeb,
-  loadRecentFoods,
-  pushRecentFood,
-} from "../../lib/nutrition/trackerLocalState.ts";
+import { dayActivityBudgetAddonWeb } from "../../lib/nutrition/trackerLocalState.ts";
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
@@ -121,25 +115,12 @@ import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayRecentsRow } from "./suppr/today-recents-row";
 import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
-import { ShareCommunityDialog } from "./suppr/ShareCommunityDialog";
-import { BarcodeSavedAckDialog } from "./suppr/BarcodeSavedAckDialog";
-import { COMPLETE_DAY_V3_COPY } from "../../lib/completeDayV3";
-import {
-  submitFoodCorrection,
-  type FoodCorrectionInput,
-} from "../../lib/foodCorrection/submitFoodCorrection";
 import { EditMealDialog } from "./suppr/edit-meal-dialog";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { mealImageFields } from "../../lib/nutrition/foodHistory";
-import { TodayBarcodeDialog, type TodayBarcodeConfirmPayload } from "./suppr/today-barcode-dialog";
-import {
-  CreateCustomFoodDialog,
-  type CreateCustomFoodPayload,
-} from "./suppr/create-custom-food-dialog";
-import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
 import { TodayDateHeader } from "./suppr/today-date-header";
 import { TodayDeficitInsight } from "./suppr/today-deficit-insight";
 import { TodayWeeklyInsightMobileCard } from "./suppr/today-weekly-insight-mobile-card";
@@ -389,11 +370,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   // screen mode.
   const [slotNutritionTarget, setSlotNutritionTarget] = useState<string | null>(null);
   const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
-  // ENG-1247 — community-contribution opt-in: set after a not-found barcode is
-  // saved as a private custom food (when `barcode_community_contribution` is on)
-  // to open the share dialog. null = closed.
-  const [shareCommunityInput, setShareCommunityInput] = useState<FoodCorrectionInput | null>(null);
-  const [barcodeSavedAckName, setBarcodeSavedAckName] = useState<string | null>(null);
   const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
   // ENG-751 — persisted AI/photo/voice per-item snapshot rows for the open
   // day's entries. Gated by the display flag; flag-OFF leaves this empty so the
@@ -583,7 +559,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [manualFat, setManualFat] = useState(0);
   const [manualFiber, setManualFiber] = useState(0);
   const [manualWater, setManualWater] = useState(0);
-  const [barcodeOpen, setBarcodeOpen] = useState(false);
   // Phase 3 / B2.1 (D-2026-04-27-15) — canonical LogSheet open state.
   // The web LogSheet wires its sub-tabs to existing flows (FoodSearch
   // dialog, barcode dialog, voice dialog, photo dialog) rather than
@@ -636,31 +611,10 @@ export const NutritionTracker = memo(function NutritionTracker({
   // centred 480×640 modal per spec §Surface B; below that, the
   // primitive falls back to the mobile bottom-sheet layout.
   const isDesktop = useIsDesktop();
-  const [barcodeValue, setBarcodeValue] = useState("");
-  const [barcodeBusy, setBarcodeBusy] = useState(false);
-  const [barcodePreview, setBarcodePreview] = useState<OffProductMacros | null>(null);
-  /**
-   * F-156 PR-2 (2026-05-10) — barcode-not-found → "Add as custom food"
-   * handoff. Carries the scanned barcode forward to the
-   * CreateCustomFoodDialog so the saved row's `barcode` column is
-   * set; the next scan resolves successfully.
-   */
-  const [customFoodFromBarcode, setCustomFoodFromBarcode] = useState<string | null>(null);
-  const [barcodeGramsStr, setBarcodeGramsStr] = useState("100");
-  const barcodeGramsParsed = useMemo(() => {
-    const n = Number.parseFloat(barcodeGramsStr.replace(",", ".").trim());
-    if (!Number.isFinite(n) || n <= 0) return 100;
-    return Math.min(10_000, Math.round(n * 10) / 10);
-  }, [barcodeGramsStr]);
-  const [barcodeTitleOverride, setBarcodeTitleOverride] = useState("");
-  const [barcodeMacrosManual, setBarcodeMacrosManual] = useState(false);
-  const [barcodeEditCal, setBarcodeEditCal] = useState("");
-  const [barcodeEditPro, setBarcodeEditPro] = useState("");
-  const [barcodeEditCarb, setBarcodeEditCarb] = useState("");
-  const [barcodeEditFat, setBarcodeEditFat] = useState("");
-  const [recentFoods, setRecentFoods] = useState<string[]>(() =>
-    typeof window !== "undefined" ? loadRecentFoods() : [],
-  );
+  // ENG-1360 — the barcode-scan → custom-food-save fallback →
+  // community-share opt-in → saved-ack dialog cluster (all local state +
+  // the four dialogs) moved to `useBarcodeLogging` below, near where
+  // `mealSlot`/`timeLabel`/`addLoggedMeal` are available.
   /**
    * Post-ship #5 (C1a, 2026-04-18) — shared `<FoodSearch>` host.
    * Replaces the former inline USDA-only search tab inside
@@ -677,6 +631,17 @@ export const NutritionTracker = memo(function NutritionTracker({
   // legacy free-tier inline text dialog and `<input type="file">` upload.
   const [voiceLogOpen, setVoiceLogOpen] = useState(false);
   const [photoLogOpen, setPhotoLogOpen] = useState(false);
+  // ENG-1360 (first extraction pass) — barcode-scan → custom-food-save
+  // fallback → community-share opt-in → saved-ack dialog cluster. Same
+  // four dialogs, same state, same handlers as before — just relocated.
+  const { dialogs: barcodeDialogs } = useBarcodeLogging({
+    authedUserId,
+    mealSlot,
+    onMealSlotChange: setMealSlot,
+    timeLabel,
+    addLoggedMeal,
+    onOpenPhotoFallback: () => setPhotoLogOpen(true),
+  });
   const [aiPaywallFeature, setAiPaywallFeature] = useState<AiPaywallFeature | null>(null);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
   const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
@@ -3341,198 +3306,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
       />
 
-      <TodayBarcodeDialog
-        open={barcodeOpen}
-        onOpenChange={(open) => {
-          setBarcodeOpen(open);
-          if (!open) {
-            setBarcodePreview(null);
-            setBarcodeGramsStr("100");
-            setBarcodeValue("");
-            setBarcodeTitleOverride("");
-            setBarcodeMacrosManual(false);
-            setBarcodeEditCal("");
-            setBarcodeEditPro("");
-            setBarcodeEditCarb("");
-            setBarcodeEditFat("");
-          }
-        }}
-        barcodeValue={barcodeValue}
-        onBarcodeValueChange={setBarcodeValue}
-        barcodeBusy={barcodeBusy}
-        onBarcodeBusyChange={setBarcodeBusy}
-        barcodePreview={barcodePreview}
-        onBarcodePreviewChange={setBarcodePreview}
-        barcodeGramsStr={barcodeGramsStr}
-        onBarcodeGramsStrChange={setBarcodeGramsStr}
-        barcodeGramsParsed={barcodeGramsParsed}
-        barcodeTitleOverride={barcodeTitleOverride}
-        onBarcodeTitleOverrideChange={setBarcodeTitleOverride}
-        barcodeMacrosManual={barcodeMacrosManual}
-        onBarcodeMacrosManualChange={setBarcodeMacrosManual}
-        barcodeEditCal={barcodeEditCal}
-        onBarcodeEditCalChange={setBarcodeEditCal}
-        barcodeEditPro={barcodeEditPro}
-        onBarcodeEditProChange={setBarcodeEditPro}
-        barcodeEditCarb={barcodeEditCarb}
-        onBarcodeEditCarbChange={setBarcodeEditCarb}
-        barcodeEditFat={barcodeEditFat}
-        onBarcodeEditFatChange={setBarcodeEditFat}
-        mealSlot={mealSlot}
-        onMealSlotChange={setMealSlot}
-        recentFoods={recentFoods}
-        onPickRecentFood={(n) => {
-          addLoggedMeal(
-            {
-              name: "Snacks",
-              recipeTitle: n,
-              time: timeLabel,
-              calories: 0,
-              protein: 0,
-              carbs: 0,
-              fat: 0,
-              source: "Manual",
-            },
-            "manual",
-          );
-          setBarcodeOpen(false);
-        }}
-        onConfirm={(payload: TodayBarcodeConfirmPayload) => {
-          pushRecentFood(payload.titleForLog);
-          setRecentFoods(loadRecentFoods());
-          // F-13 (2026-04-19) — auto-track caffeine + alcohol from the
-          // scanned product. OFF surfaces `caffeine_100g` for colas /
-          // energy drinks and `alcohol_100g` for beer / wine / cider.
-          // `scaleCaffeineAlcohol` handles nulls by returning 0, so a
-          // non-stimulant product adds no micros.
-          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-            grams: payload.grams,
-            caffeineMgPer100g: payload.product.caffeineMgPer100g ?? null,
-            alcoholGPer100g: payload.product.alcoholGPer100g ?? null,
-          });
-          // F-79 — full OFF micro set scaled for `grams`, merged with
-          // caffeine/alcohol overrides. Mirrors mobile barcode commit.
-          const explicitMicros: Record<string, number> = {};
-          if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-          if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-          const micros = scaleMicrosForGrams(
-            (payload.product as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
-            payload.grams,
-            explicitMicros,
-          );
-          addLoggedMeal(
-            {
-              name: mealSlot,
-              recipeTitle: `${payload.titleForLog} (${payload.portion})`,
-              time: timeLabel,
-              calories: payload.calories,
-              protein: payload.protein,
-              carbs: payload.carbs,
-              fat: payload.fat,
-              source: payload.adjusted ? "Open Food Facts (adjusted)" : "Open Food Facts",
-              ...(payload.fiberG != null && payload.fiberG > 0 ? { fiberG: payload.fiberG } : {}),
-              ...(Object.keys(micros).length > 0 ? { micros } : {}),
-            },
-            "barcode",
-          );
-          setBarcodeOpen(false);
-          toast.success("Logged from barcode");
-          track(AnalyticsEvents.barcode_lookup, { ok: true, adjusted: payload.adjusted });
-        }}
-        onPhotoFallback={() => {
-          // Audit 2026-04-30 (Lose It "Closer" parity, Fix 2) — when
-          // the barcode lookup fails we offer a soft handoff to the
-          // AI photo log. 2026-05-02: open for any tier; the in-dialog
-          // quota line + 403 paywall handoff handle gating now.
-          setBarcodeOpen(false);
-          setPhotoLogOpen(true);
-        }}
-        onAddAsCustomFood={(barcode) => {
-          // F-156 PR-2 (2026-05-10) — barcode not found in OFF →
-          // user opts to add it as a custom food. Close the barcode
-          // dialog and open CreateCustomFoodDialog with the barcode
-          // pre-filled so the saved row writes to user_custom_foods
-          // with the correct code (next scan resolves successfully).
-          setBarcodeOpen(false);
-          setCustomFoodFromBarcode(barcode);
-        }}
-      />
-
-      {/* F-156 PR-2 (2026-05-10) — CreateCustomFoodDialog host for the
-          barcode-not-found path. Only mounts when the user arrived
-          via the "Add as custom food" CTA. Saves to user_custom_foods;
-          user can scan again to log. */}
-      <CreateCustomFoodDialog
-        open={customFoodFromBarcode != null}
-        onOpenChange={(o) => {
-          if (!o) setCustomFoodFromBarcode(null);
-        }}
-        initialBarcode={customFoodFromBarcode ?? undefined}
-        onSave={async (payload: CreateCustomFoodPayload) => {
-          if (!authedUserId) return;
-          try {
-            await createCustomFood(supabase, authedUserId, payload);
-            try {
-              track(AnalyticsEvents.custom_food_created, {
-                hasBrand: Boolean(payload.brand),
-                servingCount: payload.servings.length,
-                fromBarcode: true,
-              });
-            } catch {
-              /* analytics noop */
-            }
-            toast.success(
-              isFeatureEnabled("eng1247_section_a_v1")
-                ? COMPLETE_DAY_V3_COPY.savedTitle
-                : "Custom food saved. Scan again to log it.",
-            );
-            // ENG-1247 — offer the community-contribution opt-in (flag-gated,
-            // barcode only). The private custom food is already saved above; this
-            // is the explicit, separate opt-in to ALSO share it to user_foods.
-            if (isFeatureEnabled("barcode_community_contribution") && payload.barcode) {
-              setShareCommunityInput({
-                barcode: payload.barcode,
-                name: payload.name,
-                calories: payload.calories,
-                protein: payload.protein,
-                carbs: payload.carbs,
-                fat: payload.fat,
-                fiberG: payload.fiber,
-                sugarG: payload.sugarG,
-                sodiumMg: payload.sodiumMg,
-                saturatedFatG: payload.saturatedFatG,
-                servingSizeG: payload.baseGrams,
-              });
-            }
-          } catch (err) {
-            toast.error(
-              err instanceof Error ? err.message : "Couldn't save custom food",
-            );
-          }
-        }}
-      />
-
-      {/* ENG-1247 — community-contribution opt-in, opened after a not-found
-          barcode is saved as a custom food (flag-gated). Writes to user_foods
-          via the web submitFoodCorrection with the authed client + RLS. */}
-      <ShareCommunityDialog
-        input={shareCommunityInput}
-        onShare={(input) => submitFoodCorrection(supabase, authedUserId ?? "", input)}
-        onClose={() => {
-          if (isFeatureEnabled("eng1247_section_a_v1") && shareCommunityInput?.name) {
-            setBarcodeSavedAckName(shareCommunityInput.name);
-          }
-          setShareCommunityInput(null);
-        }}
-      />
-
-      {isFeatureEnabled("eng1247_section_a_v1") && barcodeSavedAckName ? (
-        <BarcodeSavedAckDialog
-          open
-          productName={barcodeSavedAckName}
-          onLogNow={() => setBarcodeSavedAckName(null)}
-        />
-      ) : null}
+      {/* ENG-1360 — barcode-scan → custom-food-save fallback →
+          community-share opt-in → saved-ack dialog cluster, extracted to
+          `useBarcodeLogging`. Same four dialogs, same behavior. */}
+      {barcodeDialogs}
 
       {/* Batch 5.13 — Voice log (Pro). Shared review/edit flow. */}
       <VoiceLogDialog
