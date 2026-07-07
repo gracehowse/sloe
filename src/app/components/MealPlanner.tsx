@@ -26,11 +26,7 @@ import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { isMealPlanPlaceholderLikeTitle } from "../../lib/nutrition/portionMultiplier.ts";
 import { shouldShowRecipeRemovedBadge } from "../../lib/nutrition/recipeRemovedBadge.ts";
-import {
-  isSameCalendarDay,
-  planCalendarDateForIndex,
-  shortWeekdayLabel,
-} from "../../lib/planning/planDayLabel.ts";
+import { isSameCalendarDay, planCalendarDateForIndex, shortWeekdayLabel } from "../../lib/planning/planDayLabel.ts";
 import {
   buildPlanWeekSummarySubtitle,
   computePlanWeekSummaryScore,
@@ -116,10 +112,9 @@ import {
 } from "../../lib/nutrition/mealPlanAlgo.ts";
 import { baseMacrosFromRecipe } from "../../lib/nutrition/coerceRecipeMacrosForPlanning.ts";
 import { planSlotAimKcal } from "../../lib/nutrition/mealSlotAim.ts";
-import {
-  EmptyMealSlotAimLine,
-  PlanAbsentMealSlotRow,
-} from "./suppr/empty-meal-slot-row.tsx";
+import { EmptyMealSlotAimLine, PlanAbsentMealSlotRow } from "./suppr/empty-meal-slot-row.tsx";
+import { PlanGhostSlotPill, PlanWeekAimLegend } from "./suppr/plan-empty-week-grid.tsx";
+import { usePlanEmptyWeekGhostGrid } from "./plan/usePlanEmptyWeekGhostGrid.ts";
 import { PlanAnchorBudgetBand } from "./suppr/plan-anchor-budget-band.tsx";
 import type { DayPlan } from "../../types/recipe.ts";
 
@@ -523,6 +518,8 @@ export const MealPlanner = memo(function MealPlanner({
       : `Generate fills all ${summary.total} day${summary.total === 1 ? "" : "s"} around your targets — or add meals to any day below.`
     : null;
   const showSummaryCard = summary !== null && (mealPlan?.length ?? 0) > 0;
+  const { showEmptyWeekGhostGrid, weekAimLegendSlots } = // ENG-1372, see hook doc
+    usePlanEmptyWeekGhostGrid(showSummaryCard, planHasRealMeals, daySlots, canonicalSlotAim);
 
   // ENG-820 (Plan win-moment) — behind `redesign_winmoment` the "Hits your
   // targets N of 7" headline colours by tone (mobile parity): win → `--accent-win`
@@ -1671,6 +1668,7 @@ export const MealPlanner = memo(function MealPlanner({
           The empty-state card only leads when there is NO summary card (truly no
           plan/targets). Without `&& !showSummaryCard` both cards rendered two
           solid primaries on the most-seen Plan state. */}
+      {showEmptyWeekGhostGrid /* ENG-1372: "Aim ~X kcal" as ONE legend, not ×7 */ ? <PlanWeekAimLegend slots={weekAimLegendSlots} /> : null}
       {isPlanEmpty && !showSummaryCard ? (
         <SupprCard
           data-testid="planner-empty-state"
@@ -1894,6 +1892,7 @@ export const MealPlanner = memo(function MealPlanner({
                 const SlotIcon = slotIconFor(slot);
                 const entry = bySlot.get(slotKey);
                 if (!entry) {
+                  if (showEmptyWeekGhostGrid) return <PlanGhostSlotPill key={slot} slot={slot} />; // ENG-1372
                   const emptyAim = canonicalSlotAim[slotKey] ?? null;
                   return (
                     <PlanAbsentMealSlotRow
@@ -1908,6 +1907,7 @@ export const MealPlanner = memo(function MealPlanner({
                 const isPlaceholder = isMealPlanPlaceholderLikeTitle(meal.recipeTitle, {
                   isPlaceholder: meal.isPlaceholder,
                 });
+                if (showEmptyWeekGhostGrid && isPlaceholder) return <PlanGhostSlotPill key={slot} slot={slot} />; // ENG-1372
                 // ENG-1092 — aim for this empty (placeholder) slot; null on the
                 // optional Snacks slot, no target, or a populated row.
                 const slotAim = isPlaceholder ? (canonicalSlotAim[slotKey] ?? null) : null;

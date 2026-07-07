@@ -5,6 +5,7 @@ import * as React from "react";
 import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
 import {
   computePlanDayStatus,
+  isPlanWeekEmpty,
   type PlanWeekVerdict,
 } from "@/lib/planning/planWeekStatus";
 import {
@@ -13,9 +14,11 @@ import {
   type PlanJournalByDay,
 } from "@/lib/planning/planCookedMeals";
 import type { DayPlan } from "@/types/recipe";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 import { PlanHeaderV3 } from "./PlanHeaderV3";
 import { PlanWeekStripV3, type PlanWeekStripDay } from "./PlanWeekStripV3";
 import { PlanDayDetailBandV3 } from "./PlanDayDetailBandV3";
+import { PlanEmptyWeekCard } from "./PlanEmptyWeekCard";
 import {
   PlanHouseholdBannerV3,
   type PlanHouseholdBannerV3Props,
@@ -152,6 +155,32 @@ export function PlanV3Surface({
     [weekDates, plan, today, todayIndex],
   );
 
+  // ENG-1372 (empty-state grammar, Plan empty-week) — behind
+  // `empty_state_grammar_v1`: a week with ZERO real meals in any slot
+  // replaces the verdict row + day-detail zero-triad with one warm
+  // invitation card (law 3 — those are derived numbers with nothing behind
+  // them yet). `PlanMealSectionV3`'s per-slot dashed rows stay as the ghost
+  // "add meals as you go" path — the ONE consolidated card, not a second
+  // wall of empty-state chrome, replaces only the verdict/detail cluster.
+  const emptyStateGrammarOn = isFeatureEnabled("empty_state_grammar_v1");
+  const weekIsEmpty =
+    emptyStateGrammarOn &&
+    isPlanWeekEmpty(
+      (plan ?? []).map((dp) =>
+        dp.meals.map((m, j) => ({
+          slot: ALL_MEAL_SLOTS[j] ?? "Snacks",
+          kcal: m.calories,
+          empty: m.isPlaceholder,
+        })),
+      ),
+    );
+  // "or add meals as you go" dismisses the invitation FOR THIS SESSION,
+  // revealing the day-detail band + per-slot dashed rows underneath — the
+  // ghost path promises exactly that, not a second generate flow. Resets
+  // automatically once a meal lands (weekIsEmpty flips false on its own).
+  const [emptyWeekCardDismissed, setEmptyWeekCardDismissed] = React.useState(false);
+  const showEmptyWeekCard = weekIsEmpty && !emptyWeekCardDismissed;
+
   const selectedDay = plan?.[safeIndex] ?? null;
   const selectedDate = weekDates[safeIndex];
   const dayLabel = selectedDate
@@ -177,7 +206,9 @@ export function PlanV3Surface({
     <>
       <PlanHeaderV3
         dateRangeLabel={weekLabel}
-        verdict={verdict}
+        // ENG-1372 law 3 — no verdict/dot/jargon ("0 of 7 days land") until
+        // ≥1 meal exists; the empty-week card carries the invitation instead.
+        verdict={showEmptyWeekCard ? null : verdict}
         onGenerate={onGenerate}
         onAdjust={onAdjust}
         onTemplates={onTemplates}
@@ -190,22 +221,29 @@ export function PlanV3Surface({
       {household ? (
         <PlanHouseholdBannerV3 {...household} onPress={onOpenHousehold} />
       ) : null}
-      <PlanDayDetailBandV3
-        dayLabel={dayLabel}
-        dayTotalKcal={Math.round(totals?.calories ?? 0)}
-        targetKcal={targetKcal}
-        plannedCount={plannedCount}
-        cookedCount={cookedCount}
-        macros={
-          totals
-            ? {
-                protein: totals.protein,
-                carbs: totals.carbs,
-                fat: totals.fat,
-              }
-            : null
-        }
-      />
+      {showEmptyWeekCard ? (
+        <PlanEmptyWeekCard
+          onGenerate={onGenerate}
+          onAddMealsAsYouGo={() => setEmptyWeekCardDismissed(true)}
+        />
+      ) : (
+        <PlanDayDetailBandV3
+          dayLabel={dayLabel}
+          dayTotalKcal={Math.round(totals?.calories ?? 0)}
+          targetKcal={targetKcal}
+          plannedCount={plannedCount}
+          cookedCount={cookedCount}
+          macros={
+            totals
+              ? {
+                  protein: totals.protein,
+                  carbs: totals.carbs,
+                  fat: totals.fat,
+                }
+              : null
+          }
+        />
+      )}
       <PlanMealFilterChipsV3 selected={mealFilter} onSelect={setMealFilter} />
       <PlanMealSectionV3
         plan={plan}
