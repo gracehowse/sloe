@@ -52,7 +52,7 @@ Household shares **planned meals and their nutrition per-portion only**. Never s
 | Mixed dietary prefs | Each member keeps own prefs. Shared meal shows per-member allergy/pref warnings to the cook only. |
 | Kids / lower targets | Members retain individual macro targets. Shared dinner's portion count drives cook's grocery math; each eater logs their own portion. No "kid mode" v1. |
 | Member leaves | Historical shared meals stay attributed (snapshot name preserved). Future slots unshare automatically. |
-| Ownership transfer | Owner picks member → confirm → role swap. Last owner leaves → oldest remaining auto-promotes. Last member leaves → household soft-deleted after 30 days. |
+| Ownership transfer | Owner picks member → confirm → role swap. Last owner leaves → oldest remaining auto-promotes. Last member leaves → household soft-deleted (`disbanded_at` set), then hard-deleted after 30 days by the `POST /api/cron/household-purge` job (ENG-1359, shipped 2026-07-05 — see `src/lib/server/householdPurgeJob.ts`; previously this was a documented gap, no such job existed). |
 | Owner deletes account | Force transfer or disband in the delete flow (`project_delete_account_flow_exists`). |
 
 ## 5. Data model — what exists vs missing

@@ -702,10 +702,13 @@ export async function leaveHousehold(
     // Netflix-model v1 (2026-05-01) — if that was the last member,
     // flag the household as disbanded so reads stop returning it but
     // `household_meals` stay queryable for any lingering history
-    // references. A background job (not yet shipped) hard-deletes
-    // after 30 days. This branch only fires when the non-owner leaves
-    // a household whose owner has already departed — typical member
-    // leaves don't trigger it.
+    // references. `POST /api/cron/household-purge` (ENG-1359,
+    // `src/lib/server/householdPurgeJob.ts`) hard-deletes households
+    // disbanded >= 30 days ago via a daily GitHub Actions cron
+    // (`.github/workflows/scheduled-crons.yml`, 07:00 UTC). This
+    // branch only fires when the non-owner leaves a household whose
+    // owner has already departed — typical member leaves don't
+    // trigger it.
     const { count: remaining } = (await supabase
       .from("household_members")
       .select("id", { count: "exact", head: true })
