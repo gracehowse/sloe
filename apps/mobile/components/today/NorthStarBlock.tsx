@@ -67,6 +67,11 @@ export type NorthStarKind =
   | "default"
   | "library-empty"
   | "over-budget"
+  // ENG-1454 — single-day under-eating nudge (<60% of goal by ~8pm local),
+  // behind `coaching_stages_v1`. ED-safe: never praises under-eating, never
+  // alarms. See `coachOverBudgetStage.ts#underEatingCoachLine`. Flagged for
+  // diversity-inclusion + nutrition-engine lens review before ramp.
+  | "under-eating"
   | "no-fit"
   // ENG-94 (2026-05-13): on a user's very first day — no nutrition
   // history yet — the `default` suggestion card ("Cajun Steak Bowl
@@ -115,6 +120,11 @@ export interface NorthStarBlockProps {
   overBudgetStage?: OverBudgetStage;
   /** Consumed/goal calories for the staged line's `{n}`. */
   overBudgetCalories?: { consumed: number; goal: number };
+  /** ENG-1454 — copy for `kind="under-eating"` (host resolves which of the
+   *  two ED-safe states via `isSingleDayUnderEating`/`consecutiveDaysUnderEating`
+   *  and passes the finished line). No copy/flag-off → renders nothing (this
+   *  kind has no legacy predecessor to fall back to). */
+  underEatingLine?: string;
   ctaLabel?: string;
   onPrimaryCta?: () => void;
   /** ENG-1301 (VERIFIED V13) — compact secondary "Log": one-tap logs the
@@ -137,6 +147,7 @@ function NorthStarBlockImpl({
   suggestion,
   overBudgetStage: stage,
   overBudgetCalories,
+  underEatingLine,
   ctaLabel = "Log it",
   onPrimaryCta,
   onLogCta,
@@ -164,6 +175,21 @@ function NorthStarBlockImpl({
         <Text style={[Type.caption, { color: colors.textSecondary }]}>
           {resolveOverBudgetCaption(isFeatureEnabled("coaching_stages_v1"), stage, overBudgetCalories)}
         </Text>
+      </View>
+    );
+  }
+
+  if (kind === "under-eating") {
+    // ENG-1454 — host resolves the ED-safe line; no copy → render nothing
+    // (no legacy predecessor for this kind, unlike over-budget).
+    if (!underEatingLine) return null;
+    return (
+      <View
+        testID={testID ?? "north-star-under-eating"}
+        accessibilityRole="text"
+        style={{ paddingHorizontal: Spacing.xs, paddingVertical: Spacing.sm }}
+      >
+        <Text style={[Type.caption, { color: colors.textSecondary }]}>{underEatingLine}</Text>
       </View>
     );
   }

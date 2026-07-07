@@ -28,7 +28,12 @@ import {
 } from "@suppr/nutrition-core/northStarSuggestion";
 import { normaliseMealSlot } from "@suppr/nutrition-core/mealSlots";
 import { fallbackSlotFromTimeOfDay } from "@suppr/nutrition-core/recipeJournalSlot";
-import { overBudgetStage } from "@suppr/nutrition-core/coachOverBudgetStage";
+import {
+  isSingleDayUnderEating,
+  overBudgetStage,
+  underEatingCoachLine,
+} from "@suppr/nutrition-core/coachOverBudgetStage";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 import { NorthStarBlock } from "./NorthStarBlock";
 
@@ -103,6 +108,10 @@ export interface NorthStarBlockHostProps {
    *  it just means the staged copy can't resolve (falls to the legacy
    *  caption, same as flag-off). */
   consumedCalories?: number;
+  /** ENG-1454 — the user's LOCAL hour (0-23), for the single-day
+   *  under-eating gate's "~8pm local" threshold. Optional; omitting it
+   *  just means that gate never fires (same as flag-off). */
+  localHour?: number;
   /** Called when the user taps the primary CTA on the suggestion card.
    *  Receives the suggestion's recipe id so the parent can route
    *  directly to that recipe (or open the log sheet, on web). */
@@ -138,6 +147,7 @@ function NorthStarBlockHostImpl({
   remainingFat,
   dailyCalorieTarget,
   consumedCalories,
+  localHour,
   onPrimaryCta,
   onLogSuggestion,
   onBrowseLibrary,
@@ -170,6 +180,21 @@ function NorthStarBlockHostImpl({
   );
 
   if (viewMode !== "day") return null;
+
+  // ENG-1454 — single-day under-eating nudge (<60% of goal by ~8pm local),
+  // behind `coaching_stages_v1`. Only fires when NOT over-budget (mutually
+  // exclusive with the branch below) and the host has threaded both the
+  // raw eaten total and the local hour. Flagged for diversity-inclusion +
+  // nutrition-engine lens review before ramp — see coachOverBudgetStage.ts.
+  if (
+    remainingCalories > 0 &&
+    consumedCalories != null &&
+    localHour != null &&
+    isFeatureEnabled("coaching_stages_v1") &&
+    isSingleDayUnderEating(consumedCalories, dailyCalorieTarget, localHour)
+  ) {
+    return <NorthStarBlock kind="under-eating" underEatingLine={underEatingCoachLine("single-day")} />;
+  }
 
   if (remainingCalories <= 0) {
     // ENG-1454 — resolve the stage when the caller has threaded the raw

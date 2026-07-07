@@ -9,34 +9,34 @@
  * eye lands on after the calorie ring. One suggested recipe at a time,
  * swipeable to skip, one tap to log/cook."
  *
- * Four state branches:
- *   - `default`         — gradient SupprCard with thumb / body / CTA.
- *   - `library-empty`   — primary-tinted invitation when library < 5.
- *   - `over-budget`     — calm caption replaces block when ring is over.
- *   - `no-fit`          — caption "Library has nothing under your
- *                         remaining macros today" + Browse link.
+ * State branches: `default` (gradient SupprCard), `library-empty`,
+ * `over-budget`, `under-eating` (ENG-1454), `no-fit`, `new-user` — the five
+ * non-default branches live in `north-star-block-non-default.tsx`.
  *
  * Presentation-only — the caller decides which branch to render via `kind`.
  * Mobile mirror: `apps/mobile/components/today/NorthStarBlock.tsx`.
  */
 
 import * as React from "react";
-import { ChevronRight, Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 
-import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
-import { resolveOverBudgetCaption, type OverBudgetStage } from "../../../lib/nutrition/coachOverBudgetStage.ts";
+import type { OverBudgetStage } from "../../../lib/nutrition/coachOverBudgetStage.ts";
 import { NorthStarFigmaHeroBlock } from "./north-star-figma-hero";
+import { NorthStarBlockNonDefault } from "./north-star-block-non-default";
 import { QuickLogButton } from "./quick-log-button";
 import { SupprButton } from "./suppr-button";
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { cn } from "../ui/utils";
 
 export type NorthStarKind =
   | "default"
   | "library-empty"
   | "over-budget"
+  // ENG-1454 — single-day under-eating nudge (coaching_stages_v1). Mirrors mobile.
+  | "under-eating"
   | "no-fit"
   // ENG-94 (2026-05-13): on a user's very first day — no nutrition
   // history yet — the `default` suggestion card felt presumptuous
@@ -87,6 +87,8 @@ export interface NorthStarBlockProps {
   overBudgetStage?: OverBudgetStage;
   /** Consumed/goal calories for the staged line's `{n}`. */
   overBudgetCalories?: { consumed: number; goal: number };
+  /** ENG-1454 — copy for `kind="under-eating"`; no copy → renders nothing. */
+  underEatingLine?: string;
   /** Time-of-day-adaptive primary CTA label. */
   ctaLabel?: string;
   onPrimaryCta?: () => void;
@@ -114,6 +116,7 @@ export function NorthStarBlock({
   suggestion,
   overBudgetStage: stage,
   overBudgetCalories,
+  underEatingLine,
   ctaLabel = "Log it",
   onPrimaryCta,
   onLogCta,
@@ -123,88 +126,17 @@ export function NorthStarBlock({
   slotEyebrow = "Meal suggestion",
   testID,
 }: NorthStarBlockProps) {
-  if (kind === "over-budget") {
+  if (kind !== "default") {
     return (
-      <div data-slot="north-star-over-budget" data-testid={testID} className="px-1 py-2">
-        <p className="text-[13px] text-muted-foreground">
-          {resolveOverBudgetCaption(isFeatureEnabled("coaching_stages_v1"), stage, overBudgetCalories)}
-        </p>
-      </div>
-    );
-  }
-
-  if (kind === "new-user") {
-    return (
-      <SupprCard
-        elevation="card"
-        data-slot="north-star-new-user"
-        data-testid={testID}
-        tone="primary"
-        gradient
-        padding="md"
-        className="flex flex-row items-center gap-3"
-      >
-        <Sparkles aria-hidden width={18} height={18} className="text-primary shrink-0" />
-        <div className="flex flex-1 flex-col gap-1">
-          <p className="text-[13px] font-semibold">
-            Log your first meal — suggestions get smarter once we've seen you eat.
-          </p>
-        </div>
-      </SupprCard>
-    );
-  }
-
-  if (kind === "library-empty") {
-    // ENG-1198: brought into parity with mobile's flattened inset-row grammar
-    // (mobile shipped 2026-05-23). The whole row is the tap target; the sparkle
-    // → primary-solid (accent "feature, tap me" signal), the chevron →
-    // foreground-secondary (one step up from tertiary, not primary), and the row
-    // sits in a quiet-fill affordance so it reads as a tappable pill rather than
-    // greyed-out placeholder text. Replaces the older gradient-card + solid
-    // "Open Library →" button, which was a structural + copy drift from mobile.
-    return (
-      <button
-        type="button"
-        data-slot="north-star-library-empty"
-        data-testid={testID}
-        onClick={onOpenLibrary}
-        aria-label="Pick recipes for your library"
-        className={cn(
-          "flex w-full flex-row items-center gap-3 rounded-lg bg-fill-quiet px-3 py-3 text-left",
-          "transition-opacity hover:opacity-80 active:opacity-60",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-        )}
-      >
-        <Sparkles aria-hidden width={18} height={18} className="shrink-0 text-primary-solid" />
-        <span className="flex-1 text-[13px] text-foreground-secondary">
-          Pick a few recipes — we'll suggest from there.
-        </span>
-        <ChevronRight aria-hidden width={18} height={18} className="shrink-0 text-foreground-secondary" />
-      </button>
-    );
-  }
-
-  if (kind === "no-fit") {
-    return (
-      <SupprCard
-        elevation="card"
-        data-slot="north-star-no-fit"
-        data-testid={testID}
-        tone="neutral"
-        padding="md"
-        className="flex flex-row items-center gap-3"
-      >
-        <p className="flex-1 text-[13px] text-muted-foreground">
-          Library has nothing under your remaining macros today.
-        </p>
-        <button
-          type="button"
-          onClick={onBrowse}
-          className="shrink-0 text-[11px] font-semibold text-primary-solid hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
-        >
-          Browse →
-        </button>
-      </SupprCard>
+      <NorthStarBlockNonDefault
+        kind={kind}
+        testID={testID}
+        overBudgetStage={stage}
+        overBudgetCalories={overBudgetCalories}
+        underEatingLine={underEatingLine}
+        onOpenLibrary={onOpenLibrary}
+        onBrowse={onBrowse}
+      />
     );
   }
 

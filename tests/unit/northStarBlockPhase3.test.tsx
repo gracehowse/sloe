@@ -358,6 +358,27 @@ describe("NorthStarBlock (web) — non-default kinds", () => {
     });
   });
 
+  describe("ENG-1454 — under-eating kind (behind coaching_stages_v1)", () => {
+    it("renders the ED-safe single-day line when supplied", () => {
+      render(
+        <NorthStarBlock
+          kind="under-eating"
+          underEatingLine="Well under target so far. If that wasn't the plan, a proper dinner still fits tonight."
+        />,
+      );
+      expect(
+        screen.getByText(
+          /Well under target so far\. If that wasn't the plan, a proper dinner still fits tonight\./,
+        ),
+      ).toBeDefined();
+    });
+
+    it("renders nothing when no line is supplied", () => {
+      const { container } = render(<NorthStarBlock kind="under-eating" />);
+      expect(container.firstChild).toBeNull();
+    });
+  });
+
   it("no-fit: renders the caption + Browse text button", () => {
     const onBrowse = vi.fn();
     render(<NorthStarBlock kind="no-fit" onBrowse={onBrowse} />);

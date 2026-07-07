@@ -2759,7 +2759,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
           remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
           dailyCalorieTarget={effectiveCalorieTarget}
-          consumedCalories={totals.calories} // ENG-1454 — staged coach-line input
+          consumedCalories={totals.calories} localHour={new Date().getHours()} /* ENG-1454 */
           onPrimaryCta={(_recipeId) => {
             setMealSlot(slotForHour(new Date().getHours()));
             setLogSheetOpen(true);

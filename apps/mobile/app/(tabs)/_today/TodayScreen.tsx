@@ -5052,7 +5052,7 @@ export default function TrackerScreen() {
             remainingCarbs={remainingCarbs}
             remainingFat={remainingFat}
             dailyCalorieTarget={effectiveCalorieGoal}
-            consumedCalories={totals.calories} // ENG-1454 — staged coach-line input
+            consumedCalories={totals.calories} localHour={new Date().getHours()} /* ENG-1454 */
             onPrimaryCta={(recipeId) => {
               router.push(`/recipe/${recipeId}` as any);
             }}

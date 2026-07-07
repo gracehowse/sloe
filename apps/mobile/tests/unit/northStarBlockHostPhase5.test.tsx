@@ -305,4 +305,76 @@ describe("NorthStarBlockHost branching", () => {
       /Hits both your protein \+ calorie target/.test(allText);
     expect(hasWhyLine).toBe(true);
   });
+
+  describe("ENG-1454 — single-day under-eating gate (behind coaching_stages_v1)", () => {
+    it("fires when flag ON, remaining > 0, <60% of goal, and localHour >= 20", () => {
+      vi.mocked(isFeatureEnabled).mockImplementation(
+        (flag: string) => flag === "today_meals_figma_654" || flag === "coaching_stages_v1",
+      );
+      const tree = render(
+        <NorthStarBlockHost
+          viewMode="day"
+          savedRecipesForLibrary={lib6}
+          remainingCalories={1000} // still under goal — not over-budget
+          remainingProtein={20}
+          remainingCarbs={40}
+          remainingFat={15}
+          dailyCalorieTarget={2000}
+          consumedCalories={800} // 40% of goal — under the 60% floor
+          localHour={21}
+          onPrimaryCta={() => {}}
+          onBrowseLibrary={() => {}}
+          selectedDateKey="2026-04-27"
+        />,
+      );
+      expect(tree.queryByTestId("north-star-under-eating")).toBeTruthy();
+      expect(tree.queryByTestId("north-star-over-budget")).toBeNull();
+    });
+
+    it("does NOT fire before 8pm local even when well under target", () => {
+      vi.mocked(isFeatureEnabled).mockImplementation(
+        (flag: string) => flag === "today_meals_figma_654" || flag === "coaching_stages_v1",
+      );
+      const tree = render(
+        <NorthStarBlockHost
+          viewMode="day"
+          savedRecipesForLibrary={lib6}
+          remainingCalories={1000}
+          remainingProtein={20}
+          remainingCarbs={40}
+          remainingFat={15}
+          dailyCalorieTarget={2000}
+          consumedCalories={800}
+          localHour={14}
+          onPrimaryCta={() => {}}
+          onBrowseLibrary={() => {}}
+          selectedDateKey="2026-04-27"
+        />,
+      );
+      expect(tree.queryByTestId("north-star-under-eating")).toBeNull();
+    });
+
+    it("does NOT fire when the flag is OFF, even past 8pm and under 60%", () => {
+      vi.mocked(isFeatureEnabled).mockImplementation(
+        (flag: string) => flag === "today_meals_figma_654",
+      );
+      const tree = render(
+        <NorthStarBlockHost
+          viewMode="day"
+          savedRecipesForLibrary={lib6}
+          remainingCalories={1000}
+          remainingProtein={20}
+          remainingCarbs={40}
+          remainingFat={15}
+          dailyCalorieTarget={2000}
+          consumedCalories={800}
+          localHour={21}
+          onPrimaryCta={() => {}}
+          onBrowseLibrary={() => {}}
+          selectedDateKey="2026-04-27"
+        />,
+      );
+      expect(tree.queryByTestId("north-star-under-eating")).toBeNull();
+    });
+  });
 });
