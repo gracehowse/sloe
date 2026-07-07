@@ -1,7 +1,7 @@
 "use client";
 
 import { Icons } from "./ui/icons";
-import { useAppData } from "../../context/AppDataContext.tsx";
+import { useNotificationsData } from "../../context/appData/selectors.ts";
 import {
   notificationDisplay,
   partitionNotificationsByDay,
@@ -58,7 +58,7 @@ export function NotificationsCenter({ onOpenRecipe }: { onOpenRecipe: (recipeId:
     markNotificationRead,
     markAllNotificationsRead,
     clearNotifications,
-  } = useAppData();
+  } = useNotificationsData();
 
   const inbox = notificationsInbox as InboxNotification[];
   const { today, earlier } = partitionNotificationsByDay(inbox);

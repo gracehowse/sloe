@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Icons } from "./ui/icons";
-import { useAppData } from "../../context/AppDataContext.tsx";
+import { useNotificationsData } from "../../context/appData/selectors.ts";
 
 export function NotificationsBell({
   onOpenRecipe,
@@ -16,7 +16,7 @@ export function NotificationsBell({
     notificationsUnreadCount,
     markNotificationRead,
     markAllNotificationsRead,
-  } = useAppData();
+  } = useNotificationsData();
   const [open, setOpen] = useState(false);
 
   const rows = useMemo(() => notificationsInbox.slice(0, 20), [notificationsInbox]);
