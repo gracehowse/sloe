@@ -35,6 +35,8 @@ import { useTodayWidgetSnapshot } from "@/hooks/useTodayWidgetSnapshot";
 import { useTrackingExtrasOnFocus } from "@/hooks/useTrackingExtrasOnFocus";
 import { useLogSheetDeepLinks } from "@/hooks/useLogSheetDeepLinks";
 import { useHouseholdMemberCount } from "@/hooks/useHouseholdMemberCount";
+import { useTodayHydrationStimulants } from "@/hooks/useTodayHydrationStimulants";
+import { useTodayStreakAndFreezes } from "@/hooks/useTodayStreakAndFreezes";
 import { useOutOfWindowJournalDay } from "@/hooks/useOutOfWindowJournalDay";
 import {
   dateKeyFromDate,
@@ -53,9 +55,9 @@ import { journalBootWindowStartKey } from "@suppr/nutrition-core/journalWindow";
 import {
   buildDayNutrientDetailRows,
   formatMealNutritionMultiline,
-  mealContributedFiberG,
   sumMicrosFromLoggedMeals,
 } from "@/lib/healthDietaryNutrients";
+import { computeDayMacroTotals } from "@suppr/nutrition-core/microNutrientDisplay";
 import { supabase } from "@/lib/supabase";
 // ENG-73 (2026-05-13): Today moved off `@expo/vector-icons`
 // (Ionicons) to lucide-react-native to bring the screen's supporting
@@ -83,7 +85,6 @@ import DuplicateDaySheet from "@/components/DuplicateDaySheet";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
-import { computeLoggingStreak } from "@/lib/trackerStats";
 import {
   computeActivityBonusKcal,
   computeProjectedActivityBonusKcal,
@@ -97,12 +98,9 @@ import { fetchMobileCanonicalRecipeTitle } from "@/lib/recipeTitleLookup";
 import { foodSelectionAnalyticsSource, foodSelectionToMealMacros } from "@suppr/nutrition-core/foodSelectionToMeal";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/nutrition-core/activityBudgetDiscoverability";
 import {
-  availableFreezes,
-  computeProtectedStreak,
   readFreezeLedger,
   type FreezeLedger,
 } from "@/lib/streakFreeze";
-import { didStreakReset } from "@suppr/nutrition-core/streakReset";
 import {
   isBelowMealsPromptVisible,
 } from "@suppr/shared/today/belowMealsPromptSelection";
@@ -178,8 +176,6 @@ import {
 } from "@suppr/nutrition-core/hydrationStimulants";
 import {
   QUICK_ADD_COLLAPSED_STORAGE_KEY,
-  isHydrationCardVisible,
-  isStepsCardVisible,
   parseQuickAddCollapsed,
   serializeQuickAddCollapsed,
 } from "@suppr/nutrition-core/todayProgressiveDisclosure";
@@ -310,8 +306,6 @@ const DEFAULT_TRACKER_TARGETS: TrackerMacroTargets = {
   fiber: NUTRITION_DEFAULTS.fiber,
 };
 
-const MAX_JSONB_DAYS = 90;
-
 function formatMealMacroDetail(m: JournalMeal): string {
   return formatMealNutritionMultiline({
     calories: m.calories,
@@ -396,13 +390,6 @@ function dayActivityBudgetAddon(
     maintenanceKcal,
     workoutKcal: workouts.reduce((s, w) => s + (w.calories ?? 0), 0),
   });
-}
-
-function pruneByDay<V>(map: Record<string, V>): Record<string, V> {
-  const keys = Object.keys(map).sort().reverse().slice(0, MAX_JSONB_DAYS);
-  const pruned: Record<string, V> = {};
-  for (const k of keys) pruned[k] = map[k];
-  return pruned;
 }
 
 function formatMealTimeDisplay(
@@ -660,14 +647,6 @@ export default function TrackerScreen() {
   /** Batch 1.4 — Duplicate-day sheet visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [showPrevious, setShowPrevious] = useState(false);
-  const [waterGoalMl, setWaterGoalMl] = useState(NUTRITION_DEFAULTS.water);
-  const [extraWaterByDay, setExtraWaterByDay] = useState<Record<string, number>>({});
-  /** Batch 2.5 — caffeine per-day (mg) + target (mg/day, default 400). */
-  const [extraCaffeineByDay, setExtraCaffeineByDay] = useState<Record<string, number>>({});
-  const [targetCaffeineMg, setTargetCaffeineMg] = useState<number>(400);
-  /** Batch 2.5 — alcohol per-day (g ethanol) + weekly target (g; 0 = hidden). */
-  const [extraAlcoholGByDay, setExtraAlcoholGByDay] = useState<Record<string, number>>({});
-  const [targetAlcoholGWeekly, setTargetAlcoholGWeekly] = useState<number>(0);
   // Phase 2 / B1.4 (D-2026-04-27-08) — caffeine + alcohol opt-in.
   // Default OFF. Hydration stays as it's a near-universal target.
   // Prefs are AsyncStorage-only (no schema change for Phase 2);
@@ -688,6 +667,58 @@ export default function TrackerScreen() {
   const [preferActivityAdjustedCalories, setPreferActivityAdjustedCalories] = useState(false);
   /** surplus-only: add only burn above maintenance TDEE (needs resting + active from Health). */
   const [activityBonusCaloriesOnly, setActivityBonusCaloriesOnly] = useState(false);
+
+  // Moved up from its original spot (was declared right before the old
+  // `mealsToday` const) so `useTodayHydrationStimulants` — which needs both
+  // — can be called ahead of `loadProfileTargets`'s setter usage below.
+  const dayKey = dateKeyFromDate(selectedDate);
+  const mealsToday = byDay[dayKey] ?? [];
+
+  // ENG-1361 — Today extract (round 2). Owns the water/caffeine/alcohol
+  // quick-add state + persist-with-rollback + analytics logic. See the
+  // hook's own doc comment for the full "why" + failure modes.
+  const {
+    waterGoalMl,
+    extraWaterByDay,
+    targetCaffeineMg,
+    extraCaffeineByDay,
+    targetAlcoholGWeekly,
+    extraAlcoholGByDay,
+    hydrationManualExpanded,
+    stepsManualExpanded,
+    setWaterGoalMl,
+    setTargetCaffeineMg,
+    setExtraWaterByDay,
+    setExtraCaffeineByDay,
+    setTargetAlcoholGWeekly,
+    setExtraAlcoholGByDay,
+    setHydrationManualExpanded,
+    setStepsManualExpanded,
+    extraWaterToday,
+    extraCaffeineToday,
+    waterFromMealsMl,
+    caffeineFromMealsMg,
+    alcoholFromMealsG,
+    alcoholByDayMerged,
+    hydrationCardGateOpen,
+    stepsCardGateOpen,
+    showHydrationCard,
+    showStepsCard,
+    addWaterMl,
+    addCaffeineMg,
+    addAlcoholG,
+    resetHydrationStimulantsForDay,
+  } = useTodayHydrationStimulants({
+    userId,
+    dayKey,
+    byDay,
+    mealsToday,
+    stepsByDay,
+    activityBurnByDay,
+    trackCaffeine,
+    trackAlcohol,
+  });
+
   // P3-30 (2026-04-25): net-carbs lens. Source of truth:
   // `profiles.net_carbs_lens_enabled`. Tracker macro tile swaps "Carbs"
   // → "Net carbs" via the shared netCarbs.ts helper.
@@ -822,8 +853,6 @@ export default function TrackerScreen() {
   // `true` permanently and the manual flag is no longer needed.
   const [quickAddCollapsed, setQuickAddCollapsed] = useState(true);
   const [quickAddPrefLoaded, setQuickAddPrefLoaded] = useState(false);
-  const [hydrationManualExpanded, setHydrationManualExpanded] = useState(false);
-  const [stepsManualExpanded, setStepsManualExpanded] = useState(false);
 
   // Hydrate the Quick Add collapsed preference once on mount.
   useEffect(() => {
@@ -2037,8 +2066,6 @@ export default function TrackerScreen() {
     }
   }, [userId]);
 
-  const dayKey = dateKeyFromDate(selectedDate);
-
   /** Log any FoodHistoryItem to the active slot. Used by the Quick add
    * panel (Usual meals / Recents / Frequent / Favourites) and the
    * north-star secondary Log (ENG-1301, `analyticsSource: "north_star"`)
@@ -2256,7 +2283,6 @@ export default function TrackerScreen() {
     () => weekSummaryDateKeys(weekSummaryMode, selectedDate, weekStartDay),
     [weekSummaryMode, selectedDate, weekStartDay],
   );
-  const mealsToday = byDay[dayKey] ?? [];
 
   const recentFoodsForSearch = useMemo(
     () =>
@@ -2870,25 +2896,11 @@ export default function TrackerScreen() {
       .eq("id", userId);
   }, [userId]);
 
-  const totals = useMemo(() => {
-    const raw = mealsToday.reduce(
-      (acc, m) => ({
-        calories: acc.calories + Math.max(0, m.calories),
-        protein: acc.protein + Math.max(0, m.protein),
-        carbs: acc.carbs + Math.max(0, m.carbs),
-        fat: acc.fat + Math.max(0, m.fat),
-        fiber: acc.fiber + mealContributedFiberG(m),
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
-    );
-    return {
-      calories: Math.round(raw.calories),
-      protein: Math.round(raw.protein),
-      carbs: Math.round(raw.carbs),
-      fat: Math.round(raw.fat),
-      fiber: Math.round(raw.fiber),
-    };
-  }, [mealsToday]);
+  // ENG-1361 — the log-a-meal → macros-update contract. Math lives in
+  // `computeDayMacroTotals` (nutrition-core/microNutrientDisplay) so it's
+  // covered by a standalone behavioral test independent of this
+  // component's render tree; see dayMacroTotalsContract.test.ts.
+  const totals = useMemo(() => computeDayMacroTotals(mealsToday), [mealsToday]);
 
   /** Day-summed nutrition_micros — shared by the all-nutrients sheet
    *  (`FullNutrientPanelSheet`, opened from the Nutrients link in
@@ -3082,29 +3094,19 @@ export default function TrackerScreen() {
   const macroTilesEntrance = useEntranceAnimation({ delay: 160 });
   const mealsEntrance = useEntranceAnimation({ delay: 240 });
 
-  const streakDays = useMemo(
-    () => computeLoggingStreak(byDay as any),
-    [byDay],
-  );
-  // Batch 4.11 — freeze sub-label on the streak insight card.
-  const freezesAvailableToday = useMemo(
-    () => availableFreezes(freezeLedger, freezeBudgetMax),
-    [freezeLedger, freezeBudgetMax],
-  );
-  // 2026-04-18 audit H7 — DayStrip tiles for days where a freeze was
-  // consumed render a ❄ glyph. Parent computes once so both DayStrips
-  // (day + week view) render identically.
-  //
-  // L6 G8 (2026-04-18) — the memo also exposes `streakLength` so the
-  // `streak_reset` effect below can detect >=1 → 0 transitions.
-  const protectedStreakInfo = useMemo(() => {
-    return computeProtectedStreak(byDay as never, freezeLedger, freezeBudgetMax);
-  }, [byDay, freezeLedger, freezeBudgetMax]);
-  const protectedDateKeys = useMemo(
-    () => new Set(protectedStreakInfo.protectedDateKeys),
-    [protectedStreakInfo],
-  );
-  const protectedStreakLength = protectedStreakInfo.streakLength;
+  // ENG-1361 — Today extract (round 2). Owns the logging-streak +
+  // freeze-ledger derivations, the "streak just reset" date-header copy
+  // state, and the one-time freeze-earned acknowledgment flow. See the
+  // hook's own doc comment for the full "why" + failure modes.
+  const {
+    streakDays,
+    freezesAvailableToday,
+    protectedDateKeys,
+    protectedStreakLength,
+    streakJustReset,
+    hasUnseenFreezeEarned,
+    dismissFreezeEarned,
+  } = useTodayStreakAndFreezes({ byDay, freezeLedger, freezeBudgetMax });
 
   // ENG-798 (Redesign — Design Direction 2026) — reserved win-moment. The
   // shared landmark math + once-per-day / flag gate live in `useWinMoment`;
@@ -3155,123 +3157,8 @@ export default function TrackerScreen() {
     triggerLogConfirm();
   };
 
-  // L6 G8 (2026-04-18) — fire `streak_reset` once when the protected streak
-  // goes >=1 → 0. Ref starts `null` so a zero-streak first render never fires.
-  const priorProtectedStreakRef = useRef<number | null>(null);
-  // Premium-bar audit DC8 polish (2026-05-14) — when the streak just
-  // reset, show a calm supportive line in the date-header row
-  // (Duolingo-style "Every expert was once a beginner"). Sticky
-  // until the user next renders a positive streak — at which point
-  // the StreakPip takes over again. Independent of analytics fire.
-  const [streakJustReset, setStreakJustReset] = useState(false);
-  useEffect(() => {
-    const prior = priorProtectedStreakRef.current;
-    priorProtectedStreakRef.current = protectedStreakLength;
-    if (didStreakReset(prior, protectedStreakLength)) {
-      try {
-        track(AnalyticsEvents.streak_reset, {
-          priorStreak: prior ?? 0,
-        });
-      } catch { /* analytics fire-and-forget */ }
-      setStreakJustReset(true);
-    } else if (protectedStreakLength > 0 && streakJustReset) {
-      // User logged again and climbed off zero — clear the reset
-      // copy so the pip surface returns.
-      setStreakJustReset(false);
-    }
-  }, [protectedStreakLength, streakJustReset]);
-  // 2026-04-18 audit H7 — one-time "You earned a freeze" row under the
-  // streak insight card. Newest `earnedAt` ISO from the ledger; the row
-  // shows until the user taps "Got it", which writes that ISO to
-  // AsyncStorage. No shame copy, no modal takeover.
-  const newestFreezeEarnedAt = useMemo(() => {
-    if (!Array.isArray(freezeLedger.earnedAt) || freezeLedger.earnedAt.length === 0) return null;
-    let newest = "";
-    for (const entry of freezeLedger.earnedAt) {
-      if (typeof entry?.earnedAt === "string" && entry.earnedAt > newest) newest = entry.earnedAt;
-    }
-    return newest || null;
-  }, [freezeLedger]);
-  const [lastSeenFreezeEarnedAt, setLastSeenFreezeEarnedAt] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-        const v = await AsyncStorage.getItem("suppr-last-seen-freeze-earned-at");
-        if (!cancelled) setLastSeenFreezeEarnedAt(v);
-      } catch { /* noop */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  const hasUnseenFreezeEarned =
-    freezesAvailableToday > 0 &&
-    newestFreezeEarnedAt !== null &&
-    (lastSeenFreezeEarnedAt === null || newestFreezeEarnedAt > lastSeenFreezeEarnedAt);
-  const dismissFreezeEarned = useCallback(async () => {
-    if (!newestFreezeEarnedAt) return;
-    setLastSeenFreezeEarnedAt(newestFreezeEarnedAt);
-    try {
-      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-      await AsyncStorage.setItem("suppr-last-seen-freeze-earned-at", newestFreezeEarnedAt);
-    } catch { /* noop */ }
-    try {
-      // Dual-emit during rename cycle 2026-04-18 → 2026-05-18. See plan doc §4.
-      const seenPayload = { earnedAt: newestFreezeEarnedAt };
-      track(AnalyticsEvents.streak_freeze_earned_seen, seenPayload);
-      track(AnalyticsEvents.streak_freeze_earned_acknowledged, seenPayload);
-    } catch { /* noop */ }
-  }, [newestFreezeEarnedAt]);
-
-  const extraWaterToday = extraWaterByDay[dayKey] ?? 0;
-  const waterFromMealsMl = useMemo(
-    () => Math.round(mealsToday.reduce((a, m) => a + Math.max(0, m.waterMl ?? 0), 0)),
-    [mealsToday],
-  );
   /** Used for Today macro strip when "water" is enabled in dashboard widgets. */
   const totalWaterMl = extraWaterToday + waterFromMealsMl;
-  /** F-74 (TestFlight `AN3mTmZK5T2Nhj13aMFLk2E`, 2026-04-25): today's
-   *  caffeine total in mg = manual quick-add (`extra_caffeine_by_day`)
-   *  + per-meal caffeine summed from `nutrition_micros.caffeineMg`.
-   *  Before F-74 the Hydration card only read the quick-add ledger,
-   *  so logging a coffee in food search left the card at 0/400 mg.
-   *  Same shape applies to alcohol below. */
-  const caffeineFromMealsMg = useMemo(() => {
-    let sum = 0;
-    for (const m of mealsToday) {
-      const n = Number(m.micros?.caffeineMg ?? 0);
-      if (Number.isFinite(n) && n > 0) sum += n;
-    }
-    return Math.round(sum);
-  }, [mealsToday]);
-  const alcoholFromMealsG = useMemo(() => {
-    let sum = 0;
-    for (const m of mealsToday) {
-      const n = Number(m.micros?.alcoholG ?? 0);
-      if (Number.isFinite(n) && n > 0) sum += n;
-    }
-    return Math.round(sum * 10) / 10;
-  }, [mealsToday]);
-  const extraCaffeineToday = (extraCaffeineByDay[dayKey] ?? 0) + caffeineFromMealsMg;
-  /** F-74 — alcohol-by-day merge: HydrationStimulantsCard expects a
-   *  per-day map (week summary needs per-day to render the bar chart),
-   *  so we fold per-meal alcohol from `nutrition_micros.alcoholG`
-   *  into every day key currently loaded in `byDay`. The quick-add
-   *  ledger remains the writable persistence; this merge is read-only. */
-  const alcoholByDayMerged = useMemo<Record<string, number>>(() => {
-    const out: Record<string, number> = { ...extraAlcoholGByDay };
-    for (const [k, meals] of Object.entries(byDay)) {
-      let dayMeals = 0;
-      for (const m of meals) {
-        const n = Number(m.micros?.alcoholG ?? 0);
-        if (Number.isFinite(n) && n > 0) dayMeals += n;
-      }
-      if (dayMeals > 0) {
-        out[k] = (out[k] ?? 0) + Math.round(dayMeals * 10) / 10;
-      }
-    }
-    return out;
-  }, [byDay, extraAlcoholGByDay]);
   const stepsRecorded = Object.prototype.hasOwnProperty.call(stepsByDay, dayKey);
   const stepsCount = stepsRecorded ? (stepsByDay[dayKey] ?? 0) : null;
   const activityBurnRecorded = Object.prototype.hasOwnProperty.call(activityBurnByDay, dayKey);
@@ -3280,34 +3167,6 @@ export default function TrackerScreen() {
   const dayWorkouts = workoutsByDay[dayKey] ?? [];
   const totalBurnKcal = (activityBurnKcal ?? 0) + basalBurnKcal;
   const hasBurnData = activityBurnRecorded || basalBurnKcal > 0 || dayWorkouts.length > 0;
-
-  // Audit M4 (2026-04-18) — Today progressive disclosure gates.
-  // Visibility is "sticky": once true for a returning user it stays true
-  // because the underlying state (water target, Health sync) persists.
-  // Manual expanders (`hydrationManualExpanded`, `stepsManualExpanded`)
-  // let a first-run user open the card on demand without writing any
-  // state they might not want.
-  const hydrationCardGateOpen = useMemo(
-    () =>
-      isHydrationCardVisible({
-        waterTargetMl: waterGoalMl,
-        extraWaterByDay,
-        waterFromMealsMl,
-        // Phase 2 / B1.4 — caffeine/alcohol logs only contribute to
-        // the gate when their respective opt-in toggle is on. When
-        // the user has opted out, historical caffeine/alcohol data
-        // is preserved but does not surface the card.
-        extraCaffeineByDay: trackCaffeine ? extraCaffeineByDay : {},
-        extraAlcoholGByDay: trackAlcohol ? extraAlcoholGByDay : {},
-      }),
-    [waterGoalMl, extraWaterByDay, waterFromMealsMl, extraCaffeineByDay, extraAlcoholGByDay, trackCaffeine, trackAlcohol],
-  );
-  const stepsCardGateOpen = useMemo(
-    () => isStepsCardVisible({ stepsByDay, activityBurnByDay }),
-    [stepsByDay, activityBurnByDay],
-  );
-  const showHydrationCard = hydrationCardGateOpen || hydrationManualExpanded;
-  const showStepsCard = stepsCardGateOpen || stepsManualExpanded;
 
   // Batch 5.13 — resolve the web API base from expo-constants once per
   // render so the gated sheets don't each import Constants independently.
@@ -3496,55 +3355,6 @@ export default function TrackerScreen() {
     setPhotoLogOpen(true);
   }, []);
 
-  const addWaterMl = useCallback(
-    async (ml: number) => {
-      if (!userId) return;
-      const add = Math.max(0, Math.round(ml));
-      if (add === 0) return;
-      // Build 41 (2026-05-01) — same React 18 functional-updater
-      // closure-capture trap as `addCaffeineMg` / `addAlcoholG`. The
-      // previous `setExtraWaterByDay((prev) => { persisted = next;
-      // return next; })` pattern left `persisted` as `null` when the
-      // `if (persisted)` branch ran, so the supabase write was
-      // silently skipped. Same root cause and same fix: compute
-      // `next` from the closure-captured `prev` map before calling
-      // setState, then persist with the directly-captured value.
-      const prev = extraWaterByDay;
-      const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
-      setExtraWaterByDay(next);
-      // Debug audit 2026-05-04 (code-quality #2): caffeine + alcohol
-      // already had persist-error rollback (round 3, 2026-04-26); water
-      // was missed. Without rollback, an offline / RLS-denied write
-      // left the UI ahead of the server, and the next focus refresh
-      // re-read from DB and the bump appeared to "evaporate". Same
-      // shape as the addCaffeineMg path now.
-      const { error } = await supabase
-        .from("profiles")
-        .update({ extra_water_by_day: next })
-        .eq("id", userId);
-      if (error) {
-        setExtraWaterByDay(prev);
-        console.error("[addWaterMl] persist failed:", error.message, error);
-        Alert.alert("Couldn't save water", error.message ?? "Try again.");
-        return;
-      }
-      track(AnalyticsEvents.hydration_logged, {
-        type: "water",
-        amount: add,
-        unit: "ml",
-        preset: null,
-        // L6 G6 (2026-04-18) — dashboards key off amount_ml + via.
-        // All current mobile water entry points are quick chips (the
-        // HydrationStimulantsCard, the TodayAddMealDialog meal-row
-        // path routes `waterMl` inside the meal entry → food_logged,
-        // not here). If a manual `addWaterMl` is introduced, flag it.
-        amount_ml: add,
-        via: "quick_chip",
-      });
-    },
-    [userId, dayKey, extraWaterByDay],
-  );
-
   /** Batch 5.12 — start a fast from a deep link (Siri / Shortcuts app).
    *  No-ops when a fast is already active; uses the existing
    *  profiles.fasting_sessions shape so the fasting screen agrees. */
@@ -3610,178 +3420,6 @@ export default function TrackerScreen() {
       sub.remove();
     };
   }, [userId, addWaterMl, startFastFromShortcut]);
-
-  /** Batch 2.5 — caffeine quick-add for the selected day.
-   *
-   * 2026-04-26 polish (round 3): tester reported "adding a coffee still
-   * doesn't impact the caffeine numbers". Local state DOES update
-   * synchronously (the +chip flips the count to e.g. 95/400 mg
-   * immediately), but the supabase persist was happening fire-and-forget
-   * — any error (RLS denial, missing column, network failure) was
-   * silently swallowed. On next app refresh the count reverted to 0
-   * because nothing was actually saved server-side. Now: capture the
-   * error, roll back local state, surface a toast so the user knows
-   * the chip didn't take. Fixes the symptom of "added a coffee, came
-   * back to the screen, count is back at 0".
-   *
-   * Build 41 (TestFlight `AEsaeOW2Qw-BQa29teBp-Ns`, 2026-05-01):
-   * tester reported the same symptom is back ("Adding alcohol or
-   * coffee still not impacting these numbers"). Root cause was the
-   * round-3 fix relied on capturing `next` inside a `setState((prev)
-   * => ...)` updater, then reading `persisted` on the next line —
-   * but React 18 invokes functional updaters lazily during the next
-   * commit, so `persisted` was still `null` when the persist branch
-   * checked it. The supabase write therefore never fired, the
-   * round-3 error path never ran, and the round-3 toast never
-   * surfaced even though no save happened. On next focus / app
-   * relaunch the local state hydrated from the (still-zero) server
-   * row and the count appeared to "reset".
-   *
-   * Fix: compute `next` synchronously from the latest map captured
-   * in the closure, persist with that value, and use a direct
-   * (non-functional) setState call so the value is immediately
-   * available outside the updater. The persist now fires, errors
-   * surface, and the local state matches what's actually saved. */
-  const addCaffeineMg = useCallback(
-    async (mg: number, preset: string | null = null) => {
-      if (!userId) return;
-      const add = Math.max(0, Math.round(mg));
-      if (add === 0) return;
-      // Snapshot the previous map for rollback BEFORE we mutate state
-      // so a network failure can't leave the UI ahead of the server.
-      const prev = extraCaffeineByDay;
-      const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
-      setExtraCaffeineByDay(next);
-      const { error } = await supabase
-        .from("profiles")
-        .update({ extra_caffeine_by_day: next })
-        .eq("id", userId);
-      if (error) {
-        // Roll back to the captured `prev` — direct restore, no
-        // functional updater, so the rollback definitely uses the
-        // pre-add value (not whatever the latest state was, which
-        // could include other in-flight chip taps).
-        setExtraCaffeineByDay(prev);
-        console.error("[addCaffeineMg] persist failed:", error.message, error);
-        Alert.alert("Couldn't save caffeine", error.message ?? "Try again.");
-        return;
-      }
-      track(AnalyticsEvents.stimulant_logged, {
-        type: "caffeine",
-        amount: add,
-        unit: "mg",
-        preset,
-        // L6 G6 (2026-04-18) — explicit enum fields so the dashboards
-        // don't have to reverse a (unit, type) combo.
-        kind: "caffeine",
-        amount_mg_or_g: add,
-        via: preset ? "quick_chip" : "manual",
-      });
-    },
-    [userId, dayKey, extraCaffeineByDay],
-  );
-
-  /** Batch 2.5 — alcohol quick-add (grams ethanol) for the selected day.
-   *  Same persist-error rollback hardening as addCaffeineMg above
-   *  (2026-04-26 round 3). Build 41 fix: same closure-capture
-   *  workaround — see the long doc on `addCaffeineMg` for the
-   *  React 18 functional-updater rationale. */
-  const addAlcoholG = useCallback(
-    async (grams: number, preset: string | null = null) => {
-      if (!userId) return;
-      const add = Math.max(0, Math.round(grams));
-      if (add === 0) return;
-      const prev = extraAlcoholGByDay;
-      const next = pruneByDay({ ...prev, [dayKey]: (prev[dayKey] ?? 0) + add });
-      setExtraAlcoholGByDay(next);
-      const { error } = await supabase
-        .from("profiles")
-        .update({ extra_alcohol_g_by_day: next })
-        .eq("id", userId);
-      if (error) {
-        setExtraAlcoholGByDay(prev);
-        console.error("[addAlcoholG] persist failed:", error.message, error);
-        Alert.alert("Couldn't save alcohol", error.message ?? "Try again.");
-        return;
-      }
-      track(AnalyticsEvents.stimulant_logged, {
-        type: "alcohol",
-        amount: add,
-        unit: "g",
-        preset,
-        // L6 G6 (2026-04-18) — explicit enum fields.
-        kind: "alcohol",
-        amount_mg_or_g: add,
-        via: preset ? "quick_chip" : "manual",
-      });
-    },
-    [userId, dayKey, extraAlcoholGByDay],
-  );
-
-  /** Batch 2.5 — reset today's value for one of the three hydration rows.
-   *
-   * Build 41 (2026-05-01) — same React 18 functional-updater
-   * closure-capture trap as `addCaffeineMg` / `addAlcoholG` /
-   * `addWaterMl`. Compute `next` from the closure-captured map
-   * before calling setState so the persist branch sees the value
-   * directly. */
-  const resetHydrationStimulantsForDay = useCallback(
-    async (kind: "water" | "caffeine" | "alcohol") => {
-      if (!userId) return;
-      const column =
-        kind === "water"
-          ? "extra_water_by_day"
-          : kind === "caffeine"
-          ? "extra_caffeine_by_day"
-          : "extra_alcohol_g_by_day";
-      const apply = (prev: Record<string, number>): Record<string, number> => {
-        if (prev[dayKey] == null) return prev;
-        const next = { ...prev };
-        delete next[dayKey];
-        return next;
-      };
-      let next: Record<string, number>;
-      if (kind === "water") {
-        next = apply(extraWaterByDay);
-        if (next === extraWaterByDay) return; // no-op when day already empty
-        setExtraWaterByDay(next);
-      } else if (kind === "caffeine") {
-        next = apply(extraCaffeineByDay);
-        if (next === extraCaffeineByDay) return;
-        setExtraCaffeineByDay(next);
-      } else {
-        next = apply(extraAlcoholGByDay);
-        if (next === extraAlcoholGByDay) return;
-        setExtraAlcoholGByDay(next);
-      }
-      await supabase.from("profiles").update({ [column]: next }).eq("id", userId);
-      // L6 G6 (2026-04-18) — reset paths stay backwards-compatible
-      // (amount: 0, preset: "reset") and add the explicit enum
-      // fields. `via: "manual"` because reset is always a deliberate
-      // menu action, never a quick chip.
-      if (kind === "water") {
-        track(AnalyticsEvents.hydration_logged, {
-          type: "water",
-          amount: 0,
-          unit: "ml",
-          preset: "reset",
-          amount_ml: 0,
-          via: "manual",
-        });
-      } else {
-        track(AnalyticsEvents.stimulant_logged, {
-          type: kind,
-          amount: 0,
-          unit: kind === "caffeine" ? "mg" : "g",
-          preset: "reset",
-          kind,
-          amount_mg_or_g: 0,
-          via: "manual",
-        });
-      }
-    },
-    [userId, dayKey, extraWaterByDay, extraCaffeineByDay, extraAlcoholGByDay],
-  );
 
   const styles = useMemo(
     () =>

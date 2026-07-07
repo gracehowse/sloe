@@ -27,6 +27,58 @@ export function sumDayFiberFromMeals(
   return Math.round(s);
 }
 
+export type DayMacroTotalsMeal = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiberG?: number | null;
+  micros?: Record<string, number> | null | undefined;
+};
+
+export type DayMacroTotals = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+};
+
+/**
+ * ENG-1361 — the log-a-meal → macros-update contract, extracted to a pure
+ * function so it's independently testable (the mobile Today tracker and the
+ * web tracker both sum a day's logged meals into these five running
+ * totals; this is the ONE place that math happens).
+ *
+ * Negative per-meal macro values are clamped to 0 before summing (a
+ * malformed/edited row should never pull the day total below what's
+ * actually logged). Fiber uses `mealContributedFiberG`'s
+ * column-then-micros fallback so a Health-imported meal without a
+ * `fiberG` column still contributes via `micros.fiberG`. All five
+ * totals are rounded to whole units for display.
+ */
+export function computeDayMacroTotals(
+  meals: ReadonlyArray<DayMacroTotalsMeal>,
+): DayMacroTotals {
+  const raw = meals.reduce<DayMacroTotals>(
+    (acc, m) => ({
+      calories: acc.calories + Math.max(0, m.calories),
+      protein: acc.protein + Math.max(0, m.protein),
+      carbs: acc.carbs + Math.max(0, m.carbs),
+      fat: acc.fat + Math.max(0, m.fat),
+      fiber: acc.fiber + mealContributedFiberG(m),
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+  );
+  return {
+    calories: Math.round(raw.calories),
+    protein: Math.round(raw.protein),
+    carbs: Math.round(raw.carbs),
+    fat: Math.round(raw.fat),
+    fiber: Math.round(raw.fiber),
+  };
+}
+
 export type MealNutritionDisplayInput = {
   calories: number;
   protein: number;
