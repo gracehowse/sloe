@@ -211,8 +211,8 @@ export default function PrivacyPage() {
           </ul>
           <h2 id="transfers" className="scroll-mt-16 text-lg font-semibold text-slate-900 dark:text-white pt-2">International transfers</h2>
           <p>
-            Several sub-processors listed above are located in the United States (Anthropic, OpenAI, fal.ai, Stripe,
-            Upstash, RevenueCat, Expo, Edamam, FatSecret, USDA). Where we transfer personal data of EU or UK users to a
+            Several sub-processors listed above are located in the United States (Vercel, Anthropic, OpenAI, fal.ai,
+            Supadata, Stripe, Upstash, RevenueCat, Expo, Edamam, FatSecret, USDA). Where we transfer personal data of EU or UK users to a
             country not covered
             by an adequacy decision, we rely on the European Commission&rsquo;s Standard Contractual Clauses (SCCs) and,
             for UK transfers, the UK International Data Transfer Addendum or the UK IDTA, together with supplementary
