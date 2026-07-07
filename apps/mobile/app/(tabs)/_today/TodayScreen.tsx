@@ -55,9 +55,9 @@ import { journalBootWindowStartKey } from "@suppr/nutrition-core/journalWindow";
 import {
   buildDayNutrientDetailRows,
   formatMealNutritionMultiline,
-  mealContributedFiberG,
   sumMicrosFromLoggedMeals,
 } from "@/lib/healthDietaryNutrients";
+import { computeDayMacroTotals } from "@suppr/nutrition-core/microNutrientDisplay";
 import { supabase } from "@/lib/supabase";
 // ENG-73 (2026-05-13): Today moved off `@expo/vector-icons`
 // (Ionicons) to lucide-react-native to bring the screen's supporting
@@ -2896,25 +2896,11 @@ export default function TrackerScreen() {
       .eq("id", userId);
   }, [userId]);
 
-  const totals = useMemo(() => {
-    const raw = mealsToday.reduce(
-      (acc, m) => ({
-        calories: acc.calories + Math.max(0, m.calories),
-        protein: acc.protein + Math.max(0, m.protein),
-        carbs: acc.carbs + Math.max(0, m.carbs),
-        fat: acc.fat + Math.max(0, m.fat),
-        fiber: acc.fiber + mealContributedFiberG(m),
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
-    );
-    return {
-      calories: Math.round(raw.calories),
-      protein: Math.round(raw.protein),
-      carbs: Math.round(raw.carbs),
-      fat: Math.round(raw.fat),
-      fiber: Math.round(raw.fiber),
-    };
-  }, [mealsToday]);
+  // ENG-1361 — the log-a-meal → macros-update contract. Math lives in
+  // `computeDayMacroTotals` (nutrition-core/microNutrientDisplay) so it's
+  // covered by a standalone behavioral test independent of this
+  // component's render tree; see dayMacroTotalsContract.test.ts.
+  const totals = useMemo(() => computeDayMacroTotals(mealsToday), [mealsToday]);
 
   /** Day-summed nutrition_micros — shared by the all-nutrients sheet
    *  (`FullNutrientPanelSheet`, opened from the Nutrients link in
