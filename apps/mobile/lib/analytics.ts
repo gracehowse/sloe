@@ -447,6 +447,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "today_planned_empty_state",
   // ENG-901 — Figma `284:2` inline trust row on paywall. Default-on; off → pills.
   "paywall_trust_inline_v1",
+  // ENG-1381 — when RC offerings fail to load (`subscriptionsUnavailable`),
+  // render the plan selector + auto-renew disclosure with FALLBACK_PRICES +
+  // an indicative-price caveat instead of a stateless "Open App Store" screen.
+  // DEFAULT-OFF — enable only after legal (CMA disclosure w/ indicative price)
+  // + design review. Off → current stateless degraded screen (unchanged).
+  "paywall_fallback_when_unavailable",
   // ENG-1203 — merchandise the free MFP-switch wins (barcode scanning + custom
   // macros) on the paywall comparison matrix. Default-on; off → legacy four-row
   // matrix without the two free callouts. Keep in sync with track.ts (web).

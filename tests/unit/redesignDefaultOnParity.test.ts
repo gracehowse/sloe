@@ -66,6 +66,10 @@ const WEB_ONLY = new Set([
 const MOBILE_ONLY = new Set([
   // Skia hero ring — native-only; web uses SVG.
   "ring_skia_v1",
+  // ENG-1381 — RC/IAP degraded-paywall fallback. iOS-only (the RevenueCat
+  // `subscriptionsUnavailable` state is native-IAP-specific; web billing is
+  // Stripe), so this flag legitimately lives only in the mobile registry.
+  "paywall_fallback_when_unavailable",
   // ENG-1097 — Today import nudge flat white card (iOS-only surface).
   "import_nudge_flat_white_v1",
   // ENG-898 — CreateRecipeActionSheet 2×2 grid; web has no action sheet surface.

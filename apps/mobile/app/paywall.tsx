@@ -232,11 +232,14 @@ export default function PaywallScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id;
   const haptics = useHaptics();
-  const params = useLocalSearchParams<{ from?: string | string[] }>();
+  const params = useLocalSearchParams<{ from?: string | string[]; forceDegraded?: string }>();
   const paywallFrom = useMemo(
     () => normalisePaywallFrom(params.from),
     [params.from],
   );
+  // ENG-1381 — __DEV__-only affordance (`?forceDegraded=1`) to reproduce the
+  // RC-unavailable state in the sim; never reachable in a release build.
+  const forceDegraded = __DEV__ && params.forceDegraded === "1";
 
   // Photo-hero height (Figma `284:2`) — ~44% of the screen before
   // scroll, clamped so very tall/short devices stay balanced. The hero
@@ -254,13 +257,10 @@ export default function PaywallScreen() {
   const [restoring, setRestoring] = useState(false);
   const [offeringsReady, setOfferingsReady] = useState(false);
   const [earlyRedirected, setEarlyRedirected] = useState(false);
-  // ENG-698: unify to monthly default behind `paywall-default-monthly`;
-  // annual is the fallback so annual-only SKUs still show the trial. The
-  // lock-period effect below overrides when only one period is
-  // provisioned. Lazy initializer runs synchronously (no flash).
-  // ENG-1241 (Decision 4): onboarding "See Pro" entry defaults to ANNUAL
-  // regardless of the flag, so the trial-eligible SKU is preselected and
-  // the "Try Pro free for 7 days" headline is what's shown.
+  // ENG-698 — default monthly behind `paywall-default-monthly`, annual fallback
+  // (annual-only SKUs still show the trial); lock-period effect overrides when
+  // one period is provisioned. ENG-1241 — onboarding "See Pro" defaults ANNUAL
+  // regardless of the flag so the trial-eligible SKU is preselected.
   const [billing, setBilling] = useState<BillingPeriod>(() =>
     paywallFrom === "onboarding"
       ? "annual"
@@ -268,18 +268,11 @@ export default function PaywallScreen() {
         ? "monthly"
         : "annual",
   );
-  // PR-01 (audit 2026-04-28): single Pro card, single focused tier.
-  // The state retains the type contract for the analytics emits but
-  // never mutates — focusedTier is always `"pro"` after the Base
-  // TierCard removal. Kept as state (rather than a const) so the
-  // analytics deduping logic that compares `tier !== focusedTier`
-  // continues to short-circuit cleanly.
+  // PR-01 — single Pro card. `focusedTier` never mutates (always "pro" after
+  // the Base TierCard removal) but stays state for the analytics dedup contract.
   const [focusedTier, setFocusedTier] = useState<"pro">("pro");
   void setFocusedTier;
-  // T22 (full-sweep 2026-04-24): dedup `paywall_viewed` by tier within
-  // a single mount. The audit flagged that bouncing between tiers
-  // re-fires the same `tier: "pro"` event on every return, inflating
-  // F2's denominator. Each (mount, tier) fires once.
+  // T22 — dedup `paywall_viewed` by tier within a mount (each (mount, tier) once).
   const viewedTiersRef = useRef<Set<string>>(new Set());
   const trialReminderRef = useRef<TrialEndReminderPaywallBlockHandle>(null);
 
@@ -382,7 +375,8 @@ export default function PaywallScreen() {
         errored = true;
       }
       if (cancelled) return;
-      setPackages(pkgs);
+      // ENG-1381 — dev affordance forces the RC-unavailable branch for sim capture.
+      setPackages(forceDegraded ? [] : pkgs);
       setOfferingsReady(true);
       // ENG-101 (2026-05-13): classify IAP wiring state so PostHog
       // can alarm on builds that don't resolve to `ok`. Fires once
@@ -422,7 +416,7 @@ export default function PaywallScreen() {
     return () => {
       cancelled = true;
     };
-  }, [userId, paywallFrom, router]);
+  }, [userId, paywallFrom, router, forceDegraded]);
 
   // Resolve packages per tier × period. Uses classifyPackage so the
   // logic is resilient to custom RC identifiers.
@@ -472,6 +466,15 @@ export default function PaywallScreen() {
 
   const trialApplies = billing === "annual"; // 7-day trial only on Pro annual
   const subscriptionsUnavailable = offeringsReady && packages.length === 0;
+  // ENG-1381 — flag-gated (default OFF) fallback for the RC-degraded branch:
+  // render the plan selector + disclosure (both already FALLBACK_PRICES-capable,
+  // just gated off) instead of a stateless screen; `effHas*` force both rows on
+  // (no live packages). Enable only after legal + design review (see PR).
+  const fallbackWhenUnavailable =
+    subscriptionsUnavailable && isFeatureEnabled("paywall_fallback_when_unavailable");
+  const showPricedBlocks = offeringsReady && (!subscriptionsUnavailable || fallbackWhenUnavailable);
+  const effHasAnnual = hasAnyAnnual || fallbackWhenUnavailable;
+  const effHasMonthly = hasAnyMonthly || fallbackWhenUnavailable;
 
   // DC4 (premium-bar audit 2026-05-14): platform-correct trust chips
   // resolved once and threaded into the TierCard so the cancellation
@@ -821,10 +824,15 @@ export default function PaywallScreen() {
       Platform.OS === "ios"
         ? "Cancel anytime in Settings > Apple ID > Subscriptions."
         : "Cancel anytime in Google Play > Payments & subscriptions.";
+    // ENG-1381 — fallback price is FALLBACK_PRICES (indicative), not live RC,
+    // so the CMA disclosure says so. Off → no caveat (live price stated).
+    const indicativeCaveat = fallbackWhenUnavailable
+      ? " Live pricing is temporarily unavailable — the amount shown is indicative and the exact price is confirmed at checkout."
+      : "";
     if (trialApplies && currentProPkg) {
-      return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
+      return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.${indicativeCaveat}`;
     }
-    return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
+    return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.${indicativeCaveat}`;
   })();
 
   // ─── Styles ─────────────────────────────────────────────────────
@@ -1098,19 +1106,12 @@ export default function PaywallScreen() {
             the first prominent control after the headline (testers scrolled past
             it when the trust strip led); trust strip follows so it still sits
             above the tier card. */}
-        {/* Plan selector (Figma `284:2`) — Annual (BEST VALUE, computed
-            savings, per-month math, selected clay border) / Monthly. The
-            two-row selector replaces the segmented toggle but drives the
-            SAME `billing` state via `onToggleBilling`, so every
-            downstream behaviour (trial-applies, current package, CTA,
-            `paywall_period_changed` emit) is unchanged. Prices are the
-            RESOLVED RC `priceString` (or FALLBACK_PRICES during load) —
-            never hardcoded, so Apple's currency + VAT-inclusive display
-            is preserved. The savings badge + per-month line are computed
-            from those same resolved strings. The screen's lock-to-
-            single-period logic hides the missing row when only one
-            period is provisioned (`hasAnyAnnual` / `hasAnyMonthly`). */}
-        {offeringsReady && !subscriptionsUnavailable && (hasAnyAnnual || hasAnyMonthly) ? (() => {
+        {/* Plan selector (Figma `284:2`) — Annual (BEST VALUE + savings) /
+            Monthly, driving the SAME `billing` state via `onToggleBilling`.
+            Prices are the resolved RC `priceString` (or FALLBACK_PRICES) —
+            never hardcoded, preserving Apple's currency + VAT display. The
+            `effHasAnnual`/`effHasMonthly` lock hides a missing period row. */}
+        {showPricedBlocks && (effHasAnnual || effHasMonthly) ? (() => {
           const annualStr = proAnnual?.product.priceString ?? FALLBACK_PRICES.proAnnual;
           const monthlyStr = proMonthly?.product.priceString ?? FALLBACK_PRICES.proMonthly;
           // Savings badge: prefer the live resolved-price computation;
@@ -1128,8 +1129,8 @@ export default function PaywallScreen() {
               monthlyPriceString={monthlyStr}
               savingsBadge={savingsBadge}
               annualPerMonthLine={annualPerMonthLine}
-              showAnnual={hasAnyAnnual}
-              showMonthly={hasAnyMonthly}
+              showAnnual={effHasAnnual}
+              showMonthly={effHasMonthly}
             />
           );
         })() : null}
@@ -1145,7 +1146,7 @@ export default function PaywallScreen() {
           primarySoftColor={accent.primarySoft}
         />
 
-        {offeringsReady && !subscriptionsUnavailable ? (
+        {showPricedBlocks ? (
           <Text
             testID="paywall-nutrition-estimate-note"
             style={styles.nutritionEstimateNote}
@@ -1154,12 +1155,10 @@ export default function PaywallScreen() {
           </Text>
         ) : null}
 
-        {/* Auto-renew disclosure (UK CMA). Rendered BEFORE the "Continue
-         *  for free" bail-out and BEFORE the trial timeline so the user
-         *  sees the composite price + renewal + trial/charge date + cancel
-         *  path before committing. Prominent border + body-size text, not
-         *  a tiny grey line. */}
-        {offeringsReady && !subscriptionsUnavailable ? (
+        {/* Auto-renew disclosure (UK CMA) — before the "Continue for free"
+            bail-out so the price + renewal + trial/charge + cancel path is
+            seen before committing. */}
+        {showPricedBlocks ? (
           <Text
             testID="paywall-autorenew-disclosure"
             style={styles.disclosure}
