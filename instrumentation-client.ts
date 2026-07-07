@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { redactPII, stripToCore } from "./src/lib/observability/sentryRedaction";
+import { resolveSentryEnvironment } from "./src/lib/observability/sentryEnvironment";
 
 /**
  * Consent posture (L2, 2026-04-21 + D-2026-05-14): Sentry is non-
@@ -64,6 +65,10 @@ function preConsentCaptureEnabled(): boolean {
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  // ENG-1404 — environment tag from NEXT_PUBLIC_VERCEL_ENV so browser events
+  // are bucketed by deploy env, not lumped under NODE_ENV (see
+  // src/lib/observability/sentryEnvironment.ts).
+  environment: resolveSentryEnvironment(),
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.08,
   enabled: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
   enableLogs: true,

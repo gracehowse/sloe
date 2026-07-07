@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { redactPII } from "./src/lib/observability/sentryRedaction";
+import { resolveSentryEnvironment } from "./src/lib/observability/sentryEnvironment";
 
 /**
  * Server-side Sentry has no cookie banner; a request that reached an
@@ -15,6 +16,10 @@ import { redactPII } from "./src/lib/observability/sentryRedaction";
  */
 Sentry.init({
   dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
+  // ENG-1404 — tag events by deploy environment (VERCEL_ENV) so prod alerting
+  // isn't polluted by preview/dev noise. Without this Sentry falls back to
+  // NODE_ENV, which reads "production" on Vercel preview builds too.
+  environment: resolveSentryEnvironment(),
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.08,
   enabled: Boolean(process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN),
   enableLogs: true,

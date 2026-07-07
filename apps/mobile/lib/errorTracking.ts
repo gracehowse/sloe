@@ -16,6 +16,11 @@ export function initErrorTracking(): void {
   if (__DEV__ || initialized || !DSN) return;
   Sentry.init({
     dsn: DSN,
+    // ENG-1404 — explicit environment tag for parity with the web Sentry
+    // configs. Init returns early under `__DEV__` (above), so any event that
+    // actually reaches Sentry is from a release build (TestFlight / App
+    // Store) — "production" is the correct, and only reachable, bucket.
+    environment: "production",
     tracesSampleRate: 0.2,
     sendDefaultPii: false,
     enabled: !__DEV__,
