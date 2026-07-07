@@ -6,6 +6,8 @@ import { AnalyticsProvider } from "../src/app/components/AnalyticsProvider.tsx";
 import { AppDataProvider } from "../src/context/AppDataContext.tsx";
 import { AuthSessionProvider } from "../src/context/AuthSessionContext.tsx";
 import { NotificationProvider } from "../src/context/NotificationContext.tsx";
+import { HouseholdProvider } from "../src/context/HouseholdContext.tsx";
+import { RecipeCollectionsProvider } from "../src/context/RecipeCollectionsContext.tsx";
 import { Toaster } from "../src/app/components/ui/sonner.tsx";
 import { CookieConsent } from "../src/app/components/CookieConsent.tsx";
 import { ServiceWorkerRegistration } from "../src/app/components/ServiceWorkerRegistration.tsx";
@@ -16,12 +18,16 @@ export function Providers({ children }: { children: ReactNode }) {
       <AnalyticsProvider>
         <AuthSessionProvider>
           <NotificationProvider>
-            <AppDataProvider>
-              {children}
-              <Toaster richColors position="top-center" />
-              <CookieConsent />
-              <ServiceWorkerRegistration />
-            </AppDataProvider>
+            <HouseholdProvider>
+              <RecipeCollectionsProvider>
+                <AppDataProvider>
+                  {children}
+                  <Toaster richColors position="top-center" />
+                  <CookieConsent />
+                  <ServiceWorkerRegistration />
+                </AppDataProvider>
+              </RecipeCollectionsProvider>
+            </HouseholdProvider>
           </NotificationProvider>
         </AuthSessionProvider>
       </AnalyticsProvider>
