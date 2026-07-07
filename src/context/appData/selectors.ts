@@ -21,6 +21,7 @@
  * indirection, and belongs in a dedicated `use<Feature>()` hook instead.
  */
 import { useAppData } from "../AppDataContext.tsx";
+import { useHousehold } from "../HouseholdContext.tsx";
 
 /** Notifications inbox: unread count, prefs, and the read/clear actions. */
 export function useNotificationsData() {
@@ -168,8 +169,13 @@ export function useJournalData() {
   };
 }
 
-/** Household: the active household id and member count (Honeydew parity, ENG-849). */
+/**
+ * Household: the active household id and member count (Honeydew parity,
+ * ENG-849). ENG-1364 (phase 2) — reads directly from `HouseholdContext` now
+ * that household has been split out of the `AppDataContext` monolith. The
+ * hook's signature/return shape is unchanged, so every phase-1 consumer of
+ * `useHouseholdData()` sees zero code change from this rewiring.
+ */
 export function useHouseholdData() {
-  const { activeHouseholdId, householdMemberCount } = useAppData();
-  return { activeHouseholdId, householdMemberCount };
+  return useHousehold();
 }

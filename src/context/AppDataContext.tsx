@@ -34,6 +34,7 @@ import {
 } from "../lib/nutrition/dayTargetSchedule.ts";
 import { type AppNotification, type NotificationPrefs } from "../types/notifications.ts";
 import { useNotifications } from "./NotificationContext.tsx";
+import { useHousehold } from "./HouseholdContext.tsx";
 import {
   DEFAULT_PLANNER_BANDS,
   mealPlannerSlotsFromMealType,
@@ -81,7 +82,6 @@ import { useShoppingListState } from "./appData/useShoppingListState.ts";
 import { useRecipeCollectionsState } from "./appData/useRecipeCollectionsState.ts";
 import type { RecipeCollection } from "../lib/recipes/recipeCollections.ts";
 import { fingerprintMealPlanForShopping } from "../lib/planning/mealPlanFingerprint.ts";
-import { getMyHousehold } from "../lib/household/householdClient.ts";
 import {
   shoppingScopeFor,
   shoppingScopeInsertStamp,
@@ -507,35 +507,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKey(new Date()));
 
-  // Honeydew parity (2026-04-30) — resolve the user's active household
-  // once on auth, and re-resolve after a join/leave (best-effort: we
-  // don't yet emit a global "household changed" event, but the
-  // HouseholdSettingsPage hard-reloads on those flows so the next
-  // mount picks up the new id). Drives scope on
-  // `useShoppingListState` and on the local generate / clear paths.
-  const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
-  const [householdMemberCount, setHouseholdMemberCount] = useState(1);
-  useEffect(() => {
-    if (!authedUserId) { setActiveHouseholdId(null); setHouseholdMemberCount(1); return; }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const { data } = await getMyHousehold(supabase as unknown as { from: (t: string) => unknown; rpc: (f: string, p: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> }, authedUserId);
-        if (!cancelled) {
-          const hh = (data as { household?: { id?: string } | null; members?: unknown[] } | null)?.household;
-          setActiveHouseholdId(hh?.id ?? null);
-          const memberLen = (data as { members?: unknown[] } | null)?.members?.length ?? 0;
-          setHouseholdMemberCount(memberLen > 0 ? memberLen : 1);
-        }
-      } catch {
-        if (!cancelled) {
-          setActiveHouseholdId(null);
-          setHouseholdMemberCount(1);
-        }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [authedUserId]);
+  // ENG-1364 (phase 2) — household is now owned by `HouseholdContext`
+  // (mounted above `AppDataProvider` in `app/providers.tsx`, same pattern as
+  // `NotificationContext`). `AppDataContext` reads it through the hook below
+  // and re-exposes the two fields on its own value for the raw consumers
+  // that haven't migrated to `useHouseholdData()` yet (see the phase-1
+  // selector in `context/appData/selectors.ts`) — a deliberate, temporary
+  // passthrough, not a new permanent pattern.
+  const { activeHouseholdId, householdMemberCount } = useHousehold();
 
   const shoppingScope: ShoppingScope | null = useMemo(() => {
     if (!authedUserId) return null;
