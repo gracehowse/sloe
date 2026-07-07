@@ -4,9 +4,8 @@ import { WifiOff } from "lucide-react";
 
 import { toast } from "sonner";
 import { useAppData } from "../../context/AppDataContext.tsx";
-import { normalizeMacroTargets, DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
-import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
-import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
+import { normalizeMacroTargets } from "../../types/profile.ts";
+import { useNutritionTrackerProfile } from "../../lib/nutrition/useNutritionTrackerProfile.ts";
 import { computeActivityBonusKcal } from "../../lib/nutrition/activityBonus.ts";
 import { scaleMacroTargetsForCalorieBudget } from "../../lib/nutrition/scaleMacroTargetsForCalorieBudget.ts";
 import {
@@ -26,7 +25,6 @@ import { useAiMethodTooltip } from "../../lib/today/useAiMethodTooltip.ts";
 import {
   buildWeeklyCheckinContent,
   shouldShowWeeklyCheckin,
-  type WeeklyCheckinConfidence,
   type WeeklyCheckinContent,
 } from "../../lib/nutrition/weeklyCheckin.ts";
 import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
@@ -56,20 +54,13 @@ import {
   localTimeInputValueFromIso,
   parseLocalTimeInput,
 } from "../../lib/nutrition/mealEatenAt.ts";
-import { type OffProductMacros } from "../../lib/openFoodFacts/fetchProductByBarcode.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
-import {
-  computeProtectedStreak,
-  readFreezeLedger,
-  type FreezeLedger,
-} from "../../lib/nutrition/streakFreeze.ts";
+import { computeProtectedStreak } from "../../lib/nutrition/streakFreeze.ts";
 import { didStreakReset } from "../../lib/nutrition/streakReset.ts";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
 } from "../../lib/nutrition/weekSummaryWindow.ts";
-import { scaleCaffeineAlcohol } from "../../lib/nutrition/scaleCaffeineAlcoholForGrams.ts";
-import { scaleMicrosForGrams } from "../../lib/openFoodFacts/parseOffMicros.ts";
 import { clampPortionMultiplier, scaledMacro } from "../../lib/nutrition/portionMultiplier.ts";
 import { scaleMicrosPerServing } from "../../lib/nutrition/scaleMicrosPerServing";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
@@ -85,19 +76,14 @@ import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
 import { useWeeklyRecap } from "./suppr/use-weekly-recap";
+import { useBarcodeLogging } from "./suppr/use-barcode-logging";
 import { LogSheet } from "./suppr/log-sheet";
 // Phase 4 / B3.Y — desktop modal mode for the LogSheet.
 import { useIsDesktop } from "./ui/use-mobile";
 import { NorthStarBlockHost } from "./suppr/north-star-block-host";
 import { type NorthStarRecipe } from "../../lib/nutrition/northStarSuggestion";
 import { buildPostLogSuggestion } from "../../lib/nutrition/postLogSuggestion";
-import {
-  dayActivityBudgetAddonWeb,
-  loadRecentFoods,
-  normalizeTrackedDashboardMacros,
-  parseStepsDayMap,
-  pushRecentFood,
-} from "../../lib/nutrition/trackerLocalState.ts";
+import { dayActivityBudgetAddonWeb } from "../../lib/nutrition/trackerLocalState.ts";
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
@@ -129,25 +115,12 @@ import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayRecentsRow } from "./suppr/today-recents-row";
 import { MealNutritionDialog } from "./suppr/meal-nutrition-dialog";
-import { ShareCommunityDialog } from "./suppr/ShareCommunityDialog";
-import { BarcodeSavedAckDialog } from "./suppr/BarcodeSavedAckDialog";
-import { COMPLETE_DAY_V3_COPY } from "../../lib/completeDayV3";
-import {
-  submitFoodCorrection,
-  type FoodCorrectionInput,
-} from "../../lib/foodCorrection/submitFoodCorrection";
 import { EditMealDialog } from "./suppr/edit-meal-dialog";
 import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
 import { mealImageFields } from "../../lib/nutrition/foodHistory";
-import { TodayBarcodeDialog, type TodayBarcodeConfirmPayload } from "./suppr/today-barcode-dialog";
-import {
-  CreateCustomFoodDialog,
-  type CreateCustomFoodPayload,
-} from "./suppr/create-custom-food-dialog";
-import { createCustomFood } from "../../lib/nutrition/customFoodsClient";
 import { TodayDateHeader } from "./suppr/today-date-header";
 import { TodayDeficitInsight } from "./suppr/today-deficit-insight";
 import { TodayWeeklyInsightMobileCard } from "./suppr/today-weekly-insight-mobile-card";
@@ -198,8 +171,6 @@ import { isMealSlot, type MealSlot } from "../../lib/nutrition/mealSlots";
 import {
   enabledMealSlotLabels,
   mealSectionSortOrder,
-  parseUserMealSlotConfig,
-  type UserMealSlotConfig,
 } from "../../lib/nutrition/userMealSlotConfig";
 import {
   journalSlotFromMealTypes,
@@ -260,8 +231,6 @@ export {
 // open bucketed differently on web vs mobile. Both now agree via the
 // shared ladder. Net behaviour change: a 10:30am open now seeds
 // Breakfast (was Lunch); a 2:30pm open now seeds Lunch (was Snacks).
-
-type FastingSessionRow = { start: string; end: string | null };
 
 interface NutritionTrackerProps {
   userTier: UserTier;
@@ -326,6 +295,45 @@ export const NutritionTracker = memo(function NutritionTracker({
   } = useAppData();
   void _extraCaffeineByDay; // unused — caffeine shown only via today's number
 
+  const { authedUserId, authUserCreatedAt } = useAuthSession();
+  // ENG-1360 (first extraction pass) — the profiles-row fetch (weight,
+  // goal, TDEE/maintenance, activity basics, meal-slot config, steps,
+  // fasting, streak-freeze ledger, tracked macros, weekly check-in
+  // shown-at) moved to `useNutritionTrackerProfile`. Same query, same
+  // parsing, same setters — just relocated so this component's local
+  // state list shrinks. `useAuthSession()` moved up alongside it
+  // (previously declared much further down the component) so
+  // `authedUserId` is available before this call and before the several
+  // early memos (`enabledMealSlots`, `protectedStreakInfo`, etc.) that
+  // read this hook's outputs.
+  const {
+    weekStartDay,
+    freezeLedger,
+    freezeBudgetMax,
+    trackedDashboardMacros,
+    userMealSlotConfig,
+    stepsByDay,
+    dailyStepsGoal,
+    fastingSessions,
+    fastingOptedIn,
+    profileWeightKg,
+    profileGoal,
+    profilePlanPace,
+    profileMaintenanceTdee,
+    profileWeightKgByDay,
+    weeklyCheckinShownAt,
+    setWeeklyCheckinShownAt,
+    profileFormulaTdee,
+    profileAdaptiveTdeeRaw,
+    profileAdaptiveTdeeConfidenceRaw,
+    profileMaintenanceSource,
+    profileMaintenanceConfidence,
+    profileSex,
+    profileHeightCm,
+    profileAge,
+    profileActivityLevel,
+  } = useNutritionTrackerProfile(authedUserId);
+
   // ENG-798 (Redesign — Design Direction 2026) — gate the Today win-moment
   // detection until after first paint so the initial snapshot is captured
   // as the baseline (the hook treats the first snapshot as `prev` and never
@@ -362,11 +370,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   // screen mode.
   const [slotNutritionTarget, setSlotNutritionTarget] = useState<string | null>(null);
   const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
-  // ENG-1247 — community-contribution opt-in: set after a not-found barcode is
-  // saved as a private custom food (when `barcode_community_contribution` is on)
-  // to open the share dialog. null = closed.
-  const [shareCommunityInput, setShareCommunityInput] = useState<FoodCorrectionInput | null>(null);
-  const [barcodeSavedAckName, setBarcodeSavedAckName] = useState<string | null>(null);
   const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
   // ENG-751 — persisted AI/photo/voice per-item snapshot rows for the open
   // day's entries. Gated by the display flag; flag-OFF leaves this empty so the
@@ -376,9 +379,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [mealSlot, setMealSlot] = useState("Breakfast");
-  const [userMealSlotConfig, setUserMealSlotConfig] = useState<UserMealSlotConfig | null>(
-    null,
-  );
   const enabledMealSlots = useMemo(
     () => enabledMealSlotLabels(userMealSlotConfig),
     [userMealSlotConfig],
@@ -559,7 +559,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [manualFat, setManualFat] = useState(0);
   const [manualFiber, setManualFiber] = useState(0);
   const [manualWater, setManualWater] = useState(0);
-  const [barcodeOpen, setBarcodeOpen] = useState(false);
   // Phase 3 / B2.1 (D-2026-04-27-15) — canonical LogSheet open state.
   // The web LogSheet wires its sub-tabs to existing flows (FoodSearch
   // dialog, barcode dialog, voice dialog, photo dialog) rather than
@@ -612,32 +611,10 @@ export const NutritionTracker = memo(function NutritionTracker({
   // centred 480×640 modal per spec §Surface B; below that, the
   // primitive falls back to the mobile bottom-sheet layout.
   const isDesktop = useIsDesktop();
-  const [barcodeValue, setBarcodeValue] = useState("");
-  const [barcodeBusy, setBarcodeBusy] = useState(false);
-  const [barcodePreview, setBarcodePreview] = useState<OffProductMacros | null>(null);
-  /**
-   * F-156 PR-2 (2026-05-10) — barcode-not-found → "Add as custom food"
-   * handoff. Carries the scanned barcode forward to the
-   * CreateCustomFoodDialog so the saved row's `barcode` column is
-   * set; the next scan resolves successfully.
-   */
-  const [customFoodFromBarcode, setCustomFoodFromBarcode] = useState<string | null>(null);
-  const [barcodeGramsStr, setBarcodeGramsStr] = useState("100");
-  const barcodeGramsParsed = useMemo(() => {
-    const n = Number.parseFloat(barcodeGramsStr.replace(",", ".").trim());
-    if (!Number.isFinite(n) || n <= 0) return 100;
-    return Math.min(10_000, Math.round(n * 10) / 10);
-  }, [barcodeGramsStr]);
-  const [barcodeTitleOverride, setBarcodeTitleOverride] = useState("");
-  const [barcodeMacrosManual, setBarcodeMacrosManual] = useState(false);
-  const [barcodeEditCal, setBarcodeEditCal] = useState("");
-  const [barcodeEditPro, setBarcodeEditPro] = useState("");
-  const [barcodeEditCarb, setBarcodeEditCarb] = useState("");
-  const [barcodeEditFat, setBarcodeEditFat] = useState("");
-  const [trackedDashboardMacros, setTrackedDashboardMacros] = useState<string[]>(["protein", "carbs", "fat"]);
-  const [recentFoods, setRecentFoods] = useState<string[]>(() =>
-    typeof window !== "undefined" ? loadRecentFoods() : [],
-  );
+  // ENG-1360 — the barcode-scan → custom-food-save fallback →
+  // community-share opt-in → saved-ack dialog cluster (all local state +
+  // the four dialogs) moved to `useBarcodeLogging` below, near where
+  // `mealSlot`/`timeLabel`/`addLoggedMeal` are available.
   /**
    * Post-ship #5 (C1a, 2026-04-18) — shared `<FoodSearch>` host.
    * Replaces the former inline USDA-only search tab inside
@@ -654,6 +631,17 @@ export const NutritionTracker = memo(function NutritionTracker({
   // legacy free-tier inline text dialog and `<input type="file">` upload.
   const [voiceLogOpen, setVoiceLogOpen] = useState(false);
   const [photoLogOpen, setPhotoLogOpen] = useState(false);
+  // ENG-1360 (first extraction pass) — barcode-scan → custom-food-save
+  // fallback → community-share opt-in → saved-ack dialog cluster. Same
+  // four dialogs, same state, same handlers as before — just relocated.
+  const { dialogs: barcodeDialogs } = useBarcodeLogging({
+    authedUserId,
+    mealSlot,
+    onMealSlotChange: setMealSlot,
+    timeLabel,
+    addLoggedMeal,
+    onOpenPhotoFallback: () => setPhotoLogOpen(true),
+  });
   const [aiPaywallFeature, setAiPaywallFeature] = useState<AiPaywallFeature | null>(null);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
   const [whyThisNumberOpen, setWhyThisNumberOpen] = useState(false);
@@ -662,53 +650,14 @@ export const NutritionTracker = memo(function NutritionTracker({
    *  `TodayDashboardMacroTiles` after the Today-canvas
    *  `TodayMicrosWidget` was removed (revert PR #30). */
   const [fullNutrientPanelOpen, setFullNutrientPanelOpen] = useState(false);
-  const [profileWeightKg, setProfileWeightKg] = useState<number | null>(null);
-  const [profileGoal, setProfileGoal] = useState<string | null>(null);
-  /** `plan_pace` preset enum from `profiles.plan_pace` — used by the
-   *  WhyThisNumberDialog to compute the user's weekly kg pace. Stored
-   *  loosely as `string | null` to mirror the column's nullable nature. */
-  const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
-  const [profileMaintenanceTdee, setProfileMaintenanceTdee] = useState<number | null>(null);
-  const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Mirrors mobile state shape.
   // `weeklyCheckinHandledRef` suppresses re-fires within the session.
-  const [weeklyCheckinShownAt, setWeeklyCheckinShownAt] = useState<string | null>(null);
   const [weeklyCheckinOpen, setWeeklyCheckinOpen] = useState(false);
   const [weeklyCheckinContent, setWeeklyCheckinContent] =
     useState<WeeklyCheckinContent | null>(null);
-  const [profileFormulaTdee, setProfileFormulaTdee] = useState<number | null>(null);
-  // Raw adaptive TDEE + confidence from the profile row. Distinct from
-  // `profileMaintenanceTdee`, which is the resolver-collapsed value
-  // (adaptive when confident, else formula). The weekly check-in gate
-  // wants the adaptive value specifically.
-  const [profileAdaptiveTdeeRaw, setProfileAdaptiveTdeeRaw] = useState<number | null>(null);
-  const [profileAdaptiveTdeeConfidenceRaw, setProfileAdaptiveTdeeConfidenceRaw] =
-    useState<WeeklyCheckinConfidence | null>(null);
   const weeklyCheckinHandledRef = useRef(false);
-  // F-3 (2026-04-19) — track the source + confidence so the Activity
-  // Bonus card's info popover can render the canonical copy shared
-  // with Progress. `null` source means "popover will fall back to the
-  // richer BMR × multiplier breakdown" (for users on the narrow
-  // fallback profile select where adaptive columns aren't available).
-  const [profileMaintenanceSource, setProfileMaintenanceSource] = useState<
-    "measured" | "adaptive" | "formula" | null
-  >(null);
-  const [profileMaintenanceConfidence, setProfileMaintenanceConfidence] = useState<
-    "low" | "medium" | "high" | null
-  >(null);
-  // Cached profile basics (sex / height / age / activity_level) needed
-  // by the activity-bonus info popover so it can show "BMR × multiplier"
-  // without a second profile fetch (TestFlight `AAtW7dYcCBPyBdsMU6UqiQQ`,
-  // 2026-04-18).
-  const [profileSex, setProfileSex] = useState<"male" | "female" | "unspecified" | null>(null);
-  const [profileHeightCm, setProfileHeightCm] = useState<number | null>(null);
-  const [profileAge, setProfileAge] = useState<number | null>(null);
-  const [profileActivityLevel, setProfileActivityLevel] = useState<
-    "sedentary" | "light" | "moderate" | "active" | "very_active" | null
-  >(null);
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
-  const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
   const [activityBudgetDiscoverDismissed, setActivityBudgetDiscoverDismissed] = useState(true);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -720,13 +669,9 @@ export const NutritionTracker = memo(function NutritionTracker({
       setActivityBudgetDiscoverDismissed(false);
     }
   }, []);
-  // Batch 4.11 — streak freeze state. Ledger is loaded from `profiles`
-  // alongside `week_start_day`; budget defaults to 3.
-  const [freezeLedger, setFreezeLedger] = useState<FreezeLedger>({
-    earnedAt: [],
-    usedHistory: [],
-  });
-  const [freezeBudgetMax, setFreezeBudgetMax] = useState<number>(3);
+  // Batch 4.11 — streak freeze state (`freezeLedger` / `freezeBudgetMax`
+  // now come from `useNutritionTrackerProfile` above — loaded from
+  // `profiles` alongside `week_start_day`; budget defaults to 3).
   // 2026-04-18 audit H7 — `DayStrip` renders a ❄ glyph on each tile whose
   // date was absorbed by a freeze. The parent computes the set once so
   // both DayStrip instances (day + week view) read the same value.
@@ -764,16 +709,10 @@ export const NutritionTracker = memo(function NutritionTracker({
       }
     }
   }, [protectedStreakLength]);
-  const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
-  const [dailyStepsGoal, setDailyStepsGoal] = useState(DEFAULT_STEPS_GOAL);
-  const [fastingSessions, setFastingSessions] = useState<FastingSessionRow[]>([]);
+  // `stepsByDay` / `dailyStepsGoal` / `fastingSessions` / `fastingOptedIn`
+  // now come from `useNutritionTrackerProfile` above.
   const [fastingNowTick, setFastingNowTick] = useState(() => Date.now());
-  // F-109 (TestFlight `AFHtAQRAWad1w8bDvSgZkUg`, 2026-05-06): web parity
-  // for the IF opt-in gate. The "Start fast" idle pill on Today only
-  // renders when `profiles.fasting_window != null` (Grace, 2026-05-07).
-  const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
   const calendarInputRef = useRef<HTMLInputElement>(null);
-  const { authedUserId, authUserCreatedAt } = useAuthSession();
   // ENG-805 — in-feed banner dismissal (web parity with mobile AsyncStorage gate).
   const [checkinBannerDismissed, setCheckinBannerDismissed] = useState<boolean | null>(
     null,
@@ -1401,167 +1340,9 @@ export const NutritionTracker = memo(function NutritionTracker({
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    if (!authedUserId) return;
-    supabase
-      .from("profiles")
-      .select(
-        "weight_kg, weight_kg_by_day, goal, plan_pace, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, meal_slot_config, week_start_day, steps_by_day, daily_steps_goal, fasting_sessions, fasting_window, tracked_macros, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, last_weekly_checkin_shown_at",
-      )
-      .eq("id", authedUserId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        const wsd = (data as { week_start_day?: string }).week_start_day;
-        if (wsd === "sunday" || wsd === "monday") setWeekStartDay(wsd);
-
-        // Batch 4.11 — freeze ledger loads alongside other profile bits.
-        const rawEarned = (data as { streak_freezes_earned_at?: unknown })
-          .streak_freezes_earned_at;
-        const rawUsed = (data as { streak_freezes_used_history?: unknown })
-          .streak_freezes_used_history;
-        setFreezeLedger(
-          readFreezeLedger({ earnedAt: rawEarned, usedHistory: rawUsed }),
-        );
-        const rawBudget = Number(
-          (data as { streak_freeze_budget_max?: number }).streak_freeze_budget_max,
-        );
-        setFreezeBudgetMax(
-          Number.isFinite(rawBudget) ? Math.max(0, Math.min(10, rawBudget)) : 3,
-        );
-        setTrackedDashboardMacros(
-          normalizeTrackedDashboardMacros((data as { tracked_macros?: unknown }).tracked_macros),
-        );
-        setUserMealSlotConfig(
-          parseUserMealSlotConfig((data as { meal_slot_config?: unknown }).meal_slot_config),
-        );
-        setStepsByDay(parseStepsDayMap((data as { steps_by_day?: unknown }).steps_by_day));
-        const sg = (data as { daily_steps_goal?: number }).daily_steps_goal;
-        const sgN = sg != null ? Number(sg) : DEFAULT_STEPS_GOAL;
-        setDailyStepsGoal(Number.isFinite(sgN) && sgN > 0 ? Math.round(sgN) : DEFAULT_STEPS_GOAL);
-        const fs = (data as { fasting_sessions?: unknown }).fasting_sessions;
-        if (Array.isArray(fs)) {
-          setFastingSessions(fs as FastingSessionRow[]);
-        }
-        // F-109: hydrate the IF opt-in flag from `profiles.fasting_window`.
-        // Non-null = user picked a window (onboarding or /fasting preset
-        // chip) → idle "Start fast" pill renders on Today.
-        const fwRaw = (data as { fasting_window?: unknown }).fasting_window;
-        setFastingOptedIn(typeof fwRaw === "string" && fwRaw.length > 0);
-        const w = data.weight_kg != null ? Number(data.weight_kg) : null;
-        setProfileWeightKg(Number.isFinite(w) ? w : null);
-        setProfileGoal((data as any).goal ?? null);
-        setProfilePlanPace(
-          typeof (data as any).plan_pace === "string" ? (data as any).plan_pace : null,
-        );
-        // Cache basics for the activity-bonus info popover (TestFlight
-        // `AAtW7dYcCBPyBdsMU6UqiQQ`, 2026-04-18).
-        const sexRaw = (data.sex ?? null) as string | null;
-        setProfileSex(
-          sexRaw === "male" || sexRaw === "female" || sexRaw === "unspecified" ? sexRaw : null,
-        );
-        const hCmRaw = data.height_cm != null ? Number(data.height_cm) : null;
-        setProfileHeightCm(Number.isFinite(hCmRaw) && hCmRaw && hCmRaw > 0 ? hCmRaw : null);
-        const ageRaw = data.age != null ? Number(data.age) : null;
-        setProfileAge(Number.isFinite(ageRaw) && ageRaw && ageRaw > 0 ? ageRaw : null);
-        const actRaw = (data.activity_level ?? null) as string | null;
-        if (
-          actRaw === "sedentary" ||
-          actRaw === "light" ||
-          actRaw === "moderate" ||
-          actRaw === "active" ||
-          actRaw === "very_active"
-        ) {
-          setProfileActivityLevel(actRaw);
-        } else {
-          setProfileActivityLevel(null);
-        }
-        // F-3 (2026-04-19, TestFlight `ADFYpDgEEb0QH-j3BXshPTo`):
-        // single source of truth for the Activity Bonus Maintenance
-        // tile + the Progress "Maintenance" card. Previously Today
-        // used raw adaptive with no confidence gate while Progress
-        // used `getEffectiveTDEE`'s gate — two surfaces, two numbers.
-        // `resolveMaintenance` is the shared gate: adaptive wins at
-        // medium/high confidence AND not stale, else formula.
-        const resolved = resolveMaintenance(
-          {
-            adaptive_tdee: (data as any).adaptive_tdee,
-            adaptive_tdee_confidence: (data as any).adaptive_tdee_confidence,
-            adaptive_tdee_updated_at: (data as any).adaptive_tdee_updated_at,
-            measured_tdee: (data as any).measured_tdee,
-            measured_tdee_confidence: (data as any).measured_tdee_confidence,
-            measured_tdee_updated_at: (data as any).measured_tdee_updated_at,
-            sex: (data.sex ?? "unspecified") as any,
-            weight_kg: Number(data.weight_kg),
-            height_cm: Number(data.height_cm),
-            age: Number(data.age),
-            activity_level: (data.activity_level ?? "sedentary") as any,
-          },
-          { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
-        );
-        if (resolved) {
-          setProfileMaintenanceTdee(resolved.kcal);
-          setProfileMaintenanceSource(resolved.source);
-          setProfileMaintenanceConfidence(resolved.confidence);
-          // Capture the Mifflin formula baseline so the weekly check-in
-          // ritual can compute the adaptive-vs-formula delta even when
-          // the resolver landed on adaptive (in which case
-          // `resolved.kcal` is the adaptive value and `formulaKcal` is
-          // the prior baseline).
-          setProfileFormulaTdee(resolved.formulaKcal ?? null);
-        }
-        // Raw adaptive TDEE + confidence — the weekly check-in gate
-        // wants these specifically (resolver-collapsed maintenance
-        // doesn't tell us whether adaptive_tdee itself is medium/high).
-        const aTdeeRaw = (data as { adaptive_tdee?: unknown }).adaptive_tdee;
-        const aTdeeNum =
-          typeof aTdeeRaw === "number"
-            ? aTdeeRaw
-            : aTdeeRaw == null
-              ? null
-              : Number(aTdeeRaw);
-        setProfileAdaptiveTdeeRaw(
-          aTdeeNum != null && Number.isFinite(aTdeeNum) ? aTdeeNum : null,
-        );
-        const aConfRaw = (data as { adaptive_tdee_confidence?: unknown })
-          .adaptive_tdee_confidence;
-        setProfileAdaptiveTdeeConfidenceRaw(
-          aConfRaw === "low" || aConfRaw === "medium" || aConfRaw === "high"
-            ? aConfRaw
-            : null,
-        );
-        // Weekly check-in shown-at hydration. Drives the 6-day cooldown.
-        const lastCheckin = (data as { last_weekly_checkin_shown_at?: unknown })
-          .last_weekly_checkin_shown_at;
-        setWeeklyCheckinShownAt(typeof lastCheckin === "string" ? lastCheckin : null);
-        const wkbdRaw = (data as { weight_kg_by_day?: unknown }).weight_kg_by_day;
-        if (wkbdRaw && typeof wkbdRaw === "object" && !Array.isArray(wkbdRaw)) {
-          const out: Record<string, number> = {};
-          for (const [k, v] of Object.entries(wkbdRaw as Record<string, unknown>)) {
-            const n = typeof v === "number" ? v : Number(v);
-            if (Number.isFinite(n) && n > 0) out[k] = n;
-          }
-          setProfileWeightKgByDay(out);
-        }
-      });
-  }, [authedUserId]);
-
-  const refreshTrackedDashboardMacros = useCallback(async () => {
-    if (!authedUserId) return;
-    const { data } = await supabase.from("profiles").select("tracked_macros").eq("id", authedUserId).maybeSingle();
-    if (data) {
-      setTrackedDashboardMacros(normalizeTrackedDashboardMacros((data as { tracked_macros?: unknown }).tracked_macros));
-    }
-  }, [authedUserId]);
-
-  useEffect(() => {
-    const onVis = () => {
-      if (typeof document === "undefined" || document.visibilityState !== "visible") return;
-      void refreshTrackedDashboardMacros();
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [refreshTrackedDashboardMacros]);
+  // ENG-1360 — the profiles-row fetch + `refreshTrackedDashboardMacros`
+  // visibility-change refetch that used to live here both moved to
+  // `useNutritionTrackerProfile` (called near the top of this component).
 
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== "undefined" ? navigator.onLine : true,
@@ -3525,198 +3306,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
       />
 
-      <TodayBarcodeDialog
-        open={barcodeOpen}
-        onOpenChange={(open) => {
-          setBarcodeOpen(open);
-          if (!open) {
-            setBarcodePreview(null);
-            setBarcodeGramsStr("100");
-            setBarcodeValue("");
-            setBarcodeTitleOverride("");
-            setBarcodeMacrosManual(false);
-            setBarcodeEditCal("");
-            setBarcodeEditPro("");
-            setBarcodeEditCarb("");
-            setBarcodeEditFat("");
-          }
-        }}
-        barcodeValue={barcodeValue}
-        onBarcodeValueChange={setBarcodeValue}
-        barcodeBusy={barcodeBusy}
-        onBarcodeBusyChange={setBarcodeBusy}
-        barcodePreview={barcodePreview}
-        onBarcodePreviewChange={setBarcodePreview}
-        barcodeGramsStr={barcodeGramsStr}
-        onBarcodeGramsStrChange={setBarcodeGramsStr}
-        barcodeGramsParsed={barcodeGramsParsed}
-        barcodeTitleOverride={barcodeTitleOverride}
-        onBarcodeTitleOverrideChange={setBarcodeTitleOverride}
-        barcodeMacrosManual={barcodeMacrosManual}
-        onBarcodeMacrosManualChange={setBarcodeMacrosManual}
-        barcodeEditCal={barcodeEditCal}
-        onBarcodeEditCalChange={setBarcodeEditCal}
-        barcodeEditPro={barcodeEditPro}
-        onBarcodeEditProChange={setBarcodeEditPro}
-        barcodeEditCarb={barcodeEditCarb}
-        onBarcodeEditCarbChange={setBarcodeEditCarb}
-        barcodeEditFat={barcodeEditFat}
-        onBarcodeEditFatChange={setBarcodeEditFat}
-        mealSlot={mealSlot}
-        onMealSlotChange={setMealSlot}
-        recentFoods={recentFoods}
-        onPickRecentFood={(n) => {
-          addLoggedMeal(
-            {
-              name: "Snacks",
-              recipeTitle: n,
-              time: timeLabel,
-              calories: 0,
-              protein: 0,
-              carbs: 0,
-              fat: 0,
-              source: "Manual",
-            },
-            "manual",
-          );
-          setBarcodeOpen(false);
-        }}
-        onConfirm={(payload: TodayBarcodeConfirmPayload) => {
-          pushRecentFood(payload.titleForLog);
-          setRecentFoods(loadRecentFoods());
-          // F-13 (2026-04-19) — auto-track caffeine + alcohol from the
-          // scanned product. OFF surfaces `caffeine_100g` for colas /
-          // energy drinks and `alcohol_100g` for beer / wine / cider.
-          // `scaleCaffeineAlcohol` handles nulls by returning 0, so a
-          // non-stimulant product adds no micros.
-          const { caffeineMg, alcoholG } = scaleCaffeineAlcohol({
-            grams: payload.grams,
-            caffeineMgPer100g: payload.product.caffeineMgPer100g ?? null,
-            alcoholGPer100g: payload.product.alcoholGPer100g ?? null,
-          });
-          // F-79 — full OFF micro set scaled for `grams`, merged with
-          // caffeine/alcohol overrides. Mirrors mobile barcode commit.
-          const explicitMicros: Record<string, number> = {};
-          if (caffeineMg > 0) explicitMicros.caffeineMg = caffeineMg;
-          if (alcoholG > 0) explicitMicros.alcoholG = alcoholG;
-          const micros = scaleMicrosForGrams(
-            (payload.product as { microsPer100g?: Record<string, number> }).microsPer100g ?? {},
-            payload.grams,
-            explicitMicros,
-          );
-          addLoggedMeal(
-            {
-              name: mealSlot,
-              recipeTitle: `${payload.titleForLog} (${payload.portion})`,
-              time: timeLabel,
-              calories: payload.calories,
-              protein: payload.protein,
-              carbs: payload.carbs,
-              fat: payload.fat,
-              source: payload.adjusted ? "Open Food Facts (adjusted)" : "Open Food Facts",
-              ...(payload.fiberG != null && payload.fiberG > 0 ? { fiberG: payload.fiberG } : {}),
-              ...(Object.keys(micros).length > 0 ? { micros } : {}),
-            },
-            "barcode",
-          );
-          setBarcodeOpen(false);
-          toast.success("Logged from barcode");
-          track(AnalyticsEvents.barcode_lookup, { ok: true, adjusted: payload.adjusted });
-        }}
-        onPhotoFallback={() => {
-          // Audit 2026-04-30 (Lose It "Closer" parity, Fix 2) — when
-          // the barcode lookup fails we offer a soft handoff to the
-          // AI photo log. 2026-05-02: open for any tier; the in-dialog
-          // quota line + 403 paywall handoff handle gating now.
-          setBarcodeOpen(false);
-          setPhotoLogOpen(true);
-        }}
-        onAddAsCustomFood={(barcode) => {
-          // F-156 PR-2 (2026-05-10) — barcode not found in OFF →
-          // user opts to add it as a custom food. Close the barcode
-          // dialog and open CreateCustomFoodDialog with the barcode
-          // pre-filled so the saved row writes to user_custom_foods
-          // with the correct code (next scan resolves successfully).
-          setBarcodeOpen(false);
-          setCustomFoodFromBarcode(barcode);
-        }}
-      />
-
-      {/* F-156 PR-2 (2026-05-10) — CreateCustomFoodDialog host for the
-          barcode-not-found path. Only mounts when the user arrived
-          via the "Add as custom food" CTA. Saves to user_custom_foods;
-          user can scan again to log. */}
-      <CreateCustomFoodDialog
-        open={customFoodFromBarcode != null}
-        onOpenChange={(o) => {
-          if (!o) setCustomFoodFromBarcode(null);
-        }}
-        initialBarcode={customFoodFromBarcode ?? undefined}
-        onSave={async (payload: CreateCustomFoodPayload) => {
-          if (!authedUserId) return;
-          try {
-            await createCustomFood(supabase, authedUserId, payload);
-            try {
-              track(AnalyticsEvents.custom_food_created, {
-                hasBrand: Boolean(payload.brand),
-                servingCount: payload.servings.length,
-                fromBarcode: true,
-              });
-            } catch {
-              /* analytics noop */
-            }
-            toast.success(
-              isFeatureEnabled("eng1247_section_a_v1")
-                ? COMPLETE_DAY_V3_COPY.savedTitle
-                : "Custom food saved. Scan again to log it.",
-            );
-            // ENG-1247 — offer the community-contribution opt-in (flag-gated,
-            // barcode only). The private custom food is already saved above; this
-            // is the explicit, separate opt-in to ALSO share it to user_foods.
-            if (isFeatureEnabled("barcode_community_contribution") && payload.barcode) {
-              setShareCommunityInput({
-                barcode: payload.barcode,
-                name: payload.name,
-                calories: payload.calories,
-                protein: payload.protein,
-                carbs: payload.carbs,
-                fat: payload.fat,
-                fiberG: payload.fiber,
-                sugarG: payload.sugarG,
-                sodiumMg: payload.sodiumMg,
-                saturatedFatG: payload.saturatedFatG,
-                servingSizeG: payload.baseGrams,
-              });
-            }
-          } catch (err) {
-            toast.error(
-              err instanceof Error ? err.message : "Couldn't save custom food",
-            );
-          }
-        }}
-      />
-
-      {/* ENG-1247 — community-contribution opt-in, opened after a not-found
-          barcode is saved as a custom food (flag-gated). Writes to user_foods
-          via the web submitFoodCorrection with the authed client + RLS. */}
-      <ShareCommunityDialog
-        input={shareCommunityInput}
-        onShare={(input) => submitFoodCorrection(supabase, authedUserId ?? "", input)}
-        onClose={() => {
-          if (isFeatureEnabled("eng1247_section_a_v1") && shareCommunityInput?.name) {
-            setBarcodeSavedAckName(shareCommunityInput.name);
-          }
-          setShareCommunityInput(null);
-        }}
-      />
-
-      {isFeatureEnabled("eng1247_section_a_v1") && barcodeSavedAckName ? (
-        <BarcodeSavedAckDialog
-          open
-          productName={barcodeSavedAckName}
-          onLogNow={() => setBarcodeSavedAckName(null)}
-        />
-      ) : null}
+      {/* ENG-1360 — barcode-scan → custom-food-save fallback →
+          community-share opt-in → saved-ack dialog cluster, extracted to
+          `useBarcodeLogging`. Same four dialogs, same behavior. */}
+      {barcodeDialogs}
 
       {/* Batch 5.13 — Voice log (Pro). Shared review/edit flow. */}
       <VoiceLogDialog

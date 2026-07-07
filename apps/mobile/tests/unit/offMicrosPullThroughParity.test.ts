@@ -52,6 +52,16 @@ const WEB_OFF_BARCODE = resolve(
   "../../../../src/lib/openFoodFacts/fetchProductByBarcode.ts",
 );
 const WEB_TRACKER = resolve(__dirname, "../../../../src/app/components/NutritionTracker.tsx");
+/**
+ * ENG-1360 (2026-07-07): the web barcode-commit path (which reads
+ * `product.microsPer100g` via `scaleMicrosForGrams`) moved out of
+ * NutritionTracker.tsx into the extracted `useBarcodeLogging` hook it
+ * renders — same scaling helper, same commit shape, just relocated.
+ */
+const WEB_BARCODE_LOGGING = resolve(
+  __dirname,
+  "../../../../src/app/components/suppr/use-barcode-logging.tsx",
+);
 const PARSER = resolve(__dirname, "../../../../src/lib/openFoodFacts/parseOffMicros.ts");
 
 const modalSrc = readFileSync(MOBILE_MODAL, "utf8");
@@ -69,6 +79,7 @@ const SRC = {
   webOffSearch: readFileSync(WEB_OFF_SEARCH, "utf8"),
   webOffBarcode: readFileSync(WEB_OFF_BARCODE, "utf8"),
   webTracker: readFileSync(WEB_TRACKER, "utf8"),
+  webBarcodeLogging: readFileSync(WEB_BARCODE_LOGGING, "utf8"),
   parser: readFileSync(PARSER, "utf8"),
 };
 
@@ -267,7 +278,9 @@ describe("F-79 — commit sites scale + write nutrition_micros", () => {
 
   it("web NutritionTracker food-search commit uses foodSelectionToMealMacros; barcode keeps scaleMicrosForGrams", () => {
     expect(SRC.webTracker).toMatch(/foodSelectionToMealMacros/);
-    expect(SRC.webTracker).toMatch(/import\s*\{\s*scaleMicrosForGrams\s*\}/);
-    expect(SRC.webTracker).toMatch(/scaleMicrosForGrams\(/);
+    // ENG-1360 — barcode commit (scaleMicrosForGrams) moved into the
+    // useBarcodeLogging hook NutritionTracker renders; assert it there.
+    expect(SRC.webBarcodeLogging).toMatch(/import\s*\{\s*scaleMicrosForGrams\s*\}/);
+    expect(SRC.webBarcodeLogging).toMatch(/scaleMicrosForGrams\(/);
   });
 });

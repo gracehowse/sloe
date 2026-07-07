@@ -10,6 +10,13 @@ import { resolve } from "node:path";
  * rolls its own inline adaptive-vs-formula branch would let the
  * two surfaces silently disagree again — this test fails loudly when
  * that happens.
+ *
+ * ENG-1360 (2026-07-07): web Today's `resolveMaintenance` call moved from
+ * `NutritionTracker.tsx` into the extracted `useNutritionTrackerProfile`
+ * hook it calls (pure data hook, same profiles-row fetch, same resolver —
+ * just relocated). The adoption pin follows the call to its new home so it
+ * keeps guarding the real thing: the web Today surface must still resolve
+ * Maintenance through the shared helper, not a reinvented inline branch.
  */
 
 const REPO_ROOT = resolve(__dirname, "../../../..");
@@ -19,10 +26,12 @@ function read(relPath: string): string {
 }
 
 describe("resolveMaintenance adoption (F-3 parity pin)", () => {
-  it("web Today (NutritionTracker) imports and calls resolveMaintenance", () => {
-    const src = read("src/app/components/NutritionTracker.tsx");
-    expect(src).toMatch(/from ["'][^"']*resolveMaintenance(?:\.ts)?["']/);
-    expect(src).toContain("resolveMaintenance(");
+  it("web Today (NutritionTracker, via useNutritionTrackerProfile) imports and calls resolveMaintenance", () => {
+    const trackerSrc = read("src/app/components/NutritionTracker.tsx");
+    expect(trackerSrc).toContain("useNutritionTrackerProfile");
+    const hookSrc = read("src/lib/nutrition/useNutritionTrackerProfile.ts");
+    expect(hookSrc).toMatch(/from ["'][^"']*resolveMaintenance(?:\.ts)?["']/);
+    expect(hookSrc).toContain("resolveMaintenance(");
   });
 
   it("mobile Today (app/(tabs)/_today/TodayScreen.tsx) imports and calls resolveMaintenance", () => {
