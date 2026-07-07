@@ -22,12 +22,18 @@
  * updater. This file pins the structural wiring so a future refactor
  * that re-introduces `let persisted = null; setState((prev) => {
  * persisted = next; return next; });` fails CI.
+ *
+ * ENG-1361 (2026-07-07) — the four callbacks this file pins moved from
+ * `TodayScreen.tsx` into `hooks/useTodayHydrationStimulants.ts` (a real
+ * domain-hook extraction, not a re-export shim: the hook owns the state
+ * + this persist logic outright). Source path updated to match; the
+ * string patterns being pinned are unchanged.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const TODAY_PATH = resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx");
+const TODAY_PATH = resolve(__dirname, "../../hooks/useTodayHydrationStimulants.ts");
 const TODAY_SRC = readFileSync(TODAY_PATH, "utf8");
 
 describe("Build 41 — addCaffeineMg synchronously captures `next` for persist", () => {
