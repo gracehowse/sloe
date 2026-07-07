@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Icons } from "../ui/icons";
-import { useAppData } from "../../../context/AppDataContext.tsx";
+import { useRecipeLibraryData } from "../../../context/appData/selectors.ts";
 
 /**
  * ENG-1126 — per-card "add to collection" affordance. Extracted from
@@ -9,7 +9,7 @@ import { useAppData } from "../../../context/AppDataContext.tsx";
  */
 export function AddToCollectionMenu({ recipeId, recipeTitle }: { recipeId: string; recipeTitle: string }) {
   const { recipeCollections, collectionMembershipByRecipeId, addRecipeToCollection, removeRecipeFromCollection } =
-    useAppData();
+    useRecipeLibraryData();
   const [open, setOpen] = useState(false);
   const memberOf = collectionMembershipByRecipeId[recipeId] ?? [];
 

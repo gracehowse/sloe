@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAppData } from "../context/AppDataContext.tsx";
+import { useJournalData } from "../context/appData/selectors.ts";
 import { journalHistoryWindowStartKey } from "../lib/nutrition/journalWindow.ts";
 
 /**
@@ -24,7 +24,7 @@ import { journalHistoryWindowStartKey } from "../lib/nutrition/journalWindow.ts"
  * retries on the next mount).
  */
 export function useNutritionHistoryWindow(): void {
-  const { ensureNutritionHistory } = useAppData();
+  const { ensureNutritionHistory } = useJournalData();
   useEffect(() => {
     ensureNutritionHistory(journalHistoryWindowStartKey());
   }, [ensureNutritionHistory]);

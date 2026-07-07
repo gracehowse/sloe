@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAppData } from "../../../context/AppDataContext.tsx";
+import { useRecipeLibraryData } from "../../../context/appData/selectors.ts";
 
 /**
  * ENG-1126 — user-created recipe collections pill row. Extracted from
@@ -20,7 +20,7 @@ export function LibraryCollectionsBar({
   selectedCollectionId: string | null;
   onSelectCollection: (id: string | null) => void;
 }) {
-  const { recipeCollections, createCollection } = useAppData();
+  const { recipeCollections, createCollection } = useRecipeLibraryData();
   const [creating, setCreating] = useState(false);
   const [draftName, setDraftName] = useState("");
 
