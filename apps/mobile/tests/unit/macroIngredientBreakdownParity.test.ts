@@ -41,6 +41,17 @@ const WEB_TRACKER = resolve(
 );
 const WEB_TRACKER_SRC = readFileSync(WEB_TRACKER, "utf8");
 
+// ENG-1360 (second extraction pass) — the macro-detail panel's snapshot-table
+// READ path (the `nutrition_entry_ingredients` fetch effect + its flag gate)
+// moved out of NutritionTracker.tsx into this composition-root hook. The
+// WRITE path (`persistEntryIngredientSnapshot`, called from
+// `commitAiLoggedItems`) stays in NutritionTracker.tsx.
+const WEB_MACRO_DETAIL_HOOK = resolve(
+  __dirname,
+  "../../../../src/lib/nutrition/useMacroDetailPanelData.ts",
+);
+const WEB_MACRO_DETAIL_HOOK_SRC = readFileSync(WEB_MACRO_DETAIL_HOOK, "utf8");
+
 describe("macro-detail ingredient breakdown — shared-helper wiring", () => {
   it("mobile hook imports the shared derive helper (not a local copy)", () => {
     expect(MOBILE_HOOK_SRC).toMatch(
@@ -79,7 +90,7 @@ describe("macro-detail ingredient breakdown — shared-helper wiring", () => {
 
 describe("nutrition_entry_ingredients snapshot — web↔mobile wiring (ENG-751)", () => {
   it("both READ paths fetch the snapshot table by entry_id + pass preferSnapshot", () => {
-    for (const src of [MOBILE_HOOK_SRC, WEB_TRACKER_SRC]) {
+    for (const src of [MOBILE_HOOK_SRC, WEB_MACRO_DETAIL_HOOK_SRC]) {
       expect(src).toMatch(/NUTRITION_ENTRY_INGREDIENTS_TABLE/);
       expect(src).toMatch(/\.in\(["']entry_id["']/);
       expect(src).toMatch(/NUTRITION_ENTRY_INGREDIENTS_FLAG/);
@@ -91,9 +102,12 @@ describe("nutrition_entry_ingredients snapshot — web↔mobile wiring (ENG-751)
 
   it("both READ paths gate the snapshot split behind the display flag", () => {
     expect(MOBILE_HOOK_SRC).toMatch(/isFeatureEnabled\(NUTRITION_ENTRY_INGREDIENTS_FLAG\)/);
-    // Web panel reads the flag for preferSnapshot; tracker gates the fetch.
+    // Web panel reads the flag for preferSnapshot; the macro-detail-data hook
+    // (ENG-1360) gates the fetch — same composition-root pattern as mobile.
     expect(WEB_SRC).toMatch(/isFeatureEnabled\(NUTRITION_ENTRY_INGREDIENTS_FLAG\)/);
-    expect(WEB_TRACKER_SRC).toMatch(/isFeatureEnabled\(NUTRITION_ENTRY_INGREDIENTS_FLAG\)/);
+    expect(WEB_MACRO_DETAIL_HOOK_SRC).toMatch(
+      /isFeatureEnabled\(NUTRITION_ENTRY_INGREDIENTS_FLAG\)/,
+    );
   });
 
   it("both WRITE paths call the shared defensive persist helper in commitAiLoggedItems", () => {

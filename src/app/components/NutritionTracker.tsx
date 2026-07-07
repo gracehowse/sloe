@@ -62,7 +62,6 @@ import {
   weekSummaryDateKeys,
 } from "../../lib/nutrition/weekSummaryWindow.ts";
 import { clampPortionMultiplier, scaledMacro } from "../../lib/nutrition/portionMultiplier.ts";
-import { scaleMicrosPerServing } from "../../lib/nutrition/scaleMicrosPerServing";
 import { formatWaterMl } from "../../lib/units/imperial.ts";
 import {
   buildDayNutrientDetailRows,
@@ -105,12 +104,7 @@ import { TodayMacroSection } from "./suppr/today-macro-section";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import { FullNutrientPanelSheet } from "./suppr/full-nutrient-panel-sheet";
 import { FULL_NUTRIENT_PANEL_ROW_COUNT } from "../../lib/nutrition/fullNutrientPanel";
-import {
-  MacroDetailPanel,
-  isMacroDetailSupported,
-  type MacroKey,
-  type MacroMeal,
-} from "./MacroDetailPanel";
+import { MacroDetailPanel, isMacroDetailSupported } from "./MacroDetailPanel";
 import { TodaySnapShortcut } from "./suppr/today-snap-shortcut";
 import { TodayMealsSection } from "./suppr/today-meals-section";
 import { TodayRecentsRow } from "./suppr/today-recents-row";
@@ -138,36 +132,12 @@ import { normaliseMealSlot } from "../../lib/nutrition/mealSlots";
 import { newId } from "../../context/appData/persistence";
 import { isHealthImportFallbackTitle } from "../../lib/nutrition/healthImportLabels";
 import { mapMealSourceToDot } from "../../lib/nutrition/sourceMap";
-import { buildMealEntriesFromSavedMeal, selectUsualSavedMeal } from "../../lib/nutrition/savedMealsLogic";
-import {
-  toBreakdownIngredientRow,
-  toBreakdownSnapshotRow,
-  type BreakdownIngredientRow,
-  type BreakdownSnapshotRow,
-} from "../../lib/nutrition/macroIngredientBreakdown";
-import {
-  isSnapshotRowLowConfidence,
-  persistEntryIngredientSnapshot,
-  NUTRITION_ENTRY_INGREDIENTS_FLAG,
-  NUTRITION_ENTRY_INGREDIENTS_TABLE,
-  type NutritionEntryIngredientRow,
-} from "../../lib/nutrition/nutritionEntryIngredients";
-import {
-  createSavedMeal,
-  incrementLogCount,
-  listSavedMeals,
-  type SavedMeal,
-  type SavedMealItem,
-} from "../../lib/nutrition/savedMeals";
-import {
-  addFavorite,
-  favoriteKey as favoriteFoodKey,
-  listFavorites,
-  removeFavorite,
-  type FavoriteFood,
-} from "../../lib/nutrition/favoriteFoods";
+import { selectUsualSavedMeal } from "../../lib/nutrition/savedMealsLogic";
+import { persistEntryIngredientSnapshot } from "../../lib/nutrition/nutritionEntryIngredients";
+import { useMacroDetailPanelData } from "../../lib/nutrition/useMacroDetailPanelData.ts";
+import { useTrackerWeekData } from "../../lib/nutrition/useTrackerWeekData.ts";
 import { orderRecentWithFavoritesFirst } from "../../lib/nutrition/favoriteFoodsSearch";
-import { isMealSlot, type MealSlot } from "../../lib/nutrition/mealSlots";
+import { type MealSlot } from "../../lib/nutrition/mealSlots";
 import {
   enabledMealSlotLabels,
   mealSectionSortOrder,
@@ -176,17 +146,7 @@ import {
   journalSlotFromMealTypes,
   slotForHour,
 } from "../../lib/nutrition/recipeJournalSlot";
-import {
-  parseDismissedSlots,
-  serializeDismissedSlots,
-  shouldShowUsualMealHint,
-  USUAL_MEAL_HINT_STORAGE_KEY,
-} from "../../lib/nutrition/usualMealHint";
-import {
-  PENDING_USUAL_MEAL_SAVE_KEY,
-  parsePendingUsualMealSave,
-} from "../../lib/nutrition/pendingUsualMealSave";
-import { SaveMealDialog } from "./suppr/save-meal-dialog";
+import { useSavedMealsAndFavorites } from "./suppr/use-saved-meals-and-favorites";
 import {
   parseDateKey,
   shiftDateKey,
@@ -363,12 +323,6 @@ export const NutritionTracker = memo(function NutritionTracker({
   // `mealsGrouped`) via the shared helpers. Mirrors the mobile `?slot=&date=`
   // screen mode.
   const [slotNutritionTarget, setSlotNutritionTarget] = useState<string | null>(null);
-  const [macroDetailTarget, setMacroDetailTarget] = useState<MacroKey | null>(null);
-  const [macroDetailIngredientRows, setMacroDetailIngredientRows] = useState<BreakdownIngredientRow[]>([]);
-  // ENG-751 — persisted AI/photo/voice per-item snapshot rows for the open
-  // day's entries. Gated by the display flag; flag-OFF leaves this empty so the
-  // panel keeps today's single-line fallback (data backfills while dark).
-  const [macroDetailSnapshotRows, setMacroDetailSnapshotRows] = useState<BreakdownSnapshotRow[]>([]);
   const [editMealTargetId, setEditMealTargetId] = useState<string | null>(null);
   /** Batch 1.4 — Duplicate day dialog visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
@@ -384,152 +338,21 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [recipeId, setRecipeId] = useState("");
   const [timeLabel, setTimeLabel] = useState("12:00 PM");
 
-  const macroDetailFlagEnabled = isFeatureEnabled("web_macro_detail_panel");
-  const openMacroDetail = useCallback((macro: string) => {
-    if (!macroDetailFlagEnabled) return;
-    // Shared affordance/handler source of truth (ENG-848): the same
-    // `isMacroDetailSupported` set gates which tiles/bars render as buttons, so
-    // a tappable tile can never resolve to a macro this handler ignores.
-    if (isMacroDetailSupported(macro)) {
-      setMacroDetailTarget(macro);
-    }
-  }, [macroDetailFlagEnabled]);
-
-  // ENG-1247 — `.md-totalgrid` cell tap: close the dialog, open macro-detail.
-  // Undefined when the panel is off → cells render static (no dead tap, ENG-848).
-  const macroTapFromDialog = useCallback(
-    (closeDialog: () => void) =>
-      macroDetailFlagEnabled
-        ? (macro: string) => {
-            closeDialog();
-            openMacroDetail(macro);
-          }
-        : undefined,
-    [macroDetailFlagEnabled, openMacroDetail],
-  );
-
-  const macroDetailMeals = useMemo<MacroMeal[]>(
-    () =>
-      mealsForSelectedDate.map((meal) => ({
-        id: meal.id,
-        name: meal.name,
-        recipeTitle: meal.recipeTitle,
-        recipeId: meal.recipeId ?? null,
-        portionMultiplier: meal.portionMultiplier ?? 1,
-        calories: meal.calories,
-        protein: meal.protein,
-        carbs: meal.carbs,
-        fat: meal.fat,
-        fiberG: mealContributedFiberG(meal),
-        // ENG-1213 web↔mobile water-breakdown parity: carry per-meal water so
-        // the macro-detail panel's By-meal view can total water for macro="water"
-        // (mirrors mobile useMacroDetail's `water_ml` → waterMl mapping). The
-        // source value already flows DB → LoggedMeal via useNutritionJournalState
-        // (`water_ml` → `waterMl`).
-        waterMl: meal.waterMl ?? 0,
-        micros: meal.micros ?? null,
-      })),
-    [mealsForSelectedDate],
-  );
-
-  useEffect(() => {
-    if (!macroDetailFlagEnabled || macroDetailTarget == null) {
-      setMacroDetailIngredientRows([]);
-      return;
-    }
-    const recipeIds = Array.from(
-      new Set(macroDetailMeals.map((meal) => meal.recipeId).filter((id): id is string => Boolean(id))),
-    );
-    if (recipeIds.length === 0) {
-      setMacroDetailIngredientRows([]);
-      return;
-    }
-    let cancelled = false;
-    supabase
-      .from("recipe_ingredients")
-      .select("recipe_id, name, calories, protein, carbs, fat, fiber_g")
-      .in("recipe_id", recipeIds)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.warn("[macro-detail] recipe_ingredients fetch failed:", error.message);
-          setMacroDetailIngredientRows([]);
-          return;
-        }
-        setMacroDetailIngredientRows(
-          (data ?? []).map((row: Record<string, unknown>) =>
-            toBreakdownIngredientRow({
-              recipeId: String(row.recipe_id ?? ""),
-              name: String(row.name ?? "Item"),
-              calories: Number(row.calories) || 0,
-              protein: Number(row.protein) || 0,
-              carbs: Number(row.carbs) || 0,
-              fat: Number(row.fat) || 0,
-              fiberG: Number(row.fiber_g) || 0,
-            }),
-          ),
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [macroDetailFlagEnabled, macroDetailMeals, macroDetailTarget]);
-
-  // ENG-751 — fetch persisted AI snapshot rows for the open day's entries,
-  // gated by the display flag. Fully defensive: a missing table (pre-push) or a
-  // failed query swallows + leaves the rows empty, so the panel degrades to the
-  // recipe / single-line fallback path. Covers EVERY entry id (AI meals have no
-  // recipe_id, so the recipe-id set above would miss them).
-  useEffect(() => {
-    if (
-      !macroDetailFlagEnabled ||
-      macroDetailTarget == null ||
-      !isFeatureEnabled(NUTRITION_ENTRY_INGREDIENTS_FLAG)
-    ) {
-      setMacroDetailSnapshotRows([]);
-      return;
-    }
-    const entryIds = Array.from(
-      new Set(macroDetailMeals.map((meal) => meal.id).filter((id): id is string => Boolean(id))),
-    );
-    if (entryIds.length === 0) {
-      setMacroDetailSnapshotRows([]);
-      return;
-    }
-    let cancelled = false;
-    supabase
-      .from(NUTRITION_ENTRY_INGREDIENTS_TABLE)
-      .select("entry_id, name, calories, protein, carbs, fat, fiber_g, confidence")
-      .in("entry_id", entryIds)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.warn(
-            "[macro-detail] nutrition_entry_ingredients fetch failed:",
-            error.message,
-          );
-          setMacroDetailSnapshotRows([]);
-          return;
-        }
-        setMacroDetailSnapshotRows(
-          ((data ?? []) as NutritionEntryIngredientRow[]).map((row) =>
-            toBreakdownSnapshotRow({
-              entryId: row.entry_id,
-              name: row.name,
-              lowConfidence: isSnapshotRowLowConfidence(row),
-              calories: row.calories,
-              protein: row.protein,
-              carbs: row.carbs,
-              fat: row.fat,
-              fiberG: row.fiber_g,
-            }),
-          ),
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [macroDetailFlagEnabled, macroDetailMeals, macroDetailTarget]);
+  // ENG-1360 (second extraction pass) — the macro-detail panel state,
+  // meal-projection memo, and the two Supabase fetch effects (recipe
+  // ingredients + persisted AI snapshot rows) moved to
+  // `useMacroDetailPanelData`. Same queries, same parsing, same setters —
+  // just relocated so this component's local state list shrinks.
+  const {
+    macroDetailFlagEnabled,
+    macroDetailTarget,
+    setMacroDetailTarget,
+    macroDetailMeals,
+    macroDetailIngredientRows,
+    macroDetailSnapshotRows,
+    openMacroDetail,
+    macroTapFromDialog,
+  } = useMacroDetailPanelData(mealsForSelectedDate, isMacroDetailSupported);
 
   useEffect(() => {
     if (!isFeatureEnabled("editable_eaten_at")) return;
@@ -822,508 +645,38 @@ export const NutritionTracker = memo(function NutritionTracker({
     }
   }, []);
 
-  /** Log a history row (Favourite / Frequent / Recent) into the active
-   * meal slot. Shared by the QuickAddPanel history rows so the event
-   * shape is consistent. */
-  const logHistoryItem = useCallback(
-    (item: FoodHistoryItem, slot: string) => {
-      // Audit L6 G1 (2026-04-18) — the canonical `food_logged` event
-      // is now fired inside `addLoggedMeal` with the supplied source,
-      // so we pass "quick_add" here instead of double-emitting. Drops
-      // the prior secondary `track(food_logged, { source: "quick_add", slot })`
-      // call that could desync from the primitive's payload.
-      //
-      // Tracking-extras autoupdate (2026-05-01) — re-attach caffeine /
-      // alcohol micros so the journal-state insert path picks up the
-      // F-13 daily bump. `computeRecentMeals` / `computeFrequentMeals`
-      // average per-occurrence stimulant contribution into
-      // `item.caffeineMg` / `item.alcoholG`. Missing → no key in
-      // `micros` (and `addLoggedMeal` skips the bump).
-      const micros: Record<string, number> = item.micros ? { ...item.micros } : {};
-      if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
-      if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
-      addLoggedMeal(
-        {
-          name: slot,
-          recipeTitle: item.recipeTitle,
-          time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          ...(item.fiber != null ? { fiberG: item.fiber } : {}),
-          ...(item.source ? { source: item.source } : {}),
-          ...(Object.keys(micros).length > 0 ? { micros } : {}),
-        },
-        "quick_add",
-      );
-      toast.success(`Logged ${item.recipeTitle} to ${slot}.`);
-    },
-    [addLoggedMeal],
-  );
-
-  /** Expand a saved-meal combo into individual journal entries and
-   * insert each one via the same primitive as manual logs. Batch 2.6. */
-  const logSavedMeal = useCallback(
-    (meal: SavedMeal, slot: string) => {
-      const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-      // Build entries — makeId is swallowed because addLoggedMealForDate
-      // mints its own id. We pass `() => ""` here; the id field is
-      // discarded before insert. Using `newId` is impossible (it is
-      // file-local to persistence.ts) and unnecessary.
-      const entries = buildMealEntriesFromSavedMeal(meal, slot, timeLabel, () => "");
-      for (const entry of entries) {
-        const {
-          id: _discardedId,
-          sourceId: _discardedSourceId,
-          ...payload
-        } = entry;
-        void _discardedId;
-        void _discardedSourceId;
-        addLoggedMealForDate(selectedDateKey, payload, "saved_meal");
-      }
-      toast.success(`Logged ${meal.name} to ${slot}.`);
-    },
-    [addLoggedMealForDate, selectedDateKey],
-  );
-
-  // -- Save-usual-meal dialog (audit H4, 2026-04-18; Ship M1, 2026-04-18) --
-  //
-  // `SaveMealDialog` and its creation flow were lifted out of
-  // `QuickAddPanel` so the host is the single owner of the dialog.
-  // Replaces the prior save-combo CustomEvent bridge with a plain prop
-  // callback (`onOpenSaveCombo`) + a refresh token the panel watches to
-  // refetch `listSavedMeals`.
-  //
-  // Ship M1: the host also owns the full saved-meals list so the meal-slot
-  // section can render the `Log usual: {name}` pill directly (no duplicate
-  // fetch in `QuickAddPanel`).
-  const [saveComboOpen, setSaveComboOpen] = useState(false);
-  const [saveComboSeedItems, setSaveComboSeedItems] = useState<
-    Array<Omit<SavedMealItem, "id" | "position">>
-  >([]);
-  const [saveComboDefaultSlot, setSaveComboDefaultSlot] = useState<
-    "Breakfast" | "Lunch" | "Dinner" | "Snacks" | undefined
-  >(undefined);
-  const [saveComboSuggestedName, setSaveComboSuggestedName] = useState<string>("");
-  const [savedMealsRefreshToken, setSavedMealsRefreshToken] = useState(0);
-
-  // Ship M1 — saved meals shared between `TodayMealsSection` (for the
-  // "Log usual" slot-header pill + full-width save row visibility) and
-  // `QuickAddPanel` (for the Usual meals tab). Host is now the owner of
-  // record so both surfaces read the same list.
-  const [hostSavedMeals, setHostSavedMeals] = useState<SavedMeal[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    if (!authedUserId) {
-      setHostSavedMeals([]);
-      return;
-    }
-    listSavedMeals(supabase, authedUserId)
-      .then((rows) => {
-        if (!cancelled) setHostSavedMeals(rows);
-      })
-      .catch((err) => {
-         
-        console.warn("NutritionTracker listSavedMeals failed", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [authedUserId, savedMealsRefreshToken]);
-
-  /** Favourites-in-search (teardown #1, ENG-1041) — the user's starred foods,
-   *  loaded once and threaded into the LogSheet's inline FoodSearchPanel so
-   *  favourites surface IN search (a "Favourites" group above "Past logged"
-   *  + favourites-first in the empty-query Recent strip + a per-row star
-   *  toggle). The same `user_favorite_foods` model QuickAddPanel uses; the
-   *  host owns the list here because the LogSheet is a host-owned surface.
-   *  Mobile parity: `apps/mobile/app/(tabs)/index.tsx`. */
-  const [hostFavorites, setHostFavorites] = useState<FavoriteFood[]>([]);
-  const [favoritePendingKeys, setFavoritePendingKeys] = useState<Set<string>>(
-    () => new Set(),
-  );
-  useEffect(() => {
-    let cancelled = false;
-    if (!authedUserId) {
-      setHostFavorites([]);
-      return;
-    }
-    listFavorites(supabase, authedUserId)
-      .then((rows) => {
-        if (!cancelled) setHostFavorites(rows);
-      })
-      .catch((err) => {
-        console.warn("NutritionTracker listFavorites failed", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [authedUserId]);
-
-  /** Optimistic star/unstar from a food-search row. Mirrors the mobile host
-   *  + QuickAddPanel `toggleFavorite`: add/remove immediately, revert on
-   *  Supabase failure, guard double-submit via `favoritePendingKeys`. */
-  const toggleFoodFavorite = useCallback(
-    async (food: {
-      recipeTitle: string;
-      calories: number;
-      protein: number;
-      carbs: number;
-      fat: number;
-      fiber?: number;
-      source?: string;
-      favoriteId?: string;
-    }) => {
-      if (!authedUserId) return;
-      const key = favoriteFoodKey(food.recipeTitle, food.calories);
-      if (favoritePendingKeys.has(key)) return;
-      setFavoritePendingKeys((s) => new Set(s).add(key));
-      const snapshot = hostFavorites;
-      const wasStarred = Boolean(food.favoriteId);
-      try {
-        if (wasStarred && food.favoriteId) {
-          setHostFavorites((prev) => prev.filter((f) => f.id !== food.favoriteId));
-          await removeFavorite(supabase, authedUserId, food.favoriteId);
-        } else {
-          const tempId = `temp-${key}`;
-          const optimistic: FavoriteFood = {
-            id: tempId,
-            recipeTitle: food.recipeTitle,
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            ...(food.fiber != null ? { fiber: food.fiber } : {}),
-            ...(food.source ? { source: food.source } : {}),
-            count: 1,
-            createdAt: new Date().toISOString(),
-          };
-          setHostFavorites((prev) => [optimistic, ...prev]);
-          const saved = await addFavorite(supabase, authedUserId, {
-            recipeTitle: food.recipeTitle,
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            fiber: food.fiber,
-            source: food.source ?? null,
-          });
-          setHostFavorites((prev) => [saved, ...prev.filter((f) => f.id !== tempId)]);
-        }
-      } catch (err) {
-        setHostFavorites(snapshot);
-        console.warn("NutritionTracker food favourite toggle failed", err);
-      } finally {
-        setFavoritePendingKeys((s) => {
-          const n = new Set(s);
-          n.delete(key);
-          return n;
-        });
-      }
-    },
-    [authedUserId, hostFavorites, favoritePendingKeys],
-  );
-
-  /** Favourite key set — drives favourites-first ordering of the empty-query
-   *  Recent browse list (web's empty-query recent strip lives in the LogSheet
-   *  `recent` browse tab, not the panel, so the ordering is applied here). */
-  const favoriteKeySetForRecent = useMemo(
-    () =>
-      new Set(hostFavorites.map((f) => favoriteFoodKey(f.recipeTitle, f.calories))),
-    [hostFavorites],
-  );
-
-  // Ship M1 — usual-meal first-run hint dismiss state. Persisted under a
-  // versioned key; hydrated once on mount and rehydrated when a different
-  // tab writes to localStorage.
-  const [usualMealHintDismissed, setUsualMealHintDismissed] = useState<Set<string>>(
-    () => new Set<string>(),
-  );
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(USUAL_MEAL_HINT_STORAGE_KEY);
-      setUsualMealHintDismissed(parseDismissedSlots(raw));
-    } catch {
-      /* storage access can throw in private modes — ignore */
-    }
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === USUAL_MEAL_HINT_STORAGE_KEY) {
-        setUsualMealHintDismissed(parseDismissedSlots(e.newValue));
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  const savedMealSlots = useMemo(() => {
-    const s = new Set<string>();
-    for (const m of hostSavedMeals) {
-      if (m.defaultMealSlot) s.add(m.defaultMealSlot);
-    }
-    return s;
-  }, [hostSavedMeals]);
-
-  const usualMealHintShownRef = useRef<Set<string>>(new Set());
-  const hintVisibleForSlot = useCallback(
-    (slot: string) => {
-      if (!isMealSlot(slot)) return false;
-      return shouldShowUsualMealHint({
-        byDay: nutritionByDay,
-        slot,
-        todayKey: selectedDateKey,
-        dismissedSlots: usualMealHintDismissed,
-        savedMealSlots,
-      });
-    },
-    [nutritionByDay, selectedDateKey, usualMealHintDismissed, savedMealSlots],
-  );
-  // Fire `usual_meal_hint_shown` once per (slot) per mount when it first
-  // passes the gate. `useEffect` runs after render so the impression
-  // matches what the user actually saw.
-  useEffect(() => {
-    for (const slot of ["Breakfast", "Lunch", "Dinner", "Snacks"] as const) {
-      if (hintVisibleForSlot(slot) && !usualMealHintShownRef.current.has(slot)) {
-        usualMealHintShownRef.current.add(slot);
-        try {
-          track(AnalyticsEvents.usual_meal_hint_shown, { slot });
-        } catch {
-          /* analytics fire-and-forget */
-        }
-      }
-    }
-  }, [hintVisibleForSlot]);
-
-  const dismissUsualMealHint = useCallback(
-    (slot: string) => {
-      if (!isMealSlot(slot)) return;
-      setUsualMealHintDismissed((prev) => {
-        const next = new Set(prev);
-        next.add(slot);
-        if (typeof window !== "undefined") {
-          try {
-            window.localStorage.setItem(
-              USUAL_MEAL_HINT_STORAGE_KEY,
-              serializeDismissedSlots(next),
-            );
-          } catch {
-            /* ignore storage failures */
-          }
-        }
-        return next;
-      });
-      try {
-        track(AnalyticsEvents.usual_meal_hint_dismissed, { slot });
-      } catch {
-        /* analytics fire-and-forget */
-      }
-    },
-    [],
-  );
-
-  /** Open the save-combo dialog with pre-filled `seedItems` + optional
-   * default `slot`. Wired to both the meal-slot header chip (directly)
-   * and to the `QuickAddPanel` via the `onOpenSaveCombo` prop so the
-   * panel can request the dialog without touching the global event bus. */
-  const handleOpenSaveCombo = useCallback(
-    (
-      slot?: string,
-      seedItems?: Array<Omit<SavedMealItem, "id" | "position">>,
-    ) => {
-      if (!authedUserId) {
-        toast.info("Sign in to save a usual meal.");
-        return;
-      }
-      const items = seedItems ?? [];
-      if (items.length < 2) {
-        toast.info("Log 2 or more items first, then save as a usual meal.");
-        return;
-      }
-      setSaveComboSeedItems(items);
-      // Canonical slot via shared guard (audit L5, 2026-04-18).
-      const normalisedSlot: MealSlot | undefined = isMealSlot(slot) ? slot : undefined;
-      setSaveComboDefaultSlot(normalisedSlot);
-      setSaveComboSuggestedName(
-        slot ? `My usual ${slot.toLowerCase()}` : `My usual ${mealSlot.toLowerCase()}`,
-      );
-      setSaveComboOpen(true);
-    },
-    [authedUserId, mealSlot],
-  );
-
-  /**
-   * Post-ship #4 (2026-04-18) — consume the "save your usual" deep-link
-   * the weekly-recap card stashed in sessionStorage. Fires once per
-   * auth-session arrival on Today. Pops the stored payload, validates
-   * the TTL inside `parsePendingUsualMealSave`, then opens
-   * `SaveMealDialog` pre-seeded with the slot and items the helper
-   * picked on Progress.
-   *
-   * The clear-unconditionally rule means a stale or malformed blob is
-   * always cleared — we never want an old payload to re-fire on the
-   * next mount.
-   */
-  const pendingUsualMealConsumedRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!authedUserId) return;
-    if (pendingUsualMealConsumedRef.current === authedUserId) return;
-    if (typeof window === "undefined") return;
-    let raw: string | null = null;
-    try {
-      raw = window.sessionStorage.getItem(PENDING_USUAL_MEAL_SAVE_KEY);
-    } catch {
-      return;
-    }
-    pendingUsualMealConsumedRef.current = authedUserId;
-    if (!raw) return;
-    try {
-      window.sessionStorage.removeItem(PENDING_USUAL_MEAL_SAVE_KEY);
-    } catch {
-      /* ignore — worst case the blob fires once then TTL-expires. */
-    }
-    const pending = parsePendingUsualMealSave(raw);
-    if (!pending) return;
-    handleOpenSaveCombo(pending.slot, pending.items);
-  }, [authedUserId, handleOpenSaveCombo]);
-
-  /** Gather the items in `slotName` from the active day and open the
-   * save-as-usual-meal dialog. Called from the per-slot full-width save
-   * row and from the first-run hint's "Save as usual" CTA (Ship M1). */
-  const openSaveMealDialog = useCallback(
-    (slotName: string) => {
-      const slotMeals = mealsForSelectedDate.filter(
-        (m) => normalizeJournalSlotName(m.name ?? "") === slotName,
-      );
-      if (slotMeals.length < 2) {
-        toast.info("Log 2 or more items first, then save as a usual meal.");
-        return;
-      }
-      const items: Array<Omit<SavedMealItem, "id" | "position">> = slotMeals.map((m) => {
-        const pm = m.portionMultiplier ?? 1;
-        const item: Omit<SavedMealItem, "id" | "position"> = {
-          recipeTitle: m.recipeTitle,
-          calories: scaledMacro(m.calories, pm),
-          protein: scaledMacro(m.protein, pm),
-          carbs: scaledMacro(m.carbs, pm),
-          fat: scaledMacro(m.fat, pm),
-          portionMultiplier: 1, // snapshot macros are already scaled
-        };
-        if (m.fiberG != null) item.fiber = m.fiberG;
-        if (m.waterMl != null) item.waterMl = m.waterMl;
-        if (m.source) item.source = m.source;
-        if (m.micros && Object.keys(m.micros).length > 0) {
-          const scaled = scaleMicrosPerServing(m.micros, pm);
-          if (Object.keys(scaled).length > 0) item.nutritionMicros = scaled;
-        }
-        return item;
-      });
-      handleOpenSaveCombo(slotName, items);
-    },
-    [handleOpenSaveCombo, mealsForSelectedDate],
-  );
-
-  /** Ship M1 — the first-run hint's "Save as usual" CTA. Fires the
-   * accepted-analytics event then opens the save-usual-meal dialog
-   * pre-seeded with the current slot's items. */
-  const acceptUsualMealHint = useCallback(
-    (slot: string) => {
-      try {
-        track(AnalyticsEvents.usual_meal_hint_accepted, { slot });
-      } catch {
-        /* analytics fire-and-forget */
-      }
-      openSaveMealDialog(slot);
-    },
-    [openSaveMealDialog],
-  );
-
-  /** Ship M1 — slot-header "Log usual" pill handler. Logs the saved meal
-   * into `slot` via the shared `logSavedMeal` helper, then optimistically
-   * reorders `hostSavedMeals` so the re-logged one bubbles to the top
-   * (matches the Quick Add panel's post-log ordering). */
-  const logSavedMealFromSlotHeader = useCallback(
-    (meal: SavedMeal, slot: string) => {
-      logSavedMeal(meal, slot);
-      try {
-        track(AnalyticsEvents.usual_meal_log_tapped, {
-          slot,
-          itemCount: meal.items.length,
-        });
-      } catch {
-        /* analytics fire-and-forget */
-      }
-      try {
-        track(AnalyticsEvents.saved_meal_logged, {
-          itemCount: meal.items.length,
-          defaultMealSlot: meal.defaultMealSlot,
-          // L6 G3 (2026-04-18) — join key for the create→logged funnel.
-          savedMealId: meal.id,
-        });
-      } catch {
-        /* analytics fire-and-forget */
-      }
-      setHostSavedMeals((prev) => {
-        const next = prev.map((m) =>
-          m.id === meal.id
-            ? { ...m, logCount: m.logCount + 1, lastLoggedAt: new Date().toISOString() }
-            : m,
-        );
-        next.sort((a, b) => {
-          const ta = a.lastLoggedAt ? Date.parse(a.lastLoggedAt) : 0;
-          const tb = b.lastLoggedAt ? Date.parse(b.lastLoggedAt) : 0;
-          if (ta !== tb) return tb - ta;
-          return Date.parse(b.createdAt) - Date.parse(a.createdAt);
-        });
-        return next;
-      });
-      if (authedUserId) {
-        void incrementLogCount(supabase, authedUserId, meal.id).catch((err) => {
-           
-          console.warn("NutritionTracker slot-header usual-meal log bump failed", err);
-        });
-      }
-      // Bump the refresh token so `QuickAddPanel` rereads its own list —
-      // this keeps the Usual meals tab in sync after a slot-header log.
-      setSavedMealsRefreshToken((n) => n + 1);
-    },
-    [authedUserId, logSavedMeal],
-  );
-
-  /** Persist a new saved-meal combo from the lifted `SaveMealDialog`,
-   * then bump `savedMealsRefreshToken` so `QuickAddPanel` refetches its
-   * "My meals" tab and jumps to it (preserves Batch 2.6 post-save UX). */
-  const handleCreateSavedMeal = useCallback(
-    async (payload: {
-      name: string;
-      defaultMealSlot?: "Breakfast" | "Lunch" | "Dinner" | "Snacks";
-      items: Array<Omit<SavedMealItem, "id" | "position">>;
-    }) => {
-      if (!authedUserId) return;
-      try {
-        const created = await createSavedMeal(supabase, authedUserId, payload);
-        try {
-          track(AnalyticsEvents.saved_meal_created, {
-            itemCount: payload.items.length,
-            defaultMealSlot: payload.defaultMealSlot,
-            // L6 G3 (2026-04-18) — carry the new combo's id so the
-            // create → later-logged funnel (F3 habit loop) can join
-            // on a single stable key.
-            savedMealId: created.id,
-          });
-        } catch {
-          /* analytics is fire-and-forget */
-        }
-        toast.success(`Saved "${payload.name}".`);
-        setSavedMealsRefreshToken((n) => n + 1);
-      } catch (err) {
-        toast.error("Couldn't save that meal. Try again.");
-         
-        console.error("NutritionTracker saved-meal create failed", err);
-      }
-    },
-    [authedUserId],
-  );
+  // ENG-1360 (second extraction pass) — the saved-meals / favourites /
+  // usual-meal-hint cluster (logHistoryItem, logSavedMeal, the save-combo
+  // dialog + its state, hostSavedMeals/hostFavorites + optimistic favourite
+  // toggle, the usual-meal-hint dismiss/shown tracking, and the pending-
+  // usual-meal-save deep-link consumer) moved to `useSavedMealsAndFavorites`.
+  // Same handlers, same analytics, same dependency arrays — just relocated
+  // so this component's local state list and JSX both shrink.
+  const {
+    dialog: saveMealDialog,
+    logHistoryItem,
+    logSavedMeal,
+    hostSavedMeals,
+    hostFavorites,
+    favoritePendingKeys,
+    toggleFoodFavorite,
+    favoriteKeySetForRecent,
+    savedMealsRefreshToken,
+    handleOpenSaveCombo,
+    openSaveMealDialog,
+    acceptUsualMealHint,
+    logSavedMealFromSlotHeader,
+    hintVisibleForSlot,
+    dismissUsualMealHint,
+  } = useSavedMealsAndFavorites({
+    authedUserId,
+    mealSlot,
+    selectedDateKey,
+    nutritionByDay,
+    mealsForSelectedDate,
+    addLoggedMeal,
+    addLoggedMealForDate,
+  });
 
   useEffect(() => {
     const id = setInterval(() => setFastingNowTick(Date.now()), 60_000);
@@ -1743,81 +1096,17 @@ export const NutritionTracker = memo(function NutritionTracker({
   );
   const baseCalorieTarget = scheduledDayTargets.calories;
 
-  const weekData = useMemo(() => {
-    const d = new Date(selectedDate);
-    const dow = d.getDay();
-    const startOffset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
-    const weekFirst = new Date(d);
-    weekFirst.setDate(d.getDate() + startOffset);
-
-    const dayLabels =
-      weekStartDay === "monday"
-        ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-    const days: {
-      key: string;
-      short: string;
-      date: Date;
-      totals: { calories: number; protein: number; carbs: number; fat: number };
-      waterMl: number;
-      steps: number | null;
-    }[] = [];
-
-    for (let i = 0; i < 7; i++) {
-      const dd = new Date(weekFirst);
-      dd.setDate(weekFirst.getDate() + i);
-      const dk = dateKeyFromDate(dd);
-      const meals = nutritionByDay[dk] ?? [];
-      const totals = meals.reduce(
-        (acc, m) => ({
-          calories: acc.calories + Math.max(0, m.calories),
-          protein: acc.protein + Math.max(0, m.protein),
-          carbs: acc.carbs + Math.max(0, m.carbs),
-          fat: acc.fat + Math.max(0, m.fat),
-        }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 },
-      );
-      const mealWater = meals.reduce((s, m) => s + Math.max(0, m.waterMl ?? 0), 0);
-      const waterMl = Math.round(mealWater + (extraWaterByDay[dk] ?? 0));
-      const stepsLogged = Object.prototype.hasOwnProperty.call(stepsByDay, dk);
-      const steps = stepsLogged ? (stepsByDay[dk] ?? 0) : null;
-      days.push({ key: dk, short: dayLabels[i]!, date: dd, totals, waterMl, steps });
-    }
-
-    const weekTotals = days.reduce(
-      (acc, x) => ({
-        calories: acc.calories + x.totals.calories,
-        protein: acc.protein + x.totals.protein,
-        carbs: acc.carbs + x.totals.carbs,
-        fat: acc.fat + x.totals.fat,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    );
-
-    const daysWithFood = Math.max(1, days.filter((x) => x.totals.calories > 0).length);
-    const weekAvg = {
-      calories: Math.round(weekTotals.calories / daysWithFood),
-      protein: Math.round(weekTotals.protein / daysWithFood),
-      carbs: Math.round(weekTotals.carbs / daysWithFood),
-      fat: Math.round(weekTotals.fat / daysWithFood),
-    };
-
-    const weekStartLabel = weekFirst.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-    const weekLast = new Date(weekFirst);
-    weekLast.setDate(weekFirst.getDate() + 6);
-    const weekEndLabel = weekLast.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-
-    const loggedDaysInWeek = days.filter((x) => x.totals.calories > 0).length;
-    return {
-      days,
-      weekTotals,
-      weekAvg,
-      daysWithFood,
-      loggedDaysInWeek,
-      label: `${weekStartLabel} – ${weekEndLabel}`,
-    };
-  }, [selectedDate, nutritionByDay, weekStartDay, extraWaterByDay, stepsByDay]);
+  // ENG-1360 (second extraction pass) — the week-strip/week-view data memo
+  // (7-day bucketing + totals/averages/label) moved to `useTrackerWeekData`.
+  // Same math, same dependency array — just relocated so this component's
+  // local computation list shrinks.
+  const weekData = useTrackerWeekData(
+    selectedDate,
+    nutritionByDay,
+    weekStartDay,
+    extraWaterByDay,
+    stepsByDay,
+  );
 
   // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Mirrors mobile gating + content build.
@@ -3424,15 +2713,9 @@ export const NutritionTracker = memo(function NutritionTracker({
       {/* Audit H4 (2026-04-18) — Save-combo dialog lifted out of
           QuickAddPanel so the host is the single owner. Opened via
           `handleOpenSaveCombo` (the meal-slot chip + the panel's
-          `onOpenSaveCombo` prop both fire it). */}
-      <SaveMealDialog
-        open={saveComboOpen}
-        onOpenChange={setSaveComboOpen}
-        initialItems={saveComboSeedItems}
-        defaultSlot={saveComboDefaultSlot}
-        onSave={handleCreateSavedMeal}
-        suggestedName={saveComboSuggestedName}
-      />
+          `onOpenSaveCombo` prop both fire it). Rendered by
+          `useSavedMealsAndFavorites` (ENG-1360 second extraction pass). */}
+      {saveMealDialog}
 
       {/* 2026-04-30 (web mobile-web parity with mobile commit
           `6633d2d`): the side FAB (formerly a `LogFab` at right:18 /
