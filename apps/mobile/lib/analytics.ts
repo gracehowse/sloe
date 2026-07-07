@@ -629,6 +629,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // remove here / PostHog). Mirror of the web entry in
   // src/lib/analytics/track.ts. M+W.
   "sloe_v3_log",
+  // ENG-1461 — jargon-gloss system (ENG-1187): TDEE/BMR renders lead with
+  // plain English ("Est. daily burn (TDEE)"), acronym secondary. DECIDED
+  // (Fable, 2026-07-07, per Grace's delegation) to flip ON and extend beyond
+  // onboarding to Progress + pricing + the weekly check-in. Off → the plain
+  // (pre-gloss) label at each site — never a broken render, so still a safe
+  // kill switch. Mirror of the web entry in src/lib/analytics/track.ts. M+W.
+  "onboarding_jargon_gloss_v1",
 ]);
 
 /**
