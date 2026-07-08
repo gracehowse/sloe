@@ -32,6 +32,7 @@ import {
   netEnergySubline,
 } from "../../../lib/nutrition/netEnergyBalance";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { ACTIVITY_BONUS_INFO_TRIGGER_LABEL_GLOSS, ACTIVITY_BONUS_INFO_TRIGGER_LABEL_PLAIN } from "../../../lib/onboarding/figmaCopy.ts";
 
 /**
  * TodayActivityBonusCard — Figma TD1 Energy balance + 7-day rolling.
@@ -202,8 +203,7 @@ export function TodayActivityBonusCard({
   return (
     <div className="flex flex-col gap-5">
       <div
-        // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
-        // lift (`card-slab`). Was flat slab.
+        // One-treatment elevation (Grace 2026-06-09): page-ground → soft lift.
         className="rounded-card bg-card card-slab p-5"
         data-testid="today-energy-balance-card"
       >
@@ -243,7 +243,7 @@ export function TodayActivityBonusCard({
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    aria-label="What is maintenance TDEE?"
+                    aria-label={isFeatureEnabled("onboarding_jargon_gloss_v1") ? ACTIVITY_BONUS_INFO_TRIGGER_LABEL_GLOSS : ACTIVITY_BONUS_INFO_TRIGGER_LABEL_PLAIN}
                     data-testid="today-activity-bonus-info-trigger"
                     className="-m-1 rounded-full p-1 text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   >

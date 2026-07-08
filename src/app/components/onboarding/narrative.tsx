@@ -3,6 +3,13 @@
 import * as React from "react";
 import type { OnboardingState, StepId } from "@/lib/onboarding/state";
 import type { V2Targets } from "@/lib/onboarding/targets";
+import { isFeatureEnabled } from "@/lib/analytics/track";
+import {
+  ONBOARDING_REVEAL_BMR_LABEL_GLOSS,
+  ONBOARDING_REVEAL_BMR_LABEL_PLAIN,
+  ONBOARDING_REVEAL_TDEE_LABEL_GLOSS,
+  ONBOARDING_REVEAL_TDEE_LABEL_PLAIN,
+} from "@/lib/onboarding/figmaCopy";
 
 /**
  * Per-step narrative content for the web split layout's left column.
@@ -102,21 +109,23 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
     eyebrow: "Your targets",
     head: "Your plan\nis ready.",
     body: "Calculated from everything you just told us. These numbers will adapt as Sloe learns from your logs.",
-    extra: ({ targets }) =>
-      targets ? (
+    extra: ({ targets }) => {
+      // ENG-1469 (ENG-1461 follow-up) — this desktop narrative column
+      // duplicates the SAME BMR/TDEE tile pair the right-side reveal
+      // step renders (`steps/reveal.tsx`); reuses those exact gloss
+      // constants rather than a third label variant, per ENG-1461's
+      // "one canonical label per concept" rule. Was the real ENG-1187
+      // gap — this column was never wired to the gloss flag at all.
+      const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
+      const bmrLabel = glossOn ? ONBOARDING_REVEAL_BMR_LABEL_GLOSS : ONBOARDING_REVEAL_BMR_LABEL_PLAIN;
+      const tdeeLabel = glossOn ? ONBOARDING_REVEAL_TDEE_LABEL_GLOSS : ONBOARDING_REVEAL_TDEE_LABEL_PLAIN;
+      return targets ? (
         <div className="grid grid-cols-2 gap-3 max-w-[420px]">
-          <NarrativeStat
-            label="Your BMR"
-            value={targets.bmr}
-            unit="kcal/day"
-          />
-          <NarrativeStat
-            label="Estimated TDEE"
-            value={targets.tdee}
-            unit="kcal/day"
-          />
+          <NarrativeStat label={bmrLabel} value={targets.bmr} unit="kcal/day" />
+          <NarrativeStat label={tdeeLabel} value={targets.tdee} unit="kcal/day" />
         </div>
-      ) : null,
+      ) : null;
+    },
   },
   // Build-40 (2026-05-01) — data-bridges step. Customer-lens audit
   // found three competitor-refugee personas bouncing on day 1 because

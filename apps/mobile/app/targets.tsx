@@ -46,6 +46,7 @@ import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
 import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
 import { paceKgPerWeekFromPreset } from "@suppr/nutrition-core/whyThisNumber";
 import { isFeatureEnabled } from "@/lib/analytics";
+import { TARGETS_HOW_CALCULATED_CAPTION_GLOSS, TARGETS_HOW_CALCULATED_CAPTION_PLAIN, TARGETS_MOBILE_CAPTION_STATIC_TDEE_GLOSS, TARGETS_MOBILE_CAPTION_STATIC_TDEE_PLAIN } from "@suppr/shared/onboarding/figmaCopy";
 
 /**
  * Targets screen — 2026-04-20 prototype port. Dedicated surface that
@@ -134,12 +135,12 @@ export default function TargetsScreen() {
   // semantics are identical.
   const [recalculating, setRecalculating] = useState(false);
   const [recalcToast, setRecalcToast] = useState(false);
-  // ENG goal-editor (2026-05-25): the Edit action opens the "Edit goal &
-  // pace" sheet when the `goal-editor` flag is on; otherwise it keeps the
-  // old behaviour (route to /profile, which has no goal control — the gap
-  // this closes). The flag gates only the new UI entry; the recompute
-  // logic itself is unconditional.
+  // ENG goal-editor (2026-05-25): Edit opens the "Edit goal & pace" sheet
+  // when on; otherwise routes to /profile (no goal control there — the
+  // gap this closes). Gates only the UI entry; recompute is unconditional.
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
+  // ENG-1469 — Targets gloss (ENG-1461 follow-up); pairs in figmaCopy.ts.
+  const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   // ENG-824 — quiet win-moment (success haptic + win-colour wash on the calorie
   // card) when targets are saved (goal/pace edit) or recalculated. Gated behind
@@ -363,10 +364,8 @@ export default function TargetsScreen() {
     // 667, not 750). Use one number for both, and label its source
     // honestly (adaptive is measured, not Mifflin-St Jeor). Matches web.
     const maintenance = adaptiveTdee ?? tdeeKcal;
-    const basis =
-      adaptiveTdee != null
-        ? "Maintenance from your recent intake"
-        : "Estimated TDEE · Mifflin-St Jeor";
+    const staticBasis = glossOn ? TARGETS_MOBILE_CAPTION_STATIC_TDEE_GLOSS : TARGETS_MOBILE_CAPTION_STATIC_TDEE_PLAIN;
+    const basis = adaptiveTdee != null ? "Maintenance from your recent intake" : staticBasis;
     const base = `${basis} · ${activityLevelCaption(activityLevel)}`;
     const tail = deficitSurplusCaption({
       targetCalories: targets.calories,
@@ -374,7 +373,7 @@ export default function TargetsScreen() {
       goal,
     });
     return tail ? `${base} · ${tail}` : base;
-  }, [activityLevel, targets.calories, tdeeKcal, adaptiveTdee, goal]);
+  }, [activityLevel, targets.calories, tdeeKcal, adaptiveTdee, goal, glossOn]);
 
   const macroColorFor = (key: string): string => {
     switch (key) {
@@ -902,7 +901,7 @@ export default function TargetsScreen() {
               How is this calculated?
             </Text>
             <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}>
-              See the maintenance TDEE, goal, and pace behind today&apos;s target.
+              {glossOn ? TARGETS_HOW_CALCULATED_CAPTION_GLOSS : TARGETS_HOW_CALCULATED_CAPTION_PLAIN}
             </Text>
           </View>
           <ChevronRight size={18} color={colors.textTertiary} strokeWidth={1.75} />

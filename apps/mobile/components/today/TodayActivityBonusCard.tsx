@@ -43,6 +43,7 @@ import {
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { isFeatureEnabled } from "@/lib/analytics";
+import { ACTIVITY_BONUS_DISMISS_LABEL_GLOSS, ACTIVITY_BONUS_DISMISS_LABEL_PLAIN, ACTIVITY_BONUS_INFO_TRIGGER_LABEL_GLOSS, ACTIVITY_BONUS_INFO_TRIGGER_LABEL_PLAIN, ACTIVITY_BONUS_MODAL_TITLE_GLOSS, ACTIVITY_BONUS_MODAL_TITLE_PLAIN } from "@suppr/shared/onboarding/figmaCopy";
 
 /**
  * TodayActivityBonusCard — net energy summary, burn breakdown card,
@@ -173,9 +174,8 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
   const isDark = useColorScheme() === "dark";
   const activitySolid = isDark ? Accent.activitySolidDark : Accent.activitySolid;
   // Secondary accent (Frost flag → damson, else clay) for the two CTAs on this
-  // card (the "Enable activity budget" discover button + the popover "Close").
-  // The honey activity data (flame/arc/kcal via `Accent.activity*`), the sage/
-  // amber status hues, and the energy-balance track stay on their own tokens.
+  // card (discover button + popover "Close"); activity/status/track tokens
+  // (`Accent.activity*`, sage/amber, energy-balance) stay on their own.
   const accent = useAccent();
   const [infoOpen, setInfoOpen] = React.useState(false);
   const earnedActivityBudgetAddon =
@@ -338,7 +338,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
           {popoverCopy ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="What is maintenance TDEE?"
+              accessibilityLabel={isFeatureEnabled("onboarding_jargon_gloss_v1") ? ACTIVITY_BONUS_INFO_TRIGGER_LABEL_GLOSS : ACTIVITY_BONUS_INFO_TRIGGER_LABEL_PLAIN}
               testID="today-activity-bonus-info-trigger"
               onPress={() => setInfoOpen(true)}
               hitSlop={8}
@@ -698,7 +698,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Dismiss TDEE explainer"
+            accessibilityLabel={isFeatureEnabled("onboarding_jargon_gloss_v1") ? ACTIVITY_BONUS_DISMISS_LABEL_GLOSS : ACTIVITY_BONUS_DISMISS_LABEL_PLAIN}
             onPress={() => setInfoOpen(false)}
             style={{
               flex: 1,
@@ -720,7 +720,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
               }, cardElevation.shadowStyle]}
             >
               <Text style={{ fontSize: 13, fontWeight: "700", color: textColor, marginBottom: Spacing.sm }}>
-                Maintenance TDEE
+                {isFeatureEnabled("onboarding_jargon_gloss_v1") ? ACTIVITY_BONUS_MODAL_TITLE_GLOSS : ACTIVITY_BONUS_MODAL_TITLE_PLAIN}
               </Text>
               <Text style={{ fontSize: 13, color: textSecondaryColor, lineHeight: 19 }}>
                 {popoverCopy}
