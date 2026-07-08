@@ -1,134 +1,211 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Scale } from "lucide-react-native";
-import { Colors, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
+import { FontFamily, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { SupprButton } from "@/components/ui/SupprButton";
 import type { WeightPoint } from "@/lib/progress/weightTrend";
 import Svg, { Circle, Line } from "react-native-svg";
 
 type Props = {
   points: WeightPoint[];
+  goalKg?: number | null;
   onLogWeight: () => void;
 };
 
-export function WeightSparseState({ points, onLogWeight }: Props) {
+// ENG-1372 slice 2 — the weight chart-frame ALWAYS renders (law 1: no
+// hero at zero visual weight). These constants keep the sparse-state
+// plot geometry legible without pulling in the full WeightChart (which
+// requires >=2 points for its toX/toY maths). The frame is intentionally
+// simpler than the canonical chart — an axis baseline, an optional goal
+// band, and (at 1 point) a dotted projection line toward the goal.
+const FRAME_WIDTH = 260;
+const FRAME_HEIGHT = 120;
+const FRAME_PAD_X = 24;
+const FRAME_PAD_TOP = 16;
+const FRAME_PAD_BOTTOM = 28;
+
+export function WeightSparseState({ points, goalKg, onLogWeight }: Props) {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the Log-weight CTAs
   // and the sparse data-point stroke.
   const accent = useAccent();
 
+  const plotTop = FRAME_PAD_TOP;
+  const plotBottom = FRAME_HEIGHT - FRAME_PAD_BOTTOM;
+  const plotLeft = FRAME_PAD_X;
+  const plotRight = FRAME_WIDTH - FRAME_PAD_X;
+
   if (points.length === 0) {
+    // 0 weigh-ins — ALWAYS render the chart frame (axis + optional goal
+    // band); the invitation sits INSIDE the plot area (law 2: one filled
+    // action inside the hero, not floating beside a ghost of the data).
+    const goalY = goalKg != null ? plotTop + (plotBottom - plotTop) * 0.25 : null;
     return (
-      <View style={styles.container}>
-        <Scale size={32} color={colors.textTertiary} strokeWidth={1.5} />
-        <Text style={[styles.headline, { color: colors.text }]}>No weigh-ins yet</Text>
-        <Text style={[styles.body, { color: colors.textSecondary }]}>
-          Log your first weight to start a trend.
-        </Text>
-        <Pressable style={[styles.btn, { backgroundColor: accent.primary }]} onPress={onLogWeight}>
-          <Text style={styles.btnText}>Log weight</Text>
-        </Pressable>
+      <View
+        testID="weight-sparse-state"
+        style={[styles.frameContainer, { backgroundColor: colors.surfaceWarm }]}
+      >
+        <Svg width={FRAME_WIDTH} height={FRAME_HEIGHT}>
+          {/* Baseline axis */}
+          <Line
+            x1={plotLeft}
+            y1={plotBottom}
+            x2={plotRight}
+            y2={plotBottom}
+            stroke={colors.border}
+            strokeWidth={1}
+          />
+          {/* Goal band — a dashed reference line, shown whenever a goal is
+              set, so the empty frame still orients the user toward it. */}
+          {goalY != null ? (
+            <Line
+              x1={plotLeft}
+              y1={goalY}
+              x2={plotRight}
+              y2={goalY}
+              stroke={colors.textTertiary}
+              strokeWidth={1}
+              strokeDasharray="4 3"
+            />
+          ) : null}
+        </Svg>
+        {goalKg != null ? (
+          <Text style={[styles.goalCaption, { color: colors.textTertiary, top: (goalY ?? 0) - 14 }]}>
+            Goal {goalKg.toFixed(1)} kg
+          </Text>
+        ) : null}
+        <View style={styles.ctaOverlay} pointerEvents="box-none">
+          <Scale size={22} color={colors.textTertiary} strokeWidth={1.5} />
+          <SupprButton
+            variant="primary"
+            label="Log your first weigh-in"
+            onPress={onLogWeight}
+            style={{ marginTop: Spacing.sm }}
+          />
+        </View>
       </View>
     );
   }
 
   if (points.length === 1) {
+    // 1 weigh-in — the single point PLUS a dotted projection line toward the
+    // goal marker (contract: "the point + dotted projection toward the goal
+    // marker"). No trend claim yet — "unlocks" framing, not a verdict.
     const kg = points[0]!.kg;
+    const pointX = plotLeft + (plotRight - plotLeft) * 0.22;
+    const pointY = plotTop + (plotBottom - plotTop) * 0.55;
+    const hasGoal = goalKg != null;
+    // Projection direction is purely illustrative (toward the goal side of
+    // the point) — no data-driven slope exists yet with a single point.
+    const goalY = hasGoal
+      ? pointY + (goalKg! < kg ? (plotBottom - plotTop) * 0.28 : -(plotBottom - plotTop) * 0.28)
+      : pointY;
+    const clampedGoalY = Math.max(plotTop, Math.min(plotBottom, goalY));
+
     return (
-      <View style={styles.container}>
-        <Scale size={32} color={colors.textTertiary} strokeWidth={1.5} />
-        {/* SLOE Phase 0: the single-weigh-in hero numeral reads in Newsreader
-            serif (big numerals are a serif moment); the `kg` unit stays sans. */}
-        <Text style={[styles.singleValue, { color: colors.text }]}>
+      <View
+        testID="weight-sparse-state"
+        style={[styles.frameContainer, { backgroundColor: colors.surfaceWarm }]}
+      >
+        <Svg width={FRAME_WIDTH} height={FRAME_HEIGHT}>
+          <Line
+            x1={plotLeft}
+            y1={plotBottom}
+            x2={plotRight}
+            y2={plotBottom}
+            stroke={colors.border}
+            strokeWidth={1}
+          />
+          {hasGoal ? (
+            <Line
+              x1={pointX}
+              y1={pointY}
+              x2={plotRight}
+              y2={clampedGoalY}
+              stroke={accent.primary}
+              strokeWidth={1.5}
+              strokeDasharray="3 4"
+              strokeOpacity={0.6}
+            />
+          ) : null}
+          <Circle cx={pointX} cy={pointY} r={5} fill={colors.card} stroke={accent.primary} strokeWidth={2} />
+        </Svg>
+        <Text
+          style={[styles.pointLabel, { color: colors.text, left: pointX - 30, top: pointY - 34 }]}
+        >
           {kg.toFixed(1)}
-          <Text style={{ fontFamily: FontFamily.sansBold, fontSize: 16, fontWeight: "700" }}> kg</Text>
+          <Text style={{ fontFamily: FontFamily.sansBold, fontSize: 11, fontWeight: "700" }}> kg</Text>
         </Text>
-        <Text style={[styles.headline, { color: colors.text }]}>One weigh-in logged</Text>
-        <Text style={[styles.body, { color: colors.textSecondary }]}>
-          Add two more to see a trend line.
-        </Text>
-        <Pressable style={[styles.btn, { backgroundColor: accent.primary }]} onPress={onLogWeight}>
-          <Text style={styles.btnText}>Log weight</Text>
-        </Pressable>
+        <View style={styles.captionOverlay}>
+          <Text style={[styles.body, { color: colors.textSecondary }]}>
+            One more weigh-in unlocks your trend.
+          </Text>
+          <SupprButton
+            variant="primary"
+            label="Log weight"
+            onPress={onLogWeight}
+            style={{ marginTop: Spacing.sm }}
+          />
+        </View>
       </View>
     );
   }
 
-  // 2 points — two dots + thin connecting line, no MA
-  const w = 200;
-  const h = 48;
-  const x0 = 20;
-  const x1 = w - 20;
-  const p0 = points[0]!;
-  const p1 = points[1]!;
-  const minKg = Math.min(p0.kg, p1.kg);
-  const maxKg = Math.max(p0.kg, p1.kg);
-  const span = maxKg - minKg || 1;
-  const y0 = h - 8 - ((p0.kg - minKg) / span) * (h - 16);
-  const y1 = h - 8 - ((p1.kg - minKg) / span) * (h - 16);
-
-  return (
-    <View style={[styles.container, { paddingBottom: Spacing.sm }]}>
-      <Svg width={w} height={h}>
-        {/* 2026-05-12 (premium-bar audit DC5 polish): dashed 2-point
-            line switched to solid. Audit: "DC5 — Sparse-state weight
-            chart" is BETTER THAN BAR vs Withings, except the dashed
-            line in the 2-point state read as "tentative/in-flight"
-            when it should read "real trend, just early". Withings ships
-            solid lines at every density. */}
-        <Line
-          x1={x0} y1={y0} x2={x1} y2={y1}
-          stroke={colors.textSecondary}
-          strokeWidth={1.5}
-        />
-        <Circle cx={x0} cy={y0} r={4} fill={colors.card} stroke={colors.textSecondary} strokeWidth={1.5} />
-        <Circle cx={x1} cy={y1} r={4} fill={colors.card} stroke={accent.primary} strokeWidth={1.5} />
-      </Svg>
-      <Text style={[styles.sparseCaption, { color: colors.textTertiary }]}>
-        Trend appears after 3 weigh-ins.
-      </Text>
-      <Pressable style={[styles.btn, { backgroundColor: accent.primary, marginTop: Spacing.sm }]} onPress={onLogWeight}>
-        <Text style={styles.btnText}>Log weight</Text>
-      </Pressable>
-    </View>
-  );
+  // Fallback — 2+ points should never reach this component (the host mounts
+  // the canonical WeightChart once points.length >= 2), but keep a inert
+  // render rather than crashing if a caller regresses the gate.
+  return null;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    paddingVertical: Spacing.xl,
-    gap: Spacing.sm,
+const styles = {
+  frameContainer: {
+    borderRadius: Radius.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    alignItems: "center" as const,
+    overflow: "hidden" as const,
+  },
+  ctaOverlay: {
+    position: "absolute" as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: FRAME_PAD_BOTTOM,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: Spacing.xs,
+  },
+  captionOverlay: {
+    alignItems: "center" as const,
+    marginTop: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+  },
+  goalCaption: {
+    position: "absolute" as const,
+    right: FRAME_PAD_X,
+    fontSize: 10,
+  },
+  pointLabel: {
+    position: "absolute" as const,
+    fontFamily: FontFamily.serifRegular,
+    fontSize: 16,
+    fontVariant: ["tabular-nums" as const],
+    width: 70,
+    textAlign: "center" as const,
   },
   headline: {
     fontFamily: Type.bodyLarge.fontFamily,
     fontSize: Type.bodyLarge.fontSize,
     lineHeight: Type.bodyLarge.lineHeight,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  singleValue: {
-    fontFamily: FontFamily.serifRegular,
-    fontSize: 28,
-    fontVariant: ["tabular-nums"],
+    fontWeight: "600" as const,
+    textAlign: "center" as const,
   },
   body: {
     fontSize: 13,
-    textAlign: "center",
+    textAlign: "center" as const,
     lineHeight: 18,
   },
-  sparseCaption: {
-    fontSize: 11,
-    textAlign: "center",
-  },
-  btn: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
-  },
-  btnText: {
-    color: Colors.light.primaryForeground,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-});
+};
+
+export default WeightSparseState;

@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 
 /**
- * ENG-1225 #22 — WeightSparseState render contract (mobile).
+ * ENG-1372 slice 2 — WeightSparseState render contract (mobile).
  *
- * The Progress weight card now mounts this component (was dead code) for
- * never-/barely-logged users in place of the broken "—" hero + dashes stat
- * row. These tests pin the three sparse branches it must cover and that its
- * built-in CTA fires the caller's `onLogWeight`. Web parity twin is
- * `src/app/components/suppr/progress-weight-empty-state.tsx` (0-branch only,
- * behind `web_progress_weight_empty`).
+ * The Progress weight card mounts this component whenever there are fewer
+ * than 2 real weigh-ins (superseding the narrower ENG-1225 #22 gate, which
+ * only covered the 0-point case). ALWAYS renders a chart frame (law 1):
+ *   - 0 points → axis + optional goal band + a filled CTA inside the plot.
+ *   - 1 point  → the point + a dotted projection toward the goal +
+ *     "One more weigh-in unlocks your trend."
+ * Web parity twin is `src/app/components/suppr/progress-weight-empty-state.tsx`.
  */
 
 import { describe, expect, it, vi } from "vitest";
@@ -20,6 +21,8 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     textSecondary: "#666",
     textTertiary: "#999",
     card: "#fff",
+    border: "#ddd",
+    surfaceWarm: "#F9F3EB",
   }),
 }));
 
@@ -33,37 +36,41 @@ import type { WeightPoint } from "@/lib/progress/weightTrend";
 const pt = (dateISO: string, kg: number): WeightPoint => ({ dateISO, kg, source: "manual" });
 
 describe("WeightSparseState — 0 weigh-ins (mobile)", () => {
-  it("renders the empty prompt and fires onLogWeight from its CTA", () => {
+  it("always renders the chart frame ground (warm-tint, law 1) with the CTA inside the plot area", () => {
     const onLogWeight = vi.fn();
-    const { getByText } = render(<WeightSparseState points={[]} onLogWeight={onLogWeight} />);
-    expect(getByText("No weigh-ins yet")).toBeTruthy();
-    expect(getByText("Log your first weight to start a trend.")).toBeTruthy();
-    fireEvent.press(getByText("Log weight"));
+    const { getByTestId, getByText } = render(
+      <WeightSparseState points={[]} onLogWeight={onLogWeight} />,
+    );
+    expect(getByTestId("weight-sparse-state")).toBeTruthy();
+    expect(getByText("Log your first weigh-in")).toBeTruthy();
+    fireEvent.press(getByText("Log your first weigh-in"));
     expect(onLogWeight).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders a dashed goal band + goal caption when a goal is set", () => {
+    const { getByText } = render(
+      <WeightSparseState points={[]} goalKg={68} onLogWeight={vi.fn()} />,
+    );
+    expect(getByText(/Goal 68\.0 kg/)).toBeTruthy();
   });
 });
 
 describe("WeightSparseState — 1 weigh-in (mobile)", () => {
-  it("renders the single-value hero + 'one weigh-in' copy", () => {
+  it("renders the point + 'unlocks your trend' copy (no trend claim yet)", () => {
+    const onLogWeight = vi.fn();
     const { getByText } = render(
-      <WeightSparseState points={[pt("2026-06-01", 72.4)]} onLogWeight={vi.fn()} />,
+      <WeightSparseState points={[pt("2026-06-01", 72.4)]} onLogWeight={onLogWeight} />,
     );
-    // Hero numeral nests "72.4" + a sans " kg" in one Text node ("72.4 kg").
     expect(getByText(/72\.4/)).toBeTruthy();
-    expect(getByText("One weigh-in logged")).toBeTruthy();
-    expect(getByText("Add two more to see a trend line.")).toBeTruthy();
+    expect(getByText("One more weigh-in unlocks your trend.")).toBeTruthy();
+    fireEvent.press(getByText("Log weight"));
+    expect(onLogWeight).toHaveBeenCalledTimes(1);
   });
-});
 
-describe("WeightSparseState — 2 weigh-ins (mobile)", () => {
-  it("renders the two-point caption (trend appears at 3)", () => {
-    const { getByText } = render(
-      <WeightSparseState
-        points={[pt("2026-06-01", 72.4), pt("2026-06-08", 71.8)]}
-        onLogWeight={vi.fn()}
-      />,
+  it("renders without crashing when a goal is set (dotted projection toward the goal marker)", () => {
+    const { getByTestId } = render(
+      <WeightSparseState points={[pt("2026-06-01", 72.4)]} goalKg={68} onLogWeight={vi.fn()} />,
     );
-    expect(getByText("Trend appears after 3 weigh-ins.")).toBeTruthy();
-    expect(getByText("Log weight")).toBeTruthy();
+    expect(getByTestId("weight-sparse-state")).toBeTruthy();
   });
 });

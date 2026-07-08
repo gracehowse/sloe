@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "./ui/icons";
 import { IconBox } from "./ui/icon-box";
@@ -242,6 +242,7 @@ function ProgressDashboardContent() {
   const [maintenanceExplainerOpen, setMaintenanceExplainerOpen] = useState(false);
 
   const [weightInput, setWeightInput] = useState("");
+  const weightInputRef = useRef<HTMLInputElement | null>(null); // ENG-1372 slice 2 CTA target
   const [stepsInput, setStepsInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
   // ENG-824 / ENG-952 — weight-save celebration state + side-effects (loud
@@ -1303,9 +1304,7 @@ function ProgressDashboardContent() {
           users see the direction tile above instead). */}
       {effectiveWeightSurfaceMode === "show" ? (() => {
         const sortedWeightDays = Object.entries(weightKgByDay).sort(([a], [b]) => a.localeCompare(b));
-        // ENG-1225 #22 — "No weigh-ins yet" state (transient flag) replaces the
-        // broken "—" hero/chart/stat-row; the Log-weight input stays below.
-        const showWeightEmpty = sortedWeightDays.length === 0 && isFeatureEnabled("web_progress_weight_empty");
+        const showWeightEmpty = weightChartData.length < 2 && isFeatureEnabled("empty_state_grammar_v1"); // ENG-1372 slice 2
         const startKg = sortedWeightDays.length > 0 ? sortedWeightDays[0][1] : null;
         const weekDeltaKg = weightRange.weekDeltaKg;
         const rateKgPerWeek = goalTimeline?.weeklyRateKg ?? null;
@@ -1346,7 +1345,7 @@ function ProgressDashboardContent() {
               is no longer the only Progress card without a header. */}
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid mb-2">Weight</p>
           {showWeightEmpty ? (
-            <ProgressWeightEmptyState />
+            <ProgressWeightEmptyState points={weightChartData.map((d) => ({ kg: d.value }))} goalKg={goalWeightChart ?? null} onLogWeight={() => weightInputRef.current?.focus()} />
           ) : (<>
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1472,6 +1471,7 @@ function ProgressDashboardContent() {
           {/* Log weight — centred button + a quick inline input */}
           <div className="mt-3 flex items-center gap-2">
             <input
+              ref={weightInputRef}
               className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
               placeholder={profileMeasurementSystem === "imperial" ? "Weight (lb)" : "Weight (kg)"}
               value={weightInput}
