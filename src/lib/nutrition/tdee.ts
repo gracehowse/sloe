@@ -351,14 +351,19 @@ export function activityLevelPreviewKcal(
 }
 
 /**
- * Canonical popover copy for the Today activity-bonus card. Wording is
+ * Canonical popover copy for the Today activity-bonus card — the
+ * FORMULA-fallback branch (no adaptive/measured maintenance yet; see
+ * `buildMaintenancePopoverCopy` in `resolveMaintenance.ts` for the
+ * adaptive/measured branches, already fully plain-English). Wording is
  * locked across platforms — both `today-activity-bonus-card.tsx` (web)
- * and `TodayActivityBonusCard.tsx` (mobile) read from this helper so a
- * silent drift in either direction fails the parity test in
- * `tests/unit/tdeeExplainer.test.ts`.
+ * and `TodayActivityBonusCard.tsx` (mobile) read from this helper.
+ *
+ * ENG-1469 (2026-07-08) gloss pass: "BMR" now leads with "resting burn"
+ * per the established grammar (`maintenanceChain.ts`'s "Your body at
+ * rest (BMR)"); acronym stays secondary in parentheses.
  *
  * Shape (one paragraph, three sentences):
- *   Maintenance ≈ {tdee} kcal · BMR {bmr} × {activityLabel} {mult}.
+ *   Maintenance ≈ {tdee} kcal · resting burn (BMR) {bmr} × {activityLabel} {mult}.
  *   Total burn = Resting {basal} + Active {active}.
  *   Bonus = burn above maintenance.
  */
@@ -373,7 +378,7 @@ export function buildTdeeExplainerCopy(input: {
   const label = ACTIVITY_SHORT_LABELS[activityLevel];
   const mult = ACTIVITY_MULTIPLIERS[activityLevel];
   return [
-    `Maintenance \u2248 ${Math.round(maintenanceTdeeKcal).toLocaleString()} kcal \u00B7 BMR ${Math.round(
+    `Maintenance \u2248 ${Math.round(maintenanceTdeeKcal).toLocaleString()} kcal \u00B7 resting burn (BMR) ${Math.round(
       bmrKcal,
     ).toLocaleString()} \u00D7 ${label} ${mult}.`,
     `Total burn = Resting ${Math.round(basalKcal).toLocaleString()} + Active ${Math.round(

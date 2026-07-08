@@ -71,6 +71,11 @@ import { normalizeRecipeTitle } from "../lib/recipes/normalizeRecipeTitle.ts";
 import { SEED_RECIPES_V2 } from "../lib/recipes/seedRecipesV2.ts";
 import { seedsToRecipeCards } from "../lib/recipes/seedRecipesToCard.ts";
 import {
+  fetchMaterialisedSeedMap,
+  isUuid,
+  materialiseSeedRecipeById,
+} from "../lib/recipes/materialiseSeedRecipe.ts";
+import {
   looksLikeMissingTableError,
   syncDisabledBecauseSchemaMessage,
   syncFailedRetryMessage,
@@ -115,6 +120,17 @@ import {
   type MealPlanSlotSyncLedger,
 } from "../lib/mealPlan/slotCloudSync.ts";
 import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.ts";
+
+// Monotonic counter so the profile-sync realtime subscription below gets
+// a UNIQUE channel topic per mount — same class of bug as ENG-794 /
+// ENG-1473 (mobile notif-count channel). A provider remount (Strict-Mode
+// double-invoke, HMR) whose cleanup calls the async, un-awaited
+// `supabase.removeChannel` can leave a same-topic channel still
+// subscribed; the remount's `supabase.channel(<same topic>)` then
+// returns that already-subscribed channel and the following `.on()`
+// throws. Appending a monotonic id makes every subscription's topic
+// unique so a lingering channel can never collide.
+let profileRealtimeSeq = 0;
 
 export type RedeemPromoResult =
   | { ok: true; tier: UserTier; alreadyRedeemed?: boolean }
@@ -353,6 +369,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const notifications = useNotifications();
 
   const [savedRecipeIds, setSavedRecipeIds] = useState<string[]>(initial.savedRecipeIds);
+  // ENG-1467 — copy-on-save: Discover seed recipes have slug ids
+  // (`seed-v2-...`), not UUIDs, so they can never appear directly in
+  // `savedRecipeIds` (which mirrors the `saves` table's real `recipe_id`
+  // uuid column). This map remembers, per session, which seed id
+  // resolves to which materialised `recipes` row, so `isRecipeSaved` /
+  // `toggleSaveRecipe` both read/write through the real id transparently.
+  // Rebuilt from the DB in the saves-sync effect below via
+  // `fetchMaterialisedSeedMap` so it survives reloads. Mirrors the
+  // mobile `useSavedRecipes` fix in `apps/mobile/lib/recipes.ts`.
+  const seedSaveMapRef = useRef<Record<string, string>>({});
   const [savedAtById, setSavedAtById] = useState<Record<string, string>>(initial.savedAtById);
   const [savedRecipeMetaById, setSavedRecipeMetaById] = useState<
     NonNullable<NonNullable<typeof initial>["savedRecipeMetaById"]>
@@ -870,7 +896,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!authedUserId) return;
     const channel = supabase
-      .channel(`profiles:${authedUserId}`)
+      .channel(`profiles:${authedUserId}:${(profileRealtimeSeq += 1)}`)
       .on(
         "postgres_changes",
         {
@@ -1649,6 +1675,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setSavesResolved(false);
     let cancelled = false;
     (async () => {
+      // ENG-1467 — rebuild the seed-id -> materialised-recipe-id map
+      // alongside the saves fetch so a previously-saved seed shows as
+      // saved via its ORIGINAL slug id (Discover cards only know that
+      // id). Errors degrade to an empty map — the seed just renders
+      // as not-yet-saved, same as a fresh account.
+      const seedMap = await fetchMaterialisedSeedMap(supabase, authedUserId);
+      if (cancelled) return;
+      seedSaveMapRef.current = seedMap;
+
       // ENG-1413 — page to exhaustion (fetchAllUserSaves) instead of one
       // unbounded fetch; sort by created_at after all pages land since
       // display order downstream assumes newest-first.
@@ -1720,7 +1755,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      setSavedRecipeIds(ids);
+      // ENG-1467 — surface a materialised seed as saved via its
+      // ORIGINAL slug id too, mirroring the mobile fix.
+      const idSet = new Set(ids);
+      for (const [seedId, materialisedId] of Object.entries(seedMap)) {
+        if (idSet.has(materialisedId) && !idSet.has(seedId)) {
+          idSet.add(seedId);
+          savedAt[seedId] = savedAt[materialisedId] ?? new Date().toISOString();
+        }
+      }
+
+      setSavedRecipeIds(Array.from(idSet));
       setSavedAtById(savedAt);
     })();
     return () => {
@@ -2149,27 +2194,40 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return next;
         });
         if (authedUserId && dbSavesEnabled) {
-          supabase
-            .from("saves")
-            .delete()
-            .eq("user_id", authedUserId)
-            .eq("recipe_id", recipeId)
-            .then(({ error }) => {
-              if (error) {
-                const msg = error.message ?? "";
-                if (looksLikeMissingTableError(msg)) {
-                  setDbSavesEnabled(false);
-                  if (!dbSavesWarned) {
-                    setDbSavesWarned(true);
-                    toast.warning(syncDisabledBecauseSchemaMessage("Saved recipes"));
+          // ENG-1467 — a seed recipe's `saves` row (if it was ever
+          // successfully saved post-fix) is keyed by the MATERIALISED
+          // recipe id, not the slug id the UI/state use. Resolve it
+          // before issuing the delete.
+          const dbRecipeId = isUuid(recipeId) ? recipeId : seedSaveMapRef.current[recipeId];
+          if (!dbRecipeId) {
+            // Nothing to unsave server-side (e.g. a seed that was never
+            // successfully materialised — pre-fix optimistic state, or
+            // the earlier bug's silent failure). Local removal above is
+            // enough; no DB round-trip to make.
+            toast.success("Removed from library");
+          } else {
+            supabase
+              .from("saves")
+              .delete()
+              .eq("user_id", authedUserId)
+              .eq("recipe_id", dbRecipeId)
+              .then(({ error }) => {
+                if (error) {
+                  const msg = error.message ?? "";
+                  if (looksLikeMissingTableError(msg)) {
+                    setDbSavesEnabled(false);
+                    if (!dbSavesWarned) {
+                      setDbSavesWarned(true);
+                      toast.warning(syncDisabledBecauseSchemaMessage("Saved recipes"));
+                    }
+                    return;
                   }
-                  return;
+                  toast.error(syncFailedRetryMessage("library update", error.message ?? ""));
+                } else {
+                  toast.success("Removed from library");
                 }
-                toast.error(syncFailedRetryMessage("library update", error.message ?? ""));
-              } else {
-                toast.success("Removed from library");
-              }
-            });
+              });
+          }
         } else {
           toast.success("Removed from library");
         }
@@ -2217,55 +2275,103 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }, 1500);
       }
 
-      if (authedUserId && dbSavesEnabled) {
-        supabase
-          .from("saves")
-          .insert({ user_id: authedUserId, recipe_id: recipeId })
-          .then(({ error }) => {
-            if (error) {
-              const msg = error.message ?? "";
-              if (looksLikeMissingTableError(msg)) {
-                setDbSavesEnabled(false);
-                if (!dbSavesWarned) {
-                  setDbSavesWarned(true);
-                  toast.warning(syncDisabledBecauseSchemaMessage("Saved recipes"));
-                }
-                return;
-              }
-              // Server-side Free-tier cap (RLS policy `saves_insert_own`,
-              // see `supabase/migrations/20260426100000_saves_free_tier_cap.sql`).
-              // Roll back the optimistic in-memory save and show the same
-              // paywall toast the client guard shows, so the UI stays honest
-              // even when the client and server disagree on the count (e.g.
-              // a second device just saved the 10th recipe).
-              const code = (error as { code?: string }).code;
-              const lowered = msg.toLowerCase();
-              if (code === "42501" || lowered.includes("row-level security") || lowered.includes("row level security")) {
-                setSavedRecipeIds((prev) => prev.filter((id) => id !== recipeId));
-                setSavedAtById((prev) => {
-                  const { [recipeId]: _drop, ...rest } = prev;
-                  return rest;
-                });
-                setLibraryEntryKindByRecipeId((prev) => {
-                  const { [recipeId]: _drop, ...rest } = prev;
-                  return rest;
-                });
-                toast.error(`Free plan is limited to ${FREE_SAVE_LIMIT} saved recipes.`, {
-                  action: { label: "See plans", onClick: () => { window.location.href = "/pricing"; } },
-                });
-                return;
-              }
-              toast.error(syncFailedRetryMessage("saved recipe", error.message ?? ""));
-            } else {
-              toast.success("Saved to library");
-            }
+      const rollbackSave = () => {
+        setSavedRecipeIds((prev) => prev.filter((id) => id !== recipeId));
+        setSavedAtById((prev) => {
+          const { [recipeId]: _drop, ...rest } = prev;
+          return rest;
+        });
+        setLibraryEntryKindByRecipeId((prev) => {
+          const { [recipeId]: _drop, ...rest } = prev;
+          return rest;
+        });
+      };
+
+      const handleSaveInsertError = (error: { message?: string; code?: string }) => {
+        const msg = error.message ?? "";
+        if (looksLikeMissingTableError(msg)) {
+          setDbSavesEnabled(false);
+          if (!dbSavesWarned) {
+            setDbSavesWarned(true);
+            toast.warning(syncDisabledBecauseSchemaMessage("Saved recipes"));
+          }
+          return;
+        }
+        // Server-side Free-tier cap (RLS policy `saves_insert_own`,
+        // see `supabase/migrations/20260426100000_saves_free_tier_cap.sql`).
+        // Roll back the optimistic in-memory save and show the same
+        // paywall toast the client guard shows, so the UI stays honest
+        // even when the client and server disagree on the count (e.g.
+        // a second device just saved the 10th recipe).
+        const code = error.code ?? "";
+        const lowered = msg.toLowerCase();
+        if (code === "42501" || lowered.includes("row-level security") || lowered.includes("row level security")) {
+          rollbackSave();
+          toast.error(`Free plan is limited to ${FREE_SAVE_LIMIT} saved recipes.`, {
+            action: { label: "See plans", onClick: () => { window.location.href = "/pricing"; } },
           });
+          return;
+        }
+        // Pre-existing behaviour, unchanged: a generic persistence error
+        // still just warns — the optimistic save is left in place (not
+        // rolled back) since the row may in fact have landed and this is
+        // a response-parsing/network hiccup rather than a confirmed
+        // rejection. Reconciles on next full load.
+        toast.error(syncFailedRetryMessage("saved recipe", msg));
+      };
+
+      if (authedUserId && dbSavesEnabled) {
+        if (isUuid(recipeId)) {
+          supabase
+            .from("saves")
+            .insert({ user_id: authedUserId, recipe_id: recipeId })
+            .then(({ error }) => {
+              if (error) handleSaveInsertError(error);
+              else toast.success("Saved to library");
+            });
+        } else {
+          // ENG-1467 — copy-on-save. A non-UUID id means this is a
+          // Discover seed (or any future non-DB catalogue entry);
+          // materialise its real `recipes` row before touching `saves`,
+          // whose `recipe_id` column is a uuid FK. Async, so this runs
+          // after the optimistic UI update above (matching the
+          // fire-and-forget shape the UUID branch already has).
+          (async () => {
+            const result = await materialiseSeedRecipeById(supabase, authedUserId, recipeId);
+            if (!result.ok) {
+              console.error("[toggleSaveRecipe] seed materialise failed:", result.error, "| recipeId:", recipeId);
+              rollbackSave();
+              toast.error(result.error);
+              return;
+            }
+            seedSaveMapRef.current = { ...seedSaveMapRef.current, [recipeId]: result.recipeId };
+            const { error } = await supabase
+              .from("saves")
+              .insert({ user_id: authedUserId, recipe_id: result.recipeId });
+            if (error) {
+              handleSaveInsertError(error);
+              return;
+            }
+            toast.success("Saved to library");
+            // The Library screen resolves saved-recipe details via
+            // `composeLibraryEntries`, which looks the id up in
+            // `myLibraryRecipes` (author-owned rows) / `uploadedRecipes`
+            // (community) — NOT `savedRecipeMetaById`. The freshly
+            // materialised row is author-owned by this user but isn't in
+            // `myLibraryRecipes` yet, so without this refresh the Library
+            // card would silently drop as an "orphan save" until the next
+            // full reload. Same refresh `duplicateRecipeToCreatedDraft`
+            // and `ensureRecipeInLibraryWithKind` already do after
+            // inserting a new authored row.
+            await refreshMyLibraryRecipes();
+          })();
+        }
       } else {
         toast.success("Saved to library");
       }
       return true;
     },
-    [savedRecipeIds, authedUserId, dbSavesEnabled, dbSavesWarned, uploadedRecipes, myLibraryRecipes],
+    [savedRecipeIds, authedUserId, dbSavesEnabled, dbSavesWarned, uploadedRecipes, myLibraryRecipes, refreshMyLibraryRecipes],
   );
 
   const ensureRecipeInLibraryWithKind = useCallback(

@@ -7,9 +7,8 @@
  * (`WebTargets`) and the mobile `TargetsPage` flow:
  *
  *  - Breadcrumb: Account · Targets · <Wed, 14 May>
- *  - Title "Targets" + "Estimated TDEE based on Mifflin-St Jeor ·
- *    moderate activity" subtitle (the activity label tracks the
- *    user's `activity_level` — NOT a hardcoded "moderate").
+ *  - Title "Targets" + gloss-gated TDEE subtitle · activity label (tracks
+ *    `activity_level` — NOT hardcoded "moderate"; ENG-1469 gloss pairs).
  *  - 2-col top row:
  *      • LEFT: DAILY CALORIE TARGET — overline + big kcal number +
  *        "kcal / day · {deficit|surplus|maintenance} kcal ..." sub.
@@ -53,6 +52,7 @@ import { GoalPaceEditorDialog } from "./suppr/goal-pace-editor-dialog.tsx";
 import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber.ts";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useSettingsWinMoment } from "../../lib/preferences/useSettingsWinMoment.ts";
+import { TARGETS_HOW_CALCULATED_CAPTION_GLOSS, TARGETS_HOW_CALCULATED_CAPTION_PLAIN, TARGETS_RECALIBRATE_FOOTNOTE_TAIL_GLOSS, TARGETS_RECALIBRATE_FOOTNOTE_TAIL_PLAIN, TARGETS_SUBTITLE_STATIC_TDEE_GLOSS, TARGETS_SUBTITLE_STATIC_TDEE_PLAIN } from "../../lib/onboarding/figmaCopy.ts";
 
 export interface TargetsProps {
   /**
@@ -113,6 +113,8 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   // control, the gap this feature closes). The flag gates only the new
   // UI entry; the recompute logic itself is unconditional.
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
+  // ENG-1469 — Targets gloss (ENG-1461 follow-up); pairs in figmaCopy.ts.
+  const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   // ENG-824 — quiet win-moment (win-colour wash on the calorie card) when
   // targets are saved via the goal/pace editor. Gated behind
@@ -359,7 +361,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
           Targets
         </h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Estimated TDEE based on Mifflin-St Jeor · {activityLevelCaption(activityLevel)}
+          {glossOn ? TARGETS_SUBTITLE_STATIC_TDEE_GLOSS : TARGETS_SUBTITLE_STATIC_TDEE_PLAIN} · {activityLevelCaption(activityLevel)}
         </p>
       </div>
 
@@ -579,11 +581,9 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         })}
       </div>
 
-      {/* 2026-05-12 round 4 (Grace TF, web parity with mobile): the
-          "Why this number?" affordance moved off Today's hero ring
-          (audit flagged the pill as signalling low confidence). The
-          explainer lives here on Targets now — same row treatment as
-          the mobile screen. */}
+      {/* 2026-05-12 round 4 (Grace TF, web parity with mobile): "Why this
+          number?" moved off Today's hero ring (low-confidence signal);
+          explainer lives here now, same row treatment as mobile. */}
       <button
         type="button"
         onClick={() => setWhyOpen(true)}
@@ -599,15 +599,15 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             How is this calculated?
           </span>
           <span className="block text-[11px] text-muted-foreground mt-0.5">
-            See the maintenance TDEE, goal, and pace behind today&apos;s target.
+            {glossOn ? TARGETS_HOW_CALCULATED_CAPTION_GLOSS : TARGETS_HOW_CALCULATED_CAPTION_PLAIN}
           </span>
         </span>
         <ChevronRight size={18} strokeWidth={1.75} className="text-muted-foreground shrink-0" />
       </button>
 
       <p className="text-[11px] text-muted-foreground leading-relaxed max-w-3xl">
-        Projections assume your recent trend continues. Targets update when you edit your plan or
-        when adaptive TDEE re-calibrates.
+        Projections assume your recent trend continues. Targets update when you edit your plan or{" "}
+        {glossOn ? TARGETS_RECALIBRATE_FOOTNOTE_TAIL_GLOSS : TARGETS_RECALIBRATE_FOOTNOTE_TAIL_PLAIN}
       </p>
 
       <WhyThisNumberDialog

@@ -13,6 +13,7 @@ import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { GoalPaceEditorDialog } from "./suppr/goal-pace-editor-dialog.tsx";
 import { calculateBMR, calculateTDEE, calculateBudget, calculateMacros, type PlanPace, type NutritionStrategy } from "../../lib/nutrition/tdee.ts";
+import { PROFILE_UPGRADE_BANNER_TDEE_GLOSS, PROFILE_UPGRADE_BANNER_TDEE_PLAIN } from "../../lib/onboarding/figmaCopy.ts";
 import { useNutritionHistoryWindow } from "../../hooks/useNutritionHistoryWindow.ts";
 import { DIETARY_PREFERENCE_ENTRIES, normaliseDietaryFromProfile } from "../../constants/dietaryPreferences.ts";
 // Household summary for the "People" row (renamed from "Everything
@@ -112,20 +113,18 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
   const [manualTargets, setManualTargets] = useState(() => normalizeMacroTargets(nutritionTargets));
   const [activityAdjustPref, setActivityAdjustPref] = useState(preferActivityAdjustedCalories);
 
-  // ENG-125: wire the previously-dead "Daily Targets" settings row to the
-  // targets editor, matching mobile (`apps/mobile/app/profile.tsx` body-stats
-  // row → GoalPaceEditorSheet, gated on `goal_editor`). When the flag is on,
-  // the row opens the shared "Edit goal & pace" dialog — the same editor the
-  // Targets surface uses (`src/app/components/Targets.tsx`). When off, it falls
-  // back to the in-page manual Macro Calculator editor (switch to the targets
-  // tab + enter edit mode + scroll into view) so the row is never dead in
-  // either flag state. The fibre input stays on the manual editor (ENG-846 —
-  // out of scope here; the dialog routes there via `onCustomiseMacros`).
+  // ENG-125: wires the previously-dead "Daily Targets" row to the shared
+  // "Edit goal & pace" dialog (`Targets.tsx`'s editor) when `goal_editor`
+  // is on; else falls back to the in-page manual Macro Calculator editor
+  // (switch tabs + enter edit mode + scroll into view) so the row is
+  // never dead either way. Fibre input stays on the manual editor
+  // (ENG-846, out of scope; the dialog routes there via `onCustomiseMacros`).
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
   const profileShowcaseV1 = isFeatureEnabled("profile_showcase_v1");
-  // ENG-1246 (Gap #16) — the shared editorial Profile block: identity →
-  // streak dots + best/freezes line → milestones → recipe grid. Default-on;
-  // off → the legacy "More" hub framing stays alive below (kill switch).
+  // ENG-1469 — jargon gloss (ENG-1461 follow-up); pair in figmaCopy.ts.
+  const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
+  // ENG-1246 (Gap #16) — shared editorial Profile block (identity → streak
+  // → milestones → recipe grid). Default-on; off keeps the legacy "More" hub.
   const editorialProfileV3 = isFeatureEnabled("sloe_v3_profile");
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
 
@@ -523,7 +522,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           <span className="flex-1 min-w-0">
             <span className="block text-sm font-bold text-foreground">Upgrade to Pro</span>
             <span className="block text-xs text-muted-foreground mt-0.5">
-              Multi-day plans, adaptive TDEE, and AI logging
+              {glossOn ? PROFILE_UPGRADE_BANNER_TDEE_GLOSS : PROFILE_UPGRADE_BANNER_TDEE_PLAIN}
             </span>
           </span>
           <Icons.forward className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
@@ -1027,10 +1026,10 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             </div>
 
             <div className="bg-muted rounded-xl p-4 text-sm text-muted-foreground">
-              {/* ENG-534 (2026-05-16): BMR/TDEE are HIGH-class derived
-                  body-stats. `ph-mask` makes PostHog session-replay
-                  render the value spans as grey blocks. See
-                  `docs/operations/session-replay-masking-audit.md`. */}
+              {/* ENG-534 (2026-05-16): BMR/TDEE are HIGH-class derived body-stats;
+                  `ph-mask` renders the spans as grey blocks in session replay
+                  (`docs/operations/session-replay-masking-audit.md`). ENG-1469
+                  explicit call: left un-glossed — a debug readout, not a trust moment. */}
               <p>
                 BMR: <span className="ph-mask">{computedTargets ? Math.round(computedTargets.bmr) : "—"} kcal</span> · TDEE: <span className="ph-mask">{computedTargets ? Math.round(computedTargets.tdee) : "—"} kcal</span>
               </p>

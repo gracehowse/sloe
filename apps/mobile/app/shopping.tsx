@@ -86,6 +86,12 @@ const SHOPPING_PLAN_AUX_TIMEOUT_MS = 18_000;
 const SHOPPING_LEGACY_JSON_TIMEOUT_MS = 18_000;
 const shoppingQueryTimeout = Symbol("shopping_query_timeout");
 
+// Monotonic counter -> unique channel topic per effect run (same class
+// as ENG-794/ENG-1473: an un-awaited removeChannel can leave a same-topic
+// channel subscribed when `scope` churns or the effect remounts, so a
+// static topic throws on `.on()`). See lib/notifications.ts for the fix.
+let shoppingRealtimeSeq = 0;
+
 async function raceShoppingQuery<T>(
   p: Promise<T>,
   ms: number,
@@ -366,9 +372,9 @@ export default function ShoppingListScreen() {
     if (!scope) return;
     const filter = shoppingScopeRealtimeFilter(scope);
     const channelName =
-      scope.kind === "household"
+      (scope.kind === "household"
         ? `mobile:shopping:hh:${scope.householdId}`
-        : `mobile:shopping:user:${scope.userId}`;
+        : `mobile:shopping:user:${scope.userId}`) + `:${(shoppingRealtimeSeq += 1)}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -988,12 +994,9 @@ export default function ShoppingListScreen() {
                       ),
                     ].join(", ");
 
-                    // Honeydew parity (2026-04-30): per-row check
-                    // attribution. When the group is checked AND we
-                    // have a household, surface the member that
-                    // toggled it last. Single household member only
-                    // — solo lists don't benefit from attribution
-                    // (always "you").
+                    // Honeydew parity (2026-04-30): per-row check attribution
+                    // — checked + household → surface who toggled it last
+                    // (solo lists skip this, always "you").
                     const checkedByEntries = group.items
                       .map((i) =>
                         (i as ShoppingItem).checkedBy ?? null,
@@ -1010,13 +1013,9 @@ export default function ShoppingListScreen() {
 
                     return (
                       // Premium-bar audit Group J line 436 — swipe-to-delete.
-                      // Right-swipe reveals a destructive zone that removes
-                      // every row in this display group (single + merged
-                      // duplicates). Mirrors the pattern used by Today
-                      // meals (`TodayMealsSection.tsx:Swipeable`). Haptic
-                      // medium-impact on swipe-trigger matches the meal
-                      // delete affordance so the gesture vocabulary is
-                      // consistent across the app.
+                      // Right-swipe removes every row in this display group
+                      // (single + merged duplicates); mirrors Today meals
+                      // (`TodayMealsSection.tsx:Swipeable`), same haptic.
                       <Swipeable
                         key={group.key}
                         overshootRight={false}

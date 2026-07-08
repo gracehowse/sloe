@@ -123,3 +123,81 @@ export const WEEKLY_CHECKIN_BURN_DELTA_LABEL = "Estimated burn change";
 export const WEEKLY_RECAP_TDEE_SECTION_LABEL_PLAIN = "Your adaptive TDEE";
 export const WEEKLY_RECAP_TDEE_SECTION_LABEL_GLOSS =
   "Your adaptive daily burn (TDEE)";
+
+/**
+ * ENG-1469 — Targets screen gloss (ENG-1461 follow-up; the ratified
+ * ENG-1461 scope named Progress / pricing / weekly check-in only and
+ * deliberately deferred Targets as "a whole-screen subtitle, not a
+ * single label swap — needs its own pass through the gloss grammar").
+ * Gated behind the same `onboarding_jargon_gloss_v1` flag (default-ON)
+ * as every other product-wide site. Sites 2 + 3 below are shared
+ * verbatim web + mobile; site 1 is NOT — web's subtitle is a full
+ * sentence ("Estimated TDEE based on Mifflin-St Jeor · {activity}"),
+ * mobile's is a `·`-joined caption fragment ("Estimated TDEE · Mifflin-
+ * St Jeor · {activity} · {deficit}") — genuinely different templates,
+ * not copy drift, so each gets its own gloss pair rather than forcing
+ * one grammar onto the other's concatenation.
+ */
+
+// Site 1a — web `Targets.tsx` page subtitle (full sentence).
+export const TARGETS_SUBTITLE_STATIC_TDEE_PLAIN =
+  "Estimated TDEE based on Mifflin-St Jeor";
+export const TARGETS_SUBTITLE_STATIC_TDEE_GLOSS =
+  "Estimated daily burn (TDEE) based on Mifflin-St Jeor";
+
+// Site 1b — mobile `targets.tsx` `tdeeCaption`'s static-Mifflin branch
+// (`·`-joined fragment; the adaptive branch, "Maintenance from your
+// recent intake", is already plain English and untouched).
+export const TARGETS_MOBILE_CAPTION_STATIC_TDEE_PLAIN =
+  "Estimated TDEE · Mifflin-St Jeor";
+export const TARGETS_MOBILE_CAPTION_STATIC_TDEE_GLOSS =
+  "Estimated daily burn (TDEE) · Mifflin-St Jeor";
+
+// Site 2 — "How is this calculated?" row caption. Identical wording on
+// both platforms today; keep it that way through the gloss too.
+export const TARGETS_HOW_CALCULATED_CAPTION_PLAIN =
+  "See the maintenance TDEE, goal, and pace behind today's target.";
+export const TARGETS_HOW_CALCULATED_CAPTION_GLOSS =
+  "See the maintenance calories (TDEE), goal, and pace behind today's target.";
+
+// Site 3 — web-only footnote under the "How is this calculated?" row
+// (mobile's equivalent footnote already carries no TDEE mention).
+export const TARGETS_RECALIBRATE_FOOTNOTE_TAIL_PLAIN =
+  "when adaptive TDEE re-calibrates.";
+export const TARGETS_RECALIBRATE_FOOTNOTE_TAIL_GLOSS =
+  "when your adaptive daily burn (TDEE) re-calibrates.";
+
+/**
+ * ENG-1469 — Profile.tsx upgrade-banner bullet (web-only; mobile's own
+ * equivalent banner in SettingsBundleContent.tsx already reads
+ * "Unlimited recipes, multi-day plans, and AI logging" with no TDEE
+ * mention — a pre-existing, already-conformant platform divergence, not
+ * something to force into lockstep here).
+ */
+export const PROFILE_UPGRADE_BANNER_TDEE_PLAIN =
+  "Multi-day plans, adaptive TDEE, and AI logging";
+export const PROFILE_UPGRADE_BANNER_TDEE_GLOSS =
+  "Multi-day plans, adaptive daily burn (TDEE), and AI logging";
+
+/**
+ * ENG-1469 — Today activity-bonus-card info-popover trigger + dismiss
+ * labels (`today-activity-bonus-card.tsx` web, `TodayActivityBonusCard.tsx`
+ * mobile — both platforms render byte-identical labels today, unlike most
+ * of this file's other pairs which needed reconciling first). Screen-
+ * reader-only text (web `aria-label`, mobile `accessibilityLabel`) — low
+ * visual priority per the ticket, but still bare-acronym-first.
+ */
+export const ACTIVITY_BONUS_INFO_TRIGGER_LABEL_PLAIN = "What is maintenance TDEE?";
+export const ACTIVITY_BONUS_INFO_TRIGGER_LABEL_GLOSS =
+  "What is maintenance daily burn (TDEE)?";
+
+// Mobile-only: the info-popover Modal's dismiss-on-scrim-tap label and
+// its visible bolded title (the web Popover has no title, just body
+// copy — see `today-activity-bonus-card.tsx`'s PopoverContent). Straggler
+// caught by the ENG-1469 sweep, not named in the ticket's aria-label
+// bullet but the same bare-acronym-first class.
+export const ACTIVITY_BONUS_DISMISS_LABEL_PLAIN = "Dismiss TDEE explainer";
+export const ACTIVITY_BONUS_DISMISS_LABEL_GLOSS =
+  "Dismiss maintenance daily burn (TDEE) explainer";
+export const ACTIVITY_BONUS_MODAL_TITLE_PLAIN = "Maintenance TDEE";
+export const ACTIVITY_BONUS_MODAL_TITLE_GLOSS = "Maintenance daily burn (TDEE)";

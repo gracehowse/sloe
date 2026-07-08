@@ -137,7 +137,10 @@ export function defaultHealthSyncTypePrefs(): Record<HealthSyncTypeKey, boolean>
   return out;
 }
 
-/** Caption at the bottom of both screens. Verbatim from prototype —
- *  the parity test pins this string. */
-export const HEALTH_SYNC_FOOTNOTE =
-  "Activity bonus may be added to your calorie target if your total burn exceeds the TDEE estimate. Weight entries from the Health app are rounded to the nearest 0.1 kg.";
+// ENG-1469 (2026-07-08) — removed the dead `HEALTH_SYNC_FOOTNOTE` export.
+// It had zero importers (neither `app/settings/health/page.tsx` nor
+// `apps/mobile/app/health-sync.tsx` ever rendered it — both screens use
+// their own inline footnote copy), and the "parity test pins this
+// string" comment referenced a `tests/unit/healthSyncTypesParity.test.ts`
+// that does not exist in the repo. Verified dead, not deferred — per
+// no-silent-deferrals, deleting rather than leaving a stale claim.

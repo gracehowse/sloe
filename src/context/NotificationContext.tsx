@@ -18,6 +18,16 @@ import {
 } from "../types/notifications.ts";
 import { normalizeWeekSummaryMode } from "../lib/nutrition/weekSummaryWindow.ts";
 import { newId } from "./appData/persistence.ts";
+
+// Monotonic counter so each realtime subscription gets a UNIQUE channel
+// topic — same class of bug as ENG-794 / ENG-1473 (mobile). A remount of
+// this provider (Strict-Mode double-invoke, HMR) whose cleanup calls the
+// async, un-awaited `supabase.removeChannel` can leave a same-topic
+// channel still subscribed; the remount's `supabase.channel(<same
+// topic>)` then returns that already-subscribed channel and the
+// following `.on()` throws. Appending a monotonic id makes every
+// subscription's topic unique so a lingering channel can never collide.
+let notifRealtimeSeq = 0;
 import { useAuthSession } from "./AuthSessionContext.tsx";
 
 // ---------------------------------------------------------------------------
@@ -306,7 +316,7 @@ export function NotificationProvider({
     };
 
     const channel = supabase
-      .channel(`notif:${authedUserId}`)
+      .channel(`notif:${authedUserId}:${(notifRealtimeSeq += 1)}`)
       .on(
         "postgres_changes",
         {
