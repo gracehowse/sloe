@@ -39,6 +39,7 @@ import { useHouseholdMemberCount } from "@/hooks/useHouseholdMemberCount";
 import { useTodayHydrationStimulants } from "@/hooks/useTodayHydrationStimulants";
 import { useTodayStreakAndFreezes } from "@/hooks/useTodayStreakAndFreezes";
 import { useTodayFoodFavorites } from "@/hooks/useTodayFoodFavorites";
+import { useTodayActivationNudges } from "@/hooks/useTodayActivationNudges";
 import { useOutOfWindowJournalDay } from "@/hooks/useOutOfWindowJournalDay";
 import {
   dateKeyFromDate,
@@ -98,7 +99,6 @@ import {
 } from "@suppr/nutrition-core/resolveRecipeLogTitles";
 import { fetchMobileCanonicalRecipeTitle } from "@/lib/recipeTitleLookup";
 import { foodSelectionAnalyticsSource, foodSelectionToMealMacros } from "@suppr/nutrition-core/foodSelectionToMeal";
-import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "@suppr/nutrition-core/activityBudgetDiscoverability";
 import {
   readFreezeLedger,
   type FreezeLedger,
@@ -143,7 +143,7 @@ import {
   scheduleAdaptiveTdeeRefresh,
 } from "@/lib/refreshAdaptiveTdee";
 import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
-import { refreshExpoPushTokenIfChanged , registerExpoPushTokenForUser } from "@/lib/expoPushToken";
+import { refreshExpoPushTokenIfChanged } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
 import { enqueueJournalUpserts } from "@suppr/nutrition-core/journalWriteQueue";
 import {
@@ -160,7 +160,6 @@ import { clampJournalDate } from "@/lib/journalNavigation";
 import {
   computeRecentMeals,
   foodHistoryKey,
-  isAiSourcedFoodHistoryItem,
   type FoodHistoryItem,
 } from "@suppr/nutrition-core/foodHistory";
 import { computeSlotGoToFoods } from "@suppr/nutrition-core/slotGoToFoods";
@@ -1041,254 +1040,26 @@ export default function TrackerScreen() {
   // ENG-1252 — first-session AI-method discoverability tooltip gate.
   const aiMethodTooltipVisible = useAiMethodTooltip(userTier);
 
-  /**
-   * Phase 5 (2026-04-30) — AI-first-log tooltip gate. Replaces the
-   * per-day "Includes N AI-estimated meals" sentinel that used to
-   * render inside `TodayHero`. customer-lens flagged the daily
-   * caption as a defensive disclaimer that contradicted the
-   * 2026-04-27 strategic direction (macro-tracker-first, not AI-
-   * first). The replacement: one tooltip below the user's first AI-
-   * sourced meal row ever, then never again.
-   *
-   * Three states:
-   *   - `null` (initial): AsyncStorage hasn't hydrated yet — render
-   *     no tooltip. Avoids a flash when the storage key is set.
-   *   - `false`: storage says we have NOT shown the tooltip yet —
-   *     the first AI-sourced meal row will trigger it.
-   *   - `true`: we have shown the tooltip already (or the user just
-   *     dismissed it this session) — never show again.
-   */
-  const AI_TOOLTIP_STORAGE_KEY = "suppr.ai-explainer-shown.v1";
-  const [aiTooltipShown, setAiTooltipShown] = useState<boolean | null>(null);
-  const [activityBudgetDiscoverDismissed, setActivityBudgetDiscoverDismissed] = useState<boolean | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    AsyncStorage.getItem(AI_TOOLTIP_STORAGE_KEY)
-      .then((raw) => {
-        if (!cancelled) setAiTooltipShown(raw != null);
-      })
-      .catch(() => {
-        if (!cancelled) setAiTooltipShown(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    AsyncStorage.getItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY)
-      .then((raw) => {
-        if (!cancelled) setActivityBudgetDiscoverDismissed(raw != null);
-      })
-      .catch(() => {
-        if (!cancelled) setActivityBudgetDiscoverDismissed(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const dismissActivityBudgetDiscover = useCallback(() => {
-    setActivityBudgetDiscoverDismissed(true);
-    void AsyncStorage.setItem(ACTIVITY_BUDGET_DISCOVERABILITY_KEY, "1").catch(() => {});
-  }, []);
-
-  const dismissAiFirstLogTooltip = useCallback(() => {
-    setAiTooltipShown(true);
-    void AsyncStorage.setItem(
-      AI_TOOLTIP_STORAGE_KEY,
-      new Date().toISOString(),
-    ).catch(() => {
-      /* storage denied — in-session state still hides the tooltip;
-         worst case it shows again on next launch, never twice in
-         the same session. */
-    });
-  }, []);
-
-  // Activation hook (audit 2026-04-30 — leak fix #3): first-log toast.
-  // ---------------------------------------------------------------
-  // `firstLogAckShown`:
-  //   - `null`: AsyncStorage read in flight.
-  //   - `false`: storage says we have NOT acknowledged the first log.
-  //     A 0→1 transition in `mealsToday.length` will trigger the toast.
-  //   - `true`: already shown (or just dismissed this session).
-  // The detection runs against a separate counter (`firstLogAckShown`)
-  // rather than today's meal count alone — a returning user who already
-  // saw the toast on day-1 must NOT re-trigger when their day-2 0→1
-  // transition happens. The `false → true` transition is the one that
-  // matters; once `true`, it stays `true` forever.
-  const FIRST_LOG_ACK_STORAGE_KEY = "suppr.first-log-acknowledged.v1";
-  const [firstLogAckShown, setFirstLogAckShown] = useState<boolean | null>(null);
-  const [firstLogToastVisible, setFirstLogToastVisible] = useState(false);
-  const firstLogPrevCountRef = useRef<number | null>(null);
-  // ENG-977 — calm post-log "what to eat next" micro-moment line.
-  const [postLogNudgeLine, setPostLogNudgeLine] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    AsyncStorage.getItem(FIRST_LOG_ACK_STORAGE_KEY)
-      .then((raw) => {
-        if (!cancelled) setFirstLogAckShown(raw != null);
-      })
-      .catch(() => {
-        if (!cancelled) setFirstLogAckShown(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  /**
-   * 2026-05-01 (journey-architect P1) — first-meal-empty-state IG/TT
-   * tip dismissal. Persisted under a versioned AsyncStorage key. The
-   * empty card itself is unconditional when zero today + zero history;
-   * only the trailing IG/TT tip line is dismissable.
-   */
-  const FIRST_MEAL_TIP_DISMISSED_KEY = "suppr.first-meal-tip-dismissed.v1";
-  const [firstMealTipDismissed, setFirstMealTipDismissed] = useState<boolean>(false);
-  useEffect(() => {
-    let cancelled = false;
-    AsyncStorage.getItem(FIRST_MEAL_TIP_DISMISSED_KEY)
-      .then((raw) => {
-        if (!cancelled) setFirstMealTipDismissed(raw != null);
-      })
-      .catch(() => {
-        /* storage denied — keep tip visible, host re-renders correctly */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const dismissFirstLogToast = useCallback(() => {
-    setFirstLogToastVisible(false);
-    setFirstLogAckShown(true);
-    void AsyncStorage.setItem(
-      FIRST_LOG_ACK_STORAGE_KEY,
-      new Date().toISOString(),
-    ).catch(() => {
-      /* storage denied — session state hides; worst case it shows
-         once more next launch, never twice this session. */
-    });
-  }, []);
-
-  // Activation hook (audit 2026-04-30 — leak fix #4): post-onboarding
-  // push-permission explainer. The MobilePermissionsStep was removed
-  // from the linear onboarding flow in the 15→12 shrink; without
-  // re-prompting elsewhere, push permission stays at the OS default
-  // and no D1/D7/D30 retention nudge can deliver. We surface the
-  // prompt as a single-screen explainer the first time Today renders
-  // post-onboarding.
-  //
-  // Coordination with `OnboardingNudgeBanner` (commit c60af6d): this
-  // explainer fires FIRST. The `permissions` nudge in that queue is
-  // the recovery path for the case where the user dismissed THIS
-  // prompt — same OS calls, lower priority on re-ask.
-  const POST_ONB_PUSH_PROMPT_KEY = "suppr.post-onboarding-push-prompt.v1";
-  const [postOnbPushVisible, setPostOnbPushVisible] = useState(false);
-  const postOnbPushCheckedRef = useRef(false);
-  useEffect(() => {
-    if (postOnbPushCheckedRef.current) return;
-    if (Platform.OS !== "ios") {
-      // iOS-only by design — Android push prompts route through a
-      // different OS path and aren't in scope for this fix. Mark the
-      // check done so we don't re-evaluate.
-      postOnbPushCheckedRef.current = true;
-      return;
-    }
-    if (!userId) return;
-    postOnbPushCheckedRef.current = true;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const shown = await AsyncStorage.getItem(POST_ONB_PUSH_PROMPT_KEY);
-        if (cancelled) return;
-        if (shown === "shown") return;
-        // Honour the user's onboarding-completed status. Tabs layout
-        // already redirects users without onboarding completion to
-        // /onboarding, so by the time we reach Today the user IS
-        // post-onboarding. Belt-and-braces: read `profiles.onboarding_completed`
-        // via the existing supabase client.
-        const { data } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", userId)
-          .maybeSingle();
-        if (cancelled) return;
-        if (data?.onboarding_completed !== true) return;
-
-        // OS-permission gate — only ask if the user hasn't already
-        // answered. `getPermissionsAsync` returns `undetermined` when
-        // the OS prompt has never been shown.
-        try {
-          const Notifications = await import("expo-notifications");
-          const existing = await Notifications.getPermissionsAsync();
-          if (cancelled) return;
-          if (existing.status === "undetermined") {
-            setPostOnbPushVisible(true);
-          } else {
-            // Already answered — record so we don't keep checking.
-            await AsyncStorage.setItem(POST_ONB_PUSH_PROMPT_KEY, "shown");
-          }
-        } catch {
-          // expo-notifications not present (Expo Go / older builds) —
-          // skip silently and let the existing nudge banner handle it.
-        }
-      } catch {
-        /* network / storage hiccup — silent skip. */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  const dismissPostOnbPush = useCallback(async (granted: boolean) => {
-    setPostOnbPushVisible(false);
-    try {
-      await AsyncStorage.setItem(POST_ONB_PUSH_PROMPT_KEY, "shown");
-    } catch {
-      /* best-effort persist — banner-queue path will recover next launch */
-    }
-    if (granted) {
-      try {
-        await registerExpoPushTokenForUser(userId ?? null);
-      } catch {
-        /* token-fetch failures are non-fatal — see expoPushToken.ts. */
-      }
-    }
-  }, [userId]);
-
-  const onPostOnbPushEnable = useCallback(() => {
-    void (async () => {
-      try {
-        const Notifications = await import("expo-notifications");
-        const existing = await Notifications.getPermissionsAsync();
-        const next =
-          existing.status === "granted"
-            ? existing
-            : await Notifications.requestPermissionsAsync();
-        await dismissPostOnbPush(next.status === "granted");
-      } catch {
-        await dismissPostOnbPush(false);
-      }
-    })();
-  }, [dismissPostOnbPush]);
-
-  const onPostOnbPushSkip = useCallback(() => {
-    void dismissPostOnbPush(false);
-  }, [dismissPostOnbPush]);
-
-  const dismissFirstMealTip = useCallback(() => {
-    setFirstMealTipDismissed(true);
-    void AsyncStorage.setItem(
-      FIRST_MEAL_TIP_DISMISSED_KEY,
-      new Date().toISOString(),
-    ).catch(() => {
-      /* storage denied — in-session state hides tip; may resurface next launch */
-    });
-  }, []);
-
+  // ENG-1361 round 2 — the one-shot activation-nudge cluster (AI-first-log
+  // tooltip, activity-budget-discover banner, first-log toast + haptic,
+  // post-log nudge line, first-meal tip, post-onboarding push explainer)
+  // lives in useTodayActivationNudges. See the hook's JSDoc for why
+  // `postLogNudgeLine`'s content-building stays in TodayScreen.
+  const {
+    aiFirstLogTooltipMealId,
+    dismissAiFirstLogTooltip,
+    activityBudgetDiscoverDismissed,
+    dismissActivityBudgetDiscover,
+    firstLogToastVisible,
+    dismissFirstLogToast,
+    postLogNudgeLine,
+    setPostLogNudgeLine,
+    firstMealTipDismissed,
+    dismissFirstMealTip,
+    postOnbPushVisible,
+    onPostOnbPushEnable,
+    onPostOnbPushSkip,
+  } = useTodayActivationNudges({ userId, dayKey, mealsToday });
 
   const savedMealSlots = useMemo(() => {
     const s = new Set<string>();
@@ -2224,23 +1995,6 @@ export default function TrackerScreen() {
     }));
   }, [recentMealsForPick]);
 
-  /**
-   * Phase 5 (2026-04-30) — id of the first AI-sourced meal row to
-   * anchor the AI-first-log tooltip below. `null` until AsyncStorage
-   * hydrates (`aiTooltipShown === null`), or when the user has
-   * already seen the tooltip on a prior launch (`aiTooltipShown ===
-   * true`), or when there is no AI-sourced meal on the active day.
-   */
-  const aiFirstLogTooltipMealId = useMemo<string | null>(() => {
-    if (aiTooltipShown !== false) return null;
-    for (const m of mealsToday) {
-      if (isAiSourcedFoodHistoryItem({ source: m.source ?? null })) {
-        return m.id;
-      }
-    }
-    return null;
-  }, [mealsToday, aiTooltipShown]);
-
   const targets = profileTargets;
   // ENG-960 — apply the opt-in day-target schedule for the DISPLAYED weekday
   // (selectedDate), so navigating days shows that day's target. Weekly-neutral;
@@ -2257,53 +2011,6 @@ export default function TrackerScreen() {
     selectedDate.getDay() as WeekdayIndex,
   );
   const isToday = dayKey === dateKeyFromDate(new Date());
-
-  // Activation hook (audit 2026-04-30 — leak fix #3): detect the
-  // 0→1 transition in today's meal count and fire the first-log
-  // toast + haptic. The detection runs against the AsyncStorage flag
-  // (`firstLogAckShown === false`) so a returning user who already
-  // saw it on day-1 never re-triggers on day-2.
-  //
-  // We track the previous count via a ref to distinguish "fresh
-  // log" from "rehydrate from storage" — the journal load also
-  // moves `mealsToday.length` from 0 → N on cold start, but that
-  // path doesn't represent a user-initiated log and shouldn't toast.
-  // Solution: compare to `firstLogPrevCountRef.current`. On first
-  // run after journal hydrate, `prev` is `null` → seed without
-  // toasting. On subsequent updates, `0 → 1` triggers the toast.
-  useEffect(() => {
-    if (firstLogAckShown !== false) {
-      // Either still hydrating (`null`) or already shown (`true`).
-      // Keep ref synced so a later transition doesn't false-trigger.
-      firstLogPrevCountRef.current = mealsToday.length;
-      return;
-    }
-    if (!isToday) {
-      // Only Today drives the first-log moment — viewing a prior day
-      // shouldn't fire it.
-      return;
-    }
-    const prev = firstLogPrevCountRef.current;
-    const curr = mealsToday.length;
-    if (prev === null) {
-      // First observation post-hydrate. Seed without toasting.
-      firstLogPrevCountRef.current = curr;
-      return;
-    }
-    if (prev === 0 && curr === 1) {
-      // The user just logged their first meal of the day — and the
-      // storage flag confirms they've never seen the toast before.
-      // Fire the haptic + reveal the toast. Component handles the
-      // 2.5s auto-fade.
-      try {
-        haptics.success();
-      } catch {
-        /* haptics not available — toast still renders. */
-      }
-      setFirstLogToastVisible(true);
-    }
-    firstLogPrevCountRef.current = curr;
-  }, [mealsToday.length, firstLogAckShown, isToday, haptics]);
 
   // Maintenance tile + popover + activity-bonus baseline. Resolves via
   // the shared `resolveMaintenance`: adaptive TDEE wins at medium/high
