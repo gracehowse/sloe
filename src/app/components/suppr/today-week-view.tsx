@@ -3,6 +3,7 @@
 import * as React from "react";
 import { todayKey } from "../../../lib/nutrition/trackerDate";
 import { formatKcalDisplay } from "../../../lib/nutrition/formatMacro";
+import { TodayWeekSummaryStats } from "./today-week-summary-stats";
 /**
  * TodayWeekView — week-mode view of the Today screen.
  *
@@ -366,40 +367,13 @@ export function TodayWeekView({
         </div>
       </div>
 
-      <div className="rounded-card bg-card card-slab p-4">
-        <p className="text-sm font-semibold text-foreground mb-3">Weekly summary</p>
-        <div className="flex justify-around text-center">
-          {/* SLOE Phase 0: the weekly-summary big stat numerals read in the
-              Newsreader serif display face (the design system reserves big
-              numerals for serif); labels stay sans. Mirrors mobile TodayWeekView. */}
-          <div>
-            <p className="font-[family-name:var(--font-headline)] text-2xl font-medium text-foreground tabular-nums">
-              {formatKcalDisplay(weekTotals.calories)}
-            </p>
-            <p className="text-[11px] text-muted-foreground">Total kcal</p>
-          </div>
-          <div>
-            <p className="font-[family-name:var(--font-headline)] text-2xl font-medium text-primary-solid tabular-nums">
-              {formatKcalDisplay(weekAvg.calories)}
-            </p>
-            <p className="text-[11px] text-muted-foreground">Daily avg</p>
-          </div>
-          <div>
-            {/* User-sentiment audit (round 4, 2026-04-30): replaced the
-                punitive over/under-target labels with the canonical
-                "Net deficit"/"Net surplus" phrasing from
-                `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit
-                data show that judgmental framing drives logging
-                avoidance; "deficit"/"surplus" reads as observation,
-                not judgment. Green for under-target, red for
-                over-target — clear at-a-glance signal. */}
-            <p className={`font-[family-name:var(--font-headline)] text-2xl font-medium tabular-nums ${under ? "text-success" : "text-destructive"}`}>
-              {diff}
-            </p>
-            <p className="text-[11px] text-muted-foreground">{under ? "Net deficit" : "Net surplus"}</p>
-          </div>
-        </div>
-      </div>
+      <TodayWeekSummaryStats
+        totalCalories={weekTotals.calories}
+        avgCalories={weekAvg.calories}
+        loggedDaysInWeek={loggedDaysInWeek}
+        isDeficit={under}
+        deficitOrSurplusDiff={diff}
+      />
 
       <div className="rounded-card bg-card card-slab p-4">
         <p className="text-sm font-semibold text-foreground mb-1">Daily averages</p>
