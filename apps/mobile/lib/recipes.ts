@@ -30,6 +30,12 @@ import {
 } from "@suppr/shared/recipes/recipeCollections";
 import { fetchAllUserSaves } from "@suppr/shared/recipes/fetchAllUserSaves";
 import { looksLikeMissingTableError } from "./supabaseErrors";
+import {
+  fetchMaterialisedSeedMap,
+  isUuid,
+  materialiseSeedRecipeById,
+} from "@suppr/shared/recipes/materialiseSeedRecipe";
+import { IMPORT_ERROR_COPY } from "@suppr/shared/recipes/importErrorCopy";
 
 // ENG-1287 (2026-07-01, launch-blocker): the old F-21 fallback rotated a
 // 6-photo Unsplash pool keyed by recipe id, presenting someone else's dish
@@ -275,6 +281,15 @@ export function useSavedRecipes(userId: string | null) {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [userTier, setUserTier] = useState<"free" | "base" | "pro">("free");
+  // ENG-1467 — copy-on-save: Discover seed recipes have slug ids
+  // (`seed-v2-...`), not UUIDs, so they can never appear directly in
+  // `savedIds` (which mirrors the `saves` table's real `recipe_id` uuid
+  // column). This map remembers, per signed-in session, which seed id
+  // resolves to which materialised `recipes` row, so `isSaved(seedId)`
+  // and `toggleSave(seedId)` both read/write through the real id
+  // transparently. Rebuilt from the DB on every `refresh()` via
+  // `fetchMaterialisedSeedMap` so it survives remounts.
+  const seedSaveMapRef = useRef<Record<string, string>>({});
 
   // Load user tier once. `lifetime_pro` (founding-cohort comp, ENG-1043) gates
   // as `pro` — normalise it here so the free-save-limit gate below treats
@@ -297,12 +312,23 @@ export function useSavedRecipes(userId: string | null) {
   }, [userId]);
 
   const refresh = useCallback(async () => {
-    if (!userId) { setSavedIds(new Set()); setLoading(false); return; }
+    if (!userId) { setSavedIds(new Set()); seedSaveMapRef.current = {}; setLoading(false); return; }
     // try/finally so loading flips false even if supabase throws —
     // see useSavedLibraryRecipes below for the same pattern + rationale.
     try {
-      const { rows } = await fetchAllUserSaves(supabase, userId);
-      setSavedIds(new Set(rows.map((r) => r.recipe_id)));
+      const [{ rows }, seedMap] = await Promise.all([
+        fetchAllUserSaves(supabase, userId),
+        fetchMaterialisedSeedMap(supabase, userId),
+      ]);
+      seedSaveMapRef.current = seedMap;
+      const rowIds = new Set(rows.map((r) => r.recipe_id));
+      // Surface a seed as "saved" via its ORIGINAL slug id too, so
+      // Discover cards (which only know the slug id) render the saved
+      // state correctly.
+      for (const [seedId, materialisedId] of Object.entries(seedMap)) {
+        if (rowIds.has(materialisedId)) rowIds.add(seedId);
+      }
+      setSavedIds(rowIds);
     } finally {
       setLoading(false);
     }
@@ -318,54 +344,88 @@ export function useSavedRecipes(userId: string | null) {
       return;
     }
 
-    setSavedIds((prev) => {
-      const isSaved = prev.has(recipeId);
+    const wasSaved = savedIds.has(recipeId);
 
-      // Enforce free-tier save limit (matches web FREE_SAVE_LIMIT).
-      if (!isSaved && userTier === "free" && prev.size >= FREE_SAVE_LIMIT) {
+    // Enforce free-tier save limit (matches web FREE_SAVE_LIMIT).
+    if (!wasSaved && userTier === "free" && savedIds.size >= FREE_SAVE_LIMIT) {
+      Alert.alert(
+        "Save limit reached",
+        `Free plan is limited to ${FREE_SAVE_LIMIT} saved recipes. Upgrade to save more.`,
+      );
+      return;
+    }
+
+    // Optimistic update, keyed on the id the caller/UI actually knows
+    // (the seed's slug id, when this is a catalogue recipe).
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (wasSaved) next.delete(recipeId);
+      else next.add(recipeId);
+      return next;
+    });
+
+    const rollback = () => {
+      setSavedIds((curr) => {
+        const r = new Set(curr);
+        if (wasSaved) r.add(recipeId);
+        else r.delete(recipeId);
+        return r;
+      });
+    };
+
+    // ENG-1467 — copy-on-save. A non-UUID id means this is a Discover
+    // seed (or any future non-DB catalogue entry); resolve/materialise
+    // its real `recipes` row before touching `saves`, whose
+    // `recipe_id` column is a uuid FK.
+    let dbRecipeId = recipeId;
+    if (!isUuid(recipeId)) {
+      if (wasSaved) {
+        // Unsaving a seed: use the id already recorded from the save.
+        const mapped = seedSaveMapRef.current[recipeId];
+        if (!mapped) {
+          // Nothing to unsave server-side (e.g. optimistic-only state
+          // from a save that failed silently pre-fix); the local
+          // removal above is enough.
+          return;
+        }
+        dbRecipeId = mapped;
+      } else {
+        const result = await materialiseSeedRecipeById(supabase, userId, recipeId);
+        if (!result.ok) {
+          console.error("[toggleSave] seed materialise failed:", result.error, "| recipeId:", recipeId);
+          rollback();
+          Alert.alert("Couldn't save recipe", result.error);
+          return;
+        }
+        dbRecipeId = result.recipeId;
+        seedSaveMapRef.current = { ...seedSaveMapRef.current, [recipeId]: dbRecipeId };
+      }
+    }
+
+    const { error } = wasSaved
+      ? await supabase.from("saves").delete().eq("user_id", userId).eq("recipe_id", dbRecipeId)
+      : await supabase.from("saves").insert({ user_id: userId, recipe_id: dbRecipeId });
+
+    if (error) {
+      console.error("[toggleSave] failed:", error.message, "| userId:", userId, "| recipeId:", recipeId);
+      rollback();
+      // When the RLS policy `saves_insert_own` rejects the insert
+      // (see `supabase/migrations/20260426100000_saves_free_tier_cap.sql`),
+      // Postgres returns code 42501 or a "row-level security" message.
+      // Surface the paywall-style prompt instead of a generic failure.
+      const msg = (error.message ?? "").toLowerCase();
+      const code = (error as { code?: string }).code;
+      if (!wasSaved && (code === "42501" || msg.includes("row-level security") || msg.includes("row level security"))) {
         Alert.alert(
           "Save limit reached",
           `Free plan is limited to ${FREE_SAVE_LIMIT} saved recipes. Upgrade to save more.`,
         );
-        return prev; // no change
+      } else {
+        // ENG-1467 — no-silent-failures: this used to be console-only.
+        Alert.alert("Couldn't save recipe", IMPORT_ERROR_COPY.save_failed);
       }
-      const next = new Set(prev);
-      if (isSaved) next.delete(recipeId);
-      else next.add(recipeId);
-
-      // Fire DB operation in background (using current isSaved, not stale closure)
-      (async () => {
-        const { error } = isSaved
-          ? await supabase.from("saves").delete().eq("user_id", userId).eq("recipe_id", recipeId)
-          : await supabase.from("saves").insert({ user_id: userId, recipe_id: recipeId });
-
-        if (error) {
-          console.error("[toggleSave] failed:", error.message, "| userId:", userId, "| recipeId:", recipeId);
-          // Roll back the optimistic update first so the UI stays truthful.
-          setSavedIds((curr) => {
-            const rollback = new Set(curr);
-            if (isSaved) rollback.add(recipeId);
-            else rollback.delete(recipeId);
-            return rollback;
-          });
-          // When the RLS policy `saves_insert_own` rejects the insert
-          // (see `supabase/migrations/20260426100000_saves_free_tier_cap.sql`),
-          // Postgres returns code 42501 or a "row-level security" message.
-          // Surface the paywall-style prompt instead of a generic failure.
-          const msg = (error.message ?? "").toLowerCase();
-          const code = (error as { code?: string }).code;
-          if (!isSaved && (code === "42501" || msg.includes("row-level security") || msg.includes("row level security"))) {
-            Alert.alert(
-              "Save limit reached",
-              `Free plan is limited to ${FREE_SAVE_LIMIT} saved recipes. Upgrade to save more.`,
-            );
-          }
-        }
-      })();
-
-      return next;
-    });
-  }, [userId, userTier]);
+    }
+  }, [userId, userTier, savedIds]);
 
   return { savedIds, loading, refresh, toggleSave, isSaved: (id: string) => savedIds.has(id) };
 }
