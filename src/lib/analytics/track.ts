@@ -510,6 +510,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   diversity-inclusion + nutrition-engine lens review (on ENG-1454). Off →
  *   every gated surface renders its exact pre-ENG-1454 copy (kill switch). Web +
  *   mobile.
+ * - `paywall_fallback_when_unavailable` (ENG-1381) — when RC offerings fail
+ *   to load (`subscriptionsUnavailable`), the mobile paywall renders the plan
+ *   selector + auto-renew disclosure with FALLBACK_PRICES + an
+ *   indicative-price caveat instead of a stateless "Open App Store" screen.
+ *   DEFAULT-OFF — enable only after legal (CMA disclosure w/ indicative
+ *   price) + design review. Registered here only for the web ↔ mobile
+ *   KNOWN_DEFAULT_OFF_FLAGS parity check — the flag is mobile-only in
+ *   practice (the RevenueCat `subscriptionsUnavailable` state is
+ *   native-IAP-specific; web billing is Stripe), so no web code reads it.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -524,6 +533,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "onboarding-why-now",
   "trial_end_reminder_v1", // ENG-968 — Duolingo-style trial-end reminder day picker
   "recipe_yield_portion_v1", // ENG-736 — structured recipe yield + portion-style logging
+  "paywall_fallback_when_unavailable", // ENG-1381 — priced fallback for RC-unavailable paywall (mobile-only in practice)
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
