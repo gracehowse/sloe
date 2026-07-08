@@ -86,6 +86,17 @@ const SHOPPING_PLAN_AUX_TIMEOUT_MS = 18_000;
 const SHOPPING_LEGACY_JSON_TIMEOUT_MS = 18_000;
 const shoppingQueryTimeout = Symbol("shopping_query_timeout");
 
+// Monotonic counter so the shopping-list realtime subscription below
+// gets a UNIQUE channel topic per effect run — same class of bug as
+// ENG-794 / ENG-1473. The effect re-fires whenever `scope` changes
+// (household join/leave) as well as on remount (Fast-Refresh, tab-focus
+// races); the cleanup's `supabase.removeChannel` is async and
+// un-awaited, so a fast re-fire can find the old same-topic channel
+// still subscribed and throw on `.on()`. Appending a monotonic id makes
+// every subscription's topic unique so a lingering channel can never
+// collide.
+let shoppingRealtimeSeq = 0;
+
 async function raceShoppingQuery<T>(
   p: Promise<T>,
   ms: number,
@@ -366,9 +377,9 @@ export default function ShoppingListScreen() {
     if (!scope) return;
     const filter = shoppingScopeRealtimeFilter(scope);
     const channelName =
-      scope.kind === "household"
+      (scope.kind === "household"
         ? `mobile:shopping:hh:${scope.householdId}`
-        : `mobile:shopping:user:${scope.userId}`;
+        : `mobile:shopping:user:${scope.userId}`) + `:${(shoppingRealtimeSeq += 1)}`;
     const channel = supabase
       .channel(channelName)
       .on(

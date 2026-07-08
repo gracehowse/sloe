@@ -116,6 +116,17 @@ import {
 } from "../lib/mealPlan/slotCloudSync.ts";
 import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.ts";
 
+// Monotonic counter so the profile-sync realtime subscription below gets
+// a UNIQUE channel topic per mount — same class of bug as ENG-794 /
+// ENG-1473 (mobile notif-count channel). A provider remount (Strict-Mode
+// double-invoke, HMR) whose cleanup calls the async, un-awaited
+// `supabase.removeChannel` can leave a same-topic channel still
+// subscribed; the remount's `supabase.channel(<same topic>)` then
+// returns that already-subscribed channel and the following `.on()`
+// throws. Appending a monotonic id makes every subscription's topic
+// unique so a lingering channel can never collide.
+let profileRealtimeSeq = 0;
+
 export type RedeemPromoResult =
   | { ok: true; tier: UserTier; alreadyRedeemed?: boolean }
   | {
@@ -870,7 +881,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!authedUserId) return;
     const channel = supabase
-      .channel(`profiles:${authedUserId}`)
+      .channel(`profiles:${authedUserId}:${(profileRealtimeSeq += 1)}`)
       .on(
         "postgres_changes",
         {

@@ -16,6 +16,17 @@ import {
 } from "../../lib/household/shoppingScope.ts";
 import { normalizeShoppingIngredientRow } from "../../lib/planning/normalizeShoppingIngredientRow.ts";
 
+// Monotonic counter so the shopping-list realtime subscription below
+// gets a UNIQUE channel topic per effect run — same class of bug as
+// ENG-794 / ENG-1473 (mobile notif-count channel). The effect re-fires
+// whenever `scope` changes (household join/leave) as well as on
+// remount; the cleanup's `supabase.removeChannel` is async and
+// un-awaited, so a fast re-fire can find the old same-topic channel
+// still subscribed and throw on `.on()`. Appending a monotonic id makes
+// every subscription's topic unique so a lingering channel can never
+// collide.
+let shoppingRealtimeSeq = 0;
+
 type ShoppingItemRow = {
   id: string;
   name: string;
@@ -161,9 +172,9 @@ export function useShoppingListState(opts: {
     if (!authedUserId || !scope || !dbShoppingEnabled) return;
     const filter = shoppingScopeRealtimeFilter(scope);
     const channelName =
-      scope.kind === "household"
+      (scope.kind === "household"
         ? `web:shopping:hh:${scope.householdId}`
-        : `web:shopping:user:${scope.userId}`;
+        : `web:shopping:user:${scope.userId}`) + `:${(shoppingRealtimeSeq += 1)}`;
     const channel = supabase
       .channel(channelName)
       .on(
