@@ -38,6 +38,7 @@ import { useLogSheetDeepLinks } from "@/hooks/useLogSheetDeepLinks";
 import { useHouseholdMemberCount } from "@/hooks/useHouseholdMemberCount";
 import { useTodayHydrationStimulants } from "@/hooks/useTodayHydrationStimulants";
 import { useTodayStreakAndFreezes } from "@/hooks/useTodayStreakAndFreezes";
+import { useTodayFoodFavorites } from "@/hooks/useTodayFoodFavorites";
 import { useOutOfWindowJournalDay } from "@/hooks/useOutOfWindowJournalDay";
 import {
   dateKeyFromDate,
@@ -199,13 +200,6 @@ import {
   buildMealEntriesFromSavedMeal,
   selectUsualSavedMeal,
 } from "@suppr/nutrition-core/savedMealsLogic";
-import {
-  addFavorite,
-  favoriteKey as favoriteFoodKey,
-  listFavorites,
-  removeFavorite,
-  type FavoriteFood,
-} from "@suppr/nutrition-core/favoriteFoods";
 import {
   parseDismissedSlots,
   serializeDismissedSlots,
@@ -1020,99 +1014,10 @@ export default function TrackerScreen() {
    *  favourites surface IN search (a "Favourites" group + favourites-first in
    *  the Recent strip + a per-row star toggle). The same `user_favorite_foods`
    *  model QuickAddPanel uses; the host owns the list here because the LogSheet
-   *  is a host-owned surface. */
-  const [hostFavorites, setHostFavorites] = useState<FavoriteFood[]>([]);
-  const [favoritePendingKeys, setFavoritePendingKeys] = useState<Set<string>>(
-    () => new Set(),
-  );
-  useEffect(() => {
-    let cancelled = false;
-    if (!userId) {
-      setHostFavorites([]);
-      return;
-    }
-    listFavorites(supabase, userId)
-      .then((rows) => {
-        if (!cancelled) setHostFavorites(rows);
-      })
-      .catch((err) => {
-        console.warn("Today listFavorites failed", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  /** Optimistic star/unstar from a food-search row. Mirrors QuickAddPanel's
-   *  `toggleFavorite`: add/remove immediately, revert on Supabase failure,
-   *  guard double-submit via `favoritePendingKeys`. */
-  const toggleFoodFavorite = useCallback(
-    async (food: {
-      recipeTitle: string;
-      calories: number;
-      protein: number;
-      carbs: number;
-      fat: number;
-      fiber?: number;
-      source?: string;
-      favoriteId?: string;
-    }) => {
-      if (!userId) {
-        showSignInAlert("save favourites");
-        return;
-      }
-      const key = favoriteFoodKey(food.recipeTitle, food.calories);
-      if (favoritePendingKeys.has(key)) return;
-      setFavoritePendingKeys((s) => new Set(s).add(key));
-      const snapshot = hostFavorites;
-      const wasStarred = Boolean(food.favoriteId);
-      try {
-        if (wasStarred && food.favoriteId) {
-          setHostFavorites((prev) => prev.filter((f) => f.id !== food.favoriteId));
-          await removeFavorite(supabase, userId, food.favoriteId);
-        } else {
-          const tempId = `temp-${key}`;
-          const optimistic: FavoriteFood = {
-            id: tempId,
-            recipeTitle: food.recipeTitle,
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            ...(food.fiber != null ? { fiber: food.fiber } : {}),
-            ...(food.source ? { source: food.source } : {}),
-            count: 1,
-            createdAt: new Date().toISOString(),
-          };
-          setHostFavorites((prev) => [optimistic, ...prev]);
-          const saved = await addFavorite(supabase, userId, {
-            recipeTitle: food.recipeTitle,
-            calories: food.calories,
-            protein: food.protein,
-            carbs: food.carbs,
-            fat: food.fat,
-            fiber: food.fiber,
-            source: food.source ?? null,
-          });
-          setHostFavorites((prev) => [saved, ...prev.filter((f) => f.id !== tempId)]);
-        }
-      } catch (err) {
-        setHostFavorites(snapshot);
-        Alert.alert(
-          wasStarred ? "Could not remove favourite" : "Could not save favourite",
-          "Please try again.",
-        );
-        console.warn("Today food favourite toggle failed", err);
-      } finally {
-        setFavoritePendingKeys((s) => {
-          const n = new Set(s);
-          n.delete(key);
-          return n;
-        });
-      }
-    },
-    [userId, hostFavorites, favoritePendingKeys, supabase],
-  );
+   *  is a host-owned surface. ENG-1361 round 2 — state + persist logic live in
+   *  `useTodayFoodFavorites`. */
+  const { hostFavorites, favoritePendingKeys, toggleFoodFavorite } =
+    useTodayFoodFavorites({ userId });
 
   /** Ship M1 — usual-meal first-run hint dismiss state. Persisted via
    *  AsyncStorage under a versioned key. Hydrated once on mount. */
