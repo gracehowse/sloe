@@ -31,6 +31,20 @@ describe("ENG-1381 — paywall fallback when RC unavailable", () => {
     expect(PAYWALL).toMatch(
       /fallbackWhenUnavailable\s*=\s*\n?\s*subscriptionsUnavailable\s*&&\s*isFeatureEnabled\("paywall_fallback_when_unavailable"\)/,
     );
+    // `REDESIGN_DEFAULT_ON` resolves `isFeatureEnabled` to `true`
+    // unconditionally (see the Set.has check in the same file) — the flag
+    // must NOT live there, or the "default-OFF" contract above is a lie and
+    // every build ships unreviewed indicative pricing. Must instead be
+    // registered in `KNOWN_DEFAULT_OFF_FLAGS`.
+    const defaultOnStart = ANALYTICS.indexOf("const REDESIGN_DEFAULT_ON");
+    const defaultOnBlock = ANALYTICS.slice(
+      defaultOnStart,
+      ANALYTICS.indexOf("]);", defaultOnStart),
+    );
+    expect(defaultOnBlock).not.toContain("paywall_fallback_when_unavailable");
+    expect(ANALYTICS).toMatch(
+      /KNOWN_DEFAULT_OFF_FLAGS = \[[\s\S]*?"paywall_fallback_when_unavailable"[\s\S]*?\] as const;/,
+    );
   });
 
   it("priced blocks render when NOT degraded OR when the fallback flag is on — never blindly", () => {
