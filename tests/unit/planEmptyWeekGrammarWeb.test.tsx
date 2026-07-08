@@ -79,7 +79,8 @@ const baseProps = {
 };
 
 describe("PlanV3Surface — empty-week grammar gating", () => {
-  it("flag OFF (default): fully-empty week still shows the legacy verdict + zero-triad", () => {
+  it("flag OFF (kill switch, forced — default is ON since 2026-07-07): fully-empty week still shows the legacy verdict + zero-triad", () => {
+    forceFlag("empty_state_grammar_v1", false);
     const plan = Array.from({ length: 7 }, emptyDay);
     const { queryByTestId, getByText } = render(<PlanV3Surface {...baseProps} plan={plan} />);
     expect(queryByTestId("plan-empty-week-card")).toBeNull();

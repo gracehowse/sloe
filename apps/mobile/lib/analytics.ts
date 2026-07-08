@@ -374,6 +374,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // silently keep the SVG layer. Re-enabled 2026-06-10 after the probe
   // landed (the first default-on predated it and red-boxed Grace's phone).
   "ring_skia_v1",
+  // Device-validated 2026-07-07 (device-verify2 pass, 4/4 verbatim contract
+  // match) + Fable lens review on ENG-1454's under-eating string — flipped
+  // per the growth-builds-default-ON convention.
+  "empty_state_grammar_v1", // ENG-1372 slice 1 — Today fresh-day ring + Plan empty week
+  "coaching_stages_v1", // ENG-1454 — staged coach copy + broken-streak recap grace
+
+  // Device-validated 2026-07-07 (device-verify2 pass, 4/4 verbatim contract
+  // match) + Fable lens review on ENG-1454's under-eating string — flipped
+  // per the growth-builds-default-ON convention.
+
   // ENG-1086 — empty cold-open calorie ring paints the brand-gradient loop
   // (Skia sweep) instead of a grey skeleton. Default-on; off → legacy grey
   // track + hairline empty render.
@@ -665,10 +675,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   grammar contract: Today ring fresh-day (warm-tint empty track, time-aware
  *   "Log breakfast/lunch/dinner" pill inside the hero, BONUS stat cell
  *   suppressed at 0) + Plan empty-week (warm invitation card replaces the
- *   dashed-box wall + zero-triad). DEFAULT-OFF: a new, not-yet-sim-validated
- *   surface — Grace ramps in PostHog after a web + mobile glance. Off → both
- *   hosts render their legacy empty/fresh-day treatment exactly (kill
- *   switch). Web + mobile.
+ *   dashed-box wall + zero-triad). MOVED to `REDESIGN_DEFAULT_ON` 2026-07-07
+ *   after the device-verify2 pass (4/4 verbatim). Off → legacy treatment
+ *   exactly (kill switch). Web + mobile.
  * - `coaching_stages_v1` (ENG-1454, 2026-07-06 Fable-day failure-moment
  *   judgment) — staged over/under-budget Today coach line (approaching
  *   85-100% / landed 100-110% / over 110-140% / big >140% of goal — see
@@ -677,11 +686,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   eaten N more than you've burned" accusation), the two ED-safe
  *   under-eating nudges, and the weekly-recap broken-streak grace rewrite
  *   (achievement-led headline, one-clause reset, streak-freeze mechanic
- *   surfaced at the break, protein digest line). DEFAULT-OFF: net-new copy
- *   not yet sim-validated, AND the under-eating strings specifically need
- *   the diversity-inclusion + nutrition-engine lens pass before ramping past
- *   an internal glance (body-neutral framing is load-bearing). Off → every
- *   gated surface renders its exact pre-ENG-1454 copy (kill switch). Web +
+ *   surfaced at the break, protein digest line). MOVED to
+ *   `REDESIGN_DEFAULT_ON` 2026-07-07: device-verify2 matched every contract
+ *   string verbatim, and the wired under-eating string passed the
+ *   diversity-inclusion + nutrition-engine lens review (on ENG-1454). Off →
+ *   every gated surface renders its exact pre-ENG-1454 copy (kill switch). Web +
  *   mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
@@ -697,8 +706,6 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "onboarding-why-now",
   "trial_end_reminder_v1", // ENG-968 — Duolingo-style trial-end reminder day picker
   "recipe_yield_portion_v1", // ENG-736 — structured recipe yield + portion-style logging
-  "empty_state_grammar_v1", // ENG-1372 slice 1 — Today ring fresh-day + Plan empty-week
-  "coaching_stages_v1", // ENG-1454 — staged over/under-budget coach copy + broken-streak recap grace
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
