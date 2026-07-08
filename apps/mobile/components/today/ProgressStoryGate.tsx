@@ -109,10 +109,10 @@ function ProgressStoryGateImpl({
           {placeholder.headline}
         </Text>
         <View
-          style={{ width: RING_SIZE, height: RING_SIZE, marginLeft: Spacing.md }}
+          style={{ width: RING_SIZE, height: RING_SIZE, marginLeft: Spacing.md, alignItems: "center", justifyContent: "center" }}
           testID="progress-story-gate-ring"
         >
-          <Svg width={RING_SIZE} height={RING_SIZE}>
+          <Svg width={RING_SIZE} height={RING_SIZE} style={{ position: "absolute" }}>
             {Array.from({ length: segmentCount }, (_, i) => (
               <Circle
                 key={i}
@@ -128,6 +128,17 @@ function ProgressStoryGateImpl({
               />
             ))}
           </Svg>
+          {/* ENG-1372 slice 2 — an indeterminate-looking arc may never be the
+              locked-state icon; the segment dots above already made this
+              discrete, but the contract additionally calls for the numeral
+              itself ("1/3"-style) to sit WITH the ring, not buried only in
+              the sentence below. */}
+          <Text
+            testID="progress-story-gate-ring-numeral"
+            style={{ fontSize: 11, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}
+          >
+            {placeholder.segmentsFilled}/{STORY_DATA_FLOOR_DAYS}
+          </Text>
         </View>
       </View>
 

@@ -53,6 +53,16 @@ describe("<ProgressStoryGate /> (mobile)", () => {
     const label = getByTestId("progress-story-gate-ring-label");
     expect(label.props.children.join("")).toContain("2 / 3");
   });
+
+  it("ENG-1372 slice 2 — renders a standalone '<n>/3' numeral WITH the ring (not just buried in the sentence below)", () => {
+    const { getByTestId } = render(<ProgressStoryGate daysLogged={0} />);
+    expect(getByTestId("progress-story-gate-ring-numeral").props.children.join("")).toBe("0/3");
+  });
+
+  it("ENG-1372 slice 2 — the numeral tracks segmentsFilled at day 1", () => {
+    const { getByTestId } = render(<ProgressStoryGate daysLogged={1} />);
+    expect(getByTestId("progress-story-gate-ring-numeral").props.children.join("")).toBe("1/3");
+  });
 });
 
 describe("<DigestStoryCard /> (mobile)", () => {
