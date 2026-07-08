@@ -21,6 +21,15 @@ export interface TodayDesktopRightRailProps {
   weekDailyKcal: number[];
   weekDayLabels: string[];
   weekLoggedDays: number;
+  /**
+   * ENG-1372 slice 2 (law 3) — an average from <3 logged days is a derived
+   * stat with nothing behind it yet (one logged day's total reads as a real
+   * week average). The caller now passes `null` here whenever
+   * `weekLoggedDays < 3` (folded onto the same `empty_state_grammar_v1` flag
+   * slice 1 shipped); this component just renders-or-hides on that signal,
+   * so the footer's existing "{n}/7 days logged" line becomes the sole
+   * honest stat below the floor.
+   */
   weekAvgKcal: number | null;
   streakDays: number;
   activeDateKey: string;

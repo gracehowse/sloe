@@ -196,11 +196,7 @@ describe("SLOE hero numerals — web reads serif (Newsreader), parity with mobil
   });
 
   it("today-week-view weekly-summary stats are serif (no sans extrabold)", () => {
-    // ENG-1372 slice 2 — the tile trio was extracted to
-    // today-week-summary-stats.tsx so the sparse-stat addition didn't push
-    // the pinned today-week-view.tsx over its line budget; the serif
-    // numerals live there now.
-    const src = read("src/app/components/suppr/today-week-summary-stats.tsx");
+    const src = read("src/app/components/suppr/today-week-view.tsx");
     const big = src
       .split("\n")
       .filter((l) => l.includes("text-2xl") && l.includes("tabular-nums"));

@@ -4690,11 +4690,8 @@ export default function TrackerScreen() {
           <WeeklyInsightCard
             householdSize={householdMemberCount}
             loggedDaysInWeek={weekData.days.filter((d) => d.totals.calories > 0).length}
-            weekAvgKcal={
-              weekData.days.some((d) => d.totals.calories > 0)
-                ? weekData.weekAvg.calories
-                : null
-            }
+            // ENG-1372 slice 2: avg suppressed <3 logged days (web parity: NutritionTracker.tsx).
+            weekAvgKcal={(isFeatureEnabled("empty_state_grammar_v1") ? weekData.days.filter((d) => d.totals.calories > 0).length >= 3 : weekData.days.some((d) => d.totals.calories > 0)) ? weekData.weekAvg.calories : null}
             weekDailyKcal={weekData.days.map((d) => d.totals.calories)}
             dailyKcalTarget={targets.calories}
             textColor={colors.text}
