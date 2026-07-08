@@ -2,7 +2,6 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import {
   Alert,
   AppState,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -40,6 +39,7 @@ import { useTodayHydrationStimulants } from "@/hooks/useTodayHydrationStimulants
 import { useTodayStreakAndFreezes } from "@/hooks/useTodayStreakAndFreezes";
 import { useTodayFoodFavorites } from "@/hooks/useTodayFoodFavorites";
 import { useTodayActivationNudges } from "@/hooks/useTodayActivationNudges";
+import { useTodayUsualMealHint } from "@/hooks/useTodayUsualMealHint";
 import { useOutOfWindowJournalDay } from "@/hooks/useOutOfWindowJournalDay";
 import {
   dateKeyFromDate,
@@ -199,12 +199,6 @@ import {
   buildMealEntriesFromSavedMeal,
   selectUsualSavedMeal,
 } from "@suppr/nutrition-core/savedMealsLogic";
-import {
-  parseDismissedSlots,
-  serializeDismissedSlots,
-  shouldShowUsualMealHint,
-  USUAL_MEAL_HINT_STORAGE_KEY,
-} from "@suppr/nutrition-core/usualMealHint";
 import { useAiMethodTooltip } from "@/lib/useAiMethodTooltip";
 import {
   PENDING_USUAL_MEAL_SAVE_KEY,
@@ -1018,25 +1012,6 @@ export default function TrackerScreen() {
   const { hostFavorites, favoritePendingKeys, toggleFoodFavorite } =
     useTodayFoodFavorites({ userId });
 
-  /** Ship M1 — usual-meal first-run hint dismiss state. Persisted via
-   *  AsyncStorage under a versioned key. Hydrated once on mount. */
-  const [usualMealHintDismissed, setUsualMealHintDismissed] = useState<Set<string>>(
-    () => new Set<string>(),
-  );
-  useEffect(() => {
-    let cancelled = false;
-    AsyncStorage.getItem(USUAL_MEAL_HINT_STORAGE_KEY)
-      .then((raw) => {
-        if (!cancelled) setUsualMealHintDismissed(parseDismissedSlots(raw));
-      })
-      .catch(() => {
-        /* ignore storage failures */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   // ENG-1252 — first-session AI-method discoverability tooltip gate.
   const aiMethodTooltipVisible = useAiMethodTooltip(userTier);
 
@@ -1061,64 +1036,13 @@ export default function TrackerScreen() {
     onPostOnbPushSkip,
   } = useTodayActivationNudges({ userId, dayKey, mealsToday });
 
-  const savedMealSlots = useMemo(() => {
-    const s = new Set<string>();
-    for (const m of hostSavedMeals) {
-      if (m.defaultMealSlot) s.add(m.defaultMealSlot);
-    }
-    return s;
-  }, [hostSavedMeals]);
-
-  const usualMealHintShownRef = useRef<Set<string>>(new Set());
-  const hintVisibleForSlot = useCallback(
-    (slot: string) => {
-      if (!isMealSlot(slot)) return false;
-      const currentDayKey = dateKeyFromDate(selectedDate);
-      return shouldShowUsualMealHint({
-        byDay,
-        slot,
-        todayKey: currentDayKey,
-        dismissedSlots: usualMealHintDismissed,
-        savedMealSlots,
-      });
-    },
-    [byDay, selectedDate, usualMealHintDismissed, savedMealSlots],
-  );
-  useEffect(() => {
-    for (const slot of ["Breakfast", "Lunch", "Dinner", "Snacks"] as const) {
-      if (hintVisibleForSlot(slot) && !usualMealHintShownRef.current.has(slot)) {
-        usualMealHintShownRef.current.add(slot);
-        try {
-          track(AnalyticsEvents.usual_meal_hint_shown, { slot });
-        } catch {
-          /* analytics fire-and-forget */
-        }
-      }
-    }
-  }, [hintVisibleForSlot]);
-
-  const dismissUsualMealHint = useCallback(
-    (slot: string) => {
-      if (!isMealSlot(slot)) return;
-      setUsualMealHintDismissed((prev) => {
-        const next = new Set(prev);
-        next.add(slot);
-        void AsyncStorage.setItem(
-          USUAL_MEAL_HINT_STORAGE_KEY,
-          serializeDismissedSlots(next),
-        ).catch(() => {
-          /* ignore storage failures */
-        });
-        return next;
-      });
-      try {
-        track(AnalyticsEvents.usual_meal_hint_dismissed, { slot });
-      } catch {
-        /* analytics fire-and-forget */
-      }
-    },
-    [],
-  );
+  // ENG-1361 round 2 — usual-meal first-run hint (dismiss state + gate +
+  // shown/dismissed analytics) lives in useTodayUsualMealHint.
+  const { hintVisibleForSlot, dismissUsualMealHint } = useTodayUsualMealHint({
+    byDay,
+    selectedDate,
+    hostSavedMeals,
+  });
 
   /** Open the save-meal sheet pre-filled with the items in `slotName` on
    * the active day. Gated on >=2 items so the UI never lets the user
