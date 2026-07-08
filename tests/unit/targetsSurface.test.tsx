@@ -3,7 +3,8 @@
  *
  * Pins the desktop-web content-pane layout for the new Targets view:
  *  - Breadcrumb `Account · Targets · <short date>`.
- *  - Title + subtitle "Estimated TDEE based on Mifflin-St Jeor · <activity>".
+ *  - Title + subtitle "Estimated daily burn (TDEE) based on Mifflin-St
+ *    Jeor · <activity>" (ENG-1469 gloss, default-ON).
  *  - Daily calorie target card + Goal card in the top row.
  *  - 4-tile macro grid: PROTEIN / CARBS / FAT / FIBER.
  *
@@ -76,8 +77,11 @@ describe("Targets surface (Claude Design 2026-04-20)", () => {
   it("renders title 'Targets' and the Mifflin-St Jeor subtitle", () => {
     render(<Targets onNavigate={() => {}} />);
     expect(screen.getByRole("heading", { level: 1, name: /Targets/i })).toBeInTheDocument();
+    // ENG-1469 — the subtitle is gloss-gated (onboarding_jargon_gloss_v1,
+    // default-ON per ENG-1461), so it now reads "Estimated daily burn
+    // (TDEE) based on Mifflin-St Jeor" rather than the bare-acronym form.
     expect(
-      screen.getByText(/Estimated TDEE based on Mifflin-St Jeor · moderate activity/i),
+      screen.getByText(/Estimated daily burn \(TDEE\) based on Mifflin-St Jeor · moderate activity/i),
     ).toBeInTheDocument();
   });
 
