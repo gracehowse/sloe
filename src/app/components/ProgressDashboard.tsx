@@ -116,6 +116,7 @@ import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
 import { SupprCard } from "./ui/suppr-card.tsx";
 import { ProgressActivitySection } from "./suppr/progress-activity-section.tsx";
 import { ProgressWeightEmptyState } from "./suppr/progress-weight-empty-state.tsx";
+import { StreakFreezeCard } from "./suppr/streak-freeze-card.tsx";
 import { WeightStatRow } from "./suppr/weight-stat-row.tsx";
 import { getLatestHealthSnapshot } from "../../lib/health/healthSnapshots.ts";
 
@@ -135,34 +136,6 @@ function parseNumMap(raw: unknown): Record<string, number> {
 function coercePace(v: string | null | undefined): PlanPace {
   const s = (v ?? "steady").toLowerCase();
   return (PACES as string[]).includes(s) ? (s as PlanPace) : "steady";
-}
-
-/**
- * "Tue" / "Mar 12" compact date label for freeze-used rows. Uses the
- * local Date constructor so it lines up with the device timezone shown
- * on Today.
- */
-function formatFreezeDate(dateKey: string): string {
-  const [y, m, d] = dateKey.split("-").map((n) => Number.parseInt(n, 10));
-  if (![y, m, d].every(Number.isFinite)) return dateKey;
-  const dt = new Date(y, m - 1, d);
-  const now = new Date();
-  const daysAgo = Math.round((now.getTime() - dt.getTime()) / 86_400_000);
-  if (daysAgo >= 0 && daysAgo < 7) {
-    return dt.toLocaleDateString(undefined, { weekday: "short" });
-  }
-  return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function FreezeStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-muted/30 border border-border/60 p-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
-        {label}
-      </p>
-      <p className="text-[18px] font-bold tabular-nums text-foreground">{value}</p>
-    </div>
-  );
 }
 
 function coerceProgressMetric(v: string | null): ProgressMetric | null {
@@ -1964,43 +1937,19 @@ function ProgressDashboardContent() {
         </div>
       </div>
 
-      {/* STREAK FREEZES (Batch 4.11) — visible when the user can earn or has
-          freezes, or has consumed any. Hidden entirely when budget = 0. */}
-      {freezeBudgetMax > 0 ? (
-        <SupprCard elevation="card" padding="lg" radius="lg" className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <IconBox size="sm" tone="primary"><Icons.streakFreeze /></IconBox>
-            <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand">Streak freezes</p>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            {`Freezes cover one empty day each so a sick or travel day doesn\u2019t break your streak. You earn one every 7-day streak, up to a cap of ${freezeBudgetMax}.`}
-          </p>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <FreezeStat label="Available" value={String(freezesAvailable)} />
-            <FreezeStat label="Earned" value={String(freezeLedger.earnedAt.length)} />
-            <FreezeStat label="Used" value={String(freezeLedger.usedHistory.length)} />
-          </div>
-          {protectedStreakInfo.protectedDateKeys.length > 0 ? (
-            <div className="mt-3">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">
-                Recent freezes used
-              </p>
-              <ul className="space-y-1">
-                {protectedStreakInfo.protectedDateKeys.slice(0, 3).map((k) => (
-                  <li key={k} className="text-xs text-muted-foreground tabular-nums">
-                    Freeze used ({formatFreezeDate(k)})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {rawStreakDays !== streakDays ? (
-            <p className="text-[11px] text-muted-foreground mt-2">
-              {`Raw streak (without freezes): ${rawStreakDays} day${rawStreakDays === 1 ? "" : "s"}.`}
-            </p>
-          ) : null}
-        </SupprCard>
-      ) : null}
+      {/* STREAK FREEZES (Batch 4.11) — extracted to StreakFreezeCard
+          (ENG-1372 slice 2) so the zero-collapse addition stays within the
+          pinned line budget. Component owns its own freezeBudgetMax<=0 hide
+          + zero-triad collapse (law 3). */}
+      <StreakFreezeCard
+        freezeBudgetMax={freezeBudgetMax}
+        freezesAvailable={freezesAvailable}
+        freezeLedger={freezeLedger}
+        protectedDateKeys={protectedStreakInfo.protectedDateKeys}
+        rawStreakDays={rawStreakDays}
+        streakDays={streakDays}
+        emptyStateGrammarOn={isFeatureEnabled("empty_state_grammar_v1")}
+      />
 
       {/* DAILY CALORIES + MACRO ADHERENCE detail grid — REMOVED in the
           492:2 reskin. It duplicated the same `dailyCaloriesData` +
