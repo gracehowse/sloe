@@ -6,6 +6,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
+// ENG-1417 — mutable per-test override, defaults OFF (kill switch) so every
+// other test in this file keeps asserting the exact pre-ENG-1417 bare kcal.
+let kcalTrustQualifierOn = false;
+vi.mock("@/lib/analytics", () => ({
+  isFeatureEnabled: (flag: string) =>
+    flag === "kcal_trust_qualifier_v1" ? kcalTrustQualifierOn : false,
+  track: vi.fn(),
+}));
+
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({
     text: "#221B26",
@@ -30,7 +39,42 @@ import { PlanMealCardV3 } from "../../components/plan/PlanMealCardV3";
 import { PlanEmptySlotV3 } from "../../components/plan/PlanEmptySlotV3";
 
 describe("PlanMealCardV3", () => {
+  it("flag OFF: renders the bare kcal regardless of isVerified (ENG-1417)", () => {
+    kcalTrustQualifierOn = false;
+    const { getByText, queryByText } = render(
+      <PlanMealCardV3 slot="Lunch" name="Tahini bowl" kcal={520} isVerified={false} />,
+    );
+    expect(getByText("520 kcal")).toBeTruthy();
+    expect(queryByText("~520 kcal")).toBeNull();
+  });
+
+  it("flag ON + unverified: prefixes the kcal with '~' (ENG-1417)", () => {
+    kcalTrustQualifierOn = true;
+    const { getByText } = render(
+      <PlanMealCardV3 slot="Lunch" name="Tahini bowl" kcal={520} isVerified={false} />,
+    );
+    expect(getByText("~520 kcal")).toBeTruthy();
+  });
+
+  it("flag ON + verified: renders the bare kcal, no qualifier (ENG-1417)", () => {
+    kcalTrustQualifierOn = true;
+    const { getByText, queryByText } = render(
+      <PlanMealCardV3 slot="Lunch" name="Tahini bowl" kcal={520} isVerified={true} />,
+    );
+    expect(getByText("520 kcal")).toBeTruthy();
+    expect(queryByText("~520 kcal")).toBeNull();
+  });
+
+  it("flag ON + isVerified absent: treats it as unverified — safe default (ENG-1417)", () => {
+    kcalTrustQualifierOn = true;
+    const { getByText } = render(
+      <PlanMealCardV3 slot="Lunch" name="Tahini bowl" kcal={520} />,
+    );
+    expect(getByText("~520 kcal")).toBeTruthy();
+  });
+
   it("renders slot, name, kcal + fires onPress", () => {
+    kcalTrustQualifierOn = false;
     const onPress = vi.fn();
     const { getByText, getByLabelText } = render(
       <PlanMealCardV3

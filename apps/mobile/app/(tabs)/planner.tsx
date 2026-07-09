@@ -118,6 +118,7 @@ import {
 } from "@suppr/shared/planning/shoppingListMeta";
 import { shouldShowRecipeRemovedBadge } from "@suppr/nutrition-core/recipeRemovedBadge";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/nutrition-core/coerceRecipeMacrosForPlanning";
+import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
 import { enabledMealSlotLabels, parseUserMealSlotConfig } from "@suppr/nutrition-core/userMealSlotConfig";
 import { planSlotAimKcal } from "@suppr/nutrition-core/mealSlotAim";
 import { EmptyMealSlotAimLine } from "@/components/EmptyMealSlotRow";
@@ -2375,6 +2376,7 @@ export default function PlannerScreen() {
           fat: c.fat,
           fiberG: c.fiberG ?? (r as { fiber_g?: number }).fiber_g ?? (r as { fiberG?: number }).fiberG ?? 0,
           mealType: r.mealSlots ?? null,
+          isVerified: r.isVerified ?? false, // ENG-1417
         };
       });
       const discoverPool = discoverRecipes
@@ -2396,6 +2398,7 @@ export default function PlannerScreen() {
             fat: c.fat,
             fiberG: c.fiberG ?? (r as { fiber_g?: number }).fiber_g ?? (r as { fiberG?: number }).fiberG ?? 0,
             mealType: (r as { mealSlots?: string[] | null }).mealSlots ?? null,
+            isVerified: (r as { isVerified?: boolean }).isVerified ?? false, // ENG-1417
           };
         });
       const fullPool = [...savedPool, ...discoverPool];
@@ -3380,9 +3383,8 @@ export default function PlannerScreen() {
           // ±10% / ±20% tolerance bands. Totals respect per-meal
           // `buildDayTotalVsGoalLine` → `dayPlanTotalsFromMeals` sums each
           // meal row's display macros (portion already baked). When the
-          // user has no goals yet (hasTargets=false) we omit the line
-          // entirely — never show "—". `planTargets` falsy → skip
-          // the helper too (gate belt-and-braces).
+          // user has no goals yet (hasTargets=false) we omit the line entirely
+          // — never show "—". `planTargets` falsy → skip the helper too.
           const goalLine = planTargets
             ? buildDayTotalVsGoalLine(dp.meals, {
                 calories: planTargets.calories,
@@ -3391,6 +3393,7 @@ export default function PlannerScreen() {
                 fat: planTargets.fat,
               })
             : null;
+          const goalLineKcalDisplay = !goalLine ? "" : isFeatureEnabled("kcal_trust_qualifier_v1") ? formatQualifiedKcal(Math.round(goalLine.totals.calories), goalLine.calorieTotalIsVerified) : Math.round(goalLine.totals.calories).toLocaleString("en-US");
           // P1-10 / Carryover rule #1 (2026-04-25): over-budget reads
           // amber, not red. Red is reserved for hard errors. Plan day
           // total can be over-budget ("ok-ish, you've gone over") which
@@ -3400,15 +3403,12 @@ export default function PlannerScreen() {
             tone === "neutral"
               ? colors.textSecondary
               : Accent.warning;
-          // Prototype port (2026-04-20) — day total surfaces as
-          // "1,820 kcal" (thousands-separator, right-aligned) in the
-          // day header. Sum from non-placeholder meals so cleared
-          // slots don't drag the number to 0 when other meals are
-          // present; also omits leftover-companion rows implicitly
-          // because those still carry macros and belong in the total.
+          // Prototype port (2026-04-20) — "1,820 kcal" in the day header, summed
+          // from non-placeholder meals so cleared slots don't drag it to 0.
           const dayTotalKcal = dp.meals
             .filter((m) => planMealHasRecipe(m))
             .reduce((sum, m) => sum + (m.calories || 0), 0);
+          const dayTotalKcalDisplay = isFeatureEnabled("kcal_trust_qualifier_v1") ? formatQualifiedKcal(Math.round(dayTotalKcal), dp.meals.filter((m) => planMealHasRecipe(m)).every((m) => m.isVerified)) : Math.round(dayTotalKcal).toLocaleString("en-US"); // ENG-1417
           // Prototype port (2026-04-20) — day section header reads
           // "Mon" / "Tue" / "Wed" (3-letter weekday) instead of
           // "Day 1". When the day card maps to today, show an
@@ -3465,10 +3465,10 @@ export default function PlannerScreen() {
                   accessibilityLabel={`${Math.round(goalLine.totals.calories)} of ${planTargets!.calories} kcal for the day`}
                   testID={`day-total-vs-goal-${dp.day}`}
                 >
-                  {`${Math.round(goalLine.totals.calories).toLocaleString("en-US")} / ${planTargets!.calories.toLocaleString("en-US")} kcal`}
+                  {`${goalLineKcalDisplay} / ${planTargets!.calories.toLocaleString("en-US")} kcal`}
                 </Text>
               ) : (
-                <Text style={styles.dayTotals}>{Math.round(dayTotalKcal).toLocaleString("en-US")} kcal</Text>
+                <Text style={styles.dayTotals}>{dayTotalKcalDisplay} kcal</Text>
               )}
             </View>
             {/* Calm Sloe macro summary — four evenly-spread cells with a

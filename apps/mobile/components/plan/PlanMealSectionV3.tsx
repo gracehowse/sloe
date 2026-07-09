@@ -81,6 +81,7 @@ export function PlanMealSectionV3({
           slot={slotLabel}
           name={meal.recipeTitle || meal.name}
           kcal={Math.round(meal.calories)}
+          isVerified={meal.isVerified}
           isLocked={meal.isLocked}
           isCooked={cooked}
           onPress={() => onOpenMeal(dayIndex, slotIndex)}

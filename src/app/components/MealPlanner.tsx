@@ -49,6 +49,7 @@ import {
   type PlannerMealSlot,
 } from "../../lib/planning/generateMealPlan.ts";
 import { isFeatureEnabled, track } from "../../lib/analytics/track.ts";
+import { formatQualifiedKcal } from "../../lib/nutrition/formatMacro.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { useHouseholdBanner } from "../../hooks/useHouseholdBanner.ts";
@@ -1749,15 +1750,14 @@ export const MealPlanner = memo(function MealPlanner({
           const dayDate = planCalendarDateForIndex(di, startOffset);
           const dayLabel = shortWeekdayLabel(dayDate);
           const isTodayCol = isSameCalendarDay(dayDate, new Date());
-          // F2-E (2026-04-28): day-total vs goal line — kcal header +
-          // P/C/F delta chips. Skipped on days with zero meals to
-          // keep the empty-day card lean.
+          // F2-E (2026-04-28): day-total vs goal line, skipped on zero-meal days.
           const dayTotalLine = buildDayTotalVsGoalLine(dp.meals, {
             calories: nutritionTargets.calories,
             protein: nutritionTargets.protein,
             carbs: nutritionTargets.carbs,
             fat: nutritionTargets.fat,
           });
+          const dayCalDisplay = isFeatureEnabled("kcal_trust_qualifier_v1") ? formatQualifiedKcal(Math.round(dayTotalLine.totals.calories), dayTotalLine.calorieTotalIsVerified) : Math.round(dayTotalLine.totals.calories);
           // e2e walk 2026-06-10 (mobile parity): gate the kcal header +
           // P/C/F delta chips on the day having a REAL meal (recipe chosen,
           // not a placeholder), not merely a non-empty slot list. A
@@ -1838,7 +1838,7 @@ export const MealPlanner = memo(function MealPlanner({
                       alignSelf: "flex-start",
                     }}
                   >
-                    {Math.round(dayTotalLine.totals.calories)} / {Math.round(nutritionTargets.calories)} kcal
+                    {dayCalDisplay} / {Math.round(nutritionTargets.calories)} kcal
                   </p>
                   <div
                     data-testid={`planner-day-progress-${dp.day}`}

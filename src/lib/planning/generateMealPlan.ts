@@ -194,6 +194,8 @@ export function generatePlanFromLibrary(input: {
           fiberG: scaled.fiberG,
           // P1-19: thread coercion flag through to the planner row chip.
           ...((r as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
+          // ENG-1417 — thread the source recipe's trust signal through.
+          isVerified: r.isVerified,
           // portionMultiplier not set: fit mult is baked into calories already.
         };
       });
@@ -252,6 +254,8 @@ export function generatePlanFromLibrary(input: {
           fat: scaled.fat,
           fiberG: scaled.fiberG,
           ...((pick as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
+          // ENG-1417 — thread the source recipe's trust signal through.
+          isVerified: pick.isVerified,
         };
       });
       for (const id of fallback.pickedIds) recentIds.add(id);

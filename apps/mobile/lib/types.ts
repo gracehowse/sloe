@@ -115,6 +115,12 @@ export interface DayPlanMeal {
   recipeId?: string;
   /** ENG-956 — per-meal lock ("keep this meal"); mirrors web `DayPlanMeal`. */
   isLocked?: boolean;
+  /**
+   * ENG-1417 — verified nutrition lookup vs unverified estimate
+   * (`RecipeCard.isVerified`). Absent/undefined → the render layer treats
+   * it as unverified (safe default). Mirrors web `DayPlanMeal.isVerified`.
+   */
+  isVerified?: boolean;
 }
 
 export interface DayPlan {

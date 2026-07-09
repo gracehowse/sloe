@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { Check, Flame, Lock, MoreHorizontal, UtensilsCrossed } from "lucide-react";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
 
 /**
  * PlanMealCardV3 — Sloe v3 Plan per-slot meal card.
@@ -17,6 +19,8 @@ export interface PlanMealCardV3Props {
   slot: string;
   name: string;
   kcal: number | null;
+  /** ENG-1417 — verified vs estimate; absent → "~" qualifier (safe default). */
+  isVerified?: boolean;
   imageUrl?: string | null;
   isLocked?: boolean;
   /** "batch" → a Batch chip; any other truthy string → a quiet queued note. */
@@ -32,6 +36,7 @@ export function PlanMealCardV3({
   slot,
   name,
   kcal,
+  isVerified,
   imageUrl,
   isLocked,
   note,
@@ -41,6 +46,13 @@ export function PlanMealCardV3({
 }: PlanMealCardV3Props) {
   const [broken, setBroken] = React.useState(false);
   const showImage = Boolean(imageUrl) && !broken;
+  // ENG-1417 — flag-gated "~" unverified-estimate qualifier (kill switch off).
+  const kcalDisplay =
+    kcal != null
+      ? isFeatureEnabled("kcal_trust_qualifier_v1")
+        ? formatQualifiedKcal(kcal, isVerified)
+        : String(kcal)
+      : null;
   return (
     <div
       className="mt-2 flex w-full items-center gap-3 rounded-xl border p-3"
@@ -102,7 +114,7 @@ export function PlanMealCardV3({
             ) : null}
           </span>
           <span className="text-[13px] tabular-nums text-foreground-tertiary">
-            {kcal ? `${kcal} kcal` : "—"}
+            {kcalDisplay ? `${kcalDisplay} kcal` : "—"}
           </span>
         </span>
         <span className="mt-0.5 block truncate text-[13px] font-semibold text-foreground">

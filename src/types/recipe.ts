@@ -245,6 +245,14 @@ export interface DayPlanMeal {
    */
   macrosAreEstimated?: boolean;
   /**
+   * ENG-1417 — whether the SOURCE recipe's macros are a verified nutrition
+   * lookup vs an unverified estimate (`RecipeCard.isVerified`). Independent
+   * of `macrosAreEstimated` above (that's about the P/C/F split
+   * methodology, not the underlying data's trust level). Absent/undefined →
+   * the render layer treats it as unverified (safe default).
+   */
+  isVerified?: boolean;
+  /**
    * ENG-956 — per-meal lock ("keep this meal"). When true, Regenerate
    * leaves this slot byte-identical and re-rolls only the unlocked slots,
    * rebalancing the remaining macro budget (daily target − locked meals)

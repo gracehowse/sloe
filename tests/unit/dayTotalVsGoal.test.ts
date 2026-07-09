@@ -28,6 +28,7 @@ function meal(partial: Partial<DayPlanMeal>): DayPlanMeal {
     fat: partial.fat ?? 0,
     portionMultiplier: partial.portionMultiplier,
     isPlaceholder: partial.isPlaceholder,
+    isVerified: partial.isVerified,
   };
 }
 
@@ -281,5 +282,50 @@ describe("formatDayTotalCell + formatDayTotalVsGoalLine", () => {
     );
     const cal = line.cells[0]!;
     expect(formatDayTotalCell(cal)).toBe("499 / 1,000 kcal");
+  });
+});
+
+describe("buildDayTotalVsGoalLine — calorieTotalIsVerified (ENG-1417)", () => {
+  const goals = { calories: 2000, protein: 150, carbs: 200, fat: 65 };
+
+  it("is true when every meal is verified", () => {
+    const meals = [
+      meal({ calories: 400, isVerified: true }),
+      meal({ calories: 600, isVerified: true }),
+    ];
+    expect(buildDayTotalVsGoalLine(meals, goals).calorieTotalIsVerified).toBe(true);
+  });
+
+  it("is false when ANY meal is unverified — a day total is only as trustworthy as its weakest link", () => {
+    const meals = [
+      meal({ calories: 400, isVerified: true }),
+      meal({ calories: 600, isVerified: false }),
+    ];
+    expect(buildDayTotalVsGoalLine(meals, goals).calorieTotalIsVerified).toBe(false);
+  });
+
+  it("treats absent/undefined isVerified as unverified (safe default)", () => {
+    const meals = [meal({ calories: 400, isVerified: true }), meal({ calories: 600 })];
+    expect(buildDayTotalVsGoalLine(meals, goals).calorieTotalIsVerified).toBe(false);
+  });
+
+  it("ignores placeholder meals — an empty/placeholder-only day is vacuously verified", () => {
+    const meals = [
+      meal({ calories: 0, isPlaceholder: true, isVerified: false }),
+      meal({ calories: 0, isPlaceholder: true }),
+    ];
+    expect(buildDayTotalVsGoalLine(meals, goals).calorieTotalIsVerified).toBe(true);
+  });
+
+  it("a real meal's unverified status still taints the day even alongside placeholders", () => {
+    const meals = [
+      meal({ calories: 400, isVerified: false }),
+      meal({ calories: 0, isPlaceholder: true }),
+    ];
+    expect(buildDayTotalVsGoalLine(meals, goals).calorieTotalIsVerified).toBe(false);
+  });
+
+  it("a 0-meal day is vacuously verified", () => {
+    expect(buildDayTotalVsGoalLine([], goals).calorieTotalIsVerified).toBe(true);
   });
 });
