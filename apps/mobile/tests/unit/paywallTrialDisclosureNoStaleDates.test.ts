@@ -52,4 +52,17 @@ describe("Paywall trial disclosure (wave-2 FIX 4)", () => {
     expect(SRC).toContain("Prices include any applicable VAT");
     expect(SRC).toContain("7-day refund policy");
   });
+
+  // ENG-1381 (legal review 2026-07-09) — the degraded / subscriptionsUnavailable
+  // fallback disclosure must NOT print an indicative FALLBACK_PRICES amount
+  // (a misleading-price risk on non-GBP storefronts). It states the cadence and
+  // defers the exact amount to the App Store instead.
+  it("degraded fallback disclosure defers the price to the App Store (no indicative amount)", () => {
+    // The old indicative-price caveat is gone.
+    expect(SRC).not.toContain("amount shown is indicative");
+    expect(SRC).not.toContain("exact price is confirmed at checkout");
+    // The price-less cadence form + App Store deferral are present.
+    expect(SRC).toContain("renews automatically each");
+    expect(SRC).toContain("confirmed on the App Store before you subscribe");
+  });
 });

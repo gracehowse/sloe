@@ -3,10 +3,11 @@
  *
  * ENG-1381 (P0) — the iOS paywall's degraded `subscriptionsUnavailable` branch
  * (RC offerings fail to load) shipped price-less: no plan selector, no
- * auto-renew disclosure, just "Open App Store to subscribe" — while the
- * sub-headline still promised "Price in your currency". This pins the
- * flag-gated fallback that renders the plan selector + disclosure with
- * FALLBACK_PRICES + an indicative-price caveat instead.
+ * auto-renew disclosure, just "Open App Store" — while the sub-headline still
+ * promised "Price in your currency". This pins the flag-gated fallback that
+ * renders the plan selector + a disclosure that states the renewal cadence and
+ * defers the exact price to the App Store (legal review 2026-07-09 — never an
+ * indicative FALLBACK_PRICES amount inside a CMA disclosure).
  *
  * Source-pin (the 1300-line paywall route isn't mounted in unit tests, matching
  * the repo idiom, e.g. `paywallGate15Honesty.test.ts`). If any pin breaks the
@@ -66,12 +67,18 @@ describe("ENG-1381 — paywall fallback when RC unavailable", () => {
     expect(PAYWALL).toMatch(/effHasMonthly\s*=\s*hasAnyMonthly\s*\|\|\s*fallbackWhenUnavailable/);
   });
 
-  it("the CMA disclosure carries an indicative-price caveat in fallback mode", () => {
-    expect(PAYWALL).toMatch(/indicativeCaveat\s*=\s*fallbackWhenUnavailable/);
-    expect(PAYWALL).toContain("indicative");
-    expect(PAYWALL).toContain("confirmed at checkout");
-    // and it's appended to both disclosure strings.
-    expect(PAYWALL).toMatch(/refund policy: support@getsloe\.com\.\$\{indicativeCaveat\}/);
+  it("the CMA disclosure defers the price to the App Store in fallback mode (no indicative amount)", () => {
+    // ENG-1381 revision (legal review 2026-07-09): the degraded disclosure must
+    // NOT print an indicative FALLBACK_PRICES amount — a misleading-price risk on
+    // non-GBP storefronts that no caveat cures. It states the renewal cadence and
+    // defers the exact amount to the App Store. See
+    // docs/decisions/2026-07-09-mobile-degraded-paywall-disclosure.md.
+    expect(PAYWALL).toMatch(/if \(fallbackWhenUnavailable\) \{/);
+    expect(PAYWALL).toContain("renews automatically each");
+    expect(PAYWALL).toContain("confirmed on the App Store before you subscribe");
+    // The old indicative-price caveat is gone (no wrong number in a CMA disclosure).
+    expect(PAYWALL).not.toContain("indicativeCaveat");
+    expect(PAYWALL).not.toContain("amount shown is indicative");
   });
 
   it("the force-degraded repro affordance is __DEV__-only (never in a release build)", () => {
