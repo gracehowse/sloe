@@ -1401,7 +1401,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             />
           </div>
 
-          <TrendOnlyWeightToggle /> {/* ENG-713 — flag-gated; self-hides */}
+          <TrendOnlyWeightToggle />{/* ENG-713 — flag-gated; self-hides */}
 
           {/* Week start picker.
               P1-7 (audit 2026-04-30) — migrated to SettingsSegmented.

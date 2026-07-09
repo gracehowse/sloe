@@ -2239,7 +2239,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           />
         </View>
 
-        <TrendOnlyWeightRow /> {/* ENG-713 — flag-gated; self-hides */}
+        <TrendOnlyWeightRow />{/* ENG-713 — flag-gated; self-hides */}
       </SettingsCard>
 
       {/* Connections — Sloe DS (Figma 09 Settings `335:2`): device /
@@ -2401,7 +2401,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }}
         />
         <BarcodeContributionsSection userId={userId} />
-        <AnalyticsConsentRow /> {/* ENG-1286 — usage analytics + replay consent */}
+        <AnalyticsConsentRow />{/* ENG-1286 — usage analytics + replay consent */}
         <SettingsRow
           testID="settings-bundle-help-row"
           icon={HelpCircle}
