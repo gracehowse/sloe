@@ -19,7 +19,7 @@ import { supabase } from "../../lib/supabase/browserClient.ts";
 import { persistWeightDayPatch, pruneWeightKgByDay } from "../../lib/progress/weightData.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
-import { avgCaloriesOverRecentLoggedDays, calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
+import { avgCaloriesOverRecentLoggedDays, calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, hasGoalWeightData, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
 import { computeAdaptiveDataProgressFromMeals } from "../../lib/nutrition/adaptiveDataProgress.ts";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
@@ -55,7 +55,7 @@ import { getDailyTargets, type DailyTarget } from "../../lib/nutrition/dailyTarg
 import { availableFreezes, computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "../../lib/nutrition/streakFreeze.ts";
 import {
   buildUsualMealRecapInsight,
-  buildWeeklyRecap,
+  buildDigestWeekView,
   shouldShowRecap,
   weekKeyFor,
   type UsualMealRecapInsight,
@@ -108,7 +108,6 @@ import { pruneBodyFatPctByDay } from "../../lib/progress/bodyCompositionTrends.t
 import { hasEnoughDataForStory } from "../../lib/nutrition/progressStoryGate.ts";
 import { DigestStoryCard } from "./suppr/digest-story-card.tsx";
 import { TrajectoryCard } from "./suppr/trajectory-card.tsx";
-import { computeDayOfWeekPattern } from "../../lib/nutrition/dayOfWeekPattern.ts";
 import { generateProgressCommentary } from "../../lib/nutrition/progressCommentary.ts";
 import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProgress.ts";
 import { useNutritionHistoryWindow } from "../../hooks/useNutritionHistoryWindow.ts";
@@ -869,9 +868,20 @@ function ProgressDashboardContent() {
     return out;
   }, [previousWeekDailyTargetsByDay]);
 
+  // ENG-1373 — previous-week-anchored (matches `recap` below), used ONLY
+  // for `proteinOnTargetDays` (which `recap`/`WeeklyRecap` doesn't carry).
+  // Never source daysLogged/avgCalories from `weekStatsBundle` (current
+  // week) here — that was the "929 vs 1,402" avg-divergence bug.
+  const digestWeekStats = useMemo(() => {
+    const previousWeekAnchor = new Date();
+    previousWeekAnchor.setDate(previousWeekAnchor.getDate() - 7);
+    return buildWeekStats(nutritionByDay, targets, weekStartDay, previousWeekAnchor, prevWeekTargetsByDay);
+  }, [nutritionByDay, targets, weekStartDay, prevWeekTargetsByDay]);
+
+  // ENG-1373 — `buildDigestWeekView`: headline numbers + day-of-week pattern share one anchor/gate.
   const recap = useMemo(
     () =>
-      buildWeeklyRecap({
+      buildDigestWeekView({
         byDay: nutritionByDay,
         weightKgByDay,
         targets,
@@ -1433,12 +1443,12 @@ function ProgressDashboardContent() {
           )}
           {/* ENG-954 — calm plateau insight (extracted component). */}
           <WeightPlateauInsight plateauInsight={weightTrend.plateauInsight} />
-          {/* START / CURRENT / GOAL / RATE stat row (extracted, ENG-1225 #22) */}
+          {/* START / CURRENT / GOAL / RATE stat row (ENG-1225 #22). ENG-1373: GOAL/RATE gate on shared `hasGoalWeightData` (matches Journey gate below). */}
           <WeightStatRow
             start={startKg != null ? formatWeight(startKg) : "—"}
             current={latestWeightKg != null ? formatWeight(latestWeightKg) : "—"}
-            goal={goalWeightKg != null ? formatWeight(goalWeightKg) : "—"}
-            rate={rateKgPerWeek != null && rateKgPerWeek !== 0 ? `${rateKgPerWeek < 0 ? "−" : "+"}${formatRatePerWeek(rateKgPerWeek).replace("/week", "/wk")}` : "—"}
+            goal={hasGoalWeightData({ goalWeightKg, latestWeightKg }) ? formatWeight(goalWeightKg as number) : "—"}
+            rate={hasGoalWeightData({ goalWeightKg, latestWeightKg }) && rateKgPerWeek != null && rateKgPerWeek !== 0 ? `${rateKgPerWeek < 0 ? "−" : "+"}${formatRatePerWeek(rateKgPerWeek).replace("/week", "/wk")}` : "—"}
           />
           </>)}
           {/* Log weight — centred button + a quick inline input */}
@@ -1720,13 +1730,11 @@ function ProgressDashboardContent() {
               adaptiveTdeeConfidence: engineConfidenceForCheckin,
             })
           : null;
-        // ENG-740 — extras the blended layout consumes. The PATTERN row
-        // reuses the same `computeDayOfWeekPattern` the legacy story
-        // card fed; the hero track reads the closest day's per-day
-        // target. Both are real computed values — never fabricated.
+        // ENG-740/1373 — PATTERN row reads `recap.dayOfWeekPattern` (same anchored+gated value the legacy story card below reads). Hero track reads the closest day's per-day target.
         const blendedExtras: import("../../lib/nutrition/digest").DigestBlendedExtras = {
-          dayOfWeekPattern: computeDayOfWeekPattern(nutritionByDay),
+          dayOfWeekPattern: recap.dayOfWeekPattern,
           closestDayTargetCalories: recap.bestDay?.targetCalories ?? null,
+          patternWindowLabel: recap.patternWindowLabel,
         };
         return (
           <Digest
@@ -1784,27 +1792,21 @@ function ProgressDashboardContent() {
         );
       })() : null}
 
-      {/* Week digest — narrative LEAD card. Replaces the 2x2 grid as
-          the visual focus. customer-lens audit 2026-04-30 +
-          D-2026-04-27-17.
-
-          ENG-740 — suppressed when `progress_digest_blend` is on; the
-          blended card above absorbs this narrative (closest day +
-          PATTERN row). Left intact for the flag-off path.
-
-          `dayOfWeekPattern` is the Lose It "Closer" parity slot
-          (audit 2026-04-30). The helper enforces the 14-day +
-          200-kcal-delta gates so the line never surfaces on noise. */}
+      {/* Week digest — narrative LEAD card (customer-lens audit 2026-04-30 +
+          D-2026-04-27-17). ENG-740 — suppressed when `progress_digest_blend`
+          is on (blended card above absorbs this). `dayOfWeekPattern` (Lose
+          It "Closer" parity slot) reads `recap.dayOfWeekPattern`, same
+          anchored+gated value as above (ENG-1373). */}
       {digestBlendEnabled ? null : (
         <div className="mb-4">
           <DigestStoryCard
             weekLabel={recap.weekLabel}
-            daysLogged={weekStatsBundle.daysWithFood}
-            avgCalories={weekStatsBundle.avgCalories}
+            daysLogged={recap.daysLogged}
+            avgCalories={recap.avgCalories}
             targetCalories={targets.calories}
             avgProtein={recap.avgProtein}
             targetProtein={targets.protein}
-            proteinOnTargetDays={weekStatsBundle.proteinOnTarget}
+            proteinOnTargetDays={digestWeekStats.proteinOnTarget}
             closestToTarget={recap.bestDay
               ? {
                   label: recap.bestDay.label,
@@ -1812,7 +1814,7 @@ function ProgressDashboardContent() {
                   protein: recap.bestDay.protein,
                 }
               : null}
-            dayOfWeekPattern={computeDayOfWeekPattern(nutritionByDay)}
+            dayOfWeekPattern={recap.dayOfWeekPattern}
           />
         </div>
       )}
@@ -2205,29 +2207,27 @@ function ProgressDashboardContent() {
           maintenanceTdeeKcal={isAdaptive && adaptiveTdee != null ? adaptiveTdee : staticTdee}
           goal={userGoal}
           timeline={goalTimeline}
+          goalWeightKg={goalWeightKg}
         />
       ) : null}
 
       {/* JOURNEY / WEIGHT PROJECTION — also gated on profileWeightSurfaceMode
           (T13.2): the projection visualises absolute weight progression
           toward a goal kg, which is the exact thing trends_only / hide
-          users opted out of. */}
-      {effectiveWeightSurfaceMode === "show" && weightKg != null && goalWeightKg != null && goalWeightKg !== weightKg && (() => {
-        const timeline = calcGoalTimeline({ currentWeightKg: weightKg, goalWeightKg, weightKgByDay });
-        // F-4a (2026-04-19, TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`): use
-        // the canonical `(start - current) / (start - goal)` formula
-        // via the shared helper. `start` is the earliest recorded
-        // weight in the user's log, falling back to the current weight
-        // when there's no history. Replaces the previous
-        // "|cur-goal|-remaining / |cur-goal|" approximation + 3% floor
-        // so `start === current` renders a truly empty bar + "Just
-        // starting" copy.
+          users opted out of. ENG-1373: gate now `hasGoalWeightData` (shared w/ GOAL/RATE row above) instead of inline `!= null`. */}
+      {effectiveWeightSurfaceMode === "show" && weightKg != null && hasGoalWeightData({ goalWeightKg, latestWeightKg: weightKg }) && goalWeightKg !== weightKg && (() => {
+        const goalWeightKg2 = goalWeightKg as number; // narrowed: hasGoalWeightData isn't a type predicate
+        const timeline = calcGoalTimeline({ currentWeightKg: weightKg, goalWeightKg: goalWeightKg2, weightKgByDay });
+        // F-4a (TestFlight `AHEeeC9a4-lKIyW5n7HgJxs`): canonical
+        // `(start - current) / (start - goal)`, `start` = earliest logged
+        // weight (falls back to current) — so `start === current` renders
+        // a truly empty bar + "Just starting" copy.
         const sortedDays = Object.entries(weightKgByDay).sort(([a], [b]) => a.localeCompare(b));
         const startKg = sortedDays.length > 0 ? sortedDays[0][1] : weightKg;
         const pctFrac = computeWeightJourneyProgressPct({
           startKg,
           currentKg: weightKg,
-          goalKg: goalWeightKg,
+          goalKg: goalWeightKg2,
         });
         const progressPct = pctFrac != null ? pctFrac * 100 : 0;
         const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
@@ -2297,7 +2297,7 @@ function ProgressDashboardContent() {
 
             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
               {timeline.remainingKg > 0.1
-                ? `${formatWeight(timeline.remainingKg)} to go until your ${formatWeight(goalWeightKg)} goal.`
+                ? `${formatWeight(timeline.remainingKg)} to go until your ${formatWeight(goalWeightKg2)} goal.`
                 : "You\u2019ve reached your goal weight."}
               {timeline.weeklyRateKg !== 0 &&
                 ` Trending ${timeline.trendDirection} at ${formatRatePerWeek(timeline.weeklyRateKg)}.`}
@@ -2322,7 +2322,7 @@ function ProgressDashboardContent() {
                   }}
                 />
               </div>
-              <span className="text-[11px] font-semibold text-muted-foreground tabular-nums ph-mask">{formatWeight(goalWeightKg)}</span>
+              <span className="text-[11px] font-semibold text-muted-foreground tabular-nums ph-mask">{formatWeight(goalWeightKg2)}</span>
             </div>
             {progressCopy && (
               <p className="text-[11px] text-muted-foreground text-center mt-1" data-testid="progress-journey-copy">

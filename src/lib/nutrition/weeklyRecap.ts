@@ -28,6 +28,11 @@ import {
   type FreezeLedger,
   type StreakByDay,
 } from "./streakFreeze";
+import {
+  computeDayOfWeekPattern,
+  isDayOfWeekPatternWithinLoggedWeek,
+  type DayOfWeekPattern,
+} from "./dayOfWeekPattern";
 
 export type WeeklyRecap = {
   /** `YYYY-Www` key for the completed week this recap covers. */
@@ -289,6 +294,113 @@ export function buildWeeklyRecap<M extends MealMacros>(params: {
     fiberAdherencePct,
     avgHydrationMl,
     hydrationDaysOnTarget,
+  };
+}
+
+/** `WeeklyRecap` plus the day-of-week pattern the digest is allowed to
+ *  cite for the SAME displayed week — see `buildDigestWeekView`. */
+export type DigestWeekView = WeeklyRecap & {
+  /**
+   * `null` when `computeDayOfWeekPattern`'s own gates failed OR when
+   * `isDayOfWeekPatternWithinLoggedWeek` rejected it (pattern's cited
+   * high/low weekdays don't both appear in THIS displayed week).
+   */
+  dayOfWeekPattern: DayOfWeekPattern | null;
+  /** Present whenever `dayOfWeekPattern` is non-null — the rolling
+   *  window the pattern was computed over, so copy can disclose it's a
+   *  longer-run observation than the single week being shown
+   *  ("last 4 weeks" vs. the digest's own 7-day `weekLabel`). */
+  patternWindowLabel: string | null;
+};
+
+/**
+ * ENG-1373 — single builder for everything a digest-week card renders.
+ *
+ * Root cause this closes: the digest week's own numbers
+ * (`avgCalories`, `daysLogged`, `weekLabel`, all from `buildWeeklyRecap`
+ * anchored on the *previous completed week*) and its day-of-week
+ * pattern line (`computeDayOfWeekPattern`, previously called with no
+ * explicit anchor and defaulting to wall-clock "today") were computed
+ * from two DIFFERENT window anchors by two independent call sites in
+ * the same render. That's how a digest could report "929 avg" while
+ * citing "Fridays ran higher than Thursdays" for a week where Friday
+ * was never logged — the pattern was silently describing a different
+ * window than the headline numbers.
+ *
+ * This wraps `buildWeeklyRecap` (unchanged — correct in isolation) and
+ * anchors `computeDayOfWeekPattern` on that SAME previous-week anchor,
+ * then runs `isDayOfWeekPatternWithinLoggedWeek` so the pattern can
+ * only survive into the render if both cited weekdays were actually
+ * logged in the week the rest of the card is describing. Returns ONE
+ * struct so no render site can mix a `weekLabel` from one call with a
+ * `dayOfWeekPattern` from another.
+ *
+ * `patternWindowLabel` is a constant, not derived from `now` — the
+ * rolling window length is a fixed product decision
+ * (`DAY_OF_WEEK_PATTERN_WINDOW_DAYS` = 28 days = "last 4 weeks"), so
+ * hard-coding the label avoids a second silent-default trap where a
+ * future refactor of the window length forgets to update the label to
+ * match.
+ *
+ * `windowEnd` for `computeDayOfWeekPattern` is derived from the digest
+ * week's own LAST logged-week day-key (`weekBundle.days[6].key`), not
+ * `previousWeekAnchor` (which is simply `now - 7 days` — a date that
+ * can fall mid-week, e.g. Wednesday, when the digest is generated on a
+ * Wednesday). Anchoring the 28-day pattern walk on a mid-week date
+ * silently truncates the trailing days of the very week being
+ * described (a Thu/Fri/Sat/Sun anchored mid-week would exclude up to
+ * 6 tail days from the 28-day sample). Using the week's actual last
+ * day as the walk-back start ensures the pattern window always fully
+ * covers the displayed week plus the 3 weeks before it.
+ */
+export function buildDigestWeekView<M extends MealMacros>(
+  params: Parameters<typeof buildWeeklyRecap<M>>[0],
+): DigestWeekView {
+  const now = params.now ?? new Date();
+  const previousWeekAnchor = new Date(now);
+  previousWeekAnchor.setDate(previousWeekAnchor.getDate() - 7);
+
+  const recap = buildWeeklyRecap(params);
+
+  // Same 7-day window `buildWeeklyRecap` built its numbers from
+  // (identical anchor + weekStartDay, via the same `buildWeekStats`
+  // it calls internally) — used to get the digest week's own logged
+  // date-keys (for the "within logged week" gate below) AND its actual
+  // last day-key (to anchor the pattern window — see `windowEnd` below).
+  const weekBundle = buildWeekStats(
+    params.byDay,
+    params.targets,
+    params.weekStartDay,
+    previousWeekAnchor,
+    params.dayTargetOverrides,
+  );
+  const loggedDaysThisWeek = weekBundle.days
+    .filter((d) => d.calories > 0)
+    .map((d) => ({ key: d.key }));
+
+  // Anchor the pattern's 28-day walk-back on the digest week's actual
+  // END date (its 7th/last day-key), parsed at local noon to dodge the
+  // UTC-boundary day-shift — NOT `previousWeekAnchor`, which is a
+  // mid-week date whenever `now`'s day-of-week isn't 7 days past the
+  // week boundary. See doc comment above for the failure this fixes.
+  const lastDayKey = weekBundle.days[weekBundle.days.length - 1]!.key;
+  const [lastY, lastM, lastD] = lastDayKey
+    .split("-")
+    .map((n) => Number.parseInt(n, 10)) as [number, number, number];
+  const windowEnd = new Date(lastY, lastM - 1, lastD, 12, 0, 0, 0);
+
+  const rawPattern = computeDayOfWeekPattern(params.byDay, windowEnd);
+  const dayOfWeekPattern = isDayOfWeekPatternWithinLoggedWeek(
+    rawPattern,
+    loggedDaysThisWeek,
+  )
+    ? rawPattern
+    : null;
+
+  return {
+    ...recap,
+    dayOfWeekPattern,
+    patternWindowLabel: dayOfWeekPattern ? "last 4 weeks" : null,
   };
 }
 

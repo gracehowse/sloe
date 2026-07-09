@@ -5,6 +5,7 @@
  * duplication, so web and mobile cannot drift.
  */
 export {
+  buildDigestWeekView,
   buildUsualMealRecapInsight,
   buildWeeklyRecap,
   currentWeekKey,
@@ -14,6 +15,7 @@ export {
   selectClosestToTargetDay,
   shouldShowRecap,
   weekKeyFor,
+  type DigestWeekView,
   type UsualMealRecapInsight,
   type WeeklyRecap,
 } from "@suppr/nutrition-core/weeklyRecap";

@@ -52,17 +52,9 @@ export interface TodayWeekViewProps {
   weekAvg: { calories: number; protein: number; carbs: number; fat: number };
   daysWithFood: number;
   weekEffectiveCalorieBudget: number;
-  /** F-146 (2026-05-10): sum of (basal + activity) burn across the
-   *  visible week. Used by the Net deficit/surplus tile so it
-   *  compares burn-vs-consumed (the truth) instead of goal-vs-consumed
-   *  (which mislabels a deficit as a surplus when consumed > goal but
-   *  < burn). The Activity Bonus card already gets this right per
-   *  day; the week-view tile now lines up with it.
-   *
-   *  Optional for backwards compatibility with legacy test harnesses
-   *  and any caller still on the pre-F-146 prop shape. When missing,
-   *  the tile falls back to `maintenanceKcal × 7` as a flat baseline
-   *  so the deficit/surplus label is still defensible. */
+  /** F-146: week burn total, so Net deficit/surplus compares burn-vs-consumed
+   *  (not goal-vs-consumed, which mislabels overshoot-under-burn as surplus).
+   *  Optional for legacy callers; falls back to `maintenanceKcal × 7`. */
   weekBurnTotal?: number;
   calorieTarget: number;
   proteinTarget: number;
@@ -70,7 +62,7 @@ export interface TodayWeekViewProps {
   fatTarget: number;
   preferActivityAdjustedCalories: boolean;
   activityBonusCaloriesOnly: boolean;
-  maintenanceKcal: number;
+  maintenanceKcal: number | null;
   /** `targets.calories + day activity budget add-on` per day (same order as `days`). */
   dayGoals: number[];
   onSelectDay: (d: Date) => void;
@@ -379,10 +371,12 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
         </View>
 
         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 4 }}>
-          <Text style={{ fontSize: 10, color: textTertiaryColor }}>
+          <Text testID="today-week-goal-footnote" style={{ fontSize: 10, color: textTertiaryColor }}>
             {preferActivityAdjustedCalories
               ? activityBonusCaloriesOnly
-                ? `Goal: ${calorieTarget} kcal base + bonus burn (above ~${maintenanceKcal} kcal maintenance) from Health`
+                ? maintenanceKcal != null && maintenanceKcal > 0
+                  ? `Goal: ${calorieTarget} kcal base + bonus burn (above ~${maintenanceKcal} kcal maintenance) from Health`
+                  : `Goal: ${calorieTarget} kcal base + bonus burn from Health`
                 : `Goal: ${calorieTarget} kcal base + active energy from Health`
               : `Daily goal: ${calorieTarget} kcal`}
           </Text>

@@ -4,9 +4,8 @@
  * ENG-740. Blends the old dismissable `<Digest>` recap and the
  * always-on `<DigestStoryCard>` into ONE card with a single soft-filled
  * region (the closest-day hero) and everything else hairline +
- * whitespace separated. Built to
- * `docs/prototypes/2026-05-26-progress-digest-blend/index.html` + the 8
- * principles in `docs/ux/premium-design-language.md`.
+ * whitespace separated. Built to `docs/prototypes/2026-05-26-progress-digest-blend/index.html`
+ * + the 8 principles in `docs/ux/premium-design-language.md`.
  *
  * Gated by `progress_digest_blend`; the host swaps `<Digest blended>`
  * for the legacy stacked layout. Mirror:
@@ -64,6 +63,7 @@ export function DigestBlended(props: DigestProps) {
     onAdjustPace,
     weightSurfaceMode = "show",
     blendedExtras,
+    patternWindowLabel,
   } = props;
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the "Adjust pace"
@@ -383,12 +383,12 @@ export function DigestBlended(props: DigestProps) {
         <>
           {hairline}
           <View testID="digest-pattern" style={{ paddingVertical: 16 }}>
-            {/* headers census 2026-06-10: eyebrow → Type.label. */}
             <Text style={{ ...Type.label, color: colors.textSecondary, marginBottom: 6 }}>
               PATTERN
             </Text>
             <Text testID="digest-pattern-summary" style={{ fontSize: 13.5, fontWeight: "600", color: colors.text, marginBottom: 10 }}>
-              {pluralWeekday(pattern.highDay)} ran higher than {pluralWeekday(pattern.lowDay)} this week
+              {pluralWeekday(pattern.highDay)} ran higher than {pluralWeekday(pattern.lowDay)}{" "}
+              {patternWindowLabel ? `over the ${patternWindowLabel}` : "this week"}
             </Text>
             <PatternBar
               label={shortDay(pattern.highDay)}

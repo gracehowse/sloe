@@ -122,3 +122,39 @@ describe("TodayWeekView (web) — chart upgrade", () => {
     expect(screen.queryByTestId("today-week-chart-tooltip")).toBeNull();
   });
 });
+
+// ENG-1373 finding 5 — a user with no HealthKit basal/activity data AND no
+// resolvable maintenance drives the Net deficit/surplus tile's burn
+// reference to exactly 0. Comparing consumed calories against a zero burn
+// reference isn't a deficit/surplus — it's "no burn signal" — so the tile
+// must suppress the verdict instead of fabricating "Net surplus {total}".
+// Mirror of mobile `todayMaintenanceReconciliation.test.tsx`.
+describe("TodayWeekView (web) — zero-burn verdict suppression", () => {
+  it("suppresses the Net deficit/surplus verdict when weekBurnTotal is absent and maintenanceForWeek is 0", () => {
+    render(
+      <TodayWeekView
+        {...baseProps({ weekBurnTotal: undefined, maintenanceForWeek: 0 })}
+      />,
+    );
+    const summary = screen.getByText("No burn signal yet");
+    expect(summary).toBeDefined();
+    expect(screen.queryByText("Net surplus")).toBeNull();
+    expect(screen.queryByText("Net deficit")).toBeNull();
+  });
+
+  it("suppresses the verdict when weekBurnTotal is explicitly 0", () => {
+    render(
+      <TodayWeekView {...baseProps({ weekBurnTotal: 0, maintenanceForWeek: 0 })} />,
+    );
+    expect(screen.getByText("No burn signal yet")).toBeDefined();
+  });
+
+  it("still renders a real verdict when a burn signal is present", () => {
+    render(
+      <TodayWeekView {...baseProps({ weekBurnTotal: 15000, maintenanceForWeek: 0 })} />,
+    );
+    expect(screen.queryByText("No burn signal yet")).toBeNull();
+    // weekTotals.calories default is 11740 < weekBurnTotal 15000 → deficit.
+    expect(screen.getByText("Net deficit")).toBeDefined();
+  });
+});

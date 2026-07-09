@@ -82,16 +82,33 @@ export function useWeightData(userId: string | null | undefined) {
         | undefined,
     ) => {
       if (!profile) return;
-      const map = parseWeightKgByDay(profile.weight_kg_by_day);
-      const weight =
-        profile.weight_kg != null
-          ? Number(profile.weight_kg)
-          : latestWeightFromMap(map);
-      const goal =
-        profile.goal_weight_kg != null ? Number(profile.goal_weight_kg) : null;
-      setWeightKgByDay(map);
-      setWeightKg(Number.isFinite(weight) ? weight : null);
-      setGoalWeightKg(Number.isFinite(goal) ? goal : null);
+      // ENG-1373 — partial-row hydration guard. Some call sites (e.g.
+      // progress.tsx's post-HealthKit-sync re-read) SELECT only a subset
+      // of columns for a narrow purpose (steps/weight refresh) and pass
+      // that partial row straight to this same hydrate function. Any key
+      // that's genuinely ABSENT from the row (`in` check, not just
+      // nullish) must leave the corresponding state untouched — a fuller
+      // fetch may already have set it correctly, and a partial re-read
+      // must never clobber that back to null. A key that IS present but
+      // explicitly null (e.g. the user cleared their goal weight) still
+      // correctly resets state to null.
+      if ("weight_kg_by_day" in profile) {
+        const map = parseWeightKgByDay(profile.weight_kg_by_day);
+        setWeightKgByDay(map);
+        const weight =
+          profile.weight_kg != null
+            ? Number(profile.weight_kg)
+            : latestWeightFromMap(map);
+        setWeightKg(Number.isFinite(weight) ? weight : null);
+      } else if ("weight_kg" in profile) {
+        const weight = profile.weight_kg != null ? Number(profile.weight_kg) : null;
+        setWeightKg(Number.isFinite(weight) ? weight : null);
+      }
+      if ("goal_weight_kg" in profile) {
+        const goal =
+          profile.goal_weight_kg != null ? Number(profile.goal_weight_kg) : null;
+        setGoalWeightKg(Number.isFinite(goal) ? goal : null);
+      }
     },
     [],
   );
@@ -117,9 +134,21 @@ export function useWeightData(userId: string | null | undefined) {
     }
   }, [hydrateFromProfile, userId]);
 
-  React.useEffect(() => {
-    void reload();
-  }, [reload]);
+  // ENG-1373 — NO mount-triggered auto-fetch here. This hook used to fire
+  // its own independent `profiles` SELECT on every mount, racing the
+  // host screen's own hydrate flow (`progress.tsx`'s `loadData` already
+  // fetches `profiles` — including `weight_kg`/`goal_weight_kg`/
+  // `weight_kg_by_day` — and calls `hydrateFromProfile` itself). Two
+  // unordered network requests writing the same `weightKgByDay` /
+  // `goalWeightKg` state meant whichever resolved last won, so a user
+  // could transiently (or, on a slow/dropped race, semi-permanently)
+  // see GOAL/RATE em-dashes from one fetch's null `goal_weight_kg` while
+  // another card on the same paint had already picked up the other
+  // fetch's non-null value. `hydrateFromProfile` is still exported and
+  // callable directly (see `reload`, kept for explicit pull-to-refresh /
+  // post-mutation re-sync call sites) — this hook just no longer decides
+  // on its own that mounting means "go fetch". The host is the single
+  // source of truth for when + how weight data gets (re)loaded.
 
   /**
    * ENG-1306 — persist a per-day PATCH through the `upsert_body_metric_days`

@@ -20,13 +20,8 @@ import { dateKeyFromDate } from "@suppr/nutrition-core/trackerStats";
 import { resolveMaintenance } from "@suppr/nutrition-core/resolveMaintenance";
 import { maintenanceIntakeFromTargetCalories } from "@/lib/calcTargets";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
-// `filterByDateRangeDays` import removed 2026-05-13 — was only used
-// by the 30-day steps chart which moved to Progress per TF feedback.
-// import { filterByDateRangeDays } from "@/lib/weightProjection";
-// MiniBarChart import removed 2026-05-13 — see steps-chart removal
-// note further down. Re-import here when adding back any other
-// bar-chart surface on this screen.
-// import MiniBarChart from "@/components/charts/MiniBarChart";
+// filterByDateRangeDays / MiniBarChart imports removed 2026-05-13 — the
+// 30-day steps chart moved to Progress per TF feedback.
 
 function profileAgeYears(p: { dob?: string | null; age?: number | null }): number | null {
   if (p.age != null) {
@@ -68,7 +63,7 @@ export default function BurnDetailScreen() {
     activeBurn: number;
     restingBurn: number;
     steps: number;
-    maintenanceKcal: number;
+    maintenanceKcal: number | null;
     workouts: { type: string; minutes: number; calories: number; source: string }[];
   } | null>(null);
   // 2026-05-12 (premium-bar audit weight-chart Phase 2 — Option B+):
@@ -193,22 +188,23 @@ export default function BurnDetailScreen() {
   const totals = useMemo(() => {
     if (!data) return null;
     const actualBurn = data.restingBurn + data.activeBurn;
+    const maintenanceKcal = data.maintenanceKcal ?? 0;
+    const hasMaintenanceKcal = maintenanceKcal > 0;
 
     if (isPast) {
-      const bonus = data.maintenanceKcal > 0 ? Math.max(0, actualBurn - data.maintenanceKcal) : 0;
-      return { total: actualBurn, futureBurn: 0, bonus, isProjected: false };
+      const bonus = hasMaintenanceKcal ? Math.max(0, actualBurn - maintenanceKcal) : 0;
+      return { total: actualBurn, futureBurn: 0, bonus, isProjected: false, hasMaintenanceKcal };
     }
 
-    // Matches Lose It!'s model: bonus = projected EOD burn − full
-    // maintenance. See `dayActivityBudgetAddon` in (tabs)/index.tsx
-    // for the shared rationale.
+    // Matches Lose It!'s model: bonus = projected EOD burn − full maintenance.
+    // See `dayActivityBudgetAddon` in (tabs)/index.tsx for the shared rationale.
     const now = new Date();
     const hoursElapsed = now.getHours() + now.getMinutes() / 60;
     const hourlyResting = hoursElapsed > 0 && data.restingBurn > 0 ? data.restingBurn / hoursElapsed : 0;
     const futureBurn = Math.round(hourlyResting * Math.max(0, 24 - hoursElapsed));
     const projected = actualBurn + futureBurn;
-    const bonus = data.maintenanceKcal > 0 ? Math.max(0, projected - data.maintenanceKcal) : 0;
-    return { total: projected, futureBurn, bonus, isProjected: true };
+    const bonus = hasMaintenanceKcal ? Math.max(0, projected - maintenanceKcal) : 0;
+    return { total: projected, futureBurn, bonus, isProjected: true, hasMaintenanceKcal };
   }, [data, isPast]);
 
   function formatDateLabel(dk: string): string {
@@ -391,15 +387,15 @@ export default function BurnDetailScreen() {
                       {totals.total.toLocaleString()}
                     </Text>
                   </View>
-                  {data.maintenanceKcal > 0 ? (
+                  {totals.hasMaintenanceKcal ? (
                     <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: Spacing.sm }}>
                       <Text style={{ fontSize: 14, color: colors.textSecondary }}>Maintenance estimate</Text>
                       <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 18, color: colors.text, fontVariant: ["tabular-nums"] }}>
-                        − {data.maintenanceKcal.toLocaleString()}
+                        − {data.maintenanceKcal!.toLocaleString()}
                       </Text>
                     </View>
                   ) : null}
-                  {data.maintenanceKcal > 0 ? (
+                  {totals.hasMaintenanceKcal ? (
                     <View
                       style={{
                         flexDirection: "row",

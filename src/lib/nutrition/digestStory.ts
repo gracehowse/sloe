@@ -203,7 +203,23 @@ export function buildDigestStory(input: DigestStoryInput): DigestStoryResult {
     // ties the line to the 4-week observed window the engine actually
     // computed it from. Same calm-factual register as the rest of
     // the digest paragraph.
-    dayOfWeekPatternLine = `You averaged about ${delta.toLocaleString()} more kcal on ${pluraliseWeekday(dayOfWeekPattern.highDay)} than ${pluraliseWeekday(dayOfWeekPattern.lowDay)}.`;
+    //
+    // ENG-1373 (Fable critique 4b) — the sentence used to read "...
+    // than Tuesdays." with no window attribution, which silently
+    // implied the claim was about the single displayed week (whose
+    // own `weekLabel` anchors every other sentence in this paragraph).
+    // `dayOfWeekPattern` is actually computed by `computeDayOfWeekPattern`
+    // over a rolling `DAY_OF_WEEK_PATTERN_WINDOW_DAYS` (28-day / 4-week)
+    // sample — the displayed week's own Friday could individually run
+    // lower than its Thursday while this line still (correctly) reports
+    // the 4-week mean the other way. Naming the window makes the claim
+    // auditable instead of reading as a claim about the single week.
+    // Mirrors `patternWindowLabel` ("last 4 weeks") built alongside
+    // `dayOfWeekPattern` in `weeklyRecap.ts#buildDigestWeekView` — kept
+    // as a literal here (not imported) because this module is
+    // intentionally dependency-free (see file header) and the window
+    // length is a stable, already-hard-coded product constant.
+    dayOfWeekPatternLine = `Over the last 4 weeks, you averaged about ${delta.toLocaleString()} more kcal on ${pluraliseWeekday(dayOfWeekPattern.highDay)} than ${pluraliseWeekday(dayOfWeekPattern.lowDay)}.`;
   }
 
   const paragraph = [

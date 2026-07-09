@@ -93,9 +93,26 @@ describe("DigestBlended — structure (web)", () => {
   it("renders the PATTERN row with the two-bar comparison + delta", () => {
     renderBlended();
     expect(screen.getByTestId("digest-pattern-summary").textContent).toBe(
-      "Sundays ran higher than Fridays this week",
+      "Sundays ran higher than Fridays over the last 4 weeks",
     );
     expect(screen.getByTestId("digest-pattern-delta").textContent).toContain("+1,657 kcal");
+  });
+
+  // ENG-1373 (finding 4b) — the PATTERN row compares a 4-week rolling mean
+  // per weekday, not the single displayed week; the copy must attribute the
+  // claim to `patternWindowLabel` instead of implying "this week".
+  it("attributes the PATTERN row claim to patternWindowLabel when supplied", () => {
+    render(
+      <Digest
+        blended
+        blendedExtras={{ ...extras, patternWindowLabel: "last 4 weeks" }}
+        onAdjustPace={() => {}}
+        {...baseProps}
+      />,
+    );
+    expect(screen.getByTestId("digest-pattern-summary").textContent).toBe(
+      "Sundays ran higher than Fridays over the last 4 weeks",
+    );
   });
 
   it("renders the maintenance row + Adjust pace link when wired", () => {

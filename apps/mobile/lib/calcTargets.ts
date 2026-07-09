@@ -78,14 +78,28 @@ export function goalCalorieAdjustment(
   return calculateBudget(0, normalisePace(pace), g);
 }
 
-/** Approximate maintenance intake (TDEE) implied by saved calorie target and goal, e.g. lose 1,800 → ~2,300 TDEE. */
+/**
+ * Approximate maintenance intake (TDEE) implied by saved calorie target
+ * and goal, e.g. lose 1,800 → ~2,300 TDEE.
+ *
+ * ENG-1373 — returns `null` (not `0`) whenever there isn't a usable
+ * signal: `targetCalories` is missing/non-positive, or the pace-adjusted
+ * arithmetic nets non-positive. A literal `0` is indistinguishable from
+ * "maintenance is genuinely zero kcal", which is never true for a real
+ * person — that ambiguity is exactly what let a UI render the literal
+ * string "0 kcal maintenance" directly above a separate, correctly-
+ * resolved "MAINTENANCE 2,117" card for the same account. Callers MUST
+ * treat `null` as "no signal, omit the line" rather than falling back to
+ * displaying `0`.
+ */
 export function maintenanceIntakeFromTargetCalories(
   targetCalories: number,
   goal: string | null | undefined,
   pace?: string | null,
-): number {
-  if (!Number.isFinite(targetCalories) || targetCalories <= 0) return 0;
-  return Math.max(0, Math.round(targetCalories - goalCalorieAdjustment(goal, pace)));
+): number | null {
+  if (!Number.isFinite(targetCalories) || targetCalories <= 0) return null;
+  const maintenance = Math.round(targetCalories - goalCalorieAdjustment(goal, pace));
+  return maintenance > 0 ? maintenance : null;
 }
 
 /**

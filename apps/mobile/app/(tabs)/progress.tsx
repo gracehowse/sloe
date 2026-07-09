@@ -39,9 +39,11 @@ import {
   calcGoalTimeline,
   computeWeightJourneyProgressPct,
   formatWeightJourneyProgressCopy,
+  hasGoalWeightData,
   projectWeight,
   resolveLatestWeightKg,
   shouldRenderDailyProjection,
+  signedObservedKgPerWeek,
   weightJourneyProgress,
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
@@ -61,6 +63,7 @@ import {
 } from "@suppr/nutrition-core/weightSurfaceMode";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 import { buildWeekStats, type WeekActivityAdjustment } from "@/lib/progressWeekReport";
+import { useDigestWeekStats } from "@/hooks/useDigestWeekStats";
 import {
   buildCaloriesRangeStatsForWindow,
   buildMacroAdherenceRangeStatsForWindow,
@@ -86,8 +89,8 @@ import {
   type FreezeLedger,
 } from "@/lib/streakFreeze";
 import {
+  buildDigestWeekView,
   buildUsualMealRecapInsight,
-  buildWeeklyRecap,
   shouldShowRecap,
   weekKeyFor,
   type UsualMealRecapInsight,
@@ -117,7 +120,6 @@ import { ProgressStoryGate } from "@/components/today/ProgressStoryGate";
 import { hasEnoughDataForStory } from "@/lib/progressStoryGate";
 import { DigestStoryCard } from "@/components/progress/DigestStoryCard";
 import { TrajectoryCard } from "@/components/progress/TrajectoryCard";
-import { computeDayOfWeekPattern } from "@suppr/nutrition-core/dayOfWeekPattern";
 import { generateProgressCommentary } from "@/lib/progressCommentary";
 import { LogWeightSheet } from "@/components/progress/LogWeightSheet";
 import { AllWeightDataSheet } from "@/components/progress/AllWeightDataSheet";
@@ -517,7 +519,7 @@ export default function ProgressScreen() {
       try {
         const { data: refreshed } = await supabase
           .from("profiles")
-          .select("steps_by_day, weight_kg_by_day, weight_kg")
+          .select("steps_by_day, weight_kg_by_day, weight_kg, goal_weight_kg")
           .eq("id", userId)
           .maybeSingle();
         if (refreshed) {
@@ -808,6 +810,10 @@ export default function ProgressScreen() {
     [byDay, targets, weekStartDay, weekTargetsByDay, weekActivity],
   );
 
+  // ENG-1373 — previous-completed-week stats for the legacy DigestStoryCard;
+  // see useDigestWeekStats for the "929 vs 1,402" bug this avoids.
+  const digestWeekStats = useDigestWeekStats(byDay, targets, weekStartDay, weekTargetsByDay);
+
   // Streak chips were demoted out of the Progress frame (Sloe Figma
   // 492:2); the streak + freeze figures now surface only inside the Week
   // Digest, which derives them from `recap` (streakLength / freezesAvailable)
@@ -824,9 +830,11 @@ export default function ProgressScreen() {
   // one adherence value on the recap card and a different one on
   // Progress for the same week. Now both surfaces use the same per-day
   // judgement.
+  // ENG-1373 — single shared builder for every digest-week number + pattern,
+  // so no render site can mix figures from two different week anchors.
   const recap = useMemo(
     () =>
-      buildWeeklyRecap({
+      buildDigestWeekView({
         byDay: byDay as any,
         weightKgByDay,
         targets,
@@ -1327,21 +1335,16 @@ export default function ProgressScreen() {
         const sortedWeightDays = Object.entries(weightKgByDay).sort(([a], [b]) => a.localeCompare(b));
         const startKg = sortedWeightDays.length > 0 ? sortedWeightDays[0][1] : null;
         const weekDeltaKg = weightRange.weekDeltaKg;
-        const rateKgPerWeek =
-          latestWeightKg != null && goalWeightKg != null
-            ? (() => {
-                const tl = calcGoalTimeline({ currentWeightKg: latestWeightKg, goalWeightKg, weightKgByDay });
-                if (tl.weeklyRateKg === 0) return 0;
-                return tl.trendDirection === "losing"
-                  ? -Math.abs(tl.weeklyRateKg)
-                  : tl.trendDirection === "gaining"
-                    ? Math.abs(tl.weeklyRateKg)
-                    : 0;
-              })()
-            : null;
+        // ENG-1373 — `hasGoalWeightData` is the single shared "enough data
+        // for GOAL/RATE" truth-check (was drift-prone inlined null checks).
+        const rateKgPerWeek = hasGoalWeightData({ goalWeightKg, latestWeightKg })
+          ? signedObservedKgPerWeek(
+              calcGoalTimeline({ currentWeightKg: latestWeightKg as number, goalWeightKg: goalWeightKg as number, weightKgByDay }),
+            )
+          : null;
         const goalDateLabel = (() => {
-          if (latestWeightKg == null || goalWeightKg == null) return null;
-          const tl = calcGoalTimeline({ currentWeightKg: latestWeightKg, goalWeightKg, weightKgByDay });
+          if (!hasGoalWeightData({ goalWeightKg, latestWeightKg })) return null;
+          const tl = calcGoalTimeline({ currentWeightKg: latestWeightKg as number, goalWeightKg: goalWeightKg as number, weightKgByDay });
           if (tl.daysToGoal == null || tl.daysToGoal <= 0) return null;
           const d = new Date();
           d.setDate(d.getDate() + tl.daysToGoal);
@@ -1874,9 +1877,10 @@ export default function ProgressScreen() {
             targetCalories={targets.calories}
             maintenanceTdeeKcal={isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee}
             goal={userGoal}
+            goalWeightKg={goalWeightKg}
             timeline={
-              latestWeightKg != null && goalWeightKg != null
-                ? calcGoalTimeline({ currentWeightKg: latestWeightKg, goalWeightKg, weightKgByDay })
+              hasGoalWeightData({ goalWeightKg, latestWeightKg })
+                ? calcGoalTimeline({ currentWeightKg: latestWeightKg as number, goalWeightKg: goalWeightKg as number, weightKgByDay })
                 : null
             }
           />
@@ -1884,14 +1888,13 @@ export default function ProgressScreen() {
 
         {/* JOURNEY / projection card */}
         {effectiveWeightSurfaceMode === "show" &&
-          latestWeightKg != null &&
-          goalWeightKg != null &&
-          Math.abs(goalWeightKg - latestWeightKg) > 0.05 && (
+          hasGoalWeightData({ goalWeightKg, latestWeightKg }) &&
+          Math.abs((goalWeightKg as number) - (latestWeightKg as number)) > 0.05 && (
           (() => {
-            const timeline = calcGoalTimeline({ currentWeightKg: latestWeightKg, goalWeightKg: goalWeightKg, weightKgByDay });
-            const journeyProg = weightJourneyProgress({ goalKg: goalWeightKg, latestKg: latestWeightKg, weightKgByDay });
+            const timeline = calcGoalTimeline({ currentWeightKg: latestWeightKg as number, goalWeightKg: goalWeightKg as number, weightKgByDay });
+            const journeyProg = weightJourneyProgress({ goalKg: goalWeightKg as number, latestKg: latestWeightKg as number, weightKgByDay });
             const pctFrac = journeyProg
-              ? computeWeightJourneyProgressPct({ startKg: journeyProg.baselineKg, currentKg: latestWeightKg, goalKg: goalWeightKg })
+              ? computeWeightJourneyProgressPct({ startKg: journeyProg.baselineKg, currentKg: latestWeightKg as number, goalKg: goalWeightKg as number })
               : null;
             const progressPct = pctFrac != null ? Math.round(pctFrac * 100) : 0;
             const progressCopy = formatWeightJourneyProgressCopy(pctFrac);
@@ -1901,14 +1904,7 @@ export default function ProgressScreen() {
               avgCaloriesOverRecentLoggedDays(byDay, 7);
             const maintenanceTdeeKcal = isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee;
             const projectionEligible = shouldRenderDailyProjection(foodLoggedDayCount);
-            const observedKgPerWeek =
-              typeof timeline.weeklyRateKg === "number"
-                ? timeline.trendDirection === "losing"
-                  ? -Math.abs(timeline.weeklyRateKg)
-                  : timeline.trendDirection === "gaining"
-                    ? Math.abs(timeline.weeklyRateKg)
-                    : 0
-                : 0;
+            const observedKgPerWeek = signedObservedKgPerWeek(timeline);
             const dailyProjection =
               projectionEligible && avgCals > 0 && latestWeightKg != null
                 ? projectWeight({
@@ -2069,13 +2065,16 @@ export default function ProgressScreen() {
           const digestState: "success" | "empty" | "partial" =
             recap.daysLogged === 0 ? "empty" : recap.daysLogged < 4 ? "partial" : "success";
           const blendedExtras: DigestBlendedExtras = {
-            dayOfWeekPattern: computeDayOfWeekPattern(byDay as any),
+            // ENG-1373 — reuse recap's pattern (already scoped to this week);
+            // no local recompute (that caused the "Fri/Thu never logged" bug).
+            dayOfWeekPattern: recap.dayOfWeekPattern,
             closestDayTargetCalories: recap.bestDay?.targetCalories ?? null,
           };
           return (
             <Digest
               blended={digestBlendEnabled}
               blendedExtras={blendedExtras}
+              patternWindowLabel={recap.patternWindowLabel}
               onAdjustPace={() => router.push("/targets" as any)}
               weekKey={recap.weekKey}
               weekLabel={recap.weekLabel}
@@ -2115,16 +2114,16 @@ export default function ProgressScreen() {
         {digestBlendEnabled ? null : (
           <DigestStoryCard
             weekLabel={recap.weekLabel}
-            daysLogged={weekStats.daysWithFood}
-            avgCalories={weekStats.avgCalories}
+            daysLogged={recap.daysLogged}
+            avgCalories={recap.avgCalories}
             targetCalories={targets.calories}
             avgProtein={recap.avgProtein}
             targetProtein={targets.protein}
-            proteinOnTargetDays={weekStats.proteinOnTarget}
+            proteinOnTargetDays={digestWeekStats.proteinOnTarget}
             closestToTarget={recap.bestDay
               ? { label: recap.bestDay.label, calories: recap.bestDay.calories, protein: recap.bestDay.protein }
               : null}
-            dayOfWeekPattern={computeDayOfWeekPattern(byDay as any)}
+            dayOfWeekPattern={recap.dayOfWeekPattern}
           />
         )}
         </>

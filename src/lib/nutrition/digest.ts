@@ -44,6 +44,18 @@ export type DigestBlendedExtras = {
    * `0` / `null` → render the hero day + calories without the track.
    */
   closestDayTargetCalories: number | null;
+  /**
+   * ENG-1373 (finding 4b) — human-readable label for the rolling window
+   * `dayOfWeekPattern` is actually sampled over (`recap.patternWindowLabel`,
+   * currently `"last 4 weeks"`). The PATTERN row compares a 4-week mean per
+   * weekday, NOT the single displayed week, so the copy must attribute the
+   * claim to this window instead of implying "this week" — an unauditable
+   * claim (the displayed week's actual high/low day can differ from the
+   * 4-week pattern). Optional + defaults to `null` (falls back to the old
+   * "this week" wording) so hosts that haven't threaded it through yet
+   * (e.g. mobile, pending its own ENG-1373 pass) keep compiling unchanged.
+   */
+  patternWindowLabel?: string | null;
 };
 
 /** Calorie-ring 3-state classifier for the blended hero dot + number.

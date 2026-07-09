@@ -157,8 +157,11 @@ export function TodayWeekView({
     typeof weekBurnTotal === "number" && Number.isFinite(weekBurnTotal)
       ? weekBurnTotal
       : Math.max(0, maintenanceForWeek) * 7;
-  const under = burnReference >= weekTotals.calories;
-  const diff = Math.round(Math.abs(burnReference - weekTotals.calories));
+  // ENG-1373 — zero burn reference means "no signal", not a real deficit/
+  // surplus; suppress the verdict rather than fabricate one. Mirrors mobile.
+  const hasBurnSignal = burnReference > 0;
+  const under = hasBurnSignal && burnReference >= weekTotals.calories;
+  const diff = hasBurnSignal ? Math.round(Math.abs(burnReference - weekTotals.calories)) : null;
 
   // 2026-05-01 (ui-critic #5) — scrubber state + closest-to-target.
   const [scrubIndex, setScrubIndex] = React.useState<number | null>(null);
@@ -385,18 +388,15 @@ export function TodayWeekView({
             <p className="text-[11px] text-muted-foreground">Daily avg</p>
           </div>
           <div>
-            {/* User-sentiment audit (round 4, 2026-04-30): replaced the
-                punitive over/under-target labels with the canonical
-                "Net deficit"/"Net surplus" phrasing from
-                `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit
-                data show that judgmental framing drives logging
-                avoidance; "deficit"/"surplus" reads as observation,
-                not judgment. Green for under-target, red for
-                over-target — clear at-a-glance signal. */}
-            <p className={`font-[family-name:var(--font-headline)] text-2xl font-medium tabular-nums ${under ? "text-success" : "text-destructive"}`}>
-              {diff}
+            {/* User-sentiment audit (round 4): "Net deficit"/"Net surplus"
+                (not punitive over/under-target) reads as observation, not
+                judgment — judgmental framing drives logging avoidance. */}
+            <p className={`font-[family-name:var(--font-headline)] text-2xl font-medium tabular-nums ${!hasBurnSignal ? "text-foreground" : under ? "text-success" : "text-destructive"}`}>
+              {hasBurnSignal ? diff : "—"}
             </p>
-            <p className="text-[11px] text-muted-foreground">{under ? "Net deficit" : "Net surplus"}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {hasBurnSignal ? (under ? "Net deficit" : "Net surplus") : "No burn signal yet"}
+            </p>
           </div>
         </div>
       </div>

@@ -81,6 +81,72 @@ describe("TrajectoryCard — placeholder state (web)", () => {
   });
 });
 
+describe("TrajectoryCard — goal-independent disclosure (ENG-1373, web)", () => {
+  it("shows the '(no goal weight set)' qualifier when goalWeightKg is omitted", () => {
+    render(
+      <TrajectoryCard
+        byDay={buildDays(7, 1500)}
+        latestWeightKg={70}
+        targetCalories={1500}
+        maintenanceTdeeKcal={2200}
+        goal="lose"
+      />,
+    );
+    expect(screen.getByTestId("trajectory-basis-no-goal-qualifier").textContent).toContain(
+      "no goal weight set",
+    );
+  });
+
+  it("omits the qualifier when goalWeightKg is supplied", () => {
+    render(
+      <TrajectoryCard
+        byDay={buildDays(7, 1500)}
+        latestWeightKg={70}
+        targetCalories={1500}
+        maintenanceTdeeKcal={2200}
+        goal="lose"
+        goalWeightKg={65}
+      />,
+    );
+    expect(screen.queryByTestId("trajectory-basis-no-goal-qualifier")).toBeNull();
+  });
+
+  // ENG-1373 finding 6 — web's accessibilityLabelFor previously omitted the
+  // "no goal weight set" qualifier entirely, so screen-reader users never
+  // heard the disclosure sighted users see in the visible basis line.
+  // Mirror of mobile `trajectoryCard.test.tsx`'s equivalent pin.
+  it("includes the qualifier in the card's aria-label when goalWeightKg is omitted", () => {
+    render(
+      <TrajectoryCard
+        byDay={buildDays(7, 1500)}
+        latestWeightKg={70}
+        targetCalories={1500}
+        maintenanceTdeeKcal={2200}
+        goal="lose"
+      />,
+    );
+    expect(screen.getByTestId("trajectory-card").getAttribute("aria-label")).toContain(
+      "No goal weight set.",
+    );
+  });
+
+  it("omits the qualifier from the card's aria-label when goalWeightKg is supplied", () => {
+    render(
+      <TrajectoryCard
+        byDay={buildDays(7, 1500)}
+        latestWeightKg={70}
+        targetCalories={1500}
+        maintenanceTdeeKcal={2200}
+        goal="lose"
+        goalWeightKg={65}
+      />,
+    );
+    expect(screen.getByTestId("trajectory-card").getAttribute("aria-label")).not.toContain(
+      "No goal weight set.",
+    );
+  });
+});
+
 describe("TrajectoryCard — hidden / no-data (web)", () => {
   it("renders nothing when there is no current weight", () => {
     const { container } = render(

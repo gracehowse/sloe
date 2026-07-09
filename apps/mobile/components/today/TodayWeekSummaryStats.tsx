@@ -23,7 +23,9 @@ export interface TodayWeekSummaryStatsProps {
   /** F-146 (2026-05-10) — sum of (basal + activity) burn across the visible
    *  week; falls back to `maintenanceKcal x 7` when not plumbed. */
   weekBurnTotal?: number;
-  maintenanceKcal: number;
+  /** ENG-1373 — `resolveMaintenance`-only value; `null` = no signal (never
+   *  a fabricated `0`). `burnReference` below already treats null/0 alike. */
+  maintenanceKcal: number | null;
   accentPrimarySolid: string;
   textColor: string;
   textSecondaryColor: string;
@@ -52,9 +54,18 @@ export function TodayWeekSummaryStats({
   const burnReference =
     typeof weekBurnTotal === "number" && Number.isFinite(weekBurnTotal)
       ? weekBurnTotal
-      : Math.max(0, maintenanceKcal) * 7;
-  const inDeficit = burnReference >= totalCalories;
-  const diff = Math.round(Math.abs(burnReference - totalCalories));
+      : Math.max(0, maintenanceKcal ?? 0) * 7;
+  // ENG-1373 finding 5 — a user with no HealthKit basal/activity data AND
+  // no resolvable maintenance (`profileMaintenanceTdeeKcal` null) drives
+  // `burnReference` to exactly 0 via the fallback above. Comparing
+  // `totalCalories` against a zero burn reference isn't a deficit/surplus
+  // at all — it's "we have no burn signal" — so rendering e.g. "Net
+  // surplus 12,600" fabricates a verdict from an absent denominator.
+  // Suppress the verdict entirely in that case and fall back to the
+  // honest days-logged stat instead.
+  const hasBurnSignal = burnReference > 0;
+  const inDeficit = hasBurnSignal && burnReference >= totalCalories;
+  const diff = hasBurnSignal ? Math.round(Math.abs(burnReference - totalCalories)) : null;
 
   return (
     <View style={cardStyle}>
@@ -91,30 +102,51 @@ export function TodayWeekSummaryStats({
           )}
         </View>
         <View style={{ alignItems: "center" }}>
-          <Text
-            style={{
-              // SLOE Phase 0: big stat numeral in Newsreader serif (family
-              // carries the weight; sans 800 dropped).
-              fontFamily: FontFamily.serifRegular,
-              fontSize: 24,
-              // Amber on over-burn (true surplus), success on deficit.
-              // Never red per project memory
-              // (`feedback_no_quick_temp_fixes.md` + spec §1.4).
-              color: inDeficit ? Accent.success : Accent.warning,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {diff}
-          </Text>
-          {/* User-sentiment audit (round 4, 2026-04-30): retired the
-              punitive over/under-target labels in favour of the canonical
-              "Net deficit" / "Net surplus" phrasing from
-              `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit data
-              show punitive framing drives logging avoidance + ED-cohort
-              harm. Web parity: same swap on `today-week-view.tsx`. */}
-          <Text style={{ fontSize: 11, color: textSecondaryColor }}>
-            {inDeficit ? "Net deficit" : "Net surplus"}
-          </Text>
+          {hasBurnSignal ? (
+            <>
+              <Text
+                style={{
+                  // SLOE Phase 0: big stat numeral in Newsreader serif (family
+                  // carries the weight; sans 800 dropped).
+                  fontFamily: FontFamily.serifRegular,
+                  fontSize: 24,
+                  // Amber on over-burn (true surplus), success on deficit.
+                  // Never red per project memory
+                  // (`feedback_no_quick_temp_fixes.md` + spec §1.4).
+                  color: inDeficit ? Accent.success : Accent.warning,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {diff}
+              </Text>
+              {/* User-sentiment audit (round 4, 2026-04-30): retired the
+                  punitive over/under-target labels in favour of the canonical
+                  "Net deficit" / "Net surplus" phrasing from
+                  `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit data
+                  show punitive framing drives logging avoidance + ED-cohort
+                  harm. Web parity: same swap on `today-week-view.tsx`. */}
+              <Text style={{ fontSize: 11, color: textSecondaryColor }}>
+                {inDeficit ? "Net deficit" : "Net surplus"}
+              </Text>
+            </>
+          ) : (
+            <>
+              {/* ENG-1373 finding 5 — no burn signal (no HealthKit basal/
+                  activity data AND no resolvable maintenance) means there's
+                  nothing to compare intake against. Suppress the fabricated
+                  verdict and show an honest em-dash + days-logged instead of
+                  inventing a deficit/surplus from a zero denominator. */}
+              <Text
+                testID="today-week-net-burn-unavailable"
+                style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}
+              >
+                {"—"}
+              </Text>
+              <Text style={{ fontSize: 11, color: textSecondaryColor }}>
+                {daysWithFood}/7 days logged
+              </Text>
+            </>
+          )}
         </View>
       </View>
     </View>

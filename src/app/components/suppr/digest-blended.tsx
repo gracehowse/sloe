@@ -3,22 +3,17 @@
 /**
  * `<DigestBlended>` — the merged premium Week-Digest card (web).
  *
- * ENG-740. Blends the old dismissable `<Digest>` recap and the
- * always-on `<DigestStoryCard>` into ONE card with a single soft-filled
- * region (the closest-day hero) and everything else hairline +
- * whitespace separated. Built to
- * `docs/prototypes/2026-05-26-progress-digest-blend/index.html` and the
- * 8 principles in `docs/ux/premium-design-language.md`.
+ * ENG-740. Blends the old dismissable `<Digest>` recap and the always-on
+ * `<DigestStoryCard>` into ONE card (soft-filled closest-day hero, rest
+ * hairline + whitespace separated). Built to
+ * `docs/prototypes/2026-05-26-progress-digest-blend/index.html` + the 8
+ * principles in `docs/ux/premium-design-language.md`.
  *
- * Gated by `progress_digest_blend`; the host swaps `<Digest blended>`
- * for the legacy stacked layout. Mirror:
- * `apps/mobile/components/DigestBlended.tsx`.
+ * Gated by `progress_digest_blend`. Mirror: `apps/mobile/components/DigestBlended.tsx`.
  *
- * States: loading / error reuse the legacy minimal tiles (rendered by
- * `Digest` before it reaches here is NOT the path — this component owns
- * its own loading/error so the dispatcher stays dumb). empty / partial /
- * success / offline render the full card with elements suppressed when
- * their data is absent.
+ * States: loading/error use legacy minimal tiles (owned here, not by the
+ * dumb `Digest` dispatcher); empty/partial/success/offline render the full
+ * card with elements suppressed when their data is absent.
  */
 
 import * as React from "react";
@@ -196,6 +191,11 @@ export function DigestBlended(props: DigestProps) {
   const patternMax = pattern
     ? Math.max(pattern.highDayAvg, pattern.lowDayAvg, 1)
     : 1;
+  // ENG-1373 — PATTERN compares a 4-week mean, not the displayed week;
+  // attribute the claim to that window instead of an unauditable "this week".
+  const patternWindowPhrase = blendedExtras?.patternWindowLabel
+    ? `over the ${blendedExtras.patternWindowLabel}`
+    : "over the last 4 weeks";
 
   return (
     <section
@@ -385,7 +385,7 @@ export function DigestBlended(props: DigestProps) {
               Pattern
             </p>
             <p className="text-[13.5px] font-semibold text-foreground mb-2.5" data-testid="digest-pattern-summary">
-              {pluralWeekday(pattern.highDay)} ran higher than {pluralWeekday(pattern.lowDay)} this week
+              {pluralWeekday(pattern.highDay)} ran higher than {pluralWeekday(pattern.lowDay)} {patternWindowPhrase}
             </p>
             <PatternBar
               label={shortDay(pattern.highDay)}
