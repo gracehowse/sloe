@@ -275,7 +275,7 @@ import { buildPostLogSuggestion } from "@suppr/nutrition-core/postLogSuggestion"
 import { PostOnboardingPushExplainer } from "@/components/today/PostOnboardingPushExplainer";
 // Phase 5 / B3.M (2026-04-27) — wire the NorthStarBlockHost on Today.
 import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
-import { useSavedLibraryRecipes } from "@/lib/recipes";
+import { useSavedLibraryRecipes, toNorthStarLibrary } from "@/lib/recipes";
 import { TodayDeficitInsight } from "@/components/today/TodayDeficitInsight";
 import { TodayPlannedMealsCard } from "@/components/today/TodayPlannedMealsCard";
 import { TodayCompleteDayButton } from "@/components/today/TodayCompleteDayButton";
@@ -2506,20 +2506,7 @@ export default function TrackerScreen() {
   const { recipes: savedLibraryRecipes, refresh: refreshSavedLibraryRecipes } =
     useSavedLibraryRecipes(userId ?? null);
   const savedRecipesForLibrary = useMemo(
-    () =>
-      savedLibraryRecipes.map((r) => ({
-        id: r.id,
-        title: r.title,
-        calories: r.calories ?? 0,
-        protein: r.protein ?? 0,
-        carbs: r.carbs ?? 0,
-        fat: r.fat ?? 0,
-        thumbnail: r.image,
-        mealType: r.mealSlots,
-        // Figma `654:2` hero meta — optional cook-time chip. Mirror of
-        // web. Absent for recipes with no recorded time (chip degrades).
-        cookTimeMin: r.cookTimeMin ?? undefined,
-      })),
+    () => toNorthStarLibrary(savedLibraryRecipes),
     [savedLibraryRecipes],
   );
 

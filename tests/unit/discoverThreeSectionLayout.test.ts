@@ -45,11 +45,16 @@ const MOBILE_DISCOVER_PATH = resolve(ROOT, "apps/mobile/app/(tabs)/discover.tsx"
 // assertions read these; the host files keep the POSITION/order assertions.
 const WEB_IMPORT_CARD_PATH = resolve(ROOT, "src/app/components/suppr/discover-import-card.tsx");
 const MOBILE_IMPORT_CARD_PATH = resolve(ROOT, "apps/mobile/components/discover/DiscoverImportCard.tsx");
+// ENG-1417 — same pattern: the category + Verified filter chip row was
+// extracted from web `DiscoverFeed.tsx` into `DiscoverFilterChips.tsx`
+// (screen-budget pin). The chip-grammar MARKUP assertion reads this file.
+const WEB_FILTER_CHIPS_PATH = resolve(ROOT, "src/app/components/DiscoverFilterChips.tsx");
 
 const WEB_SRC = readFileSync(WEB_DISCOVER_PATH, "utf8");
 const MOBILE_SRC = readFileSync(MOBILE_DISCOVER_PATH, "utf8");
 const WEB_IMPORT_CARD_SRC = readFileSync(WEB_IMPORT_CARD_PATH, "utf8");
 const MOBILE_IMPORT_CARD_SRC = readFileSync(MOBILE_IMPORT_CARD_PATH, "utf8");
+const WEB_FILTER_CHIPS_SRC = readFileSync(WEB_FILTER_CHIPS_PATH, "utf8");
 
 describe("Discover tab — three-section layout (2026-04-20 prototype port)", () => {
   describe("section headings", () => {
@@ -246,10 +251,11 @@ describe("Discover tab — three-section layout (2026-04-20 prototype port)", ()
     });
 
     it("web filter chips use bg-primary-soft selected + bg-card rest, with NO selected ring (ENG-1022 parity)", () => {
-      expect(WEB_SRC).toMatch(/bg-primary-soft text-primary-solid font-semibold/);
-      expect(WEB_SRC).toMatch(/bg-card text-muted-foreground/);
+      // ENG-1417 — moved to DiscoverFilterChips.tsx; see the extraction note above.
+      expect(WEB_FILTER_CHIPS_SRC).toMatch(/bg-primary-soft text-primary-solid font-semibold/);
+      expect(WEB_FILTER_CHIPS_SRC).toMatch(/bg-card text-muted-foreground/);
       // No solid accent ring survived on the chips.
-      expect(WEB_SRC).not.toMatch(/border-primary-solid[\s\S]{0,40}data-testid="discover-category/);
+      expect(WEB_FILTER_CHIPS_SRC).not.toMatch(/border-primary-solid[\s\S]{0,40}data-testid="discover-category/);
     });
 
     it("mobile import banner never regresses to the pre-fix off-token literal-hex fill or tint border", () => {

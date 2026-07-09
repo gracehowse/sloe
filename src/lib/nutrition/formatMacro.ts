@@ -85,3 +85,24 @@ export function formatKcalDisplay(value: number | null | undefined): string {
   }
   return `${sign}${withCommas}`;
 }
+
+/**
+ * ENG-1417 — single source of truth for the "~" unverified-estimate
+ * qualifier on kcal displays. Scoped to decision-driving surfaces only
+ * (meal planner totals, Cook Mode, the north-star suggestion card,
+ * Discover's calorie sort) — deliberately NOT applied to browse-level
+ * recipe cards (Discover grids, Library editorial shelves), which a prior
+ * audit (2026-04-28, GW-08) found read as decorative noise when every
+ * card showed the same badge regardless of truth. Only add a call site
+ * here after confirming it's a decision surface, not a browse surface.
+ *
+ * `isVerified` absent/undefined is treated as unverified (the safe
+ * default — an unknown trust state should never read as confident).
+ */
+export function formatQualifiedKcal(
+  value: number | null | undefined,
+  isVerified: boolean | null | undefined,
+): string {
+  const display = formatKcalDisplay(value);
+  return isVerified ? display : `~${display}`;
+}

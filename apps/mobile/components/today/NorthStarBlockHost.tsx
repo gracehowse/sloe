@@ -276,6 +276,9 @@ function NorthStarBlockHostImpl({
         // from whatever the recipe exposes; `null`/absent degrades to
         // no chip. Mirror of web NorthStarBlockHost.
         cookTimeMin: suggestion.recipe.cookTimeMin ?? undefined,
+        // ENG-1417 — trust signal for the "~" unverified-estimate qualifier.
+        // Mirror of web NorthStarBlockHost.
+        isVerified: suggestion.recipe.isVerified,
         // Activation hook (audit 2026-04-30 — leak fix #5): expose
         // the strongest WHY (which macro the suggestion fits) so the
         // card stops reading as black-box. See `whyLineForSuggestion`.
