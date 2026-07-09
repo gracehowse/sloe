@@ -814,25 +814,24 @@ export default function PaywallScreen() {
   // cancel path, trial length, when the first charge falls.
   const monthlyProPriceString = proMonthly?.product.priceString ?? FALLBACK_PRICES.proMonthly;
   const disclosureText = (() => {
-    const proPriceString = currentProPkg?.product.priceString ?? fallbackProPrice;
     const periodNoun = billing === "annual" ? "year" : "month";
-    const altLine =
-      billing === "annual"
-        ? ` (or ${monthlyProPriceString} per month on the monthly plan)`
-        : "";
     const cancelPath =
       Platform.OS === "ios"
         ? "Cancel anytime in Settings > Apple ID > Subscriptions."
         : "Cancel anytime in Google Play > Payments & subscriptions.";
-    // ENG-1381 — fallback price is FALLBACK_PRICES (indicative), not live RC,
-    // so the CMA disclosure says so. Off → no caveat (live price stated).
-    const indicativeCaveat = fallbackWhenUnavailable
-      ? " Live pricing is temporarily unavailable — the amount shown is indicative and the exact price is confirmed at checkout."
-      : "";
-    if (trialApplies && currentProPkg) {
-      return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.${indicativeCaveat}`;
+    // ENG-1381 — degraded state defers the exact price to the App Store, not an indicative amount. See docs/decisions/2026-07-09-mobile-degraded-paywall-disclosure.md.
+    if (fallbackWhenUnavailable) {
+      return `Pro renews automatically each ${periodNoun} until cancelled. The exact price in your currency is confirmed on the App Store before you subscribe. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
     }
-    return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.${indicativeCaveat}`;
+    const proPriceString = currentProPkg?.product.priceString ?? fallbackProPrice;
+    const altLine =
+      billing === "annual"
+        ? ` (or ${monthlyProPriceString} per month on the monthly plan)`
+        : "";
+    if (trialApplies && currentProPkg) {
+      return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
+    }
+    return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
   })();
 
   // ─── Styles ─────────────────────────────────────────────────────
@@ -1021,8 +1020,9 @@ export default function PaywallScreen() {
       onPress={() => undefined}
     />
   ) : subscriptionsUnavailable ? (
+    // ENG-1381 — deep link opens Apple's subscriptions manager, not a purchase sheet; honest label (retry-vs-redirect tracked on ENG-1381).
     <PaywallCta
-      label="Open App Store to subscribe"
+      label="Open the App Store"
       color={accent.primary}
       disabled={false}
       loading={false}
