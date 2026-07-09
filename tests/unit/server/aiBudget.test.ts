@@ -1,16 +1,19 @@
 /**
  * Blocker 3 (2026-05-14) — AI cost circuit-breaker tests.
+ * Layer C (per-IP daily call cap) added 2026-07-09 (ENG-1395).
  *
  * Pin the contract from
  * `docs/decisions/2026-05-14-ai-cost-circuit-breaker.md`:
  *   - per-user daily call cap denies past 50 (default)
  *   - global daily spend cap denies past £50 (default)
+ *   - per-IP daily call cap denies past 200 (default)
  *   - reserve → commit reconciles overhead
- *   - reserve → release refunds fully
+ *   - reserve → release refunds fully (user calls AND ip calls)
  *   - Upstash unreachable → fail-open within 5min, fail-closed after
  *   - UTC day rollover resets counters
  *   - Price math for sonnet-4-5 ($3 + $15 / 1M @ 0.85 = £15.30 / 2M)
  *   - Enforcement off (shadow mode) → no denial, counter still moves
+ *   - hashClientIp never leaks the raw IP into the counter key
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -23,6 +26,7 @@ import {
   _setFailOpenStateForTest,
   commitBudget,
   computeCostPence,
+  hashClientIp,
   releaseBudget,
   reserveBudget,
   secondsToUtcMidnight,
@@ -39,7 +43,10 @@ const HAIKU = "claude-haiku-4-5";
 function clearEnv() {
   delete process.env.AI_BUDGET_PER_USER_DAILY_CALLS;
   delete process.env.AI_BUDGET_GLOBAL_DAILY_GBP;
+  delete process.env.AI_BUDGET_PER_IP_DAILY_CALLS;
   delete process.env.AI_BUDGET_ENFORCEMENT_ENABLED;
+  delete process.env.AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED;
+  delete process.env.AI_BUDGET_IP_SALT;
   // Ensure no real Upstash credentials are picked up during tests —
   // we want the in-memory store path.
   delete process.env.UPSTASH_REDIS_REST_URL;
@@ -88,6 +95,39 @@ describe("computeCostPence — price table", () => {
     expect(unknownPrice).toBe(knownPrice); // fallback = sonnet
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("unknown model"));
     warn.mockRestore();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// hashClientIp — Layer C IP hashing (ENG-1395)
+// ─────────────────────────────────────────────────────────────────────
+
+describe("hashClientIp", () => {
+  it("returns null for a null IP (no trusted-IP header available)", () => {
+    expect(hashClientIp(null)).toBeNull();
+  });
+
+  it("is deterministic for the same IP", () => {
+    expect(hashClientIp("203.0.113.7")).toBe(hashClientIp("203.0.113.7"));
+  });
+
+  it("never returns the raw IP — output is a 64-char hex digest", () => {
+    const hash = hashClientIp("203.0.113.7");
+    expect(hash).not.toContain("203.0.113.7");
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("differs across distinct IPs", () => {
+    expect(hashClientIp("203.0.113.7")).not.toBe(hashClientIp("198.51.100.1"));
+  });
+
+  it("changes when AI_BUDGET_IP_SALT changes (salted hash)", () => {
+    delete process.env.AI_BUDGET_IP_SALT;
+    const unsalted = hashClientIp("203.0.113.7");
+    process.env.AI_BUDGET_IP_SALT = "pepper";
+    const salted = hashClientIp("203.0.113.7");
+    expect(salted).not.toBe(unsalted);
+    delete process.env.AI_BUDGET_IP_SALT;
   });
 });
 
@@ -168,6 +208,164 @@ describe("reserveBudget — global daily spend cap", () => {
     expect(denied.ok).toBe(false);
     if (denied.ok) throw new Error("unreachable");
     expect(denied.reason).toBe("global_spend");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// reserveBudget — per-IP daily call cap (Layer C, ENG-1395)
+// ─────────────────────────────────────────────────────────────────────
+
+describe("reserveBudget — per-IP daily call cap", () => {
+  it("grants up to the cap, denies past it (when its OWN enforcement flag is on)", async () => {
+    process.env.AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED = "true";
+    process.env.AI_BUDGET_PER_IP_DAILY_CALLS = "3";
+    process.env.AI_BUDGET_PER_USER_DAILY_CALLS = "10000"; // don't let Layer A trip first
+    process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "1000"; // don't let Layer B trip first
+
+    const ipHash = hashClientIp("203.0.113.7")!;
+    // Distinct userIds so Layer A never fires — isolates the assertion
+    // to Layer C.
+    const a = await reserveBudget("u1", HAIKU, 100, undefined, ipHash);
+    const b = await reserveBudget("u2", HAIKU, 100, undefined, ipHash);
+    const c = await reserveBudget("u3", HAIKU, 100, undefined, ipHash);
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(true);
+    expect(c.ok).toBe(true);
+
+    const denied = await reserveBudget("u4", HAIKU, 100, undefined, ipHash);
+    expect(denied.ok).toBe(false);
+    if (denied.ok) throw new Error("unreachable");
+    expect(denied.reason).toBe("per_ip_calls");
+    expect(denied.retryAfterSec).toBeGreaterThan(0);
+  });
+
+  it("does NOT enforce the per-IP cap when only the shared Layer A/B master flag is on — Layer C requires its OWN flag", async () => {
+    // AI_BUDGET_ENFORCEMENT_ENABLED has been `true` in production since
+    // 2026-06-17 (ENG-1158) for Layers A/B. Layer C's cap is brand new
+    // and unvalidated, so it must NOT start enforcing just because the
+    // master flag happens to already be on — see
+    // `isIpBudgetEnforcementEnabled`'s doc comment.
+    process.env.AI_BUDGET_ENFORCEMENT_ENABLED = "true";
+    process.env.AI_BUDGET_PER_IP_DAILY_CALLS = "1";
+    process.env.AI_BUDGET_PER_USER_DAILY_CALLS = "10000";
+    process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "1000";
+
+    const ipHash = hashClientIp("203.0.113.7")!;
+    const a = await reserveBudget("u1", HAIKU, 100, undefined, ipHash);
+    const b = await reserveBudget("u2", HAIKU, 100, undefined, ipHash); // over per-IP cap
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(true); // NOT denied — AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED is unset
+  });
+
+  it("isolates per-IP buckets — one IP hitting cap does not block another", async () => {
+    process.env.AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED = "true";
+    process.env.AI_BUDGET_PER_IP_DAILY_CALLS = "1";
+    process.env.AI_BUDGET_PER_USER_DAILY_CALLS = "10000";
+    process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "1000";
+
+    const ipA = hashClientIp("203.0.113.7")!;
+    const ipB = hashClientIp("198.51.100.1")!;
+
+    await reserveBudget("u1", HAIKU, 100, undefined, ipA);
+    const deniedA = await reserveBudget("u2", HAIKU, 100, undefined, ipA);
+    expect(deniedA.ok).toBe(false);
+
+    const grantedB = await reserveBudget("u3", HAIKU, 100, undefined, ipB);
+    expect(grantedB.ok).toBe(true);
+  });
+
+  it("skips Layer C entirely when ipHash is omitted/null (cron, non-request callers)", async () => {
+    process.env.AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED = "true";
+    process.env.AI_BUDGET_PER_IP_DAILY_CALLS = "1";
+    process.env.AI_BUDGET_PER_USER_DAILY_CALLS = "10000";
+    process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "1000";
+
+    // 10 calls with no ipHash should all succeed despite the per-IP
+    // cap of 1 — there's no bucket to check against.
+    for (let i = 0; i < 10; i++) {
+      const g = await reserveBudget(`u${i}`, HAIKU, 100);
+      expect(g.ok).toBe(true);
+    }
+  });
+
+  it("denying on the per-IP cap refunds the per-user calls AND global spend increments made for this reservation", async () => {
+    process.env.AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED = "true";
+    process.env.AI_BUDGET_PER_IP_DAILY_CALLS = "1";
+    process.env.AI_BUDGET_PER_USER_DAILY_CALLS = "10000";
+    process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "1000";
+
+    const ipHash = hashClientIp("203.0.113.7")!;
+    const today = utcDateKey();
+
+    await reserveBudget("u1", HAIKU, 100, undefined, ipHash);
+    const userCallsBefore = _readCounterForTest(_keyComposersForTest.userCalls("u2", today));
+    const globalBefore = _readCounterForTest(_keyComposersForTest.globalSpend(today));
+
+    const denied = await reserveBudget("u2", HAIKU, 100, undefined, ipHash);
+    expect(denied.ok).toBe(false);
+
+    // The denied reservation's own increments must be fully undone —
+    // u2's call count and the global spend added for THIS call both
+    // roll back to their pre-call values.
+    expect(_readCounterForTest(_keyComposersForTest.userCalls("u2", today))).toBe(
+      userCallsBefore,
+    );
+    expect(_readCounterForTest(_keyComposersForTest.globalSpend(today))).toBe(globalBefore);
+    // The IP counter itself also rolls back to the granted count (1),
+    // not 2 — the denied call shouldn't permanently inflate it.
+    expect(_readCounterForTest(_keyComposersForTest.ipCalls(ipHash, today))).toBe(1);
+  });
+
+  it("shadow mode (enforcement off): does not deny past the per-IP cap but still counts", async () => {
+    process.env.AI_BUDGET_ENFORCEMENT_ENABLED = "false";
+    process.env.AI_BUDGET_PER_IP_DAILY_CALLS = "1";
+    process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "1000";
+
+    const ipHash = hashClientIp("203.0.113.7")!;
+    const a = await reserveBudget("u1", HAIKU, 100, undefined, ipHash);
+    const b = await reserveBudget("u2", HAIKU, 100, undefined, ipHash); // over per-IP cap
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(true);
+
+    const today = utcDateKey();
+    expect(_readCounterForTest(_keyComposersForTest.ipCalls(ipHash, today))).toBe(2);
+  });
+
+  it("fires a 70%-of-cap alarm scoped to the IP hash", async () => {
+    process.env.AI_BUDGET_ENFORCEMENT_ENABLED = "false";
+    process.env.AI_BUDGET_PER_IP_DAILY_CALLS = "10";
+    process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "1000";
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const ipHash = hashClientIp("203.0.113.7")!;
+    // 7/10 crosses the 70% threshold.
+    for (let i = 0; i < 7; i++) {
+      await reserveBudget(`u${i}`, HAIKU, 100, undefined, ipHash);
+    }
+    const alarmLine = warn.mock.calls
+      .map((c) => String(c[0]))
+      .find((line) => line.includes("ALARM 70%") && line.includes(`scope=ip:${ipHash}`));
+    expect(alarmLine).toBeDefined();
+    warn.mockRestore();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// releaseBudget — per-IP refund (Layer C, ENG-1395)
+// ─────────────────────────────────────────────────────────────────────
+
+describe("releaseBudget — refunds the per-IP call count on AI failure", () => {
+  it("subtracts the IP call count alongside the existing user/global refunds", async () => {
+    process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "100";
+    const ipHash = hashClientIp("203.0.113.7")!;
+    const today = utcDateKey();
+
+    const grant = await reserveBudget("u1", SONNET, 2500, undefined, ipHash);
+    if (!grant.ok) throw new Error("unreachable");
+    expect(_readCounterForTest(_keyComposersForTest.ipCalls(ipHash, today))).toBe(1);
+
+    await releaseBudget(grant.grantId);
+    expect(_readCounterForTest(_keyComposersForTest.ipCalls(ipHash, today))).toBe(0);
   });
 });
 
@@ -369,8 +567,14 @@ describe("counter key composition", () => {
     expect(_keyComposersForTest.userCalls("alice", "2026-05-14")).toBe(
       "ai_budget:user_calls:alice:2026-05-14",
     );
+    expect(_keyComposersForTest.ipCalls("deadbeef", "2026-05-14")).toBe(
+      "ai_budget:ip_calls:deadbeef:2026-05-14",
+    );
     expect(_keyComposersForTest.alarmFired("global", "all", "2026-05-14")).toBe(
       "ai_budget:alarm_fired:global:all:2026-05-14",
+    );
+    expect(_keyComposersForTest.alarmFired("ip", "deadbeef", "2026-05-14")).toBe(
+      "ai_budget:alarm_fired:ip:deadbeef:2026-05-14",
     );
   });
 });

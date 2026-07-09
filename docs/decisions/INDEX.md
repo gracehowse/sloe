@@ -9,10 +9,13 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-327 decision docs, newest first. Generated 2026-07-06.
+330 decision docs, newest first. Generated 2026-07-09.
 
 | Date | Decision | Summary |
 |------|----------|---------|
+| 2026-07-09 | [Email-confirmation signup hardening + mobile deep-link spec (ENG-1395)](./2026-07-09-email-confirmation-signup-hardening.md) | The 2026-07-05 deep audit (SEC-01/DI-04, ENG-1395) flagged account-farming: signup runs with GoTrue email confirmation **off** (`[auth.email] enable_confirmations = false` in `supabase/config.toml`), so `signUp()` return… |
+| 2026-07-06 | [Launch sequencing — revenue rails (ENG-1433)](./2026-07-06-launch-sequencing-revenue-rails.md) | The 2026-07-05 money-path audit flagged "web Stripe is dark in prod" as one item among ~12 in a launch-blocker cluster. Re-examining it in isolation surfaced a sharper framing: **distribution today is TestFlight-only, an… |
+| 2026-07-06 | [Trust vocabulary — partial implementation (ENG-1431)](./2026-07-06-trust-vocabulary-partial.md) | The 2026-07-05 audit found Suppr had accumulated 5+ overlapping ways to represent "how much should the user trust this nutrition number" (`TrustChipVariant`, `IngredientVerificationTier`, `SearchRowConfidenceTier`, `is_v… |
 | 2026-07-03 | [ENG-1126 recipe collections (folders)](./2026-07-03-eng1126-recipe-collections.md) | Ship user-created recipe collections (Paprika/Plan to Eat-style folders) as a flag-gated (`recipe_collections_v1`) cross-platform feature: |
 | 2026-07-03 | [ENG-559 - unused index review closeout](./2026-07-03-eng559-unused-index-review.md) | ENG-559 was reopened for backlog-zero even though it had been intentionally deferred. I refreshed the live Supabase performance advisor and classified the current `public` schema indexes using `pg_stat_user_indexes`, `pg… |
 | 2026-07-03 | [OFF staleness corpus — ENG-1326](./2026-07-03-off-staleness-corpus-penalty.md) | ENG-1305 wired `last_modified_t` through OFF adapters and shipped a **guessed** 3-year binary demotion (−0.08). Grace rejected guessed thresholds on 2026-07-02: derive the curve from data first. |

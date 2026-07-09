@@ -122,9 +122,16 @@ export function SignupStep() {
         email: trimmedEmail,
         password,
         options: {
+          // Route through /auth/callback so the PKCE `code` GoTrue
+          // appends gets exchanged for a session before landing back on
+          // /onboarding — the browser client is PKCE
+          // (`createBrowserClient` default), so redirecting straight to
+          // /onboarding never actually established a session; the
+          // confirm-email interstitial below would wait forever (2026-07-09,
+          // ENG-1395 email-confirmation flow spec).
           emailRedirectTo:
             typeof window !== "undefined"
-              ? `${window.location.origin}/onboarding`
+              ? `${window.location.origin}/auth/callback?next=${encodeURIComponent("/onboarding")}`
               : undefined,
           data: { display_name: trimmedName },
         },

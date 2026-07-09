@@ -31,6 +31,23 @@ describe("auth routes (Premium P1)", () => {
     const src = read("app/login/ui.tsx");
     expect(src).toMatch(/initialMode === "signup" \? "\/onboarding" : "\/home"/);
   });
+
+  it("signUp/magic-link/reset-password all route their email redirect through /auth/callback (ENG-1395)", () => {
+    // The browser client (`createBrowserClient` from @supabase/ssr) is
+    // PKCE by default — GoTrue appends `?code=` to whatever
+    // emailRedirectTo/redirectTo says, and only /auth/callback exchanges
+    // it for a session. Pointing a bare destination URL (the pre-fix
+    // value) means the user clicks the email link and lands
+    // unauthenticated. See the ENG-1395 email-confirmation flow spec.
+    const src = read("app/login/ui.tsx");
+    const redirects = [...src.matchAll(/(?:emailRedirectTo|redirectTo):\s*[\s\S]*?`([^`]*)`/g)].map(
+      (m) => m[1],
+    );
+    expect(redirects.length).toBeGreaterThanOrEqual(3); // signUp, magic link, password reset
+    for (const r of redirects) {
+      expect(r).toContain("/auth/callback");
+    }
+  });
 });
 
 describe("desktop Today week rail (ENG-590)", () => {

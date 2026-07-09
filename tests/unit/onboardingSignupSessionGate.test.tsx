@@ -146,4 +146,25 @@ describe("SignupStep (web) — confirm-email mode is honest and does not advance
     expect(screen.queryByText(/check your email/i)).toBeNull();
     expect(screen.getByTestId("step-id").textContent).toBe("signup");
   });
+
+  it("routes emailRedirectTo through /auth/callback so the PKCE code actually gets exchanged (ENG-1395)", async () => {
+    // Regression pin: the browser client is PKCE (`createBrowserClient`
+    // default), so GoTrue appends `?code=` to whatever `emailRedirectTo`
+    // says. Pointing straight at /onboarding (the pre-fix value) never
+    // exchanges that code — the confirm-email interstitial below would
+    // wait forever. Must go through /auth/callback?next=/onboarding.
+    signUpMock.mockResolvedValue({
+      data: { user: { id: "u1" }, session: null },
+      error: null,
+    });
+
+    renderSignup();
+    await fillAndSubmit();
+
+    await waitFor(() => expect(signUpMock).toHaveBeenCalledTimes(1));
+    const callArg = signUpMock.mock.calls[0][0] as { options?: { emailRedirectTo?: string } };
+    expect(callArg.options?.emailRedirectTo).toMatch(
+      /\/auth\/callback\?next=%2Fonboarding$/,
+    );
+  });
 });
