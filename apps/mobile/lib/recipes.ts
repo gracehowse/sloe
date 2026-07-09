@@ -9,6 +9,7 @@ import {
   getCachedSavedRecipes,
 } from "./offlineCache";
 import type { RecipeCard } from "./types";
+import type { NorthStarRecipe } from "@suppr/nutrition-core/northStarSuggestion";
 import { NEUTRAL_AVATAR_DATA_URI } from "@suppr/shared/ui/neutralAvatar";
 import { fetchPublicRecipeSaveCounts } from "@suppr/shared/recipes/fetchPublicRecipeSaveCounts";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
@@ -707,6 +708,31 @@ export function useSavedLibraryRecipes(userId: string | null) {
   }, [refresh]);
 
   return { recipes, loading, refreshing, refresh };
+}
+
+/**
+ * Maps `useSavedLibraryRecipes` output to the shape
+ * `<NorthStarBlockHost>`'s `savedRecipesForLibrary` prop needs. Extracted
+ * from `TodayScreen.tsx` (screen-budget pin) so the mapping lives next to
+ * the hook that produces its input. ENG-1417 — threads `isVerified`
+ * through so the north-star card can render the "~" unverified-estimate
+ * qualifier. Web mirror: the `savedRecipesForLibrary as NorthStarRecipe[]`
+ * cast in `AppDataContext.tsx` (web's `RecipeCard.isVerified` already
+ * flows through that cast; mobile constructs the shape explicitly here).
+ */
+export function toNorthStarLibrary(recipes: RecipeCard[]): NorthStarRecipe[] {
+  return recipes.map((r) => ({
+    id: r.id,
+    title: r.title,
+    calories: r.calories ?? 0,
+    protein: r.protein ?? 0,
+    carbs: r.carbs ?? 0,
+    fat: r.fat ?? 0,
+    thumbnail: r.image,
+    mealType: r.mealSlots,
+    cookTimeMin: r.cookTimeMin ?? undefined,
+    isVerified: r.isVerified,
+  }));
 }
 
 /**

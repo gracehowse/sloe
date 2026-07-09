@@ -3,13 +3,11 @@ import { memo } from "react";
 import * as React from "react";
 import {
   Alert,
-  PanResponder,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import type { GestureResponderEvent, PanResponderGestureState } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -18,8 +16,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { Sparkles, X } from "lucide-react-native";
 import { isFeatureEnabled } from "@/lib/analytics";
-import { useHaptics } from "@/hooks/useHaptics";
+import { useSwipeToSkipResponder } from "@/hooks/useSwipeToSkipResponder";
 import type { OverBudgetStage } from "@suppr/nutrition-core/coachOverBudgetStage";
+import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
 
 // 2026-05-12 (premium-bar audit motion polish): use the reanimated
 // `createAnimatedComponent` pattern so the resolved component goes
@@ -111,6 +110,8 @@ export interface NorthStarBlockSuggestion {
    * absent for recipes with no recorded time — the chip degrades away.
    */
   cookTimeMin?: number;
+  /** ENG-1417 — verified vs estimate; absent → "~" qualifier (safe default). */
+  isVerified?: boolean;
 }
 
 export interface NorthStarBlockProps {
@@ -141,8 +142,6 @@ export interface NorthStarBlockProps {
   slotEyebrow?: string;
   testID?: string;
 }
-
-const SKIP_THRESHOLD = 50;
 
 function NorthStarBlockImpl({
   kind,
@@ -232,46 +231,13 @@ function NorthStarDefault({
   colors,
   testID,
 }: NorthStarDefaultProps) {
-  const haptics = useHaptics();
   // Secondary accent (Frost flag → damson, else clay) for the "What to eat
   // next" overline + the suggestion CTA. The band-fit green chip + plum keep
   // their own tokens.
   const accent = useAccent();
-  // Pan responder for swipe-to-skip. We use raw PanResponder rather
-  // than reanimated here because the block is a single-state gesture
-  // (commit on release > threshold) — the simplicity of PanResponder
-  // is appropriate. Reduce-motion users see a top-right `X` button
-  // instead of the gesture.
-  //
-  // Defensive: PanResponder isn't present in the test-time RN shim
-  // (see apps/mobile/tests/shims/react-native.cjs) — guard the
-  // .create call so unit tests can mount the block without throwing.
-  // The gesture path is exercised on-device only; tests target the
-  // reduce-motion `X` button fallback.
-  const responder = React.useMemo(() => {
-    if (
-      typeof PanResponder === "undefined" ||
-      typeof (PanResponder as { create?: unknown })?.create !== "function"
-    ) {
-      return { panHandlers: {} } as { panHandlers: Record<string, unknown> };
-    }
-    return PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (
-        _evt: GestureResponderEvent,
-        gesture: PanResponderGestureState,
-      ) => !reduceMotion && gesture.dx < -8 && Math.abs(gesture.dy) < 12,
-      onPanResponderRelease: (
-        _evt: GestureResponderEvent,
-        gesture: PanResponderGestureState,
-      ) => {
-        if (gesture.dx <= -SKIP_THRESHOLD && onSkip) {
-          haptics.confirm();
-          onSkip();
-        }
-      },
-    });
-  }, [haptics, onSkip, reduceMotion]);
+  // Swipe-left-to-skip gesture — extracted to `useSwipeToSkipResponder`
+  // (screen-budget pin). Reduce-motion users see the `X` button instead.
+  const responder = useSwipeToSkipResponder(reduceMotion, onSkip);
 
   // 2026-05-12 (premium-bar audit DC2 polish — Cal AI 200ms fade-up
   // on first paint): the suggestion card eases in over 220ms with a
@@ -298,6 +264,10 @@ function NorthStarDefault({
     opacity: fadeOpacity.value,
     transform: [{ translateY: fadeTranslate.value }],
   }));
+  // ENG-1417 — flag-gated "~" unverified-estimate qualifier (kill switch off).
+  const kcalDisplay = isFeatureEnabled("kcal_trust_qualifier_v1")
+    ? formatQualifiedKcal(suggestion.predictedCalories, suggestion.isVerified)
+    : String(suggestion.predictedCalories);
 
   return (
     <AnimatedView
@@ -375,7 +345,7 @@ function NorthStarDefault({
                   [
                     suggestion.whyLine,
                     `Macro fit: ${suggestion.bandLabel.toLowerCase()}.`,
-                    `Predicted: ${suggestion.predictedCalories} kcal · ${Math.round(suggestion.predictedProtein)}g P · ${Math.round(suggestion.predictedCarbs)}g C · ${Math.round(suggestion.predictedFat)}g F.`,
+                    `Predicted: ${kcalDisplay} kcal · ${Math.round(suggestion.predictedProtein)}g P · ${Math.round(suggestion.predictedCarbs)}g C · ${Math.round(suggestion.predictedFat)}g F.`,
                     "Sloe picks the saved recipe that best closes the gap to your remaining macros for today. Re-run by skipping (swipe left) to see another candidate.",
                   ].filter(Boolean).join("\n\n"),
                 );
@@ -434,7 +404,7 @@ function NorthStarDefault({
                 },
               ]}
             >
-              {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}g P · {Math.round(suggestion.predictedCarbs)}g C · {Math.round(suggestion.predictedFat)}g F
+              {kcalDisplay} kcal · {Math.round(suggestion.predictedProtein)}g P · {Math.round(suggestion.predictedCarbs)}g C · {Math.round(suggestion.predictedFat)}g F
             </Text>
           </View>
 

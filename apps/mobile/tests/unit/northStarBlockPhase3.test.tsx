@@ -12,11 +12,15 @@ let figmaMealsLayout = true;
 // flip `coaching_stages_v1` ON without affecting the other flag-off tests
 // in this file (which must keep rendering the exact legacy caption).
 let coachingStagesOn = false;
+// ENG-1417 — mutable per-test override, defaults OFF (kill switch) so every
+// other test in this file keeps asserting the exact pre-ENG-1417 bare kcal.
+let kcalTrustQualifierOn = false;
 
 vi.mock("@/lib/analytics", () => ({
   isFeatureEnabled: (flag: string) => {
     if (flag === "today_meals_figma_654") return figmaMealsLayout;
     if (flag === "coaching_stages_v1") return coachingStagesOn;
+    if (flag === "kcal_trust_qualifier_v1") return kcalTrustQualifierOn;
     return false;
   },
   track: vi.fn(),
@@ -76,6 +80,7 @@ const baseSuggestion: NorthStarBlockSuggestion = {
 describe("NorthStarBlock (mobile) — Figma 654 hero", () => {
   beforeEach(() => {
     figmaMealsLayout = true;
+    kcalTrustQualifierOn = false;
   });
 
   it("renders section title, hero card, slot eyebrow, and kcal", () => {
@@ -98,6 +103,7 @@ describe("NorthStarBlock (mobile) — Figma 654 hero", () => {
 describe("NorthStarBlock (mobile) — compact default kind", () => {
   beforeEach(() => {
     figmaMealsLayout = false;
+    kcalTrustQualifierOn = false;
   });
 
   it("renders the eyebrow, title, band chip and macro caption", () => {
@@ -393,5 +399,74 @@ describe("NorthStarBlock (mobile) — reduce-motion swipe-to-skip fallback", () 
     expect(onSkip).toHaveBeenCalled();
 
     vi.doUnmock("@/hooks/use-reduce-motion");
+  });
+});
+
+describe("NorthStarBlock (mobile) — ENG-1417 kcal trust qualifier", () => {
+  beforeEach(() => {
+    figmaMealsLayout = true;
+  });
+
+  it("flag OFF: renders the bare kcal regardless of isVerified", () => {
+    kcalTrustQualifierOn = false;
+    const { getByText, queryByText } = render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={{ ...baseSuggestion, isVerified: false }}
+        slotEyebrow="Dinner suggestion"
+      />,
+    );
+    expect(getByText(/520 kcal/)).toBeTruthy();
+    expect(queryByText(/~520 kcal/)).toBeNull();
+  });
+
+  it("flag ON + unverified: prefixes the kcal with '~'", () => {
+    kcalTrustQualifierOn = true;
+    const { getByText } = render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={{ ...baseSuggestion, isVerified: false }}
+        slotEyebrow="Dinner suggestion"
+      />,
+    );
+    expect(getByText(/~520 kcal/)).toBeTruthy();
+  });
+
+  it("flag ON + verified: renders the bare kcal (no qualifier)", () => {
+    kcalTrustQualifierOn = true;
+    const { getByText, queryByText } = render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={{ ...baseSuggestion, isVerified: true }}
+        slotEyebrow="Dinner suggestion"
+      />,
+    );
+    expect(getByText(/520 kcal/)).toBeTruthy();
+    expect(queryByText(/~520 kcal/)).toBeNull();
+  });
+
+  it("flag ON + isVerified absent: treats it as unverified (safe default)", () => {
+    kcalTrustQualifierOn = true;
+    const { getByText } = render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={baseSuggestion}
+        slotEyebrow="Dinner suggestion"
+      />,
+    );
+    expect(getByText(/~520 kcal/)).toBeTruthy();
+  });
+
+  it("flag ON: the compact (non-Figma) default kind also qualifies", () => {
+    figmaMealsLayout = false;
+    kcalTrustQualifierOn = true;
+    const { getByText } = render(
+      <NorthStarBlock
+        kind="default"
+        suggestion={{ ...baseSuggestion, isVerified: false }}
+        ctaLabel="Log it"
+      />,
+    );
+    expect(getByText(/~520 kcal · 38g P · 42g C · 18g F/)).toBeTruthy();
   });
 });

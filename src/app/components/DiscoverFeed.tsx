@@ -12,10 +12,10 @@ import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { discoverQualifiesAsPopular } from "../../lib/recipes/discoverPopularQualification.ts";
 import {
-  DISCOVER_CATEGORY_PILLS,
   matchesRecipeCategory,
   type RecipeCategoryId,
 } from "../../lib/recipes/recipeCategoryFilters.ts";
+import { DiscoverFilterChips } from "./DiscoverFilterChips";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
 import { recipeCardAccessibilityLabel } from "../../lib/recipes/recipeCardAccessibilityLabel.ts";
@@ -487,61 +487,16 @@ export const DiscoverFeed = memo(function DiscoverFeed({
           onOpenCreator={(creatorId) => router.push(`/creator/${creatorId}`)}
         />
 
-        {/* Category filter pills — ENG-921 / Figma `528:2`. "Following"
-            leads as a secondary feed-scope toggle (wired follow-graph
-            feature), then the shared category set. Mobile parity:
-            `apps/mobile/app/(tabs)/discover.tsx`.
-
-            Chip grammar (web parity 2026-06-10, ENG-1022): selected =
-            `bg-primary-soft` fill + `primary-solid` label + `font-semibold`,
-            NO selected ring/border; unselected = quiet `bg-card` + muted
-            label, NO border. The old `border border-primary-solid` selected
-            ring and the unselected `border border-border` were the chip
-            drift this pass converges. */}
-        <div className="mt-4 pl-4 pr-2 md:pl-0 md:pr-0">
-          <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <button
-              key="following"
-              type="button"
-              data-testid="discover-category-following"
-              onClick={() => {
-                setFeedScope("following");
-                setCategory("all");
-              }}
-              className={`shrink-0 px-4 py-2 rounded-full text-[13px] whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                feedScope === "following"
-                  ? "bg-primary-soft text-primary-solid font-semibold"
-                  : "bg-card text-muted-foreground font-medium hover:text-foreground hover:bg-muted"
-              }`}
-              aria-pressed={feedScope === "following"}
-            >
-              Following
-            </button>
-            {DISCOVER_CATEGORY_PILLS.map((f) => {
-              const isActive = feedScope === "forYou" && category === f.id;
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  data-testid={`discover-category-${f.id}`}
-                  onClick={() => {
-                    setFeedScope("forYou");
-                    setCategory(f.id);
-                  }}
-                  className={`shrink-0 px-4 py-2 rounded-full text-[13px] whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                    isActive
-                      ? "bg-primary-soft text-primary-solid font-semibold"
-                      : "bg-card text-muted-foreground font-medium hover:text-foreground hover:bg-muted"
-                  }`}
-                  aria-pressed={isActive}
-                  aria-label={`Category: ${f.label}`}
-                >
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Category filter pills + ENG-1417 Verified toggle — extracted to
+            `DiscoverFilterChips.tsx` (screen-budget pin). */}
+        <DiscoverFilterChips
+          feedScope={feedScope}
+          setFeedScope={setFeedScope}
+          category={category}
+          setCategory={setCategory}
+          filters={filters}
+          setFilters={setFilters}
+        />
 
         {/* DEFERRED — Figma-only builds (not built this pass, per the
             Recipes Figma-parity brief):

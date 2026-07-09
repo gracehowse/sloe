@@ -29,6 +29,7 @@ import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
 import { cn } from "../ui/utils";
 
 export type NorthStarKind =
@@ -75,6 +76,11 @@ export interface NorthStarBlockSuggestion {
    * absent for recipes with no recorded time — the chip degrades away.
    */
   cookTimeMin?: number;
+  /** ENG-1417 — whether the recipe's macros are a verified nutrition
+   *  lookup vs an unverified estimate. Absent/undefined renders the
+   *  "~" qualifier (safe default). Sourced from `NorthStarRecipe.isVerified`
+   *  by the host. Mirror of the mobile `NorthStarBlock`. */
+  isVerified?: boolean;
 }
 
 export interface NorthStarBlockProps {
@@ -190,6 +196,13 @@ function NorthStarDefaultBlock({
   testID?: string;
 }) {
   const [whyOpen, setWhyOpen] = React.useState(false);
+  // ENG-1417 — flag-gated "~" qualifier when the suggestion's macros are an
+  // unverified estimate rather than a verified nutrition lookup. Off →
+  // exact pre-ENG-1417 kcal display (kill switch). Mirror of the same
+  // computation in `north-star-figma-hero.tsx`.
+  const kcalDisplay = isFeatureEnabled("kcal_trust_qualifier_v1")
+    ? formatQualifiedKcal(suggestion.predictedCalories, suggestion.isVerified)
+    : String(suggestion.predictedCalories);
 
   return (
     // 2026-05-12 (premium-bar audit web parity, DC2 polish): 200ms
@@ -267,7 +280,7 @@ function NorthStarDefaultBlock({
                       <p>{suggestion.whyLine}</p>
                       <p>Macro fit: {suggestion.bandLabel.toLowerCase()}.</p>
                       <p>
-                        Predicted: {suggestion.predictedCalories} kcal ·{" "}
+                        Predicted: {kcalDisplay} kcal ·{" "}
                         {Math.round(suggestion.predictedProtein)}g P ·{" "}
                         {Math.round(suggestion.predictedCarbs)}g C ·{" "}
                         {Math.round(suggestion.predictedFat)}g F.
@@ -299,7 +312,7 @@ function NorthStarDefaultBlock({
               format unified to `698 kcal · 22g P · 95g C · 27g F`
               across Today + Eat Again. Web mirrors mobile. */}
           <span className="text-[11px] text-muted-foreground tabular-nums">
-            {suggestion.predictedCalories} kcal · {Math.round(suggestion.predictedProtein)}g P · {Math.round(suggestion.predictedCarbs)}g C · {Math.round(suggestion.predictedFat)}g F
+            {kcalDisplay} kcal · {Math.round(suggestion.predictedProtein)}g P · {Math.round(suggestion.predictedCarbs)}g C · {Math.round(suggestion.predictedFat)}g F
           </span>
         </div>
 

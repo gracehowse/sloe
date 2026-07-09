@@ -519,6 +519,23 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   KNOWN_DEFAULT_OFF_FLAGS parity check — the flag is mobile-only in
  *   practice (the RevenueCat `subscriptionsUnavailable` state is
  *   native-IAP-specific; web billing is Stripe), so no web code reads it.
+ * - `kcal_trust_qualifier_v1` (ENG-1417) — a "~" prefix on kcal displays
+ *   that are an unverified estimate rather than a verified nutrition
+ *   lookup (`recipes.is_verified`), on decision-driving surfaces only:
+ *   the north-star suggestion card, meal planner day totals, Cook Mode,
+ *   and Discover's calorie sort — NOT on browse-level recipe cards
+ *   (Discover grids, Library editorial shelves), which a prior audit
+ *   (2026-04-28, GW-08) found read as decorative noise. DEFAULT-OFF: net
+ *   new, not yet sim-validated — Grace ramps in PostHog after a web +
+ *   mobile glance. Off → all gated surfaces render their exact
+ *   pre-ENG-1417 kcal display (kill switch). Web + mobile.
+ * - `discover_verified_filter_v1` (ENG-1417) — a "Verified only" filter
+ *   chip on web Discover, wiring the previously-dead `filters.verified`
+ *   state (it existed and was checked, but no control ever set it).
+ *   DEFAULT-OFF: net new structural control, not yet sim-validated.
+ *   Registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS
+ *   parity check — the flag is web-only in practice (mobile Discover has
+ *   no equivalent filter sheet), so no mobile code reads it.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -534,6 +551,8 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "trial_end_reminder_v1", // ENG-968 — Duolingo-style trial-end reminder day picker
   "recipe_yield_portion_v1", // ENG-736 — structured recipe yield + portion-style logging
   "paywall_fallback_when_unavailable", // ENG-1381 — priced fallback for RC-unavailable paywall (mobile-only in practice)
+  "kcal_trust_qualifier_v1", // ENG-1417 — "~" qualifier on unverified kcal, decision surfaces only
+  "discover_verified_filter_v1", // ENG-1417 — Discover "Verified only" filter chip (web-only in practice)
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

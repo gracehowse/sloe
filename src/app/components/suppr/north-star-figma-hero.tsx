@@ -6,6 +6,8 @@ import { Check, Clock, Flame, X } from "lucide-react";
 import { QuickLogButton } from "./quick-log-button";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import { cn } from "../ui/utils";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
 import type { NorthStarBlockSuggestion } from "./north-star-block";
 
 /**
@@ -41,6 +43,12 @@ export function NorthStarFigmaHeroBlock({
     typeof suggestion.cookTimeMin === "number" && suggestion.cookTimeMin > 0
       ? suggestion.cookTimeMin
       : null;
+  // ENG-1417 — flag-gated "~" qualifier when the suggestion's macros are an
+  // unverified estimate rather than a verified nutrition lookup. Off →
+  // exact pre-ENG-1417 kcal display (kill switch).
+  const kcalDisplay = isFeatureEnabled("kcal_trust_qualifier_v1")
+    ? formatQualifiedKcal(suggestion.predictedCalories, suggestion.isVerified)
+    : String(suggestion.predictedCalories);
 
   return (
     <section className="mb-10" data-testid={testID ?? "north-star-figma-hero"}>
@@ -87,7 +95,7 @@ export function NorthStarFigmaHeroBlock({
         <button
           type="button"
           onClick={onPrimaryCta}
-          aria-label={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}
+          aria-label={`${slotEyebrow}: ${suggestion.title}, ${kcalDisplay} kcal`}
           className={cn(
             "absolute inset-0 z-[15] rounded-2xl",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
@@ -120,7 +128,7 @@ export function NorthStarFigmaHeroBlock({
             <div className="flex items-center gap-2 text-sm text-white/80">
               <span className="inline-flex items-center gap-1">
                 <Flame width={14} height={14} aria-hidden />
-                {suggestion.predictedCalories} kcal
+                {kcalDisplay} kcal
               </span>
               {cookMin !== null ? (
                 <>

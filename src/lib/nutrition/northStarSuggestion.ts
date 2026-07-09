@@ -78,6 +78,16 @@ export interface NorthStarRecipe {
    * recorded time.
    */
   cookTimeMin?: number | null;
+  /**
+   * ENG-1417 — whether this recipe's macros are a verified nutrition
+   * lookup vs an unverified estimate (mirrors `RecipeCard.isVerified`,
+   * `src/types/recipe.ts`). Callers already pass `RecipeCard`-shaped
+   * objects cast to `NorthStarRecipe`, so this field is present at
+   * runtime for every real caller — optional only so older test
+   * fixtures without it stay source-compatible. Absent/undefined is
+   * treated as unverified (the safe default) by the render layer.
+   */
+  isVerified?: boolean;
 }
 
 export interface NorthStarRemaining {

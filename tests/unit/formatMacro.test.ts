@@ -8,7 +8,7 @@
  * always rendered as "0".
  */
 import { describe, it, expect } from "vitest";
-import { formatMacro, formatMacroValue } from "../../src/lib/nutrition/formatMacro";
+import { formatMacro, formatMacroValue, formatQualifiedKcal } from "../../src/lib/nutrition/formatMacro";
 
 describe("formatMacroValue", () => {
   it("rounds calories and sodium to integer", () => {
@@ -62,5 +62,27 @@ describe("formatMacro", () => {
   it("zero renders as '0' regardless of macro key", () => {
     expect(formatMacro(0, "protein")).toBe("0");
     expect(formatMacro(0, "calories", "kcal")).toBe("0kcal");
+  });
+});
+
+describe("formatQualifiedKcal (ENG-1417)", () => {
+  it("renders the bare number when verified", () => {
+    expect(formatQualifiedKcal(698, true)).toBe("698");
+    expect(formatQualifiedKcal(1900, true)).toBe("1,900");
+  });
+
+  it("prefixes with '~' when unverified", () => {
+    expect(formatQualifiedKcal(698, false)).toBe("~698");
+    expect(formatQualifiedKcal(1900, false)).toBe("~1,900");
+  });
+
+  it("treats absent/undefined/null isVerified as unverified (safe default)", () => {
+    expect(formatQualifiedKcal(698, undefined)).toBe("~698");
+    expect(formatQualifiedKcal(698, null)).toBe("~698");
+  });
+
+  it("reuses formatKcalDisplay's rounding + comma formatting", () => {
+    expect(formatQualifiedKcal(105.8, false)).toBe("~106");
+    expect(formatQualifiedKcal(null, false)).toBe("~0");
   });
 });

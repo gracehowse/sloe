@@ -10,6 +10,8 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { QuickLogButton } from "@/components/ui/QuickLogButton";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
 
 import type { NorthStarBlockSuggestion } from "./NorthStarBlock";
 
@@ -55,6 +57,13 @@ export function NorthStarFigmaHero({
     typeof suggestion.cookTimeMin === "number" && suggestion.cookTimeMin > 0
       ? suggestion.cookTimeMin
       : null;
+  // ENG-1417 — flag-gated "~" qualifier when the suggestion's macros are an
+  // unverified estimate rather than a verified nutrition lookup. Off →
+  // exact pre-ENG-1417 kcal display (kill switch). Mirror of web
+  // `north-star-figma-hero.tsx`.
+  const kcalDisplay = isFeatureEnabled("kcal_trust_qualifier_v1")
+    ? formatQualifiedKcal(suggestion.predictedCalories, suggestion.isVerified)
+    : String(suggestion.predictedCalories);
 
   return (
     <View testID={testID ?? "north-star-figma-hero"} style={{ marginBottom: Spacing.xl }}>
@@ -68,7 +77,7 @@ export function NorthStarFigmaHero({
       </Text>
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel={`${slotEyebrow}: ${suggestion.title}, ${suggestion.predictedCalories} kcal`}
+        accessibilityLabel={`${slotEyebrow}: ${suggestion.title}, ${kcalDisplay} kcal`}
         haptic="selection"
         onPress={onPrimaryCta}
         style={styles.figmaHeroCard}
@@ -140,7 +149,7 @@ export function NorthStarFigmaHero({
             <View style={styles.figmaKcalRow}>
               <Flame size={14} color="rgba(255,255,255,0.8)" />
               <Text style={styles.figmaKcalText}>
-                {suggestion.predictedCalories} kcal
+                {kcalDisplay} kcal
               </Text>
               {cookMin !== null ? (
                 <>
