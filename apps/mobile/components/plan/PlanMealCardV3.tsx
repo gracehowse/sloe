@@ -6,6 +6,8 @@ import { SmartImage } from "@/components/ui/SmartImage";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
 
 /**
  * PlanMealCardV3 — Sloe v3 Plan per-slot meal card (prototype `plan-card`
@@ -18,6 +20,8 @@ export interface PlanMealCardV3Props {
   slot: string;
   name: string;
   kcal: number | null;
+  /** ENG-1417 — verified vs estimate; absent → "~" qualifier (safe default). */
+  isVerified?: boolean;
   imageUrl?: string | null;
   isLocked?: boolean;
   /** "batch" → a Batch chip; any other truthy string → a quiet queued note. */
@@ -33,6 +37,7 @@ export function PlanMealCardV3({
   slot,
   name,
   kcal,
+  isVerified,
   imageUrl,
   isLocked,
   note,
@@ -41,6 +46,13 @@ export function PlanMealCardV3({
   onOpenOptions,
 }: PlanMealCardV3Props) {
   const colors = useThemeColors();
+  // ENG-1417 — flag-gated "~" unverified-estimate qualifier (kill switch off).
+  const kcalDisplay =
+    kcal != null
+      ? isFeatureEnabled("kcal_trust_qualifier_v1")
+        ? formatQualifiedKcal(kcal, isVerified)
+        : String(kcal)
+      : null;
   return (
     <View
       style={[
@@ -78,7 +90,7 @@ export function PlanMealCardV3({
               ) : null}
             </View>
             <Text style={[styles.kcal, { color: colors.textTertiary }]}>
-              {kcal ? `${kcal} kcal` : "—"}
+              {kcalDisplay ? `${kcalDisplay} kcal` : "—"}
             </Text>
           </View>
           <Text

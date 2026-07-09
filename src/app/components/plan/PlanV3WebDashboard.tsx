@@ -4,6 +4,8 @@ import * as React from "react";
 import { Flame, ShoppingCart, Sparkles } from "lucide-react";
 
 import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
+import { isFeatureEnabled } from "@/lib/analytics/track";
+import { formatQualifiedKcal } from "@/lib/nutrition/formatMacro";
 import type { PlanWeekVerdict } from "@/lib/planning/planWeekStatus";
 import {
   isPlanMealCooked,
@@ -283,6 +285,14 @@ export function PlanV3WebDashboard({
           {weekDates.map((date, dayIndex) => {
             const day = plan[dayIndex];
             const dayKcal = Math.round(day?.totals?.calories ?? 0);
+            // ENG-1417 — a day total is only as trustworthy as its least-
+            // verified contributing meal; the "~" qualifier fires if ANY
+            // non-placeholder meal that day is unverified.
+            const dayIsFullyVerified =
+              day?.meals.filter((m) => !m.isPlaceholder).every((m) => m.isVerified) ?? true;
+            const dayKcalDisplay = isFeatureEnabled("kcal_trust_qualifier_v1")
+              ? formatQualifiedKcal(dayKcal, dayIsFullyVerified)
+              : String(dayKcal);
             return (
               <section key={dayIndex} aria-label={`${WEEKDAY_LONG[date.getDay()]} ${date.getDate()}`}>
                 <div className="flex items-baseline justify-between">
@@ -290,7 +300,7 @@ export function PlanV3WebDashboard({
                     {WEEKDAY_LONG[date.getDay()] ?? "Day"} {date.getDate()}
                   </h3>
                   <span className="text-[11px] tabular-nums text-foreground-tertiary">
-                    {dayKcal > 0 ? `${dayKcal} / ${targetKcal} kcal` : "—"}
+                    {dayKcal > 0 ? `${dayKcalDisplay} / ${targetKcal} kcal` : "—"}
                   </span>
                 </div>
                 {ALL_MEAL_SLOTS.map((slot, slotIndex) => {
@@ -311,6 +321,7 @@ export function PlanV3WebDashboard({
                         slot={slot}
                         name={meal.recipeTitle || meal.name}
                         kcal={Math.round(meal.calories)}
+                        isVerified={meal.isVerified}
                         isLocked={meal.isLocked}
                         isCooked={cooked}
                         onPress={() => onOpenMeal(dayIndex, slotIndex)}

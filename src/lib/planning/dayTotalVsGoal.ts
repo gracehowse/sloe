@@ -71,6 +71,15 @@ export interface DayTotalVsGoalLine {
   hasTargets: boolean;
   totals: DayTotals;
   cells: DayTotalVsGoalCell[];
+  /**
+   * ENG-1417 — `true` only when every non-placeholder meal contributing to
+   * `totals` is a verified nutrition lookup. A day total is only as
+   * trustworthy as its least-verified meal, so ANY unverified meal taints
+   * the whole day's kcal figure. Empty/placeholder-only days are vacuously
+   * `true` (nothing unverified to flag). Callers gate the "~" qualifier on
+   * this, behind `kcal_trust_qualifier_v1`.
+   */
+  calorieTotalIsVerified: boolean;
 }
 
 /** Directional tolerance bands (over-goal only). See module header. */
@@ -118,6 +127,11 @@ export function buildDayTotalVsGoalLine(
 ): DayTotalVsGoalLine {
   const totals = dayPlanTotalsFromMeals(meals);
   const hasTargets = goalsAreSet(goals);
+  // ENG-1417 — placeholder slots contribute nothing to `totals`, so they're
+  // excluded here too (a day with only placeholders is vacuously verified).
+  const calorieTotalIsVerified = meals
+    .filter((m) => !m.isPlaceholder)
+    .every((m) => m.isVerified);
   const cells: DayTotalVsGoalCell[] = [
     {
       key: "calories",
@@ -152,7 +166,7 @@ export function buildDayTotalVsGoalLine(
       tone: classifyDayDelta(totals.fat, goals.fat),
     },
   ];
-  return { hasTargets, totals, cells };
+  return { hasTargets, totals, cells, calorieTotalIsVerified };
 }
 
 /**

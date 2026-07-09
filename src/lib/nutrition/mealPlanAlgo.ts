@@ -92,6 +92,10 @@ export type MealPlanRecipe = {
   carbs: number;
   fat: number;
   fiberG?: number;
+  /** ENG-1417 — verified nutrition lookup vs unverified estimate. Optional
+   *  so existing callers stay source-compatible; absent → the render layer
+   *  treats it as unverified (safe default). */
+  isVerified?: boolean;
 };
 
 export type SimpleRecipe = MealPlanRecipe & {
@@ -138,6 +142,21 @@ export type PlanMeal = {
    * user sees the planner is showing a neutral split, not real data.
    */
   macrosAreEstimated?: boolean;
+  /**
+   * ENG-1417 — whether the SOURCE recipe's macros are a verified nutrition
+   * lookup vs an unverified estimate (`RecipeCard.isVerified`). Independent
+   * of `macrosAreEstimated` above: that flag is about whether the P/C/F
+   * *split* was synthesized from a known kcal total; this is about whether
+   * the underlying recipe data came from a trusted match at all. A meal can
+   * be `isVerified: true` and `macrosAreEstimated: true` (real recipe,
+   * neutral split) or any other combination. Threaded through by every
+   * planner generation path (`generateMealPlan.ts`,
+   * `mealPlanAlgo.ts#findBestMealSetGeneric`/`buildIndependentSlotDayGeneric`
+   * callers) from the source `RecipeCard`. Absent/undefined → the render
+   * layer treats it as unverified (safe default, matches
+   * `formatQualifiedKcal`'s convention).
+   */
+  isVerified?: boolean;
   /**
    * ENG-956 — per-meal lock ("keep this meal"). When true, the regenerate
    * path keeps this slot byte-identical and re-rolls only the unlocked
@@ -1006,6 +1025,7 @@ export function regenerateUnlockedMeals<R extends MealPlanRecipe>(input: {
         ...((r as { isCoerced?: boolean }).isCoerced
           ? { macrosAreEstimated: true as const }
           : {}),
+        isVerified: r.isVerified,
       });
     });
   } else {
@@ -1033,6 +1053,7 @@ export function regenerateUnlockedMeals<R extends MealPlanRecipe>(input: {
         ...((p.pick as { isCoerced?: boolean }).isCoerced
           ? { macrosAreEstimated: true as const }
           : {}),
+        isVerified: p.pick.isVerified,
       });
     });
   }
@@ -1091,6 +1112,7 @@ function buildIndependentSlotDay(
       fiberG: scaled.fiberG,
       // P1-19: thread coercion flag from the independent-slot fallback path too.
       ...((pick as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
+      isVerified: pick.isVerified,
     };
   });
   return { meals, pickedIds, residualProteinGap: fit.residualProteinGap };
@@ -1169,6 +1191,8 @@ export function generateSmartPlan(input: {
           // P1-19: thread the coercion flag from the pool through to the
           // rendered row so the planner UI can surface "Estimated · verify".
           ...((r as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
+          // ENG-1417 — thread the source recipe's trust signal through.
+          isVerified: r.isVerified,
           // portionMultiplier is intentionally NOT set here: the fit
           // multiplier is already baked into `calories`. Setting it would
           // cause dayPlanTotalsFromMeals to double-apply the scale.
@@ -1222,6 +1246,7 @@ export function generateSmartPlan(input: {
                 ...scaled,
                 fiberG: scaled.fiberG,
                 ...((r as { isCoerced?: boolean }).isCoerced ? { macrosAreEstimated: true as const } : {}),
+                isVerified: r.isVerified,
               };
             });
             residualProteinGap = retryJoint.residualProteinGap;
