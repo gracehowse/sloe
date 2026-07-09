@@ -28,16 +28,12 @@ export interface TodayHeroRingGraphicProps {
   onToggleExpanded: () => void;
   /** De-carded v3 hero (ENG-1247): 56px serif-medium centre numeral. */
   numeralLarge?: boolean;
-  /** ENG-1372 — warm-tint the ring's tick track (behind `empty_state_grammar_v1`,
-   *  fresh-day only). Forwarded to `CalorieRingDial`'s `emptyTrackWarm`. */
-  emptyTrackWarm?: boolean;
 }
 
 export function TodayHeroRingGraphic({
   consumed,
   goal,
   numeralLarge = false,
-  emptyTrackWarm = false,
 }: TodayHeroRingGraphicProps) {
   // The jewel watch-dial does NOT use the legacy empty-state 0.72 shrink (it
   // read too small — Grace 2026-06-22); it sits at a bumped full size so the
@@ -48,7 +44,6 @@ export function TodayHeroRingGraphic({
       target={goal}
       size={Math.round(ringGeometry(false).SIZE * 1.15)}
       numeralLarge={numeralLarge}
-      emptyTrackWarm={emptyTrackWarm}
     />
   );
 }

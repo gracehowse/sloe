@@ -4,12 +4,18 @@
  *
  * Behind `empty_state_grammar_v1` (default-OFF): on a true fresh day (host-
  * confirmed zero logged entries, via `TodayScreen`'s `mealsToday.length === 0`)
- * the ring's tick track swaps to `Colors.*.surfaceWarm`, the fresh-day log
- * pill mounts inside the hero, and the BONUS stat cell collapses (law 3 — no
- * zero-triad derived numbers) while Goal/Eaten stay. Source-grep for the
- * flag-branch wiring (mirrors `todayHeroDecard.test.tsx`'s pattern — real
- * transitive analytics imports, not a flag-mocked render) + direct renders
- * for the presentational pieces that don't need the live flag resolver.
+ * the fresh-day log pill mounts inside the hero, and the BONUS stat cell
+ * collapses (law 3 — no zero-triad derived numbers) while Goal/Eaten stay.
+ * Source-grep for the flag-branch wiring (mirrors `todayHeroDecard.test.tsx`'s
+ * pattern — real transitive analytics imports, not a flag-mocked render) +
+ * direct renders for the presentational pieces that don't need the live flag
+ * resolver.
+ *
+ * ENG-1477 (2026-07-09) — the ring's tick track no longer swaps to a "warm"
+ * colour on a fresh day: that swap (`colors.surfaceWarm`) measured 1.02:1/
+ * 1.14:1 contrast, worse than not swapping at all. Every empty day (fresh or
+ * not) now uses the same `colors.ringTick` unconditionally — see the
+ * regression guard below.
  *
  * Web parity: `tests/unit/todayFreshDayGrammarWeb.test.tsx`.
  */
@@ -94,11 +100,10 @@ describe("TodayHeroRing / CalorieRingDial — empty_state_grammar_v1 wiring (sou
     expect(heroRingSrc).toMatch(/suppressZeroBonus=\{emptyStateGrammarOn && isFreshDay\}/);
   });
 
-  it("TodayHeroRingGraphic forwards emptyTrackWarm to CalorieRingDial", () => {
-    expect(graphicSrc).toMatch(/emptyTrackWarm/);
-  });
-
-  it("CalorieRingDial swaps the tick fill to colors.surfaceWarm when emptyTrackWarm is true", () => {
-    expect(dialSrc).toMatch(/emptyTrackWarm \? colors\.surfaceWarm : colors\.ringTick/);
+  it("ENG-1477 regression guard: no emptyTrackWarm/surfaceWarm swap remains on the ring — every empty day reads the same tick colour", () => {
+    expect(graphicSrc).not.toMatch(/emptyTrackWarm/);
+    expect(dialSrc).not.toMatch(/emptyTrackWarm/);
+    expect(dialSrc).not.toMatch(/surfaceWarm/);
+    expect(dialSrc).toMatch(/tickColor = colors\.ringTick/);
   });
 });
