@@ -45,6 +45,16 @@ export interface TrajectoryCardProps {
   maintenanceTdeeKcal?: number | null;
   goal?: string | null;
   timeline?: WeightGoalTimeline | null;
+  /**
+   * ENG-1373 — passed through to `computeTrajectory` so it can disclose
+   * `goalIndependent`. Never gates rendering (a maintain-weight user with
+   * no goal still gets a pace projection) — only controls whether the
+   * basis line appends "(no goal weight set)" (standardized to match web's
+   * string, finding 6), so this card can't silently imply goal-relative
+   * pacing while the GOAL/RATE stat row two cards up shows em-dashes for
+   * the same missing data.
+   */
+  goalWeightKg?: number | null;
   style?: ViewStyle;
   testID?: string;
 }
@@ -134,6 +144,9 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
               {state.targetCalories.toLocaleString()}
             </Text>{" "}
             target.
+            {state.goalIndependent ? (
+              <Text style={{ color: colors.textTertiary }}> (no goal weight set)</Text>
+            ) : null}
           </Text>
           <Text
             testID="trajectory-footnote"
@@ -187,7 +200,8 @@ function progressPct(
 
 function accessibilityLabelFor(state: TrajectoryState): string {
   if (state.kind === "projection") {
-    return `Projected weight ${state.projectedKg} kilograms in about ${state.weeks} weeks if you keep your current pace. An estimate, not a promise.`;
+    const goalNote = state.goalIndependent ? " No goal weight set." : "";
+    return `Projected weight ${state.projectedKg} kilograms in about ${state.weeks} weeks if you keep your current pace.${goalNote} An estimate, not a promise.`;
   }
   return state.daysRemaining > 0
     ? `Projected weight. Log ${state.daysRemaining} more days to see your trajectory.`

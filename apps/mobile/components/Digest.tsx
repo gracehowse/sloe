@@ -87,21 +87,17 @@ export interface DigestProps {
    *  defaults to "show" for backward compat. See
    *  `src/lib/nutrition/weightSurfaceMode.ts`. */
   weightSurfaceMode?: WeightSurfaceMode;
-  /**
-   * ENG-740 — when `true`, render the blended premium Week-Digest
-   * (one soft-filled hero + hairline-separated strip / PATTERN /
-   * maintenance row), merging `<Digest>` + `<DigestStoryCard>`. Gated
-   * by `progress_digest_blend` at the host. Default `false` keeps the
-   * legacy layout. Mirrors the web `Digest` prop surface.
-   */
+  /** ENG-740 — `true` renders the blended premium Week-Digest (merges
+   *  `<Digest>` + `<DigestStoryCard>`), gated by `progress_digest_blend`.
+   *  Default `false` keeps the legacy layout. Mirrors web's prop surface. */
   blended?: boolean;
-  /** ENG-740 — extra data the blended layout consumes (hero track +
-   *  PATTERN bars). Only read when `blended` is `true`. */
+  /** ENG-740 — blended-layout data (hero track + PATTERN bars). */
   blendedExtras?: DigestBlendedExtras;
-  /** ENG-740 — blended maintenance row's optional "Adjust pace →" link.
-   *  When omitted the link is suppressed. Routes to the mobile targets
-   *  editor. */
+  /** ENG-740 — "Adjust pace →" link; omitted suppresses it. */
   onAdjustPace?: () => void;
+  /** Window `dayOfWeekPattern` was sampled over — lets PATTERN attribute
+   *  its claim correctly instead of implying "this week". */
+  patternWindowLabel?: string | null;
 }
 
 /**

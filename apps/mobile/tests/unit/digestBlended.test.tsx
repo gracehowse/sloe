@@ -116,6 +116,37 @@ describe("DigestBlended — structure (mobile)", () => {
     const text = ([] as unknown[]).concat(delta.props.children).join("");
     expect(text).toContain("1,657");
   });
+
+  // ENG-1373 finding 4b (mobile) — the PATTERN row's high/low-day claim
+  // is computed from a rolling 4-week sample, not the single displayed
+  // week, so the copy must attribute it to that window instead of
+  // implying it's "this week" (an unauditable claim: the displayed
+  // week's actual high/low day could differ from the 4-week pattern).
+  it("attributes the PATTERN claim to patternWindowLabel when provided", () => {
+    const { getByTestId } = render(
+      <Digest
+        blended
+        blendedExtras={extras}
+        patternWindowLabel="last 4 weeks"
+        {...baseProps}
+      />,
+    );
+    const summary = ([] as unknown[])
+      .concat(getByTestId("digest-pattern-summary").props.children)
+      .join("");
+    expect(summary).toContain("over the last 4 weeks");
+    expect(summary).not.toContain("this week");
+  });
+
+  it("falls back to 'this week' copy when patternWindowLabel is omitted", () => {
+    const { getByTestId } = render(
+      <Digest blended blendedExtras={extras} {...baseProps} />,
+    );
+    const summary = ([] as unknown[])
+      .concat(getByTestId("digest-pattern-summary").props.children)
+      .join("");
+    expect(summary).toContain("this week");
+  });
 });
 
 describe("DigestBlended — suppression gates (mobile)", () => {

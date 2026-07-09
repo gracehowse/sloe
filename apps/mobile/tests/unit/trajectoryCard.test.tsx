@@ -106,3 +106,52 @@ describe("TrajectoryCard — hidden / no-data (mobile)", () => {
     expect(queryByTestId("trajectory-card")).toBeNull();
   });
 });
+
+describe("TrajectoryCard — goal-independence disclosure (ENG-1373, mobile)", () => {
+  function flatten(children: unknown): string {
+    return ([] as unknown[])
+      .concat(children)
+      .map((c) =>
+        c !== null && typeof c === "object" && "props" in (c as object)
+          ? flatten((c as { props: { children: unknown } }).props.children)
+          : String(c ?? ""),
+      )
+      .join("");
+  }
+
+  it("appends '(no goal weight set)' to the basis line when goalWeightKg is omitted", () => {
+    const { getByTestId } = render(
+      <TrajectoryCard
+        byDay={buildDays(7, 1500)}
+        latestWeightKg={70}
+        targetCalories={1500}
+        maintenanceTdeeKcal={2200}
+        goal="maintain"
+      />,
+    );
+    const basis = flatten(getByTestId("trajectory-basis").props.children);
+    // ENG-1373 finding 6 — standardized to match web's string exactly
+    // ("(no goal weight set)", unambiguous vs. the separate calorie/plan
+    // goal — was "(no goal set)" on mobile, drifting from web's copy).
+    expect(basis).toContain("(no goal weight set)");
+  });
+
+  it("does NOT append the qualifier when goalWeightKg is supplied — still renders the same projection", () => {
+    const { getByTestId } = render(
+      <TrajectoryCard
+        byDay={buildDays(7, 1500)}
+        latestWeightKg={70}
+        targetCalories={1500}
+        maintenanceTdeeKcal={2200}
+        goal="lose"
+        goalWeightKg={65}
+      />,
+    );
+    const basis = flatten(getByTestId("trajectory-basis").props.children);
+    expect(basis).not.toContain("no goal weight set");
+    // The projection still renders — goal data only changes the disclosure,
+    // never whether the pace projection appears (ENG-1373: a maintain-weight
+    // user with no goal must still see their trajectory).
+    expect(getByTestId("trajectory-hero-kg")).toBeTruthy();
+  });
+});

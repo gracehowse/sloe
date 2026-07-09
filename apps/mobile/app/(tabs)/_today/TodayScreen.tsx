@@ -151,7 +151,7 @@ import {
   saveJournalWriteQueue,
 } from "@/lib/journalWriteQueueStorage";
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
-import { calculateTDEE, maintenanceIntakeFromTargetCalories, resolveTargets } from "@/lib/calcTargets";
+import { calculateTDEE, resolveTargets } from "@/lib/calcTargets";
 import { resolveMaintenance } from "@suppr/nutrition-core/resolveMaintenance";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/nutrition-core/measuredTdee";
 import { syncHealthDataThrottled } from "@/lib/healthSync";
@@ -1977,12 +1977,11 @@ export default function TrackerScreen() {
   );
   const profileMaintenanceTdeeKcal = resolvedMaintenance?.kcal ?? null;
 
-  /** Same baseline as Burn detail + Progress: prefer `resolveMaintenance`, else implied from saved calorie target. */
-  const maintenanceKcal = useMemo(() => {
-    const k = resolvedMaintenance?.kcal;
-    if (k != null && k > 0) return k;
-    return maintenanceIntakeFromTargetCalories(targets.calories, profileGoal, profilePlanPace);
-  }, [resolvedMaintenance, targets.calories, profileGoal, profilePlanPace]);
+  // ENG-1373 — deleted the local `maintenanceKcal` fallback-to-implied-target
+  // memo: it silently invented a number whenever `resolveMaintenance` had no
+  // signal (the "0 kcal maintenance" vs. Activity card's "MAINTENANCE 2,117"
+  // contradiction). `resolveMaintenance` is now the sole source everywhere on
+  // Today; call sites below read `profileMaintenanceTdeeKcal` directly.
   const profileMaintenanceSource = resolvedMaintenance?.source ?? null;
   const profileMaintenanceConfidence = resolvedMaintenance?.confidence ?? null;
 
@@ -2030,7 +2029,7 @@ export default function TrackerScreen() {
             true,
             activityBurnByDay,
             basalBurnByDay,
-            maintenanceKcal,
+            profileMaintenanceTdeeKcal ?? 0,
             dayKey,
             workoutsByDay,
             profileMaintenanceSource,
@@ -2042,7 +2041,7 @@ export default function TrackerScreen() {
       activityBonusCaloriesOnly,
       activityBurnByDay,
       basalBurnByDay,
-      maintenanceKcal,
+      profileMaintenanceTdeeKcal,
       dayKey,
       workoutsByDay,
     ],
@@ -2096,7 +2095,7 @@ export default function TrackerScreen() {
         activityBonusCaloriesOnly,
         activityBurnByDay,
         basalBurnByDay,
-        maintenanceKcal,
+        profileMaintenanceTdeeKcal ?? 0,
         dayKey,
         workoutsByDay,
         profileMaintenanceSource,
@@ -2106,7 +2105,7 @@ export default function TrackerScreen() {
       activityBonusCaloriesOnly,
       activityBurnByDay,
       basalBurnByDay,
-      maintenanceKcal,
+      profileMaintenanceTdeeKcal,
       dayKey,
       workoutsByDay,
       profileMaintenanceSource,
@@ -2121,10 +2120,10 @@ export default function TrackerScreen() {
       todayDateKey: dateKeyFromDate(new Date()),
       restingKcal: basalBurnByDay[dayKey] ?? 0,
       activeKcal: activityBurnByDay[dayKey] ?? 0,
-      maintenanceKcal,
+      maintenanceKcal: profileMaintenanceTdeeKcal ?? 0,
       workoutKcal: workouts.reduce((s, w) => s + (w.calories ?? 0), 0),
     });
-  }, [activityBurnByDay, basalBurnByDay, maintenanceKcal, dayKey, workoutsByDay]);
+  }, [activityBurnByDay, basalBurnByDay, profileMaintenanceTdeeKcal, dayKey, workoutsByDay]);
 
   const navigateDay = useCallback((offset: number) => {
     startTransition(() => {
@@ -2217,7 +2216,7 @@ export default function TrackerScreen() {
           activityBonusCaloriesOnly,
           activityBurnByDay,
           basalBurnByDay,
-          maintenanceKcal,
+          profileMaintenanceTdeeKcal ?? 0,
           d.key,
           workoutsByDay,
           profileMaintenanceSource,
@@ -2232,22 +2231,17 @@ export default function TrackerScreen() {
     activityBurnByDay,
     workoutsByDay,
     basalBurnByDay,
-    maintenanceKcal,
+    profileMaintenanceTdeeKcal,
     profileMaintenanceSource,
   ]);
 
-  // F-146 (2026-05-10): the week-view "Net deficit / Net surplus"
-  // tile previously compared `weekConsumed > weekTarget` (consumed-
-  // vs-goal), which mislabels a deficit as a surplus when consumed is
-  // above goal but below total burn. The Activity Bonus card (one
-  // section above) gets this right via `totalBurn − consumed`. This
-  // sum of (basal + activity) per day across the visible week is the
-  // same shape the Activity Bonus card already uses. Falls back to
-  // `maintenanceKcal × 7` (a flat assumption) when the user hasn't
-  // opted into activity-adjusted calories so the tile still answers
-  // "deficit / surplus" with a defensible burn baseline.
+  // F-146: week "Net deficit/surplus" compares burn-vs-consumed (not
+  // goal-vs-consumed, which mislabels overshoot-under-burn as surplus),
+  // matching the Activity Bonus card. Falls back to
+  // `profileMaintenanceTdeeKcal × 7` (`0` when there's no signal — ENG-1373)
+  // when the user hasn't opted into activity-adjusted calories.
   const weekBurnTotal = useMemo(() => {
-    const fallbackPerDay = Math.max(0, maintenanceKcal);
+    const fallbackPerDay = Math.max(0, profileMaintenanceTdeeKcal ?? 0);
     return weekData.days.reduce((sum, d) => {
       const basal = basalBurnByDay[d.key];
       const activity = activityBurnByDay[d.key];
@@ -2256,7 +2250,7 @@ export default function TrackerScreen() {
         (typeof activity === "number" && Number.isFinite(activity) ? activity : 0);
       return sum + dayBurn;
     }, 0);
-  }, [weekData.days, basalBurnByDay, activityBurnByDay, maintenanceKcal]);
+  }, [weekData.days, basalBurnByDay, activityBurnByDay, profileMaintenanceTdeeKcal]);
 
   const navigateWeek = useCallback((offset: number) => {
     startTransition(() => {
@@ -4375,7 +4369,7 @@ export default function TrackerScreen() {
             fatTarget={targets.fat}
             preferActivityAdjustedCalories={preferActivityAdjustedCalories}
             activityBonusCaloriesOnly={activityBonusCaloriesOnly}
-            maintenanceKcal={maintenanceKcal}
+            maintenanceKcal={profileMaintenanceTdeeKcal}
             dayGoals={weekData.days.map((day) =>
               targets.calories +
               dayActivityBudgetAddon(
@@ -4383,7 +4377,7 @@ export default function TrackerScreen() {
                 activityBonusCaloriesOnly,
                 activityBurnByDay,
                 basalBurnByDay,
-                maintenanceKcal,
+                profileMaintenanceTdeeKcal ?? 0,
                 day.key,
                 workoutsByDay,
                 profileMaintenanceSource,

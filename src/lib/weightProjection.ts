@@ -294,6 +294,21 @@ export type TrajectoryState =
       avgCalories: number;
       /** The user's daily calorie target. */
       targetCalories: number;
+      /**
+       * ENG-1373 — `true` when this projection was computed with no
+       * `goalWeightKg` supplied to `computeTrajectory`. The pace
+       * projection is legitimately goal-independent (it projects from
+       * recent intake vs. TDEE, not from a goal weight), so this does
+       * NOT gate rendering — a maintain-weight user with no goal set
+       * should still see their trajectory. It exists so the render
+       * layer can append a "(no goal set)" qualifier to the basis line
+       * instead of implying the projection is goal-relative when nearby
+       * GOAL/RATE cards on the same screen are suppressed for missing
+       * goal data — the exact "iOS shows GOAL/RATE as em-dashes two
+       * cards above a projection that computes a pace" contradiction
+       * from the ticket.
+       */
+      goalIndependent: boolean;
     }
   | {
       kind: "placeholder";
@@ -304,6 +319,34 @@ export type TrajectoryState =
       /** The floor itself (denominator for the progress bar). */
       daysRequired: number;
     };
+
+/**
+ * ENG-1373 — single gate for "do we have enough data to show
+ * goal-relative numbers (GOAL/RATE, Journey progress)?".
+ *
+ * Both operands must exist: a goal weight the user set, and a latest
+ * observed weight to measure progress from. Extracted so the three
+ * independently-inlined `latestWeightKg != null && goalWeightKg != null`
+ * checks across mobile `progress.tsx` and web `ProgressDashboard.tsx`
+ * can't drift — the exact class of bug that let iOS show em-dashes for
+ * GOAL/RATE while web showed concrete numbers for the same account (a
+ * mount-time fetch race left one platform's `goalWeightKg` transiently
+ * null when the other had already hydrated it; the race itself is a
+ * platform-layer fix, but the two platforms must at least agree on
+ * what "enough data" means once both have loaded).
+ */
+export function hasGoalWeightData(opts: {
+  goalWeightKg: number | null;
+  latestWeightKg: number | null;
+}): boolean {
+  const { goalWeightKg, latestWeightKg } = opts;
+  return (
+    typeof goalWeightKg === "number" &&
+    Number.isFinite(goalWeightKg) &&
+    typeof latestWeightKg === "number" &&
+    Number.isFinite(latestWeightKg)
+  );
+}
 
 /**
  * ENG-741 — single source of truth for the Trajectory card's state.
@@ -331,6 +374,14 @@ export function computeTrajectory(opts: {
   goal?: string | null;
   timeline?: WeightGoalTimeline | null;
   weeksOut?: number;
+  /**
+   * ENG-1373 — the user's goal weight, when set. Only used to derive
+   * `goalIndependent` on the returned projection (see `TrajectoryState`)
+   * — never gates whether a projection renders. Omit or pass `null`
+   * for maintain-weight users with no goal weight; the projection still
+   * computes from intake vs. TDEE.
+   */
+  goalWeightKg?: number | null;
 }): TrajectoryState | null {
   const {
     byDay,
@@ -340,7 +391,9 @@ export function computeTrajectory(opts: {
     goal,
     timeline,
     weeksOut = 5,
+    goalWeightKg = null,
   } = opts;
+  const goalIndependent = !hasGoalWeightData({ goalWeightKg, latestWeightKg });
 
   if (latestWeightKg == null || !Number.isFinite(latestWeightKg)) return null;
 
@@ -382,6 +435,7 @@ export function computeTrajectory(opts: {
     weeks: projection.projectionWeeks,
     avgCalories,
     targetCalories,
+    goalIndependent,
   };
 }
 

@@ -79,7 +79,7 @@ const FULL_WEEKDAY_LABELS = [
  * Compute the day-of-week pattern from a `nutritionByDay` map.
  *
  * Algorithm:
- *   1. Walk back `WINDOW_DAYS` days from `now` (inclusive of today).
+ *   1. Walk back `WINDOW_DAYS` days from `windowEnd` (inclusive).
  *   2. For each day with ≥1 logged meal, compute its kcal sum and
  *      bucket it under that day's weekday (Sun..Sat).
  *   3. After the walk, drop weekdays with zero samples (otherwise a
@@ -95,19 +95,31 @@ const FULL_WEEKDAY_LABELS = [
  * Returns `null` when ANY gate fails — the caller passes the result
  * directly to `DigestStoryInput.dayOfWeekPattern` and the digest
  * narrative suppresses the line on null.
+ *
+ * `windowEnd` has no default (ENG-1373). A defaulted `now = new Date()`
+ * let two call sites in the same render — one anchored on the digest's
+ * *previous completed week* via `buildWeeklyRecap`, the other silently
+ * anchored on wall-clock "today" via this function's old default — cite
+ * weekdays that fell outside the week the digest was actually showing
+ * ("Fridays ran higher than Thursdays" naming two days the digest said
+ * were never logged). Forcing every caller to pass an explicit
+ * `windowEnd` makes that mismatch a code-review-visible choice instead
+ * of an invisible footgun. Callers that want "the rolling window ending
+ * today" pass `new Date()` explicitly; `buildDigestWeekView` passes the
+ * same anchor `buildWeeklyRecap` used for the week it's describing.
  */
 export function computeDayOfWeekPattern<M extends MealMacros>(
   byDay: ByDayOf<M>,
-  now: Date = new Date(),
+  windowEnd: Date,
 ): DayOfWeekPattern | null {
   // Per-weekday bucket: list of kcal sums, one entry per logged day.
   const buckets: number[][] = [[], [], [], [], [], [], []];
   let totalDaysLogged = 0;
 
-  // Walk back WINDOW_DAYS days inclusive of today.
+  // Walk back WINDOW_DAYS days inclusive of windowEnd.
   for (let offset = 0; offset < DAY_OF_WEEK_PATTERN_WINDOW_DAYS; offset++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - offset);
+    const d = new Date(windowEnd);
+    d.setDate(windowEnd.getDate() - offset);
     const key = dateKeyFromDate(d);
     const meals = byDay[key];
     if (!meals || meals.length === 0) continue;
@@ -172,4 +184,69 @@ export function computeDayOfWeekPattern<M extends MealMacros>(
     highDayAvg: Math.round(highMean),
     lowDayAvg: Math.round(lowMean),
   };
+}
+
+/** English weekday label → `Date#getDay()` index (0=Sun..6=Sat), for
+ *  matching a pattern's `highDay`/`lowDay` label against the weekday
+ *  of a `YYYY-MM-DD` key without re-parsing full Date objects. */
+const WEEKDAY_LABEL_TO_INDEX: Readonly<Record<string, number>> =
+  Object.freeze(
+    FULL_WEEKDAY_LABELS.reduce<Record<string, number>>((acc, label, idx) => {
+      acc[label] = idx;
+      return acc;
+    }, {}),
+  );
+
+/**
+ * ENG-1373 — "both operands exist" gate for the day-of-week pattern.
+ *
+ * `computeDayOfWeekPattern` scans a rolling 28-day window that is
+ * intentionally wider than any single displayed week (4 weeks of
+ * samples are needed to trust a per-weekday mean). That is correct for
+ * computing the pattern, but it means the pattern's `highDay`/`lowDay`
+ * can legitimately name weekdays that never appear among the *specific*
+ * week a digest card is currently showing — the exact bug in the
+ * ticket ("Fridays ran higher than Thursdays" citing two days the
+ * digest said were never logged for the displayed week).
+ *
+ * This gate answers a narrower question than `computeDayOfWeekPattern`
+ * itself: given the pattern AND the digest week's own logged date-keys,
+ * were BOTH the cited high day and low day actually logged in *this*
+ * displayed week? If not, the narrative line would reference days the
+ * reader can't see in the week they're looking at — suppress it.
+ *
+ * Returns `false` (suppress) when:
+ *   - `pattern` is `null` (nothing to check), or
+ *   - either `highDay` or `lowDay`'s weekday does not appear among
+ *     `daysLoggedThisWeek`'s keys.
+ *
+ * `daysLoggedThisWeek` should be the digest week's own logged-day list
+ * (e.g. `WeeklyRecap`'s underlying `bundle.days` filtered to
+ * `calories > 0`, or equivalently any `{ key: "YYYY-MM-DD" }[]` of days
+ * that actually had food logged in the displayed week) — NOT the full
+ * 28-day pattern window.
+ */
+export function isDayOfWeekPatternWithinLoggedWeek(
+  pattern: DayOfWeekPattern | null,
+  daysLoggedThisWeek: ReadonlyArray<{ key: string }>,
+): boolean {
+  if (!pattern) return false;
+
+  const loggedWeekdays = new Set<number>();
+  for (const { key } of daysLoggedThisWeek) {
+    // `key` is `YYYY-MM-DD`; parse as local-noon to avoid UTC-boundary
+    // day-shift the same way `dayOfWeekPattern`'s own window walk does.
+    const parts = key.split("-").map((n) => Number.parseInt(n, 10));
+    if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) continue;
+    const [y, m, d] = parts as [number, number, number];
+    const parsed = new Date(y, m - 1, d, 12, 0, 0, 0);
+    if (Number.isNaN(parsed.getTime())) continue;
+    loggedWeekdays.add(parsed.getDay());
+  }
+
+  const highIdx = WEEKDAY_LABEL_TO_INDEX[pattern.highDay];
+  const lowIdx = WEEKDAY_LABEL_TO_INDEX[pattern.lowDay];
+  if (highIdx == null || lowIdx == null) return false;
+
+  return loggedWeekdays.has(highIdx) && loggedWeekdays.has(lowIdx);
 }

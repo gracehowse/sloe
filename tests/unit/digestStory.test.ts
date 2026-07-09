@@ -160,7 +160,7 @@ describe("buildDigestStory", () => {
       dayOfWeekPattern: { highDay: "Saturday", lowDay: "Tuesday", deltaKcal: 250 },
     });
     expect(out.dayOfWeekPatternLine).toBe(
-      "You averaged about 250 more kcal on Saturdays than Tuesdays.",
+      "Over the last 4 weeks, you averaged about 250 more kcal on Saturdays than Tuesdays.",
     );
     // Paragraph picks it up in the documented sentence order.
     expect(out.paragraph.endsWith(out.dayOfWeekPatternLine!)).toBe(true);
@@ -190,7 +190,7 @@ describe("buildDigestStory", () => {
       dayOfWeekPattern: { highDay: "Friday", lowDay: "Monday", deltaKcal: 1200 },
     });
     expect(out.dayOfWeekPatternLine).toBe(
-      "You averaged about 1,200 more kcal on Fridays than Mondays.",
+      "Over the last 4 weeks, you averaged about 1,200 more kcal on Fridays than Mondays.",
     );
   });
 });

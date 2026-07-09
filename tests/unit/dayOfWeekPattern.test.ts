@@ -18,6 +18,7 @@ import {
   DAY_OF_WEEK_PATTERN_MIN_DELTA_KCAL,
   DAY_OF_WEEK_PATTERN_WINDOW_DAYS,
   computeDayOfWeekPattern,
+  isDayOfWeekPatternWithinLoggedWeek,
 } from "../../src/lib/nutrition/dayOfWeekPattern";
 
 type ByDay = Record<string, Array<{ calories: number; protein: number; carbs: number; fat: number }>>;
@@ -198,5 +199,69 @@ describe("computeDayOfWeekPattern", () => {
     expect(DAY_OF_WEEK_PATTERN_MIN_DAYS).toBe(14);
     expect(DAY_OF_WEEK_PATTERN_MIN_DELTA_KCAL).toBe(200);
     expect(DAY_OF_WEEK_PATTERN_WINDOW_DAYS).toBe(28);
+  });
+
+  it("requires an explicit windowEnd — no silent wall-clock default", () => {
+    // ENG-1373: the old `now: Date = new Date()` default let one call
+    // site (a digest anchored on the previous completed week) silently
+    // diverge from another (this function defaulting to "today"). The
+    // fix removes the default entirely, so calling with only one
+    // argument must fail to typecheck — asserted here as a compile-fail
+    // check (not executed; a runtime call with a missing second arg
+    // would throw before this assertion could run, so the type-level
+    // guarantee is the thing worth pinning).
+    // @ts-expect-error — windowEnd is required; no default.
+    const _typeCheckOnly: (byDay: ReturnType<typeof buildByDay>) => unknown =
+      computeDayOfWeekPattern;
+    void _typeCheckOnly;
+    expect(computeDayOfWeekPattern.length).toBe(2);
+  });
+});
+
+describe("isDayOfWeekPatternWithinLoggedWeek", () => {
+  const NOW = new Date(2026, 3, 29); // 2026-04-29 (Wed)
+
+  it("returns false for a null pattern", () => {
+    expect(
+      isDayOfWeekPatternWithinLoggedWeek(null, [{ key: "2026-04-06" }]),
+    ).toBe(false);
+  });
+
+  it("returns true when both cited weekdays appear in the logged week", () => {
+    const byDay = buildByDay(NOW, 28, {
+      0: 2000,
+      1: 2000,
+      2: 1700, // Tue — low
+      3: 2000,
+      4: 2000,
+      5: 2000,
+      6: 2400, // Sat — high
+    });
+    const pattern = computeDayOfWeekPattern(byDay, NOW);
+    expect(pattern).not.toBeNull();
+    // A displayed week that includes both a Tuesday and a Saturday key.
+    const loggedWeek = [
+      { key: "2026-04-28" }, // Tue
+      { key: "2026-04-25" }, // Sat
+    ];
+    expect(isDayOfWeekPatternWithinLoggedWeek(pattern, loggedWeek)).toBe(true);
+  });
+
+  it("returns false when the pattern cites a weekday not logged in the displayed week", () => {
+    const byDay = buildByDay(NOW, 28, {
+      0: 2000,
+      1: 2000,
+      2: 1700, // Tue — low
+      3: 2000,
+      4: 2000,
+      5: 2000,
+      6: 2400, // Sat — high
+    });
+    const pattern = computeDayOfWeekPattern(byDay, NOW);
+    expect(pattern).not.toBeNull();
+    // Displayed week only logged a Wednesday and a Monday — neither the
+    // pattern's Tuesday (low) nor Saturday (high).
+    const loggedWeek = [{ key: "2026-04-27" }, { key: "2026-04-20" }]; // Mon, Mon
+    expect(isDayOfWeekPatternWithinLoggedWeek(pattern, loggedWeek)).toBe(false);
   });
 });

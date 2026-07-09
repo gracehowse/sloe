@@ -43,6 +43,15 @@ export interface TrajectoryCardProps {
   maintenanceTdeeKcal?: number | null;
   goal?: string | null;
   timeline?: WeightGoalTimeline | null;
+  /**
+   * ENG-1373 — the user's goal weight, when set. Passed straight through
+   * to `computeTrajectory` so `TrajectoryState.goalIndependent` reflects
+   * this account's real goal-weight data, not an implicit `null`. Never
+   * gates whether the card renders — see `computeTrajectory`'s doc
+   * comment for why a missing goal weight must not suppress the pace
+   * projection.
+   */
+  goalWeightKg?: number | null;
   className?: string;
 }
 
@@ -112,6 +121,22 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
               {state.targetCalories.toLocaleString()}
             </span>{" "}
             target.
+            {/* ENG-1373 — this projection is legitimately goal-independent
+                (it forecasts from intake vs. TDEE, not from a goal weight),
+                so it never suppresses when no goal is set. But nearby
+                GOAL/RATE + Journey cards DO suppress without goal data —
+                without this disclosure a user could see em-dashes there
+                and a concrete forecast here for the same missing input,
+                which read as the numbers disagreeing. Disclose instead of
+                hide. */}
+            {state.goalIndependent ? (
+              <span
+                data-testid="trajectory-basis-no-goal-qualifier"
+                className="text-muted-foreground/80"
+              >
+                {" "}(no goal weight set)
+              </span>
+            ) : null}
           </p>
           <p
             data-testid="trajectory-footnote"
@@ -163,7 +188,13 @@ function progressPct(
 
 function accessibilityLabelFor(state: TrajectoryState): string {
   if (state.kind === "projection") {
-    return `Projected weight ${state.projectedKg} kilograms in about ${state.weeks} weeks if you keep your current pace. An estimate, not a promise.`;
+    // ENG-1373 finding 6 — mobile's label already discloses the
+    // goal-independence qualifier ("No goal weight set."); web's omitted it
+    // entirely, so screen-reader users never heard it even though sighted
+    // users see "(no goal weight set)" in the visible basis line above.
+    // Mirror mobile `TrajectoryCard.tsx` so both platforms disclose equally.
+    const goalNote = state.goalIndependent ? " No goal weight set." : "";
+    return `Projected weight ${state.projectedKg} kilograms in about ${state.weeks} weeks if you keep your current pace.${goalNote} An estimate, not a promise.`;
   }
   return state.daysRemaining > 0
     ? `Projected weight. Log ${state.daysRemaining} more days to see your trajectory.`
