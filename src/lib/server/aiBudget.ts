@@ -1,7 +1,7 @@
 /**
  * AI cost circuit-breaker — Blocker 3 (2026-05-14 production-readiness audit).
  *
- * Two-layer budget enforcement, both Upstash-backed counters:
+ * Three-layer budget enforcement, all Upstash-backed counters:
  *
  *   Layer A — per-user daily call cap.
  *     Default 50 calls / 24h per `user_id`. Configurable via
@@ -13,10 +13,21 @@
  *     is computed from model + token count using the static price
  *     table below.
  *
+ *   Layer C — per-IP daily call cap (ENG-1395).
+ *     Default 200 calls / 24h per hashed client IP (4× the per-user
+ *     cap). Configurable via `AI_BUDGET_PER_IP_DAILY_CALLS`. Resets on
+ *     UTC day boundary. Layer A resets per fresh account, so
+ *     account-farming (many throwaway accounts behind one shared IP)
+ *     defeats it; Layer C keys on the thing farmed accounts share.
+ *     The IP is SHA-256-hashed by the caller before it reaches this
+ *     module — a raw IP never lands in the 36h counter. System/cron
+ *     callers pass `ipHash = null` and skip this layer entirely. The
+ *     70% IP alarm doubles as the spend-anomaly signal.
+ *
  * Each AI call:
- *   1. `reserveBudget(userId, modelId, maxOutputTokens, maxInputTokens?)`
+ *   1. `reserveBudget(userId, modelId, maxOutputTokens, maxInputTokens?, ipHash?)`
  *      computes a worst-case cost from `max_tokens` and reserves it
- *      against both counters. Returns `BudgetGrant` on success,
+ *      against all counters. Returns `BudgetGrant` on success,
  *      `BudgetDenied` on cap-exceeded.
  *   2. After the model call: `commitBudget(grantId, actualUsage)`
  *      reconciles the reservation against actual token usage. If the
@@ -177,12 +188,24 @@ export function computeCostPence(
 
 const DEFAULT_PER_USER_DAILY_CALLS = 50;
 const DEFAULT_GLOBAL_DAILY_GBP = 50;
+// Layer C (ENG-1395): 4× the per-user cap. Generous for a shared NAT /
+// office / campus IP (many legitimate users behind one address) while
+// still capping an account-farmer at ~4 accounts' worth of daily calls.
+const DEFAULT_PER_IP_DAILY_CALLS = 200;
 
 function perUserDailyCallCap(): number {
   const raw = process.env.AI_BUDGET_PER_USER_DAILY_CALLS;
   if (!raw) return DEFAULT_PER_USER_DAILY_CALLS;
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_PER_USER_DAILY_CALLS;
+  return n;
+}
+
+function perIpDailyCallCap(): number {
+  const raw = process.env.AI_BUDGET_PER_IP_DAILY_CALLS;
+  if (!raw) return DEFAULT_PER_IP_DAILY_CALLS;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_PER_IP_DAILY_CALLS;
   return n;
 }
 
@@ -417,7 +440,13 @@ function userCallsKey(userId: string, dateKey: string): string {
   return `ai_budget:user_calls:${userId}:${dateKey}`;
 }
 
-function alarmFiredKey(scope: "global" | "user", id: string, dateKey: string): string {
+// Layer C (ENG-1395) — per-IP daily call counter. `ipHash` is already
+// a SHA-256-derived hex string (never a raw IP) when it reaches here.
+function ipCallsKey(ipHash: string, dateKey: string): string {
+  return `ai_budget:ip_calls:${ipHash}:${dateKey}`;
+}
+
+function alarmFiredKey(scope: AlarmScope, id: string, dateKey: string): string {
   return `ai_budget:alarm_fired:${scope}:${id}:${dateKey}`;
 }
 
@@ -432,7 +461,7 @@ function alarmFiredKey(scope: "global" | "user", id: string, dateKey: string): s
 
 const ALARM_THRESHOLD = 0.7;
 
-type AlarmScope = "global" | "user";
+type AlarmScope = "global" | "user" | "ip";
 
 async function fireAlarmOnce(args: {
   scope: AlarmScope;
@@ -449,7 +478,12 @@ async function fireAlarmOnce(args: {
   const usedDisplay = unit === "pence" ? `£${(used / 100).toFixed(2)}` : `${used}`;
   const capDisplay = unit === "pence" ? `£${(cap / 100).toFixed(2)}` : `${cap}`;
   const pct = Math.round((used / cap) * 100);
-  const tag = scope === "global" ? "global_spend" : `user:${scopeId}`;
+  const tag =
+    scope === "global"
+      ? "global_spend"
+      : scope === "ip"
+        ? `ip:${scopeId}`
+        : `user:${scopeId}`;
   console.warn(
     `[ai-budget] ALARM 70% — scope=${tag} date=${dateKey} used=${usedDisplay} cap=${capDisplay} pct=${pct}%`,
   );
@@ -486,6 +520,9 @@ async function maybeFireAlarms(args: {
   userCallsCap: number;
   globalSpendUsed: number;
   globalSpendCap: number;
+  ipHash: string | null;
+  ipCallsUsed: number;
+  ipCallsCap: number;
   dateKey: string;
 }): Promise<void> {
   const {
@@ -494,6 +531,9 @@ async function maybeFireAlarms(args: {
     userCallsCap,
     globalSpendUsed,
     globalSpendCap,
+    ipHash,
+    ipCallsUsed,
+    ipCallsCap,
     dateKey,
   } = args;
   if (globalSpendUsed >= globalSpendCap * ALARM_THRESHOLD) {
@@ -513,6 +553,19 @@ async function maybeFireAlarms(args: {
       dateKey,
       used: userCallsUsed,
       cap: userCallsCap,
+      unit: "calls",
+    });
+  }
+  // Layer C (ENG-1395) — the per-IP 70% alarm IS the spend-anomaly
+  // signal: a single IP approaching 200 calls/day is the shape of an
+  // account-farming run, not a legitimate NAT gateway's daily traffic.
+  if (ipHash && ipCallsUsed >= ipCallsCap * ALARM_THRESHOLD) {
+    await fireAlarmOnce({
+      scope: "ip",
+      scopeId: ipHash,
+      dateKey,
+      used: ipCallsUsed,
+      cap: ipCallsCap,
       unit: "calls",
     });
   }
@@ -540,7 +593,7 @@ export type BudgetGrant = {
 export type BudgetDenied = {
   ok: false;
   /** Which layer denied. */
-  reason: "per_user_calls" | "global_spend";
+  reason: "per_user_calls" | "global_spend" | "per_ip_calls";
   /** Counter-only mode (enforcement flag off) — counter incremented
    *  but caller MUST NOT block. Always `false` when enforcement is on. */
   shadow: boolean;
@@ -559,6 +612,10 @@ type GrantRecord = {
   dateKey: string;
   userId: string | null;
   modelId: string;
+  /** Hashed client IP (Layer C, ENG-1395) or null for system/cron
+   *  callers. Threaded so `releaseBudget` can refund the ip_calls
+   *  counter on a failed call, mirroring the per-user refund. */
+  ipHash: string | null;
   /** When set, this grant has already been committed/released. Used
    *  to prevent double-refunds. */
   settled: boolean;
@@ -594,12 +651,17 @@ function newGrantId(): string {
  *                conservative ceiling). When omitted, defaults to
  *                4× the output cap — a rough worst-case for vision
  *                calls where the image dominates the input.
+ * @param ipHash  Layer C (ENG-1395). SHA-256-derived hex of the trusted
+ *                client IP (never a raw IP). Pass `null` for genuinely
+ *                system-level calls (cron jobs) or when no request scope
+ *                exists — those skip the per-IP layer entirely.
  */
 export async function reserveBudget(
   userId: string | null,
   modelId: string,
   maxOutputTokens: number,
   maxInputTokens?: number,
+  ipHash: string | null = null,
 ): Promise<BudgetGrant | BudgetDenied> {
   const inputCeiling = Math.max(0, maxInputTokens ?? maxOutputTokens * 4);
   const reservedPence = computeCostPence(modelId, inputCeiling, Math.max(0, maxOutputTokens));
@@ -613,6 +675,7 @@ export async function reserveBudget(
 
   const userCallsCap = perUserDailyCallCap();
   const globalCapPence = globalDailyCapPence();
+  const ipCallsCap = perIpDailyCallCap();
 
   // Layer A: per-user daily call count.
   let userCallsAfter: number | null = null;
@@ -629,8 +692,18 @@ export async function reserveBudget(
     void incrBy(userSpendKey(userId, dateKey), reservedPence);
   }
 
-  // If Upstash failed during a fail-open window, allow through.
-  const upstashHealthy = userCallsAfter != null || globalSpendAfter != null;
+  // Layer C (ENG-1395): per-IP daily call count. Only when we have a
+  // hashed IP — system/cron callers pass null and skip this layer.
+  let ipCallsAfter: number | null = null;
+  if (ipHash) {
+    ipCallsAfter = await incrBy(ipCallsKey(ipHash, dateKey), 1);
+  }
+
+  // If Upstash failed during a fail-open window, allow through. The IP
+  // counter joins the health check so a Layer-C-only call still reads
+  // Upstash health correctly.
+  const upstashHealthy =
+    userCallsAfter != null || globalSpendAfter != null || ipCallsAfter != null;
   if (!upstashHealthy) {
     if (isInFailOpenWindow()) {
       console.warn("[ai-budget] Upstash unhealthy — failing OPEN (within 5min window)");
@@ -659,6 +732,9 @@ export async function reserveBudget(
     userCallsCap,
     globalSpendUsed: globalSpendAfter ?? 0,
     globalSpendCap: globalCapPence,
+    ipHash,
+    ipCallsUsed: ipCallsAfter ?? 0,
+    ipCallsCap,
     dateKey,
   });
 
@@ -676,7 +752,7 @@ export async function reserveBudget(
       // counter.
       return {
         ok: true,
-        grantId: registerGrant({ reservedPence, dateKey, userId, modelId }),
+        grantId: registerGrant({ reservedPence, dateKey, userId, modelId, ipHash }),
         reservedPence,
         dateKey,
         userId,
@@ -687,6 +763,7 @@ export async function reserveBudget(
     if (userId) void incrBy(userCallsKey(userId, dateKey), -1);
     void incrBy(globalSpendKey(dateKey), -reservedPence);
     if (userId) void incrBy(userSpendKey(userId, dateKey), -reservedPence);
+    if (ipHash) void incrBy(ipCallsKey(ipHash, dateKey), -1);
     return {
       ok: false,
       reason: "per_user_calls",
@@ -704,7 +781,7 @@ export async function reserveBudget(
     if (!enforcement) {
       return {
         ok: true,
-        grantId: registerGrant({ reservedPence, dateKey, userId, modelId }),
+        grantId: registerGrant({ reservedPence, dateKey, userId, modelId, ipHash }),
         reservedPence,
         dateKey,
         userId,
@@ -714,6 +791,7 @@ export async function reserveBudget(
     if (userId) void incrBy(userCallsKey(userId, dateKey), -1);
     void incrBy(globalSpendKey(dateKey), -reservedPence);
     if (userId) void incrBy(userSpendKey(userId, dateKey), -reservedPence);
+    if (ipHash) void incrBy(ipCallsKey(ipHash, dateKey), -1);
     return {
       ok: false,
       reason: "global_spend",
@@ -722,9 +800,44 @@ export async function reserveBudget(
     };
   }
 
+  // Layer C (ENG-1395) — cap check: per-IP daily call count. Mirrors
+  // the per-user block. The IP layer is the account-farming backstop:
+  // Layer A resets per fresh account, but throwaway accounts share an
+  // IP, so this cap survives account rotation.
+  if (ipHash && ipCallsAfter != null && ipCallsAfter > ipCallsCap) {
+    console.warn(
+      `[ai-budget] per-IP cap exceeded — ip=${ipHash} used=${ipCallsAfter} cap=${ipCallsCap} ` +
+        `enforcement=${enforcement ? "on" : "off"}`,
+    );
+    if (!enforcement) {
+      // Shadow mode: still grant, keep the counter so the shape shows
+      // up in the trace before enforcement is flipped on.
+      return {
+        ok: true,
+        grantId: registerGrant({ reservedPence, dateKey, userId, modelId, ipHash }),
+        reservedPence,
+        dateKey,
+        userId,
+        modelId,
+      };
+    }
+    // Refund ALL increments since we're denying: user calls (if any),
+    // global spend, per-user spend (if any), and the ip_calls bump.
+    if (userId) void incrBy(userCallsKey(userId, dateKey), -1);
+    void incrBy(globalSpendKey(dateKey), -reservedPence);
+    if (userId) void incrBy(userSpendKey(userId, dateKey), -reservedPence);
+    void incrBy(ipCallsKey(ipHash, dateKey), -1);
+    return {
+      ok: false,
+      reason: "per_ip_calls",
+      shadow: false,
+      retryAfterSec: secondsToUtcMidnight(),
+    };
+  }
+
   return {
     ok: true,
-    grantId: registerGrant({ reservedPence, dateKey, userId, modelId }),
+    grantId: registerGrant({ reservedPence, dateKey, userId, modelId, ipHash }),
     reservedPence,
     dateKey,
     userId,
@@ -797,6 +910,12 @@ export async function releaseBudget(grantId: string): Promise<void> {
       // count toward the daily cap.
       void incrBy(userCallsKey(grant.userId, grant.dateKey), -1);
     }
+    // Layer C (ENG-1395) — refund the per-IP call count too, mirroring
+    // the per-user refund. A call we never completed shouldn't burn a
+    // slot against the IP's daily cap.
+    if (grant.ipHash) {
+      void incrBy(ipCallsKey(grant.ipHash, grant.dateKey), -1);
+    }
   }
 }
 
@@ -810,9 +929,12 @@ export async function releaseBudget(grantId: string): Promise<void> {
  * with the `ai_capacity_reached` code and a `Retry-After` header.
  */
 export class AiBudgetExceededError extends Error {
-  readonly reason: "per_user_calls" | "global_spend";
+  readonly reason: "per_user_calls" | "global_spend" | "per_ip_calls";
   readonly retryAfterSec: number;
-  constructor(reason: "per_user_calls" | "global_spend", retryAfterSec: number) {
+  constructor(
+    reason: "per_user_calls" | "global_spend" | "per_ip_calls",
+    retryAfterSec: number,
+  ) {
     super(`AI budget exceeded — ${reason}`);
     this.name = "AiBudgetExceededError";
     this.reason = reason;
@@ -843,6 +965,7 @@ export const _keyComposersForTest = {
   globalSpend: globalSpendKey,
   userSpend: userSpendKey,
   userCalls: userCallsKey,
+  ipCalls: ipCallsKey,
   alarmFired: alarmFiredKey,
 };
 

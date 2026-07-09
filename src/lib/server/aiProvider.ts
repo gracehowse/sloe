@@ -21,6 +21,10 @@
  * Both accept an `AbortSignal` for sub-platform timeout control.
  */
 
+import { createHash } from "node:crypto";
+
+import { headers } from "next/headers";
+
 import { emitAiGeneration } from "../analytics/aiGeneration";
 import {
   AiBudgetExceededError,
@@ -28,6 +32,7 @@ import {
   releaseBudget,
   reserveBudget,
 } from "./aiBudget";
+import { getTrustedClientIp } from "./clientIp";
 
 // 2026-05-08 hotfix: switched from `claude-sonnet-4-6` (alias) to the
 // fully-qualified dated model id. Aliases sometimes 400 via direct
@@ -124,6 +129,28 @@ function readKeys(): ProviderKeys {
     claudeKey: process.env.ANTHROPIC_API_KEY?.trim() || null,
     openaiKey: process.env.OPENAI_API_KEY?.trim() || null,
   };
+}
+
+/**
+ * Resolve the non-forgeable client IP (ENG-1226 `getTrustedClientIp`)
+ * and hash it for the AI budget Layer C counter (ENG-1395). We NEVER
+ * store a raw IP in the 36h Upstash counter — the counter only ever
+ * sees a truncated SHA-256 hex, salted with `AI_BUDGET_IP_SALT`.
+ *
+ * Returns null when there's no request scope (cron/system callers call
+ * `next/headers` outside a request and it throws) or no trusted IP
+ * header (local dev). Both cases skip the per-IP layer, matching the
+ * `ipHash = null` contract in `reserveBudget`.
+ */
+async function resolveTrustedIpHash(): Promise<string | null> {
+  try {
+    const ip = getTrustedClientIp(await headers());
+    if (!ip) return null;
+    const salt = process.env.AI_BUDGET_IP_SALT || "suppr-ip-v1";
+    return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
+  } catch {
+    return null; // no request scope (cron/system) → skip the IP layer
+  }
 }
 
 function notConfigured(_callSite: string): AiCallErr {
@@ -252,6 +279,7 @@ function fireAiTelemetry(
 async function callClaudeVision(
   key: string,
   input: CallAiVisionInput,
+  ipHash: string | null,
 ): Promise<AiCallResult> {
   const model = input.claudeModel ?? CLAUDE_MODEL_DEFAULT;
   const startedAt = Date.now();
@@ -288,6 +316,8 @@ async function callClaudeVision(
     input.userId ?? null,
     model,
     input.maxTokens ?? 2500,
+    undefined,
+    ipHash,
   );
   if (!grant.ok) {
     throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
@@ -368,6 +398,7 @@ async function callClaudeVision(
 async function callOpenAIVision(
   key: string,
   input: CallAiVisionInput,
+  ipHash: string | null,
 ): Promise<AiCallResult> {
   const model = input.openaiModel ?? OPENAI_VISION_MODEL_DEFAULT;
   const startedAt = Date.now();
@@ -384,6 +415,8 @@ async function callOpenAIVision(
     input.userId ?? null,
     model,
     input.maxTokens ?? 2500,
+    undefined,
+    ipHash,
   );
   if (!grant.ok) {
     throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
@@ -456,8 +489,11 @@ export async function callAiVision(
 ): Promise<AiCallResult> {
   const { claudeKey, openaiKey } = readKeys();
   if (!claudeKey && !openaiKey) return notConfigured(input.callSite);
-  if (claudeKey) return callClaudeVision(claudeKey, input);
-  return callOpenAIVision(openaiKey!, input);
+  // Layer C (ENG-1395): resolve the hashed client IP once at the public
+  // boundary and thread it into the vendor call's budget reservation.
+  const ipHash = await resolveTrustedIpHash();
+  if (claudeKey) return callClaudeVision(claudeKey, input, ipHash);
+  return callOpenAIVision(openaiKey!, input, ipHash);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -467,6 +503,7 @@ export async function callAiVision(
 async function callClaudeText(
   key: string,
   input: CallAiTextInput,
+  ipHash: string | null,
 ): Promise<AiCallResult> {
   const model = input.claudeModel ?? CLAUDE_MODEL_DEFAULT;
   const startedAt = Date.now();
@@ -483,6 +520,8 @@ async function callClaudeText(
     input.userId ?? null,
     model,
     input.maxTokens ?? 1500,
+    undefined,
+    ipHash,
   );
   if (!grant.ok) {
     throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
@@ -552,6 +591,7 @@ async function callClaudeText(
 async function callOpenAIText(
   key: string,
   input: CallAiTextInput,
+  ipHash: string | null,
 ): Promise<AiCallResult> {
   const model = input.openaiModel ?? OPENAI_MODEL_DEFAULT;
   const startedAt = Date.now();
@@ -568,6 +608,8 @@ async function callOpenAIText(
     input.userId ?? null,
     model,
     input.maxTokens ?? 1500,
+    undefined,
+    ipHash,
   );
   if (!grant.ok) {
     throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
@@ -632,8 +674,11 @@ async function callOpenAIText(
 export async function callAiText(input: CallAiTextInput): Promise<AiCallResult> {
   const { claudeKey, openaiKey } = readKeys();
   if (!claudeKey && !openaiKey) return notConfigured(input.callSite);
-  if (claudeKey) return callClaudeText(claudeKey, input);
-  return callOpenAIText(openaiKey!, input);
+  // Layer C (ENG-1395): resolve the hashed client IP once at the public
+  // boundary and thread it into the vendor call's budget reservation.
+  const ipHash = await resolveTrustedIpHash();
+  if (claudeKey) return callClaudeText(claudeKey, input, ipHash);
+  return callOpenAIText(openaiKey!, input, ipHash);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
