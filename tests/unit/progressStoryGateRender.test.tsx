@@ -34,6 +34,16 @@ describe("<ProgressStoryGate />", () => {
     const label = screen.getByTestId("progress-story-gate-ring-label");
     expect(label.textContent).toContain("2 / 3");
   });
+
+  it("ENG-1372 slice 2 — renders a standalone '<n>/3' numeral WITH the ring (not just buried in the sentence below)", () => {
+    render(<ProgressStoryGate daysLogged={0} />);
+    expect(screen.getByTestId("progress-story-gate-ring-numeral").textContent).toBe("0/3");
+  });
+
+  it("ENG-1372 slice 2 — the numeral tracks segmentsFilled at day 1", () => {
+    render(<ProgressStoryGate daysLogged={1} />);
+    expect(screen.getByTestId("progress-story-gate-ring-numeral").textContent).toBe("1/3");
+  });
 });
 
 describe("<DigestStoryCard />", () => {

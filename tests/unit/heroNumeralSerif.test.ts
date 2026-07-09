@@ -62,8 +62,12 @@ describe("SLOE hero numerals — mobile reads serif (Newsreader)", () => {
   });
 
   it("WeightSparseState single weigh-in hero is serif (no sans 700)", () => {
+    // ENG-1372 slice 2 — the 1-point branch's UI changed from a standalone
+    // big numeral (`singleValue`) to a chart-point + label (`pointLabel`,
+    // the point + dotted goal projection the contract specifies); the
+    // numeral itself stays serif with no competing sans fontWeight.
     const src = read("apps/mobile/components/progress/WeightSparseState.tsx");
-    const start = src.indexOf("singleValue: {");
+    const start = src.indexOf("pointLabel: {");
     expect(start).toBeGreaterThan(-1);
     const block = src.slice(start, src.indexOf("},", start) + 2);
     expect(block).toContain(SERIF_MOBILE);
@@ -107,7 +111,11 @@ describe("SLOE hero numerals — mobile reads serif (Newsreader)", () => {
   });
 
   it("TodayWeekView weekly-summary stats are serif (no sans 800)", () => {
-    const src = read("apps/mobile/components/today/TodayWeekView.tsx");
+    // ENG-1372 slice 2 — the tile trio was extracted to
+    // TodayWeekSummaryStats.tsx so the sparse-stat addition didn't push the
+    // pinned TodayWeekView.tsx over its line budget; the serif numerals live
+    // there now.
+    const src = read("apps/mobile/components/today/TodayWeekSummaryStats.tsx");
     // All three big stat numerals converted; none should carry sans 800.
     expect(src).toContain(SERIF_MOBILE);
     // The Total/Daily/Net stat numerals are the only fontSize: 24 + tabular

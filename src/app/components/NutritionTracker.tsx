@@ -2391,7 +2391,7 @@ export const NutritionTracker = memo(function NutritionTracker({
             weekDailyKcal={weekData.days.map((d) => d.totals.calories)}
             weekDayLabels={weekData.days.map((d) => d.short)}
             weekLoggedDays={weekData.loggedDaysInWeek}
-            weekAvgKcal={weekData.loggedDaysInWeek > 0 ? weekData.weekAvg.calories : null}
+            weekAvgKcal={(isFeatureEnabled("empty_state_grammar_v1") ? weekData.loggedDaysInWeek >= 3 : weekData.loggedDaysInWeek > 0) ? weekData.weekAvg.calories : null}
             streakDays={streakDays}
             activeDateKey={selectedDateKey}
             todayDateKey={todayKey()}

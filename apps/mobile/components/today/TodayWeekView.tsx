@@ -7,10 +7,11 @@ import Animated, {
   withDelay,
   withTiming,
 } from "react-native-reanimated";
-import { Accent, Colors, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { Accent, Colors, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
+import { TodayWeekSummaryStats } from "./TodayWeekSummaryStats";
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
@@ -389,73 +390,18 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
       </View>
 
       {/* Weekly summary */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Weekly summary</Text>
-        <View style={{ flexDirection: "row", justifyContent: "space-around", marginTop: Spacing.md }}>
-          {/* SLOE Phase 0: the weekly-summary big stat numerals read in
-              Newsreader serif (the design system reserves big numerals for
-              serif). Family carries the weight, so the sans `fontWeight: 800`
-              is dropped; the labels below stay sans. */}
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: textColor, fontVariant: ["tabular-nums"] }}>
-              {Math.round(weekTotals.calories)}
-            </Text>
-            <Text style={{ fontSize: 11, color: textSecondaryColor }}>Total kcal</Text>
-          </View>
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: accent.primarySolid, fontVariant: ["tabular-nums"] }}>
-              {Math.round(weekAvg.calories)}
-            </Text>
-            <Text style={{ fontSize: 11, color: textSecondaryColor }}>Daily avg</Text>
-          </View>
-          {(() => {
-            // F-146 (2026-05-10): the Net deficit/surplus tile compares
-            // burn-vs-consumed (the truth), not goal-vs-consumed
-            // (which mislabels deficits-above-goal as surplus). The
-            // Activity Bonus card already uses the same shape; this
-            // tile now lines up with it. `weekBurnTotal` is sum of
-            // (basal + activity) for the visible week, computed in
-            // the parent (`(tabs)/index.tsx`). Falls back to
-            // `maintenanceKcal × 7` when callers haven't been
-            // upgraded to plumb burn through.
-            const burnReference =
-              typeof weekBurnTotal === "number" && Number.isFinite(weekBurnTotal)
-                ? weekBurnTotal
-                : Math.max(0, maintenanceKcal) * 7;
-            const inDeficit = burnReference >= weekTotals.calories;
-            const diff = Math.round(Math.abs(burnReference - weekTotals.calories));
-            return (
-              <View style={{ alignItems: "center" }}>
-                <Text
-                  style={{
-                    // SLOE Phase 0: big stat numeral in Newsreader serif
-                    // (family carries the weight; sans 800 dropped).
-                    fontFamily: FontFamily.serifRegular,
-                    fontSize: 24,
-                    // Amber on over-burn (true surplus), success on
-                    // deficit. Never red per project memory
-                    // (`feedback_no_quick_temp_fixes.md` + spec §1.4).
-                    color: inDeficit ? Accent.success : Accent.warning,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {diff}
-                </Text>
-                {/* User-sentiment audit (round 4, 2026-04-30): retired the
-                    punitive over/under-target labels in favour of the
-                    canonical "Net deficit" / "Net surplus" phrasing from
-                    `src/lib/copy/today.ts`. UCL Oct 2025 study + r/loseit
-                    data show punitive framing drives logging avoidance +
-                    ED-cohort harm. Web parity: same swap on
-                    `today-week-view.tsx` in the same commit. */}
-                <Text style={{ fontSize: 11, color: textSecondaryColor }}>
-                  {inDeficit ? "Net deficit" : "Net surplus"}
-                </Text>
-              </View>
-            );
-          })()}
-        </View>
-      </View>
+      <TodayWeekSummaryStats
+        totalCalories={weekTotals.calories}
+        avgCalories={weekAvg.calories}
+        daysWithFood={daysWithFood}
+        weekBurnTotal={weekBurnTotal}
+        maintenanceKcal={maintenanceKcal}
+        accentPrimarySolid={accent.primarySolid}
+        textColor={textColor}
+        textSecondaryColor={textSecondaryColor}
+        cardStyle={styles.card}
+        cardTitleStyle={styles.cardTitle}
+      />
 
       {/* Weekly macro averages */}
       <View style={styles.card}>

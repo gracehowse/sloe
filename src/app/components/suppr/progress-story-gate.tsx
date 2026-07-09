@@ -86,29 +86,40 @@ export function ProgressStoryGate({
         >
           {placeholder.headline}
         </h2>
-        <svg
-          width={RING_SIZE}
-          height={RING_SIZE}
-          aria-hidden="true"
+        <div
           data-testid="progress-story-gate-ring"
-          className="shrink-0"
+          className="relative shrink-0"
+          style={{ width: RING_SIZE, height: RING_SIZE }}
         >
-          {Array.from({ length: segmentCount }, (_, i) => (
-            <circle
-              key={i}
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
-              r={radius}
-              stroke="currentColor"
-              className={i < placeholder.segmentsFilled ? "text-primary" : "text-border"}
-              strokeWidth={STROKE}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={`${segmentLen} ${circumference - segmentLen}`}
-              transform={`rotate(${-90 + (i * 360) / segmentCount + gapDeg / 2} ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-            />
-          ))}
-        </svg>
+          <svg width={RING_SIZE} height={RING_SIZE} aria-hidden="true" className="absolute inset-0">
+            {Array.from({ length: segmentCount }, (_, i) => (
+              <circle
+                key={i}
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={radius}
+                stroke="currentColor"
+                className={i < placeholder.segmentsFilled ? "text-primary" : "text-border"}
+                strokeWidth={STROKE}
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={`${segmentLen} ${circumference - segmentLen}`}
+                transform={`rotate(${-90 + (i * 360) / segmentCount + gapDeg / 2} ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+              />
+            ))}
+          </svg>
+          {/* ENG-1372 slice 2 — an indeterminate-looking arc may never be the
+              locked-state icon; the segment dots already made this discrete,
+              but the contract additionally calls for the numeral itself
+              ("1/3"-style) to sit WITH the ring, not buried only in the
+              sentence below. */}
+          <p
+            data-testid="progress-story-gate-ring-numeral"
+            className="absolute inset-0 flex items-center justify-center text-[11px] font-bold tabular-nums text-foreground"
+          >
+            {placeholder.segmentsFilled}/{STORY_DATA_FLOOR_DAYS}
+          </p>
+        </div>
       </div>
       {/* ENG-1006 — 13px label-secondary floor (was 11px, below the spec's
           13–14px body floor and small under the serif headline). Mirror of

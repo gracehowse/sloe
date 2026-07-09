@@ -1372,9 +1372,9 @@ export default function ProgressScreen() {
             {/* Section eyebrow (Type.label, 2026-06-10 headers census) — matches
                 the other Progress cards' headers. */}
             <Text style={{ ...Type.label, color: accent.primarySolid, marginBottom: Spacing.sm }}>Weight</Text>
-            {/* ENG-1225 #22 — sparse "No weigh-ins yet" state (flag `progress_weight_empty`, web parity `web_progress_weight_empty`) replaces the broken "—" hero/chart/dashes-stat-row; WeightSparseState carries its own Log-weight CTA. */}
-            {Object.keys(weightKgByDay).length === 0 && isFeatureEnabled("progress_weight_empty") ? (
-              <WeightSparseState points={weightChartTrend.points} onLogWeight={() => setLogWeightOpen(true)} />
+            {/* ENG-1372 slice 2 — sparse state, see WeightSparseState.tsx doc. */}
+            {weightChartTrend.points.length < 2 && isFeatureEnabled("empty_state_grammar_v1") ? (
+              <WeightSparseState points={weightChartTrend.points} goalKg={goalWeightKg ?? null} onLogWeight={() => setLogWeightOpen(true)} />
             ) : (<>
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.dense }}>
               <View style={{ flex: 1 }}>
