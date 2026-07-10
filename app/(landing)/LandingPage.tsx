@@ -413,13 +413,6 @@ function Pricing() {
                 {pro.annualPrice ? ` · or ${pro.annualPrice}${pro.annualPeriod ?? ""}` : ""}
               </span>
             </p>
-            {/* ENG-1489: period-neutral. This Pro card leads with the monthly
-                price (no trial — the trial is annual-only), so a "Start free
-                trial" label here is a CMA mismatch. The trial is still offered
-                downstream in the onboarding upgrade step, which correctly
-                defaults to the annual/trial SKU. The two onboarding "Start free
-                trial" CTAs are intentionally left unchanged — they already land
-                on a trial-default paywall (ENG-1241 / legal C2). */}
             <Link className="lp-btn lp-btn-primary lp-btn-block" href={SIGNUP_HREF}>
               Get started
             </Link>
