@@ -90,3 +90,36 @@ visual surface" carve-out does not squarely apply, but shipping a *lie*
 behind a kill-switch that restores the lie was judged wrong. The visual
 delta (stock photo → branded fallback) is exactly the before/after the
 orchestrator captures on the PR.
+
+## Extension — ENG-1448 PR 1 (2026-07-10): tiered food-row fallback
+
+The same never-fabricated rule now governs food ROWS (log sheet browse /
+recent / saved / library, onboarding goal thumbs). Root cause of ENG-1448:
+the pre-ENG-1478 resolver hash-remapped unmatched food titles into the
+6-sample pool (fnv1a32 of the title, modulo the pool), painting
+berry-smoothie art on unrelated foods. ENG-1478 nulled the wrong-sample
+remap; this PR replaces the whole resolution with a constructive tier
+model in `src/lib/imagery/foodFallbackCategory.ts`:
+
+1. **`category`** — CONFIDENT keyword hit only (table extended with
+   plurals + obvious synonyms; ambiguous words stay out). Only this tier
+   may render a shipped sample image.
+2. **`slot`** — no keyword hit but the caller knows the meal slot
+   (threaded from the ENG-773 slot selector through the log-sheet lists
+   on both platforms): slot glyph (Coffee/Sun/UtensilsCrossed/Cookie —
+   the established slot-icon language) on a §11.4 tint. Never a food
+   image.
+3. **`generic`** — Utensils glyph on the neutral cream tint.
+
+Every tier carries an opaque tint underlay on the thumb wrapper
+(`FoodFallbackThumb`, web + mobile) drawn from the recipe heroes'
+`HERO_TINTS` (§11.4) — now exported from
+`src/lib/recipe/recipeHeroFallback.ts` as the single tint source — so a
+broken URL or missing asset can never expose a white square. The hash
+path (`fnv1a32` / `HASH_FALLBACK_POOL`) is deleted and pinned dead by a
+repo-scan test (`tests/unit/foodFallbackCategory.test.ts`); component
+contracts are pinned in `tests/unit/foodFallbackThumbWeb.test.tsx` and
+`apps/mobile/tests/unit/foodFallbackThumbMobile.test.ts`. The log-sheet
+rows were extracted to `log-sheet-rows.tsx` / `LogSheetRows.tsx`
+(400-line discipline; both legacy files re-pinned lower). Same rollout
+posture as above: trust bug fix, no flag.

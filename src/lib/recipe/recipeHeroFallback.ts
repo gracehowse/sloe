@@ -93,11 +93,30 @@ interface BucketSpec {
  */
 const CARD_CREAM = "#F6F5F2";
 
+/**
+ * The §11.4 cuisine/cream tint family — the ONLY food-fallback tint
+ * palette in the product. Exported (ENG-1448 PR 1) so the food-row
+ * fallback (`src/lib/imagery/foodFallbackCategory.ts`) shares these
+ * exact values instead of minting parallel hexes; any recolour lands
+ * on recipe heroes and food rows in the same edit.
+ */
+export const HERO_TINTS = {
+  greens: "#DCE3D4", // soft sage cream
+  reds: "#EBDAD0", // warm clay cream
+  blues: "#D7E0DD", // cool slate-sage cream
+  warms: "#EEDFCE", // terracotta-leaning oat cream
+  ambers: "#EFE4CE", // amber oat cream
+  earths: "#E7DECF", // warm earth cream
+  neutrals: "#EAE3D3", // pale grain cream
+  default: "#E4E1D8", // neutral warm cream (was the loud blue→pink)
+  cream: CARD_CREAM,
+} as const;
+
 const BUCKETS: readonly BucketSpec[] = [
   {
     key: "greens",
     triggers: ["vegan", "vegetarian", "salad", "bowl", "green", "kale", "spinach"],
-    start: "#DCE3D4", // soft sage cream
+    start: HERO_TINTS.greens,
     end: CARD_CREAM,
     glyph: "Salad",
     light: true,
@@ -105,7 +124,7 @@ const BUCKETS: readonly BucketSpec[] = [
   {
     key: "reds",
     triggers: ["beef", "steak", "bbq", "grill", "burger", "chilli", "pepperoni"],
-    start: "#EBDAD0", // warm clay cream
+    start: HERO_TINTS.reds,
     end: CARD_CREAM,
     glyph: "Beef",
     light: true,
@@ -113,7 +132,7 @@ const BUCKETS: readonly BucketSpec[] = [
   {
     key: "blues",
     triggers: ["fish", "seafood", "tuna", "salmon", "prawn", "pescatarian"],
-    start: "#D7E0DD", // cool slate-sage cream
+    start: HERO_TINTS.blues,
     end: CARD_CREAM,
     glyph: "Fish",
     light: true,
@@ -121,7 +140,7 @@ const BUCKETS: readonly BucketSpec[] = [
   {
     key: "warms",
     triggers: ["pasta", "pizza", "italian", "tomato", "mediterranean"],
-    start: "#EEDFCE", // terracotta-leaning oat cream
+    start: HERO_TINTS.warms,
     end: CARD_CREAM,
     glyph: "Pizza",
     light: true,
@@ -129,7 +148,7 @@ const BUCKETS: readonly BucketSpec[] = [
   {
     key: "ambers",
     triggers: ["baked", "dessert", "cookie", "cake", "sweet", "breakfast"],
-    start: "#EFE4CE", // amber oat cream
+    start: HERO_TINTS.ambers,
     end: CARD_CREAM,
     glyph: "Cookie",
     light: true,
@@ -137,7 +156,7 @@ const BUCKETS: readonly BucketSpec[] = [
   {
     key: "earths",
     triggers: ["soup", "stew", "curry", "broth", "asian", "noodle"],
-    start: "#E7DECF", // warm earth cream
+    start: HERO_TINTS.earths,
     end: CARD_CREAM,
     glyph: "Soup",
     light: true,
@@ -145,7 +164,7 @@ const BUCKETS: readonly BucketSpec[] = [
   {
     key: "neutrals",
     triggers: ["bread", "grain", "rice", "oats", "cereal", "wheat"],
-    start: "#EAE3D3", // pale grain cream
+    start: HERO_TINTS.neutrals,
     end: CARD_CREAM,
     glyph: "Wheat",
     light: true,
@@ -153,7 +172,7 @@ const BUCKETS: readonly BucketSpec[] = [
   {
     key: "default",
     triggers: [],
-    start: "#E4E1D8", // neutral warm cream (was the loud blue→pink)
+    start: HERO_TINTS.default,
     end: CARD_CREAM,
     glyph: "Utensils",
     light: true,
@@ -204,7 +223,7 @@ function resolveBucket(input: RecipeHeroInput): BucketSpec {
  * dark-bucket 0.55); the pattern stays a whisper so it textures
  * without competing with the glyph.
  */
-const SAGE_RGB = "124, 132, 102";
+export const SAGE_RGB = "124, 132, 102";
 
 export function getRecipeFallback(input: RecipeHeroInput): RecipeHeroFallback {
   const bucket = resolveBucket(input);

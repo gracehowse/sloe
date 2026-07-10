@@ -1,37 +1,82 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  fnv1a32,
+  FOOD_FALLBACK_GLYPH_BY_CATEGORY,
+  FOOD_FALLBACK_SAMPLE_CATEGORIES,
+  FOOD_FALLBACK_TINT_BY_CATEGORY,
   normalizeFoodTitle,
-  resolveFoodFallbackCategory,
+  resolveFoodFallback,
   resolveFoodFallbackSampleCategory,
+  type FoodFallbackCategoryId,
 } from "../../src/lib/imagery/foodFallbackCategory";
+import { HERO_TINTS } from "../../src/lib/recipe/recipeHeroFallback";
 
-describe("foodFallbackCategory (ENG-1015)", () => {
+describe("foodFallbackCategory (ENG-1015 / ENG-1448 tiered)", () => {
   it("normalizes titles for stable matching", () => {
     expect(normalizeFoodTitle("  Chicken & Rice!!! ")).toBe("chicken rice");
   });
 
-  it("resolves keyword categories from title", () => {
-    expect(resolveFoodFallbackCategory({ title: "Tonkotsu ramen bowl" })).toBe(
-      "ramen-noodles",
-    );
-    expect(resolveFoodFallbackCategory({ title: "Greek salad" })).toBe("salad");
-    expect(resolveFoodFallbackCategory({ title: "Berry smoothie" })).toBe(
-      "smoothie",
-    );
+  it("resolves the category tier on confident keyword hits", () => {
+    const cases: Array<[string, FoodFallbackCategoryId]> = [
+      ["Tonkotsu ramen bowl", "ramen-noodles"],
+      ["Greek salad", "salad"],
+      ["Berry smoothie", "smoothie"],
+      // Conservative table extension — plurals + obvious synonyms:
+      ["Blueberry pancakes", "pancakes-waffles"],
+      ["Two scrambled eggs", "eggs"],
+      ["Ham sandwiches", "toast-sandwich"],
+      ["Spaghetti bolognese", "pasta"],
+      ["Chicken tikka masala", "curry"],
+      ["Beef meatballs", "red-meat"],
+      ["Strawberries", "fruit"],
+      ["Iced latte", "drink"],
+      ["Jacket potatoes", "vegetables-sides"],
+    ];
+    for (const [title, category] of cases) {
+      expect(resolveFoodFallback(title)).toMatchObject({ tier: "category", category });
+    }
   });
 
-  it("falls back to slot defaults when title is empty", () => {
-    expect(
-      resolveFoodFallbackCategory({ title: "", slot: "Breakfast" }),
-    ).toBe("breakfast-bowl");
-    expect(resolveFoodFallbackCategory({ title: "", slot: "Dinner" })).toBe(
-      "rice-bowl",
-    );
+  it("carries a glyph + §11.4 tint on every tier", () => {
+    const hit = resolveFoodFallback("Greek salad");
+    expect(hit).toMatchObject({ tier: "category", glyph: "Salad", tint: HERO_TINTS.greens });
+    const slot = resolveFoodFallback("Grace's usual", { slot: "Breakfast" });
+    expect(slot).toMatchObject({ tier: "slot", slot: "Breakfast", glyph: "Coffee", tint: HERO_TINTS.ambers });
+    const generic = resolveFoodFallback("Grace's usual");
+    expect(generic).toMatchObject({ tier: "generic", glyph: "Utensils", tint: HERO_TINTS.default });
+  });
+
+  it("every category has a glyph and a tint drawn from the shared HERO_TINTS family", () => {
+    const legalTints = new Set<string>(Object.values(HERO_TINTS));
+    for (const [category, tint] of Object.entries(FOOD_FALLBACK_TINT_BY_CATEGORY)) {
+      expect(legalTints.has(tint), `${category} tint ${tint} not in HERO_TINTS`).toBe(true);
+      expect(
+        FOOD_FALLBACK_GLYPH_BY_CATEGORY[category as FoodFallbackCategoryId],
+      ).toBeTruthy();
+    }
+  });
+
+  it("ambiguous titles NEVER claim a category — slot tier when a slot is passed, generic otherwise", () => {
+    // The ENG-1448 bug class: the old fnv1a32 hash remapped these into a
+    // 4-category pool, painting confidently wrong art on unknown foods.
+    const ambiguous = ["Grace's leftovers", "Homemade thing", "Meal deal", "xyzzy"];
+    for (const title of ambiguous) {
+      expect(resolveFoodFallback(title).tier).toBe("generic");
+      expect(resolveFoodFallback(title, { slot: "Dinner" })).toMatchObject({
+        tier: "slot",
+        slot: "Dinner",
+        glyph: "UtensilsCrossed",
+      });
+    }
+    // Slot strings normalise via the canonical normaliseMealSlot ("snack" → Snacks).
+    expect(resolveFoodFallback("", { slot: "snack" })).toMatchObject({ tier: "slot", slot: "Snacks" });
+    // Junk slots never claim the slot tier.
+    expect(resolveFoodFallback("", { slot: "brunch" }).tier).toBe("generic");
   });
 
   it("passes shipped sample categories through unchanged", () => {
-    for (const shipped of ["ramen-noodles", "breakfast-bowl", "chicken", "salad", "pasta", "smoothie"] as const) {
+    for (const shipped of FOOD_FALLBACK_SAMPLE_CATEGORIES) {
       expect(resolveFoodFallbackSampleCategory(shipped)).toBe(shipped);
     }
   });
@@ -39,15 +84,40 @@ describe("foodFallbackCategory (ENG-1015)", () => {
   it("ENG-1478 regression guard: unshipped categories return null — never a wrong specific sample", () => {
     // The captured bug: "Salmon, potatoes & greens" → "fish" → hash-remapped
     // to the berry-smoothie asset. A wrong specific image is worse than none.
-    expect(resolveFoodFallbackCategory({ title: "PERSONA: Salmon, potatoes & greens" })).toBe("fish");
+    expect(resolveFoodFallback("PERSONA: Salmon, potatoes & greens")).toMatchObject({
+      tier: "category",
+      category: "fish",
+    });
     expect(resolveFoodFallbackSampleCategory("fish")).toBeNull();
     for (const unshipped of ["curry", "eggs", "pizza", "burger", "dessert", "rice-bowl"] as const) {
       expect(resolveFoodFallbackSampleCategory(unshipped)).toBeNull();
     }
   });
 
-  it("fnv1a32 is stable for the same input", () => {
-    expect(fnv1a32("chicken")).toBe(fnv1a32("chicken"));
-    expect(fnv1a32("chicken")).not.toBe(fnv1a32("beef"));
+  it("repo-scan pin: the fnv1a32 / HASH_FALLBACK_POOL fabrication path never returns (ENG-1448)", () => {
+    const roots = [
+      resolve(__dirname, "../../src/lib/imagery"),
+      resolve(__dirname, "../../apps/mobile/components"),
+      resolve(__dirname, "../../apps/mobile/lib"),
+    ];
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        if (name === "node_modules" || name.startsWith(".")) continue;
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) {
+          walk(p);
+        } else if (/\.(ts|tsx)$/.test(name)) {
+          const src = readFileSync(p, "utf8");
+          // The doc-comment history mention in foodFallbackCategory.ts is
+          // fine — flag only real identifiers (declaration or call/use).
+          if (/\b(function\s+fnv1a32|fnv1a32\s*\(|HASH_FALLBACK_POOL\s*[[:=.])/.test(src)) {
+            offenders.push(p);
+          }
+        }
+      }
+    };
+    for (const root of roots) walk(root);
+    expect(offenders).toEqual([]);
   });
 });
