@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AddRowButton } from "@/components/ui/AddRowButton";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { showSignInAlert } from "@/lib/authAlertCopy";
@@ -878,12 +879,9 @@ export default function CreateRecipeScreen() {
     ingDetail: { ...Type.captionSmall, color: colors.textSecondary },
     removeBtn: { padding: Spacing.xs },
 
-    addBtn: {
-      flexDirection: "row", alignItems: "center", justifyContent: "center",
-      gap: Spacing.sm, paddingVertical: Spacing.md, borderRadius: Radius.xl,
-      borderWidth: 1.5, borderColor: accent.primary + "50", borderStyle: "dashed" as const,
-    },
-    addBtnText: { color: accent.primarySolid, fontWeight: "600", fontSize: 14 },
+    // "Add ingredient" renders via the shared AddRowButton primitive
+    // (AddControl ruling 2026-07-10, ENG-1375 S4) — the dashed border here
+    // was an add-INGREDIENT action, not an upload dropzone.
 
     // Totals
     totalsCard: {
@@ -1184,10 +1182,11 @@ export default function CreateRecipeScreen() {
               </Pressable>
             </View>
           ))}
-          <Pressable style={styles.addBtn} onPress={openAddIngredientSearch}>
-            <Plus size={18} color={accent.primary} />
-            <Text style={styles.addBtnText}>Add ingredient</Text>
-          </Pressable>
+          <AddRowButton
+            label="Add ingredient"
+            onPress={openAddIngredientSearch}
+            accessibilityLabel="Add ingredient"
+          />
         </View>
 
         {/* Totals — gap 11 (sev 2): redesign renders the per-serving kcal +

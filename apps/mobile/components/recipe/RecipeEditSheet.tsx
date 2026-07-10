@@ -18,6 +18,7 @@
  * only — web already has inline ingredient editing in RecipeDetail.tsx).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AddRowButton } from "@/components/ui/AddRowButton";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
@@ -32,7 +33,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Minus, Plus, PlusCircle, X } from "lucide-react-native";
+import { Minus, Plus, X } from "lucide-react-native";
 
 import { Elevation, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -529,15 +530,12 @@ export default function RecipeEditSheet({
                       onDelete={() => deleteIngredient(ing)}
                     />
                   ))}
-                  <Pressable
+                  <AddRowButton
+                    label="Add ingredient"
                     onPress={addIngredient}
-                    style={styles.addBtn}
-                    accessibilityRole="button"
                     accessibilityLabel="Add ingredient"
-                  >
-                    <PlusCircle size={18} color={accent.primary} />
-                    <Text style={styles.addBtnText}>Add ingredient</Text>
-                  </Pressable>
+                    style={{ marginTop: Spacing.xs }}
+                  />
                   <Text style={styles.hint}>
                     Manually added ingredients show as unverified — open the recipe and tap Verify to add nutrition.
                   </Text>
@@ -662,24 +660,9 @@ const makeStyles = (
     chipRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
     timeRow: { flexDirection: "row", gap: Spacing.md },
     timeCol: { flex: 1 },
-    addBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: Spacing.sm,
-      paddingVertical: Spacing.dense,
-      borderRadius: Radius.md,
-      // ENG-821: soft-tinted affordance — same chip language as the meal-type
-      // chips above (accent.primarySoft fill + accent.primary edge). Kept on the
-      // EDIT sheet (not flipped to the create-surface outline) so it stays
-      // consistent with the adjacent meal-type chips; both are valid aubergine
-      // SOFT-TINT treatments (Sloe treatment §7).
-      borderWidth: 1,
-      borderColor: accent.primary,
-      backgroundColor: accent.primarySoft,
-      marginTop: Spacing.xs,
-    },
-    addBtnText: { color: accent.primarySolid, fontWeight: "600", fontSize: 14 },
+    // "Add ingredient" renders via the shared AddRowButton primitive
+    // (AddControl ruling 2026-07-10, ENG-1375 S4) — the ENG-821 soft-tint
+    // variant folded into the ONE quiet-fill add-row grammar.
     hint: { ...Type.captionSmall, color: colors.textSecondary, lineHeight: 17, marginTop: Spacing.xs },
     footer: {
       flexDirection: "row",

@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Button } from "../ui/button";
+import { AddRowButton } from "../ui/add-row-button";
+import { Icons } from "../ui/icons";
 import { SupprButton } from "./suppr-button";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { clampPortionMultiplier } from "../../../lib/nutrition/portionMultiplier";
@@ -168,16 +170,16 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
           {/* Search foods CTA — hand-off to shared <FoodSearch>. Matches
               mobile parity: the Add-meal dialog does not render an
               inline search view; tapping this opens the standalone
-              search modal and closes the Add-meal sheet. */}
-          <button
-            type="button"
+              search modal and closes the Add-meal sheet. AddControl ruling
+              (2026-07-10, ENG-1375 S4): this is an add-food action, not an
+              upload dropzone — the dashed border folds into the shared
+              quiet-fill AddRowButton primitive (search glyph, same hand-off). */}
+          <AddRowButton
             onClick={onOpenSearch}
-            className="w-full flex items-center justify-between gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2.5 text-left text-sm font-medium text-primary-solid hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            label="Search foods (includes your custom foods)"
+            icon={<Icons.search className="h-4 w-4 shrink-0" aria-hidden />}
             aria-label="Search foods including your custom foods, USDA, and Open Food Facts"
-          >
-            <span>Search foods (includes your custom foods)</span>
-            <span aria-hidden="true">→</span>
-          </button>
+          />
           <label className="grid gap-1">
             <span className="text-sm font-medium text-foreground">Meal</span>
             <select

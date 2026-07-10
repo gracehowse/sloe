@@ -85,6 +85,7 @@ import { usePlanV3WeekAnchor } from "@/hooks/usePlanV3WeekAnchor";
 import { usePlanWeekJournal } from "@/hooks/usePlanWeekJournal";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
+import { AddRowButton } from "@/components/ui/AddRowButton";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
 import { PlanSmartSuggestionsCard } from "@/components/planner/PlanSmartSuggestionsCard";
@@ -1902,35 +1903,14 @@ export default function PlannerScreen() {
           color: colors.textTertiary,
           letterSpacing: 0.3,
         },
+        // Per-slot add controls themselves render via the shared
+        // `AddRowButton` primitive (AddControl ruling 2026-07-10, ENG-1375
+        // S4) — quiet-fill pill, radius 12, primary-solid semibold label.
         addSlotRow: {
           flex: 1,
           flexDirection: "row",
           gap: Spacing.sm,
           minWidth: 0,
-        },
-        addSlotChip: {
-          flex: 1,
-          minWidth: 0,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: Spacing.xs,
-          paddingVertical: 8,
-          paddingHorizontal: 4,
-          // Chips census (2026-06-10): Radius.full — chip family is round.
-          borderRadius: Radius.full,
-          // Flat-card grammar (2026-06-12): a SECONDARY add affordance →
-          // quiet fill (`colors.fillQuiet` #F2EFE9), NO border. The white-
-          // card + hairline read as a second elevated surface inside the
-          // day card; quiet fill is the Withings nested-affordance language.
-          // `addSlotChipText` stays textSecondary (#6A6072 on #F2EFE9 =
-          // 5.19:1, clears AA); the Plus glyph is the same muted tier.
-          backgroundColor: colors.fillQuiet,
-        },
-        addSlotChipText: {
-          fontSize: 11,
-          fontWeight: "600",
-          color: colors.textSecondary,
         },
         // Prototype port (2026-04-20) — 36×36 muted square on the
         // left of every meal row carrying a slot-appropriate icon.
@@ -3916,11 +3896,15 @@ export default function PlannerScreen() {
                   <Text style={styles.addSlotLabel}>Add</Text>
                   <View style={styles.addSlotRow}>
                     {missing.map((slot) => (
-                      <Pressable
+                      <AddRowButton
                         key={slot}
+                        size="sm"
+                        // ENG-1016 — adding a meal slot to the plan is a
+                        // commit → Medium (the primitive fires it on press-in).
+                        haptic="confirm"
+                        label={compactPlanSlotLabel(slot)}
+                        style={{ flex: 1, minWidth: 0 }}
                         onPress={() => {
-                          // ENG-1016 — adding a meal slot to the plan is a commit → Medium.
-                          haptics.confirm();
                           setPlan((prev) => {
                             if (!prev) return prev;
                             const next = prev.map((dpRow, di) => {
@@ -3955,16 +3939,9 @@ export default function PlannerScreen() {
                             return enriched;
                           });
                         }}
-                        style={styles.addSlotChip}
-                        accessibilityRole="button"
                         accessibilityLabel={`Add ${slot} slot`}
                         testID={`planner-add-slot-${dp.day}-${slot}`}
-                      >
-                        <Plus size={12} color={colors.textSecondary} strokeWidth={2} />
-                        <Text style={styles.addSlotChipText} numberOfLines={1}>
-                          {compactPlanSlotLabel(slot)}
-                        </Text>
-                      </Pressable>
+                      />
                     ))}
                   </View>
                 </View>

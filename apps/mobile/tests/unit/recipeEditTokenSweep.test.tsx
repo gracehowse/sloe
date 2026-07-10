@@ -13,8 +13,9 @@
  *   - the sheet panel takes the real `Elevation.sheet` shadow + drops the
  *     border-as-depth when the flag is on (tonal lift on dark);
  *   - the backdrop uses the `colors.overlay` scrim token, not a raw hex;
- *   - the add-ingredient affordance uses the shared chip language
- *     (`Accent.primarySoft` fill + `Accent.primary` edge);
+ *   - the add-ingredient affordance renders via the shared AddRowButton
+ *     primitive (AddControl ruling 2026-07-10, ENG-1375 S4 — superseded the
+ *     ENG-821 soft-tint + edge chip variant);
  *   - the commit CTA stays blue (`Accent.primary` / `Accent.primaryForeground`).
  *
  * It also covers `IngredientInfoSheet` — the branded read-only sheet that
@@ -66,15 +67,18 @@ describe("ENG-821 — recipe edit sheet token sweep (mobile)", () => {
     expect(src).toMatch(/card\.useBorder\s*\?\s*1\s*:\s*0/);
   });
 
-  it("RecipeEditSheet add-ingredient affordance uses the shared chip language", () => {
+  it("RecipeEditSheet add-ingredient affordance is the shared AddRowButton primitive", () => {
     const src = sheet();
-    // ENG-997 (Frost): the chip fill + edge now read the flag-aware secondary
-    // accent (clay flag-OFF → damson flag-ON) via the `accent` param threaded
-    // into the StyleSheet factory, not the static `Accent.*`. The soft-fill +
-    // edge chip language is unchanged.
-    expect(src).toMatch(/backgroundColor:\s*accent\.primarySoft/);
-    expect(src).toMatch(/borderColor:\s*accent\.primary\b/);
-    // the off-token dashed concat outline is gone.
+    // AddControl ruling (2026-07-10, ENG-1375 S4 — supersedes the ENG-821
+    // soft-tint + edge variant this sweep previously pinned): the
+    // add-ingredient action renders via the ONE quiet-fill AddRowButton
+    // primitive. No bespoke addBtn styles, no border, no dashed outline.
+    expect(src).toMatch(
+      /import\s*\{\s*AddRowButton\s*\}\s*from\s*"(?:@\/components|\.\.)\/ui\/AddRowButton"/,
+    );
+    expect(src).toMatch(/<AddRowButton[\s\S]{0,200}label="Add ingredient"/);
+    expect(src).not.toMatch(/addBtn:\s*\{/);
+    // the off-token dashed concat outline stays gone.
     expect(src).not.toMatch(/borderStyle:\s*"dashed"/);
   });
 

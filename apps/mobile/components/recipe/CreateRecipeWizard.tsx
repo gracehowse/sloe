@@ -70,6 +70,7 @@ import { getSupprApiBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { AddRowButton } from "@/components/ui/AddRowButton";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -674,7 +675,8 @@ export default function CreateRecipeWizard() {
   // ENG-1013 (2026-06-10): useAccent() already scheme-resolves primarySolid
   // (#3B2A4D light / #C4ACD0 dark); the old `colors.background === "#FFFFFF"`
   // probe broke when the light ground moved to cream #FBF8F3. Read directly.
-  const accentInk = accent.primarySolid;
+  // (The last `accentInk` consumer, the dashed addBtn, moved into the shared
+  // AddRowButton primitive in ENG-1375 S4.)
 
   // ---- Styles -----------------------------------------------------------
   const styles = useMemo(
@@ -854,27 +856,9 @@ export default function CreateRecipeWizard() {
           color: colors.text,
         },
         ingDetail: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
-        // "Add ingredient" / "Add step" — aubergine OUTLINE (Sloe treatment §1),
-        // kept as the dashed "add-more" affordance but in the proper aubergine
-        // ink (was a faded `accent.primary + "50"` edge).
-        // Gap 5: paddingVertical 14 → Spacing.md (16); Gap 13: Radius.xl (12).
-        addBtn: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: Spacing.sm,
-          paddingVertical: Spacing.md,
-          borderRadius: Radius.xl,
-          borderWidth: 1.5,
-          borderColor: accentInk,
-          borderStyle: "dashed",
-        },
-        // Gap 2: use Type.body semibold for add-button label.
-        addBtnText: {
-          ...Type.body,
-          fontFamily: FontFamily.sansSemibold,
-          color: accentInk,
-        },
+        // "Add ingredient" / "Add step" render via the shared AddRowButton
+        // primitive (AddControl ruling 2026-07-10, ENG-1375 S4) — the dashed
+        // outline here was an add-more ACTION, not an upload dropzone.
         // Step 3 — instructions. Gap 13: Radius.xl (12).
         stepRow: {
           backgroundColor: cardElevation.liftBg ?? colors.card,
@@ -982,7 +966,7 @@ export default function CreateRecipeWizard() {
           color: "#fff",
         },
       }),
-    [colors, cardElevation, accent, accentInk],
+    [colors, cardElevation, accent],
   );
 
   // ---- Render ----------------------------------------------------------
@@ -1173,17 +1157,14 @@ export default function CreateRecipeWizard() {
                 </View>
               );
             })}
-            <Pressable
-              style={styles.addBtn}
+            <AddRowButton
+              label="Add ingredient"
               onPress={() => {
                 setSearchReplaceId(null);
                 setSearchOpen(true);
               }}
               accessibilityLabel="Add ingredient"
-            >
-              <Plus size={18} color={accentInk} />
-              <Text style={styles.addBtnText}>Add ingredient</Text>
-            </Pressable>
+            />
           </View>
         )}
 
@@ -1248,10 +1229,7 @@ export default function CreateRecipeWizard() {
                 />
               </View>
             ))}
-            <Pressable style={styles.addBtn} onPress={addStep} accessibilityLabel="Add step">
-              <Plus size={18} color={accentInk} />
-              <Text style={styles.addBtnText}>Add step</Text>
-            </Pressable>
+            <AddRowButton label="Add step" onPress={addStep} accessibilityLabel="Add step" />
           </View>
         )}
 
