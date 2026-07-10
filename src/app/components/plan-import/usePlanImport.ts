@@ -42,7 +42,7 @@ type ParseApiResponse = {
 const DEFAULT_PLAN_NAME = "Meal prep — Week 1";
 
 export function usePlanImport(onClose: () => void) {
-  const { userId, nutritionTargets, setMealPlan } = useAppData();
+  const { userId, nutritionTargets, setMealPlan, reanchorMealPlan } = useAppData();
 
   const [step, setStep] = useState<PlanImportStep>("paste");
   const [pasteText, setPasteText] = useState(MEAL_PREP_WEEK1_PASTE);
@@ -181,6 +181,10 @@ export function usePlanImport(onClose: () => void) {
         source: "plan_import",
       });
       if (activate) {
+        // ENG-1492 twin — an activated import replaces the whole plan:
+        // re-anchor to today (mobile parity) instead of inheriting the
+        // outgoing plan's start_date.
+        reanchorMealPlan();
         setMealPlan(res.dayPlan);
         toast.success(`"${planName}" is now your active plan.`);
       } else {
@@ -197,6 +201,7 @@ export function usePlanImport(onClose: () => void) {
       nutritionMode,
       importToLibrary,
       setMealPlan,
+      reanchorMealPlan,
       onClose,
     ],
   );

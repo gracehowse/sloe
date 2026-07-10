@@ -104,6 +104,27 @@ export function planDayCalendarDate(input: PlanDayCalendarInput): Date {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
 }
 
+/**
+ * ENG-1480 / ENG-1491 — the ONE gated anchor for the Plan header week.
+ *
+ * A persisted `start_date` only labels the header while the plan actually
+ * HAS real meals; an empty plan's week is prospective (today + the chip
+ * offset), never a dead anchor left behind by a since-cleared plan.
+ * Mobile consumes this contract via `usePlanV3WeekAnchor`; web via
+ * `MealPlanner`'s `weekRangeEyebrow`.
+ */
+export function resolvePlanWeekAnchor(args: {
+  planHasRealMeals: boolean;
+  planStartDate: string | null;
+  startOffset: number;
+}): Date {
+  const { planHasRealMeals, planStartDate, startOffset } = args;
+  if (planHasRealMeals && planStartDate) {
+    return planDayCalendarDate({ planDayNumber: 1, startDate: planStartDate });
+  }
+  return planCalendarDateForIndex(0, startOffset);
+}
+
 export type PlanDayRow = {
   id: string;
   day: number;

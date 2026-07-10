@@ -178,6 +178,8 @@ interface AppDataContextValue {
     keepLocked?: boolean;
     allowLeftovers?: boolean;
     calorieFloorMin?: number;
+    /** ENG-1491 — chip offset (0 | 1 | 7); full generation re-anchors to `today + startOffset`. */
+    startOffset?: number;
   }) => Promise<void>;
   generateShoppingListFromPlan: () => Promise<void>;
   /**
@@ -331,6 +333,11 @@ interface AppDataContextValue {
   duplicateDayToDateRange: (sourceDayKey: string, targetDayKeys: string[]) => Promise<void>;
   mealPlan: DayPlan[] | null;
   setMealPlan: Dispatch<SetStateAction<DayPlan[] | null>>;
+  /** ENG-1491 — persisted T7 anchor (`meal_plan_days.start_date`) of the
+   *  active slot; null until hydrated / for legacy pre-anchor rows. */
+  mealPlanStartDate: string | null;
+  /** ENG-1492 twin — re-anchor before a full-replacement `setMealPlan`. */
+  reanchorMealPlan: (offset?: number) => void;
   mealPlanSlots: MealPlanNamedSlot[];
   activeMealPlanSlotId: string;
   switchMealPlanSlot: (slotId: string) => void;
@@ -421,6 +428,36 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const mealPlan = useMemo(() => {
     return mealPlanSlots.find((s) => s.id === activeMealPlanSlotId)?.plan ?? null;
   }, [mealPlanSlots, activeMealPlanSlotId]);
+
+  /**
+   * ENG-1491 — persisted T7 anchor (`meal_plan_days.start_date`) for the
+   * ACTIVE slot. Hydrated from the cloud row, replaced only at full
+   * generation, and passed through by the persist effect — so an edit or
+   * hydration re-save can never re-anchor a saved plan to wall-clock
+   * today (the pre-fix behaviour, which shifted every log-as-planned
+   * calendar date and mislabeled the Plan header week on both platforms).
+   */
+  const [mealPlanStartDate, setMealPlanStartDate] = useState<string | null>(null);
+  const mealPlanStartDateRef = useRef(mealPlanStartDate);
+  mealPlanStartDateRef.current = mealPlanStartDate;
+  /**
+   * ENG-1491 — persist is blocked until the active slot's cloud anchor has
+   * hydrated (or a fresh generation defines one). Without this, the mount /
+   * slot-switch frame with a locally-cached plan would persist before the
+   * anchor fetch lands and re-anchor the plan to the today-fallback.
+   */
+  const mealPlanAnchorLoadedRef = useRef(false);
+  /** ENG-1492 twin — full-replacement flows (plan-import activate, template
+   *  apply) re-anchor to today+offset before their `setMealPlan`; EDITS keep
+   *  preserving the anchor. Marks the anchor loaded (this replacement
+   *  supersedes whatever hydration would have fetched) and writes the ref
+   *  synchronously so the debounced persist reads it even pre-rerender. */
+  const reanchorMealPlan = useCallback((offset: number = 0) => {
+    const next = startDateForOffset(new Date(), offset);
+    mealPlanStartDateRef.current = next;
+    setMealPlanStartDate(next);
+    mealPlanAnchorLoadedRef.current = true;
+  }, []);
 
   // Notification state is now fully managed by NotificationContext.
   // Destructure here so the bridge value object and internal references (e.g. generateMealPlan calling pushNotification) still work.
@@ -973,11 +1010,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!authedUserId) return;
     let cancelled = false;
+    // ENG-1491 — re-arm the persist gate: the previous slot's anchor must
+    // not label (or persist under) the newly active slot while its own
+    // anchor is in flight.
+    mealPlanAnchorLoadedRef.current = false;
     (async () => {
       if (!dbMealPlanEnabled) return;
       const slotId = activeMealPlanSlotIdRef.current;
       const loaded = await fetchMealPlanForLocalSlot(supabase, authedUserId, slotId);
-      if (cancelled || !loaded?.plans.length) return;
+      if (cancelled) return;
+      // ENG-1491 — anchor updates even when the slot is empty, so a slot
+      // switch can't carry the previous slot's anchor.
+      setMealPlanStartDate(loaded?.startDate ?? null);
+      mealPlanAnchorLoadedRef.current = true;
+      if (!loaded?.plans.length) return;
       setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: loaded.plans } : s)));
     })();
     return () => {
@@ -1307,6 +1353,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       allowLeftovers?: boolean;
       /** ENG-1254 — daily calorie floor from Adjust constraints. */
       calorieFloorMin?: number;
+      /**
+       * ENG-1491 — the Today/Tomorrow/Next-week chip (0 | 1 | 7) at
+       * generation time. A FULL generation re-anchors the plan to
+       * `today + startOffset`; partial regen (`keepLocked`) and later
+       * edits keep the existing anchor. Omitted = today (legacy callers).
+       */
+      startOffset?: number;
     }) => {
       const { generatePlanFromLibrary, regeneratePlanKeepingLocked } = await import(
         "../lib/planning/generateMealPlan.ts"
@@ -1449,6 +1502,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             ? distributeLeftovers(rawPlan, recipesByRef)
             : { plan: rawPlan, leftoverCount: 0 };
         const generateDurationMs = Date.now() - generateStartMs;
+        // ENG-1491 — a full generation defines the plan's anchor from the
+        // chip (batched with setMealPlan, so the ref is fresh before the
+        // debounced persist fires). Partial regen above keeps the anchor.
+        setMealPlanStartDate(startDateForOffset(new Date(), options?.startOffset ?? 0));
+        mealPlanAnchorLoadedRef.current = true;
         setMealPlan(plan);
         if (leftoverCount > 0) {
           // Telemetry only — no user toast (mobile parity). The
@@ -1777,18 +1835,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!authedUserId || !dbMealPlanEnabled || !mealPlan) return;
     const t = setTimeout(async () => {
-      // T7 (2026-04-24) anchor: web planner has no next-week chip yet,
-      // so every save anchors to today. T15 (2026-04-24) atomic save:
-      // single RPC replaces the previous DELETE + bulk-INSERT pair so
-      // a network drop mid-save can no longer leave an orphaned half.
-      const webStartDate = (() => {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
-      })();
+      // ENG-1491 — never persist before the slot's cloud anchor hydrates:
+      // the mount / slot-switch frame with a locally-cached plan would
+      // otherwise write the today-fallback and re-anchor the plan.
+      if (!mealPlanAnchorLoadedRef.current) return;
+      // ENG-1491 anchor contract: persist the plan's KNOWN start_date
+      // (hydrated, or set at generation from the Today/Tomorrow/Next-week
+      // chip) — never re-derive from wall-clock. The previous hard-coded
+      // "today" predated the F2-D chip and meant every hydration/edit
+      // re-save silently re-anchored the plan, shifting log-as-planned
+      // dates on both platforms. Today remains only as the legacy
+      // fallback for rows saved before the anchor column existed.
+      // T15 (2026-04-24) atomic save: single RPC replaces the previous
+      // DELETE + bulk-INSERT pair so a network drop mid-save can no
+      // longer leave an orphaned half.
+      const persistedStartDate =
+        mealPlanStartDateRef.current ?? startDateForOffset(new Date(), 0);
       const planPayload = mealPlan.map((dp) => ({
         day: dp.day,
         meals: dp.meals.map((m, idx) => ({
@@ -1805,7 +1867,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }));
       const { error } = await supabase.rpc("save_meal_plan", {
         p_slot_id: cloudSlotIdFromLocal(activeMealPlanSlotIdRef.current),
-        p_start_date: webStartDate,
+        p_start_date: persistedStartDate,
         p_plan: planPayload,
       } as never);
 
@@ -1840,7 +1902,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return;
         }
         console.error("[mealPlan] save_meal_plan failed:", msg);
+        return;
       }
+      // Legacy row saved via the today-fallback: adopt what we wrote so
+      // the anchor is stable from here (a next-day edit must not drift it).
+      if (!mealPlanStartDateRef.current) setMealPlanStartDate(persistedStartDate);
     }, 600);
     return () => clearTimeout(t);
   }, [authedUserId, dbMealPlanEnabled, dbMealPlanWarned, mealPlan]);
@@ -2563,6 +2629,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       duplicateDayToDateRange,
       mealPlan,
       setMealPlan,
+      mealPlanStartDate,
+      reanchorMealPlan,
       mealPlanSlots,
       activeMealPlanSlotId,
       switchMealPlanSlot,
@@ -2668,6 +2736,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       duplicateDayToDateRange,
       mealPlan,
       setMealPlan,
+      mealPlanStartDate,
+      reanchorMealPlan,
       mealPlanSlots,
       activeMealPlanSlotId,
       switchMealPlanSlot,

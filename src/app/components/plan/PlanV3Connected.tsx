@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
-import { planCalendarDateForIndex } from "@/lib/planning/planDayLabel";
+import { resolvePlanWeekAnchor } from "@/lib/mealPlan/planCalendarAnchor";
 import { computePlanWeekVerdict } from "@/lib/planning/planWeekStatus";
 import type { DayPlan } from "@/types/recipe";
 import type { HouseholdBannerData } from "../../../hooks/useHouseholdBanner";
@@ -35,8 +35,11 @@ export interface PlanV3ConnectedProps {
   plan: DayPlan[];
   /** Daily calorie target. */
   targetCalories: number;
-  /** Plan start offset (0 today / 1 tomorrow / 7 next week) — the date anchor. */
+  /** Plan start offset (0 today / 1 tomorrow / 7 next week) — prospective anchor for EMPTY plans. */
   startOffset: number;
+  /** ENG-1491 — persisted `meal_plan_days.start_date`; anchors the header week
+   *  while the plan has real meals (mobile ENG-1480 contract). */
+  planStartDate: string | null;
   onGenerate: () => void;
   onAdjust: () => void;
   /** Open the swap picker for (dayIndex, slotIndex) — powers add-to-slot. */
@@ -70,6 +73,7 @@ function PlanV3ConnectedBody({
   plan,
   targetCalories,
   startOffset,
+  planStartDate,
   onGenerate,
   onAdjust,
   onTemplates,
@@ -89,10 +93,22 @@ function PlanV3ConnectedBody({
   const templates = onTemplates ?? onAdjust;
   const openHousehold = onOpenHousehold ?? onAdjust;
   const openBatchCook = onOpenBatchCook ?? (() => {});
-  const weekDates = React.useMemo(
-    () => Array.from({ length: 7 }, (_, i) => planCalendarDateForIndex(i, startOffset)),
-    [startOffset],
+  // ENG-1491 (mirrors mobile ENG-1480 `usePlanV3WeekAnchor`): the header week
+  // derives from ONE gated anchor — the persisted `start_date` while the plan
+  // has real meals; the prospective chip week otherwise. `startOffset` alone
+  // mislabelled real saved plans as rolling-from-today (it resets on load).
+  const planHasRealMeals = React.useMemo(
+    () => plan.some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
+    [plan],
   );
+  const weekDates = React.useMemo(() => {
+    const anchor = resolvePlanWeekAnchor({ planHasRealMeals, planStartDate, startOffset });
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(anchor);
+      d.setDate(anchor.getDate() + i);
+      return d;
+    });
+  }, [planHasRealMeals, planStartDate, startOffset]);
 
   const weekLabel = React.useMemo(() => {
     const start = weekDates[0] ?? new Date();
