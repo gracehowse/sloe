@@ -539,6 +539,8 @@ async function runWeeklyRecapPush(req: Request) {
         bodyOut = formatWeeklyRecapPushBody({
           weekKey: descriptor.weekKey,
           weekLabel: "",
+          weekDayKeys: descriptor.keys,
+          loggedDayKeys: [],
           daysLogged: 0,
           avgCalories: 0,
           avgProtein: 0,

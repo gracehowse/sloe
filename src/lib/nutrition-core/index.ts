@@ -137,6 +137,16 @@ export * from "../nutrition/structuredSourceGate";
 export * from "../nutrition/tdee";
 export * from "../nutrition/todayProgressiveDisclosure";
 export * from "../nutrition/totalGramsForVerifyScale";
+// trackerDate: named (not star) — its `todayKey` collides with copyMeals'
+// and a star pair would silently drop the name from the barrel root.
+// Subpath imports (`@suppr/nutrition-core/trackerDate`) expose everything.
+export {
+  clampDateKey,
+  formatDateLabel,
+  mealsSectionTitle,
+  parseDateKey,
+  shiftDateKey,
+} from "../nutrition/trackerDate";
 export * from "../nutrition/trackerStats";
 export * from "../nutrition/trackingExtras";
 export * from "../nutrition/userMealSlotConfig";

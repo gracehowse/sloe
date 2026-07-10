@@ -157,8 +157,7 @@ export function TodayWeekView({
     typeof weekBurnTotal === "number" && Number.isFinite(weekBurnTotal)
       ? weekBurnTotal
       : Math.max(0, maintenanceForWeek) * 7;
-  // ENG-1373 — zero burn reference means "no signal", not a real deficit/
-  // surplus; suppress the verdict rather than fabricate one. Mirrors mobile.
+  // ENG-1373 — zero burn = "no signal"; suppress, never fabricate a verdict.
   const hasBurnSignal = burnReference > 0;
   const under = hasBurnSignal && burnReference >= weekTotals.calories;
   const diff = hasBurnSignal ? Math.round(Math.abs(burnReference - weekTotals.calories)) : null;
@@ -395,7 +394,8 @@ export function TodayWeekView({
               {hasBurnSignal ? diff : "—"}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              {hasBurnSignal ? (under ? "Net deficit" : "Net surplus") : "No burn signal yet"}
+              {hasBurnSignal ? (under ? "Net deficit" : "Net surplus")
+                : `${days.filter((d) => d.totals.calories > 0).length}/7 days logged`}
             </p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { clampJournalDate, dateKeyFromDate } from "./journalNavigation.ts";
+import { clampJournalDate, dateKeyFromDate } from "./journalNavigation";
 
 export function parseDateKey(key: string): Date {
   const [y, m, day] = key.split("-").map(Number);

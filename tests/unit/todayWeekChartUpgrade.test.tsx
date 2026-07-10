@@ -128,7 +128,8 @@ describe("TodayWeekView (web) — chart upgrade", () => {
 // reference to exactly 0. Comparing consumed calories against a zero burn
 // reference isn't a deficit/surplus — it's "no burn signal" — so the tile
 // must suppress the verdict instead of fabricating "Net surplus {total}".
-// Mirror of mobile `todayMaintenanceReconciliation.test.tsx`.
+// Mirror of mobile `todayMaintenanceReconciliation.test.tsx` — suppressed
+// copy converged on mobile's informative days-logged count (ENG-1476).
 describe("TodayWeekView (web) — zero-burn verdict suppression", () => {
   it("suppresses the Net deficit/surplus verdict when weekBurnTotal is absent and maintenanceForWeek is 0", () => {
     render(
@@ -136,7 +137,7 @@ describe("TodayWeekView (web) — zero-burn verdict suppression", () => {
         {...baseProps({ weekBurnTotal: undefined, maintenanceForWeek: 0 })}
       />,
     );
-    const summary = screen.getByText("No burn signal yet");
+    const summary = screen.getByText("6/7 days logged");
     expect(summary).toBeDefined();
     expect(screen.queryByText("Net surplus")).toBeNull();
     expect(screen.queryByText("Net deficit")).toBeNull();
@@ -146,14 +147,14 @@ describe("TodayWeekView (web) — zero-burn verdict suppression", () => {
     render(
       <TodayWeekView {...baseProps({ weekBurnTotal: 0, maintenanceForWeek: 0 })} />,
     );
-    expect(screen.getByText("No burn signal yet")).toBeDefined();
+    expect(screen.getByText("6/7 days logged")).toBeDefined();
   });
 
   it("still renders a real verdict when a burn signal is present", () => {
     render(
       <TodayWeekView {...baseProps({ weekBurnTotal: 15000, maintenanceForWeek: 0 })} />,
     );
-    expect(screen.queryByText("No burn signal yet")).toBeNull();
+    expect(screen.queryByText("6/7 days logged")).toBeNull();
     // weekTotals.calories default is 11740 < weekBurnTotal 15000 → deficit.
     expect(screen.getByText("Net deficit")).toBeDefined();
   });

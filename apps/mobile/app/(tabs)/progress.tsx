@@ -649,14 +649,10 @@ export default function ProgressScreen() {
     // fallback until snapshots arrive.
     setLoading(false);
 
-    // F-2 — fetch `daily_targets` for this week's 7 day keys so past
-    // days render against their frozen target. Missing snapshots
-    // (pre-migration) stay null → UI falls back to current target.
-    // Deferred off the first-paint critical path (H-4). Safe because
-    // `buildWeekStats` inherits the current `targets` for every day
-    // the map doesn't have a snapshot for, so numbers are correct from
-    // the very first frame — only a past-day bar's colour could briefly
-    // flip if the user edited their plan mid-week.
+    // F-2 — fetch `daily_targets` snapshots so past days render against
+    // their frozen target; missing snapshots fall back to current targets
+    // (buildWeekStats inherits them), so numbers are correct from first
+    // frame. Deferred off the first-paint critical path (H-4).
     {
       const nowD = new Date();
       const dow = nowD.getDay();
@@ -664,8 +660,10 @@ export default function ProgressScreen() {
       const startOffset = wsd === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
       const weekFirst = new Date(nowD);
       weekFirst.setDate(nowD.getDate() + startOffset);
+      // ENG-1476 — include the PREVIOUS week (i from -7): the digest judges
+      // last week's days against their frozen targets (web parity).
       const weekKeys: string[] = [];
-      for (let i = 0; i < 7; i++) {
+      for (let i = -7; i < 7; i++) {
         const d = new Date(weekFirst);
         d.setDate(weekFirst.getDate() + i);
         weekKeys.push(dateKeyFromDate(d));

@@ -138,14 +138,15 @@ describe("DigestBlended — structure (mobile)", () => {
     expect(summary).not.toContain("this week");
   });
 
-  it("falls back to 'this week' copy when patternWindowLabel is omitted", () => {
+  it("ENG-1476 — fallback also attributes the rolling window, never 'this week' (web parity)", () => {
     const { getByTestId } = render(
       <Digest blended blendedExtras={extras} {...baseProps} />,
     );
     const summary = ([] as unknown[])
       .concat(getByTestId("digest-pattern-summary").props.children)
       .join("");
-    expect(summary).toContain("this week");
+    expect(summary).toContain("over the last 4 weeks");
+    expect(summary).not.toContain("this week");
   });
 });
 
