@@ -397,6 +397,32 @@ describe("commitBudget — reconciles actual usage", () => {
     expect(_readCounterForTest(userKey)).toBe(actualPence);
   });
 
+  it("charges the overage when actual usage exceeded the reservation (ENG-1487)", async () => {
+    process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "1000";
+
+    // Reserve against a deliberately small input estimate (10 tokens),
+    // as if the caller under-estimated a text prompt.
+    const grant = await reserveBudget("u1", SONNET, 100, 10);
+    expect(grant.ok).toBe(true);
+    if (!grant.ok) throw new Error("unreachable");
+
+    const today = utcDateKey();
+    const globalKey = _keyComposersForTest.globalSpend(today);
+    const userKey = _keyComposersForTest.userSpend("u1", today);
+    expect(_readCounterForTest(globalKey)).toBe(grant.reservedPence);
+
+    // The model actually consumed a much larger input than reserved.
+    const bigInput = 100_000;
+    await commitBudget(grant.grantId, { inputTokens: bigInput, outputTokens: 80 });
+
+    // The counter must settle to the TRUE actual cost, not stay pinned at
+    // the (smaller) reservation — otherwise the £50/day cap under-counts.
+    const actualPence = computeCostPence(SONNET, bigInput, 80);
+    expect(actualPence).toBeGreaterThan(grant.reservedPence);
+    expect(_readCounterForTest(globalKey)).toBe(actualPence);
+    expect(_readCounterForTest(userKey)).toBe(actualPence);
+  });
+
   it("is idempotent — second commit is a no-op", async () => {
     process.env.AI_BUDGET_GLOBAL_DAILY_GBP = "100";
     const grant = await reserveBudget("u1", SONNET, 2500);

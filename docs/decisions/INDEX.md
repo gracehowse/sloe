@@ -9,11 +9,12 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-332 decision docs, newest first. Generated 2026-07-10.
+333 decision docs, newest first. Generated 2026-07-10.
 
 | Date | Decision | Summary |
 |------|----------|---------|
 | 2026-07-10 | [Entitlement reconciliation cron (ENG-1463 / ENG-1437)](./2026-07-10-entitlement-reconciliation-cron.md) | `profiles.user_tier` is a denormalised mirror of the payment processors' entitlement truth. Its only writers are the Stripe and RevenueCat webhooks (through `updateProfileTierServiceRole`); the column is client-write-loc… |
+| 2026-07-10 | [Money-path hardening — red-team fixes (ENG-1487 / ENG-1490)](./2026-07-10-money-path-hardening-redteam-fixes.md) | The 2026-07-10 adversarial money-path sweep confirmed a cluster of live defects. This change fixes the highest-value / lowest-risk subset: |
 | 2026-07-09 | [Email-confirmation signup hardening + mobile deep-link spec (ENG-1395)](./2026-07-09-email-confirmation-signup-hardening.md) | The 2026-07-05 deep audit (SEC-01/DI-04, ENG-1395) flagged account-farming: signup runs with GoTrue email confirmation **off** (`[auth.email] enable_confirmations = false` in `supabase/config.toml`), so `signUp()` return… |
 | 2026-07-09 | [Mobile degraded-paywall disclosure — defer the price to the App Store (2026-07-09)](./2026-07-09-mobile-degraded-paywall-disclosure.md) | ENG-1381 shipped a flag-gated fallback paywall (`paywall_fallback_when_unavailable`, default-OFF) for the degraded `subscriptionsUnavailable` state — when RevenueCat offerings fail to resolve (App Store Sandbox, App Stor… |
 | 2026-07-06 | [Launch sequencing — revenue rails (ENG-1433)](./2026-07-06-launch-sequencing-revenue-rails.md) | The 2026-07-05 money-path audit flagged "web Stripe is dark in prod" as one item among ~12 in a launch-blocker cluster. Re-examining it in isolation surfaced a sharper framing: **distribution today is TestFlight-only, an… |
