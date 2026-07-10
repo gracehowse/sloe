@@ -6,6 +6,33 @@ const repoRoot = process.cwd();
 const forbidden = [/https?:\/\/[^\s"'`]+posthog\.com/gi, /https?:\/\/[^\s"'`]+i\.posthog\.com/gi];
 const textExt = new Set([".js", ".mjs", ".cjs", ".ts", ".tsx", ".json", ".html", ".txt"]);
 
+// posthog-js/posthog-node ship internal fallback/region-normalization constants
+// (e.g. a default api_host used only when a caller omits one, and a support-ticket
+// URL in their error logger) that always appear verbatim in ANY client bundle that
+// includes the SDK — regardless of what host our own code configures. Our app
+// always passes an explicit api_host (see AnalyticsProvider.tsx), so those SDK
+// defaults are dead code, not a live endpoint we introduced. Rather than trust a
+// literal-string regex to tell "our hardcoded host" apart from "the SDK's own
+// hardcoded host", treat any match that also appears byte-for-byte inside the
+// installed SDK's own package source as vendor-owned and not a finding — a host we
+// hardcode ourselves won't coincidentally match the SDK's source verbatim.
+const vendorPkgDirs = [path.join(repoRoot, "node_modules", "posthog-js"), path.join(repoRoot, "node_modules", "posthog-node")];
+
+function loadVendorStrings() {
+  const known = new Set();
+  for (const pkgDir of vendorPkgDirs) {
+    if (!existsSync(pkgDir)) continue;
+    for (const file of walk(pkgDir, [])) {
+      const text = readFileSync(file, "utf8");
+      for (const re of forbidden) {
+        re.lastIndex = 0;
+        for (const match of text.match(re) ?? []) known.add(match);
+      }
+    }
+  }
+  return known;
+}
+
 const checks = [
   {
     label: "web production client bundle",
@@ -51,6 +78,7 @@ function* walk(dir, ignore) {
   }
 }
 
+const vendorStrings = loadVendorStrings();
 const findings = [];
 for (const check of checks) {
   if (!existsSync(check.root)) {
@@ -63,8 +91,8 @@ for (const check of checks) {
     const text = readFileSync(file, "utf8");
     for (const re of forbidden) {
       re.lastIndex = 0;
-      const matches = text.match(re);
-      if (matches?.length) findings.push(`${rel}: ${[...new Set(matches)].join(", ")}`);
+      const matches = [...new Set(text.match(re) ?? [])].filter((m) => !vendorStrings.has(m));
+      if (matches.length) findings.push(`${rel}: ${matches.join(", ")}`);
     }
   }
 }
