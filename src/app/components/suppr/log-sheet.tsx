@@ -390,13 +390,13 @@ export interface LogSheetProps {
   confirmation?: {
     /** What was logged — e.g. the food/meal title. */
     title: string;
-    /** Estimated kcal of the logged item (always "estimated" copy). */
+    /** Kcal of the logged item — `formatQualifiedKcal` renders verified
+     *  unqualified, unverified/absent with the `~` qualifier. */
     kcal: number;
-    /** ENG-1484 — verification state of the logged item's kcal, feeding the
-     *  canonical `~` trust qualifier (`formatQualifiedKcal`, ENG-1417) behind
-     *  `kcal_trust_qualifier_v1`. Absent = unverified (the ENG-1417 safe
-     *  default — an unknown trust state never reads as confident), so hosts
-     *  that don't yet thread per-item verification still render honestly. */
+    /** ENG-1484 — kcal verification state, feeding the `~` trust qualifier
+     *  (`formatQualifiedKcal`, ENG-1417) behind `kcal_trust_qualifier_v1`.
+     *  Absent = unverified = honest "~" (ENG-1417 safe default); hosts
+     *  adopt path-by-path — see ENG-1502. */
     kcalIsVerified?: boolean;
     /** Slot it landed in (Breakfast / Lunch / Dinner / Snacks). */
     slot?: string;

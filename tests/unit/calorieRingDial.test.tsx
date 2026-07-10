@@ -104,6 +104,19 @@ describe("CalorieRingDial — click-to-toggle + pulses (ENG-1465)", () => {
     expect(onToggle).toHaveBeenCalledTimes(2);
   });
 
+  it("Space fires onToggle AND calls preventDefault (no page scroll)", () => {
+    const onToggle = vi.fn();
+    const { getByTestId } = render(
+      <CalorieRingDial consumed={1200} target={2000} onToggle={onToggle} />,
+    );
+    const dial = getByTestId("calorie-ring-dial");
+    // fireEvent returns false when the handler called preventDefault —
+    // Space must be consumed so it can't also scroll the page.
+    const notPrevented = fireEvent.keyDown(dial, { key: " " });
+    expect(notPrevented).toBe(false);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
   it("stays inert (no role/tabindex) when no handler is wired", () => {
     const { getByTestId } = render(
       <CalorieRingDial consumed={1200} target={2000} />,

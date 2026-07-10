@@ -231,7 +231,10 @@ export function CalorieRingDial({
       onKeyDown={
         onToggle
           ? (e) => {
-              if (e.key === "Enter" || e.key === " ") onToggle();
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggle();
+              }
             }
           : undefined
       }
