@@ -20,8 +20,16 @@
  * reading the way the spec requires — these break before that ships.
  */
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
+
+// ENG-1417 — mutable per-test override, defaults OFF (kill switch) so every
+// other test in this file keeps asserting the exact pre-ENG-1417 bare kcal.
+let kcalTrustQualifierOn = false;
+vi.mock("@/lib/analytics", () => ({
+  isFeatureEnabled: (flag: string) =>
+    flag === "kcal_trust_qualifier_v1" ? kcalTrustQualifierOn : false,
+}));
 
 import { MacroIconRow } from "../../components/nutrition/MacroIconRow";
 
@@ -104,5 +112,39 @@ describe("MacroIconRow — kcal suppression (trust posture / F4)", () => {
     expect(queryByText(/kcal/)).toBeNull();
     // …but the macros the recipe DOES have still render.
     expect(queryByText("32g")).toBeTruthy();
+  });
+});
+
+describe("MacroIconRow — kcal trust qualifier (ENG-1417, Library calorie-sort)", () => {
+  it("stays bare even when kcalIsVerified is passed if the flag is off (kill switch)", () => {
+    kcalTrustQualifierOn = false;
+    const { getByText } = render(
+      <MacroIconRow kcal={520} kcalIsVerified={false} protein={32} carbs={40} fat={18} {...BASE} />,
+    );
+    expect(getByText("520 kcal")).toBeTruthy();
+  });
+
+  it("shows the bare value when verified and the flag is on", () => {
+    kcalTrustQualifierOn = true;
+    const { getByText } = render(
+      <MacroIconRow kcal={520} kcalIsVerified={true} protein={32} carbs={40} fat={18} {...BASE} />,
+    );
+    expect(getByText("520 kcal")).toBeTruthy();
+  });
+
+  it('prefixes "~" when unverified and the flag is on', () => {
+    kcalTrustQualifierOn = true;
+    const { getByText } = render(
+      <MacroIconRow kcal={520} kcalIsVerified={false} protein={32} carbs={40} fat={18} {...BASE} />,
+    );
+    expect(getByText("~520 kcal")).toBeTruthy();
+  });
+
+  it("never qualifies when the caller omits kcalIsVerified (Discover/Today browse cards, GW-08 exclusion)", () => {
+    kcalTrustQualifierOn = true;
+    const { getByText } = render(
+      <MacroIconRow kcal={520} protein={32} carbs={40} fat={18} {...BASE} />,
+    );
+    expect(getByText("520 kcal")).toBeTruthy();
   });
 });

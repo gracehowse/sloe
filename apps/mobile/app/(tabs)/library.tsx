@@ -812,17 +812,15 @@ export default function LibraryScreen() {
           </View>
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-            {/* Macro row (recipes.md §3.1) — kcal · protein · carbs · fat
-                in the immutable MacroColors, protein emphasised. Values come
-                straight off the RecipeCard the list already loaded (real
-                macros for seed + saved rows). kcal is suppressed at ≤0 so a
-                recipe whose nutrition hasn't computed never shows a
-                confident "0 kcal" (trust posture / F4). Letters are off here
-                because the 2-column card is narrow; the macro hue + icon
-                carry the meaning, and protein leads visually. Shared with
-                Discover + web Library via MacroIconRow. */}
+            {/* Macro row (recipes.md §3.1) — kcal · protein · carbs · fat in the
+                immutable MacroColors, protein emphasised. Values come straight
+                off the RecipeCard the list already loaded. kcal suppressed at
+                ≤0 so an un-computed recipe never shows a confident "0 kcal"
+                (trust posture / F4). Letters off (narrow 2-col card — hue +
+                icon carry meaning). Shared with Discover + web via MacroIconRow. */}
             <MacroIconRow
               kcal={item.calories > 0 ? item.calories : null}
+              kcalIsVerified={item.isVerified ?? false}
               protein={item.protein}
               carbs={item.carbs}
               fat={item.fat}

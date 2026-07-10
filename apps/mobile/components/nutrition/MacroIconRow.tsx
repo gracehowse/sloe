@@ -9,6 +9,8 @@ import {
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { MACRO_ICONS } from "@/lib/macroIconsLucide";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
 
 /**
  * MacroIconRow — canonical at-a-glance macro display.
@@ -34,6 +36,15 @@ import { MACRO_ICONS } from "@/lib/macroIconsLucide";
  */
 export interface MacroIconRowProps {
   kcal: number | null | undefined;
+  /**
+   * ENG-1417 — verified vs estimate for the kcal value only. Omit for
+   * browse-level surfaces (Discover, Today) which are deliberately excluded
+   * from the "~" qualifier (GW-08 2026-04-28 audit — blanket badges on
+   * high-volume browse cards read as decorative noise). Library's grid
+   * passes this because it's a decision surface: users sort by this exact
+   * number to rank recipes, unlike an unordered browse feed.
+   */
+  kcalIsVerified?: boolean;
   protein: number | null | undefined;
   carbs: number | null | undefined;
   fat: number | null | undefined;
@@ -100,6 +111,7 @@ function Chunk({
 
 export function MacroIconRow({
   kcal,
+  kcalIsVerified,
   protein,
   carbs,
   fat,
@@ -119,6 +131,10 @@ export function MacroIconRow({
   const accent = useAccent();
   // ENG-1223: scheme-resolved macro hues — plum protein etc. lighten on dark.
   const { colors: macro } = useMacroColors();
+  // ENG-1417 — only callers that pass kcalIsVerified opt into the "~"
+  // qualifier (Library). Discover/Today never pass it, so this stays
+  // false for them regardless of the flag — preserving the GW-08 exclusion.
+  const showKcalQualifier = kcalIsVerified !== undefined && isFeatureEnabled("kcal_trust_qualifier_v1");
   return (
     <View
       style={[{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 }, style]}
@@ -127,7 +143,11 @@ export function MacroIconRow({
         <Chunk
           Icon={MACRO_ICONS.calories}
           iconColor={macro.calories}
-          value={`${Math.round(kcal)} kcal`}
+          value={
+            showKcalQualifier
+              ? `${formatQualifiedKcal(kcal, kcalIsVerified)} kcal`
+              : `${Math.round(kcal)} kcal`
+          }
           textColor={textColor}
           textTertiaryColor={textTertiaryColor}
           iconSize={iconSize}

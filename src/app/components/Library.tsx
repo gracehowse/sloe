@@ -13,6 +13,7 @@ import { useLibraryDiscoverRedirect } from "./library/useLibraryDiscoverRedirect
 import { LibraryCollectionsBar } from "./library/LibraryCollectionsBar.tsx";
 import { RecipeCardOverlayControls } from "./library/RecipeCardOverlayControls.tsx";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { formatQualifiedKcal } from "../../lib/nutrition/formatMacro";
 import { useRouter } from "next/navigation";
 import {
   LIBRARY_CATEGORY_PILLS,
@@ -591,19 +592,17 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     <h3 className="font-[family-name:var(--font-headline)] text-[15px] font-medium leading-snug text-foreground line-clamp-2">
                       {recipe.title}
                     </h3>
-                    {/* Macro row (recipes.md §3.1) — kcal · protein · carbs
-                        · fat in the immutable macro colours, protein
-                        emphasised. kcal suppressed at ≤0 so an un-computed
-                        recipe never shows a confident "0 kcal" (trust
-                        posture). Narrow 2-col card → no letters (the hue +
-                        icon carry the meaning, protein leads). Mobile
-                        parity: `apps/mobile/app/(tabs)/library.tsx`
-                        MacroIconRow with `emphasiseProtein`. */}
+                    {/* Macro row (recipes.md §3.1) — kcal · protein · carbs · fat
+                        in the immutable macro colours, protein emphasised. kcal
+                        suppressed at ≤0 so an un-computed recipe never shows a
+                        confident "0 kcal" (trust posture). Narrow 2-col card → no
+                        letters (hue + icon carry meaning, protein leads). Mobile
+                        parity: apps/mobile/app/(tabs)/library.tsx MacroIconRow. */}
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-muted-foreground tabular-nums">
                       {kcal > 0 ? (
                         <span className="inline-flex items-center gap-1">
                           <Icons.calories className="w-[11px] h-[11px]" style={{ color: "var(--macro-calories)" }} aria-hidden />
-                          {kcal}
+                          {isFeatureEnabled("kcal_trust_qualifier_v1") ? formatQualifiedKcal(kcal, recipe.isVerified) : String(kcal)}
                         </span>
                       ) : null}
                       <span className="inline-flex items-center gap-1 font-semibold text-foreground">
