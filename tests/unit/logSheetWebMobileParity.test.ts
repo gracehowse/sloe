@@ -343,6 +343,61 @@ describe("LogSheet S13 logged-confirmation — web ↔ mobile parity (Figma 202:
   });
 });
 
+describe("ENG-1502 — per-item kcal verification threaded into the log-confirmation hosts (web ↔ mobile)", () => {
+  // The `~` qualifier (ENG-1417) is honest only if the VERIFIED path is also
+  // reachable: a verified-USDA / Suppr-generic pick must reach the S13
+  // confirmation with `kcalIsVerified: true`, while quick-add / history
+  // re-log / AI-describe paths must stay `false`. These pins keep both
+  // platforms deriving the bit from the item's actual trust data — never
+  // from its source label alone (ENG-807).
+  const webPanel = read("src/app/components/food-search/FoodSearchPanel.tsx");
+  const mobilePanel = read("apps/mobile/components/food-search/FoodSearchPanel.tsx");
+  const webHost = read("src/app/components/NutritionTracker.tsx");
+  // ENG-1502 — the web commit pair (search commit + history re-log) was
+  // extracted to this hook in the same slice (screen-budget ratchet).
+  const webCommits = read("src/lib/nutrition/useLogSheetFoodCommits.ts");
+  const mobileHost = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
+
+  it("both selection contracts carry the optional `verified` trust bit", () => {
+    for (const src of [webPanel, mobilePanel]) {
+      expect(src).toMatch(/verified\?:\s*boolean/);
+    }
+  });
+
+  it("both panels stamp the bit from the picked row's `verified` flag (never invented)", () => {
+    for (const src of [webPanel, mobilePanel]) {
+      // Row → preview/commit constructions all derive from `item.verified`.
+      expect(src).toMatch(/verified:\s*item\.verified === true/);
+      // The preview → selection commit carries it through (custom/history
+      // previews resolve to explicit false — the honest default).
+      expect(src).toMatch(/verified:\s*preview\.verified === true/);
+    }
+  });
+
+  it("both hosts derive the confirmation's kcalIsVerified from the committed selection", () => {
+    expect(webCommits).toMatch(/kcalIsVerified:\s*selection\.verified === true/);
+    expect(mobileHost).toMatch(/kcalIsVerified:\s*result\.verified === true/);
+    // …and the search onSelect threads it into presentLogSheetConfirmation.
+    expect(webHost).toMatch(/kcalIsVerified:\s*result\.kcalIsVerified/);
+    expect(mobileHost).toMatch(/kcalIsVerified:\s*committed\.kcalIsVerified/);
+  });
+
+  it("both hosts pass the honest `false` on the paths that can never claim verification (history re-log + AI describe)", () => {
+    // logHistoryItemFromSheet — journal rows don't persist the trust bit.
+    for (const src of [webCommits, mobileHost]) {
+      expect(src).toMatch(
+        /title:\s*item\.recipeTitle,\s*\n\s*kcal:\s*item\.calories,[\s\S]{0,400}?kcalIsVerified:\s*false/,
+      );
+    }
+    // describe (AI NL parse) — an estimate by construction.
+    for (const src of [webHost, mobileHost]) {
+      expect(src).toMatch(
+        /items logged`,[\s\S]{0,300}?kcalIsVerified:\s*false/,
+      );
+    }
+  });
+});
+
 describe("today-meals-section — empty-state collage REMOVED on web (mobile parity)", () => {
   const web = read(WEB_TODAY_MEALS_SECTION);
   const mobile = read(MOBILE_TODAY_MEALS_SECTION);
