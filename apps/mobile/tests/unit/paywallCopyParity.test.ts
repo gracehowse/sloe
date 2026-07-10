@@ -34,3 +34,17 @@ describe("mobile paywall — dismiss CTA parity", () => {
     expect(src).not.toContain("Continue on free plan");
   });
 });
+
+describe("mobile paywall — ENG-1488 UK/EU statutory cancellation line", () => {
+  const src = readFileSync(PAYWALL_PATH, "utf8");
+
+  it("carries the UK/EU 14-day statutory cancellation right (parity with web BillingDisclosure)", () => {
+    expect(src).toContain(
+      "Consumer Contracts Regulations 2013 and Directive 2011/83/EU",
+    );
+    expect(src).toContain("14-day right to cancel");
+    // Scoped with an explicit "UK/EU customers:" prefix since mobile shows it
+    // unconditionally (no per-storefront region signal).
+    expect(src).toContain("UK/EU customers:");
+  });
+});

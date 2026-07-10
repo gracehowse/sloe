@@ -414,7 +414,7 @@ function Pricing() {
               </span>
             </p>
             <Link className="lp-btn lp-btn-primary lp-btn-block" href={SIGNUP_HREF}>
-              Start free trial
+              Get started
             </Link>
             <ul className="lp-price-features">
               {LANDING_PRO_FEATURES.map((f) => (
