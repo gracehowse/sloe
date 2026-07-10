@@ -55,8 +55,10 @@ export function ProgressEnergyEquation({
       ? plum
       : colors.text;
 
+  // ENG-1497 — no radius override: the 8px lg-ladder escape made this the
+  // one square card on Progress (Grace, 2026-07-11). 24 card default.
   return (
-    <SupprCard testID="progress-energy-equation" lift="soft" radius="lg" padding="lg">
+    <SupprCard testID="progress-energy-equation" lift="soft" padding="lg">
       <Text style={[styles.eyebrow, { color: dim }]}>Energy balance · 7-day average</Text>
       <View style={styles.row}>
         <EqTerm
