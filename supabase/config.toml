@@ -156,7 +156,7 @@ site_url = "https://suppr-club.com"
 # ENG-1474: `suppr://auth-callback` is the mobile PKCE deep link — GoTrue rejects a
 # `redirectTo` that isn't allow-listed here. STAGED ONLY; Grace runs `supabase config push`
 # (founder-gated, same non-negotiable as SQL migrations — never MCP/agent-applied).
-additional_redirect_urls = ["http://localhost:3000/auth/callback", "https://suppr-club.com/auth/callback", "https://suppr-gracehowses-projects.vercel.app/auth/callback", "suppr://auth-callback"]
+additional_redirect_urls = ["http://localhost:3000/auth/callback", "https://suppr-club.com/auth/callback", "https://suppr-gracehowses-projects.vercel.app/auth/callback", "https://suppr-gracehowse-gracehowses-projects.vercel.app/", "https://suppr-gracehowse-gracehowses-projects.vercel.app/**", "https://suppr-*-gracehowse-gracehowses-projects.vercel.app", "https://suppr-*-gracehowse-gracehowses-projects.vercel.app/**", "suppr://auth-callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to the local API URL (http://127.0.0.1:<port>/auth/v1).
