@@ -506,9 +506,9 @@ export function LogSheet({
             // Sloe DS — cream page surface, 24px top radius (the Sloe
             // sheet corner, `--radius-card-lg`), hairline top border.
             "fixed z-50 flex flex-col bg-background",
-            "inset-x-0 bottom-0 max-h-[92vh] rounded-t-[24px] border-t border-border",
+            "inset-x-0 bottom-0 max-h-[92vh] rounded-t-card-lg border-t border-border",
             desktop
-              ? "md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:h-[640px] md:w-[480px] md:max-h-[640px] md:rounded-[24px] md:border"
+              ? "md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:h-[640px] md:w-[480px] md:max-h-[640px] md:rounded-card-lg md:border"
               : "",
             sheetShadowCls,
             !motionEnabled && premiumMotion

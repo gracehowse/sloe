@@ -59,15 +59,14 @@ describe("SupprCard", () => {
     );
     const card = screen.getByTestId("card");
     expect(card).toHaveAttribute("data-tone", "neutral");
-    // SupprCard DEFAULT stays flat. The one-treatment rule (Grace 2026-06-09,
-    // `docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`) is a
-    // per-call-site decision — page-ground cards opt INTO `elevation="card"`;
-    // the primitive default (and the `useCardElevation` hook default) is
-    // unchanged. Flat borderless slab — no shadow, no hairline; painted via
-    // `.card-slab-flat`, not inline boxShadow.
+    // SupprCard DEFAULT stays flat. Under the one card grammar (ENG-1497/
+    // 1499, docs/decisions/2026-07-10-card-grammar-rounder-flat.md) both the
+    // `slab-flat` default and the `card` tier resolve to the same flat +
+    // hairline `.card-slab` class (`.card-slab-flat` retired — it had become
+    // byte-identical); painted via the class, not inline boxShadow.
     expect(card).toHaveAttribute("data-elevation", "slab-flat");
     expect(card.getAttribute("data-flat-slab")).toBe("true");
-    expect(card.className.split(/\s+/)).toContain("card-slab-flat");
+    expect(card.className.split(/\s+/)).toContain("card-slab");
     expect(card.style.boxShadow).toBe("");
   });
 

@@ -192,16 +192,13 @@ export default function ProgressScreen() {
   const accent = useAccent();
   const { colors: macro } = useMacroColors(); // ENG-1223: scheme-resolved macros
   const haptics = useHaptics();
-  // One-card-treatment soft elevation (2026-06-09,
-  // docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md): every
-  // card on Progress sits directly on the scroll page ground — the weight,
-  // daily-calories, maintenance, journey cards + their pending/empty/skeleton
-  // shells, all of which spread this object. Resolving `soft` here lifts the
-  // whole page-ground stack off the near-tonal #F6F5F2-on-#FFFFFF page with the
-  // `cardSoft` plum penumbra (light) / tonal lift + hairline (dark), instead of
-  // the flat slabs that re-blended into the background. No card here is nested
-  // inside another card, so there's no double-shadow risk. Mirrors web giving
-  // the same cards `elevation="card"`.
+  // One-card-treatment (2026-06-09 meta-rule; treatment updated by the
+  // 2026-07-10 card-grammar ruling, ENG-1497): every card on Progress sits
+  // directly on the scroll page ground — the weight, daily-calories,
+  // maintenance, journey cards + their pending/empty/skeleton shells, all of
+  // which spread this object. `soft` now resolves to flat + hairline in
+  // light / tonal lift + hairline in dark (useCardElevation). Mirrors web
+  // giving the same cards `elevation="card"`.
   const cardElevation = useCardElevation({ variant: "soft" });
   // Tile-class rule (2026-06-10): skeleton stat tiles mirror the flat triad.
   const tileElevation = useCardElevation();

@@ -115,7 +115,7 @@ function SectionBlock({
       <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2">
         {section}
       </p>
-      <div className="bg-card border border-border rounded-[14px] px-3 py-1 divide-y divide-border">
+      <div className="bg-card border border-border rounded-[12px] px-3 py-1 divide-y divide-border">
         {rows.map((row) => (
           <PanelRow key={row.key} row={row} />
         ))}

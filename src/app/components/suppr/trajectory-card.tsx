@@ -69,7 +69,6 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
       // soft `.card-slab`. Mirrors mobile `lift="soft"`.
       elevation="card"
       padding="lg"
-      radius="xl"
       className={["mb-6", className ?? ""].filter(Boolean).join(" ")}
       aria-label={accessibilityLabelFor(state)}
     >

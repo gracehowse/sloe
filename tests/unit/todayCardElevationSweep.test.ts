@@ -3,10 +3,11 @@
  *
  * Re-pinned to the "one card treatment" rule (Grace 2026-06-09,
  * `docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`):
- * every card that sits directly on the page ground uses the SOFT lift —
- * `.card-slab` (web) / `elevation="card"` on `SupprCard`. Cards nested
- * INSIDE another card/sheet stay FLAT (`.card-slab-flat` /
- * `elevation="slab-flat"`) so they never double-shadow.
+ * every card that sits directly on the page ground rides `.card-slab` (web)
+ * / `elevation="card"` on `SupprCard`. Under the one card grammar
+ * (2026-07-10, ENG-1497/1499) `.card-slab` is flat + hairline and
+ * `.card-slab-flat` is retired (byte-identical) — both SupprCard tiers
+ * resolve to `.card-slab`.
  *
  * Page-ground Today cards re-pinned to soft here: the meals-section
  * containers (quick-add + each meal slot + empty state) and the hydration
@@ -94,9 +95,10 @@ describe("Today card-elevation sweep — meals-section containers", () => {
     expect(opens.length).toBeGreaterThanOrEqual(2);
     // One-treatment (Grace 2026-06-09): these page-ground cards lift soft.
     expect(MEALS).toContain('elevation="card"');
-    // The only remaining flat class is the usual-picker row, which is
-    // NESTED inside the picker dialog sheet — a card-in-a-surface stays flat.
-    expect(MEALS).toContain(CARD_SLAB_FLAT);
+    // The usual-picker row (nested inside the picker dialog sheet) rides
+    // `.card-slab` too — `.card-slab-flat` is retired (ENG-1499).
+    expect(MEALS).toContain("rounded-card bg-card card-slab ");
+    expect(MEALS).not.toContain(CARD_SLAB_FLAT);
   });
   it("no longer hand-rolls the flat `rounded-card bg-card border border-border overflow-hidden` containers", () => {
     expect(MEALS).not.toContain(

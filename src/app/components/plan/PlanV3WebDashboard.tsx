@@ -107,7 +107,9 @@ function useOpenSlots(plan: DayPlan[], weekDates: Date[]) {
 
 function StatStrip({ stats }: { stats: WeekStat[] }) {
   return (
-    <div className="mt-4 grid grid-cols-4 gap-2 rounded-xl border border-border bg-card p-3">
+    // Nested stat band inside the Plan dashboard — 12px inner standard
+    // (12-inside-24 concentric, card-grammar ruling ENG-1498).
+    <div className="mt-4 grid grid-cols-4 gap-2 rounded-[12px] border border-border bg-card p-3">
       {stats.map((s) => (
         <div key={s.label} className="text-center">
           <div className="text-[18px] font-semibold tabular-nums text-foreground">
@@ -138,7 +140,7 @@ function InsightCard({
       ? `${openDays[0]} still needs a meal`
       : `${openDays.length} days still need a meal`;
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-card-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2">
         <span
           className="grid size-7 shrink-0 place-items-center rounded-full"
@@ -176,7 +178,7 @@ function BatchCookCard({
   onOpenBatchCook: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-card-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2">
         <span
           className="grid size-7 shrink-0 place-items-center rounded-full"
@@ -209,7 +211,7 @@ function ShoppingCard({
   onOpenShopping: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-card-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2">
         <span
           className="grid size-7 shrink-0 place-items-center rounded-full"

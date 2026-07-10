@@ -256,7 +256,7 @@ export default async function RecipePage({ params }: Props) {
             mirrors the mobile RecipeHeroFallback. Photo case stays
             full aspect-video. */}
         {recipe.image ? (
-          <div className="rounded-3xl overflow-hidden shadow-xl mb-8">
+          <div className="rounded-card-lg overflow-hidden shadow-xl mb-8">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={recipe.image}
@@ -271,7 +271,7 @@ export default async function RecipePage({ params }: Props) {
           // deterministic per-recipe gradient + glyph). Aspect ratio
           // matches the photo case via aspect-video.
           <div
-            className="relative rounded-3xl overflow-hidden shadow-xl mb-8 aspect-video"
+            className="relative rounded-card-lg overflow-hidden shadow-xl mb-8 aspect-video"
             aria-label={`${recipe.title} — no photo available`}
           >
             <RecipeHeroFallback
@@ -413,7 +413,7 @@ export default async function RecipePage({ params }: Props) {
                 return (
                   <li
                     key={idx}
-                    className="overflow-hidden rounded-3xl bg-card border border-border"
+                    className="overflow-hidden rounded-card-lg bg-card border border-border"
                   >
                     <div className="relative h-[86px] w-full">
                       <RecipeHeroFallback
@@ -446,7 +446,7 @@ export default async function RecipePage({ params }: Props) {
 
         {/* Instructions */}
         {instructions.length > 0 && (
-          <div className="bg-card rounded-3xl border border-border p-6 mb-8 shadow-sm">
+          <div className="bg-card rounded-card-lg border border-border p-6 mb-8 shadow-sm">
             <h2
               className="text-foreground-brand mb-4"
               style={{ fontFamily: "var(--font-headline)", fontSize: "20px", fontWeight: 400 }}

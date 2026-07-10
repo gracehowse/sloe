@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, View } from "react-native";
 import { Plus } from "lucide-react-native";
 
+import { Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { TAB_BAR_METRICS } from "@/hooks/useTabBarClearance";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -91,7 +92,7 @@ export function LogTabBarButton({ onPress }: LogTabBarButtonProps) {
         style={({ pressed }) => ({
           width: 56,
           height: 56,
-          borderRadius: 28,
+          borderRadius: Radius.full,
           backgroundColor: accent.primary,
           alignItems: "center",
           justifyContent: "center",

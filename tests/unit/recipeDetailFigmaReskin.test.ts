@@ -129,9 +129,10 @@ describe("public-share page — ingredients (delta 4: photo-card grid, existing 
     expect(PUBLIC_SRC).not.toMatch(/bg-(?:gray|grey|slate|neutral)-\d00[^]*?image-placeholder/);
   });
 
-  it("rounds the ingredient cards to the Figma 24 corner", () => {
-    // The ingredient <li> uses rounded-3xl (24px) per Figma.
-    expect(PUBLIC_SRC).toMatch(/rounded-3xl bg-card border border-border/);
+  it("rounds the ingredient cards to the 24 card corner", () => {
+    // The ingredient <li> uses the token-mapped `rounded-card-lg` (24px) —
+    // `rounded-3xl` is retired (ENG-1498 one-spelling rule).
+    expect(PUBLIC_SRC).toMatch(/rounded-card-lg bg-card border border-border/);
   });
 });
 

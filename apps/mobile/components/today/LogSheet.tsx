@@ -29,7 +29,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
-import { Accent, IconSize, MacroColors, MacroColorsDark, Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
+import { Accent, Elevation, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -1695,16 +1695,13 @@ const styles = StyleSheet.create({
   },
   sheet: {
     height: "92%",
-    // Sloe DS — 24px sheet corner (matches web `rounded-t-[24px]` /
-    // `--radius-card-lg`), warm sheet shadow.
+    // Sloe DS — 24px sheet corner (matches web `rounded-t-card-lg` /
+    // `--radius-card-lg`); sheet shadow via the Elevation token (ENG-1500 —
+    // overlays KEEP their float under the flat card grammar).
     borderTopLeftRadius: SHEET_RADIUS,
     borderTopRightRadius: SHEET_RADIUS,
     overflow: "hidden",
-    shadowColor: ShadowColor.cast,
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: -8 },
-    elevation: 8,
+    ...Elevation.sheet,
   },
   handle: {
     width: 36,

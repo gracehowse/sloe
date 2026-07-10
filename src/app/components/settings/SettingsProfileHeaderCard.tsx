@@ -76,7 +76,6 @@ export function SettingsProfileHeaderCard({
     <SupprCard
       data-testid="settings-profile-header-card"
       padding="xl"
-      radius="xl"
       className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4"
     >
       <div className="flex items-center gap-4 sm:contents">

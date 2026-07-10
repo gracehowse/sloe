@@ -899,11 +899,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         href={userTier === "pro" ? "/account/billing" : "/pricing"}
         data-testid="settings-sloe-pro-banner"
         aria-label={userTier === "pro" ? "Manage your Sloe Pro subscription" : "Get Sloe Pro"}
-        className="mb-6 flex items-center justify-between rounded-[var(--radius-card-lg)] px-4 py-4 transition-colors"
-        style={{
-          backgroundColor: "var(--card)",
-          border: "0.5px solid var(--border)",
-        }}
+        // Standard card hairline (ENG-1500) — the one-card-grammar 1px
+        // `--border` treatment via `.card-slab`, not a bespoke 0.5px inline.
+        className="mb-6 flex items-center justify-between rounded-card-lg card-slab px-4 py-4 transition-colors"
       >
         <span className="flex items-center gap-2.5">
           <Icons.sparkles className="w-[18px] h-[18px]" style={{ color: "var(--accent-primary-solid)" }} aria-hidden />
@@ -1459,11 +1457,10 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             {/* Audit 2026-04-30 round-2 fix #3 — each toggle now
                 carries a one-line helper so the user knows what
                 enabling it does. Mirror of mobile settings. */}
-            {/* Nested list-card inside the Preferences SupprCard. One-treatment
-                elevation (Grace 2026-06-09): a card nested in another card stays
-                FLAT (`card-slab-flat`) so it never double-shadows — the parent
-                Preferences card already carries the soft lift. (ENG-823.) */}
-            <div className="rounded-xl bg-card divide-y divide-border card-slab-flat">
+            {/* Grouped list-card — a page-ground card under the one card
+                grammar (ENG-1498, 2026-07-10 ruling): 24px corner, flat +
+                hairline via `.card-slab` like every resting card. */}
+            <div className="rounded-card-lg bg-card divide-y divide-border card-slab">
               <label className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer">
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm text-foreground">Track caffeine</span>

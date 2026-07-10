@@ -13,18 +13,16 @@
  * Mirror: `apps/mobile/components/ui/SupprCard.tsx` (same prop names,
  * same variants, same UN-GATED elevation behaviour as mobile).
  *
- * ── Elevation model (Sloe v3 card-lift, 2026-06-25) ──
- * Resting cards LIFT off the white ground on the soft ambient shadow
- * (`--elev-card-soft`, the three-layer `--shadow-card` from the v3 prototype) —
- * a flat white card on a white page is invisible, so the lift IS the
- * separation. Decision: `docs/decisions/2026-06-25-v3-card-lift-reversal.md`
- * (reverses the 2026-06-12 flat-card grammar). Both `.card-slab` (`card` tier)
- * and `.card-slab-flat` (`slab-flat` tier, default) apply the soft shadow in
- * `src/styles/theme.css`; in DARK they take the dark `--elev-card-soft` +
- * tonal `--card-elevated` fill. Mirrors `apps/mobile/hooks/useCardElevation.ts`
- * (mobile keeps a single-shadow equivalent — RN can't render layered shadows).
- * Macro tiles + inset card-on-card panels stay flat/recessed; `sheet` / `float`
- * are TRANSIENT surfaces with their own shadows; `none` has no elevation.
+ * ── Elevation model (one card grammar, 2026-07-10 · ENG-1497) ──
+ * Resting cards are FLAT with a hairline border — no shadow. Separation is
+ * the 1px `--border` hairline + card-vs-ground fill contrast on the
+ * whisper-cool ground. Decision:
+ * `docs/decisions/2026-07-10-card-grammar-rounder-flat.md` (supersedes the
+ * 2026-06-25 lift reversal). Both the `card` tier and the `slab-flat` tier
+ * (default) resolve to the same `.card-slab` class in `src/styles/theme.css`
+ * (`.card-slab-flat` retired ENG-1499 — it had become byte-identical).
+ * Mirrors `apps/mobile/hooks/useCardElevation.ts`. `sheet` / `float` are
+ * TRANSIENT overlay surfaces and KEEP their shadows; `none` has no elevation.
  *
  * Variants:
  *  - `tone`: `neutral` (default) / `primary` / `success` / `warning` / `magenta`
@@ -180,8 +178,9 @@ export function SupprCard({
         "block",
         radiusClasses[radius],
         paddingClasses[padding],
-        softSlab ? "card-slab" : "",
-        flatSlab ? "card-slab-flat" : "",
+        // `.card-slab-flat` retired ENG-1499 — byte-identical to `.card-slab`
+        // since the flat+hairline flip (ENG-1497); both tiers share the class.
+        softSlab || flatSlab ? "card-slab" : "",
         effectiveBorder ? "border" : "",
         className,
       )}

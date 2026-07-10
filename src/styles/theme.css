@@ -1094,17 +1094,9 @@
     border: 1px solid var(--border);
   }
 
-  .card-slab-flat {
-    background-color: var(--card);
-    box-shadow: none;
-    border: 1px solid var(--border);
-  }
-
-  .dark .card-slab-flat {
-    background-color: var(--card);
-    box-shadow: none;
-    border: 1px solid var(--border);
-  }
+  /* `.card-slab-flat` retired ENG-1499 (2026-07-10): byte-identical to
+     `.card-slab` since the ENG-1497 flat+hairline flip, so its direct uses
+     migrated to `.card-slab` and the class was deleted. */
 
   .dark .card-slab {
     /* Nocturne: ENG-1497 — raised plum card fill + hairline, no shadow. */

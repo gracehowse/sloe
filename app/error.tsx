@@ -42,7 +42,7 @@ export default function Error({
       <div className="min-h-screen grid place-items-center px-6 py-12 bg-background">
         <div
           data-testid="route-error-branded"
-          className="w-full max-w-md flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 text-center shadow-[var(--elev-card-soft)]"
+          className="w-full max-w-md flex flex-col items-center gap-3 rounded-card-lg bg-card card-slab p-8 text-center"
         >
           <SupprMark size={44} className="mb-1" />
           <h1 className="text-foreground">Something went wrong</h1>

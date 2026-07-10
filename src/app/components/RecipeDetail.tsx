@@ -3009,7 +3009,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                   return (
                     <li
                       key={index}
-                      className="group overflow-hidden rounded-3xl border border-border/70"
+                      className="group overflow-hidden rounded-card-lg border border-border/70"
                       style={whiteSlabStyle}
                       data-testid={`recipe-ingredient-card-${index}`}
                     >

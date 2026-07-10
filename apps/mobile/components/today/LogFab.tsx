@@ -2,7 +2,7 @@ import React, { memo } from "react";
 import { View } from "react-native";
 import { Plus } from "lucide-react-native";
 
-import { Accent, Colors, Elevation } from "@/constants/theme";
+import { Accent, Colors, Elevation, Radius } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 
@@ -77,7 +77,7 @@ function LogFabImpl({ visible = true, onPress, bottom = 100, right = 18 }: LogFa
           {
             width: 56,
             height: 56,
-            borderRadius: 28,
+            borderRadius: Radius.full,
             backgroundColor: accent.primary,
             alignItems: "center",
             justifyContent: "center",
