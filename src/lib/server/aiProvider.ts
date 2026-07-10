@@ -21,13 +21,17 @@
  * Both accept an `AbortSignal` for sub-platform timeout control.
  */
 
+import { headers } from "next/headers";
+
 import { emitAiGeneration } from "../analytics/aiGeneration";
 import {
   AiBudgetExceededError,
   commitBudget,
+  hashClientIp,
   releaseBudget,
   reserveBudget,
 } from "./aiBudget";
+import { getTrustedClientIp } from "./clientIp";
 
 // 2026-05-08 hotfix: switched from `claude-sonnet-4-6` (alias) to the
 // fully-qualified dated model id. Aliases sometimes 400 via direct
@@ -124,6 +128,20 @@ function readKeys(): ProviderKeys {
     claudeKey: process.env.ANTHROPIC_API_KEY?.trim() || null,
     openaiKey: process.env.OPENAI_API_KEY?.trim() || null,
   };
+}
+
+// ENG-1395 — Layer C (per-IP daily call cap). Resolved once per public
+// dispatcher call and threaded into `reserveBudget`. `headers()` throws
+// outside a request context (cron, background jobs); any such caller
+// simply gets `null` back and Layer C is skipped for that call, same as
+// local dev with no trusted-IP header present.
+async function resolveIpHash(): Promise<string | null> {
+  try {
+    const h = await headers();
+    return hashClientIp(getTrustedClientIp(h));
+  } catch {
+    return null;
+  }
 }
 
 function notConfigured(_callSite: string): AiCallErr {
@@ -252,6 +270,7 @@ function fireAiTelemetry(
 async function callClaudeVision(
   key: string,
   input: CallAiVisionInput,
+  ipHash: string | null,
 ): Promise<AiCallResult> {
   const model = input.claudeModel ?? CLAUDE_MODEL_DEFAULT;
   const startedAt = Date.now();
@@ -288,6 +307,8 @@ async function callClaudeVision(
     input.userId ?? null,
     model,
     input.maxTokens ?? 2500,
+    undefined,
+    ipHash,
   );
   if (!grant.ok) {
     throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
@@ -368,6 +389,7 @@ async function callClaudeVision(
 async function callOpenAIVision(
   key: string,
   input: CallAiVisionInput,
+  ipHash: string | null,
 ): Promise<AiCallResult> {
   const model = input.openaiModel ?? OPENAI_VISION_MODEL_DEFAULT;
   const startedAt = Date.now();
@@ -384,6 +406,8 @@ async function callOpenAIVision(
     input.userId ?? null,
     model,
     input.maxTokens ?? 2500,
+    undefined,
+    ipHash,
   );
   if (!grant.ok) {
     throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
@@ -456,8 +480,9 @@ export async function callAiVision(
 ): Promise<AiCallResult> {
   const { claudeKey, openaiKey } = readKeys();
   if (!claudeKey && !openaiKey) return notConfigured(input.callSite);
-  if (claudeKey) return callClaudeVision(claudeKey, input);
-  return callOpenAIVision(openaiKey!, input);
+  const ipHash = await resolveIpHash();
+  if (claudeKey) return callClaudeVision(claudeKey, input, ipHash);
+  return callOpenAIVision(openaiKey!, input, ipHash);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -467,6 +492,7 @@ export async function callAiVision(
 async function callClaudeText(
   key: string,
   input: CallAiTextInput,
+  ipHash: string | null,
 ): Promise<AiCallResult> {
   const model = input.claudeModel ?? CLAUDE_MODEL_DEFAULT;
   const startedAt = Date.now();
@@ -483,6 +509,8 @@ async function callClaudeText(
     input.userId ?? null,
     model,
     input.maxTokens ?? 1500,
+    undefined,
+    ipHash,
   );
   if (!grant.ok) {
     throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
@@ -552,6 +580,7 @@ async function callClaudeText(
 async function callOpenAIText(
   key: string,
   input: CallAiTextInput,
+  ipHash: string | null,
 ): Promise<AiCallResult> {
   const model = input.openaiModel ?? OPENAI_MODEL_DEFAULT;
   const startedAt = Date.now();
@@ -568,6 +597,8 @@ async function callOpenAIText(
     input.userId ?? null,
     model,
     input.maxTokens ?? 1500,
+    undefined,
+    ipHash,
   );
   if (!grant.ok) {
     throw new AiBudgetExceededError(grant.reason, grant.retryAfterSec);
@@ -632,8 +663,9 @@ async function callOpenAIText(
 export async function callAiText(input: CallAiTextInput): Promise<AiCallResult> {
   const { claudeKey, openaiKey } = readKeys();
   if (!claudeKey && !openaiKey) return notConfigured(input.callSite);
-  if (claudeKey) return callClaudeText(claudeKey, input);
-  return callOpenAIText(openaiKey!, input);
+  const ipHash = await resolveIpHash();
+  if (claudeKey) return callClaudeText(claudeKey, input, ipHash);
+  return callOpenAIText(openaiKey!, input, ipHash);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

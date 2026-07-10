@@ -227,3 +227,106 @@ production + redeployed — the breaker now **enforces** (was monitoring-only).
 - **Deferred (post-launch):** right-sizing the caps against real shadow-mode
   spend needs live traffic (pre-launch is effectively N=1). Revisit the cap
   values once the acquisition wave produces a real spend curve.
+
+## Layer C — per-IP daily call cap (2026-07-09, ENG-1395)
+
+### Problem
+
+The 2026-07-05 deep audit (SEC-01/DI-04) flagged an account-farming vector:
+signup runs with GoTrue email confirmation off (instant client-direct
+session), and Layer A's per-user call cap resets for every fresh account. A
+script farming accounts from one IP gets a clean 50-call quota per account —
+Layer A does nothing to stop it. Layer B (the global £/day cap) does bound
+the *aggregate* damage (a farmer cycling 1,000 accounts still can't exceed
+£50/day of total spend), but it's a blunt, shared instrument: tripping it
+denies AI to every legitimate user at once, and it gives no signal for
+*which* IP is farming.
+
+### Decision
+
+Add Layer C: a per-IP daily call cap, mirroring Layer A's mechanics exactly
+(Upstash counter, cap check, 70%-of-cap alarm, shadow/enforce gate,
+refund-on-deny/release) but keyed by a **hashed** trusted client IP instead
+of a user id.
+
+- **Cap:** `AI_BUDGET_PER_IP_DAILY_CALLS`, default **200** — 4× the per-user
+  default. This is a defence-in-depth **cost bound**, not a tight quota per
+  IP. Suppr is an iOS-primary app; cellular users sit behind carrier CGNAT,
+  where hundreds-to-thousands of genuine users can share one egress IP. A
+  tight per-IP cap would 429 real cellular cohorts — a worse launch bug than
+  the farming it's meant to catch (see the design-note thread on ENG-1395:
+  the existing `rateLimit.ts` P0-6 comment made the identical call for
+  request-rate limiting, choosing per-user-scoped buckets over IP-only for
+  exactly this reason). 200 is deliberately generous; right-size it against
+  a week of real shadow-mode data before tightening.
+- **IP resolution:** `getTrustedClientIp` (ENG-1226) — never the
+  client-forgeable leftmost `x-forwarded-for` hop. Resolved once per public
+  dispatcher call in `aiProvider.ts` via `await headers()`, wrapped in
+  try/catch so a call resolved outside a request context (cron) degrades to
+  `ipHash = null` and Layer C is simply skipped for that call, rather than
+  bucketing every non-request caller into one shared counter.
+- **Hashing, not raw IP:** `hashClientIp` (SHA-256, optionally salted via
+  `AI_BUDGET_IP_SALT`) — the counter key never contains a raw IP, so an
+  Upstash keyspace leak doesn't hand out a client IP list. Salt is optional
+  pre-launch; blank is fine, a random string is stronger.
+- **Own enforcement flag — NOT the shared master flag.** This is the one
+  place Layer C deliberately diverges from "mirrors Layer A": Layer A/B's
+  master flag (`AI_BUDGET_ENFORCEMENT_ENABLED`) has been `true` in
+  production since 2026-06-17 (ENG-1158) for caps that are long-proven at
+  their current values. Layer C's cap is brand new and has never seen real
+  traffic. If it shared the master flag, deploying this change would start
+  503ing on an untested per-IP cap the moment it ships — precisely the
+  CGNAT-outage risk described above, and not a dark launch at all. Layer C
+  therefore gets its own flag, `AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED`,
+  default `false`, completely independent of the master flag. Tracking and
+  the 70% alarm run unconditionally regardless of either flag — only the
+  503-on-deny path is gated.
+- **Spend-anomaly alert = the Layer C 70% alarm.** The audit finding also
+  asked for a spend-anomaly alert; rather than build a second mechanism, the
+  existing 70%-of-cap alarm (already wired to a Sentry `warning`) gets an
+  `ip` scope. An IP crossing 70% of its daily call cap *is* the farming
+  signal — no separate anomaly detector needed.
+- **Refund symmetry:** `releaseBudget` refunds the per-IP call count on
+  AI-call failure, same as it already does for the per-user count — a
+  failed call (network error, vendor 5xx, timeout) shouldn't count toward
+  either daily cap.
+
+### Rollout
+
+1. **Ships now:** counters + alarm live, `AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED=false`.
+   Zero behaviour change — this is pure observability until flipped.
+2. **Founder-gated:** Grace reviews a week of shadow-mode per-IP call
+   distributions (dashboard/Sentry), confirms 200/day doesn't clip real
+   CGNAT cohorts, right-sizes `AI_BUDGET_PER_IP_DAILY_CALLS` if needed, then
+   flips `AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED=true`.
+3. **Paired, non-code mitigation:** re-enabling GoTrue email confirmation on
+   signup (removes the free-account supply at the source) is the primary
+   fix for the farming vector; Layer C is the code-side backstop, not a
+   substitute. See the email-confirmation flow spec for the mobile
+   deep-link + redirect-URL work needed before that flip.
+
+### Rejected alternative
+
+- **Scope Layer C to only the "expensive" AI endpoints** (photo-log,
+  recipe-import, refine/voice-log), leaving cheap coach/narrative routes
+  uncapped. Rejected for implementation simplicity and consistency: all AI
+  routes already funnel through the same 4 `aiProvider.ts` call sites that
+  Layer A/B use, and a single shared cap is easier to reason about and
+  right-size than a per-route matrix. If shadow data shows the flat cap
+  clips legitimate heavy users of the cheap routes specifically, revisit
+  with a per-callSite cap at that point — YAGNI until the data says so.
+
+### File map (additions)
+
+- `src/lib/server/aiBudget.ts` — `hashClientIp`, `perIpDailyCallCap`,
+  `isIpBudgetEnforcementEnabled`, the `ip_calls` counter + key, the `ip`
+  alarm scope, `reserveBudget`'s new `ipHash` param and per-IP cap check,
+  `releaseBudget`'s per-IP refund.
+- `src/lib/server/aiProvider.ts` — `resolveIpHash()` in the two public
+  dispatchers (`callAiVision`, `callAiText`), threaded into the 4 internal
+  per-vendor `reserveBudget` calls.
+- `tests/unit/server/aiBudget.test.ts` — `hashClientIp` tests, per-IP cap
+  trip/isolation/refund/shadow/alarm tests, the master-flag-does-NOT-imply
+  Layer-C-enforcement regression pin, key-shape pins.
+- `.env.example` — `AI_BUDGET_PER_IP_DAILY_CALLS`, `AI_BUDGET_IP_SALT`,
+  `AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED`.

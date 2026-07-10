@@ -102,7 +102,7 @@ export function LoginClient({
       email: trimmed,
       password,
       options: {
-        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
+        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
       },
     });
     if (error) {
@@ -152,7 +152,7 @@ export function LoginClient({
     const { error } = await supabase.auth.signInWithOtp({
       email: trimmed,
       options: {
-        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
+        emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
       },
     });
     if (error) {
@@ -170,7 +170,7 @@ export function LoginClient({
     setStatus("working");
     setMessage(null);
     const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined,
+      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/auth/callback?next=${encodeURIComponent("/reset-password")}` : undefined,
     });
     if (error) {
       setStatus("error");
