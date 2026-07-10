@@ -42,7 +42,7 @@ describe("/checkout/success — trust-explicit confirmation", () => {
     const block = screen.getByTestId("checkout-success-trust-bullets");
     expect(block.textContent).toContain("Cancel anytime in-app");
     expect(block.textContent).toContain("7-day refund, no email needed");
-    expect(block.textContent).toContain("Price never changes mid-trial");
+    expect(block.textContent).toContain("No surprise price increases");
   });
 
   it("surfaces a 'Manage subscription' CTA linking to /account/billing", async () => {

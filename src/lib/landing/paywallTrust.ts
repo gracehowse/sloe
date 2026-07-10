@@ -26,9 +26,12 @@
  *     `support@getsloe.com` in the disclosure copy because
  *     refunds are processed manually via Stripe; the chip
  *     surfaces the timing + no-friction promise.)
- *   - "Price never changes mid-trial" — directly counters Lose
+ *   - "No surprise price increases" — directly counters Lose
  *     It's "auto-renewal at $39.99 immediately after trial"
- *     dark-pattern.
+ *     dark-pattern. Deliberately period-neutral (ENG-1436 legal
+ *     P0): only annual carries a trial (ENG-1285), so the earlier
+ *     "mid-trial" wording was a false trial claim on the monthly
+ *     selection.
  */
 
 export type PaywallTrustChip = {
@@ -60,8 +63,8 @@ export const PAYWALL_TRUST_SECURE_CHECKOUT = {
  * pricing tiers on every paid surface. Order is fixed:
  *   1. Cancel anytime — answers "can I get out?"
  *   2. 7-day refund — answers "what if I change my mind?"
- *   3. Price never changes mid-trial — answers "will I be
- *      surprised at the end of the trial?"
+ *   3. No surprise price increases — answers "will I be
+ *      surprised at renewal?"
  *
  * Mobile renders these with `lucide-react-native#ShieldCheck`,
  * web renders with `lucide-react#ShieldCheck`. Keep the icon
@@ -98,9 +101,9 @@ const SHARED_TRUST_CHIPS: ReadonlyArray<PaywallTrustChip> = [
       "7-day refund. Refunds are processed within 7 days of purchase, with no support email required for trial cancellations.",
   },
   {
-    label: "Price never changes mid-trial",
+    label: "No surprise price increases",
     a11yLabel:
-      "Price never changes mid-trial. The price you see is the price you pay — no surprise increases when your trial ends.",
+      "No surprise price increases. The price you see is the price you pay — it never changes at renewal without you agreeing first.",
   },
 ];
 

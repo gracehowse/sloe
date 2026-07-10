@@ -249,7 +249,7 @@ export default async function PricingPage({
         <PaywallComparison />
 
         {/* Trust strip — three chips (cancel anytime / 7-day refund /
-            price never changes mid-trial) rendered above the tier
+            no surprise price increases) rendered above the tier
             grid. Counter to the #1 user-sentiment pain across the
             competitive set per the 2026-04-30 14-app audit. Copy SSOT
             in `src/lib/landing/paywallTrust.ts`; mobile paywall renders

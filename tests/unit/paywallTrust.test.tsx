@@ -8,7 +8,7 @@
  * counter-pitch visible. These tests guard:
  *
  *   1. The SSOT (paywallTrust.ts) carries exactly three chips in the
- *      canonical order (cancel / refund / no mid-trial price change).
+ *      canonical order (cancel / refund / no surprise price increases).
  *   2. The web /pricing PaywallTrustStrip renders all three chips
  *      with a ShieldCheck icon and the expected accessibility labels.
  *   3. `buildReceiptTrustCopy` composes the four trust elements in
@@ -30,10 +30,10 @@ describe("PAYWALL_TRUST_CHIPS — SSOT shape (platform-neutral default)", () => 
     expect(PAYWALL_TRUST_CHIPS).toHaveLength(3);
   });
 
-  it("orders chips: cancel anytime, refund, no mid-trial price change", () => {
+  it("orders chips: cancel anytime, refund, no surprise price increases", () => {
     expect(PAYWALL_TRUST_CHIPS[0].label).toBe("Cancel anytime in-app");
     expect(PAYWALL_TRUST_CHIPS[1].label).toBe("7-day refund, no email needed");
-    expect(PAYWALL_TRUST_CHIPS[2].label).toBe("Price never changes mid-trial");
+    expect(PAYWALL_TRUST_CHIPS[2].label).toBe("No surprise price increases");
   });
 
   it("each chip has a non-empty long-form a11y label", () => {
@@ -64,7 +64,7 @@ describe("getPaywallTrustChips — DC4 platform-correct cancellation chip", () =
     expect(chips[0].a11yLabel).toContain("App Store");
   });
 
-  it("only the cancellation chip varies — refund + no-mid-trial chips are shared", () => {
+  it("only the cancellation chip varies — refund + price-promise chips are shared", () => {
     const web = getPaywallTrustChips("web");
     const mobile = getPaywallTrustChips("mobile");
     expect(web[1]).toEqual(mobile[1]);
@@ -90,7 +90,7 @@ describe("PaywallTrustStrip — web /pricing rendering", () => {
     expect(screen.getByText("Cancel in Stripe Portal")).toBeInTheDocument();
     expect(screen.getByText("7-day refund, no email needed")).toBeInTheDocument();
     expect(
-      screen.getByText("Price never changes mid-trial"),
+      screen.getByText("No surprise price increases"),
     ).toBeInTheDocument();
   });
 
