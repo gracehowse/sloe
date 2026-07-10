@@ -787,7 +787,6 @@ export default function LibraryScreen() {
             <RecipeCardImage
               uri={item.image}
               cardImageStyle={styles.cardImage}
-              fallbackBg={colors.card}
               recipeId={item.id}
               recipeTitle={item.title}
             />

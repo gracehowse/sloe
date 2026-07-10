@@ -31,6 +31,7 @@ import { showSignInAlert, signInToMessage } from "@/lib/authAlertCopy";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { supabase } from "@/lib/supabase";
 import { upsertShoppingListJsonItems } from "@suppr/shared/supabase/shoppingJsonFallback";
 import { syncPlanSwapToShoppingList, syncPlanRemoveToShoppingList } from "@/lib/planShoppingSync";
@@ -337,18 +338,17 @@ const SLOT_COLOR_MOBILE: Record<PlanSlotIconKey, string> = {
  * 36×36 thumbnail on the left of a planned meal row.
  *
  * Ladder (2026-06-08, §11.4):
- *   1. real recipe image (when the meal resolves to a recipe with a
- *      non-broken `image`),
+ *   1. real recipe image (recipe resolves with a non-broken `image`),
  *   2. warm sage→cream `RecipeHeroFallback` keyed by the recipe id —
- *      when the meal HAS a recipe but no image, OR the image URL fails
- *      to load (the previously-broken case: the bare `<Image>` collapsed
- *      to an empty tinted box with no glyph),
- *   3. the slot icon-box (breakfast/lunch/dinner/snacks) — only for
- *      genuinely empty slots with no recipe at all.
+ *      recipe but no image, OR the image URL fails to load (previously
+ *      the bare `<Image>` collapsed to an empty tinted box, no glyph),
+ *   3. the slot icon-box — only for genuinely empty recipe-less slots.
  *
- * The on-error state is the key fix: a stale/expired recipe hero URL now
- * settles into the same calm tile the Library + Discover cards use,
- * never a flat coloured square.
+ * The on-error state is the key fix: a stale/expired recipe hero URL
+ * settles into the calm Library/Discover tile, never a flat square.
+ * ENG-1374 PR 2: rungs 1–2 ground on the recipe's OPAQUE §11.4 cuisine
+ * tint (`recipeUnderlayColor`) — the old translucent `tint + "22"` wash
+ * is now empty-slot-only, so no failure can expose page white.
  */
 function PlanMealThumb({
   hasRecipe,
@@ -376,7 +376,7 @@ function PlanMealThumb({
       <Image
         source={{ uri: trimmed }}
         accessibilityLabel={`${recipeTitle} thumbnail`}
-        style={[iconBoxStyle as StyleProp<ImageStyle>, { backgroundColor: tint + "22" }]}
+        style={[iconBoxStyle as StyleProp<ImageStyle>, { backgroundColor: recipeUnderlayColor({ id: recipeId ?? recipeTitle, title: recipeTitle }) }]}
         resizeMode="cover"
         onError={() => setBroken(true)}
       />
@@ -388,7 +388,7 @@ function PlanMealThumb({
   // Library/Discover cards. Keyed by recipe id so it's stable per recipe.
   if (hasRecipe && recipeId) {
     return (
-      <View style={[iconBoxStyle, { overflow: "hidden" }]}>
+      <View style={[iconBoxStyle, { overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: recipeId, title: recipeTitle }) }]}>
         <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={16} />
       </View>
     );

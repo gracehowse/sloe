@@ -27,6 +27,7 @@ import { QuickLogButton } from "./quick-log-button";
 import { SupprButton } from "./suppr-button";
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
@@ -241,7 +242,12 @@ function NorthStarDefaultBlock({
           mobile `<NorthStarBlock>` spec. The thumbnail is the trust
           signal that converts the suggestion into "yes I want that";
           56 read as an avatar, 64 reads as a proper thumbnail. */}
-      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg relative">
+      <div
+        className="h-16 w-16 shrink-0 overflow-hidden rounded-lg relative"
+        // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper
+        // (never page white, whatever the child does).
+        style={{ backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }) }}
+      >
         {suggestion.thumbnail ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img src={suggestion.thumbnail} alt="" className="h-full w-full object-cover rounded-lg" />

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 
 type DiscoverRecipeImageProps = {
   id: string;
@@ -84,17 +85,28 @@ export function DiscoverRecipeImage({
   const [broken, setBroken] = useState(false);
 
   const trimmed = image?.trim() || "";
+  // ENG-1374 PR 2 structural guarantee — the wrapper itself paints the
+  // recipe's opaque §11.4 cuisine tint (replacing the frost-grey
+  // `bg-muted`, which §11.4 bans for imagery), so a 404, a slow load,
+  // or a failed fallback SVG mount can never expose page white.
+  const underlay = recipeUnderlayColor({ id, title });
 
   if (variant === "thumb") {
     if (!trimmed || broken) {
       return (
-        <span className="w-10 h-10 rounded-lg bg-muted inline-flex items-center justify-center shrink-0 overflow-hidden">
+        <span
+          className="w-10 h-10 rounded-lg inline-flex items-center justify-center shrink-0 overflow-hidden"
+          style={{ backgroundColor: underlay }}
+        >
           <RecipeHeroFallback id={id} title={title} iconSize={iconSize} />
         </span>
       );
     }
     return (
-      <span className="relative w-10 h-10 rounded-lg bg-muted inline-flex shrink-0 overflow-hidden">
+      <span
+        className="relative w-10 h-10 rounded-lg inline-flex shrink-0 overflow-hidden"
+        style={{ backgroundColor: underlay }}
+      >
         <Image
           src={trimmed}
           alt=""
@@ -111,14 +123,20 @@ export function DiscoverRecipeImage({
 
   if (!trimmed || broken) {
     return (
-      <div className="relative overflow-hidden w-full h-full" style={{ aspectRatio }}>
+      <div
+        className="relative overflow-hidden w-full h-full"
+        style={{ aspectRatio, backgroundColor: underlay }}
+      >
         <RecipeHeroFallback id={id} title={title} iconSize={iconSize} />
       </div>
     );
   }
 
   return (
-    <div className="relative overflow-hidden w-full h-full" style={{ aspectRatio }}>
+    <div
+      className="relative overflow-hidden w-full h-full"
+      style={{ aspectRatio, backgroundColor: underlay }}
+    >
       <Image
         src={trimmed}
         alt=""

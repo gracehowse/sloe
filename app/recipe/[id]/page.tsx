@@ -7,6 +7,7 @@ import { PageViewTracker } from "../../../src/app/components/PageViewTracker.tsx
 import { AnalyticsEvents } from "../../../src/lib/analytics/events.ts";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions.ts";
 import { RecipeHeroFallback } from "../../../src/app/components/suppr/RecipeHeroFallback.tsx";
+import { recipeUnderlayColor } from "../../../src/lib/recipe/recipeHeroFallback.ts";
 import { isRetiredStockImageUrl } from "../../../src/lib/recipes/heroImageFallback.ts";
 import { SupprLogoMark } from "../../components/SupprLogoMark.tsx";
 
@@ -255,8 +256,9 @@ export default async function RecipePage({ params }: Props) {
             height instead of the stranger-food Unsplash stock. This
             mirrors the mobile RecipeHeroFallback. Photo case stays
             full aspect-video. */}
+        {/* ENG-1374 PR 2 — both hero branches paint the recipe's opaque §11.4 cuisine tint on the wrapper (never page white) */}
         {recipe.image ? (
-          <div className="rounded-card-lg overflow-hidden shadow-xl mb-8">
+          <div className="rounded-card-lg overflow-hidden shadow-xl mb-8" style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={recipe.image}
@@ -270,10 +272,7 @@ export default async function RecipePage({ params }: Props) {
           // detail-page placeholders match Library cards (same
           // deterministic per-recipe gradient + glyph). Aspect ratio
           // matches the photo case via aspect-video.
-          <div
-            className="relative rounded-card-lg overflow-hidden shadow-xl mb-8 aspect-video"
-            aria-label={`${recipe.title} — no photo available`}
-          >
+          <div className="relative rounded-card-lg overflow-hidden shadow-xl mb-8 aspect-video" aria-label={`${recipe.title} — no photo available`} style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}>
             <RecipeHeroFallback
               id={recipe.id}
               title={recipe.title}
@@ -415,7 +414,7 @@ export default async function RecipePage({ params }: Props) {
                     key={idx}
                     className="overflow-hidden rounded-card-lg bg-card border border-border"
                   >
-                    <div className="relative h-[86px] w-full">
+                    <div className="relative h-[86px] w-full" style={{ backgroundColor: recipeUnderlayColor({ id: `${recipe.id}-ing-${idx}`, title: ing.name }) }}>
                       <RecipeHeroFallback
                         id={`${recipe.id}-ing-${idx}`}
                         title={ing.name}

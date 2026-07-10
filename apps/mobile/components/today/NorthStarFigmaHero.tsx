@@ -9,6 +9,7 @@ import type { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { QuickLogButton } from "@/components/ui/QuickLogButton";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
@@ -82,7 +83,15 @@ export function NorthStarFigmaHero({
         onPress={onPrimaryCta}
         style={styles.figmaHeroCard}
       >
-        <View style={StyleSheet.absoluteFill}>
+        {/* ENG-1374 PR 2 — opaque cuisine-tint underlay on the media
+            wrapper itself: no child failure (404, slow load, SVG mount
+            failure) can expose page white behind the hero. */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }) },
+          ]}
+        >
           {suggestion.thumbnail ? (
             <SmartImage
               source={{ uri: suggestion.thumbnail }}

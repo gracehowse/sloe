@@ -14,6 +14,7 @@ import { isFeatureEnabled } from "@/lib/analytics";
 import { searchEdamam, type EdamamSearchResult } from "@/lib/verifyRecipe";
 import { Search, Utensils, Bookmark, ChevronRight } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
@@ -96,14 +97,8 @@ function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
   const trimmed = (item.image ?? "").trim();
   const showPhoto = trimmed.length > 0 && !broken;
   return (
-    <View
-      style={{
-        aspectRatio: showPhoto ? 16 / 10 : 8,
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-      }}
-    >
+    // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never page white)
+    <View style={{ aspectRatio: showPhoto ? 16 / 10 : 8, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }) }}>
       {showPhoto ? (
         <SmartImage
           source={{ uri: trimmed }}

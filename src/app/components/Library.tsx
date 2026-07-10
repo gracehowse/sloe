@@ -4,6 +4,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.ts";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../lib/recipe/recipeHeroFallback.ts";
 import { SupprButton } from "./suppr/suppr-button";
 import { SupprCard } from "./ui/suppr-card";
 import { LibraryDesktopHeader } from "./library/LibraryDesktopHeader";
@@ -562,7 +563,8 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   border={false}
                   className="group overflow-hidden text-left cursor-pointer transition-all"
                 >
-                  <div className="relative overflow-hidden" style={{ aspectRatio: "1 / 1" }}>
+                  {/* ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never page white) */}
+                  <div className="relative overflow-hidden" style={{ aspectRatio: "1 / 1", backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}>
                     {recipe.image ? (
                       <RecipeCardImage
                         src={recipe.image}
@@ -573,10 +575,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                         style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
                       />
                     ) : (
-                      <div
-                        className="w-full h-full"
-                        style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
-                      >
+                      <div className="w-full h-full" style={{ viewTransitionName: `recipe-${recipe.id}-image` }}>
                         <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={30} />
                       </div>
                     )}

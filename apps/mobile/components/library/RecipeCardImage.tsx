@@ -2,6 +2,7 @@ import { useState } from "react";
 import { StyleSheet, View, type ImageStyle } from "react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 
 /**
  * Library / profile recipe card image with no-image + on-error fallback
@@ -18,20 +19,22 @@ import { SmartImage } from "@/components/ui/SmartImage";
 export function RecipeCardImage({
   uri,
   cardImageStyle,
-  fallbackBg,
   recipeId,
   recipeTitle,
 }: {
   uri: string | null | undefined;
   cardImageStyle: ImageStyle;
-  /** Solid tint painted under the photo while it fades in. */
-  fallbackBg: string;
   /** Recipe id — keys the deterministic placeholder tint. */
   recipeId: string;
   /** Recipe title — picks the placeholder's cuisine glyph. */
   recipeTitle: string;
 }) {
   const [errored, setErrored] = useState(false);
+  // ENG-1374 PR 2 — the underlay is the recipe's own §11.4 cuisine tint
+  // (the fallback tile's gradient start), computed here rather than
+  // taken as a prop so no caller can reintroduce a white/grey ground
+  // (the retired `fallbackBg` prop was being fed `colors.card` #FFFFFF).
+  const underlay = recipeUnderlayColor({ id: recipeId, title: recipeTitle });
   const showPlaceholder = !uri || errored;
   if (showPlaceholder) {
     // ENG-1382 — most consumers pass a plain `{width:"100%", height:"100%"}`
@@ -55,7 +58,7 @@ export function RecipeCardImage({
         // even if `RecipeHeroFallback`'s SVG failed to mount for any
         // reason, this box is never bare/transparent over the page
         // background.
-        style={[cardImageStyle, positionStyle, { overflow: "hidden", backgroundColor: fallbackBg }]}
+        style={[cardImageStyle, positionStyle, { overflow: "hidden", backgroundColor: underlay }]}
         testID={`recipe-card-image-fallback-${recipeId}`}
       >
         <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={28} />
@@ -65,11 +68,14 @@ export function RecipeCardImage({
   return (
     <SmartImage
       source={{ uri }}
-      style={cardImageStyle}
+      // The opaque tint rides the image element's own style (not just the
+      // flag-gated `placeholderColor`), so the never-white guarantee holds
+      // on the flag-off plain-RN-Image path too.
+      style={[cardImageStyle, { backgroundColor: underlay }]}
       resizeMode="cover"
       onError={() => setErrored(true)}
       recyclingKey={recipeId}
-      placeholderColor={fallbackBg}
+      placeholderColor={underlay}
     />
   );
 }

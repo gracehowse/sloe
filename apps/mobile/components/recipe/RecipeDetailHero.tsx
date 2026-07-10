@@ -24,6 +24,7 @@ import {
 import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 
 /** Fixed hero height — Figma `332:2` §1 (375px). */
 export const RECIPE_HERO_HEIGHT = 375;
@@ -123,7 +124,15 @@ export function RecipeDetailHero({
   };
   return (
     <View
-      style={{ width: "100%", height: RECIPE_HERO_HEIGHT, backgroundColor: Accent.primary }}
+      // ENG-1374 PR 2 — the hero wrapper paints the recipe's opaque §11.4
+      // cuisine tint (was the brand plum) so a 404'd photo or a failed
+      // fallback SVG mount never exposes ~280pt of blank, and the pre-paint
+      // ground matches the tile/photo that lands on top.
+      style={{
+        width: "100%",
+        height: RECIPE_HERO_HEIGHT,
+        backgroundColor: recipeUnderlayColor({ id: recipeId, title, tags }),
+      }}
       testID="recipe-detail-hero"
     >
       {showPhoto ? (

@@ -100,8 +100,13 @@ describe("warm fallback — never a flat lilac/grey block (§11.4)", () => {
     expect(wrap![0]).not.toMatch(/backgroundColor:\s*colors\.border\b/);
   });
 
-  it("mobile Library passes the cream fallback bg to RecipeCardImage", () => {
-    expect(MOBILE_LIBRARY).toMatch(/fallbackBg=\{colors\.card\}/);
+  it("mobile Library leaves the RecipeCardImage ground to the component — ENG-1374 PR 2 retired the fallbackBg prop (the component now paints the recipe's own opaque cuisine tint internally, so no caller can reintroduce a white/grey ground)", () => {
+    expect(MOBILE_LIBRARY).not.toMatch(/fallbackBg=/);
+    expect(
+      readFileSync(resolve(ROOT, "apps/mobile/components/library/RecipeCardImage.tsx"), "utf8"),
+    ).toMatch(
+      /recipeUnderlayColor\(\{ id: recipeId, title: recipeTitle \}\)/,
+    );
   });
 
   it("mobile Discover 'More ideas' rows fall back to RecipeHeroFallback, not a chef-hat box", () => {

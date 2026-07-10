@@ -5,6 +5,7 @@ import { Check, Clock, Flame, X } from "lucide-react";
 
 import { QuickLogButton } from "./quick-log-button";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { cn } from "../ui/utils";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
@@ -64,6 +65,9 @@ export function NorthStarFigmaHeroBlock({
           // NorthStarBlock.figmaHeroCard flattened in the same wave.
           "relative block w-full h-80 rounded-2xl overflow-hidden",
         )}
+        // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper
+        // (never page white, whatever the child does).
+        style={{ backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }) }}
       >
         <div className="absolute inset-0 z-0">
           {suggestion.thumbnail ? (

@@ -5,6 +5,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -250,7 +251,15 @@ export function FollowingFeed({
                 accessibilityLabel={decodeEntities(recipe.title)}
                 style={[styles.recipe, { backgroundColor: colors.background }]}
               >
-                <View style={styles.recipeMedia}>
+                {/* ENG-1374 PR 2 — opaque cuisine-tint underlay on the
+                    media wrapper itself: no child failure (404, slow load,
+                    SVG mount failure) can expose page white. */}
+                <View
+                  style={[
+                    styles.recipeMedia,
+                    { backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) },
+                  ]}
+                >
                   {(recipe.image ?? "").trim().length > 0 ? (
                     <SmartImage
                       source={{ uri: (recipe.image ?? "").trim() }}
@@ -352,7 +361,8 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 16 / 10,
     overflow: "hidden",
-    backgroundColor: "transparent",
+    // Ground colour is the per-recipe cuisine tint, applied inline at the
+    // callsite (ENG-1374 PR 2) — never transparent/white.
   },
 });
 
