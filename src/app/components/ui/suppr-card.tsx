@@ -76,7 +76,10 @@ const radiusClasses: Record<SupprCardRadius, string> = {
   sm: "rounded-md",
   md: "rounded-lg",
   lg: "rounded-[var(--radius-card-lg)]", // 24px — Sloe warm-slab corner (mirrors mobile CARD_RADIUS/TILE_RADIUS)
-  xl: "rounded-2xl",
+  // The 16px "secondary card" tier (`rounded-2xl`) is RETIRED per
+  // `docs/decisions/2026-07-10-card-grammar-rounder-flat.md` — one card
+  // corner. `xl` now resolves to the same 24px card corner as `lg`.
+  xl: "rounded-card-lg",
 };
 
 const elevationVar: Record<SupprCardElevation, string | undefined> = {
@@ -153,8 +156,10 @@ export function SupprCard({
   const softSlab = elevation === "card";
   const flatSlab = elevation === "slab-flat";
 
-  // Light slab: shadow carries separation — no hairline. Dark slab: CSS
-  // `.card-slab` adds hairline + card-elevated fill; inline border off in light.
+  // One card grammar (ENG-1497): resting slabs are FLAT — the 1px hairline +
+  // fill contrast carry separation, no shadow. The hairline comes from the CSS
+  // `.card-slab` class (plus card-elevated fill in dark), so the inline border
+  // is switched off to avoid doubling it.
   const effectiveBorder = softSlab || flatSlab ? false : border;
   const tStyle = toneStyle(tone, gradient, effectiveBorder);
   const elev =

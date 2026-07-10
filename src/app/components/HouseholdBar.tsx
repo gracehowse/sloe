@@ -115,7 +115,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
   return (
     <div
       data-testid={BAR_TEST_ID}
-      className="mb-3.5 rounded-card-lg border border-border bg-card p-3"
+      className="mb-3 rounded-card-lg border border-border bg-card p-3"
     >
       <div className="flex items-center justify-between mb-2.5">
         <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">

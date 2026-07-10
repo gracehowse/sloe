@@ -444,7 +444,7 @@ export default async function RecipePage({ params }: Props) {
           </div>
         )}
 
-        {/* Instructions */}
+        {/* shadow-sm kept — marketing carve-out, 2026-07-10 card-grammar decision doc. */}
         {instructions.length > 0 && (
           <div className="bg-card rounded-card-lg border border-border p-6 mb-8 shadow-sm">
             <h2
