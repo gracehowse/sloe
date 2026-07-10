@@ -30,7 +30,6 @@
     "src/app/components/NotificationsCenter.tsx": 3,
     "src/app/components/onboarding/OnboardingRecipeImportCard.tsx": 1,
     "src/app/components/onboarding/OnboardingRevealProjectionChart.tsx": 1,
-    "src/app/components/onboarding/segmented.tsx": 1,
     "src/app/components/onboarding/steps/data-bridges.tsx": 1,
     "src/app/components/onboarding/steps/pace.tsx": 1,
     "src/app/components/onboarding/web-flow.tsx": 2,

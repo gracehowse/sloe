@@ -1,6 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
-import { useThemeColors } from "@/hooks/use-theme-colors";
+import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import type { WeightRange } from "@/lib/progress/weightTrend";
 
 // 2026-05-12 (Grace TF chart parity with Withings): full-word labels
@@ -20,52 +18,16 @@ type Props = {
   onChange: (range: WeightRange) => void;
 };
 
+/** §8 segmented range picker — thin wrapper over the canonical
+ *  `SegmentedTrack` primitive (ENG-1375 S3; this file was one of the two
+ *  conforming references the primitive was extracted from). */
 export function WeightRangeToggle({ value, onChange }: Props) {
-  const colors = useThemeColors();
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.inputBg }]}>
-      {RANGES.map(({ key, label }) => {
-        const active = key === value;
-        return (
-          <Pressable
-            key={key}
-            style={[styles.pill, active && { backgroundColor: colors.card, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 }]}
-            onPress={() => onChange(key)}
-          >
-            <Text
-              style={[
-                styles.label,
-                { color: active ? colors.text : colors.textSecondary },
-                active && { fontWeight: "600" },
-              ]}
-            >
-              {label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <SegmentedTrack
+      accessibilityLabel="Weight range"
+      options={RANGES.map(({ key, label }) => ({ value: key, label }))}
+      value={value}
+      onChange={onChange}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    borderRadius: Radius.full,
-    padding: 2, // §8 track padding (chips census 2026-06-10)
-    alignSelf: "stretch",
-  },
-  pill: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-  },
-  label: {
-    fontFamily: Type.captionSmall.fontFamily,
-    fontSize: Type.captionSmall.fontSize,
-    lineHeight: Type.captionSmall.lineHeight,
-    fontWeight: "500",
-  },
-});

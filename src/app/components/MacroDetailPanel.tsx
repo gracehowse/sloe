@@ -18,6 +18,7 @@ import {
   type BreakdownSnapshotRow,
 } from "@/lib/nutrition/macroIngredientBreakdown";
 import { NUTRITION_ENTRY_INGREDIENTS_FLAG } from "@/lib/nutrition/nutritionEntryIngredients";
+import { SegmentedTrack } from "./ui/segmented-track";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 
 export type MacroKey = "protein" | "carbs" | "fat" | "fiber" | "calories" | "water";
@@ -321,38 +322,20 @@ export function MacroDetailPanel({
                   per-ingredient breakdown, so the view is pinned to By meal
                   (mobile `BREAKDOWN_MACROS` exclusion, ENG-1213). */}
               {supportsIngredientBreakdown ? (
-              <div
-                role="tablist"
-                aria-label="Breakdown mode"
-                className="mb-3 flex gap-0.5 rounded-full bg-muted p-0.5"
-              >
-                {(["meal", "ingredient"] as const).map((m) => {
-                  const isActive = mode === m;
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      role="tab"
-                      aria-selected={isActive}
-                      aria-label={m === "meal" ? "By meal" : "By ingredient"}
-                      onClick={() => setMode(m)}
-                      // Segmented grammar (web parity 2026-06-10, ENG-1022):
-                      // active thumb = white `bg-card` lift + `primary-solid`
-                      // label + `font-semibold` + `shadow-sm` (matches the
-                      // Progress Trend/Scale toggle, treatment §8). Was a
-                      // `font-bold text-foreground` thumb — converged so both
-                      // segmented controls read identically.
-                      className={`flex-1 rounded-full py-1.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                        isActive
-                          ? "bg-card font-semibold text-primary-solid shadow-sm"
-                          : "font-medium text-muted-foreground"
-                      }`}
-                    >
-                      {m === "meal" ? "By meal" : "By ingredient"}
-                    </button>
-                  );
-                })}
-              </div>
+                // ENG-1375 S2 — the canonical §8 SegmentedTrack (this toggle
+                // was one of the conforming treatments the primitive absorbed).
+                <SegmentedTrack
+                  role="tablist"
+                  ariaLabel="Breakdown mode"
+                  className="mb-3"
+                  options={(["meal", "ingredient"] as const).map((m) => ({
+                    value: m,
+                    label: m === "meal" ? "By meal" : "By ingredient",
+                    ariaLabel: m === "meal" ? "By meal" : "By ingredient",
+                  }))}
+                  value={mode}
+                  onChange={setMode}
+                />
               ) : null}
 
               {effectiveMode === "ingredient" ? (

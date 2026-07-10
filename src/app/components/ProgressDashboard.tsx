@@ -112,6 +112,7 @@ import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProg
 import { useNutritionHistoryWindow } from "../../hooks/useNutritionHistoryWindow.ts";
 import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
 import { SupprCard } from "./ui/suppr-card.tsx";
+import { SegmentedTrack } from "./ui/segmented-track.tsx";
 import { ProgressActivitySection } from "./suppr/progress-activity-section.tsx";
 import { ProgressWeightEmptyState } from "./suppr/progress-weight-empty-state.tsx";
 import { ProgressWeightLogRow } from "./suppr/progress-weight-log-row.tsx";
@@ -1379,36 +1380,24 @@ function ProgressDashboardContent() {
                 </p>
               ) : null}
             </div>
-            {/* Trend/Scale segmented toggle */}
-            <div
+            {/* Trend/Scale segmented toggle — the canonical §8 SegmentedTrack
+                (ENG-1375 S2; this toggle was one of the conforming treatments
+                the primitive absorbed). */}
+            <SegmentedTrack
               role="tablist"
-              aria-label="Weight chart view"
-              data-testid="progress-weight-view-toggle"
-              className="flex shrink-0 rounded-full bg-muted p-0.5"
-            >
-              {(["trend", "scale"] as const).map((v) => {
-                const active = weightView === v;
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    data-testid={`progress-weight-view-${v}`}
-                    onClick={() => setWeightView(v)}
-                    className={[
-                      // Segmented grammar (treatment §8): active thumb = white
-                      // `bg-card` lift + `primary-solid` label + `shadow-sm`.
-                      // focus-visible added (web parity 2026-06-10, ENG-1022).
-                      "rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                      active ? "bg-card text-primary-solid shadow-sm" : "text-muted-foreground",
-                    ].join(" ")}
-                  >
-                    {v}
-                  </button>
-                );
-              })}
-            </div>
+              ariaLabel="Weight chart view"
+              testId="progress-weight-view-toggle"
+              className="shrink-0"
+              size="sm"
+              fit="hug"
+              options={(["trend", "scale"] as const).map((v) => ({
+                value: v,
+                label: v === "trend" ? "Trend" : "Scale",
+                testId: `progress-weight-view-${v}`,
+              }))}
+              value={weightView}
+              onChange={setWeightView}
+            />
           </div>
           {goalWeightKg != null ? (
             <p className="mt-1.5 text-[13px] text-muted-foreground ph-mask">

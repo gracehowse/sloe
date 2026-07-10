@@ -38,6 +38,8 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
   const webSrc = read("src/app/components/ProgressDashboard.tsx");
   const webChromeSrc = read("src/app/components/suppr/progress-tab-chrome.tsx");
   const webPeriodSrc = read("src/app/components/suppr/progress-period-control.tsx");
+  const mobileTrackSrc = read("apps/mobile/components/ui/SegmentedTrack.tsx");
+  const webTrackSrc = read("src/app/components/ui/segmented-track.tsx");
 
   it("mobile header shows the 'Your trends' brand overline (not the retired range overline)", () => {
     // ENG-1030 — the period model defaults to the current week (DEFAULT_PERIOD
@@ -76,17 +78,20 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
   });
 
   it("mobile period control is the §8 segmented rail + ‹ label › pager", () => {
-    // Two stacked rows: a tablist segmented control on the inputBg rail, and a
-    // paging row with prev/label/next. Forward chevron disabled at the present.
-    expect(mobilePeriodSrc).toContain('accessibilityRole="tablist"');
+    // Two stacked rows: the canonical SegmentedTrack primitive (ENG-1375),
+    // and a paging row with prev/label/next. Forward chevron disabled at the
+    // present.
+    expect(mobilePeriodSrc).toContain("<SegmentedTrack");
+    expect(mobilePeriodSrc).toContain('role="tablist"');
     expect(mobilePeriodSrc).toContain('testID="progress-period-segments"');
-    expect(mobilePeriodSrc).toContain("testID={`progress-period-segment-${type}`}");
+    expect(mobilePeriodSrc).toContain("testID: `progress-period-segment-${type}`");
     expect(mobilePeriodSrc).toContain('testID="progress-period-prev"');
     expect(mobilePeriodSrc).toContain('testID="progress-period-next"');
     expect(mobilePeriodSrc).toContain('testID="progress-period-label"');
-    // Active segment elevates onto the card; rail is the inputBg §8 track.
-    expect(mobilePeriodSrc).toMatch(/backgroundColor: colors\.inputBg/);
-    expect(mobilePeriodSrc).toMatch(/backgroundColor: colors\.card/);
+    // §8 treatment lives in the primitive: active segment elevates onto the
+    // card; rail is the inputBg track (ENG-1375 S3).
+    expect(mobileTrackSrc).toMatch(/backgroundColor: colors\.inputBg/);
+    expect(mobileTrackSrc).toMatch(/backgroundColor: colors\.card/);
     // Forward paging is clamped at the current period (no future).
     expect(mobilePeriodSrc).toMatch(/disabled=\{atCurrent\}/);
   });
@@ -156,17 +161,22 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
   });
 
   it("web period control mirrors the mobile segments + paging + a11y", () => {
+    // ENG-1375 S2 — the web period control renders the canonical
+    // SegmentedTrack (it previously had NO track: bare card segments + a
+    // tint thumb, the census's named divergent from its own mobile mirror).
+    expect(webPeriodSrc).toContain("<SegmentedTrack");
     expect(webPeriodSrc).toContain('role="tablist"');
-    expect(webPeriodSrc).toContain('data-testid="progress-period-segments"');
-    expect(webPeriodSrc).toContain("data-testid={`progress-period-segment-${type}`}");
+    expect(webPeriodSrc).toContain('testId="progress-period-segments"');
+    expect(webPeriodSrc).toContain("testId: `progress-period-segment-${type}`");
     expect(webPeriodSrc).toContain('data-testid="progress-period-prev"');
     expect(webPeriodSrc).toContain('data-testid="progress-period-next"');
     expect(webPeriodSrc).toContain('data-testid="progress-period-label"');
-    // Selected segment in the chip grammar; forward chevron disabled at present.
-    expect(webPeriodSrc).toContain("bg-primary-soft text-primary-solid font-semibold");
+    // The retired tint thumb never comes back (§8 = card-white thumb).
+    expect(webPeriodSrc).not.toContain("bg-primary-soft text-primary-solid font-semibold");
+    expect(webTrackSrc).toContain("bg-card font-semibold text-primary-solid shadow-sm");
     expect(webPeriodSrc).toMatch(/disabled=\{atCurrent\}/);
-    // Keyboard arrow movement on the tablist (a11y parity with mobile).
-    expect(webPeriodSrc).toMatch(/ArrowLeft|ArrowRight/);
+    // Keyboard arrow movement lives in the primitive (a11y parity with mobile).
+    expect(webTrackSrc).toMatch(/ArrowLeft|ArrowRight/);
   });
 
   it("web skeleton-gate fix — load wraps fetch+hydrate in try/finally", () => {
