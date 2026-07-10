@@ -102,30 +102,31 @@ describe("useCardElevation — SOFT lifts page-ground cards (Sloe v3, ENG-1222 P
   // the prototype"). `variant: "soft"` is now REAL in light (the ~39 surfaces
   // that already opt in were silently rendering flat before this). Dark keeps
   // the tonal fill (RN renders dark drop shadows poorly).
-  it("SOFT in LIGHT lifts on the cardSoft ambient shadow (no border)", () => {
+  it("SOFT in LIGHT is FLAT + hairline (ENG-1497 — no ambient shadow)", () => {
     themeState.resolved = "light";
     const { result } = renderHook(() => useCardElevation({ variant: "soft" }));
-    // The lift IS the separation on white-on-white — no hairline (no double edge).
-    expect(result.current.shadowStyle).toBe(Elevation.cardSoft);
-    expect(result.current.useBorder).toBe(false);
+    // ENG-1497 (Grace 2026-07-10, Oura/NC): border + fill contrast carry the
+    // separation; the lift is retired for resting cards.
+    expect(result.current.shadowStyle).toBeUndefined();
+    expect(result.current.useBorder).toBe(true);
     expect(result.current.liftBg).toBeUndefined();
   });
 
-  it("SOFT lift is NOT flag-gated (lifts flags-cold)", () => {
+  it("SOFT treatment is NOT flag-gated (renders flags-cold)", () => {
     // No flag is mocked ON here — the global `@/lib/analytics` shim resolves
-    // every flag OFF / cold. The lift must STILL render: per Grace's standing
-    // elevation directive ("turn everything on; never flag-gate again"), the
-    // treatment is unconditional — a cold flag can never suppress it.
+    // every flag OFF / cold. The treatment must STILL render: per Grace's
+    // standing elevation directive ("turn everything on; never flag-gate
+    // again"), it is unconditional — a cold flag can never suppress it.
     themeState.resolved = "light";
     const { result } = renderHook(() => useCardElevation({ variant: "soft" }));
-    expect(result.current.shadowStyle).toBe(Elevation.cardSoft);
+    expect(result.current.useBorder).toBe(true);
   });
 
-  it("SOFT in DARK keeps ONLY the tonal fill — no shadow, no hairline (flat-cards)", () => {
+  it("SOFT in DARK keeps the tonal fill + gains the hairline (ENG-1497)", () => {
     themeState.resolved = "dark";
     const { result } = renderHook(() => useCardElevation({ variant: "soft" }));
     expect(result.current.shadowStyle).toBeUndefined();
-    expect(result.current.useBorder).toBe(false);
+    expect(result.current.useBorder).toBe(true);
     expect(result.current.liftBg).toBe(themeState.colors.cardElevated);
     // restore for any later test ordering
     themeState.resolved = "light";

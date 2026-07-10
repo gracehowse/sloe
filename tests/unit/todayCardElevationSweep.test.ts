@@ -131,20 +131,21 @@ describe("Today elevation — north star + macro tiles + hydration all soft", ()
 });
 
 describe("Today card fill — Sloe v3 white-ground elevation model", () => {
-  it("theme.css light is whisper-cool ground + white cards that LIFT on a layered shadow (v3 + ENG-1316)", () => {
-    // Sloe v3 (docs/ux/redesign/v3) reverses the 2026-06-12 flat-card-on-cream
-    // grammar: white cards separate via `--elev-card-soft` ("elevation, not
-    // warmth"). Refined 2026-07-01 (decision #6, ENG-1316): the ground lands
-    // the v3 GROUND SYSTEM's stated whisper-COOL near-white (#F7F6FA) so the
-    // white cards separate measurably at the fill level too (page vs card was
-    // 2/255). Cream is marketing-only (`--background-marketing`).
+  it("theme.css light is whisper-cool ground + FLAT hairline white cards (ENG-1497)", () => {
+    // ENG-1497 (Grace 2026-07-10, Oura/NC references — decision:
+    // docs/decisions/2026-07-10-card-grammar-rounder-flat.md) supersedes the
+    // 2026-06-25 lift reversal: page-ground cards are FLAT + hairline; the
+    // border + card-vs-ground fill contrast carry the separation. The
+    // whisper-cool ground (#F7F6FA, ENG-1316) stays — it IS the bound
+    // separation mechanism, so this pin keeps guarding it.
     const theme = read("src/styles/theme.css");
     expect(theme).toMatch(/:root[\s\S]*?--background:\s*#F7F6FA/i);
     expect(theme).toMatch(/:root[\s\S]*?--card:\s*#FFFFFF/i);
     expect(theme).toMatch(/--background-grouped:\s*#F5F4F7/i);
     expect(theme).toMatch(/--background-marketing:\s*#FBF8F3/i);
-    // The resting card-slab lifts (no longer flat box-shadow: none).
-    expect(theme).toMatch(/\.card-slab\s*\{[\s\S]*?box-shadow:\s*var\(--elev-card-soft\)/i);
+    // The resting card-slab is flat + hairline (no ambient shadow).
+    expect(theme).toMatch(/\.card-slab\s*\{[\s\S]*?box-shadow:\s*none/i);
+    expect(theme).toMatch(/\.card-slab\s*\{[\s\S]*?border:\s*1px solid var\(--border\)/i);
   });
 });
 

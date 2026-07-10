@@ -79,7 +79,8 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
 - **Spacing snaps to the scale:** 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40
   (12 adopted 2026-06-10, ENG-1012 — the dense chip/row step). An 18px
   padding or 10px gap is a bug even if it looks fine.
-- **Radius snaps to:** 4 / 6 / 8 / 12 / full.
+- **Radius snaps to:** 4 / 6 / 8 / 12 / 24 / full (24 = `Radius.card` /
+  `--radius-card-lg`, THE card corner — ENG-1497, 2026-07-10).
 - **Type comes from the ramp** (`Type` on mobile; type-scale-gated classes on
   web) — no ad-hoc font sizes or weights. **Enforced by two only-shrink
   ratchets:** `check:type-scale` (`scripts/check-type-scale.mjs`, ENG-119 —
@@ -95,8 +96,11 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   commits (disable + progress — no double-submit, no silent success/failure).
 - **One filled CTA per screen** (FAB + conversion surfaces excepted — see the
   2026-06-09 CTA decision). Secondary = outline, tertiary = ghost.
-- **Elevation per the one-card decision:** page-ground cards soft lift,
-  nested cards flat — one treatment per surface.
+- **Elevation per the card-grammar ruling (ENG-1497, 2026-07-10):**
+  page-ground cards FLAT + hairline (no shadow — border + fill contrast
+  separate; Oura/NC grammar), nested cards flat borderless, sheets/overlays
+  keep their float — one treatment per surface. Supersedes the 2026-06-25
+  soft-lift reversal.
 - **Same element, same treatment.** Before styling a chip/pill/row/header,
   check how the nearest existing sibling renders it and match exactly — or
   document why this one is deliberately different.

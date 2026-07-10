@@ -612,6 +612,12 @@ export const Radius = {
   md: 6,
   lg: 8,
   xl: 12,
+  /** ENG-1497 (2026-07-10, Grace's card-grammar ruling) — THE card corner.
+   *  Cards, banners, card-rows, tiles and sheets all share it (one
+   *  material); chips stay `full`, nested/inset panels stay `xl` (the
+   *  12-inside-24 concentric standard). Previously an untokenised
+   *  SupprCard module constant. ↔ web `--radius-card-lg`. */
+  card: 24,
   full: 9999,
 };
 
