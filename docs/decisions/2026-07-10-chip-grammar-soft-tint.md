@@ -27,3 +27,8 @@ Rest-fill nuance (mobile): `card` on page-ground rows; `secondary`
 
 Out of scope for S1 (later slices): ENG-814 FoodSearchPanel chips, onboarding
 segmented controls.
+
+### Out-of-scope additions (refuter sweep, same day)
+- `planner.tsx` day-of-week option pills (`dayBtn*`, ~L1801/L4005) — option-pill
+  family; converts in a later slice with the day-cell ruling applied.
+- `ActivityLevelPreview.tsx:88` raw `+"15"` alpha — onboarding slice (S3).

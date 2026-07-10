@@ -105,13 +105,12 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
   if (members.length <= 1) return null;
 
   const currentSel = selected ?? localSelected;
-  // ENG-828 — chip fill stays the primary FILL hue (`accent.primary`), but the
-  // selected label ink reads the AA-safe `primarySolid` (scheme-resolved): on
-  // dark the bare fill #7E5C92 is only ~2.7:1 as small text on its own 26%
-  // tint (AA FAIL); `primarySolid` (#C4ACD0 dark) clears 7.1:1. Mirror of web
-  // HouseholdBar `text-primary` → `text-primary-solid`. Light is a no-op.
+  // ENG-1375 S1 — selected fill = the primarySoft token (was a raw
+  // accent.primary+"26" alpha string), matching web HouseholdBar's
+  // bg-primary-soft this same slice. ENG-828's label rule stands: the
+  // selected label ink reads the AA-safe scheme-resolved `primarySolid`.
   const chipColors = (active: boolean) => ({
-    bg: active ? accent.primary + "26" : colors.inputBg,
+    bg: active ? accent.primarySoft : colors.inputBg,
     fg: active ? accent.primarySolid : colors.textSecondary,
   });
   const allChip = chipColors(currentSel === "all");
