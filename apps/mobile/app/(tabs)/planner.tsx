@@ -218,6 +218,25 @@ import { Layout } from "@/constants/layout";
 import { consumePendingImportDayPlan } from "@/lib/planImportPendingApply";
 import { orderedPlanDaySlotEntries } from "@/lib/plan/orderedPlanDaySlotEntries";
 
+/** ENG-1492 — ONE payload builder for both save_meal_plan call sites. */
+function buildSaveMealPlanPayload(plan: DayPlan[]) {
+  return plan.map((dp) => ({
+    day: dp.day,
+    meals: dp.meals.map((m, idx) => ({
+      slot_index: idx,
+      name: m.name,
+      recipe_title: m.recipeTitle,
+      recipe_id: m.recipeId ?? null,
+      calories: m.calories,
+      protein: m.protein,
+      carbs: m.carbs,
+      fat: m.fat,
+      portion_multiplier: m.portionMultiplier ?? 1,
+      is_placeholder: m.isPlaceholder ?? false,
+    })),
+  }));
+}
+
 function stripPlanPlaceholders<T extends { recipeTitle: string; isPlaceholder?: boolean }>(meals: T[]): T[] {
   return meals.filter(
     (m) => !isMealPlanPlaceholderLikeTitle(m.recipeTitle, { isPlaceholder: m.isPlaceholder }),
@@ -744,8 +763,15 @@ export default function PlannerScreen() {
   // 1-day default as "Today with extra steps".
   const [days, setDays] = useState<1 | 3 | 7>(7);
   const [startOffset, setStartOffset] = useState<0 | 1 | 7>(0); // 0=today, 1=tomorrow, 7=next week
-  /** ENG-1132 — persisted T7 anchor from `meal_plan_days.start_date`. */
+  /** ENG-1132 anchor (`meal_plan_days.start_date`). ENG-1492: ALL writes
+   *  go through `adoptPlanStartDate` — persist paths read the ref (no
+   *  stale closures) and adopt at DISPATCH (no last-writer races). */
   const [planStartDate, setPlanStartDate] = useState<string | null>(null);
+  const planStartDateRef = useRef<string | null>(null);
+  const adoptPlanStartDate = useCallback((v: string | null) => {
+    planStartDateRef.current = v;
+    setPlanStartDate(v);
+  }, []);
   /** ENG-1051 — suppress these from generated shopping lists. */
   const [pantryStaples, setPantryStaples] = useState<readonly string[]>([]);
   // ENG-790 — where generated recipes are drawn from. Default to the
@@ -1090,30 +1116,18 @@ export default function PlannerScreen() {
    * `swapMeal` so recipe swaps can persist immediately.
    */
   const persistPlan = useCallback(
-    async (nextPlan: DayPlan[]) => {
+    async (nextPlan: DayPlan[], opts?: { reanchor?: boolean }) => {
       if (!userId) return;
-      // T15 (2026-04-24): single atomic RPC replaces the legacy
-      // delete + 7-day-insert + 7-meals-insert chain (15 RTTs, no
-      // transaction). save_meal_plan does the whole replace inside
-      // one Postgres statement transaction — backgrounding the app
-      // mid-save can no longer leave a partial plan.
-      // T7: startOffset (UI chip 0/1/7) → start_date YYYY-MM-DD.
-      const startDate = startDateForOffset(new Date(), startOffset);
-      const planPayload = nextPlan.map((dp) => ({
-        day: dp.day,
-        meals: dp.meals.map((m, idx) => ({
-          slot_index: idx,
-          name: m.name,
-          recipe_title: m.recipeTitle,
-          recipe_id: m.recipeId ?? null,
-          calories: m.calories,
-          protein: m.protein,
-          carbs: m.carbs,
-          fat: m.fat,
-          portion_multiplier: m.portionMultiplier ?? 1,
-          is_placeholder: m.isPlaceholder ?? false,
-        })),
-      }));
+      // T15: one atomic save_meal_plan RPC. ENG-1492 — edits persist the
+      // KNOWN anchor, never wall-clock+chip (chip resets each session →
+      // mid-week edits re-anchored the plan, the ENG-1132 hazard; web
+      // twin ENG-1491). `reanchor` = full replacements (import/template);
+      // legacy pre-anchor rows fall back to plain today (web parity).
+      const startDate = opts?.reanchor
+        ? startDateForOffset(new Date(), startOffset)
+        : (planStartDateRef.current ?? startDateForOffset(new Date(), 0));
+      adoptPlanStartDate(startDate);
+      const planPayload = buildSaveMealPlanPayload(nextPlan);
       const { error } = await supabase.rpc("save_meal_plan", {
         p_slot_id: cloudSlotIdFromLocal(activePlanSlotId),
         p_start_date: startDate,
@@ -1126,7 +1140,6 @@ export default function PlannerScreen() {
         // rejection (42501) gets a user-facing alert; the rest log in dev.
         handlePlanPersistError(error, "persistPlan");
       } else {
-        setPlanStartDate(startDate);
         try {
           const storedFp = await AsyncStorage.getItem(SHOPPING_LIST_FINGERPRINT_STORAGE_KEY);
           if (storedFp && storedFp !== fingerprintMealPlanForShopping(nextPlan)) {
@@ -1137,7 +1150,7 @@ export default function PlannerScreen() {
         }
       }
     },
-    [userId, startOffset, activePlanSlotId],
+    [userId, startOffset, activePlanSlotId, adoptPlanStartDate],
   );
 
   useFocusEffect(
@@ -1148,7 +1161,8 @@ export default function PlannerScreen() {
       // fibre cell reads correctly the moment the imported week lands.
       const enriched = enrichPlanDaysFiber(pending as DayPlan[], recipeFiberPool);
       setPlan(enriched);
-      void persistPlan(enriched);
+      // ENG-1492 — an imported week is a full replacement: re-anchor.
+      void persistPlan(enriched, { reanchor: true });
       track(AnalyticsEvents.plan_template_applied, {
         dayCount: pending.length,
         slotCount: pending.reduce((n, d) => n + d.meals.length, 0),
@@ -1985,6 +1999,9 @@ export default function PlannerScreen() {
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    // ENG-1492 — reset on slot switch: an anchor must never leak across
+    // slots. Legacy/empty slots stay null → plain-today persist fallback.
+    adoptPlanStartDate(null);
     (async () => {
       // Try relational tables. T7 (2026-04-24): SELECT start_date so
       // consumers that resolve "today's plan day" read the persisted
@@ -2005,9 +2022,11 @@ export default function PlannerScreen() {
 
       if (!cancelled && dayRows && dayRows.length > 0 && !dayErr) {
         const anchorRaw = (dayRows[0] as { start_date?: string | null }).start_date;
-        if (typeof anchorRaw === "string" && anchorRaw.length >= 10) {
-          setPlanStartDate(anchorRaw.slice(0, 10));
-        }
+        adoptPlanStartDate(
+          typeof anchorRaw === "string" && anchorRaw.length >= 10
+            ? anchorRaw.slice(0, 10)
+            : null,
+        );
         const plans: DayPlan[] = dayRows.map((d: { id: string; day: number; meals?: Array<Record<string, unknown>> | null }) => {
           const dayMeals = (d.meals ?? []).slice().sort((a, b) => (((a.slot_index as number) ?? 0) - ((b.slot_index as number) ?? 0)));
           const meals = stripPlanPlaceholders(
@@ -2587,22 +2606,14 @@ export default function PlannerScreen() {
       // Persist via T15 atomic RPC (one round-trip, transactional).
       if (userId) {
         (async () => {
-          const startDate = startDateForOffset(new Date(), startOffset);
-          const planPayload = newPlan.map((dp) => ({
-            day: dp.day,
-            meals: dp.meals.map((m, idx) => ({
-              slot_index: idx,
-              name: m.name,
-              recipe_title: m.recipeTitle,
-              recipe_id: m.recipeId ?? null,
-              calories: m.calories,
-              protein: m.protein,
-              carbs: m.carbs,
-              fat: m.fat,
-              portion_multiplier: m.portionMultiplier ?? 1,
-              is_placeholder: m.isPlaceholder ?? false,
-            })),
-          }));
+          // ENG-1492 — FULL regenerate re-anchors from the chip; keep-
+          // locked partial regen preserves (locked meals must not shift
+          // calendar days — web parity). Adopt at dispatch.
+          const startDate = keepLockedActive
+            ? (planStartDateRef.current ?? startDateForOffset(new Date(), startOffset))
+            : startDateForOffset(new Date(), startOffset);
+          adoptPlanStartDate(startDate);
+          const planPayload = buildSaveMealPlanPayload(newPlan);
           const { error } = await supabase.rpc("save_meal_plan", {
             p_slot_id: cloudSlotIdFromLocal(activePlanSlotId),
             p_start_date: startDate,
@@ -2625,7 +2636,7 @@ export default function PlannerScreen() {
     } finally {
       setGenerating(false);
     }
-  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor]);
+  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor, startOffset, activePlanSlotId, adoptPlanStartDate]);
 
   const resetPlan = useResetPlanGate(planHasRealMeals, generatePlan);
   const requestLibraryGenerate = resetPlan.requestLibraryGenerate;
@@ -4102,7 +4113,8 @@ export default function PlannerScreen() {
                 onPress: () => {
                   const next = applyTemplateToWeek(tmpl);
                   setPlan(next as DayPlan[]);
-                  void persistPlan(next as DayPlan[]);
+                  // ENG-1492 — a template apply replaces the whole week: re-anchor.
+                  void persistPlan(next as DayPlan[], { reanchor: true });
                   track(AnalyticsEvents.plan_template_applied, {
                     dayCount: tmpl.dayCount,
                     slotCount: tmpl.slots.length,
