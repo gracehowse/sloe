@@ -180,4 +180,21 @@ describe("Library — Sloe Figma 527:2 grid (ENG-896)", () => {
       expect(SRC).toMatch(/Explore Discover/);
     });
   });
+
+  describe("kcal trust qualifier — Library calorie-sort (ENG-1417 slice E)", () => {
+    // This grid (SupprCard) is distinct from the editorial-shelf
+    // RecipeCardWide excluded by the 2026-04-28 GW-08 audit — see
+    // LibraryShelvesHeader above, which is a separate component/import.
+    // Sorting by calories (cycleSort) makes this a decision surface, unlike
+    // an unordered browse feed, so it gets the qualifier.
+    it("renders via formatQualifiedKcal behind kcal_trust_qualifier_v1, not the bare number", () => {
+      expect(SRC).toMatch(
+        /import\s*\{\s*formatQualifiedKcal\s*\}\s*from\s*["']\.\.\/\.\.\/lib\/nutrition\/formatMacro["']/,
+      );
+      expect(SRC).toMatch(/\{kcal > 0 \? \(/);
+      expect(SRC).toMatch(
+        /isFeatureEnabled\("kcal_trust_qualifier_v1"\) \? formatQualifiedKcal\(kcal, recipe\.isVerified\) : String\(kcal\)/,
+      );
+    });
+  });
 });

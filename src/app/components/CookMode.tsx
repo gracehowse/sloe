@@ -9,6 +9,7 @@ import type { IngredientRow, RecipeCard } from "../../types/recipe.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { formatQualifiedKcal } from "../../lib/nutrition/formatMacro";
 import { CookLogServingsDialog } from "./suppr/cook-log-servings-dialog.tsx";
 import {
   parseTimersInStep,
@@ -1234,8 +1235,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
               </p>
             </>
           ) : (
-            /* Done State — Paprika parity 2026-04-30: rating + per-cook
-               notes input + Save persists to recipe_cook_history. */
+            /* Done State — Paprika parity 2026-04-30: rating + per-cook notes input + Save persists to recipe_cook_history. */
             <div className="text-center max-w-md w-full">
               <div className="w-20 h-20 rounded-full bg-success flex items-center justify-center mx-auto mb-6 shadow-lg shadow-success/30">
                 <Icons.cook className="w-10 h-10 text-white" />
@@ -1247,8 +1247,8 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                 {recipe.title} · {servings} serving{servings !== 1 ? "s" : ""}
                 {scale !== 1 ? ` (${formatCookScaleLabel(scale)})` : ""}
                 {" — "}
-                {Math.round(recipe.calories * scaleFactor)} kcal ·{" "}
-                {Math.round(recipe.protein * scaleFactor)}g protein
+                {isFeatureEnabled("kcal_trust_qualifier_v1") ? formatQualifiedKcal(recipe.calories * scaleFactor, recipe.isVerified) : Math.round(recipe.calories * scaleFactor)}{" "}
+                kcal · {Math.round(recipe.protein * scaleFactor)}g protein
               </p>
 
               {/* Rating row — 5 stars. Tap = stage in memory; Save
