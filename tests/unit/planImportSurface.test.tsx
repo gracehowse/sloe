@@ -47,11 +47,13 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
 }));
 
 const setMealPlanMock = vi.fn();
+const reanchorMealPlanMock = vi.fn();
 vi.mock("../../src/context/AppDataContext.tsx", () => ({
   useAppData: () => ({
     userId: "user-123",
     nutritionTargets: { calories: 2100, protein: 160, carbs: 210, fat: 60, fiber: 30, waterMl: 2000 },
     setMealPlan: setMealPlanMock,
+    reanchorMealPlan: reanchorMealPlanMock,
   }),
 }));
 
@@ -228,6 +230,8 @@ describe("PlanImport — web Plan-Import surface (ENG-696)", () => {
       expect.objectContaining({ source: "plan_import" }),
     );
     expect(setMealPlanMock).toHaveBeenCalledWith([{ day: 0, meals: [] }]);
+    // ENG-1492 twin — an activated import re-anchors before setMealPlan.
+    expect(reanchorMealPlanMock).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
 

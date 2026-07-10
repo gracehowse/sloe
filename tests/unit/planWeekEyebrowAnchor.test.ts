@@ -140,3 +140,24 @@ describe("PlanV3Connected header week — ENG-1491 anchor gate (source pins)", (
     expect(HOST).toMatch(/planStartDate=\{mealPlanStartDate\}/);
   });
 });
+
+describe("full-replacement flows re-anchor — ENG-1492 twin (source pins)", () => {
+  it("context exposes reanchorMealPlan writing ref + state + loaded gate", () => {
+    expect(APP_DATA).toMatch(
+      /const reanchorMealPlan = useCallback\(\(offset: number = 0\) => \{\s*const next = startDateForOffset\(new Date\(\), offset\);\s*mealPlanStartDateRef\.current = next;\s*setMealPlanStartDate\(next\);\s*mealPlanAnchorLoadedRef\.current = true;\s*\}, \[\]\);/,
+    );
+  });
+
+  it("plan-import activate re-anchors before setMealPlan", () => {
+    const IMPORT = readFileSync(
+      resolve(ROOT, "src/app/components/plan-import/usePlanImport.ts"),
+      "utf8",
+    );
+    expect(IMPORT).toMatch(/reanchorMealPlan\(\);\s*\n\s*setMealPlan\(res\.dayPlan\);/);
+  });
+
+  it("template apply re-anchors to the chip week before setMealPlan", () => {
+    const HOST = readFileSync(resolve(ROOT, "src/app/components/MealPlanner.tsx"), "utf8");
+    expect(HOST).toMatch(/reanchorMealPlan\(startOffset\);\s*\n\s*setMealPlan\(next\);/);
+  });
+});

@@ -336,6 +336,8 @@ interface AppDataContextValue {
   /** ENG-1491 — persisted T7 anchor (`meal_plan_days.start_date`) of the
    *  active slot; null until hydrated / for legacy pre-anchor rows. */
   mealPlanStartDate: string | null;
+  /** ENG-1492 twin — re-anchor before a full-replacement `setMealPlan`. */
+  reanchorMealPlan: (offset?: number) => void;
   mealPlanSlots: MealPlanNamedSlot[];
   activeMealPlanSlotId: string;
   switchMealPlanSlot: (slotId: string) => void;
@@ -445,6 +447,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
    * anchor fetch lands and re-anchor the plan to the today-fallback.
    */
   const mealPlanAnchorLoadedRef = useRef(false);
+  /** ENG-1492 twin — full-replacement flows (plan-import activate, template
+   *  apply) re-anchor to today+offset before their `setMealPlan`; EDITS keep
+   *  preserving the anchor. Marks the anchor loaded (this replacement
+   *  supersedes whatever hydration would have fetched) and writes the ref
+   *  synchronously so the debounced persist reads it even pre-rerender. */
+  const reanchorMealPlan = useCallback((offset: number = 0) => {
+    const next = startDateForOffset(new Date(), offset);
+    mealPlanStartDateRef.current = next;
+    setMealPlanStartDate(next);
+    mealPlanAnchorLoadedRef.current = true;
+  }, []);
 
   // Notification state is now fully managed by NotificationContext.
   // Destructure here so the bridge value object and internal references (e.g. generateMealPlan calling pushNotification) still work.
@@ -2617,6 +2630,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       mealPlan,
       setMealPlan,
       mealPlanStartDate,
+      reanchorMealPlan,
       mealPlanSlots,
       activeMealPlanSlotId,
       switchMealPlanSlot,
@@ -2723,6 +2737,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       mealPlan,
       setMealPlan,
       mealPlanStartDate,
+      reanchorMealPlan,
       mealPlanSlots,
       activeMealPlanSlotId,
       switchMealPlanSlot,

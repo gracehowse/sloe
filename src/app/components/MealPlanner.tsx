@@ -239,6 +239,7 @@ export const MealPlanner = memo(function MealPlanner({
   const {
     mealPlan,
     mealPlanStartDate,
+    reanchorMealPlan,
     setMealPlan,
     generateMealPlan,
     generateShoppingListFromPlan,
@@ -2641,6 +2642,9 @@ export const MealPlanner = memo(function MealPlanner({
             onConfirm={() => {
               if (!applyTemplateTarget) return;
               const next = applyTemplateToWeek(applyTemplateTarget);
+              // ENG-1492 twin — a template apply replaces the whole week:
+              // re-anchor to the chip week (mobile parity).
+              reanchorMealPlan(startOffset);
               setMealPlan(next);
               track(AnalyticsEvents.plan_template_applied, {
                 dayCount: applyTemplateTarget.dayCount,
