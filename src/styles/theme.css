@@ -51,7 +51,12 @@
    *  to match Linear / Stripe / Things 3 / Notion premium tier.
    *  --radius-sm/md/lg/xl derive from these below. */
   --radius: 0.375rem;         /* 6px base */
-  --radius-card: 0.5rem;       /* 8px — the tight ladder radius (skeletons etc.) */
+  /* ENG-1497 (2026-07-10, Grace's card-grammar ruling): the legacy 8px
+   * tight-ladder card radius is retired — `rounded-card` now resolves to
+   * the ONE canonical 24px card corner, moving all its legacy card
+   * call sites in a single token write. Decision:
+   * docs/decisions/2026-07-10-card-grammar-rounder-flat.md */
+  --radius-card: var(--radius-card-lg); /* 24px — was 0.5rem/8px */
   /* SupprCard resting-card corner. Decoupled from --radius-card on 2026-06-04:
    * the Figma chosen Today rounds cards AND tiles to 24 (borderless warm slabs),
    * which is rounder than the tight 8px ladder. Mirrors mobile
@@ -1076,34 +1081,36 @@
    * `--elev-card-soft` over the whisper-cool white ground ("elevation, not
    * warmth"). A flat white card on a white ground is invisible — the lift IS the
    * separation. Mirrors mobile useCardElevation. */
+  /* ENG-1497 (2026-07-10): page-ground cards are FLAT + hairline — the
+     ambient lift is retired (supersedes the 2026-06-25 lift reversal;
+     decision: docs/decisions/2026-07-10-card-grammar-rounder-flat.md).
+     Border + card-vs-ground fill contrast carry the separation, the
+     grammar dark mode already used. If the hairline reads too faint the
+     bound lever is deepening the card-hosting ground, never re-adding
+     shadow. `--elev-card-soft` survives for sheets/overlays only. */
   .card-slab {
     background-color: var(--card);
-    box-shadow: var(--elev-card-soft);
-    border-color: transparent;
-    border-width: 0;
+    box-shadow: none;
+    border: 1px solid var(--border);
   }
 
   .card-slab-flat {
     background-color: var(--card);
-    box-shadow: var(--elev-card-soft);
-    border-color: transparent;
-    border-width: 0;
+    box-shadow: none;
+    border: 1px solid var(--border);
   }
 
   .dark .card-slab-flat {
     background-color: var(--card);
-    box-shadow: var(--elev-card-soft);
-    border-width: 0;
-    border-color: transparent;
+    box-shadow: none;
+    border: 1px solid var(--border);
   }
 
   .dark .card-slab {
-    /* Nocturne: raised plum card lifts on the dark layered shadow + 1px top
-       highlight (baked into --elev-card-soft dark). */
+    /* Nocturne: ENG-1497 — raised plum card fill + hairline, no shadow. */
     background-color: var(--card);
-    box-shadow: var(--elev-card-soft);
-    border-width: 0;
-    border-color: transparent;
+    box-shadow: none;
+    border: 1px solid var(--border);
   }
 
   .card-elevated {

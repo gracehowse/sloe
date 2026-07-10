@@ -1,6 +1,5 @@
 import { StyleSheet, type ViewStyle } from "react-native";
 
-import { Elevation } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useTheme } from "@/context/theme";
 
@@ -14,14 +13,13 @@ import { useTheme } from "@/context/theme";
  * Views) pick up the same treatment without each caller re-deriving the
  * variant + dark/light logic.
  *
- * SOFT is the page-ground card treatment (Sloe v3, ENG-1222 P2 — decision:
- * docs/decisions/2026-06-25-v3-card-lift-reversal.md). v3 reverses the
- * 2026-06-12 flat-card decision: white resting cards LIFT off the white ground
- * on `Elevation.cardSoft` ("elevation, not warmth") — a flat white card on a
- * white page is invisible, so the lift IS the separation. The ~39 page-ground
- * card surfaces across Today/Plan/Progress/Recipes pass `{ variant: "soft" }`
- * (or `<SupprCard lift="soft">`). Soft adds the ambient drop shadow (light) /
- * tonal lift (dark); see Behaviour below.
+ * SOFT is the page-ground card treatment. ENG-1497 (Grace 2026-07-10,
+ * decision: docs/decisions/2026-07-10-card-grammar-rounder-flat.md): cards
+ * are FLAT + hairline — no ambient shadow; border + fill contrast carry the
+ * separation (Oura/Natural-Cycles grammar; supersedes the 2026-06-25 lift
+ * reversal). The ~39 page-ground surfaces across Today/Plan/Progress/Recipes
+ * pass `{ variant: "soft" }` (or `<SupprCard lift="soft">`) and now render
+ * hairline-flat (light) / tonal lift + hairline (dark); see Behaviour below.
  *
  * FLAT (the no-arg default, and `useTodayCardElevation()`) stays for the
  * surfaces the prototype keeps recessed/flush: macro tiles (`size="tile"`,
@@ -48,14 +46,10 @@ import { useTheme } from "@/context/theme";
  *   - FLAT (default, any theme) → no shadow, NO border, no tonal lift. The
  *     `#F6F5F2` card fill on the `#FFFFFF` page (or `colors.card` in dark) is
  *     the only separation — the Figma `654:2` slab.
- *   - SOFT, LIGHT → soft drop shadow (`Elevation.cardSoft`), NO border. The
- *     shadow carries the separation, so the hairline is dropped to avoid a
- *     double edge. NOTE for consumers: RN `overflow: 'hidden'` clips iOS
- *     shadows, so the spreader MUST apply `shadowStyle` to an OUTER wrapper
- *     when the card clips its children (the reason SupprCard wraps).
- *   - SOFT, DARK → no shadow (RN renders shadows poorly on dark surfaces); a
- *     tonal lift (`cardElevated` background via `liftBg`) plus a hairline carry
- *     the separation instead.
+ *   - SOFT, LIGHT → no shadow, hairline border (`useBorder: true`). The
+ *     border + card-vs-ground fill contrast carry the separation (ENG-1497).
+ *   - SOFT, DARK → no shadow; tonal lift (`cardElevated` via `liftBg`) plus
+ *     the same hairline.
  *
  * Returned shape is intentionally small + typed so the sweep can spread it:
  *   - `shadowStyle` — spread into the (outer) card style; `undefined` when no
@@ -102,32 +96,32 @@ export function useCardElevation(
     };
   }
 
-  // SOFT LIFT — Sloe v3 (ENG-1222 P2, 2026-06-25). v3 REVERSES the 2026-06-12
-  // flat-card decision (docs/decisions/2026-06-12-flat-card-surfaces.md, now
-  // superseded by docs/decisions/2026-06-25-v3-card-lift-reversal.md): page-
-  // ground resting cards LIFT off the white ground on a soft ambient shadow.
-  // A flat white card on a white page is invisible — the lift IS the separation
-  // (Grace, 2026-06-25: "the cards not being raised as in the prototype"). The
-  // prototype floats white cards on white via `--shadow-card`; web already
-  // mirrors this (`.card-slab*` → `--elev-card-soft`). This was the lone
-  // platform laggard: `soft` silently no-op'd in light, so all ~39 surfaces
-  // that already opt into soft rendered flat. Now real — UNGATED per Grace's
-  // standing elevation directive ("turn everything on; never flag-gate again").
+  // FLAT + HAIRLINE — ENG-1497 (Grace 2026-07-10, Oura/Natural-Cycles
+  // references; decision: docs/decisions/2026-07-10-card-grammar-rounder-
+  // flat.md, superseding the 2026-06-25 lift reversal). Page-ground cards
+  // drop the ambient shadow; the hairline border + the card-vs-ground fill
+  // contrast carry the separation, exactly the grammar dark mode already
+  // used. The separation MECHANISM is bound into the ruling (flat has
+  // failed twice here when shipped bare — see the decision doc): if the
+  // hairline reads too faint on the whisper-cool ground, the lever is
+  // deepening the card-hosting ground a cool step, never re-adding shadow.
+  // UNGATED per Grace's standing elevation directive ("turn everything on;
+  // never flag-gate again"). `Elevation.cardSoft` survives for sheets/
+  // overlays only.
   //
-  // DARK keeps the tonal lift (`liftBg: cardElevated`) instead of a shadow — RN
-  // renders dark drop shadows poorly, so fill-based separation carries it (an
-  // accepted platform deviation from web's dark `--elev-card-soft`).
+  // DARK keeps the tonal lift (`liftBg: cardElevated`) + gains the same
+  // hairline — fill-based separation, now consistent across both schemes.
   if (isDark) {
     return {
       shadowStyle: undefined,
-      useBorder: false,
+      useBorder: true,
       liftBg: colors.cardElevated,
     };
   }
 
   return {
-    shadowStyle: Elevation.cardSoft,
-    useBorder: false,
+    shadowStyle: undefined,
+    useBorder: true,
     liftBg: undefined,
   };
 }

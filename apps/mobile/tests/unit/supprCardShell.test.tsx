@@ -79,12 +79,11 @@ describe("<SupprCard> — the consolidated card shell", () => {
     expect(flatten(outer.props.children.props.style).borderWidth).toBe(0);
   });
 
-  it("lift='soft' LIFTS — fill + radius + soft ambient shadow on the OUTER node (Sloe v3 card lift, ENG-1222 P2)", () => {
-    // Sloe v3 (docs/decisions/2026-06-25-v3-card-lift-reversal.md) reverses the
-    // 2026-06-12 flat decision: page-ground cards LIFT off the white ground on
-    // Elevation.cardSoft — a flat white card on a white page is invisible (the
-    // lift IS the separation). The shadow rides the OUTER node (iOS clips it
-    // under the inner overflow:hidden).
+  it("lift='soft' is FLAT + hairline — fill + radius, NO ambient shadow (ENG-1497)", () => {
+    // ENG-1497 (Grace 2026-07-10, Oura/NC references — decision:
+    // docs/decisions/2026-07-10-card-grammar-rounder-flat.md) supersedes the
+    // 2026-06-25 lift reversal: resting cards drop the shadow; the hairline
+    // border + fill contrast carry the separation.
     themeState.resolved = "light";
     const { getByTestId } = render(
       <SupprCard testID="card-x" lift="soft">
@@ -95,13 +94,13 @@ describe("<SupprCard> — the consolidated card shell", () => {
     const style = flatten(outer.props.style);
     // Warm-grey #F6F5F2 fill — the same card colour everywhere.
     expect(style.backgroundColor).toBe("#F6F5F2");
-    // The canonical card radius (24).
+    // The canonical card radius (24) — now the Radius.card token.
     expect(style.borderRadius).toBe(CARD_RADIUS);
     expect(CARD_RADIUS).toBe(24);
-    // LIFTED: the cardSoft ambient shadow on the outer node (plum ink, 16%).
-    expect(style.shadowOpacity).toBe(0.16);
-    expect(String(style.shadowColor).toLowerCase()).toBe("#221b26");
-    expect(style.shadowRadius).toBe(18);
+    // FLAT: no ambient shadow on the outer node.
+    expect(style.shadowOpacity).toBeUndefined();
+    // The hairline rides the inner node (see the clip-fix test below).
+    expect(flatten(outer.props.children.props.style).borderWidth).toBeGreaterThan(0);
   });
 
   it("clips on a SEPARATE inner node (the iOS clip fix), which has NO shadow", () => {
@@ -118,10 +117,11 @@ describe("<SupprCard> — the consolidated card shell", () => {
     const inner = outer.props.children;
     const innerStyle = flatten(inner.props.style);
     expect(innerStyle.overflow).toBe("hidden");
-    // The inner (clipping) node must not carry the shadow — iOS would swallow it.
+    // The inner (clipping) node must not carry a shadow — iOS would swallow it.
     expect(innerStyle.shadowOpacity).toBeUndefined();
-    // And the light soft-lift card drops the inner border (shadow is the separation).
-    expect(innerStyle.borderWidth).toBe(0);
+    // ENG-1497: the light soft card draws the hairline (border, not shadow,
+    // is the separation).
+    expect(innerStyle.borderWidth).toBeGreaterThan(0);
   });
 
   it("size='tile' rounds to 24 (the macro-tile corner, same as the card)", () => {
@@ -153,9 +153,9 @@ describe("<SupprCard> — the consolidated card shell", () => {
     expect(innerStyle.borderColor).toBe("#E8E2EC");
   });
 
-  it("dark mode (soft) keeps ONLY the tonal fill — no shadow, no hairline (flat-card surfaces)", () => {
-    // Flat-card surfaces (2026-06-12): dark soft keeps the tonal `cardElevated`
-    // fill as the separation but DROPS the hairline (and never a shadow — RN
+  it("dark mode (soft) keeps the tonal fill + the hairline — never a shadow (ENG-1497)", () => {
+    // Dark soft keeps the tonal `cardElevated` fill AND (ENG-1497) the same
+    // hairline as light — one grammar across schemes; never a shadow (RN
     // renders dark shadows poorly). Mirrors web `.dark .card-slab`.
     themeState.resolved = "dark";
     const { getByTestId } = render(
@@ -168,8 +168,8 @@ describe("<SupprCard> — the consolidated card shell", () => {
     // Tonal fill, not a shadow.
     expect(outerStyle.backgroundColor).toBe("#2A2730");
     expect(outerStyle.shadowOpacity).toBeUndefined();
-    // Hairline dropped — fill IS the separation.
-    expect(flatten(outer.props.children.props.style).borderWidth).toBe(0);
+    // Hairline present — border + fill are the separation.
+    expect(flatten(outer.props.children.props.style).borderWidth).toBeGreaterThan(0);
     themeState.resolved = "light"; // restore for ordering
   });
 

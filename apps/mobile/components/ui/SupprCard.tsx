@@ -125,15 +125,15 @@ const radiusValues: Record<SupprCardRadius, number> = {
  * radius-and-nested-inset-standard.md) — sheets share the card corner so
  * "lifted warm surface" reads as one material at rest or risen. Replaces
  * six live ad-hoc top-corner styles (8/12/18/20/24/28). */
-export const SHEET_RADIUS = 24;
+export const SHEET_RADIUS = Radius.card; // 24
 /** Nested/inset sub-panel radius (2026-06-10 decision, same doc): inner
  * radius ≈ outer minus padding (concentric-corner principle) — a 24-inside-24
  * panel at 16pt padding clashes. The old inset spec (24) had zero adoption
  * because it was optically wrong. */
 export const INSET_RADIUS = Radius.xl; // 12
 
-export const CARD_RADIUS = 24;
-export const TILE_RADIUS = 24;
+export const CARD_RADIUS = Radius.card; // 24 — ENG-1497: tokenised
+export const TILE_RADIUS = Radius.card; // 24
 
 export function SupprCard({
   tone = "neutral",
