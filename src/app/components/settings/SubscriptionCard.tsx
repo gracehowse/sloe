@@ -109,8 +109,8 @@ export function SubscriptionCard({ userTier, onManageSubscription }: Subscriptio
           className="space-y-3"
           aria-busy="true"
         >
-          <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
-          <div className="h-4 w-1/2 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-2/3 rounded bg-skeleton animate-pulse" />
+          <div className="h-4 w-1/2 rounded bg-skeleton animate-pulse" />
         </div>
       ) : (
         <SubscriptionCardBody

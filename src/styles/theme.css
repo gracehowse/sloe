@@ -184,6 +184,11 @@
   --secondary-foreground: var(--foreground);
   --muted: #EBEAF1;              /* v3 frost-grey — chips / pressed fill */
   --muted-foreground: var(--foreground-secondary);
+  /* ENG-1486 — skeleton/shimmer fill. MUST stay visibly distinct from
+     --card (>=1.15:1, gated by skeletonTokenContrastWeb.test.ts): reused
+     surface tokens went invisible twice (ENG-1477 ring, ENG-1479 mobile
+     skeletons). Mirrors apps/mobile theme.ts Colors.*.skeleton. */
+  --skeleton: #EBEAF1;
   --accent: var(--background-secondary);
   --accent-foreground: var(--foreground);
 
@@ -539,6 +544,10 @@
   --secondary-foreground: var(--foreground);
   --muted: #241C2E;              /* v3 dark frost — chips / pressed fill */
   --muted-foreground: var(--foreground-secondary);
+  /* ENG-1486 — deliberately NOT --muted here: #241C2E measures 1.03:1 on
+     the dark --card (#211A2A), invisible. #332843 (border hue) hits
+     1.22:1, matching light's weight + mobile Colors.dark.skeleton. */
+  --skeleton: #332843;
   --accent: var(--background-secondary);
   --accent-foreground: var(--foreground);
 
@@ -806,6 +815,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-skeleton: var(--skeleton);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
