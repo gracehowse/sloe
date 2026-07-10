@@ -19,6 +19,11 @@
 #   0 6 * * *  → /api/cron/supabase-advisor-check (daily 06:00 UTC, ENG-509 alarm 6)
 #   0 7 * * *  → /api/cron/household-purge     (daily 07:00 UTC, ENG-1359 — hard-deletes
 #                                                households disbanded >= 30 days ago)
+#   30 */6 * * * → /api/cron/entitlement-reconcile (every 6h at :30, ENG-1463/1437 —
+#                                                corrects profiles.user_tier drift from
+#                                                Stripe truth when a webhook is missed;
+#                                                :30 avoids colliding with the hourly and
+#                                                06:00 ticks above)
 
 name: Scheduled crons
 
@@ -28,6 +33,7 @@ on:
     - cron: "0 23 * * *"
     - cron: "0 6 * * *"
     - cron: "0 7 * * *"
+    - cron: "30 */6 * * *"
   workflow_dispatch:
     inputs:
       target:
@@ -39,6 +45,7 @@ on:
           - weekly-recap
           - supabase-advisor-check
           - household-purge
+          - entitlement-reconcile
 
 concurrency:
   group: scheduled-crons-${{ github.event.schedule || inputs.target }}
@@ -60,6 +67,7 @@ jobs:
             "0 23 * * *"|"weekly-recap")            echo "path=/api/push/weekly-recap" >> "$GITHUB_OUTPUT" ;;
             "0 6 * * *"|"supabase-advisor-check")   echo "path=/api/cron/supabase-advisor-check" >> "$GITHUB_OUTPUT" ;;
             "0 7 * * *"|"household-purge")          echo "path=/api/cron/household-purge" >> "$GITHUB_OUTPUT" ;;
+            "30 */6 * * *"|"entitlement-reconcile") echo "path=/api/cron/entitlement-reconcile" >> "$GITHUB_OUTPUT" ;;
             "0 * * * *"|"weigh-in-reminder")        echo "path=/api/push/weigh-in-reminder" >> "$GITHUB_OUTPUT" ;;
             *) echo "Unknown trigger '${{ github.event.schedule || inputs.target }}'" >&2; exit 1 ;;
           esac
