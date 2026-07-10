@@ -63,9 +63,12 @@ export function FoodFallbackThumb({
   }
 
   const category = resolveFoodFallbackCategory({ title, slot });
+  // ENG-1478 — null when the category has no shipped sample: render the
+  // glyph rather than a wrong specific food image (fish ≠ berry smoothie).
   const sampleCategory = resolveFoodFallbackSampleCategory(category);
-  const sample =
-    SAMPLE_ASSET_BY_CATEGORY[sampleCategory as keyof typeof SAMPLE_ASSET_BY_CATEGORY];
+  const sample = sampleCategory
+    ? SAMPLE_ASSET_BY_CATEGORY[sampleCategory as keyof typeof SAMPLE_ASSET_BY_CATEGORY]
+    : undefined;
 
   if (sample) {
     return (

@@ -129,13 +129,20 @@ export function resolveFoodFallbackCategory(args: {
   return HASH_FALLBACK_POOL[idx];
 }
 
-/** Map a resolved category to the nearest shipped sample asset category. */
+/**
+ * Map a resolved category to its shipped sample asset, or `null` when none
+ * exists — callers render their honest glyph fallback on `null`.
+ *
+ * ENG-1478 — this used to hash-remap unshipped categories onto a random
+ * shipped sample ("fish" → berry smoothie, "pizza" → salad, "eggs" →
+ * smoothie…), presenting a confidently WRONG food image: the same
+ * fabrication class ENG-1287 removed from recipe cards. A wrong specific
+ * image is worse than no image; the glyph is the designed honest state.
+ */
 export function resolveFoodFallbackSampleCategory(
   category: FoodFallbackCategoryId,
-): FoodFallbackCategoryId {
-  if ((FOOD_FALLBACK_SAMPLE_CATEGORIES as readonly string[]).includes(category)) {
-    return category;
-  }
-  const idx = fnv1a32(category) % FOOD_FALLBACK_SAMPLE_CATEGORIES.length;
-  return FOOD_FALLBACK_SAMPLE_CATEGORIES[idx];
+): FoodFallbackCategoryId | null {
+  return (FOOD_FALLBACK_SAMPLE_CATEGORIES as readonly string[]).includes(category)
+    ? category
+    : null;
 }

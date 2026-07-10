@@ -30,14 +30,20 @@ describe("foodFallbackCategory (ENG-1015)", () => {
     );
   });
 
-  it("maps unknown categories to a shipped sample deterministically", () => {
-    const sample = resolveFoodFallbackSampleCategory("curry");
-    expect(["ramen-noodles", "breakfast-bowl", "chicken", "salad", "pasta", "smoothie"]).toContain(
-      sample,
-    );
-    expect(resolveFoodFallbackSampleCategory("curry")).toBe(
-      resolveFoodFallbackSampleCategory("curry"),
-    );
+  it("passes shipped sample categories through unchanged", () => {
+    for (const shipped of ["ramen-noodles", "breakfast-bowl", "chicken", "salad", "pasta", "smoothie"] as const) {
+      expect(resolveFoodFallbackSampleCategory(shipped)).toBe(shipped);
+    }
+  });
+
+  it("ENG-1478 regression guard: unshipped categories return null — never a wrong specific sample", () => {
+    // The captured bug: "Salmon, potatoes & greens" → "fish" → hash-remapped
+    // to the berry-smoothie asset. A wrong specific image is worse than none.
+    expect(resolveFoodFallbackCategory({ title: "PERSONA: Salmon, potatoes & greens" })).toBe("fish");
+    expect(resolveFoodFallbackSampleCategory("fish")).toBeNull();
+    for (const unshipped of ["curry", "eggs", "pizza", "burger", "dessert", "rice-bowl"] as const) {
+      expect(resolveFoodFallbackSampleCategory(unshipped)).toBeNull();
+    }
   });
 
   it("fnv1a32 is stable for the same input", () => {
