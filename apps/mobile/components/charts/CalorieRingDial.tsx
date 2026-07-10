@@ -89,12 +89,6 @@ export interface CalorieRingDialProps {
   /** De-carded v3 hero (ENG-1247): render the centre value as the 56px serif-
    *  MEDIUM `.ring-big` numeral instead of the default 48/400. */
   numeralLarge?: boolean;
-  /** ENG-1372 (empty-state grammar, law 1) — warm-tint the tick track instead
-   *  of the default `ringTick` (a plum-tinted colour that reads as "just the
-   *  ring", not a deliberate empty ground). Host gates this on
-   *  `empty_state_grammar_v1` AND a true fresh day (zero logged entries) —
-   *  this component only applies the swap, it doesn't decide when. */
-  emptyTrackWarm?: boolean;
 }
 
 export function CalorieRingDial({
@@ -103,11 +97,14 @@ export function CalorieRingDial({
   size = BASE,
   hideCenter = false,
   numeralLarge = false,
-  emptyTrackWarm = false,
 }: CalorieRingDialProps) {
   const colors = useThemeColors();
   const reduce = useReduceMotion();
-  const tickColor = emptyTrackWarm ? colors.surfaceWarm : colors.ringTick;
+  // ENG-1477 — the ENG-1372 warm empty-tick swap measured 1.02:1/1.14:1
+  // against the real background, worse than this token's own pre-fix
+  // baseline. Grace's call (2026-07-09): every empty day uses this tick
+  // colour, no warm variant.
+  const tickColor = colors.ringTick;
 
   // Cold start / no profile yet (goal<=0): calibrating, not "0 left" — parity
   // with the legacy ring's "Start your day" (ENG-1225 ring-flag default-on).

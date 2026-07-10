@@ -184,7 +184,6 @@ function DesktopHeroStats({
             consumed={consumed}
             target={target}
             size={DESKTOP_RING_GEOMETRY.size}
-            emptyTrackWarm={showFreshDayGrammar}
           />
           <LogConfirmCheck visible={logConfirmVisible} />
         </div>

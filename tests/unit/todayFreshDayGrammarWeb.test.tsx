@@ -115,18 +115,14 @@ describe("TodayHeroRing — fresh-day grammar gating (empty_state_grammar_v1)", 
   });
 });
 
-describe("CalorieRingDial — emptyTrackWarm (ENG-1372 law 1)", () => {
-  it("defaults to the standard --ring-tick fill", () => {
+describe("CalorieRingDial — ring tick colour (ENG-1477 regression guard)", () => {
+  it("always uses the standard --ring-tick fill, even on an empty/fresh day", () => {
     const { container } = render(<CalorieRingDial consumed={0} target={2000} />);
     const tick = container.querySelector('rect[fill="var(--ring-tick)"]');
     expect(tick).not.toBeNull();
-  });
-
-  it("swaps every tick to --surface-warm when emptyTrackWarm is true", () => {
-    const { container } = render(
-      <CalorieRingDial consumed={0} target={2000} emptyTrackWarm />,
-    );
-    expect(container.querySelector('rect[fill="var(--ring-tick)"]')).toBeNull();
-    expect(container.querySelectorAll('rect[fill="var(--surface-warm)"]').length).toBe(48);
+    // ENG-1477 — the ENG-1372 "warm tint" swap (--surface-warm) measured
+    // 1.02:1 contrast, worse than not swapping at all. No tick should ever
+    // render that fill again.
+    expect(container.querySelectorAll('rect[fill="var(--surface-warm)"]').length).toBe(0);
   });
 });

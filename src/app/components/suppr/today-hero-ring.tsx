@@ -270,7 +270,6 @@ export function TodayHeroRing({
           target={target}
           size={ringGeometry.size}
           numeralLarge={decard}
-          emptyTrackWarm={showFreshDayGrammar}
         />
         <LogConfirmCheck visible={logConfirmVisible} />
       </div>

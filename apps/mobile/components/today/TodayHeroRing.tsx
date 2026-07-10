@@ -203,7 +203,6 @@ function TodayHeroRingImpl({
           expanded={expanded}
           onToggleExpanded={onToggleExpanded}
           numeralLarge={decard}
-          emptyTrackWarm={emptyStateGrammarOn && isFreshDay}
         />
         <LogConfirmCheck bump={logConfirmBump} />
       </View>
