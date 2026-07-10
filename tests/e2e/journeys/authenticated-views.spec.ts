@@ -44,11 +44,11 @@ test.describe("Authenticated app view matrix", () => {
     await test.step("Meal planner", async () => {
       await page.goto("/plan");
       // Heading copy: the web MealPlanner h1 was renamed from
-      // "Meal planner" → "Meal plan" in the 2026-04-20 prototype-port
-      // parity work (matches mobile). Accept either token so this
-      // assertion is resilient if the copy lands back on
-      // "Meal planner" in a future batch.
-      await expect(page.getByRole("heading", { name: /Meal plan(?:ner)?/i })).toBeVisible();
+      // ENG-1247 (2026-07-10): flag-cold Plan renders the v3 surface
+      // ("Your plan" header) since sloe_v3_plan joined web's default-ON
+      // set; the legacy "Meal plan(ner)" heading stays accepted as the
+      // kill-switch fallback.
+      await expect(page.getByRole("heading", { name: /^(Your plan|Meal plan(?:ner)?)$/i }).first()).toBeVisible();
       await expectNoSeriousA11yViolations(page);
     });
 
