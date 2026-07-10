@@ -20,6 +20,11 @@ import { describe, expect, it } from "vitest";
 const ROOT = resolve(__dirname, "../..");
 const MOBILE = readFileSync(resolve(ROOT, "apps/mobile/app/(tabs)/progress.tsx"), "utf8");
 const WEB = readFileSync(resolve(ROOT, "src/app/components/ProgressDashboard.tsx"), "utf8");
+// Inline Log-weight row extracted into ProgressWeightLogRow (ENG-1504).
+const WEB_LOG_ROW = readFileSync(
+  resolve(ROOT, "src/app/components/suppr/progress-weight-log-row.tsx"),
+  "utf8",
+);
 const HELPER = readFileSync(resolve(ROOT, "src/lib/nutrition/progressRangeStats.ts"), "utf8");
 // The AVERAGE ADHERENCE card lives in its own component on each platform
 // (the dashboards render `<ProgressAverageAdherence>` and pass the four
@@ -109,7 +114,8 @@ describe("Progress — Sloe Figma 492:2 frame", () => {
     expect(WEB).toMatch(/data-testid="progress-weight-view-toggle"/);
     expect(WEB).toMatch(/data-testid=\{`progress-weight-view-\$\{v\}`\}/);
     expect(WEB).toMatch(/\(\["trend", "scale"\] as const\)/);
-    expect(WEB).toMatch(/data-testid="progress-log-weight"/);
+    expect(WEB).toMatch(/<ProgressWeightLogRow\b/);
+    expect(WEB_LOG_ROW).toMatch(/data-testid="progress-log-weight"/);
     expect(MOBILE).toMatch(/testID="progress-weight-view-toggle"/);
     expect(MOBILE).toMatch(/testID=\{`progress-weight-view-\$\{v\}`\}/);
     expect(MOBILE).toMatch(/\(\["trend", "scale"\] as const\)/);

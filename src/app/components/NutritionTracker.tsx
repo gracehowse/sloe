@@ -56,7 +56,7 @@ import {
 } from "../../lib/nutrition/mealEatenAt.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { computeProtectedStreak } from "../../lib/nutrition/streakFreeze.ts";
-import { didStreakReset } from "../../lib/nutrition/streakReset.ts";
+import { useStreakResetCopy } from "../../lib/nutrition/useStreakResetCopy.ts";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
@@ -504,24 +504,11 @@ export const NutritionTracker = memo(function NutritionTracker({
     [protectedStreakInfo],
   );
   const protectedStreakLength = protectedStreakInfo.streakLength;
-  // L6 G8 (2026-04-18) — fire `streak_reset` exactly once when the
-  // protected streak transitions from >=1 to 0. Seeded with `null` on
-  // mount so a user who currently has a zero streak doesn't generate a
-  // spurious event on first render.
-  const priorProtectedStreakRef = useRef<number | null>(null);
-  useEffect(() => {
-    const prior = priorProtectedStreakRef.current;
-    priorProtectedStreakRef.current = protectedStreakLength;
-    if (didStreakReset(prior, protectedStreakLength)) {
-      try {
-        track(AnalyticsEvents.streak_reset, {
-          priorStreak: prior ?? 0,
-        });
-      } catch {
-        /* analytics is fire-and-forget */
-      }
-    }
-  }, [protectedStreakLength]);
+  // L6 G8 + ENG-1504 (mobile parity, DC8) — `streak_reset` fire-once
+  // analytics + the sticky supportive-copy flag ("Every expert was once a
+  // beginner…" under the day strip). Extracted hook mirrors mobile
+  // `useTodayStreakAndFreezes`.
+  const streakJustReset = useStreakResetCopy(protectedStreakLength);
   // `stepsByDay` / `dailyStepsGoal` / `fastingSessions` / `fastingOptedIn`
   // now come from `useNutritionTrackerProfile` above.
   const [fastingNowTick, setFastingNowTick] = useState(() => Date.now());
@@ -1793,6 +1780,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         streakDays={protectedStreakLength}
         freezeProtected={protectedDateKeys.has(todayKey())}
         onStreakPress={weeklyRecap.trigger}
+        streakResetCopyVisible={streakJustReset}
       />
       {weeklyRecap.dialog}
 

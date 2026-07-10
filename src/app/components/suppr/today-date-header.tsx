@@ -29,6 +29,11 @@ export interface TodayDateHeaderProps {
   streakDays?: number;
   freezeProtected?: boolean;
   onStreakPress?: () => void;
+  /** ENG-1504 (mobile parity, premium-bar audit DC8) — when the protected
+   *  streak just reset, render the calm supportive line under the day strip.
+   *  Sticky until the user next logs a positive streak (host-managed).
+   *  Mirrors mobile `TodayDateHeader`'s `streakResetCopyVisible`. */
+  streakResetCopyVisible?: boolean;
 }
 
 const ghostNav =
@@ -59,9 +64,20 @@ export function TodayDateHeader({
   streakDays,
   freezeProtected,
   onStreakPress,
+  streakResetCopyVisible = false,
 }: TodayDateHeaderProps) {
   const calmDateNav = hideDayStrip && viewMode === "day";
   const isToday = selectedDateKey === todayKey();
+
+  // ENG-1504 — mobile-canonical fresh-day nudge (premium-bar audit DC8):
+  // the streak-reset supportive line renders in the date-header block,
+  // directly under the day strip. Copy + position mirror mobile
+  // `TodayDateHeader` exactly.
+  const streakResetLine = (
+    <p data-testid="streak-reset-copy" className="text-[11px] text-muted-foreground">
+      Every expert was once a beginner. Start fresh today.
+    </p>
+  );
 
   if (stripOnly) {
     // Sloe redesign (2026-06-08): airier rhythm to match Figma `654:2`
@@ -79,6 +95,7 @@ export function TodayDateHeader({
           onSelectDateKey={onSelectDateKey}
           onOpenCalendar={onOpenCalendar}
         />
+        {isToday && streakResetCopyVisible ? streakResetLine : null}
       </div>
     );
   }
@@ -154,6 +171,7 @@ export function TodayDateHeader({
             {avatarLetter}
           </button>
         </div>
+        {streakResetCopyVisible ? streakResetLine : null}
       </div>
     );
   }
@@ -268,6 +286,9 @@ export function TodayDateHeader({
           onOpenCalendar={onOpenCalendar}
         />
       ) : null}
+      {viewMode === "day" && isToday && streakResetCopyVisible
+        ? streakResetLine
+        : null}
     </div>
   );
 }

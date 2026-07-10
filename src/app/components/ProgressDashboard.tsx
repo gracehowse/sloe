@@ -92,7 +92,6 @@ import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetai
 // pills stay flush against the header.
 import { HouseholdBar } from "./HouseholdBar.tsx";
 import { ProgressTabChrome } from "./suppr/progress-tab-chrome.tsx";
-import { SupprButton } from "./suppr/suppr-button.tsx";
 // Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
 // Authority: D-2026-04-27-17 (Progress is a story not a stat-card
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
@@ -115,6 +114,7 @@ import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
 import { SupprCard } from "./ui/suppr-card.tsx";
 import { ProgressActivitySection } from "./suppr/progress-activity-section.tsx";
 import { ProgressWeightEmptyState } from "./suppr/progress-weight-empty-state.tsx";
+import { ProgressWeightLogRow } from "./suppr/progress-weight-log-row.tsx";
 import { StreakFreezeCard } from "./suppr/streak-freeze-card.tsx";
 import { WeightStatRow } from "./suppr/weight-stat-row.tsx";
 import { getLatestHealthSnapshot } from "../../lib/health/healthSnapshots.ts";
@@ -215,6 +215,16 @@ function ProgressDashboardContent() {
 
   const [weightInput, setWeightInput] = useState("");
   const weightInputRef = useRef<HTMLInputElement | null>(null); // ENG-1372 slice 2 CTA target
+  // ENG-1504 — the sparse/empty weight state renders ONE affordance (the
+  // in-frame filled CTA, ENG-1372 law 2); the inline input + "Log weight"
+  // row stays hidden until that CTA reveals it (then focuses the input).
+  // Non-empty states always render the row. Mirrors mobile, where the
+  // "Log weight" button lives inside the non-empty branch only and the
+  // sparse-state CTA opens the LogWeightSheet.
+  const [weightEntryRevealed, setWeightEntryRevealed] = useState(false);
+  useEffect(() => {
+    if (weightEntryRevealed) weightInputRef.current?.focus();
+  }, [weightEntryRevealed]);
   const [stepsInput, setStepsInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
   // ENG-824 / ENG-952 — weight-save celebration state + side-effects (loud
@@ -1328,7 +1338,16 @@ function ProgressDashboardContent() {
               is no longer the only Progress card without a header. */}
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid mb-2">Weight</p>
           {showWeightEmpty ? (
-            <ProgressWeightEmptyState points={weightChartData.map((d) => ({ kg: d.value }))} goalKg={goalWeightChart ?? null} onLogWeight={() => weightInputRef.current?.focus()} />
+            <ProgressWeightEmptyState
+              points={weightChartData.map((d) => ({ kg: d.value }))}
+              goalKg={goalWeightChart ?? null}
+              // ENG-1504 — first tap reveals the (otherwise hidden) inline
+              // log row below; the reveal effect focuses the input.
+              onLogWeight={() => {
+                if (weightEntryRevealed) weightInputRef.current?.focus();
+                else setWeightEntryRevealed(true);
+              }}
+            />
           ) : (<>
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1451,40 +1470,18 @@ function ProgressDashboardContent() {
             rate={hasGoalWeightData({ goalWeightKg, latestWeightKg }) && rateKgPerWeek != null && rateKgPerWeek !== 0 ? `${rateKgPerWeek < 0 ? "−" : "+"}${formatRatePerWeek(rateKgPerWeek).replace("/week", "/wk")}` : "—"}
           />
           </>)}
-          {/* Log weight — centred button + a quick inline input */}
-          <div className="mt-3 flex items-center gap-2">
-            <input
-              ref={weightInputRef}
-              className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
-              placeholder={profileMeasurementSystem === "imperial" ? "Weight (lb)" : "Weight (kg)"}
+          {/* Inline log row (extracted, ENG-1504): hidden on the sparse/empty
+              state until its in-frame CTA reveals it — the empty card shows
+              exactly one log-weigh-in affordance (ENG-1372 law 2). */}
+          {!showWeightEmpty || weightEntryRevealed ? (
+            <ProgressWeightLogRow
+              inputRef={weightInputRef}
               value={weightInput}
-              onChange={(e) => setWeightInput(e.target.value)}
-              type="number"
-              step="0.1"
-              aria-label="Log weight"
+              onChange={setWeightInput}
+              isImperial={profileMeasurementSystem === "imperial"}
+              onSave={() => void saveTodayWeight()}
             />
-            {/* v3 prototype: Log weight is a QUIET button (the app's `ghost`
-                = the retired bordered-secondary), not a filled primary — the
-                weight card's calm action; the chart stays the hero. ENG-1247 */}
-            <SupprButton
-              variant="ghost"
-              onClick={() => void saveTodayWeight()}
-              data-testid="progress-log-weight"
-              aria-label="Log weight"
-            >
-              <Icons.add className="h-4 w-4" aria-hidden />
-              Log weight
-            </SupprButton>
-          </div>
-          {/* Gap 13 parity (web mirror of weight-tracker.tsx 2026-06-09):
-              editorial coaching line in Newsreader italic 14px — matches
-              the mobile Type.coach register. Previously plain text-xs. */}
-          <p
-            data-testid="weight-input-supportive-copy"
-            className="mt-1.5 text-center text-[13px] italic text-muted-foreground font-[family-name:var(--font-headline)]"
-          >
-            Every check-in gives us better data for you.
-          </p>
+          ) : null}
         </SupprCard>
         );
       })() : null}

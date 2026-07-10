@@ -23,6 +23,10 @@ import { describe, expect, it } from "vitest";
 const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf8");
 
 const WEB = read("src/app/components/ProgressDashboard.tsx");
+// The inline Log-weight row (input + ghost button + coaching line) was
+// extracted into ProgressWeightLogRow (ENG-1504) so the sparse/empty state
+// can hide it behind its in-frame CTA without growing the pinned host.
+const WEB_LOG_ROW = read("src/app/components/suppr/progress-weight-log-row.tsx");
 // The Steps + Body-Fat inputs (legacy, flag-off path) were extracted into the
 // ProgressActivitySection child (ENG-1225 gap #21); their Save CTAs live there.
 const WEB_ACTIVITY = read("src/app/components/suppr/progress-activity-section.tsx");
@@ -32,8 +36,8 @@ const MOBILE_PRIMITIVE = read("apps/mobile/components/ui/SupprButton.tsx");
 
 describe("Progress CTAs — solid primary / ghost (button system 2026-06-12)", () => {
   it("web imports the shared web SupprButton primitive", () => {
-    expect(WEB).toMatch(
-      /import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr\/suppr-button(?:\.tsx)?"/,
+    expect(WEB_LOG_ROW).toMatch(
+      /import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button(?:\.tsx)?"/,
     );
   });
 
@@ -44,9 +48,11 @@ describe("Progress CTAs — solid primary / ghost (button system 2026-06-12)", (
   });
 
   it("web 'Log weight' is a QUIET ghost (v3 prototype — chart is the hero)", () => {
-    expect(WEB).toMatch(
-      /<SupprButton\s+variant="ghost"[\s\S]{0,260}saveTodayWeight\(\)[\s\S]{0,200}Log weight/,
+    expect(WEB_LOG_ROW).toMatch(
+      /<SupprButton\s+variant="ghost"[\s\S]{0,260}onSave[\s\S]{0,200}Log weight/,
     );
+    // Host still wires the same logical action through the extracted row.
+    expect(WEB).toMatch(/onSave=\{\(\) => void saveTodayWeight\(\)\}/);
   });
 
   it("mobile 'Log weight' is a QUIET ghost with the same logical action", () => {

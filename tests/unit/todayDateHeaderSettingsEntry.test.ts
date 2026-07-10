@@ -34,3 +34,45 @@ describe("TodayDateHeader — settings entry (web)", () => {
     expect(trackerSrc).toMatch(/onOpenSettings=\{\(\)\s*=>\s*onOpenSettings\?\.\(\)\}/);
   });
 });
+
+describe("TodayDateHeader — streak-reset supportive line (web, ENG-1504 mobile parity)", () => {
+  const headerSrc = readFileSync(
+    resolve(REPO, "src/app/components/suppr/today-date-header.tsx"),
+    "utf-8",
+  );
+  const trackerSrc = readFileSync(
+    resolve(REPO, "src/app/components/NutritionTracker.tsx"),
+    "utf-8",
+  );
+
+  it("renders mobile's exact reset-day copy (fresh-day nudge, DC8)", () => {
+    expect(headerSrc).toMatch(
+      /Every expert was once a beginner\. Start fresh today\./,
+    );
+  });
+
+  it("stripOnly (the Sloe Today day view) shows the line under the day strip, today only", () => {
+    expect(headerSrc).toMatch(
+      /\{isToday && streakResetCopyVisible \? streakResetLine : null\}/,
+    );
+  });
+
+  it("NutritionTracker wires the sticky useStreakResetCopy flag through", () => {
+    // Set on a >=1 → 0 protected-streak transition, cleared when the user
+    // next renders a positive streak — mirrors mobile
+    // `useTodayStreakAndFreezes`. The state machine lives in the extracted
+    // `useStreakResetCopy` hook (screen-budget ratchet).
+    const hookSrc = readFileSync(
+      resolve(REPO, "src/lib/nutrition/useStreakResetCopy.ts"),
+      "utf-8",
+    );
+    expect(hookSrc).toMatch(/setStreakJustReset\(true\);/);
+    expect(hookSrc).toMatch(
+      /else if \(protectedStreakLength > 0 && streakJustReset\) \{/,
+    );
+    expect(trackerSrc).toMatch(
+      /const streakJustReset = useStreakResetCopy\(protectedStreakLength\);/,
+    );
+    expect(trackerSrc).toMatch(/streakResetCopyVisible=\{streakJustReset\}/);
+  });
+});
