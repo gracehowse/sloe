@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Icons } from "../ui/icons";
+import { AvatarDisc } from "../ui/avatar-disc";
 import { SupprWordmark } from "../ui/suppr-mark";
 import type { UserTier } from "../../../types/recipe";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
@@ -493,16 +494,10 @@ function SidebarProfileEntry({
         isActive ? "bg-primary/[0.06] text-primary" : "text-foreground"
       }`}
     >
-      <span
-        aria-hidden
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white"
-        style={{
-          background: "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #DF5EBC) 100%)",
-          boxShadow: "0 2px 6px color-mix(in srgb, var(--primary) 20%, transparent)",
-        }}
-      >
-        {initial}
-      </span>
+      {/* S5 avatar ruling (2026-07-10, ENG-1375): gradient retired — the ONE
+          solid-damson identity disc (`AvatarDisc`), matching the mobile
+          Today-header avatar (Figma 654:6). */}
+      <AvatarDisc initial={initial} size={36} />
       {!collapsed ? (
         <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">
           {label}

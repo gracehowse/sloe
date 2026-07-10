@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "../../src/lib/supabase/browserClient.ts";
 import { avatarInitials } from "../../src/lib/avatarInitials.ts";
 import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
+import { AvatarDisc } from "../../src/app/components/ui/avatar-disc.tsx";
 
 /**
  * PricingHeaderAuth — the auth-aware right-hand slot of the `/pricing`
@@ -89,18 +90,10 @@ export function PricingHeaderAuth() {
       aria-label={`Go to your account (${label})`}
       className="flex items-center gap-2 px-2 py-1.5 pr-3 rounded-full border border-border hover:bg-card transition-colors"
     >
-      <span
-        aria-hidden
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
-        style={{
-          // SLOE DS: same avatar gradient token as the authed sidebar
-          // (`--avatar-gradient-accent`, theme.css) — no raw hex here.
-          background:
-            "linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, var(--avatar-gradient-accent)) 100%)",
-        }}
-      >
-        {initial}
-      </span>
+      {/* S5 avatar ruling (2026-07-10, ENG-1375): gradient retired — the ONE
+          solid-damson identity disc (`AvatarDisc`), same as the sidebar +
+          mobile Today-header avatars. */}
+      <AvatarDisc initial={initial} size={28} />
       <span className="hidden sm:inline text-sm font-semibold text-foreground max-w-[120px] truncate">
         {label}
       </span>

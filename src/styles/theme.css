@@ -150,11 +150,19 @@
   --accent-primary-ring: rgba(91, 59, 110, 0.24);
   /** Avatar gradient accent — the pink `color-mix` endpoint in the
    *  identity-card avatar gradient (Settings header card). Same value in
-   *  light + dark (a fixed brand accent, not theme-resolved). desktop-sidebar.tsx
-   *  has the same literal gradient but is legacy-pinned in token-budget.json
-   *  (only-shrink ratchet) — out of scope for ENG-1458; migrate it to this
-   *  token in a follow-up token-scale pass. */
+   *  light + dark (a fixed brand accent, not theme-resolved). The S5
+   *  identity-avatar ruling (2026-07-10, ENG-1375) retired the gradient
+   *  from the sidebar / pricing avatars — the Settings header card is the
+   *  last consumer; it migrates to `--avatar-identity` in a later S5
+   *  slice (its 56px size + parity pin move together). */
   --avatar-gradient-accent: #DF5EBC;
+  /** ENG-1375 S5 — the ONE identity-avatar fill: solid damson, the mobile
+   *  Figma `654:6` direction (`GradientAvatar` default, `Accent.purple`).
+   *  Scheme-constant like `--avatar-gradient-accent`: the white initial
+   *  reads 7.24:1 in BOTH schemes, whereas the theme-resolved
+   *  `--accent-info` lightens to #9A7BAA in dark and fails AA under
+   *  white text. Consumed via `ui/avatar-disc.tsx`. */
+  --avatar-identity: #6A4B7A;
 
   /** Legacy aliases — old token names still resolve to new values so
    *  callers can be migrated in passes without breaking compile. */
