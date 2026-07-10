@@ -26,11 +26,11 @@ const SRC = readFileSync(
   join(__dirname, "..", "..", "app", "login.tsx"),
   "utf8",
 );
-// ENG-1474: presentation styles were extracted to `app/loginStyles.ts`
+// ENG-1474: presentation styles were extracted to `components/login/loginStyles.tsx`
 // (screen-budget shrink). Style-definition assertions read from there; JSX
 // wiring + handler/testID assertions still read `login.tsx` above.
 const STYLES_SRC = readFileSync(
-  join(__dirname, "..", "..", "app", "loginStyles.ts"),
+  join(__dirname, "..", "..", "components", "login", "loginStyles.tsx"),
   "utf8",
 );
 
@@ -44,7 +44,7 @@ describe("mobile login chooser — Figma 296:2", () => {
     expect(SRC).toMatch(/SloeHeaderWordmark/);
     expect(SRC).toMatch(/Cook what you love\./);
     // Italic "Still" via the serif-italic style on a nested Text run. The JSX
-    // wiring stays in login.tsx; the style definition lives in loginStyles.ts.
+    // wiring stays in login.tsx; the style definition lives in loginStyles.tsx.
     expect(SRC).toMatch(/headlineItalic/);
     expect(STYLES_SRC).toMatch(/headlineItalic/);
     expect(STYLES_SRC).toMatch(/serifItalic/);

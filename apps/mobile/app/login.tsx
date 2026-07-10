@@ -25,7 +25,7 @@ import { Accent, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
-import { makeLoginStyles } from "./loginStyles";
+import { makeLoginStyles } from "@/components/login/loginStyles";
 
 // ENG-1474 — deep link GoTrue redirects PKCE email links to; `app/auth-callback.tsx`
 // exchanges the `?code=`. Must match `additional_redirect_urls` in supabase/config.toml.
@@ -102,7 +102,7 @@ export default function LoginScreen() {
   // ENG-1474: surface a `suppr://auth-callback` failure (`?error=…`) via `message`.
   useAuthCallbackError(setMessage);
 
-  // Styles extracted to `./loginStyles` (ENG-1474) — presentation only,
+  // Styles extracted to `@/components/login/loginStyles` (ENG-1474) — presentation only,
   // testIDs + handlers unchanged. Sloe DS reskin (Figma `296:2`/`296:33`).
   const styles = useMemo(() => makeLoginStyles(colors), [colors]);
 
