@@ -91,9 +91,55 @@ handling is generic across signup/magic-link/recovery `code`s; only the
   (see below) before mobile signup-confirmation can round-trip back into
   the app. Currently only three web origins are allow-listed.
 
-### 2. Mobile deep-link (not built — spec only, tracked as follow-up)
+### 2. Mobile deep-link — **BUILT (ENG-1474, 2026-07-10)**
 
-Mobile has **no code-exchange path today** for any of these flows:
+**Status:** implemented in this repo. The four steps below shipped exactly as
+specced. What remains is **founder-gated**, not code:
+
+- **On-device / TestFlight verification** (step 5) — custom-scheme deep links
+  behave differently across Simulator Safari, Mail.app, and third-party mail
+  clients (Gmail/Outlook, which sometimes rewrite links). Needs a real
+  round-trip pass with a real inbox before relying on it in production.
+- **`supabase config push`** — the `suppr://auth-callback` allow-list entry is
+  **staged** in `supabase/config.toml` but not pushed. Same non-negotiable as
+  SQL migrations: Grace's action, never MCP/agent-applied.
+
+**`enable_confirmations` intentionally stays `false`.** The confirm-*after*-value
+posture is the plan of record (Grace's call) — the flip that this doc originally
+gated on is **no longer planned**. The account-farming vector is handled by the
+per-IP call cap (Layer C) + the confirmed-email AI-gating / nudge follow-up
+(separate ticket), not by forcing a confirmation round-trip before a user sees
+value. This deep-link work is what makes that follow-up *possible* (a mobile
+signup can now complete a confirmation round-trip at all), even though the
+blanket `enable_confirmations` flip won't be the mechanism.
+
+**What shipped (ENG-1474):**
+
+- `apps/mobile/lib/supabase.ts` — client switched to `flowType: "pkce"`,
+  `detectSessionInUrl: false` preserved.
+- `apps/mobile/app/auth-callback.tsx` — new Expo Router screen for
+  `suppr://auth-callback`: parses `code` + optional `next`, calls
+  `supabase.auth.exchangeCodeForSession(code)`, routes to the guarded `next`
+  (default `/(tabs)`, `/onboarding` honoured) on success, `/login?error=oauth`
+  on missing/failed code, with a minimal "Signing you in…" spinner while
+  exchanging.
+- `apps/mobile/lib/safeAuthRedirectPath.ts` — open-redirect guard mirroring
+  web's `src/lib/auth/safeRedirectPath.ts` (relative in-app paths only;
+  rejects absolute/custom-scheme/`//host`/backslash `next`).
+- `apps/mobile/app/login.tsx` — `emailRedirectTo: "suppr://auth-callback"` on
+  `signUp` + `signInWithOtp`; `redirectTo` on `resetPasswordForEmail`; reads a
+  forwarded `?error=` and surfaces it via the existing `message` idiom.
+- `supabase/config.toml` — `suppr://auth-callback` added to
+  `additional_redirect_urls` (**staged, not pushed**).
+- `apps/mobile/tests/unit/authDeepLinkCallback.test.ts` — PKCE + redirect +
+  guard + config-allow-list regression pins.
+
+The original "recommended shape" spec that this build followed is preserved
+below for reference.
+
+---
+
+Mobile had **no code-exchange path** for any of these flows before ENG-1474:
 
 - `apps/mobile/lib/supabase.ts`'s client (`createClient` from
   `@supabase/supabase-js`, not `@supabase/ssr`) sets
@@ -169,17 +215,20 @@ apply the moment confirmations turn on:
 
 ## Rollout sequence
 
-1. **Shipped now:** the PKCE redirect fix (web) — pure bug fix, live
+1. **Shipped:** the PKCE redirect fix (web) — pure bug fix, live
    immediately, fixes magic-link and password-reset today regardless of the
    confirmation-flip timeline.
-2. **Follow-up (ENG-1474):** build the mobile deep-link handler + switch the
-   mobile client to PKCE, verify on a real device/TestFlight.
-3. **Founder action:** once (2) ships and is verified, Grace runs
-   `supabase config push` to flip `enable_confirmations = true` and add the
-   mobile redirect URL to the allow-list, in the same push.
-4. **Layer C (code, already shipped default-off in this same change)**
-   remains the defence-in-depth backstop regardless of where (1)-(3) land —
-   see `docs/decisions/2026-05-14-ai-cost-circuit-breaker.md`.
+2. **Shipped (ENG-1474, 2026-07-10):** the mobile deep-link handler + mobile
+   client switched to PKCE. On-device / TestFlight verification and the
+   `supabase config push` of the allow-list entry remain founder-gated.
+3. **Founder action:** Grace runs `supabase config push` to add
+   `suppr://auth-callback` to the allow-list (staged in `config.toml`).
+   **`enable_confirmations` is NOT flipped in this push** — the
+   confirm-after-value posture holds; the blanket flip is no longer the plan
+   of record. The confirmed-email AI-gating / nudge follow-up replaces it.
+4. **Layer C (code, already shipped default-off)** remains the defence-in-depth
+   backstop regardless of where (1)-(3) land — see
+   `docs/decisions/2026-05-14-ai-cost-circuit-breaker.md`.
 
 ## Rejected alternative
 
@@ -198,4 +247,14 @@ apply the moment confirmations turn on:
   (all four redirects contain `/auth/callback`).
 - `tests/unit/onboardingSignupSessionGate.test.tsx` — pins the exact
   `?next=` value for the onboarding call site.
-- Mobile deep-link build — not in this change; tracked as ENG-1474.
+
+**Mobile deep-link build (ENG-1474, 2026-07-10):**
+
+- `apps/mobile/lib/supabase.ts` — `flowType: "pkce"` (+ `detectSessionInUrl:
+  false` preserved).
+- `apps/mobile/app/auth-callback.tsx` — new `suppr://auth-callback` screen.
+- `apps/mobile/lib/safeAuthRedirectPath.ts` — mobile open-redirect guard.
+- `apps/mobile/app/login.tsx` — `emailRedirectTo`/`redirectTo` deep link +
+  `?error=` surfacing.
+- `supabase/config.toml` — `suppr://auth-callback` allow-listed (staged).
+- `apps/mobile/tests/unit/authDeepLinkCallback.test.ts` — regression pins.
