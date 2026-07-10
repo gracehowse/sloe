@@ -166,6 +166,13 @@ function flagForceOverride(flag: string): boolean | null {
  *   in TestFlight, so it is deliberately excluded from the ENG-1225 flag-
  *   collapse sweep. Mirror of the mobile note in `apps/mobile/lib/analytics.ts`.
  *
+ * - `today_desktop_frame_v1` — ENG-1494 desktop two-column Today frame.
+ *   DEFAULT-OFF *by design*: the 2026-04-20 prototype layout it implements
+ *   failed device-validation against two later-ratified decisions (the
+ *   household panel above the hero demotes the daily loop; Weekly Insight
+ *   duplicates THIS WEEK). Wired so it's trialable via PostHog / force-
+ *   flags; flip only after the frame conforms — see ENG-1495.
+ *
  * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
  *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was fixed
  *  — the v3 cook baseline is now default-on.)
