@@ -20,7 +20,7 @@
   "apps/mobile/app/health-sync.tsx": 1263,
   "apps/mobile/app/household-settings.tsx": 1191,
   "apps/mobile/app/import-shared.tsx": 2989,
-  "apps/mobile/app/login.tsx": 600,
+  "apps/mobile/app/login.tsx": 466,
   "apps/mobile/app/meal-nutrition.tsx": 699,
   "apps/mobile/app/paywall.tsx": 1337,
   "apps/mobile/app/plan-import.tsx": 659,

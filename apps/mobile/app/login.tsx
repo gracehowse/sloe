@@ -4,7 +4,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -18,13 +17,19 @@ import { Check, ChevronLeft, Mail, X as CloseIcon } from "lucide-react-native";
 
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
+import { useAuthCallbackError } from "@/lib/useAuthCallbackError";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
+import { makeLoginStyles } from "@/components/login/loginStyles";
+
+// ENG-1474 — deep link GoTrue redirects PKCE email links to; `app/auth-callback.tsx`
+// exchanges the `?code=`. Must match `additional_redirect_urls` in supabase/config.toml.
+const AUTH_CALLBACK_DEEP_LINK = "suppr://auth-callback";
 
 /** Resolve a legal-link URL from the configured web base (same source as
  *  Settings' `openLegalPath`), falling back to the secured Sloe domain so
@@ -94,164 +99,12 @@ export default function LoginScreen() {
     void AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
   }, []);
 
-  // Sloe DS reskin (Figma chooser `296:2` / continue-with-email `296:33`,
-  // 2026-06-08): white/cream ground, plum Newsreader serif wordmark +
-  // positioning headline, full-pill ink Apple + outline email buttons,
-  // terms fine-print, 24px input radii. Presentation only — the auth flow,
-  // handlers, and testIDs are untouched.
-  const styles = useMemo(() => StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-      paddingHorizontal: Spacing.xxl,
-    },
-    closeRow: {
-      flexDirection: "row",
-      justifyContent: "flex-end",
-      paddingTop: Spacing.sm,
-    },
-    closeBtn: {
-      width: 40,
-      height: 40,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    centerBody: {
-      flex: 1,
-      justifyContent: "center",
-    },
-    brandSection: {
-      alignItems: "center",
-    },
-    // Plum Newsreader serif positioning headline — mirrors the `296:2`
-    // chooser H1 (`navPrimary` is theme-aware: light #3B2A4D / dark #815E91).
-    headline: {
-      fontFamily: FontFamily.serifMedium,
-      fontSize: 30,
-      fontWeight: "500",
-      letterSpacing: -0.3,
-      lineHeight: 36,
-      color: colors.navPrimary,
-      textAlign: "center",
-      marginTop: Spacing.xl,
-    },
-    headlineItalic: {
-      fontFamily: FontFamily.serifItalic,
-      fontStyle: "italic",
-    },
-    // Plum Newsreader serif heading for the email step (Welcome back /
-    // Create your account).
-    title: {
-      fontFamily: FontFamily.serifSemibold,
-      fontSize: 28,
-      fontWeight: "500",
-      letterSpacing: -0.4,
-      lineHeight: 34,
-      color: colors.navPrimary,
-      textAlign: "center",
-      marginTop: Spacing.md,
-    },
-    tagline: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      marginTop: Spacing.md,
-      textAlign: "center",
-      lineHeight: 20,
-    },
-    chooser: { marginTop: Spacing.xxxl },
-    form: { gap: Spacing.md, marginTop: Spacing.xl },
-    input: {
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: Radius.xl,
-      paddingHorizontal: Spacing.lg,
-      paddingVertical: Spacing.md,
-      color: colors.text,
-      fontSize: 16,
-    },
-    // Primary CTA — clay pill (Sloe three-role colour law: clay is the
-    // one commit action per screen).
-    btn: {
-      backgroundColor: colors.tint,
-      paddingVertical: Spacing.md,
-      borderRadius: Radius.full,
-      alignItems: "center",
-      marginTop: Spacing.sm,
-    },
-    btnDisabled: { opacity: 0.6 },
-    btnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 17 },
-    errorText: { color: Accent.destructive, fontSize: 13, textAlign: "center" },
-    hint: {
-      color: colors.textSecondary,
-      fontSize: 13,
-      textAlign: "center",
-      marginTop: Spacing.sm,
-    },
-    backRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: Spacing.xs,
-      alignSelf: "flex-start",
-      marginBottom: Spacing.md,
-    },
-    backText: { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
-    // Continue with Apple — full-pill ink button (`296:2` chooser).
-    appleBtn: {
-      backgroundColor: colors.text,
-      paddingVertical: Spacing.md,
-      borderRadius: Radius.full,
-      alignItems: "center",
-      flexDirection: "row",
-      justifyContent: "center",
-      gap: Spacing.sm,
-    },
-    appleBtnText: { color: Accent.primaryForeground, fontWeight: "700", fontSize: 17 },
-    // Continue with email — outline pill (`296:2` chooser).
-    emailBtn: {
-      backgroundColor: colors.background,
-      paddingVertical: Spacing.md,
-      borderRadius: Radius.full,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      alignItems: "center",
-      flexDirection: "row",
-      justifyContent: "center",
-      gap: Spacing.sm,
-      marginTop: Spacing.sm,
-    },
-    emailBtnText: { color: colors.navPrimary, fontWeight: "700", fontSize: 17 },
-    termsFinePrint: {
-      ...Type.captionSmall,
-      color: colors.textTertiary,
-      textAlign: "center",
-      marginTop: Spacing.xl,
-      lineHeight: 17,
-    },
-    termsFinePrintLink: { textDecorationLine: "underline" },
-    termsRow: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: Spacing.sm,
-      marginTop: Spacing.sm,
-    },
-    termsCheckbox: {
-      width: 18,
-      height: 18,
-      borderRadius: 6,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: 2,
-    },
-    termsCheckboxChecked: {
-      backgroundColor: colors.tint,
-      borderColor: colors.tint,
-    },
-    termsText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
-    termsLink: { color: colors.text, textDecorationLine: "underline", fontWeight: "600" },
-  }), [colors]);
+  // ENG-1474: surface a `suppr://auth-callback` failure (`?error=…`) via `message`.
+  useAuthCallbackError(setMessage);
+
+  // Styles extracted to `@/components/login/loginStyles` (ENG-1474) — presentation only,
+  // testIDs + handlers unchanged. Sloe DS reskin (Figma `296:2`/`296:33`).
+  const styles = useMemo(() => makeLoginStyles(colors), [colors]);
 
   if (!hasSupabaseConfig()) {
     return (
@@ -298,6 +151,8 @@ export default function LoginScreen() {
         const { error } = await supabase.auth.signUp({
           email: resolvedEmail,
           password: resolvedPassword,
+          // ENG-1474: confirmation link deep-links back into the app (not Safari).
+          options: { emailRedirectTo: AUTH_CALLBACK_DEEP_LINK },
         });
         if (error) {
           setMessage(formatAuthError(error));
@@ -367,6 +222,31 @@ export default function LoginScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onSendPasswordReset() {
+    if (!email.trim()) { setMessage("Enter your email first, then tap Forgot password."); return; }
+    setBusy(true);
+    // ENG-1474: recovery link deep-links back into the app.
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: AUTH_CALLBACK_DEEP_LINK,
+    });
+    setBusy(false);
+    if (error) { setMessage(formatAuthError(error)); return; }
+    setMessage("Password reset email sent. Check your inbox.");
+  }
+
+  async function onSendMagicLink() {
+    if (!email.trim()) { setMessage("Enter your email to receive a magic link."); return; }
+    setBusy(true);
+    // ENG-1474: magic-link deep-links back into the app.
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: AUTH_CALLBACK_DEEP_LINK },
+    });
+    setBusy(false);
+    if (error) { setMessage(formatAuthError(error)); return; }
+    setMessage("Magic link sent! Check your email inbox.");
   }
 
   const appleVisible = Platform.OS === "ios" && appleAuthAvailable;
@@ -550,27 +430,13 @@ export default function LoginScreen() {
               </Pressable>
 
               {!isSignUp && (
-                <Pressable onPress={async () => {
-                  if (!email.trim()) { setMessage("Enter your email first, then tap Forgot password."); return; }
-                  setBusy(true);
-                  const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
-                  setBusy(false);
-                  if (error) { setMessage(formatAuthError(error)); return; }
-                  setMessage("Password reset email sent. Check your inbox.");
-                }}>
+                <Pressable onPress={() => void onSendPasswordReset()}>
                   <Text style={[styles.hint, { marginTop: 0 }]}>Forgot password?</Text>
                 </Pressable>
               )}
 
               {!isSignUp && (
-                <Pressable onPress={async () => {
-                  if (!email.trim()) { setMessage("Enter your email to receive a magic link."); return; }
-                  setBusy(true);
-                  const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
-                  setBusy(false);
-                  if (error) { setMessage(formatAuthError(error)); return; }
-                  setMessage("Magic link sent! Check your email inbox.");
-                }}>
+                <Pressable onPress={() => void onSendMagicLink()}>
                   <Text style={[styles.hint, { color: colors.text, fontWeight: "600" }]}>Sign in with magic link</Text>
                 </Pressable>
               )}

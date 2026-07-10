@@ -90,6 +90,20 @@ describe("decideDeepLinkAction — navigation deeplinks must NOT be intercepted"
     expect(decideDeepLinkAction("suppr:///progress")).toEqual({ kind: "ignore" });
   });
 
+  // ENG-1474: the PKCE auth callback must fall through to Expo Router so the
+  // `app/auth-callback.tsx` route receives `code`/`next` — the share-forwarder
+  // must NOT swallow it. The `code`/`next` params are not recipe URLs, so
+  // `urlFromDeepLink` returns null and this stays "ignore".
+  it("ignores suppr://auth-callback with a code (auth-callback route owns it)", () => {
+    expect(decideDeepLinkAction("suppr://auth-callback?code=abc123")).toEqual({ kind: "ignore" });
+  });
+
+  it("ignores suppr://auth-callback with a code + relative next", () => {
+    expect(
+      decideDeepLinkAction("suppr://auth-callback?code=abc123&next=%2Fonboarding"),
+    ).toEqual({ kind: "ignore" });
+  });
+
 });
 
 describe("decideDeepLinkAction — share-sheet handoffs must forward", () => {

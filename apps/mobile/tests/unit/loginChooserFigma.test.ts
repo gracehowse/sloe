@@ -26,6 +26,13 @@ const SRC = readFileSync(
   join(__dirname, "..", "..", "app", "login.tsx"),
   "utf8",
 );
+// ENG-1474: presentation styles were extracted to `components/login/loginStyles.tsx`
+// (screen-budget shrink). Style-definition assertions read from there; JSX
+// wiring + handler/testID assertions still read `login.tsx` above.
+const STYLES_SRC = readFileSync(
+  join(__dirname, "..", "..", "components", "login", "loginStyles.tsx"),
+  "utf8",
+);
 
 describe("mobile login chooser — Figma 296:2", () => {
   it("opens on the chooser view by default (no inline form first)", () => {
@@ -36,9 +43,11 @@ describe("mobile login chooser — Figma 296:2", () => {
   it('renders the "Sloe" wordmark and the italic-Still positioning headline', () => {
     expect(SRC).toMatch(/SloeHeaderWordmark/);
     expect(SRC).toMatch(/Cook what you love\./);
-    // Italic "Still" via the serif-italic style on a nested Text run.
+    // Italic "Still" via the serif-italic style on a nested Text run. The JSX
+    // wiring stays in login.tsx; the style definition lives in loginStyles.tsx.
     expect(SRC).toMatch(/headlineItalic/);
-    expect(SRC).toMatch(/serifItalic/);
+    expect(STYLES_SRC).toMatch(/headlineItalic/);
+    expect(STYLES_SRC).toMatch(/serifItalic/);
     expect(SRC).toMatch(/<Text style={styles\.headlineItalic}>Still<\/Text> reach your goals\./);
   });
 
