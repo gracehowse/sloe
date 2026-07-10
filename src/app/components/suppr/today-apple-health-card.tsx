@@ -11,9 +11,11 @@ import { Icons } from "../ui/icons";
  *  - Web is read-only: Health data originates from the iOS app's
  *    HealthKit sync (`profiles.steps_by_day` / `activity_burn_by_day`
  *    / `basal_burn_by_day` / `latest_weight_kg`). Web never writes.
- *  - When no Health has synced yet, we show "—" placeholders and a
- *    supportive footnote pointing the user to the iOS app. No
- *    fabricated zeros.
+ *  - When NO Health datum exists at all (steps, active energy,
+ *    resting burn AND weight all null) the card renders nothing —
+ *    an all-placeholder card is noise, not signal (ENG-1495). With
+ *    partial data, missing rows still show a dim "—". No fabricated
+ *    zeros either way.
  *  - Weight row is omitted when `weightKg` is null — we refuse to
  *    show "0.0 kg" as a faux value.
  */
@@ -55,6 +57,10 @@ export function TodayAppleHealthCard({
     activeEnergyKcal != null ||
     restingBurnKcal != null ||
     latestWeightKg != null;
+
+  // ENG-1495 — no real datum → no card. Web can't connect Health
+  // itself, so a wall of "—" placeholders taught nothing.
+  if (!hasAnyData) return null;
 
   const rows: Array<{ label: string; value: string; dimmed: boolean }> = [
     {
@@ -121,12 +127,6 @@ export function TodayAppleHealthCard({
           </li>
         ))}
       </ul>
-
-      {!hasAnyData ? (
-        <p className="text-[11px] text-muted-foreground mt-3">
-          Data appears once the iOS app connects Apple Health.
-        </p>
-      ) : null}
     </section>
   );
 }
