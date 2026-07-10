@@ -153,6 +153,8 @@ import {
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, resolveTargets } from "@/lib/calcTargets";
 import { resolveMaintenance } from "@suppr/nutrition-core/resolveMaintenance";
+// ENG-1476 — shared date label (was a byte-identical local reimplementation).
+import { formatDateLabel } from "@suppr/nutrition-core/trackerDate";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/nutrition-core/measuredTdee";
 import { syncHealthDataThrottled } from "@/lib/healthSync";
 import { primeWrittenMealIds, writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
@@ -2133,17 +2135,6 @@ export default function TrackerScreen() {
         return clampJournalDate(next);
       });
     });
-  }, []);
-
-  const formatDateLabel = useCallback((d: Date) => {
-    const today = new Date();
-    const todayStr = dateKeyFromDate(today);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const dk = dateKeyFromDate(d);
-    if (dk === todayStr) return "Today";
-    if (dk === dateKeyFromDate(yesterday)) return "Yesterday";
-    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
   }, []);
 
   // Week data: respects weekStartDay setting

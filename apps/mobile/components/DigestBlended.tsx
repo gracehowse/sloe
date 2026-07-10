@@ -388,7 +388,7 @@ export function DigestBlended(props: DigestProps) {
             </Text>
             <Text testID="digest-pattern-summary" style={{ fontSize: 13.5, fontWeight: "600", color: colors.text, marginBottom: 10 }}>
               {pluralWeekday(pattern.highDay)} ran higher than {pluralWeekday(pattern.lowDay)}{" "}
-              {patternWindowLabel ? `over the ${patternWindowLabel}` : "this week"}
+              {patternWindowLabel ? `over the ${patternWindowLabel}` : "over the last 4 weeks"}
             </Text>
             <PatternBar
               label={shortDay(pattern.highDay)}

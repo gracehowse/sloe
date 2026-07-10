@@ -39,6 +39,12 @@ export type WeeklyRecap = {
   weekKey: string;
   /** "Apr 6 – Apr 12" human label, locale-free so tests are stable. */
   weekLabel: string;
+  /** All 7 `YYYY-MM-DD` day-keys of the recap window, in order. Exposed
+   *  (ENG-1476) so consumers like `buildDigestWeekView` can anchor on
+   *  the week without re-running `buildWeekStats`. */
+  weekDayKeys: string[];
+  /** Subset of `weekDayKeys` with ≥1 meal logged (calories > 0). */
+  loggedDayKeys: string[];
   /** Number of days with ≥1 meal logged in this 7-day window. */
   daysLogged: number;
   /** Average daily calories over days-with-food (not over all 7). */
@@ -280,6 +286,8 @@ export function buildWeeklyRecap<M extends MealMacros>(params: {
   return {
     weekKey: weekKeyFor(previousWeekAnchor, params.weekStartDay),
     weekLabel: formatWeekLabel(firstKey, lastKey),
+    weekDayKeys: weekKeysList,
+    loggedDayKeys: bundle.days.filter((d) => d.calories > 0).map((d) => d.key),
     daysLogged,
     avgCalories,
     avgProtein,
@@ -356,34 +364,18 @@ export type DigestWeekView = WeeklyRecap & {
 export function buildDigestWeekView<M extends MealMacros>(
   params: Parameters<typeof buildWeeklyRecap<M>>[0],
 ): DigestWeekView {
-  const now = params.now ?? new Date();
-  const previousWeekAnchor = new Date(now);
-  previousWeekAnchor.setDate(previousWeekAnchor.getDate() - 7);
-
   const recap = buildWeeklyRecap(params);
 
-  // Same 7-day window `buildWeeklyRecap` built its numbers from
-  // (identical anchor + weekStartDay, via the same `buildWeekStats`
-  // it calls internally) — used to get the digest week's own logged
-  // date-keys (for the "within logged week" gate below) AND its actual
-  // last day-key (to anchor the pattern window — see `windowEnd` below).
-  const weekBundle = buildWeekStats(
-    params.byDay,
-    params.targets,
-    params.weekStartDay,
-    previousWeekAnchor,
-    params.dayTargetOverrides,
-  );
-  const loggedDaysThisWeek = weekBundle.days
-    .filter((d) => d.calories > 0)
-    .map((d) => ({ key: d.key }));
+  // ENG-1476 — the recap now exposes its own week/logged day-keys, so
+  // this no longer re-runs `buildWeekStats` to rediscover the window.
+  const loggedDaysThisWeek = recap.loggedDayKeys.map((key) => ({ key }));
 
   // Anchor the pattern's 28-day walk-back on the digest week's actual
   // END date (its 7th/last day-key), parsed at local noon to dodge the
-  // UTC-boundary day-shift — NOT `previousWeekAnchor`, which is a
-  // mid-week date whenever `now`'s day-of-week isn't 7 days past the
-  // week boundary. See doc comment above for the failure this fixes.
-  const lastDayKey = weekBundle.days[weekBundle.days.length - 1]!.key;
+  // UTC-boundary day-shift — NOT `now - 7 days`, which is a mid-week
+  // date whenever `now`'s day-of-week isn't 7 days past the week
+  // boundary. See doc comment above for the failure this fixes.
+  const lastDayKey = recap.weekDayKeys[recap.weekDayKeys.length - 1]!;
   const [lastY, lastM, lastD] = lastDayKey
     .split("-")
     .map((n) => Number.parseInt(n, 10)) as [number, number, number];
