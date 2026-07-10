@@ -28,6 +28,9 @@ import { describe, expect, it } from "vitest";
 const read = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8");
 const screen = () => read("../../app/create-recipe.tsx");
 const picker = () => read("../../components/MealTypePicker.tsx");
+// Chip ruling 2026-07-10 (ENG-1375 S1): the picker's chips are the shared §7
+// FilterChip primitive, so the chip-shape pins now live on its source.
+const filterChip = () => read("../../components/ui/FilterChip.tsx");
 
 // Strip `//` comment lines so explanatory comments that reference old patterns
 // (e.g. "was Ionicons", "was a filled slab") never trip a negative assertion.
@@ -88,9 +91,13 @@ describe("create-recipe — gap 4: input/card radius bumped to Radius.xl (12pt)"
     expect(src).toMatch(/publishRow:\s*\{[\s\S]*?borderRadius:\s*Radius\.xl/);
   });
 
-  it("MealTypePicker chips use Radius.full (chips census 2026-06-10 — supersedes the Radius.xl gap-4 bump)", () => {
-    expect(picker()).toMatch(/borderRadius:\s*Radius\.full/);
-    expect(picker()).not.toMatch(/borderRadius:\s*Radius\.xl/);
+  it("MealTypePicker chips are the shared §7 FilterChip at Radius.full (chip ruling 2026-07-10)", () => {
+    expect(picker()).toMatch(/from "@\/components\/ui\/FilterChip"/);
+    expect(picker()).not.toMatch(/borderRadius/);
+    expect(filterChip()).toMatch(/borderRadius:\s*Radius\.full/);
+    expect(filterChip()).not.toMatch(/borderRadius:\s*Radius\.xl/);
+    // Borderless quiet rest — the hairline chip border is retired.
+    expect(codeOnly(filterChip())).not.toMatch(/borderWidth/);
   });
 });
 
@@ -102,13 +109,13 @@ describe("create-recipe — gap 5: spacing snaps to the canonical scale", () => 
     expect(code).not.toMatch(/gap:\s*[46]\b/);
   });
 
-  it("MealTypePicker chip padding/gap are on-scale", () => {
+  it("MealTypePicker chip padding/gap are on-scale (via the shared FilterChip)", () => {
     const code = codeOnly(picker());
     expect(code).not.toMatch(/padding(Vertical|Horizontal)?:\s*1[024]\b/);
     expect(code).not.toMatch(/gap:\s*4\b/);
-    expect(picker()).toMatch(/paddingHorizontal:\s*Spacing\.md/);
-    expect(picker()).toMatch(/paddingVertical:\s*Spacing\.sm/);
-    expect(picker()).toMatch(/gap:\s*Spacing\.xs/);
+    expect(filterChip()).toMatch(/paddingHorizontal:\s*Spacing\.dense/);
+    expect(filterChip()).toMatch(/paddingVertical:\s*Spacing\.sm/);
+    expect(filterChip()).toMatch(/gap:\s*Spacing\.xs/);
   });
 });
 

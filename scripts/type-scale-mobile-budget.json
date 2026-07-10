@@ -1,7 +1,6 @@
 {
   "allow": {},
   "pins": {
-    "apps/mobile/app/(tabs)/planner.tsx": 1,
     "apps/mobile/app/(tabs)/progress.tsx": 1,
     "apps/mobile/app/cook.tsx": 1,
     "apps/mobile/components/DigestBlended.tsx": 4,

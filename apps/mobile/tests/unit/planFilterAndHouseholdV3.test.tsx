@@ -3,16 +3,28 @@
  * PlanMealFilterChipsV3 + PlanHouseholdBannerV3 (ENG-1225 Block 2) — the v3 Plan
  * meal-filter chip row and household context banner.
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({
     text: "#221B26",
+    textSecondary: "#5E5566",
     textTertiary: "#9B93A3",
     navPrimary: "#3B2A4D",
+    card: "#FFFFFF",
     backgroundSecondary: "#F5F4F7",
     border: "#E8E2EC",
+  }),
+}));
+// FilterChip reads the scheme-resolved accent; mock so the test doesn't pull
+// the real ThemeContext (AsyncStorage etc.).
+vi.mock("@/context/theme", () => ({
+  useAccent: () => ({
+    primarySolid: "#3B2A4D",
+    primarySoft: "rgba(91, 59, 110, 0.12)",
   }),
 }));
 vi.mock("expo-haptics", () => ({
@@ -50,6 +62,16 @@ describe("PlanMealFilterChipsV3", () => {
     );
     fireEvent.press(getByLabelText("Dinner"));
     expect(onSelect).toHaveBeenCalledWith("Dinner");
+  });
+
+  it("selection is the shared §7 FilterChip soft tint — no solid navPrimary fill (chip ruling 2026-07-10, source pin)", () => {
+    const src = readFileSync(
+      resolve(__dirname, "../../components/plan/PlanMealFilterChipsV3.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/from "@\/components\/ui\/FilterChip"/);
+    expect(src).not.toMatch(/navPrimary/);
+    expect(src).not.toMatch(/#fff/i);
   });
 });
 

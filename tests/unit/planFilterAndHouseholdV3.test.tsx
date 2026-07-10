@@ -4,6 +4,8 @@
  * twins of the meal-filter chip row and household context banner. Mirrors
  * `apps/mobile/tests/unit/planFilterAndHouseholdV3.test.tsx`.
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import * as React from "react";
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -35,6 +37,16 @@ describe("PlanMealFilterChipsV3 (web)", () => {
     expect(getByLabelText("All meals").getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(getByLabelText("Dinner"));
     expect(onSelect).toHaveBeenCalledWith("Dinner");
+  });
+
+  it("selection is the shared \u00a77 FilterChip soft tint \u2014 no solid var(--primary) fill (chip ruling 2026-07-10, source pin)", () => {
+    const src = readFileSync(
+      resolve(__dirname, "../../src/app/components/plan/PlanMealFilterChipsV3.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/from "\.\.\/ui\/filter-chip"/);
+    expect(src).not.toMatch(/var\(--primary\)/);
+    expect(src).not.toMatch(/bg-primary(?!-soft)/);
   });
 });
 
