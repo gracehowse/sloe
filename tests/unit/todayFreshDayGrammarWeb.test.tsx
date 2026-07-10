@@ -2,12 +2,14 @@
 /**
  * Today ring fresh-day empty-state grammar (web) — ENG-1372 slice 1.
  *
- * Behind `empty_state_grammar_v1` (default-OFF): on a true fresh day (host-
- * confirmed zero logged entries) the ring's empty tick track swaps to the
- * warm-tint token (`var(--surface-warm)`), the fresh-day log pill mounts
- * inside the hero, and the BONUS stat cell collapses (law 3 — no zero-triad
- * derived numbers) while Goal/Eaten stay (honest earned zeros). Flag OFF, or
- * `isFreshDay=false`, must render byte-identical to the pre-ENG-1372 hero.
+ * Behind `empty_state_grammar_v1`: on a true fresh day (host-confirmed zero
+ * logged entries) the fresh-day log pill mounts inside the hero and the
+ * BONUS stat cell collapses (law 3 — no zero-triad derived numbers) while
+ * Goal/Eaten stay (honest earned zeros). The ring's tick track ALWAYS stays
+ * on `var(--ring-tick)` — slice 1's warm-tint tick swap was reverted by
+ * ENG-1477 and the token deleted by ENG-1496; the guard below pins that no
+ * warm variant ever returns. Flag OFF, or `isFreshDay=false`, must render
+ * byte-identical to the pre-ENG-1372 hero.
  */
 import * as React from "react";
 import { render } from "@testing-library/react";

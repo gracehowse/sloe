@@ -31,11 +31,13 @@ describe("PlanEmptyWeekCard", () => {
     expect(addedAsYouGo).toBe(true);
   });
 
-  it("sits on the warm-tint ground token", () => {
+  it("sits on the cool plum nudge-tint ground (ENG-1496 — beige retired)", () => {
     const { getByTestId } = render(
       <PlanEmptyWeekCard onGenerate={() => {}} onAddMealsAsYouGo={() => {}} />,
     );
-    expect(getByTestId("plan-empty-week-card").className).toContain("bg-surface-warm");
+    const cls = getByTestId("plan-empty-week-card").className;
+    expect(cls).toContain("bg-primary-soft");
+    expect(cls).not.toContain("bg-surface-warm");
   });
 });
 

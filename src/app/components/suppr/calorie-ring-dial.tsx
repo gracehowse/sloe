@@ -80,10 +80,10 @@ export function CalorieRingDial({
   hideCenter = false,
   numeralLarge = false,
 }: CalorieRingDialProps) {
-  // ENG-1477 — the ENG-1372 warm-tint tick (--surface-warm) measured
-  // 1.02:1/1.14:1 against the real background, worse than this token's own
-  // pre-fix baseline. Grace's call (2026-07-09): every empty day uses this
-  // tick colour, no warm variant.
+  // ENG-1477 — the ENG-1372 warm-tint tick measured 1.02:1/1.14:1 against
+  // the real background, worse than this token's own pre-fix baseline.
+  // Grace's call (2026-07-09): every empty day uses this tick colour, no
+  // warm variant (the warm token itself was deleted by ENG-1496).
   const tickFill = "var(--ring-tick)";
   const isEmpty = consumed === 0 || target <= 0;
   const isOver = target > 0 && consumed > target;

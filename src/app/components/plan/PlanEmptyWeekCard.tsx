@@ -12,11 +12,14 @@ import { Sparkles } from "lucide-react";
  *     "P 0g C 0g F 0g" zero-triad (`PlanDayDetailBandV3`) — derived numbers
  *     with nothing behind them yet (law 3).
  *
- * Ground is the warm-tint elevation token (`bg-surface-warm`, law 1 — never
- * a bare/dashed void). ONE filled action inside it (law 2): "Generate this
- * week", wired to the host's existing generate handler (same action
- * `PlanHeaderV3`'s Sparkles button already fires) + a quiet ghost fallback
- * for users who'd rather add meals one at a time.
+ * Ground is the cool plum nudge-tint (`bg-primary-soft`) — law 1 still holds
+ * (never a bare/dashed void), but the ENG-1372 warm-tint beige was overturned
+ * by ENG-1496 (Grace 2026-07-10: beige reads bad; empty states live on the
+ * cool light-purple family — the ENG-1477 ring call, and the v3 prototype
+ * quarantines beige to marketing surfaces). ONE filled action inside it
+ * (law 2): "Generate this week", wired to the host's existing generate
+ * handler (same action `PlanHeaderV3`'s Sparkles button already fires) + a
+ * quiet ghost fallback for users who'd rather add meals one at a time.
  *
  * Behind `empty_state_grammar_v1` — the host (`PlanV3Surface`) only mounts
  * this when the flag is on AND `isPlanWeekEmpty` is true; this component
@@ -36,7 +39,7 @@ export function PlanEmptyWeekCard({
   return (
     <div
       data-testid="plan-empty-week-card"
-      className="mt-2 flex flex-col items-center gap-1 rounded-2xl bg-surface-warm px-5 py-8 text-center"
+      className="mt-2 flex flex-col items-center gap-1 rounded-2xl bg-primary-soft px-5 py-8 text-center"
     >
       <Sparkles className="size-[22px] text-foreground-brand" strokeWidth={1.75} aria-hidden />
       <p className="mt-1 font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground">

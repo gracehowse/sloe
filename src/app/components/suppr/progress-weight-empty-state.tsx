@@ -52,7 +52,7 @@ export function ProgressWeightEmptyState({
     return (
       <div
         data-testid="progress-weight-empty"
-        className={`relative flex flex-col items-center overflow-hidden rounded-2xl bg-surface-warm pb-4 pt-3 ${className ?? ""}`}
+        className={`relative flex flex-col items-center overflow-hidden rounded-2xl bg-background-secondary pb-4 pt-3 ${className ?? ""}`}
       >
         <svg
           width="100%"
@@ -107,7 +107,7 @@ export function ProgressWeightEmptyState({
   return (
     <div
       data-testid="progress-weight-empty"
-      className={`relative flex flex-col items-center overflow-hidden rounded-2xl bg-surface-warm pb-4 pt-3 ${className ?? ""}`}
+      className={`relative flex flex-col items-center overflow-hidden rounded-2xl bg-background-secondary pb-4 pt-3 ${className ?? ""}`}
     >
       <svg
         width="100%"

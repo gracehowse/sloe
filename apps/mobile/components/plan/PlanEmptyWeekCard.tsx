@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { SupprButton } from "@/components/ui/SupprButton";
 import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -14,7 +15,11 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
  *     "P 0g C 0g F 0g" zero-triad (`PlanDayDetailBandV3`) — derived numbers
  *     with nothing behind them yet (law 3).
  *
- * Ground is the warm-tint elevation token (law 1 — never a bare/dashed void).
+ * Ground is the cool plum nudge-tint (`Accent.primarySoft`) — law 1 still
+ * holds (never a bare/dashed void), but the ENG-1372 warm-tint beige was
+ * overturned by ENG-1496 (Grace 2026-07-10: beige reads bad; empty states
+ * live on the cool light-purple family — the ENG-1477 ring call, and the v3
+ * prototype quarantines beige to marketing surfaces).
  * ONE filled action inside it (law 2): "Generate this week", wired to the
  * host's existing generate handler (same action `PlanHeaderV3`'s Sparkles
  * button already fires) + a quiet ghost fallback for users who'd rather add
@@ -33,10 +38,11 @@ export interface PlanEmptyWeekCardProps {
 
 export function PlanEmptyWeekCard({ onGenerate, onAddMealsAsYouGo }: PlanEmptyWeekCardProps) {
   const colors = useThemeColors();
+  const accent = useAccent();
   return (
     <View
       testID="plan-empty-week-card"
-      style={[styles.card, { backgroundColor: colors.surfaceWarm }]}
+      style={[styles.card, { backgroundColor: accent.primarySoft }]}
     >
       <Sparkles size={22} color={colors.navPrimary} strokeWidth={1.75} />
       <Text style={[styles.headline, { color: colors.text }]}>Nothing planned yet</Text>
