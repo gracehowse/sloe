@@ -25,7 +25,7 @@ import Image from "next/image";
  */
 export function PricingHero() {
   return (
-    <div className="relative mb-10 -mx-6 sm:mx-0 sm:rounded-3xl overflow-hidden">
+    <div className="relative mb-10 -mx-6 sm:mx-0 sm:rounded-card-lg overflow-hidden">
       {/* Full-bleed food photograph — the frame's hero image. Fades
           softly into the page background at the bottom so the eyebrow +
           headline read as overlaid on the fade, matching `284:2`. */}

@@ -19,7 +19,7 @@ import { Button } from "@/app/components/ui/button";
 export default function RecipeNotFound() {
   return (
     <div className="min-h-screen grid place-items-center px-6 py-12 bg-background">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-[var(--elev-card-soft)] text-center">
+      <div className="w-full max-w-md rounded-card-lg bg-card card-slab p-6 text-center">
         <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-muted">
           <UtensilsCrossed className="size-7 text-muted-foreground" strokeWidth={1.75} aria-hidden />
         </div>

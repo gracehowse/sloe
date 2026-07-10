@@ -88,6 +88,12 @@ jobs:
         # Legacy offenders are pinned in scripts/token-budget.json and may
         # only shrink; any new off-token value fails.
         run: npm run check:token-scale
+      - name: Web radius ratchet (ENG-1499)
+        # Card-grammar gate (2026-07-10 ruling): flags retired rounded-2xl /
+        # rounded-3xl classes and arbitrary rounded-[Npx] off {12, 24} in web
+        # .tsx. Legacy offenders are pinned in scripts/web-radius-budget.json
+        # and may only shrink; any new off-grammar radius fails.
+        run: npm run check:web-radius
       - name: Mobile type-scale ratchet (ENG-1002)
         # Mobile counterpart of the ENG-119 web type-scale gate above. Gives
         # teeth to "Type comes from the ramp" on mobile: flags raw `fontSize: N`

@@ -235,7 +235,7 @@ export function DigestBlended(props: DigestProps) {
         testID="digest-hero"
         style={{
           backgroundColor: heroFill,
-          borderRadius: 14,
+          borderRadius: Radius.xl,
           paddingHorizontal: 16,
           paddingTop: 16,
           paddingBottom: 14,

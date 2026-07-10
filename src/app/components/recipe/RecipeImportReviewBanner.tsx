@@ -19,13 +19,13 @@ export function RecipeImportReviewBanner({
   const copy = importReviewBannerCopy({ sourceName, sourceUrl });
   return (
     <div
-      className="mb-4 flex gap-3 rounded-2xl p-4"
+      className="mb-4 flex gap-3 rounded-card-lg p-4"
       style={{ backgroundColor: "var(--warning-soft)" }}
       data-testid="recipe-import-review-banner"
       role="status"
     >
       <span
-        className="flex size-10 shrink-0 items-center justify-center rounded-[11px] text-white"
+        className="flex size-10 shrink-0 items-center justify-center rounded-[12px] text-white"
         style={{ backgroundColor: "var(--warning)" }}
       >
         <AlertTriangle className="size-5" />

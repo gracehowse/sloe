@@ -31,7 +31,7 @@ export function DiscoverImportCard({ onOpenImport }: DiscoverImportCardProps) {
         data-testid="discover-import-cta-top"
         onClick={onOpenImport}
         onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-        className="mx-4 mt-3 rounded-3xl p-4 flex items-center gap-4 cursor-pointer transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        className="mx-4 mt-3 rounded-card-lg p-4 flex items-center gap-4 cursor-pointer transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         // ENG-1094 (Grace): confident lavender-plum accent (`--import-hero-bg`).
         style={{ background: "var(--import-hero-bg)" }}
       >

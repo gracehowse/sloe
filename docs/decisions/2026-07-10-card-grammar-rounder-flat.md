@@ -86,3 +86,38 @@ leg → S4 remove flag after Grace's sign-off window.
 - CLAUDE.md UI-write discipline line ("page-ground cards soft lift…") —
   updated in this change (+ `npm run sync:agent-docs`).
 - Lift-pinning guard tests re-pointed, not deleted.
+
+## Appendix — S2–S4 rulings (2026-07-10, ENG-1498/1499/1500)
+
+### Row tier: which rows get the 24 card corner
+
+Rows and banners that READ AS CARDS — a bordered/tinted surface sitting
+directly on the page ground — take the 24 card corner like any other card:
+the web HouseholdBar, the Discover "My Library" row, the Discover
+collection tiles, and Settings grouped lists (each grouped list is a
+page-ground card). Small nested rows and inner tiles that sit INSIDE a
+card or sheet (digest skeleton/inner band, the full-nutrient-panel list,
+the log-sheet input-mode tiles) stay on the 12px inner standard — the
+12-inside-24 concentric rule, unchanged.
+
+### Interactive elevation carve-out: hover/pressed shadows survive
+
+The flat ruling covers RESTING cards only. Interactive hover / pressed /
+focus elevation is feedback, not material: web `hover:shadow-*` /
+`focus-within:shadow-*` transitions on clickable cards (Discover tiles,
+featured hero) and mobile `PressableScale` pressed states stay
+product-wide. A card must render flat (hairline + fill) at rest and may
+lift while interacted with. Sheets, dialogs and the FAB remain floating
+overlays (`Elevation.sheet` / `--elev-*`), per the main ruling.
+
+### Enforcement leg (ENG-1499)
+
+`npm run check:web-radius` (`scripts/check-web-radius.mjs`) is the web
+`rounded-*` ratchet: it gates the retired `rounded-2xl` / `rounded-3xl`
+classes and any arbitrary `rounded-[Npx]` off the legal {12, 24} set;
+token-mapped named classes (`rounded-card`, `rounded-card-lg`,
+`rounded-sm/md/lg/xl`, `rounded-full`, `rounded-none`) stay legal
+(`rounded-xl` = 10px chrome until a later slice). Legacy offenders are
+pinned only-shrink in `scripts/web-radius-budget.json`. `.card-slab-flat`
+is retired — byte-identical to `.card-slab` since S1; its direct uses
+migrated.

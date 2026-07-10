@@ -67,7 +67,7 @@ export function PlanEmptyWeekCard({ onGenerate, onAddMealsAsYouGo }: PlanEmptyWe
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.card,
     paddingVertical: Spacing.xl,
     paddingHorizontal: Spacing.lg,
     alignItems: "center",

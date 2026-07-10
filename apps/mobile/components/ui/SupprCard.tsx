@@ -43,11 +43,12 @@ import { useCardElevation } from "@/hooks/useCardElevation";
  * Variants:
  *  - `tone`: `neutral` (default) / `primary` / `success` / `warning` / `magenta`
  *  - `size`:
- *      - `card` (default — radius 24, soft lift, the top-level resting card)
+ *      - `card` (default — radius 24, flat + hairline, the top-level resting
+ *        card; one card grammar ENG-1497)
  *      - `tile` (radius 24, padding `md`, for the 2×2 macro tiles)
- *      - `inset` (radius 12, hairline border, NO drop shadow — a sub-panel
- *        nested ON a card, e.g. the burn-breakdown + 7-day-rolling panels
- *        inside the energy-balance card; a card-on-card must not double-shadow)
+ *      - `inset` (radius 12, hairline border — a sub-panel nested ON a card,
+ *        e.g. the burn-breakdown + 7-day-rolling panels inside the
+ *        energy-balance card; the 12-inside-24 concentric standard)
  *  - `gradient`: bool — north-star tinted surface when `tone='primary'`
  *  - `border`: bool (default true) — only drawn when the elevation treatment
  *              calls for it (an `inset` sub-panel, or a `soft` card in dark via
@@ -172,8 +173,9 @@ export function SupprCard({
   const tone_ = computeToneStyle(tone, gradient, colors);
   const fill = tone_.backgroundColor;
 
-  // `inset` carries NO drop shadow (a card-on-card must not double-shadow) and no
-  // dark tonal lift — its hairline + fill are the separation.
+  // `inset` skips the elevation treatment entirely (no dark tonal lift) —
+  // its hairline + fill are the separation, same as every resting card
+  // under the one card grammar (ENG-1497).
   const outerShadow = isInset ? undefined : elevation.shadowStyle;
   const outerFill = isInset ? fill : elevation.liftBg ?? fill;
 

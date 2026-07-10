@@ -69,12 +69,14 @@ describe("ENG-1081 — Settings 'Sloe Pro' banner is an unconditional white slab
     );
   });
 
-  it("web Pro banner: var(--card) + border, no flag / primary-tint else", () => {
+  it("web Pro banner: white card-slab shell, no flag / primary-tint else", () => {
     expect(W_SETTINGS).not.toMatch(FLAG);
     expect(W_SETTINGS).not.toMatch(COHESION_WHITE_VAR);
     expect(W_SETTINGS).not.toMatch(/color-mix\(in srgb, var\(--primary\) 16%/);
+    // ENG-1500: the bespoke inline `var(--card)` fill + 0.5px hairline moved
+    // to the standard `.card-slab` treatment (white fill + 1px `--border`).
     expect(W_SETTINGS).toMatch(
-      /data-testid="settings-sloe-pro-banner"[\s\S]{0,400}backgroundColor:\s*"var\(--card\)"/,
+      /data-testid="settings-sloe-pro-banner"[\s\S]{0,400}rounded-card-lg card-slab/,
     );
   });
 });

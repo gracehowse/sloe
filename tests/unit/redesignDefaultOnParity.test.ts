@@ -70,9 +70,9 @@ const MOBILE_ONLY = new Set([
   "import_nudge_flat_white_v1",
   // ENG-898 — CreateRecipeActionSheet 2×2 grid; web has no action sheet surface.
   "create_recipe_action_sheet_grid_v1",
-  // ENG-1225 Block 2 — the v3 Plan IA top section (PlanV3Surface) shipped
-  // mobile-first; web Plan v3 is a later block, so this is mobile-only today.
-  "sloe_v3_plan",
+  // (`sloe_v3_plan` graduated to SHARED 2026-07-10 — the ENG-1264 default-ON
+  //  flip had missed it on web; both platforms now list it in
+  //  REDESIGN_DEFAULT_ON.)
   // ENG-1225 #22 — Progress weight "No weigh-ins yet" sparse state. Same
   // feature as web's `web_progress_weight_empty` (WEB_ONLY above); the two
   // platforms use platform-prefixed flag names, so each is listed as its own

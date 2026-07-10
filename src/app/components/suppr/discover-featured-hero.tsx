@@ -99,9 +99,13 @@ export function DiscoverFeaturedHeroCard({
       className="hidden md:block mt-6"
       aria-label="Trending this week"
     >
+      {/* Framed hero under the flat card ruling (ENG-1500): no RESTING
+          shadow — hairline + fill carry the separation. Hover/focus
+          elevation survives (interactive-elevation carve-out, 2026-07-10
+          decision appendix). */}
       <div
         data-testid="discover-featured-hero-card"
-        className="group relative grid grid-cols-[1.05fr_1fr] overflow-hidden rounded-3xl bg-card shadow-md transition-shadow hover:shadow-lg focus-within:shadow-lg"
+        className="group relative grid grid-cols-[1.05fr_1fr] overflow-hidden rounded-card-lg border border-border bg-card transition-shadow hover:shadow-lg focus-within:shadow-lg"
       >
         {/* Stretched primary action — covers the whole card to open the recipe.
             A real <button> (not a role="button" div), so keyboard + SR get a
@@ -111,7 +115,7 @@ export function DiscoverFeaturedHeroCard({
           type="button"
           onClick={() => onOpenRecipe(recipe)}
           aria-label={`Open recipe: ${recipe.title}`}
-          className="absolute inset-0 z-10 cursor-pointer rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="absolute inset-0 z-10 cursor-pointer rounded-card-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         />
         <div className="relative min-h-[280px] overflow-hidden">
           <DiscoverRecipeImage

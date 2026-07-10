@@ -41,7 +41,6 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
       // soft `.card-slab`. Mirrors mobile `lift="soft"`.
       elevation="card"
       padding="xl"
-      radius="xl"
       className={className}
       aria-label={
         isEmpty

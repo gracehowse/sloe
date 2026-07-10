@@ -53,7 +53,7 @@ export function DiscoverCollections({
             type="button"
             onClick={() => onSelectCategory(c.categoryId)}
             aria-label={`${c.label}, ${c.count} recipe${c.count === 1 ? "" : "s"}`}
-            className="group flex aspect-[1.4] flex-col justify-end overflow-hidden rounded-xl p-3 text-left shadow-sm transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="group flex aspect-[1.4] flex-col justify-end overflow-hidden rounded-card-lg p-3 text-left transition-transform active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             style={{ backgroundImage: `linear-gradient(135deg, ${c.gradient[0]}, ${c.gradient[1]})` }}
           >
             <span className="line-clamp-2 font-[family-name:var(--font-headline)] text-[15px] leading-[19px] text-white">

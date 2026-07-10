@@ -304,6 +304,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (kill switch). Web twin: src/app/components/suppr/unified-import-sheet.tsx
   // (live-flow SEE-verified). Closes the audit's web-import parity launch-blocker.
   "sloe_v3_unified_import",
+  // ENG-1247 blocker (2026-07-10): the ENG-1264 default-ON flip missed this
+  // flag on web — mobile has had it since (apps/mobile/lib/analytics.ts); web
+  // Plan rendered the LEGACY surface for flag-cold users.
+  "sloe_v3_plan",
   // ENG-1247 flag-collapse (2026-06-29, Grace) — conformance batch default-on;
   // PostHog remains the kill switch via isFeatureDisabled. Keep in sync w/ mobile.
   "loghub_quick_actions_v1",

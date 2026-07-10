@@ -39,7 +39,7 @@ export function PlanEmptyWeekCard({
   return (
     <div
       data-testid="plan-empty-week-card"
-      className="mt-2 flex flex-col items-center gap-1 rounded-2xl bg-primary-soft px-5 py-8 text-center"
+      className="mt-2 flex flex-col items-center gap-1 rounded-card-lg bg-primary-soft px-5 py-8 text-center"
     >
       <Sparkles className="size-[22px] text-foreground-brand" strokeWidth={1.75} aria-hidden />
       <p className="mt-1 font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground">

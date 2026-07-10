@@ -391,7 +391,7 @@ export function PhotoLogDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border max-w-lg rounded-[24px]">
+      <DialogContent className="bg-card border-border max-w-lg rounded-card-lg">
         <DialogHeader>
           {/* Sloe DS — photo is a Pro feature; the camera carries the damson
               Pro accent and the title reads in the Newsreader serif plum

@@ -642,7 +642,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               protein,
                               cookTime,
                             })}
-                            className={`group shrink-0 snap-start text-left rounded-3xl overflow-hidden relative cursor-pointer hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out ${isHero ? "w-[280px] md:w-[320px]" : "w-[200px] md:w-[240px]"}`}
+                            className={`group shrink-0 snap-start text-left rounded-card-lg overflow-hidden relative cursor-pointer hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out ${isHero ? "w-[280px] md:w-[320px]" : "w-[200px] md:w-[240px]"}`}
                           >
                             <div className="relative overflow-hidden" style={{ aspectRatio: isHero ? "3 / 4" : "4 / 5" }}>
                               <DiscoverRecipeImage
@@ -850,7 +850,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       fat,
                       cookTime: recipe.cookTime ?? null,
                     })}
-                    className="group text-left rounded-3xl overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
+                    className="group text-left rounded-card-lg overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
                   >
                     <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "3 / 4" : "8 / 1" }}>
                       <DiscoverRecipeImage
@@ -1052,7 +1052,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             window.dispatchEvent(new PopStateEvent("popstate"));
           }}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-3 rounded-xl border border-border bg-card p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors card-elevated"
+          className="mx-4 mt-3 rounded-card-lg border border-border bg-card p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors card-elevated"
         >
           <IconBox size="lg" tone="success">
             <Icons.save />

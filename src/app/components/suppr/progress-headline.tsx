@@ -51,7 +51,6 @@ export function ProgressHeadline({
       data-slot="progress-headline"
       data-regime={commentary.regime}
       padding="xl"
-      radius="xl"
       className={className}
       aria-label="This week"
     >

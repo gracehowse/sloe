@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   tile: {
     width: TILE_W,
     aspectRatio: 1.4,
-    borderRadius: Radius.xl,
+    borderRadius: Radius.card,
     overflow: "hidden",
     justifyContent: "flex-end",
   },

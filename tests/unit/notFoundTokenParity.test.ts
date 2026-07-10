@@ -35,7 +35,9 @@ describe("ENG-716 — 404 pages tokenised + unified", () => {
         const s = src();
         expect(s).toMatch(/bg-background/);
         expect(s).toMatch(/bg-card/);
-        expect(s).toMatch(/border-border/);
+        // Hairline via the shared `.card-slab` shell (ENG-1500 — the flat
+        // card grammar), not a bespoke border class.
+        expect(s).toMatch(/card-slab/);
         expect(s).toMatch(/text-muted-foreground/);
         expect(s).toMatch(/text-foreground/);
         const code = codeOnly(s);
@@ -57,8 +59,10 @@ describe("ENG-716 — 404 pages tokenised + unified", () => {
       it("shares the unified card shell + primary/outline Button CTA pair", () => {
         const s = src();
         expect(s).toMatch(/from "@\/app\/components\/ui\/button"/);
-        expect(s).toMatch(/rounded-2xl border border-border bg-card/);
-        expect(s).toMatch(/shadow-\[var\(--elev-card-soft\)\]/);
+        // One card grammar (ENG-1500): 24px corner + flat `.card-slab`
+        // (hairline, no resting shadow) — the soft lift is retired here.
+        expect(s).toMatch(/rounded-card-lg bg-card card-slab/);
+        expect(s).not.toMatch(/shadow-\[var\(--elev-card-soft\)\]/);
         expect(s).toMatch(/<Button asChild>/);
         expect(s).toMatch(/variant="outline"/);
         // No bespoke gradient CTA.

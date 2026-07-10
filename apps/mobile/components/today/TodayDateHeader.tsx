@@ -91,7 +91,7 @@ function TodayDateHeaderImpl({
   const navChromeStyle = {
     width: 32,
     height: 32,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     backgroundColor: cardColor,
     borderWidth: 1,
     borderColor: cardBorderColor,
@@ -303,7 +303,7 @@ function TodayDateHeaderImpl({
             <View
               style={{
                 flexDirection: "row",
-                borderRadius: Radius.lg,
+                borderRadius: Radius.xl,
                 backgroundColor: cardColor,
                 borderWidth: 1,
                 borderColor: cardBorderColor,

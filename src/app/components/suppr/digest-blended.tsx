@@ -131,7 +131,7 @@ export function DigestBlended(props: DigestProps) {
         data-state="loading"
       >
         <div className="h-[12px] w-[120px] rounded bg-muted mb-4" />
-        <div className="h-[96px] w-full rounded-[14px] bg-muted/60 mb-4" />
+        <div className="h-[96px] w-full rounded-[12px] bg-muted/60 mb-4" />
         <div className="h-[1px] w-full bg-border mb-4" />
         <div className="grid grid-cols-4 gap-3">
           {[0, 1, 2, 3].map((i) => (
@@ -225,7 +225,7 @@ export function DigestBlended(props: DigestProps) {
 
       {/* HERO — the one soft-filled region */}
       <div
-        className="rounded-[14px] bg-muted/40 px-4 pt-4 pb-3.5 mb-4"
+        className="rounded-[12px] bg-muted/40 px-4 pt-4 pb-3.5 mb-4"
         data-testid="digest-hero"
       >
         {isEmpty ? (

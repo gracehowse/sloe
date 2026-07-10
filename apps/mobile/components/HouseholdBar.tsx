@@ -120,7 +120,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
     <View
       testID="household-bar"
       style={{
-        marginBottom: 14,
+        marginBottom: 12,
         padding: 12,
         backgroundColor: colors.card,
         borderWidth: 1,

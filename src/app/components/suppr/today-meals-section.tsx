@@ -1114,11 +1114,10 @@ export function TodayMealsSection({
                     }
                     setUsualPicker(null);
                   }}
-                  // One-treatment elevation (Grace 2026-06-09): this row lives
-                  // INSIDE the usual-picker dialog sheet — a card nested in a
-                  // surface stays FLAT (`card-slab-flat`) so it never
-                  // double-shadows.
-                  className="w-full text-left rounded-card bg-card card-slab-flat px-3 py-2 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                  // One card grammar (ENG-1499): all resting cards are flat +
+                  // hairline via `.card-slab` (the legacy flat-slab alias
+                  // class is retired — it had become byte-identical).
+                  className="w-full text-left rounded-card bg-card card-slab px-3 py-2 hover:border-primary/40 hover:bg-primary/5 transition-colors"
                   aria-label={`Log ${m.name} — ${itemsLabel}, ${summary.totalCalories} kcal`}
                 >
                   <p className="text-sm font-semibold text-foreground truncate">{m.name}</p>

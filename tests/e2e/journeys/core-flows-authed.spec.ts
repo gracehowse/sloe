@@ -39,7 +39,7 @@ test.describe("Authenticated flows", () => {
     // are the recipes surface — accept either.
     await expect(page.getByRole("heading", { name: /^(Your kitchen|Discover)$/i }).first()).toBeVisible();
     await nav(/plan/i).first().click({ force: true });
-    await expect(page.getByRole("heading", { name: /Meal plan(?:ner)?/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^(Your plan|Meal plan(?:ner)?)$/i }).first()).toBeVisible();
     await nav(/progress/i).first().click({ force: true });
     await expect(page.getByRole("heading", { name: /Progress/i }).first()).toBeVisible();
     await nav(/today/i).first().click({ force: true });

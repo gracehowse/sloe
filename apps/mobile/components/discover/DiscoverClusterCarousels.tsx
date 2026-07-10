@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
-import { Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAccessibilityLabel";
@@ -14,7 +14,8 @@ import {
   type SeedCuisineCluster,
 } from "@suppr/shared/recipes/seedRecipesV2";
 
-const RECIPE_CARD_RADIUS = 24;
+// THE card corner (card-grammar ruling, docs/decisions/2026-07-10-card-grammar-rounder-flat.md)
+const RECIPE_CARD_RADIUS = Radius.card;
 
 function clusterIdFromSeedRecipeId(id: string): SeedCuisineCluster | null {
   if (!isSeedRecipeId(id)) return null;
