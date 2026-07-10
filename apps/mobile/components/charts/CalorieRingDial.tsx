@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { FontFamily, Type } from "@/constants/theme";
@@ -89,6 +89,12 @@ export interface CalorieRingDialProps {
   /** De-carded v3 hero (ENG-1247): render the centre value as the 56px serif-
    *  MEDIUM `.ring-big` numeral instead of the default 48/400. */
   numeralLarge?: boolean;
+  /** ENG-1465 — tap AND long-press toggle the host-owned macro-rings state,
+   *  restoring the legacy `CalorieRing` gesture the v3 swap dropped (there:
+   *  `Pressable onPress={onToggle} onLongPress={onToggle}` — long-press stays
+   *  the power-user shortcut, the labelled "Show macros" button below the hero
+   *  stays the accessible-name path). Web twin: `calorie-ring-dial.tsx`. */
+  onToggle?: () => void;
 }
 
 export function CalorieRingDial({
@@ -97,6 +103,7 @@ export function CalorieRingDial({
   size = BASE,
   hideCenter = false,
   numeralLarge = false,
+  onToggle,
 }: CalorieRingDialProps) {
   const colors = useThemeColors();
   const reduce = useReduceMotion();
@@ -191,7 +198,16 @@ export function CalorieRingDial({
   }
 
   return (
-    <View style={{ width: size, height: size }}>
+    // ENG-1465 — legacy `CalorieRing` interaction restored: tap and long-press
+    // both fire the macro toggle. Inert when no handler is wired (dev states,
+    // onboarding reveal).
+    <Pressable
+      testID="calorie-ring-dial"
+      onPress={onToggle}
+      onLongPress={onToggle}
+      disabled={!onToggle}
+      style={{ width: size, height: size }}
+    >
       <Svg width={size} height={size} viewBox={`0 0 ${BASE} ${BASE}`}>
         <Defs>
           <LinearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
@@ -220,7 +236,7 @@ export function CalorieRingDial({
           </Text>
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }
 

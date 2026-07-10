@@ -93,7 +93,7 @@
     "apps/mobile/components/today/AiFirstLogTooltip.tsx": 1,
     "apps/mobile/components/today/FirstLogAcknowledgment.tsx": 1,
     "apps/mobile/components/today/LogFab.tsx": 1,
-    "apps/mobile/components/today/LogSheet.tsx": 3,
+    "apps/mobile/components/today/LogSheet.tsx": 2,
     "apps/mobile/components/today/Milestone30DayModal.tsx": 1,
     "apps/mobile/components/today/PortionPickerSheet.tsx": 1,
     "apps/mobile/components/today/PostOnboardingPushExplainer.tsx": 1,

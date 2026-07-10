@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+
 /**
  * CalorieRingDial — Sloe v3 "jewel dial" calorie ring (web SVG).
  *
@@ -71,6 +73,18 @@ export interface CalorieRingDialProps {
   /** De-carded v3 hero (ENG-1247): render the centre value as the 56px serif-
    *  MEDIUM `.ring-big` numeral instead of the default 44/normal. */
   numeralLarge?: boolean;
+  /** ENG-1465 — tap/click (or Enter/Space) toggles the host-owned macro-rings
+   *  state, restoring the legacy `DailyRing` gesture the v3 swap dropped.
+   *  Mirrors the mobile dial's `onToggle` (there: tap AND long-press). */
+  onToggle?: () => void;
+  /** ENG-1465 / ENG-798 — win-moment ring pulse. True for ~200ms after a Today
+   *  landmark fires; lights a brief gold glow on the dial (gated behind
+   *  `redesign_winmoment`, same as the legacy ring). */
+  pulse?: boolean;
+  /** ENG-1465 / ENG-1016 — per-COMMIT pulse: true for ~160ms after an ordinary
+   *  log lands. Brief scale-up + soft plum glow — the web analog of mobile's
+   *  commit haptic, same treatment the legacy `DailyRing` carried. */
+  commitPulse?: boolean;
 }
 
 export function CalorieRingDial({
@@ -79,6 +93,9 @@ export function CalorieRingDial({
   size = BASE,
   hideCenter = false,
   numeralLarge = false,
+  onToggle,
+  pulse = false,
+  commitPulse = false,
 }: CalorieRingDialProps) {
   // ENG-1477 — the ENG-1372 warm-tint tick measured 1.02:1/1.14:1 against
   // the real background, worse than this token's own pre-fix baseline.
@@ -116,6 +133,12 @@ export function CalorieRingDial({
   const ca = `var(--ring-${stateKey}-a)`;
   const cb = `var(--ring-${stateKey}-b)`;
 
+  // ENG-1465 — win celebration gated behind `redesign_winmoment` exactly like
+  // the legacy `DailyRing`: a target-hit is by definition the at/under-budget
+  // state, so the gold glow only ever lights an under-budget dial.
+  const celebrating =
+    pulse && isFeatureEnabled("redesign_winmoment") && !isEmpty && !isOver;
+
   const centerValue = isOver
     ? Math.round(consumed - target)
     : Math.max(0, Math.round(target - consumed));
@@ -131,6 +154,12 @@ export function CalorieRingDial({
     const lead = on && (i + 1) / N > drawn;
     const rot = `rotate(${ang} ${CX} ${CX})`;
     track.push(
+      // ENG-1485 (2026-07-10): NO opacity attenuation on track ticks — the
+      // `--ring-tick` token already carries its alpha, and the extra 0.7 this
+      // rect used to apply double-discounted it to an effective 0.14, which
+      // measured 1.29:1 on the light card/ground (below the 1.3:1 decorative-
+      // track floor) while mobile rendered the same token at full strength.
+      // Gate: tests/unit/ringTickContrastWeb.test.ts.
       <rect
         key={`t${i}`}
         x={CX - 2.1}
@@ -139,7 +168,6 @@ export function CalorieRingDial({
         height={14}
         rx={2.1}
         fill={tickFill}
-        opacity={0.7}
         transform={rot}
       />,
     );
@@ -179,12 +207,54 @@ export function CalorieRingDial({
   }
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    // ENG-1465 — the legacy `DailyRing` interaction contract, restored on the
+    // v3 dial: click/Enter/Space toggles the host-owned macro-rings state
+    // (role=button only when a handler is wired — the labelled "Show macros"
+    // button below the hero stays the accessible-name path), and the per-commit
+    // pulse is the same brief scale-up + settle the legacy ring carried.
+    <div
+      data-testid="calorie-ring-dial"
+      data-pulse={celebrating ? "true" : undefined}
+      data-commit-pulse={commitPulse ? "true" : undefined}
+      className={[
+        "relative",
+        onToggle ? "cursor-pointer" : "",
+        "transition-transform ease-[cubic-bezier(0.18,0.89,0.32,1.28)]",
+        commitPulse ? "scale-[1.03] duration-150" : "scale-100 duration-300",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{ width: size, height: size }}
+      onClick={onToggle}
+      role={onToggle ? "button" : undefined}
+      tabIndex={onToggle ? 0 : undefined}
+      onKeyDown={
+        onToggle
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggle();
+              }
+            }
+          : undefined
+      }
+    >
       <svg
         width={size}
         height={size}
         viewBox={`0 0 ${BASE} ${BASE}`}
         aria-hidden="true"
+        style={{
+          // ENG-1465 — the gold win-glow takes priority; otherwise a brief soft
+          // plum glow on a per-commit pulse (ENG-1016), mirroring the legacy
+          // ring's filters so the commit beat reads distinct from the landmark
+          // celebration.
+          filter: celebrating
+            ? "drop-shadow(0 0 8px var(--accent-win))"
+            : commitPulse && !isEmpty
+              ? "drop-shadow(0 0 6px var(--macro-calories))"
+              : undefined,
+        }}
       >
         <defs>
           <linearGradient id={gid} x1="0%" y1="0%" x2="0%" y2="100%">

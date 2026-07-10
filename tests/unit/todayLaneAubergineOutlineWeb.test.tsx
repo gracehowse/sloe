@@ -31,6 +31,9 @@ const DATE_HEADER = read("src/app/components/suppr/today-date-header.tsx");
 const SNAP = read("src/app/components/suppr/today-snap-shortcut.tsx");
 const QUICK_ADD = read("src/app/components/suppr/quick-add-panel.tsx");
 const LOG_SHEET = read("src/app/components/suppr/log-sheet.tsx");
+// S13 LoggedConfirmation extracted from log-sheet.tsx (ENG-1484, screen-budget
+// ratchet) — the Done/Undo confirmation CTAs live here now.
+const LOG_SHEET_CONFIRMATION = read("src/app/components/suppr/log-sheet-confirmation.tsx");
 const ADD_MEAL = read("src/app/components/suppr/today-add-meal-dialog.tsx");
 const ACTIVITY_BONUS = read("src/app/components/suppr/today-activity-bonus-card.tsx");
 const CHECKIN_DIALOG = read("src/app/components/suppr/weekly-checkin-dialog.tsx");
@@ -140,9 +143,9 @@ describe("Today lane (web) — aubergine OUTLINE primary CTAs", () => {
     // label). Mobile parity in
     // apps/mobile/tests/unit/todayLaneAubergineOutline.test.ts.
     expect(LOG_SHEET).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button"/);
-    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}label="Done"/);
+    expect(LOG_SHEET_CONFIRMATION).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}label="Done"/);
     expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label="Log it"/);
-    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,160}label="Undo"/);
+    expect(LOG_SHEET_CONFIRMATION).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,160}label="Undo"/);
     expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}label="Browse recipes"/);
     // Must NOT keep the retired aubergine outline or off-white Browse fill.
     expect(LOG_SHEET).not.toMatch(/border-\[1\.5px\]\s+border-primary-solid bg-transparent[\s\S]{0,120}>\s*Done/);

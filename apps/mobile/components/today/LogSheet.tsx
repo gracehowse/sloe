@@ -15,7 +15,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   BookmarkCheck,
-  Check,
   ChevronRight,
   Clock,
   Copy,
@@ -35,7 +34,8 @@ import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 
-import { SourceDot, type SourceDotSource } from "@/components/ui/SourceDot";
+import { type SourceDotSource } from "@/components/ui/SourceDot";
+import { LoggedConfirmation } from "./LogSheetConfirmation";
 import { FatSecretBadge } from "@/components/ui/FatSecretBadge";
 import { TrustChip } from "@/components/ui/TrustChip";
 import FoodSearchPanel, {
@@ -416,6 +416,12 @@ export interface LogSheetProps {
     title: string;
     /** Estimated kcal of the logged item (always "estimated" copy). */
     kcal: number;
+    /** ENG-1484 — verification state of the logged item's kcal, feeding the
+     *  canonical `~` trust qualifier (`formatQualifiedKcal`, ENG-1417) behind
+     *  `kcal_trust_qualifier_v1`. Absent = unverified (the ENG-1417 safe
+     *  default — an unknown trust state never reads as confident), so hosts
+     *  that don't yet thread per-item verification still render honestly. */
+    kcalIsVerified?: boolean;
     /** Slot it landed in (Breakfast / Lunch / Dinner / Snacks). */
     slot?: string;
     /** Provenance dot for the logged item. */
@@ -624,94 +630,8 @@ function LogSheetImpl({
 
 /* -------------------------- Logged confirmation (S13) -------------------------- */
 
-/**
- * S13 logged-confirmation (Figma 202:2) — the calm success state shown
- * after a log commits. Presentation-only: the host has already persisted
- * the log; this surface just confirms it and offers Done / Undo. Trust
- * posture: nutrition is always "estimated" (never an absolute claim).
- * Mirror of the web `LoggedConfirmation`.
- */
-function LoggedConfirmation({
-  confirmation,
-}: {
-  confirmation: NonNullable<LogSheetProps["confirmation"]>;
-}) {
-  const colors = useThemeColors();
-  const accent = useAccent();
-  // The Done/Undo CTAs are now SupprButtons (solid-plum / ghost) — they own
-  // their own colour. The success check keeps `Accent.successSolid`.
-  const { title, kcal, slot, source, onDone, onUndo } = confirmation;
-  return (
-    <View
-      style={styles.confirmWrap}
-      accessibilityLiveRegion="polite"
-      testID="log-sheet-confirmation"
-    >
-      {/* Success mark — Sloe sage success tint, calm not loud. */}
-      <View style={[styles.confirmMark, { backgroundColor: "rgba(94, 124, 90, 0.12)" }]}>
-        <Check size={32} color={Accent.successSolid} strokeWidth={2.5} />
-      </View>
-
-      <Text style={[Type.title, { color: colors.navPrimary, marginTop: Spacing.md, textAlign: "center" }]}>
-        {slot ? `Logged to ${slot}` : "Logged"}
-      </Text>
-
-      {/* Logged-item card — cream slab, 12px corner, hairline. */}
-      <View
-        style={[
-          styles.confirmCard,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
-      >
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
-            {title}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
-            {source ? <SourceDot source={source} size={6} /> : null}
-            <Text
-              style={[
-                Type.caption,
-                {
-                  color: colors.textSecondary,
-                  marginLeft: source ? Spacing.xs : 0,
-                  fontVariant: ["tabular-nums"],
-                },
-              ]}
-            >
-              Est. {kcal} kcal
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Actions — primary Done + optional ghost Undo. Button system
-          (2026-06-12, docs/decisions/2026-06-12-button-system-solid-primary.md):
-          the sheet's single commit action is the SOLID-plum SupprButton
-          primary; the secondary Undo is the ghost variant (transparent, plum
-          label). The sheet keeps its sanctioned elevation; the buttons inside
-          carry none. */}
-      <View style={{ width: "100%", marginTop: Spacing.lg, gap: Spacing.sm }}>
-        <SupprButton
-          variant="primary"
-          accessibilityLabel="Done"
-          onPress={onDone}
-          label="Done"
-          style={styles.confirmPrimary}
-        />
-        {onUndo ? (
-          <SupprButton
-            variant="ghost"
-            accessibilityLabel="Undo log"
-            onPress={onUndo}
-            label="Undo"
-            style={styles.confirmUndo}
-          />
-        ) : null}
-      </View>
-    </View>
-  );
-}
+// S13 logged-confirmation — extracted to `LogSheetConfirmation.tsx`
+// (ENG-1484, screen-budget ratchet).
 
 /* -------------------------- Default composition -------------------------- */
 
@@ -1954,40 +1874,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  // S13 logged-confirmation (Figma 202:2).
-  confirmWrap: {
-    flex: 1,
-    alignItems: "center",
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xxl,
-    paddingBottom: Spacing.lg,
-  },
-  confirmMark: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmCard: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  // Layout-only overrides for the SupprButton CTAs (full-width, no colour/
-  // radius/shadow — the primitive owns the pill + solid-fill grammar).
-  confirmPrimary: {
-    width: "100%",
-  },
-  confirmUndo: {
-    width: "100%",
-  },
+  // S13 logged-confirmation styles moved with the component to
+  // `LogSheetConfirmation.tsx` (ENG-1484).
 });
 
 export const LogSheet = memo(LogSheetImpl);

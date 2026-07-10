@@ -90,13 +90,19 @@ describe("Phase 3 trust posture sweep — mobile source pins", () => {
     expect(src).not.toMatch(/backgroundColor:\s*Accent\.success/);
   });
 
-  it("LogSheet (mobile) imports SourceDot + TrustChip", () => {
-    const filePath = path.resolve(
-      __dirname,
-      "../../components/today/LogSheet.tsx",
+  it("LogSheet (mobile) imports TrustChip; the extracted confirmation imports SourceDot", () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, "../../components/today/LogSheet.tsx"),
+      "utf8",
     );
-    const src = fs.readFileSync(filePath, "utf8");
-    expect(src).toMatch(/import\s*\{\s*SourceDot/);
     expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
+    // ENG-1484 — the S13 LoggedConfirmation (the SourceDot consumer) was
+    // extracted to its own file per the screen-budget ratchet; the provenance
+    // dot pin follows it.
+    const confirmation = fs.readFileSync(
+      path.resolve(__dirname, "../../components/today/LogSheetConfirmation.tsx"),
+      "utf8",
+    );
+    expect(confirmation).toMatch(/import\s*\{\s*SourceDot\s*\}/);
   });
 });
