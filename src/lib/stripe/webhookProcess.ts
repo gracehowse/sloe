@@ -58,32 +58,57 @@ function priceIdsFromSubscription(sub: Stripe.Subscription): string[] {
   return sub.items.data.map((item) => item.price?.id).filter((x): x is string => Boolean(x));
 }
 
+/**
+ * Single source of truth for "given a Stripe subscription's status, what
+ * should the user's tier become?" — shared by BOTH the
+ * `customer.subscription.*` path and the `checkout.session.completed`
+ * path so they can't diverge.
+ *
+ * ENG-1490 (2026-07-10): the checkout branch previously granted tier from
+ * price IDs alone, never inspecting `sub.status` — so a
+ * `checkout.session.completed` whose subscription was `incomplete`
+ * (initial payment not yet succeeded) would still grant Pro. Routing both
+ * paths through this decision closes that gap.
+ *
+ *   - canceled / unpaid / incomplete_expired → downgrade to free
+ *   - active / trialing / paused / past_due   → grant the priced tier
+ *     (past_due is still inside Stripe's dunning grace window)
+ *   - incomplete (payment pending) / any future status → do nothing
+ *   - entitling status but an unrecognised price → do nothing (skip),
+ *     never a spurious grant
+ */
+type TierDecision =
+  | { action: "grant"; tier: NonNullable<ReturnType<typeof tierFromStripePriceIds>> }
+  | { action: "free" }
+  | { action: "skip" };
+
+export function tierDecisionForSubscription(sub: Stripe.Subscription): TierDecision {
+  const status = sub.status;
+  if (status === "canceled" || status === "unpaid" || status === "incomplete_expired") {
+    return { action: "free" };
+  }
+  if (status === "active" || status === "trialing" || status === "paused" || status === "past_due") {
+    const tier = tierFromStripePriceIds(priceIdsFromSubscription(sub));
+    return tier ? { action: "grant", tier } : { action: "skip" };
+  }
+  // "incomplete" (initial payment still pending) and any status Stripe
+  // may add later → do nothing rather than guess.
+  return { action: "skip" };
+}
+
+async function applyTierDecision(userId: string, decision: TierDecision): Promise<void> {
+  if (decision.action === "free") {
+    await updateProfileTierServiceRole(userId, "free");
+  } else if (decision.action === "grant") {
+    await updateProfileTierServiceRole(userId, decision.tier);
+  }
+  // "skip" → intentionally no write.
+}
+
 async function applyTierForSubscription(sub: Stripe.Subscription): Promise<void> {
   const userId = resolveUserIdFromSubscription(sub);
   if (!userId) return;
-
-  const status = sub.status;
-  if (status === "canceled" || status === "unpaid" || status === "incomplete_expired") {
-    await updateProfileTierServiceRole(userId, "free");
-    return;
-  }
-
-  if (status === "active" || status === "trialing" || status === "paused") {
-    const ids = priceIdsFromSubscription(sub);
-    const tier = tierFromStripePriceIds(ids);
-    if (tier) {
-      await updateProfileTierServiceRole(userId, tier);
-    }
-    return;
-  }
-
-  if (status === "past_due") {
-    const ids = priceIdsFromSubscription(sub);
-    const tier = tierFromStripePriceIds(ids);
-    if (tier) {
-      await updateProfileTierServiceRole(userId, tier);
-    }
-  }
+  await applyTierDecision(userId, tierDecisionForSubscription(sub));
 }
 
 /**
@@ -148,11 +173,10 @@ export async function processStripeWebhookEvent(stripe: Stripe, event: Stripe.Ev
       const subId = typeof subRef === "string" ? subRef : subRef?.id;
       if (!subId) break;
       const sub = await stripe.subscriptions.retrieve(subId, { expand: ["items.data.price"] });
-      const ids = priceIdsFromSubscription(sub);
-      const tier = tierFromStripePriceIds(ids);
-      if (tier) {
-        await updateProfileTierServiceRole(userId, tier);
-      }
+      // ENG-1490: gate on the subscription's status (via the shared
+      // decision) rather than granting from price IDs alone — an
+      // `incomplete`/`unpaid` checkout must NOT grant Pro.
+      await applyTierDecision(userId, tierDecisionForSubscription(sub));
       break;
     }
     case "customer.subscription.updated":

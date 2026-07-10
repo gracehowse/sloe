@@ -239,6 +239,66 @@ describe("processStripeWebhookEvent — checkout.session.completed edge cases", 
     // Tier write still happens even though the customer-id persist failed.
     expect(mockUpdate).toHaveBeenCalledWith(userId, "pro");
   });
+
+  it("does NOT grant Pro when the checkout subscription is still incomplete (ENG-1490)", async () => {
+    // A `checkout.session.completed` can fire with the subscription in
+    // `incomplete` status (initial payment not yet succeeded). Granting
+    // from price IDs alone would hand out Pro before payment clears; the
+    // status gate (shared with the customer.subscription.* path) must
+    // suppress the grant.
+    const stripe = {
+      subscriptions: {
+        retrieve: vi.fn().mockResolvedValue({
+          id: "sub_1",
+          status: "incomplete",
+          items: { data: [{ price: { id: "price_pro_monthly_test" } }] },
+        }),
+      },
+    } as unknown as Stripe;
+    const event = {
+      id: "evt_incomplete_checkout",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          mode: "subscription",
+          client_reference_id: userId,
+          customer: "cus_incomplete",
+          subscription: "sub_1",
+        },
+      },
+    } as Stripe.Event;
+
+    await processStripeWebhookEvent(stripe, event);
+    // Customer id is still persisted (best-effort), but NO tier grant.
+    expect(profileUpdateMock).toHaveBeenCalledWith({ stripe_customer_id: "cus_incomplete" });
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("grants Pro when the checkout subscription is trialing (ENG-1490 — trial still entitles)", async () => {
+    const stripe = {
+      subscriptions: {
+        retrieve: vi.fn().mockResolvedValue({
+          id: "sub_1",
+          status: "trialing",
+          items: { data: [{ price: { id: "price_pro_monthly_test" } }] },
+        }),
+      },
+    } as unknown as Stripe;
+    const event = {
+      id: "evt_trialing_checkout",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          mode: "subscription",
+          client_reference_id: userId,
+          subscription: "sub_1",
+        },
+      },
+    } as Stripe.Event;
+
+    await processStripeWebhookEvent(stripe, event);
+    expect(mockUpdate).toHaveBeenCalledWith(userId, "pro");
+  });
 });
 
 describe("processStripeWebhookEvent — subscription status branches", () => {

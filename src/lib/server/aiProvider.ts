@@ -42,6 +42,29 @@ const CLAUDE_MODEL_DEFAULT = "claude-sonnet-4-5-20250929";
 const OPENAI_MODEL_DEFAULT = "gpt-4o-mini";
 const OPENAI_VISION_MODEL_DEFAULT = "gpt-4o";
 
+/**
+ * ENG-1487 (2026-07-10): estimate input tokens from prompt character
+ * length so text-call budget reservations reflect real prompt size
+ * instead of the blind `maxOutputTokens * 4` default in `reserveBudget`.
+ *
+ * `reserveBudget` never sees the prompt, so before this every text call
+ * reserved a fixed guess regardless of how much client-supplied text it
+ * carried (a voice-log transcript, a pasted cookbook, a refine-log item
+ * array). A user could send a very large prompt that cost far more than
+ * the guessed reservation, and the daily spend counter would never learn
+ * the true cost — so the £50/day circuit breaker tripped late or never.
+ *
+ * ~4 chars/token is the standard rough heuristic across Claude/GPT
+ * tokenizers for English; it errs slightly high on natural language
+ * (conservative for a budget ceiling, which is what we want). Vision
+ * calls keep the default ceiling — the image, not the text, dominates
+ * their input and its token cost isn't char-derivable.
+ */
+export function estimateInputTokens(...parts: Array<string | undefined | null>): number {
+  const chars = parts.reduce((sum, p) => sum + (p ? p.length : 0), 0);
+  return Math.ceil(chars / 4);
+}
+
 export type AiVendor = "claude" | "openai";
 
 export type AiCallOk = {
@@ -504,12 +527,13 @@ async function callClaudeText(
     traceId: input.traceId,
     startedAt,
   };
-  // Blocker 3 (2026-05-14) — see aiBudget.ts.
+  // Blocker 3 (2026-05-14) — see aiBudget.ts. ENG-1487: reserve against a
+  // real input-token estimate from the prompt, not the blind default.
   const grant = await reserveBudget(
     input.userId ?? null,
     model,
     input.maxTokens ?? 1500,
-    undefined,
+    estimateInputTokens(input.userText, input.systemPrompt),
     ipHash,
   );
   if (!grant.ok) {
@@ -592,12 +616,13 @@ async function callOpenAIText(
     traceId: input.traceId,
     startedAt,
   };
-  // Blocker 3 (2026-05-14) — see aiBudget.ts.
+  // Blocker 3 (2026-05-14) — see aiBudget.ts. ENG-1487: reserve against a
+  // real input-token estimate from the prompt, not the blind default.
   const grant = await reserveBudget(
     input.userId ?? null,
     model,
     input.maxTokens ?? 1500,
-    undefined,
+    estimateInputTokens(input.userText, input.systemPrompt),
     ipHash,
   );
   if (!grant.ok) {
