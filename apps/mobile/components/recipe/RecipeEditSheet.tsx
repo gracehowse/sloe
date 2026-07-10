@@ -61,6 +61,7 @@ import IngredientEditRow, {
   type EditableIngredient,
 } from "./IngredientEditRow";
 import RecipeYieldEditorFields from "./RecipeYieldEditorFields";
+import { FilterChip } from "../ui/FilterChip";
 import { SupprButton } from "../ui/SupprButton";
 
 export type EditableRecipe = {
@@ -469,18 +470,18 @@ export default function RecipeEditSheet({
                 {RECIPE_MEAL_TYPES.map((m) => {
                   const active = mealType.includes(m);
                   return (
-                    <Pressable
+                    // Chip ruling 2026-07-10 (ENG-1375 S1): shared §7
+                    // FilterChip — secondary rest fill so the chip stays
+                    // visible on the card-coloured sheet, no border.
+                    <FilterChip
                       key={m}
+                      label={m[0]!.toUpperCase() + m.slice(1)}
+                      selected={active}
                       onPress={() => onMealTypeChip(m)}
-                      style={[styles.chip, active && styles.chipActive]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
+                      restFill="secondary"
+                      size="md"
                       accessibilityLabel={`${m}${active ? " selected" : ""}`}
-                    >
-                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                        {m[0]!.toUpperCase() + m.slice(1)}
-                      </Text>
-                    </Pressable>
+                    />
                   );
                 })}
               </View>
@@ -656,19 +657,9 @@ const makeStyles = (
       color: colors.text,
       fontVariant: ["tabular-nums"],
     },
+    // Meal-type chips migrated to the shared §7 FilterChip (chip ruling
+    // 2026-07-10, ENG-1375 S1) — soft-tint selection, borderless rest.
     chipRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
-    chip: {
-      paddingVertical: 8,
-      paddingHorizontal: Spacing.dense,
-      borderRadius: Radius.full,
-      borderWidth: ce.useBorder ? 1 : 0,
-      borderColor: colors.border,
-      backgroundColor: ce.liftBg ?? colors.card,
-      ...(ce.shadowStyle ?? {}),
-    },
-    chipActive: { backgroundColor: accent.primarySoft, borderColor: accent.primary },
-    chipText: { fontSize: 14, fontWeight: "600", color: colors.text },
-    chipTextActive: { color: accent.primarySolid },
     timeRow: { flexDirection: "row", gap: Spacing.md },
     timeCol: { flex: 1 },
     addBtn: {

@@ -1,8 +1,7 @@
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 
-import { PressableScale } from "@/components/ui/PressableScale";
-import { Radius, Spacing, Type } from "@/constants/theme";
-import { useThemeColors } from "@/hooks/use-theme-colors";
+import { FilterChip } from "@/components/ui/FilterChip";
+import { Spacing } from "@/constants/theme";
 
 /**
  * PlanMealFilterChipsV3 — Sloe v3 Plan meal-filter chip row (prototype
@@ -10,6 +9,11 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
  * Snack. "All" shows the day-detail view; a specific slot switches the body to
  * the across-week list. Horizontally scrollable, edge-bleeding the host's
  * 20px padding. Behind sloe_v3_plan.
+ *
+ * Chip ruling 2026-07-10 (ENG-1375 S1,
+ * `docs/decisions/2026-07-10-chip-grammar-soft-tint.md`): selection is the
+ * shared §7 FilterChip soft tint — the previous solid plum fill is reserved
+ * for DAY CELLS in the week strip, not filter chips.
  */
 export const PLAN_MEAL_FILTERS = [
   "All",
@@ -29,7 +33,6 @@ export function PlanMealFilterChipsV3({
   selected,
   onSelect,
 }: PlanMealFilterChipsV3Props) {
-  const colors = useThemeColors();
   return (
     <ScrollView
       horizontal
@@ -41,26 +44,14 @@ export function PlanMealFilterChipsV3({
         const active = f === selected;
         const label = f === "All" ? "All meals" : f;
         return (
-          <PressableScale
+          <FilterChip
             key={f}
+            label={label}
+            selected={active}
             onPress={() => onSelect(f)}
-            haptic="selection"
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
+            size="md"
             accessibilityLabel={label}
-            style={[
-              styles.chip,
-              {
-                backgroundColor: active
-                  ? colors.navPrimary
-                  : colors.backgroundSecondary,
-              },
-            ]}
-          >
-            <Text style={[styles.chipText, { color: active ? "#fff" : colors.text }]}>
-              {label}
-            </Text>
-          </PressableScale>
+          />
         );
       })}
     </ScrollView>
@@ -70,12 +61,6 @@ export function PlanMealFilterChipsV3({
 const styles = StyleSheet.create({
   scroll: { marginTop: Spacing.md, marginHorizontal: -Spacing.lg },
   row: { gap: Spacing.sm, paddingHorizontal: Spacing.lg },
-  chip: {
-    paddingHorizontal: Spacing.dense,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.full,
-  },
-  chipText: { ...Type.label, textTransform: "none", letterSpacing: 0, fontSize: 13 },
 });
 
 export default PlanMealFilterChipsV3;

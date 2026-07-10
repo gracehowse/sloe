@@ -28,6 +28,7 @@ import {
 import Constants from "expo-constants";
 
 import { Radius, Spacing, Type } from "@/constants/theme";
+import { FilterChip } from "@/components/ui/FilterChip";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "./ui/SupprButton";
 import { authedFetch } from "@/lib/authedFetch";
@@ -272,18 +273,10 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
     label: { fontSize: 12, color: colors.textTertiary, fontWeight: "600", marginBottom: 4 },
     row: { flexDirection: "row", gap: Spacing.md, marginBottom: Spacing.md },
     half: { flex: 1 },
-    chip: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: Radius.full,
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginRight: Spacing.xs,
-      backgroundColor: "transparent",
-    },
-    chipActive: { backgroundColor: accent.primary + "15", borderColor: accent.primary },
-    chipText: { fontSize: 12, color: colors.text, fontWeight: "500" },
-    chipTextActive: { color: accent.primarySolid, fontWeight: "700" },
+    // Unit chips migrated to the shared §7 FilterChip (chip ruling
+    // 2026-07-10, ENG-1375 S1) — soft-tint selection, no border, no raw
+    // alpha-suffix fills.
+    unitChipRow: { gap: Spacing.xs },
     footer: {
       flexDirection: "row",
       gap: Spacing.sm,
@@ -363,21 +356,22 @@ export default function AddIngredientSheet({ visible, onClose, onAdd, colors, re
               </View>
               <View style={{ flex: 1.4 }}>
                 <Text style={styles.label}>Unit</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                  {UNITS.map((u) => {
-                    const active = unit === u;
-                    return (
-                      <Pressable
-                        key={u}
-                        onPress={() => setUnit(u)}
-                        style={[styles.chip, active && styles.chipActive]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Unit ${u}`}
-                      >
-                        <Text style={[styles.chipText, active && styles.chipTextActive]}>{u}</Text>
-                      </Pressable>
-                    );
-                  })}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.unitChipRow}
+                >
+                  {UNITS.map((u) => (
+                    <FilterChip
+                      key={u}
+                      label={u}
+                      selected={unit === u}
+                      onPress={() => setUnit(u)}
+                      restFill="secondary"
+                      accessibilityLabel={`Unit ${u}`}
+                    />
+                  ))}
                 </ScrollView>
               </View>
             </View>

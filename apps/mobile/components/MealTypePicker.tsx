@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Coffee, Sun, UtensilsCrossed, Cookie } from "lucide-react-native";
 import type { ComponentType } from "react";
-import { Spacing, Radius, Type, Accent } from "@/constants/theme";
+import { Spacing, Type, Accent } from "@/constants/theme";
+import { FilterChip } from "@/components/ui/FilterChip";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -26,7 +27,7 @@ type Props = {
 export default function MealTypePicker({ selected, onChange, label }: Props) {
   const colors = useThemeColors();
   // Functional accent (clay/aubergine) for the selected meal-type chips'
-  // border, tint, glyph, and label.
+  // glyph (fill + label live in the shared FilterChip).
   const accent = useAccent();
 
   const toggle = (value: string) => {
@@ -51,30 +52,20 @@ export default function MealTypePicker({ selected, onChange, label }: Props) {
           const active = selected.includes(opt.value);
           const Icon = opt.Icon;
           return (
-            <Pressable
+            // Chip ruling 2026-07-10 (ENG-1375 S1): shared §7 FilterChip —
+            // soft-tint selection, borderless quiet rest fill.
+            <FilterChip
               key={opt.value}
+              label={opt.label}
+              selected={active}
               onPress={() => toggle(opt.value)}
-              style={[
-                styles.chip,
-                {
-                  // §7 (2026-06-10): soft tint carries selection — no ring,
-                  // canonical primarySoft fill (was an ad-hoc 8% alpha).
-                  borderColor: active ? accent.primarySoft : colors.border,
-                  backgroundColor: active ? accent.primarySoft : "transparent",
-                },
-              ]}
-            >
-              <Icon size={14} color={active ? accent.primary : colors.textSecondary} />
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: active ? "700" : "500",
-                  color: active ? accent.primary : colors.text,
-                }}
-              >
-                {opt.label}
-              </Text>
-            </Pressable>
+              leading={
+                <Icon
+                  size={14}
+                  color={active ? accent.primarySolid : colors.textSecondary}
+                />
+              }
+            />
           );
         })}
       </View>
@@ -87,15 +78,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.sm,
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    // Chips census (2026-06-10): §7 family — fully round, hairline.
-    borderRadius: Radius.full,
-    borderWidth: StyleSheet.hairlineWidth,
   },
 });

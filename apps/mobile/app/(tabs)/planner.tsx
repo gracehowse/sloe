@@ -85,6 +85,7 @@ import { usePlanV3WeekAnchor } from "@/hooks/usePlanV3WeekAnchor";
 import { usePlanWeekJournal } from "@/hooks/usePlanWeekJournal";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
+import { FilterChip } from "@/components/ui/FilterChip";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
 import { PlanSmartSuggestionsCard } from "@/components/planner/PlanSmartSuggestionsCard";
 import { usePlanSmartSuggestions } from "@/hooks/usePlanSmartSuggestions";
@@ -1691,30 +1692,15 @@ export default function PlannerScreen() {
         },
         summarySecondaryText: { ...Type.button, color: accent.primarySolid, fontSize: 13 },
 
-        // Sloe DS — filter chip row (plan length+start / meals). Calm cream
-        // chips with a hairline border + soft radius replace the flat grey
-        // `colors.border` fill so the row reads as quiet, tappable settings.
+        // Sloe DS — filter chip row (plan length+start / meals). Chips are
+        // the shared §7 FilterChip (chip ruling 2026-07-10, ENG-1375 S1):
+        // borderless quiet card fill, fully round.
         filterRow: {
           flexDirection: "row",
           alignItems: "center",
           gap: Spacing.sm,
           marginBottom: Spacing.md,
         },
-        filterChip: {
-          flexDirection: "row",
-          alignItems: "center",
-          gap: Spacing.xs,
-          paddingHorizontal: Spacing.dense,
-          paddingVertical: 8,
-          // Chips census (2026-06-10): Radius.full — every other filter chip
-          // in the app is fully round; Plan's square-8 family was the drift.
-          borderRadius: Radius.full,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
-          backgroundColor: colors.card,
-        },
-        filterChipText: { fontSize: 12.5, fontWeight: "600", color: colors.text },
-
 
         sectionLabel: {
           ...Type.label,
@@ -3036,30 +3022,24 @@ export default function PlannerScreen() {
               : enabledList.map((s) => SHORT[s] ?? s).join(" · ");
           return (
             <View style={styles.filterRow}>
-              <Pressable
+              <FilterChip
                 testID="plan-chip-length-start"
-                accessibilityRole="button"
                 accessibilityLabel={`Plan length and start: ${lengthStartLabel}`}
                 onPress={() => setChipSheet("lengthStart")}
-                style={styles.filterChip}
-              >
-                <Text style={styles.filterChipText}>
-                  {lengthStartLabel}
-                </Text>
-                <ChevronDown size={11} color={colors.textTertiary} strokeWidth={2} />
-              </Pressable>
-              <Pressable
+                label={lengthStartLabel}
+                trailing={
+                  <ChevronDown size={11} color={colors.textTertiary} strokeWidth={2} />
+                }
+              />
+              <FilterChip
                 testID="plan-chip-meals"
-                accessibilityRole="button"
                 accessibilityLabel={`Meals: ${mealsLabel}`}
                 onPress={() => setChipSheet("meals")}
-                style={styles.filterChip}
-              >
-                <Text style={styles.filterChipText}>
-                  {mealsLabel}
-                </Text>
-                <ChevronDown size={11} color={colors.textTertiary} strokeWidth={2} />
-              </Pressable>
+                label={mealsLabel}
+                trailing={
+                  <ChevronDown size={11} color={colors.textTertiary} strokeWidth={2} />
+                }
+              />
               {/* The filter-row "Generate ▾" duplicate was removed
                   (Grace 2026-06-09 "multiple styles fighting" review):
                   two identical Generate affordances rendered at once —
