@@ -39,6 +39,7 @@ export function LibraryRow({
         title={recipe.title}
         slot={slotName}
         imageUrl={recipe.thumbnail}
+        size={44}
         style={styles.resultThumb}
       />
       <View style={{ flex: 1, marginLeft: Spacing.sm, minWidth: 0 }}>
@@ -101,6 +102,7 @@ export function BrowseRow({
       <FoodFallbackThumb
         title={title}
         slot={slotName}
+        size={44}
         style={[styles.resultThumb, { borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth }]}
       />
       <View style={{ flex: 1, marginLeft: Spacing.sm, minWidth: 0 }}>

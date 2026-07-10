@@ -32,7 +32,25 @@ describe("shared tiered resolver via the mobile alias (ENG-1448)", () => {
     expect(resolveFoodFallback("Tonkotsu ramen bowl")).toMatchObject({
       tier: "category",
       category: "ramen-noodles",
+      photoConfident: true,
     });
+  });
+
+  it("photo-confidence split: ambiguous keywords keep the category but never license the sample photo", () => {
+    // "Zucchini noodles" must render a noodle GLYPH, never the shipped
+    // tonkotsu ramen PHOTO — same for shakes/yogurt/bare salads.
+    for (const [title, category] of [
+      ["Zucchini noodles", "ramen-noodles"],
+      ["Protein shake", "smoothie"],
+      ["Greek yogurt bowl", "breakfast-bowl"],
+      ["Greek salad", "salad"],
+    ] as const) {
+      expect(resolveFoodFallback(title), title).toMatchObject({
+        tier: "category",
+        category,
+        photoConfident: false,
+      });
+    }
   });
 
   it("ambiguous titles resolve slot (when passed) or generic — never a wrong category", () => {
@@ -54,8 +72,8 @@ describe("shared tiered resolver via the mobile alias (ENG-1448)", () => {
 });
 
 describe("FoodFallbackThumb (mobile) — source pins", () => {
-  it("gates sample images on the confident category tier (never-fabricated)", () => {
-    expect(THUMB).toMatch(/resolution\.tier === "category"/);
+  it("gates sample images on the photo-confident category tier (never-fabricated)", () => {
+    expect(THUMB).toMatch(/resolution\.tier === "category" && resolution\.photoConfident/);
     expect(THUMB).toMatch(/resolveFoodFallbackSampleCategory\(resolution\.category\)/);
   });
 

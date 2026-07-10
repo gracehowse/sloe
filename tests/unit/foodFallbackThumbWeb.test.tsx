@@ -15,7 +15,7 @@
  */
 import * as React from "react";
 import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { FoodFallbackThumb } from "../../src/app/components/suppr/food-fallback-thumb";
 
 void React;
@@ -29,14 +29,47 @@ describe("FoodFallbackThumb (web) — ENG-1478 / ENG-1448", () => {
     expect(container.querySelector("img")).toBeNull();
   });
 
-  it("keeps the correct sample for a shipped category (breakfast-bowl)", () => {
-    const { container } = render(
-      <FoodFallbackThumb title="Greek yogurt, oats & berries" />,
-    );
+  it("keeps the correct sample for a photo-confident dish hit (breakfast-bowl)", () => {
+    const { container } = render(<FoodFallbackThumb title="Berry breakfast bowl" />);
     const img = container.querySelector("img");
     expect(img?.getAttribute("src")).toBe(
       "/imagery/fallbacks/samples/berry-breakfast-bowl.png",
     );
+  });
+
+  it("photo-confidence split: ambiguous keyword hits keep the category tint but NEVER render the sample photo", () => {
+    // Refuter blockers — each resolves a shipped-sample category, but
+    // the shipped photo is not that dish ("zucchini noodles" is not the
+    // tonkotsu ramen photo). Glyph + tint is the honest render.
+    for (const title of [
+      "Zucchini noodles",
+      "Protein shake",
+      "Greek yogurt bowl",
+      "Greek salad",
+      "Spaghetti bolognese",
+      "Grilled chicken breast",
+    ]) {
+      const { container } = render(<FoodFallbackThumb title={title} />);
+      expect(
+        container.querySelector('[data-testid="food-fallback-glyph"]'),
+        title,
+      ).toBeTruthy();
+      expect(container.querySelector("img"), title).toBeNull();
+    }
+  });
+
+  it("degrades photo → sample → glyph on load errors (a 404 sample never leaves a glyphless disc)", () => {
+    const { container, getByTestId } = render(
+      <FoodFallbackThumb title="Tonkotsu ramen" imageUrl="https://example.com/broken.png" />,
+    );
+    let img = container.querySelector("img")!;
+    expect(img.getAttribute("src")).toBe("https://example.com/broken.png");
+    fireEvent.error(img);
+    img = container.querySelector("img")!;
+    expect(img.getAttribute("src")).toBe("/imagery/fallbacks/samples/ramen-bowl.png");
+    fireEvent.error(img);
+    expect(container.querySelector("img")).toBeNull();
+    expect(getByTestId("food-fallback-glyph")).toBeTruthy();
   });
 
   it("prefers a real imageUrl over any fallback", () => {
@@ -50,7 +83,7 @@ describe("FoodFallbackThumb (web) — ENG-1478 / ENG-1448", () => {
 
   it("never-white: the wrapper carries an opaque tint underlay on every tier", () => {
     for (const el of [
-      render(<FoodFallbackThumb title="Greek salad" />).getByTestId("food-fallback-salad"),
+      render(<FoodFallbackThumb title="Green salad" />).getByTestId("food-fallback-salad"),
       render(<FoodFallbackThumb title="Mystery meal" />).getByTestId("food-fallback-glyph"),
       render(
         <FoodFallbackThumb title="Anything" imageUrl="https://example.com/x.png" testId="photo" />,

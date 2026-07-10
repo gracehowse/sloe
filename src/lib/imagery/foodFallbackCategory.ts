@@ -6,14 +6,22 @@
  * resolution out, stable across sessions and platforms.
  *
  * ── The never-fabricated rule (ENG-1448 / ENG-1478) ────────────────
- * The pre-ENG-1478 resolver hash-remapped unmatched titles into a
- * 4-category pool (an fnv1a32 hash of the title, modulo the pool),
- * painting e.g. berry-smoothie art on unrelated foods. That hash path
- * is DELETED and
+ * Two fabrication paths are dead: the sample remap that painted a
+ * shipped sample on unshipped categories (the berry-smoothie-on-salmon
+ * bug, fixed in ENG-1478) and the fnv1a32 title hash that mapped
+ * unmatched titles into a 4-category pool. The hash path is DELETED and
  * must never return (repo-scan pin in
  * `tests/unit/foodFallbackCategory.test.ts`). A category is only ever
  * claimed on a CONFIDENT keyword hit; everything else degrades to an
  * honest slot- or generic-tier glyph + tint.
+ *
+ * ── Photo confidence (ENG-1448 refuter split) ──────────────────────
+ * A category hit licenses the GLYPH + TINT only. The shipped sample
+ * PHOTO additionally requires `photoConfident` — set per keyword row,
+ * true ONLY when the matched string names the literal dish the shipped
+ * sample depicts and the keyword cannot be a modifier ("zucchini
+ * noodles" is honestly a noodle GLYPH; the tonkotsu ramen PHOTO would
+ * be a fabrication). Conservative default: false.
  * ────────────────────────────────────────────────────────────────────
  */
 
@@ -77,25 +85,55 @@ export type FoodFallbackGlyph =
  * unambiguous synonyms. When a word could plausibly belong to two
  * categories, it stays OUT: a miss degrades to an honest glyph, a
  * wrong hit paints the wrong food (the exact ENG-1478 bug class).
+ *
+ * `photoConfident` rows sit immediately before their category's broad
+ * row so the dish-specific string wins first. Only shipped-sample
+ * categories carry a photo-confident row, and each such pattern names
+ * the literal dish the sample depicts (see the photo-confidence note
+ * in the file banner).
  */
-const KEYWORD_RULES: ReadonlyArray<{ pattern: RegExp; category: FoodFallbackCategoryId }> = [
-  { pattern: /\b(ramen|pho|udon|soba|noodles?)\b/i, category: "ramen-noodles" },
-  { pattern: /\b(smoothies?|shakes?|milkshakes?)\b/i, category: "smoothie" },
+const KEYWORD_RULES: ReadonlyArray<{
+  pattern: RegExp;
+  category: FoodFallbackCategoryId;
+  /** Licenses the shipped sample PHOTO (glyph+tint need no licence). */
+  photoConfident?: true;
+}> = [
+  // Sample: ramen-bowl.png — literally a ramen bowl. "ramen" is a dish
+  // name, not a modifier; pho/udon/soba/noodles are DIFFERENT dishes
+  // ("zucchini noodles") and only earn the glyph.
+  { pattern: /\bramen\b/i, category: "ramen-noodles", photoConfident: true },
+  { pattern: /\b(pho|udon|soba|noodles?)\b/i, category: "ramen-noodles" },
+  // Sample: berry-smoothie.png — literally a smoothie. "shake" is
+  // ambiguous ("protein shake") and only earns the glyph.
+  { pattern: /\bsmoothies?\b/i, category: "smoothie", photoConfident: true },
+  { pattern: /\b(shakes?|milkshakes?)\b/i, category: "smoothie" },
   { pattern: /\b(pancakes?|waffles?|french\s*toast|crepes?)\b/i, category: "pancakes-waffles" },
   {
     pattern: /\b(omelettes?|omelets?|scrambled|fried\s*eggs?|boiled\s*eggs?|poached\s*eggs?|shakshuka|frittata|eggs?)\b/i,
     category: "eggs",
   },
+  // Sample: berry-breakfast-bowl.png — only the literal "breakfast
+  // bowl" string licenses it; yogurt/porridge/oats/granola/acai are
+  // distinct foods and only earn the glyph.
+  { pattern: /\bbreakfast\s*bowls?\b/i, category: "breakfast-bowl", photoConfident: true },
   {
-    pattern: /\b(yoghurt|yogurt|porridge|oats|oatmeal|muesli|granola|acai|breakfast\s*bowl)\b/i,
+    pattern: /\b(yoghurt|yogurt|porridge|oats|oatmeal|muesli|granola|acai)\b/i,
     category: "breakfast-bowl",
   },
   { pattern: /\b(sandwich(?:es)?|toasts?|bagels?|burritos?|wraps?|panini)\b/i, category: "toast-sandwich" },
   { pattern: /\b(muffins?|scones?|croissants?|banana\s*bread|pastry|pastries)\b/i, category: "baked-goods" },
+  // Sample: green-salad.png — only the literal green/garden salad
+  // licenses it; bare "salad" is a compound head ("fruit salad",
+  // "pasta salad") and only earns the glyph.
+  { pattern: /\b(green|garden)\s*salads?\b/i, category: "salad", photoConfident: true },
   { pattern: /\b(salads?|slaw|coleslaw)\b/i, category: "salad" },
   { pattern: /\b(soups?|broths?|chowder|stews?|minestrone)\b/i, category: "soup" },
+  // Sample: pasta-tomato.png — generic pasta reads honestly as pasta;
+  // named shapes/dishes (spaghetti can be squash/zoodles, lasagne and
+  // mac & cheese look nothing like the sample) only earn the glyph.
+  { pattern: /\bpasta\b/i, category: "pasta", photoConfident: true },
   {
-    pattern: /\b(pasta|spaghetti|penne|macaroni|ravioli|lasagne|lasagna|gnocchi|mac\s*&?\s*cheese)\b/i,
+    pattern: /\b(spaghetti|penne|macaroni|ravioli|lasagne|lasagna|gnocchi|mac\s*&?\s*cheese)\b/i,
     category: "pasta",
   },
   { pattern: /\b(rice\s*bowl|poke|bibimbap|risotto|paella)\b/i, category: "rice-bowl" },
@@ -105,6 +143,10 @@ const KEYWORD_RULES: ReadonlyArray<{ pattern: RegExp; category: FoodFallbackCate
     pattern: /\b(salmon|tuna|fish|cod|sardines?|mackerel|trout|prawns?|shrimp|crab|lobster|seafood|shellfish)\b/i,
     category: "fish",
   },
+  // Sample: roast-chicken.png — only the literal dish licenses it;
+  // bare "chicken" is overwhelmingly a modifier ("chicken breast",
+  // "chicken nuggets") and only earns the glyph.
+  { pattern: /\broast(?:ed)?\s*chicken\b/i, category: "chicken", photoConfident: true },
   { pattern: /\b(chicken|wings?|schnitzel)\b/i, category: "chicken" },
   { pattern: /\b(steaks?|beef|lamb|pork|bacon|sausages?|meatballs?)\b/i, category: "red-meat" },
   { pattern: /\b(burgers?|cheeseburgers?|sliders?)\b/i, category: "burger" },
@@ -236,7 +278,8 @@ export function normalizeFoodTitle(title: string): string {
 /**
  * Tiered food-row fallback resolution (ENG-1448 PR 1):
  *   'category' — CONFIDENT keyword hit only; may render a sample image
- *                when one has shipped for the category.
+ *                ONLY when `photoConfident` AND one has shipped for
+ *                the category — otherwise glyph + tint.
  *   'slot'     — no keyword hit but the caller knows the meal slot;
  *                renders the slot glyph + tint, never a food image.
  *   'generic'  — honest utensil glyph on the neutral cream tint.
@@ -244,7 +287,15 @@ export function normalizeFoodTitle(title: string): string {
  * white and never a fabricated specific food.
  */
 export type FoodFallbackResolution =
-  | { tier: "category"; category: FoodFallbackCategoryId; glyph: FoodFallbackGlyph; tint: string }
+  | {
+      tier: "category";
+      category: FoodFallbackCategoryId;
+      glyph: FoodFallbackGlyph;
+      tint: string;
+      /** True ONLY when the matched keyword names the literal shipped-
+       *  sample dish — the licence to render the sample PHOTO. */
+      photoConfident: boolean;
+    }
   | { tier: "slot"; slot: MealSlot; glyph: FoodFallbackGlyph; tint: string }
   | { tier: "generic"; glyph: FoodFallbackGlyph; tint: string };
 
@@ -261,6 +312,7 @@ export function resolveFoodFallback(
           category: rule.category,
           glyph: FOOD_FALLBACK_GLYPH_BY_CATEGORY[rule.category],
           tint: FOOD_FALLBACK_TINT_BY_CATEGORY[rule.category],
+          photoConfident: rule.photoConfident === true,
         };
       }
     }

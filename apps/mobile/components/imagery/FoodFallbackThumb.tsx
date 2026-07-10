@@ -65,7 +65,7 @@ export interface FoodFallbackThumbProps {
 /**
  * Tiered food-row thumbnail (ENG-1448 PR 1, supersedes the ENG-1015
  * sample-or-glyph pair). Real photo when available; else the shipped
- * category sample ONLY on a confident keyword hit; else the slot or
+ * category sample ONLY on a photo-confident dish hit; else the slot or
  * generic glyph. The wrapper carries an opaque §11.4 tint underlay so
  * no child failure (broken URL, missing asset) can expose white — and
  * no tier ever fabricates a wrong specific food image.
@@ -82,7 +82,7 @@ export function FoodFallbackThumb({
 
   const resolution = resolveFoodFallback(title, { slot });
   const sampleCategory =
-    resolution.tier === "category"
+    resolution.tier === "category" && resolution.photoConfident
       ? resolveFoodFallbackSampleCategory(resolution.category)
       : null;
   const sample = sampleCategory

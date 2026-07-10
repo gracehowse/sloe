@@ -38,6 +38,69 @@ describe("foodFallbackCategory (ENG-1015 / ENG-1448 tiered)", () => {
     }
   });
 
+  it("photo-confidence split: ambiguous keywords keep the honest glyph+tint category but NEVER license the sample photo", () => {
+    // The refuter's bug class: "zucchini noodles" is honestly a noodle
+    // GLYPH, but the tonkotsu ramen PHOTO would be a fabrication.
+    const ambiguous: Array<[string, FoodFallbackCategoryId]> = [
+      ["Zucchini noodles", "ramen-noodles"],
+      ["Pho with beef brisket", "ramen-noodles"],
+      ["Protein shake", "smoothie"],
+      ["Strawberry milkshake", "smoothie"],
+      ["Greek yogurt bowl", "breakfast-bowl"],
+      ["Overnight oats", "breakfast-bowl"],
+      ["Greek salad", "salad"],
+      ["Fruit salad", "salad"],
+      ["Spaghetti bolognese", "pasta"],
+      ["Mac & cheese", "pasta"],
+      ["Grilled chicken breast", "chicken"],
+      ["Chicken wings", "chicken"],
+    ];
+    for (const [title, category] of ambiguous) {
+      expect(resolveFoodFallback(title), title).toMatchObject({
+        tier: "category",
+        category,
+        photoConfident: false,
+      });
+    }
+  });
+
+  it("photo-confidence split: dish-specific strings naming the literal shipped sample stay photo-confident", () => {
+    const confident: Array<[string, FoodFallbackCategoryId]> = [
+      ["Tonkotsu ramen bowl", "ramen-noodles"],
+      ["Berry smoothie", "smoothie"],
+      ["Berry breakfast bowl", "breakfast-bowl"],
+      ["Roast chicken", "chicken"],
+      ["Roasted chicken with herbs", "chicken"],
+      ["Green salad", "salad"],
+      ["Garden salad", "salad"],
+      ["Pasta with tomato sauce", "pasta"],
+    ];
+    for (const [title, category] of confident) {
+      expect(resolveFoodFallback(title), title).toMatchObject({
+        tier: "category",
+        category,
+        photoConfident: true,
+      });
+    }
+  });
+
+  it("photo confidence only ever pairs with a shipped sample category", () => {
+    // Sweep a broad title corpus: any photoConfident hit must resolve a
+    // shipped sample — a confident photo licence for an unshipped
+    // category would be dead at best, a fabrication risk at worst.
+    const corpus = [
+      "Tonkotsu ramen", "Berry smoothie", "Breakfast bowl", "Roast chicken",
+      "Green salad", "Pasta", "Salmon fillet", "Pepperoni pizza", "Beef burger",
+      "Chicken curry", "Chocolate cake", "Fried eggs on toast", "Poke bowl",
+    ];
+    for (const title of corpus) {
+      const res = resolveFoodFallback(title);
+      if (res.tier === "category" && res.photoConfident) {
+        expect(resolveFoodFallbackSampleCategory(res.category), title).not.toBeNull();
+      }
+    }
+  });
+
   it("carries a glyph + §11.4 tint on every tier", () => {
     const hit = resolveFoodFallback("Greek salad");
     expect(hit).toMatchObject({ tier: "category", glyph: "Salad", tint: HERO_TINTS.greens });

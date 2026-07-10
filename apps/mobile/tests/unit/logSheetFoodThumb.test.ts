@@ -25,6 +25,12 @@ describe("LogSheet food thumbnail fallback (ENG-1015 / ENG-1448)", () => {
     expect(LOG_SHEET_ROWS).toMatch(/import \{ PressableScale \}/);
   });
 
+  it("sizes the thumb glyph to the 44px resultThumb wrapper (refuter fix)", () => {
+    // Without size={44} the glyph computes off the 36 default and
+    // renders 16px inside a 44px tile.
+    expect(LOG_SHEET_ROWS.match(/size=\{44\}/g)?.length).toBe(2);
+  });
+
   it("threads the active slot into the rows so the thumb slot tier works (ENG-1448)", () => {
     // Host → BrowseAndFooter → lists → rows → thumb.
     expect(LOG_SHEET).toMatch(/slotName=\{slot\?\.current \?\? null\}/);
