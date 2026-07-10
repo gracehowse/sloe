@@ -26,7 +26,6 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     backgroundSecondary: "#F5F4F7",
     borderStrong: "#C9C2D6",
     border: "#E8E2EC",
-    surfaceWarm: "#F9F3EB",
   }),
 }));
 vi.mock("expo-haptics", () => ({

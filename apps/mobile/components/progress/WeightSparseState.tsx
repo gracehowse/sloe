@@ -44,7 +44,7 @@ export function WeightSparseState({ points, goalKg, onLogWeight }: Props) {
     return (
       <View
         testID="weight-sparse-state"
-        style={[styles.frameContainer, { backgroundColor: colors.surfaceWarm }]}
+        style={[styles.frameContainer, { backgroundColor: colors.backgroundSecondary }]}
       >
         <Svg width={FRAME_WIDTH} height={FRAME_HEIGHT}>
           {/* Baseline axis */}
@@ -106,7 +106,7 @@ export function WeightSparseState({ points, goalKg, onLogWeight }: Props) {
     return (
       <View
         testID="weight-sparse-state"
-        style={[styles.frameContainer, { backgroundColor: colors.surfaceWarm }]}
+        style={[styles.frameContainer, { backgroundColor: colors.backgroundSecondary }]}
       >
         <Svg width={FRAME_WIDTH} height={FRAME_HEIGHT}>
           <Line

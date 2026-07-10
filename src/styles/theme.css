@@ -87,18 +87,6 @@
   --background-secondary: #F1F0F4; /* recessed cool plum-grey (tracks, wells) */
   --background-grouped: #F5F4F7;   /* faint cool-plum grouped ground (NOT beige) */
   --background-marketing: #FBF8F3; /* Oat — marketing / landing / paywall ONLY */
-  /** ENG-1377 — warm-tint elevation step (2026-07-07). One rung above
-   *  `--background`, but WARM instead of the family's cool-plum tilt: derived
-   *  by taking `--background`'s per-channel delta-from-white MAGNITUDE (~one
-   *  `--background-secondary`-sized step) and redistributing it warm — R
-   *  drops least, B drops most (background/background-secondary/background-
-   *  grouped all drop B *least*, the cool tilt this token deliberately
-   *  reverses). Does NOT touch `--background` itself — the global canvas hue
-   *  is unchanged (ENG-1377 is a token-level pass, not a re-skin). First
-   *  consumer: the empty-state grammar epic (ENG-1372) — empty ring tracks,
-   *  hero washes and placeholder grounds sit on this so they never render at
-   *  zero visual weight. ↔ mobile `Colors.light.surfaceWarm`. */
-  --surface-warm: #F9F3EB;
   --foreground: #221B26;
   --foreground-secondary: #655C6E;
   /* a11y (2026-06-23): tertiary muted text darkened #9B93A3 → #6E6874. The old
@@ -502,12 +490,6 @@
   --background: #120D18;             /* v3 Nocturne — deep plum-black ground */
   --background-secondary: #1A1422;   /* recessed plum layer (tracks, wells) */
   --background-grouped: #161019;     /* grouped dark ground (utility screens) */
-  /** ENG-1377 — dark warm-tint elevation step. Same derivation as light
-   *  `--surface-warm`: one rung above `--background`, warm-tilted (R
-   *  highest) instead of the family's cool-plum tilt (B highest in bg/
-   *  secondary/grouped). Sits below `--card`/`--card-elevated` in the
-   *  ladder — a ground, not a card fill. ↔ mobile `Colors.dark.surfaceWarm`. */
-  --surface-warm: #241B18;
   --foreground: #ECE8F0;             /* soft plum-white — never pure #fff */
   --foreground-secondary: #B8B0C4;
   --foreground-tertiary: #8A8198;
@@ -789,8 +771,6 @@
   --color-background-secondary: var(--background-secondary);
   --color-background-grouped: var(--background-grouped);
   --color-background-marketing: var(--background-marketing);
-  /* ENG-1377 — warm-tint elevation step; `bg-surface-warm`. */
-  --color-surface-warm: var(--surface-warm);
   --color-foreground: var(--foreground);
   /* Sloe ink scale — Figma `ink` / `ink-soft` / `ink-faint`. */
   --color-foreground-secondary: var(--foreground-secondary);

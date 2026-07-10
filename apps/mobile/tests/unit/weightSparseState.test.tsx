@@ -22,7 +22,7 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     textTertiary: "#999",
     card: "#fff",
     border: "#ddd",
-    surfaceWarm: "#F9F3EB",
+    backgroundSecondary: "#F1F0F4",
   }),
 }));
 
