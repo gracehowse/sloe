@@ -14,7 +14,7 @@ import { Plus, Calendar, BookOpen, Utensils, BarChart3 } from "lucide-react";
 import { useFeatureFlagEnabled } from "posthog-js/react";
 import { canonicalNavOrderEnabled } from "../lib/navigation/primaryNav.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../lib/analytics/events.ts";
-import { track } from "../lib/analytics/track.ts";
+import { isFeatureEnabled, track } from "../lib/analytics/track.ts";
 import { Icons } from "./components/ui/icons";
 import { SupprPlateWordmark } from "./components/ui/suppr-mark";
 import dynamic from "next/dynamic";
@@ -42,6 +42,14 @@ const Profile = dynamic(
 );
 const NutritionTracker = dynamic(
   () => import("./components/NutritionTracker.tsx").then((m) => ({ default: m.NutritionTracker })),
+  { ssr: false, loading: () => <TodayLoadingSkeleton /> },
+);
+// ENG-1494 — desktop two-column Today (breadcrumb + household bar + right
+// rail) behind `today_desktop_frame_v1`. Dynamic like the tracker: the frame
+// statically imports NutritionTracker, so a static mount here would pull the
+// tracker into the main bundle and defeat the split above.
+const TodayDesktopFrame = dynamic(
+  () => import("./components/TodayDesktopFrame.tsx").then((m) => ({ default: m.TodayDesktopFrame })),
   { ssr: false, loading: () => <TodayLoadingSkeleton /> },
 );
 const ProgressDashboard = dynamic(
@@ -477,17 +485,29 @@ export default function App() {
   }, [searchParams, router, refreshProfileBasics]);
 
   const renderView = () => {
+    // ENG-1494 — `today` and the default fallback render the same surface;
+    // the desktop frame wraps the tracker at `lg:` (below that it renders
+    // the tracker alone). Legacy direct tracker is the kill switch.
+    const todayView = (
+      <FeatureErrorBoundary feature="Nutrition Tracker">
+        {isFeatureEnabled("today_desktop_frame_v1") ? (
+          <TodayDesktopFrame
+            userTier={userTier}
+            onOpenProgress={() => navigateToView("progress")}
+            onOpenSettings={() => navigateToView("settings")}
+          />
+        ) : (
+          <NutritionTracker
+            userTier={userTier}
+            onOpenProgress={() => navigateToView("progress")}
+            onOpenSettings={() => navigateToView("settings")}
+          />
+        )}
+      </FeatureErrorBoundary>
+    );
     switch (currentView) {
       case "today":
-        return (
-          <FeatureErrorBoundary feature="Nutrition Tracker">
-            <NutritionTracker
-              userTier={userTier}
-              onOpenProgress={() => navigateToView("progress")}
-              onOpenSettings={() => navigateToView("settings")}
-            />
-          </FeatureErrorBoundary>
-        );
+        return todayView;
       case "discover":
         return (
           <>
@@ -654,15 +674,7 @@ export default function App() {
           </FeatureErrorBoundary>
         );
       default:
-        return (
-          <FeatureErrorBoundary feature="Nutrition Tracker">
-            <NutritionTracker
-              userTier={userTier}
-              onOpenProgress={() => navigateToView("progress")}
-              onOpenSettings={() => navigateToView("settings")}
-            />
-          </FeatureErrorBoundary>
-        );
+        return todayView;
     }
   };
 

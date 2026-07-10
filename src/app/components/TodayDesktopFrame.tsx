@@ -50,6 +50,8 @@ const HouseholdPanel = dynamic(
 export interface TodayDesktopFrameProps {
   userTier: UserTier;
   onOpenProgress?: () => void;
+  /** ENG-1494 — forwarded to the tracker's settings avatar. */
+  onOpenSettings?: () => void;
 }
 
 /**
@@ -96,7 +98,7 @@ function parseStepsDayMap(raw: unknown): Record<string, number> {
   return out;
 }
 
-export function TodayDesktopFrame({ userTier, onOpenProgress }: TodayDesktopFrameProps) {
+export function TodayDesktopFrame({ userTier, onOpenProgress, onOpenSettings }: TodayDesktopFrameProps) {
   const {
     selectedDateKey,
     nutritionByDay,
@@ -212,7 +214,11 @@ export function TodayDesktopFrame({ userTier, onOpenProgress }: TodayDesktopFram
       <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:px-6 lg:pb-6">
         <div className="lg:col-span-2 min-w-0">
           <FeatureErrorBoundary feature="Nutrition Tracker">
-            <NutritionTracker userTier={userTier} onOpenProgress={onOpenProgress} />
+            <NutritionTracker
+              userTier={userTier}
+              onOpenProgress={onOpenProgress}
+              onOpenSettings={onOpenSettings}
+            />
           </FeatureErrorBoundary>
         </div>
 
