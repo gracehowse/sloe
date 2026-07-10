@@ -81,6 +81,7 @@ import { SPRING_DEFAULT, SPRING_SNAPPY } from "@/lib/motion";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useHouseholdBanner } from "@/hooks/useHouseholdBanner";
+import { usePlanV3WeekAnchor } from "@/hooks/usePlanV3WeekAnchor";
 import { usePlanWeekJournal } from "@/hooks/usePlanWeekJournal";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
@@ -1500,25 +1501,10 @@ export default function PlannerScreen() {
       ),
     [plan],
   );
-  const planV3WeekLabel = useMemo(() => {
-    const start = planStartDate ? new Date(planStartDate) : new Date();
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    const mon = (d: Date) => d.toLocaleDateString("en-GB", { month: "long" });
-    return start.getMonth() === end.getMonth()
-      ? `${start.getDate()}–${end.getDate()} ${mon(start)}`
-      : `${start.getDate()} ${mon(start)} – ${end.getDate()} ${mon(end)}`;
-  }, [planStartDate]);
-  // v3 week-strip dates — anchored to planStartDate (same source as the overline;
-  // planCalendarDateForIndex drifts from *today* once a day passes the start).
-  const planV3WeekDates = useMemo(() => {
-    const start = planStartDate ? new Date(planStartDate) : new Date();
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      return d;
-    });
-  }, [planStartDate]);
+  // ENG-1480 — shared week anchor: persisted start_date only labels the
+  // header while the plan HAS meals; empty plans get the prospective week.
+  const { weekLabel: planV3WeekLabel, weekDates: planV3WeekDates } =
+    usePlanV3WeekAnchor({ planHasRealMeals, planStartDate, startOffset });
   const planWeekJournal = usePlanWeekJournal(userId, planV3WeekDates);
 
   // ENG-1092 — render-scope PlannerTargets for the empty-slot "Aim ~X kcal"
