@@ -27,6 +27,7 @@ import { useAppData } from "../../context/AppDataContext.tsx";
 import { isMealPlanPlaceholderLikeTitle } from "../../lib/nutrition/portionMultiplier.ts";
 import { shouldShowRecipeRemovedBadge } from "../../lib/nutrition/recipeRemovedBadge.ts";
 import { isSameCalendarDay, planCalendarDateForIndex, shortWeekdayLabel } from "../../lib/planning/planDayLabel.ts";
+import { usePlanWeekEyebrow } from "./plan/usePlanWeekEyebrow.ts";
 import {
   buildPlanWeekSummarySubtitle,
   computePlanWeekSummaryScore,
@@ -237,6 +238,7 @@ export const MealPlanner = memo(function MealPlanner({
 }: MealPlannerProps) {
   const {
     mealPlan,
+    mealPlanStartDate,
     setMealPlan,
     generateMealPlan,
     generateShoppingListFromPlan,
@@ -421,39 +423,20 @@ export const MealPlanner = memo(function MealPlanner({
     );
   }, [planAimEmptyOn, calmMode, nutritionTargets, daySlots]);
 
-  // ENG-1020 (2026-06-13): the week-date moved off a page subtitle and onto
-  // the summary card as a "{start} – {end} · Meal plan" eyebrow, mirroring
-  // mobile `apps/mobile/app/(tabs)/planner.tsx` `summaryOverline`. Previously
-  // the page subtitle read "Week of {date} · hits targets N of M days", which
-  // duplicated the "Hits your targets N of M days" headline sitting directly
-  // below it in the summary card. Mobile resolved the same duplication on the
-  // 2026-06-10 e2e walk by dropping its page subheader and keeping only the
-  // card eyebrow; web now matches. Falls back to "This week" when the date
-  // math can't resolve (defensive — mirrors mobile).
-  const weekRangeEyebrow = useMemo(() => {
-    try {
-      const planLen = mealPlan?.length ?? 0;
-      // F2-D (2026-04-28): reflect the chosen start offset (Today / Tomorrow /
-      // Next week). The persisted `mealPlan[0].day` offset still contributes
-      // for backwards-compat with plans saved before the picker existed.
-      const first = planCalendarDateForIndex(0, startOffset);
-      if (planLen > 0 && typeof mealPlan?.[0]?.day === "number") {
-        first.setDate(first.getDate() + (mealPlan[0]!.day - 1));
-      }
-      const last = planCalendarDateForIndex(Math.max(planLen - 1, 0), startOffset);
-      if (planLen > 0 && typeof mealPlan?.[0]?.day === "number") {
-        last.setDate(last.getDate() + (mealPlan[0]!.day - 1));
-      }
-      const fmt = (d: Date) =>
-        d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      if (first.getMonth() === last.getMonth()) {
-        return `${fmt(first)} – ${last.getDate()} · Meal plan`;
-      }
-      return `${fmt(first)} – ${fmt(last)} · Meal plan`;
-    } catch {
-      return "This week";
-    }
-  }, [mealPlan, startOffset]);
+  // e2e walk 2026-06-10 (mirror of mobile planner): a freshly-created plan
+  // is all placeholder slots — don't score the empty week or advise on
+  // meals that don't exist; invite the user to Generate instead.
+  const planHasRealMeals = useMemo(
+    () => (mealPlan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
+    [mealPlan],
+  );
+  // ENG-1020 eyebrow, ENG-1491 anchor gate — see `usePlanWeekEyebrow`.
+  const weekRangeEyebrow = usePlanWeekEyebrow({
+    mealPlan,
+    mealPlanStartDate,
+    planHasRealMeals,
+    startOffset,
+  });
 
   /** F2-F (2026-04-28) — week summary card. Promotes the subtitle's
    *  "hits targets" line into a dedicated card with a worst-short-day
@@ -467,13 +450,6 @@ export const MealPlanner = memo(function MealPlanner({
     const date = planCalendarDateForIndex(summary.worstShort.dayIndex, startOffset);
     return shortWeekdayLabel(date);
   }, [summary, startOffset]);
-  // e2e walk 2026-06-10 (mirror of mobile planner): a freshly-created plan
-  // is all placeholder slots — don't score the empty week or advise on
-  // meals that don't exist; invite the user to Generate instead.
-  const planHasRealMeals = useMemo(
-    () => (mealPlan ?? []).some((dp) => dp.meals.some((m) => !m.isPlaceholder && !!m.recipeTitle)),
-    [mealPlan],
-  );
   const lockedMealCount = useMemo(
     () =>
       mealLockEnabled
@@ -502,6 +478,7 @@ export const MealPlanner = memo(function MealPlanner({
     planSource,
     allowBatchLeftovers,
     planHasRealMeals,
+    startOffset,
     generateMealPlan,
     generateShoppingListFromPlan,
     setIsGenerating,
@@ -1189,6 +1166,7 @@ export const MealPlanner = memo(function MealPlanner({
           (slotsList.length > 0 && slotsList.length < SLOTS.length ? slotsList : null);
         await generateMealPlan({
           days,
+          startOffset,
           ...(slotsOverride ? { slots: slotsOverride } : {}),
           ...(planSourceSelector ? { source: next.source } : {}),
           allowLeftovers: next.allowBatchLeftovers,
@@ -1219,6 +1197,7 @@ export const MealPlanner = memo(function MealPlanner({
           plan={plan}
           targetCalories={targetCalories}
           startOffset={startOffset}
+          planStartDate={mealPlanStartDate}
           household={householdBanner}
           onGenerate={requestRegenerate}
           onAdjust={() => setAdjustOpen(true)}

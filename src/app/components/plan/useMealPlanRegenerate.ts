@@ -27,6 +27,8 @@ export interface UseMealPlanRegenerateArgs {
   planSource: string;
   allowBatchLeftovers: boolean;
   planHasRealMeals: boolean;
+  /** ENG-1491 — Today/Tomorrow/Next-week chip; anchors a full regeneration. */
+  startOffset: number;
   generateMealPlan: (options?: Record<string, unknown>) => Promise<void>;
   generateShoppingListFromPlan: () => Promise<void>;
   setIsGenerating: (v: boolean) => void;
@@ -56,6 +58,10 @@ export function useMealPlanRegenerate(args: UseMealPlanRegenerateArgs) {
           mode === "clear" ? false : args.mealLockEnabled && args.lockedMealCount > 0;
         await args.generateMealPlan({
           days,
+          // ENG-1491 — a full regenerate re-anchors to the chip; a
+          // keepLocked partial regen preserves the existing anchor
+          // (generateMealPlan ignores startOffset on that branch).
+          startOffset: args.startOffset,
           ...(slotsOverride ? { slots: slotsOverride } : {}),
           ...(args.planSourceSelector ? { source: args.planSource } : {}),
           ...(keepLocked ? { keepLocked: true } : {}),

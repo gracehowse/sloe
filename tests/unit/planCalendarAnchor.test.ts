@@ -4,6 +4,7 @@ import {
   findLegacyPlanDayForCalendarDate,
   findPlanDayIdForCalendarDate,
   planCalendarDateForIndex,
+  resolvePlanWeekAnchor,
   startDateForOffset,
   stripMidnight,
 } from "../../src/lib/mealPlan/planCalendarAnchor";
@@ -165,5 +166,42 @@ describe("findLegacyPlanDayForCalendarDate", () => {
       new Date(2026, 3, 25),
     );
     expect(hit?.day).toBe(2);
+  });
+});
+
+describe("resolvePlanWeekAnchor — ENG-1480/ENG-1491 gated header anchor", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 24, 12, 0, 0)); // local Fri 24 Apr 2026
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("labels a plan WITH real meals by its persisted anchor (local midnight)", () => {
+    const d = resolvePlanWeekAnchor({
+      planHasRealMeals: true,
+      planStartDate: "2026-04-19", // a Sunday anchor in the past
+      startOffset: 0,
+    });
+    expect(d.getTime()).toBe(new Date(2026, 3, 19, 0, 0, 0, 0).getTime());
+  });
+
+  it("ignores a DEAD anchor when the plan is empty (prospective chip week)", () => {
+    const d = resolvePlanWeekAnchor({
+      planHasRealMeals: false,
+      planStartDate: "2026-04-19",
+      startOffset: 7,
+    });
+    expect(d.getTime()).toBe(new Date(2026, 4, 1, 0, 0, 0, 0).getTime()); // today + 7
+  });
+
+  it("falls back to the chip week when a real plan predates the anchor column", () => {
+    const d = resolvePlanWeekAnchor({
+      planHasRealMeals: true,
+      planStartDate: null,
+      startOffset: 1,
+    });
+    expect(d.getTime()).toBe(new Date(2026, 3, 25, 0, 0, 0, 0).getTime()); // tomorrow
   });
 });
