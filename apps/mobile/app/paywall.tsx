@@ -786,7 +786,9 @@ export default function PaywallScreen() {
   // 2026-05-12 (premium-bar audit #1.3): when the trial applies,
   // surface the trial → first-charge story directly in the subtitle
   // so the header reads as a complete pitch (Calm/Cal AI parity).
-  const headerSubtitle = personalisedPlan
+  // ENG-1381 — degraded state defers the price to the App Store; its subtitle must not promise a shown price (non-degraded branches unchanged).
+  const headerSubtitle = fallbackWhenUnavailable ? "Cancel anytime. Your exact price confirms in the App Store."
+    : personalisedPlan
     ? personalisedPlan.heroSubtitle
     : trialApplies
       ? "Full Pro free for a week. Cancel anytime in iOS Settings."
@@ -1114,13 +1116,12 @@ export default function PaywallScreen() {
         {showPricedBlocks && (effHasAnnual || effHasMonthly) ? (() => {
           const annualStr = proAnnual?.product.priceString ?? FALLBACK_PRICES.proAnnual;
           const monthlyStr = proMonthly?.product.priceString ?? FALLBACK_PRICES.proMonthly;
-          // Savings badge: prefer the live resolved-price computation;
-          // fall back to the PRICING_TIERS-derived badge when the
-          // resolved strings can't be parsed.
+          // Savings badge: prefer the live resolved-price computation; fall back to the PRICING_TIERS-derived badge when the resolved strings can't be parsed.
           const headlineTier = PRICING_TIERS.find((t) => Boolean(t.annualPrice));
           const fallbackBadge = headlineTier ? computeAnnualSavingsBadge(headlineTier) : null;
-          const savingsBadge = computeSavingsBadgeFromStrings(annualStr, monthlyStr) ?? fallbackBadge;
-          const annualPerMonthLine = computeAnnualPerMonthLine(annualStr);
+          // ENG-1381 — degraded prices are indicative FALLBACK_PRICES; a math-backed "Save N%" / per-month line is false precision, so suppress both.
+          const savingsBadge = fallbackWhenUnavailable ? null : (computeSavingsBadgeFromStrings(annualStr, monthlyStr) ?? fallbackBadge);
+          const annualPerMonthLine = fallbackWhenUnavailable ? null : computeAnnualPerMonthLine(annualStr);
           return (
             <PaywallPlanSelector
               billing={billing}

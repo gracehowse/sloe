@@ -81,6 +81,39 @@ describe("ENG-1381 — paywall fallback when RC unavailable", () => {
     expect(PAYWALL).not.toContain("amount shown is indicative");
   });
 
+  it("the header subtitle defers the price to the App Store in fallback mode (no 'Price in your currency')", () => {
+    // ENG-1381: the degraded subtitle must NOT promise a shown price. It takes
+    // precedence over every other subtitle branch via a leading
+    // `fallbackWhenUnavailable ?` guard, and reads the App-Store-deferred line —
+    // consistent with the deferred-price disclosure above.
+    expect(PAYWALL).toMatch(/const headerSubtitle = fallbackWhenUnavailable \?/);
+    expect(PAYWALL).toContain("Your exact price confirms in the App Store.");
+    // The old "Price in your currency" line must NOT be reachable in the degraded
+    // state — it survives only as the non-degraded generic fallback branch, which
+    // now sits AFTER the `fallbackWhenUnavailable ?` guard (never the degraded value).
+    expect(PAYWALL).toMatch(
+      /const headerSubtitle = fallbackWhenUnavailable \? "Cancel anytime\. Your exact price confirms in the App Store\."/,
+    );
+  });
+
+  it("suppresses the computed savings badge + per-month line in fallback mode (no false-precision claim)", () => {
+    // ENG-1381: a math-backed "Save N%" / per-month breakdown derived from the
+    // indicative FALLBACK_PRICES is a stronger false claim than the price itself.
+    // Both derived props resolve to null when `fallbackWhenUnavailable`; the plan
+    // rows + fallback price themselves are kept (the disclosure clarifies the exact
+    // price confirms in the App Store).
+    expect(PAYWALL).toMatch(
+      /const savingsBadge = fallbackWhenUnavailable \? null : \(computeSavingsBadgeFromStrings\(annualStr, monthlyStr\) \?\? fallbackBadge\)/,
+    );
+    expect(PAYWALL).toMatch(
+      /const annualPerMonthLine = fallbackWhenUnavailable \? null : computeAnnualPerMonthLine\(annualStr\)/,
+    );
+    // The suppressed values are still passed as the props (as null) — the plan
+    // selector renders the rows, just without the derived numbers.
+    expect(PAYWALL).toMatch(/savingsBadge=\{savingsBadge\}/);
+    expect(PAYWALL).toMatch(/annualPerMonthLine=\{annualPerMonthLine\}/);
+  });
+
   it("the force-degraded repro affordance is __DEV__-only (never in a release build)", () => {
     expect(PAYWALL).toMatch(/forceDegraded\s*=\s*__DEV__\s*&&\s*params\.forceDegraded\s*===\s*"1"/);
     expect(PAYWALL).toMatch(/setPackages\(forceDegraded \? \[\] : pkgs\)/);

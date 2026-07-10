@@ -53,6 +53,23 @@ amount.
   in-app anyway, and still requires a storefront/currency gate the fallback lacks.
   Rejected.
 
+## Resolved (2026-07-10, ENG-1381)
+
+- **Subtitle honesty.** The header sub-headline no longer promises a shown price
+  in the degraded state. The `fallbackWhenUnavailable` branch now reads
+  *"Cancel anytime. Your exact price confirms in the App Store."* — consistent
+  with the deferred-price disclosure above — instead of the old
+  *"Price in your currency, taxes included."* (which is dishonest when the exact
+  price is deferred). Every non-degraded subtitle branch is unchanged.
+- **Plan-card false-precision claims.** The plan rows and the fallback price
+  themselves are kept (the disclosure clarifies the exact amount confirms on the
+  App Store), but the two *derived* numbers are now suppressed when
+  `fallbackWhenUnavailable`: the computed **"Save N%" savings badge** and the
+  **per-month breakdown line** both resolve to `null`. A math-backed "Save 37%"
+  drawn from an indicative `FALLBACK_PRICES` figure is a stronger, harder-to-
+  caveat false claim than the indicative price itself, so both are removed in the
+  degraded state.
+
 ## Open (before the flag is enabled)
 
 - **Degraded CTA destination.** `Open the App Store` deep-links to Apple's
@@ -61,6 +78,3 @@ amount.
   corrected from the overpromising "Open App Store to subscribe", but whether the
   degraded CTA should instead **retry offerings** is a monetisation + integration
   call to resolve before `paywall_fallback_when_unavailable` is ramped.
-- **Plan-card prices + savings badge in the degraded state** (still drawn from
-  `FALLBACK_PRICES`) — a lesser display-price concern than the disclosure; part of
-  the monetisation + design review before enable.
