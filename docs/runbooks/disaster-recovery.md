@@ -2,7 +2,7 @@
 
 **Owner:** Grace
 **Status:** Blocker 2 of [2026-05-14 production-readiness audit](../decisions/2026-05-14-production-readiness-audit-verdict.md) — Phase 1 deadline **2026-06-01**
-**Last updated:** 2026-06-01 — backup posture verified via Supabase MCP: **production org is on the `free` plan → no PITR, RPO 24h** (see § Backup posture). Remaining blocker is the plan decision, captured in [`docs/decisions/2026-06-01-pitr-posture.md`](../decisions/2026-06-01-pitr-posture.md).
+**Last updated:** 2026-07-10 (ENG-1401) — nightly storage mirror **shipped** (`.github/workflows/storage-mirror.yml`, pending 5 repo secrets — see § Storage mirror). Stale bucket names corrected: the real buckets are `recipe-images` + `food-evidence` (the previously-named `recipe-photos`/`meal-photos` never existed in code). Live re-verification 2026-07-10: org still `free` plan → no PITR **and no managed daily backups**; `recipe-images` = 117 objects / ~50 MB. Plan decision still pending in [`docs/decisions/2026-06-01-pitr-posture.md`](../decisions/2026-06-01-pitr-posture.md) (ENG-1402).
 **Supersedes:** the implicit posture of "Supabase has backups, we'll figure it out" — that was acceptable at N=1 TestFlight, not at Phase 1 public traffic.
 
 The 2026-05-14 production-readiness audit found:
@@ -50,7 +50,7 @@ What this runbook does **not** cover:
 
 **Notes on the Postgres rows.** Supabase free-tier projects get **daily logical backups with 7-day retention** as a vendor-managed default. PITR (point-in-time recovery) is a paid add-on that buys you continuous WAL replay back to any second within the retention window. Without PITR, your RPO is **24 hours** — anything created today between the last nightly backup and the failure event is gone. With PITR, your RPO is **≤5 minutes** (WAL lag plus archive cadence). The audit verdict (2026-05-14) flagged this as the load-bearing posture decision before Phase 1 public traffic — see § Pre-Phase-1 checklist.
 
-**Notes on Storage.** Supabase Storage does NOT have an opt-in object-versioning or cross-region replication setting today. If a user (or a bug) deletes an object, the bytes are gone. The Postgres `storage.objects` metadata row is captured in nightly Postgres backups, but the bytes are not. **Mitigation candidate — pre-Phase-1 decision:** for user-facing critical buckets (`recipe-photos`, `meal-photos`), set up a one-way mirror to an external S3-compatible store (Backblaze B2 or Cloudflare R2) via a nightly cron. Cost estimate: ~£2/month for current volume. Tracked as follow-up in § Pre-Phase-1 checklist row 6.
+**Notes on Storage.** Supabase Storage does NOT have an opt-in object-versioning or cross-region replication setting today. If a user (or a bug) deletes an object, the bytes are gone. The Postgres `storage.objects` metadata row is captured in Postgres dumps, but the bytes are not. **Mitigation (ENG-1401, shipped 2026-07-10):** a nightly one-way mirror of the two real buckets (`recipe-images`, `food-evidence` — earlier drafts of this runbook named `recipe-photos`/`meal-photos`, which never existed in code) to a Cloudflare R2 bucket, via `.github/workflows/storage-mirror.yml`. Cost: pennies/month at the current ~50 MB. See § Storage mirror below for restore-from-mirror and the secrets it needs before its first green run.
 
 ---
 
@@ -172,13 +172,25 @@ Each scenario lists: trigger, blast radius, response, comms. Procedures use exac
 2. If a specific user reports it: ask them to re-upload. Apologise.
 3. Open a Linear P0 to triage — every storage object lost without mirror is real user-data lost.
 
-**Response — once mirror is set up (see follow-up):**
+**Response — with the mirror (ENG-1401, once its secrets are set):**
 
-1. Identify affected object keys via `storage.objects` diff vs the mirror manifest.
-2. For each key: download from mirror, re-upload to Supabase via `supabase storage cp`.
-3. No comms needed if mirror RPO < user retry window.
+1. Identify affected object keys: `storage.objects` rows (or the app's broken-image reports) vs the mirror listing — `rclone lsjson dst:sloe-storage-mirror/recipe-images`.
+2. Restore the bytes — either bulk (`rclone copy dst:sloe-storage-mirror/recipe-images src:recipe-images` with the same env-configured remotes the workflow uses) or per-key via download + `supabase storage cp`.
+3. No comms needed if the nightly mirror RPO (< 24 h) beats the user retry window.
 
-**Decision pending Phase 1:** set up the nightly S3/B2 mirror or accept the per-object-best-effort posture. Strongly recommend the mirror — ~£2/month is cheap insurance for user-uploaded photos.
+The mirror is **additive** (`rclone copy`, never `sync`): production deletions do NOT propagate, so the mirror can always recover a bad delete. Objects deleted in prod remain in R2 until manually pruned — review before pruning, that lag IS the recovery window.
+
+### Storage mirror (ENG-1401)
+
+`.github/workflows/storage-mirror.yml`, nightly 03:30 UTC + manual `workflow_dispatch`. Copies `recipe-images` + `food-evidence` to the R2 bucket `sloe-storage-mirror`, verifies with `rclone check --one-way`, writes per-bucket counts to the run summary, and files/updates a deduped `scheduled-cron-failure` issue on any failure (ENG-1400 pattern).
+
+**Before its first green run, Grace must (one sitting, ~10 min):**
+1. Supabase Dashboard → Project Settings → Storage → S3 access keys → create a key → repo secrets `SUPABASE_S3_ACCESS_KEY_ID` + `SUPABASE_S3_SECRET_ACCESS_KEY`.
+2. Cloudflare → R2 → create bucket `sloe-storage-mirror` (no public access).
+3. Cloudflare → R2 → Manage API Tokens → token scoped to that bucket (Object Read & Write) → repo secrets `R2_ACCESS_KEY_ID` + `R2_SECRET_ACCESS_KEY`, plus `R2_ACCOUNT_ID` from the R2 right rail.
+4. Trigger the workflow manually (Actions → Storage mirror → Run workflow) and confirm the run summary shows source = mirror counts for both buckets. Record the first verified run in the rehearsal log below.
+
+Until then the workflow fails loudly each night with a missing-secrets message and one deduped alert issue — by design (fail closed; a silent no-op was the ENG-1400 failure mode).
 
 ### S4 — Wrong migration applied
 
@@ -359,7 +371,7 @@ These items must be closed by **2026-06-01** (per Blocker 2 deadline in the [aud
 - [ ] **Rehearse one PITR restore to a scratch branch.** ⛔ **BLOCKED on Free plan** — both PITR restore and `supabase branches create` (the rehearsal protocol) require Pro+. Cannot rehearse as written until the plan decision lands ([`docs/decisions/2026-06-01-pitr-posture.md`](../decisions/2026-06-01-pitr-posture.md)). On Free, the only rehearsable path is "restore most-recent daily backup → new project," which still has never been timed — do that as the interim rehearsal.
 - [ ] **Record rehearsal in the log table above.** First row replaces the placeholder.
 - [ ] **Decide PITR upgrade vs accept 24h RPO; document in `docs/decisions/`.** Open `docs/decisions/YYYY-MM-DD-pitr-posture.md` capturing the decision + the cost trade-off. Reference back here.
-- [ ] **Set up storage bucket mirror (or document accepting the gap).** Spike a Backblaze B2 or Cloudflare R2 mirror cron for `recipe-photos` and `meal-photos`. Cost: ~£2/month at current volume. If skipping, capture the decision in `docs/decisions/YYYY-MM-DD-storage-mirror.md`.
+- [ ] **Activate the storage mirror (workflow shipped — ENG-1401).** `.github/workflows/storage-mirror.yml` mirrors `recipe-images` + `food-evidence` to R2 nightly, but needs the 5 repo secrets + the `sloe-storage-mirror` R2 bucket created first — exact steps in § Storage mirror. Check this box after the first manually-triggered green run with matching counts.
 - [x] **Build a `dr_full_outage_banner` component.** ✅ 2026-06-02. Built on web (`src/app/components/ops/DrOutageBanner.tsx`, mounted in `app/layout.tsx`) and mobile (`apps/mobile/components/ops/DrOutageBanner.tsx`, mounted in `apps/mobile/app/_layout.tsx`). Default-OFF kill switch on flag `dr-full-outage-banner`; renders a top-of-app destructive-token banner whose copy comes from the flag's PostHog payload (`{ title?, body? }` or a plain string), with a safe default fallback — so incident copy changes without a deploy. New `getFeatureFlagPayload` helper added to both analytics modules. Tested: `tests/unit/drOutageBanner.test.tsx` (web) + `apps/mobile/tests/unit/drOutageBanner.test.tsx` (mobile). To activate during an incident: turn the flag ON in PostHog (optionally set the payload copy).
 - [ ] **Keep a green TestFlight build always promoted.** Configure the EAS Update workflow so that whenever a new build is uploaded, the previous build stays at "Available" status for at least 14 days. Currently the previous build is sometimes manually expired — formalise the policy.
 - [x] **Quarterly calendar reminder.** ✅ 2026-06-02. Recurring event "Suppr DR rehearsal (quarterly)" created on Grace's primary calendar — first run 2026-07-06 10:00 (America/Panama), `RRULE:FREQ=MONTHLY;INTERVAL=3`, with 1-day + 30-min reminders. Description links this runbook + the PITR-posture decision (first run gated on the plan decision, since rehearsal branches need a paid plan).
