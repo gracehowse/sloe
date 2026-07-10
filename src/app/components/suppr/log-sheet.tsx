@@ -56,7 +56,6 @@ import {
   BookmarkCheck,
   Clock,
   History,
-  Plus,
   ScanBarcode,
   Search,
   X,
@@ -66,8 +65,8 @@ import { Drawer as DrawerPrimitive } from "vaul";
 
 import { cn } from "../ui/utils";
 import { SupprButton } from "./suppr-button";
-import { FoodFallbackThumb } from "./food-fallback-thumb";
 import { type SourceDotSource } from "../ui/source-dot";
+import { BrowseRow, LibraryRow } from "./log-sheet-rows.tsx";
 import { LoggedConfirmation } from "./log-sheet-confirmation";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { TrustChip } from "../ui/trust-chip";
@@ -621,6 +620,7 @@ export function LogSheet({
               showBarcodeFreePromise={showBarcodeFreePromise}
               describe={describe}
               initialQuery={initialQuery}
+              slotName={slot?.current ?? null}
             />
           )}
         </DrawerPrimitive.Content>
@@ -653,6 +653,7 @@ function DefaultComposition({
   showBarcodeFreePromise,
   describe,
   initialQuery,
+  slotName,
 }: {
   open: boolean;
   search: LogSheetProps["search"];
@@ -672,6 +673,8 @@ function DefaultComposition({
   showBarcodeFreePromise?: boolean;
   describe?: LogSheetProps["describe"];
   initialQuery?: string;
+  /** Active meal slot — feeds the food-thumb slot tier (ENG-1448). */
+  slotName?: string | null;
 }) {
   const [describeReviewActive, setDescribeReviewActive] = React.useState(false);
   const [describeSeedText, setDescribeSeedText] = React.useState<string | null>(null);
@@ -995,16 +998,16 @@ function DefaultComposition({
           {/* Browse content */}
           <div className="flex-1 overflow-y-auto px-3 pb-2 pt-3">
             {showGoTos && activeTab === "gotos" ? (
-              <GoToList goTos={goTos!} embedded />
+              <GoToList goTos={goTos!} embedded slotName={slotName} />
             ) : null}
             {showRecent && activeTab === "recent" ? (
-              <RecentList recent={recent!} />
+              <RecentList recent={recent!} slotName={slotName} />
             ) : null}
             {showLibrary && activeTab === "library" ? (
-              <LibraryList library={library!} />
+              <LibraryList library={library!} slotName={slotName} />
             ) : null}
             {showSaved && activeTab === "saved" ? (
-              <SavedList saved={saved!} />
+              <SavedList saved={saved!} slotName={slotName} />
             ) : null}
             {!showGoTos && !showRecent && !showSaved && !showLibrary ? (
               <p className="py-12 text-center text-[11px] text-muted-foreground">
@@ -1032,9 +1035,11 @@ function DefaultComposition({
 function GoToList({
   goTos,
   embedded = false,
+  slotName,
 }: {
   goTos: NonNullable<LogSheetProps["goTos"]>;
   embedded?: boolean;
+  slotName?: string | null;
 }) {
   return (
     <div className={embedded ? undefined : "px-3 pt-3"} data-testid="log-sheet-go-tos">
@@ -1050,6 +1055,7 @@ function GoToList({
           kcal={entry.kcal}
           source={entry.source}
           onPick={() => goTos.onPick(entry)}
+          slotName={slotName}
         />
       ))}
     </div>
@@ -1108,7 +1114,7 @@ function LogSheetDailyProgress({
 
 /* -------------------------- Recent list -------------------------- */
 
-function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }) {
+function RecentList({ recent, slotName }: { recent: NonNullable<LogSheetProps["recent"]>; slotName?: string | null }) {
   const { entries, onPick, state } = recent;
   const today = entries.filter((e) => e.bucket === "today");
   const week = entries.filter((e) => e.bucket === "week");
@@ -1143,6 +1149,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
               kcal={e.kcal}
               source={e.source}
               onPick={() => onPick(e)}
+              slotName={slotName}
             />
           ))}
         </section>
@@ -1159,6 +1166,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
               kcal={e.kcal}
               source={e.source}
               onPick={() => onPick(e)}
+              slotName={slotName}
             />
           ))}
         </section>
@@ -1172,7 +1180,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
 
 /* -------------------------- Saved list -------------------------- */
 
-function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
+function SavedList({ saved, slotName }: { saved: NonNullable<LogSheetProps["saved"]>; slotName?: string | null }) {
   const { meals, onPick, onCreateSavedMeal, state } = saved;
 
   if (state?.loading) return <SkeletonList />;
@@ -1207,6 +1215,7 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
           kcal={m.kcal}
           source={m.source}
           onPick={() => onPick(m)}
+          slotName={slotName}
         />
       ))}
       {onCreateSavedMeal ? (
@@ -1224,7 +1233,7 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
 
 /* -------------------------- Library list -------------------------- */
 
-function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"]> }) {
+function LibraryList({ library, slotName }: { library: NonNullable<LogSheetProps["library"]>; slotName?: string | null }) {
   const { recipes, onPick, onBrowseRecipes, state } = library;
 
   if (state?.loading) return <SkeletonList />;
@@ -1257,86 +1266,8 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
   return (
     <div>
       {recipes.map((r) => (
-        <LibraryRow key={r.id} recipe={r} onPick={() => onPick(r)} />
+        <LibraryRow key={r.id} recipe={r} onPick={() => onPick(r)} slotName={slotName} />
       ))}
-    </div>
-  );
-}
-
-/* -------------------------- Library row -------------------------- */
-
-function LibraryRow({
-  recipe,
-  onPick,
-}: {
-  recipe: LogSheetLibraryRecipe;
-  onPick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      aria-label={`Log ${recipe.title}`}
-      className={cn(
-        "flex w-full items-center rounded-md py-2 px-1 text-left",
-        "hover:bg-muted/50 active:bg-muted transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-      )}
-    >
-      <FoodFallbackThumb title={recipe.title} imageUrl={recipe.thumbnail} />
-      <div className="ml-2 flex-1 min-w-0">
-        <p className="truncate text-[13px] text-foreground">{recipe.title}</p>
-        <div className="mt-0.5 flex items-center gap-1.5">
-          <span className="text-[11px] tabular-nums text-muted-foreground">
-            {recipe.kcalPerPortion} kcal
-          </span>
-          {recipe.mealTag ? (
-            <span className="rounded border border-border bg-muted px-1.5 py-px text-[10px] font-semibold text-muted-foreground">
-              {recipe.mealTag}
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-/* -------------------------- Browse row -------------------------- */
-
-function BrowseRow({
-  title,
-  kcal,
-  source,
-  onPick,
-  subtitle,
-}: {
-  title: string;
-  kcal: number;
-  source: SourceDotSource;
-  onPick: () => void;
-  subtitle?: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 border-b border-border py-3 last:border-0">
-      <FoodFallbackThumb title={title} className="size-11 shrink-0 rounded-xl border border-border" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] leading-tight text-foreground">{title}</p>
-        <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
-          {subtitle ?? `${kcal} kcal`}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onPick}
-        aria-label={`Log ${title}`}
-        className={cn(
-          "grid size-8 shrink-0 place-items-center rounded-full border border-border bg-card text-macro-carbs",
-          "hover:bg-card/80 transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        )}
-      >
-        <Plus width={16} height={16} strokeWidth={2.5} aria-hidden />
-      </button>
     </div>
   );
 }

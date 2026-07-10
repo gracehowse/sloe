@@ -19,17 +19,16 @@ import {
   Clock,
   Copy,
   History,
-  Plus,
   ScanBarcode,
   Search,
   X,
 } from "lucide-react-native";
-import { FoodFallbackThumb } from "@/components/imagery/FoodFallbackThumb";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { BrowseRow, LibraryRow } from "./LogSheetRows";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
-import { Accent, Elevation, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { Elevation, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -619,6 +618,7 @@ function LogSheetImpl({
                 showBarcodeFreePromise={showBarcodeFreePromise}
                 describe={describe}
                 initialQuery={initialQuery}
+                slotName={slot?.current ?? null}
               />
             )}
           </View>
@@ -654,6 +654,7 @@ function DefaultComposition({
   showBarcodeFreePromise,
   describe,
   initialQuery,
+  slotName,
 }: {
   visible: boolean;
   search: LogSheetProps["search"];
@@ -674,6 +675,8 @@ function DefaultComposition({
   describe?: LogSheetProps["describe"];
   /** ENG-1450 — pre-fills the inline search on open (onboarding deep-link). */
   initialQuery?: LogSheetProps["initialQuery"];
+  /** Active meal slot — feeds the food-thumb slot tier (ENG-1448). */
+  slotName?: string | null;
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -915,6 +918,7 @@ function DefaultComposition({
             onBrowseTabChange={onBrowseTabChange}
             macroTargets={search?.macroTargets}
             macroConsumed={search?.macroConsumed}
+            slotName={slotName}
           />
         </>
       )}
@@ -929,9 +933,11 @@ function DefaultComposition({
 function GoToList({
   goTos,
   embedded = false,
+  slotName,
 }: {
   goTos: NonNullable<LogSheetProps["goTos"]>;
   embedded?: boolean;
+  slotName?: string | null;
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -961,6 +967,7 @@ function GoToList({
           kcal={entry.kcal}
           source={entry.source}
           onPick={() => goTos.onPick(entry)}
+          slotName={slotName}
         />
       ))}
     </View>
@@ -1013,6 +1020,7 @@ function BrowseAndFooter({
   onBrowseTabChange,
   macroTargets,
   macroConsumed,
+  slotName,
 }: {
   showBrowseToggle: boolean;
   visibleTabs: BrowseTab[];
@@ -1028,6 +1036,8 @@ function BrowseAndFooter({
   onBrowseTabChange: (tab: BrowseTab) => void;
   macroTargets?: MacroTargets;
   macroConsumed?: MacroConsumed;
+  /** Active meal slot — feeds the food-thumb slot tier (ENG-1448). */
+  slotName?: string | null;
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -1119,17 +1129,17 @@ function BrowseAndFooter({
       <View style={{ flex: 1 }}>
         {showGoTos && activeTab === "gotos" && goTos ? (
           <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xxl + 72 }}>
-            <GoToList goTos={goTos} embedded />
+            <GoToList goTos={goTos} embedded slotName={slotName} />
           </ScrollView>
         ) : null}
         {showRecent && activeTab === "recent" ? (
-          <RecentList recent={recent!} />
+          <RecentList recent={recent!} slotName={slotName} />
         ) : null}
         {showLibrary && activeTab === "library" ? (
-          <LibraryList library={library!} />
+          <LibraryList library={library!} slotName={slotName} />
         ) : null}
         {showSaved && activeTab === "saved" ? (
-          <SavedList saved={saved!} />
+          <SavedList saved={saved!} slotName={slotName} />
         ) : null}
         {!showGoTos && !showRecent && !showSaved && !showLibrary ? (
           <View style={{ flex: 1, padding: Spacing.lg, alignItems: "center", justifyContent: "center" }}>
@@ -1215,7 +1225,7 @@ function LogSheetDailyProgress({
 
 /* -------------------------- Recent list -------------------------- */
 
-function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }) {
+function RecentList({ recent, slotName }: { recent: NonNullable<LogSheetProps["recent"]>; slotName?: string | null }) {
   const colors = useThemeColors();
   const accent = useAccent();
   const { entries, onPick, state } = recent;
@@ -1248,7 +1258,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
             {"Today's recents"}
           </Text>
           {today.map((e) => (
-            <BrowseRow key={e.id} title={e.title} kcal={e.kcal} source={e.source} onPick={() => onPick(e)} />
+            <BrowseRow key={e.id} title={e.title} kcal={e.kcal} source={e.source} onPick={() => onPick(e)} slotName={slotName} />
           ))}
         </View>
       ) : null}
@@ -1258,7 +1268,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
             Earlier this week
           </Text>
           {week.map((e) => (
-            <BrowseRow key={e.id} title={e.title} kcal={e.kcal} source={e.source} onPick={() => onPick(e)} />
+            <BrowseRow key={e.id} title={e.title} kcal={e.kcal} source={e.source} onPick={() => onPick(e)} slotName={slotName} />
           ))}
         </View>
       ) : null}
@@ -1271,7 +1281,7 @@ function RecentList({ recent }: { recent: NonNullable<LogSheetProps["recent"]> }
 
 /* -------------------------- Saved list -------------------------- */
 
-function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
+function SavedList({ saved, slotName }: { saved: NonNullable<LogSheetProps["saved"]>; slotName?: string | null }) {
   const colors = useThemeColors();
   const accent = useAccent();
   const { meals, onPick, onRequestPortion, onCreateSavedMeal, state } = saved;
@@ -1315,6 +1325,7 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
           // ENG-783 — flag on: tap opens the portion editor; flag off:
           // instant one-tap log (onPick).
           onPick={() => (onRequestPortion ?? onPick)(m)}
+          slotName={slotName}
           accessibilityLabel={
             onRequestPortion ? `Edit portion for ${m.title}` : undefined
           }
@@ -1336,7 +1347,7 @@ function SavedList({ saved }: { saved: NonNullable<LogSheetProps["saved"]> }) {
 
 /* -------------------------- Library list -------------------------- */
 
-function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"]> }) {
+function LibraryList({ library, slotName }: { library: NonNullable<LogSheetProps["library"]>; slotName?: string | null }) {
   const colors = useThemeColors();
   const accent = useAccent();
   // The empty-state "Browse recipes" CTA is now a ghost SupprButton (it owns
@@ -1379,128 +1390,9 @@ function LibraryList({ library }: { library: NonNullable<LogSheetProps["library"
   return (
     <ScrollView contentContainerStyle={{ padding: Spacing.md, paddingBottom: Spacing.xxl }}>
       {recipes.map((r) => (
-        <LibraryRow key={r.id} recipe={r} onPick={() => onPick(r)} />
+        <LibraryRow key={r.id} recipe={r} onPick={() => onPick(r)} slotName={slotName} />
       ))}
     </ScrollView>
-  );
-}
-
-/* -------------------------- Library row -------------------------- */
-
-function LibraryRow({
-  recipe,
-  onPick,
-}: {
-  recipe: LogSheetLibraryRecipe;
-  onPick: () => void;
-}) {
-  const colors = useThemeColors();
-  const accent = useAccent();
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={`Log ${recipe.title}`}
-      haptic="confirm"
-      onPress={onPick}
-      style={styles.resultRow}
-    >
-      <FoodFallbackThumb
-        title={recipe.title}
-        imageUrl={recipe.thumbnail}
-        style={[styles.resultThumb, { backgroundColor: colors.inputBg }]}
-      />
-      <View style={{ flex: 1, marginLeft: Spacing.sm, minWidth: 0 }}>
-        <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
-          {recipe.title}
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-          <Text
-            style={[
-              Type.caption,
-              { color: colors.textSecondary, fontVariant: ["tabular-nums"] },
-            ]}
-          >
-            {recipe.kcalPerPortion} kcal
-          </Text>
-          {recipe.mealTag ? (
-            <View
-              style={[
-                styles.libraryMealTag,
-                { backgroundColor: colors.inputBg, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.libraryMealTagText, { color: colors.textSecondary }]}>
-                {recipe.mealTag}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
-    </PressableScale>
-  );
-}
-
-/* -------------------------- Browse row -------------------------- */
-
-function BrowseRow({
-  title,
-  kcal,
-  source,
-  onPick,
-  accessibilityLabel,
-  subtitle,
-}: {
-  title: string;
-  kcal: number;
-  source: SourceDotSource;
-  onPick: () => void;
-  /** ENG-783 — optional override (e.g. "Edit portion for X" when the
-   *  tap opens the portion editor rather than logging instantly). */
-  accessibilityLabel?: string;
-  /** Optional portion line (e.g. "100 g · 57 kcal") — Figma 336:2. */
-  subtitle?: string;
-}) {
-  const colors = useThemeColors();
-  return (
-    <View
-      style={[styles.resultRow, { borderBottomColor: colors.border }]}
-      accessibilityRole="none"
-    >
-      <FoodFallbackThumb
-        title={title}
-        style={[styles.resultThumb, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth }]}
-      />
-      <View style={{ flex: 1, marginLeft: Spacing.sm, minWidth: 0 }}>
-        <Text style={[Type.body, { color: colors.text, fontSize: 15 }]} numberOfLines={1}>
-          {title}
-        </Text>
-        <Text
-          style={[
-            Type.caption,
-            {
-              color: colors.textTertiary,
-              marginTop: 2,
-              fontVariant: ["tabular-nums"],
-            },
-          ]}
-          numberOfLines={1}
-        >
-          {subtitle ?? `${kcal} kcal`}
-        </Text>
-      </View>
-      <PressableScale
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel ?? `Log ${title}`}
-        haptic="confirm"
-        onPress={onPick}
-        style={[
-          styles.addCircleBtn,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
-      >
-        <Plus size={16} color={Accent.carbs} strokeWidth={2.5} />
-      </PressableScale>
-    </View>
   );
 }
 
@@ -1786,14 +1678,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.lg,
   },
-  addCircleBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.full,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   copyYesterdayRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1843,28 +1727,6 @@ const styles = StyleSheet.create({
   // primitive owns the pill radius + padding + plum label).
   libraryEmptyCta: {
     marginTop: Spacing.md,
-  },
-  libraryMealTag: {
-    marginLeft: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  libraryMealTagText: {
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  resultRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  resultThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.xl,
   },
   inputRow: {
     flexDirection: "row",

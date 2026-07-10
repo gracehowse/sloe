@@ -141,7 +141,7 @@
     "apps/mobile/components/today/CompleteDayV3Section.tsx": 1,
     "apps/mobile/components/today/FirstLogAcknowledgment.tsx": 1,
     "apps/mobile/components/today/FullNutrientPanelSheet.tsx": 1,
-    "apps/mobile/components/today/LogSheet.tsx": 5,
+    "apps/mobile/components/today/LogSheet.tsx": 3,
     "apps/mobile/components/today/NorthStarBlock.tsx": 3,
     "apps/mobile/components/today/ProMethodBadge.tsx": 2,
     "apps/mobile/components/today/TodayActivityBonusCard.tsx": 1,
