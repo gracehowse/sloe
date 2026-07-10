@@ -84,7 +84,7 @@ handling is generic across signup/magic-link/recovery `code`s; only the
 ### 1. GoTrue config (founder action, not code)
 
 - `supabase/config.toml` → `[auth.email] enable_confirmations = true`.
-  **Not flipped in this change** — per CLAUDE.md, `supabase config push`
+  **Not flipped in this change** — per CLAUDE.md, `supabase config push` (**done 2026-07-10** — pushed with the live Vercel-preview redirect entries unioned in, plus the Sloe-rebranded auth email templates that were committed-but-never-pushed)
   (the mechanism for this file, distinct from SQL migrations) is Grace's
   call, staged here for her to run once the mobile piece below is ready.
 - `[auth]` `additional_redirect_urls` needs the mobile deep-link URL added
