@@ -51,6 +51,15 @@ Every row below must be `Wired` before App Store submission. `Pending Grace` is 
 - **What to do when it fires:** Sentry will drop events once the cap is hit. Either bump the plan tier (preferred when traffic is real) or apply an inbound filter (when the cap is being burned by a noise source — bot crawlers, dev-tool extension noise). Never just let it run silent.
 - **Status:** Not yet wired.
 
+### Alarm 2b — PostHog: daily event volume anomaly
+
+- **Vendor:** PostHog
+- **Trigger condition:** The completed day's total ingested event count leaves the **1 – 10,000** band (baseline ~50 events/day). Lower bound 1 catches ingestion-dead days (interim coverage for Alarm 7 at day granularity); upper bound 10k catches a volume spike (runaway client loop, capture misconfig, or abuse) long before it threatens the monthly cap Alarm 3 watches.
+- **Route:** Email to `gracehowse@outlook.com` (subscribed on the alert).
+- **Wired via:** PostHog MCP (2026-07-10, ENG-1471) — alert **"Daily event volume anomaly (0 = ingestion dead / >10k = spike) — ENG-1471"** on insight [`yvX1yk41`](https://us.posthog.com/project/389168/insights/yvX1yk41), daily check on the completed day. ENABLED.
+- **What to do when it fires:** Zero-bound → treat as Alarm 7 (ingestion outage — check the heartbeat workflow's runs first to split emitter-vs-pipeline). Upper-bound → PostHog → Activity → break the day down by event name + `$lib` to find the runaway source; if it's a client loop, ship the fix and consider a temporary capture drop rule so the month's quota survives.
+- **Status:** Wired (2026-07-10).
+
 ### Alarm 3 — PostHog: event-cap at 70% of monthly cap
 
 - **Vendor:** PostHog
@@ -141,11 +150,15 @@ fails loudly with a clear "SUPABASE_ACCESS_TOKEN is not set" message
 
 ### Alarm 7 — PostHog health-check absence
 
-- **Vendor:** PostHog (synthetic, via a Vercel cron)
-- **Trigger condition:** No `app_heartbeat` event received in the production project for **30 minutes**.
-- **Why:** This is the exact alarm that would have caught the 2026-04-21 → 2026-05-11 silent outage. Three weeks of zero PostHog ingestion would have alarmed within 30 min instead of 3 weeks.
-- **Implementation sketch:** Add a low-cost client-side `app_heartbeat` event fired once per session-load. PostHog → Insights → Trends → `app_heartbeat` count over last 30 min. Set Insight Alert when count = 0. Email to gracehowse@outlook.com.
-- **Status:** Not yet wired.
+- **Vendor:** PostHog (synthetic, via a GitHub Actions cron)
+- **Trigger condition:** No `app_heartbeat` event received in the production project for a full completed **hour** (emitter sends every 15 min → a healthy hour has ~4; one missed cron run can never false-positive).
+- **Why:** This is the exact alarm that would have caught the 2026-04-21 → 2026-05-11 silent outage. Three weeks of zero PostHog ingestion would have alarmed within ~an hour instead of 3 weeks.
+- **Wired via (2026-07-10, ENG-1471 / PRA-005):**
+  - **Emitter:** [`.github/workflows/posthog-heartbeat.yml`](../../.github/workflows/posthog-heartbeat.yml) — `*/15 * * * *` cron POSTing a synthetic `app_heartbeat` (distinct_id `heartbeat-cron`, `$process_person_profile: false`) to the public capture endpoint with the public project key; no secrets needed. Emitter failures file a deduped `scheduled-cron-failure` GitHub issue (ENG-1400 pattern).
+  - **Alert:** **"app_heartbeat absent (ingestion liveness) — ENG-1471 alarm 7"** on insight [`5GNonvqs`](https://us.posthog.com/project/389168/insights/5GNonvqs), hourly check, fires when the completed hour < 1 event. Email to gracehowse@outlook.com.
+  - The original sketch (client-side session-load event, 30-min window) was rejected: at current traffic, hours with zero real sessions are normal, so a client-fired heartbeat conflates "ingestion down" with "nobody online". The synthetic emitter isolates the capture pipeline as the only failure domain.
+  - **Failure-domain split when something fires:** heartbeat GitHub issue open + Alarm 7 quiet → emitter broken, ingestion fine. Alarm 7 firing → ingestion (or both) down — check https://status.posthog.com first, then the workflow runs.
+- **Status:** Wired (2026-07-10 — alert enabled after the first post-merge scheduled runs were confirmed landing).
 
 ### Alarm 8 — AI provider 429-rate spike
 
