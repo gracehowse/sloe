@@ -1866,12 +1866,12 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
   if (!isCatalogRecipe && dbLoading) {
     return (
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-4">
-        <div className="h-8 w-48 rounded-md bg-muted animate-pulse" />
-        <div className="aspect-video w-full rounded-xl bg-muted animate-pulse" />
+        <div className="h-8 w-48 rounded-md bg-skeleton animate-pulse" />
+        <div className="aspect-video w-full rounded-xl bg-skeleton animate-pulse" />
         <div className="space-y-2">
-          <div className="h-4 w-full rounded bg-muted animate-pulse" />
-          <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
-          <div className="h-4 w-4/6 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-full rounded bg-skeleton animate-pulse" />
+          <div className="h-4 w-5/6 rounded bg-skeleton animate-pulse" />
+          <div className="h-4 w-4/6 rounded bg-skeleton animate-pulse" />
         </div>
         <p className="text-center text-sm text-muted-foreground">Loading recipe…</p>
       </div>

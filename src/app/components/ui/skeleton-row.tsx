@@ -111,7 +111,7 @@ function Shimmer({
     <span
       aria-hidden
       className={cn(
-        "block animate-pulse bg-muted",
+        "block animate-pulse bg-skeleton",
         // Fixed 700ms duration per spec. Tailwind's animate-pulse is
         // 2s — override here.
         "[animation-duration:700ms]",
