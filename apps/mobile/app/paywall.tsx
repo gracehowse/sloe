@@ -821,9 +821,17 @@ export default function PaywallScreen() {
       Platform.OS === "ios"
         ? "Cancel anytime in Settings > Apple ID > Subscriptions."
         : "Cancel anytime in Google Play > Payments & subscriptions.";
+    // ENG-1488 — UK/EU statutory 14-day cancellation right, for parity with
+    // web's BillingDisclosure (app/pricing/BillingDisclosure.tsx). Shown
+    // unconditionally (mobile has no per-storefront region signal here, unlike
+    // web's isUkEu) with an explicit "UK/EU customers:" scope prefix, mirroring
+    // the already-unconditional "Prices include any applicable VAT" line — safe
+    // and correctly-scoped for non-UK/EU readers.
+    const statutoryLine =
+      "UK/EU customers: under the Consumer Contracts Regulations 2013 and Directive 2011/83/EU you have a 14-day right to cancel for a full refund.";
     // ENG-1381 — degraded state defers the exact price to the App Store, not an indicative amount. See docs/decisions/2026-07-09-mobile-degraded-paywall-disclosure.md.
     if (fallbackWhenUnavailable) {
-      return `Pro renews automatically each ${periodNoun} until cancelled. The exact price in your currency is confirmed on the App Store before you subscribe. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
+      return `Pro renews automatically each ${periodNoun} until cancelled. The exact price in your currency is confirmed on the App Store before you subscribe. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com. ${statutoryLine}`;
     }
     const proPriceString = currentProPkg?.product.priceString ?? fallbackProPrice;
     const altLine =
@@ -831,9 +839,9 @@ export default function PaywallScreen() {
         ? ` (or ${monthlyProPriceString} per month on the monthly plan)`
         : "";
     if (trialApplies && currentProPkg) {
-      return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
+      return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. Starts your 7-day free trial — first charge after 7 days. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com. ${statutoryLine}`;
     }
-    return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
+    return `Pro renews automatically at ${proPriceString} per ${periodNoun}${altLine} until cancelled. ${cancelPath} Prices include any applicable VAT. 7-day refund policy: support@getsloe.com. ${statutoryLine}`;
   })();
 
   // ─── Styles ─────────────────────────────────────────────────────
