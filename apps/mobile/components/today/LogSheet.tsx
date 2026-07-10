@@ -1591,13 +1591,13 @@ function SkeletonList({ colors }: { colors: ReturnType<typeof useThemeColors> })
     <View style={{ padding: Spacing.md }}>
       {[0, 1, 2, 3].map((i) => (
         <View key={i} style={styles.skeletonRow}>
-          <View style={[styles.skeletonThumb, { backgroundColor: colors.inputBg }]} />
+          <View style={[styles.skeletonThumb, { backgroundColor: colors.skeleton }]} />
           <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-            <View style={[styles.skeletonLine, { backgroundColor: colors.inputBg, width: "65%" }]} />
+            <View style={[styles.skeletonLine, { backgroundColor: colors.skeleton, width: "65%" }]} />
             <View
               style={[
                 styles.skeletonLine,
-                { backgroundColor: colors.inputBg, width: "30%", marginTop: Spacing.xs, height: 8 },
+                { backgroundColor: colors.skeleton, width: "30%", marginTop: Spacing.xs, height: 8 },
               ]}
             />
           </View>

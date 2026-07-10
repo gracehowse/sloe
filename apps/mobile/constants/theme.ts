@@ -455,6 +455,11 @@ export const Colors = {
     tabIconDefault: '#9B93A3',
     tabIconSelected: Accent.primary,
     inputBg: '#FFFFFF',             // v3 white input — lifts on the cool ground + border (ENG-1316)
+    /** Skeleton/shimmer fill — mirrors web `--muted` (#EBEAF1 frost-grey).
+     *  MUST stay distinct from `card`: the pre-ENG-1479 skeletons filled with
+     *  `inputBg`, which the v3 migration turned white — white-on-white loading
+     *  states read as a blank broken box (Discover "Recipe ideas", 2.5s). */
+    skeleton: '#EBEAF1',
     overlay: '#00000088',
     /** Source / provenance dots — Sloe palette. Mirrors web --source-*. */
     sourceUsda: '#5E7C5A',          // sage
@@ -547,6 +552,11 @@ export const Colors = {
     tabIconDefault: '#857F8B',
     tabIconSelected: Accent.primaryLight,
     inputBg: '#1A1422',             // ↔ web --input-background (dark)
+    /** Skeleton/shimmer fill — deliberately NOT web's dark `--muted`
+     *  (#241C2E), which measures 1.03:1 on the dark card — as invisible as
+     *  the white-on-white bug this token exists to fix. #332843 (the border
+     *  hue) hits 1.22:1 on card, matching the light scheme's 1.20:1 weight. */
+    skeleton: '#332843',
     overlay: '#000000aa',
     /** Source / provenance dots — Sloe dark (lifted). */
     sourceUsda: '#83A57E',

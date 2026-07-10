@@ -173,7 +173,10 @@ export function Shimmer({ style }: { style: ViewStyle }) {
   return (
     <Animated.View
       style={[
-        { backgroundColor: colors.inputBg, opacity },
+        // ENG-1479 — dedicated skeleton fill: the previous `inputBg` fill
+        // went white-on-white in the v3 token migration, rendering every
+        // shimmer invisible (Discover's 2.5s "blank box").
+        { backgroundColor: colors.skeleton, opacity },
         style,
       ]}
     />
