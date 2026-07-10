@@ -513,6 +513,30 @@ describe("LogSheet (web) — S13 logged-confirmation (Figma 202:2)", () => {
     expect(screen.getByText("Logged")).toBeDefined();
   });
 
+  it("ENG-1484: behind kcal_trust_qualifier_v1 the kcal speaks the canonical `~` grammar (verified drops the qualifier)", () => {
+    (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ = {
+      kcal_trust_qualifier_v1: true,
+    };
+    try {
+      // Unverified (and unknown) → the `~` qualifier, matching planner /
+      // Cook Mode / north-star / Library instead of the bespoke "Est." copy.
+      const { unmount } = open({
+        confirmation: { ...confirmation, onDone: () => {} },
+      });
+      expect(screen.getByText("~130 kcal")).toBeDefined();
+      expect(screen.queryByText("Est. 130 kcal")).toBeNull();
+      unmount();
+      // Verified → the honest unqualified number.
+      open({
+        confirmation: { ...confirmation, kcalIsVerified: true, onDone: () => {} },
+      });
+      expect(screen.getByText("130 kcal")).toBeDefined();
+    } finally {
+      delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> })
+        .__SUPPR_FORCE_FLAGS__;
+    }
+  });
+
   it("suppresses the search + browse composition while confirming", () => {
     open({
       recent: { entries: [], onPick: () => {} },

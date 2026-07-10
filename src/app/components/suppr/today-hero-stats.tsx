@@ -184,6 +184,12 @@ function DesktopHeroStats({
             consumed={consumed}
             target={target}
             size={DESKTOP_RING_GEOMETRY.size}
+            // ENG-1465 — restore the legacy `DailyRing` wiring the v3 swap
+            // dropped: click-to-toggle + the win/commit pulses this host
+            // already receives on both breakpoints.
+            onToggle={onToggleExpanded}
+            pulse={pulse}
+            commitPulse={commitPulse}
           />
           <LogConfirmCheck visible={logConfirmVisible} />
         </div>

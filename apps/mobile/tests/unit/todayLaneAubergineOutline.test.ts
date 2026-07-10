@@ -31,6 +31,9 @@ const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf
 const INDEX = read("app/(tabs)/_today/TodayScreen.tsx");
 const NORTH_STAR = read("components/today/NorthStarBlock.tsx");
 const LOG_SHEET = read("components/today/LogSheet.tsx");
+// S13 LoggedConfirmation extracted from LogSheet.tsx (ENG-1484, screen-budget
+// ratchet) — the Done/Undo confirmation CTAs live here now.
+const LOG_SHEET_CONFIRMATION = read("components/today/LogSheetConfirmation.tsx");
 const QUICK_ADD = read("components/QuickAddPanel.tsx");
 // EAT_AGAIN banner retired (ENG-984, 2026-06-17) — component deleted.
 const FIRST_MEAL = read("components/today/TodayFirstMealEmptyState.tsx");
@@ -180,7 +183,7 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
     // Button system (2026-06-12): both sheet commit CTAs migrated from
     // aubergine-outline to the SupprButton primary (one per sheet view).
     expect(LOG_SHEET).toMatch(/import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/);
-    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,400}label="Done"/);
+    expect(LOG_SHEET_CONFIRMATION).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,400}label="Done"/);
     expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,160}label="Log it"/);
     // The Done success haptic + the barcode success-notification both survive.
     // Must NOT regress to the retired aubergine-outline.
@@ -191,7 +194,7 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
     // Button system (2026-06-12): the secondary Undo + the empty-state Browse
     // are ghost SupprButtons (transparent, plum label), replacing the old quiet
     // text + off-white colors.card fill.
-    expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}label="Undo"/);
+    expect(LOG_SHEET_CONFIRMATION).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,200}label="Undo"/);
     expect(LOG_SHEET).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,260}label="Browse recipes"/);
     // Must NOT keep the retired off-white fill on the Browse CTA.
     expect(LOG_SHEET).not.toMatch(/backgroundColor:\s*colors\.card[\s\S]{0,400}>Browse recipes</);

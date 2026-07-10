@@ -270,6 +270,12 @@ export function TodayHeroRing({
           target={target}
           size={ringGeometry.size}
           numeralLarge={decard}
+          // ENG-1465 — restore the legacy `DailyRing` wiring the v3 swap
+          // dropped: click-to-toggle + the win/commit pulses the host already
+          // feeds this component.
+          onToggle={onToggleExpanded}
+          pulse={pulse}
+          commitPulse={commitPulse}
         />
         <LogConfirmCheck visible={logConfirmVisible} />
       </div>

@@ -54,7 +54,6 @@ import {
 import * as React from "react";
 import {
   BookmarkCheck,
-  Check,
   Clock,
   History,
   Plus,
@@ -68,7 +67,8 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { cn } from "../ui/utils";
 import { SupprButton } from "./suppr-button";
 import { FoodFallbackThumb } from "./food-fallback-thumb";
-import { SourceDot, type SourceDotSource } from "../ui/source-dot";
+import { type SourceDotSource } from "../ui/source-dot";
+import { LoggedConfirmation } from "./log-sheet-confirmation";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { TrustChip } from "../ui/trust-chip";
 import { Input } from "../ui/input";
@@ -392,6 +392,12 @@ export interface LogSheetProps {
     title: string;
     /** Estimated kcal of the logged item (always "estimated" copy). */
     kcal: number;
+    /** ENG-1484 — verification state of the logged item's kcal, feeding the
+     *  canonical `~` trust qualifier (`formatQualifiedKcal`, ENG-1417) behind
+     *  `kcal_trust_qualifier_v1`. Absent = unverified (the ENG-1417 safe
+     *  default — an unknown trust state never reads as confident), so hosts
+     *  that don't yet thread per-item verification still render honestly. */
+    kcalIsVerified?: boolean;
     /** Slot it landed in (Breakfast / Lunch / Dinner / Snacks). */
     slot?: string;
     /** Provenance dot for the logged item. */
@@ -624,80 +630,7 @@ export function LogSheet({
 }
 
 /* -------------------------- Logged confirmation (S13) -------------------------- */
-
-/**
- * S13 logged-confirmation (Figma 202:2) — the calm success state shown
- * after a log commits. Presentation-only: the host has already persisted
- * the log; this surface just confirms it and offers Done / Undo. Trust
- * posture: nutrition is always "estimated" (never an absolute claim).
- */
-function LoggedConfirmation({
-  confirmation,
-}: {
-  confirmation: NonNullable<LogSheetProps["confirmation"]>;
-}) {
-  const { title, kcal, slot, source, onDone, onUndo } = confirmation;
-  return (
-    <div
-      data-slot="log-sheet-confirmation"
-      role="status"
-      aria-live="polite"
-      className="flex flex-1 flex-col items-center px-5 pb-6 pt-8 text-center"
-    >
-      {/* Success mark — Sloe sage success tint, calm not loud. */}
-      <div className="grid size-16 place-items-center rounded-full bg-success-soft text-success">
-        <Check className="size-8" strokeWidth={2.5} aria-hidden />
-      </div>
-
-      <h2 className="mt-4 font-[family-name:var(--font-headline)] text-[22px] font-medium tracking-tight text-foreground-brand">
-        Logged{slot ? ` to ${slot}` : ""}
-      </h2>
-
-      {/* Logged-item card — flat cream slab, 16px corner. Flat-card surfaces
-          (2026-06-12, Withings grammar — decision:
-          docs/decisions/2026-06-12-flat-card-surfaces.md): this nested resting
-          card sits FLAT on the sheet ground — the retired soft lift
-          (`--elev-card-soft`) and the hairline are both dropped; the card fill
-          is the separation, matching `.card-slab`. */}
-      <div className="mt-4 flex w-full items-center gap-3 rounded-[var(--radius-card-lg)] bg-card px-4 py-3 text-left">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-foreground">{title}</p>
-          <div className="mt-1 flex items-center gap-1.5">
-            {source ? <SourceDot source={source} size={6} /> : null}
-            <span className="text-[11px] tabular-nums text-muted-foreground">
-              Est. {kcal} kcal
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Actions — primary Done + optional ghost Undo. Button system
-          (2026-06-12, docs/decisions/2026-06-12-button-system-solid-primary.md):
-          the sheet's single commit action is the SOLID-plum SupprButton
-          primary; the secondary Undo is the ghost variant. Mirror of mobile
-          `LogSheet`. The sheet keeps its sanctioned elevation; the buttons
-          inside carry none. */}
-      <div className="mt-6 flex w-full flex-col gap-2">
-        <SupprButton
-          variant="primary"
-          onClick={onDone}
-          aria-label="Done"
-          label="Done"
-          className="w-full"
-        />
-        {onUndo ? (
-          <SupprButton
-            variant="ghost"
-            onClick={onUndo}
-            aria-label="Undo log"
-            label="Undo"
-            className="w-full"
-          />
-        ) : null}
-      </div>
-    </div>
-  );
-}
+// Extracted to `log-sheet-confirmation.tsx` (ENG-1484, screen-budget ratchet).
 
 /* -------------------------- Default composition -------------------------- */
 

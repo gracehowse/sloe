@@ -207,14 +207,17 @@ describe("Trust posture sweep — source pins (post-GW-08, 2026-04-28)", () => {
     expect(src).not.toMatch(/^\s*import[^\n]*\brecipeLevelTrust\b[^\n]*from/m);
   });
 
-  it("LogSheet (web) keeps the Phase 3 SourceDot + TrustChip imports", () => {
+  it("LogSheet (web) keeps the Phase 3 SourceDot + TrustChip trust surfaces", () => {
     // Regression guard — LogSheet's TrustChip use is on individual
     // food-search rows where the row carries a real source label
     // ("USDA Foundation" / "Open Food Facts" / etc.), so it remains
-    // honest. Only the recipe-level surfaces were stripped.
+    // honest. Only the recipe-level surfaces were stripped. ENG-1484 — the
+    // S13 LoggedConfirmation (the SourceDot consumer) was extracted to its
+    // own file per the screen-budget ratchet; the SourceDot pin follows it.
     const src = read("src/app/components/suppr/log-sheet.tsx");
-    expect(src).toMatch(/import\s*\{\s*SourceDot/);
     expect(src).toMatch(/import\s*\{\s*TrustChip\s*\}/);
+    const confirmation = read("src/app/components/suppr/log-sheet-confirmation.tsx");
+    expect(confirmation).toMatch(/import\s*\{\s*SourceDot\s*\}/);
   });
 
   it("NutritionTracker passes desktop=isDesktop to LogSheet — B3.Y cleanup", () => {

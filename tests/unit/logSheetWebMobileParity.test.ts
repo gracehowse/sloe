@@ -290,41 +290,56 @@ describe("LogSheet slot selector — web ↔ mobile parity (ENG-773)", () => {
 describe("LogSheet S13 logged-confirmation — web ↔ mobile parity (Figma 202:2)", () => {
   const web = read(WEB_LOG_SHEET);
   const mobile = read(MOBILE_LOG_SHEET);
+  // ENG-1484 — LoggedConfirmation was extracted from both LogSheets into its
+  // own file per platform (screen-budget ratchet), so the component-level
+  // assertions read the extracted sources.
+  const webConfirmation = read("src/app/components/suppr/log-sheet-confirmation.tsx");
+  const mobileConfirmation = read("apps/mobile/components/today/LogSheetConfirmation.tsx");
 
   it("both surfaces declare an optional `confirmation` prop of the same shape", () => {
     for (const src of [web, mobile]) {
-      // confirmation?: { title; kcal; slot?; source?; onDone; onUndo? } | null
+      // confirmation?: { title; kcal; kcalIsVerified?; slot?; source?; onDone; onUndo? } | null
       expect(src).toMatch(/confirmation\?:\s*\{/);
+      expect(src).toMatch(/kcalIsVerified\?:\s*boolean/);
       expect(src).toMatch(/onDone:\s*\(\)\s*=>\s*void/);
       expect(src).toMatch(/onUndo\?:\s*\(\)\s*=>\s*void/);
     }
   });
 
   it("both surfaces tag the confirmation surface with the `log-sheet-confirmation` handle", () => {
-    expect(web).toContain("log-sheet-confirmation");
-    expect(mobile).toContain("log-sheet-confirmation");
+    expect(webConfirmation).toContain("log-sheet-confirmation");
+    expect(mobileConfirmation).toContain("log-sheet-confirmation");
   });
 
-  it("both surfaces render the confirmation via a dedicated LoggedConfirmation component", () => {
+  it("both surfaces render the confirmation via the dedicated (extracted) LoggedConfirmation component", () => {
     for (const src of [web, mobile]) {
-      expect(src).toContain("function LoggedConfirmation");
       expect(src).toContain("<LoggedConfirmation confirmation={confirmation!} />");
+    }
+    for (const src of [webConfirmation, mobileConfirmation]) {
+      expect(src).toContain("export function LoggedConfirmation");
     }
   });
 
-  it("both surfaces keep nutrition copy as an estimate (`Est.` prefix), never absolute", () => {
-    for (const src of [web, mobile]) {
-      expect(src).toMatch(/Est\.\s*\{kcal\}\s*kcal/);
+  it("both surfaces keep nutrition copy as an estimate, never absolute (ENG-1484: `~` grammar behind the ramp, `Est.` fallback off-flag)", () => {
+    for (const src of [webConfirmation, mobileConfirmation]) {
+      // ENG-1484 — the confirmation speaks the canonical formatQualifiedKcal
+      // `~` qualifier behind `kcal_trust_qualifier_v1` (cross-surface
+      // consistency with planner totals / Cook Mode / north-star / Library)…
+      expect(src).toContain('isFeatureEnabled("kcal_trust_qualifier_v1")');
+      expect(src).toContain("formatQualifiedKcal(kcal, kcalIsVerified)");
+      // …and keeps the exact pre-ENG-1484 "Est." copy as the flag-off kill
+      // switch. Either way the number is never an absolute claim.
+      expect(src).toMatch(/Est\.\s*\$\{kcal\}\s*kcal/);
     }
   });
 
   it("both surfaces ship the Done + Undo confirmation actions", () => {
     // Done + Undo labels present on both (web `aria-label` / mobile
     // `accessibilityLabel`).
-    expect(web).toContain('aria-label="Done"');
-    expect(mobile).toContain('accessibilityLabel="Done"');
-    expect(web).toContain('aria-label="Undo log"');
-    expect(mobile).toContain('accessibilityLabel="Undo log"');
+    expect(webConfirmation).toContain('aria-label="Done"');
+    expect(mobileConfirmation).toContain('accessibilityLabel="Done"');
+    expect(webConfirmation).toContain('aria-label="Undo log"');
+    expect(mobileConfirmation).toContain('accessibilityLabel="Undo log"');
   });
 });
 

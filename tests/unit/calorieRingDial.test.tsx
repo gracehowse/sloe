@@ -10,9 +10,10 @@
  * synchronously (grow → 1) and `drawn` equals progress without driving rAF.
  */
 import * as React from "react";
-import { render } from "@testing-library/react";
-import { beforeAll, describe, expect, it } from "vitest";
+import { fireEvent, render } from "@testing-library/react";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { CalorieRingDial } from "../../src/app/components/suppr/calorie-ring-dial";
+import { TodayHeroRing } from "../../src/app/components/suppr/today-hero-ring";
 
 void React;
 
@@ -84,5 +85,57 @@ describe("CalorieRingDial — jewel watch dial", () => {
       <CalorieRingDial consumed={0} target={2000} />,
     );
     expect(empty.querySelector('[id^="cr-dial-empty"]')).not.toBeNull();
+  });
+});
+
+// ENG-1465 — the v3 dial swap dropped the legacy `DailyRing` interaction
+// contract (click/keyboard macro toggle + the win/commit pulses). These pin
+// the restored wiring: dial contract + hero host end-to-end.
+describe("CalorieRingDial — click-to-toggle + pulses (ENG-1465)", () => {
+  it("click and keyboard (Enter) fire onToggle; wired dial is role=button", () => {
+    const onToggle = vi.fn();
+    const { getByTestId } = render(
+      <CalorieRingDial consumed={1200} target={2000} onToggle={onToggle} />,
+    );
+    const dial = getByTestId("calorie-ring-dial");
+    expect(dial.getAttribute("role")).toBe("button");
+    fireEvent.click(dial);
+    fireEvent.keyDown(dial, { key: "Enter" });
+    expect(onToggle).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays inert (no role/tabindex) when no handler is wired", () => {
+    const { getByTestId } = render(
+      <CalorieRingDial consumed={1200} target={2000} />,
+    );
+    const dial = getByTestId("calorie-ring-dial");
+    expect(dial.getAttribute("role")).toBeNull();
+    expect(dial.getAttribute("tabindex")).toBeNull();
+  });
+
+  it("commitPulse marks the wrapper and applies the brief scale-up (ENG-1016 parity)", () => {
+    const { getByTestId } = render(
+      <CalorieRingDial consumed={1200} target={2000} commitPulse />,
+    );
+    const dial = getByTestId("calorie-ring-dial");
+    expect(dial.getAttribute("data-commit-pulse")).toBe("true");
+    expect(dial.className).toContain("scale-[1.03]");
+  });
+
+  it("the Today hero wires the dial click to the macro-expanded toggle", () => {
+    const onToggleExpanded = vi.fn();
+    const { getByTestId } = render(
+      <TodayHeroRing
+        consumed={1200}
+        target={2000}
+        proteinPct={0.5}
+        carbsPct={0.5}
+        fatPct={0.5}
+        expanded={false}
+        onToggleExpanded={onToggleExpanded}
+      />,
+    );
+    fireEvent.click(getByTestId("calorie-ring-dial"));
+    expect(onToggleExpanded).toHaveBeenCalledTimes(1);
   });
 });

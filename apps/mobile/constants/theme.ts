@@ -497,7 +497,12 @@ export const Colors = {
      *  hex in CalorieRing — tokenised in ENG-1269 (value-equal). */
     ringOverflowTo: '#7A5890',
     /** Sloe v3 jewel watch-dial — graduation ticks + state gradient stops +
-     *  luminous gem core. ↔ web theme.css `--ring-{tick,under,over,empty,cap-core}`. */
+     *  luminous gem core. ↔ web theme.css `--ring-{tick,under,over,empty,cap-core}`.
+     *  ENG-1485 (2026-07-10): the empty-track tick is DECORATIVE geometry, not
+     *  informational iconography — ratified floor is ≥1.3:1 composited over card
+     *  AND page ground (measures ~1.45:1 light / ~1.70:1 dark; the ENG-1315 3:1
+     *  target applies to informational graphics only). Gated by
+     *  tests/unit/ringTickContrast.test.ts — don't lower the alpha without it. */
     ringTick: 'rgba(59, 42, 77, 0.20)',
     ringCapCore: '#FFFFFF',
     ringUnderA: '#4D7A50', ringUnderB: '#93C08C',

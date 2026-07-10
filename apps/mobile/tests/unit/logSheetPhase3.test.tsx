@@ -30,6 +30,7 @@ import {
   type LogSheetRecentEntry,
   type LogSheetSavedMeal,
 } from "../../components/today/LogSheet";
+import * as analytics from "@/lib/analytics";
 
 vi.mock("expo-haptics", () => ({
   impactAsync: vi.fn(async () => undefined),
@@ -622,6 +623,30 @@ describe("LogSheet (mobile) — S13 logged-confirmation (Figma 202:2)", () => {
       confirmation: { title: "Greek yogurt", kcal: 130, onDone: () => {} },
     });
     expect(getByText("Logged")).toBeTruthy();
+  });
+
+  it("ENG-1484: behind kcal_trust_qualifier_v1 the kcal speaks the canonical `~` grammar (verified drops the qualifier)", () => {
+    const original = analytics.isFeatureEnabled;
+    const spy = vi
+      .spyOn(analytics, "isFeatureEnabled")
+      .mockImplementation((flag: string) =>
+        flag === "kcal_trust_qualifier_v1" ? true : original(flag),
+      );
+    try {
+      // Unverified (and unknown) → the `~` qualifier, matching planner /
+      // Cook Mode / north-star / Library instead of the bespoke "Est." copy.
+      const first = open({ confirmation: { ...confirmation, onDone: () => {} } });
+      expect(first.getByText("~130 kcal")).toBeTruthy();
+      expect(first.queryByText("Est. 130 kcal")).toBeNull();
+      first.unmount();
+      // Verified → the honest unqualified number.
+      const second = open({
+        confirmation: { ...confirmation, kcalIsVerified: true, onDone: () => {} },
+      });
+      expect(second.getByText("130 kcal")).toBeTruthy();
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("suppresses the search + browse composition while confirming", () => {

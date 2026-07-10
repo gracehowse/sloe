@@ -8,9 +8,10 @@ import { ringGeometry } from "@/components/charts/CalorieRing";
  * grow that pinned 400+ host.
  *
  * Calorie-only — macros live in the separate Tiles/Bars/Rings section, so
- * `expanded` / macro percentages are intentionally unused here. Sized to
- * match the legacy ring's footprint (incl. the empty-state shrink) so the
- * hero geometry is unchanged.
+ * `expanded` / macro percentages are intentionally unused here (the dial's
+ * tap/long-press still fires `onToggleExpanded` so the macro section toggles
+ * from the ring, ENG-1465). Sized to match the legacy ring's footprint
+ * (incl. the empty-state shrink) so the hero geometry is unchanged.
  *
  * Mirrors the web ring in `today-hero-ring.tsx` / `today-hero-stats.tsx`.
  */
@@ -33,6 +34,7 @@ export interface TodayHeroRingGraphicProps {
 export function TodayHeroRingGraphic({
   consumed,
   goal,
+  onToggleExpanded,
   numeralLarge = false,
 }: TodayHeroRingGraphicProps) {
   // The jewel watch-dial does NOT use the legacy empty-state 0.72 shrink (it
@@ -44,6 +46,9 @@ export function TodayHeroRingGraphic({
       target={goal}
       size={Math.round(ringGeometry(false).SIZE * 1.15)}
       numeralLarge={numeralLarge}
+      // ENG-1465 — tap/long-press macro toggle, restoring the legacy
+      // `CalorieRing onToggle={onToggleExpanded}` wiring the v3 swap dropped.
+      onToggle={onToggleExpanded}
     />
   );
 }
