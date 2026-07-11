@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { sha256 } from "js-sha256";
@@ -18,6 +18,7 @@ import { Check, ChevronLeft, Mail, X as CloseIcon } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { useAuthCallbackError } from "@/lib/useAuthCallbackError";
+import { useEmailEntrySignUpDefault } from "@/lib/hasSignedInBefore";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -74,6 +75,7 @@ function formatAuthError(err: unknown): string {
 export default function LoginScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { session, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,11 +84,13 @@ export default function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
-  // Sloe auth chooser (Figma `296:2`, 2026-06-08): the screen opens on a
-  // calm chooser (wordmark, positioning headline, Apple + email buttons,
-  // terms fine-print). The email/password form is PROGRESSIVELY DISCLOSED —
-  // `view` toggles chooser ↔ email locally (no new route, no auth change;
-  // auth stop-zone respected). Every handler + testID below is unchanged.
+  // ENG-1514: entering the email form from the chooser defaults to CREATE on
+  // a session-less fresh install; `?intent=signin` (onboarding welcome) or a
+  // prior session on this device flips the default to sign-in.
+  const emailEntrySignUp = useEmailEntrySignUpDefault();
+  // Sloe auth chooser (Figma `296:2`, 2026-06-08): opens on a calm chooser;
+  // the email/password form is PROGRESSIVELY DISCLOSED — `view` toggles
+  // chooser ↔ email locally (no new route; auth stop-zone respected).
   const [view, setView] = useState<"chooser" | "email">("chooser");
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   // Positive assent to Terms + Privacy required at account creation
@@ -102,8 +106,7 @@ export default function LoginScreen() {
   // ENG-1474: surface a `suppr://auth-callback` failure (`?error=…`) via `message`.
   useAuthCallbackError(setMessage);
 
-  // Styles extracted to `@/components/login/loginStyles` (ENG-1474) — presentation only,
-  // testIDs + handlers unchanged. Sloe DS reskin (Figma `296:2`/`296:33`).
+  // Styles extracted to `@/components/login/loginStyles` (ENG-1474; Sloe DS reskin).
   const styles = useMemo(() => makeLoginStyles(colors), [colors]);
 
   if (!hasSupabaseConfig()) {
@@ -253,29 +256,30 @@ export default function LoginScreen() {
 
   return (
     <KeyboardSafeView
-      contentContainerStyle={[styles.container, { paddingTop: insets.top }]}
+      style={{ paddingTop: insets.top, backgroundColor: colors.background }}
+      contentContainerStyle={styles.container}
     >
-      {/* Close X — top-right (frame 296:2). Dismisses to the public web
-          landing (the app has no pre-auth route to return to). */}
-      <View style={styles.closeRow}>
-        <Pressable
-          testID="login-close"
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          style={styles.closeBtn}
-          onPress={() => void Linking.openURL(getSupprWebBase() || "https://getsloe.com")}
-        >
-          <CloseIcon size={26} color={colors.textTertiary} strokeWidth={2} />
-        </Pressable>
-      </View>
+      {/* Close X — only when login was PUSHED (welcome's "I already have an
+          account"); a root session-less launch has no destination (ENG-1514). */}
+      {router.canGoBack() && (
+        <View style={styles.closeRow}>
+          <Pressable
+            testID="login-close"
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            style={styles.closeBtn}
+            onPress={() => router.back()}
+          >
+            <CloseIcon size={26} color={colors.textTertiary} strokeWidth={2} />
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.centerBody}>
         {view === "chooser" ? (
           /* ── Chooser (default) ──────────────────────────────────────
-             Wordmark, two-line positioning headline (italic "Still"), sync
-             subtitle, then Apple (ink fill) + email (outline). Google is
-             OMITTED per ENG-924 (Apple + email only). "Continue with email"
-             reveals the form below via progressive disclosure. */
+             Wordmark, positioning headline, Apple (ink) + email (outline);
+             Google OMITTED per ENG-924. Email reveals the form below. */
           <>
             <View style={styles.brandSection}>
               <SloeHeaderWordmark fontSize={36} />
@@ -289,8 +293,7 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.chooser}>
-              {/* Apple Sign-In — hidden when capability not provisioned (e.g.
-                  Personal Team dev build); the email path still works. */}
+              {/* Apple Sign-In — hidden when capability not provisioned. */}
               {appleVisible && (
                 <Pressable
                   testID="login-apple"
@@ -310,7 +313,7 @@ export default function LoginScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Continue with email"
                 style={styles.emailBtn}
-                onPress={() => { setView("email"); setMessage(null); }}
+                onPress={() => { setIsSignUp(emailEntrySignUp); setView("email"); setMessage(null); }}
               >
                 <Mail size={20} color={colors.navPrimary} strokeWidth={2} />
                 <Text style={styles.emailBtnText}>Continue with email</Text>
@@ -332,15 +335,14 @@ export default function LoginScreen() {
           </>
         ) : (
           /* ── Email form (progressive disclosure) ────────────────────
-             The full email/password surface, unchanged in behaviour. A
-             back affordance returns to the chooser. */
+             unchanged in behaviour; back affordance returns to chooser. */
           <>
             <Pressable
               testID="login-back"
               accessibilityRole="button"
               accessibilityLabel="Back"
               style={styles.backRow}
-              onPress={() => { setView("chooser"); setMessage(null); }}
+              onPress={() => { setView("chooser"); setIsSignUp(false); setMessage(null); }}
             >
               <ChevronLeft size={18} color={colors.textSecondary} strokeWidth={2} />
               <Text style={styles.backText}>Back</Text>
@@ -441,9 +443,7 @@ export default function LoginScreen() {
                 </Pressable>
               )}
 
-              {/* Apple option also reachable from the email step (returning
-                  users who tapped email out of habit) — hidden when the
-                  capability isn't provisioned. */}
+              {/* Apple also reachable from the email step — hidden when not provisioned. */}
               {appleVisible && (
                 <>
                   <View style={{ height: Spacing.sm }} />

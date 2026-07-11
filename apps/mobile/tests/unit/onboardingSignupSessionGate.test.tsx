@@ -15,7 +15,8 @@
  *
  * This test pins the user-observable contract of the fix:
  *   1. NO email field is rendered (Apple Sign-In is the single honest
- *      path); the fine print says "coming soon", not a fake promise.
+ *      path); the fine print is the Terms/Privacy line only — the
+ *      "coming soon" email promise was removed in ENG-1516.
  *   2. The Apple Sign-In CTA is present.
  *   3. After a successful Apple sign-in the step does NOT self-advance
  *      — forward motion is owned by the shell's session-driven
@@ -98,14 +99,18 @@ afterEach(() => {
 
 describe("MobileSignupStep — honest, Apple-only, session-gated (ENG-672)", () => {
   it("renders the Apple Sign-In CTA and NO email field", () => {
-    const { getByLabelText, queryByPlaceholderText, getByText } = renderSignup();
+    const { getByLabelText, queryByPlaceholderText, queryByText, getByText } =
+      renderSignup();
     expect(getByLabelText("Sign in with Apple")).toBeTruthy();
     // The email field is gone — it advertised a path that didn't exist.
     expect(queryByPlaceholderText("you@example.com")).toBeNull();
     // The optional first-name field stays.
     expect(queryByPlaceholderText("Grace")).toBeTruthy();
-    // Honest copy: "coming soon", not "arrives in a future build".
-    expect(getByText(/Email sign-up is coming soon\./i)).toBeTruthy();
+    // ENG-1516 — the "Email sign-up is coming soon" promise is gone too
+    // (it sat unshipped since ENG-672). The fine print is now only the
+    // Terms/Privacy line, with no email mention at all.
+    expect(getByText(/Terms and Privacy Policy\./i)).toBeTruthy();
+    expect(queryByText(/coming soon/i)).toBeNull();
   });
 
   it("does NOT self-advance after a successful Apple sign-in (the shell owns advance)", async () => {

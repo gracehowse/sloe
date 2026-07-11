@@ -114,7 +114,7 @@ export function MobileWelcomeStep() {
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => router.push("/login")}
+          onPress={() => router.push({ pathname: "/login", params: { intent: "signin" } })}
           accessibilityRole="button"
           accessibilityLabel="I already have an account"
           hitSlop={12}

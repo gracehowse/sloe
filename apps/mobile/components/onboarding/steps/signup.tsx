@@ -224,7 +224,7 @@ export function MobileSignupStep() {
         }}
       >
         By signing in with Apple you agree to Sloe&apos;s Terms and Privacy
-        Policy. Email sign-up is coming soon.
+        Policy.
       </Text>
     </MobileStepBody>
   );
