@@ -2351,9 +2351,9 @@ export const NutritionTracker = memo(function NutritionTracker({
         targetCalories={Math.round(effectiveCalorieTarget)}
         maintenanceTdee={profileMaintenanceTdee}
         confidence={profileMaintenanceConfidence}
+        source={isFeatureEnabled("energy_numbers_v1") ? profileMaintenanceSource : null /* ENG-1506 review round — flag-ON provenance: formula never renders "learned from your logging"; OFF null = legacy wording */}
         loggingDays={null}
-        // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose".
-        goal={whyThisNumberGoalFromDb(profileGoal)}
+        goal={whyThisNumberGoalFromDb(profileGoal)} // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose"
         paceKgPerWeek={paceKgPerWeekFromPreset(profilePlanPace, whyThisNumberGoalFromDb(profileGoal))}
         mealLogDays={null}
         weightLogCount={Object.keys(profileWeightKgByDay).length}

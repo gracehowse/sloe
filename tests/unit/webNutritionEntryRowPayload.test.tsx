@@ -63,6 +63,7 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
 
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: () => {},
+  isFeatureEnabled: () => false,
 }));
 
 vi.mock("../../src/lib/nutrition/refreshAdaptiveTdee.ts", () => ({

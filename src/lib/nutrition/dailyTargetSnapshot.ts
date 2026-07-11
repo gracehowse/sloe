@@ -56,7 +56,22 @@ export type DailyTargetSnapshotClient = any;
 export async function snapshotDailyTargetIfMissing(
   supabase: DailyTargetSnapshotClient,
   userId: string | null | undefined,
-  opts?: { now?: Date },
+  opts?: {
+    now?: Date;
+    /**
+     * ENG-1506 — `true` routes the maintenance resolve through the
+     * canonical `buildMaintenanceInputs` policy (latest weigh-in beats
+     * the lagging profile snapshot, strict-null basics). Callers pass
+     * `isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)` — this module is shared
+     * web + mobile, so the HOST owns the flag read (same pattern as
+     * `netEnergyBalance`'s `balancedWording`). Default `false` keeps the
+     * exact pre-ENG-1506 input assembly: `daily_targets` is first-write-
+     * wins/frozen, so while the flag is OFF the writer must freeze the
+     * SAME number every flag-OFF display surface shows (F-145 contract) —
+     * an early adoption here would be un-fixable by the kill switch.
+     */
+    canonicalEnergyInputs?: boolean;
+  },
 ): Promise<boolean> {
   if (!userId) return false;
 
@@ -104,13 +119,27 @@ export async function snapshotDailyTargetIfMissing(
   // when adaptive isn't set yet (formula path) or when adaptive is
   // stale (rejected → formula). Only stores `null` when we genuinely
   // cannot compute (e.g. pre-onboarding profile with no body stats).
-  // ENG-1506 — inputs now come from the canonical `buildMaintenanceInputs`
-  // policy (latest weigh-in over the lagging profile snapshot, strict-null
-  // basics) so the frozen snapshot can't disagree with live display once
-  // `energy_numbers_v1` ramps.
-  const resolved = resolveMaintenance(buildMaintenanceInputs(profile), {
-    now: opts?.now,
-  });
+  // ENG-1506 — flag ON (`canonicalEnergyInputs`, host-read): inputs come
+  // from the canonical `buildMaintenanceInputs` policy (latest weigh-in
+  // over the lagging profile snapshot, strict-null basics) so the frozen
+  // snapshot can't disagree with live display once `energy_numbers_v1`
+  // ramps. Flag OFF: the exact pre-ENG-1506 assembly below — the frozen
+  // row must match what flag-OFF Today displayed that day (kill switch).
+  const resolved = resolveMaintenance(
+    opts?.canonicalEnergyInputs
+      ? buildMaintenanceInputs(profile)
+      : {
+          sex: typeof profile.sex === "string" ? (profile.sex as "male" | "female") : null,
+          weight_kg: typeof profile.weight_kg === "number" ? profile.weight_kg : null,
+          height_cm: typeof profile.height_cm === "number" ? profile.height_cm : null,
+          age: typeof profile.age === "number" ? profile.age : null,
+          activity_level: typeof profile.activity_level === "string" ? (profile.activity_level as Parameters<typeof resolveMaintenance>[0]["activity_level"]) : null,
+          adaptive_tdee: typeof profile.adaptive_tdee === "number" ? profile.adaptive_tdee : null,
+          adaptive_tdee_confidence: typeof profile.adaptive_tdee_confidence === "string" ? profile.adaptive_tdee_confidence : null,
+          adaptive_tdee_updated_at: profile.adaptive_tdee_updated_at ?? null,
+        },
+    { now: opts?.now },
+  );
 
   // ENG-960 — snapshot the SCHEDULE-ADJUSTED target for this day so history
   // (recap/progress) matches what the ring showed. Flat when not opted in.
@@ -206,7 +235,14 @@ export async function backfillDailyTargetsFromProfile(
   supabase: DailyTargetSnapshotClient,
   userId: string,
   profile: Record<string, unknown>,
-  options: { now?: Date; lookbackDays?: number } = {},
+  options: {
+    now?: Date;
+    lookbackDays?: number;
+    /** ENG-1506 — host-read `energy_numbers_v1` (see
+     *  `snapshotDailyTargetIfMissing`'s doc for the full contract).
+     *  Default `false` = exact pre-ENG-1506 input assembly. */
+    canonicalEnergyInputs?: boolean;
+  } = {},
 ): Promise<{ attempted: number; ok: boolean }> {
   if (!userId) return { attempted: 0, ok: false };
   const targetCalories = toInt(profile.target_calories);
@@ -215,10 +251,29 @@ export async function backfillDailyTargetsFromProfile(
   const now = options.now ?? new Date();
   const lookbackDays = Math.max(1, options.lookbackDays ?? 30);
 
-  // ENG-1506 — canonical input policy (see `snapshotDailyTargetIfMissing`).
-  // Callers that don't select `weight_kg_by_day` fall back to the profile
-  // snapshot weight inside the builder — never a fabricated default.
-  const resolved = resolveMaintenance(buildMaintenanceInputs(profile), { now });
+  // ENG-1506 — flag ON: canonical input policy (see
+  // `snapshotDailyTargetIfMissing`). Callers that don't select
+  // `weight_kg_by_day` fall back to the profile snapshot weight inside the
+  // builder — never a fabricated default. Flag OFF: the exact pre-ENG-1506
+  // assembly (frozen rows must match flag-OFF displays).
+  const resolved = resolveMaintenance(
+    options.canonicalEnergyInputs
+      ? buildMaintenanceInputs(profile)
+      : {
+          sex: typeof profile.sex === "string" ? (profile.sex as "male" | "female") : null,
+          weight_kg: typeof profile.weight_kg === "number" ? profile.weight_kg : null,
+          height_cm: typeof profile.height_cm === "number" ? profile.height_cm : null,
+          age: typeof profile.age === "number" ? profile.age : null,
+          activity_level: typeof profile.activity_level === "string" ? (profile.activity_level as Parameters<typeof resolveMaintenance>[0]["activity_level"]) : null,
+          adaptive_tdee: typeof profile.adaptive_tdee === "number" ? profile.adaptive_tdee : null,
+          adaptive_tdee_confidence: typeof profile.adaptive_tdee_confidence === "string" ? profile.adaptive_tdee_confidence : null,
+          adaptive_tdee_updated_at:
+            typeof profile.adaptive_tdee_updated_at === "string"
+              ? profile.adaptive_tdee_updated_at
+              : null,
+        },
+    { now },
+  );
 
   // Build past-day rows. Iterate from yesterday backwards so the
   // upsert's first-write-wins semantic protects today's existing

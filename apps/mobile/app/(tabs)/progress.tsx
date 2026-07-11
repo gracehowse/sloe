@@ -747,8 +747,7 @@ export default function ProgressScreen() {
               adaptive_tdee_updated_at: adaptiveUpdatedAt, measured_tdee: measuredTdee,
               measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
               sex: profileSexState, weight_kg: weightKg, height_cm: profileHeightCmState,
-              age: profileAgeState, activity_level: profileActivityLevelState,
-              weight_kg_by_day: weightKgByDay,
+              age: profileAgeState, activity_level: profileActivityLevelState, weight_kg_by_day: weightKgByDay,
             },
             { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
           )
@@ -1909,6 +1908,7 @@ export default function ProgressScreen() {
                     maintenanceTdeeKcal,
                     goal: userGoal,
                     observedKgPerWeek,
+                    normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG), // ENG-1506 — OFF keeps the legacy 'lose'/'gain'-only fallback
                   })
                 : null;
 

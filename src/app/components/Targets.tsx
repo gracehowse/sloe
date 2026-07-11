@@ -119,6 +119,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
   // ENG-1469 — Targets gloss (ENG-1461 follow-up); pairs in figmaCopy.ts.
   const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
+  const energyNumbersOn = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG); // ENG-1506 review round — tracked separately from `resolvedMaint` (null is ambiguous: off vs on-but-rejected); ON-null renders the honest empty state, never the rejected raw read
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   // ENG-824 — quiet win-moment (win-colour wash on the calorie card) when
   // targets are saved via the goal/pace editor. Gated behind
@@ -181,9 +182,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         .eq("id", authedUserId)
         .maybeSingle();
       if (error || !data || signal?.cancelled) return;
-      setResolvedMaint(isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
-        ? selectMaintenance(data as EnergyProfileRow, { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) })
-        : null);
+      setResolvedMaint(isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? selectMaintenance(data as EnergyProfileRow, { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) }) : null);
       const w = data.weight_kg != null ? Number(data.weight_kg) : null;
       const gw = data.goal_weight_kg != null ? Number(data.goal_weight_kg) : null;
       setWeightKg(Number.isFinite(w) ? w : null);
@@ -257,16 +256,16 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   const calorieSubline = useMemo(() => {
     const cal = targets.calories;
     if (!Number.isFinite(cal) || cal <= 0) return "kcal / day";
-    // ENG-1506 — flag ON: delta vs the SAME resolved maintenance the row
-    // shows, basis named; OFF: legacy raw-adaptive read.
+    // ENG-1506 — flag ON: delta vs the SAME resolved maintenance the row shows,
+    // basis named; ON + null resolver: NO caption; OFF: legacy raw-adaptive read.
     const fragment = deficitSurplusCaption({
       targetCalories: cal,
-      tdeeKcal: resolvedMaint ? resolvedMaint.kcal : maintenanceTdee,
+      tdeeKcal: energyNumbersOn ? (resolvedMaint?.kcal ?? null) : maintenanceTdee,
       vsCurrentMaintenance: resolvedMaint != null,
     });
     if (fragment) return `kcal / day · ${fragment}`;
     return "kcal / day";
-  }, [targets.calories, maintenanceTdee, resolvedMaint]);
+  }, [targets.calories, maintenanceTdee, resolvedMaint, energyNumbersOn]);
 
   // Numbers audit 2026-05-04 #1 (cross-platform parity): "current weight"
   // must mirror Progress + mobile Targets, both of which read the latest
@@ -629,11 +628,12 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         open={whyOpen}
         onOpenChange={setWhyOpen}
         targetCalories={targets.calories}
-        // ENG-1506 — flag ON: the resolved basis; OFF: legacy adaptive read.
-        maintenanceTdee={resolvedMaint ? resolvedMaint.kcal : maintenanceTdee}
-        confidence={resolvedMaint ? resolvedMaint.confidence
+        // ENG-1506 — ON: resolved basis/confidence/source (null → honest calibrating copy, formula wording honest — never the raw read the resolver rejected); OFF: legacy reads.
+        maintenanceTdee={energyNumbersOn ? (resolvedMaint?.kcal ?? null) : maintenanceTdee}
+        confidence={energyNumbersOn ? (resolvedMaint?.confidence ?? null)
           : adaptiveTdeeConfidence === "low" || adaptiveTdeeConfidence === "medium" || adaptiveTdeeConfidence === "high"
             ? adaptiveTdeeConfidence : null}
+        source={energyNumbersOn ? (resolvedMaint?.source ?? null) : null}
         loggingDays={null}
         // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose".
         goal={whyThisNumberGoalFromDb(profileGoal)}

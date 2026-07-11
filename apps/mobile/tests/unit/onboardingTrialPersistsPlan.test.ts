@@ -69,3 +69,51 @@ describe("ENG-1507 — Start free trial persists the plan before the paywall", (
     expect(persistBody).not.toContain("router.replace");
   });
 });
+
+describe("ENG-1507 review round — persisted-once re-entry guard + reset-flag preservation", () => {
+  const persistBody = completionSrc.slice(
+    completionSrc.indexOf("const persistAndSeed"),
+    completionSrc.indexOf("const handleComplete"),
+  );
+  const completeBody = completionSrc.slice(
+    completionSrc.indexOf("const handleComplete"),
+  );
+
+  it("a successful persistAndSeed run is cached; re-entry skips persist + seed + analytics", () => {
+    // Paywall back-out + "Continue on Free" runs complete() →
+    // persistAndSeed AGAIN. The guard returns the cached result before
+    // setCompleting/persistOnboarding, so onboarding_completed can never
+    // double-fire and seeds/plan are never rebuilt.
+    expect(completionSrc).toContain("const persistedOnceRef = React.useRef<");
+    const guardIdx = persistBody.indexOf("persistedOnceRef.current?.userId === userId");
+    const busyIdx = persistBody.indexOf("setCompleting(true)");
+    const persistIdx = persistBody.indexOf("persistOnboarding");
+    expect(guardIdx).toBeGreaterThan(-1);
+    expect(guardIdx).toBeLessThan(busyIdx);
+    expect(guardIdx).toBeLessThan(persistIdx);
+    // Only SUCCESS is cached (failures stay retryable) — the cache write
+    // sits with the ok:true result construction.
+    expect(persistBody).toContain("persistedOnceRef.current = { userId, result }");
+    expect(persistBody).toMatch(/ok: true as const/);
+  });
+
+  it("persistAndSeed reads but does NOT consume the reset-plan prompt flag", () => {
+    // The trial path (persist → paywall) never shows the Keep/Clear
+    // prompt; deleting the flag there silently discarded the choice.
+    expect(persistBody).toContain('getItem("suppr.reset-plan-pending-prompt")');
+    expect(persistBody).not.toContain('removeItem("suppr.reset-plan-pending-prompt")');
+  });
+
+  it("handleComplete consumes the flag only when the prompt actually shows", () => {
+    const promptIdx = completeBody.indexOf("Keep my logs and weight history?");
+    const removeIdx = completeBody.indexOf('removeItem("suppr.reset-plan-pending-prompt")');
+    expect(removeIdx).toBeGreaterThan(-1);
+    expect(promptIdx).toBeGreaterThan(-1);
+    // The consume sits inside the refreshPlanPending branch, right before
+    // the Alert renders.
+    const branchIdx = completeBody.indexOf("if (persisted.refreshPlanPending)");
+    expect(branchIdx).toBeGreaterThan(-1);
+    expect(removeIdx).toBeGreaterThan(branchIdx);
+    expect(removeIdx).toBeLessThan(promptIdx);
+  });
+});

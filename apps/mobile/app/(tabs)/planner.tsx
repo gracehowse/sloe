@@ -4361,7 +4361,7 @@ export default function PlannerScreen() {
               if (error) {
                 Alert.alert("Log failed", "Could not save to tracker. " + error.message);
               } else {
-                void snapshotDailyTargetIfMissing(supabase, userId);
+                void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled("energy_numbers_v1") });
                 const dayLabel = shortWeekdayLabel(planDayCalendarDate(calInput));
                 Alert.alert(`${meal.recipeTitle} logged`, `Added to ${dayLabel}'s tracker.`);
               }

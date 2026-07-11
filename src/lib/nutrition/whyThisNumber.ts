@@ -20,12 +20,14 @@
  *   - Always-on per D-2026-04-27-12: we never refuse to render. When
  *     confidence is low we say so in plain English instead of hiding.
  *
- * Dependency note: imports only `./goalVocabulary` (equally pure +
- * RN-safe) — the ENG-1507 shared goal normaliser. Everything else stays
+ * Dependency note: imports only `./goalVocabulary` (the ENG-1507 shared
+ * goal normaliser) and `./energyNumbers` (the ENG-1506 canonical
+ * qualifier string) — both equally pure + RN-safe. Everything else stays
  * duplicated-by-design (see the constants below).
  */
 
 import { normalizeDbGoal } from "./goalVocabulary";
+import { MAINTENANCE_FORMULA_QUALIFIER_LINE } from "./energyNumbers";
 
 export type WhyThisNumberGoal = "lose" | "maintain" | "gain";
 
@@ -61,6 +63,16 @@ export interface WhyThisNumberInput {
   maintenanceTdee: number | null;
   /** TDEE confidence from the adaptive engine. `null` when no estimate. */
   confidence: "low" | "medium" | "high" | null;
+  /**
+   * ENG-1506 (review round) — provenance of `maintenanceTdee` when the
+   * caller resolved it through `selectMaintenance` (flag-ON hosts pass
+   * `resolved.source`). Drives honest TDEE-row wording: a FORMULA value
+   * renders the canonical "Formula estimate from your stats" qualifier
+   * and NEVER "(learned from your logging)"; a MEASURED value names
+   * Apple Health. Omit / pass `null` on the legacy (flag-OFF) path so
+   * the output stays byte-identical to pre-ENG-1506.
+   */
+  source?: "measured" | "adaptive" | "formula" | null;
   /** Days of logging behind the maintenance estimate. Used to qualify
    *  the "adaptive" wording — < 14 days reads "early estimate". */
   loggingDays?: number | null;
@@ -446,9 +458,21 @@ export function buildWhyThisNumber(
   // "learned from your logging" phrasing rather than asserting a window
   // we can't substantiate.
   const tdeeLabel = "Maintenance (TDEE)";
+  const source = input.source ?? null;
   let tdeeValue: string;
   if (maintenanceTdee != null && maintenanceTdee > 0) {
-    if (isEarlyEstimate) {
+    // ENG-1506 (review round) — source-aware wording. A formula-resolved
+    // maintenance was never learned from logging: it renders the SAME
+    // canonical qualifier string the Targets maintenance row shows
+    // (imported, not forked), so the two surfaces can't contradict each
+    // other one tap apart. Measured names Apple Health. Legacy callers
+    // (source omitted/null — the flag-OFF path) keep the exact pre-1506
+    // wording ladder below.
+    if (source === "formula") {
+      tdeeValue = `${fmtKcal(maintenanceTdee)} (${MAINTENANCE_FORMULA_QUALIFIER_LINE})`;
+    } else if (source === "measured") {
+      tdeeValue = `${fmtKcal(maintenanceTdee)} (measured by Apple Health)`;
+    } else if (isEarlyEstimate) {
       tdeeValue = `~${fmtKcal(maintenanceTdee)} (early estimate)`;
     } else if (loggingDays != null && loggingDays > 0) {
       tdeeValue = `${fmtKcal(maintenanceTdee)} (learned from your ${loggingDays} fully-logged days)`;

@@ -50,7 +50,7 @@ function makeSupabaseFake(opts: {
   };
 }
 
-vi.mock("../../src/lib/analytics/track.ts", () => ({ track: vi.fn() }));
+vi.mock("../../src/lib/analytics/track.ts", () => ({ track: vi.fn(), isFeatureEnabled: () => false }));
 vi.mock("../../src/lib/nutrition/refreshAdaptiveTdee.ts", () => ({
   refreshAdaptiveTdeeForUser: vi.fn(() => Promise.resolve()),
 }));

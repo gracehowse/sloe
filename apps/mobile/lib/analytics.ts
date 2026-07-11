@@ -726,7 +726,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   maintenance MOVES when this ramps (the intended convergence) — Grace
  *   ramps in PostHog with before/after screenshots per
  *   `docs/decisions/2026-07-11-canonical-energy-numbers.md`. Off → every
- *   surface renders its exact pre-ENG-1506 numbers (kill switch). W + M.
+ *   surface renders its exact pre-ENG-1506 numbers AND no write path
+ *   adopts the new input policy — the goal-editor recompute baseline,
+ *   daily-target snapshot/backfill inputs, and the projection
+ *   goal-vocabulary fallback are all host-gated on this flag (kill
+ *   switch; re-verified 2026-07-11 review round). The server weekly-recap
+ *   push route can't read the flag and stays fully legacy until
+ *   flag-collapse. W + M.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,

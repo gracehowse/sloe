@@ -414,7 +414,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             .eq("id", uid)
             .maybeSingle();
           if (oldProfile) {
-            await backfillDailyTargetsFromProfile(supabase as any, uid, oldProfile);
+            await backfillDailyTargetsFromProfile(supabase as any, uid, oldProfile, { canonicalEnergyInputs: isFeatureEnabled("energy_numbers_v1") }); // ENG-1506 — OFF keeps the exact legacy input assembly
             if (oldProfile.target_fiber_source === "user") {
               const userFiber = Number(oldProfile.target_fiber_g);
               if (Number.isFinite(userFiber) && userFiber > 0) {

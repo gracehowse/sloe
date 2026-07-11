@@ -91,6 +91,10 @@ export function PaywallTrajectoryChart(props: PaywallTrajectoryChartProps) {
     maintenanceTdeeKcal: props.maintenanceTdeeKcal,
     goal: props.goal,
     timeline: props.timeline,
+    // ENG-1506 — host-read flag: OFF keeps the legacy 'lose'/'gain'-only
+    // goal-fallback comparison (byte-identical flag-OFF geometry on this
+    // conversion surface); ON understands the DB 'cut'/'bulk' vocabulary.
+    normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG),
   });
 
   // Conversion surface: only ever draw a REAL projection. No placeholder nag,

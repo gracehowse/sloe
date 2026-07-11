@@ -167,6 +167,13 @@ export interface MaintenanceQualifier {
   line: string;
 }
 
+/** THE canonical formula-source qualifier string (ENG-1506 review round):
+ *  `maintenanceQualifier` AND the Why-this-number TDEE row both import it,
+ *  so a formula-resolved maintenance can never render two different
+ *  provenance claims one tap apart. One string — never fork it. */
+export const MAINTENANCE_FORMULA_QUALIFIER_LINE =
+  "Formula estimate from your stats";
+
 export function maintenanceQualifier(
   source: MaintenanceSource,
   confidence: MaintenanceConfidence,
@@ -183,7 +190,7 @@ export function maintenanceQualifier(
       line: `From your logs · ${confidence ?? "medium"} confidence`,
     };
   }
-  return { pill: "Formula estimate", line: "Formula estimate from your stats" };
+  return { pill: "Formula estimate", line: MAINTENANCE_FORMULA_QUALIFIER_LINE };
 }
 
 /**

@@ -77,7 +77,6 @@ import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
 import { buildWeeklyRecap } from "@/lib/nutrition/weeklyRecap";
 import { buildWeekStats } from "@/lib/nutrition/progressWeekReport";
 import { resolveMaintenance } from "@/lib/nutrition/resolveMaintenance";
-import { buildMaintenanceInputs } from "@/lib/nutrition/energyNumbers";
 import { formatWeeklyRecapPushBody } from "@/lib/nutrition/weeklyRecapPushBody";
 import {
   selectDigestSuggestion,
@@ -596,23 +595,24 @@ async function runWeeklyRecapPush(req: Request) {
           previousWeekAnchor,
         );
 
-        // Cascade — gather inputs and run.
-        // ENG-1506 — canonical input policy (`buildMaintenanceInputs`):
-        // latest weigh-in beats the lagging profile snapshot, strict-null
-        // basics. Keeps the push copy's maintenance in lockstep with what
-        // the app displays once `energy_numbers_v1` ramps.
+        // Cascade — gather inputs and run. This stays the LEGACY input
+        // assembly: `energy_numbers_v1` is a client-side flag this server
+        // route cannot read, and while the flag is default-OFF the push
+        // copy must name the same maintenance the in-app flag-OFF surfaces
+        // display (ENG-1506 review round, 2026-07-11).
+        // deferred to flag-collapse: see ENG-1506 review — migrate to
+        // buildMaintenanceInputs when energy_numbers_v1 ramps.
         const resolved = resolveMaintenance(
-          buildMaintenanceInputs({
+          {
             adaptive_tdee: row.adaptive_tdee ?? null,
             adaptive_tdee_confidence: row.adaptive_tdee_confidence ?? null,
             adaptive_tdee_updated_at: row.adaptive_tdee_updated_at ?? null,
-            sex: row.sex,
+            sex: row.sex as never,
             weight_kg: row.weight_kg ?? null,
             height_cm: row.height_cm ?? null,
             age: row.age ?? null,
-            activity_level: row.activity_level,
-            weight_kg_by_day: row.weight_kg_by_day ?? null,
-          }),
+            activity_level: row.activity_level as never,
+          },
           { now: nowDate },
         );
         const cascadeProfile: DigestSuggestionProfile = {

@@ -147,6 +147,7 @@ export default function TargetsScreen() {
   const goalEditorEnabled = isFeatureEnabled("goal_editor");
   // ENG-1469 — Targets gloss (ENG-1461 follow-up); pairs in figmaCopy.ts.
   const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
+  const energyNumbersOn = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG); // ENG-1506 review round — tracked separately from `resolvedMaint` (null is ambiguous: off vs on-but-rejected); ON-null renders "—", never the rejected raw read
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   // ENG-824 — quiet win-moment (success haptic + win-colour wash on the calorie
   // card) when targets are saved (goal/pace edit) or recalculated. Gated behind
@@ -176,9 +177,7 @@ export default function TargetsScreen() {
         return;
       }
       const d = data as Record<string, unknown>;
-      setResolvedMaint(isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
-        ? selectMaintenance(d as EnergyProfileRow, { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) })
-        : null);
+      setResolvedMaint(isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? selectMaintenance(d as EnergyProfileRow, { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) }) : null);
       const resolved = resolveTargets(
         {
           target_calories: d.target_calories != null ? Number(d.target_calories) : null,
@@ -373,15 +372,15 @@ export default function TargetsScreen() {
     // a static-derived "750 kcal deficit" on a 901 target (1,568 − 901 =
     // 667, not 750). Use one number for both, and label its source
     // honestly (adaptive is measured, not Mifflin-St Jeor). Matches web.
-    // ENG-1506 — flag ON (resolvedMaint set): the FULLY GATED resolver value
-    // (staleness + formula floor — the legacy ungated `adaptiveTdee ??
-    // tdeeKcal` read produced the audit's 1,647); OFF: legacy, unchanged.
-    const maintenance = resolvedMaint ? resolvedMaint.kcal : (adaptiveTdee ?? tdeeKcal);
+    // ENG-1506 — flag ON: the FULLY GATED resolver value (the legacy ungated
+    // `adaptiveTdee ?? tdeeKcal` read produced the audit's 1,647); ON + null
+    // resolver: null maintenance → no tail, static basis (review 2026-07-11).
+    const maintenance = energyNumbersOn ? (resolvedMaint?.kcal ?? null) : (adaptiveTdee ?? tdeeKcal);
     const staticBasis = glossOn ? TARGETS_MOBILE_CAPTION_STATIC_TDEE_GLOSS : TARGETS_MOBILE_CAPTION_STATIC_TDEE_PLAIN;
     const adaptiveBasis = "Maintenance from your recent intake";
-    const basis = resolvedMaint
-      ? resolvedMaint.source === "measured" ? "Maintenance from Apple Health"
-        : resolvedMaint.source === "adaptive" ? adaptiveBasis : staticBasis
+    const basis = energyNumbersOn
+      ? resolvedMaint?.source === "measured" ? "Maintenance from Apple Health"
+        : resolvedMaint?.source === "adaptive" ? adaptiveBasis : staticBasis
       : adaptiveTdee != null ? adaptiveBasis : staticBasis;
     const base = `${basis} · ${activityLevelCaption(activityLevel)}`;
     const tail = deficitSurplusCaption({
@@ -390,7 +389,7 @@ export default function TargetsScreen() {
       vsCurrentMaintenance: resolvedMaint != null,
     });
     return tail ? `${base} · ${tail}` : base;
-  }, [activityLevel, targets.calories, tdeeKcal, adaptiveTdee, resolvedMaint, glossOn]);
+  }, [activityLevel, targets.calories, tdeeKcal, adaptiveTdee, resolvedMaint, glossOn, energyNumbersOn]);
 
   const macroColorFor = (key: string): string => {
     switch (key) {
@@ -755,8 +754,8 @@ export default function TargetsScreen() {
                     fontVariant: ["tabular-nums"],
                   }}
                 >
-                  {/* ENG-1506 — flag ON: resolver value; OFF: legacy read. */}
-                  {(resolvedMaint?.kcal ?? adaptiveTdee ?? tdeeKcal).toLocaleString()}
+                  {/* ENG-1506 — ON: resolver value, or an honest "—" when it rejected everything (never the raw read); OFF: legacy. */}
+                  {energyNumbersOn ? (resolvedMaint?.kcal != null ? resolvedMaint.kcal.toLocaleString() : "—") : (adaptiveTdee ?? tdeeKcal).toLocaleString()}
                 </Text>
                 <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>kcal / day</Text>
               </View>
@@ -950,11 +949,12 @@ export default function TargetsScreen() {
         visible={whySheetOpen}
         onClose={() => setWhySheetOpen(false)}
         targetCalories={targets.calories}
-        // ENG-1506 — flag ON: the resolved basis; OFF: legacy read.
-        maintenanceTdee={resolvedMaint ? resolvedMaint.kcal : (adaptiveTdee ?? tdeeKcal)}
-        confidence={resolvedMaint ? resolvedMaint.confidence
+        // ENG-1506 — ON: resolved basis/confidence/source (null → honest calibrating copy, formula wording honest — never the raw read the resolver rejected); OFF: legacy reads.
+        maintenanceTdee={energyNumbersOn ? (resolvedMaint?.kcal ?? null) : (adaptiveTdee ?? tdeeKcal)}
+        confidence={energyNumbersOn ? (resolvedMaint?.confidence ?? null)
           : adaptiveTdeeConfidence === "low" || adaptiveTdeeConfidence === "medium" || adaptiveTdeeConfidence === "high"
             ? adaptiveTdeeConfidence : null}
+        source={energyNumbersOn ? (resolvedMaint?.source ?? null) : null}
         loggingDays={null}
         // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose".
         goal={whyThisNumberGoalFromDb(goal)}

@@ -3662,7 +3662,7 @@ export default function TrackerScreen() {
       void refreshAdaptiveTdeeForUser(supabase, userId);
       // F-2 — snapshot today's target regardless of `targetDayKey`
       // (back-dating a snapshot would defeat the purpose).
-      void snapshotDailyTargetIfMissing(supabase, userId);
+      void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) });
       // Tracking-extras autoupdate (2026-05-02) — close the mobile
       // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT —
       // duplicate-day clones carry `micros.caffeineMg` / `alcoholG`
@@ -4004,7 +4004,7 @@ export default function TrackerScreen() {
         // pre-fix `loadJournal()` because byDay is already up to date.
         void loadJournal();
         // F-2 — snapshot today's target on first meal-plan log.
-        void snapshotDailyTargetIfMissing(supabase, userId);
+        void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) });
         // Audit/2026-04-30 — per-meal HK write for plan-tap log.
         void writeMealToHealthKitIfEnabled({
           mealId: entryId,
@@ -5820,12 +5820,12 @@ export default function TrackerScreen() {
             : (adaptiveTdee ?? profileMaintenanceTdeeKcal)
         }
         confidence={
-          adaptiveTdeeConfidence === "low" ||
-          adaptiveTdeeConfidence === "medium" ||
-          adaptiveTdeeConfidence === "high"
-            ? adaptiveTdeeConfidence
-            : null
+          // ENG-1506 review round — flag ON: RESOLVED confidence + source (a rejected stale "high" adaptive can't chip a formula kcal; formula wording stays honest — parity with web NutritionTracker + mobile Targets). OFF: legacy raw reads.
+          isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+            ? (resolvedMaintenance?.confidence ?? null)
+            : adaptiveTdeeConfidence === "low" || adaptiveTdeeConfidence === "medium" || adaptiveTdeeConfidence === "high" ? adaptiveTdeeConfidence : null
         }
+        source={isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? (resolvedMaintenance?.source ?? null) : null}
         loggingDays={null}
         // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose".
         goal={whyThisNumberGoalFromDb(profileGoal)}

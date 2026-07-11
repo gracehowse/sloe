@@ -67,6 +67,21 @@ export function useOnboardingCompletion({
   setCompleting: (v: boolean) => void;
   router: ReturnType<typeof useRouter>;
 }) {
+  // ENG-1507 (review round 2026-07-11) — persisted-once re-entry guard.
+  // The trial path runs `persistAndSeed` via `persist()` and then pushes
+  // the paywall with the flow still mounted beneath it; a back-gesture
+  // return + "Continue on Free" runs `complete()` → `persistAndSeed`
+  // AGAIN. Without this guard the second run re-seeds, rebuilds the
+  // first-week plan, and double-fires `onboarding_completed` (cohort
+  // double-count). After one successful run per user, later calls return
+  // the cached result — skipping persist + seed + analytics — so
+  // `handleComplete` only navigates. Failures are NOT cached: a failed
+  // persist stays fully retryable.
+  const persistedOnceRef = React.useRef<{
+    userId: string;
+    result: PersistAndSeedResult & { ok: true };
+  } | null>(null);
+
   const persistAndSeed = React.useCallback(async (): Promise<PersistAndSeedResult> => {
     if (!userId) {
       // ENG-672 (2026-05-26): defence-in-depth. The Signup gate
@@ -89,6 +104,11 @@ export function useOnboardingCompletion({
         "We couldn't confirm your account. Sign in with Apple to finish — your answers are saved.",
       );
       return { ok: false };
+    }
+    // Re-entry after a successful run: skip persist + seed + analytics
+    // (see `persistedOnceRef` doc above) — the caller only navigates.
+    if (persistedOnceRef.current?.userId === userId) {
+      return persistedOnceRef.current.result;
     }
     setCompleting(true);
     try {
@@ -211,10 +231,14 @@ export function useOnboardingCompletion({
       // MV-03: clear persisted state so a fresh signup on this device
       // doesn't pre-fill the previous user's answers.
       // 2026-05-11 (refresh-plan flow): also read the reset-plan flag
-      // set by Settings → "Refresh my plan". If present, we surface a
-      // one-shot prompt offering to keep or clear the user's logs and
-      // weight history. Falls through to the normal post-onboarding
-      // route on either choice.
+      // set by Settings → "Refresh my plan". If present, the completion
+      // path surfaces a one-shot prompt offering to keep or clear the
+      // user's logs and weight history. The flag is deliberately NOT
+      // removed here (ENG-1507 review round): `handleComplete` consumes
+      // it when the prompt actually shows. The trial path (persist →
+      // paywall, prompt not shown here) must leave it in place so the
+      // Keep/Clear choice can still be surfaced later instead of being
+      // silently discarded.
       let refreshPlanPending = false;
       try {
         const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
@@ -222,13 +246,16 @@ export function useOnboardingCompletion({
         const flag = await AsyncStorage.getItem("suppr.reset-plan-pending-prompt");
         if (flag) {
           refreshPlanPending = true;
-          await AsyncStorage.removeItem("suppr.reset-plan-pending-prompt");
         }
       } catch {
         /* non-fatal */
       }
 
-      return { ok: true, planFailed, refreshPlanPending };
+      const result = { ok: true as const, planFailed, refreshPlanPending };
+      // Cache the successful run so paywall back-out + "Continue on Free"
+      // can't re-persist / re-seed / double-fire analytics.
+      persistedOnceRef.current = { userId, result };
+      return result;
     } catch (e) {
       setCompleting(false);
       throw e;
@@ -253,6 +280,16 @@ export function useOnboardingCompletion({
         firstLogDeepLinkQs(state.firstLogChoice);
 
       if (persisted.refreshPlanPending) {
+        // ENG-1507 (review round) — consume the one-shot flag only NOW,
+        // when the prompt actually shows. `persistAndSeed` no longer
+        // deletes it, so a trial-path run that never reaches this prompt
+        // leaves the flag intact for a later completion to surface.
+        try {
+          const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+          await AsyncStorage.removeItem("suppr.reset-plan-pending-prompt");
+        } catch {
+          /* non-fatal */
+        }
         Alert.alert(
           "Keep my logs and weight history?",
           "Your saved recipes, plans, and shopping lists are untouched either way.",

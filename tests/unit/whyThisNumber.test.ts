@@ -12,6 +12,7 @@ import {
   paceKgPerWeekFromPreset,
   whyThisNumberGoalFromDb,
 } from "../../src/lib/nutrition/whyThisNumber";
+import { MAINTENANCE_FORMULA_QUALIFIER_LINE } from "../../src/lib/nutrition/energyNumbers";
 
 describe("paceKgPerWeekFromPreset", () => {
   it("maps every legacy preset to its canonical magnitude", () => {
@@ -581,5 +582,83 @@ describe("whyThisNumberGoalFromDb — ENG-1507 shared normaliser", () => {
     expect(result.summary).toBe(
       "Your target sits below your estimated maintenance of 2,100 kcal.",
     );
+  });
+});
+
+describe("buildWhyThisNumber — ENG-1506 source-aware TDEE row (review round)", () => {
+  const base = {
+    targetCalories: 1800,
+    maintenanceTdee: 2100,
+    goal: "lose" as const,
+    paceKgPerWeek: -0.5,
+  };
+  const tdeeRow = (r: ReturnType<typeof buildWhyThisNumber>) =>
+    r.lines.find((l) => l.key === "tdee")!;
+
+  it("FORMULA source renders the canonical qualifier and NEVER 'learned from your logging'", () => {
+    // The flag-ON new-user case: resolver fell to Mifflin-St Jeor, the
+    // host passes source: "formula". Claiming the number was learned from
+    // logging would be dishonest — and would contradict the "Formula
+    // estimate from your stats" qualifier one tap away on Targets.
+    const r = buildWhyThisNumber({
+      ...base,
+      confidence: null,
+      source: "formula",
+    });
+    expect(tdeeRow(r).value).toBe(
+      `2,100 kcal (${MAINTENANCE_FORMULA_QUALIFIER_LINE})`,
+    );
+    expect(tdeeRow(r).value).not.toContain("learned from your logging");
+  });
+
+  it("FORMULA wording wins even when confidence/loggingDays would trigger other qualifiers", () => {
+    for (const confidence of ["low", "medium", "high"] as const) {
+      const r = buildWhyThisNumber({
+        ...base,
+        confidence,
+        loggingDays: 20,
+        source: "formula",
+      });
+      expect(tdeeRow(r).value).toContain(MAINTENANCE_FORMULA_QUALIFIER_LINE);
+      expect(tdeeRow(r).value).not.toContain("learned from your");
+      expect(tdeeRow(r).value).not.toContain("early estimate");
+    }
+  });
+
+  it("MEASURED source names Apple Health", () => {
+    const r = buildWhyThisNumber({
+      ...base,
+      confidence: "high",
+      source: "measured",
+    });
+    expect(tdeeRow(r).value).toBe("2,100 kcal (measured by Apple Health)");
+  });
+
+  it("ADAPTIVE source keeps the learned-from-logging ladder", () => {
+    const r = buildWhyThisNumber({
+      ...base,
+      confidence: "high",
+      source: "adaptive",
+    });
+    expect(tdeeRow(r).value).toBe("2,100 kcal (learned from your logging)");
+    const withDays = buildWhyThisNumber({
+      ...base,
+      confidence: "high",
+      loggingDays: 21,
+      source: "adaptive",
+    });
+    expect(tdeeRow(withDays).value).toBe(
+      "2,100 kcal (learned from your 21 fully-logged days)",
+    );
+  });
+
+  it("legacy callers (source omitted / null — the flag-OFF path) are byte-identical to pre-ENG-1506", () => {
+    const omitted = buildWhyThisNumber({ ...base, confidence: "high" });
+    const nulled = buildWhyThisNumber({ ...base, confidence: "high", source: null });
+    for (const r of [omitted, nulled]) {
+      expect(tdeeRow(r).value).toBe("2,100 kcal (learned from your logging)");
+    }
+    const early = buildWhyThisNumber({ ...base, confidence: "low", source: null });
+    expect(tdeeRow(early).value).toBe("~2,100 kcal (early estimate)");
   });
 });

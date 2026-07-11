@@ -745,8 +745,7 @@ function ProgressDashboardContent() {
               adaptive_tdee_updated_at: adaptiveUpdatedAt, measured_tdee: measuredTdee,
               measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
               sex: profileSexCached, weight_kg: weightKg, height_cm: profileHeightCmCached,
-              age: profileAgeCached, activity_level: profileActivityLevelCached,
-              weight_kg_by_day: weightKgByDay,
+              age: profileAgeCached, activity_level: profileActivityLevelCached, weight_kg_by_day: weightKgByDay,
             },
             { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
           )
@@ -2251,6 +2250,7 @@ function ProgressDashboardContent() {
               maintenanceTdeeKcal,
               goal: userGoal,
               observedKgPerWeek,
+              normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG), // ENG-1506 — OFF keeps the legacy 'lose'/'gain'-only fallback
             })
           : null;
 

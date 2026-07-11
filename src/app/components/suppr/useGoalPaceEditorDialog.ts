@@ -16,7 +16,8 @@
 import * as React from "react";
 
 import { supabase } from "../../../lib/supabase/browserClient.ts";
-import { track } from "../../../lib/analytics/track.ts";
+import { isFeatureEnabled, track } from "../../../lib/analytics/track.ts";
+import { ENERGY_NUMBERS_V1_FLAG } from "../../../lib/nutrition/energyNumbers.ts";
 import { AnalyticsEvents } from "../../../lib/analytics/events.ts";
 import {
   recomputeTargetsFromProfile,
@@ -263,9 +264,15 @@ export function useGoalPaceEditorDialog({
       adaptiveTdee: loaded.adaptiveTdee,
       adaptiveTdeeConfidence: loaded.adaptiveTdeeConfidence,
       adaptiveTdeeUpdatedAt: loaded.adaptiveTdeeUpdatedAt,
-      // ENG-1506 — canonical latest-weigh-in maintenance baseline, but ONLY
-      // when the user hasn't explicitly edited weight (an explicit edit wins).
-      weightKgByDay: editedWeightKg != null ? null : loaded.weightKgByDay,
+      // ENG-1506 — canonical latest-weigh-in maintenance baseline, ONLY
+      // behind `energy_numbers_v1` (flag OFF must preview AND persist the
+      // exact pre-ENG-1506 recompute — review round 2026-07-11) and only
+      // when the user hasn't explicitly edited weight (an explicit edit
+      // wins).
+      weightKgByDay:
+        isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) && editedWeightKg == null
+          ? loaded.weightKgByDay
+          : null,
     });
   }, [loaded, goal, pace, effectiveWeightKg, effectiveHeightCm, recomputeChanged, editedWeightKg]);
 
@@ -343,6 +350,8 @@ export function useGoalPaceEditorDialog({
         source: "recompute",
         paceKgPerWeek: continuousPace,
         fiberOverrideG: fiberChanged ? editedFiberG : undefined,
+        // ENG-1506 — host-read flag for the past-day backfill's input policy.
+        canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG),
       });
 
       if (!result.ok) {

@@ -239,7 +239,7 @@ export default function BarcodeScreen() {
     setLogging(false);
     if (dbErr) { Alert.alert("Could not log", dbErr.message); } else {
       // F-2 — freeze today's target on first log of the day.
-      void snapshotDailyTargetIfMissing(supabase, userId);
+      void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled("energy_numbers_v1") });
       // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT.
       // `nutrition_micros.caffeineMg` / `alcoholG` is already on the
       // inserted row above; Today's `caffeineFromMealsMg` /
@@ -360,7 +360,7 @@ export default function BarcodeScreen() {
       Alert.alert("Could not log", dbErr.message);
     } else {
       // F-2 — freeze today's target on first log of the day.
-      void snapshotDailyTargetIfMissing(supabase, userId);
+      void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled("energy_numbers_v1") });
       // Audit/2026-04-30 — per-meal HK write + portion memory. The
       // manual-entry path implies grams = 1 serving (no scaling), so
       // remembering "100 g" by default is useful enough to keep the

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertLinearHorizon,
+  computeTrajectory,
   MAX_LINEAR_PROJECTION_WEEKS,
   projectWeight,
 } from "../../src/lib/weightProjection";
@@ -144,42 +145,142 @@ describe("ENG-1029 projection horizon guard", () => {
   });
 });
 
-describe("projectWeight — ENG-1506 goal-fallback vocabulary fix", () => {
-  // The fallback branches used to compare v2 values ('lose'/'gain') only,
-  // so profile-sourced DB goals ('cut'/'bulk') silently fell through to
-  // `estimatedTdee = targetCalories` whenever maintenance was missing.
-  it("'cut' reaches the deficit fallback branch (target + 500)", () => {
-    const r = projectWeight({
-      currentWeightKg: 75,
-      todayCalories: 1900,
+describe("projectWeight — ENG-1506 goal-fallback vocabulary (BOTH flag paths pinned)", () => {
+  // The fallback branches historically compared v2 values ('lose'/'gain')
+  // only, so profile-sourced DB goals ('cut'/'bulk') silently fell through
+  // to `estimatedTdee = targetCalories` whenever maintenance was missing.
+  // The DB-vocabulary fix is flag-gated (review round 2026-07-11): hosts
+  // pass `normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)`
+  // because the fix visibly moves flag-OFF trajectory geometry (flat line →
+  // ±slope) for exactly the missing-maintenance population the kill switch
+  // protects. Both paths are pinned here so neither can silently regress.
+
+  describe("flag ON (normalizeGoalVocabulary: true) — DB vocabulary reaches the fallback", () => {
+    it("'cut' reaches the deficit fallback branch (target + 500)", () => {
+      const r = projectWeight({
+        currentWeightKg: 75,
+        todayCalories: 1900,
+        targetCalories: 1500,
+        goal: "cut",
+        normalizeGoalVocabulary: true,
+      });
+      // break-even 2000, ate 1900 → deficit
+      expect(r.dailySurplusDeficit).toBe(-100);
+      expect(r.direction).toBe("deficit");
+    });
+
+    it("'bulk' reaches the surplus fallback branch (target − 300)", () => {
+      const r = projectWeight({
+        currentWeightKg: 75,
+        todayCalories: 2500,
+        targetCalories: 2600,
+        goal: "bulk",
+        normalizeGoalVocabulary: true,
+      });
+      // break-even 2300, ate 2500 → surplus
+      expect(r.dailySurplusDeficit).toBe(200);
+      expect(r.direction).toBe("surplus");
+    });
+
+    it("legacy v2 synonyms keep working ('lose' → +500, 'gain' → −300)", () => {
+      const lose = projectWeight({
+        currentWeightKg: 75,
+        todayCalories: 1900,
+        targetCalories: 1500,
+        goal: "lose",
+        normalizeGoalVocabulary: true,
+      });
+      expect(lose.dailySurplusDeficit).toBe(-100);
+      const gain = projectWeight({
+        currentWeightKg: 75,
+        todayCalories: 2500,
+        targetCalories: 2600,
+        goal: "gain",
+        normalizeGoalVocabulary: true,
+      });
+      expect(gain.dailySurplusDeficit).toBe(200);
+    });
+
+    it("unknown goal still falls to targetCalories as break-even", () => {
+      const r = projectWeight({
+        currentWeightKg: 75,
+        todayCalories: 2000,
+        targetCalories: 2000,
+        goal: "garbage",
+        normalizeGoalVocabulary: true,
+      });
+      expect(r.dailySurplusDeficit).toBe(0);
+      expect(r.direction).toBe("maintenance");
+    });
+  });
+
+  describe("flag OFF (default) — the exact pre-ENG-1506 'lose'/'gain'-only comparison", () => {
+    it("DB 'cut' falls through to targetCalories (legacy flat-line behaviour)", () => {
+      const r = projectWeight({
+        currentWeightKg: 75,
+        todayCalories: 1900,
+        targetCalories: 1500,
+        goal: "cut",
+      });
+      // Legacy: break-even = target (1500), ate 1900 → reads as surplus.
+      expect(r.dailySurplusDeficit).toBe(400);
+      expect(r.direction).toBe("surplus");
+    });
+
+    it("DB 'bulk' falls through to targetCalories (legacy behaviour)", () => {
+      const r = projectWeight({
+        currentWeightKg: 75,
+        todayCalories: 2500,
+        targetCalories: 2600,
+        goal: "bulk",
+      });
+      // Legacy: break-even = target (2600), ate 2500 → reads as deficit.
+      expect(r.dailySurplusDeficit).toBe(-100);
+      expect(r.direction).toBe("deficit");
+    });
+
+    it("v2 'lose' / 'gain' keep their historical branches", () => {
+      const lose = projectWeight({
+        currentWeightKg: 75,
+        todayCalories: 1900,
+        targetCalories: 1500,
+        goal: "lose",
+      });
+      expect(lose.dailySurplusDeficit).toBe(-100);
+      expect(lose.direction).toBe("deficit");
+      const gain = projectWeight({
+        currentWeightKg: 75,
+        todayCalories: 2500,
+        targetCalories: 2600,
+        goal: "gain",
+      });
+      expect(gain.dailySurplusDeficit).toBe(200);
+      expect(gain.direction).toBe("surplus");
+    });
+  });
+
+  it("computeTrajectory threads normalizeGoalVocabulary through to projectWeight", () => {
+    // Same 7 logged days, cut goal, no maintenance: flag-OFF projects a
+    // flat line (break-even = target); flag-ON projects loss (target+500).
+    const byDay: Record<string, Array<{ calories: number }>> = {};
+    for (let i = 1; i <= 7; i++) {
+      byDay[`2026-07-0${i}`] = [{ calories: 1900 }];
+    }
+    const base = {
+      byDay,
+      latestWeightKg: 75,
       targetCalories: 1500,
       goal: "cut",
-    });
-    // break-even 2000, ate 1900 → deficit
-    expect(r.dailySurplusDeficit).toBe(-100);
-    expect(r.direction).toBe("deficit");
-  });
-
-  it("'bulk' reaches the surplus fallback branch (target − 300)", () => {
-    const r = projectWeight({
-      currentWeightKg: 75,
-      todayCalories: 2500,
-      targetCalories: 2600,
-      goal: "bulk",
-    });
-    // break-even 2300, ate 2500 → surplus
-    expect(r.dailySurplusDeficit).toBe(200);
-    expect(r.direction).toBe("surplus");
-  });
-
-  it("unknown goal still falls to targetCalories as break-even", () => {
-    const r = projectWeight({
-      currentWeightKg: 75,
-      todayCalories: 2000,
-      targetCalories: 2000,
-      goal: "garbage",
-    });
-    expect(r.dailySurplusDeficit).toBe(0);
-    expect(r.direction).toBe("maintenance");
+    } as const;
+    const off = computeTrajectory({ ...base });
+    const on = computeTrajectory({ ...base, normalizeGoalVocabulary: true });
+    expect(off?.kind).toBe("projection");
+    expect(on?.kind).toBe("projection");
+    if (off?.kind === "projection" && on?.kind === "projection") {
+      // OFF: 1900 vs 1500 break-even → surplus → projected UP.
+      expect(off.projectedKg).toBeGreaterThan(75);
+      // ON: 1900 vs 2000 break-even → deficit → projected DOWN.
+      expect(on.projectedKg).toBeLessThan(75);
+    }
   });
 });

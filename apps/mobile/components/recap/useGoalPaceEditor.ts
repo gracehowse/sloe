@@ -26,7 +26,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
+import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   recomputeTargetsFromProfile,
@@ -287,9 +288,15 @@ export function useGoalPaceEditor({
       adaptiveTdee: loaded.adaptiveTdee,
       adaptiveTdeeConfidence: loaded.adaptiveTdeeConfidence,
       adaptiveTdeeUpdatedAt: loaded.adaptiveTdeeUpdatedAt,
-      // ENG-1506 — canonical latest-weigh-in maintenance baseline, but ONLY
-      // when the user hasn't explicitly edited weight (an explicit edit wins).
-      weightKgByDay: editedWeightKg != null ? null : loaded.weightKgByDay,
+      // ENG-1506 — canonical latest-weigh-in maintenance baseline, ONLY
+      // behind `energy_numbers_v1` (flag OFF must preview AND persist the
+      // exact pre-ENG-1506 recompute — review round 2026-07-11) and only
+      // when the user hasn't explicitly edited weight (an explicit edit
+      // wins).
+      weightKgByDay:
+        isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) && editedWeightKg == null
+          ? loaded.weightKgByDay
+          : null,
     });
   }, [loaded, goal, pace, effectiveWeightKg, effectiveHeightCm, recomputeChanged, editedWeightKg]);
 
@@ -370,6 +377,8 @@ export function useGoalPaceEditor({
         source: "recompute",
         paceKgPerWeek: continuousPace,
         fiberOverrideG: fiberChanged ? editedFiberG : undefined,
+        // ENG-1506 — host-read flag for the past-day backfill's input policy.
+        canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG),
       });
 
       if (!result.ok) {
