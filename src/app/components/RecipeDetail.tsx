@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
+import { AddRowButton } from "./ui/add-row-button.tsx";
 import { toast } from "sonner";
 import { formatContainsLine, normaliseAllergenIds } from "../../constants/regulatedAllergens";
 import { supabase } from "../../lib/supabase/browserClient.ts";
@@ -3132,15 +3133,11 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
             )}
             {isMyRecipe && !isCatalogRecipe && (
               <div className="mt-3 rounded-2xl px-4 py-3" style={whiteSlabStyle}>
-                <button
-                  type="button"
+                <AddRowButton
                   onClick={() => setAddIngOpen(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/50 bg-card px-4 py-2.5 text-sm font-semibold text-primary-solid hover:bg-primary/10 transition-colors"
+                  label="Add ingredient"
                   aria-label="Add an ingredient the importer missed"
-                >
-                  <span aria-hidden>+</span>
-                  Add ingredient
-                </button>
+                />
                 <p className="mt-2 text-[11px] text-muted-foreground text-center">
                   Missed an ingredient during import? Add it here and totals update live.
                 </p>

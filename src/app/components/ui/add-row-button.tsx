@@ -5,11 +5,15 @@ import * as React from "react";
 import { Icons } from "./icons";
 import { cn } from "./utils";
 
+export type AddRowButtonSize = "md" | "sm";
+
 export type AddRowButtonProps = Omit<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
   "children"
 > & {
   label: React.ReactNode;
+  /** `sm` — compact inline variant (planner add-slot chips); mirrors mobile. */
+  size?: AddRowButtonSize;
   /** Leading glyph override — defaults to the Plus. */
   icon?: React.ReactNode;
   /** Async commit in flight — swaps the glyph for a spinner + disables. */
@@ -39,17 +43,20 @@ export function AddRowButton({
   disabled,
   className,
   type = "button",
+  size = "md",
   ...rest
 }: AddRowButtonProps) {
   const isDisabled = Boolean(disabled) || loading;
+  const sm = size === "sm";
   return (
     <button
       type={type}
       disabled={isDisabled}
       aria-busy={loading || undefined}
       className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-[12px] bg-fill-quiet px-3 py-2",
-        "text-sm font-semibold text-primary-solid",
+        "flex w-full items-center justify-center rounded-[12px] bg-fill-quiet",
+        sm ? "gap-1 px-2 py-1 text-[11px]" : "gap-2 px-3 py-2 text-sm",
+        "font-semibold text-primary-solid",
         "transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         isDisabled && "cursor-not-allowed opacity-50",
         className,
@@ -57,9 +64,9 @@ export function AddRowButton({
       {...rest}
     >
       {loading ? (
-        <Icons.spinner className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+        <Icons.spinner className={cn(sm ? "h-3 w-3" : "h-4 w-4", "shrink-0 animate-spin")} aria-hidden />
       ) : (
-        (icon ?? <Icons.add className="h-4 w-4 shrink-0" aria-hidden />)
+        (icon ?? <Icons.add className={cn(sm ? "h-3 w-3" : "h-4 w-4", "shrink-0")} aria-hidden />)
       )}
       {label}
     </button>

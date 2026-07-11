@@ -132,3 +132,13 @@ Extracted from the two conforming references (mobile `WeightRangeToggle` +
   read is acceptable because the web rows carry hint copy the mobile rows
   don't; if the hints ever move out, it converges to §8 (tracked: ENG-1375
   epic scope note).
+
+Left dashed — the truthful inventory (refuter-audited 2026-07-11):
+sanctioned upload dropzones (`photo-log-dialog.tsx`, `RecipeUpload.tsx`);
+the v3 plan empty-SLOT affordances (`PlanEmptySlotV3`, mobile twin — the
+prototype's own `.plan-empty` dashed grammar, an empty-state affordance
+not an add control); empty-state placeholder CONTAINERS (DiscoverFeed
+L994, Library L430 — containers, not controls); `MealPlanner` "+ New"
+plan-slot pill (L1438 — a create-new-collection affordance; converts
+with the S5+ slice if a ruling extends there); `FoodSearchPanel` L2755
+(ENG-814 flag fork — S7 scope).
