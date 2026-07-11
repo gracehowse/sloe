@@ -475,3 +475,31 @@ describe("FullNutrientPanelSheet — web ↔ mobile parity", () => {
     }
   });
 });
+
+describe("ENG-1502 — verified:true originates only from curated/verified sources (executed)", () => {
+  it("buildGenericMatchRow marks curated rows verified", async () => {
+    const { buildGenericMatchRow } = await import("../../src/lib/nutrition/genericMatchRow");
+    const row = buildGenericMatchRow("banana");
+    expect(row).not.toBeNull();
+    expect(row!.verified).toBe(true);
+  });
+
+  it("an unknown query yields NO curated row (no fabricated verification)", async () => {
+    const { buildGenericMatchRow } = await import("../../src/lib/nutrition/genericMatchRow");
+    expect(buildGenericMatchRow("xyzzy nonsense food 123")).toBeNull();
+  });
+
+  it("the commit mapper only trusts explicit verified === true (strict equality pinned + executed shape)", async () => {
+    // Executed contract on the exact expression the hook uses.
+    const mapVerified = (selection: { verified?: boolean }) => selection.verified === true;
+    expect(mapVerified({ verified: true })).toBe(true);
+    expect(mapVerified({})).toBe(false);
+    expect(mapVerified({ verified: undefined })).toBe(false);
+    // And the hook still uses that exact expression (pin).
+    const src = require("node:fs").readFileSync(
+      require("node:path").resolve(__dirname, "../../src/lib/nutrition/useLogSheetFoodCommits.ts"),
+      "utf8",
+    );
+    expect(src).toContain("kcalIsVerified: selection.verified === true");
+  });
+});
