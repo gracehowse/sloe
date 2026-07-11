@@ -55,13 +55,13 @@ describe("<ProgressStoryGate /> (mobile)", () => {
   });
 
   it("ENG-1372 slice 2 — renders a standalone '<n>/3' numeral WITH the ring (not just buried in the sentence below)", () => {
-    const { getByTestId } = render(<ProgressStoryGate daysLogged={0} />);
-    expect(getByTestId("progress-story-gate-ring-numeral").props.children.join("")).toBe("0/3");
+    const { getByTestId, queryByTestId } = render(<ProgressStoryGate daysLogged={0} />);
+    expect(queryByTestId("progress-story-gate-ring-numeral")).toBeNull(); // fit-and-finish 2026-07-11: numeral removed (redundant with caption)
   });
 
   it("ENG-1372 slice 2 — the numeral tracks segmentsFilled at day 1", () => {
-    const { getByTestId } = render(<ProgressStoryGate daysLogged={1} />);
-    expect(getByTestId("progress-story-gate-ring-numeral").props.children.join("")).toBe("1/3");
+    const { getByTestId, queryByTestId } = render(<ProgressStoryGate daysLogged={1} />);
+    expect(queryByTestId("progress-story-gate-ring-numeral")).toBeNull(); // fit-and-finish 2026-07-11: numeral removed (redundant with caption)
   });
 });
 

@@ -77,11 +77,14 @@ export function WeightSparseState({ points, goalKg, onLogWeight }: Props) {
         ) : null}
         <View style={styles.ctaOverlay} pointerEvents="box-none">
           <Scale size={22} color={colors.textTertiary} strokeWidth={1.5} />
+          {/* fit-and-finish (Grace 2026-07-11): compact in-frame CTA — the
+              full-size pill dwarfed the chart frame. */}
           <SupprButton
             variant="primary"
+            size="sm"
             label="Log your first weigh-in"
             onPress={onLogWeight}
-            style={{ marginTop: Spacing.sm }}
+            style={{ marginTop: Spacing.sm, alignSelf: "center" }}
           />
         </View>
       </View>
@@ -141,11 +144,14 @@ export function WeightSparseState({ points, goalKg, onLogWeight }: Props) {
           <Text style={[styles.body, { color: colors.textSecondary }]}>
             One more weigh-in unlocks your trend.
           </Text>
+          {/* fit-and-finish (Grace 2026-07-11): compact in-frame CTA — the
+              full-size pill dwarfed the chart frame. */}
           <SupprButton
             variant="primary"
+            size="sm"
             label="Log weight"
             onPress={onLogWeight}
-            style={{ marginTop: Spacing.sm }}
+            style={{ marginTop: Spacing.sm, alignSelf: "center" }}
           />
         </View>
       </View>
