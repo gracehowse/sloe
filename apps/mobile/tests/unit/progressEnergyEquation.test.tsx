@@ -78,3 +78,14 @@ describe("ProgressEnergyEquation (mobile)", () => {
     expect(queryByText("adaptive estimate")).not.toBeNull();
   });
 });
+
+
+describe("ENG-1497 corner parity", () => {
+  it("the equation card carries NO radius override (24 card default)", () => {
+    const src = require("node:fs").readFileSync(
+      require("node:path").resolve(__dirname, "../../components/progress/ProgressEnergyEquation.tsx"),
+      "utf8",
+    );
+    expect(src).not.toMatch(/radius="/);
+  });
+});
