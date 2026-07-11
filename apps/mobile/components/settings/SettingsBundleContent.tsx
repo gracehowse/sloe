@@ -1489,7 +1489,11 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           {(
             [
               profileData.savedCount > 0
-                ? [String(profileData.savedCount), "Recipes", t.accent]
+                ? [
+                    String(profileData.savedCount),
+                    profileData.savedCount === 1 ? "Recipe" : "Recipes",
+                    t.accent,
+                  ]
                 : null,
               profileData.streak > 0
                 ? [String(profileData.streak), "Streak", t.green]

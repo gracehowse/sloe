@@ -69,7 +69,9 @@ function ProfileIdentityStripImpl({
             <View style={styles.statTile}>
               <View style={styles.statTileHeader}>
                 <BookOpen size={16} color={Accent.success} strokeWidth={1.75} />
-                <Text style={styles.statTileLabel}>Recipes saved</Text>
+                <Text style={styles.statTileLabel}>
+                  {recipeCount === 1 ? "Recipe saved" : "Recipes saved"}
+                </Text>
               </View>
               <Text style={styles.statTileValue}>{recipeCount}</Text>
             </View>

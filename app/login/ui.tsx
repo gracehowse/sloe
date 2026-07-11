@@ -114,6 +114,18 @@ export function LoginClient({
       posthog.identify(signUpData.user.id, { email: trimmed });
       track(AnalyticsEvents.user_signed_up, { method: "email" });
     }
+    // ENG-1512 — branch on the session, mirroring the onboarding signup
+    // step (src/app/components/onboarding/steps/signup.tsx, ENG-672):
+    //   - Confirmations OFF (supabase/config.toml enable_confirmations =
+    //     false): signUp returns a live session and the SIGNED_IN
+    //     listener above redirects. Silent success, same as signIn —
+    //     telling the user to "check your email" here would be false.
+    //   - Confirmations ON (no session): the confirmation email really
+    //     was sent, so the copy below is honest.
+    if (signUpData.session) {
+      setStatus("idle");
+      return;
+    }
     setStatus("sent");
     setMessage("Account created. Check your email to confirm, then sign in.");
   };
@@ -571,13 +583,6 @@ export function LoginClient({
                 </a>
               </p>
             )}
-
-            <p
-              className="mt-6 text-xs"
-              style={{ color: "var(--muted-foreground)" }}
-            >
-              If you just created an account, you may need to confirm your email before signing in.
-            </p>
           </div>
         )}
       </div>

@@ -20,6 +20,7 @@
  *   - amount=1, unit="1 breast"         → "1 breast"        (dedupe)
  *   - amount=2, unit="2 cups"           → "2 cups"          (dedupe)
  *   - amount=1, unit="1 medium (182g)"  → "1 medium (182g)" (dedupe)
+ *   - amount=2, unit="rasher"           → "2 rashers"      (pluralise)
  *   - amount=1, unit=""                 → "1"
  *   - amount="", unit="cup"             → "cup"
  *   - amount=null, unit=null            → ""
@@ -78,5 +79,73 @@ export function formatIngredientAmountUnit(
     return a;
   }
 
+  // ENG-1533: pluralise bare count-noun units when the amount is > 1 —
+  // "2 rasher" → "2 rashers", "2 clove" → "2 cloves". Conservative by
+  // design: only a purely numeric amount, only a single alphabetic unit
+  // word, never measurement abbreviations / size words, and never a
+  // unit that already ends in "s" (assumed already plural).
+  if (
+    /^\d+(?:\.\d+)?$/.test(a) &&
+    Number(a) > 1 &&
+    /^[A-Za-z]+$/.test(u) &&
+    !/s$/i.test(u) &&
+    !UNPLURALISABLE_UNIT_WORDS.has(uLower)
+  ) {
+    return `${a} ${IRREGULAR_UNIT_PLURALS[uLower] ?? pluralizeUnitWord(u)}`;
+  }
+
   return `${a} ${u}`;
+}
+
+/**
+ * Unit tokens that never take an English plural "s": measurement
+ * abbreviations ("2 g", "2 tbsp") and USDA-style size adjectives
+ * ("2 medium", "2 large") that read correctly as-is.
+ */
+const UNPLURALISABLE_UNIT_WORDS = new Set([
+  "g",
+  "kg",
+  "mg",
+  "mcg",
+  "ml",
+  "l",
+  "dl",
+  "cl",
+  "oz",
+  "lb",
+  "tbsp",
+  "tbs",
+  "tsp",
+  "qt",
+  "pt",
+  "gal",
+  "kcal",
+  "cm",
+  "mm",
+  "in",
+  "dozen",
+  "x",
+  "small",
+  "medium",
+  "large",
+  "whole",
+  "each",
+]);
+
+/** Irregular plurals for the few f-ending cooking units the +s rule mangles. */
+const IRREGULAR_UNIT_PLURALS: Record<string, string> = {
+  leaf: "leaves",
+  loaf: "loaves",
+  half: "halves",
+};
+
+/**
+ * Cheap English pluralizer for count-unit words — same rules as the
+ * private `pluralize` helpers in `src/lib/nutrition/portionPicker.ts`
+ * and `src/lib/nutrition/recipeYield.ts` (95% case: just +s).
+ */
+function pluralizeUnitWord(singular: string): string {
+  if (/(s|x|z|ch|sh)$/i.test(singular)) return `${singular}es`;
+  if (/[^aeiou]y$/i.test(singular)) return `${singular.slice(0, -1)}ies`;
+  return `${singular}s`;
 }

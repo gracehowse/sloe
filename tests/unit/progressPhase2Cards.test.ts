@@ -105,6 +105,12 @@ describe("Progress — Sloe Figma 492:2 frame", () => {
     expect(WEB).toMatch(/<ProgressOnTargetRibbon\b/);
     expect(MOBILE).toMatch(/<ProgressEnergyTriad\b/);
     expect(MOBILE).toMatch(/<ProgressOnTargetRibbon\b/);
+    // ENG-1509 — the ribbon subtitle is a factual derived line, never the
+    // fabricated "most consistent week" superlative.
+    for (const src of [MOBILE, WEB]) {
+      expect(src).not.toMatch(/most consistent week/);
+      expect(src).toMatch(/That's \$\{onTargetCount\} of 7 days\./);
+    }
   });
 
   it("weight card exposes the Trend/Scale toggle + Log weight (frame position 4)", () => {

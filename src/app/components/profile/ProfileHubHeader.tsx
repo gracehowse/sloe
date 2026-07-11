@@ -78,7 +78,7 @@ function ProfileHubHeaderImpl({
       <div className="mb-4 flex gap-2">
         <div className="flex-1 rounded-xl border border-border bg-card p-3 text-center card-slab">
           <p className="text-lg font-bold tabular-nums text-primary-solid">{recipeCount}</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">Recipes</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">{recipeCount === 1 ? "Recipe" : "Recipes"}</p>
         </div>
         <div className="flex-1 rounded-xl border border-border bg-card p-3 text-center card-slab">
           <p className="text-lg font-bold tabular-nums text-success">{streakDays}</p>

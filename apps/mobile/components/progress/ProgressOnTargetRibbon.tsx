@@ -18,7 +18,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 export interface ProgressOnTargetRibbonProps {
   /** Number of on-target days this week (real count). */
   onTargetCount: number;
-  /** Supportive subtitle (e.g. "Your most consistent week this month."). */
+  /** Factual supportive subtitle (e.g. "That's 5 of 7 days."). */
   subtitle: string;
 }
 

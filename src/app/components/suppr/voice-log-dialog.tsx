@@ -331,7 +331,7 @@ export function VoiceLogDialog({
         {stage === "parsing" && (
           <div className="py-8 flex flex-col items-center gap-3 text-sm text-muted-foreground">
             <span className="size-6 rounded-full border-2 border-primary border-t-transparent animate-spin" aria-hidden />
-            Parsing your description…
+            Estimating nutrition…
           </div>
         )}
 
@@ -454,7 +454,7 @@ export function VoiceLogDialog({
                 onClick={() => submitTranscript(transcript)}
                 disabled={!transcript.trim()}
               >
-                Parse
+                Estimate
               </Button>
             </>
           )}

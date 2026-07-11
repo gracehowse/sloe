@@ -78,7 +78,7 @@ export function UpgradeStep() {
       <StepHeader
         overline={overline}
         title="Start your 7-day free trial"
-        subtitle="Try Sloe Pro free for 7 days — barcode scanning, custom macros, and coaching. Cancel anytime. No payment due now."
+        subtitle="Try Sloe Pro free for 7 days — unlimited saved recipes, multi-day macro-matched meal plans, and AI photo & voice logging. Cancel anytime. No payment due now."
       />
 
       <OptionCard
