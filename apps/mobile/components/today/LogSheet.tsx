@@ -1061,11 +1061,16 @@ function BrowseAndFooter({
 
   return (
     <>
-      {/* Browse tabs — Figma 336:2 underline rail. */}
+      {/* Browse tabs — Figma 336:2 underline rail; pans horizontally instead
+          of clipping at accessibility type sizes (ENG-1529). */}
       {showBrowseToggle ? (
-        <View
-          style={[styles.browseTabRow, { borderBottomColor: colors.border }]}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           accessibilityRole="tablist"
+          testID="log-sheet-browse-tab-scroll"
+          style={[styles.browseTabRow, { borderBottomColor: colors.border }]}
+          contentContainerStyle={styles.browseTabRowContent}
         >
           {visibleTabs.map((id) => {
             const active = activeTab === id;
@@ -1085,15 +1090,7 @@ function BrowseAndFooter({
                 accessibilityLabel={
                   showSavedDot ? `${baseLabel} — ${savedCount} saved` : baseLabel
                 }
-                testID={
-                  id === "gotos"
-                    ? "log-sheet-tab-gotos"
-                    : id === "recent"
-                      ? "log-sheet-tab-recent"
-                      : id === "library"
-                        ? "log-sheet-tab-library"
-                        : "log-sheet-tab-saved"
-                }
+                testID={`log-sheet-tab-${id}`}
                 style={[
                   styles.browseTab,
                   {
@@ -1122,7 +1119,7 @@ function BrowseAndFooter({
               </PressableScale>
             );
           })}
-        </View>
+        </ScrollView>
       ) : null}
 
       {/* Browse content */}
@@ -1639,16 +1636,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Spacing.sm,
     paddingHorizontal: Spacing.md,
-    height: 48,
+    minHeight: 48, // ENG-1529 — grows with Dynamic Type; 48 stays the floor
     borderRadius: Radius.full,
     borderWidth: StyleSheet.hairlineWidth,
   },
   browseTabRow: {
-    flexDirection: "row",
-    gap: Spacing.lg,
+    flexGrow: 0,
     marginHorizontal: Spacing.md,
     marginTop: Spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  browseTabRowContent: {
+    flexDirection: "row",
+    gap: Spacing.lg,
   },
   browseTab: {
     flexDirection: "row",
