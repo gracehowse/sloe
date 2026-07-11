@@ -12,8 +12,11 @@ import { getEffectiveTDEE } from "@/lib/calcTargets";
 import {
   computeTrajectory,
   resolveLatestWeightKg,
+  TRAJECTORY_BEHAVIOUR_CAPTION,
   type TrajectoryState,
 } from "@/lib/weightProjection";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
 
 /**
  * `<PaywallTrajectoryChart>` — ENG-969 (mobile).
@@ -179,6 +182,17 @@ export function PaywallTrajectoryChartView(props: PaywallTrajectoryChartViewProp
         </Text>
         .
       </Text>
+      {/* ENG-1507 — behaviour-vs-plan qualifier: the projection direction is
+          recent intake vs estimated burn, NOT the plan, so a downward line
+          under a build-muscle goal reads as recent behaviour. Flag-gated. */}
+      {isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? (
+        <Text
+          testID="paywall-trajectory-behaviour-caption"
+          style={[styles.basis, { color: colors.textSecondary }]}
+        >
+          {TRAJECTORY_BEHAVIOUR_CAPTION}
+        </Text>
+      ) : null}
       <Text style={[styles.footnote, { color: colors.textTertiary }]}>
         Based on 7,700 kcal {"≈"} 1 kg. An estimate, not a promise.
       </Text>

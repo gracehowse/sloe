@@ -10,6 +10,7 @@ import {
   buildStoryBeats,
   buildWhyThisNumber,
   paceKgPerWeekFromPreset,
+  whyThisNumberGoalFromDb,
 } from "../../src/lib/nutrition/whyThisNumber";
 
 describe("paceKgPerWeekFromPreset", () => {
@@ -544,5 +545,41 @@ describe("buildStoryBeats", () => {
     ]) {
       expect(allText).not.toContain(banned);
     }
+  });
+});
+
+describe("whyThisNumberGoalFromDb — ENG-1507 shared normaliser", () => {
+  it("maps the DB vocabulary to explainer directions", () => {
+    expect(whyThisNumberGoalFromDb("cut")).toBe("lose");
+    expect(whyThisNumberGoalFromDb("lose")).toBe("lose");
+    expect(whyThisNumberGoalFromDb("maintain")).toBe("maintain");
+    expect(whyThisNumberGoalFromDb("health")).toBe("maintain");
+    expect(whyThisNumberGoalFromDb("bulk")).toBe("gain");
+    expect(whyThisNumberGoalFromDb("strength")).toBe("gain");
+  });
+
+  it("unknown / null → null — never the old silent 'lose'", () => {
+    expect(whyThisNumberGoalFromDb(null)).toBeNull();
+    expect(whyThisNumberGoalFromDb("garbage")).toBeNull();
+  });
+
+  it("paceKgPerWeekFromPreset with a null goal returns null (Goal not set)", () => {
+    expect(paceKgPerWeekFromPreset("steady", null)).toBeNull();
+  });
+
+  it("buildWhyThisNumber with a null goal renders 'Goal not set' + a goal-free summary", () => {
+    const result = buildWhyThisNumber({
+      targetCalories: 1800,
+      maintenanceTdee: 2100,
+      confidence: "high",
+      goal: null,
+      paceKgPerWeek: paceKgPerWeekFromPreset("steady", null),
+    });
+    const goalRow = result.lines.find((l) => l.key === "goal")!;
+    expect(goalRow.value).toBe("Goal not set");
+    // Summary must not read "…toward your goal not set goal".
+    expect(result.summary).toBe(
+      "Your target sits below your estimated maintenance of 2,100 kcal.",
+    );
   });
 });

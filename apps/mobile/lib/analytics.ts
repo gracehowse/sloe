@@ -717,6 +717,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   Registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS
  *   parity check — the flag is web-only in practice (mobile Discover has
  *   no equivalent filter sheet), so no mobile code reads it.
+ * - `energy_numbers_v1` (ENG-1506/1507) — the canonical energy-numbers
+ *   reconciliation: every maintenance surface reads `selectMaintenance`
+ *   (one input policy — latest weigh-in, strict-null basics), Targets +
+ *   Expenditure stop bypassing the resolver, the net-energy "maintenance"
+ *   state word becomes "Balanced", and empty todays show an empty state
+ *   instead of "0 kcal maintenance". DEFAULT-OFF: real users' displayed
+ *   maintenance MOVES when this ramps (the intended convergence) — Grace
+ *   ramps in PostHog with before/after screenshots per
+ *   `docs/decisions/2026-07-11-canonical-energy-numbers.md`. Off → every
+ *   surface renders its exact pre-ENG-1506 numbers (kill switch). W + M.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -734,6 +744,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "paywall_fallback_when_unavailable", // ENG-1381 — priced fallback for RC-unavailable paywall
   "kcal_trust_qualifier_v1", // ENG-1417 — "~" qualifier on unverified kcal, decision surfaces only
   "discover_verified_filter_v1", // ENG-1417 — Discover "Verified only" filter chip (web-only in practice)
+  "energy_numbers_v1", // ENG-1506/1507 — canonical energy numbers (selectMaintenance input policy + qualifiers)
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

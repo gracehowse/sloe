@@ -3,6 +3,7 @@
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import {
   buildExpenditureTrendCopy,
+  type ExpenditureTrendCopy,
   type ExpenditureTrendInput,
 } from "../../../lib/progress/expenditureTrend.ts";
 import { SupprCard } from "../ui/suppr-card.tsx";
@@ -29,10 +30,18 @@ import { ConfidenceChip } from "../ui/confidence-chip.tsx";
  * helper). Parity: mobile `ExpenditureTrendCard` renders the identical copy
  * behind the same flag.
  */
-export function ExpenditureTrendCard(props: ExpenditureTrendInput) {
+export function ExpenditureTrendCard(
+  props: ExpenditureTrendInput & {
+    /** ENG-1506 — behind `energy_numbers_v1` the host passes copy built
+     *  from the SAME resolved maintenance the Maintenance card shows
+     *  (`expenditureFromResolved`), so this card can never assert a kcal
+     *  the resolver rejected. Omitted → the legacy raw-column path. */
+    resolvedCopy?: ExpenditureTrendCopy;
+  },
+) {
   if (!isFeatureEnabled("expenditure_trend_card")) return null;
 
-  const copy = buildExpenditureTrendCopy(props);
+  const copy = props.resolvedCopy ?? buildExpenditureTrendCopy(props);
 
   return (
     <SupprCard

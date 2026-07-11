@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { ChevronRight, Flame, Info, Target, TrendingUp, Utensils } from "lucide-react-native";
+import { ChevronRight, Flame, Info, Target, Utensils } from "lucide-react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, Colors, FontFamily, FontWeight, IconSize, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -9,7 +9,8 @@ import { useTodayCardElevation } from "@/hooks/useCardElevation";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
-import { weekSummaryHeading, type WeekSummaryMode } from "@suppr/nutrition-core/weekSummaryWindow";
+import { TodayWeeklyRollingCard } from "@/components/today/TodayWeeklyRollingCard";
+import { type WeekSummaryMode } from "@suppr/nutrition-core/weekSummaryWindow";
 import {
   buildTdeeExplainerCopy,
   calculateBMR,
@@ -24,17 +25,18 @@ import {
 import { weekDeficitToKg } from "@suppr/nutrition-core/maintenanceChain";
 import {
   NET_ENERGY_CHIP_BG,
-  NET_ENERGY_CHIP_LABEL,
+  NET_ENERGY_EMPTY_HEADLINE,
+  NET_ENERGY_EMPTY_SUBLINE,
   NET_ENERGY_STATE_COLOR,
+  netEnergyChipLabel,
   netEnergyChipState,
+  netEnergyHeadlineState,
   netEnergyKcalUnit,
   netEnergyMarkerFraction,
   netEnergySubline,
 } from "@suppr/nutrition-core/netEnergyBalance";
-import {
-  TODAY_HEALTH_CONNECT_ROUTE,
-  WEEKLY_ROLLING_DENOMINATOR_HINT,
-} from "@suppr/shared/copy/today";
+import { ENERGY_NUMBERS_V1_FLAG, maintenanceQualifier } from "@suppr/nutrition-core/energyNumbers";
+import { TODAY_HEALTH_CONNECT_ROUTE } from "@suppr/shared/copy/today";
 import {
   ACTIVITY_BUDGET_DISCOVER_BODY,
   ACTIVITY_BUDGET_DISCOVER_CTA,
@@ -202,25 +204,19 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
     hasMaintenanceTile && popoverBmr != null
       ? maintenanceSource
         ? buildMaintenancePopoverCopy({
-            kcal: maintenanceTdeeKcal!,
-            source: maintenanceSource,
-            confidence: maintenanceConfidence ?? null,
-            formulaKcal: null,
-            adaptiveRejectedAsStale: false,
-            adaptiveRejectedBelowFormula: false,
-            rejectedAdaptiveKcal: null,
-            measuredRejectedBelowFormula: false,
-            rejectedMeasuredKcal: null,
+            kcal: maintenanceTdeeKcal!, source: maintenanceSource, confidence: maintenanceConfidence ?? null,
+            formulaKcal: null, adaptiveRejectedAsStale: false, adaptiveRejectedBelowFormula: false,
+            rejectedAdaptiveKcal: null, measuredRejectedBelowFormula: false, rejectedMeasuredKcal: null,
           })
         : buildTdeeExplainerCopy({
-            maintenanceTdeeKcal: maintenanceTdeeKcal!,
-            bmrKcal: popoverBmr,
-            activityLevel: popoverActivity,
-            basalKcal: basalBurnKcal,
-            activeKcal: activityBurnKcal ?? 0,
+            maintenanceTdeeKcal: maintenanceTdeeKcal!, bmrKcal: popoverBmr, activityLevel: popoverActivity,
+            basalKcal: basalBurnKcal, activeKcal: activityBurnKcal ?? 0,
           })
       : null;
 
+  // ENG-1506 — balanced-band wording + empty-headline state + maintenance
+  // qualifier, gated together; off → the exact legacy card.
+  const energyV1 = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG);
   const net = totalBurnKcal - consumedCalories;
   const isDeficit = net >= 0;
   const chipState = netEnergyChipState(net);
@@ -229,19 +225,19 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
   // marker keep the vivid `chipColor`.
   const chipBg = NET_ENERGY_CHIP_BG[chipState];
   const balanceFraction = netEnergyMarkerFraction(
-    net,
-    hasMaintenanceTile ? maintenanceTdeeKcal : null,
-    consumedCalories,
-    isDeficit,
+    net, hasMaintenanceTile ? maintenanceTdeeKcal : null, consumedCalories, isDeficit,
   );
   const netHeadlineColor = chipColor;
   const netSubLine = netEnergySubline({
-    burnedKcal: totalBurnKcal,
-    eatenKcal: consumedCalories,
-    isToday,
-    netKcal: net,
+    burnedKcal: totalBurnKcal, eatenKcal: consumedCalories, isToday, netKcal: net,
     stagedNeutralSurplusFraming: isFeatureEnabled("coaching_stages_v1"), // ENG-1454
+    balancedWording: energyV1, // ENG-1506
   });
+  // ENG-1506 — an empty today (no burn, no food) renders an em-dash, not
+  // an affirming giant "0 kcal maintenance" (the wording collision the
+  // 2026-07-11 audit flagged).
+  const emptyHeadline =
+    energyV1 && netEnergyHeadlineState(totalBurnKcal, consumedCalories) === "empty";
 
   // 2026-05-26 fix (Grace): the daily AVERAGE divides by the days
   // actually logged, not a hardcoded /7 — a mid-week calendar window was
@@ -357,7 +353,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
             }}
           >
             <Text style={{ ...Type.label, fontSize: 11, color: Colors.light.primaryForeground }}>
-              {NET_ENERGY_CHIP_LABEL[chipState]}
+              {netEnergyChipLabel(chipState, { balancedWording: energyV1 })}
             </Text>
           </View>
         </View>
@@ -378,6 +374,18 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
           the burn, so the headline reads neutral grey, not affirming
           green. */}
       <View style={{ marginBottom: Spacing.sm }}>
+        {emptyHeadline ? (
+          <>
+            {/* ENG-1506 — empty state: em-dash on the Type ramp, no 52px zero. */}
+            <Text testID="today-activity-bonus-net-headline" style={{ ...Type.display, color: textSecondaryColor }}>
+              {NET_ENERGY_EMPTY_HEADLINE}
+            </Text>
+            <Text style={{ fontSize: 13, color: textTertiaryColor, marginTop: 8, marginBottom: Spacing.md }}>
+              {NET_ENERGY_EMPTY_SUBLINE}
+            </Text>
+          </>
+        ) : (
+        <>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
           <Text
             testID="today-activity-bonus-net-headline"
@@ -392,12 +400,14 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
             {Math.abs(net).toLocaleString()}
           </Text>
           <Text style={{ ...Type.caption, color: textSecondaryColor }}>
-            {netEnergyKcalUnit(chipState)}
+            {netEnergyKcalUnit(chipState, { balancedWording: energyV1 })}
           </Text>
         </View>
         <Text style={{ fontSize: 13, color: textTertiaryColor, marginTop: 8, marginBottom: Spacing.md }}>
           {netSubLine}
         </Text>
+        </>
+        )}
 
         {(hasBurnData || consumedCalories > 0) ? (
           <>
@@ -521,6 +531,15 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
               <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
                 {maintenanceTdeeKcal!.toLocaleString()}
               </Text>
+              {/* ENG-1506 — explicit source qualifier under the kcal. */}
+              {energyV1 && maintenanceSource ? (
+                <Text
+                  testID="today-activity-bonus-maintenance-qualifier"
+                  style={{ ...Type.captionSmall, color: textTertiaryColor, marginTop: Spacing.xs, textAlign: "center" }}
+                >
+                  {maintenanceQualifier(maintenanceSource, maintenanceConfidence ?? null).line}
+                </Text>
+              ) : null}
             </View>
           </>
         ) : null}
@@ -613,79 +632,17 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
       ) : null}
 
       {showWeekly ? (
-        // Sibling card on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
-        <SupprCard lift="soft" padding="lg" testID="today-weekly-rolling-card">
-          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.sm }}>
-            <TrendingUp size={14} color={Accent.success} strokeWidth={2} />
-            <Text style={{ ...Type.label, color: textTertiaryColor }}>
-              {weekSummaryHeading(weekSummaryMode)}
-            </Text>
-          </View>
-          {(() => {
-            const isCalibrating = weekConsumed === 0;
-            const valueColor = isCalibrating
-              ? textSecondaryColor
-              : isWeekDeficit
-                ? Accent.success
-                : Accent.warning;
-            return (
-              <>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={{ fontSize: 14, color: textSecondaryColor }}>
-                    Avg daily {isWeekDeficit ? "deficit" : "surplus"}
-                  </Text>
-                  <Text
-                    style={{
-                      ...Type.headline,
-                      color: valueColor,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {Math.abs(dailyAvgDeficit).toLocaleString()} kcal
-                  </Text>
-                </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.sm }}>
-                  <Text style={{ fontSize: 14, color: textSecondaryColor }}>
-                    Weekly {isWeekDeficit ? "deficit" : "surplus"}
-                  </Text>
-                  <Text
-                    style={{
-                      ...Type.headline,
-                      color: valueColor,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {Math.abs(weekDeficit).toLocaleString()} kcal
-                  </Text>
-                </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.sm }}>
-                  <Text style={{ fontSize: 14, color: textSecondaryColor }}>
-                    Projected weekly {isWeekDeficit ? "loss" : "gain"}
-                  </Text>
-                  <Text
-                    style={{
-                      ...Type.headline,
-                      color: valueColor,
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {weeklyKgRate.toFixed(2)} kg
-                  </Text>
-                </View>
-                <Text
-                  style={{
-                    ...Type.caption,
-                    color: textTertiaryColor,
-                    marginTop: Spacing.sm,
-                    lineHeight: 16,
-                  }}
-                >
-                  {WEEKLY_ROLLING_DENOMINATOR_HINT}
-                </Text>
-              </>
-            );
-          })()}
-        </SupprCard>
+        // ENG-1506 touch — rollup extracted to `TodayWeeklyRollingCard` (line budget).
+        <TodayWeeklyRollingCard
+          weekSummaryMode={weekSummaryMode}
+          weekConsumed={weekConsumed}
+          isWeekDeficit={isWeekDeficit}
+          dailyAvgDeficit={dailyAvgDeficit}
+          weekDeficit={weekDeficit}
+          weeklyKgRate={weeklyKgRate}
+          textSecondaryColor={textSecondaryColor}
+          textTertiaryColor={textTertiaryColor}
+        />
       ) : null}
     </View>
 

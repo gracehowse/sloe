@@ -40,6 +40,7 @@ import {
   type DayTargetScheduleId,
   type WeekdayIndex,
 } from "./dayTargetSchedule";
+import { normalizeDbGoal } from "./goalVocabulary";
 
 /** The three goal options the editor exposes (DB vocabulary). The editor
  *  never sets `recomp` — that's an onboarding-only nuance carried by
@@ -51,10 +52,17 @@ export type EditorDbGoal = "cut" | "maintain" | "bulk";
 export interface LoadedGoalEditorProfile {
   sex: Sex;
   weightKg: number | null;
+  /** ENG-1506 — parsed `weight_kg_by_day` so the recompute's maintenance
+   *  baseline can use the canonical latest-weigh-in policy
+   *  (`buildMaintenanceInputs`) when the user hasn't edited weight. */
+  weightKgByDay: Record<string, number>;
   heightCm: number | null;
   age: number | null;
   activityLevel: ActivityLevel;
-  goal: EditorDbGoal;
+  /** ENG-1507 — `null` = unknown/unset goal. The editor seats NO selection
+   *  and disables Save until the user picks, instead of the old silent
+   *  'cut' default that then WROTE 'cut' back on save. */
+  goal: EditorDbGoal | null;
   planPace: PlanPace;
   /** Lossless continuous pace if the row has been recomputed since the
    *  migration; null for pre-migration rows (seat from `planPace`). */
@@ -82,13 +90,17 @@ export interface LoadedGoalEditorProfile {
  *  source so the two SELECTs can't drift (e.g. one forgets to add the
  *  adaptive columns). */
 export const GOAL_EDITOR_PROFILE_COLUMNS =
-  "sex, age, weight_kg, height_cm, activity_level, goal, plan_pace, pace_kg_per_week, goal_weight_kg, nutrition_strategy, measurement_system, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, target_fiber_g, target_fiber_source, calorie_schedule, high_days";
+  "sex, age, weight_kg, weight_kg_by_day, height_cm, activity_level, goal, plan_pace, pace_kg_per_week, goal_weight_kg, nutrition_strategy, measurement_system, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, target_fiber_g, target_fiber_source, calorie_schedule, high_days";
 
-/** Map the loaded DB goal string to one of the three editor options. */
-export function normalizeEditorGoal(raw: string | null | undefined): EditorDbGoal {
-  if (raw === "maintain" || raw === "health") return "maintain";
-  if (raw === "bulk" || raw === "gain" || raw === "strength") return "bulk";
-  return "cut"; // cut / lose / recomp / unknown
+/** Map the loaded DB goal string to one of the three editor options.
+ *  ENG-1507 — routes through the shared `normalizeDbGoal`; unknown/null
+ *  returns `null` (the editor seats nothing) instead of hardcoding 'cut',
+ *  which silently converted unknown-goal users into weight-loss users the
+ *  moment they saved. ('recomp' never reaches the DB — see ENG-1538.) */
+export function normalizeEditorGoal(
+  raw: string | null | undefined,
+): EditorDbGoal | null {
+  return normalizeDbGoal(raw);
 }
 
 /**
@@ -125,9 +137,20 @@ export function parseGoalEditorProfileRow(
     row.nutrition_strategy === "low_carb"
       ? row.nutrition_strategy
       : null;
+  // ENG-1506 — defensive parse of the weigh-in map (same shape rules as
+  // `parseWeightKgByDayMap`; duplicated inline to keep this module's
+  // dependency surface unchanged).
+  const weightKgByDay: Record<string, number> = {};
+  if (row.weight_kg_by_day && typeof row.weight_kg_by_day === "object" && !Array.isArray(row.weight_kg_by_day)) {
+    for (const [k, v] of Object.entries(row.weight_kg_by_day as Record<string, unknown>)) {
+      const n = typeof v === "number" ? v : Number(v);
+      if (Number.isFinite(n) && n > 0) weightKgByDay[k] = n;
+    }
+  }
   return {
     sex,
     weightKg: typeof row.weight_kg === "number" ? row.weight_kg : null,
+    weightKgByDay,
     heightCm: typeof row.height_cm === "number" ? row.height_cm : null,
     age: typeof row.age === "number" ? row.age : null,
     activityLevel: al,

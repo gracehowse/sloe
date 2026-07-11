@@ -8,31 +8,13 @@ import { Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { isFeatureDisabled, isFeatureEnabled, track } from "@/lib/analytics";
-import { supabase } from "@/lib/supabase";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { seedSaveTelemetry } from "@suppr/shared/onboarding/seedSaveTelemetry";
-import { selectOnboardingSeeds } from "@suppr/shared/onboarding/onboardingSeeds";
-import { buildFirstWeekFromSeeds } from "@suppr/shared/onboarding/onboardingFirstWeek";
-import {
-  resolveSeedsToRecipeIds,
-  saveResolvedSeeds,
-} from "@suppr/shared/onboarding/onboardingSeedResolver";
-import {
-  mapV2GoalToLegacy,
-  persistOnboarding,
-} from "@suppr/shared/onboarding/persist";
-import { clearLogsAndWeightHistory } from "@suppr/shared/account/nukeAccountData";
-import { firstLogDeepLinkQs } from "@suppr/shared/onboarding/conversionFunnel";
-import {
-  STEP_IDS,
-  canAdvance as canAdvanceStep,
-} from "@/lib/onboarding";
+import { canAdvance as canAdvanceStep } from "@/lib/onboarding";
 import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 import { OnboardingSegmentedProgress } from "./OnboardingSegmentedProgress";
-
-void mapV2GoalToLegacy;
+import { useOnboardingCompletion } from "./useOnboardingCompletion";
 
 /**
  * Mobile flow shell — full-screen stack of step views with a top bar
@@ -56,6 +38,7 @@ export function MobileFlow() {
     warning,
     isRefreshPlan,
     registerComplete,
+    registerPersist,
   } = useOnboarding();
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the footer Continue
@@ -161,6 +144,32 @@ export function MobileFlow() {
     });
   });
 
+  // ENG-1507 — register the persist-without-navigation path so the
+  // terminal `upgrade` step's "Start free trial" can land the profile
+  // write BEFORE pushing the paywall (closing the trial-path persist
+  // hole). Failures alert here and resolve `false` so the step stays
+  // mounted instead of routing to a paywall that would render stale data.
+  React.useEffect(() => {
+    registerPersist(async () => {
+      try {
+        const persisted = await persistAndSeed();
+        // Unlike the completion path (which navigates away), the flow stays
+        // mounted beneath the pushed paywall — release the busy state so a
+        // back-gesture return never lands on a dead Continue button.
+        setCompleting(false);
+        return persisted.ok;
+      } catch (e) {
+        Alert.alert(
+          "Couldn't finish setup",
+          e instanceof Error
+            ? e.message
+            : "Something went wrong. Please try again.",
+        );
+        return false;
+      }
+    });
+  });
+
   // ENG-1 — fire onboarding_started once when a new user first sees the
   // Welcome step. Excluded for refresh-plan flow (isRefreshPlan is null
   // while loading, true for refresh, false for new users).
@@ -172,239 +181,18 @@ export function MobileFlow() {
     }
   }, [isWelcome, isRefreshPlan]);
 
-  /**
-   * MV-01 fix (audit 2026-04-28) — terminal-step completion handler.
-   *
-   * Mirrors `src/app/components/onboarding/web-flow.tsx#handleComplete`:
-   *   1. `persistOnboarding(supabase, { userId, state, targets })` —
-   *      writes the user's profile + dietary + targets.
-   *   2. If `pickedRecipeSlugs.length > 0` and seeds resolve against
-   *      `recipes`, save them to `saves` and build the first week's
-   *      meal plan via `buildFirstWeekFromSeeds`.
-   *   3. Fire the canonical `onboarding_completed` event.
-   *   4. Clear the AsyncStorage persistence so the next user on this
-   *      device starts fresh.
-   *   5. `router.replace("/(tabs)")` with a query string the Today
-   *      screen can read to surface a toast on plan-build failure.
-   *
-   * Pre-fix the Continue button on the terminal step ran `go(1)`,
-   * which clamped to `TOTAL_STEPS - 1` and was a no-op — the user was
-   * stuck on the recipes step forever.
-   */
-  const handleComplete = React.useCallback(async () => {
-    if (!userId) {
-      // ENG-672 (2026-05-26): defence-in-depth. The Signup gate
-      // (`canAdvance("signup", …)` requires `hasSession`) means a user
-      // should never reach the terminal step unauthenticated via the
-      // normal flow. But if a session expired mid-flow (or a deep-link
-      // jumped past Signup), we must NOT bounce to a bare /login that
-      // discards every answer. Instead, send the user back to the
-      // Signup step with all their state intact (it persists in
-      // AsyncStorage and stays in memory) so they can re-authenticate
-      // and pick up exactly where they were.
-      track(AnalyticsEvents.onboarding_completed, {
-        flow: "v2",
-        unauthenticated: true,
-      });
-      const signupIndex = STEP_IDS.indexOf("signup");
-      goTo(signupIndex >= 0 ? signupIndex : 0);
-      Alert.alert(
-        "Sign in to save your plan",
-        "We couldn't confirm your account. Sign in with Apple to finish — your answers are saved.",
-      );
-      return;
-    }
-    setCompleting(true);
-    try {
-      // 2026-05-25 bug fix: persistOnboarding catches + returns its
-      // profile-write error rather than throwing. We MUST inspect the
-      // result — pre-fix this value was ignored, so a rejected write
-      // (e.g. the tier-lockdown trigger firing for a paid user) was
-      // invisible: the flow seeded recipes, fired `onboarding_completed`,
-      // and navigated home as if the plan had saved, leaving the user on
-      // their OLD target with no error. Throw into the catch below so the
-      // user sees "Couldn't finish setup" and we do NOT navigate as if it
-      // worked.
-      const persistResult = await persistOnboarding(supabase, {
-        userId,
-        state,
-        targets,
-      });
-      if (!persistResult.ok) {
-        throw new Error(
-          persistResult.error
-            ? `We couldn't save your plan (${persistResult.error}). Please try again.`
-            : "We couldn't save your plan. Please try again.",
-        );
-      }
-
-      // Activation hook (audit 2026-04-30): the Recipes step was pulled
-      // from the linear flow in the 15→12 shrink, so for a normal
-      // completion `pickedRecipeSlugs` is empty. Without seeded recipes
-      // the user lands on Today with an empty library and the
-      // north-star block is permanently stuck in its empty-state — the
-      // "What to eat next" promise evaporates. Seed selection is shared
-      // with web-flow via `selectOnboardingSeeds`: no picks falls back to
-      // a curated 5-seed default (diet/allergen-filtered) so the library
-      // hits `NORTH_STAR_LIBRARY_MIN` immediately. The
-      // `onboarding_default_seeds` kill switch (default-ON; read via
-      // `isFeatureDisabled` so a cold PostHog doesn't skip seeding) lets
-      // that fallback be rolled back on both platforms at once.
-      const { seeds: pickedSeeds, usedDefaults } = selectOnboardingSeeds({
-        pickedRecipeSlugs: state.pickedRecipeSlugs,
-        diet: state.diet,
-        allergies: state.allergies,
-        seedingDisabled: isFeatureDisabled("onboarding_default_seeds"),
-      });
-      let planFailed = false;
-      let missingCount = 0;
-      let recipesSaved = 0;
-      if (pickedSeeds.length > 0) {
-        const resolution = await resolveSeedsToRecipeIds(supabase, pickedSeeds);
-        missingCount = resolution.missing.length;
-        if (resolution.resolved.length > 0) {
-          // ENG-792 — capture the save result instead of discarding it. A
-          // seed-save upsert failure used to be invisible (console.warn-only),
-          // so a user stranded at 0 saved recipes looked identical to success.
-          const saveResult = await saveResolvedSeeds(supabase, {
-            userId,
-            resolved: resolution.resolved,
-          });
-          const seedTelemetry = seedSaveTelemetry(
-            saveResult,
-            resolution.resolved.length,
-          );
-          recipesSaved = seedTelemetry.recipesSaved;
-          if (seedTelemetry.failure) {
-            track(AnalyticsEvents.onboarding_seed_save_failed, {
-              flow: "v2",
-              ...seedTelemetry.failure,
-            });
-          }
-          if (targets) {
-            const planResult = await buildFirstWeekFromSeeds(supabase, {
-              userId,
-              resolved: resolution.resolved,
-              targets: {
-                calories: targets.target,
-                proteinG: targets.proteinG,
-                carbsG: targets.carbsG,
-                fatG: targets.fatG,
-                fiberG: targets.fiberG,
-              },
-            });
-            planFailed = !planResult.ok;
-          }
-        }
-      }
-
-      // Build-40 — `data_bridge_chosen` carries the LAST card actioned
-      // on the data-bridges terminal step (`null` = never touched).
-      // `manual_targets_set` is true only when all four manual fields
-      // are populated (the override-eligible state).
-      const manualTargetsSet =
-        state.manualTargetsKcal != null &&
-        state.manualTargetsProteinG != null &&
-        state.manualTargetsCarbsG != null &&
-        state.manualTargetsFatG != null;
-      try {
-        track(AnalyticsEvents.onboarding_completed, {
-          flow: "v2",
-          weight_skipped: state.weightSkipped,
-          goal: state.goal,
-          recipes_picked: pickedSeeds.length,
-          recipes_resolved: pickedSeeds.length - missingCount,
-          // ENG-792 — actually-saved count (distinct from recipes_resolved).
-          // A shortfall vs recipes_resolved means the seed-save upsert failed.
-          recipes_saved: recipesSaved,
-          plan_built: !planFailed,
-          // Activation hook (audit 2026-04-30): tracks how many users
-          // hit the curated-default fallback vs hand-picked. Used to
-          // monitor the activation lift after the seed-defaults ship.
-          used_default_seeds: usedDefaults,
-          data_bridge_chosen: state.dataBridgeChosen,
-          manual_targets_set: manualTargetsSet,
-          // ENG-990 — the app the user said they're switching from
-          // (`null` when the app-choice step was skipped / flag OFF).
-          app_choice: state.appChoice,
-        });
-      } catch {
-        /* analytics is fire-and-forget */
-      }
-
-      // MV-03: clear persisted state so a fresh signup on this device
-      // doesn't pre-fill the previous user's answers.
-      // 2026-05-11 (refresh-plan flow): also read the reset-plan flag
-      // set by Settings → "Refresh my plan". If present, we surface a
-      // one-shot prompt offering to keep or clear the user's logs and
-      // weight history. Falls through to the normal post-onboarding
-      // route on either choice.
-      let refreshPlanPending = false;
-      try {
-        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
-        await AsyncStorage.removeItem("suppr.onboarding-v2.state");
-        const flag = await AsyncStorage.getItem("suppr.reset-plan-pending-prompt");
-        if (flag) {
-          refreshPlanPending = true;
-          await AsyncStorage.removeItem("suppr.reset-plan-pending-prompt");
-        }
-      } catch {
-        /* non-fatal */
-      }
-
-      // Activation hook (audit 2026-04-30): `firstRun=1` triggers Today's
-      // first-run polish; refresh-plan flow uses `refresh=1` instead (this
-      // user already saw it). ENG-1450: `firstLogDeepLinkQs` appends the
-      // `?openLog=1` LogSheet deep-link so a chip pick on "One quick win"
-      // isn't silently dropped (see helper doc for the full rationale).
-      const baseQs = planFailed
-        ? "?onboarding_complete=1&plan_build=failed"
-        : "?onboarding_complete=1";
-      const homeQs =
-        (refreshPlanPending ? `${baseQs}&refresh=1` : `${baseQs}&firstRun=1`) +
-        firstLogDeepLinkQs(state.firstLogChoice);
-
-      if (refreshPlanPending) {
-        Alert.alert(
-          "Keep my logs and weight history?",
-          "Your saved recipes, plans, and shopping lists are untouched either way.",
-          [
-            {
-              text: "Keep",
-              style: "default",
-              onPress: () => {
-                router.replace(`/(tabs)${homeQs}` as any);
-              },
-            },
-            {
-              text: "Clear",
-              style: "destructive",
-              onPress: async () => {
-                try {
-                  await clearLogsAndWeightHistory(supabase, userId);
-                } catch {
-                  /* non-fatal — user can still re-enter Today */
-                }
-                router.replace(`/(tabs)${homeQs}` as any);
-              },
-            },
-          ],
-          { cancelable: false },
-        );
-        return;
-      }
-
-      router.replace(`/(tabs)${homeQs}` as any);
-    } catch (e) {
-      setCompleting(false);
-      Alert.alert(
-        "Couldn't finish setup",
-        e instanceof Error
-          ? e.message
-          : "Something went wrong. Please try again.",
-      );
-    }
-  }, [userId, state, targets, router, goTo]);
+  // MV-01 / ENG-1507 — the terminal completion pipeline (persistAndSeed +
+  // navigating handleComplete) lives in `useOnboardingCompletion` (extracted
+  // 2026-07-11 to keep this shell under its line budget; full history +
+  // the trial-path persist-hole rationale in that file's doc block).
+  const { persistAndSeed, handleComplete } = useOnboardingCompletion({
+    userId,
+    state,
+    targets,
+    goTo,
+    setCompleting,
+    router,
+  });
 
   // Stage E — fire the soft-warn `advanced` analytics event when the
   // user taps Continue from the Pace step while a warning is showing.

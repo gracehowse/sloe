@@ -46,12 +46,20 @@ export async function GET(req: Request) {
   const weightKg = Number(profile.weight_kg) || 70;
   const heightCm = Number(profile.height_cm) || 170;
   const age = Number(profile.age) || 30;
-  const activityLevel = (profile.activity_level as ActivityLevel) ?? "moderate";
+  // ENG-1506 — default to "sedentary" (1.2) when missing, matching every UI
+  // surface since the 2026-04-18 TestFlight fix (`AIIm60nKi_sTu3-4YjR-WR4`);
+  // this route was the last "moderate" (1.55) holdout, silently inflating
+  // the API's staticTdee ~14% vs the numbers on screen.
+  const activityLevel = (profile.activity_level as ActivityLevel) ?? "sedentary";
 
   const staticTdee = calculateTDEE(sex, weightKg, heightCm, age, activityLevel);
   const effective = getEffectiveTDEE({
     adaptive_tdee: profile.adaptive_tdee as number | null,
     adaptive_tdee_confidence: profile.adaptive_tdee_confidence as string | null,
+    // ENG-1506 — pass the recompute timestamp so the API applies the SAME
+    // 14-day staleness gate the UI does; previously a stale adaptive value
+    // every screen had rejected still surfaced as `effectiveTdee` here.
+    adaptive_tdee_updated_at: profile.adaptive_tdee_updated_at as string | null,
     sex,
     weight_kg: weightKg,
     height_cm: heightCm,
@@ -126,6 +134,8 @@ export async function POST(req: Request) {
   const effective = getEffectiveTDEE({
     adaptive_tdee: profile.adaptive_tdee as number | null,
     adaptive_tdee_confidence: profile.adaptive_tdee_confidence as string | null,
+    // ENG-1506 — same 14-day staleness gate as the GET branch + the UI.
+    adaptive_tdee_updated_at: profile.adaptive_tdee_updated_at as string | null,
     sex: (profile.sex as Sex) ?? "unspecified",
     weight_kg: Number(profile.weight_kg) || 70,
     height_cm: Number(profile.height_cm) || 170,

@@ -18,24 +18,36 @@ describe("ENG-970 — paywall no-payment-due chip SSOT", () => {
 });
 
 describe("ENG-966 — personalised plan paywall summary", () => {
-  it("maps profile goals to short labels", () => {
+  it("maps profile goals to short labels (via the ENG-1507 shared vocabulary)", () => {
     expect(formatProfileGoalLabel("cut")).toBe("Lose weight");
     expect(formatProfileGoalLabel("maintain")).toBe("Eat healthier");
     expect(formatProfileGoalLabel("bulk")).toBe("Build muscle");
+    expect(formatProfileGoalLabel("lose")).toBe("Lose weight"); // legacy synonym
     expect(formatProfileGoalLabel(null)).toBeNull();
+    expect(formatProfileGoalLabel("garbage")).toBeNull();
   });
 
-  it("leads when onboarding source or from=onboarding", () => {
+  it("ENG-1507 — leads ONLY on an onboarding-written row; from=onboarding alone is not enough", () => {
     expect(
       shouldLeadPaywallWithPersonalisedPlan({
         targetCalories: 2100,
         targetCaloriesSource: "onboarding",
       }),
     ).toBe(true);
+    // The trial-path persist hole: from=onboarding used to short-circuit
+    // TRUE and render the PREVIOUS run's row as "your plan". Now the row
+    // must actually carry target_calories_source === "onboarding".
     expect(
       shouldLeadPaywallWithPersonalisedPlan({
         targetCalories: 2100,
         targetCaloriesSource: "user",
+        paywallFrom: "onboarding",
+      }),
+    ).toBe(false);
+    expect(
+      shouldLeadPaywallWithPersonalisedPlan({
+        targetCalories: 2100,
+        targetCaloriesSource: "onboarding",
         paywallFrom: "onboarding",
       }),
     ).toBe(true);
@@ -54,7 +66,7 @@ describe("ENG-966 — personalised plan paywall summary", () => {
     ).toBe(false);
   });
 
-  it("builds hero + card copy from persisted targets", () => {
+  it("builds hero + card copy from persisted targets (gerund clause — ENG-1507)", () => {
     const summary = buildPersonalisedPlanPaywallSummary({
       targetCalories: 2140,
       targetProtein: 128,
@@ -65,7 +77,12 @@ describe("ENG-966 — personalised plan paywall summary", () => {
     expect(summary.goalLabel).toBe("Lose weight");
     expect(summary.proteinG).toBe(128);
     expect(summary.heroSubtitle).toContain("2,140 kcal");
-    expect(summary.heroSubtitle).toContain("lose weight");
+    // "for losing weight" — never the broken "for lose weight" grammar.
+    expect(summary.heroSubtitle).toContain("for losing weight");
+    expect(summary.heroSubtitle).not.toContain("for lose weight");
+    expect(
+      buildPersonalisedPlanPaywallSummary({ targetCalories: 2600, goal: "bulk" }).heroSubtitle,
+    ).toContain("for building muscle");
   });
 });
 

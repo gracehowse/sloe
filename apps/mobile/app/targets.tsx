@@ -44,7 +44,10 @@ import {
 import { SupprButton } from "@/components/ui/SupprButton";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
 import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
-import { paceKgPerWeekFromPreset } from "@suppr/nutrition-core/whyThisNumber";
+import { paceKgPerWeekFromPreset, whyThisNumberGoalFromDb } from "@suppr/nutrition-core/whyThisNumber";
+import { ENERGY_NUMBERS_V1_FLAG, maintenanceQualifier, selectMaintenance, type EnergyProfileRow } from "@suppr/nutrition-core/energyNumbers";
+import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/nutrition-core/measuredTdee";
+import type { ResolvedMaintenance } from "@suppr/nutrition-core/resolveMaintenance";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { TARGETS_HOW_CALCULATED_CAPTION_GLOSS, TARGETS_HOW_CALCULATED_CAPTION_PLAIN, TARGETS_MOBILE_CAPTION_STATIC_TDEE_GLOSS, TARGETS_MOBILE_CAPTION_STATIC_TDEE_PLAIN } from "@suppr/shared/onboarding/figmaCopy";
 
@@ -121,6 +124,9 @@ export default function TargetsScreen() {
   const [whySheetOpen, setWhySheetOpen] = useState(false);
   const [adaptiveTdee, setAdaptiveTdee] = useState<number | null>(null);
   const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
+  // ENG-1506 — RESOLVED maintenance (full gates + canonical inputs), set only
+  // behind `energy_numbers_v1`; replaces this screen's ungated raw-adaptive read.
+  const [resolvedMaint, setResolvedMaint] = useState<ResolvedMaintenance | null>(null);
   const [planPace, setPlanPace] = useState<string | null>(null);
   // Whether a wearable is feeding resting-burn data, used to gate the
   // "Your Watch" story beat in the WhyThisNumberSheet (we only tell the
@@ -161,7 +167,8 @@ export default function TargetsScreen() {
       const { data } = await supabase
         .from("profiles")
         .select(
-          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace, net_carbs_lens_enabled, prefer_activity_adjusted_calories, adaptive_tdee, adaptive_tdee_confidence, basal_burn_by_day",
+          // ENG-1506 — adaptive_tdee_updated_at + measured_* added for the full gate set.
+          "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, height_cm, sex, activity_level, goal, dob, age, plan_pace, net_carbs_lens_enabled, prefer_activity_adjusted_calories, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, basal_burn_by_day",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -169,6 +176,9 @@ export default function TargetsScreen() {
         return;
       }
       const d = data as Record<string, unknown>;
+      setResolvedMaint(isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+        ? selectMaintenance(d as EnergyProfileRow, { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) })
+        : null);
       const resolved = resolveTargets(
         {
           target_calories: d.target_calories != null ? Number(d.target_calories) : null,
@@ -363,17 +373,24 @@ export default function TargetsScreen() {
     // a static-derived "750 kcal deficit" on a 901 target (1,568 − 901 =
     // 667, not 750). Use one number for both, and label its source
     // honestly (adaptive is measured, not Mifflin-St Jeor). Matches web.
-    const maintenance = adaptiveTdee ?? tdeeKcal;
+    // ENG-1506 — flag ON (resolvedMaint set): the FULLY GATED resolver value
+    // (staleness + formula floor — the legacy ungated `adaptiveTdee ??
+    // tdeeKcal` read produced the audit's 1,647); OFF: legacy, unchanged.
+    const maintenance = resolvedMaint ? resolvedMaint.kcal : (adaptiveTdee ?? tdeeKcal);
     const staticBasis = glossOn ? TARGETS_MOBILE_CAPTION_STATIC_TDEE_GLOSS : TARGETS_MOBILE_CAPTION_STATIC_TDEE_PLAIN;
-    const basis = adaptiveTdee != null ? "Maintenance from your recent intake" : staticBasis;
+    const adaptiveBasis = "Maintenance from your recent intake";
+    const basis = resolvedMaint
+      ? resolvedMaint.source === "measured" ? "Maintenance from Apple Health"
+        : resolvedMaint.source === "adaptive" ? adaptiveBasis : staticBasis
+      : adaptiveTdee != null ? adaptiveBasis : staticBasis;
     const base = `${basis} · ${activityLevelCaption(activityLevel)}`;
     const tail = deficitSurplusCaption({
       targetCalories: targets.calories,
       tdeeKcal: maintenance,
-      goal,
+      vsCurrentMaintenance: resolvedMaint != null,
     });
     return tail ? `${base} · ${tail}` : base;
-  }, [activityLevel, targets.calories, tdeeKcal, adaptiveTdee, goal, glossOn]);
+  }, [activityLevel, targets.calories, tdeeKcal, adaptiveTdee, resolvedMaint, glossOn]);
 
   const macroColorFor = (key: string): string => {
     switch (key) {
@@ -738,10 +755,17 @@ export default function TargetsScreen() {
                     fontVariant: ["tabular-nums"],
                   }}
                 >
-                  {(adaptiveTdee ?? tdeeKcal).toLocaleString()}
+                  {/* ENG-1506 — flag ON: resolver value; OFF: legacy read. */}
+                  {(resolvedMaint?.kcal ?? adaptiveTdee ?? tdeeKcal).toLocaleString()}
                 </Text>
                 <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>kcal / day</Text>
               </View>
+              {/* ENG-1506 — explicit source qualifier under the row. */}
+              {resolvedMaint ? (
+                <Text testID="targets-maintenance-qualifier" style={{ ...Type.captionSmall, color: colors.textSecondary, textAlign: "center", marginTop: Spacing.xs }}>
+                  {maintenanceQualifier(resolvedMaint.source, resolvedMaint.confidence).line}
+                </Text>
+              ) : null}
             </PostHogMaskView>
           ) : null}
           {/* Recalculate — ghost CTA (button-system canon, 2026-06-12). This is
@@ -759,15 +783,10 @@ export default function TargetsScreen() {
             label={recalcToast ? "Updated" : "Recalculate"}
             style={{ marginTop: Spacing.md, alignSelf: "center" }}
           />
-          {/* Numbers audit 2026-05-04 #3: when activity-adjusted calories
-              are on, Today's ring goal is `targets.calories +
-              dayActivityBudgetAddon(...)`. The Targets number above is
-              the *static* base. Without this note, a user with a 350
-              kcal active burn would see "1800" here and "1950" on Today
-              and read it as an inconsistency. The full delta number
-              would require duplicating the addon math; that's owed by
-              the shared-helper extraction in audit finding #13. For now
-              we tell the user *why* the numbers can differ. */}
+          {/* Numbers audit 2026-05-04 #3: with activity adjustment on,
+              Today's ring goal = this static base + the day's earned bonus;
+              this note tells the user *why* the two numbers can differ
+              (the full delta would duplicate the addon math — finding #13). */}
           {preferActivityAdjustedCalories ? (
             <Text style={[styles.caption, { textAlign: "center", marginTop: 4 }]}>
               Today&apos;s goal adjusts upward by your active-burn calories.
@@ -911,16 +930,10 @@ export default function TargetsScreen() {
           Projections assume a 14-day moving average. Targets adapt weekly based on logged intake.
         </Text>
 
-        {/*
-         * ENG-67 (2026-05-16, Grace decision = "Onboarding + Targets
-         * only"): the methodology / safety-floor disclaimer that
-         * lives inline at the foot of the onboarding pace step (see
-         * `apps/mobile/components/onboarding/steps/pace.tsx`) also
-         * lives here — Targets is the dedicated review surface for
-         * the numbers, so the user gets the same hedge any time
-         * they're looking at those numbers. Removed from Today /
-         * Progress / Recipes per the same decision.
-         */}
+        {/* ENG-67 (2026-05-16, Grace: "Onboarding + Targets only") — the
+            methodology / safety-floor disclaimer from the onboarding pace
+            step also lives here (Targets is the dedicated numbers-review
+            surface); removed from Today / Progress / Recipes. */}
         <Text style={styles.disclaimer}>
           Estimate uses ~7,700 kcal ≈ 1 kg of body mass. Safety floors reference
           NIH/NHS guidance. Sloe is not a substitute for medical advice — consult
@@ -937,30 +950,15 @@ export default function TargetsScreen() {
         visible={whySheetOpen}
         onClose={() => setWhySheetOpen(false)}
         targetCalories={targets.calories}
-        maintenanceTdee={adaptiveTdee ?? tdeeKcal}
-        confidence={
-          adaptiveTdeeConfidence === "low" ||
-          adaptiveTdeeConfidence === "medium" ||
-          adaptiveTdeeConfidence === "high"
-            ? adaptiveTdeeConfidence
-            : null
-        }
+        // ENG-1506 — flag ON: the resolved basis; OFF: legacy read.
+        maintenanceTdee={resolvedMaint ? resolvedMaint.kcal : (adaptiveTdee ?? tdeeKcal)}
+        confidence={resolvedMaint ? resolvedMaint.confidence
+          : adaptiveTdeeConfidence === "low" || adaptiveTdeeConfidence === "medium" || adaptiveTdeeConfidence === "high"
+            ? adaptiveTdeeConfidence : null}
         loggingDays={null}
-        goal={
-          goal === "gain" || goal === "bulk" || goal === "strength"
-            ? "gain"
-            : goal === "maintain" || goal === "health"
-              ? "maintain"
-              : "lose"
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          planPace,
-          goal === "gain" || goal === "bulk" || goal === "strength"
-            ? "gain"
-            : goal === "maintain" || goal === "health"
-              ? "maintain"
-              : "lose",
-        )}
+        // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose".
+        goal={whyThisNumberGoalFromDb(goal)}
+        paceKgPerWeek={paceKgPerWeekFromPreset(planPace, whyThisNumberGoalFromDb(goal))}
         mealLogDays={null}
         weightLogCount={Object.keys(weightKgByDay).length}
         hasWearable={hasWearable}

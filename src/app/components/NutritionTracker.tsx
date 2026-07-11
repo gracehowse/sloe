@@ -25,7 +25,7 @@ import {
 } from "../../lib/nutrition/weeklyCheckin.ts";
 import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
 import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog.tsx";
-import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber.ts";
+import { paceKgPerWeekFromPreset, whyThisNumberGoalFromDb } from "../../lib/nutrition/whyThisNumber.ts";
 import { WeeklyCheckinBanner } from "./suppr/weekly-checkin-banner";
 import { weekKeyFor } from "../../lib/nutrition/weeklyRecap.ts";
 import {
@@ -2352,21 +2352,9 @@ export const NutritionTracker = memo(function NutritionTracker({
         maintenanceTdee={profileMaintenanceTdee}
         confidence={profileMaintenanceConfidence}
         loggingDays={null}
-        goal={
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose"
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          profilePlanPace,
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose",
-        )}
+        // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose".
+        goal={whyThisNumberGoalFromDb(profileGoal)}
+        paceKgPerWeek={paceKgPerWeekFromPreset(profilePlanPace, whyThisNumberGoalFromDb(profileGoal))}
         mealLogDays={null}
         weightLogCount={Object.keys(profileWeightKgByDay).length}
         onAdjustTarget={() => {

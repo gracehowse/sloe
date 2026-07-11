@@ -1,5 +1,6 @@
 import { dateKeyFromDate } from "./nutrition/trackerStats";
 import { smoothedWeeklyRateKg } from "./nutrition/weightTrendSmoothing";
+import { normalizeDbGoal } from "./nutrition/goalVocabulary";
 
 /**
  * Weight projection utility.
@@ -33,6 +34,17 @@ const KCAL_PER_KG = 7700; // ~3500 kcal/lb * 2.2 lb/kg
  * signal, not the linear extrapolation this guards.
  */
 export const MAX_LINEAR_PROJECTION_WEEKS = 5;
+
+/**
+ * ENG-1507 — explicit behaviour-vs-plan qualifier for the paywall
+ * trajectory charts (mobile paywall + web /pricing). The projection is
+ * goal-INDEPENDENT by design (direction = recent intake vs estimated
+ * burn), so a bulk-goal user eating under maintenance correctly sees a
+ * downward line — this caption makes that honest instead of confusing.
+ * Rendered behind `energy_numbers_v1`.
+ */
+export const TRAJECTORY_BEHAVIOUR_CAPTION =
+  "Based on your recent logging vs your estimated daily burn — not your plan. It updates as you log.";
 
 /**
  * ENG-1029 — dev-time guard. Throws in development when the linear
@@ -159,15 +171,22 @@ export function projectWeight(opts: {
   } = opts;
 
   let estimatedTdee: number;
+  // ENG-1506 — the goal fallback normalises BOTH vocabularies via
+  // `normalizeDbGoal` ('cut'/'lose' → deficit branch, 'bulk'/'gain' →
+  // surplus branch). Before this, the branches compared the v2 values
+  // ('lose'/'gain') only, so every profile-sourced caller — which passes
+  // DB 'cut'/'bulk' — silently fell through to `estimatedTdee =
+  // targetCalories` whenever maintenance was missing.
+  const goalDirection = normalizeDbGoal(goal);
   if (
     typeof maintenanceTdeeKcal === "number" &&
     Number.isFinite(maintenanceTdeeKcal) &&
     maintenanceTdeeKcal > 0
   ) {
     estimatedTdee = maintenanceTdeeKcal;
-  } else if (goal === "lose") {
+  } else if (goalDirection === "cut") {
     estimatedTdee = targetCalories + 500;
-  } else if (goal === "gain") {
+  } else if (goalDirection === "bulk") {
     estimatedTdee = targetCalories - 300;
   } else {
     estimatedTdee = targetCalories;

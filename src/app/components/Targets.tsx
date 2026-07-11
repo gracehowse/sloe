@@ -46,10 +46,14 @@ import { calcGoalTimeline, resolveLatestWeightKg } from "../../lib/weightProject
 import { todayKey } from "../../lib/nutrition/trackerDate.ts";
 import { kgToLb } from "../../lib/units/imperial.ts";
 import { carbsLabel, netCarbsForRow } from "../../lib/nutrition/netCarbs.ts";
-import { activityLevelCaption, deficitSurplusCaption, type Goal } from "../../lib/targets/targetsView.ts";
+import { activityLevelCaption, deficitSurplusCaption } from "../../lib/targets/targetsView.ts";
 import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog.tsx";
 import { GoalPaceEditorDialog } from "./suppr/goal-pace-editor-dialog.tsx";
-import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber.ts";
+import { paceKgPerWeekFromPreset, whyThisNumberGoalFromDb } from "../../lib/nutrition/whyThisNumber.ts";
+import { ENERGY_NUMBERS_V1_FLAG, selectMaintenance, type EnergyProfileRow } from "../../lib/nutrition/energyNumbers.ts";
+import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
+import type { ResolvedMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import { TargetsMaintenanceRow } from "./suppr/targets-maintenance-row.tsx";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useSettingsWinMoment } from "../../lib/preferences/useSettingsWinMoment.ts";
 import { TARGETS_HOW_CALCULATED_CAPTION_GLOSS, TARGETS_HOW_CALCULATED_CAPTION_PLAIN, TARGETS_RECALIBRATE_FOOTNOTE_TAIL_GLOSS, TARGETS_RECALIBRATE_FOOTNOTE_TAIL_PLAIN, TARGETS_SUBTITLE_STATIC_TDEE_GLOSS, TARGETS_SUBTITLE_STATIC_TDEE_PLAIN } from "../../lib/onboarding/figmaCopy.ts";
@@ -155,6 +159,9 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   const [adaptiveTdeeConfidence, setAdaptiveTdeeConfidence] = useState<string | null>(null);
   const [profileGoal, setProfileGoal] = useState<string | null>(null);
   const [profilePlanPace, setProfilePlanPace] = useState<string | null>(null);
+  // ENG-1506 — RESOLVED maintenance (full gates + canonical inputs), set only
+  // behind `energy_numbers_v1`; replaces the legacy raw-adaptive read.
+  const [resolvedMaint, setResolvedMaint] = useState<ResolvedMaintenance | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
 
   // Extracted so the goal-editor `onSaved` callback can re-run it after a
@@ -168,11 +175,15 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "weight_kg, goal_weight_kg, weight_kg_by_day, activity_level, adaptive_tdee, adaptive_tdee_confidence, goal, plan_pace",
+          // ENG-1506 — basics + updated_at + measured_* for the full gate set.
+          "weight_kg, goal_weight_kg, weight_kg_by_day, sex, age, height_cm, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, goal, plan_pace",
         )
         .eq("id", authedUserId)
         .maybeSingle();
       if (error || !data || signal?.cancelled) return;
+      setResolvedMaint(isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+        ? selectMaintenance(data as EnergyProfileRow, { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) })
+        : null);
       const w = data.weight_kg != null ? Number(data.weight_kg) : null;
       const gw = data.goal_weight_kg != null ? Number(data.goal_weight_kg) : null;
       setWeightKg(Number.isFinite(w) ? w : null);
@@ -246,14 +257,16 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   const calorieSubline = useMemo(() => {
     const cal = targets.calories;
     if (!Number.isFinite(cal) || cal <= 0) return "kcal / day";
+    // ENG-1506 — flag ON: delta vs the SAME resolved maintenance the row
+    // shows, basis named; OFF: legacy raw-adaptive read.
     const fragment = deficitSurplusCaption({
       targetCalories: cal,
-      tdeeKcal: maintenanceTdee,
-      goal: null as Goal | null,
+      tdeeKcal: resolvedMaint ? resolvedMaint.kcal : maintenanceTdee,
+      vsCurrentMaintenance: resolvedMaint != null,
     });
     if (fragment) return `kcal / day · ${fragment}`;
     return "kcal / day";
-  }, [targets.calories, maintenanceTdee]);
+  }, [targets.calories, maintenanceTdee, resolvedMaint]);
 
   // Numbers audit 2026-05-04 #1 (cross-platform parity): "current weight"
   // must mirror Progress + mobile Targets, both of which read the latest
@@ -445,6 +458,8 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
             </div>
           </div>
           <p className="text-[13px] text-muted-foreground mt-1 text-center">{calorieSubline}</p>
+          {/* ENG-1506 — MAINTENANCE row + qualifier (flag-gated via resolvedMaint). */}
+          {resolvedMaint ? <TargetsMaintenanceRow resolved={resolvedMaint} /> : null}
           {/* Numbers audit 2026-05-04 #3 — see mobile Targets for the
               same breadcrumb. When activity-adjustment is on, Today's
               ring goal silently adds an active-burn bonus on top of
@@ -614,30 +629,15 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
         open={whyOpen}
         onOpenChange={setWhyOpen}
         targetCalories={targets.calories}
-        maintenanceTdee={maintenanceTdee}
-        confidence={
-          adaptiveTdeeConfidence === "low" ||
-          adaptiveTdeeConfidence === "medium" ||
-          adaptiveTdeeConfidence === "high"
-            ? adaptiveTdeeConfidence
-            : null
-        }
+        // ENG-1506 — flag ON: the resolved basis; OFF: legacy adaptive read.
+        maintenanceTdee={resolvedMaint ? resolvedMaint.kcal : maintenanceTdee}
+        confidence={resolvedMaint ? resolvedMaint.confidence
+          : adaptiveTdeeConfidence === "low" || adaptiveTdeeConfidence === "medium" || adaptiveTdeeConfidence === "high"
+            ? adaptiveTdeeConfidence : null}
         loggingDays={null}
-        goal={
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose"
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          profilePlanPace,
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose",
-        )}
+        // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose".
+        goal={whyThisNumberGoalFromDb(profileGoal)}
+        paceKgPerWeek={paceKgPerWeekFromPreset(profilePlanPace, whyThisNumberGoalFromDb(profileGoal))}
         mealLogDays={null}
         weightLogCount={Object.keys(weightKgByDay).length}
         onAdjustTarget={() => {

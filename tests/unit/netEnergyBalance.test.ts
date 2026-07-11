@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  NET_ENERGY_EMPTY_HEADLINE,
+  NET_ENERGY_EMPTY_SUBLINE,
+  netEnergyChipLabel,
   netEnergyChipState,
+  netEnergyHeadlineState,
   netEnergyKcalUnit,
   netEnergyMarkerFraction,
   netEnergySubline,
@@ -165,5 +169,46 @@ describe("netEnergyBalance", () => {
       });
       expect(maintenanceSubline).toContain("within 60 kcal of maintenance");
     });
+  });
+});
+
+describe("netEnergyBalance — ENG-1506 balanced wording + empty headline", () => {
+  it("chip label: balanced band renames 'Maintenance' → 'Balanced' ONLY behind the flag", () => {
+    expect(netEnergyChipLabel("maintenance")).toBe("Maintenance");
+    expect(netEnergyChipLabel("maintenance", { balancedWording: true })).toBe("Balanced");
+    expect(netEnergyChipLabel("deficit", { balancedWording: true })).toBe("Deficit");
+    expect(netEnergyChipLabel("surplus", { balancedWording: true })).toBe("Surplus");
+  });
+
+  it("kcal unit: 'kcal balanced' behind the flag; other bands untouched", () => {
+    expect(netEnergyKcalUnit("maintenance")).toBe("kcal maintenance");
+    expect(netEnergyKcalUnit("maintenance", { balancedWording: true })).toBe("kcal balanced");
+    expect(netEnergyKcalUnit("deficit", { balancedWording: true })).toBe("kcal deficit");
+  });
+
+  it("subline: the balanced band stops borrowing the word 'maintenance'", () => {
+    const subline = netEnergySubline({
+      burnedKcal: 1500,
+      eatenKcal: 1500,
+      isToday: true,
+      netKcal: 0,
+      balancedWording: true,
+    });
+    expect(subline).toBe(
+      "You're within 60 kcal of even — burn and intake are balanced today.",
+    );
+    expect(subline).not.toContain("maintenance");
+  });
+
+  it("headline state: 'empty' iff no burn AND no food (the '0 kcal maintenance' fix)", () => {
+    expect(netEnergyHeadlineState(0, 0)).toBe("empty");
+    expect(netEnergyHeadlineState(1, 0)).toBe("value");
+    expect(netEnergyHeadlineState(0, 320)).toBe("value");
+    expect(netEnergyHeadlineState(1800, 1700)).toBe("value");
+  });
+
+  it("empty-state copy is the shared constant pair", () => {
+    expect(NET_ENERGY_EMPTY_HEADLINE).toBe("—");
+    expect(NET_ENERGY_EMPTY_SUBLINE).toBe("No activity or meals logged yet today");
   });
 });

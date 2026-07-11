@@ -4,6 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../supabase/browserClient.ts";
 import { DEFAULT_STEPS_GOAL } from "../../types/profile.ts";
 import { resolveMaintenance } from "./resolveMaintenance.ts";
+import {
+  ENERGY_NUMBERS_V1_FLAG,
+  selectMaintenance,
+  type EnergyProfileRow,
+} from "./energyNumbers.ts";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "./measuredTdee.ts";
 import { isFeatureEnabled } from "../analytics/track.ts";
 import { readFreezeLedger, type FreezeLedger } from "./streakFreeze.ts";
@@ -152,22 +157,31 @@ export function useNutritionTrackerProfile(authedUserId: string | null | undefin
         // used `getEffectiveTDEE`'s gate — two surfaces, two numbers.
         // `resolveMaintenance` is the shared gate: adaptive wins at
         // medium/high confidence AND not stale, else formula.
-        const resolved = resolveMaintenance(
-          {
-            adaptive_tdee: (data as any).adaptive_tdee,
-            adaptive_tdee_confidence: (data as any).adaptive_tdee_confidence,
-            adaptive_tdee_updated_at: (data as any).adaptive_tdee_updated_at,
-            measured_tdee: (data as any).measured_tdee,
-            measured_tdee_confidence: (data as any).measured_tdee_confidence,
-            measured_tdee_updated_at: (data as any).measured_tdee_updated_at,
-            sex: (data.sex ?? "unspecified") as any,
-            weight_kg: Number(data.weight_kg),
-            height_cm: Number(data.height_cm),
-            age: Number(data.age),
-            activity_level: (data.activity_level ?? "sedentary") as any,
-          },
-          { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
-        );
+        // ENG-1506 — behind `energy_numbers_v1`, inputs come from the
+        // canonical `buildMaintenanceInputs` policy (latest weigh-in beats
+        // the lagging profile snapshot; strict-null basics) so web Today
+        // prints the SAME maintenance as every other surface. The legacy
+        // input assembly stays alive in the else (kill switch).
+        const resolved = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+          ? selectMaintenance(data as EnergyProfileRow, {
+              enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG),
+            })
+          : resolveMaintenance(
+              {
+                adaptive_tdee: (data as any).adaptive_tdee,
+                adaptive_tdee_confidence: (data as any).adaptive_tdee_confidence,
+                adaptive_tdee_updated_at: (data as any).adaptive_tdee_updated_at,
+                measured_tdee: (data as any).measured_tdee,
+                measured_tdee_confidence: (data as any).measured_tdee_confidence,
+                measured_tdee_updated_at: (data as any).measured_tdee_updated_at,
+                sex: (data.sex ?? "unspecified") as any,
+                weight_kg: Number(data.weight_kg),
+                height_cm: Number(data.height_cm),
+                age: Number(data.age),
+                activity_level: (data.activity_level ?? "sedentary") as any,
+              },
+              { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+            );
         if (resolved) {
           setProfileMaintenanceTdee(resolved.kcal);
           setProfileMaintenanceSource(resolved.source);

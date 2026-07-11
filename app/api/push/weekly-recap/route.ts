@@ -77,6 +77,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
 import { buildWeeklyRecap } from "@/lib/nutrition/weeklyRecap";
 import { buildWeekStats } from "@/lib/nutrition/progressWeekReport";
 import { resolveMaintenance } from "@/lib/nutrition/resolveMaintenance";
+import { buildMaintenanceInputs } from "@/lib/nutrition/energyNumbers";
 import { formatWeeklyRecapPushBody } from "@/lib/nutrition/weeklyRecapPushBody";
 import {
   selectDigestSuggestion,
@@ -596,17 +597,22 @@ async function runWeeklyRecapPush(req: Request) {
         );
 
         // Cascade — gather inputs and run.
+        // ENG-1506 — canonical input policy (`buildMaintenanceInputs`):
+        // latest weigh-in beats the lagging profile snapshot, strict-null
+        // basics. Keeps the push copy's maintenance in lockstep with what
+        // the app displays once `energy_numbers_v1` ramps.
         const resolved = resolveMaintenance(
-          {
+          buildMaintenanceInputs({
             adaptive_tdee: row.adaptive_tdee ?? null,
             adaptive_tdee_confidence: row.adaptive_tdee_confidence ?? null,
             adaptive_tdee_updated_at: row.adaptive_tdee_updated_at ?? null,
-            sex: row.sex as never,
+            sex: row.sex,
             weight_kg: row.weight_kg ?? null,
             height_cm: row.height_cm ?? null,
             age: row.age ?? null,
-            activity_level: row.activity_level as never,
-          },
+            activity_level: row.activity_level,
+            weight_kg_by_day: row.weight_kg_by_day ?? null,
+          }),
           { now: nowDate },
         );
         const cascadeProfile: DigestSuggestionProfile = {

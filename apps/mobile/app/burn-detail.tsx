@@ -18,6 +18,8 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { dateKeyFromDate } from "@suppr/nutrition-core/trackerStats";
 import { resolveMaintenance } from "@suppr/nutrition-core/resolveMaintenance";
+import { ENERGY_NUMBERS_V1_FLAG, selectMaintenance } from "@suppr/nutrition-core/energyNumbers";
+import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/nutrition-core/measuredTdee";
 import { maintenanceIntakeFromTargetCalories } from "@/lib/calcTargets";
 import { syncHealthDataThrottled, isHealthSyncAvailable } from "@/lib/healthSync";
 // filterByDateRangeDays / MiniBarChart imports removed 2026-05-13 — the
@@ -114,7 +116,7 @@ export default function BurnDetailScreen() {
         const { data: profile, error: profileErr } = await supabase
           .from("profiles")
           .select(
-            "activity_burn_by_day, basal_burn_by_day, steps_by_day, daily_steps_goal, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, height_cm, weight_kg, age, dob, activity_level, prefer_activity_adjusted_calories",
+            "activity_burn_by_day, basal_burn_by_day, steps_by_day, daily_steps_goal, workouts_by_day, target_calories, goal, plan_pace, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, sex, height_cm, weight_kg, weight_kg_by_day, age, dob, activity_level, prefer_activity_adjusted_calories",
           )
           .eq("id", userId)
           .maybeSingle();
@@ -130,16 +132,19 @@ export default function BurnDetailScreen() {
         const p = profile as any;
         const targetCal = Number(p.target_calories) || 0;
         const ageYears = profileAgeYears({ dob: p.dob, age: p.age });
-        const resolved = resolveMaintenance({
-          adaptive_tdee: p.adaptive_tdee != null ? Number(p.adaptive_tdee) : null,
-          adaptive_tdee_confidence: p.adaptive_tdee_confidence ?? null,
-          adaptive_tdee_updated_at: p.adaptive_tdee_updated_at ?? null,
-          sex: p.sex ?? null,
-          weight_kg: p.weight_kg != null ? Number(p.weight_kg) : null,
-          height_cm: p.height_cm != null ? Number(p.height_cm) : null,
-          age: ageYears,
-          activity_level: p.activity_level ?? null,
-        });
+        // ENG-1506 — flag ON: canonical inputs (latest weigh-in + measured,
+        // same gates as Today's tile); OFF: legacy snapshot-weight call.
+        const resolved = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+          ? selectMaintenance({ ...p, age: ageYears }, { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) })
+          : resolveMaintenance({
+              adaptive_tdee: p.adaptive_tdee != null ? Number(p.adaptive_tdee) : null,
+              adaptive_tdee_confidence: p.adaptive_tdee_confidence ?? null,
+              adaptive_tdee_updated_at: p.adaptive_tdee_updated_at ?? null,
+              sex: p.sex ?? null, age: ageYears,
+              weight_kg: p.weight_kg != null ? Number(p.weight_kg) : null,
+              height_cm: p.height_cm != null ? Number(p.height_cm) : null,
+              activity_level: p.activity_level ?? null,
+            });
         const maintenanceKcal =
           resolved != null && resolved.kcal > 0
             ? resolved.kcal
@@ -152,10 +157,7 @@ export default function BurnDetailScreen() {
           workouts: Array.isArray((p.workouts_by_day ?? {})[viewKey]) ? (p.workouts_by_day ?? {})[viewKey] : [],
         });
         setPreferActivityAdjustedCalories(Boolean(p.prefer_activity_adjusted_calories));
-        // Hydrate the 30-day steps trend (Phase 2 relocation). The map
-        // comes from HealthKit sync (mobile) or manual entry; we coerce
-        // every value to a finite number, drop the rest, so the chart
-        // never renders a stray NaN bar.
+        // Hydrate the steps map; coerce to finite numbers, drop the rest.
         const sbd = p.steps_by_day;
         if (sbd && typeof sbd === "object" && !Array.isArray(sbd)) {
           const parsed: Record<string, number> = {};
@@ -180,10 +182,8 @@ export default function BurnDetailScreen() {
     return () => { cancelled = true; };
   }, [userId, viewKey]);
 
-  // 30-day steps trend memo removed 2026-05-13 (TF
-  // `AEAhefzqZ_0tuPnEONlytgI`) along with the chart. `stepsByDay`
-  // stays in state because it still feeds today's step count
-  // surface near the top of the screen.
+  // 30-day steps trend memo removed 2026-05-13 (TF `AEAhefzqZ_0tuPnEONlytgI`)
+  // with its chart; `stepsByDay` remains for today's step-count surface.
 
   const totals = useMemo(() => {
     if (!data) return null;

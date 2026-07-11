@@ -38,10 +38,12 @@
 import * as React from "react";
 import {
   computeTrajectory,
+  TRAJECTORY_BEHAVIOUR_CAPTION,
   type TrajectoryState,
   type WeightGoalTimeline,
 } from "../../src/lib/weightProjection.ts";
 import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
+import { ENERGY_NUMBERS_V1_FLAG } from "../../src/lib/nutrition/energyNumbers.ts";
 import { SupprCard } from "../../src/app/components/ui/suppr-card.tsx";
 
 /** Default-OFF flag (ENG-969). Registered in `KNOWN_DEFAULT_OFF_FLAGS` on both
@@ -209,6 +211,17 @@ export function PaywallTrajectoryChart(props: PaywallTrajectoryChartProps) {
         </span>
         .
       </p>
+      {/* ENG-1507 — behaviour-vs-plan qualifier (mirror of mobile): the
+          projection direction is recent intake vs estimated burn, NOT the
+          plan. Flag-gated. */}
+      {isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? (
+        <p
+          data-testid="paywall-trajectory-behaviour-caption"
+          className="text-xs leading-relaxed text-muted-foreground mt-2"
+        >
+          {TRAJECTORY_BEHAVIOUR_CAPTION}
+        </p>
+      ) : null}
       <p
         data-testid="paywall-trajectory-footnote"
         className="text-[10.5px] text-muted-foreground/80 mt-2"

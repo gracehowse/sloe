@@ -143,3 +143,43 @@ describe("ENG-1029 projection horizon guard", () => {
     expect(r.projectionWeeks).toBe(5);
   });
 });
+
+describe("projectWeight — ENG-1506 goal-fallback vocabulary fix", () => {
+  // The fallback branches used to compare v2 values ('lose'/'gain') only,
+  // so profile-sourced DB goals ('cut'/'bulk') silently fell through to
+  // `estimatedTdee = targetCalories` whenever maintenance was missing.
+  it("'cut' reaches the deficit fallback branch (target + 500)", () => {
+    const r = projectWeight({
+      currentWeightKg: 75,
+      todayCalories: 1900,
+      targetCalories: 1500,
+      goal: "cut",
+    });
+    // break-even 2000, ate 1900 → deficit
+    expect(r.dailySurplusDeficit).toBe(-100);
+    expect(r.direction).toBe("deficit");
+  });
+
+  it("'bulk' reaches the surplus fallback branch (target − 300)", () => {
+    const r = projectWeight({
+      currentWeightKg: 75,
+      todayCalories: 2500,
+      targetCalories: 2600,
+      goal: "bulk",
+    });
+    // break-even 2300, ate 2500 → surplus
+    expect(r.dailySurplusDeficit).toBe(200);
+    expect(r.direction).toBe("surplus");
+  });
+
+  it("unknown goal still falls to targetCalories as break-even", () => {
+    const r = projectWeight({
+      currentWeightKg: 75,
+      todayCalories: 2000,
+      targetCalories: 2000,
+      goal: "garbage",
+    });
+    expect(r.dailySurplusDeficit).toBe(0);
+    expect(r.direction).toBe("maintenance");
+  });
+});

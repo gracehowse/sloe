@@ -56,6 +56,20 @@ interface OnboardingContext {
    * no detour (Decision 2). A no-op before the shell registers. */
   complete: () => void;
   registerComplete: (fn: () => void) => void;
+  /**
+   * ENG-1507 — persist WITHOUT navigating. The terminal `upgrade` step's
+   * "Start free trial" awaits `persist()` BEFORE pushing the paywall so
+   * the paywall's personalised-plan card reads the row THIS run just
+   * wrote, never the previous run's plan (the trial-path persist hole:
+   * every `from=onboarding` paywall exit replaces to Today, so the
+   * navigation-coupled `complete()` handler never ran on that path and
+   * the freshly-selected plan was silently discarded). Resolves `true`
+   * when the profile write + seeding landed; `false` when it failed and
+   * the flow shell already surfaced the error (stay on-step). A
+   * `false`-resolving no-op before the shell registers.
+   */
+  persist: () => Promise<boolean>;
+  registerPersist: (fn: () => Promise<boolean>) => void;
   targets: V2Targets | null;
   warning: PaceWarning | null;
   currentStepId: StepId;
@@ -213,6 +227,22 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     completeRef.current();
   }, []);
 
+  // ENG-1507 — persist-without-navigation twin of `complete` (same ref
+  // pattern) so the terminal `upgrade` step can land the profile write
+  // BEFORE pushing the paywall. Defaults to `false` (nothing persisted)
+  // until the flow shell registers.
+  const persistRef = React.useRef<() => Promise<boolean>>(() => Promise.resolve(false));
+  const registerPersist = React.useCallback<OnboardingContext["registerPersist"]>(
+    (fn) => {
+      persistRef.current = fn;
+    },
+    [],
+  );
+  const persist = React.useCallback<OnboardingContext["persist"]>(
+    () => persistRef.current(),
+    [],
+  );
+
   const targets = React.useMemo(() => computeV2Targets(state), [state]);
   const currentStepId = STEP_IDS[state.step] as StepId;
   const warning = React.useMemo(
@@ -243,6 +273,8 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       reset,
       complete,
       registerComplete,
+      persist,
+      registerPersist,
       targets,
       warning,
       currentStepId,
@@ -258,7 +290,7 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
       stepLabels: STEP_LABELS,
       isRefreshPlan,
     }),
-    [state, set, go, goTo, reset, complete, registerComplete, targets, warning, currentStepId, canAdvance, isRefreshPlan, base.index, base.total],
+    [state, set, go, goTo, reset, complete, registerComplete, persist, registerPersist, targets, warning, currentStepId, canAdvance, isRefreshPlan, base.index, base.total],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -71,12 +71,16 @@ describe("onboarding_completed event fires from both platforms (P1-13 + polish A
     // 2026-04-30: legacy `apps/mobile/app/onboarding.tsx` (1102-line
     // form) was deleted as part of the v2 → canonical rename. The
     // entry route is now a thin route mount; the actual completion
-    // handler — and the `track(onboarding_completed)` call — lives
-    // in `apps/mobile/components/onboarding/mobile-flow.tsx`. The
-    // legacy "skip" path is gone (v2 has a terminal recipes-picker,
-    // not a skip-to-paywall short-circuit). What remains is the
-    // full-completion path with the three cohort properties.
-    const src = read("apps/mobile/components/onboarding/mobile-flow.tsx");
+    // handler — and the `track(onboarding_completed)` call — lived in
+    // `mobile-flow.tsx` until ENG-1507 (2026-07-11) extracted the
+    // completion pipeline into `useOnboardingCompletion.ts` (the pins
+    // follow the code to its new home). The legacy "skip" path is gone
+    // (v2 has a terminal recipes-picker, not a skip-to-paywall
+    // short-circuit). What remains is the full-completion path with
+    // the three cohort properties.
+    const src = read(
+      "apps/mobile/components/onboarding/useOnboardingCompletion.ts",
+    );
 
     it("fires the event with the v2 cohort properties (parity with web-flow.tsx)", () => {
       // Property shape was renamed during the v2 → canonical rename

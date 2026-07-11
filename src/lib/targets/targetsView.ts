@@ -65,9 +65,17 @@ export function activityLevelCaption(level: ActivityLevel | string | null | unde
 export function deficitSurplusCaption(opts: {
   targetCalories: number | null | undefined;
   tdeeKcal: number | null | undefined;
-  goal: Goal | null | undefined;
+  /**
+   * ENG-1506 — behind `energy_numbers_v1` the caption names its basis
+   * ("… vs current maintenance estimate") so the delta can't be misread as
+   * the stored plan pace. The ENG-1507 audit found the goal-state paradox
+   * ("200 kcal surplus" on a nominal-cut row) was exactly this: an honest
+   * target-vs-live-maintenance delta with no basis label. Host owns the
+   * flag read so this stays a pure function.
+   */
+  vsCurrentMaintenance?: boolean;
 }): string | null {
-  const { targetCalories, tdeeKcal, goal } = opts;
+  const { targetCalories, tdeeKcal } = opts;
   if (
     typeof targetCalories !== "number" ||
     !Number.isFinite(targetCalories) ||
@@ -81,9 +89,12 @@ export function deficitSurplusCaption(opts: {
   // Round to nearest 50 so captions stop reading like TDEE math.
   const rounded = Math.round(delta / 50) * 50;
   if (Math.abs(rounded) < 50) return null;
-  if (rounded < 0) return `${Math.abs(rounded)} kcal deficit`;
-  if (goal === "gain") return `${rounded} kcal surplus`;
-  return `${rounded} kcal surplus`;
+  // ENG-1507 — the former `goal` param was dead code (both tails returned
+  // "surplus" for any positive delta), so it's gone: the caption reports
+  // the SIGN of the delta, nothing else.
+  const suffix = opts.vsCurrentMaintenance ? " vs current maintenance estimate" : "";
+  if (rounded < 0) return `${Math.abs(rounded)} kcal deficit${suffix}`;
+  return `${rounded} kcal surplus${suffix}`;
 }
 
 export type MacroKey = "protein" | "carbs" | "fat" | "fiber";

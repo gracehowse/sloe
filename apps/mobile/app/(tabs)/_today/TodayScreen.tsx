@@ -154,6 +154,7 @@ import {
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, resolveTargets } from "@/lib/calcTargets";
 import { resolveMaintenance } from "@suppr/nutrition-core/resolveMaintenance";
+import { ENERGY_NUMBERS_V1_FLAG, selectMaintenance } from "@suppr/nutrition-core/energyNumbers";
 // ENG-1476 — shared date label (was a byte-identical local reimplementation).
 import { formatDateLabel } from "@suppr/nutrition-core/trackerDate";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/nutrition-core/measuredTdee";
@@ -215,7 +216,7 @@ import { useLogConfirmCheck } from "@/hooks/useLogConfirmCheck";
 import { LogConfirmCheck } from "@/components/today/LogConfirmCheck";
 import { TodayHero } from "@/components/today/TodayHero";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
-import { paceKgPerWeekFromPreset } from "@suppr/nutrition-core/whyThisNumber";
+import { paceKgPerWeekFromPreset, whyThisNumberGoalFromDb } from "@suppr/nutrition-core/whyThisNumber";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 // `LogFab` is retired on mobile (2026-04-30) — the centered raised
 // Log button now lives inside the global `<SupprTabBar>` via
@@ -1909,37 +1910,35 @@ export default function TrackerScreen() {
   // "Your TDEE 1,777" (TestFlight `ADFYpDgEEb0QH-j3BXshPTo`, build 10)
   // can no longer disagree. Burn detail (`/burn-detail`) uses the same
   // resolver so the "Maintenance" row matches Progress / Today tile.
+  // ENG-1506 — behind `energy_numbers_v1`, inputs come from the canonical
+  // `buildMaintenanceInputs` policy (latest weigh-in beats the lagging
+  // profile snapshot). Legacy snapshot-weight assembly stays in the else
+  // (kill switch).
   const resolvedMaintenance = useMemo(
     () =>
-      resolveMaintenance(
-        {
-          adaptive_tdee: adaptiveTdee,
-          adaptive_tdee_confidence: adaptiveTdeeConfidence,
-          adaptive_tdee_updated_at: adaptiveTdeeUpdatedAt,
-          measured_tdee: measuredTdee,
-          measured_tdee_confidence: measuredTdeeConfidence,
-          measured_tdee_updated_at: measuredTdeeUpdatedAt,
-          sex: profileSex as any,
-          weight_kg: profileWeightKg,
-          height_cm: profileHeightCm,
-          age: profileAge,
-          activity_level: profileActivityLevel as any,
-        },
-        { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
-      ),
-    [
-      adaptiveTdee,
-      adaptiveTdeeConfidence,
-      adaptiveTdeeUpdatedAt,
-      measuredTdee,
-      measuredTdeeConfidence,
-      measuredTdeeUpdatedAt,
-      profileSex,
-      profileWeightKg,
-      profileHeightCm,
-      profileAge,
-      profileActivityLevel,
-    ],
+      isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+        ? selectMaintenance(
+            {
+              adaptive_tdee: adaptiveTdee, adaptive_tdee_confidence: adaptiveTdeeConfidence,
+              adaptive_tdee_updated_at: adaptiveTdeeUpdatedAt, measured_tdee: measuredTdee,
+              measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
+              sex: profileSex, weight_kg: profileWeightKg, height_cm: profileHeightCm,
+              age: profileAge, activity_level: profileActivityLevel,
+              weight_kg_by_day: profileWeightKgByDay,
+            },
+            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+          )
+        : resolveMaintenance(
+            {
+              adaptive_tdee: adaptiveTdee, adaptive_tdee_confidence: adaptiveTdeeConfidence,
+              adaptive_tdee_updated_at: adaptiveTdeeUpdatedAt, measured_tdee: measuredTdee,
+              measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
+              sex: profileSex as any, weight_kg: profileWeightKg, height_cm: profileHeightCm,
+              age: profileAge, activity_level: profileActivityLevel as any,
+            },
+            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+          ),
+    [adaptiveTdee, adaptiveTdeeConfidence, adaptiveTdeeUpdatedAt, measuredTdee, measuredTdeeConfidence, measuredTdeeUpdatedAt, profileSex, profileWeightKg, profileHeightCm, profileAge, profileActivityLevel, profileWeightKgByDay],
   );
   const profileMaintenanceTdeeKcal = resolvedMaintenance?.kcal ?? null;
 
@@ -5813,7 +5812,13 @@ export default function TrackerScreen() {
         visible={whySheetOpen}
         onClose={() => setWhySheetOpen(false)}
         targetCalories={Math.round(effectiveCalorieGoal)}
-        maintenanceTdee={adaptiveTdee ?? profileMaintenanceTdeeKcal}
+        maintenanceTdee={
+          // ENG-1506 — flag ON: the RESOLVED maintenance (same gates as every
+          // surface); OFF: the legacy raw-adaptive-first read.
+          isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+            ? profileMaintenanceTdeeKcal
+            : (adaptiveTdee ?? profileMaintenanceTdeeKcal)
+        }
         confidence={
           adaptiveTdeeConfidence === "low" ||
           adaptiveTdeeConfidence === "medium" ||
@@ -5822,21 +5827,9 @@ export default function TrackerScreen() {
             : null
         }
         loggingDays={null}
-        goal={
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose"
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          profilePlanPace,
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose",
-        )}
+        // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose".
+        goal={whyThisNumberGoalFromDb(profileGoal)}
+        paceKgPerWeek={paceKgPerWeekFromPreset(profilePlanPace, whyThisNumberGoalFromDb(profileGoal))}
         mealLogDays={null}
         weightLogCount={Object.keys(profileWeightKgByDay).length}
         hasWearable={Object.keys(basalBurnByDay).length > 0}

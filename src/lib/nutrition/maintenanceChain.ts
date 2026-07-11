@@ -45,6 +45,7 @@ import {
   MAINTENANCE_SEED_ACTIVITY,
   type ResolvedMaintenance,
 } from "./resolveMaintenance";
+import { normalizeDbGoal } from "./goalVocabulary";
 
 /** 7700 kcal ≈ 1 kg of body fat — the standard conversion used across the app. */
 export const KCAL_PER_KG_FAT = 7700;
@@ -209,8 +210,12 @@ export function buildMaintenanceChain(
 
   // Calorie goal line — prefer the live target when callers pass it (ENG-1057).
   // Otherwise derive from pace + goal via `calculateBudget`.
-  const goalType = (goal ?? "cut").toString();
-  const isMaintainGoal = goalType === "maintain" || goalType === "health";
+  // ENG-1507 — unknown/null goal normalises to a NEUTRAL "maintain"
+  // derivation row (no adjustment) via the shared vocabulary, instead of
+  // the old `?? "cut"` that silently framed unknown-goal users as
+  // weight-loss users in the explainer.
+  const goalType = normalizeDbGoal(goal) ?? "maintain";
+  const isMaintainGoal = goalType === "maintain";
   const derivedBudget = calculateBudget(maintenance, planPace, goalType);
   const budget =
     isFinitePositive(actualTargetCalories)

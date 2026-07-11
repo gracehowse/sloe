@@ -34,6 +34,7 @@ import {
   parseDayTargetSchedule,
 } from "./dayTargetSchedule";
 import { resolveMaintenance } from "./resolveMaintenance";
+import { buildMaintenanceInputs } from "./energyNumbers";
 
 /**
  * Minimal Supabase client shape used by this helper. Both the web
@@ -78,7 +79,7 @@ export async function snapshotDailyTargetIfMissing(
   const { data: profile, error: profileErr } = await supabase
     .from("profiles")
     .select(
-      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, height_cm, age, calorie_schedule, high_days",
+      "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, activity_level, plan_pace, goal, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, sex, weight_kg, weight_kg_by_day, height_cm, age, calorie_schedule, high_days",
     )
     .eq("id", userId)
     .maybeSingle();
@@ -103,19 +104,13 @@ export async function snapshotDailyTargetIfMissing(
   // when adaptive isn't set yet (formula path) or when adaptive is
   // stale (rejected → formula). Only stores `null` when we genuinely
   // cannot compute (e.g. pre-onboarding profile with no body stats).
-  const resolved = resolveMaintenance(
-    {
-      sex: typeof profile.sex === "string" ? (profile.sex as "male" | "female") : null,
-      weight_kg: typeof profile.weight_kg === "number" ? profile.weight_kg : null,
-      height_cm: typeof profile.height_cm === "number" ? profile.height_cm : null,
-      age: typeof profile.age === "number" ? profile.age : null,
-      activity_level: typeof profile.activity_level === "string" ? (profile.activity_level as Parameters<typeof resolveMaintenance>[0]["activity_level"]) : null,
-      adaptive_tdee: typeof profile.adaptive_tdee === "number" ? profile.adaptive_tdee : null,
-      adaptive_tdee_confidence: typeof profile.adaptive_tdee_confidence === "string" ? profile.adaptive_tdee_confidence : null,
-      adaptive_tdee_updated_at: profile.adaptive_tdee_updated_at ?? null,
-    },
-    { now: opts?.now },
-  );
+  // ENG-1506 — inputs now come from the canonical `buildMaintenanceInputs`
+  // policy (latest weigh-in over the lagging profile snapshot, strict-null
+  // basics) so the frozen snapshot can't disagree with live display once
+  // `energy_numbers_v1` ramps.
+  const resolved = resolveMaintenance(buildMaintenanceInputs(profile), {
+    now: opts?.now,
+  });
 
   // ENG-960 — snapshot the SCHEDULE-ADJUSTED target for this day so history
   // (recap/progress) matches what the ring showed. Flat when not opted in.
@@ -220,22 +215,10 @@ export async function backfillDailyTargetsFromProfile(
   const now = options.now ?? new Date();
   const lookbackDays = Math.max(1, options.lookbackDays ?? 30);
 
-  const resolved = resolveMaintenance(
-    {
-      sex: typeof profile.sex === "string" ? (profile.sex as "male" | "female") : null,
-      weight_kg: typeof profile.weight_kg === "number" ? profile.weight_kg : null,
-      height_cm: typeof profile.height_cm === "number" ? profile.height_cm : null,
-      age: typeof profile.age === "number" ? profile.age : null,
-      activity_level: typeof profile.activity_level === "string" ? (profile.activity_level as Parameters<typeof resolveMaintenance>[0]["activity_level"]) : null,
-      adaptive_tdee: typeof profile.adaptive_tdee === "number" ? profile.adaptive_tdee : null,
-      adaptive_tdee_confidence: typeof profile.adaptive_tdee_confidence === "string" ? profile.adaptive_tdee_confidence : null,
-      adaptive_tdee_updated_at:
-        typeof profile.adaptive_tdee_updated_at === "string"
-          ? profile.adaptive_tdee_updated_at
-          : null,
-    },
-    { now },
-  );
+  // ENG-1506 — canonical input policy (see `snapshotDailyTargetIfMissing`).
+  // Callers that don't select `weight_kg_by_day` fall back to the profile
+  // snapshot weight inside the builder — never a fabricated default.
+  const resolved = resolveMaintenance(buildMaintenanceInputs(profile), { now });
 
   // Build past-day rows. Iterate from yesterday backwards so the
   // upsert's first-write-wins semantic protects today's existing

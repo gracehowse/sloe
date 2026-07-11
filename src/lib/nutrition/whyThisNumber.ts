@@ -19,9 +19,39 @@
  *   - No exclamation marks. Restrained, factual.
  *   - Always-on per D-2026-04-27-12: we never refuse to render. When
  *     confidence is low we say so in plain English instead of hiding.
+ *
+ * Dependency note: imports only `./goalVocabulary` (equally pure +
+ * RN-safe) — the ENG-1507 shared goal normaliser. Everything else stays
+ * duplicated-by-design (see the constants below).
  */
 
+import { normalizeDbGoal } from "./goalVocabulary";
+
 export type WhyThisNumberGoal = "lose" | "maintain" | "gain";
+
+/**
+ * ENG-1507 — map the stored `profiles.goal` (DB vocabulary + legacy
+ * synonyms) to the explainer's goal direction via the shared
+ * `normalizeDbGoal`. Returns `null` for unknown/unset goals so the
+ * explainer renders "Goal not set" instead of silently claiming "Lose" —
+ * the four hand-copied inline normalisations this replaces (mobile Today,
+ * mobile targets, web NutritionTracker, web Targets) all defaulted
+ * unknown → "lose".
+ */
+export function whyThisNumberGoalFromDb(
+  raw: string | null | undefined,
+): WhyThisNumberGoal | null {
+  switch (normalizeDbGoal(raw)) {
+    case "cut":
+      return "lose";
+    case "maintain":
+      return "maintain";
+    case "bulk":
+      return "gain";
+    default:
+      return null;
+  }
+}
 
 export interface WhyThisNumberInput {
   /** Today's calorie target as it appears on the ring. Required. */
@@ -34,8 +64,10 @@ export interface WhyThisNumberInput {
   /** Days of logging behind the maintenance estimate. Used to qualify
    *  the "adaptive" wording — < 14 days reads "early estimate". */
   loggingDays?: number | null;
-  /** User's stated goal direction. */
-  goal: WhyThisNumberGoal;
+  /** User's stated goal direction. `null` = unknown/unset (ENG-1507) —
+   *  the Goal row renders "Goal not set" and the summary drops the goal
+   *  clause, instead of the old silent "lose" default. */
+  goal: WhyThisNumberGoal | null;
   /**
    * Weekly weight-change pace target in kg/week. Negative for losing,
    * positive for gaining, 0 for explicit maintain.
@@ -183,8 +215,10 @@ const MIN_WEIGHT_LOGS_FOR_TDEE = 3;
  */
 export function paceKgPerWeekFromPreset(
   preset: string | null | undefined,
-  goal: WhyThisNumberGoal,
+  goal: WhyThisNumberGoal | null,
 ): number | null {
+  // ENG-1507 — unknown goal: we cannot sign a pace we can't direction.
+  if (goal === null) return null;
   if (goal === "maintain") return 0;
   let mag: number;
   switch (preset) {
@@ -219,11 +253,11 @@ function fmtPaceKg(paceKg: number): string {
 }
 
 function goalLabel(
-  goal: WhyThisNumberGoal,
+  goal: WhyThisNumberGoal | null,
   paceKg: number | null,
 ): string {
-  // Unknown pace → user has not picked a preset. Don't lie about it.
-  if (paceKg === null) return "Goal not set";
+  // Unknown goal / pace → user has not picked one. Don't lie about it.
+  if (goal === null || paceKg === null) return "Goal not set";
   if (goal === "maintain" || paceKg === 0) return "Maintain";
   if (goal === "lose") return `Lose ${fmtPaceKg(Math.abs(paceKg))}`.replace("+", "");
   return `Gain ${fmtPaceKg(Math.abs(paceKg))}`.replace("+", "");
@@ -367,7 +401,7 @@ export function buildStoryBeats(input: {
  * so "Goal not set" still renders for users with no preset.
  */
 function resolveEffectivePace(input: {
-  goal: WhyThisNumberGoal;
+  goal: WhyThisNumberGoal | null;
   nominalPaceKgPerWeek: number | null;
   targetCalories: number;
   maintenanceTdee: number | null;
@@ -495,9 +529,14 @@ export function buildWhyThisNumber(
         : targetCalories > maintenanceTdee
           ? "above"
           : "at";
-    summary = `Your target sits ${direction} your estimated maintenance of ${fmtKcal(
-      maintenanceTdee,
-    )} so you trend toward your ${goalValue.toLowerCase()} goal.`;
+    // ENG-1507 — with no goal/pace set, drop the goal clause instead of
+    // reading "…toward your goal not set goal".
+    summary =
+      goalValue === "Goal not set"
+        ? `Your target sits ${direction} your estimated maintenance of ${fmtKcal(maintenanceTdee)}.`
+        : `Your target sits ${direction} your estimated maintenance of ${fmtKcal(
+            maintenanceTdee,
+          )} so you trend toward your ${goalValue.toLowerCase()} goal.`;
   } else if (calibratingAsk) {
     // Lift the SPECIFIC ask into the summary so screen readers and
     // the bottom-sheet subhead announce something actionable instead
