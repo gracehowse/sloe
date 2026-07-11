@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Check, Flame, Lock, MoreHorizontal, UtensilsCrossed } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
@@ -69,7 +70,9 @@ export function PlanMealCardV3({
         accessibilityLabel={`${slot}: ${name}`}
         style={styles.mainPress}
       >
-        <View style={[styles.thumb, { backgroundColor: colors.backgroundSecondary }]}>
+        {/* ENG-1374 PR2 — never-white: deterministic recipe underlay, not the
+            plum-grey well (refuter catch: this v3 thumb was missed by the sweep). */}
+        <View style={[styles.thumb, { backgroundColor: recipeUnderlayColor({ id: name, title: name }) }]}>
           {imageUrl ? (
             <SmartImage source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} />
           ) : (
