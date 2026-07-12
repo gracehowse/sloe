@@ -134,11 +134,11 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
   it("web header shows the 'Your trends' overline via ScreenChrome (S6: serif-24 title ruling)", () => {
     // ENG-1375 S6 — the hand-rolled 28px header was replaced by the
     // ScreenChrome primitive (title = serif 24, the ONE tab-title voice).
-    expect(webSrc).toContain('overlineTestID="progress-overline"');
-    expect(webSrc).toContain('titleTestID="progress-header"');
-    expect(webSrc).not.toMatch(/text-\[28px\]/);
+    expect(webChromeSrc).toContain('overlineTestID="progress-overline"');
+    expect(webChromeSrc).toContain('titleTestID="progress-header"');
+    expect(webChromeSrc).not.toMatch(/text-\[28px\]/);
     const prim = require("node:fs").readFileSync(
-      require("node:path").resolve(__dirname, "../../../src/app/components/suppr/screen-chrome.tsx"),
+      require("node:path").resolve(__dirname, "../../../../src/app/components/suppr/screen-chrome.tsx"),
       "utf8",
     );
     expect(prim).toMatch(/text-\[24px\]/);
