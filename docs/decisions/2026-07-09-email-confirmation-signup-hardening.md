@@ -1,9 +1,54 @@
 # Email-confirmation signup hardening + mobile deep-link spec (ENG-1395)
 
 **Date:** 2026-07-09
-**Status:** Partially resolved — web PKCE redirect bug fixed in code; GoTrue
-confirmation flip and mobile deep-link build are founder/follow-up gated.
+**Status:** Superseded in part (2026-07-10) — read the "Current posture" block
+below first. The web PKCE redirect fix (shipped) and the mobile deep-link build
+(ENG-1474, shipped) stand; but the doc's original premise — that the farming fix
+is re-enabling `enable_confirmations` — was abandoned, and its named replacement
+(confirm-after-value AI-gating, ENG-1482) was then canceled. The body below the
+Current-posture block is retained as historical record of the PKCE bug + the
+deep-link spec.
 **Area:** Auth / signup hardening / launch readiness
+
+## Current posture (2026-07-10 — supersedes the framing below)
+
+Two decisions landed the day after this doc was written; the sections below were
+only partially reconciled to them, so read this block as authoritative:
+
+1. **`enable_confirmations` stays `false` — the flip is abandoned, not deferred.**
+   Re-enabling GoTrue email confirmation would kill the instant-session
+   MFP-refugee funnel, which is the point of the launch. So the doc's original
+   premise ("Grace's chosen fix … is re-enabling email confirmation") is **no
+   longer the plan of record.** Every "before Grace flips `enable_confirmations`"
+   framing below describes an event that will not happen.
+
+2. **Confirm-after-value AI-gating (ENG-1482) was also canceled** — as vacuous,
+   not deferred. With `enable_confirmations = false`, GoTrue **auto-confirms
+   every signup** (verified 2026-07-10: all prod `auth.users` have
+   `email_confirmed_at` set). An AI gate on `email_confirmed_at` would therefore
+   reject **nobody**, and `auth.resend({type:'signup'})` errors for
+   already-confirmed users. So the "confirmed-email AI-gating / nudge follow-up"
+   this doc names as the flip's replacement (lines below) **does not exist** and
+   won't be built under this premise.
+
+**Where the account-farming vector actually lives now:** it is **not** handled by
+"Layer C + the confirmed-email follow-up" as the body claims. It is:
+- **tracked** in **ENG-1487 Finding 2** (fleet-wide AI DoS via cheap account
+  farming — `launch-blocker`), and
+- **mitigated (only) by the Layer C per-IP AI cap** (ENG-1395/#827), which
+  currently ships **dark** (`AI_BUDGET_PER_IP_ENFORCEMENT_ENABLED` default off).
+  The signup throttle/captcha half is unbuilt. So the vector is
+  **tracked-but-unmitigated-in-prod** until Grace right-sizes + enables the
+  Layer C cap and/or a signup throttle lands. That work is ENG-1487, not this
+  doc.
+
+**What still stands from this doc:** the web PKCE redirect fix (magic-link +
+password-reset were live-broken and are now fixed — unrelated to the abandoned
+flip), and the ENG-1474 mobile deep-link build. ENG-1474's value **survives** the
+flip abandonment: `suppr://auth-callback` is still needed for mobile magic-link,
+password-reset, and recovery round-trips (those emails send regardless of
+`enable_confirmations`), even though it's no longer a prerequisite for a
+confirmation flip that isn't happening.
 
 ## Problem
 
@@ -104,14 +149,18 @@ specced. What remains is **founder-gated**, not code:
   **staged** in `supabase/config.toml` but not pushed. Same non-negotiable as
   SQL migrations: Grace's action, never MCP/agent-applied.
 
-**`enable_confirmations` intentionally stays `false`.** The confirm-*after*-value
-posture is the plan of record (Grace's call) — the flip that this doc originally
-gated on is **no longer planned**. The account-farming vector is handled by the
-per-IP call cap (Layer C) + the confirmed-email AI-gating / nudge follow-up
-(separate ticket), not by forcing a confirmation round-trip before a user sees
-value. This deep-link work is what makes that follow-up *possible* (a mobile
-signup can now complete a confirmation round-trip at all), even though the
-blanket `enable_confirmations` flip won't be the mechanism.
+**`enable_confirmations` intentionally stays `false`.** The flip this doc
+originally gated on is **no longer planned** (see Current-posture block above).
+⚠️ **Correction (2026-07-10):** an earlier revision of this paragraph said the
+farming vector is "handled by the per-IP call cap (Layer C) + the confirmed-email
+AI-gating / nudge follow-up (separate ticket)." That follow-up was **ENG-1482,
+now canceled** — it's vacuous because `enable_confirmations = false` means every
+signup is already auto-confirmed, so an `email_confirmed_at` gate rejects nobody.
+The farming vector is therefore mitigated by **Layer C alone** (ENG-1395/#827,
+currently dark) and tracked in **ENG-1487 Finding 2**, not by a confirmed-email
+gate. The ENG-1474 deep-link work still stands on its own merits (mobile
+magic-link / password-reset / recovery round-trips), independent of any
+confirmation gate.
 
 **What shipped (ENG-1474):**
 
@@ -223,9 +272,13 @@ apply the moment confirmations turn on:
    `supabase config push` of the allow-list entry remain founder-gated.
 3. **Founder action:** Grace runs `supabase config push` to add
    `suppr://auth-callback` to the allow-list (staged in `config.toml`).
-   **`enable_confirmations` is NOT flipped in this push** — the
-   confirm-after-value posture holds; the blanket flip is no longer the plan
-   of record. The confirmed-email AI-gating / nudge follow-up replaces it.
+   **`enable_confirmations` is NOT flipped in this push** and won't be — the
+   blanket flip is abandoned (Current-posture block). ⚠️ The
+   "confirmed-email AI-gating / nudge follow-up" that an earlier revision said
+   "replaces it" is **ENG-1482, canceled** (vacuous under auto-confirm). Nothing
+   "replaces" the flip because nothing needs to: signup keeps its instant
+   session, and the farming vector is carried by Layer C (dark) + **ENG-1487
+   Finding 2**.
 4. **Layer C (code, already shipped default-off)** remains the defence-in-depth
    backstop regardless of where (1)-(3) land — see
    `docs/decisions/2026-05-14-ai-cost-circuit-breaker.md`.

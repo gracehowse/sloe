@@ -683,10 +683,13 @@ function newGrantId(): string {
  * @param modelId The vendor model id (e.g. `claude-sonnet-4-5-20250929`).
  * @param maxOutputTokens The `max_tokens` value the caller will pass.
  * @param maxInputTokens  Optional estimate of input tokens (we don't
- *                see the prompt here, so the caller can supply a
- *                conservative ceiling). When omitted, defaults to
- *                4× the output cap — a rough worst-case for vision
- *                calls where the image dominates the input.
+ *                see the prompt here, so the caller supplies a
+ *                conservative ceiling). Text callers pass a real
+ *                char-derived estimate (`estimateInputTokens` in
+ *                `aiProvider.ts`, ENG-1487) so the reservation reflects
+ *                actual prompt size. When omitted (vision calls, where
+ *                the image dominates and isn't char-derivable), defaults
+ *                to 4× the output cap as a rough worst case.
  * @param ipHash  Layer C — SHA-256 hash of the trusted client IP (see
  *                `hashClientIp`). Pass `null`/omit for calls resolved
  *                outside a request context (cron, etc.) — Layer C is
@@ -879,11 +882,22 @@ function registerGrant(rec: Omit<GrantRecord, "settled">): string {
 }
 
 /**
- * Reconcile a reservation against actual token usage. Refunds any
- * over-reservation back to the counters. If the actual usage was
- * higher than reserved (shouldn't happen given `max_tokens`), accept
- * the over-spend without adjustment — the counter already reflects
- * the worst case.
+ * Reconcile a reservation against actual token usage so the daily
+ * counters reflect TRUE spend.
+ *
+ * ENG-1487 (2026-07-10): this previously only refunded when the actual
+ * cost came in *under* the reservation and no-op'd the over-spend case,
+ * on the assumption that `max_tokens` made over-spend impossible. But
+ * `max_tokens` bounds only OUTPUT — input tokens come from the client
+ * body and the reservation's input ceiling is a `maxOutputTokens * 4`
+ * guess (no caller passes a real `maxInputTokens`). When real input
+ * exceeded that guess, the difference was never charged, so the global
+ * £50/day cap tracked reservations rather than real cost and the circuit
+ * breaker tripped late or never. We now settle the counter to the actual
+ * cost in BOTH directions: refund over-reservation, charge the overage.
+ * (Input length is also capped provider-side and the reservation now
+ * uses a real input estimate — see `aiProvider.ts` — so the overage
+ * branch should be small, but the accounting must still be exact.)
  */
 export async function commitBudget(
   grantId: string,
@@ -903,11 +917,13 @@ export async function commitBudget(
     actualUsage.inputTokens,
     actualUsage.outputTokens,
   );
-  const refund = grant.reservedPence - actualPence;
-  if (refund > 0) {
-    void incrBy(globalSpendKey(grant.dateKey), -refund);
+  // delta > 0 → over-reserved (refund the difference back to the counter)
+  // delta < 0 → under-reserved (charge the overage so the counter is truthful)
+  const delta = grant.reservedPence - actualPence;
+  if (delta !== 0) {
+    void incrBy(globalSpendKey(grant.dateKey), -delta);
     if (grant.userId) {
-      void incrBy(userSpendKey(grant.userId, grant.dateKey), -refund);
+      void incrBy(userSpendKey(grant.userId, grant.dateKey), -delta);
     }
   }
   // Don't delete the record — keep it briefly so a double-commit
