@@ -116,6 +116,12 @@ jobs:
         # required conformance/verification pass. Runs on the web job since
         # the checkout includes apps/mobile.
         run: npm run check:redesign-foundation-touch
+      - name: Nutrition/health claims lint (ENG-536/ENG-1545)
+        # Fails on absolute health/nutrition claims in user-facing code
+        # (cure/cures, boost metabolism, fat-burning, detox, torch calories,
+        # 100% accurate, …). ENG-1545 wired this into CI — it was defined but
+        # never run before, so the gate was inert. Scans src + apps/mobile + app.
+        run: npm run check:nutrition-claims
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build
