@@ -8,6 +8,8 @@ import { DestructiveConfirmDialog } from "./suppr/destructive-confirm-dialog";
 import ReceivedInvitesBanner from "./household/ReceivedInvitesBanner";
 import { useAuthSession } from "../../context/AuthSessionContext";
 import { supabase } from "../../lib/supabase/browserClient";
+// ENG-1540: local day-key — date_key rows use the user's LOCAL day, not UTC.
+import { dateKeyFromDate } from "../../lib/datetime/dateKey";
 // Direct-to-Supabase household client. Web previously used the Next.js
 // REST routes at /api/household; the routes still exist but the runtime
 // path is now the shared client so web + mobile stay structurally
@@ -234,9 +236,7 @@ export function HouseholdPanel() {
 
   if (!authedUserId) return null;
   if (loading) return <div className="text-sm text-muted-foreground">Loading household...</div>;
-
-  const todayKey = new Date().toISOString().slice(0, 10);
-
+  const todayKey = dateKeyFromDate(new Date());
   // One-time F-16 banner. Rendered only after localStorage is read +
   // only when the user has not yet dismissed.
   const scopeBanner = scopeNoticeSeen === false ? (

@@ -23,7 +23,7 @@
         "NSHealthShareUsageDescription": "Sloe reads your steps, active energy, basal energy, workouts, weight, body fat, and any dietary entries you have in Apple Health so your Sloe tracker stays in sync with the rest of your Health data.",
         "NSHealthUpdateUsageDescription": "Sloe writes the calories, protein, carbohydrates, fat, and fibre of the meals you log so other apps on your phone can read your nutrition from Apple Health.",
         "NSMicrophoneUsageDescription": "Sloe uses your microphone to capture voice memos when you describe a meal out loud (press-and-hold the mic on the voice-log sheet).",
-        "NSSpeechRecognitionUsageDescription": "Sloe uses on-device speech recognition to turn your spoken meal descriptions into searchable food items. Audio stays on your phone.",
+        "NSSpeechRecognitionUsageDescription": "Sloe uses Apple's speech recognition to turn your spoken meal descriptions into searchable food items.",
         "NSPhotoLibraryUsageDescription": "Sloe accesses your photo library so you can pick a meal photo for AI-assisted nutrition logging.",
         "ITSAppUsesNonExemptEncryption": false,
         "SupprBuildTag": "2026-04-23-healthkit-foodcorrelation-stage1"

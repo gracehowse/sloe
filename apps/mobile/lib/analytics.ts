@@ -549,11 +549,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // beta-window policy; off → owner action is hidden while the server route
   // remains protected by auth/ownership/service-role checks. Web + mobile.
   "official_recipe_claim_v1",
-  // ENG-1236 — referral / invite-for-Pro growth loop in household invite
-  // surfaces. Default-on for beta-window growth builds; off hides the new
-  // referral card while leaving the existing household invite flow intact.
-  // Web + mobile.
-  "referral_invite_loop_v1",
   // ENG-728 — CALM one-shot import-success win-moment overlay (log-confirm,
   // reduce-motion → instant). DEFAULT-ON per ENG-1279 ("always flag on") — off →
   // the success sheet renders verbatim (kill switch). Web + mobile.
@@ -737,6 +732,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   switch; re-verified 2026-07-11 review round). The server weekly-recap
  *   push route can't read the flag and stays fully legacy until
  *   flag-collapse. W + M.
+ * - `referral_invite_loop_v1` (ENG-1236) — the referral / invite-for-Pro
+ *   growth loop card in the household invite surfaces. MOVED to DEFAULT-OFF
+ *   2026-07-12 (ENG-1541): the card + landing page (`ReferralRewardCard`,
+ *   `app/g/[code]/ReferralLandingClient`) publicly PROMISE "30 days of Pro"
+ *   for a referral, but no entitlement-grant path exists yet (needs a
+ *   purchase rail). Shipping it on made an unkeepable promise. Keep OFF
+ *   until the grant is wired; off → the referral card is hidden and the
+ *   existing household invite flow is unchanged. Web + mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -755,6 +758,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "kcal_trust_qualifier_v1", // ENG-1417 — "~" qualifier on unverified kcal, decision surfaces only
   "discover_verified_filter_v1", // ENG-1417 — Discover "Verified only" filter chip (web-only in practice)
   "energy_numbers_v1", // ENG-1506/1507 — canonical energy numbers (selectMaintenance input policy + qualifiers)
+  "referral_invite_loop_v1", // ENG-1541 — OFF until Pro-days entitlement grant is wired (unkeepable promise)
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
