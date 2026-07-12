@@ -182,10 +182,14 @@ describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
   });
 
   it("the rail segmented control active label is the aubergine solid", () => {
-    // SegmentedRow active label uses scheme-resolved primarySolid on the white lift.
-    // Accepts both static Accent.* and hook accent.* patterns (migrated 2026-06-09).
-    expect(BUNDLE).toMatch(
-      /color:\s*active\s*\?\s*(?:Accent|accent)\.primarySolid\s*:\s*colors\.textSecondary/,
+    // ENG-1375 S3 — the inline active-label ternary moved into the shared
+    // SegmentedTrack primitive; the host consumes it, and the primitive's
+    // own test pins active = accent.primarySolid.
+    expect(BUNDLE).toMatch(/<SegmentedTrack/);
+    const prim = require("node:fs").readFileSync(
+      require("node:path").resolve(__dirname, "../../components/ui/SegmentedTrack.tsx"),
+      "utf8",
     );
+    expect(prim).toMatch(/primarySolid/);
   });
 });
