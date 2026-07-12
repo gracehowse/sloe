@@ -106,6 +106,21 @@ describe("PlanV3WebDashboard", () => {
     expect(screen.getByText(/23 items · for 2 people/)).toBeInTheDocument();
   });
 
+  it("ENG-1547 — an all-empty week renders NO verdict row (law 3: '0 of 7 days land' is derived noise)", () => {
+    const allEmpty = Array.from({ length: 7 }, (_, i) => emptyDay(i));
+    const emptyVerdict = computePlanWeekVerdict(
+      allEmpty.map((dp) =>
+        dp.meals.map((m, i) => ({ slot: ALL_MEAL_SLOTS[i] ?? "Snacks", kcal: m.calories, empty: m.isPlaceholder })),
+      ),
+    );
+    render(<PlanV3WebDashboard {...baseProps} plan={allEmpty} verdict={emptyVerdict} />);
+    // The verdict headline must not appear on an empty week (desktop parity
+    // with mobile PlanV3Surface's gate).
+    expect(screen.queryByText(/days land/)).not.toBeInTheDocument();
+    // The 0/7 fact still lives in the stat strip alone.
+    expect(screen.getByText("0/7")).toBeInTheDocument();
+  });
+
   it("offers + Add on empty slots and fires the add handler", () => {
     const onAddToSlot = vi.fn();
     render(<PlanV3WebDashboard {...baseProps} onAddToSlot={onAddToSlot} />);

@@ -89,7 +89,16 @@ export function PlanHeaderV3({
           <View
             style={[
               styles.dot,
-              { backgroundColor: verdict.tone === "success" ? Accent.success : Accent.warning },
+              {
+                // ENG-1547 — success = green, genuine problem = amber,
+                // in-progress ("On track") = a calm neutral dot, never amber.
+                backgroundColor:
+                  verdict.tone === "success"
+                    ? Accent.success
+                    : verdict.tone === "warning"
+                      ? Accent.warning
+                      : colors.textTertiary,
+              },
             ]}
           />
           <Text style={[styles.vHeadline, { color: colors.text }]}>{verdict.headline}</Text>
