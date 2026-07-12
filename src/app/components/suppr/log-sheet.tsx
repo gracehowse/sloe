@@ -947,7 +947,7 @@ function DefaultComposition({
             <div
               role="tablist"
               aria-label="Browse meals"
-              className="mx-3 mt-5 flex gap-6 border-b border-border"
+              className="mx-3 mt-5 flex gap-6 overflow-x-auto border-b border-border"
             >
               {visibleTabs.map((id) => {
                 const active = activeTab === id;

@@ -92,6 +92,9 @@ export function LogHubQuickActions({
           <Icon size={16} color={accent.primary} strokeWidth={2} />
           <Text
             numberOfLines={1}
+            // ENG-1529 — F-36 Dynamic Type clamp: compact quick-action pill;
+            // the full a11yLabel is read uncapped by VoiceOver.
+            maxFontSizeMultiplier={1.2}
             style={[Type.captionStrong, styles.loghubQuickLabel, { color: colors.text }]}
           >
             {label}

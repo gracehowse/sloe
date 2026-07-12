@@ -135,7 +135,15 @@ export function LogSheetInputModeRow({
                 ]}
               >
                 <Icon size={22} color={accent.primary} strokeWidth={2} />
-                <Text style={[styles.tileLabel, { color: colors.text }]}>{label}</Text>
+                {/* ENG-1529 — F-36 Dynamic Type clamp (library.tsx convention):
+                    tight tile chrome caps at 1.2× so single-word labels never
+                    clip mid-glyph; VoiceOver reads the uncapped a11y label. */}
+                <Text
+                  maxFontSizeMultiplier={1.2}
+                  style={[styles.tileLabel, { color: colors.text }]}
+                >
+                  {label}
+                </Text>
                 {locked ? (
                   <View
                     testID={`log-sheet-method-lock-${key}`}
@@ -222,6 +230,7 @@ const styles = StyleSheet.create({
   tileLabel: {
     fontSize: 11,
     fontWeight: "600",
+    textAlign: "center",
   },
   lockBadge: {
     position: "absolute",
