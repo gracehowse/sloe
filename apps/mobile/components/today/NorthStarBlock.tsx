@@ -28,7 +28,7 @@ import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
 const AnimatedView = Animated.createAnimatedComponent(View);
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 
@@ -233,9 +233,9 @@ function NorthStarDefault({
   testID,
 }: NorthStarDefaultProps) {
   // Secondary accent (Frost flag → damson, else clay) for the "What to eat
-  // next" overline + the suggestion CTA. The band-fit green chip + plum keep
-  // their own tokens.
+  // next" overline + the suggestion CTA. Band-fit chip + plum keep own tokens.
   const accent = useAccent();
+  const scheme = useResolvedScheme(); // ENG-1528 — dark ramp underlay on dark cards
   // Swipe-left-to-skip gesture — extracted to `useSwipeToSkipResponder`
   // (screen-budget pin). Reduce-motion users see the `X` button instead.
   const responder = useSwipeToSkipResponder(reduceMotion, onSkip);
@@ -297,7 +297,7 @@ function NorthStarDefault({
             deterministic `RecipeHeroFallback` paints the cuisine-tinted
             gradient + glyph (ENG-1374 PR 2: the wrapper grounds on the
             same tint — never page white). Border-radius 8. */}
-        <View style={[styles.thumb, { backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }) }]}>
+        <View style={[styles.thumb, { backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }, scheme) }]}>
           {suggestion.thumbnail ? (
             <SmartImage
               source={{ uri: suggestion.thumbnail }}

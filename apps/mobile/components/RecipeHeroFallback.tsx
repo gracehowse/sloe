@@ -40,6 +40,7 @@ import {
   type RecipeHeroInput,
   type RecipeHeroPattern,
 } from "@suppr/shared/recipe/recipeHeroFallback";
+import { useResolvedScheme } from "@/context/theme";
 
 type LucideRnIcon = ComponentType<{ size?: number; color?: string }>;
 
@@ -89,7 +90,9 @@ function PatternShape({ pattern, stroke }: { pattern: RecipeHeroPattern; stroke:
 }
 
 function RecipeHeroFallbackImpl({ iconSize = 32, style, testID, ...input }: RecipeHeroFallbackProps) {
-  const fb = getRecipeFallback(input);
+  // ENG-1528 — dark cards get the dark ramp tile; light is byte-identical.
+  const scheme = useResolvedScheme();
+  const fb = getRecipeFallback(input, scheme);
   const Glyph = GLYPHS[fb.glyph];
   const patternId = `hero-p-${fb.pattern}-${input.id}`;
   const gradientId = `hero-g-${fb.bucket}-${input.id}`;

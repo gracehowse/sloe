@@ -3,7 +3,7 @@ import { Info, Sparkles } from "lucide-react-native";
 
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useAccent } from "@/context/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { QuickLogButton } from "@/components/ui/QuickLogButton";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -54,6 +54,7 @@ function CoachCandidateRow({
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
+  const scheme = useResolvedScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const content = (
     <View style={{ flexDirection: "row", gap: Spacing.md, alignItems: "center" }}>
       {/* ENG-1374 PR 2 — one wrapper for both branches paints the opaque
@@ -68,7 +69,7 @@ function CoachCandidateRow({
           height: 52,
           borderRadius: 12,
           overflow: "hidden",
-          backgroundColor: recipeUnderlayColor({ id: candidate.recipeId, title: candidate.title }),
+          backgroundColor: recipeUnderlayColor({ id: candidate.recipeId, title: candidate.title }, scheme),
         }}
       >
         {candidate.thumbnail ? (

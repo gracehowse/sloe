@@ -25,7 +25,13 @@
  * ────────────────────────────────────────────────────────────────────
  */
 
-import { HERO_TINTS, SAGE_RGB } from "../recipe/recipeHeroFallback";
+import {
+  HERO_TINTS,
+  HERO_TINTS_DARK,
+  SAGE_RGB,
+  SAGE_RGB_DARK,
+  type FallbackScheme,
+} from "../recipe/recipeHeroFallback";
 import { normaliseMealSlot, type MealSlot } from "../nutrition/mealSlots";
 
 export type FoodFallbackCategoryId =
@@ -243,6 +249,39 @@ export const FOOD_FALLBACK_TINT_BY_CATEGORY: Record<FoodFallbackCategoryId, stri
 };
 
 /**
+ * ENG-1528 — the DARK-scheme twin of `FOOD_FALLBACK_TINT_BY_CATEGORY`.
+ * Same category → cuisine mapping, drawn from `HERO_TINTS_DARK` instead of
+ * `HERO_TINTS`, so a food row on a dark card gets a toned dark underlay
+ * rather than a glowing cream one. The light map above is untouched.
+ */
+export const FOOD_FALLBACK_TINT_BY_CATEGORY_DARK: Record<FoodFallbackCategoryId, string> = {
+  "breakfast-bowl": HERO_TINTS_DARK.ambers,
+  eggs: HERO_TINTS_DARK.ambers,
+  "pancakes-waffles": HERO_TINTS_DARK.ambers,
+  "toast-sandwich": HERO_TINTS_DARK.neutrals,
+  smoothie: HERO_TINTS_DARK.greens,
+  "baked-goods": HERO_TINTS_DARK.ambers,
+  salad: HERO_TINTS_DARK.greens,
+  soup: HERO_TINTS_DARK.earths,
+  pasta: HERO_TINTS_DARK.warms,
+  "ramen-noodles": HERO_TINTS_DARK.earths,
+  "rice-bowl": HERO_TINTS_DARK.neutrals,
+  "stir-fry": HERO_TINTS_DARK.earths,
+  curry: HERO_TINTS_DARK.earths,
+  fish: HERO_TINTS_DARK.blues,
+  chicken: HERO_TINTS_DARK.reds,
+  "red-meat": HERO_TINTS_DARK.reds,
+  burger: HERO_TINTS_DARK.reds,
+  pizza: HERO_TINTS_DARK.warms,
+  "tacos-wraps": HERO_TINTS_DARK.warms,
+  "vegetables-sides": HERO_TINTS_DARK.greens,
+  "legumes-grains": HERO_TINTS_DARK.neutrals,
+  dessert: HERO_TINTS_DARK.ambers,
+  fruit: HERO_TINTS_DARK.greens,
+  drink: HERO_TINTS_DARK.earths,
+};
+
+/**
  * Slot-tier glyphs mirror the established slot-icon language
  * (`MealTypePicker` / planner `SLOT_ICON_MOBILE`): breakfast = Coffee,
  * lunch = Sun, dinner = UtensilsCrossed, snacks = Cookie — a slot mark,
@@ -262,8 +301,23 @@ const SLOT_TINT: Record<MealSlot, string> = {
   Snacks: HERO_TINTS.ambers,
 };
 
+/** ENG-1528 — dark-scheme twin of `SLOT_TINT` (same slot → cuisine map). */
+const SLOT_TINT_DARK: Record<MealSlot, string> = {
+  Breakfast: HERO_TINTS_DARK.ambers,
+  Lunch: HERO_TINTS_DARK.greens,
+  Dinner: HERO_TINTS_DARK.default,
+  Snacks: HERO_TINTS_DARK.ambers,
+};
+
 /** Sage glyph colour shared with the §11.4 recipe-hero mark (0.7 alpha). */
 export const FOOD_FALLBACK_GLYPH_COLOR = `rgba(${SAGE_RGB}, 0.7)`;
+
+/**
+ * ENG-1528 — dark-scheme glyph ink. Mirrors the recipe-hero mark lift: the
+ * lighter sage `#9AA382` reads on the dark tints where the light `#7C8466`
+ * would dim to a murky olive. Same 0.7 alpha.
+ */
+export const FOOD_FALLBACK_GLYPH_COLOR_DARK = `rgba(${SAGE_RGB_DARK}, 0.7)`;
 
 export function normalizeFoodTitle(title: string): string {
   return title
@@ -302,7 +356,14 @@ export type FoodFallbackResolution =
 export function resolveFoodFallback(
   name: string,
   opts?: { slot?: MealSlotName | null },
+  // ENG-1528 — the active surface scheme. `"dark"` swaps every tier's tint
+  // to the dark ramp so a food row on a dark card doesn't glow; `"light"`
+  // (default) is byte-identical to the pre-dark-ramp behaviour.
+  scheme: FallbackScheme = "light",
 ): FoodFallbackResolution {
+  const dark = scheme === "dark";
+  const categoryTints = dark ? FOOD_FALLBACK_TINT_BY_CATEGORY_DARK : FOOD_FALLBACK_TINT_BY_CATEGORY;
+  const slotTints = dark ? SLOT_TINT_DARK : SLOT_TINT;
   const normalized = normalizeFoodTitle(name);
   if (normalized) {
     for (const rule of KEYWORD_RULES) {
@@ -311,7 +372,7 @@ export function resolveFoodFallback(
           tier: "category",
           category: rule.category,
           glyph: FOOD_FALLBACK_GLYPH_BY_CATEGORY[rule.category],
-          tint: FOOD_FALLBACK_TINT_BY_CATEGORY[rule.category],
+          tint: categoryTints[rule.category],
           photoConfident: rule.photoConfident === true,
         };
       }
@@ -320,10 +381,14 @@ export function resolveFoodFallback(
 
   const slot = normaliseMealSlot(opts?.slot ?? null);
   if (slot) {
-    return { tier: "slot", slot, glyph: SLOT_GLYPH[slot], tint: SLOT_TINT[slot] };
+    return { tier: "slot", slot, glyph: SLOT_GLYPH[slot], tint: slotTints[slot] };
   }
 
-  return { tier: "generic", glyph: "Utensils", tint: HERO_TINTS.default };
+  return {
+    tier: "generic",
+    glyph: "Utensils",
+    tint: dark ? HERO_TINTS_DARK.default : HERO_TINTS.default,
+  };
 }
 
 /**

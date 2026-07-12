@@ -7,7 +7,7 @@ import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useAccent } from "@/context/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { supabase } from "@/lib/supabase";
 import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
@@ -52,6 +52,7 @@ export function FollowingFeed({
 }: FollowingFeedProps) {
   const colors = useThemeColors();
   const accent = useAccent();
+  const scheme = useResolvedScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const cardElevation = useCardElevation({ variant: "soft" });
   const [authedUserId, setAuthedUserId] = useState<string | null>(null);
   const [followed, setFollowed] = useState<Record<string, boolean>>({});
@@ -257,7 +258,7 @@ export function FollowingFeed({
                 <View
                   style={[
                     styles.recipeMedia,
-                    { backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) },
+                    { backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, scheme) },
                   ]}
                 >
                   {(recipe.image ?? "").trim().length > 0 ? (

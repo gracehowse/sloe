@@ -19,11 +19,13 @@ import type { ComponentType } from "react";
 import { Radius } from "@/constants/theme";
 import {
   FOOD_FALLBACK_GLYPH_COLOR,
+  FOOD_FALLBACK_GLYPH_COLOR_DARK,
   resolveFoodFallback,
   resolveFoodFallbackSampleCategory,
   type FoodFallbackGlyph,
   type MealSlotName,
 } from "@suppr/shared/imagery/foodFallbackCategory";
+import { useResolvedScheme } from "@/context/theme";
 
 /** Interim sample assets — swap to production `fallback-<id>.png` when batch ships. */
 const SAMPLE_ASSET_BY_CATEGORY = {
@@ -80,7 +82,9 @@ export function FoodFallbackThumb({
 }: FoodFallbackThumbProps) {
   const [errored, setErrored] = React.useState(false);
 
-  const resolution = resolveFoodFallback(title, { slot });
+  // ENG-1528 — dark cards get the dark ramp tint + lifted sage glyph.
+  const scheme = useResolvedScheme();
+  const resolution = resolveFoodFallback(title, { slot }, scheme);
   const sampleCategory =
     resolution.tier === "category" && resolution.photoConfident
       ? resolveFoodFallbackSampleCategory(resolution.category)
@@ -132,7 +136,7 @@ export function FoodFallbackThumb({
       ) : (
         <Glyph
           size={Math.round(size * 0.44)}
-          color={FOOD_FALLBACK_GLYPH_COLOR}
+          color={scheme === "dark" ? FOOD_FALLBACK_GLYPH_COLOR_DARK : FOOD_FALLBACK_GLYPH_COLOR}
           strokeWidth={1.75}
         />
       )}

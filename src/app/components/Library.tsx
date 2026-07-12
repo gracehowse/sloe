@@ -5,6 +5,7 @@ import type { LibraryEntryKind, RecipeCard, UserTier } from "../../types/recipe.
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../lib/recipe/recipeHeroFallback.ts";
+import { useFallbackScheme } from "../../lib/theme/useFallbackScheme.ts";
 import { SupprButton } from "./suppr/suppr-button";
 import { SupprCard } from "./ui/suppr-card";
 import { LibraryDesktopHeader } from "./library/LibraryDesktopHeader";
@@ -131,6 +132,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   const { savedRecipesForLibrary, libraryDataReady, libraryEntryKindByRecipeId, userId, duplicateRecipeToCreatedDraft, toggleSaveRecipe, nutritionTargets, collectionMembershipByRecipeId } = useAppData();
   const uid = userId;
   const router = useRouter();
+  const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const [selectedRecipe, setSelectedRecipe] = useState<(RecipeCard & { savedAt: Date }) | null>(null);
   // Shared with DiscoverFeed via `useLibraryDiscoverSearch` so the
   // query survives view switches (ENG-53, 2026-05-16). Variable names
@@ -540,9 +542,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               const protein = Math.round(recipe.protein ?? 0);
               const carbs = Math.round(recipe.carbs ?? 0);
               const fat = Math.round(recipe.fat ?? 0);
-              const totalTime =
-                (typeof recipe.prepTimeMin === "number" ? recipe.prepTimeMin : 0) +
-                (typeof recipe.cookTimeMin === "number" ? recipe.cookTimeMin : 0);
+              const totalTime = (typeof recipe.prepTimeMin === "number" ? recipe.prepTimeMin : 0) + (typeof recipe.cookTimeMin === "number" ? recipe.cookTimeMin : 0);
               // `★ N` uses the REAL saves count (`savedCount`) — there is no
               // rating field on RecipeCard, so we never fabricate a 4.8-style
               // score (would trip recipeCardNoScore.test.ts + the trust
@@ -564,7 +564,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   className="group overflow-hidden text-left cursor-pointer transition-all"
                 >
                   {/* ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never page white) */}
-                  <div className="relative overflow-hidden" style={{ aspectRatio: "1 / 1", backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}>
+                  <div className="relative overflow-hidden" style={{ aspectRatio: "1 / 1", backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, fallbackScheme) }}>
                     {recipe.image ? (
                       <RecipeCardImage
                         src={recipe.image}

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
+import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 
 import type { RecipeCard } from "@/types/recipe";
 
@@ -31,6 +32,7 @@ function totalMinutes(r: RecipeCard): number {
 
 export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
   const [broken, setBroken] = React.useState(false);
+  const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const showImage = Boolean(recipe.image) && !broken;
   const mins = totalMinutes(recipe);
   const hasKcal = recipe.calories > 0;
@@ -58,7 +60,7 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
         // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never
         // page white). Replaces the cool plum-grey `--background-secondary`
         // (§11.4 bans grey grounds under imagery).
-        style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}
+        style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, fallbackScheme) }}
       >
         {showImage && recipe.image ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -5,6 +5,7 @@ import { Check, Flame, Lock, MoreHorizontal, UtensilsCrossed } from "lucide-reac
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback.ts";
+import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme.ts";
 
 /**
  * PlanMealCardV3 — Sloe v3 Plan per-slot meal card.
@@ -46,6 +47,7 @@ export function PlanMealCardV3({
   onOpenOptions,
 }: PlanMealCardV3Props) {
   const [broken, setBroken] = React.useState(false);
+  const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const showImage = Boolean(imageUrl) && !broken;
   // ENG-1417 — flag-gated "~" unverified-estimate qualifier (kill switch off).
   const kcalDisplay =
@@ -72,7 +74,7 @@ export function PlanMealCardV3({
       >
       <span
         className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg"
-        style={{ backgroundColor: recipeUnderlayColor({ id: name, title: name }) }}
+        style={{ backgroundColor: recipeUnderlayColor({ id: name, title: name }, fallbackScheme) }}
       >
         {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element

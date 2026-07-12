@@ -3,14 +3,17 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   FOOD_FALLBACK_GLYPH_BY_CATEGORY,
+  FOOD_FALLBACK_GLYPH_COLOR,
+  FOOD_FALLBACK_GLYPH_COLOR_DARK,
   FOOD_FALLBACK_SAMPLE_CATEGORIES,
   FOOD_FALLBACK_TINT_BY_CATEGORY,
+  FOOD_FALLBACK_TINT_BY_CATEGORY_DARK,
   normalizeFoodTitle,
   resolveFoodFallback,
   resolveFoodFallbackSampleCategory,
   type FoodFallbackCategoryId,
 } from "../../src/lib/imagery/foodFallbackCategory";
-import { HERO_TINTS } from "../../src/lib/recipe/recipeHeroFallback";
+import { HERO_TINTS, HERO_TINTS_DARK } from "../../src/lib/recipe/recipeHeroFallback";
 
 describe("foodFallbackCategory (ENG-1015 / ENG-1448 tiered)", () => {
   it("normalizes titles for stable matching", () => {
@@ -155,6 +158,44 @@ describe("foodFallbackCategory (ENG-1015 / ENG-1448 tiered)", () => {
     for (const unshipped of ["curry", "eggs", "pizza", "burger", "dessert", "rice-bowl"] as const) {
       expect(resolveFoodFallbackSampleCategory(unshipped)).toBeNull();
     }
+  });
+
+  it("ENG-1528 — dark scheme yields dark-ramp tints across every tier; light unchanged", () => {
+    // category tier
+    const lightHit = resolveFoodFallback("Greek salad");
+    const darkHit = resolveFoodFallback("Greek salad", undefined, "dark");
+    expect(lightHit).toMatchObject({ tier: "category", tint: HERO_TINTS.greens });
+    expect(darkHit).toMatchObject({ tier: "category", tint: HERO_TINTS_DARK.greens });
+    // slot tier
+    expect(resolveFoodFallback("Grace's usual", { slot: "Breakfast" }, "dark")).toMatchObject({
+      tier: "slot",
+      slot: "Breakfast",
+      tint: HERO_TINTS_DARK.ambers,
+    });
+    expect(resolveFoodFallback("Grace's usual", { slot: "Breakfast" })).toMatchObject({
+      tint: HERO_TINTS.ambers,
+    });
+    // generic tier
+    expect(resolveFoodFallback("Grace's usual", undefined, "dark")).toMatchObject({
+      tier: "generic",
+      tint: HERO_TINTS_DARK.default,
+    });
+    expect(resolveFoodFallback("Grace's usual")).toMatchObject({ tint: HERO_TINTS.default });
+    // glyph/category are scheme-invariant — only the tint moves.
+    expect(darkHit).toMatchObject({ category: "salad", glyph: "Salad" });
+  });
+
+  it("ENG-1528 — dark category tints all come from the dark ramp family, keys mirror light", () => {
+    const darkTints = new Set<string>(Object.values(HERO_TINTS_DARK));
+    for (const [category, tint] of Object.entries(FOOD_FALLBACK_TINT_BY_CATEGORY_DARK)) {
+      expect(darkTints.has(tint), `${category} dark tint ${tint} not in HERO_TINTS_DARK`).toBe(true);
+    }
+    expect(Object.keys(FOOD_FALLBACK_TINT_BY_CATEGORY_DARK).sort()).toEqual(
+      Object.keys(FOOD_FALLBACK_TINT_BY_CATEGORY).sort(),
+    );
+    // The dark glyph ink lifts to the dark sage; light keeps the original.
+    expect(FOOD_FALLBACK_GLYPH_COLOR).toMatch(/^rgba\(124, 132, 102,/);
+    expect(FOOD_FALLBACK_GLYPH_COLOR_DARK).toMatch(/^rgba\(154, 163, 130,/);
   });
 
   it("repo-scan pin: the fnv1a32 / HASH_FALLBACK_POOL fabrication path never returns (ENG-1448)", () => {

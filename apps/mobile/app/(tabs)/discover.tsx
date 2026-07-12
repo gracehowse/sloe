@@ -94,11 +94,12 @@ function SourceBadge({ source }: { source?: string }) {
 /** Hero top: aspect ratio follows whether a remote image actually renders. */
 function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
   const [broken, setBroken] = useState(false);
+  const scheme = useResolvedScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const trimmed = (item.image ?? "").trim();
   const showPhoto = trimmed.length > 0 && !broken;
   return (
     // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never page white)
-    <View style={{ aspectRatio: showPhoto ? 16 / 10 : 8, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }) }}>
+    <View style={{ aspectRatio: showPhoto ? 16 / 10 : 8, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }, scheme) }}>
       {showPhoto ? (
         <SmartImage
           source={{ uri: trimmed }}
@@ -122,8 +123,7 @@ export default function DiscoverScreen() {
   const tabBarHeight = useTabBarClearance(); // ENG-1247 — pad scroll to clear frosted (absolute) tab bar.
   const router = useRouter();
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
-  // Recipe slab: soft plum lift in light, tonal lift + hairline in dark (RN
-  // shadows render poorly on dark). Mirrors Library so the two stay in lockstep.
+  // Recipe slab: soft plum lift in light, tonal lift + hairline in dark (RN shadows render poorly on dark). Mirrors Library so the two stay in lockstep.
   const cardElevation = useCardElevation({ variant: "soft" });
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;

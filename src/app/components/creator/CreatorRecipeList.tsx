@@ -18,6 +18,7 @@ import {
 // with the emoji kept alive in the `else` per the CLAUDE.md feature-flag rule.
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
+import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { SupprCard } from "../ui/suppr-card";
 
@@ -71,6 +72,7 @@ export function CreatorRecipeList({
   initialHasMore,
 }: CreatorRecipeListProps) {
   const [recipes, setRecipes] = useState<CreatorRecipeRow[]>(initialRecipes);
+  const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const [hasMore, setHasMore] = useState<boolean>(initialHasMore);
   // ENG-816 — canonical RecipeHeroFallback replaces the 🍳 emoji
   // placeholder when `design_system_icons` is on; emoji stays in the `else`.
@@ -142,7 +144,7 @@ export function CreatorRecipeList({
                     src={r.image_url}
                     alt=""
                     className="w-14 h-14 rounded-lg object-cover"
-                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }) }}
+                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }, fallbackScheme) }}
                   />
                 ) : useLucideIcons ? (
                   // RecipeHeroFallback is a fill overlay (position:absolute;
@@ -150,14 +152,14 @@ export function CreatorRecipeList({
                   // 56px box — same wrapper shape as Library.tsx call sites.
                   <div
                     className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0"
-                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }) }}
+                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }, fallbackScheme) }}
                   >
                     <RecipeHeroFallback id={r.id} title={r.title} iconSize={20} />
                   </div>
                 ) : (
                   <div
                     className="w-14 h-14 rounded-lg flex items-center justify-center text-muted-foreground text-xs"
-                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }) }}
+                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }, fallbackScheme) }}
                   >
                     🍳
                   </div>

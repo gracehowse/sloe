@@ -10,6 +10,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { QuickLogButton } from "@/components/ui/QuickLogButton";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
+import { useResolvedScheme } from "@/context/theme";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
@@ -65,6 +66,7 @@ export function NorthStarFigmaHero({
   const kcalDisplay = isFeatureEnabled("kcal_trust_qualifier_v1")
     ? formatQualifiedKcal(suggestion.predictedCalories, suggestion.isVerified)
     : String(suggestion.predictedCalories);
+  const scheme = useResolvedScheme(); // ENG-1528 — dark ramp underlay on dark cards
 
   return (
     <View testID={testID ?? "north-star-figma-hero"} style={{ marginBottom: Spacing.xl }}>
@@ -89,7 +91,7 @@ export function NorthStarFigmaHero({
         <View
           style={[
             StyleSheet.absoluteFill,
-            { backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }) },
+            { backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }, scheme) },
           ]}
         >
           {suggestion.thumbnail ? (

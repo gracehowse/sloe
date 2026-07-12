@@ -19,11 +19,13 @@ import {
 } from "lucide-react";
 import {
   FOOD_FALLBACK_GLYPH_COLOR,
+  FOOD_FALLBACK_GLYPH_COLOR_DARK,
   resolveFoodFallback,
   resolveFoodFallbackSampleCategory,
   type FoodFallbackGlyph,
   type MealSlotName,
 } from "../../../lib/imagery/foodFallbackCategory";
+import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 import { cn } from "../ui/utils";
 
 const SAMPLE_SRC_BY_CATEGORY = {
@@ -82,7 +84,9 @@ export function FoodFallbackThumb({
   const [photoErrored, setPhotoErrored] = React.useState(false);
   const [sampleErrored, setSampleErrored] = React.useState(false);
 
-  const resolution = resolveFoodFallback(title, { slot });
+  // ENG-1528 — dark cards get the dark ramp tint + lifted sage glyph.
+  const scheme = useFallbackScheme();
+  const resolution = resolveFoodFallback(title, { slot }, scheme);
   const sampleCategory =
     resolution.tier === "category" && resolution.photoConfident
       ? resolveFoodFallbackSampleCategory(resolution.category)
@@ -127,7 +131,7 @@ export function FoodFallbackThumb({
       ) : (
         <Glyph
           size={Math.round(size * 0.44)}
-          color={FOOD_FALLBACK_GLYPH_COLOR}
+          color={scheme === "dark" ? FOOD_FALLBACK_GLYPH_COLOR_DARK : FOOD_FALLBACK_GLYPH_COLOR}
           strokeWidth={1.75}
           aria-hidden
         />

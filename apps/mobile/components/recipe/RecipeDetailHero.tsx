@@ -25,6 +25,7 @@ import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
+import { useResolvedScheme } from "@/context/theme";
 
 /** Fixed hero height — Figma `332:2` §1 (375px). */
 export const RECIPE_HERO_HEIGHT = 375;
@@ -112,6 +113,8 @@ export function RecipeDetailHero({
   overlay = null,
 }: RecipeDetailHeroProps) {
   const showPhoto = Boolean(imageUrl) && !imageBroken;
+  // ENG-1528 — dark hero wrapper gets the dark ramp tint, not glowing cream.
+  const scheme = useResolvedScheme();
   // ENG-1247 — the title overlay only rides a real photo. On the placeholder
   // fallback the title belongs in the body (per task: never force the overlay
   // onto the tinted placeholder).
@@ -131,7 +134,7 @@ export function RecipeDetailHero({
       style={{
         width: "100%",
         height: RECIPE_HERO_HEIGHT,
-        backgroundColor: recipeUnderlayColor({ id: recipeId, title, tags }),
+        backgroundColor: recipeUnderlayColor({ id: recipeId, title, tags }, scheme),
       }}
       testID="recipe-detail-hero"
     >

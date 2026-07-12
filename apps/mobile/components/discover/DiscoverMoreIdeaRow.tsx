@@ -6,6 +6,7 @@ import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useResolvedScheme } from "@/context/theme";
 import { decodeEntities } from "@/lib/decodeEntities";
 import type { RecipeCard } from "@/lib/types";
 import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
@@ -51,6 +52,7 @@ export interface DiscoverMoreIdeaRowProps {
  */
 export function DiscoverMoreIdeaRow({ item, idx, onPress }: DiscoverMoreIdeaRowProps) {
   const colors = useThemeColors();
+  const scheme = useResolvedScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const kcal = Math.round(item.calories);
   const protein = Math.round(item.protein);
   const carbs = Math.round(item.carbs);
@@ -84,7 +86,7 @@ export function DiscoverMoreIdeaRow({ item, idx, onPress }: DiscoverMoreIdeaRowP
           height: 56,
           borderRadius: 10,
           overflow: "hidden",
-          backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }),
+          backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }, scheme),
         }}
       >
         <DiscoverCoverImage
