@@ -4,6 +4,8 @@ import {
   regenerateShoppingListFromPlan,
   type RegenShoppingClient,
 } from "@/lib/planning/regenerateShoppingListFromPlan";
+import { fingerprintMealPlanForShopping } from "@/lib/planning/mealPlanFingerprint";
+import type { DayPlan } from "@/types/recipe";
 
 describe("reconcileShoppingListFromPlan — non-destructive diff", () => {
   it("inserts new plan rows, preserves checked matches, keeps manual, deletes stale", () => {
@@ -197,6 +199,57 @@ describe("regenerateShoppingListFromPlan — host orchestration", () => {
     expect(res.ok).toBe(true);
     expect(deletes).toEqual(["s-tofu"]);
     expect(inserts).toHaveLength(0); // rice + chicken already present
+  });
+
+  it("returned planFingerprint equals the live-plan fingerprint incl. scaled portions (ENG-1527)", async () => {
+    // The live staleness check compares its stored fingerprint against
+    // `fingerprintMealPlanForShopping(hydratePlanFromCloud(...))`. That hydrated
+    // plan strips placeholder slots and PRESERVES the real portion multiplier.
+    // The stored fingerprint this module returns MUST equal it byte-for-byte, or
+    // the "· plan changed since" banner re-fires immediately after every sync.
+    // Regression: an earlier build dropped portionMultiplier to `undefined`, so
+    // any scaled meal (portion ≠ 1) made the two fingerprints diverge forever.
+    const scaledPlan: TableData = {
+      meal_plan_days: [
+        { id: "d0", day: 0, start_date: "2026-07-12" },
+        { id: "d1", day: 1, start_date: "2026-07-12" },
+      ],
+      meal_plan_meals: [
+        { plan_day_id: "d0", slot_index: 0, recipe_title: "Curry", recipe_id: "r-curry", portion_multiplier: 2, is_placeholder: false },
+        // placeholder slot — both the live loader and this module strip it
+        { plan_day_id: "d0", slot_index: 1, recipe_title: "Save more recipes", recipe_id: null, portion_multiplier: 1, is_placeholder: true },
+        { plan_day_id: "d1", slot_index: 0, recipe_title: "Bowl", recipe_id: "r-bowl", portion_multiplier: 0.5, is_placeholder: false },
+      ],
+      recipes: [
+        { id: "r-curry", servings: 1 },
+        { id: "r-bowl", servings: 1 },
+      ],
+      recipe_ingredients: [
+        { recipe_id: "r-curry", name: "rice", amount: "200", unit: "g" },
+        { recipe_id: "r-bowl", name: "tofu", amount: "1", unit: "block" },
+      ],
+      shopping_items: [],
+    };
+    const { client } = fakeClient(scaledPlan);
+    const res = await regenerateShoppingListFromPlan({
+      client,
+      scope: { kind: "solo", userId: "u1" },
+      planSlotId: "slot",
+      pantryStaples: [],
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+
+    // Mirror of what `hydratePlanFromCloud` produces for this plan: placeholders
+    // gone, real portion multipliers kept.
+    const livePlan: DayPlan[] = [
+      { day: 0, meals: [{ recipeTitle: "Curry", portionMultiplier: 2 }], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } },
+      { day: 1, meals: [{ recipeTitle: "Bowl", portionMultiplier: 0.5 }], totals: { calories: 0, protein: 0, carbs: 0, fat: 0 } },
+    ] as unknown as DayPlan[];
+    expect(res.planFingerprint).toBe(fingerprintMealPlanForShopping(livePlan));
+    // Guard the exact regression: the scaling reaches the fingerprint string.
+    expect(res.planFingerprint).toContain(":2.0");
+    expect(res.planFingerprint).toContain(":0.5");
   });
 
   it("skips pantry staples when regenerating", async () => {

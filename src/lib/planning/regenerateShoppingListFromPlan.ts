@@ -353,11 +353,19 @@ export async function regenerateShoppingListFromPlan(input: {
     }
   }
 
-  // 8. Fingerprint the plan the list now reflects. Reconstruct the in-memory
-  //    plan shape the planner fingerprints (meals sorted by slot_index,
-  //    placeholders stripped, portionMultiplier dropped) so the caller's stored
-  //    fingerprint matches the planner's — no false "plan changed" on next edit.
-  const mealsByDay = new Map<number, Array<{ slotIndex: number; title: string; isPlaceholder: boolean }>>();
+  // 8. Fingerprint the plan the list now reflects. This MUST reproduce the exact
+  //    in-memory `DayPlan[]` that the live staleness check fingerprints — i.e.
+  //    what `hydratePlanFromCloud` builds from the same `meal_plan_meals` rows:
+  //    meals ordered by slot_index, placeholder-like titles stripped, and the
+  //    REAL `portion_multiplier` preserved (the canonical fingerprint encodes
+  //    `effectivePortionMultiplier(portionMultiplier).toFixed(1)` per meal). An
+  //    earlier version dropped the multiplier to `undefined`, so any scaled meal
+  //    (portion ≠ 1) produced a fingerprint that never matched the live plan and
+  //    the "· plan changed since" banner could never clear (ENG-1527).
+  const mealsByDay = new Map<
+    number,
+    Array<{ slotIndex: number; title: string; isPlaceholder: boolean; portionMultiplier: number | undefined }>
+  >();
   for (const m of mealRows) {
     const meta = dayById.get(toStr(m.plan_day_id));
     if (!meta) continue;
@@ -366,6 +374,7 @@ export async function regenerateShoppingListFromPlan(input: {
       slotIndex: Number(m.slot_index ?? 0),
       title: toStr(m.recipe_title),
       isPlaceholder: Boolean(m.is_placeholder),
+      portionMultiplier: m.portion_multiplier != null ? Number(m.portion_multiplier) : undefined,
     });
     mealsByDay.set(meta.day, bucket);
   }
@@ -375,7 +384,11 @@ export async function regenerateShoppingListFromPlan(input: {
       .slice()
       .sort((a, b) => a.slotIndex - b.slotIndex)
       .filter((m) => !isMealPlanPlaceholderLikeTitle(m.title, { isPlaceholder: m.isPlaceholder }))
-      .map((m) => ({ recipeTitle: m.title, portionMultiplier: undefined, isPlaceholder: false })),
+      .map((m) => ({
+        recipeTitle: m.title,
+        portionMultiplier: m.portionMultiplier,
+        isPlaceholder: m.isPlaceholder,
+      })),
   })) as unknown as DayPlan[];
 
   return {
