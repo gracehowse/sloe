@@ -1,0 +1,173 @@
+# Nightly Supabase-Storage → Cloudflare R2 mirror (ENG-1401, PRA-003/IM-07).
+#
+# Why this exists
+#   The org is on the Supabase FREE plan: no PITR, and no managed daily
+#   backups. Postgres rows (including storage.objects metadata) have the
+#   nightly logical-dump path, but the storage BYTES — every user-uploaded
+#   recipe/meal photo plus the AI-generated heroes in recipe-images/heroes/
+#   — have no recovery path at all. At the 2026-07-05 deep audit that was
+#   117 objects / ~50 MB in `recipe-images`; a bucket deletion, bad cleanup
+#   job, or account compromise would lose them permanently. This job copies
+#   them to an off-provider R2 bucket every night.
+#
+#   Deliberately `rclone copy` (additive), NOT `rclone sync`: a mirror that
+#   propagates deletions can't recover you from a bad delete — the mirror
+#   must lag destructive changes, not replicate them. Stale mirror objects
+#   are reviewed manually (see the DR runbook §Storage mirror), never
+#   auto-pruned.
+#
+#   Buckets mirrored: `recipe-images` (public, user uploads + AI heroes) and
+#   `food-evidence` (private, user evidence photos — 0 objects today, but
+#   included so growth there is covered without a workflow edit). These are
+#   the ONLY two buckets referenced anywhere in code/migrations; the DR
+#   runbook's old `recipe-photos`/`meal-photos` names were stale and are
+#   corrected in the same PR that adds this workflow.
+#
+#   Cost/minutes posture: payload is ~50 MB total and rclone only transfers
+#   new/changed objects, so a normal night is a metadata-only pass measured
+#   in seconds. Nightly (not sub-daily) matches the audit's stated RPO for
+#   images; 03:30 UTC avoids the 06:00 advisor cron, the 07:00 RLS-advisors
+#   workflow, and the even-hour production-smoke runs.
+#
+# Required repo secrets — NOT YET SET as of authoring (Grace, one sitting):
+#   - SUPABASE_S3_ACCESS_KEY_ID / SUPABASE_S3_SECRET_ACCESS_KEY
+#       Supabase Dashboard → Project Settings → Storage → "S3 access keys"
+#       → New access key. Read-only scope is sufficient (this job never
+#       writes to Supabase).
+#   - R2_ACCOUNT_ID
+#       Cloudflare Dashboard → R2 → right rail "Account ID".
+#   - R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY
+#       Cloudflare Dashboard → R2 → Manage R2 API Tokens → Create token
+#       (Object Read & Write, scoped to the mirror bucket).
+#   Plus one R2 bucket named `sloe-storage-mirror` (R2 → Create bucket;
+#   location automatic; no public access). Bucket name is configurable via
+#   the MIRROR_BUCKET env below if a different name is chosen.
+#
+# Until the secrets exist this workflow fails loudly on its first step with
+# a clear list of what's missing (fail closed, not open — the ENG-1400
+# lesson: a documented-but-unset secret must be a red run + deduped issue,
+# not a silent no-op), and the failure files/updates ONE deduped GitHub
+# issue via the scheduled-cron-failure label.
+
+name: Storage mirror
+
+on:
+  schedule:
+    - cron: "30 3 * * *" # nightly 03:30 UTC — see cadence rationale above
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write # dedup failure-issue alerting (ENG-1400 pattern)
+
+concurrency:
+  group: storage-mirror
+  cancel-in-progress: false
+
+env:
+  # Supabase Storage S3-compatible endpoint for the prod project. The ref is
+  # public knowledge (it's in every client bundle) — the SECRETS are the keys.
+  SUPABASE_S3_ENDPOINT: https://fnfgxsignmuepshbebrl.storage.supabase.co/storage/v1/s3
+  SUPABASE_S3_REGION: us-west-2
+  MIRROR_BUCKET: sloe-storage-mirror
+  BUCKETS: "recipe-images food-evidence"
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Verify required secrets are set
+        env:
+          SUPABASE_S3_ACCESS_KEY_ID: ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+          SUPABASE_S3_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for v in SUPABASE_S3_ACCESS_KEY_ID SUPABASE_S3_SECRET_ACCESS_KEY R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+            [ -n "${!v:-}" ] || missing+=("$v")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Storage mirror cannot run — missing repo secrets: ${missing[*]}."
+            echo "Setup steps are in the header comment of .github/workflows/storage-mirror.yml (ENG-1401)."
+            exit 1
+          fi
+
+      - name: Install rclone
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq rclone
+
+      - name: Mirror buckets to R2
+        env:
+          # Two env-configured rclone remotes — no config file on disk.
+          RCLONE_CONFIG_SRC_TYPE: s3
+          RCLONE_CONFIG_SRC_PROVIDER: Other
+          RCLONE_CONFIG_SRC_ENDPOINT: ${{ env.SUPABASE_S3_ENDPOINT }}
+          RCLONE_CONFIG_SRC_REGION: ${{ env.SUPABASE_S3_REGION }}
+          RCLONE_CONFIG_SRC_ACCESS_KEY_ID: ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_SRC_FORCE_PATH_STYLE: "true"
+          RCLONE_CONFIG_DST_TYPE: s3
+          RCLONE_CONFIG_DST_PROVIDER: Cloudflare
+          RCLONE_CONFIG_DST_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Storage mirror — $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+            echo "| Bucket | Objects (source) | Objects (mirror) | Transferred |"
+            echo "|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for bucket in $BUCKETS; do
+            echo "=== Mirroring $bucket ==="
+            # copy = additive; deletions in prod never propagate (DR posture).
+            rclone copy "src:$bucket" "dst:$MIRROR_BUCKET/$bucket" \
+              --stats-one-line --stats 0 --transfers 8 --checkers 16 \
+              --log-level INFO 2>&1 | tail -5
+            # Verify: every source object must exist in the mirror with a
+            # matching size/hash. One-way — extra (older) mirror objects are
+            # expected and fine.
+            rclone check "src:$bucket" "dst:$MIRROR_BUCKET/$bucket" --one-way
+            src_count=$(rclone size "src:$bucket" --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')
+            dst_count=$(rclone size "dst:$MIRROR_BUCKET/$bucket" --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')
+            echo "| $bucket | $src_count | $dst_count | see log |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      # Mirrors scheduled-crons.yml's dedup-by-label pattern (ENG-1400) so a
+      # run of nightly failures becomes ONE actionable issue, not 30.
+      - name: Open or update failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh label create scheduled-cron-failure --color B60205 \
+            --description "A scheduled cron failed (ENG-1400)" 2>/dev/null || true
+          existing=$(gh issue list --label scheduled-cron-failure --state open \
+            --search "\"cron-target:storage-mirror\" in:body" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body \
+              "🔴 storage-mirror failed again — run: $RUN_URL (\`$(date -u '+%Y-%m-%d %H:%M UTC')\`)."
+          else
+            gh issue create \
+              --title "🚨 Storage mirror failing (recipe-images → R2)" \
+              --label scheduled-cron-failure \
+              --body "$(printf '%s\n' \
+                "The nightly Supabase-Storage → R2 mirror (\`.github/workflows/storage-mirror.yml\`, ENG-1401) failed." \
+                "" \
+                "**Failing run:** $RUN_URL" \
+                "" \
+                "If the log shows missing repo secrets, the setup steps are in the workflow's header comment. While this is red, storage bytes have NO off-provider recovery path." \
+                "" \
+                "This issue is deduped: while it stays open, further failures comment here. Close once a run is green." \
+                "" \
+                "cron-target:storage-mirror" \
+                "" \
+                "_Opened automatically by \`.github/workflows/storage-mirror.yml\` (ENG-1401)._")"
+          fi
