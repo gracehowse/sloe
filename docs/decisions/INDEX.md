@@ -9,10 +9,11 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-335 decision docs, newest first. Generated 2026-07-12.
+336 decision docs, newest first. Generated 2026-07-12.
 
 | Date | Decision | Summary |
 |------|----------|---------|
+| 2026-07-12 | [Launch is blocked until a working paid rail is live](./2026-07-12-launch-blocked-on-paid-rail.md) | **We do not launch until a user can actually pay and receive the entitlement they paid for.** No soft launch, no "trial-only" beta, no "we'll wire billing after the wedge lands." The paid rail — checkout → payment → enti… |
 | 2026-07-11 | [Canonical energy numbers — one input policy, one qualifier grammar, one goal vocabulary](./2026-07-11-canonical-energy-numbers.md) | The 2026-07-11 audit found the same account, in the same hour, showing **four different "maintenance" numbers** (1,567 / 1,647 / ~1,720 / 1,778) plus a ring goal (1,856) that reconciled with none of them, a paywall that… |
 | 2026-07-10 | [2026-07-10 — One card grammar: 24px corners everywhere, flat cards WITH a bound separation mechanism](./2026-07-10-card-grammar-rounder-flat.md) | Reference read: Oura ≈20–24pt radii, flat, separation by surface tone on a dark ground. Natural Cycles ≈16–20 radii, flat white cards on a clearly grey ground, no shadows. In-app exemplar: the Discover TikTok-import card… |
 | 2026-07-10 | [Chip grammar — soft tint carries selection (2026-07-10)](./2026-07-10-chip-grammar-soft-tint.md) | **Ruling (ENG-1375, component-grammar epic, slice S1):** |
