@@ -252,6 +252,11 @@ describe("DELETE /api/account/delete — Stripe subscription cancellation (ENG-1
     delete process.env.STRIPE_SECRET_KEY;
   });
 
+  /** Spy on the `profiles` row delete so tests can assert ordering: the
+   *  profile row (which carries stripe_customer_id) must survive an aborted
+   *  deletion so a retry can still read the id and cancel the sub. */
+  let profileDelete: ReturnType<typeof vi.fn>;
+
   /** Supabase client stub where `profiles` carries a stripe_customer_id and
    *  every other table succeeds as a no-op. */
   function clientWithCustomer(
@@ -268,14 +273,16 @@ describe("DELETE /api/account/delete — Stripe subscription cancellation (ENG-1
     const okNull = () => chainable({ data: null, error: null });
     const okBilling = () =>
       chainable({ data: [{ stripe_customer_id: customerId }], error: null });
+    profileDelete = vi.fn(() => ({ eq: vi.fn(() => okNull()) }));
 
     return {
       from: vi.fn((table: string) => {
         if (table === "profiles") {
           return {
-            // step 5c reads stripe_customer_id; step 6 deletes the row.
+            // step 5c reads stripe_customer_id; the row delete now runs only
+            // AFTER the error gate (ENG-1539 review fix).
             select: vi.fn(() => ({ eq: vi.fn(() => okBilling()) })),
-            delete: vi.fn(() => ({ eq: vi.fn(() => okNull()) })),
+            delete: profileDelete,
           };
         }
         return {
@@ -337,6 +344,12 @@ describe("DELETE /api/account/delete — Stripe subscription cancellation (ENG-1
     expect(body.details.some((d: string) => d.startsWith("stripe_subscription_cancel:"))).toBe(true);
     // Critical: billing not stopped → auth user must NOT be deleted.
     expect(authDeleteUser).not.toHaveBeenCalled();
+    // ENG-1539 review fix: the profile row (which holds stripe_customer_id)
+    // must also survive, so the idempotent retry can still read the id and
+    // re-attempt the cancel. If the profile were deleted here, the retry would
+    // find no customer, skip the cancel, and delete the account with the sub
+    // still billing — the exact bug this issue fixes, reintroduced on retry.
+    expect(profileDelete).not.toHaveBeenCalled();
   });
 
   it("skips Stripe entirely when the user has no stripe_customer_id", async () => {

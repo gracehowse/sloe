@@ -228,22 +228,45 @@ export async function DELETE(req: Request) {
       }
     }
 
-    // 6. Profile row.
-    const { error: profileErr } = await sb.from("profiles").delete().eq("id", userId);
-    if (profileErr) errors.push(`profiles: ${profileErr.message}`);
-
-    // 7. Gate: if any prior step reported a real error, DO NOT delete the
-    //    auth user. Returning a 500 lets the client retry idempotently —
-    //    all the per-table deletes above are safe to re-run.
+    // 6. Gate: if any prior step reported a real error, DO NOT delete the
+    //    profile row or the auth user. Returning a 500 lets the client retry
+    //    idempotently — all the per-table deletes above are safe to re-run.
+    //
+    //    ENG-1539 review fix (2026-07-12): the profile-row delete MUST come
+    //    after this gate. `profiles.stripe_customer_id` is the only record of
+    //    the Stripe customer, and step 5c reads it to cancel billing. If we
+    //    deleted the profile before the gate (the original ordering) and the
+    //    Stripe cancel had failed, the abort would still have destroyed the
+    //    customer id — so the idempotent retry would find no id, skip the
+    //    cancel, and fully delete the account with the subscription still
+    //    billing. Deferring the profile delete until after a clean gate keeps
+    //    the customer id available for every retry until cancellation lands.
     if (errors.length > 0) {
-      console.error("[account/delete] Aborting auth deletion — prior errors:", errors);
+      console.error("[account/delete] Aborting deletion — prior errors:", errors);
       return NextResponse.json(
         {
           ok: false,
           error: "deletion_incomplete",
           message:
-            "Some account data could not be deleted. The auth user was not removed — retry the request.",
+            "Some account data could not be deleted. Your account was not removed — retry the request.",
           details: errors,
+        },
+        { status: 500 },
+      );
+    }
+
+    // 7. Profile row — only once every prior step (incl. Stripe cancel)
+    //    succeeded, so a failed cancel never strands an uncancellable sub.
+    const { error: profileErr } = await sb.from("profiles").delete().eq("id", userId);
+    if (profileErr) {
+      console.error("[account/delete] Profile delete failed post-gate:", profileErr.message);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "deletion_incomplete",
+          message:
+            "Your account data was cleared but the profile could not be removed — retry the request.",
+          details: [`profiles: ${profileErr.message}`],
         },
         { status: 500 },
       );
