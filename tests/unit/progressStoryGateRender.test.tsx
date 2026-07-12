@@ -35,14 +35,9 @@ describe("<ProgressStoryGate />", () => {
     expect(label.textContent).toContain("2 / 3");
   });
 
-  it("ENG-1372 slice 2 — renders a standalone '<n>/3' numeral WITH the ring (not just buried in the sentence below)", () => {
-    render(<ProgressStoryGate daysLogged={0} />);
-    expect(screen.getByTestId("progress-story-gate-ring-numeral").textContent).toBe("0/3");
-  });
-
-  it("ENG-1372 slice 2 — the numeral tracks segmentsFilled at day 1", () => {
-    render(<ProgressStoryGate daysLogged={1} />);
-    expect(screen.getByTestId("progress-story-gate-ring-numeral").textContent).toBe("1/3");
+  it("fit-and-finish 2026-07-11 — NO in-ring numeral (redundant with the caption; supersedes the slice-2 numeral note)", () => {
+    const { queryByTestId } = render(<ProgressStoryGate daysLogged={1} />);
+    expect(queryByTestId("progress-story-gate-ring-numeral")).toBeNull();
   });
 });
 

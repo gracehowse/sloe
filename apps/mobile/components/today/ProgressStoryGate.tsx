@@ -128,17 +128,10 @@ function ProgressStoryGateImpl({
               />
             ))}
           </Svg>
-          {/* ENG-1372 slice 2 — an indeterminate-looking arc may never be the
-              locked-state icon; the segment dots above already made this
-              discrete, but the contract additionally calls for the numeral
-              itself ("1/3"-style) to sit WITH the ring, not buried only in
-              the sentence below. */}
-          <Text
-            testID="progress-story-gate-ring-numeral"
-            style={{ fontSize: 11, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}
-          >
-            {placeholder.segmentsFilled}/{STORY_DATA_FLOOR_DAYS}
-          </Text>
+          {/* fit-and-finish (Grace 2026-07-11): the in-ring numeral is gone —
+              "1/3" cramped inside the small ring and duplicated the caption
+              below (supersedes the ENG-1372 slice-2 numeral-with-ring note).
+              The segmented ring alone is the progress signal. */}
         </View>
       </View>
 

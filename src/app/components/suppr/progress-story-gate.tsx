@@ -108,17 +108,9 @@ export function ProgressStoryGate({
               />
             ))}
           </svg>
-          {/* ENG-1372 slice 2 — an indeterminate-looking arc may never be the
-              locked-state icon; the segment dots already made this discrete,
-              but the contract additionally calls for the numeral itself
-              ("1/3"-style) to sit WITH the ring, not buried only in the
-              sentence below. */}
-          <p
-            data-testid="progress-story-gate-ring-numeral"
-            className="absolute inset-0 flex items-center justify-center text-[11px] font-bold tabular-nums text-foreground"
-          >
-            {placeholder.segmentsFilled}/{STORY_DATA_FLOOR_DAYS}
-          </p>
+          {/* fit-and-finish (Grace 2026-07-11): in-ring numeral removed —
+              cramped in the small ring and redundant with the caption below
+              (supersedes the ENG-1372 slice-2 numeral-with-ring note). */}
         </div>
       </div>
       {/* ENG-1006 — 13px label-secondary floor (was 11px, below the spec's
