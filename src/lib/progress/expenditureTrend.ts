@@ -18,6 +18,15 @@
  * `adaptive_tdee_confidence`, `adaptive_tdee_updated_at`, and `measured_tdee`.
  * Nothing here recomputes a TDEE; it only decides how to phrase what the
  * engine already produced.
+ *
+ * ENG-1506 (2026-07-11): `buildExpenditureTrendCopy` is the FLAG-OFF legacy
+ * decision path. Behind `energy_numbers_v1` both cards render
+ * `expenditureFromResolved` (`src/lib/nutrition/energyNumbers.ts`) instead —
+ * phrased from the SAME resolved maintenance the sibling Maintenance card
+ * shows, so this card can never again assert a measured kcal (with a
+ * hard-coded "high" chip) that the resolver rejected. This raw-column path
+ * is removed in the flag-collapse cleanup once `energy_numbers_v1` has held
+ * 100% for two weeks (the standard flag-retirement rule).
  */
 
 import { formatKcalDisplay } from "../nutrition/formatMacro";
@@ -68,10 +77,13 @@ function normaliseConfidence(raw: string | null): ExpenditureConfidence | null {
 }
 
 /** Round to the nearest 10 kcal — the anti-false-precision rule. A value of
- *  2347 becomes 2350, surfaced as "about ~2,350". */
-function roundToTen(kcal: number): number {
+ *  2347 becomes 2350, surfaced as "about ~2,350". Exported for the ENG-1506
+ *  resolver-sourced copy path (`expenditureFromResolved` in
+ *  `src/lib/nutrition/energyNumbers.ts`) so both paths round identically. */
+export function roundExpenditureToTen(kcal: number): number {
   return Math.round(kcal / 10) * 10;
 }
+const roundToTen = roundExpenditureToTen;
 
 /**
  * ENG-1305: delegates to the app-wide `formatKcalDisplay` instead of a
@@ -84,8 +96,9 @@ function formatKcal(kcal: number): string {
 }
 
 /** Soft recency phrasing from the `updated_at` timestamp. Returns "" when we
- *  can't read a sensible age (so the detail line is simply omitted). */
-function recencyPhrase(updatedAtISO: string | null, now: number): string {
+ *  can't read a sensible age (so the detail line is simply omitted).
+ *  Exported for the ENG-1506 `expenditureFromResolved` path. */
+export function recencyPhrase(updatedAtISO: string | null, now: number): string {
   if (!updatedAtISO) return "";
   const ts = Date.parse(updatedAtISO);
   if (Number.isNaN(ts)) return "";

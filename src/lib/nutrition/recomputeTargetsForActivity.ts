@@ -48,6 +48,7 @@ import {
 } from "./tdee";
 import { deriveTargets } from "./goalPaceRetune";
 import { resolveMaintenance } from "./resolveMaintenance";
+import { buildMaintenanceInputs } from "./energyNumbers";
 
 export type RecomputeTargetsInput = {
   sex: Sex;
@@ -76,6 +77,16 @@ export type RecomputeTargetsInput = {
   adaptiveTdee?: number | null;
   adaptiveTdeeConfidence?: string | null;
   adaptiveTdeeUpdatedAt?: string | null;
+  /**
+   * ENG-1506 — optional `weight_kg_by_day` map so the maintenance baseline
+   * uses the canonical input policy (latest weigh-in beats the lagging
+   * profile snapshot; `buildMaintenanceInputs`). Omitted → `weightKg` is
+   * the weight for both the baseline and the macro derivation, exactly as
+   * before. NB: `weightKg` (the explicit/edited weight) still drives the
+   * g/kg macro derivation either way — the editor's weight field must win
+   * for macros the user is actively editing.
+   */
+  weightKgByDay?: Record<string, number> | null;
   /** Injectable clock so the staleness gate in `resolveMaintenance` is
    *  deterministic in tests. */
   now?: Date;
@@ -128,8 +139,12 @@ export function recomputeTargetsFromProfile(
   // when the formula inputs are incomplete; we've already guaranteed
   // weight/height/age are valid above, so the formula branch always
   // resolves a number here (adaptive inputs are optional + additive).
+  // ENG-1506 — inputs route through the canonical `buildMaintenanceInputs`
+  // policy. When the caller supplies `weightKgByDay`, the latest weigh-in
+  // seeds the baseline (matching what every display surface shows); when it
+  // doesn't — or the user just edited their weight — `weightKg` stands.
   const resolved = resolveMaintenance(
-    {
+    buildMaintenanceInputs({
       adaptive_tdee: input.adaptiveTdee ?? null,
       adaptive_tdee_confidence: input.adaptiveTdeeConfidence ?? null,
       adaptive_tdee_updated_at: input.adaptiveTdeeUpdatedAt ?? null,
@@ -138,7 +153,8 @@ export function recomputeTargetsFromProfile(
       height_cm: heightCm,
       age,
       activity_level: activityLevel,
-    },
+      weight_kg_by_day: input.weightKgByDay ?? null,
+    }),
     { now: input.now },
   );
   if (resolved == null) return null;

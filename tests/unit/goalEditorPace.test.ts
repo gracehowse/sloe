@@ -43,10 +43,17 @@ describe("goalEditorPace — goal ↔ slider mapping", () => {
 
   it("normalizes legacy goal labels", () => {
     expect(normalizeEditorGoal("lose")).toBe("cut");
-    expect(normalizeEditorGoal("recomp")).toBe("cut");
     expect(normalizeEditorGoal("gain")).toBe("bulk");
     expect(normalizeEditorGoal("health")).toBe("maintain");
-    expect(normalizeEditorGoal(null)).toBe("cut");
+  });
+
+  it("ENG-1507 — unknown/null goals seat NOTHING (never a silent 'cut' that saves back)", () => {
+    expect(normalizeEditorGoal(null)).toBeNull();
+    expect(normalizeEditorGoal(undefined)).toBeNull();
+    expect(normalizeEditorGoal("garbage")).toBeNull();
+    // 'recomp' never reaches the DB (persist collapses it — ENG-1538); a
+    // literal 'recomp' is unknown → null, forcing an explicit pick.
+    expect(normalizeEditorGoal("recomp")).toBeNull();
   });
 });
 
@@ -194,6 +201,8 @@ describe("goalEditorPace — profile row parsing", () => {
       sex: "female",
       age: 30,
       weightKg: 60,
+      // ENG-1506 — weigh-in map parsed for the latest-weigh-in baseline.
+      weightKgByDay: {},
       heightCm: 165,
       activityLevel: "moderate",
       goal: "cut",
@@ -232,9 +241,17 @@ describe("goalEditorPace — profile row parsing", () => {
     expect(p.weightKg).toBeNull();
   });
 
-  it("tolerates null / undefined data", () => {
-    expect(parseGoalEditorProfileRow(null).goal).toBe("cut");
+  it("tolerates null / undefined data — goal stays null (ENG-1507), not 'cut'", () => {
+    expect(parseGoalEditorProfileRow(null).goal).toBeNull();
     expect(parseGoalEditorProfileRow(undefined).sex).toBe("unspecified");
+  });
+
+  it("ENG-1506 — parses weight_kg_by_day for the latest-weigh-in maintenance baseline", () => {
+    const p = parseGoalEditorProfileRow({
+      weight_kg_by_day: { "2026-07-01": 62, "2026-07-10": "60", bad: "junk", zero: 0 },
+    });
+    expect(p.weightKgByDay).toEqual({ "2026-07-01": 62, "2026-07-10": 60 });
+    expect(parseGoalEditorProfileRow({}).weightKgByDay).toEqual({});
   });
 });
 

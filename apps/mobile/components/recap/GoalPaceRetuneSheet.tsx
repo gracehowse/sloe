@@ -38,7 +38,7 @@ import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   computeRetunedTargets,
@@ -214,7 +214,7 @@ export function GoalPaceRetuneSheet(props: GoalPaceRetuneSheetProps) {
           .eq("id", userId)
           .maybeSingle();
         if (oldProfile) {
-          await backfillDailyTargetsFromProfile(supabase as any, userId, oldProfile);
+          await backfillDailyTargetsFromProfile(supabase as any, userId, oldProfile, { canonicalEnergyInputs: isFeatureEnabled("energy_numbers_v1") }); // ENG-1506 — OFF keeps the exact legacy input assembly
         }
       } catch {
         // Backfill never blocks the user's retune.

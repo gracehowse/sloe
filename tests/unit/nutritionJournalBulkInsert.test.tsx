@@ -98,6 +98,7 @@ vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: (event: string, payload?: Record<string, unknown>) => {
     analyticsCalls.push({ event, payload });
   },
+  isFeatureEnabled: () => false,
 }));
 
 vi.mock("../../src/lib/nutrition/refreshAdaptiveTdee.ts", () => ({

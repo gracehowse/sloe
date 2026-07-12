@@ -36,6 +36,14 @@ const FLOW_PATH = resolve(
   __dirname,
   "../../components/onboarding/mobile-flow.tsx",
 );
+// ENG-1507 (2026-07-11): the completion pipeline (persistAndSeed +
+// navigating handleComplete) was extracted from the flow shell into
+// `useOnboardingCompletion.ts` (line-budget + the persist-before-paywall
+// split). The completion-routing pins follow the code to its new home.
+const COMPLETION_PATH = resolve(
+  __dirname,
+  "../../components/onboarding/useOnboardingCompletion.ts",
+);
 const UPGRADE_STEP_PATH = resolve(
   __dirname,
   "../../components/onboarding/steps/upgrade.tsx",
@@ -43,6 +51,7 @@ const UPGRADE_STEP_PATH = resolve(
 const PAYWALL_PATH = resolve(__dirname, "../../app/paywall.tsx");
 
 const flowSrc = readFileSync(FLOW_PATH, "utf8");
+const completionSrc = readFileSync(COMPLETION_PATH, "utf8");
 const upgradeSrc = readFileSync(UPGRADE_STEP_PATH, "utf8");
 const paywallSrc = readFileSync(PAYWALL_PATH, "utf8");
 
@@ -56,15 +65,16 @@ describe("mobile onboarding — no post-onboarding paywall shock", () => {
     // branches between `&firstRun=1` (true first-time completion) and
     // `&refresh=1` (Settings → Refresh my plan). Match the prefix
     // substring so the test stays implementation-flexible.
-    expect(flowSrc).toMatch(/router\.replace\(`\/\(tabs\)\$\{homeQs\}`/);
+    expect(completionSrc).toMatch(/router\.replace\(`\/\(tabs\)\$\{homeQs\}`/);
+    expect(completionSrc).not.toMatch(/router\.replace\(\s*["'`]\/paywall/);
     expect(flowSrc).not.toMatch(/router\.replace\(\s*["'`]\/paywall/);
   });
 
   it("handoff query string carries firstRun=1 for first-time completion", () => {
     // refresh-plan branch uses `&refresh=1`; first-time completion path
     // must still set firstRun so Today fires its first-run polish.
-    expect(flowSrc).toContain("&firstRun=1");
-    expect(flowSrc).toContain("onboarding_complete=1");
+    expect(completionSrc).toContain("&firstRun=1");
+    expect(completionSrc).toContain("onboarding_complete=1");
   });
 
   it("the See Pro step's terminal role is `upgrade`, not `first-log` (skip → Today)", () => {

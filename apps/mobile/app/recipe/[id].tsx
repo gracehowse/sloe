@@ -1374,7 +1374,7 @@ export default function RecipeDetailScreen() {
         Alert.alert("Could not log", error.message);
       } else {
         // F-2 — snapshot today's target on first log.
-        void snapshotDailyTargetIfMissing(supabase, userId);
+        void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled("energy_numbers_v1") });
         // Audit/2026-04-30 — per-meal Apple HealthKit write (parity
         // with MFP / Cal AI). Honours the "Share meals to Health"
         // toggle and is idempotent on `mealId`. Fire-and-forget — HK
@@ -1476,7 +1476,7 @@ export default function RecipeDetailScreen() {
           Alert.alert("Could not log", error.message);
           return;
         }
-        void snapshotDailyTargetIfMissing(supabase, userId);
+        void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled("energy_numbers_v1") });
         void writeMealToHealthKitIfEnabled({
           mealId: newId,
           userId,

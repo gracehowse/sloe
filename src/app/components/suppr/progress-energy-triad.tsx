@@ -24,6 +24,7 @@ import * as React from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { SupprCard } from "../ui/suppr-card";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
+import { ENERGY_NUMBERS_V1_FLAG } from "../../../lib/nutrition/energyNumbers";
 import {
   PRODUCT_TDEE_LABEL_GLOSS,
   PRODUCT_TDEE_LABEL_PLAIN,
@@ -36,6 +37,15 @@ export interface ProgressEnergyTriadProps {
   maintenanceKcal: number | null;
   /** True when the resolved maintenance is the adaptive (engine) value. */
   isAdaptive: boolean;
+  /** ENG-1506 — explicit source qualifier ("From your logs · high
+   *  confidence") rendered under the MAINTENANCE operand behind
+   *  `energy_numbers_v1`. Null/omitted → no line (legacy render). */
+  qualifierLine?: string | null;
+  /** ENG-1506 — the REAL selected-period label for the card header
+   *  ("Energy balance · 15–21 Jun") behind `energy_numbers_v1`; the
+   *  legacy header hard-codes "7-day average" even when the avg-intake
+   *  window is the user-selected period. */
+  periodLabel?: string | null;
   className?: string;
 }
 
@@ -71,6 +81,8 @@ export function ProgressEnergyTriad({
   avgIntakeKcal,
   maintenanceKcal,
   isAdaptive,
+  qualifierLine,
+  periodLabel,
   className,
 }: ProgressEnergyTriadProps) {
   const deficitKcal =
@@ -90,6 +102,10 @@ export function ProgressEnergyTriad({
   // EQUATION (intake − maintenance = deficit/day) with a "How maintenance works"
   // explainer, not a 3-cell triad (Sloe-App.html L5001-5018). Transient flag;
   // the triad stays in the else until collapsed.
+  // ENG-1506 — the qualifier line + real period label render only behind
+  // `energy_numbers_v1`; off → the exact legacy card.
+  const energyV1 = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG);
+
   if (isFeatureEnabled("sloe_v3_energy_equation")) {
     return (
       <ProgressEnergyEquation
@@ -98,6 +114,8 @@ export function ProgressEnergyTriad({
         deficitKcal={deficitKcal}
         isSurplus={isSurplus}
         isAdaptive={isAdaptive}
+        qualifierLine={energyV1 ? (qualifierLine ?? null) : null}
+        periodLabel={energyV1 ? (periodLabel ?? null) : null}
         className={className}
       />
     );
@@ -128,6 +146,15 @@ export function ProgressEnergyTriad({
             style={{ color: "var(--accent-success-solid)" }}
           >
             {isAdaptive ? "Adaptive" : "Formula"}
+          </p>
+        ) : null}
+        {/* ENG-1506 — explicit source qualifier (flag-gated by the host value). */}
+        {energyV1 && qualifierLine && maintenanceKcal != null && maintenanceKcal > 0 ? (
+          <p
+            data-testid="progress-energy-tdee-qualifier"
+            className="mt-0.5 text-[9px] text-muted-foreground"
+          >
+            {qualifierLine}
           </p>
         ) : null}
       </Cell>
@@ -176,6 +203,8 @@ function ProgressEnergyEquation({
   deficitKcal,
   isSurplus,
   isAdaptive,
+  qualifierLine,
+  periodLabel,
   className,
 }: {
   avgIntakeKcal: number | null;
@@ -183,6 +212,8 @@ function ProgressEnergyEquation({
   deficitKcal: number | null;
   isSurplus: boolean;
   isAdaptive: boolean;
+  qualifierLine: string | null;
+  periodLabel: string | null;
   className?: string;
 }) {
   const [showHow, setShowHow] = React.useState(false);
@@ -210,7 +241,10 @@ function ProgressEnergyEquation({
       className={className}
     >
       <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-        Energy balance · 7-day average
+        {/* ENG-1506 — honest window label: avg intake follows the period
+            control, so the header names the selected period instead of a
+            hard-coded "7-day average" (legacy text when the flag is off). */}
+        {periodLabel ? `Energy balance · ${periodLabel}` : "Energy balance · 7-day average"}
       </p>
       <div className="mt-3 flex items-end justify-between gap-1">
         <EqTerm label="Avg intake" value={avgIntakeKcal != null ? avgIntakeKcal.toLocaleString() : "—"} />
@@ -219,6 +253,15 @@ function ProgressEnergyEquation({
         <EqOp>=</EqOp>
         <EqTerm label={isSurplus ? "Surplus/day" : "Deficit/day"} value={resultValue} color={resultColor} />
       </div>
+      {/* ENG-1506 — explicit source qualifier under the equation. */}
+      {qualifierLine && hasMaintenance ? (
+        <p
+          data-testid="progress-energy-equation-qualifier"
+          className="mt-2 text-[11px] text-muted-foreground"
+        >
+          Maintenance: {qualifierLine}
+        </p>
+      ) : null}
       <button
         type="button"
         onClick={() => setShowHow((v) => !v)}

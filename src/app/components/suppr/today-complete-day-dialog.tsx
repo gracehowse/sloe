@@ -13,6 +13,7 @@ import { SupprButton } from "./suppr-button";
 import { CompleteDayV3Section } from "./CompleteDayV3Section";
 import { COMPLETE_DAY_V3_COPY } from "@/lib/completeDayV3";
 import { isFeatureEnabled } from "@/lib/analytics/track";
+import { ENERGY_NUMBERS_V1_FLAG } from "../../../lib/nutrition/energyNumbers";
 import { projectWeight } from "../../../lib/weightProjection";
 import { kgToLb } from "../../../lib/nutrition/tdee";
 
@@ -67,6 +68,9 @@ export function TodayCompleteDayDialog({
           targetCalories,
           maintenanceTdeeKcal,
           goal: profileGoal,
+          // ENG-1506 — host-read flag: OFF keeps the legacy
+          // 'lose'/'gain'-only goal-fallback comparison.
+          normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG),
         })
       : null;
 

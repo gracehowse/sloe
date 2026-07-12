@@ -595,7 +595,13 @@ async function runWeeklyRecapPush(req: Request) {
           previousWeekAnchor,
         );
 
-        // Cascade — gather inputs and run.
+        // Cascade — gather inputs and run. This stays the LEGACY input
+        // assembly: `energy_numbers_v1` is a client-side flag this server
+        // route cannot read, and while the flag is default-OFF the push
+        // copy must name the same maintenance the in-app flag-OFF surfaces
+        // display (ENG-1506 review round, 2026-07-11).
+        // deferred to flag-collapse: see ENG-1506 review — migrate to
+        // buildMaintenanceInputs when energy_numbers_v1 ramps.
         const resolved = resolveMaintenance(
           {
             adaptive_tdee: row.adaptive_tdee ?? null,

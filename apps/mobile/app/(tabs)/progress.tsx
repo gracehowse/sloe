@@ -48,6 +48,7 @@ import {
 } from "@/lib/weightProjection";
 import { calculateTDEE, getEffectiveTDEE } from "@/lib/calcTargets";
 import { resolveMaintenance , formatMaintenanceRecapLine } from "@suppr/nutrition-core/resolveMaintenance";
+import { ENERGY_NUMBERS_V1_FLAG, expenditureFromResolved, maintenanceQualifier, selectMaintenance } from "@suppr/nutrition-core/energyNumbers";
 import { computeAdaptiveDataProgressFromMeals } from "@suppr/nutrition-core/adaptiveDataProgress";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/nutrition-core/measuredTdee";
 import { MaintenanceExplainer } from "@/components/progress/MaintenanceExplainer";
@@ -733,37 +734,34 @@ export default function ProgressScreen() {
   //
   // ENG-787 — hoisted above `weekStats` so the effective-target activity
   // bundle can reuse its resolved kcal as the maintenance fallback.
+  // ENG-1506 — flag ON: canonical `buildMaintenanceInputs` policy (latest
+  // weigh-in + STRICT-null basics, no `"unspecified"`/`|| 170`/`|| 30`
+  // defaults — the input skew behind the 1,567-vs-1,778 audit split).
+  // Legacy assembly stays in the else (kill switch).
   const recapMaintenance = useMemo(
     () =>
-      resolveMaintenance(
-        {
-          adaptive_tdee: adaptiveTdee,
-          adaptive_tdee_confidence: adaptiveConfidence,
-          adaptive_tdee_updated_at: adaptiveUpdatedAt,
-          measured_tdee: measuredTdee,
-          measured_tdee_confidence: measuredTdeeConfidence,
-          measured_tdee_updated_at: measuredTdeeUpdatedAt,
-          sex: profileSexState as any,
-          weight_kg: latestWeightKg ?? 70,
-          height_cm: profileHeightCmState,
-          age: profileAgeState,
-          activity_level: profileActivityLevelState as any,
-        },
-        { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
-      ),
-    [
-      adaptiveTdee,
-      adaptiveConfidence,
-      adaptiveUpdatedAt,
-      measuredTdee,
-      measuredTdeeConfidence,
-      measuredTdeeUpdatedAt,
-      profileSexState,
-      latestWeightKg,
-      profileHeightCmState,
-      profileAgeState,
-      profileActivityLevelState,
-    ],
+      isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+        ? selectMaintenance(
+            {
+              adaptive_tdee: adaptiveTdee, adaptive_tdee_confidence: adaptiveConfidence,
+              adaptive_tdee_updated_at: adaptiveUpdatedAt, measured_tdee: measuredTdee,
+              measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
+              sex: profileSexState, weight_kg: weightKg, height_cm: profileHeightCmState,
+              age: profileAgeState, activity_level: profileActivityLevelState, weight_kg_by_day: weightKgByDay,
+            },
+            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+          )
+        : resolveMaintenance(
+            {
+              adaptive_tdee: adaptiveTdee, adaptive_tdee_confidence: adaptiveConfidence,
+              adaptive_tdee_updated_at: adaptiveUpdatedAt, measured_tdee: measuredTdee,
+              measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
+              sex: profileSexState as any, weight_kg: latestWeightKg ?? 70, height_cm: profileHeightCmState,
+              age: profileAgeState, activity_level: profileActivityLevelState as any,
+            },
+            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+          ),
+    [adaptiveTdee, adaptiveConfidence, adaptiveUpdatedAt, measuredTdee, measuredTdeeConfidence, measuredTdeeUpdatedAt, profileSexState, weightKg, weightKgByDay, latestWeightKg, profileHeightCmState, profileAgeState, profileActivityLevelState],
   );
 
   // ENG-787 — per-day activity bundle for the Daily Calories chart. Mirrors
@@ -1544,8 +1542,14 @@ export default function ProgressScreen() {
               ? Math.round(caloriesRange.avgCaloriesPerDay)
               : null
           }
-          maintenanceKcal={recapMaintenance?.kcal ?? staticTdee}
+          // ENG-1506 — flag ON: no full-activity staticTdee fallback (a third
+          // activity policy on this screen, seeded from defaulted basics); an
+          // unresolvable maintenance renders "—" honestly. Qualifier + real
+          // period label ride the same flag.
+          maintenanceKcal={recapMaintenance?.kcal ?? (isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? null : staticTdee)}
           isAdaptive={recapMaintenance?.source === "adaptive"}
+          qualifierLine={recapMaintenance ? maintenanceQualifier(recapMaintenance.source, recapMaintenance.confidence).line : null}
+          periodLabel={periodWindowLabel}
         />
       ) : null}
       </ReAnimated.View>
@@ -1682,22 +1686,9 @@ export default function ProgressScreen() {
 
         {/* MAINTENANCE card */}
         {staticTdee != null && (() => {
-          const resolved = resolveMaintenance(
-            {
-              adaptive_tdee: adaptiveTdee,
-              adaptive_tdee_confidence: adaptiveConfidence,
-              adaptive_tdee_updated_at: adaptiveUpdatedAt,
-              measured_tdee: measuredTdee,
-              measured_tdee_confidence: measuredTdeeConfidence,
-              measured_tdee_updated_at: measuredTdeeUpdatedAt,
-              sex: profileSexState as any,
-              weight_kg: latestWeightKg ?? 70,
-              height_cm: profileHeightCmState,
-              age: profileAgeState,
-              activity_level: profileActivityLevelState as any,
-            },
-            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
-          );
+          // ENG-1506 — reuse the SAME `recapMaintenance` every sibling reads
+          // (was a duplicated, driftable resolveMaintenance input block).
+          const resolved = recapMaintenance;
           if (!resolved) return null;
           const showAdaptiveExtras = resolved.source === "adaptive";
           const showMeasuredExtras = resolved.source === "measured";
@@ -1855,8 +1846,16 @@ export default function ProgressScreen() {
           );
         })()}
 
-        {/* ENG-953 — calm "Expenditure" trend card (gated on default-ON `expenditure_trend_card`; parity: web `ExpenditureTrendCard`). */}
-        <ExpenditureTrendCard enabled={expenditureCardEnabled} adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
+        {/* ENG-953 — calm "Expenditure" trend card (gated on default-ON `expenditure_trend_card`; parity: web `ExpenditureTrendCard`).
+            ENG-1506 — behind `energy_numbers_v1` the copy comes from the SAME resolved maintenance as the card above; off → legacy raw-column path. */}
+        <ExpenditureTrendCard
+          enabled={expenditureCardEnabled}
+          adaptiveTdee={adaptiveTdee}
+          adaptiveConfidence={adaptiveConfidence}
+          adaptiveUpdatedAt={adaptiveUpdatedAt}
+          measuredTdee={measuredTdee}
+          resolvedCopy={isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? expenditureFromResolved(recapMaintenance, adaptiveUpdatedAt) : undefined}
+        />
 
         {/* ENG-1237 — body fat + lean-mass trends (Pro-gated). */}
         <BodyCompositionTrendCard
@@ -1909,6 +1908,7 @@ export default function ProgressScreen() {
                     maintenanceTdeeKcal,
                     goal: userGoal,
                     observedKgPerWeek,
+                    normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG), // ENG-1506 — OFF keeps the legacy 'lose'/'gain'-only fallback
                   })
                 : null;
 

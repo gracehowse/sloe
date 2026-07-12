@@ -6,6 +6,8 @@
  * when we know onboarding just computed their numbers.
  */
 
+import { formatGoalLabel, goalClauseGerund } from "../nutrition/goalVocabulary";
+
 export type ProfileDbGoal = "cut" | "maintain" | "bulk" | string | null;
 
 export type PersonalisedPlanPaywallSummary = {
@@ -26,17 +28,10 @@ export type PersonalisedPlanPaywallSummary = {
 
 export const PAYWALL_PERSONALISED_PLAN_TEST_ID = "paywall-personalised-plan";
 
+/** ENG-1507 — delegates to the shared goal vocabulary (one normaliser,
+ *  one label set; unknown → null, never a silent "Lose weight"). */
 export function formatProfileGoalLabel(goal: ProfileDbGoal): string | null {
-  switch (goal) {
-    case "cut":
-      return "Lose weight";
-    case "maintain":
-      return "Eat healthier";
-    case "bulk":
-      return "Build muscle";
-    default:
-      return null;
-  }
+  return formatGoalLabel(goal);
 }
 
 export function shouldLeadPaywallWithPersonalisedPlan(input: {
@@ -46,7 +41,12 @@ export function shouldLeadPaywallWithPersonalisedPlan(input: {
 }): boolean {
   const kcal = input.targetCalories;
   if (kcal == null || !Number.isFinite(kcal) || kcal <= 0) return false;
-  if (input.paywallFrom === "onboarding") return true;
+  // ENG-1507 — `paywallFrom === "onboarding"` is deliberately NOT
+  // sufficient on its own. The mobile trial path used to open this paywall
+  // BEFORE persistOnboarding ran, and the from=onboarding short-circuit
+  // then rendered the PREVIOUS run's profiles row as "your plan" ("for
+  // lose weight" against a just-selected build-muscle goal). The plan card
+  // now only ever leads with a row onboarding actually wrote.
   return input.targetCaloriesSource === "onboarding";
 }
 
@@ -63,7 +63,10 @@ export function buildPersonalisedPlanPaywallSummary(input: {
       ? Math.round(input.targetProtein)
       : null;
 
-  const goalClause = goalLabel ? ` for ${goalLabel.toLowerCase()}` : "";
+  // ENG-1507 — gerund clause ("for losing weight"), not the lower-cased
+  // noun label ("for lose weight") the audit flagged as broken grammar.
+  const gerund = goalClauseGerund(input.goal ?? null);
+  const goalClause = gerund ? ` for ${gerund}` : "";
 
   return {
     eyebrow: "Your daily target",

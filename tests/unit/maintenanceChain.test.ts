@@ -285,3 +285,28 @@ describe("buildMaintenanceChain", () => {
     expect(wl.label).toMatch(/\*long-term fat gain; week-to-week varies with water\/glycogen/);
   });
 });
+
+describe("buildMaintenanceChain — ENG-1507 unknown-goal neutrality", () => {
+  it("null goal derives a NEUTRAL '= Calorie goal' row (maintain framing), never a silent cut", () => {
+    const resolved = resolveMaintenance({
+      sex: "male",
+      weight_kg: 80,
+      height_cm: 180,
+      age: 30,
+      activity_level: "sedentary",
+    })!;
+    const chain = buildMaintenanceChain(
+      { sex: "male", weight_kg: 80, height_cm: 180, age: 30, activity_level: "sedentary" },
+      resolved,
+      "steady",
+      null,
+    );
+    expect(chain).not.toBeNull();
+    const kinds = chain!.steps.map((s) => s.kind);
+    // Maintain framing: no plan-deficit row, no weekly-loss projection.
+    expect(kinds).toEqual(["bmr", "activity", "maintenance", "goal"]);
+    const goalStep = chain!.steps.find((s) => s.kind === "goal")!;
+    // Neutral derivation: calorie goal == maintenance (no adjustment).
+    expect(goalStep.value).toBe(`${resolved.kcal.toLocaleString()} kcal`);
+  });
+});
