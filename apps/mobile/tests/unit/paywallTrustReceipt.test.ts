@@ -27,7 +27,7 @@ describe("mobile — PAYWALL_TRUST_CHIPS shape", () => {
     expect(PAYWALL_TRUST_CHIPS).toHaveLength(3);
     expect(PAYWALL_TRUST_CHIPS[0].label).toBe("Cancel anytime in-app");
     expect(PAYWALL_TRUST_CHIPS[1].label).toBe("7-day refund, no email needed");
-    expect(PAYWALL_TRUST_CHIPS[2].label).toBe("Price never changes mid-trial");
+    expect(PAYWALL_TRUST_CHIPS[2].label).toBe("No surprise price increases");
   });
 });
 

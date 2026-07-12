@@ -126,6 +126,10 @@ export function PricingHeroCta({
         </div>
 
         <div className="w-full">
+          {/* ENG-1436 legal P0: only annual carries the 7-day trial (ENG-1285),
+              so a static "Start free trial" on the monthly selection was a
+              false trial claim (CMA/FTC). Label tracks the period, like the
+              caption below. */}
           <CheckoutButton
             tier="pro"
             period={billing}

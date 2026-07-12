@@ -137,9 +137,10 @@ export default async function CheckoutSuccessPage({
           <div className="flex items-start gap-3">
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-emerald-500" aria-hidden="true" />
             <p className="text-sm text-foreground">
-              <span className="font-semibold">Price never changes mid-trial.</span>{" "}
-              The price you saw on the paywall is the price you pay. No
-              surprise hikes when the trial ends.
+              {/* ENG-1436 legal P0: period-neutral — monthly has no trial. */}
+              <span className="font-semibold">No surprise price increases.</span>{" "}
+              The price you saw on the paywall is the price you pay. It
+              never changes at renewal without you agreeing first.
             </p>
           </div>
         </div>
