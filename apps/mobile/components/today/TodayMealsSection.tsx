@@ -1186,8 +1186,11 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                   <React.Fragment key={m.id}>
                   <MealRowSwipeable mealId={m.id} onDeleteMeal={onDeleteMeal}>
                     <TodayMealRowPressable
+                      testID={`today-meal-row-${m.id}`}
                       accessibilityRole="button"
-                      accessibilityLabel={m.recipeTitle}
+                      // ENG-1524 — fold the kcal into the row a11y label (the row
+                      // Pressable aggregates children, so the numeral isn't read alone).
+                      accessibilityLabel={`${m.recipeTitle}, ${Math.round(m.calories)} kcal`}
                       onPress={() => onPressMeal(m.id)}
                       onLongPress={() => {
                         if (brandedSheets) {
@@ -1212,9 +1215,10 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                         flexDirection: "row",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        // Sloe: hairline `divide-y divide-line` between meal rows.
+                        // ENG-1524 — real hairline divider: the border token
+                        // itself, no alpha-concat (the old `+ "08"` ≈3% was invisible).
                         borderBottomWidth: StyleSheet.hairlineWidth,
-                        borderBottomColor: cardBorderColor + "08",
+                        borderBottomColor: cardBorderColor,
                         backgroundColor: cardColor,
                       }}
                     >
@@ -1247,21 +1251,13 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                         })()}
                         <View style={{ flex: 1, gap: Spacing.xs, minWidth: 0 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                          {/* 2026-05-15 (crowder task) — `flexShrink: 1`
-                              + `minWidth: 0` so `numberOfLines: 1`
-                              actually ellipsises. Without these, the
-                              Text kept its full intrinsic width and
-                              ran underneath the right-column kcal
-                              value (e.g. "PB2 · Original Powdered
-                              Peanut Butter (2 tbsp)" overlapped "60"
-                              kcal). RN row children default to
-                              `flexShrink: 0`.
-                              TD4 (2026-06-03) — food name reads at `Type.body`
-                              (14pt) to match the Sloe frame's `text-[14px]`
-                              row; it's the primary content of the row now that
-                              each slot is its own card. */}
+                          {/* `flexShrink: 1` + `minWidth: 0` so `numberOfLines: 1`
+                              ellipsises (RN row children default to flexShrink: 0,
+                              which let long names overlap the kcal — crowder 2026-05-15).
+                              ENG-1524 — name demoted to `textSecondaryColor` (was
+                              primary): the kcal is now the loudest thing on the row. */}
                           <Text
-                            style={{ ...Type.body, fontWeight: "400", color: textColor, flexShrink: 1, minWidth: 0 }}
+                            style={{ ...Type.body, fontWeight: "400", color: textSecondaryColor, flexShrink: 1, minWidth: 0 }}
                             numberOfLines={1}
                           >
                             {m.recipeTitle}
@@ -1275,21 +1271,25 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                               ) : null;
                             })()
                           : null}
-                        {/* 2026-05-22 evening (Grace): per-meal source
-                            badge ("Manual" / "FatSecret") and inline
-                            macro strip both removed — they were eating
-                            too much vertical real estate on the meal
-                            row. Source provenance + full macros live on
-                            the meal detail page (chevron right). The
-                            chevron + kcal on the right side make the
-                            tap affordance obvious. */}
+                        {/* Source badge + inline macro strip removed (Grace
+                            2026-05-22) — they live on the meal detail page
+                            (chevron right); the row stays scannable. */}
                       </View>
                       </View>
+                      {/* ENG-1524 — kcal is the tracker's point: promoted to
+                          Type.headline primary tabular-nums, right-anchored; "kcal"
+                          demotes to a tertiary suffix (was a whispered caption). */}
                       <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-                        <Text style={{ ...Type.caption, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}>
-                          {Math.round(m.calories)}
-                        </Text>
-                        <Text style={{ ...Type.caption, color: textTertiaryColor, marginLeft: -2 }}>kcal</Text>
+                        <View style={{ flexDirection: "row", alignItems: "baseline", gap: Spacing.xs }}>
+                          <Text
+                            testID={`today-meal-kcal-${m.id}`}
+                            style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}
+                            accessibilityLabel={`${Math.round(m.calories)} kcal`}
+                          >
+                            {Math.round(m.calories)}
+                          </Text>
+                          <Text style={{ ...Type.caption, color: textTertiaryColor }}>kcal</Text>
+                        </View>
                         <ChevronRight size={12} color={textTertiaryColor} />
                       </View>
                     </TodayMealRowPressable>

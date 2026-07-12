@@ -61,9 +61,11 @@ describe("Today cohesion — TodayMealsSection ENG-1099 M5 (collapsed ENG-1356)"
     expect(src).toMatch(/PressableScale haptic="selection"/);
   });
 
-  it("ENG-1139: meal rows expose accessibilityRole + recipe-title label for VoiceOver", () => {
+  it("ENG-1139/1524: meal rows expose accessibilityRole + a recipe-title & kcal label for VoiceOver", () => {
+    // ENG-1524 folded the kcal into the label — the row Pressable aggregates its
+    // children, so the promoted numeral isn't announced on its own.
     expect(src).toMatch(
-      /TodayMealRowPressable[\s\S]{0,200}accessibilityRole="button"[\s\S]{0,80}accessibilityLabel=\{m\.recipeTitle\}/,
+      /TodayMealRowPressable[\s\S]{0,240}accessibilityRole="button"[\s\S]{0,200}accessibilityLabel=\{`\$\{m\.recipeTitle\}, \$\{Math\.round\(m\.calories\)\} kcal`\}/,
     );
   });
 });
