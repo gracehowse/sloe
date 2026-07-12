@@ -1,10 +1,24 @@
 import { NextResponse } from "next/server";
+import Stripe from "stripe";
 import {
   getUserIdFromRequest,
   createSupabaseServiceRoleClient,
 } from "@/lib/supabase/serverAnonClient";
 import { assertOrigin } from "@/lib/api/assertOrigin";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+
+// Stripe SDK uses Node APIs — pin the runtime (mirrors the other Stripe
+// routes: app/api/stripe/{checkout,subscription-status,webhook}/route.ts).
+export const runtime = "nodejs";
+
+/** Server-side Stripe client, or null when `STRIPE_SECRET_KEY` is unset
+ *  (dev / CI / tests). Same guard shape as every other Stripe route so a
+ *  missing key degrades gracefully instead of throwing. */
+function getStripe(): Stripe | null {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key) return null;
+  return new Stripe(key);
+}
 
 /**
  * DELETE /api/account/delete
@@ -21,6 +35,16 @@ import { captureRouteError } from "@/lib/observability/captureRouteError";
  *   all prior deletes succeeding. Supabase has no cross-table tx
  *   primitive from the JS client, so this is the strongest guarantee
  *   available without a server-side RPC.
+ *
+ * ENG-1539 fix (2026-07-12) — cancel Stripe billing before deletion:
+ *   The cascade removed the DB rows + auth user but never cancelled the
+ *   user's Stripe subscription, so a deleted Pro user kept being charged.
+ *   Step 5c now cancels every non-terminal subscription on the profile's
+ *   `stripe_customer_id` and is gated by the same `errors`/abort contract:
+ *   a cancel failure aborts the auth-user delete so billing and account
+ *   state can never diverge. (Analytics/PostHog identity purge is NOT done
+ *   here — the server only holds the PostHog ingest key, which cannot
+ *   delete a person; that needs a personal API key + a follow-up.)
  *
  * Requires: Authorization header or session cookie.
  * Requires: SUPABASE_SERVICE_ROLE_KEY (server-side only).
@@ -156,6 +180,54 @@ export async function DELETE(req: Request) {
       }
     }
 
+    // 5c. Stripe subscription cancellation (ENG-1539).
+    //
+    // Before this step the cascade deleted the profile + auth user but NEVER
+    // cancelled the user's Stripe subscription, so a deleted Pro user kept
+    // being charged indefinitely (billing P1). Read the persisted
+    // `profiles.stripe_customer_id` (written by the checkout webhook —
+    // src/lib/stripe/webhookProcess.ts) HERE, before step 6 deletes the
+    // profile row, then cancel every non-terminal subscription on that
+    // customer immediately (stops billing now).
+    //
+    // Gated like every other step: a cancel failure pushes to `errors`,
+    // which aborts the auth-user delete (step 7) so the client retries. The
+    // retry is idempotent — an already-canceled subscription is skipped, not
+    // re-cancelled. STRIPE_SECRET_KEY unset (dev / tests) → `getStripe()`
+    // returns null and the whole step is skipped gracefully (no throw),
+    // mirroring the other Stripe routes.
+    const stripe = getStripe();
+    if (stripe) {
+      const { data: billingRows, error: billingReadErr } = await sb
+        .from("profiles")
+        .select("stripe_customer_id")
+        .eq("id", userId);
+      if (billingReadErr && !isIgnorable(billingReadErr)) {
+        errors.push(`profiles_billing_read: ${billingReadErr.message}`);
+      }
+      const stripeCustomerId =
+        (billingRows?.[0]?.stripe_customer_id as string | null | undefined) ?? null;
+      if (stripeCustomerId) {
+        try {
+          const subs = await stripe.subscriptions.list({
+            customer: stripeCustomerId,
+            status: "all",
+            limit: 100,
+          });
+          for (const sub of subs.data) {
+            // Already-terminal subs bill nothing and error on cancel — skip.
+            if (sub.status === "canceled" || sub.status === "incomplete_expired") {
+              continue;
+            }
+            await stripe.subscriptions.cancel(sub.id);
+          }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "stripe_error";
+          errors.push(`stripe_subscription_cancel: ${msg}`);
+        }
+      }
+    }
+
     // 6. Profile row.
     const { error: profileErr } = await sb.from("profiles").delete().eq("id", userId);
     if (profileErr) errors.push(`profiles: ${profileErr.message}`);
@@ -204,6 +276,7 @@ export async function DELETE(req: Request) {
     //   - recipe_plan_add_events, food_reports, author_follows
     //   - nutrition_journals, profiles, private recipes + ingredients
     //   - food-evidence storage objects (step 5b)
+    //   - Stripe subscriptions cancelled (step 5c — ENG-1539)
     const { error: authErr } = await sb.auth.admin.deleteUser(userId);
     if (authErr) {
       console.error("[account/delete] auth.admin.deleteUser failed:", authErr.message);

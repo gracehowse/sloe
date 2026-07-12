@@ -21,6 +21,8 @@ import {
   type HouseholdData,
 } from "@suppr/shared/household/householdClient";
 import { avatarInitials } from "@suppr/shared/avatarInitials";
+// ENG-1540: local day-key — date_key rows use the LOCAL day, not UTC (web parity).
+import { dateKeyFromDate } from "@suppr/shared/datetime/dateKey";
 import ReceivedInvitesBanner from "@/components/household/ReceivedInvitesBanner";
 // Legal-approved copy + storage key (F-16, 2026-04-25). Imported from
 // the shared module so web + mobile can never silently diverge — the
@@ -274,9 +276,7 @@ export function HouseholdCard() {
   };
 
   if (!userId || loading) return null;
-
-  const todayKey = new Date().toISOString().slice(0, 10);
-
+  const todayKey = dateKeyFromDate(new Date());
   // One-time F-16 banner. Rendered only when the user has explicitly
   // loaded the card, has checked storage, and has not yet dismissed.
   const scopeBanner = scopeNoticeSeen === false ? (

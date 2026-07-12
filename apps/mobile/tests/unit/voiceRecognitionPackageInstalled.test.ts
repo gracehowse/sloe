@@ -57,4 +57,29 @@ describe("build-45/46 — voice recognition package + plugin + iOS purpose strin
     expect(v).toMatch(/Sloe/);
     expect(v).not.toMatch(/\$\(PRODUCT_NAME\)/);
   });
+
+  // ENG-1542 — the speech purpose string must not contradict the code.
+  // `listenForSpeech()` in apps/mobile/lib/voiceLog.ts does NOT pass
+  // `requiresOnDeviceRecognition: true`, so iOS may route audio to Apple's
+  // servers. An absolute on-device claim ("Audio stays on your phone") was
+  // therefore false. This couples the claim to the code: the string may only
+  // promise on-device processing if the code actually forces it.
+  it("speech purpose string does not claim on-device unless the code forces it", () => {
+    const infoPlist = cfg.expo?.ios?.infoPlist ?? {};
+    const purpose: string = infoPlist.NSSpeechRecognitionUsageDescription ?? "";
+    const voiceLog = readFileSync(
+      resolve(REPO, "apps/mobile/lib/voiceLog.ts"),
+      "utf8",
+    );
+    const forcesOnDevice = /requiresOnDeviceRecognition:\s*true/.test(voiceLog);
+    const claimsOnDevice = /on-device|on your phone|stays on your/i.test(purpose);
+    if (claimsOnDevice && !forcesOnDevice) {
+      throw new Error(
+        "NSSpeechRecognitionUsageDescription claims on-device speech, but " +
+          "voiceLog.ts does not set requiresOnDeviceRecognition:true — the " +
+          "string and the code contradict (ENG-1542).",
+      );
+    }
+    expect(claimsOnDevice && !forcesOnDevice).toBe(false);
+  });
 });

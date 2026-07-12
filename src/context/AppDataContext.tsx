@@ -56,12 +56,16 @@ import {
 } from "../lib/planning/planShoppingSyncHost.ts";
 import { useAuthSession } from "./AuthSessionContext.tsx";
 import {
-  dateKey,
   DEFAULT_MEAL_PLAN_SLOT_ID,
   loadSnapshot,
   newId,
   type MealPlanNamedSlot,
 } from "./appData/persistence.ts";
+// ENG-1540: seed "today" from the LOCAL calendar day, not UTC. The
+// persistence `dateKey` helper is `toISOString().slice(0,10)` (UTC) and
+// shifted the selected day for users behind UTC in the evening — meals
+// are keyed by the local day (`dateKeyFromDate`), so the two must match.
+import { dateKeyFromDate } from "@/lib/datetime/dateKey";
 import { FREE_SAVE_LIMIT } from "./appData/constants.ts";
 import { fetchAllUserSaves } from "@/lib/recipes/fetchAllUserSaves";
 import { NEUTRAL_AVATAR_DATA_URI } from "@/lib/ui/neutralAvatar";
@@ -613,7 +617,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [authedUserId, dbMealPlanEnabled],
   );
 
-  const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKey(new Date()));
+  const [selectedDateKey, setSelectedDateKey] = useState<string>(() => dateKeyFromDate(new Date()));
 
   // ENG-1364 (phase 2) — household is now owned by `HouseholdContext`
   // (mounted above `AppDataProvider` in `app/providers.tsx`, same pattern as

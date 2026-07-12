@@ -16,9 +16,30 @@ describe("ENG-1236 referral invite surface parity", () => {
     expect(mobile).toContain("ReferralRewardCard");
   });
 
-  it("keeps the flag registered default-on on both platforms", () => {
-    expect(read("src/lib/analytics/track.ts")).toContain('"referral_invite_loop_v1"');
-    expect(read("apps/mobile/lib/analytics.ts")).toContain('"referral_invite_loop_v1"');
+  // ENG-1541 — the referral card + landing page publicly promise "30 days of
+  // Pro" but no entitlement-grant path exists yet (needs a purchase rail).
+  // The flag was flipped DEFAULT-OFF to hide the unkeepable promise until the
+  // grant is wired. It must be registered on both platforms (for the
+  // KNOWN_DEFAULT_OFF_FLAGS parity check) but NOT in REDESIGN_DEFAULT_ON.
+  it("registers the flag DEFAULT-OFF on both platforms (ENG-1541)", () => {
+    const parseBlock = (src: string, marker: string, close: string) => {
+      const start = src.indexOf(marker);
+      expect(start, `${marker} block`).toBeGreaterThanOrEqual(0);
+      const end = src.indexOf(close, start);
+      expect(end, `${marker} close`).toBeGreaterThan(start);
+      const flags = new Set<string>();
+      for (const m of src.slice(start + marker.length, end).matchAll(/"([a-z0-9_-]+)"/g)) {
+        flags.add(m[1]);
+      }
+      return flags;
+    };
+    for (const path of ["src/lib/analytics/track.ts", "apps/mobile/lib/analytics.ts"]) {
+      const src = read(path);
+      const on = parseBlock(src, "REDESIGN_DEFAULT_ON = new Set<string>([", "]);");
+      const off = parseBlock(src, "KNOWN_DEFAULT_OFF_FLAGS = [", "] as const;");
+      expect(on.has("referral_invite_loop_v1"), `${path} REDESIGN_DEFAULT_ON`).toBe(false);
+      expect(off.has("referral_invite_loop_v1"), `${path} KNOWN_DEFAULT_OFF_FLAGS`).toBe(true);
+    }
   });
 
   it("stores referral codes from landing into web onboarding redemption", () => {
