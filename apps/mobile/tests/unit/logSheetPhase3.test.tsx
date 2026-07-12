@@ -644,6 +644,14 @@ describe("LogSheet (mobile) — S13 logged-confirmation (Figma 202:2)", () => {
         confirmation: { ...confirmation, kcalIsVerified: true, onDone: () => {} },
       });
       expect(second.getByText("130 kcal")).toBeTruthy();
+      second.unmount();
+      // ENG-1502 — explicit false (quick-add / history re-log / AI-describe
+      // paths, which can never claim verification) → the `~` qualifier, same
+      // as absent. The verified grammar is opt-in only.
+      const third = open({
+        confirmation: { ...confirmation, kcalIsVerified: false, onDone: () => {} },
+      });
+      expect(third.getByText("~130 kcal")).toBeTruthy();
     } finally {
       spy.mockRestore();
     }

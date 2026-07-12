@@ -62,6 +62,21 @@ const WEB_BARCODE_LOGGING = resolve(
   __dirname,
   "../../../../src/app/components/suppr/use-barcode-logging.tsx",
 );
+/**
+ * ENG-1502 (2026-07-10): two more screen-budget extractions out of the web
+ * surfaces — `buildGenericMatchRow` moved from the web FoodSearchPanel to
+ * `genericMatchRow.ts`, and the LogSheet food-search commit
+ * (`foodSelectionToMealMacros` call site) moved from NutritionTracker.tsx
+ * into the `useLogSheetFoodCommits` hook. Same logic, just relocated.
+ */
+const WEB_GENERIC_ROW = resolve(
+  __dirname,
+  "../../../../src/lib/nutrition/genericMatchRow.ts",
+);
+const WEB_LOG_SHEET_COMMITS = resolve(
+  __dirname,
+  "../../../../src/lib/nutrition/useLogSheetFoodCommits.ts",
+);
 const PARSER = resolve(__dirname, "../../../../src/lib/openFoodFacts/parseOffMicros.ts");
 
 const modalSrc = readFileSync(MOBILE_MODAL, "utf8");
@@ -80,6 +95,8 @@ const SRC = {
   webOffBarcode: readFileSync(WEB_OFF_BARCODE, "utf8"),
   webTracker: readFileSync(WEB_TRACKER, "utf8"),
   webBarcodeLogging: readFileSync(WEB_BARCODE_LOGGING, "utf8"),
+  webGenericRow: readFileSync(WEB_GENERIC_ROW, "utf8"),
+  webLogSheetCommits: readFileSync(WEB_LOG_SHEET_COMMITS, "utf8"),
   parser: readFileSync(PARSER, "utf8"),
 };
 
@@ -189,11 +206,12 @@ describe("ENG-738 — generic-food micros thread through both platforms", () => 
   });
 
   it("web buildGenericMatchRow attaches the baked micros + select branch threads them", () => {
-    expect(SRC.webSearch).toMatch(
-      /import\s*\{\s*genericFoodMicrosPer100g\s*\}\s*from\s*"@\/lib\/nutrition\/genericFoodMicros"/,
+    // ENG-1502 — buildGenericMatchRow extracted to genericMatchRow.ts.
+    expect(SRC.webGenericRow).toMatch(
+      /import\s*\{\s*genericFoodMicrosPer100g\s*\}\s*from\s*"\.\/genericFoodMicros"/,
     );
-    expect(SRC.webSearch).toMatch(/genericFoodMicrosPer100g\(food\.id\)/);
-    expect(SRC.webSearch).toMatch(
+    expect(SRC.webGenericRow).toMatch(/genericFoodMicrosPer100g\(food\.id\)/);
+    expect(SRC.webGenericRow).toMatch(
       /\.\.\.\(genericMicros\s*\?\s*\{\s*microsPer100g:\s*genericMicros\s*\}\s*:\s*\{\}\)/,
     );
     // The combined Generic select branch threads item.microsPer100g onward.
@@ -208,7 +226,8 @@ describe("ENG-738 — generic-food micros thread through both platforms", () => 
     // already handles OFF/USDA. Pin that the field name the commit reads
     // (`result.microsPer100g`) is what the generic branch now populates.
     expect(SRC.todayIndex).toMatch(/foodSelectionToMealMacros\(result\)/);
-    expect(SRC.webTracker).toMatch(/foodSelectionToMealMacros\(/);
+    // ENG-1502 — the web commit moved into the useLogSheetFoodCommits hook.
+    expect(SRC.webLogSheetCommits).toMatch(/foodSelectionToMealMacros\(/);
   });
 });
 
@@ -276,8 +295,11 @@ describe("F-79 — commit sites scale + write nutrition_micros", () => {
     expect(SRC.todayIndex).toMatch(/foodSelectionToMealMacros\(result\)/);
   });
 
-  it("web NutritionTracker food-search commit uses foodSelectionToMealMacros; barcode keeps scaleMicrosForGrams", () => {
-    expect(SRC.webTracker).toMatch(/foodSelectionToMealMacros/);
+  it("web food-search commit uses foodSelectionToMealMacros; barcode keeps scaleMicrosForGrams", () => {
+    // ENG-1502 — the food-search commit moved into the useLogSheetFoodCommits
+    // hook NutritionTracker consumes; assert the shared helper there.
+    expect(SRC.webLogSheetCommits).toMatch(/foodSelectionToMealMacros/);
+    expect(SRC.webTracker).toMatch(/useLogSheetFoodCommits\(/);
     // ENG-1360 — barcode commit (scaleMicrosForGrams) moved into the
     // useBarcodeLogging hook NutritionTracker renders; assert it there.
     expect(SRC.webBarcodeLogging).toMatch(/import\s*\{\s*scaleMicrosForGrams\s*\}/);

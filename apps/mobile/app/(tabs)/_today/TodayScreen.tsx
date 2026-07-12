@@ -13,6 +13,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useHaptics } from "@/hooks/useHaptics";
 import { showSignInAlert } from "@/lib/authAlertCopy";
+import { formatMealSourceLabelForRow, parseByDayNumberMap } from "@/lib/todayScreenRows";
 import { useToday } from "./useToday";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -307,45 +308,8 @@ function formatMealMacroDetail(m: JournalMeal): string {
   });
 }
 
-/** Compact source line under a meal title (matches web NutritionSourceBadge intent). */
-function formatMealSourceLabelForRow(source: string | null | undefined): string | null {
-  if (source == null || !String(source).trim()) return null;
-  const s = String(source).trim();
-  const low = s.toLowerCase();
-  if (low.includes("open food facts") && low.includes("adjusted")) return "OFF · adjusted";
-  if (low.includes("open food facts")) return "Open Food Facts";
-  if (low.includes("usda")) return "USDA";
-  if (low.includes("ai photo")) return "AI photo";
-  if (low.includes("ai voice")) return "AI voice";
-  if (low.includes("quick entry")) return "Quick entry";
-  if (low === "manual" || low.includes("manual")) return "Manual";
-  if (low.includes("meal plan")) return "Meal plan";
-  if (s.length <= 24) return s;
-  return `${s.slice(0, 22)}…`;
-}
-
-/** Supabase JSONB sometimes arrives as a string; normalize to a day → number map. */
-function parseByDayNumberMap(raw: unknown): Record<string, number> {
-  let obj: Record<string, unknown> | null = null;
-  if (raw == null) return {};
-  if (typeof raw === "string") {
-    try {
-      const p = JSON.parse(raw) as unknown;
-      if (p && typeof p === "object" && !Array.isArray(p)) obj = p as Record<string, unknown>;
-    } catch {
-      return {};
-    }
-  } else if (typeof raw === "object" && !Array.isArray(raw)) {
-    obj = raw as Record<string, unknown>;
-  }
-  if (!obj) return {};
-  const next: Record<string, number> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    const n = typeof v === "number" ? v : Number(v);
-    if (Number.isFinite(n)) next[k] = Math.round(n);
-  }
-  return next;
-}
+// ENG-1502 (screen-budget extraction): `formatMealSourceLabelForRow` +
+// `parseByDayNumberMap` moved to `@/lib/todayScreenRows` — same logic.
 
 /**
  * Extra kcal added to the food budget when `prefer_activity_adjusted_calories` is on.
@@ -3485,10 +3449,19 @@ export default function TrackerScreen() {
   }, [byDay, dayKey, userId]);
 
   const presentLogSheetConfirmation = useCallback(
-    (payload: { title: string; kcal: number; mealIds: string[] }) => {
+    (payload: {
+      title: string;
+      kcal: number;
+      mealIds: string[];
+      /** ENG-1502 — per-item trust bit; absent = honest `~` (ENG-1417). */
+      kcalIsVerified?: boolean;
+    }) => {
       setLogSheetConfirmation({
         title: payload.title,
         kcal: Math.round(payload.kcal),
+        ...(payload.kcalIsVerified !== undefined
+          ? { kcalIsVerified: payload.kcalIsVerified }
+          : {}),
         slot: activeMealSlot,
         onDone: () => {
           setLogSheetConfirmation(null);
@@ -3504,7 +3477,9 @@ export default function TrackerScreen() {
   );
 
   const commitLogSheetFoodSelection = useCallback(
-    (result: FoodSearchSelectedFood): { id: string; title: string; kcal: number } => {
+    (
+      result: FoodSearchSelectedFood,
+    ): { id: string; title: string; kcal: number; kcalIsVerified: boolean } => {
       const scaled = foodSelectionToMealMacros(result);
       const {
         calories: mealCalories,
@@ -3566,7 +3541,15 @@ export default function TrackerScreen() {
       } catch {
         // noop
       }
-      return { id: meal.id, title: result.name, kcal: mealCalories };
+      // ENG-1502 — the trust bit rides the selection from the search panel
+      // (true only for verified-USDA / Suppr-generic rows); the confirmation
+      // surface renders the unqualified kcal only when this is true.
+      return {
+        id: meal.id,
+        title: result.name,
+        kcal: mealCalories,
+        kcalIsVerified: result.verified === true,
+      };
     },
     [activeMealSlot, dayKey, persistMealsImmediate, profileTimeZone],
   );
@@ -3610,6 +3593,10 @@ export default function TrackerScreen() {
         title: item.recipeTitle,
         kcal: item.calories,
         mealIds: [meal.id],
+        // ENG-1502 — a history re-log copies a prior journal row, and the
+        // journal doesn't persist the ENG-1417 trust bit. Unknown trust must
+        // never read as confident → honest `~`.
+        kcalIsVerified: false,
       });
     },
     [activeMealSlot, dayKey, persistMealsImmediate, presentLogSheetConfirmation, profileTimeZone],
@@ -5076,6 +5063,8 @@ export default function TrackerScreen() {
               title: committed.title,
               kcal: committed.kcal,
               mealIds: [committed.id],
+              // ENG-1502 — verified DB hits drop the `~`; everything else keeps it.
+              kcalIsVerified: committed.kcalIsVerified,
             });
           },
           macroTargets: {
@@ -5301,6 +5290,9 @@ export default function TrackerScreen() {
                         : `${items.length} items logged`,
                     kcal: Math.round(totalKcal),
                     mealIds: [],
+                    // ENG-1502 — AI-parsed description = an estimate by
+                    // construction; never claims the verified grammar.
+                    kcalIsVerified: false,
                   });
                 },
               }

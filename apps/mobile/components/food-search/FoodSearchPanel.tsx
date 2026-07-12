@@ -130,6 +130,7 @@ import Badge from "../Badge";
 import { SearchResultConfidenceChip } from "../ui/SearchResultConfidenceChip";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { track } from "@/lib/analytics";
+import { parseQuantityText } from "@/lib/parseQuantityText";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { fetchFatSecretAutocomplete } from "@suppr/nutrition-core/fatsecretAutocompleteClient";
 import { shouldShowBarcodeFallbackHint } from "@suppr/nutrition-core/foodSearchLocale";
@@ -198,6 +199,11 @@ export type SelectedFood = {
   imageUrl?: string | null;
   /** ENG-772 — consumption instant from preview time picker. */
   eatenAt?: string;
+  /** ENG-1502 — per-item kcal trust bit from the picked row's `verified`
+   * flag (verified USDA / Suppr generic only). Hosts thread it to the
+   * confirmation's `kcalIsVerified`; absent = unverified (honest `~`,
+   * ENG-1417). Web mirror: `FoodSearchSelection.verified`. */
+  verified?: boolean;
 };
 
 export type SupabaseLike = { from: (table: string) => unknown };
@@ -451,6 +457,8 @@ export default function FoodSearchPanel({
     imageUrl?: string | null;
     /** ENG-976 — remembered photo/voice correction reuse cue. */
     showLearnedReuseCue?: boolean;
+    /** ENG-1502 — trust bit from the picked row (see `SelectedFood.verified`). */
+    verified?: boolean;
   } | null>(null);
   const [previewEatenAtTime, setPreviewEatenAtTime] = useState("12:00");
   const previewEatenAtEnabled =
@@ -717,6 +725,7 @@ export default function FoodSearchPanel({
           chosenPortion: portion,
           quantity,
           quantityText: String(quantity),
+          verified: item.verified === true, // ENG-1502 — row trust bit → selection
         });
         return;
       }
@@ -742,7 +751,8 @@ export default function FoodSearchPanel({
           );
           return;
         }
-        setPreview(preview);
+        // ENG-1502 — stamp the row's trust bit over the shared USDA builder.
+        setPreview({ ...preview, verified: item.verified === true });
       } else if (item._source === "OFF" && item.macrosPer100g) {
         setLoadingKey(null);
         const allPortions = buildPortions([], item.primaryServing);
@@ -760,6 +770,7 @@ export default function FoodSearchPanel({
           quantityText: String(quantity),
           barcode: item._offCode,
           imageUrl: item.imageUrl,
+          verified: item.verified === true,
         });
       } else if (item._source === "Edamam" && item.macrosPer100g) {
         // ENG-738 (2026-05-26) — fetch the full per-100g micronutrient
@@ -791,6 +802,7 @@ export default function FoodSearchPanel({
           quantity,
           quantityText: String(quantity),
           imageUrl: item.imageUrl,
+          verified: item.verified === true,
         });
       } else if (item._source === "FatSecret" && item._fatSecretFoodId) {
         // Lane-A (2026-04-30) — branded FatSecret rows usually surface
@@ -838,6 +850,7 @@ export default function FoodSearchPanel({
           quantity,
           quantityText: String(quantity),
           fatSecretFoodId: item._fatSecretFoodId,
+          verified: item.verified === true,
         });
       } else if (item._source === "CUSTOM" && item._custom) {
         setLoadingKey(null);
@@ -897,6 +910,7 @@ export default function FoodSearchPanel({
             portions: allPortions,
             chosenPortion: portion,
             quantity,
+            verified: item.verified === true,
           });
           return;
         }
@@ -916,6 +930,7 @@ export default function FoodSearchPanel({
             quantity,
             barcode: item._offCode,
             imageUrl: item.imageUrl,
+            verified: item.verified === true,
           });
           return;
         }
@@ -944,6 +959,7 @@ export default function FoodSearchPanel({
           commit({
             ...fields,
             quantity: fields.quantity,
+            verified: item.verified === true,
           });
           return;
         }
@@ -1083,30 +1099,12 @@ export default function FoodSearchPanel({
     [confirmAndDeleteCustomFood],
   );
 
-  const parseQuantityText = useCallback((text: string): number => {
-    const t = text.trim();
-    if (!t) return 0;
-    const fracMatch = t.match(/^(\d+)\s*\/\s*(\d+)$/);
-    if (fracMatch) {
-      const num = parseInt(fracMatch[1], 10);
-      const den = parseInt(fracMatch[2], 10);
-      if (den > 0) return num / den;
-    }
-    const mixedMatch = t.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
-    if (mixedMatch) {
-      const whole = parseInt(mixedMatch[1], 10);
-      const num = parseInt(mixedMatch[2], 10);
-      const den = parseInt(mixedMatch[3], 10);
-      if (den > 0) return whole + num / den;
-    }
-    const n = parseFloat(t);
-    return isNaN(n) ? 0 : n;
-  }, []);
-
+  // ENG-1502 (screen-budget extraction): `parseQuantityText` moved to
+  // `@/lib/parseQuantityText` — same fraction / mixed-number grammar.
   const onQuantityTextChange = useCallback((text: string) => {
     const num = parseQuantityText(text);
     setPreview((p) => p ? { ...p, quantityText: text, quantity: Math.max(0, num) } : p);
-  }, [parseQuantityText]);
+  }, []);
 
   // Build the canonical SelectedFood payload from the current preview. Fires
   // the custom-food-logged analytics for the CUSTOM source.
@@ -1147,6 +1145,8 @@ export default function FoodSearchPanel({
       ...(previewEatenAtEnabled && logDateKey
         ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime) }
         : {}),
+      // ENG-1502 — custom previews never set the bit → honest unverified.
+      verified: preview.verified === true,
     };
   }, [preview, previewEatenAtEnabled, logDateKey, previewEatenAtTime]);
 
