@@ -32,3 +32,55 @@ segmented controls.
 - `planner.tsx` day-of-week option pills (`dayBtn*`, ~L1801/L4005) — option-pill
   family; converts in a later slice with the day-cell ruling applied.
 - `ActivityLevelPreview.tsx:88` raw `+"15"` alpha — onboarding slice (S3).
+
+## Segmented controls — §8 track-and-thumb (S2/S3, ENG-1375, same day)
+
+**Ruling:** ONE segmented grammar, both platforms — the §8 track-and-thumb:
+
+- **Track:** full-radius quiet rail — `bg-muted` (web) / `colors.inputBg`
+  (mobile) — with the **2px inner pad** (`p-0.5` / the primitive's
+  `TRACK_PAD`). The 2px pad is a control-internal inset, not a layout rhythm
+  value; it lives only inside the primitives, never as a `Spacing` token.
+- **Thumb (active segment):** card-white, full-radius, + the **subtle 1px
+  shadow** (`shadow-sm` / shadowOpacity 0.08, radius 4, y+1). Legal under the
+  interactive-elevation carve-out
+  (`2026-07-10-card-grammar-rounder-flat.md`) — a thumb is feedback chrome,
+  not a resting card.
+- **Labels:** active = `primary-solid` **semibold**; inactive =
+  `textSecondary` / `muted-foreground` medium.
+- **Canonical primitives** (the ONLY way to render a segmented control):
+  - Web: `src/app/components/ui/segmented-track.tsx` (`tablist` or
+    `radiogroup`, roving tabindex + arrow-key movement).
+  - Mobile: `apps/mobile/components/ui/SegmentedTrack.tsx` (`PressableScale`
+    segments, `selection` haptic on actual change only).
+
+Extracted from the two conforming references (mobile `WeightRangeToggle` +
+`ProgressPeriodControl`).
+
+### Migrated in S2 (web) / S3 (mobile)
+
+- Web: `MacroDetailPanel` breakdown toggle, `ProgressDashboard` Trend/Scale
+  toggle, `progress-period-control.tsx` (the census's named divergent — it had
+  NO track, bare card segments + tint thumb; now tracked, restoring parity
+  with its mobile mirror), `onboarding/segmented.tsx` (square bordered track +
+  tint thumb → §8).
+- Mobile: `WeightRangeToggle` + `ProgressPeriodControl` (re-pointed at the
+  primitive they were extracted from), `app/macro-detail.tsx` breakdown
+  toggle, `SettingsBundleContent` `SegmentedRow` (square 8/6 rail on
+  `cardBorder` → §8), `onboarding/segmented.tsx` `MobileSegmented` (tint
+  thumb → card thumb; its consumers — height/weight steps,
+  `TrialEndReminderDayPicker` — inherit).
+
+### Intentionally different — not a gap
+
+- **CookMode's A−/A+ text-size stepper** (`src/app/components/CookMode.tsx`)
+  is a stepper (increment/decrement action pair), not a single-select
+  segmented control — it stays on its own treatment. Not §8.
+- **Web `settings-segmented.tsx`** (`SettingsSegmented`) is the 48px
+  option-row picker with per-option hint text — a two-line option-card form
+  control, not a slim track-and-thumb; it cannot carry a thumb without losing
+  its hints. Stays on treatment #9 (aubergine edge + soft tint). Its mobile
+  sibling (`SegmentedRow`, hint-less) DID migrate to §8 — the cross-platform
+  read is acceptable because the web rows carry hint copy the mobile rows
+  don't; if the hints ever move out, it converges to §8 (tracked: ENG-1375
+  epic scope note).

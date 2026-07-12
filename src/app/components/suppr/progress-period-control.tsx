@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../ui/utils";
+import { SegmentedTrack } from "../ui/segmented-track";
 import {
   PERIOD_TYPES,
   isCurrentPeriod,
@@ -21,10 +22,9 @@ import {
  * Mirror of `apps/mobile/components/progress/ProgressPeriodControl.tsx`.
  * Same shared period model, same segments, same labels.
  *
- *   1. Segmented control: D / W / M / 6M / Y in the chip grammar
- *      (selected = `bg-primary-soft` + `text-primary-solid` + semibold; the
- *      web equivalent of the mobile §8 treatment, matching the existing
- *      range-pill grammar already on ProgressDashboard).
+ *   1. Segmented control: D / W / M / 6M / Y rendered by the canonical §8
+ *      `SegmentedTrack` (ENG-1375 — full-radius muted rail, card-white thumb,
+ *      `primary-solid` semibold active label; identical to the mobile mirror).
  *   2. Paging row: ‹ label › — chevron buttons flank the period label. The
  *      forward chevron is disabled on the current period (no future).
  *
@@ -53,54 +53,26 @@ export function ProgressPeriodControl({
   const atCurrent = isCurrentPeriod(period);
   const label = periodLabel(period, weekStart, now);
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    e.preventDefault();
-    const idx = PERIOD_TYPES.indexOf(period.type);
-    if (idx < 0) return;
-    const nextType =
-      e.key === "ArrowRight"
-        ? PERIOD_TYPES[(idx + 1) % PERIOD_TYPES.length]
-        : PERIOD_TYPES[(idx - 1 + PERIOD_TYPES.length) % PERIOD_TYPES.length];
-    onChange(withPeriodType(period, nextType));
-  };
-
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      {/* 1. SEGMENTED CONTROL */}
-      <div
+      {/* 1. SEGMENTED CONTROL — the canonical §8 SegmentedTrack (ENG-1375 S2).
+          This control previously had NO track (bare card-filled segments with
+          a tint thumb) — the census's named web divergent from its own mobile
+          mirror. Now the full-radius muted rail + card-white thumb, restoring
+          parity. Arrow-key movement lives in the primitive. */}
+      <SegmentedTrack
         role="tablist"
-        aria-label="Progress time range"
-        data-testid="progress-period-segments"
-        onKeyDown={onKeyDown}
-        className="flex gap-1.5"
-      >
-        {PERIOD_TYPES.map((type) => {
-          const active = type === period.type;
-          return (
-            <button
-              key={type}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-label={periodTypeAccessibilityLabel(type)}
-              tabIndex={active ? 0 : -1}
-              data-testid={`progress-period-segment-${type}`}
-              onClick={() => {
-                if (type !== period.type) onChange(withPeriodType(period, type));
-              }}
-              className={cn(
-                "flex-1 rounded-full py-1.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                active
-                  ? "bg-primary-soft text-primary-solid font-semibold"
-                  : "bg-card text-muted-foreground font-medium hover:text-foreground",
-              )}
-            >
-              {type}
-            </button>
-          );
-        })}
-      </div>
+        ariaLabel="Progress time range"
+        testId="progress-period-segments"
+        options={PERIOD_TYPES.map((type) => ({
+          value: type,
+          label: type,
+          ariaLabel: periodTypeAccessibilityLabel(type),
+          testId: `progress-period-segment-${type}`,
+        }))}
+        value={period.type}
+        onChange={(type) => onChange(withPeriodType(period, type))}
+      />
 
       {/* 2. PERIOD PAGING — ‹ label › */}
       <div

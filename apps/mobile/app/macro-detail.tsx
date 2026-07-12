@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Plus, Salad } from "lucide-react-native";
 
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
+import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import { MacroIngredientList } from "@/components/nutrition/MacroIngredientList";
 import { NutritionDetailEmptyState } from "@/components/nutrition/NutritionDetailEmptyState";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -143,49 +144,20 @@ export default function MacroDetailScreen() {
             Rendered above the list so the user sees both modes at a
             glance even when "By ingredient" is the active view. */}
         {!loading && meals.length > 0 && supportsIngredientBreakdown && (
-          <View
+          <SegmentedTrack
+            role="tablist"
             testID="macro-detail-breakdown-toggle"
-            accessibilityRole="tablist"
             accessibilityLabel="Breakdown mode"
-            style={{
-              flexDirection: "row",
-              padding: 2, // §8 track padding (chips census 2026-06-10)
-              backgroundColor: colors.inputBg,
-              borderRadius: Radius.full,
-              marginBottom: Spacing.md,
-            }}
-          >
-            {(["meal", "ingredient"] as const).map((mode) => {
-              const isActive = breakdownMode === mode;
-              return (
-                <Pressable
-                  key={mode}
-                  testID={`macro-detail-toggle-${mode}`}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: isActive }}
-                  accessibilityLabel={mode === "meal" ? "By meal" : "By ingredient"}
-                  onPress={() => setBreakdownMode(mode)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 8,
-                    borderRadius: Radius.full,
-                    backgroundColor: isActive ? colors.card : "transparent",
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: isActive ? "700" : "500",
-                      color: isActive ? colors.text : colors.textSecondary,
-                    }}
-                  >
-                    {mode === "meal" ? "By meal" : "By ingredient"}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+            options={(["meal", "ingredient"] as const).map((mode) => ({
+              value: mode,
+              label: mode === "meal" ? "By meal" : "By ingredient",
+              accessibilityLabel: mode === "meal" ? "By meal" : "By ingredient",
+              testID: `macro-detail-toggle-${mode}`,
+            }))}
+            value={breakdownMode}
+            onChange={setBreakdownMode}
+            style={{ marginBottom: Spacing.md }}
+          />
         )}
 
         {loading ? (
