@@ -15,6 +15,7 @@ import {
 import { persistOnboarding } from "@suppr/shared/onboarding/persist";
 import { clearLogsAndWeightHistory } from "@suppr/shared/account/nukeAccountData";
 import { firstLogDeepLinkQs } from "@suppr/shared/onboarding/conversionFunnel";
+import { writeOnboardingCompletedCache } from "@/lib/onboardingCompletedCache";
 import { STEP_IDS, type OnboardingState, type V2Targets } from "@/lib/onboarding";
 
 export type PersistAndSeedResult =
@@ -133,6 +134,15 @@ export function useOnboardingCompletion({
             : "We couldn't save your plan. Please try again.",
         );
       }
+
+      // ENG-1515 — cache the confirmed completion for the (tabs) onboarding
+      // gate's fast path (the `persistOnboarding` upsert above just wrote
+      // `onboarding_completed = true`). Without this, a just-completed user's
+      // first (tabs) mount hits the strict gate with no cache; a slow/errored
+      // post-completion DB check resolves to "unavailable" and could bounce
+      // them back to /onboarding. Writing here (before both the trial-path
+      // paywall push and the free-path navigation) closes that window.
+      void writeOnboardingCompletedCache(userId);
 
       // Activation hook (audit 2026-04-30): the Recipes step was pulled
       // from the linear flow in the 15→12 shrink, so for a normal

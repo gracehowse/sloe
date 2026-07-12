@@ -95,5 +95,11 @@ describe("mobile login chooser — Figma 296:2", () => {
     expect(SRC).toMatch(/testID="login-back"/);
     expect(SRC).toMatch(/setView\("chooser"\)/);
     expect(SRC).toMatch(/setView\("email"\)/);
+    // ENG-1514: the ✕ only renders when login was PUSHED onto a stack — a
+    // root session-less launch has no destination, so no stray close; and
+    // it pops back in-app rather than opening Safari.
+    expect(SRC).toMatch(/router\.canGoBack\(\) &&/);
+    expect(SRC).toMatch(/onPress={\(\) => router\.back\(\)}/);
+    expect(SRC).not.toMatch(/login-close[\s\S]{0,300}Linking\.openURL/);
   });
 });

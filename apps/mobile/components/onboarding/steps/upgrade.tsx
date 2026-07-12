@@ -33,7 +33,9 @@ import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
 export function UpgradeStep() {
-  const { state, set, complete, persist } = useOnboarding();
+  // ENG-1516 made the price card static, so `state.trialChoice` is no longer
+  // read here; ENG-1507's persist-before-paywall flow still needs `persist`.
+  const { set, complete, persist } = useOnboarding();
   const colors = useThemeColors();
   const accent = useAccent();
   const router = useRouter();
@@ -97,13 +99,18 @@ export function UpgradeStep() {
         subtitle="Try Sloe Pro free for 7 days — unlimited saved recipes, multi-day macro-matched meal plans, and AI photo & voice logging. Cancel anytime. No payment due now."
       />
 
-      <PressableScale
-        haptic="selection"
-        onPress={() => set({ trialChoice: "trial" })}
+      {/* Static price callout (ENG-1516) — deliberately NON-interactive.
+          It was a PressableScale whose tap toggled a `trialChoice`
+          selected-highlight that nothing consumed (not persisted, never
+          read by either CTA, couldn't be deselected) — a dead affordance
+          dressed as a choice. The step keeps exactly two affordances:
+          "Start free trial" + "Continue on Free" below (legal C4).
+          Mirrors the same fix on the web twin. */}
+      <View
         style={{
           borderWidth: 1,
-          borderColor: state.trialChoice === "trial" ? colors.navPrimary : colors.border,
-          borderRadius: 12,
+          borderColor: colors.border,
+          borderRadius: Radius.xl,
           padding: Spacing.md,
           marginBottom: Spacing.sm,
         }}
@@ -125,7 +132,7 @@ export function UpgradeStep() {
             </Text>
           </View>
         </View>
-      </PressableScale>
+      </View>
 
       <PressableScale
         haptic="confirm"

@@ -6,6 +6,7 @@ import { syncProfileTimezone } from "@suppr/shared/profile/tzSync";
 import { setUser as sentrySetUser, clearUser as sentryClearUser } from "@/lib/errorTracking";
 import { identify as posthogIdentify, reset as posthogReset } from "@/lib/analytics";
 import { clearUserScopedAsyncStorage } from "@/lib/clearUserScopedStorage";
+import { markHasSignedInBefore } from "@/lib/hasSignedInBefore";
 
 /**
  * P1-13 (2026-04-25): keep Sentry + PostHog user context in sync with
@@ -81,6 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       syncObservabilityUser(s);
       if (s?.user?.id) {
         void syncProfileTimezone(supabase, s.user.id);
+        // ENG-1514: device-scoped marker — once ANY session has existed here,
+        // the login email form defaults to sign-in instead of create.
+        markHasSignedInBefore();
       }
       // 2026-05-05 (audit Y02) — clear non-profile AsyncStorage keys
       // when the user signs out so the next sign-in (potentially as a

@@ -1,5 +1,5 @@
 import { Tabs, Redirect, useRouter, usePathname } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View } from 'react-native';
 import { AppLaunchScreen } from '@/components/AppLaunchScreen';
 import { AnalyticsConsentPrompt } from '@/components/consent/AnalyticsConsentPrompt';
@@ -14,7 +14,7 @@ import { tabBarOuterHeight } from '@/hooks/useTabBarClearance';
 import { useAuth } from '@/context/auth';
 import { useAccent } from '@/context/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { supabase } from '@/lib/supabase';
+import { useOnboardingGate } from '@/hooks/useOnboardingGate';
 
 /**
  * Phase 2 / B1.1 — tab structure collapses 6 → 4 (2026-04-27 strategic
@@ -61,42 +61,18 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname() ?? '';
-  // Assume complete until profiles says otherwise — never block tab mount
-  // on a network fetch (device hangs showed endless launch screens).
-  const [onboardingCompleted, setOnboardingCompleted] = useState(true);
-
-  useEffect(() => {
-    if (!session?.user?.id) return;
-    let cancelled = false;
-    const PROFILE_ONBOARDING_TIMEOUT_MS = 8000;
-    const userId = session.user.id;
-
-    (async () => {
-      try {
-        const timedOut = Symbol('profile_onboarding_timeout');
-        const result = await Promise.race([
-          supabase
-            .from('profiles')
-            .select('onboarding_completed')
-            .eq('id', userId)
-            .maybeSingle(),
-          new Promise<typeof timedOut>((resolve) => {
-            setTimeout(() => resolve(timedOut), PROFILE_ONBOARDING_TIMEOUT_MS);
-          }),
-        ]);
-        if (cancelled || result === timedOut) return;
-        const { data } = result;
-        if (data?.onboarding_completed !== true) {
-          setOnboardingCompleted(false);
-        }
-      } catch {
-        // Keep default true on error — same as timeout path.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.user?.id]);
+  // ENG-1515 — onboarding gate, extracted to `useOnboardingGate`.
+  // Cache-aware: a user with a locally cached completion
+  // (`suppr.onboarding-completed:<userId>`) keeps the instant tab mount
+  // (the pre-fix behaviour, offline-safe); a session with NO cached
+  // completion blocks on the launch screen and routes to /onboarding on
+  // timeout/error instead of assuming complete — the old optimistic
+  // default silently skipped onboarding for brand-new users whenever the
+  // profile fetch was slow or failed. Kill switch:
+  // `onboarding_gate_strict_v1` (isFeatureDisabled → legacy optimistic
+  // gate; the "endless launch screen" device-hang history is why the
+  // escape hatch exists).
+  const onboardingGate = useOnboardingGate(session?.user?.id ?? null);
 
   if (loading) {
     return <AppLaunchScreen message="Checking your account…" />;
@@ -106,7 +82,15 @@ export default function TabLayout() {
     return <Redirect href="/login" />;
   }
 
-  if (!onboardingCompleted) {
+  if (onboardingGate === 'pending') {
+    // Same launch screen the auth check above just showed — continuous,
+    // no flash. Cached users pass in ~1 frame (one local AsyncStorage
+    // read); only a session with no cached completion waits on the
+    // profile fetch (≤8s), and only until its first confirmation lands.
+    return <AppLaunchScreen message="Checking your account…" />;
+  }
+
+  if (onboardingGate === 'onboarding') {
     return <Redirect href="/onboarding" />;
   }
 

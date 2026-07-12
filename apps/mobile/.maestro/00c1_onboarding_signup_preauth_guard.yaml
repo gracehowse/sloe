@@ -20,8 +20,8 @@
 # MANUAL CHECK (when a signed-out sim isn't available in CI):
 #   1. Reach the Signup step signed out (Welcome → Continue).
 #   2. Confirm there is NO email input field, only "Sign in with Apple"
-#      plus an optional First name and the "Email sign-up is coming soon"
-#      note.
+#      plus an optional First name and the Terms/Privacy fine print
+#      (no "coming soon" email promise — removed in ENG-1516).
 #   3. Confirm there is NO bottom Continue button on this step (it is
 #      suppressed — the Apple button is the only forward affordance).
 #   4. Without signing in, confirm you cannot advance to the Goal step
@@ -50,11 +50,15 @@ name: "Onboarding — signup pre-auth guard (ENG-672)"
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/latest/onb-672-02-signup
 
-# Honest path: Apple Sign-In present; email field absent.
+# Honest path: Apple Sign-In present; email field absent. ENG-1516 —
+# the "coming soon" email promise was removed (it never shipped); the
+# fine print is the Terms/Privacy line only.
 - assertVisible: "Sign in with Apple"
 - assertNotVisible: "you@example.com"
 - assertVisible:
-    text: ".*Email sign-up is coming soon.*"
+    text: ".*Terms and Privacy.*"
+- assertNotVisible:
+    text: ".*coming soon.*"
 
 # The footer Continue is suppressed on Signup — there must be no
 # enabled "Continue" affordance to leap the auth handshake.
