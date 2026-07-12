@@ -1,0 +1,126 @@
+# PostHog ingestion heartbeat (ENG-1471 item 3 — alerting.md Alarm 7, PRA-005).
+#
+# Why this exists
+#   Between 2026-04-21 and 2026-05-11 PostHog ingestion was silently broken
+#   for three weeks — zero events, nobody noticed, because "no data" looks
+#   identical to "no users" on every dashboard. Alarm 7 closes that class:
+#   a PostHog Insight Alert ("app_heartbeat absent (ingestion liveness) —
+#   ENG-1471 alarm 7", insight 5GNonvqs) fires hourly when the completed
+#   hour contains zero `app_heartbeat` events. This workflow is the emitter
+#   that alert watches: a synthetic event POSTed every 15 minutes, so a
+#   healthy hour always contains ~4 and a single missed cron run can never
+#   false-positive the absence alert.
+#
+#   Why a GitHub Actions cron and not a client-side event (the original
+#   Alarm 7 sketch): a client-fired heartbeat conflates "ingestion down"
+#   with "no sessions right now" — at current traffic (solo tester) hours
+#   with zero real sessions are normal and would fire the alert nightly. A
+#   synthetic emitter isolates exactly one failure domain: the PostHog
+#   capture pipeline itself. Vercel crons were rejected for this the same
+#   way they were for scheduled-crons.yml — Hobby rejects sub-daily
+#   schedules.
+#
+#   Auth: none needed. This uses the PUBLIC project API key (the same
+#   `phc_…` token shipped in every client bundle via NEXT_PUBLIC_POSTHOG_KEY)
+#   against the public capture endpoint — it can only write events, same as
+#   any browser. No secret to provision, nothing to rotate, and the repo
+#   being public leaks nothing that isn't already in the client JS.
+#
+#   Cost: the repo is public → Actions minutes are free. Event volume is
+#   ~96/day (~2.9k/month) against the 1M free tier, and the payload sets
+#   `$process_person_profile: false` so the synthetic distinct_id never
+#   creates a person profile.
+#
+#   Cadence note: GitHub schedules high-frequency crons best-effort — runs
+#   can slip a few minutes under load. That's fine here: the alert needs
+#   ≥1 event per completed HOUR; */15 leaves 4x headroom.
+#
+# Failure alerting: a failed POST (after retries) files/updates ONE deduped
+# GitHub issue via the scheduled-cron-failure label (ENG-1400 pattern).
+# Note the two failure domains are complementary: this issue fires when the
+# EMITTER can't reach PostHog (Actions outage, endpoint change); Alarm 7
+# fires when events stop ARRIVING (ingestion pipeline down) — which also
+# covers the emitter being broken, so Alarm 7 is the backstop for both.
+
+name: PostHog heartbeat
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 min — see cadence rationale above
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write # dedup failure-issue alerting (ENG-1400 pattern)
+
+concurrency:
+  group: posthog-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST app_heartbeat to PostHog capture
+        run: |
+          set -euo pipefail
+          # Public project key — intentionally not a secret (see header).
+          payload=$(printf '{
+            "api_key": "phc_yCobaLpX93MdmGkLDM33xKr5DRvUx2JaGJvjJ7jUR79E",
+            "event": "app_heartbeat",
+            "distinct_id": "heartbeat-cron",
+            "properties": {
+              "$process_person_profile": false,
+              "source": "github-actions",
+              "run_id": "%s"
+            }
+          }' "$GITHUB_RUN_ID")
+          for attempt in 1 2 3; do
+            status=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+              --max-time 20 \
+              -X POST "https://us.i.posthog.com/i/v0/e/" \
+              -H "Content-Type: application/json" \
+              -d "$payload") && [ "$status" = "200" ] && {
+                echo "Heartbeat accepted (attempt $attempt): $(cat /tmp/resp.json)"
+                exit 0
+              }
+            echo "Attempt $attempt failed (HTTP ${status:-network-error}): $(cat /tmp/resp.json 2>/dev/null || true)"
+            sleep $((attempt * 10))
+          done
+          echo "::error::All 3 heartbeat POST attempts failed."
+          exit 1
+
+      # ENG-1400 dedup pattern — a run of failures becomes ONE issue.
+      - name: Open or update failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh label create scheduled-cron-failure --color B60205 \
+            --description "A scheduled cron failed (ENG-1400)" 2>/dev/null || true
+          existing=$(gh issue list --label scheduled-cron-failure --state open \
+            --search "\"cron-target:posthog-heartbeat\" in:body" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body \
+              "🔴 posthog-heartbeat failed again — run: $RUN_URL (\`$(date -u '+%Y-%m-%d %H:%M UTC')\`)."
+          else
+            gh issue create \
+              --title "🚨 PostHog heartbeat emitter failing" \
+              --label scheduled-cron-failure \
+              --body "$(printf '%s\n' \
+                "The PostHog ingestion heartbeat (\`.github/workflows/posthog-heartbeat.yml\`, ENG-1471 Alarm 7) failed after 3 retries." \
+                "" \
+                "**Failing run:** $RUN_URL" \
+                "" \
+                "If the emitter stays down for a full hour, the PostHog absence alert (Alarm 7) fires too — that pair distinguishes emitter-broken from ingestion-broken." \
+                "" \
+                "This issue is deduped: while it stays open, further failures comment here. Close once a run is green." \
+                "" \
+                "cron-target:posthog-heartbeat" \
+                "" \
+                "_Opened automatically by \`.github/workflows/posthog-heartbeat.yml\` (ENG-1471)._")"
+          fi

@@ -1,0 +1,16 @@
+# Gitleaks config for sloe. EXTENDS the default ruleset (does not replace it)
+# and allowlists exactly one value: the PUBLIC PostHog project capture key.
+#
+# PostHog `phc_…` keys are client-side, write-only capture tokens — they ship
+# in every web client bundle via NEXT_PUBLIC_POSTHOG_KEY and are safe to expose
+# (they can send events, not read data). This specific key is referenced by
+# .github/workflows/posthog-heartbeat.yml (ENG-1471) and the PostHog MCP config.
+# The allowlist is scoped to the exact string, so any OTHER secret is still caught.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public PostHog capture key (phc_…) — write-only client token, not a secret (ENG-1471)"
+regexes = [
+  '''phc_yCobaLpX93MdmGkLDM33xKr5DRvUx2JaGJvjJ7jUR79E''',
+]
