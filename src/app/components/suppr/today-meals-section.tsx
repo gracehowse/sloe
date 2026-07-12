@@ -706,13 +706,11 @@ export function TodayMealsSection({
                       }
                     >
                     <div
-                      // Audit 2026-04-30 visual-qa P1 #11 — the inline
-                      // 56px padding overrode the Tailwind `px-4` and
-                      // diverged from the slot header (`px-3.5` = 14px),
-                      // creating a 42px nesting indent without any
-                      // visual connector. Align to the slot header so
-                      // meals read as flat list items under the header.
-                      className={`flex items-center justify-between py-2.5 pl-3.5 pr-4 border-b border-border/10${
+                      data-testid={`today-meal-row-${meal.id}`}
+                      // `pl-3.5` aligns rows to the slot header (visual-qa P1 #11).
+                      // ENG-1524 — real hairline divider (full `border-border`, no
+                      // `/10` alpha; the old 10% was near-invisible).
+                      className={`flex items-center justify-between py-2.5 pl-3.5 pr-4 border-b border-border${
                         todayMealRowPressClass(Boolean(onOpenMealNutrition))
                       }`}
                     >
@@ -736,17 +734,19 @@ export function TodayMealsSection({
                             />
                           );
                         })()}
-                        <span className="text-sm text-foreground truncate">{meal.recipeTitle}</span>
-                        {/* 2026-05-22 (Grace, mirrored to web 2026-05-31): the
-                            per-meal source badge (`✓ Verified` / `✎ Manual`
-                            dingbats) was deliberately removed from the meal row
-                            on mobile — provenance lives on the meal detail page,
-                            and the badge cluttered the scannable row. Web now
-                            matches by not rendering NutritionSourceBadge here.
-                            The component is still exported for other surfaces. */}
+                        {/* ENG-1524 — name demoted to secondary ink (↔ mobile). */}
+                        <span className="text-sm text-muted-foreground truncate">{meal.recipeTitle}</span>
+                        {/* Source badge removed (Grace 2026-05-22) — it lives on the meal detail page. */}
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
-                        <span className="text-xs text-muted-foreground tabular-nums">{Math.round(meal.calories)}</span>
+                        {/* ENG-1524 — kcal is the tracker's point: promoted to the
+                            headline font (text-lg, primary, tabular-nums); "kcal" a tertiary suffix. */}
+                        <span className="flex items-baseline gap-0.5">
+                          <span data-testid={`today-meal-kcal-${meal.id}`} className="font-[family-name:var(--font-headline)] text-lg font-medium text-foreground tabular-nums">
+                            {Math.round(meal.calories)}
+                          </span>
+                          <span className="text-[11px] text-foreground-tertiary">kcal</span>
+                        </span>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button
