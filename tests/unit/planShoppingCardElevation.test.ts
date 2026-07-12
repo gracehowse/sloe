@@ -16,9 +16,10 @@
  *   - Mobile Plan (planner.tsx): summary card + setup/"Plan your week" slab
  *     (both spread the soft `cardElevation`); PlanEmptyState.tsx (its own soft
  *     spread).
- *   - Mobile Shopping (shopping.tsx): progress + section cards already lift
- *     soft via `cardOuter` (`Elevation.cardSoft`) — pinned here so a regression
- *     to flat breaks a test.
+ *   - Mobile Shopping (shopping.tsx): progress + section cards are FLAT (ENG-1497
+ *     one-card grammar) — the shared `card` style (24px `Radius.card`, hairline
+ *     border, no shadow); pinned here so a regression to a soft shadow breaks a
+ *     test.
  *
  * Kept FLAT (deliberate — recorded so a future "make everything soft" sweep
  * doesn't wrongly flip them):
@@ -110,15 +111,16 @@ describe("Plan — mobile page-ground cards lift soft (one-treatment)", () => {
 describe("Shopping — mobile page-ground cards are FLAT (flat-card surfaces 2026-06-12)", () => {
   // Flat-card surfaces (2026-06-12, Withings grammar — decision:
   // docs/decisions/2026-06-12-flat-card-surfaces.md) supersedes the soft-lift
-  // half of the 2026-06-09 one-treatment decision. The mobile Shopping progress
-  // + section cards no longer carry `Elevation.cardSoft` on `cardOuter`; the
-  // card fill on the cream ground is the separation. The outer/inner split is
-  // kept as a flat radius holder so the section call sites need no churn.
-  it("cardOuter no longer carries Elevation.cardSoft (flat)", () => {
+  // half of the 2026-06-09 one-treatment decision, and the ENG-1497 one-card
+  // grammar (2026-07-10) folded the old `cardOuter`/`cardInner` split into a
+  // single flat `card` style (24px `Radius.card`, hairline border, no shadow).
+  // The mobile Shopping progress + section cards carry no `Elevation.cardSoft`;
+  // the card fill on the cream ground is the separation.
+  it("shopping cards are flat — no Elevation.cardSoft, shared flat card style", () => {
     expect(MOBILE_SHOPPING).not.toContain("...Elevation.cardSoft");
-    // cardOuter is still applied to BOTH the progress card and each section
-    // card — flat now, but the structural wrapper persists.
-    const usages = (MOBILE_SHOPPING.match(/styles\.cardOuter/g) ?? []).length;
+    // The shared flat `card` style is applied to BOTH the progress card and
+    // each section card.
+    const usages = (MOBILE_SHOPPING.match(/styles\.card\b/g) ?? []).length;
     expect(usages).toBeGreaterThanOrEqual(2);
   });
 });
