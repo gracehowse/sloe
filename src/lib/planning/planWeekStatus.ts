@@ -89,8 +89,12 @@ export interface PlanWeekVerdict {
   headline: string;
   /** Nudge subline, or `null` when every day lands. */
   subline: string | null;
-  /** Verdict dot/headline tone — `success` only when every day lands. */
-  tone: "success" | "warning";
+  /** Verdict dot tone. `success` (green) when every day lands; `neutral`
+   *  (calm dot) while a plan is still filling in — "On track" is progress,
+   *  not a problem, so it must NOT wear the amber warning dot (ENG-1557...
+   *  ENG-1547: the "On track" + amber contradiction). `warning` is reserved
+   *  for a genuine problem state (none is currently emitted at week level). */
+  tone: "success" | "neutral" | "warning";
 }
 
 /**
@@ -119,7 +123,9 @@ export function computePlanWeekVerdict(
     subline: allLand
       ? null
       : `${remaining} ${remaining === 1 ? "day needs" : "days need"} a meal or swap`,
-    tone: allLand ? "success" : "warning",
+    // ENG-1547 — a partially-filled week is progress, not a warning: "On
+    // track — N of M days land" pairs with a calm neutral dot, not amber.
+    tone: allLand ? "success" : "neutral",
   };
 }
 

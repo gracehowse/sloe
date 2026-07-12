@@ -73,13 +73,22 @@ export function FirstRunChecklist({ onNavigate }: FirstRunChecklistProps) {
       localStorage.setItem(DISMISSED_KEY, "1");
       track(AnalyticsEvents.onboarding_checklist_completed);
 
-      // When the flag is on, fire the toast at most once per user.
+      // ENG-1548 — the once-per-user guard is UNCONDITIONAL: `TOAST_SHOWN_KEY`
+      // must suppress the toast on every subsequent load regardless of the
+      // flag. Previously `alreadyShown` sat inside the `toastGateOn && (...)`
+      // clause, so with the flag off the toast re-fired on every page load
+      // that completed onboarding (the green "You're all set" toast the
+      // critique caught stacking on every tab).
       const alreadyShown = typeof window !== "undefined" && localStorage.getItem(TOAST_SHOWN_KEY) === "1";
+      if (alreadyShown) return;
+
+      // Flag-only extra gate (behaviour unchanged from before ENG-1548):
+      // when the flag is on, suppress on the Today route.
       const onToday =
         typeof window !== "undefined" &&
         (window.location.pathname === "/today" ||
           window.location.pathname.endsWith("/today"));
-      if (toastGateOn && (alreadyShown || onToday)) return;
+      if (toastGateOn && onToday) return;
 
       toast.success("You're all set. Keep logging on Today — recipes and plans are there when you want them.", { duration: 5000 });
       if (typeof window !== "undefined") localStorage.setItem(TOAST_SHOWN_KEY, "1");

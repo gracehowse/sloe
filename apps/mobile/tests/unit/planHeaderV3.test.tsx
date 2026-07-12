@@ -31,7 +31,7 @@ const partial: PlanWeekVerdict = {
   total: 7,
   headline: "On track — 4 of 7 days land",
   subline: "3 days need a meal or swap",
-  tone: "warning",
+  tone: "neutral",
 };
 const win: PlanWeekVerdict = {
   daysHit: 7,

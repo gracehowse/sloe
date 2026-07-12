@@ -6,7 +6,7 @@ import { Flame, ShoppingCart, Sparkles } from "lucide-react";
 import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 import { formatQualifiedKcal } from "@/lib/nutrition/formatMacro";
-import type { PlanWeekVerdict } from "@/lib/planning/planWeekStatus";
+import { isPlanWeekEmpty, type PlanWeekVerdict } from "@/lib/planning/planWeekStatus";
 import {
   isPlanMealCooked,
   journalEntriesForPlanDate,
@@ -265,11 +265,27 @@ export function PlanV3WebDashboard({
   const stats = useWeekStats(plan, targetKcal);
   const openDays = useOpenSlots(plan, weekDates);
 
+  // ENG-1547 — law 3 (ENG-1372): a week with nothing planned yet shows NO
+  // verdict ("0 of 7 days land" is derived noise on an empty week, and it
+  // duplicates the 0/7 stat below). Mobile's PlanV3Surface already gates
+  // this; the desktop dashboard never did. Same predicate + flag as mobile.
+  const weekIsEmpty =
+    isFeatureEnabled("empty_state_grammar_v1") &&
+    isPlanWeekEmpty(
+      plan.map((dp) =>
+        dp.meals.map((m, j) => ({
+          slot: ALL_MEAL_SLOTS[j] ?? "Snacks",
+          kcal: m.calories,
+          empty: m.isPlaceholder,
+        })),
+      ),
+    );
+
   return (
     <div>
       <PlanHeaderV3
         dateRangeLabel={weekLabel}
-        verdict={verdict}
+        verdict={weekIsEmpty ? null : verdict}
         onGenerate={onGenerate}
         onAdjust={onAdjust}
         onTemplates={onTemplates}

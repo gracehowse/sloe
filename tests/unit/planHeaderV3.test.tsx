@@ -20,7 +20,7 @@ const partial: PlanWeekVerdict = {
   total: 7,
   headline: "On track — 4 of 7 days land",
   subline: "3 days need a meal or swap",
-  tone: "warning",
+  tone: "neutral",
 };
 const win: PlanWeekVerdict = {
   daysHit: 7,
@@ -48,6 +48,17 @@ describe("PlanHeaderV3 (web)", () => {
     const { getByText } = render(<PlanHeaderV3 {...baseProps} verdict={partial} />);
     expect(getByText("On track — 4 of 7 days land")).not.toBeNull();
     expect(getByText("3 days need a meal or swap")).not.toBeNull();
+  });
+
+  it("ENG-1547 — 'On track' (neutral) pairs with the calm dot, NOT the amber warning dot", () => {
+    const { container } = render(<PlanHeaderV3 {...baseProps} verdict={partial} />);
+    const dot = container.querySelector(".size-2.rounded-full") as HTMLElement | null;
+    expect(dot).not.toBeNull();
+    expect(dot!.style.backgroundColor).toBe("var(--foreground-tertiary)");
+    // The win state still uses the success dot.
+    const { container: winC } = render(<PlanHeaderV3 {...baseProps} verdict={win} />);
+    const winDot = winC.querySelector(".size-2.rounded-full") as HTMLElement | null;
+    expect(winDot!.style.backgroundColor).toBe("var(--accent-success)");
   });
 
   it("renders the win verdict with no nudge subline", () => {

@@ -90,7 +90,9 @@ export function PlanHeaderV3({
               backgroundColor:
                 verdict.tone === "success"
                   ? "var(--accent-success)"
-                  : "var(--warning)",
+                  : verdict.tone === "warning"
+                    ? "var(--warning)"
+                    : "var(--foreground-tertiary)",
             }}
           />
           <span className="text-[13px] font-semibold leading-[18px] text-foreground">
