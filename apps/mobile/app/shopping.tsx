@@ -63,10 +63,12 @@ import { isFeatureEnabled } from "@/lib/analytics";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { ShoppingLoadingSkeleton } from "@/components/shopping/ShoppingLoadingSkeleton";
+import { ShoppingUpdateFromPlanBanner } from "@/components/shopping/ShoppingUpdateFromPlanBanner";
 import { Layout } from "@/constants/layout";
 
 type ShoppingItem = {
@@ -111,6 +113,9 @@ async function raceShoppingQuery<T>(
 
 export default function ShoppingListScreen() {
   const colors = useThemeColors();
+  // Page-ground card grammar (ENG-1497 / ENG-1527): flat + hairline in light,
+  // tonal lift + hairline in dark — shared with Plan / Progress / Today.
+  const cardElevation = useCardElevation({ variant: "soft" });
   // Secondary accent (Frost flag → damson, else clay) for the progress count +
   // fill, checked checkboxes, primary CTAs, household icon, and empty-state
   // cart glyph. Threaded into the memoised StyleSheet via the dep array below.
@@ -582,22 +587,20 @@ export default function ShoppingListScreen() {
       color: colors.text,
     },
 
-    // Sloe DS — cream slab; soft xl radius to match the Plan-tab cards.
-    // Flat-card surfaces (2026-06-12, Withings grammar — decision:
-    // docs/decisions/2026-06-12-flat-card-surfaces.md): these cards sit FLAT
-    // now to match Today/Plan (whose primitives flattened in the CORE) — the
-    // soft outer lift (`Elevation.cardSoft`) is retired; the card fill on the
-    // cream ground is the separation. The outer/inner split is kept (harmless
-    // radius holder) so the section-card call sites need no churn.
-    cardOuter: {
-      borderRadius: Radius.xl,
-    },
+    // Page-ground card — ONE card grammar (ENG-1497 / ENG-1527, 2026-07-11):
+    // the 24px `Radius.card` corner + flat-plus-hairline treatment shared with
+    // Plan / Progress / Today. `useCardElevation({ variant: "soft" })` gives no
+    // shadow + a hairline border in light, tonal lift + hairline in dark; the
+    // border + card-vs-ground fill contrast carry the separation. Was the
+    // retired `Radius.xl` (12) flat-borderless slab.
     card: {
-      backgroundColor: colors.card,
-      borderRadius: Radius.xl,
+      backgroundColor: cardElevation.liftBg ?? colors.card,
+      borderRadius: Radius.card,
       overflow: "hidden" as const,
       padding: Spacing.xl,
       gap: Spacing.md,
+      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+      borderColor: colors.border,
     },
 
     progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
@@ -638,27 +641,6 @@ export default function ShoppingListScreen() {
     // Gap 12: use Type.caption token (Inter 11pt/medium) and textSecondary colour
     // so recipe provenance is legible, not a whisper (DS §2.2 label-secondary).
     itemFrom: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
-
-    emptyCard: {
-      backgroundColor: colors.card,
-      borderRadius: Radius.xl,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: Spacing.xxxl,
-      alignItems: "center",
-      gap: Spacing.md,
-    },
-    emptyIcon: { fontSize: 40 },
-    emptyTitle: { ...Type.headline, fontSize: 18, color: colors.text },
-    emptyDesc: { ...Type.body, color: colors.textSecondary, textAlign: "center", lineHeight: 20 },
-    ctaBtn: {
-      backgroundColor: accent.primary,
-      borderRadius: Radius.md,
-      paddingVertical: Spacing.md,
-      paddingHorizontal: Spacing.xxxl,
-      marginTop: Spacing.sm,
-    },
-    ctaBtnText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
 
     // Honeydew parity (2026-04-30) — household sync banner.
     syncBanner: {
@@ -710,7 +692,7 @@ export default function ShoppingListScreen() {
       fontWeight: "600",
       color: colors.textSecondary,
     },
-  }), [colors, accent]);
+  }), [colors, accent, cardElevation.useBorder, cardElevation.liftBg]);
 
   // 2026-04-30 (#2): badge + progress reflect *grouped* rows so counts
   // match on-screen groups (web parity).
@@ -796,6 +778,20 @@ export default function ShoppingListScreen() {
           >
             {listSubtitle}
           </Text>
+        ) : null}
+        {/* ENG-1527 — in-place "Update from plan" affordance. The stale-plan
+            caption above used to dead-end (only Share/Trash in the header);
+            this re-runs the generator non-destructively (keeps checked +
+            manual rows). */}
+        {items.length > 0 &&
+        shoppingListOutOfSync &&
+        scope &&
+        isFeatureEnabled("shopping_update_from_plan_v1") ? (
+          <ShoppingUpdateFromPlanBanner
+            scope={scope}
+            pantryStaples={pantryStaples}
+            onSynced={() => setShoppingListOutOfSync(false)}
+          />
         ) : null}
         <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
           {items.length > 0 ? (
@@ -915,11 +911,10 @@ export default function ShoppingListScreen() {
         ) : (
           <>
             <ReAnimated.View style={progressEntrance.style}>
-            {/* Flat-card (2026-06-12): cardOuter is now a flat radius holder; inner view clips overflow.
-                Gap 2: use checkedGroupCount/totalGroupCount (both group-based) so the
-                progress card denominator matches the pill count 80px above it.
+            {/* One-card grammar (ENG-1527): flat 24px hairline card, no outer
+                shadow holder. Gap 2: checkedGroupCount/totalGroupCount (both
+                group-based) so the denominator matches the pill count above.
                 Gap 11: heroValue serif for the progress count (DS §2.3.3). */}
-            <View style={styles.cardOuter}>
             <View style={styles.card}>
               <View style={styles.progressRow}>
                 <Text style={styles.progressLabel}>Progress</Text>
@@ -928,7 +923,6 @@ export default function ShoppingListScreen() {
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
               </View>
-            </View>
             </View>
 
             {checkedCount > 0 && (
@@ -955,9 +949,8 @@ export default function ShoppingListScreen() {
                 isShoppingGroupFullyChecked(g),
               ).length;
               return (
-                // Flat-card (2026-06-12): cardOuter is a flat radius holder; section cards match Today/Plan (flat).
-                <View key={section.name} style={styles.cardOuter}>
-                <View style={styles.card}>
+                // One-card grammar (ENG-1527): flat 24px hairline card matching Today/Plan.
+                <View key={section.name} style={styles.card}>
                   <View
                     style={{
                       flexDirection: "row",
@@ -1161,7 +1154,6 @@ export default function ShoppingListScreen() {
                       </Swipeable>
                     );
                   })}
-                </View>
                 </View>
               );
             })}

@@ -368,6 +368,10 @@ export function reset(): void {
  *  `isFeatureDisabled`. Keep in sync with the same set in
  *  `src/lib/analytics/track.ts` (web). */
 const REDESIGN_DEFAULT_ON = new Set<string>([
+  // ENG-1527 — the shopping-list "Update from plan" re-sync affordance
+  // (mobile + web). Default-ON so the dead-end fix ships everywhere; the
+  // PostHog gate is the kill switch for the non-destructive DB write path.
+  "shopping_update_from_plan_v1",
   // Skia hero ring (SPEC 1) — default ON, SAFE for binaries without the
   // native pod: CalorieRing probes TurboModuleRegistry.get("RNSkiaModule")
   // (null, never throws) before requiring the module, so old clients

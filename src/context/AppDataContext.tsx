@@ -110,6 +110,11 @@ import {
   filterShoppingItemsByPantry,
   parsePantryStaples,
 } from "../lib/planning/pantryStaples.ts";
+import {
+  regenerateShoppingListFromPlan,
+  type RegenShoppingClient,
+  type RegenerateShoppingListResult,
+} from "../lib/planning/regenerateShoppingListFromPlan.ts";
 import { startDateForOffset } from "../lib/mealPlan/planCalendarAnchor.ts";
 import {
   cloudSlotIdFromLocal,
@@ -223,6 +228,13 @@ interface AppDataContextValue {
    * off or the user is signed out. Fire-and-forget from the host.
    */
   syncShoppingListForPlanEdit: (edit: PlanShoppingEditRef) => Promise<void>;
+  /**
+   * ENG-1527 — "Update from plan" re-sync. Regenerates the list from the
+   * current plan NON-destructively (checked rows + manual/household additions
+   * preserved) and clears the out-of-sync flag. Returns counts / error so the
+   * caller can toast the outcome.
+   */
+  resyncShoppingListFromPlan: () => Promise<RegenerateShoppingListResult>;
   /** True when the list was built from the planner and the meal plan (or portions) has changed since. */
   shoppingListOutOfSync: boolean;
   /** ENG-1135 — calendar date the shopping list was generated from (`YYYY-MM-DD`). */
@@ -1763,6 +1775,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [authedUserId, shoppingScope, pantryStaples, setShoppingItems],
   );
 
+  // ENG-1527 — the "Update from plan" re-sync. Regenerates the list from the
+  // current plan NON-destructively via the shared host (checked rows +
+  // manual/household additions preserved — never the delete-and-replace that
+  // `generateShoppingListFromPlan` runs). On success we refresh the stored
+  // fingerprint from the in-memory plan so `shoppingListOutOfSync` clears; the
+  // live-sync subscription in `useShoppingListState` repaints the rows.
+  const resyncShoppingListFromPlan =
+    useCallback(async (): Promise<RegenerateShoppingListResult> => {
+      if (!authedUserId || !shoppingScope) {
+        return { ok: false, error: "Not signed in" };
+      }
+      const res = await regenerateShoppingListFromPlan({
+        client: supabase as unknown as RegenShoppingClient,
+        scope: shoppingScope,
+        planSlotId: cloudSlotIdFromLocal(activeMealPlanSlotIdRef.current),
+        pantryStaples,
+      });
+      if (res.ok) {
+        setShoppingListSourceFingerprint(fingerprintMealPlanForShopping(mealPlan));
+        if (res.planStartDate) setShoppingListPlanStartDate(res.planStartDate);
+      }
+      return res;
+    }, [authedUserId, shoppingScope, pantryStaples, mealPlan]);
+
   const savePantryStaples = useCallback(
     async (staples: readonly string[]) => {
       const normalized = parsePantryStaples(staples);
@@ -2615,6 +2651,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       generateMealPlan,
       generateShoppingListFromPlan,
       syncShoppingListForPlanEdit,
+      resyncShoppingListFromPlan,
       shoppingListOutOfSync,
       shoppingListPlanStartDate,
       pantryStaples,
@@ -2722,6 +2759,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       generateMealPlan,
       generateShoppingListFromPlan,
       syncShoppingListForPlanEdit,
+      resyncShoppingListFromPlan,
       shoppingListOutOfSync,
       shoppingListPlanStartDate,
       pantryStaples,
