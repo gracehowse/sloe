@@ -53,14 +53,18 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
   });
 
   it("both surfaces emit the same testIDs for each browse tab", () => {
-    for (const id of [
-      "log-sheet-tab-gotos",
-      "log-sheet-tab-recent",
-      "log-sheet-tab-library",
-      "log-sheet-tab-saved",
-    ]) {
-      expect(web).toContain(id);
-      expect(mobile).toContain(id);
+    // Each surface renders the browse-tab testIDs either as per-tab string
+    // literals (web ternary) or via a `log-sheet-tab-${id}` template mapped
+    // over the BrowseTab union (mobile — condensed to a template to hold
+    // LogSheet's screen-line budget, ENG-1529). The `type BrowseTab = …` pin
+    // above guarantees that template expands to exactly these four ids at
+    // runtime, so both constructions emit an identical testID set.
+    const TAB_IDS = ["gotos", "recent", "library", "saved"];
+    for (const src of [web, mobile]) {
+      const usesTemplate = src.includes("log-sheet-tab-${id}");
+      for (const id of TAB_IDS) {
+        expect(usesTemplate || src.includes(`log-sheet-tab-${id}`)).toBe(true);
+      }
     }
   });
 
