@@ -92,6 +92,9 @@ vi.mock("@/context/theme", () => ({
     primarySoft: "#efe8f2",
     destructive: "#b3261e",
   }),
+  // ENG-1527 — shopping card grammar now reads `useCardElevation`, which
+  // resolves the scheme via `useTheme`.
+  useTheme: () => ({ resolved: "light" }),
 }));
 vi.mock("@/hooks/use-color-scheme", () => ({
   useColorScheme: () => "light",

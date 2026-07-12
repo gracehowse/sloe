@@ -182,6 +182,10 @@ function flagForceOverride(flag: string): boolean | null {
  *  Keep in sync with the same set in `apps/mobile/lib/analytics.ts`. */
 const REDESIGN_DEFAULT_ON = new Set<string>([
   "design_system_elevation",
+  // ENG-1527 — the shopping-list "Update from plan" re-sync affordance
+  // (mobile + web). Default-ON so the dead-end fix ships everywhere; the
+  // PostHog gate is the kill switch for the non-destructive DB write path.
+  "shopping_update_from_plan_v1",
   // Device-validated 2026-07-07 (device-verify2 pass, 4/4 verbatim contract
   // match) + Fable lens review on ENG-1454's under-eating string — flipped
   // per the growth-builds-default-ON convention.

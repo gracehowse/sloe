@@ -3,6 +3,8 @@ import { Check, Package, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { Icons } from "./ui/icons";
 import { SupprCard } from "./ui/suppr-card";
+import { ShoppingUpdateFromPlanButton } from "./ShoppingUpdateFromPlanButton";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
@@ -34,37 +36,21 @@ interface ShoppingListProps {
 
 /**
  * Web Shopping list — prototype baseline + F3 lifecycle interactions.
+ * Layout mirrors the prototype `WebShopping`: serif h1, `N items · from …`
+ * subtitle, 3-column `grid-cols-3` of category cards. F3 hybrid additions
+ * (`docs/decisions/2026-04-28-shopping-list-web-parity-hybrid.md`): per-row X
+ * remove, "Remove N checked" link, slim `role="progressbar"`.
  *
- * Layout matches `docs/ux/claude-design-bundles/prototype/project/screens-web.jsx`
- * `WebShopping` exactly: `<h1 style="font-size:24">Shopping list</h1>`,
- * subtitle `N items · from this week's plan`, 3-column
- * `grid-cols-3 gap-4 max-w-[900px]` of category cards.
+ * Honeydew parity (2026-04-30): in a household the list is shared with live
+ * sync (wired in `useShoppingListState`) — this surfaces the "Shared with …"
+ * banner + per-row attribution chip. ENG-1527: the "Update from plan" re-sync
+ * button ships when the list is out of sync (mobile parity).
  *
- * F3 hybrid additions (audit 2026-04-28, see
- * `docs/decisions/2026-04-28-shopping-list-web-parity-hybrid.md`):
- *  - Per-row X remove (mobile lifecycle parity)
- *  - "Remove N checked" link, only when ≥1 row is checked
- *  - Slim progress bar with `role="progressbar"` + `aria-valuenow`
+ * Intentionally NOT shipped: Share button, Trash / clear-all, export UI,
+ * breadcrumb / regenerate card, "Add custom item", recipe thumbnails.
  *
- * Honeydew parity (2026-04-30): when the user is in a household, the
- * shopping list is shared. Real-time sync (item add/check/remove
- * propagates within ~1s) is wired in `useShoppingListState`. This
- * component surfaces:
- *  - "Shared with Sarah & Tom" banner above the subtitle
- *  - Per-row attribution chip showing who checked an item
- *
- * Intentionally NOT shipped (prototype strip holds for chrome):
- *  - Share button (defer until web share format is designed)
- *  - Trash / clear-all (redundant with clear-checked + plan regen)
- *  - Print / CSV / Text / meatballs export UI
- *  - Breadcrumb, regenerate card, out-of-sync banner
- *  - "Add custom item" input
- *  - Recipe thumbnail images
- *
- * Data flow: `toggleShoppingChecked`, `removeShoppingItem`, and
- * `setShoppingItems` all persist via `useAppData`. The hook also
- * subscribes to Supabase real-time changes and refreshes on every
- * household-mate edit.
+ * Data flow: toggle / remove / set all persist via `useAppData`, whose hook
+ * subscribes to Supabase real-time and refreshes on every household-mate edit.
  */
 export const ShoppingList = memo(function ShoppingList({
   userTier: _userTier,
@@ -80,6 +66,7 @@ export const ShoppingList = memo(function ShoppingList({
     activeHouseholdId,
     shoppingListPlanStartDate,
     shoppingListOutOfSync,
+    resyncShoppingListFromPlan,
     pantryStaples,
     savePantryStaples,
   } = useAppData();
@@ -242,6 +229,17 @@ export const ShoppingList = memo(function ShoppingList({
       </p>
       </div>
 
+      {/* ENG-1527 — in-place "Update from plan" re-sync (mobile parity). The
+          stale-plan subtitle above used to dead-end; this regenerates the list
+          non-destructively (keeps checked + manual rows). */}
+      {shoppingListOutOfSync &&
+      totalItemCount > 0 &&
+      isFeatureEnabled("shopping_update_from_plan_v1") ? (
+        <div className="mb-4" style={{ maxWidth: 900 }}>
+          <ShoppingUpdateFromPlanButton resync={resyncShoppingListFromPlan} />
+        </div>
+      ) : null}
+
       {totalItemCount > 0 ? (
         <div
           className="flex items-center gap-3 mb-5"
@@ -284,10 +282,10 @@ export const ShoppingList = memo(function ShoppingList({
 
       {totalItemCount === 0 ? (
         <SupprCard
-          // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-
-          // card-treatment-soft-elevation.md): the empty-state slab is
-          // page-ground, so it lifts soft (`.card-slab`) like the category
-          // cards below + the rest of the app. Was the flat default.
+          // One card grammar (ENG-1497 / ENG-1499): page-ground cards are FLAT
+          // + hairline at the 24px `--radius-card-lg` corner. `elevation="card"`
+          // resolves to the flat `.card-slab`; `radius="xl"` → 24px (the retired
+          // 16px tier now maps to the one card corner).
           elevation="card"
           padding="none"
           radius="xl"
@@ -329,11 +327,9 @@ export const ShoppingList = memo(function ShoppingList({
             return (
             <SupprCard
               key={section.name}
-              // One-treatment soft lift (2026-06-09): each aisle/category card
-              // sits directly in the page-ground grid, so it lifts soft
-              // (`.card-slab`) — matching the mobile shopping section cards,
-              // which already carry `Elevation.cardSoft` via `cardOuter`. Was
-              // the flat default.
+              // One card grammar (ENG-1497 / ENG-1499): each aisle/category card
+              // sits page-ground → FLAT + hairline at the 24px card corner
+              // (`.card-slab`), matching the mobile shopping section cards.
               elevation="card"
               padding="none"
               radius="xl"
