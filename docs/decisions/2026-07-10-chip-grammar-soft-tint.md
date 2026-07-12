@@ -33,6 +33,54 @@ segmented controls.
   family; converts in a later slice with the day-cell ruling applied.
 - `ActivityLevelPreview.tsx:88` raw `+"15"` alpha — onboarding slice (S3).
 
+## AddControl — the add-row grammar (ENG-1375 S4)
+
+**Ruling:** the **quiet-fill pill** is THE add-row grammar. Every in-card
+"add another X" affordance (add food, add ingredient, add step, add slot)
+renders as:
+
+- `bg-fill-quiet` (web) / `colors.fillQuiet` (mobile) fill — **no border**,
+  no second card;
+- **radius 12** (`rounded-[12px]` web / `Radius.xl` mobile — the
+  12-inside-24 concentric inner standard);
+- **Plus glyph + primary-solid semibold label**, centred;
+- **full-width in-card** (card-edge inset carried by a wrapper).
+
+**DASHED borders are upload DROPZONES only** (photo-log dialog,
+`RecipeUpload`). A dashed edge on an add-row action is a bug.
+
+Canonical primitives (extracted from the F-160 Today "Add food" pair — the
+first quiet-fill adoption, 2026-06-12):
+
+- Web: `src/app/components/ui/add-row-button.tsx`
+- Mobile: `apps/mobile/components/ui/AddRowButton.tsx`
+
+Both ship loading (spinner + disable, no double-submit) and disabled states
+with the element. Mobile takes a `haptic` weight (`selection` for
+open-a-sheet adds; `confirm` when the press itself commits data, ENG-1016)
+and a `size="sm"` step for dense multi-control rows.
+
+### Migrated in S4
+
+- The canonical Today "Add food" pair itself (web `today-meals-section.tsx` +
+  mobile `TodayMealsSection.tsx`) now renders via the primitive — ONE source
+  (radius 8 → 12 with the ruling).
+- Mobile `planner.tsx` add-slot chips: full-radius + textSecondary 11px →
+  the primitive (`size="sm"`, `haptic="confirm"`).
+- Mobile `create-recipe.tsx` + `CreateRecipeWizard.tsx` "Add ingredient" /
+  "Add step": dashed outlines → the primitive (add-INGREDIENT actions, not
+  dropzones).
+- Mobile `RecipeEditSheet.tsx` "Add ingredient": ENG-821 soft-tint +
+  bordered variant → the primitive.
+- Mobile `app/recipe/verify.tsx` "Add ingredient": dashed raw-alpha pressable
+  → the primitive; the helper line moved below as a caption.
+- Web `today-add-meal-dialog.tsx` "Search foods" hand-off: dashed
+  `border-dashed` CTA → the primitive (search-glyph override — an add-food
+  action, not a dropzone).
+
+Left dashed (sanctioned dropzones): `photo-log-dialog.tsx`,
+`RecipeUpload.tsx`.
+
 ## Segmented controls — §8 track-and-thumb (S2/S3, ENG-1375, same day)
 
 **Ruling:** ONE segmented grammar, both platforms — the §8 track-and-thumb:
@@ -84,3 +132,13 @@ Extracted from the two conforming references (mobile `WeightRangeToggle` +
   read is acceptable because the web rows carry hint copy the mobile rows
   don't; if the hints ever move out, it converges to §8 (tracked: ENG-1375
   epic scope note).
+
+Left dashed — the truthful inventory (refuter-audited 2026-07-11):
+sanctioned upload dropzones (`photo-log-dialog.tsx`, `RecipeUpload.tsx`);
+the v3 plan empty-SLOT affordances (`PlanEmptySlotV3`, mobile twin — the
+prototype's own `.plan-empty` dashed grammar, an empty-state affordance
+not an add control); empty-state placeholder CONTAINERS (DiscoverFeed
+L994, Library L430 — containers, not controls); `MealPlanner` "+ New"
+plan-slot pill (L1438 — a create-new-collection affordance; converts
+with the S5+ slice if a ruling extends there); `FoodSearchPanel` L2755
+(ENG-814 flag fork — S7 scope).

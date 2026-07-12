@@ -56,6 +56,7 @@ import { emptySlotAimKcal } from "@suppr/nutrition-core/mealSlotAim";
 import { EmptyMealSlotAimLine } from "@/components/EmptyMealSlotRow";
 import { MealRowSwipeable } from "./MealRowSwipeable";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { AddRowButton } from "@/components/ui/AddRowButton";
 
 type TodayMealRowPressableProps = PressableProps & {
   children: ReactNode;
@@ -67,22 +68,6 @@ function TodayMealRowPressable({
   style,
   ...rest
 }: TodayMealRowPressableProps) {
-  return (
-    <PressableScale haptic="selection" style={style} {...rest}>
-      {children}
-    </PressableScale>
-  );
-}
-
-type TodayAddFoodPressableProps = PressableProps & {
-  children: ReactNode;
-};
-
-function TodayAddFoodPressable({
-  children,
-  style,
-  ...rest
-}: TodayAddFoodPressableProps) {
   return (
     <PressableScale haptic="selection" style={style} {...rest}>
       {children}
@@ -1451,12 +1436,10 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                   keep their header-as-tap-target (no body), so this only renders
                   when the card is open with items.
 
-                  F-160 / flat-card surfaces (2026-06-12 decision — the FIRST
-                  quiet-fill adoption): with the card now FLAT, a bare text link
-                  reads as floating. The nested affordance sits on the new
-                  quiet-fill token (`colors.fillQuiet` — Withings grammar) inside
-                  a contained pill — no second white card, no border. Clay deep
-                  `primarySolid` keeps AA on the quiet fill. A wrapper carries the
+                  This pill (F-160, the FIRST quiet-fill adoption) is the
+                  canonical AddControl — now rendered by the shared
+                  `AddRowButton` primitive it was extracted into (2026-07-10
+                  AddControl ruling, ENG-1375 S4). A wrapper View keeps the
                   card-edge inset so the pill doesn't run to the card corners. */}
               {hasMeals && isOpen && (
                 <View
@@ -1466,28 +1449,12 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                     paddingBottom: Spacing.dense,
                   }}
                 >
-                  <TodayAddFoodPressable
+                  <AddRowButton
                     testID={`today-add-food-${slot}`}
                     onPress={() => onOpenFabForSlot(slot)}
-                    accessibilityRole="button"
+                    label="Add food"
                     accessibilityLabel={`Add food to ${slot}`}
-                    hitSlop={6}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: Spacing.sm,
-                      paddingVertical: Spacing.sm,
-                      paddingHorizontal: Spacing.dense,
-                      borderRadius: Radius.lg,
-                      backgroundColor: colors.fillQuiet,
-                    }}
-                  >
-                    <Plus size={15} color={accent.primarySolid} strokeWidth={2.25} />
-                    <Text style={{ ...Type.body, color: accent.primarySolid }}>
-                      Add food
-                    </Text>
-                  </TodayAddFoodPressable>
+                  />
                 </View>
               )}
               </View>
