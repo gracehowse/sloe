@@ -75,8 +75,31 @@ describe("findViolations", () => {
     expect(findViolations("const s = { borderRadius: 9999 };", legal)).toEqual([]);
   });
 
+  it("flags a raw rgb()/rgba() hue literal (ENG-1520 blind spot)", () => {
+    expect(findViolations("boxShadow: `0 0 0 rgba(139, 92, 246, 0.5)`", legal)).toEqual([
+      { line: 1, kind: "rgba", token: "rgba(139, 92, 246, 0.5)" },
+    ]);
+    expect(findViolations("const c = 'rgb(59,42,77)';", legal)).toEqual([
+      { line: 1, kind: "rgba", token: "rgb(59,42,77)" },
+    ]);
+  });
+
+  it("does NOT flag pure black/white rgba (scrim/shadow idiom carve-out)", () => {
+    expect(findViolations("backgroundColor: 'rgba(0, 0, 0, 0.5)'", legal)).toEqual([]);
+    expect(findViolations("backgroundColor: 'rgba(255,255,255,0.9)'", legal)).toEqual([]);
+    expect(findViolations("shadowColor: 'rgb(0,0,0)'", legal)).toEqual([]);
+  });
+
+  it("does NOT flag a token-routed rgba (no numeric triple)", () => {
+    expect(findViolations("background: 'rgba(var(--accent-rgb), 0.12)'", legal)).toEqual([]);
+  });
+
   it("ignores a hex that lives in a comment", () => {
     expect(findViolations("// light #3B2A4D / dark #815E91\nconst x = 1;", legal)).toEqual([]);
+  });
+
+  it("ignores an rgba hue literal in a comment", () => {
+    expect(findViolations("// tint rgba(139, 92, 246, 0.5)\nconst x = 1;", legal)).toEqual([]);
   });
 
   it("reports the correct line for a hex below a multi-line block comment", () => {
