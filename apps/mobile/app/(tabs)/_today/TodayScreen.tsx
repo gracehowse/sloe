@@ -19,6 +19,7 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
+import { useAppleHealthConnected } from "@/hooks/useAppleHealthConnected";
 import { useJournalWriteAhead, reportDroppedJournalWrites } from "@/hooks/useJournalWriteAhead";
 import { mergeJournalByDay } from "@suppr/nutrition-core/mergeJournalByDay";
 import {
@@ -3353,6 +3354,11 @@ export default function TrackerScreen() {
   // God-component split. Behaviour unchanged.
   useHealthSyncOnFocus(userId, loadProfileTargets);
 
+  // ENG-1534 — real Apple Health connection state for the energy empty-state
+  // copy. Mirrors Settings (cache seed + focus re-probe), so a connected user
+  // with no data yet isn't told to "enable Apple Health".
+  const appleHealthConnected = useAppleHealthConnected();
+
   // Sync journal to relational nutrition_entries table.
   // 2026-05-16 — extracted to `hooks/useNutritionEntriesSync` (Today
   // split #3). Same 600ms debounce, same downstream adaptive-TDEE +
@@ -4826,6 +4832,7 @@ export default function TrackerScreen() {
             profileActivityLevel={profileActivityLevel}
             maintenanceSource={profileMaintenanceSource}
             maintenanceConfidence={profileMaintenanceConfidence}
+            appleHealthConnected={appleHealthConnected}
             preferActivityAdjustedCalories={preferActivityAdjustedCalories}
             showActivityBudgetDiscoverBanner={activityBudgetDiscoverDismissed === false}
             onEnableActivityBudget={() => {

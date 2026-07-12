@@ -36,7 +36,7 @@ import {
   netEnergySubline,
 } from "@suppr/nutrition-core/netEnergyBalance";
 import { ENERGY_NUMBERS_V1_FLAG, maintenanceQualifier } from "@suppr/nutrition-core/energyNumbers";
-import { TODAY_HEALTH_CONNECT_ROUTE } from "@suppr/shared/copy/today";
+import { TODAY_HEALTH_CONNECT_ROUTE, todayHealthConnectedNoDataHint } from "@suppr/shared/copy/today";
 import {
   ACTIVITY_BUDGET_DISCOVER_BODY,
   ACTIVITY_BUDGET_DISCOVER_CTA,
@@ -124,6 +124,16 @@ export interface TodayActivityBonusCardProps {
    * here and see what it's made up of").
    */
   onShowBurnProvenance?: () => void;
+  /**
+   * ENG-1534 — real Apple Health connection state, resolved by the host via
+   * `useAppleHealthConnected()`. Branches the energy empty-state copy so a
+   * connected user with no data yet is NOT told to "enable Apple Health":
+   *   - `true`  → connected-but-no-data-yet copy (calm, no enable nag)
+   *   - `false` / `null` / omitted → the not-connected enable instruction
+   * `null` (probe in flight) keeps the enable copy; the cached-flag seed flips
+   * connected users to `true` fast enough that there is no visible flash.
+   */
+  appleHealthConnected?: boolean | null;
   /** F-161 — when false and bonus > 0, show one-time enable banner. */
   preferActivityAdjustedCalories?: boolean;
   onEnableActivityBudget?: () => void;
@@ -165,6 +175,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
     profileActivityLevel,
     maintenanceSource,
     maintenanceConfidence,
+    appleHealthConnected,
     preferActivityAdjustedCalories = true,
     onEnableActivityBudget,
     onDismissActivityBudgetDiscover,
@@ -360,11 +371,27 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
       </View>
 
       {!hasBurnData && isToday ? (
-        <Text style={{ ...Type.captionSmall, color: textSecondaryColor, marginBottom: Spacing.md, lineHeight: 18 }}>
-          No resting or active energy for this day in Sloe yet. Open{" "}
-          <Text style={{ fontWeight: "700", color: textColor }}>{TODAY_HEALTH_CONNECT_ROUTE}</Text>
-          , enable Apple Health, then pull to refresh or revisit this tab to sync.
-        </Text>
+        // ENG-1534 — branch on the REAL Apple Health connection state. A
+        // connected user with no data for this day yet must not be told to
+        // "enable Apple Health" (state conflation); only genuinely-not-
+        // connected users get the enable instruction.
+        appleHealthConnected === true ? (
+          <Text
+            testID="today-activity-bonus-energy-empty-connected"
+            style={{ ...Type.captionSmall, color: textSecondaryColor, marginBottom: Spacing.md, lineHeight: 18 }}
+          >
+            {todayHealthConnectedNoDataHint()}
+          </Text>
+        ) : (
+          <Text
+            testID="today-activity-bonus-energy-empty-disconnected"
+            style={{ ...Type.captionSmall, color: textSecondaryColor, marginBottom: Spacing.md, lineHeight: 18 }}
+          >
+            No resting or active energy for this day in Sloe yet. Open{" "}
+            <Text style={{ fontWeight: "700", color: textColor }}>{TODAY_HEALTH_CONNECT_ROUTE}</Text>
+            , enable Apple Health, then pull to refresh or revisit this tab to sync.
+          </Text>
+        )
       ) : null}
 
       {/* Sloe TD1 energy-balance HERO — the net headline + plain-language
