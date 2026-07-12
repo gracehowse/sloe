@@ -105,7 +105,7 @@ describe("warm fallback — never a flat lilac/grey block (§11.4)", () => {
     expect(
       readFileSync(resolve(ROOT, "apps/mobile/components/library/RecipeCardImage.tsx"), "utf8"),
     ).toMatch(
-      /recipeUnderlayColor\(\{ id: recipeId, title: recipeTitle \}\)/,
+      /recipeUnderlayColor\(\{ id: recipeId, title: recipeTitle \}, scheme\)/,
     );
   });
 

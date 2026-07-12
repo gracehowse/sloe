@@ -10,6 +10,10 @@
  * component (including the flag-off photo path): `libraryRecipeCardImage.test.tsx`.
  * Web twin: `tests/unit/recipeImageUnderlay.test.ts`; tint opacity pins:
  * `tests/unit/recipeHeroFallback.test.ts` (shared module).
+ *
+ * ENG-1528 — every underlay call now threads the resolved scheme
+ * (`recipeUnderlayColor({…}, scheme)`) so a dark card gets the dark-ramp
+ * tint, not a glowing cream; these pins assert the scheme arg is present.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -20,7 +24,7 @@ const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8")
 describe("mobile recipe-image containers — opaque wrapper underlay (ENG-1374 PR 2)", () => {
   it("RecipeCardImage computes the underlay internally — the overridable fallbackBg prop is retired (was fed #FFFFFF)", () => {
     const src = read("components/library/RecipeCardImage.tsx");
-    expect(src).toMatch(/recipeUnderlayColor\(\{ id: recipeId, title: recipeTitle \}\)/);
+    expect(src).toMatch(/recipeUnderlayColor\(\{ id: recipeId, title: recipeTitle \}, scheme\)/);
     expect(src).not.toMatch(/fallbackBg[:?]/); // no prop, no type member — comment mentions only
     // photo branch carries the tint on the image element too (flag-off RN Image path)
     expect(src).toContain("style={[cardImageStyle, { backgroundColor: underlay }]}");
@@ -39,7 +43,7 @@ describe("mobile recipe-image containers — opaque wrapper underlay (ENG-1374 P
 
   it("RecipeDetailHero wrapper is the recipe's cuisine tint (was the brand plum)", () => {
     const src = read("components/recipe/RecipeDetailHero.tsx");
-    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: recipeId, title, tags \}\)/);
+    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: recipeId, title, tags \}, scheme\)/);
     expect(src).not.toContain("backgroundColor: Accent.primary }");
   });
 
@@ -49,7 +53,7 @@ describe("mobile recipe-image containers — opaque wrapper underlay (ENG-1374 P
       "components/today/NorthStarFigmaHero.tsx",
     ]) {
       expect(read(p)).toMatch(
-        /backgroundColor: recipeUnderlayColor\(\{ id: suggestion\.recipeId, title: suggestion\.title \}\)/,
+        /backgroundColor: recipeUnderlayColor\(\{ id: suggestion\.recipeId, title: suggestion\.title \}, scheme\)/,
       );
     }
   });
@@ -57,31 +61,31 @@ describe("mobile recipe-image containers — opaque wrapper underlay (ENG-1374 P
   it("coach candidate rows: one tinted wrapper hosts both the photo and the fallback", () => {
     const src = read("components/coach/CoachScreenView.tsx");
     expect(src).toMatch(
-      /backgroundColor: recipeUnderlayColor\(\{ id: candidate\.recipeId, title: candidate\.title \}\)/,
+      /backgroundColor: recipeUnderlayColor\(\{ id: candidate\.recipeId, title: candidate\.title \}, scheme\)/,
     );
   });
 
   it("Discover cluster cards compute the tint per recipe — the white colors.card placeholder prop is retired", () => {
     const src = read("components/discover/DiscoverClusterCarousels.tsx");
-    expect(src).toMatch(/const underlay = recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}\)/);
+    expect(src).toMatch(/const underlay = recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, scheme\)/);
     expect(src).not.toContain("placeholderColor={colors.card}");
     expect(src).toContain("backgroundColor: underlay");
   });
 
   it("Discover 'More ideas' row thumbs: tinted wrapper hosts both branches (colors.card ground gone)", () => {
     const src = read("components/discover/DiscoverMoreIdeaRow.tsx");
-    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: item\.id, title: item\.title \}\)/);
+    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: item\.id, title: item\.title \}, scheme\)/);
     expect(src).not.toContain("backgroundColor: colors.card");
   });
 
   it("Discover hero media wrapper is tinted", () => {
     const src = read("app/(tabs)/discover.tsx");
-    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: item\.id, title: item\.title \}\)/);
+    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: item\.id, title: item\.title \}, scheme\)/);
   });
 
   it("FollowingFeed recipe media wrapper is tinted — the transparent ground is gone", () => {
     const src = read("components/discover/FollowingFeed.tsx");
-    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}\)/);
+    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, scheme\)/);
     expect(src).not.toContain('backgroundColor: "transparent"');
   });
 

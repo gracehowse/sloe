@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Web renderer for the Discover / Library recipe hero fallback.
  * Shared utility in `src/lib/recipe/recipeHeroFallback.ts` picks
@@ -25,6 +27,7 @@ import {
   type RecipeHeroGlyph,
   type RecipeHeroInput,
 } from "../../../lib/recipe/recipeHeroFallback";
+import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 
 const GLYPHS: Record<RecipeHeroGlyph, LucideIcon> = {
   Salad,
@@ -47,7 +50,9 @@ export interface RecipeHeroFallbackProps extends RecipeHeroInput {
 }
 
 function RecipeHeroFallbackImpl({ iconSize = 32, className, testId, ...input }: RecipeHeroFallbackProps) {
-  const fb = getRecipeFallback(input);
+  // ENG-1528 — dark cards get the dark ramp tile; light is byte-identical.
+  const scheme = useFallbackScheme();
+  const fb = getRecipeFallback(input, scheme);
   const Glyph = GLYPHS[fb.glyph];
   const patternId = `hero-pattern-${fb.pattern}-${fb.bucket}-${input.id}`;
   const gradientId = `hero-gradient-${fb.bucket}-${input.id}`;

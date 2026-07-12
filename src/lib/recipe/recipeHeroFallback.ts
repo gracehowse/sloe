@@ -52,6 +52,15 @@ export type RecipeHeroGlyph =
 
 export type RecipeHeroPattern = "dots" | "grid" | "chevron" | "circles";
 
+/**
+ * ENG-1528 — the active surface scheme a fallback renders on. Every
+ * resolver defaults to `"light"` so the light output stays byte-identical
+ * to the pre-dark-ramp behaviour; callers pass `"dark"` (via the web theme
+ * signal / mobile `useResolvedScheme()`) so a dark card gets a toned dark
+ * tile instead of a glowing cream one.
+ */
+export type FallbackScheme = "light" | "dark";
+
 export interface RecipeHeroFallback {
   bucket: RecipeHeroBucket;
   gradientStart: string;
@@ -94,6 +103,16 @@ interface BucketSpec {
 export const CARD_CREAM = "#F6F5F2";
 
 /**
+ * ENG-1528 — the dark card ground the dark ramp settles into. Value-for-
+ * value mirror of web `.dark` `--card` and mobile `Colors.dark.card`
+ * (`#211A2A`, the raised plum card on near-black), exactly as `CARD_CREAM`
+ * mirrors the light card fill. The dark gradient END is this, so a dark
+ * fallback tile melts into its card the way the cream tile melts into the
+ * light card — never a lighter rectangle glowing on the dark surface.
+ */
+export const CARD_DARK = "#211A2A";
+
+/**
  * The §11.4 cuisine/cream tint family — the ONLY food-fallback tint
  * palette in the product. Exported (ENG-1448 PR 1) so the food-row
  * fallback (`src/lib/imagery/foodFallbackCategory.ts`) shares these
@@ -110,6 +129,29 @@ export const HERO_TINTS = {
   neutrals: "#EAE3D3", // pale grain cream
   default: "#E4E1D8", // neutral warm cream (was the loud blue→pink)
   cream: CARD_CREAM,
+} as const;
+
+/**
+ * ENG-1528 — the DARK-scheme twin of `HERO_TINTS`. Each cuisine keeps its
+ * hue *identity* (sage for greens, clay for reds, slate for fish, oat for
+ * baked/grain…) but rendered as a dark tinted surface sitting a hair above
+ * the dark card `#211A2A`, so the tile reads as "a tinted dark card" and
+ * never glows the way a cream tint does on near-black. Keys mirror
+ * `HERO_TINTS` exactly (same bucket → same slot) so a recipe's tint tracks
+ * the scheme with no re-mapping. `cream` maps to `CARD_DARK` — the neutral
+ * dark ground for identity-less containers, the dark counterpart of the
+ * `HERO_TINTS.cream` (= `CARD_CREAM`) rung.
+ */
+export const HERO_TINTS_DARK = {
+  greens: "#242A24", // dark sage
+  reds: "#2E2422", // dark clay
+  blues: "#1F2A2A", // dark slate-sage
+  warms: "#2E2621", // dark terracotta oat
+  ambers: "#2C2820", // dark amber oat
+  earths: "#2A2522", // dark warm earth
+  neutrals: "#282720", // dark grain
+  default: "#262030", // neutral dark plum (holds the brand family for tagless)
+  cream: CARD_DARK,
 } as const;
 
 const BUCKETS: readonly BucketSpec[] = [
@@ -225,7 +267,20 @@ function resolveBucket(input: RecipeHeroInput): BucketSpec {
  */
 export const SAGE_RGB = "124, 132, 102";
 
-export function getRecipeFallback(input: RecipeHeroInput): RecipeHeroFallback {
+/**
+ * ENG-1528 — the dark-scheme mark ink. The light sage `#7C8466` is a
+ * mid-tone that dims to a murky olive on the near-black dark tints, so the
+ * dark ramp lifts it to `#9AA382` (= rgb 154, 163, 130) — a lighter sage
+ * that keeps the on-brand calm while reading clearly on the dark surface,
+ * mirroring how the accent inks lift on dark (ENG-1275). Alphas are
+ * unchanged (0.7 glyph / 0.07 pattern), so the light output is untouched.
+ */
+export const SAGE_RGB_DARK = "154, 163, 130";
+
+export function getRecipeFallback(
+  input: RecipeHeroInput,
+  scheme: FallbackScheme = "light",
+): RecipeHeroFallback {
   const bucket = resolveBucket(input);
   const patternIdx = djb2(input.id) % PATTERNS.length;
   const pattern = PATTERNS[patternIdx];
@@ -233,14 +288,20 @@ export function getRecipeFallback(input: RecipeHeroInput): RecipeHeroFallback {
   // alpha on the pale tints; the pattern is a faint 0.07 sage texture.
   const patternAlpha = 0.07;
   const glyphAlpha = 0.7;
+  // ENG-1528 — dark surfaces swap to the dark ramp (tint + lifted sage +
+  // dark card end); light stays byte-identical (the default branch).
+  const dark = scheme === "dark";
+  const sage = dark ? SAGE_RGB_DARK : SAGE_RGB;
+  const gradientStart = dark ? HERO_TINTS_DARK[bucket.key] : bucket.start;
+  const gradientEnd = dark ? CARD_DARK : bucket.end;
   return {
     bucket: bucket.key,
-    gradientStart: bucket.start,
-    gradientEnd: bucket.end,
+    gradientStart,
+    gradientEnd,
     glyph: bucket.glyph,
     pattern,
-    patternColor: `rgba(${SAGE_RGB}, ${patternAlpha})`,
-    glyphColor: `rgba(${SAGE_RGB}, ${glyphAlpha})`,
+    patternColor: `rgba(${sage}, ${patternAlpha})`,
+    glyphColor: `rgba(${sage}, ${glyphAlpha})`,
     patternAlpha,
     glyphAlpha,
   };
@@ -256,9 +317,16 @@ export function getRecipeFallback(input: RecipeHeroInput): RecipeHeroFallback {
  * start), so the underlay always matches the tile that would render on
  * top of it. Containers with no recipe identity use `CARD_CREAM`
  * directly instead — never a generic warm surface token (ENG-1496).
+ *
+ * ENG-1528 — pass `"dark"` (the resolved surface scheme) on a dark card so
+ * the underlay is the dark-ramp tint; the never-white guarantee becomes a
+ * never-glow guarantee. Light stays byte-identical (the default branch).
  */
-export function recipeUnderlayColor(input: RecipeHeroInput): string {
-  return getRecipeFallback(input).gradientStart;
+export function recipeUnderlayColor(
+  input: RecipeHeroInput,
+  scheme: FallbackScheme = "light",
+): string {
+  return getRecipeFallback(input, scheme).gradientStart;
 }
 
 /**

@@ -16,7 +16,14 @@ vi.mock("../../components/RecipeHeroFallback", () => ({
 }));
 
 import { RecipeCardImage } from "../../components/library/RecipeCardImage";
-import { HERO_TINTS, recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
+import { HERO_TINTS_DARK, recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
+
+// ENG-1528 — RecipeCardImage now resolves the underlay per scheme via
+// `useResolvedScheme()`. With no ThemeProvider mounted, that falls back to the
+// RN shim's `useColorScheme()`, which returns "dark" (tests/shims/react-native.cjs),
+// so these render assertions pin the DARK-ramp tint. The light-path byte-identity
+// is covered by the pure-function suite (tests/unit/recipeHeroFallback.test.ts).
+const TEST_SCHEME = "dark" as const;
 
 describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () => {
   const cardImageStyle = { width: 100, height: 100 };
@@ -111,11 +118,11 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
       );
       const wrapper = getByTestId("recipe-card-image-fallback-hero-2");
       const flattened = StyleSheet.flatten(wrapper.props.style);
-      // "pasta" → warms bucket → HERO_TINTS.warms; opaque (6-digit hex, no alpha).
+      // "pasta" → warms bucket → dark-ramp warms (test env resolves dark); opaque hex.
       expect(flattened.backgroundColor).toBe(
-        recipeUnderlayColor({ id: "hero-2", title: "Roast tomato pasta" }),
+        recipeUnderlayColor({ id: "hero-2", title: "Roast tomato pasta" }, TEST_SCHEME),
       );
-      expect(flattened.backgroundColor).toBe(HERO_TINTS.warms);
+      expect(flattened.backgroundColor).toBe(HERO_TINTS_DARK.warms);
       expect(flattened.backgroundColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
     });
 
@@ -130,7 +137,7 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
       );
       const img = UNSAFE_getByType(Image);
       const flattened = StyleSheet.flatten(img.props.style);
-      expect(flattened.backgroundColor).toBe(HERO_TINTS.greens);
+      expect(flattened.backgroundColor).toBe(HERO_TINTS_DARK.greens);
     });
   });
 });

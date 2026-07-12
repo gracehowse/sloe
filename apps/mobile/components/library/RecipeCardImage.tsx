@@ -3,6 +3,7 @@ import { StyleSheet, View, type ImageStyle } from "react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
+import { useResolvedScheme } from "@/context/theme";
 
 /**
  * Library / profile recipe card image with no-image + on-error fallback
@@ -34,7 +35,10 @@ export function RecipeCardImage({
   // (the fallback tile's gradient start), computed here rather than
   // taken as a prop so no caller can reintroduce a white/grey ground
   // (the retired `fallbackBg` prop was being fed `colors.card` #FFFFFF).
-  const underlay = recipeUnderlayColor({ id: recipeId, title: recipeTitle });
+  // ENG-1528 — resolved-scheme aware so a dark card gets the dark ramp
+  // tint instead of a glowing cream one.
+  const scheme = useResolvedScheme();
+  const underlay = recipeUnderlayColor({ id: recipeId, title: recipeTitle }, scheme);
   const showPlaceholder = !uri || errored;
   if (showPlaceholder) {
     // ENG-1382 — most consumers pass a plain `{width:"100%", height:"100%"}`

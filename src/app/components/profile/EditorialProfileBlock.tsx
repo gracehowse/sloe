@@ -5,6 +5,7 @@ import { Check, ChevronRight, Circle, Flame, Shield } from "lucide-react";
 import { AvatarDisc } from "../ui/avatar-disc";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
+import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 import {
   type EditorialProfileBlockModel,
   type StreakDotState,
@@ -71,6 +72,7 @@ function EditorialProfileBlockImpl({
   onSeeAllRecipes,
 }: EditorialProfileBlockProps) {
   const gridRecipes = recipes.slice(0, RECIPE_GRID_LIMIT);
+  const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const freezeCount = model.freezesAvailable;
 
   return (
@@ -204,7 +206,7 @@ function EditorialProfileBlockImpl({
                 className="group relative aspect-square overflow-hidden rounded-lg transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
                 // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper
                 // (never page white, whatever the child does).
-                style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}
+                style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, fallbackScheme) }}
               >
                 {recipe.image ? (
                   // eslint-disable-next-line @next/next/no-img-element

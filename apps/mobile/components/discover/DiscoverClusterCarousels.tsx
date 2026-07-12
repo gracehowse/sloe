@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useResolvedScheme } from "@/context/theme";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
@@ -41,7 +42,9 @@ function ClusterRecipeCard({
   const width = hero ? 280 : 200;
   const aspectRatio = hero ? 3 / 4 : 4 / 5;
   const trimmed = (recipe.image ?? "").trim();
-  const underlay = recipeUnderlayColor({ id: recipe.id, title: recipe.title });
+  // ENG-1528 — dark ramp underlay on dark cards.
+  const scheme = useResolvedScheme();
+  const underlay = recipeUnderlayColor({ id: recipe.id, title: recipe.title }, scheme);
 
   return (
     <Pressable

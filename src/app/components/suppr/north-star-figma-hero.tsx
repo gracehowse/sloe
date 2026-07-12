@@ -6,6 +6,7 @@ import { Check, Clock, Flame, X } from "lucide-react";
 import { QuickLogButton } from "./quick-log-button";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
+import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 import { cn } from "../ui/utils";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
@@ -50,6 +51,7 @@ export function NorthStarFigmaHeroBlock({
   const kcalDisplay = isFeatureEnabled("kcal_trust_qualifier_v1")
     ? formatQualifiedKcal(suggestion.predictedCalories, suggestion.isVerified)
     : String(suggestion.predictedCalories);
+  const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
 
   return (
     <section className="mb-10" data-testid={testID ?? "north-star-figma-hero"}>
@@ -67,7 +69,7 @@ export function NorthStarFigmaHeroBlock({
         )}
         // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper
         // (never page white, whatever the child does).
-        style={{ backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }) }}
+        style={{ backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }, fallbackScheme) }}
       >
         <div className="absolute inset-0 z-0">
           {suggestion.thumbnail ? (

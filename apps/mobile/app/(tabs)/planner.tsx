@@ -368,6 +368,7 @@ function PlanMealThumb({
   iconBoxStyle: StyleProp<ViewStyle>;
 }) {
   const [broken, setBroken] = useState(false);
+  const scheme = useResolvedScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const trimmed = (imageUri ?? "").trim();
   const showPhoto = hasRecipe && trimmed.length > 0 && !broken;
 
@@ -376,7 +377,7 @@ function PlanMealThumb({
       <Image
         source={{ uri: trimmed }}
         accessibilityLabel={`${recipeTitle} thumbnail`}
-        style={[iconBoxStyle as StyleProp<ImageStyle>, { backgroundColor: recipeUnderlayColor({ id: recipeId ?? recipeTitle, title: recipeTitle }) }]}
+        style={[iconBoxStyle as StyleProp<ImageStyle>, { backgroundColor: recipeUnderlayColor({ id: recipeId ?? recipeTitle, title: recipeTitle }, scheme) }]}
         resizeMode="cover"
         onError={() => setBroken(true)}
       />
@@ -384,11 +385,10 @@ function PlanMealThumb({
   }
 
   // Recipe present but no usable image → warm recipe-keyed fallback tile
-  // (sage→cream + cuisine glyph), the same calm placeholder as the
-  // Library/Discover cards. Keyed by recipe id so it's stable per recipe.
+  // (sage→cream + cuisine glyph), same calm placeholder as Library/Discover, keyed by recipe id so it's stable per recipe.
   if (hasRecipe && recipeId) {
     return (
-      <View style={[iconBoxStyle, { overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: recipeId, title: recipeTitle }) }]}>
+      <View style={[iconBoxStyle, { overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: recipeId, title: recipeTitle }, scheme) }]}>
         <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={16} />
       </View>
     );

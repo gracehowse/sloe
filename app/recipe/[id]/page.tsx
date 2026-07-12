@@ -7,7 +7,7 @@ import { PageViewTracker } from "../../../src/app/components/PageViewTracker.tsx
 import { AnalyticsEvents } from "../../../src/lib/analytics/events.ts";
 import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstructions.ts";
 import { RecipeHeroFallback } from "../../../src/app/components/suppr/RecipeHeroFallback.tsx";
-import { recipeUnderlayColor } from "../../../src/lib/recipe/recipeHeroFallback.ts";
+import { RecipeUnderlaySurface } from "../../../src/app/components/suppr/RecipeUnderlaySurface.tsx";
 import { isRetiredStockImageUrl } from "../../../src/lib/recipes/heroImageFallback.ts";
 import { SupprLogoMark } from "../../components/SupprLogoMark.tsx";
 
@@ -258,27 +258,27 @@ export default async function RecipePage({ params }: Props) {
             full aspect-video. */}
         {/* ENG-1374 PR 2 — both hero branches paint the recipe's opaque §11.4 cuisine tint on the wrapper (never page white) */}
         {recipe.image ? (
-          <div className="rounded-card-lg overflow-hidden shadow-xl mb-8" style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}>
+          <RecipeUnderlaySurface id={recipe.id} title={recipe.title} className="rounded-card-lg overflow-hidden shadow-xl mb-8">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={recipe.image}
               alt={recipe.title}
               className="w-full aspect-video object-cover"
             />
-          </div>
+          </RecipeUnderlaySurface>
         ) : (
           // B7 (2026-05-11): swapped the hardcoded gradient + "No
           // photo" caption for the canonical RecipeHeroFallback so
           // detail-page placeholders match Library cards (same
           // deterministic per-recipe gradient + glyph). Aspect ratio
           // matches the photo case via aspect-video.
-          <div className="relative rounded-card-lg overflow-hidden shadow-xl mb-8 aspect-video" aria-label={`${recipe.title} — no photo available`} style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}>
+          <RecipeUnderlaySurface id={recipe.id} title={recipe.title} className="relative rounded-card-lg overflow-hidden shadow-xl mb-8 aspect-video" aria-label={`${recipe.title} — no photo available`}>
             <RecipeHeroFallback
               id={recipe.id}
               title={recipe.title}
               iconSize={48}
             />
-          </div>
+          </RecipeUnderlaySurface>
         )}
 
         {/* H1 — Figma 332:2: Newsreader serif, plum, normal weight, 36/45. */}
@@ -414,13 +414,13 @@ export default async function RecipePage({ params }: Props) {
                     key={idx}
                     className="overflow-hidden rounded-card-lg bg-card border border-border"
                   >
-                    <div className="relative h-[86px] w-full" style={{ backgroundColor: recipeUnderlayColor({ id: `${recipe.id}-ing-${idx}`, title: ing.name }) }}>
+                    <RecipeUnderlaySurface id={`${recipe.id}-ing-${idx}`} title={ing.name} className="relative h-[86px] w-full">
                       <RecipeHeroFallback
                         id={`${recipe.id}-ing-${idx}`}
                         title={ing.name}
                         iconSize={28}
                       />
-                    </div>
+                    </RecipeUnderlaySurface>
                     <div className="px-2.5 py-2">
                       <p className="text-xs font-semibold text-foreground leading-snug line-clamp-2">
                         {ing.name}

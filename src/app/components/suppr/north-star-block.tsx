@@ -28,6 +28,7 @@ import { SupprButton } from "./suppr-button";
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
+import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
@@ -197,6 +198,7 @@ function NorthStarDefaultBlock({
   testID?: string;
 }) {
   const [whyOpen, setWhyOpen] = React.useState(false);
+  const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   // ENG-1417 — flag-gated "~" qualifier when the suggestion's macros are an
   // unverified estimate rather than a verified nutrition lookup. Off →
   // exact pre-ENG-1417 kcal display (kill switch). Mirror of the same
@@ -246,7 +248,7 @@ function NorthStarDefaultBlock({
         className="h-16 w-16 shrink-0 overflow-hidden rounded-lg relative"
         // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper
         // (never page white, whatever the child does).
-        style={{ backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }) }}
+        style={{ backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }, fallbackScheme) }}
       >
         {suggestion.thumbnail ? (
           /* eslint-disable-next-line @next/next/no-img-element */

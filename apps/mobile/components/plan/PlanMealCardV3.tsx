@@ -7,6 +7,7 @@ import { SmartImage } from "@/components/ui/SmartImage";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { useResolvedScheme } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
 
@@ -47,6 +48,7 @@ export function PlanMealCardV3({
   onOpenOptions,
 }: PlanMealCardV3Props) {
   const colors = useThemeColors();
+  const scheme = useResolvedScheme(); // ENG-1528 — dark ramp underlay on dark cards
   // ENG-1417 — flag-gated "~" unverified-estimate qualifier (kill switch off).
   const kcalDisplay =
     kcal != null
@@ -72,7 +74,7 @@ export function PlanMealCardV3({
       >
         {/* ENG-1374 PR2 — never-white: deterministic recipe underlay, not the
             plum-grey well (refuter catch: this v3 thumb was missed by the sweep). */}
-        <View style={[styles.thumb, { backgroundColor: recipeUnderlayColor({ id: name, title: name }) }]}>
+        <View style={[styles.thumb, { backgroundColor: recipeUnderlayColor({ id: name, title: name }, scheme) }]}>
           {imageUrl ? (
             <SmartImage source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} />
           ) : (

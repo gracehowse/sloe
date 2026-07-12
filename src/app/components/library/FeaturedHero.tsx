@@ -3,6 +3,7 @@
 import * as React from "react";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
+import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 
 import type { RecipeCard } from "@/types/recipe";
 
@@ -25,6 +26,7 @@ export interface FeaturedHeroProps {
 
 export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
   const [broken, setBroken] = React.useState(false);
+  const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const showImage = Boolean(recipe.image) && !broken;
   const prep = Number.isFinite(recipe.prepTimeMin)
     ? (recipe.prepTimeMin as number)
@@ -55,7 +57,7 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
         // page white). Replaces the cool plum-grey `--background-secondary` —
         // §11.4 bans grey grounds under imagery; the tint also kills the grey
         // flash while the photo streams in.
-        style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}
+        style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, fallbackScheme) }}
       >
         {showImage && recipe.image ? (
           // eslint-disable-next-line @next/next/no-img-element

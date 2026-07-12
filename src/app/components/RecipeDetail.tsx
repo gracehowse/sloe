@@ -38,6 +38,7 @@ import {
 import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../lib/recipe/recipeHeroFallback.ts";
+import { useFallbackScheme } from "../../lib/theme/useFallbackScheme.ts";
 import { useIngredientTileImages } from "../../lib/recipe/useIngredientTileImages.ts";
 import { loadRecipeIngredientRows } from "../../lib/recipe/loadRecipeIngredientRows.ts";
 import {
@@ -384,6 +385,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
     setShoppingItems,
   } = useAppData();
   const saved = isRecipeSaved(recipe.id);
+  const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp hero underlay on dark cards
   // PR1 (Paprika parity): the viewing-servings stepper is the canonical "how
   // many portions am I viewing" state. Bounds + deep-link `initialServings`
   // honouring live in shared `recipeViewScale.ts` (mobile uses the same
@@ -1922,18 +1924,16 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
           nav bar + rounded hero. */}
       {(() => {
         const effectiveImage = heroPreviewUrl ?? dbImageUrl ?? recipe.image;
-        const hasRealImage =
-          typeof effectiveImage === "string" && effectiveImage !== "";
+        const hasRealImage = typeof effectiveImage === "string" && effectiveImage !== "";
         const ladderSrc = pickHeroImageUrl({
           image_url: hasRealImage ? effectiveImage : null,
           source_url: recipe.sourceUrl ?? null,
         });
         const heroSrc = ladderSrc ?? (hasRealImage ? effectiveImage : null);
-        const heroCircle =
-          "w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-all";
+        const heroCircle = "w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-all";
         return (
           // ENG-1374 PR 2 — opaque cuisine-tint underlay on the hero wrapper (never ~280pt of page white)
-          <div className="relative w-full" style={{ height: 375, backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }} data-testid="recipe-detail-hero">
+          <div className="relative w-full" style={{ height: 375, backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, fallbackScheme) }} data-testid="recipe-detail-hero">
             {heroSrc ? (
               <RecipeHeroImage
                 src={heroSrc}

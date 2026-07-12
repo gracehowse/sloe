@@ -23,11 +23,14 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CARD_CREAM,
+  CARD_DARK,
   HERO_TINTS,
+  HERO_TINTS_DARK,
   djb2,
   getRecipeFallback,
   patternSvgContent,
   recipeUnderlayColor,
+  type RecipeHeroBucket,
   type RecipeHeroPattern,
 } from "../../src/lib/recipe/recipeHeroFallback";
 
@@ -222,5 +225,71 @@ describe("recipeUnderlayColor — ENG-1374 PR 2 never-white wrapper underlay", (
 
   it("CARD_CREAM is exported for containers with no recipe identity (paywall/create grounds)", () => {
     expect(CARD_CREAM).toBe(HERO_TINTS.cream);
+  });
+});
+
+describe("ENG-1528 — dark ramp (per-scheme fallback tints)", () => {
+  const BUCKET_TITLES: Array<[RecipeHeroBucket, string]> = [
+    ["greens", "Kale & Spinach Bowl"],
+    ["reds", "Pepperoni Pizza"],
+    ["blues", "Salmon Teriyaki"],
+    ["warms", "Tomato Pasta"],
+    ["ambers", "Chocolate Cookie"],
+    ["earths", "Thai Curry"],
+    ["neutrals", "Oats Porridge"],
+    ["default", "Mystery Dish"],
+  ];
+
+  it("dark scheme yields the dark-ramp tint (start) + dark card end for every bucket", () => {
+    for (const [bucket, title] of BUCKET_TITLES) {
+      const dark = getRecipeFallback({ id: "a", title }, "dark");
+      expect(dark.bucket).toBe(bucket);
+      expect(dark.gradientStart).toBe(HERO_TINTS_DARK[bucket]);
+      // Settles into the dark card the way light settles into the cream card.
+      expect(dark.gradientEnd.toUpperCase()).toBe(CARD_DARK.toUpperCase());
+      // Mark lifts to the dark sage (#9AA382 = rgb 154,163,130) on the dark tint.
+      expect(dark.patternColor).toMatch(/^rgba\(154, 163, 130,/);
+      expect(dark.glyphColor).toMatch(/^rgba\(154, 163, 130,/);
+    }
+  });
+
+  it("light stays byte-identical whether scheme is omitted or explicit", () => {
+    for (const [, title] of BUCKET_TITLES) {
+      const implicit = getRecipeFallback({ id: "seed-42", title });
+      const explicit = getRecipeFallback({ id: "seed-42", title }, "light");
+      expect(explicit).toEqual(implicit);
+      // Light keeps the cream ramp + sage mark — unchanged by the dark work.
+      expect(explicit.gradientEnd.toUpperCase()).toBe("#F6F5F2");
+      expect(explicit.glyphColor).toMatch(/^rgba\(124, 132, 102,/);
+    }
+  });
+
+  it("dark and light tints diverge for every bucket (no shared/glowing cream)", () => {
+    for (const [bucket] of BUCKET_TITLES) {
+      expect(HERO_TINTS_DARK[bucket]).not.toBe(HERO_TINTS[bucket]);
+    }
+  });
+
+  it("recipeUnderlayColor is scheme-aware: dark ramp on dark, cream on light", () => {
+    const input = { id: "r-1", title: "Tomato Pasta" };
+    expect(recipeUnderlayColor(input, "dark")).toBe(HERO_TINTS_DARK.warms);
+    expect(recipeUnderlayColor(input, "light")).toBe(HERO_TINTS.warms);
+    // Default arg = light (byte-identical to the pre-dark-ramp behaviour).
+    expect(recipeUnderlayColor(input)).toBe(HERO_TINTS.warms);
+  });
+
+  it("every dark tint is a fully OPAQUE 6-digit hex — never transparent, never white", () => {
+    for (const tint of [...Object.values(HERO_TINTS_DARK), CARD_DARK]) {
+      expect(tint).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(tint.toUpperCase()).not.toBe("#FFFFFF");
+    }
+  });
+
+  it("CARD_DARK is the dark-ground rung (mirrors CARD_CREAM ↔ HERO_TINTS.cream)", () => {
+    expect(CARD_DARK).toBe(HERO_TINTS_DARK.cream);
+  });
+
+  it("dark ramp keys mirror the light ramp exactly (no bucket without a dark twin)", () => {
+    expect(Object.keys(HERO_TINTS_DARK).sort()).toEqual(Object.keys(HERO_TINTS).sort());
   });
 });
