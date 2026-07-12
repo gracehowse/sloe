@@ -71,6 +71,7 @@ import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { AddRowButton } from "@/components/ui/AddRowButton";
+import { CARD_CREAM } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useHaptics } from "@/hooks/useHaptics";
@@ -768,15 +769,12 @@ export default function CreateRecipeWizard() {
         // Step 1 — photo
         photoTouch: { width: "100%" },
         // Gap 13: Radius.xl (12) — warm recipe spec radius.
-        photoPreview: {
-          width: "100%",
-          height: 200,
-          borderRadius: Radius.xl,
-        },
+        // ENG-1374 PR 2 — CARD_CREAM ground under the picked photo (never page white).
+        photoPreview: { width: "100%", height: 200, borderRadius: Radius.xl, backgroundColor: CARD_CREAM },
         // Gap 3: warm fallback — no dashed border, no cold grey camera box.
-        // Uses #F6F5F2 fill as the ground for RecipeHeroFallback (sage→cream
-        // gradient tile) overlaid in the render. Matches RecipeHeroFallback
-        // treatment on Library / Discover / Plan cards (§11.4).
+        // CARD_CREAM #F6F5F2 ground under the RecipeHeroFallback tile (§11.4).
+        // ENG-1374 PR 2: was `colors.card` (#FFFFFF light) — comment-vs-code
+        // drift; now literally the cream, so a failed SVG mount is never white.
         // Gap 13: Radius.xl (12).
         photoFallback: {
           width: "100%",
@@ -785,7 +783,7 @@ export default function CreateRecipeWizard() {
           overflow: "hidden",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: colors.card,
+          backgroundColor: CARD_CREAM,
           // Flat-card surfaces (2026-06-12, Withings grammar — decision:
           // docs/decisions/2026-06-12-flat-card-surfaces.md): the photo-fallback
           // tile is a flat slab; the soft lift (`Elevation.cardSoft`) is retired,

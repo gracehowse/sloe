@@ -91,7 +91,7 @@ interface BucketSpec {
  * is retained on the type for back-compat but no longer drives the
  * mark colour (sage reads on every cream tint).
  */
-const CARD_CREAM = "#F6F5F2";
+export const CARD_CREAM = "#F6F5F2";
 
 /**
  * The §11.4 cuisine/cream tint family — the ONLY food-fallback tint
@@ -244,6 +244,21 @@ export function getRecipeFallback(input: RecipeHeroInput): RecipeHeroFallback {
     patternAlpha,
     glyphAlpha,
   };
+}
+
+/**
+ * ENG-1374 PR 2 — the never-white structural underlay colour for a
+ * recipe image WRAPPER. Every recipe image container paints this as an
+ * opaque `backgroundColor` on the wrapper itself (not on the image or
+ * SVG child), so no child failure — 404, SVG mount failure, slow
+ * network, style clobber — can expose page white. It is the recipe's
+ * deterministic §11.4 cuisine tint (the fallback tile's gradient
+ * start), so the underlay always matches the tile that would render on
+ * top of it. Containers with no recipe identity use `CARD_CREAM`
+ * directly instead — never a generic warm surface token (ENG-1496).
+ */
+export function recipeUnderlayColor(input: RecipeHeroInput): string {
+  return getRecipeFallback(input).gradientStart;
 }
 
 /**

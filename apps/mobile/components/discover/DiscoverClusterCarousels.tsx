@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
@@ -29,11 +30,9 @@ function clusterIdFromSeedRecipeId(id: string): SeedCuisineCluster | null {
 function ClusterRecipeCard({
   recipe,
   hero,
-  placeholderColor,
 }: {
   recipe: RecipeCard;
   hero: boolean;
-  placeholderColor: string;
 }) {
   const router = useRouter();
   const kcal = Math.round(recipe.calories);
@@ -42,6 +41,7 @@ function ClusterRecipeCard({
   const width = hero ? 280 : 200;
   const aspectRatio = hero ? 3 / 4 : 4 / 5;
   const trimmed = (recipe.image ?? "").trim();
+  const underlay = recipeUnderlayColor({ id: recipe.id, title: recipe.title });
 
   return (
     <Pressable
@@ -55,14 +55,18 @@ function ClusterRecipeCard({
       onPress={() => router.push(`/recipe/${recipe.id}`)}
       style={{ width, borderRadius: RECIPE_CARD_RADIUS, overflow: "hidden" }}
     >
-      <View style={{ aspectRatio, position: "relative", backgroundColor: placeholderColor }}>
+      {/* ENG-1374 PR 2 — the wrapper's opaque ground is the recipe's own
+          §11.4 cuisine tint, computed here rather than passed in (the
+          retired `placeholderColor` prop was fed `colors.card` #FFFFFF), so
+          no child failure can expose page white. */}
+      <View style={{ aspectRatio, position: "relative", backgroundColor: underlay }}>
         {trimmed ? (
           <SmartImage
             source={{ uri: trimmed }}
             style={{ width: "100%", height: "100%" }}
             resizeMode="cover"
             recyclingKey={recipe.id}
-            placeholderColor={placeholderColor}
+            placeholderColor={underlay}
           />
         ) : (
           <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={24} />
@@ -134,12 +138,7 @@ export function DiscoverClusterCarousels({ recipes }: { recipes: ReadonlyArray<R
               contentContainerStyle={{ gap: Spacing.sm, paddingRight: Spacing.lg }}
             >
               {items.map((recipe, idx) => (
-                <ClusterRecipeCard
-                  key={recipe.id}
-                  recipe={recipe}
-                  hero={idx === 0}
-                  placeholderColor={colors.card}
-                />
+                <ClusterRecipeCard key={recipe.id} recipe={recipe} hero={idx === 0} />
               ))}
             </ScrollView>
           </View>

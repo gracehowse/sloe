@@ -20,6 +20,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { DiscoverRecipeImage } from "../../src/app/components/suppr/discover-recipe-image";
+import { recipeUnderlayColor } from "../../src/lib/recipe/recipeHeroFallback";
 
 const UNSPLASH = "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&w=900";
 const SUPABASE = "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipes/a.jpg";
@@ -156,5 +157,56 @@ describe("DiscoverRecipeImage — accessibility + behaviour preserved", () => {
       />,
     );
     expect(imgFor(container)!.className).toContain("group-hover:scale-[1.03]");
+  });
+});
+
+describe("DiscoverRecipeImage — never-white wrapper underlay (ENG-1374 PR 2)", () => {
+  // jsdom serialises inline hex backgrounds to rgb(); normalise for compare.
+  const hexToRgb = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+  };
+  const wrapperOf = (container: HTMLElement) => container.firstElementChild as HTMLElement;
+
+  it("hero variant: the wrapper itself paints the recipe's opaque cuisine tint under the photo", () => {
+    const { container } = render(
+      <DiscoverRecipeImage id="u1" title="Tomato Pasta" image={UNSPLASH} />,
+    );
+    expect(wrapperOf(container).style.backgroundColor).toBe(
+      hexToRgb(recipeUnderlayColor({ id: "u1", title: "Tomato Pasta" })),
+    );
+  });
+
+  it("hero variant: the fallback branch wrapper carries the same tint (SVG mount failure can never expose white)", () => {
+    const { container } = render(<DiscoverRecipeImage id="u2" title="Kale Bowl" />);
+    expect(wrapperOf(container).style.backgroundColor).toBe(
+      hexToRgb(recipeUnderlayColor({ id: "u2", title: "Kale Bowl" })),
+    );
+  });
+
+  it("thumb variant: both branches paint the tint on the wrapper — the frost-grey bg-muted ground is gone", () => {
+    const withPhoto = render(
+      <DiscoverRecipeImage id="u3" title="Salmon Teriyaki" image={UNSPLASH} variant="thumb" />,
+    );
+    const noPhoto = render(
+      <DiscoverRecipeImage id="u4" title="Salmon Teriyaki" variant="thumb" />,
+    );
+    for (const { container } of [withPhoto, noPhoto]) {
+      const wrapper = wrapperOf(container);
+      expect(wrapper.style.backgroundColor).toBe(
+        hexToRgb(recipeUnderlayColor({ id: "u3", title: "Salmon Teriyaki" })),
+      );
+      expect(wrapper.className).not.toContain("bg-muted");
+    }
+  });
+
+  it("the underlay survives an image error — the wrapper stays tinted while the fallback swaps in", () => {
+    const { container } = render(
+      <DiscoverRecipeImage id="u5" title="Stale seed" image={UNSPLASH} />,
+    );
+    fireEvent.error(container.querySelector("img")!);
+    expect(wrapperOf(container).style.backgroundColor).toBe(
+      hexToRgb(recipeUnderlayColor({ id: "u5", title: "Stale seed" })),
+    );
   });
 });

@@ -8,6 +8,7 @@ import { QuickLogButton } from "@/components/ui/QuickLogButton";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import {
   coachEmptyStateCopy,
@@ -55,19 +56,30 @@ function CoachCandidateRow({
   const accent = useAccent();
   const content = (
     <View style={{ flexDirection: "row", gap: Spacing.md, alignItems: "center" }}>
-      {candidate.thumbnail ? (
-        <SmartImage
-          source={{ uri: candidate.thumbnail }}
-          style={{ width: 52, height: 52, borderRadius: 12 }}
-        />
-      ) : (
-        // RecipeHeroFallback absolute-fills its parent (hero-slot semantics) —
-        // row thumbs give it a fixed-size wrapper, same idiom as
-        // DiscoverMoreIdeaRow / RecipeDetailHero.
-        <View style={{ width: 52, height: 52, borderRadius: 12, overflow: "hidden" }}>
+      {/* ENG-1374 PR 2 — one wrapper for both branches paints the opaque
+          cuisine-tint underlay, so a 404'd thumbnail or a failed fallback
+          SVG mount never exposes page white. RecipeHeroFallback
+          absolute-fills its parent (hero-slot semantics) — row thumbs give
+          it a fixed-size wrapper, same idiom as DiscoverMoreIdeaRow /
+          RecipeDetailHero. */}
+      <View
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 12,
+          overflow: "hidden",
+          backgroundColor: recipeUnderlayColor({ id: candidate.recipeId, title: candidate.title }),
+        }}
+      >
+        {candidate.thumbnail ? (
+          <SmartImage
+            source={{ uri: candidate.thumbnail }}
+            style={{ width: "100%", height: "100%" }}
+          />
+        ) : (
           <RecipeHeroFallback id={candidate.recipeId} title={candidate.title} iconSize={20} />
-        </View>
-      )}
+        )}
+      </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm }}>
           <Text style={{ ...Type.body, color: colors.text, flex: 1 }} numberOfLines={2}>

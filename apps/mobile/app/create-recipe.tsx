@@ -61,6 +61,7 @@ import type { BarcodeProduct } from "@/lib/verifyRecipe";
 import type { AiLoggedItem } from "@suppr/nutrition-core/aiLogging";
 import MealTypePicker from "@/components/MealTypePicker";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { CARD_CREAM } from "@suppr/shared/recipe/recipeHeroFallback";
 import { normaliseInstructions } from "@suppr/shared/recipes/normaliseInstructions";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
@@ -925,7 +926,8 @@ export default function CreateRecipeScreen() {
     saveBtnTextLegacy: { color: accentInk, fontWeight: "700", fontSize: 16 },
 
     imagePicker: { alignItems: "center" },
-    imagePreview: { width: "100%", height: 200, borderRadius: Radius.xl },
+    // ENG-1374 PR 2 — CARD_CREAM grounds (no recipe identity yet): never page white.
+    imagePreview: { width: "100%", height: 200, borderRadius: Radius.xl, backgroundColor: CARD_CREAM },
     // Gap 3 (sev 4): cover placeholder. Legacy = the cold grey dashed box.
     // Redesign path renders the warm RecipeHeroFallback (sage→cream gradient +
     // sage cookware glyph, §11.4) — same component Library/Discover use — with a
@@ -936,10 +938,7 @@ export default function CreateRecipeScreen() {
       justifyContent: "center", alignItems: "center",
       backgroundColor: colors.card,
     },
-    coverHero: {
-      width: "100%", height: 180, borderRadius: Radius.xl,
-      overflow: "hidden", justifyContent: "center", alignItems: "center",
-    },
+    coverHero: { width: "100%", height: 180, borderRadius: Radius.xl, backgroundColor: CARD_CREAM, overflow: "hidden", justifyContent: "center", alignItems: "center" },
     coverHeroCta: {
       flexDirection: "row", alignItems: "center", gap: Spacing.sm,
       paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,

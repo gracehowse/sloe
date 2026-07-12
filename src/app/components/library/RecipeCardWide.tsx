@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 
 import type { RecipeCard } from "@/types/recipe";
 
@@ -54,7 +55,10 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
           border or fill — parity with the mobile twin + the Library grid. */}
       <span
         className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-[var(--radius-card-lg)]"
-        style={{ backgroundColor: "var(--background-secondary)" }}
+        // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never
+        // page white). Replaces the cool plum-grey `--background-secondary`
+        // (§11.4 bans grey grounds under imagery).
+        style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}
       >
         {showImage && recipe.image ? (
           // eslint-disable-next-line @next/next/no-img-element

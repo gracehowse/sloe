@@ -4,6 +4,7 @@ import * as React from "react";
 import { Check, Flame, Lock, MoreHorizontal, UtensilsCrossed } from "lucide-react";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
+import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback.ts";
 
 /**
  * PlanMealCardV3 — Sloe v3 Plan per-slot meal card.
@@ -71,7 +72,7 @@ export function PlanMealCardV3({
       >
       <span
         className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg"
-        style={{ backgroundColor: "var(--background-secondary)" }}
+        style={{ backgroundColor: recipeUnderlayColor({ id: name, title: name }) }}
       >
         {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element

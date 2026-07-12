@@ -38,6 +38,7 @@ import { QuickLogButton } from "@/components/ui/QuickLogButton";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 
 /**
  * Mobile `<NorthStarBlock>` — "What to eat next" permanent block on Today.
@@ -292,12 +293,11 @@ function NorthStarDefault({
         {/* 2026-05-14 (premium-bar audit DC2 polish — Recime hero
             image): the suggestion card always renders a 64×64
             thumbnail. When the suggestion carries a real
-            `thumbnail` URL we render it as an `<Image>`; otherwise
-            the deterministic `RecipeHeroFallback` paints the
-            cuisine-tinted gradient + glyph so the card never falls
-            through to a flat tint placeholder. Border-radius 8 to
-            match the bumped 64pt thumb spec. */}
-        <View style={styles.thumb}>
+            `thumbnail` URL we render it as an `<Image>`; otherwise the
+            deterministic `RecipeHeroFallback` paints the cuisine-tinted
+            gradient + glyph (ENG-1374 PR 2: the wrapper grounds on the
+            same tint — never page white). Border-radius 8. */}
+        <View style={[styles.thumb, { backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }) }]}>
           {suggestion.thumbnail ? (
             <SmartImage
               source={{ uri: suggestion.thumbnail }}
