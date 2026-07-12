@@ -55,6 +55,27 @@ Record: top 5 (name, source, kcal, portion, tier), TTFB, empty rate — **spread
 
 **Unit status:** 62/62 ranking tests green (2026-06-04).
 
+### Follow-up — commonness prior (ENG-1531, 2026-07-12)
+
+Bare generic-food queries surfaced offal first: `chicken` ranked "Chicken skin"
+/ "Chicken feet" above "Chicken, … breast, meat only, raw" ("skin" is a
+`NEUTRAL_DESCRIPTOR`, so the skin row scored a full 1.0 + the USDA-verified
++0.10 trust bump; for a 1-token query every existing demotion lane
+short-circuits — `ukRetailer*` needs a retailer token, `brandedChain*`/
+`genericBrandQueryPenalty` need ≥2 query tokens). Added
+`uncommonCutQueryPenalty` (−0.30) demoting organ/offal/skin/feet/gizzard/tail
+cuts **unless** the query names the cut ("chicken liver"), the row is a
+plant/legume homonym (kidney **beans**, **blood** orange, artichoke **hearts**),
+the cut is a whole-food modifier ("apples, raw, **with** skin"), or the query is
+a retailer query (that lane already owns it). Re-ranks, never removes
+(`foodSearchRankScore` floors at 0). Shared module → covers web + mobile via the
+`@suppr/nutrition-core` re-export.
+
+| Fix | Files |
+|-----|-------|
+| `uncommonCutQueryPenalty` commonness prior | [`foodSearchRanking.ts`](../../src/lib/nutrition/foodSearchRanking.ts) |
+| Top-20 generic-food fixtures + guard tests | [`foodSearchRankingCommonness.test.ts`](../../tests/unit/foodSearchRankingCommonness.test.ts) |
+
 ## Backlog (not yet shipped)
 
 | Priority | Item | Notes |

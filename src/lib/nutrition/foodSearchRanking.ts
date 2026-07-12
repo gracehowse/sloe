@@ -460,6 +460,113 @@ export function ukRetailerBrandedBoost(input: {
   return 0.38;
 }
 
+// ── Commonness / popularity prior (ENG-1531) ─────────────────────────────
+//
+// A bare generic-food query ("chicken", "beef", "pork") means the user wants
+// the ordinary cut, not an organ/offal/trimming. Without a commonness prior the
+// scorer floats those variants to the top: "Chicken skin" scores a full 1.0
+// (recall 1, and "skin" is a NEUTRAL_DESCRIPTOR so precision is 1 too) and,
+// with the +0.10 USDA-verified trust bump, out-ranks "Chicken, … breast, meat
+// only, raw". "Chicken feet" ties the plain breast. This prior demotes those
+// uncommon cuts UNLESS the query names them ("chicken liver" → liver is fine).
+
+/**
+ * Animal parts / trimmings / organ meats — the non-prime cuts a bare category
+ * query ("chicken", "beef") almost never means. Plurals are covered by the
+ * stemmer at match time, singulars listed for readability. Deliberately EXCLUDES
+ * ordinary cuts (belly, loin, shank, thigh, breast, fat, meat) — those are not
+ * offal and must not be demoted.
+ */
+const UNCOMMON_CUT_WORDS = new Set([
+  // parts / trimmings
+  "skin", "feet", "foot", "gizzard", "gizzards", "tail", "tails",
+  "offal", "tripe", "giblet", "giblets", "chitterlings", "chitlins",
+  "trotter", "trotters", "snout", "gristle", "cartilage", "spleen",
+  "sweetbread", "sweetbreads",
+  // organ meats
+  "liver", "livers", "kidney", "kidneys", "heart", "hearts",
+  "tongue", "tongues", "brain", "brains", "neck", "necks", "blood",
+]);
+
+/**
+ * When one of these co-occurs, an "organ" token above is really part of a
+ * plant/legume food, not an animal offal cut — so the row is exempt from the
+ * commonness prior: kidney BEANS, heart of PALM, ARTICHOKE / ROMAINE hearts,
+ * BLOOD ORANGE, CELERY / CABBAGE hearts.
+ */
+const CUT_WORD_PLANT_CONTEXT = new Set([
+  "bean", "beans", "palm", "artichoke", "romaine", "celery",
+  "orange", "oranges", "cabbage", "lettuce", "greens",
+]);
+
+/**
+ * Tokens that, when they immediately PRECEDE a cut word, mean the cut is a
+ * modifier on the whole food, not the food itself — "Apples, raw, with skin",
+ * "Chicken, meat and skin", "no skin" are the fruit / whole bird / skinless
+ * meat, not skin-as-food.
+ */
+const CUT_MODIFIER_PREFIXES = new Set(["with", "without", "and", "no"]);
+
+/**
+ * Tokens that, when they immediately FOLLOW a cut word, mean the cut is still
+ * attached to the whole cut — butchery "skin-on" (normalized "skin on") is an
+ * ordinary skin-on cut, not skin-as-food.
+ */
+const CUT_MODIFIER_SUFFIXES = new Set(["on"]);
+
+/**
+ * Commonness prior for generic-food queries (ENG-1531). Returns a negative
+ * demotion when the candidate names an organ/offal/trimming cut the query did
+ * NOT ask for; 0 otherwise. Source-independent — it's a query↔name signal.
+ *
+ * Guards so it never demotes a legitimate result:
+ *   - Query names the cut ("chicken liver", "beef heart") → 0 (they want it).
+ *   - Retailer queries ("tesco chicken") → 0 (the ukRetailer* lane owns those).
+ *   - Plant/legume context ("Beans, kidney"; "Blood orange") → 0.
+ *   - Cut used as a modifier ("Apples, raw, with skin") → 0.
+ * The demotion re-ranks, never removes: foodSearchRankScore floors at 0, so an
+ * offal row still appears — just below the ordinary cut.
+ */
+export function uncommonCutQueryPenalty(input: {
+  query: string;
+  name: string;
+}): number {
+  // Retailer queries have their own demotion lane (ukRetailerQueryUsdaPenalty);
+  // don't stack a second penalty or interfere with that path.
+  if (queryLeadingUkRetailer(input.query)) return 0;
+
+  const qTokens = normalize(input.query)
+    .split(" ")
+    .filter((t) => t.length > 1 && !MATCH_STOPWORDS.has(t));
+  if (qTokens.length === 0) return 0;
+  // The user explicitly asked for this cut — it's exactly what they want.
+  for (const t of qTokens) {
+    if (UNCOMMON_CUT_WORDS.has(t) || UNCOMMON_CUT_WORDS.has(stem(t))) return 0;
+  }
+
+  const nameNoBrand = input.name.includes(" · ")
+    ? input.name.split(" · ").slice(-1)[0]!
+    : input.name;
+  // Keep stopwords so "with skin" / "meat and skin" adjacency stays visible.
+  const cWords = normalize(nameNoBrand).split(" ").filter(Boolean);
+
+  // A plant/legume food that merely contains an organ homonym is exempt.
+  for (const w of cWords) {
+    if (CUT_WORD_PLANT_CONTEXT.has(w) || CUT_WORD_PLANT_CONTEXT.has(stem(w))) return 0;
+  }
+
+  for (let i = 0; i < cWords.length; i++) {
+    const w = cWords[i]!;
+    if (!UNCOMMON_CUT_WORDS.has(w) && !UNCOMMON_CUT_WORDS.has(stem(w))) continue;
+    const prev = i > 0 ? cWords[i - 1]! : "";
+    if (CUT_MODIFIER_PREFIXES.has(prev)) continue; // "with skin" — whole food
+    const next = i + 1 < cWords.length ? cWords[i + 1]! : "";
+    if (CUT_MODIFIER_SUFFIXES.has(next)) continue; // "skin-on" — ordinary cut
+    return -0.3;
+  }
+  return 0;
+}
+
 /**
  * When the user typed a multi-word query whose first token looks like a brand
  * ("starbucks latte"), demote verified USDA generics that don't mention that
@@ -558,6 +665,10 @@ export function foodSearchRankScore(input: {
       query: input.query,
       name: input.name,
       source: input.source,
+    }) +
+    uncommonCutQueryPenalty({
+      query: input.query,
+      name: input.name,
     });
   // Branded grocery/chain rows must not lose to a generic USDA row when the
   // user's query names the brand explicitly (houmous/hummus spelling drift).
