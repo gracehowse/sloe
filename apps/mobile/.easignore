@@ -1,0 +1,9 @@
+screenshots/
+**/screenshots/
+tests/
+# Regenerated on EAS (pod install / xcodebuild) — huge, and re-uploading a
+# stale local copy is what broke builds 63/65. The committed-in-upload
+# Podfile.lock (regenerated to Sentry 8 / RevenueCat 10, ENG-1560) is kept.
+ios/Pods/
+ios/build/
+ios/DerivedData/
