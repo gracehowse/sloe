@@ -428,9 +428,20 @@ export function todayHealthConnectActiveCaloriesHint(): string {
   return `Active calories appear here once a source is connected (${TODAY_HEALTH_CONNECT_ROUTE}).`;
 }
 
-/** Energy balance empty-state when no burn data yet (ENG-873). */
+/** Energy balance empty-state when Apple Health is NOT connected (ENG-873). */
 export function todayHealthConnectEnergyEmptyHint(): string {
   return `No resting or active energy for this day in Sloe yet. Open ${TODAY_HEALTH_CONNECT_ROUTE}, enable Apple Health, then pull to refresh or revisit this tab to sync.`;
+}
+
+/** Energy balance empty-state when Apple Health IS connected but no burn
+ *  data has synced for this day yet (ENG-1534). The prior copy reused the
+ *  not-connected hint above and told already-connected users to "enable
+ *  Apple Health" — a state conflation. Connected-with-no-data-yet gets a calm,
+ *  accurate line with no "enable" nag: the source is connected; the numbers
+ *  land on the next sync or once the user moves. The empty state only renders
+ *  for `isToday`, so "once you move" is always valid. */
+export function todayHealthConnectedNoDataHint(): string {
+  return "No activity data for this day yet — it'll appear after your next sync, or once you move.";
 }
 
 /** 7-day rolling card — avg vs weekly totals use different denominators (F-06). */

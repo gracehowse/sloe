@@ -52,6 +52,7 @@ import {
   TODAY_HEALTH_CONNECT_ROUTE,
   todayHealthConnectActiveCaloriesHint,
   todayHealthConnectEnergyEmptyHint,
+  todayHealthConnectedNoDataHint,
 } from "../../src/lib/copy/today";
 
 /** Absolute path to the repo root — tests run from the repo root via
@@ -219,6 +220,25 @@ describe("Today health connect route (ENG-873)", () => {
       TODAY_HEALTH_CONNECT_ROUTE,
     );
     expect(todayHealthConnectActiveCaloriesHint()).not.toContain("More →");
+  });
+});
+
+describe("Today energy empty-state honesty (ENG-1534)", () => {
+  it("connected-with-no-data copy never nags to enable / connect", () => {
+    const connected = todayHealthConnectedNoDataHint();
+    // The whole bug: telling an already-connected user to enable Apple Health.
+    expect(connected).not.toMatch(/enable Apple Health/i);
+    expect(connected).not.toContain(TODAY_HEALTH_CONNECT_ROUTE);
+    expect(connected).not.toMatch(/connect/i);
+  });
+
+  it("connected and not-connected hints are distinct, non-empty strings", () => {
+    expect(todayHealthConnectedNoDataHint().length).toBeGreaterThan(0);
+    expect(todayHealthConnectedNoDataHint()).not.toBe(
+      todayHealthConnectEnergyEmptyHint(),
+    );
+    // The not-connected hint keeps the enable instruction.
+    expect(todayHealthConnectEnergyEmptyHint()).toMatch(/enable Apple Health/i);
   });
 });
 
