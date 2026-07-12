@@ -17,6 +17,13 @@
  *   3. A `borderRadius` numeric literal that is not on the canonical `Radius`
  *      scale (mobile), read at runtime from `apps/mobile/constants/theme.ts`
  *      (`Radius` = 4/6/8/12/9999) — never hardcoded.
+ *   4. A raw `rgb()` / `rgba()` colour literal with numeric channels
+ *      (ENG-1520 blind spot), e.g. `rgba(139, 92, 246, 0.5)` — a hue that
+ *      dodges HEX_RE. Pure black / white (`rgb(0,0,0)` / `rgb(255,255,255)`,
+ *      any alpha) are carved out as the scrim/shadow idiom, mirroring the
+ *      3-digit `#000` / `#fff` carve-out. (The web `rounded-[Npx]` bracket
+ *      blind spot from the same ticket is gated separately by
+ *      `check:web-radius` / ENG-1499.)
  *
  * Exclusions: token-definition files (`apps/mobile/constants/theme.ts`,
  * `src/styles/theme.css`, the Tailwind theme config), `node_modules`, and
@@ -93,6 +100,20 @@ const TW_HUES =
   "red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|grey|zinc|neutral|stone";
 const TW_RE = new RegExp(`\\b(?:bg|text|border)-(?:${TW_HUES})-[0-9]{3}\\b`, "g");
 const RADIUS_RE = /\bborderRadius\s*:\s*(\d+(?:\.\d+)?)\b/g;
+// Raw rgb()/rgba() colour literal with a numeric channel triple (ENG-1520 —
+// the `check:web-radius`/`check:token-scale` blind-spot cluster). A hue
+// written as `rgba(139, 92, 246, 0.5)` slips past HEX_RE entirely, so it
+// dodges the "colour comes from tokens" rule. Pure black / pure white
+// (`rgb(0,0,0)` / `rgb(255,255,255)`, any alpha) are the scrim + shadow
+// idiom and are carved out — the same reason the 3-digit `#000` / `#fff`
+// are (there is no semantic token for a raw scrim/shadow alpha). A
+// token-routed `rgba(var(--x), 0.5)` has no numeric triple and never matches.
+const RGBA_RE = /\brgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\b[^)]*\)/g;
+
+/** Pure black / pure white channels — the carved-out scrim/shadow idiom. */
+function isScrimBlackWhite(r, g, b) {
+  return (r === 0 && g === 0 && b === 0) || (r === 255 && g === 255 && b === 255);
+}
 
 /** Read the canonical legal radius values from `theme.ts` (`Radius`). */
 export function readLegalRadius(themeSrc = readFileSync(THEME_FILE, "utf8")) {
@@ -118,7 +139,7 @@ export { stripComments };
  * Scan a single source file's text and return its token findings as
  * `[{ line, kind, token, nearest? }]`. Pure (no filesystem) so tests can
  * drive it with synthetic source.
- *   kind: "hex" | "tailwind" | "radius"
+ *   kind: "hex" | "tailwind" | "radius" | "rgba"
  */
 export function findViolations(src, legalRadius) {
   const code = stripComments(src);
@@ -147,6 +168,12 @@ export function findViolations(src, legalRadius) {
         });
       }
     }
+    RGBA_RE.lastIndex = 0;
+    while ((m = RGBA_RE.exec(line)) !== null) {
+      const [r, g, b] = [m[1], m[2], m[3]].map((n) => parseInt(n, 10));
+      if (isScrimBlackWhite(r, g, b)) continue;
+      hits.push({ line: i + 1, kind: "rgba", token: m[0].replace(/\s+/g, " ") });
+    }
   }
   return hits;
 }
@@ -170,6 +197,7 @@ export { evaluate };
 function describeHit(h) {
   if (h.kind === "radius") return `borderRadius ${h.token.split(": ")[1]} → ${h.nearest}`;
   if (h.kind === "tailwind") return `${h.token} → semantic token utility`;
+  if (h.kind === "rgba") return `${h.token} → semantic colour token (token + opacity)`;
   return `${h.token} → semantic token`;
 }
 

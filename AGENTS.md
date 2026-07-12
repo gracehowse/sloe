@@ -71,9 +71,12 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   only-shrink ratchets** (ENG-1007, in `npm run ci` + CI): `check:spacing-scale`
   (`scripts/check-spacing-scale.mjs` — off-scale mobile spacing literals, pinned
   in `scripts/spacing-budget.json`) and `check:token-scale`
-  (`scripts/check-token-scale.mjs` — raw hexes, raw Tailwind palette colour
-  classes, and off-scale `borderRadius` across web + mobile, pinned in
-  `scripts/token-budget.json`). Both read the legal scales from `theme.ts`; a
+  (`scripts/check-token-scale.mjs` — raw hexes, raw `rgb()`/`rgba()` hue
+  literals (ENG-1520; pure black/white scrims carved out), raw Tailwind
+  palette colour classes, and off-scale `borderRadius` across web + mobile,
+  pinned in `scripts/token-budget.json`; the web `rounded-[Npx]` bracket
+  namespace is gated separately by `check:web-radius`, ENG-1499). Both read
+  the legal scales from `theme.ts`; a
   new off-scale/off-token value fails CI. Re-pin a legitimately-shrunk file with
   `npm run check:spacing-scale:write` / `npm run check:token-scale:write`.
 - **Spacing snaps to the scale:** 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40
