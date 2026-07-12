@@ -23,28 +23,42 @@ describe("targetsView — activityLevelCaption", () => {
 });
 
 describe("targetsView — deficitSurplusCaption", () => {
+  // ENG-1507 — the former `goal` opt was dead code (every positive delta
+  // returned "surplus" regardless), so it's gone: the caption reports the
+  // SIGN of the delta, nothing else.
   it("returns '500 kcal deficit' for a 500 kcal deficit target below TDEE (prototype example)", () => {
     expect(
-      deficitSurplusCaption({ targetCalories: 2100, tdeeKcal: 2600, goal: "lose" }),
+      deficitSurplusCaption({ targetCalories: 2100, tdeeKcal: 2600 }),
     ).toBe("500 kcal deficit");
   });
 
   it("returns a surplus caption when target exceeds TDEE", () => {
     expect(
-      deficitSurplusCaption({ targetCalories: 3000, tdeeKcal: 2500, goal: "gain" }),
+      deficitSurplusCaption({ targetCalories: 3000, tdeeKcal: 2500 }),
     ).toBe("500 kcal surplus");
   });
 
   it("returns null for near-maintenance (|delta| < 50)", () => {
     expect(
-      deficitSurplusCaption({ targetCalories: 2400, tdeeKcal: 2380, goal: "maintain" }),
+      deficitSurplusCaption({ targetCalories: 2400, tdeeKcal: 2380 }),
     ).toBeNull();
   });
 
   it("returns null when inputs are missing / invalid", () => {
-    expect(deficitSurplusCaption({ targetCalories: null, tdeeKcal: 2000, goal: "lose" })).toBeNull();
-    expect(deficitSurplusCaption({ targetCalories: 2000, tdeeKcal: null, goal: "lose" })).toBeNull();
-    expect(deficitSurplusCaption({ targetCalories: 2000, tdeeKcal: 0, goal: "lose" })).toBeNull();
+    expect(deficitSurplusCaption({ targetCalories: null, tdeeKcal: 2000 })).toBeNull();
+    expect(deficitSurplusCaption({ targetCalories: 2000, tdeeKcal: null })).toBeNull();
+    expect(deficitSurplusCaption({ targetCalories: 2000, tdeeKcal: 0 })).toBeNull();
+  });
+
+  it("ENG-1506 — names its basis behind the flag (the audit's '200 kcal surplus' paradox)", () => {
+    // 1,856 target vs 1,647 live maintenance → +209 → nearest-50 = 200,
+    // now explicitly labelled so it can't be misread as the plan pace.
+    expect(
+      deficitSurplusCaption({ targetCalories: 1856, tdeeKcal: 1647, vsCurrentMaintenance: true }),
+    ).toBe("200 kcal surplus vs current maintenance estimate");
+    expect(
+      deficitSurplusCaption({ targetCalories: 2100, tdeeKcal: 2600, vsCurrentMaintenance: true }),
+    ).toBe("500 kcal deficit vs current maintenance estimate");
   });
 });
 

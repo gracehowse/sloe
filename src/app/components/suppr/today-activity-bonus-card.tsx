@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Flame, Target, TrendingUp, Utensils } from "lucide-react";
+import { Flame, Target, Utensils } from "lucide-react";
+import { TodayWeeklyRollingCard } from "./today-weekly-rolling-card";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { SupprButton } from "./suppr-button";
 import { Icons } from "../ui/icons";
@@ -12,8 +13,7 @@ import {
   type ActivityLevel,
   type Sex,
 } from "../../../lib/nutrition/tdee";
-import { WEEKLY_ROLLING_DENOMINATOR_HINT } from "../../../lib/copy/today";
-import { weekSummaryHeading, type WeekSummaryMode } from "../../../lib/nutrition/weekSummaryWindow";
+import { type WeekSummaryMode } from "../../../lib/nutrition/weekSummaryWindow";
 import {
   buildMaintenancePopoverCopy,
   type MaintenanceConfidence,
@@ -24,13 +24,17 @@ import { ACTIVITY_BUDGET_DISCOVER_BODY, ACTIVITY_BUDGET_DISCOVER_CTA, ACTIVITY_B
 import { todayKey } from "../../../lib/nutrition/trackerDate";
 import {
   NET_ENERGY_CHIP_BG,
-  NET_ENERGY_CHIP_LABEL,
+  NET_ENERGY_EMPTY_HEADLINE,
+  NET_ENERGY_EMPTY_SUBLINE,
   NET_ENERGY_STATE_COLOR,
+  netEnergyChipLabel,
   netEnergyChipState,
+  netEnergyHeadlineState,
   netEnergyKcalUnit,
   netEnergyMarkerFraction,
   netEnergySubline,
 } from "../../../lib/nutrition/netEnergyBalance";
+import { ENERGY_NUMBERS_V1_FLAG, maintenanceQualifier } from "../../../lib/nutrition/energyNumbers";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { ACTIVITY_BONUS_INFO_TRIGGER_LABEL_GLOSS, ACTIVITY_BONUS_INFO_TRIGGER_LABEL_PLAIN } from "../../../lib/onboarding/figmaCopy.ts";
 
@@ -149,6 +153,9 @@ export function TodayActivityBonusCard({
           })
       : null;
 
+  // ENG-1506 — balanced-band wording + empty-headline state + maintenance
+  // qualifier, gated together; off → the exact legacy card.
+  const energyV1 = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG);
   const net = totalBurnKcal - consumedCalories;
   const isDeficit = net >= 0;
   const chipState = netEnergyChipState(net);
@@ -168,7 +175,12 @@ export function TodayActivityBonusCard({
     isToday,
     netKcal: net,
     stagedNeutralSurplusFraming: isFeatureEnabled("coaching_stages_v1"), // ENG-1454
+    balancedWording: energyV1, // ENG-1506
   });
+  // ENG-1506 — an empty today (no burn, no food) renders an em-dash, not
+  // an affirming giant "0 kcal maintenance".
+  const emptyHeadline =
+    energyV1 && netEnergyHeadlineState(totalBurnKcal, consumedCalories) === "empty";
 
   let weekBurn = 0;
   let weekConsumed = 0;
@@ -264,12 +276,27 @@ export function TodayActivityBonusCard({
               className="rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white"
               style={{ backgroundColor: chipBg }}
             >
-              {NET_ENERGY_CHIP_LABEL[chipState]}
+              {netEnergyChipLabel(chipState, { balancedWording: energyV1 })}
             </span>
           </div>
         </div>
 
         <div className="mb-3">
+          {emptyHeadline ? (
+            <>
+              {/* ENG-1506 — empty state: em-dash on the type ladder, no 52px zero. */}
+              <p
+                data-testid="today-activity-bonus-net-headline"
+                className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none text-muted-foreground"
+              >
+                {NET_ENERGY_EMPTY_HEADLINE}
+              </p>
+              <p className="mt-2 mb-4 text-[13px] text-muted-foreground">
+                {NET_ENERGY_EMPTY_SUBLINE}
+              </p>
+            </>
+          ) : (
+            <>
           <div className="flex items-baseline gap-2">
             <span
               data-testid="today-activity-bonus-net-headline"
@@ -278,9 +305,13 @@ export function TodayActivityBonusCard({
             >
               {Math.abs(net).toLocaleString()}
             </span>
-            <span className="text-sm text-muted-foreground">{netEnergyKcalUnit(chipState)}</span>
+            <span className="text-sm text-muted-foreground">
+              {netEnergyKcalUnit(chipState, { balancedWording: energyV1 })}
+            </span>
           </div>
           <p className="mt-2 mb-4 text-[13px] text-muted-foreground">{netSubLine}</p>
+            </>
+          )}
 
           {(hasBurnData || consumedCalories > 0) ? (
             <>
@@ -351,6 +382,15 @@ export function TodayActivityBonusCard({
                 <p className="font-[family-name:var(--font-headline)] text-lg font-medium tabular-nums text-foreground">
                   {maintenanceTdeeKcal!.toLocaleString()}
                 </p>
+                {/* ENG-1506 — explicit source qualifier under the kcal. */}
+                {energyV1 && maintenanceSource ? (
+                  <p
+                    data-testid="today-activity-bonus-maintenance-qualifier"
+                    className="mt-0.5 text-[10px] text-muted-foreground"
+                  >
+                    {maintenanceQualifier(maintenanceSource, maintenanceConfidence ?? null).line}
+                  </p>
+                ) : null}
               </div>
             </>
           ) : null}
@@ -408,56 +448,15 @@ export function TodayActivityBonusCard({
       </div>
 
       {showWeekly ? (
-        <div
-          // One-treatment elevation (Grace 2026-06-09): page-ground card → soft
-          // lift (`card-slab`). Was flat slab.
-          className="rounded-card bg-card card-slab p-5"
-          data-testid="today-weekly-rolling-card"
-        >
-          <div className="mb-3 flex items-center gap-1.5">
-            <TrendingUp className="h-3.5 w-3.5 text-[var(--success)]" aria-hidden />
-            <span className={LABEL_CLASS}>{weekSummaryHeading(weekSummaryMode)}</span>
-          </div>
-          {(() => {
-            const isCalibrating = weekConsumed === 0;
-            const valueClasses = isCalibrating
-              ? "text-muted-foreground"
-              : isWeekDeficit
-                ? "text-[var(--success)]"
-                : "text-[var(--accent-warning-solid)]";
-            return (
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    Avg daily {isWeekDeficit ? "deficit" : "surplus"}
-                  </span>
-                  <span className={`font-[family-name:var(--font-headline)] text-base font-medium tabular-nums ${valueClasses}`}>
-                    {Math.abs(dailyAvgDeficit).toLocaleString()} kcal
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    Weekly {isWeekDeficit ? "deficit" : "surplus"}
-                  </span>
-                  <span className={`font-[family-name:var(--font-headline)] text-base font-medium tabular-nums ${valueClasses}`}>
-                    {Math.abs(weekDeficit).toLocaleString()} kcal
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    Projected weekly {isWeekDeficit ? "loss" : "gain"}
-                  </span>
-                  <span className={`font-[family-name:var(--font-headline)] text-base font-medium tabular-nums ${valueClasses}`}>
-                    {weeklyMassLabel}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-snug pt-1">
-                  {WEEKLY_ROLLING_DENOMINATOR_HINT}
-                </p>
-              </div>
-            );
-          })()}
-        </div>
+        // ENG-1506 touch — rollup extracted to `TodayWeeklyRollingCard` (line budget).
+        <TodayWeeklyRollingCard
+          weekSummaryMode={weekSummaryMode}
+          weekConsumed={weekConsumed}
+          isWeekDeficit={isWeekDeficit}
+          dailyAvgDeficit={dailyAvgDeficit}
+          weekDeficit={weekDeficit}
+          weeklyMassLabel={weeklyMassLabel}
+        />
       ) : null}
     </div>
   );

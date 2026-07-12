@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Pressable, Text, View, type ImageStyle, type StyleProp } from "react-native";
 
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -73,15 +74,25 @@ export function DiscoverMoreIdeaRow({ item, idx, onPress }: DiscoverMoreIdeaRowP
         borderTopColor: colors.cardBorder,
       }}
     >
-      <DiscoverCoverImage
-        uri={item.image}
-        style={{ width: 56, height: 56, borderRadius: 10 }}
-        fallback={
-          <View style={{ width: 56, height: 56, borderRadius: 10, overflow: "hidden", backgroundColor: colors.card }}>
-            <RecipeHeroFallback id={item.id} title={item.title} iconSize={20} />
-          </View>
-        }
-      />
+      {/* ENG-1374 PR 2 — the thumb wrapper paints the recipe's opaque
+          §11.4 cuisine tint (was `colors.card` #FFFFFF on the fallback
+          branch, and bare on the photo branch), so a 404 or a failed
+          fallback SVG mount never exposes page white. */}
+      <View
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 10,
+          overflow: "hidden",
+          backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }),
+        }}
+      >
+        <DiscoverCoverImage
+          uri={item.image}
+          style={{ width: "100%", height: "100%" }}
+          fallback={<RecipeHeroFallback id={item.id} title={item.title} iconSize={20} />}
+        />
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={{ ...Type.headline, fontWeight: "600", color: colors.text }} numberOfLines={1}>
           {decodeEntities(item.title)}

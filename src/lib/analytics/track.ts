@@ -166,16 +166,12 @@ function flagForceOverride(flag: string): boolean | null {
  *   in TestFlight, so it is deliberately excluded from the ENG-1225 flag-
  *   collapse sweep. Mirror of the mobile note in `apps/mobile/lib/analytics.ts`.
  *
- * - `today_desktop_frame_v1` — ENG-1494 desktop two-column Today frame.
- *   DEFAULT-OFF *by design*: the 2026-04-20 prototype layout it implements
- *   failed device-validation against two later-ratified decisions (the
- *   household panel above the hero demotes the daily loop; Weekly Insight
- *   duplicates THIS WEEK). Wired so it's trialable via PostHog / force-
- *   flags; flip only after the frame conforms — see ENG-1495.
- *
  * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
  *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was fixed
- *  — the v3 cook baseline is now default-on.)
+ *  — the v3 cook baseline is now default-on. `today_desktop_frame_v1` moved
+ *  there 2026-07-10 after the ENG-1495 single-rail rework fixed the
+ *  device-validation failures that had kept it dark — see its entry in the
+ *  set.)
  */
 
 /** Redesign 2026 flag set — the new design is the DEFAULT in every build
@@ -473,6 +469,18 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // "Sign in" header + tier cards five sections deep with no early CTA
   // (kill switch).
   "pricing_conversion_pair_v1",
+  // ENG-1495 (2026-07-10) — desktop Today frame (ENG-1494 wiring), rebuilt
+  // SINGLE-RAIL and flipped default-ON once conformance was met: the frame
+  // adds only chrome (breadcrumb + slim household glance bar fed by
+  // HouseholdContext) above the tracker and appends the null-unless-data
+  // Apple Health card into the tracker's OWN right rail via `railExtra` —
+  // no second grid (the ENG-1494 outer grid squeezed the hero to ~316px),
+  // no above-the-hero HouseholdPanel (which pushed the ring ~1100px below
+  // the fold), no duplicate Weekly Insight (the tracker's THIS WEEK card
+  // covers it). WEB-ONLY — a >=lg desktop layout; mobile has no equivalent
+  // surface. Off → the direct `<NutritionTracker>` render in App.tsx
+  // (kill switch).
+  "today_desktop_frame_v1",
 ]);
 
 /**
@@ -547,6 +555,22 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   Registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS
  *   parity check — the flag is web-only in practice (mobile Discover has
  *   no equivalent filter sheet), so no mobile code reads it.
+ * - `energy_numbers_v1` (ENG-1506/1507) — the canonical energy-numbers
+ *   reconciliation: every maintenance surface reads `selectMaintenance`
+ *   (one input policy — latest weigh-in, strict-null basics), Targets +
+ *   Expenditure stop bypassing the resolver, the net-energy "maintenance"
+ *   state word becomes "Balanced", and empty todays show an empty state
+ *   instead of "0 kcal maintenance". DEFAULT-OFF: real users' displayed
+ *   maintenance MOVES when this ramps (the intended convergence) — Grace
+ *   ramps in PostHog with before/after screenshots per
+ *   `docs/decisions/2026-07-11-canonical-energy-numbers.md`. Off → every
+ *   surface renders its exact pre-ENG-1506 numbers AND no write path
+ *   adopts the new input policy — the goal-editor recompute baseline,
+ *   daily-target snapshot/backfill inputs, and the projection
+ *   goal-vocabulary fallback are all host-gated on this flag (kill
+ *   switch; re-verified 2026-07-11 review round). The server weekly-recap
+ *   push route can't read the flag and stays fully legacy until
+ *   flag-collapse. W + M.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -564,6 +588,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "paywall_fallback_when_unavailable", // ENG-1381 — priced fallback for RC-unavailable paywall (mobile-only in practice)
   "kcal_trust_qualifier_v1", // ENG-1417 — "~" qualifier on unverified kcal, decision surfaces only
   "discover_verified_filter_v1", // ENG-1417 — Discover "Verified only" filter chip (web-only in practice)
+  "energy_numbers_v1", // ENG-1506/1507 — canonical energy numbers (selectMaintenance input policy + qualifiers)
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

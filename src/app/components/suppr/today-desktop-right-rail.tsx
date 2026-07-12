@@ -36,6 +36,13 @@ export interface TodayDesktopRightRailProps {
   todayDateKey: string;
   byDay: Record<string, ReadonlyArray<{ calories: number }>>;
   onSelectDayKey: (dateKey: string) => void;
+  /**
+   * ENG-1495 — extra card(s) the desktop frame appends BELOW the rail's
+   * own trajectory cards (today: the null-unless-data Apple Health
+   * card). The rail stays the tracker's single desktop column — the
+   * frame must never mount a second aside around it.
+   */
+  railExtra?: React.ReactNode;
   className?: string;
 }
 
@@ -74,6 +81,7 @@ export function TodayDesktopRightRail({
   todayDateKey,
   byDay,
   onSelectDayKey,
+  railExtra,
   className,
 }: TodayDesktopRightRailProps) {
   const dateKeys = lastSevenDateKeys(todayDateKey);
@@ -267,6 +275,8 @@ export function TodayDesktopRightRail({
           })}
         </ol>
       </div>
+
+      {railExtra}
     </aside>
   );
 }

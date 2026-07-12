@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Icons } from "../ui/icons";
+import { AvatarDisc } from "../ui/avatar-disc";
 import { DayStrip } from "../DayStrip";
 import { StreakPip } from "./streak-pip";
 import { todayKey, formatDateLabel } from "../../../lib/nutrition/trackerDate";
@@ -29,6 +30,11 @@ export interface TodayDateHeaderProps {
   streakDays?: number;
   freezeProtected?: boolean;
   onStreakPress?: () => void;
+  /** ENG-1504 (mobile parity, premium-bar audit DC8) — when the protected
+   *  streak just reset, render the calm supportive line under the day strip.
+   *  Sticky until the user next logs a positive streak (host-managed).
+   *  Mirrors mobile `TodayDateHeader`'s `streakResetCopyVisible`. */
+  streakResetCopyVisible?: boolean;
 }
 
 const ghostNav =
@@ -59,9 +65,20 @@ export function TodayDateHeader({
   streakDays,
   freezeProtected,
   onStreakPress,
+  streakResetCopyVisible = false,
 }: TodayDateHeaderProps) {
   const calmDateNav = hideDayStrip && viewMode === "day";
   const isToday = selectedDateKey === todayKey();
+
+  // ENG-1504 — mobile-canonical fresh-day nudge (premium-bar audit DC8):
+  // the streak-reset supportive line renders in the date-header block,
+  // directly under the day strip. Copy + position mirror mobile
+  // `TodayDateHeader` exactly.
+  const streakResetLine = (
+    <p data-testid="streak-reset-copy" className="text-[11px] text-muted-foreground">
+      Every expert was once a beginner. Start fresh today.
+    </p>
+  );
 
   if (stripOnly) {
     // Sloe redesign (2026-06-08): airier rhythm to match Figma `654:2`
@@ -79,6 +96,7 @@ export function TodayDateHeader({
           onSelectDateKey={onSelectDateKey}
           onOpenCalendar={onOpenCalendar}
         />
+        {isToday && streakResetCopyVisible ? streakResetLine : null}
       </div>
     );
   }
@@ -104,10 +122,10 @@ export function TodayDateHeader({
               onClick={onOpenCalendar}
               aria-label="Choose date"
             >
-              <h1
-                className="font-bold text-foreground tracking-tight text-lg leading-tight"
-                style={{ letterSpacing: "-0.35px" }}
-              >
+              {/* S6 chrome title ruling (2026-07-10, ENG-1375): sans-bold →
+                  the S6 serif-24 tab-title voice (`ScreenChrome` grammar,
+                  mobile `Type.title`). */}
+              <h1 className="font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
                 {titleText}
               </h1>
               {dayGreeting && isToday ? (
@@ -148,12 +166,13 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[var(--accent-info)] text-white shrink-0"
+            className="md:hidden shrink-0 rounded-full"
             aria-label="Open settings"
           >
-            {avatarLetter}
+            <AvatarDisc initial={avatarLetter} size={36} />
           </button>
         </div>
+        {streakResetCopyVisible ? streakResetLine : null}
       </div>
     );
   }
@@ -183,10 +202,9 @@ export function TodayDateHeader({
                 {weekLabel}
               </p>
             ) : null}
-            <h1
-              className="font-bold text-foreground tracking-tight text-xl sm:text-2xl truncate"
-              style={{ fontSize: 24, letterSpacing: "-0.4px" }}
-            >
+            {/* S6 chrome title ruling (2026-07-10, ENG-1375): sans-bold →
+                the S6 serif-24 tab-title voice; mobile's compact date header is still Type.headline sans — convergence call tracked in ENG-1505. */}
+            <h1 className="font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
               {titleText}
             </h1>
             {dayGreeting && viewMode === "day" && isToday ? (
@@ -243,10 +261,10 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[var(--accent-info)] text-white"
+            className="md:hidden shrink-0 rounded-full"
             aria-label="Open settings"
           >
-            {avatarLetter}
+            <AvatarDisc initial={avatarLetter} size={36} />
           </button>
         </div>
       </div>
@@ -268,6 +286,9 @@ export function TodayDateHeader({
           onOpenCalendar={onOpenCalendar}
         />
       ) : null}
+      {viewMode === "day" && isToday && streakResetCopyVisible
+        ? streakResetLine
+        : null}
     </div>
   );
 }

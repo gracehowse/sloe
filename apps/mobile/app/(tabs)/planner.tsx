@@ -31,6 +31,7 @@ import { showSignInAlert, signInToMessage } from "@/lib/authAlertCopy";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { supabase } from "@/lib/supabase";
 import { upsertShoppingListJsonItems } from "@suppr/shared/supabase/shoppingJsonFallback";
 import { syncPlanSwapToShoppingList, syncPlanRemoveToShoppingList } from "@/lib/planShoppingSync";
@@ -85,6 +86,7 @@ import { usePlanV3WeekAnchor } from "@/hooks/usePlanV3WeekAnchor";
 import { usePlanWeekJournal } from "@/hooks/usePlanWeekJournal";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
+import { AddRowButton } from "@/components/ui/AddRowButton";
 import { FilterChip } from "@/components/ui/FilterChip";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
 import { PlanSmartSuggestionsCard } from "@/components/planner/PlanSmartSuggestionsCard";
@@ -336,18 +338,17 @@ const SLOT_COLOR_MOBILE: Record<PlanSlotIconKey, string> = {
  * 36×36 thumbnail on the left of a planned meal row.
  *
  * Ladder (2026-06-08, §11.4):
- *   1. real recipe image (when the meal resolves to a recipe with a
- *      non-broken `image`),
+ *   1. real recipe image (recipe resolves with a non-broken `image`),
  *   2. warm sage→cream `RecipeHeroFallback` keyed by the recipe id —
- *      when the meal HAS a recipe but no image, OR the image URL fails
- *      to load (the previously-broken case: the bare `<Image>` collapsed
- *      to an empty tinted box with no glyph),
- *   3. the slot icon-box (breakfast/lunch/dinner/snacks) — only for
- *      genuinely empty slots with no recipe at all.
+ *      recipe but no image, OR the image URL fails to load (previously
+ *      the bare `<Image>` collapsed to an empty tinted box, no glyph),
+ *   3. the slot icon-box — only for genuinely empty recipe-less slots.
  *
- * The on-error state is the key fix: a stale/expired recipe hero URL now
- * settles into the same calm tile the Library + Discover cards use,
- * never a flat coloured square.
+ * The on-error state is the key fix: a stale/expired recipe hero URL
+ * settles into the calm Library/Discover tile, never a flat square.
+ * ENG-1374 PR 2: rungs 1–2 ground on the recipe's OPAQUE §11.4 cuisine
+ * tint (`recipeUnderlayColor`) — the old translucent `tint + "22"` wash
+ * is now empty-slot-only, so no failure can expose page white.
  */
 function PlanMealThumb({
   hasRecipe,
@@ -375,7 +376,7 @@ function PlanMealThumb({
       <Image
         source={{ uri: trimmed }}
         accessibilityLabel={`${recipeTitle} thumbnail`}
-        style={[iconBoxStyle as StyleProp<ImageStyle>, { backgroundColor: tint + "22" }]}
+        style={[iconBoxStyle as StyleProp<ImageStyle>, { backgroundColor: recipeUnderlayColor({ id: recipeId ?? recipeTitle, title: recipeTitle }) }]}
         resizeMode="cover"
         onError={() => setBroken(true)}
       />
@@ -387,7 +388,7 @@ function PlanMealThumb({
   // Library/Discover cards. Keyed by recipe id so it's stable per recipe.
   if (hasRecipe && recipeId) {
     return (
-      <View style={[iconBoxStyle, { overflow: "hidden" }]}>
+      <View style={[iconBoxStyle, { overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: recipeId, title: recipeTitle }) }]}>
         <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={16} />
       </View>
     );
@@ -1902,35 +1903,14 @@ export default function PlannerScreen() {
           color: colors.textTertiary,
           letterSpacing: 0.3,
         },
+        // Per-slot add controls themselves render via the shared
+        // `AddRowButton` primitive (AddControl ruling 2026-07-10, ENG-1375
+        // S4) — quiet-fill pill, radius 12, primary-solid semibold label.
         addSlotRow: {
           flex: 1,
           flexDirection: "row",
           gap: Spacing.sm,
           minWidth: 0,
-        },
-        addSlotChip: {
-          flex: 1,
-          minWidth: 0,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: Spacing.xs,
-          paddingVertical: 8,
-          paddingHorizontal: 4,
-          // Chips census (2026-06-10): Radius.full — chip family is round.
-          borderRadius: Radius.full,
-          // Flat-card grammar (2026-06-12): a SECONDARY add affordance →
-          // quiet fill (`colors.fillQuiet` #F2EFE9), NO border. The white-
-          // card + hairline read as a second elevated surface inside the
-          // day card; quiet fill is the Withings nested-affordance language.
-          // `addSlotChipText` stays textSecondary (#6A6072 on #F2EFE9 =
-          // 5.19:1, clears AA); the Plus glyph is the same muted tier.
-          backgroundColor: colors.fillQuiet,
-        },
-        addSlotChipText: {
-          fontSize: 11,
-          fontWeight: "600",
-          color: colors.textSecondary,
         },
         // Prototype port (2026-04-20) — 36×36 muted square on the
         // left of every meal row carrying a slot-appropriate icon.
@@ -3916,11 +3896,15 @@ export default function PlannerScreen() {
                   <Text style={styles.addSlotLabel}>Add</Text>
                   <View style={styles.addSlotRow}>
                     {missing.map((slot) => (
-                      <Pressable
+                      <AddRowButton
                         key={slot}
+                        size="sm"
+                        // ENG-1016 — adding a meal slot to the plan is a
+                        // commit → Medium (the primitive fires it on press-in).
+                        haptic="confirm"
+                        label={compactPlanSlotLabel(slot)}
+                        style={{ flex: 1, minWidth: 0 }}
                         onPress={() => {
-                          // ENG-1016 — adding a meal slot to the plan is a commit → Medium.
-                          haptics.confirm();
                           setPlan((prev) => {
                             if (!prev) return prev;
                             const next = prev.map((dpRow, di) => {
@@ -3955,16 +3939,9 @@ export default function PlannerScreen() {
                             return enriched;
                           });
                         }}
-                        style={styles.addSlotChip}
-                        accessibilityRole="button"
                         accessibilityLabel={`Add ${slot} slot`}
                         testID={`planner-add-slot-${dp.day}-${slot}`}
-                      >
-                        <Plus size={12} color={colors.textSecondary} strokeWidth={2} />
-                        <Text style={styles.addSlotChipText} numberOfLines={1}>
-                          {compactPlanSlotLabel(slot)}
-                        </Text>
-                      </Pressable>
+                      />
                     ))}
                   </View>
                 </View>
@@ -4384,7 +4361,7 @@ export default function PlannerScreen() {
               if (error) {
                 Alert.alert("Log failed", "Could not save to tracker. " + error.message);
               } else {
-                void snapshotDailyTargetIfMissing(supabase, userId);
+                void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled("energy_numbers_v1") });
                 const dayLabel = shortWeekdayLabel(planDayCalendarDate(calInput));
                 Alert.alert(`${meal.recipeTitle} logged`, `Added to ${dayLabel}'s tracker.`);
               }

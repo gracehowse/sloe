@@ -1,7 +1,7 @@
 "use client";
 
+import { ScreenChrome } from "./screen-chrome";
 import { SubTabPill } from "../ui/sub-tab-pill";
-import { cn } from "../ui/utils";
 
 export type PlanTab = "plan" | "shopping";
 
@@ -16,6 +16,8 @@ export interface PlanTabChromeProps {
 
 /**
  * Sticky Plan header for mobile-web — mirrors mobile `PlanTabChrome`.
+ * Thin wrapper over the shared `ScreenChrome` since S6 (2026-07-10,
+ * ENG-1375); the overline moved from muted to the shared tertiary ink.
  */
 export function PlanTabChrome({
   activeId,
@@ -26,22 +28,13 @@ export function PlanTabChrome({
   className,
 }: PlanTabChromeProps) {
   return (
-    <header
-      className={cn(
-        "md:hidden sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md",
-        className,
-      )}
-      data-testid="plan-tab-chrome"
+    <ScreenChrome
+      overline="Plan"
+      title={title}
+      subtitle={subtitle}
+      className={className}
+      testID="plan-tab-chrome"
     >
-      <div className="px-6 pt-2 pb-1 space-y-0.5">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-          Plan
-        </p>
-        <h1 className="font-[family-name:var(--font-headline)] text-2xl font-medium tracking-tight text-foreground-brand">{title}</h1>
-        {subtitle ? (
-          <p className="text-[13px] font-semibold text-muted-foreground">{subtitle}</p>
-        ) : null}
-      </div>
       <SubTabPill
         embedded
         items={[
@@ -53,6 +46,6 @@ export function PlanTabChrome({
         accessibilityLabel="Plan sections"
         className="pt-0 pb-3"
       />
-    </header>
+    </ScreenChrome>
   );
 }

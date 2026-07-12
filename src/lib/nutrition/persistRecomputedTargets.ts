@@ -140,6 +140,13 @@ export type PersistRecomputedTargetsInput = {
    * didn't touch fibre in the editor.
    */
   fiberOverrideG?: number | null;
+  /**
+   * ENG-1506 — passed through to `backfillDailyTargetsFromProfile`. The
+   * HOST reads `isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)` (this module is
+   * shared web + mobile and cannot read the flag itself). Default `false`
+   * keeps the exact pre-ENG-1506 backfill input assembly (kill switch).
+   */
+  canonicalEnergyInputs?: boolean;
 };
 
 export type PersistRecomputedTargetsResult = {
@@ -180,6 +187,7 @@ export async function persistRecomputedTargets(
       if (oldProfile) {
         await backfillDailyTargetsFromProfile(supabase, userId, oldProfile, {
           now,
+          canonicalEnergyInputs: input.canonicalEnergyInputs,
         });
       }
     } catch {

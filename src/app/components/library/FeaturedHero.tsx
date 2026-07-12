@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 
 import type { RecipeCard } from "@/types/recipe";
 
@@ -50,7 +51,11 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
     >
       <span
         className="relative flex h-[150px] w-full items-center justify-center overflow-hidden md:h-[260px]"
-        style={{ backgroundColor: "var(--background-secondary)" }}
+        // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never
+        // page white). Replaces the cool plum-grey `--background-secondary` —
+        // §11.4 bans grey grounds under imagery; the tint also kills the grey
+        // flash while the photo streams in.
+        style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}
       >
         {showImage && recipe.image ? (
           // eslint-disable-next-line @next/next/no-img-element

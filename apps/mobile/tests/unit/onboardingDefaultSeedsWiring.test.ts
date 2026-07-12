@@ -28,9 +28,12 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+// ENG-1507 (2026-07-11): the completion pipeline (incl. the seeding call
+// this test pins) was extracted from mobile-flow.tsx into
+// `useOnboardingCompletion.ts` — the pins follow the code to its home.
 const FLOW_PATH = resolve(
   __dirname,
-  "../../components/onboarding/mobile-flow.tsx",
+  "../../components/onboarding/useOnboardingCompletion.ts",
 );
 const SOURCE = readFileSync(FLOW_PATH, "utf8");
 

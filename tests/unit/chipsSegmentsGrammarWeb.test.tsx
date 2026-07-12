@@ -37,8 +37,10 @@ const MEAL_PLANNER = read("src/app/components/MealPlanner.tsx");
 const MACRO_DETAIL = read("src/app/components/MacroDetailPanel.tsx");
 const PROGRESS = read("src/app/components/ProgressDashboard.tsx");
 const PERIOD_CONTROL = read("src/app/components/suppr/progress-period-control.tsx");
+const SEGMENTED_TRACK = read("src/app/components/ui/segmented-track.tsx");
+const ONBOARDING_SEGMENTED = read("src/app/components/onboarding/segmented.tsx");
 
-describe("§8 segmented controls — fully-round rail + segments (web parity)", () => {
+describe("§8 segmented controls — ONE SegmentedTrack primitive (ENG-1375 S2)", () => {
   it("LogSheet browse tabs (Recent/Favourites/My recipes): Figma underline rail (ENG-900)", () => {
     expect(LOG_SHEET).toMatch(/border-b border-border/);
     expect(LOG_SHEET).toMatch(/border-b-2/);
@@ -46,23 +48,34 @@ describe("§8 segmented controls — fully-round rail + segments (web parity)", 
     expect(LOG_SHEET).toMatch(/border-transparent font-normal text-muted-foreground/);
   });
 
-  it("MacroDetail breakdown toggle: round rail + round segments + primary-solid label", () => {
-    expect(MACRO_DETAIL).toMatch(/rounded-full bg-muted p-0\.5/);
-    expect(MACRO_DETAIL).toMatch(/flex-1 rounded-full py-1\.5/);
-    expect(MACRO_DETAIL).toMatch(/"bg-card font-semibold text-primary-solid shadow-sm"/);
+  it("SegmentedTrack primitive: full-radius muted rail + 2px pad + card-white thumb + primary-solid semibold label", () => {
+    expect(SEGMENTED_TRACK).toMatch(/rounded-full bg-muted p-0\.5/);
+    expect(SEGMENTED_TRACK).toMatch(/"bg-card font-semibold text-primary-solid shadow-sm"/);
+    expect(SEGMENTED_TRACK).toMatch(/"font-medium text-muted-foreground hover:text-foreground"/);
+    // No square thumb, no tint thumb, no accent ring in the one primitive.
+    expect(SEGMENTED_TRACK).not.toMatch(/rounded-md|rounded-lg|rounded-xl/);
+    expect(SEGMENTED_TRACK).not.toMatch(/bg-primary-soft|border-primary/);
   });
 
-  it("ProgressDashboard weight Trend/Scale toggle: round rail + round segments", () => {
-    expect(PROGRESS).toMatch(/rounded-full bg-muted p-0\.5/);
-    expect(PROGRESS).toMatch(/rounded-full px-3 py-1[\s\S]{0,80}font-semibold/);
-    expect(PROGRESS).toMatch(/"bg-card text-primary-solid shadow-sm"/);
+  it("MacroDetail breakdown toggle renders the primitive (hand-rolled track gone)", () => {
+    expect(MACRO_DETAIL).toMatch(/<SegmentedTrack/);
+    expect(MACRO_DETAIL).not.toMatch(/rounded-full bg-muted p-0\.5/);
   });
 
-  it("Progress D/W/M/6M/Y period segments: round + bg-primary-soft active (no ring)", () => {
-    expect(PERIOD_CONTROL).toMatch(/flex-1 rounded-full py-1\.5/);
-    expect(PERIOD_CONTROL).toMatch(/"bg-primary-soft text-primary-solid font-semibold"/);
-    // No square segmented thumb survived the convergence
-    expect(PERIOD_CONTROL).not.toMatch(/rounded-md py|rounded-lg py|rounded-xl py/);
+  it("ProgressDashboard weight Trend/Scale toggle renders the primitive", () => {
+    expect(PROGRESS).toMatch(/<SegmentedTrack[\s\S]{0,200}testId="progress-weight-view-toggle"/);
+    expect(PROGRESS).not.toMatch(/rounded-full bg-muted p-0\.5/);
+  });
+
+  it("Progress D/W/M/6M/Y period control renders the primitive (track restored; tint thumb gone)", () => {
+    expect(PERIOD_CONTROL).toMatch(/<SegmentedTrack/);
+    expect(PERIOD_CONTROL).not.toMatch(/"bg-primary-soft text-primary-solid font-semibold"/);
+  });
+
+  it("onboarding Segmented wraps the primitive (square bordered track gone)", () => {
+    expect(ONBOARDING_SEGMENTED).toMatch(/<SegmentedTrack/);
+    expect(ONBOARDING_SEGMENTED).not.toMatch(/rounded-md border border-border/);
+    expect(ONBOARDING_SEGMENTED).not.toMatch(/rounded-\[7px\]/);
   });
 });
 

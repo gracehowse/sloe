@@ -128,6 +128,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   FolderPlus,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -160,6 +161,8 @@ export const Icons = {
   search: Search,
   add: Plus,
   remove: Minus,
+  /** Loading spinner — pair with `animate-spin` (the FoodSearchPanel convention). */
+  spinner: Loader2,
   check: Check,
   arrowRight: ArrowRight,
   arrowLeft: ArrowLeft,

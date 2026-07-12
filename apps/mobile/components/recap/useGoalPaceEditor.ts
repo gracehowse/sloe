@@ -26,7 +26,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
+import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   recomputeTargetsFromProfile,
@@ -82,7 +83,10 @@ export function useGoalPaceEditor({
   const [error, setError] = useState<string | null>(null);
 
   // Working state.
-  const [goal, setGoal] = useState<EditorDbGoal>("cut");
+  // ENG-1507 — `null` = unknown/unset goal on the profile row. The editor
+  // seats NO selection and Save stays disabled until the user picks —
+  // never the old silent 'cut' default that then wrote 'cut' back.
+  const [goal, setGoal] = useState<EditorDbGoal | null>(null);
   const [pace, setPace] = useState(0); // continuous kg/week
   const [seatedPace, setSeatedPace] = useState(0);
   const [goalWeightInput, setGoalWeightInput] = useState("");
@@ -113,11 +117,14 @@ export function useGoalPaceEditor({
       if (cancelled) return;
       const p = parseGoalEditorProfileRow(data as Record<string, unknown> | null);
       const ms = p.measurementSystem;
-      const seat = seatPaceForEditor({
-        goal: p.goal,
-        paceKgPerWeek: p.paceKgPerWeek,
-        planPace: p.planPace,
-      });
+      // ENG-1507 — no goal on the row seats no selection (pace 0 until picked).
+      const seat = p.goal
+        ? seatPaceForEditor({
+            goal: p.goal,
+            paceKgPerWeek: p.paceKgPerWeek,
+            planPace: p.planPace,
+          })
+        : 0;
 
       setLoaded(p);
       setGoal(p.goal);
@@ -186,8 +193,10 @@ export function useGoalPaceEditor({
     [loaded],
   );
 
-  const sliderRange = useMemo(() => paceRangeForDbGoal(goal), [goal]);
-  const sliderGoal = useMemo(() => dbGoalToSliderGoal(goal), [goal]);
+  // Render fallback while no goal is selected — Save is gated on a pick,
+  // so the 'cut' range here can never be persisted un-chosen.
+  const sliderRange = useMemo(() => paceRangeForDbGoal(goal ?? "cut"), [goal]);
+  const sliderGoal = useMemo(() => dbGoalToSliderGoal(goal ?? "cut"), [goal]);
 
   // Editable weight / height parsed back to storage units (null when
   // blank/invalid — we never recompute off a garbage value).
@@ -220,7 +229,7 @@ export function useGoalPaceEditor({
     [goalWeightInput, measurementSystem],
   );
 
-  const goalChanged = loaded != null && goal !== loaded.goal;
+  const goalChanged = loaded != null && goal != null && goal !== loaded.goal;
   const paceMoved =
     loaded != null && goal !== "maintain" && paceChanged(pace, seatedPace);
 
@@ -263,7 +272,7 @@ export function useGoalPaceEditor({
   // Live preview — adaptive-aware. Only when a recompute input moved AND
   // we have the body basics.
   const preview = useMemo<RecomputedTargets | null>(() => {
-    if (!loaded || !recomputeChanged) return null;
+    if (!loaded || !recomputeChanged || goal == null) return null;
     if (effectiveWeightKg == null || effectiveHeightCm == null || loaded.age == null) {
       return null;
     }
@@ -279,8 +288,17 @@ export function useGoalPaceEditor({
       adaptiveTdee: loaded.adaptiveTdee,
       adaptiveTdeeConfidence: loaded.adaptiveTdeeConfidence,
       adaptiveTdeeUpdatedAt: loaded.adaptiveTdeeUpdatedAt,
+      // ENG-1506 — canonical latest-weigh-in maintenance baseline, ONLY
+      // behind `energy_numbers_v1` (flag OFF must preview AND persist the
+      // exact pre-ENG-1506 recompute — review round 2026-07-11) and only
+      // when the user hasn't explicitly edited weight (an explicit edit
+      // wins).
+      weightKgByDay:
+        isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) && editedWeightKg == null
+          ? loaded.weightKgByDay
+          : null,
     });
-  }, [loaded, goal, pace, effectiveWeightKg, effectiveHeightCm, recomputeChanged]);
+  }, [loaded, goal, pace, effectiveWeightKg, effectiveHeightCm, recomputeChanged, editedWeightKg]);
 
   const previewFiberG = useMemo(() => {
     if (editedFiberG != null) return editedFiberG;
@@ -307,11 +325,13 @@ export function useGoalPaceEditor({
   // Gate: when below the floor the Save button is disabled until the user
   // ticks the acknowledgment. Above the floor this is always true.
   const canSave =
+    goal != null &&
     canSaveBelowFloor({ belowSafetyFloor, acknowledged }) &&
     (!fiberChanged || editedFiberG != null);
 
   const handleConfirm = useCallback(async () => {
-    if (!dirty || saving || !loaded || !userId) {
+    // ENG-1507 — no goal picked = nothing to save; never fall back to 'cut'.
+    if (!dirty || saving || !loaded || !userId || goal == null) {
       onClose();
       return;
     }
@@ -357,6 +377,8 @@ export function useGoalPaceEditor({
         source: "recompute",
         paceKgPerWeek: continuousPace,
         fiberOverrideG: fiberChanged ? editedFiberG : undefined,
+        // ENG-1506 — host-read flag for the past-day backfill's input policy.
+        canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG),
       });
 
       if (!result.ok) {

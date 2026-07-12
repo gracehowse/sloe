@@ -28,6 +28,7 @@ import { isMealPlanPlaceholderLikeTitle } from "../../lib/nutrition/portionMulti
 import { shouldShowRecipeRemovedBadge } from "../../lib/nutrition/recipeRemovedBadge.ts";
 import { isSameCalendarDay, planCalendarDateForIndex, shortWeekdayLabel } from "../../lib/planning/planDayLabel.ts";
 import { usePlanWeekEyebrow } from "./plan/usePlanWeekEyebrow.ts";
+import { AddRowButton } from "./ui/add-row-button.tsx";
 import {
   buildPlanWeekSummarySubtitle,
   computePlanWeekSummaryScore,
@@ -2260,20 +2261,14 @@ export const MealPlanner = memo(function MealPlanner({
                     </span>
                     <div className="flex flex-1 min-w-0 flex-nowrap gap-1.5">
                     {missing.map((slot) => (
-                      <button
+                      <AddRowButton
                         key={slot}
-                        type="button"
+                        size="sm"
+                        className="flex-1 min-w-0"
                         onClick={() => handleAddSlotBack(di, slot)}
-                        /* Sloe treatment: quiet add-slot chip = off-white fill +
-                           hairline border + muted label (mobile `addSlotChip`
-                           parity), not an accent-tinted chip. */
-                        className="flex-1 min-w-0 inline-flex items-center justify-center gap-0.5 px-1.5 py-1 rounded-md text-muted-foreground border border-border bg-card hover:bg-muted/60 transition-colors"
-                        style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.02em" }}
+                        label={<span className="truncate">{SLOT_TITLE[slot]}</span>}
                         aria-label={`Add ${SLOT_TITLE[slot]} slot`}
-                      >
-                        <Plus size={10} aria-hidden className="shrink-0" />
-                        <span className="truncate">{SLOT_TITLE[slot]}</span>
-                      </button>
+                      />
                     ))}
                     </div>
                   </div>

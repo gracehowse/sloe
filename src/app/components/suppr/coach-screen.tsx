@@ -16,6 +16,7 @@ import {
 } from "@/lib/nutrition/coachAsk";
 import { SupprCard } from "../ui/suppr-card";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { cn } from "../ui/utils";
 import { formatKcalDisplay } from "@/lib/nutrition/formatMacro";
 
@@ -48,7 +49,12 @@ function CoachCandidateRow({
 }) {
   const inner = (
     <>
-      <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-xl">
+      <div
+        className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-xl"
+        // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper
+        // (never page white, whatever the child does).
+        style={{ backgroundColor: recipeUnderlayColor({ id: candidate.recipeId, title: candidate.title }) }}
+      >
         {candidate.thumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Icons } from "../ui/icons";
 import { IconBox } from "../ui/icon-box";
+import { AddRowButton } from "../ui/add-row-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -981,24 +982,19 @@ export function TodayMealsSection({
                     </button>
                   )}
 
-                  {/* In-card Add food (populated, open slots only).
-                      F-160 / flat-card surfaces (2026-06-12 decision — the
-                      FIRST quiet-fill adoption): with the card now FLAT, a bare
-                      text link reads as floating. The nested affordance sits on
-                      the `bg-fill-quiet` token (Withings grammar) inside a
-                      contained, card-edge-inset pill — no second card, no border.
-                      Mirror: apps/mobile/.../TodayMealsSection.tsx quiet-fill pill. */}
+                  {/* In-card Add food (populated, open slots only). This pill
+                      (F-160, the FIRST quiet-fill adoption) is the canonical
+                      AddControl — now rendered by the shared `AddRowButton`
+                      primitive it was extracted into (2026-07-10 AddControl
+                      ruling, ENG-1375 S4). A wrapper div keeps the card-edge
+                      inset. Mirror: apps/mobile/.../TodayMealsSection.tsx. */}
                   <div className="px-3 pb-3 pt-2">
-                    <button
-                      type="button"
+                    <AddRowButton
                       data-testid={`today-add-food-${sectionName}`}
                       onClick={() => onOpenAddForSlot(sectionName)}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-fill-quiet px-3 py-2 text-sm font-semibold text-[var(--primary-solid)] transition-opacity hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      label="Add food"
                       aria-label={`Add food to ${sectionName}`}
-                    >
-                      <Icons.add className="h-4 w-4 shrink-0" aria-hidden />
-                      Add food
-                    </button>
+                    />
                   </div>
                 </div>
               )}

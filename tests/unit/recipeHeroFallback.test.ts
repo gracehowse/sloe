@@ -22,9 +22,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  CARD_CREAM,
+  HERO_TINTS,
   djb2,
   getRecipeFallback,
   patternSvgContent,
+  recipeUnderlayColor,
   type RecipeHeroPattern,
 } from "../../src/lib/recipe/recipeHeroFallback";
 
@@ -187,5 +190,37 @@ describe("parity: renderers + wiring", () => {
     const mobSrc = readFileSync(MOBILE_DISCOVER, "utf8");
     expect(webSrc).toMatch(/DiscoverRecipeImage|RecipeHeroFallback/);
     expect(mobSrc).toMatch(/RecipeHeroFallback/);
+  });
+});
+
+describe("recipeUnderlayColor — ENG-1374 PR 2 never-white wrapper underlay", () => {
+  it("is the recipe's own cuisine tint (the fallback tile's gradient start)", () => {
+    const input = { id: "r-1", title: "Tomato Pasta" };
+    expect(recipeUnderlayColor(input)).toBe(getRecipeFallback(input).gradientStart);
+    expect(recipeUnderlayColor(input)).toBe(HERO_TINTS.warms);
+    expect(recipeUnderlayColor({ id: "r-2", title: "Kale Bowl" })).toBe(HERO_TINTS.greens);
+  });
+
+  it("resolves for unknown / empty input (default bucket) — there is no white rung", () => {
+    expect(recipeUnderlayColor({ id: "r-3", title: "Kimchi jjigae" })).toBe(HERO_TINTS.default);
+    expect(recipeUnderlayColor({ id: "r-4", title: "" })).toBe(HERO_TINTS.default);
+  });
+
+  it("is deterministic per recipe (same input, same tint, both platforms via the shared module)", () => {
+    const a = recipeUnderlayColor({ id: "uuid-abc", title: "Salmon Teriyaki" });
+    const b = recipeUnderlayColor({ id: "uuid-abc", title: "Salmon Teriyaki" });
+    expect(a).toBe(b);
+  });
+
+  it("every possible underlay is a fully OPAQUE 6-digit hex — never transparent, never white", () => {
+    const all = [...Object.values(HERO_TINTS), CARD_CREAM];
+    for (const tint of all) {
+      expect(tint).toMatch(/^#[0-9A-Fa-f]{6}$/); // opaque — no alpha channel
+      expect(tint.toUpperCase()).not.toBe("#FFFFFF");
+    }
+  });
+
+  it("CARD_CREAM is exported for containers with no recipe identity (paywall/create grounds)", () => {
+    expect(CARD_CREAM).toBe(HERO_TINTS.cream);
   });
 });

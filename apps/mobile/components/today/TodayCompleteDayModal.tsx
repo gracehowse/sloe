@@ -9,6 +9,7 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { CompleteDayV3Section } from "@/components/today/CompleteDayV3Section";
 import { COMPLETE_DAY_V3_COPY } from "@suppr/shared/completeDayV3";
 import { isFeatureEnabled } from "@/lib/analytics";
+import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
 import { projectWeight } from "@/lib/weightProjection";
 
 /**
@@ -74,6 +75,9 @@ function TodayCompleteDayModalImpl({
           targetCalories,
           maintenanceTdeeKcal,
           goal: profileGoal,
+          // ENG-1506 — host-read flag: OFF keeps the legacy
+          // 'lose'/'gain'-only goal-fallback comparison.
+          normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG),
         })
       : null;
 

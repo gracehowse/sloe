@@ -1,11 +1,14 @@
 import * as React from "react";
 import { View, Text } from "react-native";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
-import { Brand } from "@/constants/theme";
+import { Accent, Brand } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
- * Circular profile avatar — default **ink** fill (premium chrome).
+ * Circular profile avatar — default **identity** fill: solid damson
+ * (`Accent.purple`, Figma `654:6`) + white initial. The ONE identity fill
+ * per the S5 avatar ruling (2026-07-10, ENG-1375) — the old grey-ink
+ * default is retired. Web twin: `src/app/components/ui/avatar-disc.tsx`.
  * `variant="brand"` keeps the blue→magenta gradient for marketing-only
  * surfaces; product UI should use the default.
  */
@@ -25,12 +28,8 @@ export function GradientAvatar({
   borderColor?: string;
   gradientIdSuffix: string;
   variant?: "ink" | "brand";
-  /**
-   * Optional solid fill override for the `ink` variant. Used by the
-   * Sloe Today header (Figma `654:6` — plum `#6a4b7a`) without
-   * affecting other ink-avatar consumers, which fall back to the
-   * default `colors.icon` ink. No effect on the `brand` gradient.
-   */
+  /** Optional solid fill override for the identity (`ink`) variant —
+   *  defaults to the damson identity fill. No effect on `brand`. */
   fill?: string;
   /** Optional initial-text colour override (pairs with `fill`). */
   textColor?: string;
@@ -46,7 +45,8 @@ export function GradientAvatar({
           borderRadius: size / 2,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: fill ?? colors.icon,
+          // S5 (ENG-1375): identity default = solid damson, was colors.icon.
+          backgroundColor: fill ?? Accent.purple,
           borderWidth: borderColor ? 1 : 0,
           borderColor,
         }}

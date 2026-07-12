@@ -23,6 +23,12 @@ export interface ProgressEnergyEquationProps {
   deficitKcal: number | null;
   isSurplus: boolean;
   isAdaptive: boolean;
+  /** ENG-1506 — explicit source qualifier under the equation, gated by the
+   *  host (`energy_numbers_v1`). Null → legacy render. */
+  qualifierLine?: string | null;
+  /** ENG-1506 — REAL selected-period label for the header; null → the
+   *  legacy hard-coded "7-day average". */
+  periodLabel?: string | null;
 }
 
 export function ProgressEnergyEquation({
@@ -31,6 +37,8 @@ export function ProgressEnergyEquation({
   deficitKcal,
   isSurplus,
   isAdaptive,
+  qualifierLine,
+  periodLabel,
 }: ProgressEnergyEquationProps) {
   const colors = useThemeColors();
   const isDark = useColorScheme() === "dark";
@@ -55,9 +63,15 @@ export function ProgressEnergyEquation({
       ? plum
       : colors.text;
 
+  // ENG-1497 — no radius override: the 8px lg-ladder escape made this the
+  // one square card on Progress (Grace, 2026-07-11). 24 card default.
   return (
-    <SupprCard testID="progress-energy-equation" lift="soft" radius="lg" padding="lg">
-      <Text style={[styles.eyebrow, { color: dim }]}>Energy balance · 7-day average</Text>
+    <SupprCard testID="progress-energy-equation" lift="soft" padding="lg">
+      {/* ENG-1506 — honest window label (avg intake follows the period
+          control); legacy hard-coded text when the flag is off. */}
+      <Text style={[styles.eyebrow, { color: dim }]}>
+        {periodLabel ? `Energy balance · ${periodLabel}` : "Energy balance · 7-day average"}
+      </Text>
       <View style={styles.row}>
         <EqTerm
           label="Avg intake"
@@ -80,6 +94,15 @@ export function ProgressEnergyEquation({
           dim={dim}
         />
       </View>
+      {/* ENG-1506 — explicit source qualifier under the equation. */}
+      {qualifierLine && hasMaintenance ? (
+        <Text
+          testID="progress-energy-equation-qualifier"
+          style={{ ...Type.captionSmall, color: dim, marginTop: Spacing.sm }}
+        >
+          Maintenance: {qualifierLine}
+        </Text>
+      ) : null}
       <Pressable
         onPress={() => setShowHow((v) => !v)}
         accessibilityRole="button"

@@ -4,6 +4,7 @@ import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { isFeatureEnabled } from "@/lib/analytics";
+import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
 import {
   PRODUCT_TDEE_LABEL_GLOSS,
   PRODUCT_TDEE_LABEL_PLAIN,
@@ -37,12 +38,20 @@ export interface ProgressEnergyTriadProps {
   maintenanceKcal: number | null;
   /** True when the resolved maintenance is the adaptive (engine) value. */
   isAdaptive: boolean;
+  /** ENG-1506 — explicit source qualifier under the MAINTENANCE value,
+   *  behind `energy_numbers_v1`. Null/omitted → legacy render. */
+  qualifierLine?: string | null;
+  /** ENG-1506 — REAL selected-period label for the equation header,
+   *  behind `energy_numbers_v1`; legacy hard-codes "7-day average". */
+  periodLabel?: string | null;
 }
 
 export function ProgressEnergyTriad({
   avgIntakeKcal,
   maintenanceKcal,
   isAdaptive,
+  qualifierLine,
+  periodLabel,
 }: ProgressEnergyTriadProps) {
   const colors = useThemeColors();
   const isDark = useColorScheme() === "dark";
@@ -75,6 +84,10 @@ export function ProgressEnergyTriad({
   // EQUATION (intake − maintenance = deficit/day) with a "How maintenance works"
   // explainer, not a 3-cell triad (Sloe-App.html L5001-5018). Mirrors the web
   // twin's flag gate; the legacy triad stays in the else until collapsed.
+  // ENG-1506 — the qualifier line + real period label render only behind
+  // `energy_numbers_v1`; off → the exact legacy card.
+  const energyV1 = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG);
+
   if (isFeatureEnabled("sloe_v3_energy_equation")) {
     return (
       <ProgressEnergyEquation
@@ -83,6 +96,8 @@ export function ProgressEnergyTriad({
         deficitKcal={deficitKcal}
         isSurplus={isSurplus}
         isAdaptive={isAdaptive}
+        qualifierLine={energyV1 ? (qualifierLine ?? null) : null}
+        periodLabel={energyV1 ? (periodLabel ?? null) : null}
       />
     );
   }
@@ -137,6 +152,15 @@ export function ProgressEnergyTriad({
         {maintenanceKcal != null && maintenanceKcal > 0 ? (
           <Text style={{ ...Type.label, color: sage, marginTop: 2 }}>
             {isAdaptive ? "Adaptive" : "Formula"}
+          </Text>
+        ) : null}
+        {/* ENG-1506 — explicit source qualifier (flag-gated via energyV1). */}
+        {energyV1 && qualifierLine && maintenanceKcal != null && maintenanceKcal > 0 ? (
+          <Text
+            testID="progress-energy-tdee-qualifier"
+            style={{ ...Type.captionSmall, color: dim, marginTop: Spacing.xs, textAlign: "center" }}
+          >
+            {qualifierLine}
           </Text>
         ) : null}
       </SupprCard>

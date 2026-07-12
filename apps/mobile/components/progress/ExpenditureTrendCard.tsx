@@ -10,6 +10,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAccent } from "@/context/theme";
 import {
   buildExpenditureTrendCopy,
+  type ExpenditureTrendCopy,
   type ExpenditureTrendInput,
 } from "@suppr/shared/progress/expenditureTrend";
 
@@ -41,19 +42,29 @@ export function ExpenditureTrendCard({
   adaptiveConfidence,
   adaptiveUpdatedAt,
   measuredTdee,
-}: { enabled: boolean } & ExpenditureTrendInput) {
+  resolvedCopy,
+}: {
+  enabled: boolean;
+  /** ENG-1506 — behind `energy_numbers_v1` the host passes copy built from
+   *  the SAME resolved maintenance the Maintenance card shows
+   *  (`expenditureFromResolved`), so this card can never assert a kcal the
+   *  resolver rejected. Omitted → the legacy raw-column path. */
+  resolvedCopy?: ExpenditureTrendCopy;
+} & ExpenditureTrendInput) {
   const colors = useThemeColors();
   const accent = useAccent();
   const cardElevation = useCardElevation({ variant: "soft" });
 
   if (!enabled) return null;
 
-  const copy = buildExpenditureTrendCopy({
-    adaptiveTdee,
-    adaptiveConfidence,
-    adaptiveUpdatedAt,
-    measuredTdee,
-  });
+  const copy =
+    resolvedCopy ??
+    buildExpenditureTrendCopy({
+      adaptiveTdee,
+      adaptiveConfidence,
+      adaptiveUpdatedAt,
+      measuredTdee,
+    });
 
   return (
     <View

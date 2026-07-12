@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { WifiOff } from "lucide-react";
 
@@ -13,11 +13,7 @@ import {
   type WeekdayIndex,
 } from "../../lib/nutrition/dayTargetSchedule.ts";
 import { previousDayKey } from "../../lib/nutrition/copyYesterdayMeals.ts";
-import {
-  foodSelectionAnalyticsSource,
-  foodSelectionSourceLabel,
-  foodSelectionToMealMacros,
-} from "../../lib/nutrition/foodSelectionToMeal.ts";
+import { useLogSheetFoodCommits } from "../../lib/nutrition/useLogSheetFoodCommits.ts";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
 import { useAiMethodTooltip } from "../../lib/today/useAiMethodTooltip.ts";
 // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
@@ -29,7 +25,7 @@ import {
 } from "../../lib/nutrition/weeklyCheckin.ts";
 import { WeeklyCheckinDialog } from "./suppr/weekly-checkin-dialog";
 import { WhyThisNumberDialog } from "./suppr/why-this-number-dialog.tsx";
-import { paceKgPerWeekFromPreset } from "../../lib/nutrition/whyThisNumber.ts";
+import { paceKgPerWeekFromPreset, whyThisNumberGoalFromDb } from "../../lib/nutrition/whyThisNumber.ts";
 import { WeeklyCheckinBanner } from "./suppr/weekly-checkin-banner";
 import { weekKeyFor } from "../../lib/nutrition/weeklyRecap.ts";
 import {
@@ -56,7 +52,7 @@ import {
 } from "../../lib/nutrition/mealEatenAt.ts";
 import { computeLoggingStreak } from "../../lib/nutrition/trackerStats.ts";
 import { computeProtectedStreak } from "../../lib/nutrition/streakFreeze.ts";
-import { didStreakReset } from "../../lib/nutrition/streakReset.ts";
+import { useStreakResetCopy } from "../../lib/nutrition/useStreakResetCopy.ts";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
@@ -114,7 +110,6 @@ import { TodayFirstMealEmptyState } from "./suppr/today-first-meal-empty-state";
 import { TodayCompleteDayDialog } from "./suppr/today-complete-day-dialog";
 import { TodayAddMealDialog } from "./suppr/today-add-meal-dialog";
 import { FoodSearch, type FoodSearchSelection } from "./FoodSearch.tsx";
-import { mealImageFields } from "../../lib/nutrition/foodHistory";
 import { TodayDateHeader } from "./suppr/today-date-header";
 import { TodayDeficitInsight } from "./suppr/today-deficit-insight";
 import { TodayWeeklyInsightMobileCard } from "./suppr/today-weekly-insight-mobile-card";
@@ -125,7 +120,6 @@ import {
   computeRecentMeals,
   foodHistoryKey,
   isAiSourcedFoodHistoryItem,
-  type FoodHistoryItem,
 } from "../../lib/nutrition/foodHistory";
 import { computeSlotGoToFoods } from "../../lib/nutrition/slotGoToFoods";
 import { normaliseMealSlot } from "../../lib/nutrition/mealSlots";
@@ -190,12 +184,16 @@ interface NutritionTrackerProps {
   userTier: UserTier;
   onOpenProgress?: () => void;
   onOpenSettings?: () => void;
+  /** ENG-1495 — extra desktop-rail card(s) the TodayDesktopFrame appends
+   *  into `TodayDesktopRightRail` (the tracker's OWN single rail). */
+  railExtra?: ReactNode;
 }
 
 export const NutritionTracker = memo(function NutritionTracker({
   userTier,
   onOpenProgress,
   onOpenSettings,
+  railExtra,
 }: NutritionTrackerProps) {
   // User-configurable macro display variant. Default `tiles` matches
   // historic UI; `bars` is the Cronometer/Lose It-style list (Settings
@@ -504,24 +502,11 @@ export const NutritionTracker = memo(function NutritionTracker({
     [protectedStreakInfo],
   );
   const protectedStreakLength = protectedStreakInfo.streakLength;
-  // L6 G8 (2026-04-18) — fire `streak_reset` exactly once when the
-  // protected streak transitions from >=1 to 0. Seeded with `null` on
-  // mount so a user who currently has a zero streak doesn't generate a
-  // spurious event on first render.
-  const priorProtectedStreakRef = useRef<number | null>(null);
-  useEffect(() => {
-    const prior = priorProtectedStreakRef.current;
-    priorProtectedStreakRef.current = protectedStreakLength;
-    if (didStreakReset(prior, protectedStreakLength)) {
-      try {
-        track(AnalyticsEvents.streak_reset, {
-          priorStreak: prior ?? 0,
-        });
-      } catch {
-        /* analytics is fire-and-forget */
-      }
-    }
-  }, [protectedStreakLength]);
+  // L6 G8 + ENG-1504 (mobile parity, DC8) — `streak_reset` fire-once
+  // analytics + the sticky supportive-copy flag ("Every expert was once a
+  // beginner…" under the day strip). Extracted hook mirrors mobile
+  // `useTodayStreakAndFreezes`.
+  const streakJustReset = useStreakResetCopy(protectedStreakLength);
   // `stepsByDay` / `dailyStepsGoal` / `fastingSessions` / `fastingOptedIn`
   // now come from `useNutritionTrackerProfile` above.
   const [fastingNowTick, setFastingNowTick] = useState(() => Date.now());
@@ -834,59 +819,20 @@ export const NutritionTracker = memo(function NutritionTracker({
     [addLoggedMeal, mealSlot],
   );
 
-  /**
-   * Canonical food-search selection commit. Used by both the
-   * `<FoodSearch>` dialog and the inline `<FoodSearchPanel>` mounted
-   * inside `<LogSheet>`. Both surfaces produce the exact same
-   * `FoodSearchSelection` payload so the journal row, source label,
-   * caffeine/alcohol auto-track, and OFF micro persistence stay
-   * byte-for-byte identical regardless of entry point. Mirrors the
-   * mobile Today FoodSearchModal commit flow byte-for-byte.
-   */
-  const commitFoodSearchSelection = useCallback(
-    (selection: FoodSearchSelection): { id: string; title: string; kcal: number } => {
-      const sourceLabel = foodSelectionSourceLabel(selection.source);
-
-      // ENG-1046 — shared scaling core (mobile parity).
-      const {
-        calories: mealCalories,
-        protein: mealProtein,
-        carbs: mealCarbs,
-        fat: mealFat,
-        fiberG: mealFiberG,
-        micros,
-      } = foodSelectionToMealMacros(selection);
-
-      const id = addLoggedMealForDate(
-        selectedDateKey,
-        {
-          name: mealSlot,
-          recipeTitle: selection.name,
-          time: timeLabel,
-          calories: mealCalories,
-          protein: mealProtein,
-          carbs: mealCarbs,
-          fat: mealFat,
-          source: sourceLabel,
-          ...(mealFiberG > 0 ? { fiberG: mealFiberG } : {}),
-          ...(Object.keys(micros).length > 0 ? { micros } : {}),
-          ...mealImageFields(selection.imageUrl),
-          ...(selection.eatenAt
-            ? { eatenAt: selection.eatenAt }
-            : eatenAtForCurrentLog()),
-        },
-        foodSelectionAnalyticsSource(selection.source),
-      );
-      return { id, title: selection.name, kcal: mealCalories };
-    },
-    [addLoggedMealForDate, mealSlot, timeLabel, eatenAtForCurrentLog, selectedDateKey],
-  );
-
   const presentLogSheetConfirmation = useCallback(
-    (payload: { title: string; kcal: number; mealIds: string[] }) => {
+    (payload: {
+      title: string;
+      kcal: number;
+      mealIds: string[];
+      /** ENG-1502 — per-item trust bit; absent = honest `~` (ENG-1417). */
+      kcalIsVerified?: boolean;
+    }) => {
       setLogSheetConfirmation({
         title: payload.title,
         kcal: Math.round(payload.kcal),
+        ...(payload.kcalIsVerified !== undefined
+          ? { kcalIsVerified: payload.kcalIsVerified }
+          : {}),
         slot: mealSlot,
         onDone: () => {
           setLogSheetConfirmation(null);
@@ -901,35 +847,21 @@ export const NutritionTracker = memo(function NutritionTracker({
     [mealSlot, removeLoggedMeal],
   );
 
-  const logHistoryItemFromSheet = useCallback(
-    (item: FoodHistoryItem, slot: string) => {
-      const micros: Record<string, number> = item.micros ? { ...item.micros } : {};
-      if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
-      if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
-      const id = addLoggedMealForDate(
-        selectedDateKey,
-        {
-          name: slot,
-          recipeTitle: item.recipeTitle,
-          time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          ...(item.fiber != null ? { fiberG: item.fiber } : {}),
-          ...(item.source ? { source: item.source } : {}),
-          ...(Object.keys(micros).length > 0 ? { micros } : {}),
-        },
-        "quick_add",
-      );
-      presentLogSheetConfirmation({
-        title: item.recipeTitle,
-        kcal: item.calories,
-        mealIds: [id],
-      });
-    },
-    [addLoggedMealForDate, presentLogSheetConfirmation, selectedDateKey],
-  );
+  // ENG-1502 (extraction pass, screen-budget ratchet) — the canonical
+  // food-search commit + the history re-log moved to
+  // `useLogSheetFoodCommits`. The search commit threads the per-item
+  // `kcalIsVerified` trust bit into the S13 confirmation; the history
+  // path always presents the honest `~` (journal rows don't persist the
+  // ENG-1417 trust bit). Mobile mirror stays inline in `TodayScreen.tsx`.
+  const { commitFoodSearchSelection, logHistoryItemFromSheet } =
+    useLogSheetFoodCommits({
+      selectedDateKey,
+      mealSlot,
+      timeLabel,
+      addLoggedMealForDate,
+      eatenAtForCurrentLog,
+      presentLogSheetConfirmation,
+    });
 
   const logSheetGoTos = useMemo(() => {
     const slot = normaliseMealSlot(mealSlot);
@@ -1725,15 +1657,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
       />
 
-      {/* Phase 2 / B1.2 (D-2026-04-27-07) — streak as a calm pip
-          alongside the date row. Replaces the demoted streak ribbon
-          (already removed from this surface 2026-04-20). On
-          mobile-web the pip is right-aligned above the date header to
-          mirror the mobile composition. Suppressed on week-view to
-          keep the week toggle uncrowded. */}
-      {/* Streak pip — mobile-web only. On desktop (`lg+`) the streak
-          lives in the right rail's hero card so a second pip up here
-          would double-render the same fact. */}
+      {/* Streak pip (Phase 2 / B1.2, D-2026-04-27-07) — mobile-web only,
+          right-aligned above the date header; suppressed on week-view.
+          On desktop (`lg+`) the streak lives in the right rail's hero
+          card, so a second pip here would double-render the same fact. */}
       <div className="lg:flex lg:gap-8 lg:items-start">
         <div
           className={
@@ -1793,6 +1720,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         streakDays={protectedStreakLength}
         freezeProtected={protectedDateKeys.has(todayKey())}
         onStreakPress={weeklyRecap.trigger}
+        streakResetCopyVisible={streakJustReset}
       />
       {weeklyRecap.dialog}
 
@@ -2397,6 +2325,7 @@ export const NutritionTracker = memo(function NutritionTracker({
             todayDateKey={todayKey()}
             byDay={nutritionByDay}
             onSelectDayKey={(k) => setSelectedDateKey(k)}
+            railExtra={railExtra}
           />
         ) : null}
       </div>
@@ -2422,22 +2351,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         targetCalories={Math.round(effectiveCalorieTarget)}
         maintenanceTdee={profileMaintenanceTdee}
         confidence={profileMaintenanceConfidence}
+        source={isFeatureEnabled("energy_numbers_v1") ? profileMaintenanceSource : null /* ENG-1506 review round — flag-ON provenance: formula never renders "learned from your logging"; OFF null = legacy wording */}
         loggingDays={null}
-        goal={
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose"
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          profilePlanPace,
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose",
-        )}
+        goal={whyThisNumberGoalFromDb(profileGoal)} // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose"
+        paceKgPerWeek={paceKgPerWeekFromPreset(profilePlanPace, whyThisNumberGoalFromDb(profileGoal))}
         mealLogDays={null}
         weightLogCount={Object.keys(profileWeightKgByDay).length}
         onAdjustTarget={() => {
@@ -2835,6 +2752,8 @@ export const NutritionTracker = memo(function NutritionTracker({
               title: result.title,
               kcal: result.kcal,
               mealIds: [result.id],
+              // ENG-1502 — verified DB hits drop the `~`; everything else keeps it.
+              kcalIsVerified: result.kcalIsVerified,
             });
           },
         }}
@@ -3032,6 +2951,9 @@ export const NutritionTracker = memo(function NutritionTracker({
                         : `${items.length} items logged`,
                     kcal: Math.round(totalKcal),
                     mealIds: [],
+                    // ENG-1502 — AI-parsed description = an estimate by
+                    // construction; never claims the verified grammar.
+                    kcalIsVerified: false,
                   });
                 },
               }

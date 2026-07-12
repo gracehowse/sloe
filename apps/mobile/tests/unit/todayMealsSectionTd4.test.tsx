@@ -132,12 +132,12 @@ describe("TodayMealsSection — TD4 in-card Add food action", () => {
   });
 
   // F-160 / flat-card surfaces (2026-06-12 decision) — the in-card Add food
-  // affordance is the FIRST quiet-fill adoption. With the card now FLAT, the
-  // action sits on the `colors.fillQuiet` token inside a contained, borderless
-  // pill (no second white card, no border) — Withings grammar. This pins that
-  // the affordance is a quiet-fill pill (not a bare text link that would float
-  // on the flat card) and that it carries no surface border.
-  it("Add food is a quiet-fill pill (fillQuiet bg, no border)", () => {
+  // affordance is the FIRST quiet-fill adoption. Since the AddControl ruling
+  // (2026-07-10, ENG-1375 S4) it renders via the shared `AddRowButton`
+  // primitive: quiet-fill pill, radius 12 (Radius.xl), NO border. This pins
+  // that the affordance is a quiet-fill pill (not a bare text link that would
+  // float on the flat card) and that it carries no surface border.
+  it("Add food is the AddRowButton quiet-fill pill (fillQuiet bg, radius 12, no border)", () => {
     const { getByTestId } = renderSection({});
     const addFood = getByTestId("today-add-food-Breakfast");
     const style = StyleSheet.flatten(addFood.props.style) as {
@@ -156,8 +156,8 @@ describe("TodayMealsSection — TD4 in-card Add food action", () => {
     expect(fillTokens).toContain(style.backgroundColor?.toLowerCase());
     // No surface border — separation is the quiet fill, not an edge.
     expect(style.borderWidth ?? 0).toBe(0);
-    // Radius is on the tightened ladder (Radius.lg = 8), matching siblings.
-    expect(style.borderRadius).toBe(8);
+    // Radius 12 — the AddControl ruling's pill corner (Radius.xl).
+    expect(style.borderRadius).toBe(12);
   });
 });
 

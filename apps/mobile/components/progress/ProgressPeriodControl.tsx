@@ -1,9 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useAccent } from "@/context/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import {
   PERIOD_TYPES,
   isCurrentPeriod,
@@ -21,10 +21,9 @@ import {
  * ProgressPeriodControl — Apple Health range grammar (ENG-1030).
  *
  * Two stacked rows:
- *   1. A §8 segmented control: D / W / M / 6M / Y on the `inputBg` rail
- *      (Radius.full, padding 2), active segment = elevated card inside the
- *      track with the aubergine `primarySolid` label. Identical treatment to
- *      `WeightRangeToggle` / the macro-detail toggle (chips census 2026-06-10).
+ *   1. A §8 segmented control: D / W / M / 6M / Y rendered by the canonical
+ *      `SegmentedTrack` primitive (ENG-1375 — inputBg rail, card-white thumb,
+ *      `primarySolid` semibold active label).
  *   2. A period-paging row: ‹ label › — the period label (e.g. "15–21 Jun")
  *      flanked by chevron buttons. The forward chevron is disabled (and dimmed)
  *      on the current period (no future). The chevrons are the paging
@@ -53,7 +52,6 @@ export function ProgressPeriodControl({
   now,
 }: ProgressPeriodControlProps) {
   const colors = useThemeColors();
-  const accent = useAccent();
 
   const atCurrent = isCurrentPeriod(period);
   const label = periodLabel(period, weekStart, now);
@@ -74,48 +72,22 @@ export function ProgressPeriodControl({
 
   return (
     <View style={{ gap: Spacing.dense }}>
-      {/* 1. SEGMENTED CONTROL — §8 treatment (rail = inputBg, pill = card). */}
-      <View
+      {/* 1. SEGMENTED CONTROL — the canonical §8 SegmentedTrack (ENG-1375 S3;
+          this file was one of the two conforming references the primitive was
+          extracted from). */}
+      <SegmentedTrack
+        role="tablist"
         testID="progress-period-segments"
-        accessibilityRole="tablist"
-        style={[styles.track, { backgroundColor: colors.inputBg }]}
-      >
-        {PERIOD_TYPES.map((type) => {
-          const active = type === period.type;
-          return (
-            <PressableScale
-              key={type}
-              haptic="selection"
-              testID={`progress-period-segment-${type}`}
-              accessibilityRole="tab"
-              accessibilityLabel={periodTypeAccessibilityLabel(type)}
-              accessibilityState={{ selected: active }}
-              onPress={() => selectType(type)}
-              style={[
-                styles.segment,
-                active && {
-                  backgroundColor: colors.card,
-                  shadowColor: "#000",
-                  shadowOpacity: 0.08,
-                  shadowRadius: 4,
-                  shadowOffset: { width: 0, height: 1 },
-                  elevation: 1,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.segmentLabel,
-                  { color: active ? accent.primarySolid : colors.textSecondary },
-                  active && { fontWeight: "600" },
-                ]}
-              >
-                {type}
-              </Text>
-            </PressableScale>
-          );
-        })}
-      </View>
+        accessibilityLabel="Progress time range"
+        options={PERIOD_TYPES.map((type) => ({
+          value: type,
+          label: type,
+          accessibilityLabel: periodTypeAccessibilityLabel(type),
+          testID: `progress-period-segment-${type}`,
+        }))}
+        value={period.type}
+        onChange={selectType}
+      />
 
       {/* 2. PERIOD PAGING — ‹ label › */}
       <View testID="progress-period-pager" style={styles.pager}>
@@ -158,22 +130,6 @@ export function ProgressPeriodControl({
 }
 
 const styles = StyleSheet.create({
-  track: {
-    flexDirection: "row",
-    borderRadius: Radius.full,
-    padding: 2, // §8 track padding (chips census 2026-06-10)
-    alignSelf: "stretch",
-  },
-  segment: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-  },
-  segmentLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
   pager: {
     flexDirection: "row",
     alignItems: "center",

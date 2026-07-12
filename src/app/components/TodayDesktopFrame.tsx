@@ -1,81 +1,64 @@
 "use client";
 
 /**
- * TodayDesktopFrame — wraps the existing `<NutritionTracker>` for the
- * 2026-04-20 Claude Design desktop prototype Grace sent. At the `lg:`
- * breakpoint (>=1024px) it renders:
+ * TodayDesktopFrame — desktop chrome around the existing
+ * `<NutritionTracker>`. At the `lg:` breakpoint (>=1024px) it adds:
  *
  *  1. A slim breadcrumb bar (Track · Today · {weekday, date}).
- *  2. A household card at the top of the main canvas.
- *  3. A two-column body: the full `<NutritionTracker>` in the left
- *     ~2/3 column, and a right-rail stack (Weekly Insight + Apple
- *     Health Today) in the right ~1/3 column.
+ *  2. The household glance bar (`<TodayHouseholdGlanceBar>`) as
+ *     full-width chrome above the tracker.
+ *  3. An extra right-rail card — the null-unless-data
+ *     `<TodayAppleHealthCard>` — passed into the tracker's OWN rail
+ *     via its `railExtra` seam.
  *
- * Below `lg:` — i.e. tablet and mobile-web — the frame renders only
- * `<NutritionTracker>` so the existing single-column flow is
+ * Below `lg:` the chrome is hidden and the tracker renders exactly as
+ * it does without the frame, so the single-column mobile-web flow is
  * preserved. The sidebar already handles its own `md:` visibility;
  * the desktop frame is additive, not a replacement.
  *
+ * ENG-1495 geometry (single-rail — the rework that earned default-ON):
+ *  - The ENG-1494 frame wrapped the tracker in a second `lg:grid-cols-3`
+ *    with its own aside. But `<NutritionTracker>` ALREADY splits at
+ *    `lg:` (main `lg:max-w-[480px]` + 300px `TodayDesktopRightRail`),
+ *    so the outer grid squeezed the hero column to ~316px at 1280px.
+ *    The frame now renders NO grid, NO aside — the tracker's rail is
+ *    the only rail, and frame extras append into it via `railExtra`.
+ *  - The full `HouseholdPanel` (which mounted above the tracker and
+ *    pushed the calorie ring ~1100px below the fold at 1280×800,
+ *    violating the Today-centre decision) is gone — household context
+ *    is the slim glance bar, which reads from `HouseholdContext`
+ *    (zero extra queries) and routes to Household settings.
+ *  - `TodayWeeklyInsightCard` is DELETED — the tracker's own THIS WEEK
+ *    card (`TodayDesktopRightRail`) already covers it.
+ *
  * Data sources:
- *  - Nutrition + activity burn + meal plan come from `AppDataContext`
- *    (the same hooks `<NutritionTracker>` consumes, so the right rail
- *    can't disagree with the main canvas).
+ *  - Activity + basal burn come from `AppDataContext` (the same hooks
+ *    `<NutritionTracker>` consumes, so the rail can't disagree with
+ *    the main canvas).
  *  - Steps + latest weight are read directly from `profiles` because
  *    `AppDataContext` doesn't expose them yet. `<NutritionTracker>`
  *    does the same fetch; both are idempotent reads against the same
- *    row so there's no write-race risk. When the read fails or the
- *    values are absent the cards show "—" placeholders (no faux zeros).
+ *    row so there's no write-race risk. Absent/failed values stay
+ *    null — the Apple Health card simply doesn't render without at
+ *    least one real datum.
  */
 
-import * as React from "react";
-import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { NutritionTracker } from "./NutritionTracker";
 import { FeatureErrorBoundary } from "./FeatureErrorBoundary";
-import { AppLoadingSkeleton } from "./AppLoadingSkeleton";
-import { TodayWeeklyInsightCard } from "./suppr/today-weekly-insight-card";
 import { TodayAppleHealthCard } from "./suppr/today-apple-health-card";
+import { TodayHouseholdGlanceBar } from "./suppr/today-household-glance-bar";
 import { useAppData } from "../../context/AppDataContext";
 import { useAuthSession } from "../../context/AuthSessionContext";
 import { supabase } from "../../lib/supabase/browserClient";
 import type { UserTier } from "../../types/recipe";
-import { normalizeMacroTargets } from "../../types/profile";
 import { parseDateKey, todayKey } from "../../lib/nutrition/trackerDate";
-
-const HouseholdPanel = dynamic(
-  () => import("./HouseholdPanel").then((m) => ({ default: m.HouseholdPanel })),
-  { ssr: false },
-);
 
 export interface TodayDesktopFrameProps {
   userTier: UserTier;
   onOpenProgress?: () => void;
   /** ENG-1494 — forwarded to the tracker's settings avatar. */
   onOpenSettings?: () => void;
-}
-
-/**
- * Seven date keys (YYYY-MM-DD) for the selected week, aligned to the
- * user's week-start preference. Mirrors the rolling-7 computation in
- * `<NutritionTracker>` so the insight card's bars represent the same
- * week as the main canvas.
- */
-function buildWeekKeys(anchorKey: string, weekStartDay: "monday" | "sunday"): string[] {
-  const anchor = parseDateKey(anchorKey) ?? new Date();
-  const dayOfWeek = anchor.getDay(); // 0=Sun ... 6=Sat
-  const startOffset = weekStartDay === "monday" ? (dayOfWeek + 6) % 7 : dayOfWeek;
-  const start = new Date(anchor);
-  start.setDate(anchor.getDate() - startOffset);
-  const keys: string[] = [];
-  for (let i = 0; i < 7; i += 1) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    keys.push(`${yyyy}-${mm}-${dd}`);
-  }
-  return keys;
 }
 
 function formatBreadcrumbDate(dateKey: string): string {
@@ -101,12 +84,9 @@ function parseStepsDayMap(raw: unknown): Record<string, number> {
 export function TodayDesktopFrame({ userTier, onOpenProgress, onOpenSettings }: TodayDesktopFrameProps) {
   const {
     selectedDateKey,
-    nutritionByDay,
     activityBurnByDay,
     basalBurnByDay,
-    nutritionTargets,
     profileMeasurementSystem,
-    householdMemberCount,
   } = useAppData();
   const { authedUserId } = useAuthSession();
 
@@ -117,13 +97,12 @@ export function TodayDesktopFrame({ userTier, onOpenProgress, onOpenSettings }: 
 
   const [stepsByDay, setStepsByDay] = useState<Record<string, number>>({});
   const [latestWeightKg, setLatestWeightKg] = useState<number | null>(null);
-  const [weekStartDay, setWeekStartDay] = useState<"monday" | "sunday">("monday");
 
   // Mirrors the `profiles` read inside `<NutritionTracker>` for the
-  // fields the right rail needs. Idempotent read-only query; runs
-  // once per authed session. Failures fall back to "—" placeholders —
-  // we deliberately don't toast here because the main canvas already
-  // surfaces offline / error states, and a second toast would be noise.
+  // fields the Apple Health rail card needs. Idempotent read-only
+  // query; runs once per authed session. Failures leave the values
+  // null — the card doesn't render without real data, and the main
+  // canvas already surfaces offline / error states.
   useEffect(() => {
     if (!authedUserId) return;
     let cancelled = false;
@@ -131,7 +110,7 @@ export function TodayDesktopFrame({ userTier, onOpenProgress, onOpenSettings }: 
       try {
         const { data } = await supabase
           .from("profiles")
-          .select("steps_by_day, weight_kg, week_start_day")
+          .select("steps_by_day, weight_kg")
           .eq("id", authedUserId)
           .maybeSingle();
         if (cancelled || !data) return;
@@ -141,37 +120,14 @@ export function TodayDesktopFrame({ userTier, onOpenProgress, onOpenSettings }: 
         const w = (data as { weight_kg?: number | null }).weight_kg;
         const wN = w != null ? Number(w) : NaN;
         setLatestWeightKg(Number.isFinite(wN) && wN > 0 ? wN : null);
-        const wsd = (data as { week_start_day?: string }).week_start_day;
-        if (wsd === "sunday" || wsd === "monday") setWeekStartDay(wsd);
       } catch {
-        // Swallow — fallback to placeholder values.
+        // Swallow — the Health card hides itself without data.
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [authedUserId]);
-
-  const weekKeys = useMemo(
-    () => buildWeekKeys(breadcrumbKey, weekStartDay),
-    [breadcrumbKey, weekStartDay],
-  );
-
-  const weekDailyKcal = useMemo(() => {
-    return weekKeys.map((k) => {
-      const meals = nutritionByDay[k] ?? [];
-      return meals.reduce((sum, m) => sum + (m.calories ?? 0), 0);
-    });
-  }, [weekKeys, nutritionByDay]);
-
-  const loggedDaysInWeek = weekDailyKcal.filter((v) => v > 0).length;
-  const weekTotalKcal = weekDailyKcal.reduce((s, v) => s + v, 0);
-  const weekAvgKcal =
-    loggedDaysInWeek > 0 ? Math.round(weekTotalKcal / loggedDaysInWeek) : null;
-
-  const dailyKcalTarget = normalizeMacroTargets(nutritionTargets).calories;
-
-  const householdSize = householdMemberCount;
 
   const stepsForSelectedDay = Object.prototype.hasOwnProperty.call(stepsByDay, breadcrumbKey)
     ? (stepsByDay[breadcrumbKey] ?? 0)
@@ -187,10 +143,12 @@ export function TodayDesktopFrame({ userTier, onOpenProgress, onOpenSettings }: 
     <div className="flex flex-col">
       {/* Breadcrumb — desktop only. Muted, single-row, no actions.
           Below `lg:` we let the TodayDateHeader inside the tracker
-          carry the date context, same as today. */}
+          carry the date context, same as today. `product-shell` keeps
+          the chrome on the same column grid as the tracker's own
+          shell (the old `px-6` drifted off it). */}
       <nav
         aria-label="Breadcrumb"
-        className="hidden lg:flex items-center gap-1.5 px-6 pt-5 pb-1 text-xs text-muted-foreground"
+        className="product-shell hidden lg:flex items-center gap-1.5 pt-5 pb-1 text-xs text-muted-foreground"
       >
         <span>Track</span>
         <span aria-hidden>·</span>
@@ -199,52 +157,33 @@ export function TodayDesktopFrame({ userTier, onOpenProgress, onOpenSettings }: 
         <span>{formatBreadcrumbDate(breadcrumbKey)}</span>
       </nav>
 
-      {/* Desktop-only household bar. On narrower widths the Household
-          card stays on the Meal Plan tab where it's always lived, so
-          we don't duplicate it on mobile-web Today. */}
-      <div className="hidden lg:block px-6 pt-3">
-        <FeatureErrorBoundary feature="Household">
-          <React.Suspense fallback={<AppLoadingSkeleton label="Loading household..." />}>
-            <HouseholdPanel />
-          </React.Suspense>
-        </FeatureErrorBoundary>
+      {/* Household glance bar — desktop only, full-width chrome above
+          the tracker. Renders nothing for solo users (the bar hides
+          itself). On narrower widths household stays on the Plan tab
+          where it's always lived. */}
+      <div className="product-shell hidden lg:block pt-3">
+        <TodayHouseholdGlanceBar />
       </div>
 
-      {/* Main body — 1-col at mobile/tablet, 2-col at `lg:`. */}
-      <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:px-6 lg:pb-6">
-        <div className="lg:col-span-2 min-w-0">
-          <FeatureErrorBoundary feature="Nutrition Tracker">
-            <NutritionTracker
-              userTier={userTier}
-              onOpenProgress={onOpenProgress}
-              onOpenSettings={onOpenSettings}
+      {/* The tracker IS the layout — it already splits into main
+          column + right rail at `lg:`. The frame only appends the
+          Apple Health card into that rail. */}
+      <FeatureErrorBoundary feature="Nutrition Tracker">
+        <NutritionTracker
+          userTier={userTier}
+          onOpenProgress={onOpenProgress}
+          onOpenSettings={onOpenSettings}
+          railExtra={
+            <TodayAppleHealthCard
+              stepsForSelectedDay={stepsForSelectedDay}
+              activeEnergyKcal={activeEnergyKcal}
+              restingBurnKcal={restingBurnKcal}
+              latestWeightKg={latestWeightKg}
+              useImperial={profileMeasurementSystem === "imperial"}
             />
-          </FeatureErrorBoundary>
-        </div>
-
-        {/* Right rail — desktop only. Hidden at < lg so we never
-            show these cards duplicating data the mobile-web layout
-            already renders inline (TodayStepsCard, etc.). */}
-        <aside
-          aria-label="Today insights"
-          className="hidden lg:flex lg:flex-col lg:gap-4 lg:pt-5"
-        >
-          <TodayWeeklyInsightCard
-            householdSize={householdSize}
-            loggedDaysInWeek={loggedDaysInWeek}
-            weekAvgKcal={weekAvgKcal}
-            weekDailyKcal={weekDailyKcal}
-            dailyKcalTarget={dailyKcalTarget}
-          />
-          <TodayAppleHealthCard
-            stepsForSelectedDay={stepsForSelectedDay}
-            activeEnergyKcal={activeEnergyKcal}
-            restingBurnKcal={restingBurnKcal}
-            latestWeightKg={latestWeightKg}
-            useImperial={profileMeasurementSystem === "imperial"}
-          />
-        </aside>
-      </div>
+          }
+        />
+      </FeatureErrorBoundary>
     </div>
   );
 }

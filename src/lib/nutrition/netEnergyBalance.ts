@@ -25,6 +25,43 @@ export const NET_ENERGY_CHIP_LABEL: Record<NetEnergyChipState, string> = {
 };
 
 /**
+ * ENG-1506 — the ±60-band STATE word collides with the MAINTENANCE (TDEE)
+ * quantity tile rendered one inch below it on the same card ("0 kcal
+ * maintenance" above "MAINTENANCE 1,778"). Behind `energy_numbers_v1` the
+ * balanced band's PRESENTATION strings become "Balanced" / "kcal balanced";
+ * the `NetEnergyChipState` union key stays `"maintenance"` internally
+ * (strings only — no state churn). Hosts own the flag read and pass
+ * `balancedWording` so this module stays a pure function (same pattern as
+ * `stagedNeutralSurplusFraming` below).
+ */
+export function netEnergyChipLabel(
+  state: NetEnergyChipState,
+  opts?: { balancedWording?: boolean },
+): string {
+  if (opts?.balancedWording && state === "maintenance") return "Balanced";
+  return NET_ENERGY_CHIP_LABEL[state];
+}
+
+/**
+ * ENG-1506 — headline presentation state for the net-energy hero. "empty"
+ * = no burn AND no food for the day, where an affirming giant "0 kcal
+ * maintenance" is a lie of presentation; hosts render an em-dash + the
+ * `NET_ENERGY_EMPTY_*` copy instead (behind `energy_numbers_v1`).
+ */
+export type NetEnergyHeadlineState = "empty" | "value";
+
+export function netEnergyHeadlineState(
+  burnKcal: number,
+  eatenKcal: number,
+): NetEnergyHeadlineState {
+  return burnKcal === 0 && eatenKcal === 0 ? "empty" : "value";
+}
+
+export const NET_ENERGY_EMPTY_HEADLINE = "—";
+export const NET_ENERGY_EMPTY_SUBLINE =
+  "No activity or meals logged yet today";
+
+/**
  * Headline + slider-marker accent (sage / clay / plum). These are FILL hues —
  * correct for the 52px net headline (large text, 3:1 bar) and the marker ring
  * (graphical, 3:1). Do NOT use for the small white-on-fill state chip: white on
@@ -54,7 +91,13 @@ export const NET_ENERGY_CHIP_BG = {
   maintenance: "#3B2A4D",
 } as const;
 
-export function netEnergyKcalUnit(state: NetEnergyChipState): string {
+export function netEnergyKcalUnit(
+  state: NetEnergyChipState,
+  opts?: { balancedWording?: boolean },
+): string {
+  // ENG-1506 — see `netEnergyChipLabel`: the balanced band stops borrowing
+  // the word "maintenance" from the TDEE tile below it.
+  if (opts?.balancedWording && state === "maintenance") return "kcal balanced";
   return `kcal ${state}`;
 }
 
@@ -106,6 +149,13 @@ export function netEnergySubline(args: {
    * pure function with no analytics import.
    */
   stagedNeutralSurplusFraming?: boolean;
+  /**
+   * ENG-1506 — behind `energy_numbers_v1`: the balanced band's subline stops
+   * calling the STATE "maintenance" (the word the TDEE tile below the
+   * headline already uses for a different quantity). Host owns the flag
+   * read, mirroring `stagedNeutralSurplusFraming`.
+   */
+  balancedWording?: boolean;
 }): string {
   const { burnedKcal, eatenKcal, isToday, netKcal, stagedNeutralSurplusFraming } = args;
   if (eatenKcal === 0) {
@@ -114,6 +164,9 @@ export function netEnergySubline(args: {
   }
   const state = netEnergyChipState(netKcal);
   if (state === "maintenance") {
+    if (args.balancedWording) {
+      return `You're within ${CHIP_THRESHOLD_KCAL} kcal of even — burn and intake are balanced${isToday ? " today" : ""}.`;
+    }
     return `You're within ${CHIP_THRESHOLD_KCAL} kcal of maintenance — burn and intake are balanced${isToday ? " today" : ""}.`;
   }
   if (state === "deficit") {

@@ -16,6 +16,7 @@ vi.mock("../../components/RecipeHeroFallback", () => ({
 }));
 
 import { RecipeCardImage } from "../../components/library/RecipeCardImage";
+import { HERO_TINTS, recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 
 describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () => {
   const cardImageStyle = { width: 100, height: 100 };
@@ -25,7 +26,6 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
       <RecipeCardImage
         uri="https://example.test/recipe.jpg"
         cardImageStyle={cardImageStyle}
-        fallbackBg="#eee"
         recipeId="abc-123"
         recipeTitle="Roast tomato soup"
       />,
@@ -39,7 +39,6 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
       <RecipeCardImage
         uri={null}
         cardImageStyle={cardImageStyle}
-        fallbackBg="#eee"
         recipeId="abc-123"
         recipeTitle="Roast tomato soup"
       />,
@@ -54,7 +53,6 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
       <RecipeCardImage
         uri="https://example.test/broken.jpg"
         cardImageStyle={cardImageStyle}
-        fallbackBg="#eee"
         recipeId="abc-123"
         recipeTitle="Roast tomato soup"
       />,
@@ -77,8 +75,7 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
         <RecipeCardImage
           uri={null}
           cardImageStyle={StyleSheet.absoluteFillObject}
-          fallbackBg="#eee"
-          recipeId="hero-1"
+            recipeId="hero-1"
           recipeTitle="Tonight's pick"
         />,
       );
@@ -94,8 +91,7 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
         <RecipeCardImage
           uri={null}
           cardImageStyle={cardImageStyle}
-          fallbackBg="#eee"
-          recipeId="grid-1"
+            recipeId="grid-1"
           recipeTitle="Grid card"
         />,
       );
@@ -104,19 +100,37 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
       expect(flattened.position).toBe("relative");
     });
 
-    it("ENG-1374: paints fallbackBg on the wrapper itself as a structural guarantee against blank white", () => {
+    it("ENG-1374 PR 2: paints the recipe's own opaque §11.4 cuisine tint on the wrapper itself — a structural guarantee against blank white no caller can override", () => {
       const { getByTestId } = render(
         <RecipeCardImage
           uri={null}
           cardImageStyle={StyleSheet.absoluteFillObject}
-          fallbackBg="#3B2A4D"
           recipeId="hero-2"
-          recipeTitle="Tonight's pick"
+          recipeTitle="Roast tomato pasta"
         />,
       );
       const wrapper = getByTestId("recipe-card-image-fallback-hero-2");
       const flattened = StyleSheet.flatten(wrapper.props.style);
-      expect(flattened.backgroundColor).toBe("#3B2A4D");
+      // "pasta" → warms bucket → HERO_TINTS.warms; opaque (6-digit hex, no alpha).
+      expect(flattened.backgroundColor).toBe(
+        recipeUnderlayColor({ id: "hero-2", title: "Roast tomato pasta" }),
+      );
+      expect(flattened.backgroundColor).toBe(HERO_TINTS.warms);
+      expect(flattened.backgroundColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    });
+
+    it("ENG-1374 PR 2: the photo branch carries the same opaque tint on the image element itself (never-white while a real URL streams in, flag-off path included)", () => {
+      const { UNSAFE_getByType } = render(
+        <RecipeCardImage
+          uri="https://example.test/recipe.jpg"
+          cardImageStyle={cardImageStyle}
+          recipeId="hero-3"
+          recipeTitle="Green salad"
+        />,
+      );
+      const img = UNSAFE_getByType(Image);
+      const flattened = StyleSheet.flatten(img.props.style);
+      expect(flattened.backgroundColor).toBe(HERO_TINTS.greens);
     });
   });
 });

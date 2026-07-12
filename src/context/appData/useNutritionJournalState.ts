@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import type { LoggedMeal } from "../../types/recipe.ts";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
-import { track } from "../../lib/analytics/track.ts";
+import { isFeatureEnabled, track } from "../../lib/analytics/track.ts";
 import { looksLikeMissingTableError, syncDisabledBecauseSchemaMessage, syncFailedRetryMessage } from "./supabaseErrors.ts";
 import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
@@ -11,6 +11,7 @@ import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveT
 import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
 import { canonicalNutritionEntrySource } from "../../lib/nutrition/canonicalNutritionEntrySource.ts";
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
+import { ENERGY_NUMBERS_V1_FLAG } from "../../lib/nutrition/energyNumbers.ts";
 import { mergeJournalByDay } from "../../lib/nutrition/mergeJournalByDay.ts";
 import { nutritionEntryDateKeyAndEatenAt, reanchorMealEatenAt } from "../../lib/nutrition/mealEatenAt.ts";
 import { buildNutritionEntryUpdatePayload } from "../../lib/nutrition/nutritionEntryUpdatePayload.ts";
@@ -442,7 +443,7 @@ export function useNutritionJournalState(opts: {
         // the day. Past days stop moving when the user later edits
         // activity_level / plan_pace / goal. Fire-and-forget — a
         // snapshot write failure must never roll back the log.
-        void snapshotDailyTargetIfMissing(supabase, authedUserId);
+        void snapshotDailyTargetIfMissing(supabase, authedUserId, { canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) });
         // ENG-751 — parent insert confirmed; let the caller write the per-item
         // snapshot now that the FK target row exists on the server.
         onPersisted?.(true, id);
@@ -525,7 +526,7 @@ export function useNutritionJournalState(opts: {
       // snapshot intentionally only writes for *today* regardless of
       // `dayKey` — past-day snapshots stay empty so the read path's
       // fallback renders (see `dailyTargetSnapshot.ts` contract).
-      void snapshotDailyTargetIfMissing(supabase, authedUserId);
+      void snapshotDailyTargetIfMissing(supabase, authedUserId, { canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) });
       // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT —
       // duplicated meals carry `micros` forward via the row clone, so
       // the destination day's chip totals re-sum from the merged map

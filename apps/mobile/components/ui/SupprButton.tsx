@@ -42,6 +42,8 @@ export type SupprButtonVariant = "primary" | "ghost";
 
 export interface SupprButtonProps {
   variant: SupprButtonVariant;
+  /** `sm` — compact in-card CTA (fit-and-finish 2026-07-11): slimmer pad, caption type. */
+  size?: "md" | "sm";
   onPress?: () => void;
   /**
    * Optional long-press handler. When set, the button supports
@@ -71,6 +73,7 @@ export interface SupprButtonProps {
 
 export function SupprButton({
   variant,
+  size = "md",
   onPress,
   onLongPress,
   delayLongPress,
@@ -106,6 +109,9 @@ export function SupprButton({
   const labelColor = isPrimary ? "#fff" : accent.primarySolid;
 
   const containerStyle: ViewStyle = {
+    ...(size === "sm"
+      ? { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md }
+      : null),
     backgroundColor: isPrimary ? accent.primarySolid : "transparent",
     // No border on either variant (ghost replaces the old outline) and no
     // shadow on either (flat-card canon — solid fill IS the affordance).

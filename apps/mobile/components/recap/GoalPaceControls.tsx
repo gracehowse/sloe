@@ -25,7 +25,8 @@ export function GoalOptionList({
   goal,
   onChange,
 }: {
-  goal: EditorDbGoal;
+  /** ENG-1507 — `null` = unknown goal on the row; no option renders selected. */
+  goal: EditorDbGoal | null;
   onChange: (g: EditorDbGoal) => void;
 }) {
   const accent = useAccent();

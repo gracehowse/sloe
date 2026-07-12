@@ -2,7 +2,9 @@
 
 import { memo } from "react";
 import { Check, ChevronRight, Circle, Flame, Shield } from "lucide-react";
+import { AvatarDisc } from "../ui/avatar-disc";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import {
   type EditorialProfileBlockModel,
   type StreakDotState,
@@ -77,12 +79,9 @@ function EditorialProfileBlockImpl({
       {/* m8: p-4/gap-4 (16px) to match the sibling cards + the mobile value
           (was off-scale p-3.5/gap-3.5). */}
       <div className="flex items-center gap-4 rounded-xl bg-card p-4 card-slab">
-        <div
-          aria-hidden
-          className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-primary text-lg font-bold text-primary-foreground"
-        >
-          {monogramInitial}
-        </div>
+        {/* S5 avatar ruling (2026-07-10, ENG-1375): the ad-hoc bg-primary
+            monogram → the ONE solid-damson identity disc (`AvatarDisc`). */}
+        <AvatarDisc initial={monogramInitial} size={52} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-[family-name:var(--font-headline)] text-lg font-medium leading-tight text-foreground">
             {displayName.trim() ? displayName : "Your profile"}
@@ -203,6 +202,9 @@ function EditorialProfileBlockImpl({
                 onClick={() => onOpenRecipe(recipe.id)}
                 aria-label={`Open ${recipe.title}`}
                 className="group relative aspect-square overflow-hidden rounded-lg transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
+                // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper
+                // (never page white, whatever the child does).
+                style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }}
               >
                 {recipe.image ? (
                   // eslint-disable-next-line @next/next/no-img-element

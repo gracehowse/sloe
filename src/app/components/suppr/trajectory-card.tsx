@@ -34,6 +34,8 @@ import {
   type TrajectoryState,
   type WeightGoalTimeline,
 } from "../../../lib/weightProjection";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
+import { ENERGY_NUMBERS_V1_FLAG } from "../../../lib/nutrition/energyNumbers";
 import { SupprCard } from "../ui/suppr-card";
 
 export interface TrajectoryCardProps {
@@ -57,7 +59,13 @@ export interface TrajectoryCardProps {
 
 export function TrajectoryCard(props: TrajectoryCardProps) {
   const { className, ...input } = props;
-  const state: TrajectoryState | null = computeTrajectory(input);
+  // ENG-1506 — host-read flag: OFF keeps the legacy 'lose'/'gain'-only
+  // goal-fallback comparison inside `projectWeight` (byte-identical
+  // flag-OFF geometry); ON understands the DB 'cut'/'bulk' vocabulary.
+  const state: TrajectoryState | null = computeTrajectory({
+    ...input,
+    normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG),
+  });
 
   if (!state) return null;
 

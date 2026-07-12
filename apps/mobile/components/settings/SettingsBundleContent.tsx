@@ -68,6 +68,7 @@ import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { CARD_RADIUS, SHEET_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import { WeighInReminderRow } from "@/components/settings/WeighInReminderRow";
 import { WeeklyRecapPushPicker } from "@/components/settings/WeeklyRecapPushPicker";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
@@ -291,7 +292,6 @@ function SegmentedRow({
   colors: ReturnType<typeof useThemeColors>;
   testID?: string;
 }) {
-  const accent = useAccent();
   return (
     <View
       style={{
@@ -331,51 +331,20 @@ function SegmentedRow({
           ) : null}
         </View>
       </View>
-      <View
-        style={{
-          flexDirection: "row",
-          backgroundColor: colors.cardBorder,
-          borderRadius: 8,
-          padding: 2,
-        }}
-      >
-        {options.map((opt) => {
-          const active = opt.value === value;
-          return (
-            <Pressable
-              key={opt.value}
-              onPress={() => onChange(opt.value)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={`${label}: ${opt.label}`}
-              testID={`${testID ?? "settings-segmented"}-option-${opt.value}`}
-              style={{
-                flex: 1,
-                paddingVertical: 6,
-                borderRadius: 6,
-                // Active segment — white lift on the warm-grey rail (Sloe
-                // treatment #8, 2026-06-08).
-                backgroundColor: active ? colors.card : "transparent",
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: Type.captionSmall.fontFamily,
-                  fontSize: Type.captionSmall.fontSize,
-                  lineHeight: Type.captionSmall.lineHeight,
-                  fontWeight: active ? "700" : "500",
-                  // Active label reads in `accent.primarySolid` (aubergine);
-                  // inactive stays muted on the rail (treatment #8).
-                  color: active ? accent.primarySolid : colors.textSecondary,
-                }}
-              >
-                {opt.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {/* ENG-1375 S3 — canonical §8 SegmentedTrack (was a square 8/6 rail on
+          `cardBorder`; now the full-radius inputBg track + card thumb). */}
+      <SegmentedTrack
+        role="radiogroup"
+        accessibilityLabel={label}
+        options={options.map((opt) => ({
+          value: opt.value,
+          label: opt.label,
+          accessibilityLabel: `${label}: ${opt.label}`,
+          testID: `${testID ?? "settings-segmented"}-option-${opt.value}`,
+        }))}
+        value={value}
+        onChange={onChange}
+      />
     </View>
   );
 }

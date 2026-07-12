@@ -21,6 +21,7 @@ import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { kgToLb, calculateTDEE, getEffectiveTDEE, type PlanPace, type Sex, type ActivityLevel } from "../../lib/nutrition/tdee.ts";
 import { avgCaloriesOverRecentLoggedDays, calcGoalTimeline, computeWeightJourneyProgressPct, formatWeightJourneyProgressCopy, hasGoalWeightData, projectWeight, resolveLatestWeightKg, shouldRenderDailyProjection } from "../../lib/weightProjection.ts";
 import { resolveMaintenance } from "../../lib/nutrition/resolveMaintenance.ts";
+import { ENERGY_NUMBERS_V1_FLAG, expenditureFromResolved, maintenanceQualifier, selectMaintenance } from "../../lib/nutrition/energyNumbers.ts";
 import { computeAdaptiveDataProgressFromMeals } from "../../lib/nutrition/adaptiveDataProgress.ts";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "../../lib/nutrition/measuredTdee.ts";
 import { MaintenanceExplainer } from "./progress/MaintenanceExplainer.tsx";
@@ -92,7 +93,6 @@ import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetai
 // pills stay flush against the header.
 import { HouseholdBar } from "./HouseholdBar.tsx";
 import { ProgressTabChrome } from "./suppr/progress-tab-chrome.tsx";
-import { SupprButton } from "./suppr/suppr-button.tsx";
 // Phase 4 (B3.1, 2026-04-27) — Surface E "Progress hero (story-led)".
 // Authority: D-2026-04-27-17 (Progress is a story not a stat-card
 // dashboard) + D-2026-04-27-12 (adaptive TDEE always-on).
@@ -113,8 +113,10 @@ import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProg
 import { useNutritionHistoryWindow } from "../../hooks/useNutritionHistoryWindow.ts";
 import { Milestone30DayDialog } from "./suppr/milestone-30-day-dialog.tsx";
 import { SupprCard } from "./ui/suppr-card.tsx";
+import { SegmentedTrack } from "./ui/segmented-track.tsx";
 import { ProgressActivitySection } from "./suppr/progress-activity-section.tsx";
 import { ProgressWeightEmptyState } from "./suppr/progress-weight-empty-state.tsx";
+import { ProgressWeightLogRow } from "./suppr/progress-weight-log-row.tsx";
 import { StreakFreezeCard } from "./suppr/streak-freeze-card.tsx";
 import { WeightStatRow } from "./suppr/weight-stat-row.tsx";
 import { getLatestHealthSnapshot } from "../../lib/health/healthSnapshots.ts";
@@ -215,6 +217,16 @@ function ProgressDashboardContent() {
 
   const [weightInput, setWeightInput] = useState("");
   const weightInputRef = useRef<HTMLInputElement | null>(null); // ENG-1372 slice 2 CTA target
+  // ENG-1504 — the sparse/empty weight state renders ONE affordance (the
+  // in-frame filled CTA, ENG-1372 law 2); the inline input + "Log weight"
+  // row stays hidden until that CTA reveals it (then focuses the input).
+  // Non-empty states always render the row. Mirrors mobile, where the
+  // "Log weight" button lives inside the non-empty branch only and the
+  // sparse-state CTA opens the LogWeightSheet.
+  const [weightEntryRevealed, setWeightEntryRevealed] = useState(false);
+  useEffect(() => {
+    if (weightEntryRevealed) weightInputRef.current?.focus();
+  }, [weightEntryRevealed]);
   const [stepsInput, setStepsInput] = useState("");
   const [bodyFatInput, setBodyFatInput] = useState("");
   // ENG-824 / ENG-952 — weight-save celebration state + side-effects (loud
@@ -720,37 +732,34 @@ function ProgressDashboardContent() {
   //
   // ENG-787 — hoisted above `weekStatsBundle` so the effective-target
   // activity bundle can reuse its resolved kcal as the maintenance fallback.
+  // ENG-1506 — flag ON: canonical `buildMaintenanceInputs` policy (latest
+  // weigh-in beats the lagging `profiles.weight_kg` snapshot — the input
+  // skew behind the 1,778-vs-1,567 audit split — and no `?? 70`
+  // fabrication). Legacy assembly stays in the else (kill switch).
   const recapMaintenance = useMemo(
     () =>
-      resolveMaintenance(
-        {
-          adaptive_tdee: adaptiveTdee,
-          adaptive_tdee_confidence: adaptiveConfidence,
-          adaptive_tdee_updated_at: adaptiveUpdatedAt,
-          measured_tdee: measuredTdee,
-          measured_tdee_confidence: measuredTdeeConfidence,
-          measured_tdee_updated_at: measuredTdeeUpdatedAt,
-          sex: profileSexCached,
-          weight_kg: weightKg ?? 70,
-          height_cm: profileHeightCmCached,
-          age: profileAgeCached,
-          activity_level: profileActivityLevelCached,
-        },
-        { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
-      ),
-    [
-      adaptiveTdee,
-      adaptiveConfidence,
-      adaptiveUpdatedAt,
-      measuredTdee,
-      measuredTdeeConfidence,
-      measuredTdeeUpdatedAt,
-      profileSexCached,
-      weightKg,
-      profileHeightCmCached,
-      profileAgeCached,
-      profileActivityLevelCached,
-    ],
+      isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+        ? selectMaintenance(
+            {
+              adaptive_tdee: adaptiveTdee, adaptive_tdee_confidence: adaptiveConfidence,
+              adaptive_tdee_updated_at: adaptiveUpdatedAt, measured_tdee: measuredTdee,
+              measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
+              sex: profileSexCached, weight_kg: weightKg, height_cm: profileHeightCmCached,
+              age: profileAgeCached, activity_level: profileActivityLevelCached, weight_kg_by_day: weightKgByDay,
+            },
+            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+          )
+        : resolveMaintenance(
+            {
+              adaptive_tdee: adaptiveTdee, adaptive_tdee_confidence: adaptiveConfidence,
+              adaptive_tdee_updated_at: adaptiveUpdatedAt, measured_tdee: measuredTdee,
+              measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
+              sex: profileSexCached, weight_kg: weightKg ?? 70, height_cm: profileHeightCmCached,
+              age: profileAgeCached, activity_level: profileActivityLevelCached,
+            },
+            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+          ),
+    [adaptiveTdee, adaptiveConfidence, adaptiveUpdatedAt, measuredTdee, measuredTdeeConfidence, measuredTdeeUpdatedAt, profileSexCached, weightKg, weightKgByDay, profileHeightCmCached, profileAgeCached, profileActivityLevelCached],
   );
 
   // ENG-787 — per-day activity bundle for the Daily Calories chart. Mirrors
@@ -1328,7 +1337,16 @@ function ProgressDashboardContent() {
               is no longer the only Progress card without a header. */}
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-primary-solid mb-2">Weight</p>
           {showWeightEmpty ? (
-            <ProgressWeightEmptyState points={weightChartData.map((d) => ({ kg: d.value }))} goalKg={goalWeightChart ?? null} onLogWeight={() => weightInputRef.current?.focus()} />
+            <ProgressWeightEmptyState
+              points={weightChartData.map((d) => ({ kg: d.value }))}
+              goalKg={goalWeightChart ?? null}
+              // ENG-1504 — first tap reveals the (otherwise hidden) inline
+              // log row below; the reveal effect focuses the input.
+              onLogWeight={() => {
+                if (weightEntryRevealed) weightInputRef.current?.focus();
+                else setWeightEntryRevealed(true);
+              }}
+            />
           ) : (<>
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1360,36 +1378,24 @@ function ProgressDashboardContent() {
                 </p>
               ) : null}
             </div>
-            {/* Trend/Scale segmented toggle */}
-            <div
+            {/* Trend/Scale segmented toggle — the canonical §8 SegmentedTrack
+                (ENG-1375 S2; this toggle was one of the conforming treatments
+                the primitive absorbed). */}
+            <SegmentedTrack
               role="tablist"
-              aria-label="Weight chart view"
-              data-testid="progress-weight-view-toggle"
-              className="flex shrink-0 rounded-full bg-muted p-0.5"
-            >
-              {(["trend", "scale"] as const).map((v) => {
-                const active = weightView === v;
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    data-testid={`progress-weight-view-${v}`}
-                    onClick={() => setWeightView(v)}
-                    className={[
-                      // Segmented grammar (treatment §8): active thumb = white
-                      // `bg-card` lift + `primary-solid` label + `shadow-sm`.
-                      // focus-visible added (web parity 2026-06-10, ENG-1022).
-                      "rounded-full px-3 py-1 text-[11px] font-semibold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                      active ? "bg-card text-primary-solid shadow-sm" : "text-muted-foreground",
-                    ].join(" ")}
-                  >
-                    {v}
-                  </button>
-                );
-              })}
-            </div>
+              ariaLabel="Weight chart view"
+              testId="progress-weight-view-toggle"
+              className="shrink-0"
+              size="sm"
+              fit="hug"
+              options={(["trend", "scale"] as const).map((v) => ({
+                value: v,
+                label: v === "trend" ? "Trend" : "Scale",
+                testId: `progress-weight-view-${v}`,
+              }))}
+              value={weightView}
+              onChange={setWeightView}
+            />
           </div>
           {goalWeightKg != null ? (
             <p className="mt-1.5 text-[13px] text-muted-foreground ph-mask">
@@ -1451,40 +1457,18 @@ function ProgressDashboardContent() {
             rate={hasGoalWeightData({ goalWeightKg, latestWeightKg }) && rateKgPerWeek != null && rateKgPerWeek !== 0 ? `${rateKgPerWeek < 0 ? "−" : "+"}${formatRatePerWeek(rateKgPerWeek).replace("/week", "/wk")}` : "—"}
           />
           </>)}
-          {/* Log weight — centred button + a quick inline input */}
-          <div className="mt-3 flex items-center gap-2">
-            <input
-              ref={weightInputRef}
-              className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
-              placeholder={profileMeasurementSystem === "imperial" ? "Weight (lb)" : "Weight (kg)"}
+          {/* Inline log row (extracted, ENG-1504): hidden on the sparse/empty
+              state until its in-frame CTA reveals it — the empty card shows
+              exactly one log-weigh-in affordance (ENG-1372 law 2). */}
+          {!showWeightEmpty || weightEntryRevealed ? (
+            <ProgressWeightLogRow
+              inputRef={weightInputRef}
               value={weightInput}
-              onChange={(e) => setWeightInput(e.target.value)}
-              type="number"
-              step="0.1"
-              aria-label="Log weight"
+              onChange={setWeightInput}
+              isImperial={profileMeasurementSystem === "imperial"}
+              onSave={() => void saveTodayWeight()}
             />
-            {/* v3 prototype: Log weight is a QUIET button (the app's `ghost`
-                = the retired bordered-secondary), not a filled primary — the
-                weight card's calm action; the chart stays the hero. ENG-1247 */}
-            <SupprButton
-              variant="ghost"
-              onClick={() => void saveTodayWeight()}
-              data-testid="progress-log-weight"
-              aria-label="Log weight"
-            >
-              <Icons.add className="h-4 w-4" aria-hidden />
-              Log weight
-            </SupprButton>
-          </div>
-          {/* Gap 13 parity (web mirror of weight-tracker.tsx 2026-06-09):
-              editorial coaching line in Newsreader italic 14px — matches
-              the mobile Type.coach register. Previously plain text-xs. */}
-          <p
-            data-testid="weight-input-supportive-copy"
-            className="mt-1.5 text-center text-[13px] italic text-muted-foreground font-[family-name:var(--font-headline)]"
-          >
-            Every check-in gives us better data for you.
-          </p>
+          ) : null}
         </SupprCard>
         );
       })() : null}
@@ -1495,8 +1479,16 @@ function ProgressDashboardContent() {
       <ProgressEnergyTriad
         className="mb-4"
         avgIntakeKcal={caloriesRange.avgCaloriesPerDay}
-        maintenanceKcal={recapMaintenance?.kcal ?? staticTdee}
+        // ENG-1506 — flag ON: no full-activity staticTdee fallback (it was
+        // computed from `?? 70`/`|| 170`/`|| 30` fabricated basics at a THIRD
+        // activity policy); an unresolvable maintenance renders "—" honestly.
+        maintenanceKcal={recapMaintenance?.kcal ?? (isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? null : staticTdee)}
         isAdaptive={recapMaintenance?.source === "adaptive"}
+        // ENG-1506 — explicit source qualifier under the MAINTENANCE operand +
+        // the REAL selected-period label (the header hard-coded "7-day average"
+        // while avg intake followed the period control). Flag-gated inside.
+        qualifierLine={recapMaintenance ? maintenanceQualifier(recapMaintenance.source, recapMaintenance.confidence).line : null}
+        periodLabel={periodWindowLabel}
       />
 
       {/* 6. DAILY CALORIES (Sloe Figma 492:2) — M–S bars, sage = on target,
@@ -1978,22 +1970,9 @@ function ProgressDashboardContent() {
           "+N actual" delta are preserved so power users can still see
           the underlying spread. */}
       {staticTdee != null && (() => {
-        const resolved = resolveMaintenance(
-          {
-            adaptive_tdee: adaptiveTdee,
-            adaptive_tdee_confidence: adaptiveConfidence,
-            adaptive_tdee_updated_at: adaptiveUpdatedAt,
-            measured_tdee: measuredTdee,
-            measured_tdee_confidence: measuredTdeeConfidence,
-            measured_tdee_updated_at: measuredTdeeUpdatedAt,
-            sex: profileSexCached,
-            weight_kg: weightKg ?? 70,
-            height_cm: profileHeightCmCached,
-            age: profileAgeCached,
-            activity_level: profileActivityLevelCached,
-          },
-          { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
-        );
+        // ENG-1506 — reuse the SAME `recapMaintenance` every sibling reads
+        // (was a duplicated, driftable resolveMaintenance input block).
+        const resolved = recapMaintenance;
         if (!resolved) return null;
         const showAdaptiveExtras = resolved.source === "adaptive";
         const showMeasuredExtras = resolved.source === "measured";
@@ -2178,8 +2157,11 @@ function ProgressDashboardContent() {
         );
       })()}
 
-      {/* ENG-953 — calm "Expenditure" trend card (self-gates on default-ON `expenditure_trend_card`; parity: mobile `ExpenditureTrendCard`). */}
-      <ExpenditureTrendCard adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee} />
+      {/* ENG-953 — calm "Expenditure" trend card (self-gates on default-ON `expenditure_trend_card`; parity: mobile `ExpenditureTrendCard`).
+          ENG-1506 — behind `energy_numbers_v1` the copy comes from the SAME resolved maintenance as the card above (`expenditureFromResolved`);
+          off → the legacy raw-column decision path inside the card. */}
+      <ExpenditureTrendCard adaptiveTdee={adaptiveTdee} adaptiveConfidence={adaptiveConfidence} adaptiveUpdatedAt={adaptiveUpdatedAt} measuredTdee={measuredTdee}
+        resolvedCopy={isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? expenditureFromResolved(recapMaintenance, adaptiveUpdatedAt) : undefined} />
 
       {/* ENG-1237 — body fat + lean-mass trends (Pro-gated). */}
       <BodyCompositionTrendCard userTier={profileTier} refreshKey={bodyCompositionRefreshKey} />
@@ -2268,6 +2250,7 @@ function ProgressDashboardContent() {
               maintenanceTdeeKcal,
               goal: userGoal,
               observedKgPerWeek,
+              normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG), // ENG-1506 — OFF keeps the legacy 'lose'/'gain'-only fallback
             })
           : null;
 

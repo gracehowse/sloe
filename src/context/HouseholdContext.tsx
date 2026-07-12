@@ -14,6 +14,18 @@ import { getMyHousehold } from "../lib/household/householdClient.ts";
 // Public interface
 // ---------------------------------------------------------------------------
 
+/**
+ * ENG-1495 — the minimal per-member identity the desktop Today glance
+ * bar needs (initials + first name + index-stable accent). Full
+ * `MemberSummary` (targets, share flags) stays behind `getMyHousehold`
+ * for the surfaces that manage households; the context deliberately
+ * exposes only what glance UI can render.
+ */
+export interface HouseholdGlanceMember {
+  userId: string;
+  displayName: string;
+}
+
 export interface HouseholdContextValue {
   /**
    * Honeydew parity (2026-04-30): the user's active household id, or
@@ -24,6 +36,14 @@ export interface HouseholdContextValue {
   activeHouseholdId: string | null;
   /** ENG-849 — member count for household-aware decorative copy on Today. */
   householdMemberCount: number;
+  /**
+   * ENG-1495 — member identities in `joined_at ASC` order (the same
+   * order `getMyHousehold` returns, so index-based accent colours from
+   * `memberAccents.ts` stay stable across surfaces). Empty when signed
+   * out, solo, or still resolving — glance consumers hide on empty
+   * rather than skeleton.
+   */
+  members: HouseholdGlanceMember[];
 }
 
 const HouseholdContext = createContext<HouseholdContextValue | null>(null);
@@ -52,11 +72,13 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
   const { authedUserId } = useAuthSession();
   const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
   const [householdMemberCount, setHouseholdMemberCount] = useState(1);
+  const [members, setMembers] = useState<HouseholdGlanceMember[]>([]);
 
   useEffect(() => {
     if (!authedUserId) {
       setActiveHouseholdId(null);
       setHouseholdMemberCount(1);
+      setMembers([]);
       return;
     }
     let cancelled = false;
@@ -75,11 +97,20 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
           setActiveHouseholdId(hh?.id ?? null);
           const memberLen = (data as { members?: unknown[] } | null)?.members?.length ?? 0;
           setHouseholdMemberCount(memberLen > 0 ? memberLen : 1);
+          // ENG-1495 — surface glance identities (already fetched above;
+          // no extra query). `getMyHousehold` sorts by joined_at ASC.
+          setMembers(
+            (data?.members ?? []).map((m) => ({
+              userId: m.userId,
+              displayName: m.displayName,
+            })),
+          );
         }
       } catch {
         if (!cancelled) {
           setActiveHouseholdId(null);
           setHouseholdMemberCount(1);
+          setMembers([]);
         }
       }
     })();
@@ -89,8 +120,8 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
   }, [authedUserId]);
 
   const value = useMemo(
-    (): HouseholdContextValue => ({ activeHouseholdId, householdMemberCount }),
-    [activeHouseholdId, householdMemberCount],
+    (): HouseholdContextValue => ({ activeHouseholdId, householdMemberCount, members }),
+    [activeHouseholdId, householdMemberCount, members],
   );
 
   return <HouseholdContext.Provider value={value}>{children}</HouseholdContext.Provider>;

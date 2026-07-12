@@ -17,6 +17,7 @@ import {
 // use, mirrored on mobile via `@suppr/shared/recipe/recipeHeroFallback`),
 // with the emoji kept alive in the `else` per the CLAUDE.md feature-flag rule.
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { SupprCard } from "../ui/suppr-card";
 
@@ -131,22 +132,33 @@ export function CreatorRecipeList({
                 href={`/recipe/${r.id}`}
                 className="flex items-center gap-3 p-3 hover:bg-muted/40 transition-colors"
               >
+                {/* ENG-1374 PR 2 — every branch paints the recipe's opaque
+                    §11.4 cuisine tint on the container (replacing frost-grey
+                    `bg-muted`, banned under imagery), so a 404 or a failed
+                    fallback mount never exposes page white. */}
                 {r.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={r.image_url}
                     alt=""
-                    className="w-14 h-14 rounded-lg object-cover bg-muted"
+                    className="w-14 h-14 rounded-lg object-cover"
+                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }) }}
                   />
                 ) : useLucideIcons ? (
                   // RecipeHeroFallback is a fill overlay (position:absolute;
                   // inset:0), so it must live inside a relatively-positioned
                   // 56px box — same wrapper shape as Library.tsx call sites.
-                  <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0">
+                  <div
+                    className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0"
+                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }) }}
+                  >
                     <RecipeHeroFallback id={r.id} title={r.title} iconSize={20} />
                   </div>
                 ) : (
-                  <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                  <div
+                    className="w-14 h-14 rounded-lg flex items-center justify-center text-muted-foreground text-xs"
+                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }) }}
+                  >
                     🍳
                   </div>
                 )}

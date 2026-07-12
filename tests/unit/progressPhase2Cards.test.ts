@@ -20,6 +20,11 @@ import { describe, expect, it } from "vitest";
 const ROOT = resolve(__dirname, "../..");
 const MOBILE = readFileSync(resolve(ROOT, "apps/mobile/app/(tabs)/progress.tsx"), "utf8");
 const WEB = readFileSync(resolve(ROOT, "src/app/components/ProgressDashboard.tsx"), "utf8");
+// Inline Log-weight row extracted into ProgressWeightLogRow (ENG-1504).
+const WEB_LOG_ROW = readFileSync(
+  resolve(ROOT, "src/app/components/suppr/progress-weight-log-row.tsx"),
+  "utf8",
+);
 const HELPER = readFileSync(resolve(ROOT, "src/lib/nutrition/progressRangeStats.ts"), "utf8");
 // The AVERAGE ADHERENCE card lives in its own component on each platform
 // (the dashboards render `<ProgressAverageAdherence>` and pass the four
@@ -106,10 +111,13 @@ describe("Progress — Sloe Figma 492:2 frame", () => {
     // The two view buttons render from a `["trend", "scale"]` map with a
     // template testID, so the toggle wrapper + the per-view template + the
     // `weightView` state together guarantee both `trend` and `scale` tabs.
-    expect(WEB).toMatch(/data-testid="progress-weight-view-toggle"/);
-    expect(WEB).toMatch(/data-testid=\{`progress-weight-view-\$\{v\}`\}/);
+    // ENG-1375 S2 — the web toggle renders the canonical SegmentedTrack;
+    // the testids are forwarded via its testId props (same DOM testids).
+    expect(WEB).toMatch(/testId="progress-weight-view-toggle"/);
+    expect(WEB).toMatch(/testId: `progress-weight-view-\$\{v\}`/);
     expect(WEB).toMatch(/\(\["trend", "scale"\] as const\)/);
-    expect(WEB).toMatch(/data-testid="progress-log-weight"/);
+    expect(WEB).toMatch(/<ProgressWeightLogRow\b/);
+    expect(WEB_LOG_ROW).toMatch(/data-testid="progress-log-weight"/);
     expect(MOBILE).toMatch(/testID="progress-weight-view-toggle"/);
     expect(MOBILE).toMatch(/testID=\{`progress-weight-view-\$\{v\}`\}/);
     expect(MOBILE).toMatch(/\(\["trend", "scale"\] as const\)/);

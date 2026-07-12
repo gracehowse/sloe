@@ -1,7 +1,8 @@
 /**
  * TodayAppleHealthCard — desktop right-rail Apple Health summary.
- * Tests pin the no-fabrication rules (dim "—" placeholder when a
- * value hasn't synced yet, weight row omitted entirely when null,
+ * Tests pin the no-fabrication rules (renders NOTHING when no Health
+ * datum exists at all — ENG-1495; dim "—" placeholder when only some
+ * values haven't synced; weight row omitted entirely when null;
  * kg/lb formatting respects measurement system).
  */
 
@@ -18,16 +19,12 @@ describe("TodayAppleHealthCard", () => {
     latestWeightKg: null as number | null,
   };
 
-  it("renders dim placeholders and a connect-source hint when no Health data has synced", () => {
-    render(<TodayAppleHealthCard {...base} />);
-    // All three placeholder rows read "—".
-    const dashes = screen.getAllByText("—");
-    expect(dashes.length).toBeGreaterThanOrEqual(3);
-    // Weight row is omitted entirely when latestWeightKg is null.
-    expect(screen.queryByText(/Weight/)).toBeNull();
-    expect(
-      screen.getByText(/Data appears once the iOS app connects Apple Health\./),
-    ).toBeDefined();
+  it("renders nothing at all when no Health data has synced (ENG-1495)", () => {
+    const { container } = render(<TodayAppleHealthCard {...base} />);
+    // No placeholder-only card — the section doesn't mount.
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByText("—")).toBeNull();
+    expect(screen.queryByText(/Apple Health · Today/)).toBeNull();
   });
 
   it("renders concrete values when Health has synced", () => {
@@ -44,10 +41,6 @@ describe("TodayAppleHealthCard", () => {
     expect(screen.getByText("440 kcal")).toBeDefined();
     expect(screen.getByText("1,580 kcal")).toBeDefined();
     expect(screen.getByText("72.5 kg")).toBeDefined();
-    // With data present, no hint line.
-    expect(
-      screen.queryByText(/Data appears once the iOS app connects Apple Health\./),
-    ).toBeNull();
   });
 
   it("formats weight in lb when useImperial is true", () => {

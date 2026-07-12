@@ -23,6 +23,7 @@ import {
 } from "lucide-react-native";
 import { useHaptics } from "@/hooks/useHaptics";
 
+import { AddRowButton } from "@/components/ui/AddRowButton";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { Accent, FontFamily, FontWeight, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
@@ -1274,28 +1275,27 @@ export default function VerifyScreen() {
         })}
         </View>
 
-        {/* Batch 2.7 — Add ingredient row at the bottom of the list. */}
-        <PressableScale
-          haptic="selection"
+        {/* Batch 2.7 — Add ingredient row at the bottom of the list. Renders
+            via the shared AddRowButton primitive (AddControl ruling
+            2026-07-10, ENG-1375 S4 — the dashed raw-alpha border was an
+            add-INGREDIENT action, not an upload dropzone); the helper line
+            moves below the control as a caption. */}
+        <AddRowButton
+          label="Add ingredient"
           onPress={() => setAddSheetOpen(true)}
-          style={{
-            marginTop: Spacing.md,
-            padding: Spacing.lg,
-            borderRadius: Radius.md,
-            borderWidth: 1,
-            borderStyle: "dashed",
-            borderColor: accent.primary + "80",
-            backgroundColor: accent.primary + "10",
-            alignItems: "center",
-          }}
-          accessibilityRole="button"
           accessibilityLabel="Add an ingredient the importer missed"
+          style={{ marginTop: Spacing.md }}
+        />
+        <Text
+          style={{
+            color: colors.textSecondary,
+            ...Type.captionSmall,
+            marginTop: Spacing.xs,
+            textAlign: "center",
+          }}
         >
-          <Text style={{ color: accent.primarySolid, fontWeight: "700", fontSize: 15 }}>+ Add ingredient</Text>
-          <Text style={{ color: colors.textSecondary, ...Type.captionSmall, marginTop: 2, textAlign: "center" }}>
-            Missed an ingredient during import? Add it here and totals update live.
-          </Text>
-        </PressableScale>
+          Missed an ingredient during import? Add it here and totals update live.
+        </Text>
       </ScrollView>
 
       {/* Footer */}

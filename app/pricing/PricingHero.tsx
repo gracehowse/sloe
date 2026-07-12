@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { CARD_CREAM } from "../../src/lib/recipe/recipeHeroFallback.ts";
+
 /**
  * Photo hero panel for `/pricing` — Sloe Pro paywall (Figma `284:2`).
  *
@@ -29,7 +31,14 @@ export function PricingHero() {
       {/* Full-bleed food photograph — the frame's hero image. Fades
           softly into the page background at the bottom so the eyebrow +
           headline read as overlaid on the fade, matching `284:2`. */}
-      <div className="relative h-[200px] sm:h-[320px] w-full">
+      <div
+        className="relative h-[200px] sm:h-[320px] w-full"
+        // ENG-1374 PR 2 — opaque underlay on the wrapper itself so a failed
+        // or slow hero-photo load can never expose page white. CARD_CREAM
+        // (§11.4), not a cuisine tint: the bundled paywall photo has no
+        // recipe identity to key a tint from.
+        style={{ backgroundColor: CARD_CREAM }}
+      >
         <Image
           src="/paywall/paywall-hero.jpg"
           alt=""

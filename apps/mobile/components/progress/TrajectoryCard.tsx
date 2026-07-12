@@ -10,6 +10,8 @@ import {
   type TrajectoryState,
   type WeightGoalTimeline,
 } from "@/lib/weightProjection";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
 
 /**
  * `<TrajectoryCard>` — ENG-741.
@@ -65,7 +67,13 @@ export function TrajectoryCard(props: TrajectoryCardProps) {
   // Secondary accent (Frost flag → damson, else clay) for the projection line,
   // its label, and the projection marker.
   const accent = useAccent();
-  const state: TrajectoryState | null = computeTrajectory(input);
+  // ENG-1506 — host-read flag: OFF keeps the legacy 'lose'/'gain'-only
+  // goal-fallback comparison inside `projectWeight` (byte-identical
+  // flag-OFF geometry); ON understands the DB 'cut'/'bulk' vocabulary.
+  const state: TrajectoryState | null = computeTrajectory({
+    ...input,
+    normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG),
+  });
 
   if (!state) return null;
 

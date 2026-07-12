@@ -1,5 +1,6 @@
 import { dateKeyFromDate } from "./nutrition/trackerStats";
 import { smoothedWeeklyRateKg } from "./nutrition/weightTrendSmoothing";
+import { normalizeDbGoal } from "./nutrition/goalVocabulary";
 
 /**
  * Weight projection utility.
@@ -33,6 +34,17 @@ const KCAL_PER_KG = 7700; // ~3500 kcal/lb * 2.2 lb/kg
  * signal, not the linear extrapolation this guards.
  */
 export const MAX_LINEAR_PROJECTION_WEEKS = 5;
+
+/**
+ * ENG-1507 — explicit behaviour-vs-plan qualifier for the paywall
+ * trajectory charts (mobile paywall + web /pricing). The projection is
+ * goal-INDEPENDENT by design (direction = recent intake vs estimated
+ * burn), so a bulk-goal user eating under maintenance correctly sees a
+ * downward line — this caption makes that honest instead of confusing.
+ * Rendered behind `energy_numbers_v1`.
+ */
+export const TRAJECTORY_BEHAVIOUR_CAPTION =
+  "Based on your recent logging vs your estimated daily burn — not your plan. It updates as you log.";
 
 /**
  * ENG-1029 — dev-time guard. Throws in development when the linear
@@ -147,6 +159,18 @@ export function projectWeight(opts: {
    * ground truth, the formula is a model.
    */
   observedKgPerWeek?: number | null;
+  /**
+   * ENG-1506 (review round) — behind `energy_numbers_v1`: the estimated-
+   * TDEE goal fallback understands the DB vocabulary ('cut'/'bulk' +
+   * legacy synonyms) via `normalizeDbGoal`, fixing the fall-through that
+   * sent every profile-sourced caller to `estimatedTdee = targetCalories`
+   * when maintenance was missing. OFF/omitted (default): the exact
+   * pre-ENG-1506 'lose'/'gain'-only comparison, so flag-OFF trajectory
+   * charts and daily projections are byte-identical to main. The HOST
+   * owns the `isFeatureEnabled` read — this module stays a pure function
+   * (same pattern as `netEnergyBalance`'s `balancedWording`).
+   */
+  normalizeGoalVocabulary?: boolean;
 }): DailyProjection {
   const {
     currentWeightKg,
@@ -156,18 +180,35 @@ export function projectWeight(opts: {
     goal,
     weeksOut = 5,
     observedKgPerWeek,
+    normalizeGoalVocabulary = false,
   } = opts;
 
   let estimatedTdee: number;
+  // ENG-1506 — flag ON: the goal fallback normalises BOTH vocabularies via
+  // `normalizeDbGoal` ('cut'/'lose' → deficit branch, 'bulk'/'gain' →
+  // surplus branch). The pre-flag branches compared the v2 values
+  // ('lose'/'gain') only, so every profile-sourced caller — which passes
+  // DB 'cut'/'bulk' — silently fell through to `estimatedTdee =
+  // targetCalories` whenever maintenance was missing. Flag OFF keeps that
+  // legacy comparison verbatim: it visibly moves flag-OFF trajectory
+  // geometry (flat line → ±slope) for exactly the missing-maintenance
+  // population the kill switch protects (review round 2026-07-11).
+  const goalDirection = normalizeGoalVocabulary
+    ? normalizeDbGoal(goal)
+    : goal === "lose"
+      ? "cut"
+      : goal === "gain"
+        ? "bulk"
+        : null;
   if (
     typeof maintenanceTdeeKcal === "number" &&
     Number.isFinite(maintenanceTdeeKcal) &&
     maintenanceTdeeKcal > 0
   ) {
     estimatedTdee = maintenanceTdeeKcal;
-  } else if (goal === "lose") {
+  } else if (goalDirection === "cut") {
     estimatedTdee = targetCalories + 500;
-  } else if (goal === "gain") {
+  } else if (goalDirection === "bulk") {
     estimatedTdee = targetCalories - 300;
   } else {
     estimatedTdee = targetCalories;
@@ -382,6 +423,9 @@ export function computeTrajectory(opts: {
    * computes from intake vs. TDEE.
    */
   goalWeightKg?: number | null;
+  /** ENG-1506 — passed straight through to `projectWeight` (see its doc).
+   *  Host-read `energy_numbers_v1`; default false = legacy vocabulary. */
+  normalizeGoalVocabulary?: boolean;
 }): TrajectoryState | null {
   const {
     byDay,
@@ -392,6 +436,7 @@ export function computeTrajectory(opts: {
     timeline,
     weeksOut = 5,
     goalWeightKg = null,
+    normalizeGoalVocabulary = false,
   } = opts;
   const goalIndependent = !hasGoalWeightData({ goalWeightKg, latestWeightKg });
 
@@ -427,6 +472,7 @@ export function computeTrajectory(opts: {
     goal,
     weeksOut,
     observedKgPerWeek: timeline ? signedObservedKgPerWeek(timeline) : null,
+    normalizeGoalVocabulary,
   });
 
   return {

@@ -61,9 +61,7 @@ import { DestructiveConfirmDialog } from "../suppr/destructive-confirm-dialog";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 
 import { effectiveFoodSearchQuery } from "@/lib/nutrition/foodSearchQuery";
-import { matchGenericBeverage } from "@/lib/nutrition/genericBeverages";
-import { matchGenericFood } from "@/lib/nutrition/genericFoods";
-import { genericFoodMicrosPer100g } from "@/lib/nutrition/genericFoodMicros";
+import { buildGenericMatchRow } from "@/lib/nutrition/genericMatchRow";
 import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import { optionalSanitizedMicrosPer100g } from "@/lib/nutrition/microPlausibility";
 import { mergeFetchedMicrosPer100g } from "@/lib/nutrition/foodSearchMicrosMerge";
@@ -218,6 +216,16 @@ export type FoodSearchSelection = {
   imageUrl?: string | null;
   /** ENG-772 — consumption instant from preview time picker. */
   eatenAt?: string;
+  /**
+   * ENG-1502 — per-item kcal trust bit, threaded from the picked row's
+   * `verified` flag (true only for verified-USDA Foundation/SR Legacy/
+   * Survey and Suppr generic rows; OFF / Edamam / FatSecret / custom /
+   * history rows never claim it). Hosts pass this to the log-sheet
+   * confirmation as `kcalIsVerified` so a genuinely verified item renders
+   * the unqualified kcal while everything else keeps the honest `~`
+   * (ENG-1417 grammar). Absent = unverified (the safe default).
+   */
+  verified?: boolean;
 };
 
 /**
@@ -784,79 +792,9 @@ export function splitFoodSearchResults(
   });
 }
 
-function buildGenericMatchRow(query: string): SearchResult | null {
-  const q = query.trim();
-  if (!q) return null;
-  const beverage = matchGenericBeverage(q);
-  if (beverage) {
-    const servingG = beverage.servingMl;
-    return {
-      key: `generic-beverage:${beverage.id}`,
-      name: beverage.name,
-      subtitle: beverage.subtitle,
-      _source: "GenericBeverage",
-      verified: true,
-      macrosPer100g: {
-        calories: beverage.per100ml.calories,
-        protein: beverage.per100ml.protein,
-        carbs: beverage.per100ml.carbs,
-        fat: beverage.per100ml.fat,
-        fiberG: 0,
-        sugarG: 0,
-        sodiumMg: 0,
-        caffeineMgPer100g: beverage.caffeineMgPer100ml,
-        alcoholGPer100g: beverage.alcoholGPer100ml ?? 0,
-      },
-      calsPer100g: beverage.per100ml.calories,
-      primaryServing: {
-        label: `${beverage.servingMl} ml`,
-        grams: servingG,
-        kcal: Math.round((beverage.per100ml.calories * servingG) / 100),
-        protein: Math.round((beverage.per100ml.protein * servingG) / 100 * 10) / 10,
-        carbs: Math.round((beverage.per100ml.carbs * servingG) / 100 * 10) / 10,
-        fat: Math.round((beverage.per100ml.fat * servingG) / 100 * 10) / 10,
-      },
-    };
-  }
-  const food = matchGenericFood(q);
-  if (food) {
-    // ENG-738 — attach the baked per-100g USDA micronutrient panel for
-    // this generic food so the meal-detail "Vitamins, minerals & more"
-    // card populates after it's logged. Mirrors the OFF row, which also
-    // carries `microsPer100g` at construction. `undefined` for an unbaked
-    // id (the conditional spread keeps the key absent rather than null).
-    const genericMicros = genericFoodMicrosPer100g(food.id);
-    return {
-      key: `generic-food:${food.id}`,
-      name: food.name,
-      subtitle: food.subtitle,
-      _source: "GenericFood",
-      verified: true,
-      macrosPer100g: {
-        calories: food.per100g.calories,
-        protein: food.per100g.protein,
-        carbs: food.per100g.carbs,
-        fat: food.per100g.fat,
-        fiberG: food.per100g.fiberG,
-        sugarG: food.per100g.sugarG,
-        sodiumMg: food.per100g.sodiumMg,
-        caffeineMgPer100g: 0,
-        alcoholGPer100g: 0,
-      },
-      ...(genericMicros ? { microsPer100g: genericMicros } : {}),
-      calsPer100g: food.per100g.calories,
-      primaryServing: {
-        label: food.servingLabel,
-        grams: food.servingG,
-        kcal: Math.round((food.per100g.calories * food.servingG) / 100),
-        protein: Math.round((food.per100g.protein * food.servingG) / 100 * 10) / 10,
-        carbs: Math.round((food.per100g.carbs * food.servingG) / 100 * 10) / 10,
-        fat: Math.round((food.per100g.fat * food.servingG) / 100 * 10) / 10,
-      },
-    };
-  }
-  return null;
-}
+// ENG-1502 (screen-budget extraction): `buildGenericMatchRow` moved to
+// `@/lib/nutrition/genericMatchRow` — same logic, returns a structural
+// subset of `SearchResult` (rows are `verified: true` curated data).
 
 // 2026-05-15 (ENG-550 phase 2): inline `buildPortions` and
 // `STANDARD_UNITS` both extracted to `@/lib/nutrition/foodSearchCore`.
@@ -967,6 +905,8 @@ export function FoodSearchPanel({
     imageUrl?: string | null;
     /** ENG-976 — remembered photo/voice correction reuse cue. */
     showLearnedReuseCue?: boolean;
+    /** ENG-1502 — trust bit from the picked row (see `FoodSearchSelection.verified`). */
+    verified?: boolean;
   } | null>(null);
   const [previewEatenAtTime, setPreviewEatenAtTime] = useState("12:00");
   const previewEatenAtEnabled =
@@ -1359,6 +1299,8 @@ export function FoodSearchPanel({
         portions,
         chosenPortion: portion,
         quantity,
+        // ENG-1502 — carry the row's trust bit into the preview → selection.
+        verified: item.verified === true,
       });
       return;
     }
@@ -1383,7 +1325,9 @@ export function FoodSearchPanel({
         return;
       }
       const { quantityText: _quantityText, fdcId: _fdcId, ...previewFields } = preview;
-      setPreview(previewFields);
+      // ENG-1502 — the shared USDA preview builder doesn't know about trust;
+      // stamp the row's verified bit (Foundation/SR Legacy/Survey only) here.
+      setPreview({ ...previewFields, verified: item.verified === true });
     } else if (item._source === "OFF" && item.macrosPer100g) {
       setLoadingKey(null);
       const portions = buildPortions([], item.primaryServing);
@@ -1399,6 +1343,7 @@ export function FoodSearchPanel({
         chosenPortion: portion,
         quantity,
         imageUrl: item.imageUrl,
+        verified: item.verified === true,
       });
     } else if (item._source === "Edamam" && item.macrosPer100g) {
       // ENG-738 (2026-05-26) — fetch the full per-100g micronutrient
@@ -1427,6 +1372,7 @@ export function FoodSearchPanel({
         chosenPortion: portion,
         quantity,
         imageUrl: item.imageUrl,
+        verified: item.verified === true,
       });
     } else if (item._source === "FatSecret" && item._fatSecretFoodId) {
       // Branded FatSecret rows usually surface in the search list with
@@ -1459,6 +1405,7 @@ export function FoodSearchPanel({
         portions,
         chosenPortion: portion,
         quantity,
+        verified: item.verified === true,
       });
     } else {
       setLoadingKey(null);
@@ -1497,6 +1444,7 @@ export function FoodSearchPanel({
             portions,
             chosenPortion: portion,
             quantity,
+            verified: item.verified === true,
           });
           return;
         }
@@ -1515,6 +1463,7 @@ export function FoodSearchPanel({
             chosenPortion: portion,
             quantity,
             ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
+            verified: item.verified === true,
           });
           return;
         }
@@ -1540,7 +1489,8 @@ export function FoodSearchPanel({
             return;
           }
           const { quantityText: _quantityText, fdcId: _fdcId, ...commitFields } = fields;
-          commit(commitFields);
+          // ENG-1502 — stamp the row's verified bit (see onPickResult's USDA branch).
+          commit({ ...commitFields, verified: item.verified === true });
           return;
         }
 
@@ -1659,6 +1609,9 @@ export function FoodSearchPanel({
       ...(previewEatenAtEnabled && logDateKey
         ? { eatenAt: eatenAtFromLogDateAndTime(logDateKey, previewEatenAtTime) }
         : {}),
+      // ENG-1502 — custom / history previews never set the bit → explicit
+      // unverified (the honest default), matching `customFoodToHit`.
+      verified: preview.verified === true,
     };
     if (preview.source === "CUSTOM") {
       selection.customFoodId = preview.customFoodId;

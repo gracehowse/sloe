@@ -57,9 +57,22 @@ describe("Progress weight sparse-state gating — web", () => {
     expect(WEB).not.toMatch(/isFeatureEnabled\("web_progress_weight_empty"\)/);
   });
 
-  it("wires the empty-state CTA to focus the existing inline Log-weight input (no new modal)", () => {
-    expect(WEB).toMatch(/onLogWeight=\{\(\) => weightInputRef\.current\?\.focus\(\)\}/);
-    expect(WEB).toMatch(/ref=\{weightInputRef\}/);
+  it("wires the empty-state CTA to reveal + focus the inline Log-weight input (ENG-1504: one affordance at rest, no new modal)", () => {
+    // First tap reveals the hidden inline row (the reveal effect focuses the
+    // input); a repeat tap on an already-revealed row just re-focuses.
+    expect(WEB).toMatch(
+      /if \(weightEntryRevealed\) weightInputRef\.current\?\.focus\(\);\s*\n\s*else setWeightEntryRevealed\(true\);/,
+    );
+    expect(WEB).toMatch(
+      /if \(weightEntryRevealed\) weightInputRef\.current\?\.focus\(\);\s*\n\s*\}, \[weightEntryRevealed\]\);/,
+    );
+    expect(WEB).toMatch(/inputRef=\{weightInputRef\}/);
+  });
+
+  it("ENG-1504 — the inline Log-weight row is hidden on the sparse state until the in-frame CTA reveals it (one affordance)", () => {
+    expect(WEB).toMatch(
+      /\{!showWeightEmpty \|\| weightEntryRevealed \? \(\s*\n\s*<ProgressWeightLogRow\b/,
+    );
   });
 
   it("the recharts LineChart still requires >=2 points (mutually exclusive with the sparse branch)", () => {

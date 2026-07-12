@@ -44,10 +44,12 @@ const NutritionTracker = dynamic(
   () => import("./components/NutritionTracker.tsx").then((m) => ({ default: m.NutritionTracker })),
   { ssr: false, loading: () => <TodayLoadingSkeleton /> },
 );
-// ENG-1494 — desktop two-column Today (breadcrumb + household bar + right
-// rail) behind `today_desktop_frame_v1`. Dynamic like the tracker: the frame
-// statically imports NutritionTracker, so a static mount here would pull the
-// tracker into the main bundle and defeat the split above.
+// ENG-1494/1495 — desktop Today chrome (breadcrumb + household glance bar +
+// Apple Health rail card via the tracker's `railExtra` seam) behind
+// `today_desktop_frame_v1` (default-ON since ENG-1495). Dynamic like the
+// tracker: the frame statically imports NutritionTracker, so a static mount
+// here would pull the tracker into the main bundle and defeat the split
+// above.
 const TodayDesktopFrame = dynamic(
   () => import("./components/TodayDesktopFrame.tsx").then((m) => ({ default: m.TodayDesktopFrame })),
   { ssr: false, loading: () => <TodayLoadingSkeleton /> },

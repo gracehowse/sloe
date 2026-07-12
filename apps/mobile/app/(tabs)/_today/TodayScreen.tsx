@@ -13,6 +13,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useHaptics } from "@/hooks/useHaptics";
 import { showSignInAlert } from "@/lib/authAlertCopy";
+import { formatMealSourceLabelForRow, parseByDayNumberMap } from "@/lib/todayScreenRows";
 import { useToday } from "./useToday";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -153,6 +154,7 @@ import {
 import { NUTRITION_DEFAULTS, type NutritionDefaults } from "@/constants/nutritionDefaults";
 import { calculateTDEE, resolveTargets } from "@/lib/calcTargets";
 import { resolveMaintenance } from "@suppr/nutrition-core/resolveMaintenance";
+import { ENERGY_NUMBERS_V1_FLAG, selectMaintenance } from "@suppr/nutrition-core/energyNumbers";
 // ENG-1476 — shared date label (was a byte-identical local reimplementation).
 import { formatDateLabel } from "@suppr/nutrition-core/trackerDate";
 import { MEASURED_TDEE_CHECK_IN_FLAG } from "@suppr/nutrition-core/measuredTdee";
@@ -214,7 +216,7 @@ import { useLogConfirmCheck } from "@/hooks/useLogConfirmCheck";
 import { LogConfirmCheck } from "@/components/today/LogConfirmCheck";
 import { TodayHero } from "@/components/today/TodayHero";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
-import { paceKgPerWeekFromPreset } from "@suppr/nutrition-core/whyThisNumber";
+import { paceKgPerWeekFromPreset, whyThisNumberGoalFromDb } from "@suppr/nutrition-core/whyThisNumber";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 // `LogFab` is retired on mobile (2026-04-30) — the centered raised
 // Log button now lives inside the global `<SupprTabBar>` via
@@ -307,45 +309,8 @@ function formatMealMacroDetail(m: JournalMeal): string {
   });
 }
 
-/** Compact source line under a meal title (matches web NutritionSourceBadge intent). */
-function formatMealSourceLabelForRow(source: string | null | undefined): string | null {
-  if (source == null || !String(source).trim()) return null;
-  const s = String(source).trim();
-  const low = s.toLowerCase();
-  if (low.includes("open food facts") && low.includes("adjusted")) return "OFF · adjusted";
-  if (low.includes("open food facts")) return "Open Food Facts";
-  if (low.includes("usda")) return "USDA";
-  if (low.includes("ai photo")) return "AI photo";
-  if (low.includes("ai voice")) return "AI voice";
-  if (low.includes("quick entry")) return "Quick entry";
-  if (low === "manual" || low.includes("manual")) return "Manual";
-  if (low.includes("meal plan")) return "Meal plan";
-  if (s.length <= 24) return s;
-  return `${s.slice(0, 22)}…`;
-}
-
-/** Supabase JSONB sometimes arrives as a string; normalize to a day → number map. */
-function parseByDayNumberMap(raw: unknown): Record<string, number> {
-  let obj: Record<string, unknown> | null = null;
-  if (raw == null) return {};
-  if (typeof raw === "string") {
-    try {
-      const p = JSON.parse(raw) as unknown;
-      if (p && typeof p === "object" && !Array.isArray(p)) obj = p as Record<string, unknown>;
-    } catch {
-      return {};
-    }
-  } else if (typeof raw === "object" && !Array.isArray(raw)) {
-    obj = raw as Record<string, unknown>;
-  }
-  if (!obj) return {};
-  const next: Record<string, number> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    const n = typeof v === "number" ? v : Number(v);
-    if (Number.isFinite(n)) next[k] = Math.round(n);
-  }
-  return next;
-}
+// ENG-1502 (screen-budget extraction): `formatMealSourceLabelForRow` +
+// `parseByDayNumberMap` moved to `@/lib/todayScreenRows` — same logic.
 
 /**
  * Extra kcal added to the food budget when `prefer_activity_adjusted_calories` is on.
@@ -1945,37 +1910,35 @@ export default function TrackerScreen() {
   // "Your TDEE 1,777" (TestFlight `ADFYpDgEEb0QH-j3BXshPTo`, build 10)
   // can no longer disagree. Burn detail (`/burn-detail`) uses the same
   // resolver so the "Maintenance" row matches Progress / Today tile.
+  // ENG-1506 — behind `energy_numbers_v1`, inputs come from the canonical
+  // `buildMaintenanceInputs` policy (latest weigh-in beats the lagging
+  // profile snapshot). Legacy snapshot-weight assembly stays in the else
+  // (kill switch).
   const resolvedMaintenance = useMemo(
     () =>
-      resolveMaintenance(
-        {
-          adaptive_tdee: adaptiveTdee,
-          adaptive_tdee_confidence: adaptiveTdeeConfidence,
-          adaptive_tdee_updated_at: adaptiveTdeeUpdatedAt,
-          measured_tdee: measuredTdee,
-          measured_tdee_confidence: measuredTdeeConfidence,
-          measured_tdee_updated_at: measuredTdeeUpdatedAt,
-          sex: profileSex as any,
-          weight_kg: profileWeightKg,
-          height_cm: profileHeightCm,
-          age: profileAge,
-          activity_level: profileActivityLevel as any,
-        },
-        { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
-      ),
-    [
-      adaptiveTdee,
-      adaptiveTdeeConfidence,
-      adaptiveTdeeUpdatedAt,
-      measuredTdee,
-      measuredTdeeConfidence,
-      measuredTdeeUpdatedAt,
-      profileSex,
-      profileWeightKg,
-      profileHeightCm,
-      profileAge,
-      profileActivityLevel,
-    ],
+      isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+        ? selectMaintenance(
+            {
+              adaptive_tdee: adaptiveTdee, adaptive_tdee_confidence: adaptiveTdeeConfidence,
+              adaptive_tdee_updated_at: adaptiveTdeeUpdatedAt, measured_tdee: measuredTdee,
+              measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
+              sex: profileSex, weight_kg: profileWeightKg, height_cm: profileHeightCm,
+              age: profileAge, activity_level: profileActivityLevel,
+              weight_kg_by_day: profileWeightKgByDay,
+            },
+            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+          )
+        : resolveMaintenance(
+            {
+              adaptive_tdee: adaptiveTdee, adaptive_tdee_confidence: adaptiveTdeeConfidence,
+              adaptive_tdee_updated_at: adaptiveTdeeUpdatedAt, measured_tdee: measuredTdee,
+              measured_tdee_confidence: measuredTdeeConfidence, measured_tdee_updated_at: measuredTdeeUpdatedAt,
+              sex: profileSex as any, weight_kg: profileWeightKg, height_cm: profileHeightCm,
+              age: profileAge, activity_level: profileActivityLevel as any,
+            },
+            { enableMeasured: isFeatureEnabled(MEASURED_TDEE_CHECK_IN_FLAG) },
+          ),
+    [adaptiveTdee, adaptiveTdeeConfidence, adaptiveTdeeUpdatedAt, measuredTdee, measuredTdeeConfidence, measuredTdeeUpdatedAt, profileSex, profileWeightKg, profileHeightCm, profileAge, profileActivityLevel, profileWeightKgByDay],
   );
   const profileMaintenanceTdeeKcal = resolvedMaintenance?.kcal ?? null;
 
@@ -3485,10 +3448,19 @@ export default function TrackerScreen() {
   }, [byDay, dayKey, userId]);
 
   const presentLogSheetConfirmation = useCallback(
-    (payload: { title: string; kcal: number; mealIds: string[] }) => {
+    (payload: {
+      title: string;
+      kcal: number;
+      mealIds: string[];
+      /** ENG-1502 — per-item trust bit; absent = honest `~` (ENG-1417). */
+      kcalIsVerified?: boolean;
+    }) => {
       setLogSheetConfirmation({
         title: payload.title,
         kcal: Math.round(payload.kcal),
+        ...(payload.kcalIsVerified !== undefined
+          ? { kcalIsVerified: payload.kcalIsVerified }
+          : {}),
         slot: activeMealSlot,
         onDone: () => {
           setLogSheetConfirmation(null);
@@ -3504,7 +3476,9 @@ export default function TrackerScreen() {
   );
 
   const commitLogSheetFoodSelection = useCallback(
-    (result: FoodSearchSelectedFood): { id: string; title: string; kcal: number } => {
+    (
+      result: FoodSearchSelectedFood,
+    ): { id: string; title: string; kcal: number; kcalIsVerified: boolean } => {
       const scaled = foodSelectionToMealMacros(result);
       const {
         calories: mealCalories,
@@ -3566,7 +3540,15 @@ export default function TrackerScreen() {
       } catch {
         // noop
       }
-      return { id: meal.id, title: result.name, kcal: mealCalories };
+      // ENG-1502 — the trust bit rides the selection from the search panel
+      // (true only for verified-USDA / Suppr-generic rows); the confirmation
+      // surface renders the unqualified kcal only when this is true.
+      return {
+        id: meal.id,
+        title: result.name,
+        kcal: mealCalories,
+        kcalIsVerified: result.verified === true,
+      };
     },
     [activeMealSlot, dayKey, persistMealsImmediate, profileTimeZone],
   );
@@ -3610,6 +3592,10 @@ export default function TrackerScreen() {
         title: item.recipeTitle,
         kcal: item.calories,
         mealIds: [meal.id],
+        // ENG-1502 — a history re-log copies a prior journal row, and the
+        // journal doesn't persist the ENG-1417 trust bit. Unknown trust must
+        // never read as confident → honest `~`.
+        kcalIsVerified: false,
       });
     },
     [activeMealSlot, dayKey, persistMealsImmediate, presentLogSheetConfirmation, profileTimeZone],
@@ -3676,7 +3662,7 @@ export default function TrackerScreen() {
       void refreshAdaptiveTdeeForUser(supabase, userId);
       // F-2 — snapshot today's target regardless of `targetDayKey`
       // (back-dating a snapshot would defeat the purpose).
-      void snapshotDailyTargetIfMissing(supabase, userId);
+      void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) });
       // Tracking-extras autoupdate (2026-05-02) — close the mobile
       // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT —
       // duplicate-day clones carry `micros.caffeineMg` / `alcoholG`
@@ -4018,7 +4004,7 @@ export default function TrackerScreen() {
         // pre-fix `loadJournal()` because byDay is already up to date.
         void loadJournal();
         // F-2 — snapshot today's target on first meal-plan log.
-        void snapshotDailyTargetIfMissing(supabase, userId);
+        void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) });
         // Audit/2026-04-30 — per-meal HK write for plan-tap log.
         void writeMealToHealthKitIfEnabled({
           mealId: entryId,
@@ -5076,6 +5062,8 @@ export default function TrackerScreen() {
               title: committed.title,
               kcal: committed.kcal,
               mealIds: [committed.id],
+              // ENG-1502 — verified DB hits drop the `~`; everything else keeps it.
+              kcalIsVerified: committed.kcalIsVerified,
             });
           },
           macroTargets: {
@@ -5301,6 +5289,9 @@ export default function TrackerScreen() {
                         : `${items.length} items logged`,
                     kcal: Math.round(totalKcal),
                     mealIds: [],
+                    // ENG-1502 — AI-parsed description = an estimate by
+                    // construction; never claims the verified grammar.
+                    kcalIsVerified: false,
                   });
                 },
               }
@@ -5821,30 +5812,24 @@ export default function TrackerScreen() {
         visible={whySheetOpen}
         onClose={() => setWhySheetOpen(false)}
         targetCalories={Math.round(effectiveCalorieGoal)}
-        maintenanceTdee={adaptiveTdee ?? profileMaintenanceTdeeKcal}
+        maintenanceTdee={
+          // ENG-1506 — flag ON: the RESOLVED maintenance (same gates as every
+          // surface); OFF: the legacy raw-adaptive-first read.
+          isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+            ? profileMaintenanceTdeeKcal
+            : (adaptiveTdee ?? profileMaintenanceTdeeKcal)
+        }
         confidence={
-          adaptiveTdeeConfidence === "low" ||
-          adaptiveTdeeConfidence === "medium" ||
-          adaptiveTdeeConfidence === "high"
-            ? adaptiveTdeeConfidence
-            : null
+          // ENG-1506 review round — flag ON: RESOLVED confidence + source (a rejected stale "high" adaptive can't chip a formula kcal; formula wording stays honest — parity with web NutritionTracker + mobile Targets). OFF: legacy raw reads.
+          isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+            ? (resolvedMaintenance?.confidence ?? null)
+            : adaptiveTdeeConfidence === "low" || adaptiveTdeeConfidence === "medium" || adaptiveTdeeConfidence === "high" ? adaptiveTdeeConfidence : null
         }
+        source={isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? (resolvedMaintenance?.source ?? null) : null}
         loggingDays={null}
-        goal={
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose"
-        }
-        paceKgPerWeek={paceKgPerWeekFromPreset(
-          profilePlanPace,
-          profileGoal === "gain" || profileGoal === "bulk" || profileGoal === "strength"
-            ? "gain"
-            : profileGoal === "maintain" || profileGoal === "health"
-              ? "maintain"
-              : "lose",
-        )}
+        // ENG-1507 — shared normaliser; unknown goal → "Goal not set", never "lose".
+        goal={whyThisNumberGoalFromDb(profileGoal)}
+        paceKgPerWeek={paceKgPerWeekFromPreset(profilePlanPace, whyThisNumberGoalFromDb(profileGoal))}
         mealLogDays={null}
         weightLogCount={Object.keys(profileWeightKgByDay).length}
         hasWearable={Object.keys(basalBurnByDay).length > 0}

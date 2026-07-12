@@ -314,3 +314,104 @@ describe("snapshotDailyTargetIfMissing", () => {
     });
   });
 });
+
+describe("ENG-1506 (review round) — writer input policy is flag-gated via canonicalEnergyInputs", () => {
+  // `daily_targets` is first-write-wins/frozen: while `energy_numbers_v1`
+  // is OFF the writer must freeze the SAME maintenance every flag-OFF
+  // display surface shows (the pre-ENG-1506 assembly — snapshot weight,
+  // no weigh-in map). An unflagged early adoption of the canonical
+  // latest-weigh-in policy would be un-fixable by the kill switch. Hosts
+  // read the flag and pass `canonicalEnergyInputs` (shared module — the
+  // netEnergyBalance host-owns-the-flag pattern).
+  //
+  // Fixture: snapshot weight 80 kg, latest weigh-in 60 kg, no adaptive —
+  // the formula path, where the weight choice directly moves the kcal.
+  const divergentProfile = {
+    target_calories: 2000,
+    target_protein: 130,
+    target_carbs: 230,
+    target_fat: 65,
+    target_fiber_g: 28,
+    activity_level: "moderate",
+    plan_pace: "steady",
+    goal: "maintain",
+    adaptive_tdee: null,
+    adaptive_tdee_confidence: null,
+    adaptive_tdee_updated_at: null,
+    sex: "male",
+    weight_kg: 80,
+    weight_kg_by_day: { "2026-04-01": 62, "2026-04-18": 60 },
+    height_cm: 180,
+    age: 30,
+  };
+
+  async function snapshotMaintenance(opts?: { canonicalEnergyInputs?: boolean }) {
+    const sb = makeSupabase({
+      profiles: () => ({ data: divergentProfile, error: null }),
+      daily_targets: () => ({ data: null, error: null }),
+    });
+    const wrote = await snapshotDailyTargetIfMissing(sb as any, "u1", {
+      now: new Date("2026-04-19T12:00:00Z"),
+      ...opts,
+    });
+    expect(wrote).toBe(true);
+    const call = sb.calls.find((c) => c.table === "daily_targets" && c.op === "upsert");
+    return (call!.payload as { maintenance_tdee: number }).maintenance_tdee;
+  }
+
+  it("default (flag OFF): legacy assembly — snapshot weight wins, weigh-in map ignored", async () => {
+    const legacy = await snapshotMaintenance();
+    const legacyExplicit = await snapshotMaintenance({ canonicalEnergyInputs: false });
+    expect(legacy).toBe(legacyExplicit);
+    // 80 kg formula, byte-identical to main's assembly.
+    const { resolveMaintenance } = await import("@/lib/nutrition/resolveMaintenance");
+    const expected = resolveMaintenance(
+      {
+        sex: "male",
+        weight_kg: 80,
+        height_cm: 180,
+        age: 30,
+        activity_level: "moderate",
+        adaptive_tdee: null,
+        adaptive_tdee_confidence: null,
+        adaptive_tdee_updated_at: null,
+      },
+      { now: new Date("2026-04-19T12:00:00Z") },
+    );
+    expect(legacy).toBe(expected!.kcal);
+  });
+
+  it("canonicalEnergyInputs: true (flag ON): buildMaintenanceInputs — latest weigh-in wins", async () => {
+    const canonical = await snapshotMaintenance({ canonicalEnergyInputs: true });
+    const legacy = await snapshotMaintenance();
+    const { resolveMaintenance } = await import("@/lib/nutrition/resolveMaintenance");
+    const { buildMaintenanceInputs } = await import("@/lib/nutrition/energyNumbers");
+    const expected = resolveMaintenance(buildMaintenanceInputs(divergentProfile), {
+      now: new Date("2026-04-19T12:00:00Z"),
+    });
+    expect(canonical).toBe(expected!.kcal);
+    // The 80 kg vs 60 kg skew MUST move the number — proving the two
+    // paths are genuinely different for this fixture.
+    expect(canonical).not.toBe(legacy);
+    expect(canonical).toBeLessThan(legacy);
+  });
+
+  it("backfill honours the same gate", async () => {
+    const { backfillDailyTargetsFromProfile } = await import("@/lib/nutrition/dailyTargetSnapshot");
+    async function backfillMaintenance(canonicalEnergyInputs?: boolean) {
+      const sb = makeSupabase({ daily_targets: () => ({ data: null, error: null }) });
+      const out = await backfillDailyTargetsFromProfile(sb as any, "u1", divergentProfile, {
+        now: new Date("2026-04-19T12:00:00Z"),
+        lookbackDays: 3,
+        canonicalEnergyInputs,
+      });
+      expect(out.ok).toBe(true);
+      const call = sb.calls.find((c) => c.table === "daily_targets" && c.op === "upsert");
+      const rows = call!.payload as Array<{ maintenance_tdee: number }>;
+      return rows[0]!.maintenance_tdee;
+    }
+    const legacy = await backfillMaintenance(undefined);
+    const canonical = await backfillMaintenance(true);
+    expect(canonical).toBeLessThan(legacy);
+  });
+});

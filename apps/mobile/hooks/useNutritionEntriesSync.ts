@@ -7,7 +7,9 @@ import {
   NUTRITION_ENTRY_UUID_RE as UUID_RE,
 } from "@/lib/nutritionEntryRow";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
+import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
 
 /**
  * 2026-05-16 — Today extract #3.
@@ -89,7 +91,7 @@ export function useNutritionEntriesSync(args: {
             // activity_level / plan_pace / goal. Fire-and-forget — the
             // insert has `on conflict do nothing` so repeat calls are
             // cheap no-ops.
-            void snapshotDailyTargetIfMissing(supabase, userId);
+            void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) });
             // Audit/2026-04-30 — per-meal Apple HealthKit write
             // (parity with MFP / Cal AI). The debounced upsert covers
             // every entry-point that mutates `byDay` (LogSheet barcode

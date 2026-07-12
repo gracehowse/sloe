@@ -69,3 +69,14 @@ describe("DiscoverCollections (web)", () => {
     expect(queryByText("Collections")).toBeNull();
   });
 });
+
+describe("DiscoverCollections (web) — ENG-1503 page inset", () => {
+  it("the section carries the standard < md page inset (px-4 md:px-0), matching sibling Discover sections", () => {
+    const { container } = render(
+      <DiscoverCollections recipes={[rc("a"), rc("b")]} onSelectCategory={() => {}} />,
+    );
+    const section = container.querySelector("section");
+    expect(section?.className).toContain("px-4");
+    expect(section?.className).toContain("md:px-0");
+  });
+});

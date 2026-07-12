@@ -6,19 +6,16 @@ import { Segmented } from "@/app/components/onboarding/segmented";
 /**
  * Onboarding `Segmented` — active-segment treatment guard (Sloe).
  *
- * The metric/imperial pill on the Height + Weight onboarding steps. Sloe
- * treatment system (2026-06-08, rules 7–8): the active segment is a soft
- * aubergine TINT + deep-aubergine label, NOT a solid accent fill. The fill is
- * rationed to the FAB + conversion CTAs; small surfaces like a segmented
- * control carry the accent as a tint only. This mirrors the mobile
- * `MobileSegmented` (`Accent.primarySoft` bg + `Accent.primary` label) so web
- * and mobile stay in parity, and the approved component-treatment proto
- * (`docs/prototypes/sloe-component-treatments.html` — `.seg span.on`).
- *
- * Pins the active class set so a future edit can't regress the active segment
- * back to the pre-Sloe solid `bg-primary text-primary-foreground` slab.
+ * The metric/imperial pill on the Height + Weight onboarding steps. ENG-1375
+ * S2 (§8 ruling, `docs/decisions/2026-07-10-chip-grammar-soft-tint.md`): the
+ * control wraps the canonical `SegmentedTrack` — full-radius muted rail,
+ * active segment = card-white thumb + `shadow-sm` + `primary-solid` semibold
+ * label. The earlier soft-tint thumb (`bg-primary/10`) and the pre-Sloe solid
+ * `bg-primary text-primary-foreground` slab are both retired; this pins that
+ * neither comes back. Mirrors the mobile `MobileSegmented` (same primitive
+ * grammar) so web and mobile stay in parity.
  */
-describe("onboarding Segmented — active segment is a soft tint, not a solid fill", () => {
+describe("onboarding Segmented — §8 card-white thumb on the muted track", () => {
   const OPTIONS = [
     { value: "metric", label: "cm" },
     { value: "imperial", label: "ft / in" },
@@ -34,33 +31,41 @@ describe("onboarding Segmented — active segment is a soft tint, not a solid fi
         ariaLabel="Units"
       />,
     );
+    return onChange;
   }
 
-  it("active segment uses the aubergine soft tint + deep-aubergine label", () => {
+  it("active segment is the card-white thumb + primary-solid semibold label", () => {
     renderSegmented("metric");
     const active = screen.getByRole("radio", { name: "cm" });
     expect(active.getAttribute("aria-checked")).toBe("true");
-    // Soft tint fill (10% aubergine) — NOT a solid accent slab.
-    expect(active.className).toContain("bg-primary/10");
-    // Deep-aubergine label (#4E3260) — AA on the 10% tint.
+    expect(active.className).toContain("bg-card");
+    expect(active.className).toContain("shadow-sm");
+    expect(active.className).toContain("font-semibold");
+    // Deep-aubergine label (#4E3260) — AA on the card thumb.
     expect(active.className).toContain("text-primary-solid");
   });
 
-  it("active segment never paints the solid bg-primary / white-label fill", () => {
+  it("neither the solid slab nor the retired tint thumb ever comes back", () => {
     renderSegmented("metric");
     const active = screen.getByRole("radio", { name: "cm" });
-    // The pre-Sloe treatment was `bg-primary text-primary-foreground` — guard it
-    // can't come back. `bg-primary/10` contains "bg-primary" as a substring, so
-    // assert the solid token + the white label are absent via word boundaries.
+    // Pre-Sloe solid: `bg-primary text-primary-foreground`.
     expect(active.className).not.toMatch(/bg-primary(?![/\w-])/);
     expect(active.className).not.toContain("text-primary-foreground");
+    // Pre-§8 tint thumb: `bg-primary/10` (retired by ENG-1375 S2).
+    expect(active.className).not.toContain("bg-primary/10");
   });
 
-  it("inactive segment stays transparent + muted", () => {
+  it("inactive segment stays quiet on the rail (muted label, no thumb)", () => {
     renderSegmented("metric");
     const inactive = screen.getByRole("radio", { name: "ft / in" });
     expect(inactive.getAttribute("aria-checked")).toBe("false");
-    expect(inactive.className).toContain("bg-transparent");
     expect(inactive.className).toContain("text-muted-foreground");
+    expect(inactive.className).not.toContain("bg-card");
+    expect(inactive.className).not.toContain("shadow-sm");
+  });
+
+  it("renders inside a radiogroup with the given label", () => {
+    renderSegmented("metric");
+    expect(screen.getByRole("radiogroup", { name: "Units" })).toBeTruthy();
   });
 });

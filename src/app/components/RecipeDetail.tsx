@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "./ui/icons";
+import { AddRowButton } from "./ui/add-row-button.tsx";
 import { toast } from "sonner";
 import { formatContainsLine, normaliseAllergenIds } from "../../constants/regulatedAllergens";
 import { supabase } from "../../lib/supabase/browserClient.ts";
@@ -36,6 +37,7 @@ import {
 } from "../../lib/recipes/officialRecipeClaim.ts";
 import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
 import { RecipeHeroFallback } from "./suppr/RecipeHeroFallback";
+import { recipeUnderlayColor } from "../../lib/recipe/recipeHeroFallback.ts";
 import { useIngredientTileImages } from "../../lib/recipe/useIngredientTileImages.ts";
 import { loadRecipeIngredientRows } from "../../lib/recipe/loadRecipeIngredientRows.ts";
 import {
@@ -1930,7 +1932,8 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
         const heroCircle =
           "w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-all";
         return (
-          <div className="relative w-full" style={{ height: 375 }} data-testid="recipe-detail-hero">
+          // ENG-1374 PR 2 — opaque cuisine-tint underlay on the hero wrapper (never ~280pt of page white)
+          <div className="relative w-full" style={{ height: 375, backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }) }} data-testid="recipe-detail-hero">
             {heroSrc ? (
               <RecipeHeroImage
                 src={heroSrc}
@@ -1941,11 +1944,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                 style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
               />
             ) : (
-              <div
-                className="w-full h-full"
-                style={{ viewTransitionName: `recipe-${recipe.id}-image` }}
-                data-testid="recipe-detail-hero-fallback"
-              >
+              <div className="w-full h-full" style={{ viewTransitionName: `recipe-${recipe.id}-image` }} data-testid="recipe-detail-hero-fallback">
                 <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={56} />
               </div>
             )}
@@ -3132,15 +3131,11 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
             )}
             {isMyRecipe && !isCatalogRecipe && (
               <div className="mt-3 rounded-2xl px-4 py-3" style={whiteSlabStyle}>
-                <button
-                  type="button"
+                <AddRowButton
                   onClick={() => setAddIngOpen(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/50 bg-card px-4 py-2.5 text-sm font-semibold text-primary-solid hover:bg-primary/10 transition-colors"
+                  label="Add ingredient"
                   aria-label="Add an ingredient the importer missed"
-                >
-                  <span aria-hidden>+</span>
-                  Add ingredient
-                </button>
+                />
                 <p className="mt-2 text-[11px] text-muted-foreground text-center">
                   Missed an ingredient during import? Add it here and totals update live.
                 </p>
