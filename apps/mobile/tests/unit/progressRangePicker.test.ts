@@ -139,7 +139,7 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
     expect(webSrc).not.toContain("Weekly report");
     // ENG-1247 — the mobile-web chrome carries the v3 "Your trends" overline.
     expect(webChromeSrc).toContain('overlineTestID="progress-overline"');
-    expect(webChromeSrc).toContain('data-testid="progress-header"');
+    expect(webChromeSrc).toContain('titleTestID="progress-header"');
     expect(webChromeSrc).toMatch(/text-\[28px\]/);
     expect(webChromeSrc).toMatch(/font-\[family-name:var\(--font-headline\)\]/);
   });
