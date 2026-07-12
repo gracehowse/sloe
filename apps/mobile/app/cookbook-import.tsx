@@ -366,7 +366,7 @@ export default function CookbookImportScreen() {
         }
         Alert.alert(
           "Cookbook saved",
-          `${result.savedCount} recipes saved to Library as Imported · ${label}. Build your week in Plan when you're ready.`,
+          `${result.savedCount} ${result.savedCount === 1 ? "recipe" : "recipes"} saved to Library as Imported · ${label}. Build your week in Plan when you're ready.`,
           [
             { text: "Library", onPress: () => router.replace("/(tabs)/library") },
             { text: "Plan", onPress: () => router.replace("/(tabs)/planner") },

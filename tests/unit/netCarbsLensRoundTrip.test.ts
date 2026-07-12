@@ -113,6 +113,24 @@ describe("net-carbs lens round-trip (P2-26 + P3-30 + polish A.2)", () => {
     });
   });
 
+  describe("Rings macro variant (web + mobile) — ENG-1508", () => {
+    it("web today-dashboard-macro-rings.tsx consumes the shared helpers (no raw label ternary)", () => {
+      const src = read("src/app/components/suppr/today-dashboard-macro-rings.tsx");
+      expect(src).toMatch(/from\s+["'][^"']*nutrition\/netCarbs(?:\.tsx?)?["']/);
+      expect(src).toMatch(/carbsLabel\(/);
+      expect(src).toMatch(/netCarbsForRow\(/);
+      expect(src).not.toMatch(/netCarbsLensEnabled \? "Net carbs" : "Carbs"/);
+    });
+
+    it("mobile TodayDashboardMacroRings.tsx consumes the shared helpers (no raw label ternary)", () => {
+      const src = read("apps/mobile/components/today/TodayDashboardMacroRings.tsx");
+      expect(src).toMatch(/from\s+["']@suppr\/nutrition-core\/netCarbs["']/);
+      expect(src).toMatch(/carbsLabel\(/);
+      expect(src).toMatch(/netCarbsForRow\(/);
+      expect(src).not.toMatch(/netCarbsLensEnabled \? "Net carbs" : "Carbs"/);
+    });
+  });
+
   describe("Recipe Detail (web)", () => {
     it("imports the helpers and uses them on the carbs row", () => {
       const src = read("src/app/components/RecipeDetail.tsx");

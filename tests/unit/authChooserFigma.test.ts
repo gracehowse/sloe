@@ -100,3 +100,23 @@ describe("auth chooser — Figma 296:2 (web)", () => {
     expect(SRC).toMatch(/Create Account/);
   });
 });
+
+describe("email signup — session-aware success copy (ENG-1512)", () => {
+  it("branches on signUpData.session — silent redirect when a session returns", () => {
+    // Confirmations OFF (supabase/config.toml) → signUp returns a live
+    // session and the SIGNED_IN listener redirects; the "check your email"
+    // claim would be false. The branch mirrors the onboarding SignupStep.
+    expect(SRC).toMatch(/if \(signUpData\.session\)/);
+  });
+
+  it('only claims "check your email" when no session came back (confirmations ON)', () => {
+    const gate = SRC.indexOf("if (signUpData.session)");
+    const sent = SRC.indexOf("Check your email to confirm");
+    expect(gate).toBeGreaterThan(-1);
+    expect(sent).toBeGreaterThan(gate);
+  });
+
+  it("standing 'you may need to confirm your email' fine-print is gone", () => {
+    expect(SRC).not.toMatch(/may need to confirm your email/);
+  });
+});

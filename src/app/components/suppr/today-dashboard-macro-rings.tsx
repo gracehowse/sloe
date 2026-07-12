@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { carbsLabel, netCarbsForRow } from "../../../lib/nutrition/netCarbs";
 
 /**
  * TodayDashboardMacroRings — Sloe v3 macro "Rings" layout (the third option in
@@ -177,6 +178,11 @@ export interface TodayDashboardMacroRingsProps {
   carbsTarget: number;
   fatCurrent: number;
   fatTarget: number;
+  /** ENG-1508: fibre feeds the shared net-carbs helpers. Label arbiter is
+   *  `fiberTarget` (mirrors Tiles/Bars — 2026-05-04 numbers-audit #8);
+   *  helpers refuse "Net carbs" when fibre is unknown. */
+  fiberCurrent: number;
+  fiberTarget: number;
   netCarbsLensEnabled?: boolean;
   onPressMacro?: (macro: "protein" | "carbs" | "fat") => void;
 }
@@ -188,6 +194,8 @@ export function TodayDashboardMacroRings({
   carbsTarget,
   fatCurrent,
   fatTarget,
+  fiberCurrent,
+  fiberTarget,
   netCarbsLensEnabled,
   onPressMacro,
 }: TodayDashboardMacroRingsProps) {
@@ -204,10 +212,20 @@ export function TodayDashboardMacroRings({
         grow={grow}
         onPress={onPressMacro ? () => onPressMacro("protein") : undefined}
       />
+      {/* ENG-1508: shared net-carbs helpers — never label a gross value
+          "Net carbs". Label arbiter is fiberTarget (mirrors Tiles/Bars). */}
       <MacroDial
-        label={netCarbsLensEnabled ? "Net carbs" : "Carbs"}
-        current={carbsCurrent}
-        target={carbsTarget}
+        label={carbsLabel(fiberTarget, Boolean(netCarbsLensEnabled))}
+        current={netCarbsForRow(
+          carbsCurrent,
+          fiberCurrent,
+          Boolean(netCarbsLensEnabled),
+        )}
+        target={netCarbsForRow(
+          carbsTarget,
+          fiberTarget,
+          Boolean(netCarbsLensEnabled),
+        )}
         macroVar="--macro-carbs"
         grow={grow}
         onPress={onPressMacro ? () => onPressMacro("carbs") : undefined}

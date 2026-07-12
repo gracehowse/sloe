@@ -8,7 +8,8 @@ import { CheckoutButton } from "./CheckoutButton.tsx";
 
 /**
  * PricingHeroCta — the ENG-1460 conversion pair: a compact annual/monthly
- * selector + ONE filled "Start free trial" CTA, rendered directly under
+ * selector + ONE filled CTA ("Start free trial" on annual — the only SKU
+ * carrying a trial — "Subscribe" on monthly, ENG-1511), rendered directly under
  * the `/pricing` hero so a visitor meets a real price and a real button
  * inside the first viewport (desktop AND mobile-web), instead of five
  * sections of feature restatement first.
@@ -129,7 +130,12 @@ export function PricingHeroCta({
             tier="pro"
             period={billing}
             currency={regionCurrency}
-            label="Start free trial"
+            // ENG-1511 — the 7-day trial exists on the ANNUAL SKU only
+            // (`/api/stripe/checkout` adds `trial_period_days` for annual
+            // alone), so the label tracks the selected period exactly like
+            // the caption below and the mobile paywall CTA ("Start free
+            // 7-day trial" vs "Subscribe — …", apps/mobile/app/paywall.tsx).
+            label={isAnnual ? "Start free trial" : "Subscribe"}
             highlighted
           />
         </div>

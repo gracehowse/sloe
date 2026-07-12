@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { Type } from "@/constants/theme";
+import { carbsLabel, netCarbsForRow } from "@suppr/nutrition-core/netCarbs";
 import { useMacroColors } from "@/lib/macroColors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -205,10 +206,22 @@ export function TodayDashboardMacroRings({
         reduce={reduce}
         idKey="protein"
       />
+      {/* ENG-1508: route through the shared net-carbs helpers so the dial
+          never labels a gross value "Net carbs". Label arbiter is
+          targets.fiber (same 2026-04-30 ruling as Tiles/Bars); helpers
+          refuse the net label/math when fibre is unknown. */}
       <MacroDial
-        label={netCarbsLensEnabled ? "Net carbs" : "Carbs"}
-        current={totals.carbs}
-        target={targets.carbs}
+        label={carbsLabel(targets.fiber, Boolean(netCarbsLensEnabled))}
+        current={netCarbsForRow(
+          totals.carbs,
+          totals.fiber,
+          Boolean(netCarbsLensEnabled),
+        )}
+        target={netCarbsForRow(
+          targets.carbs,
+          targets.fiber,
+          Boolean(netCarbsLensEnabled),
+        )}
         color={macro.carbs}
         tickColor={colors.ringTick}
         textColor={colors.text}

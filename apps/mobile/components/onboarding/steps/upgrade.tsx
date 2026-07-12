@@ -29,11 +29,8 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { PRICING_TIERS } from "@suppr/shared/landing/pricingTiers";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
-
-const proTier = PRICING_TIERS.find((t) => t.name === "Pro");
 
 export function UpgradeStep() {
   const { state, set, complete, persist } = useOnboarding();
@@ -41,11 +38,12 @@ export function UpgradeStep() {
   const accent = useAccent();
   const router = useRouter();
   const overline = useStepOverline();
-  const annualPrice = proTier?.annualPrice ?? proTier?.price ?? "—";
   // ENG-1507 — "Start free trial" persists BEFORE the paywall opens, so the
   // CTA carries a real async commit: disable + spinner while the profile
   // write lands (no double-submit, no silent failure).
   const [savingPlan, setSavingPlan] = React.useState(false);
+  // ENG-1510 — no price const here: the exact figure is deferred to the App
+  // Store (localised/VAT-inclusive), so this step never prints a GBP amount.
 
   React.useEffect(() => {
     track(AnalyticsEvents.onboarding_upgrade_step_viewed, { platform: "mobile" });
@@ -96,7 +94,7 @@ export function UpgradeStep() {
       <MobileStepHeader
         overline={overline}
         title="Start your 7-day free trial"
-        subtitle="Try Sloe Pro free for 7 days — barcode scanning, custom macros, and coaching. Cancel anytime. No payment due now."
+        subtitle="Try Sloe Pro free for 7 days — unlimited saved recipes, multi-day macro-matched meal plans, and AI photo & voice logging. Cancel anytime. No payment due now."
       />
 
       <PressableScale
@@ -116,9 +114,14 @@ export function UpgradeStep() {
             <Text style={[Type.body, { color: colors.text, fontWeight: "600" }]}>
               7-day free trial
             </Text>
+            {/* Price intentionally deferred to the App Store (2026-07-09
+                degraded-paywall decision, docs/decisions/2026-07-09-mobile-
+                degraded-paywall-disclosure.md): App Store prices are localised
+                and VAT-inclusive, so a fixed GBP SSOT figure here is a
+                misleading-price claim on non-GBP storefronts. The paywall this
+                step routes to shows the live RevenueCat priceString. */}
             <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4 }]}>
-              Then {annualPrice}
-              {proTier?.annualPeriod ?? "/year"} — first charge on Day 7
+              First charge on Day 7 — your exact price confirms in the App Store
             </Text>
           </View>
         </View>

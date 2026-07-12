@@ -299,7 +299,7 @@ function LogSheetDescribeFlowImpl({
           <Pressable
             testID="log-sheet-describe-parse"
             accessibilityRole="button"
-            accessibilityLabel="Parse meal description"
+            accessibilityLabel="Estimate nutrition from description"
             onPress={() => void runParse(text)}
             style={({ pressed }) => ({
               paddingHorizontal: Spacing.md,
@@ -310,7 +310,7 @@ function LogSheetDescribeFlowImpl({
             })}
           >
             <Text style={{ color: colors.primaryForeground, fontWeight: "600", fontSize: 13 }}>
-              Parse
+              Estimate
             </Text>
           </Pressable>
         )}
@@ -319,7 +319,7 @@ function LogSheetDescribeFlowImpl({
         <Text style={{ fontSize: 13, color: Accent.destructive }}>{error}</Text>
       ) : null}
       {stage === "parsing" ? (
-        <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>Parsing your description…</Text>
+        <Text style={{ ...Type.captionSmall, color: colors.textSecondary }}>Estimating nutrition…</Text>
       ) : null}
     </View>
   );

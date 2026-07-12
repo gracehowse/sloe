@@ -44,4 +44,35 @@ describe("TodayDashboardMacroRings — mobile v3 macro dials", () => {
     expect(rots.length).toBeGreaterThan(18);
     expect(new Set(rots).size).toBeGreaterThan(18);
   });
+
+  // ENG-1508 parity fixture — mirrors the web agreement test
+  // (tests/unit/macroRingsLayout.test.tsx): gross carbs 150/200, fibre 10/30
+  // → net 140/170. Rings must agree with Tiles/Bars via netCarbsForRow.
+  it("routes the carbs dial through the net-carbs lens (label + net values)", () => {
+    const { getByText, queryByText } = render(
+      <TodayDashboardMacroRings
+        totals={{ protein: 60, carbs: 150, fat: 20, fiber: 10 }}
+        targets={{ protein: 100, carbs: 200, fat: 60, fiber: 30 }}
+        netCarbsLensEnabled
+      />,
+    );
+    expect(getByText("Net carbs")).toBeTruthy();
+    expect(getByText("of 170g")).toBeTruthy();
+    expect(queryByText("of 200g")).toBeNull();
+    // Reduced-motion mock resolves the count-up synchronously → net 140.
+    expect(getByText(/140/)).toBeTruthy();
+  });
+
+  it("refuses the Net carbs label when the user has no fibre target", () => {
+    const { getByText, queryByText } = render(
+      <TodayDashboardMacroRings
+        totals={{ protein: 0, carbs: 150, fat: 0, fiber: 0 }}
+        targets={{ protein: 100, carbs: 200, fat: 60, fiber: 0 }}
+        netCarbsLensEnabled
+      />,
+    );
+    expect(queryByText("Net carbs")).toBeNull();
+    expect(getByText("Carbs")).toBeTruthy();
+    expect(getByText("of 200g")).toBeTruthy();
+  });
 });

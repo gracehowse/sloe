@@ -114,6 +114,13 @@ export function LoginClient({
       posthog.identify(signUpData.user.id, { email: trimmed });
       track(AnalyticsEvents.user_signed_up, { method: "email" });
     }
+    // ENG-1512 — branch on the returned session (mirrors onboarding SignupStep,
+    // ENG-672): confirmations OFF → signUp returns a live session → SIGNED_IN
+    // listener redirects (silent success); only no-session shows "check email".
+    if (signUpData.session) {
+      setStatus("idle");
+      return;
+    }
     setStatus("sent");
     setMessage("Account created. Check your email to confirm, then sign in.");
   };
@@ -571,13 +578,6 @@ export function LoginClient({
                 </a>
               </p>
             )}
-
-            <p
-              className="mt-6 text-xs"
-              style={{ color: "var(--muted-foreground)" }}
-            >
-              If you just created an account, you may need to confirm your email before signing in.
-            </p>
           </div>
         )}
       </div>

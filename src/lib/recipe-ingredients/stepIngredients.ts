@@ -39,7 +39,7 @@
  */
 
 import { formatIngredientAmountUnit } from "./formatIngredientAmount";
-import { scaleAmountText } from "../nutrition/recipeScale";
+import { formatScaledAmount, scaleAmountText } from "../nutrition/recipeScale";
 
 /** The minimal ingredient shape the matcher needs. Both the web
  *  `IngredientRow` and the mobile recipe-detail `Ingredient` type are
@@ -191,11 +191,13 @@ export function ingredientsForStep(
 /**
  * Build the "amount + name" label for a single step chip, scale-aware.
  *
- * The amount/unit are first composed via {@link formatIngredientAmountUnit}
- * (the same de-dupe used by the recipe-detail ingredient rows), then the
- * composed quantity is rewritten through `scaleAmountText` so the chip
- * respects the active serving scale exactly like the step text does — a
- * "2 tbsp butter" line at 0.5x reads "1 tbsp butter".
+ * Numeric amounts are scaled BEFORE composing via
+ * {@link formatIngredientAmountUnit} (the same de-dupe used by the
+ * recipe-detail ingredient rows) so unit pluralisation tracks the scaled
+ * quantity — "2 cloves garlic" at 0.5x reads "1 clove garlic". Non-numeric
+ * amounts (ranges like "1-2", textual fractions) fall back to composing
+ * first and rewriting digits via `scaleAmountText`, exactly like the step
+ * text does.
  *
  * `scaleFactor` of 1 (or invalid) leaves the amount verbatim (the helper
  * short-circuits). When there is no amount/unit at all the chip is just the
@@ -213,15 +215,35 @@ export function stepIngredientChipLabel(
   scaleFactor = 1,
 ): string {
   const name = (ingredient?.name ?? "").trim();
-  const amountUnit = formatIngredientAmountUnit(
-    ingredient?.amount ?? null,
-    ingredient?.unit ?? null,
-  );
+  const rawAmount = ingredient?.amount ?? null;
+  const shouldScale =
+    Number.isFinite(scaleFactor) && scaleFactor > 0 && scaleFactor !== 1;
+  // ENG-1533A: scale numeric amounts BEFORE formatting so unit
+  // pluralisation tracks the scaled quantity ("2 cloves" at 0.5x →
+  // "1 clove", never the digit-rewritten "1 cloves").
+  const numericAmount =
+    typeof rawAmount === "number" && Number.isFinite(rawAmount)
+      ? rawAmount
+      : typeof rawAmount === "string" &&
+          rawAmount.trim() !== "" &&
+          Number.isFinite(Number(rawAmount))
+        ? Number(rawAmount)
+        : null;
+  if (shouldScale && numericAmount != null) {
+    // formatScaledAmount keeps the cookbook-fraction rendering the legacy
+    // digit-rewrite produced ("1/2 tbsp", not "0.5 tbsp"); passing its
+    // text through the composer keeps pluralisation tied to the scaled
+    // quantity (purely-numeric "2" pluralises, "1/2" stays singular).
+    const amountUnit = formatIngredientAmountUnit(
+      formatScaledAmount(numericAmount * scaleFactor),
+      ingredient?.unit ?? null,
+    );
+    if (!amountUnit) return name;
+    return name ? `${amountUnit} ${name}` : amountUnit;
+  }
+  const amountUnit = formatIngredientAmountUnit(rawAmount, ingredient?.unit ?? null);
   if (!amountUnit) return name;
-  const scaled =
-    Number.isFinite(scaleFactor) && scaleFactor > 0 && scaleFactor !== 1
-      ? scaleAmountText(amountUnit, scaleFactor)
-      : amountUnit;
+  const scaled = shouldScale ? scaleAmountText(amountUnit, scaleFactor) : amountUnit;
   if (!name) return scaled;
   return `${scaled} ${name}`;
 }

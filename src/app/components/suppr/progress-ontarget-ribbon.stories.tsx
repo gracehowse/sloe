@@ -18,7 +18,7 @@ const meta = {
   parameters: { layout: "padded" },
   args: {
     onTargetCount: 5,
-    subtitle: "Your most consistent week this month.",
+    subtitle: "That's 5 of 7 days.",
   },
   decorators: [
     (Story) => (
@@ -34,15 +34,15 @@ type Story = StoryObj<typeof meta>;
 
 export const Populated: Story = {
   name: "Populated (5 days)",
-  args: { onTargetCount: 5, subtitle: "Your most consistent week this month." },
+  args: { onTargetCount: 5, subtitle: "That's 5 of 7 days." },
 };
 
 export const SingleDay: Story = {
   name: "Single day (singular copy)",
-  args: { onTargetCount: 1, subtitle: "A solid start — keep it going." },
+  args: { onTargetCount: 1, subtitle: "That's 1 of 7 days." },
 };
 
 export const Zero: Story = {
   name: "Zero (renders nothing)",
-  args: { onTargetCount: 0, subtitle: "Your most consistent week this month." },
+  args: { onTargetCount: 0, subtitle: "That's 0 of 7 days." },
 };

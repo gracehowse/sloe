@@ -52,7 +52,7 @@ type Theme = {
   background: string;
   inputBg: string;
   border: string;
-  /** Foreground colour for primary-tinted CTAs (Parse / Try again /
+  /** Foreground colour for primary-tinted CTAs (Estimate / Try again /
    *  Log all) and the active mic. Wired through from the host so we
    *  don't hardcode `#fff` here — see Colors.{light,dark}. */
   primaryForeground: string;
@@ -338,7 +338,7 @@ export default function VoiceLogSheet({
             {stage === "parsing" && (
               <View style={{ alignItems: "center", paddingVertical: Spacing.xl, gap: 10 }}>
                 <ActivityIndicator size="small" color={accent.primary} />
-                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Parsing your description…</Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Estimating nutrition…</Text>
               </View>
             )}
 
@@ -424,7 +424,7 @@ export default function VoiceLogSheet({
               {stage === "input" && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Parse description"
+                  accessibilityLabel="Estimate nutrition from description"
                   onPress={() => submitTranscript(transcript)}
                   disabled={!transcript.trim()}
                   style={{
@@ -435,7 +435,7 @@ export default function VoiceLogSheet({
                     backgroundColor: transcript.trim() ? accent.primary : colors.cardBorder,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Parse</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Estimate</Text>
                 </Pressable>
               )}
               {stage === "error" && (

@@ -300,7 +300,7 @@ export function LogSheetDescribeFlow({
             onClick={() => void runParse(text)}
             className="shrink-0"
           >
-            Parse
+            Estimate
           </Button>
         )}
       </div>
@@ -310,7 +310,7 @@ export function LogSheetDescribeFlow({
         </p>
       ) : null}
       {stage === "parsing" ? (
-        <p className="text-[11px] text-muted-foreground">Parsing your description…</p>
+        <p className="text-[11px] text-muted-foreground">Estimating nutrition…</p>
       ) : (
         <p id="log-sheet-describe-hint" className="sr-only">
           AI estimates from verified nutrition data. Review every item before logging.

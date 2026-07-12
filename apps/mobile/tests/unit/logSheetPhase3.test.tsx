@@ -310,7 +310,7 @@ describe("LogSheet (mobile) — describe meal review", () => {
 
     fireEvent.press(getByTestId("log-sheet-describe-expand"));
     fireEvent.changeText(getByLabelText("Describe what you ate"), "chicken sandwich");
-    fireEvent.press(getByLabelText("Parse meal description"));
+    fireEvent.press(getByLabelText("Estimate nutrition from description"));
 
     await waitFor(() => expect(getByText("Lunch")).toBeTruthy());
     expect(getByDisplayValue("Chicken sandwich")).toBeTruthy();

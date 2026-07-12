@@ -11,6 +11,7 @@ import { render } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { TodayDashboardMacroRings } from "../../src/app/components/suppr/today-dashboard-macro-rings";
 import { TodayMacroSection } from "../../src/app/components/suppr/today-macro-section";
+import { buildMacroTile } from "../../src/app/components/suppr/today-dashboard-macro-tiles";
 
 void React;
 
@@ -68,6 +69,8 @@ describe("TodayDashboardMacroRings — v3 macro dials", () => {
         carbsTarget={200}
         fatCurrent={0}
         fatTarget={60}
+        fiberCurrent={0}
+        fiberTarget={30}
       />,
     );
     expect(container.querySelectorAll("svg").length).toBe(3);
@@ -82,6 +85,8 @@ describe("TodayDashboardMacroRings — v3 macro dials", () => {
         carbsTarget={200}
         fatCurrent={0}
         fatTarget={60}
+        fiberCurrent={0}
+        fiberTarget={30}
       />,
     );
     const t = litTransforms(container);
@@ -98,5 +103,57 @@ describe("TodayMacroSection switcher", () => {
     expect(
       container.querySelector('[data-testid="today-macro-rings"]'),
     ).not.toBeNull();
+  });
+});
+
+describe("net-carbs lens — Tiles/Bars/Rings agreement (ENG-1508)", () => {
+  // Day with fibre: gross carbs 150/200, fibre 10/30 → net 140/170.
+  // Mirrored by the mobile fixture in
+  // apps/mobile/tests/unit/macroRingsLayout.test.tsx.
+  const LENS_PROPS = {
+    ...BASE_PROPS,
+    carbsCurrent: 150,
+    carbsTarget: 200,
+    fiberCurrent: 10,
+    fiberTarget: 30,
+    netCarbsLensEnabled: true,
+  };
+
+  it("rings render the same net-carbs label/value/target as the tiles math", () => {
+    const tile = buildMacroTile("carbs", LENS_PROPS);
+    expect(tile?.label).toBe("Net carbs");
+    expect(tile?.valueText).toBe("140");
+    expect(tile?.targetText).toBe("/ 170 g");
+
+    const rings = render(
+      <TodayMacroSection macroDisplayStyle="rings" {...LENS_PROPS} />,
+    );
+    expect(rings.getByText("Net carbs")).toBeTruthy();
+    expect(rings.getByText("of 170g")).toBeTruthy();
+    expect(rings.queryByText("of 200g")).toBeNull();
+    // Reduced-motion mock resolves the count-up synchronously → net 140.
+    expect(rings.getByText(/140/)).toBeTruthy();
+  });
+
+  it("bars agree on the same fixture", () => {
+    const bars = render(
+      <TodayMacroSection macroDisplayStyle="bars" {...LENS_PROPS} />,
+    );
+    expect(bars.getByText("Net carbs")).toBeTruthy();
+    expect(bars.container.textContent).toContain("140 / 170 g");
+  });
+
+  it("rings refuse the Net carbs label when no fibre target exists", () => {
+    const rings = render(
+      <TodayMacroSection
+        macroDisplayStyle="rings"
+        {...LENS_PROPS}
+        fiberCurrent={0}
+        fiberTarget={0}
+      />,
+    );
+    expect(rings.queryByText("Net carbs")).toBeNull();
+    expect(rings.getByText("Carbs")).toBeTruthy();
+    expect(rings.getByText("of 200g")).toBeTruthy();
   });
 });

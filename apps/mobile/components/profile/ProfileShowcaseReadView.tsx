@@ -49,8 +49,8 @@ export function ProfileShowcaseReadView({
 
       <View style={[styles.statsRow, { borderColor: colors.border }]}>
         {[
-          { label: "Days logged", value: String(daysLogged) },
-          { label: "Recipes", value: String(recipeCount) },
+          { label: daysLogged === 1 ? "Day logged" : "Days logged", value: String(daysLogged) },
+          { label: recipeCount === 1 ? "Recipe" : "Recipes", value: String(recipeCount) },
           { label: "Day streak", value: String(streakDays) },
         ].map((stat, idx) => (
           <View

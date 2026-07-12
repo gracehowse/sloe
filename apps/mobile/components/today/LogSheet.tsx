@@ -852,7 +852,7 @@ function DefaultComposition({
             <Pressable
               testID="log-sheet-describe-from-search"
               accessibilityRole="button"
-              accessibilityLabel="Parse search text as meal description"
+              accessibilityLabel="Estimate search text as meal description"
               onPress={() => {
                 setDescribeSeedText(query.trim());
                 setQuery("");
@@ -870,7 +870,7 @@ function DefaultComposition({
               })}
             >
               <Text style={{ fontSize: 13, fontWeight: "600", color: accent.primarySolid }}>
-                Parse as meal description
+                Estimate as meal description
               </Text>
             </Pressable>
           ) : null}

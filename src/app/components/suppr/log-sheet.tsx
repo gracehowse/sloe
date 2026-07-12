@@ -861,7 +861,7 @@ function DefaultComposition({
                 setQuery("");
               }}
             >
-              Parse as meal description
+              Estimate as meal description
             </button>
           ) : null}
           <FoodSearchPanel

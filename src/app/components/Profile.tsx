@@ -749,7 +749,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
             </IconBox>
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-semibold text-foreground">Published Recipes</p>
-              <p className="text-[11px] text-muted-foreground truncate mt-0.5">{recipeCount} recipes saved</p>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">{recipeCount} {recipeCount === 1 ? "recipe" : "recipes"} saved</p>
             </div>
             <Icons.forward className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>

@@ -39,6 +39,8 @@ export function TodayMacroSection({
         carbsTarget={props.carbsTarget}
         fatCurrent={props.fatCurrent}
         fatTarget={props.fatTarget}
+        fiberCurrent={props.fiberCurrent}
+        fiberTarget={props.fiberTarget}
         netCarbsLensEnabled={props.netCarbsLensEnabled}
         onPressMacro={
           props.onPressMacro

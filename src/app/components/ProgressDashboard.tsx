@@ -1611,7 +1611,7 @@ function ProgressDashboardContent() {
           <ProgressOnTargetRibbon
             className="mb-6"
             onTargetCount={onTargetCount}
-            subtitle="Your most consistent week this month."
+            subtitle={`That's ${onTargetCount} of 7 days.`}
           />
         );
       })()}

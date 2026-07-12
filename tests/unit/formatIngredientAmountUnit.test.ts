@@ -81,4 +81,48 @@ describe("formatIngredientAmountUnit", () => {
     expect(formatIngredientAmountUnit(1, "  1 breast  ")).toBe("1 breast");
     expect(formatIngredientAmountUnit("  1  ", "breast")).toBe("1 breast");
   });
+
+  it("pluralises bare count-noun units when the amount is greater than 1", () => {
+    expect(formatIngredientAmountUnit(2, "rasher")).toBe("2 rashers");
+    expect(formatIngredientAmountUnit(2, "clove")).toBe("2 cloves");
+    expect(formatIngredientAmountUnit(3, "slice")).toBe("3 slices");
+    expect(formatIngredientAmountUnit("2", "clove")).toBe("2 cloves");
+  });
+
+  it("keeps the singular unit at amount 1 or below", () => {
+    expect(formatIngredientAmountUnit(1, "clove")).toBe("1 clove");
+    expect(formatIngredientAmountUnit(0.5, "clove")).toBe("0.5 clove");
+  });
+
+  it("never pluralises measurement abbreviations or size words", () => {
+    expect(formatIngredientAmountUnit(2, "g")).toBe("2 g");
+    expect(formatIngredientAmountUnit(2, "tbsp")).toBe("2 tbsp");
+    expect(formatIngredientAmountUnit(2, "medium")).toBe("2 medium");
+  });
+
+  it("leaves already-plural units untouched", () => {
+    expect(formatIngredientAmountUnit(2, "cloves")).toBe("2 cloves");
+    expect(formatIngredientAmountUnit(2, "cups")).toBe("2 cups");
+  });
+
+  it("uses irregular plurals for f-ending units", () => {
+    expect(formatIngredientAmountUnit(2, "leaf")).toBe("2 leaves");
+  });
+
+  it("skips pluralisation for compound or non-alphabetic units", () => {
+    expect(formatIngredientAmountUnit(2, "bay leaf")).toBe("2 bay leaf");
+    expect(formatIngredientAmountUnit(2, "medium (182g)")).toBe("2 medium (182g)");
+  });
+});
+
+describe("unpluralisable unit tokens (ENG-1533A review hardening)", () => {
+  it.each([
+    ["cm", "2 cm"],
+    ["mm", "5 mm"],
+    ["in", "2 in"],
+    ["dozen", "2 dozen"],
+  ])("never appends s to %s", (unit, expected) => {
+    const amount = Number(expected.split(" ")[0]);
+    expect(formatIngredientAmountUnit(amount, unit)).toBe(expected);
+  });
 });

@@ -255,3 +255,32 @@ describe("cookStepIngredientChips — flag gate", () => {
     ).toEqual([]);
   });
 });
+
+describe("stepIngredientChipLabel — scale-before-format pluralisation (ENG-1533A)", () => {
+  it("re-pluralises a stored-singular unit at down-scale: 2 clove @0.5x → 1 clove", () => {
+    expect(
+      stepIngredientChipLabel({ name: "garlic", amount: 2, unit: "clove" }, 0.5),
+    ).toBe("1 clove garlic");
+  });
+
+  it("pluralises on up-scale: 1 clove @2x → 2 cloves", () => {
+    expect(
+      stepIngredientChipLabel({ name: "garlic", amount: 1, unit: "clove" }, 2),
+    ).toBe("2 cloves garlic");
+  });
+
+  it("numeric-string amounts scale before formatting too", () => {
+    expect(
+      stepIngredientChipLabel({ name: "bacon", amount: "2", unit: "rasher" }, 0.5),
+    ).toBe("1 rasher bacon");
+  });
+
+  it("non-numeric amounts keep the legacy text path (bare ranges pass through)", () => {
+    // Range amounts can't be numerically scaled up front; they take the
+    // legacy scaleAmountText path, which leaves a bare unitless range
+    // untouched — pre-existing behaviour, unchanged by ENG-1533A.
+    expect(
+      stepIngredientChipLabel({ name: "eggs", amount: "1-2", unit: "" }, 2),
+    ).toBe("1-2 eggs");
+  });
+});

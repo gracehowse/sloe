@@ -1664,11 +1664,11 @@ export default function ProgressScreen() {
           ]}
         />
 
-        {/* ON-TARGET RIBBON — real count of on-target days this week. */}
-        <ProgressOnTargetRibbon
-          onTargetCount={weekStats.days.filter((d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories).length}
-          subtitle="Your most consistent week this month."
-        />
+        {/* On-target ribbon — real on-target-day count (ENG-1509). */}
+        {(() => {
+          const onTargetCount = weekStats.days.filter((d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories).length;
+          return <ProgressOnTargetRibbon onTargetCount={onTargetCount} subtitle={`That's ${onTargetCount} of 7 days.`} />;
+        })()}
 
         {/* ── Preserved detail (below the frame's above-fold story) ──
             Apple Health, adaptive maintenance + explainer, journey /

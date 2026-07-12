@@ -384,10 +384,9 @@ export function PricingTiersGrid({
                 <PricingNoPaymentChip />
               ) : null}
 
-              {/* ENG-1460: when the hero CTA above is the ONE filled CTA on
-                  the page ("Start free trial"), these tier-card CTAs stay
-                  outline so they don't compete with it. Flag off → legacy
-                  auto (highlighted tier stays filled, no hero exists). */}
+              {/* ENG-1460/1511: with the hero CTA as the ONE filled CTA
+                  ("Start free trial" annual / "Subscribe" monthly), tier-card
+                  CTAs stay outline. Flag off → legacy auto (tier filled). */}
               <CheckoutButton
                 tier={tier.checkoutTier}
                 period={billing}
