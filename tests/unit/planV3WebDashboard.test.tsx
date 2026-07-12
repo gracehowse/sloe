@@ -106,6 +106,15 @@ describe("PlanV3WebDashboard", () => {
     expect(screen.getByText(/23 items · for 2 people/)).toBeInTheDocument();
   });
 
+  it("ENG-1551 — the tool-card CTAs are content-width pills, not banner-width", () => {
+    render(<PlanV3WebDashboard {...baseProps} />);
+    for (const label of ["Plan a batch", "Open shopping list"]) {
+      const btn = screen.getByText(label).closest("button")!;
+      expect(btn.className).toContain("w-fit");
+      expect(btn.className).not.toContain("w-full");
+    }
+  });
+
   it("ENG-1547 — an all-empty week renders NO verdict row (law 3: '0 of 7 days land' is derived noise)", () => {
     const allEmpty = Array.from({ length: 7 }, (_, i) => emptyDay(i));
     const emptyVerdict = computePlanWeekVerdict(

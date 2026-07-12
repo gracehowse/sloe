@@ -25,11 +25,12 @@ describe("ENG-889 S5 — Fresh start empty Today", () => {
     expect(todayStatusChip("empty")).toBe("Fresh start");
   });
 
-  it("cold-open coach line is food-forward (ENG-939) when all slots are open", () => {
-    expect(todayRoomForMeal(2040, "Breakfast", [], 9)).toBe(
-      "Fresh start — what's for breakfast?",
-    );
-    expect(todayColdOpenCoachLine(14)).toBe("Fresh start — what's for lunch?");
+  it("cold-open coach line is food-forward (ENG-939), no duplicate 'Fresh start' (ENG-1549)", () => {
+    // The status chip already carries "Fresh start"; the coach line must NOT
+    // repeat it (it rendered twice in the same hero card before ENG-1549).
+    expect(todayRoomForMeal(2040, "Breakfast", [], 9)).toBe("What's for breakfast?");
+    expect(todayColdOpenCoachLine(14)).toBe("What's for lunch?");
+    expect(todayColdOpenCoachLine(9)).not.toMatch(/Fresh start/);
   });
 
   it("web hero chip de-tints Fresh start (today_tracker_tier_v1 collapsed ENG-1356, always-on tint)", () => {

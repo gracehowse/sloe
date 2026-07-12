@@ -309,12 +309,17 @@ function mealPhraseForAim(slot: TodayMealSlot): string {
 
 /** ENG-939 — warm food-forward invitation when the day is completely
  *  unlogged. Time-aware meal wording; omits kcal so cold-open reads as
- *  welcome, not scoreboard. */
+ *  welcome, not scoreboard.
+ *
+ *  ENG-1549 — the "Fresh start — " prefix was dropped: the hero's status
+ *  chip already says "Fresh start" right above this coach line, so the
+ *  prefix rendered the phrase twice in the same card. The chip carries the
+ *  state; this line carries the actionable invitation. */
 export function todayColdOpenCoachLine(hour: number): string {
-  if (hour < 11) return "Fresh start — what's for breakfast?";
-  if (hour < 15) return "Fresh start — what's for lunch?";
-  if (hour < 20) return "Fresh start — what's for dinner?";
-  return "Fresh start — log when you're ready.";
+  if (hour < 11) return "What's for breakfast?";
+  if (hour < 15) return "What's for lunch?";
+  if (hour < 20) return "What's for dinner?";
+  return "Log when you're ready.";
 }
 
 /** ENG-1372 (empty-state grammar contract, law 2) — the fresh-day hero's
