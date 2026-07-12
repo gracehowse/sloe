@@ -62,10 +62,19 @@ No third path. If you are about to add a new approximation and it isn't listed, 
 - **Fixed error cases:**
   - "2 large chicken breasts" → was 360 g (generic 180 × 2); now **400 g** (food-specific breast 200 g × 2).
   - "1 large chicken thigh" → was 180 g; now **120 g** (food-specific).
-  - "1 large walnut" → was 180 g (generic); now **5 g** (walnut-specific).
-- **Fix:** introduced `foodSpecificCountGramsEach(name)` as the single source of truth for "what does ONE of this food weigh?". It is consulted FIRST by both the size-word path and the count/no-unit path. Lookup order is now **food-specific override → generic size → default**. Eggs keep their dedicated `EGG_SIZE_G` table (checked before the resolver). Bulk staples (rice/pasta/herbs) return `null` from the resolver and fall through to the generic size / heuristic path, as "one large rice" is not a meaningful piece.
-- **Status:** **FIXED.** Pinned in `tests/unit/measureToGrams.test.ts` (ENG-701 block): walnut + large → 5 g, 2 large chicken breasts → 400 g, cooked-aware 300 g, count-path and size-word path agree for a discrete piece, and bulk staples still fall through to generic large (180 g).
+  - "1 large walnut" → was 180 g (generic); now **2.5 g** (walnut half; see A4).
+- **Fix:** introduced `foodSpecificCountRef(name)` (and the thin `foodSpecificCountGramsEach(name)` wrapper) as the single source of truth for "what does ONE of this food weigh?". It is consulted FIRST by both the size-word path and the count/no-unit path. Lookup order is now **food-specific override → generic size → default**. Eggs keep their dedicated `EGG_SIZE_G` table (checked before the resolver). Bulk staples (rice/pasta/herbs) return `null` from the resolver and fall through to the generic size / heuristic path, as "one large rice" is not a meaningful piece.
+- **Status:** **FIXED.** Pinned in `tests/unit/measureToGrams.test.ts` (ENG-701 block): walnut + large → 2.5 g, 2 large chicken breasts → 400 g, cooked-aware 300 g, count-path and size-word path agree for a discrete piece, and bulk staples still fall through to generic large (180 g).
 - **Workaround for callers (still valid):** when the food match provides a gram weight, pass it via `chosenPortion.gramWeight` and skip this path.
+
+### A4 — Per-piece count reference weights + confidence gating — FIXED (ENG-1544, 2026-07-12)
+
+- **File:** [`src/lib/nutrition/measureToGrams.ts`](../../src/lib/nutrition/measureToGrams.ts)
+- **Was (two defects):**
+  1. **Miscalibrated coarse buckets.** `foodSpecificCountGramsEach` collapsed whole classes onto one number: *any* nut = 5 g (≈4× too heavy — an almond is ~1.2 g) and *any* small stone fruit = 15 g (60–77% too light — an apricot is ~35 g, a plum ~65 g).
+  2. **Coarse guesses surfaced as HIGH confidence.** Every match returned `"high"` from `measureToGramsConfidence`, so the shopping-list count-to-weight normaliser aggregated counts into weight rows on those coarse guesses — violating "if nutrition is uncertain, do not guess".
+- **Fix:** `foodSpecificCountRef(name)` now returns `{ grams, confident }`. Foods with a defensible **single-piece USDA FoodData Central / Handbook** reference weight are `confident: true`: almond 1.2 g, walnut half 2.5 g, cashew 1.5 g, pistachio kernel 0.7 g, hazelnut 1.0 g, pecan half 1.0 g, macadamia 2.5 g, peanut 1.0 g; fig fresh 50 g / dried 8 g; apricot fresh 35 g / dried 8 g; plum 65 g; prune 9.5 g; date 7 g; button mushroom 20 g; strawberry 12 g (plus the existing meat cuts and medium-produce references). The two remaining **catch-all buckets** — misc pickled/allium bits (olive/caper/cornichon/gherkin/radish/shallot ≈ 5 g) and misc small shellfish (prawn/shrimp/mussel/clam/scallop/oyster ≈ 15 g) — still return a weight so downstream math works, but are `confident: false`. `measureToGramsConfidence` rates a count/size word `"high"` only when `foodSpecificCountRef(...).confident === true`; a coarse-bucket or no-rule match is `"low"`, so the normaliser keeps the count and weight as separate rows instead of aggregating a guess.
+- **Status:** **FIXED.** Pinned in `tests/unit/measureToGrams.test.ts` (ENG-1544 block: almonds ×10 → 12 g, plums ×2 → 130 g, apricot/fig fresh-vs-dried, date/prune/mushroom/strawberry references, coarse buckets stay non-confident) and `tests/unit/measureToGramsConfidence.test.ts` (defensible nut/stone-fruit counts → HIGH; olive/shallot/shrimp coarse counts → LOW).
 
 ---
 

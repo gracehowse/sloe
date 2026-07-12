@@ -12,6 +12,7 @@ import {
   EGG_SIZE_G,
   poultryBreastGramsEach,
   foodSpecificCountGramsEach,
+  foodSpecificCountRef,
 } from "@/lib/nutrition/measureToGrams";
 
 describe("measureToGrams", () => {
@@ -305,8 +306,9 @@ describe("measureToGrams", () => {
     expect(measureToGrams({ name: "chicken breast", amount: 2, unit: "large" })).toBe(400);
   });
 
-  it("1 large walnut = walnut-specific 5g (NOT generic large 180g)", () => {
-    expect(measureToGrams({ name: "walnut", amount: 1, unit: "large" })).toBe(5);
+  it("1 large walnut = walnut-specific 2.5g (NOT generic large 180g)", () => {
+    // ENG-1544: a walnut half ≈ 2.5 g (USDA), not the old coarse 5 g nut bucket.
+    expect(measureToGrams({ name: "walnut", amount: 1, unit: "large" })).toBe(2.5);
   });
 
   it("1 large chicken thigh = food-specific 120g (NOT generic large 180g)", () => {
@@ -330,7 +332,7 @@ describe("measureToGrams", () => {
 
   it("foodSpecificCountGramsEach returns the food-specific weight for discrete pieces", () => {
     expect(foodSpecificCountGramsEach("chicken breast")).toBe(200);
-    expect(foodSpecificCountGramsEach("walnut")).toBe(5);
+    expect(foodSpecificCountGramsEach("walnut")).toBe(2.5);
     expect(foodSpecificCountGramsEach("onion")).toBe(110);
     expect(foodSpecificCountGramsEach("salmon fillet")).toBe(170);
   });
@@ -345,5 +347,60 @@ describe("measureToGrams", () => {
   it("large egg still uses egg-size table, not the food-specific resolver", () => {
     // Eggs have their own size table (50g large) — must take precedence.
     expect(measureToGrams({ name: "egg", amount: 1, unit: "large" })).toBe(EGG_SIZE_G.large);
+  });
+
+  // ── ENG-1544 — calibrated count-to-weight per-piece reference weights ──────
+  // The old coarse buckets ("any nut = 5 g", "any small stone fruit = 15 g")
+  // were ~4× too heavy for nuts and 60–77% too light for stone fruit. These
+  // assert the USDA-ish single-piece references and that they flow through the
+  // count and size-word paths identically.
+
+  it("10 almonds = 12g (1.2g each, was 50g under the coarse 5g bucket)", () => {
+    expect(measureToGrams({ name: "almonds", amount: 10, unit: "" })).toBeCloseTo(12, 5);
+    expect(foodSpecificCountGramsEach("almond")).toBe(1.2);
+  });
+
+  it("nut per-piece references (cashew/pistachio/hazelnut/pecan/macadamia/peanut)", () => {
+    expect(foodSpecificCountGramsEach("cashew")).toBe(1.5);
+    expect(foodSpecificCountGramsEach("pistachio")).toBe(0.7);
+    expect(foodSpecificCountGramsEach("hazelnut")).toBe(1.0);
+    expect(foodSpecificCountGramsEach("pecan")).toBe(1.0);
+    expect(foodSpecificCountGramsEach("macadamia")).toBe(2.5);
+    expect(foodSpecificCountGramsEach("peanut")).toBe(1.0);
+  });
+
+  it("2 plums = 130g (65g each, was 30g under the coarse 15g bucket)", () => {
+    expect(measureToGrams({ name: "plums", amount: 2, unit: "" })).toBe(130);
+    expect(foodSpecificCountGramsEach("plum")).toBe(65);
+  });
+
+  it("fresh apricot = 35g; dried apricot = 8g", () => {
+    expect(foodSpecificCountGramsEach("apricot")).toBe(35);
+    expect(foodSpecificCountGramsEach("dried apricot")).toBe(8);
+  });
+
+  it("fresh fig = 50g; dried fig = 8g", () => {
+    expect(foodSpecificCountGramsEach("fig")).toBe(50);
+    expect(foodSpecificCountGramsEach("dried figs")).toBe(8);
+  });
+
+  it("date = 7g, prune = 9.5g (were both 5g under the coarse bucket)", () => {
+    expect(foodSpecificCountGramsEach("medjool dates")).toBe(7);
+    expect(foodSpecificCountGramsEach("prune")).toBe(9.5);
+  });
+
+  it("button mushroom = 20g, strawberry = 12g", () => {
+    expect(foodSpecificCountGramsEach("mushroom")).toBe(20);
+    expect(foodSpecificCountGramsEach("strawberries")).toBe(12);
+  });
+
+  it("coarse catch-alls still yield a weight (olive 5g, shrimp 15g) but are non-confident", () => {
+    // The resolver must still return a number so downstream grams math works;
+    // it's measureToGramsConfidence that keeps these off the HIGH tier.
+    expect(foodSpecificCountGramsEach("olive")).toBe(5);
+    expect(foodSpecificCountGramsEach("shallot")).toBe(5);
+    expect(foodSpecificCountGramsEach("shrimp")).toBe(15);
+    expect(foodSpecificCountRef("olive")?.confident).toBe(false);
+    expect(foodSpecificCountRef("almond")?.confident).toBe(true);
   });
 });

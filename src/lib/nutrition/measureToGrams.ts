@@ -73,52 +73,114 @@ const COUNT_WEIGHT_G: Record<string, number> = {
 };
 
 /**
- * ENG-701 — food-specific per-piece ("count") weight for a discrete, countable
- * ingredient, or `null` when no food-specific rule applies.
+ * Result of {@link foodSpecificCountRef}: the grams ONE countable piece weighs,
+ * plus whether that weight is defensible enough to surface as HIGH confidence.
+ */
+export type CountPieceRef = {
+  /** Grams one countable piece weighs. */
+  grams: number;
+  /**
+   * True when `grams` is a defensible single-food reference weight (a specific
+   * USDA FoodData Central / Handbook per-piece value). False when it is a
+   * coarse multi-food catch-all bucket whose per-piece weight varies too widely
+   * to trust — those must NOT be surfaced as HIGH confidence (ENG-1544).
+   */
+  confident: boolean;
+};
+
+/**
+ * ENG-701 / ENG-1544 — food-specific per-piece ("count") reference for a
+ * discrete, countable ingredient, or `null` when no food-specific rule applies.
  *
  * This is the single source of truth for "what does ONE of this food weigh?"
  * It is consulted FIRST by both the count/no-unit path AND the generic size
  * word (large/medium/small) path, so a food-specific weight always beats the
- * generic ~180/110/80 g size fallback. Pre-fix the size words were matched
- * before food-specific rules, so "2 large chicken breasts" → 360 g (generic)
- * instead of 400 g (food-specific). Lookup order is now:
+ * generic ~180/110/80 g size fallback. Lookup order is:
  *   food-specific override → generic size → default.
+ *
+ * Per-piece weights are USDA FoodData Central single-unit portions / USDA
+ * Handbook values (nuts = one shelled kernel or half; produce/stone fruit =
+ * one medium). ENG-1544 replaced the old coarse buckets — "any nut = 5 g" (≈4×
+ * too heavy for almonds) and "any small stone fruit = 15 g" (60–77% too light
+ * for apricots/plums) — with these single-food references, and marks the two
+ * remaining catch-all buckets (misc small pickled/allium bits; misc small
+ * shellfish) `confident: false` so a coarse guess never rides on the HIGH tier.
  *
  * Only covers DISCRETE pieces (proteins, nuts, small/medium produce, etc.).
  * Bulk staples (rice/pasta/herbs/sauces) return null here because "one large
  * rice" is not a meaningful piece — those stay on the count-path heuristics or
  * the generic size fallback.
  */
-export function foodSpecificCountGramsEach(ingredientName: string): number | null {
+export function foodSpecificCountRef(ingredientName: string): CountPieceRef | null {
   const name = ingredientName.trim().toLowerCase();
-  // Meat cuts — realistic per-piece weights (raw/cooked aware for poultry).
+  const ref = (grams: number): CountPieceRef => ({ grams, confident: true });
+  const coarse = (grams: number): CountPieceRef => ({ grams, confident: false });
+
+  // ── Meat cuts — realistic per-piece weights (raw/cooked aware for poultry).
   if (/(?:chicken|turkey).{0,24}breast|breast.{0,24}(?:chicken|turkey)|chicken breast/.test(name)) {
-    return poultryBreastGramsEach(name);
+    return ref(poultryBreastGramsEach(name));
   }
-  if (/chicken thigh/.test(name)) return 120;
-  if (/drumstick/.test(name)) return 90;
-  if (/(?:chicken|turkey) wing/.test(name)) return 40;
-  if (/fillet|filet/.test(name)) return 170;
-  if (/steak/.test(name)) return 225;
-  if (/chop/.test(name)) return 150;
-  // Whole produce that comes in pieces — medium reference weight.
-  if (/(?:bell|red|green|yellow|orange|sweet|romano|roasted)\s+peppers?/.test(name)) return 110;
-  if (/\bpeppers\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli)\b/.test(name)) return 110;
-  if (/\bpepper\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli|ground|cracked)\b/.test(name)) return 110;
+  if (/chicken thigh/.test(name)) return ref(120);
+  if (/drumstick/.test(name)) return ref(90);
+  if (/(?:chicken|turkey) wing/.test(name)) return ref(40);
+  if (/fillet|filet/.test(name)) return ref(170);
+  if (/steak/.test(name)) return ref(225);
+  if (/chop/.test(name)) return ref(150);
+
+  // ── Whole produce that comes in pieces — one medium reference weight.
+  if (/(?:bell|red|green|yellow|orange|sweet|romano|roasted)\s+peppers?/.test(name)) return ref(110);
+  if (/\bpeppers\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli)\b/.test(name)) return ref(110);
+  if (/\bpepper\b/.test(name) && !/\b(?:black|white|cayenne|chili|chilli|ground|cracked)\b/.test(name)) return ref(110);
   if (/carrot|onion|potato|sweet potato|tomato|lemon|lime|apple|banana|avocado|courgette|zucchini|aubergine|eggplant/.test(name)) {
-    return 110;
+    return ref(110);
   }
-  // Small discrete items (one nut/olive/caper ≈ 5 g).
-  if (/anchov|olive|caper|cornichon|gherkin|cherry tomato|grape tomato|radish|shallot|date|prune|almond|walnut|pecan|cashew|pistachio|hazelnut|macadamia|peanut/.test(name)) {
-    return 5;
-  }
-  if (/mushroom|strawberr|fig|apricot|plum|prawn|shrimp|mussel|clam|scallop|oyster/.test(name)) {
-    return 15;
-  }
-  if (/sausage|biscuit|cookie|cracker|tortilla|wrap|pitta|naan/.test(name)) {
-    return 50;
-  }
+
+  // ── Nuts — one shelled kernel / half (USDA FDC single-unit portions). The
+  //    old coarse "any nut = 5 g" bucket was ~4× too heavy for almonds and
+  //    wrong for the rest (ENG-1544).
+  if (/almond/.test(name)) return ref(1.2);
+  if (/walnut/.test(name)) return ref(2.5); // one half
+  if (/cashew/.test(name)) return ref(1.5);
+  if (/pistachio/.test(name)) return ref(0.7); // one kernel
+  if (/hazelnut/.test(name)) return ref(1.0);
+  if (/pecan/.test(name)) return ref(1.0); // one half
+  if (/macadamia/.test(name)) return ref(2.5);
+  if (/peanut/.test(name)) return ref(1.0); // one shelled kernel
+
+  // ── Dried / stone fruit — single-piece USDA references. The old coarse 15 g
+  //    bucket left stone fruit 60–77% too light (ENG-1544).
+  if (/\bfigs?\b/.test(name)) return ref(/dried/.test(name) ? 8 : 50);
+  if (/apricot/.test(name)) return ref(/dried/.test(name) ? 8 : 35);
+  if (/\bplums?\b/.test(name)) return ref(65);
+  if (/prune/.test(name)) return ref(9.5);
+  if (/\bdates?\b/.test(name)) return ref(7);
+
+  // ── Mushroom (button) / strawberry — single-piece USDA references.
+  if (/mushroom/.test(name)) return ref(20);
+  if (/strawberr/.test(name)) return ref(12);
+
+  // ── Baked / handheld single pieces (biscuit, cookie, cracker, wrap ≈ 50 g).
+  if (/sausage|biscuit|cookie|cracker|tortilla|wrap|pitta|naan/.test(name)) return ref(50);
+
+  // ── Coarse catch-alls — a weight is still returned so the resolver yields a
+  //    number, but per-piece varies too widely to trust for aggregation (a
+  //    caper ≈ 0.3 g vs a shallot ≈ 30 g; a mussel vs an oyster), so these are
+  //    NOT confident and stay off the HIGH tier (ENG-1544 — "if nutrition is
+  //    uncertain, do not guess").
+  if (/anchov|olive|caper|cornichon|gherkin|radish|shallot/.test(name)) return coarse(5);
+  if (/prawn|shrimp|mussel|clam|scallop|oyster/.test(name)) return coarse(15);
+
   return null;
+}
+
+/**
+ * ENG-701 — grams ONE countable piece of a food weighs, or `null` when no
+ * food-specific rule applies. Thin wrapper over {@link foodSpecificCountRef}:
+ * the resolver only needs the weight, while confidence is read separately by
+ * {@link measureToGramsConfidence} via the ref's `confident` flag.
+ */
+export function foodSpecificCountGramsEach(ingredientName: string): number | null {
+  return foodSpecificCountRef(ingredientName)?.grams ?? null;
 }
 
 /**
@@ -314,14 +376,16 @@ const HIGH_CONFIDENCE_WEIGHT_UNITS = new Set([
  * generator only cross-converts when this returns `"high"`.
  *
  * `"high"` — the unit is a mass/volume unit, OR an explicit egg, OR a count/size
- *   of a food with a known food-specific per-piece weight
- *   (`foodSpecificCountGramsEach`), OR a recognised discrete unit in
+ *   of a food with a DEFENSIBLE single-food per-piece weight
+ *   (`foodSpecificCountRef(...).confident`), OR a recognised discrete unit in
  *   `COUNT_WEIGHT_G` / the tin/pack branches — AND the conversion did not fall
  *   back to a defaulted cup density.
  * `"low"` — a bare count / size word with no food-specific rule (the generic
- *   80/110/180 g fallback), an unrecognised unit, or a cup/mug converted with a
- *   defaulted density. The caller keeps the count and weight as separate rows in
- *   this case (never guesses a weight on a low-confidence read).
+ *   80/110/180 g fallback) OR one that only resolves to a COARSE catch-all
+ *   bucket (`confident: false` — misc pickled/allium bits, misc shellfish;
+ *   ENG-1544), an unrecognised unit, or a cup/mug converted with a defaulted
+ *   density. The caller keeps the count and weight as separate rows in this case
+ *   (never guesses a weight on a low-confidence read).
  */
 export function measureToGramsConfidence(input: MeasureInput): "high" | "low" {
   const name = input.name.trim().toLowerCase();
@@ -337,8 +401,10 @@ export function measureToGramsConfidence(input: MeasureInput): "high" | "low" {
   // Egg size/count is well-characterised (per-egg weights by size).
   if (/\begg(?:s)?\b/.test(name)) return "high";
 
-  // A count / size word is only high-confidence with a food-specific per-piece
-  // weight — otherwise it lands on the generic 80/110/180 g guess.
+  // A count / size word is only high-confidence with a DEFENSIBLE single-food
+  // per-piece weight. A coarse catch-all bucket (confident:false) or no rule at
+  // all lands on a guess → LOW, so the count and weight stay separate rows
+  // rather than aggregating on a guessed per-piece weight (ENG-1544).
   if (
     u === "count" ||
     u === "" ||
@@ -347,7 +413,7 @@ export function measureToGramsConfidence(input: MeasureInput): "high" | "low" {
     u === "medium" ||
     u === "large"
   ) {
-    return foodSpecificCountGramsEach(name) != null ? "high" : "low";
+    return foodSpecificCountRef(name)?.confident === true ? "high" : "low";
   }
 
   // Recognised discrete units (clove, slice, rasher, stalk, …) have
