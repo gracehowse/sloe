@@ -193,7 +193,7 @@ function BatchCookCard({
       <button
         type="button"
         onClick={onOpenBatchCook}
-        className="mt-3 h-9 w-full rounded-full border border-border bg-card text-[13px] font-semibold text-foreground transition-[background-color] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        className="mt-3 h-9 w-fit px-4 rounded-full border border-border bg-card text-[13px] font-semibold text-foreground transition-[background-color] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       >
         Plan a batch
       </button>
@@ -233,7 +233,7 @@ function ShoppingCard({
       <button
         type="button"
         onClick={onOpenShopping}
-        className="mt-3 h-9 w-full rounded-full border border-border bg-card text-[13px] font-semibold text-foreground transition-[background-color] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        className="mt-3 h-9 w-fit px-4 rounded-full border border-border bg-card text-[13px] font-semibold text-foreground transition-[background-color] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       >
         Open shopping list
       </button>
