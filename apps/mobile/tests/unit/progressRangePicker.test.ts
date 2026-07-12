@@ -131,17 +131,17 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
     );
   });
 
-  it("web header shows the 'Your trends' overline, not the retired range overline", () => {
-    expect(webSrc).toMatch(/const \[period, setPeriod\] = useState<ProgressPeriod>\(DEFAULT_PERIOD\)/);
-    expect(webSrc).not.toContain("LAST 7 DAYS");
-    expect(webSrc).not.toContain("LAST 90 DAYS");
-    expect(webSrc).not.toContain("ALL TIME");
-    expect(webSrc).not.toContain("Weekly report");
-    // ENG-1247 — the mobile-web chrome carries the v3 "Your trends" overline.
-    expect(webChromeSrc).toContain('overlineTestID="progress-overline"');
-    expect(webChromeSrc).toContain('titleTestID="progress-header"');
-    expect(webChromeSrc).toMatch(/text-\[28px\]/);
-    expect(webChromeSrc).toMatch(/font-\[family-name:var\(--font-headline\)\]/);
+  it("web header shows the 'Your trends' overline via ScreenChrome (S6: serif-24 title ruling)", () => {
+    // ENG-1375 S6 — the hand-rolled 28px header was replaced by the
+    // ScreenChrome primitive (title = serif 24, the ONE tab-title voice).
+    expect(webSrc).toContain('overlineTestID="progress-overline"');
+    expect(webSrc).toContain('titleTestID="progress-header"');
+    expect(webSrc).not.toMatch(/text-\[28px\]/);
+    const prim = require("node:fs").readFileSync(
+      require("node:path").resolve(__dirname, "../../../src/app/components/suppr/screen-chrome.tsx"),
+      "utf8",
+    );
+    expect(prim).toMatch(/text-\[24px\]/);
   });
 
   it("web header carries a calendar icon button", () => {
