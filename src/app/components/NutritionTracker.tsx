@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { WifiOff } from "lucide-react";
 
@@ -184,12 +184,16 @@ interface NutritionTrackerProps {
   userTier: UserTier;
   onOpenProgress?: () => void;
   onOpenSettings?: () => void;
+  /** ENG-1495 — extra desktop-rail card(s) the TodayDesktopFrame appends
+   *  into `TodayDesktopRightRail` (the tracker's OWN single rail). */
+  railExtra?: ReactNode;
 }
 
 export const NutritionTracker = memo(function NutritionTracker({
   userTier,
   onOpenProgress,
   onOpenSettings,
+  railExtra,
 }: NutritionTrackerProps) {
   // User-configurable macro display variant. Default `tiles` matches
   // historic UI; `bars` is the Cronometer/Lose It-style list (Settings
@@ -1653,15 +1657,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
       />
 
-      {/* Phase 2 / B1.2 (D-2026-04-27-07) — streak as a calm pip
-          alongside the date row. Replaces the demoted streak ribbon
-          (already removed from this surface 2026-04-20). On
-          mobile-web the pip is right-aligned above the date header to
-          mirror the mobile composition. Suppressed on week-view to
-          keep the week toggle uncrowded. */}
-      {/* Streak pip — mobile-web only. On desktop (`lg+`) the streak
-          lives in the right rail's hero card so a second pip up here
-          would double-render the same fact. */}
+      {/* Streak pip (Phase 2 / B1.2, D-2026-04-27-07) — mobile-web only,
+          right-aligned above the date header; suppressed on week-view.
+          On desktop (`lg+`) the streak lives in the right rail's hero
+          card, so a second pip here would double-render the same fact. */}
       <div className="lg:flex lg:gap-8 lg:items-start">
         <div
           className={
@@ -2326,6 +2325,7 @@ export const NutritionTracker = memo(function NutritionTracker({
             todayDateKey={todayKey()}
             byDay={nutritionByDay}
             onSelectDayKey={(k) => setSelectedDateKey(k)}
+            railExtra={railExtra}
           />
         ) : null}
       </div>

@@ -61,6 +61,9 @@ const WEB_ONLY = new Set([
   // Web-only: mobile's native paywall isn't `/pricing` and already has a
   // persistent CTA bar + never shows a wrong-identity "Sign in" header.
   "pricing_conversion_pair_v1",
+  // ENG-1495 — desktop Today frame (chrome + railExtra around
+  // NutritionTracker at >=lg); mobile has no desktop breakpoint, so web-only.
+  "today_desktop_frame_v1",
 ]);
 
 const MOBILE_ONLY = new Set([

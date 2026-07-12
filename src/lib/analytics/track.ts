@@ -166,16 +166,12 @@ function flagForceOverride(flag: string): boolean | null {
  *   in TestFlight, so it is deliberately excluded from the ENG-1225 flag-
  *   collapse sweep. Mirror of the mobile note in `apps/mobile/lib/analytics.ts`.
  *
- * - `today_desktop_frame_v1` — ENG-1494 desktop two-column Today frame.
- *   DEFAULT-OFF *by design*: the 2026-04-20 prototype layout it implements
- *   failed device-validation against two later-ratified decisions (the
- *   household panel above the hero demotes the daily loop; Weekly Insight
- *   duplicates THIS WEEK). Wired so it's trialable via PostHog / force-
- *   flags; flip only after the frame conforms — see ENG-1495.
- *
  * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
  *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was fixed
- *  — the v3 cook baseline is now default-on.)
+ *  — the v3 cook baseline is now default-on. `today_desktop_frame_v1` moved
+ *  there 2026-07-10 after the ENG-1495 single-rail rework fixed the
+ *  device-validation failures that had kept it dark — see its entry in the
+ *  set.)
  */
 
 /** Redesign 2026 flag set — the new design is the DEFAULT in every build
@@ -473,6 +469,18 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // "Sign in" header + tier cards five sections deep with no early CTA
   // (kill switch).
   "pricing_conversion_pair_v1",
+  // ENG-1495 (2026-07-10) — desktop Today frame (ENG-1494 wiring), rebuilt
+  // SINGLE-RAIL and flipped default-ON once conformance was met: the frame
+  // adds only chrome (breadcrumb + slim household glance bar fed by
+  // HouseholdContext) above the tracker and appends the null-unless-data
+  // Apple Health card into the tracker's OWN right rail via `railExtra` —
+  // no second grid (the ENG-1494 outer grid squeezed the hero to ~316px),
+  // no above-the-hero HouseholdPanel (which pushed the ring ~1100px below
+  // the fold), no duplicate Weekly Insight (the tracker's THIS WEEK card
+  // covers it). WEB-ONLY — a >=lg desktop layout; mobile has no equivalent
+  // surface. Off → the direct `<NutritionTracker>` render in App.tsx
+  // (kill switch).
+  "today_desktop_frame_v1",
 ]);
 
 /**

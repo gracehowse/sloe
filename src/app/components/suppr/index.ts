@@ -122,13 +122,15 @@ export {
   type TodayBarcodeConfirmPayload,
 } from "./today-barcode-dialog";
 export { TodayDateHeader, type TodayDateHeaderProps } from "./today-date-header";
-// Desktop right-rail cards (2026-04-20 Claude Design Today-prototype port).
+// Desktop Today chrome (2026-04-20 Claude Design Today-prototype port).
 // Rendered only at `lg:` widths by `TodayDesktopFrame` — mobile-web Today
-// keeps its single-column flow and does not consume these.
+// keeps its single-column flow and does not consume these. (The rail's
+// TodayWeeklyInsightCard was DELETED in ENG-1495 — it duplicated the
+// tracker's own THIS WEEK card, `TodayDesktopRightRail`.)
 export {
-  TodayWeeklyInsightCard,
-  type TodayWeeklyInsightCardProps,
-} from "./today-weekly-insight-card";
+  TodayHouseholdGlanceBar,
+  type TodayHouseholdGlanceBarProps,
+} from "./today-household-glance-bar";
 export {
   TodayAppleHealthCard,
   type TodayAppleHealthCardProps,
