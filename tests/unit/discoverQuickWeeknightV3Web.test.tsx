@@ -63,3 +63,14 @@ describe("DiscoverQuickWeeknight (web)", () => {
     expect(queryByText("Quick weeknight")).toBeNull();
   });
 });
+
+describe("DiscoverQuickWeeknight (web) — ENG-1503 page inset", () => {
+  it("the section carries the standard < md page inset (px-4 md:px-0), matching sibling Discover sections", () => {
+    const { container } = render(
+      <DiscoverQuickWeeknight recipes={[rc("Egg wrap")]} onPressRecipe={() => {}} />,
+    );
+    const section = container.querySelector("section");
+    expect(section?.className).toContain("px-4");
+    expect(section?.className).toContain("md:px-0");
+  });
+});

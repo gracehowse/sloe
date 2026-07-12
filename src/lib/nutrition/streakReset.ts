@@ -9,9 +9,9 @@
  * simply hasn't logged yet (prior=0, current=0).
  *
  * Callers:
- *  - `src/app/components/NutritionTracker.tsx` — web `computeProtectedStreak`
- *    result feeds into a `useEffect` that diffs the prior ref against
- *    the current value.
+ *  - `src/lib/nutrition/useStreakResetCopy.ts` — web hook (host:
+ *    `NutritionTracker.tsx`); `computeProtectedStreak` result feeds a
+ *    `useEffect` that diffs the prior ref against the current value.
  *  - `apps/mobile/app/(tabs)/index.tsx` — same pattern on mobile.
  *
  * Both call sites MUST seed the prior ref with `null` on first mount

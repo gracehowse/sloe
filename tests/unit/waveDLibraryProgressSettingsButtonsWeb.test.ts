@@ -25,6 +25,8 @@ const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf
 
 const LIBRARY = read("src/app/components/Library.tsx");
 const PROGRESS = read("src/app/components/ProgressDashboard.tsx");
+// Inline Log-weight row extracted into ProgressWeightLogRow (ENG-1504).
+const PROGRESS_LOG_ROW = read("src/app/components/suppr/progress-weight-log-row.tsx");
 // Steps + Body-Fat inputs extracted into ProgressActivitySection (ENG-1225 #21).
 const PROGRESS_ACTIVITY = read("src/app/components/suppr/progress-activity-section.tsx");
 const SETTINGS = read("src/app/components/Settings.tsx");
@@ -64,20 +66,23 @@ describe("Wave D (web) — Library CTAs", () => {
 });
 
 describe("Wave D (web) — ProgressDashboard CTAs", () => {
-  it("imports the shared web SupprButton primitive", () => {
-    expect(PROGRESS).toMatch(
-      /import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr\/suppr-button(?:\.tsx)?"/,
+  it("imports the shared web SupprButton primitive (via the extracted log row)", () => {
+    // The host's only SupprButton lived in the inline Log-weight row, now
+    // extracted to ProgressWeightLogRow (ENG-1504).
+    expect(PROGRESS_LOG_ROW).toMatch(
+      /import\s*\{\s*SupprButton\s*\}\s*from\s*"\.\/suppr-button(?:\.tsx)?"/,
     );
   });
 
   it("'Log weight' is a QUIET ghost (v3 prototype — the chart stays the hero)", () => {
     // ENG-1247: conformed from a filled primary to `ghost` (the prototype's
     // calm `btn--secondary` Log-weight; the trend chart is the card's hero).
-    expect(PROGRESS).toMatch(
+    expect(PROGRESS_LOG_ROW).toMatch(
       /<SupprButton\s+variant="ghost"[\s\S]{0,260}data-testid="progress-log-weight"[\s\S]{0,160}Log weight\s*<\/SupprButton>/,
     );
-    // Handler preserved through the treatment change.
-    expect(PROGRESS).toMatch(/onClick=\{\(\) => void saveTodayWeight\(\)\}/);
+    // Handler preserved through the treatment change (host wires the action
+    // through the extracted row's onSave).
+    expect(PROGRESS).toMatch(/onSave=\{\(\) => void saveTodayWeight\(\)\}/);
   });
 
   it("inline Saves (Steps + Body fat) are GHOST secondaries", () => {

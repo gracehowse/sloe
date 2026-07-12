@@ -132,6 +132,38 @@ import { shoppingListShouldClear } from "../lib/planning/shoppingListLifecycle.t
 // unique so a lingering channel can never collide.
 let profileRealtimeSeq = 0;
 
+/**
+ * ENG-1493 — the EXACT `save_meal_plan` RPC payload for a plan + slot +
+ * anchor. One builder feeds (a) the debounced persist effect's RPC call,
+ * (b) the fingerprint it gates on, and (c) the hydration-time fingerprint
+ * seed — so the "already persisted, skip" comparison can never drift from
+ * what would actually be written.
+ */
+function buildSaveMealPlanArgs(
+  plan: DayPlan[],
+  localSlotId: string,
+  persistedStartDate: string,
+) {
+  return {
+    p_slot_id: cloudSlotIdFromLocal(localSlotId),
+    p_start_date: persistedStartDate,
+    p_plan: plan.map((dp) => ({
+      day: dp.day,
+      meals: dp.meals.map((m, idx) => ({
+        slot_index: idx,
+        name: m.name,
+        recipe_title: m.recipeTitle,
+        calories: m.calories,
+        protein: m.protein,
+        carbs: m.carbs,
+        fat: m.fat,
+        portion_multiplier: m.portionMultiplier ?? 1,
+        is_placeholder: m.isPlaceholder ?? false,
+      })),
+    })),
+  };
+}
+
 export type RedeemPromoResult =
   | { ok: true; tier: UserTier; alreadyRedeemed?: boolean }
   | {
@@ -447,6 +479,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
    * anchor fetch lands and re-anchor the plan to the today-fallback.
    */
   const mealPlanAnchorLoadedRef = useRef(false);
+  /**
+   * ENG-1493 — fingerprint (`JSON.stringify` of the exact RPC payload,
+   * see `buildSaveMealPlanArgs`) of the last state known to be persisted.
+   * Seeded on hydration with what a re-save WOULD write and updated after
+   * each successful save, so the debounced persist effect skips
+   * identity-only `mealPlan` changes (hydration writes the same plan back
+   * through `setMealPlanSlots`) instead of re-saving the identical plan on
+   * every /plan load — which also re-fired the Free-tier cap-rejection
+   * toast on load for accounts holding a multi-day plan. Real edits, slot
+   * switches, and `reanchorMealPlan` all change the payload (meals, slot
+   * id, or `p_start_date`), so they still persist.
+   */
+  const lastPersistedPlanFingerprintRef = useRef<string | null>(null);
   /** ENG-1492 twin — full-replacement flows (plan-import activate, template
    *  apply) re-anchor to today+offset before their `setMealPlan`; EDITS keep
    *  preserving the anchor. Marks the anchor loaded (this replacement
@@ -1014,6 +1059,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     // not label (or persist under) the newly active slot while its own
     // anchor is in flight.
     mealPlanAnchorLoadedRef.current = false;
+    // ENG-1493 — drop the previous fingerprint while this slot hydrates;
+    // it re-seeds below once the cloud plan lands.
+    lastPersistedPlanFingerprintRef.current = null;
     (async () => {
       if (!dbMealPlanEnabled) return;
       const slotId = activeMealPlanSlotIdRef.current;
@@ -1024,6 +1072,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setMealPlanStartDate(loaded?.startDate ?? null);
       mealPlanAnchorLoadedRef.current = true;
       if (!loaded?.plans.length) return;
+      // ENG-1493 — seed the persist gate with what the debounced effect
+      // WOULD write for the hydrated plan (same today-fallback anchor
+      // logic), so the `setMealPlanSlots` below — a pure identity change —
+      // doesn't re-save the identical plan on every load.
+      lastPersistedPlanFingerprintRef.current = JSON.stringify(
+        buildSaveMealPlanArgs(
+          loaded.plans,
+          slotId,
+          loaded.startDate ?? startDateForOffset(new Date(), 0),
+        ),
+      );
       setMealPlanSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, plan: loaded.plans } : s)));
     })();
     return () => {
@@ -1851,25 +1910,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       // longer leave an orphaned half.
       const persistedStartDate =
         mealPlanStartDateRef.current ?? startDateForOffset(new Date(), 0);
-      const planPayload = mealPlan.map((dp) => ({
-        day: dp.day,
-        meals: dp.meals.map((m, idx) => ({
-          slot_index: idx,
-          name: m.name,
-          recipe_title: m.recipeTitle,
-          calories: m.calories,
-          protein: m.protein,
-          carbs: m.carbs,
-          fat: m.fat,
-          portion_multiplier: m.portionMultiplier ?? 1,
-          is_placeholder: m.isPlaceholder ?? false,
-        })),
-      }));
-      const { error } = await supabase.rpc("save_meal_plan", {
-        p_slot_id: cloudSlotIdFromLocal(activeMealPlanSlotIdRef.current),
-        p_start_date: persistedStartDate,
-        p_plan: planPayload,
-      } as never);
+      const rpcArgs = buildSaveMealPlanArgs(
+        mealPlan,
+        activeMealPlanSlotIdRef.current,
+        persistedStartDate,
+      );
+      // ENG-1493 — skip identity-only re-saves: hydration writes the cloud
+      // plan back through `setMealPlanSlots`, which used to re-fire this
+      // effect and re-save the identical plan on every /plan load (and
+      // re-toast the Free-tier cap rejection). The fingerprint is the exact
+      // RPC payload, so any real change — meals, portion, slot, or the
+      // `reanchorMealPlan` start-date — still persists.
+      const fingerprint = JSON.stringify(rpcArgs);
+      if (fingerprint === lastPersistedPlanFingerprintRef.current) return;
+      const { error } = await supabase.rpc("save_meal_plan", rpcArgs as never);
 
       if (error) {
         const msg = error.message ?? "";
@@ -1904,6 +1958,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         console.error("[mealPlan] save_meal_plan failed:", msg);
         return;
       }
+      // ENG-1493 — remember what we just wrote so an identity-only change
+      // (or the exact same plan state) doesn't save again.
+      lastPersistedPlanFingerprintRef.current = fingerprint;
       // Legacy row saved via the today-fallback: adopt what we wrote so
       // the anchor is stable from here (a next-day edit must not drift it).
       if (!mealPlanStartDateRef.current) setMealPlanStartDate(persistedStartDate);

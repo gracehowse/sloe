@@ -123,6 +123,41 @@ describe("AppDataContext persist path — ENG-1491 anchor contract (source pins)
   });
 });
 
+describe("AppDataContext persist path — ENG-1493 identity-change gate (source pins)", () => {
+  it("one payload builder feeds the RPC, the gate, and the hydration seed", () => {
+    // The gate compares JSON of the EXACT RPC payload; a second hand-built
+    // payload shape would let the fingerprint drift from what is written.
+    expect(APP_DATA).toMatch(/function buildSaveMealPlanArgs\(/);
+    expect(APP_DATA).toMatch(
+      /const rpcArgs = buildSaveMealPlanArgs\(\s*mealPlan,\s*activeMealPlanSlotIdRef\.current,\s*persistedStartDate,\s*\);/,
+    );
+    expect(APP_DATA).toMatch(/supabase\.rpc\("save_meal_plan", rpcArgs as never\)/);
+  });
+
+  it("the debounced persist returns early when the fingerprint matches", () => {
+    expect(APP_DATA).toMatch(
+      /const fingerprint = JSON\.stringify\(rpcArgs\);\s*\n\s*if \(fingerprint === lastPersistedPlanFingerprintRef\.current\) return;/,
+    );
+  });
+
+  it("hydration seeds the fingerprint with what a re-save WOULD write", () => {
+    // Cleared while the slot's cloud plan is in flight…
+    expect(APP_DATA).toMatch(/lastPersistedPlanFingerprintRef\.current = null;/);
+    // …then seeded from the hydrated plan + the SAME today-fallback anchor
+    // logic the persist effect uses, so a /plan load never re-saves the
+    // identical plan (or re-fires the Free-tier cap-rejection toast).
+    expect(APP_DATA).toMatch(
+      /lastPersistedPlanFingerprintRef\.current = JSON\.stringify\(\s*buildSaveMealPlanArgs\(\s*loaded\.plans,\s*slotId,\s*loaded\.startDate \?\? startDateForOffset\(new Date\(\), 0\),\s*\),\s*\);/,
+    );
+  });
+
+  it("a successful save updates the fingerprint (real edits keep persisting)", () => {
+    expect(APP_DATA).toMatch(
+      /lastPersistedPlanFingerprintRef\.current = fingerprint;/,
+    );
+  });
+});
+
 describe("PlanV3Connected header week — ENG-1491 anchor gate (source pins)", () => {
   const V3 = readFileSync(
     resolve(ROOT, "src/app/components/plan/PlanV3Connected.tsx"),

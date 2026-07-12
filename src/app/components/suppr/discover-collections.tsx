@@ -42,7 +42,9 @@ export function DiscoverCollections({
   if (!enabled || tiles.length === 0) return null;
 
   return (
-    <section className="mt-6">
+    // ENG-1503 — standard mobile page inset, matching DiscoverQuickWeeknight
+    // and the sibling cluster sections (the host has no `< md` padding).
+    <section className="mt-6 px-4 md:px-0">
       <h2 className="mb-2 font-[family-name:var(--font-headline)] text-[18px] font-medium leading-[22px] text-foreground">
         Collections
       </h2>

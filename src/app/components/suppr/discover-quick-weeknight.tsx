@@ -36,7 +36,11 @@ export function DiscoverQuickWeeknight({
   if (!enabled || quick.length === 0) return null;
 
   return (
-    <section className="mt-6">
+    // ENG-1503 — standard mobile page inset (`px-4 md:px-0`, matching the
+    // sibling cluster sections in DiscoverFeed): the host container carries
+    // no `< md` horizontal padding, so a section without its own inset
+    // renders flush to the viewport edge.
+    <section className="mt-6 px-4 md:px-0">
       <div className="mb-2">
         <h2 className="font-[family-name:var(--font-headline)] text-[18px] font-medium leading-[22px] text-foreground">
           Quick weeknight
