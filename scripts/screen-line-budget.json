@@ -86,7 +86,7 @@
   "src/app/components/suppr/add-ingredient-dialog.tsx": 448,
   "src/app/components/suppr/create-custom-food-dialog.tsx": 1064,
   "src/app/components/suppr/daily-ring.tsx": 538,
-  "src/app/components/suppr/desktop-sidebar.tsx": 626,
+  "src/app/components/suppr/desktop-sidebar.tsx": 621,
   "src/app/components/suppr/digest-blended.tsx": 536,
   "src/app/components/suppr/digest.tsx": 667,
   "src/app/components/suppr/goal-pace-editor-dialog.tsx": 449,

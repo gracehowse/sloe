@@ -142,3 +142,50 @@ L994, Library L430 — containers, not controls); `MealPlanner` "+ New"
 plan-slot pill (L1438 — a create-new-collection affordance; converts
 with the S5+ slice if a ruling extends there); `FoodSearchPanel` L2755
 (ENG-814 flag fork — S7 scope).
+
+## Appendix — S5 avatar ruling (2026-07-10, ENG-1375)
+
+**ONE identity fill = solid damson/plum** — the mobile Figma `654:6`
+direction (`Accent.purple` #6A4B7A + white sans-bold initial). Retired:
+the web `--accent-info` avatar fill (Today header) and the plum→pink
+avatar gradients (desktop sidebar, pricing header). Functional
+**per-member accent micro-discs stay** (household surfaces) — colour is
+information there, not identity chrome.
+
+- Web primitive: `src/app/components/ui/avatar-disc.tsx` — sizes
+  18/22/28/36/52 (initials 9/9/11/13/18, all on the type ladder); fills
+  `identity` (new scheme-constant `--avatar-identity` token — the
+  theme-resolved `--accent-info` lightens to #9A7BAA in dark and fails AA
+  under white text) and `member` (accent via `householdMemberAccent`).
+- Mobile: `GradientAvatar`'s identity default flipped grey-ink →
+  `Accent.purple`; the `brand` gradient variant survives for
+  marketing-only surfaces.
+- Migrated in S5: web `today-date-header` (both avatar buttons),
+  `desktop-sidebar` profile entry (gradient + shadow retired; its
+  token-budget pin removed), `PricingHeaderAuth`, `EditorialProfileBlock`
+  monogram.
+- Later S5 slice (not drift — pinned by `profileAvatarGradient.test.ts`):
+  `SettingsProfileHeaderCard` (56px gradient — the last
+  `--avatar-gradient-accent` consumer; its size joins the ladder and its
+  parity pin moves in the same change), and household member-disc call
+  sites (`HouseholdBar`, `HouseholdSettingsPage`, `ShoppingList`, mobile
+  `HouseholdCard`) adopting the `member` variant.
+
+## Appendix — S6 screen-chrome ruling (2026-07-10, ENG-1375)
+
+**ONE sticky mobile-web tab header:** `src/app/components/suppr/
+screen-chrome.tsx`, mirroring mobile `screen-section-chrome.tsx` —
+overline (11/700/uppercase, tertiary ink) → serif title
+(`--font-headline`) → optional subtitle (13/600 muted) → trailing slot,
+hairline bottom border, hidden at `md+`.
+
+**Title ruling: ONE tab-title size = serif 24.** Mobile `Type.title`
+(serif 24) is canonical; web Progress's 28px forked it from sibling tabs
+(Plan/Recipes were already 24). Desktop headers (`text-3xl` Progress
+desktop header) are a different surface class — untouched here.
+
+- Migrated in S6: `recipes-tab-chrome`, `progress-tab-chrome` (28 → 24),
+  `plan-tab-chrome` (overline muted → shared tertiary ink) — all now thin
+  wrappers over the primitive; `today-date-header` titles re-skinned
+  sans-bold → the same serif-24 voice. Overline-rhythm pin re-pointed to
+  the primitive (`sectionHeaderRhythm.test.ts`).

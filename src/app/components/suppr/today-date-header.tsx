@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Icons } from "../ui/icons";
+import { AvatarDisc } from "../ui/avatar-disc";
 import { DayStrip } from "../DayStrip";
 import { StreakPip } from "./streak-pip";
 import { todayKey, formatDateLabel } from "../../../lib/nutrition/trackerDate";
@@ -121,10 +122,10 @@ export function TodayDateHeader({
               onClick={onOpenCalendar}
               aria-label="Choose date"
             >
-              <h1
-                className="font-bold text-foreground tracking-tight text-lg leading-tight"
-                style={{ letterSpacing: "-0.35px" }}
-              >
+              {/* S6 chrome title ruling (2026-07-10, ENG-1375): sans-bold →
+                  the S6 serif-24 tab-title voice (`ScreenChrome` grammar,
+                  mobile `Type.title`). */}
+              <h1 className="font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
                 {titleText}
               </h1>
               {dayGreeting && isToday ? (
@@ -165,10 +166,10 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[var(--accent-info)] text-white shrink-0"
+            className="md:hidden shrink-0 rounded-full"
             aria-label="Open settings"
           >
-            {avatarLetter}
+            <AvatarDisc initial={avatarLetter} size={36} />
           </button>
         </div>
         {streakResetCopyVisible ? streakResetLine : null}
@@ -201,10 +202,9 @@ export function TodayDateHeader({
                 {weekLabel}
               </p>
             ) : null}
-            <h1
-              className="font-bold text-foreground tracking-tight text-xl sm:text-2xl truncate"
-              style={{ fontSize: 24, letterSpacing: "-0.4px" }}
-            >
+            {/* S6 chrome title ruling (2026-07-10, ENG-1375): sans-bold →
+                the S6 serif-24 tab-title voice; mobile's compact date header is still Type.headline sans — convergence call tracked in ENG-1505. */}
+            <h1 className="font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
               {titleText}
             </h1>
             {dayGreeting && viewMode === "day" && isToday ? (
@@ -261,10 +261,10 @@ export function TodayDateHeader({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold bg-[var(--accent-info)] text-white"
+            className="md:hidden shrink-0 rounded-full"
             aria-label="Open settings"
           >
-            {avatarLetter}
+            <AvatarDisc initial={avatarLetter} size={36} />
           </button>
         </div>
       </div>

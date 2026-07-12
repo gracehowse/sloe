@@ -1,8 +1,8 @@
 "use client";
 
 import { Icons } from "../ui/icons";
+import { ScreenChrome } from "./screen-chrome";
 import { SubTabPill } from "../ui/sub-tab-pill";
-import { cn } from "../ui/utils";
 
 export type RecipesTab = "library" | "discover";
 
@@ -25,10 +25,9 @@ function navToView(view: "create" | "import") {
  * Sticky Recipes header for mobile-web — v3 prototype "Cook" tab (ENG-1247,
  * 2026-06-24): an overline "Cook" + serif "Your kitchen" title with pencil
  * (Create) + link (Import) icon actions, then the Cookbook / Discover underline
- * tabs. Sits above the sub-tabs (constant for both scopes), matching the
- * prototype `.t-head` over `.seg-tabs`. Supersedes the generic "Recipes"
- * no-overline treatment (Figma retired). Hidden at `md+` where the sidebar owns
- * navigation. Mobile parity: `apps/mobile/components/tabs/RecipesTabChrome.tsx`.
+ * tabs. Thin wrapper over the shared `ScreenChrome` since S6 (2026-07-10,
+ * ENG-1375). Hidden at `md+` where the sidebar owns navigation. Mobile
+ * parity: `apps/mobile/components/tabs/RecipesTabChrome.tsx`.
  */
 export function RecipesTabChrome({
   activeId,
@@ -36,23 +35,13 @@ export function RecipesTabChrome({
   className,
 }: RecipesTabChromeProps) {
   return (
-    <header
-      className={cn(
-        "md:hidden sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md",
-        className,
-      )}
-      data-testid="recipes-tab-chrome"
-    >
-      <div className="px-6 pt-3 pb-1 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-            Cook
-          </div>
-          <h1 className="mt-0.5 font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight text-foreground-brand">
-            Your kitchen
-          </h1>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
+    <ScreenChrome
+      overline="Cook"
+      title="Your kitchen"
+      className={className}
+      testID="recipes-tab-chrome"
+      trailing={
+        <>
           <button
             type="button"
             onClick={() => navToView("create")}
@@ -69,8 +58,9 @@ export function RecipesTabChrome({
           >
             <Icons.link className="w-[18px] h-[18px]" aria-hidden />
           </button>
-        </div>
-      </div>
+        </>
+      }
+    >
       <SubTabPill
         embedded
         items={[
@@ -82,6 +72,6 @@ export function RecipesTabChrome({
         accessibilityLabel="Recipes sections"
         className="pt-0 pb-3"
       />
-    </header>
+    </ScreenChrome>
   );
 }
