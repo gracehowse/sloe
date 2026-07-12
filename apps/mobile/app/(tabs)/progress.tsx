@@ -1666,8 +1666,8 @@ export default function ProgressScreen() {
 
         {/* On-target ribbon — real on-target-day count (ENG-1509). */}
         {(() => {
-          const n = weekStats.days.filter((d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories).length;
-          return <ProgressOnTargetRibbon onTargetCount={n} subtitle={`That's ${n} of 7 days.`} />;
+          const onTargetCount = weekStats.days.filter((d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories).length;
+          return <ProgressOnTargetRibbon onTargetCount={onTargetCount} subtitle={`That's ${onTargetCount} of 7 days.`} />;
         })()}
 
         {/* ── Preserved detail (below the frame's above-fold story) ──
