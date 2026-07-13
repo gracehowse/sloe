@@ -44,6 +44,31 @@ export function emailEntryDefaultsToSignUp(
 }
 
 /**
+ * Reads the device marker for routing decisions (ENG-1513). Returns `null`
+ * while the AsyncStorage read is in flight (callers show a launch screen to
+ * avoid a login↔onboarding flicker), then `true` if a session has ever existed
+ * on this install, `false` for a fresh install. An unreadable store resolves
+ * `false` (treat as fresh — the safe, common case).
+ */
+export function useHasSignedInBefore(): boolean | null {
+  const [value, setValue] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(HAS_SIGNED_IN_BEFORE_KEY)
+      .then((v) => {
+        if (!cancelled) setValue(v === "1");
+      })
+      .catch(() => {
+        if (!cancelled) setValue(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return value;
+}
+
+/**
  * Default mode for the login email form at the moment the chooser's
  * "Continue with email" is tapped: `true` → sign-UP (create account).
  */
