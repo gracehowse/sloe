@@ -2293,7 +2293,7 @@ function AppleHealthCardHost({
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
-    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayKey = dateKeyFromDate(new Date()); // ENG-1540: local day key — burn maps are local-keyed (healthSync); UTC misses today after ~5pm local in the Americas
     (async () => {
       try {
         const { data: profile, error } = await supabase

@@ -1,0 +1,9 @@
+{
+  "allow": {
+    "apps/mobile/lib/exportEverything.ts": "ENG-1540 — cosmetic UTC datestamp in the export FILENAME, not a data day-key; a filename dated by UTC is acceptable",
+    "src/lib/client/exportEverythingWeb.ts": "ENG-1540 — cosmetic UTC datestamp in the download FILENAME, not a data day-key"
+  },
+  "pins": {
+    "app/api/household/route.ts": 2
+  }
+}

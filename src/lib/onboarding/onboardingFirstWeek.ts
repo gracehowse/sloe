@@ -34,6 +34,8 @@ import {
   type PlannerTargets,
 } from "../nutrition/mealPlanAlgo";
 
+import { dateKeyFromDate } from "../datetime/dateKey";
+
 import type { OnboardingSeed } from "./onboardingSeeds";
 
 export type FirstWeekSupabaseClient = any;
@@ -163,7 +165,10 @@ export async function buildFirstWeekFromSeeds(
     };
   }
 
-  const startDate = args.startDate ?? new Date().toISOString().slice(0, 10);
+  // ENG-1540 — default the week start to the user's LOCAL calendar day.
+  // `toISOString().slice(0,10)` is UTC and rolls to tomorrow after ~17:00
+  // local in the Americas, starting the first-week plan on the wrong day.
+  const startDate = args.startDate ?? dateKeyFromDate(new Date());
   const slotId = args.slotId ?? null;
 
   // RPC contract: { p_plan: Json, p_slot_id: string, p_start_date: string }.
