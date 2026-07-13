@@ -18,6 +18,11 @@
  * `src/context/appData/persistence.ts` (`dateKey`) — those are NOT the
  * same semantics and were deliberately left in place.
  *
+ * ENG-1540: this rule is now CI-enforced. `check:date-key`
+ * (`scripts/check-date-key.mjs`, only-shrink) fails any new argless
+ * `new Date().toISOString().slice(...)` day-key derivation — a Build-41-class
+ * regression that kept coming back. Use this helper for day keys.
+ *
  * @param d - a `Date`, or a date string/number a `Date` constructor accepts
  *   (the mobile HealthKit sync passes raw sample timestamps that may be
  *   strings — this preserves the old `healthSync.dateKey(d: Date | string)`
