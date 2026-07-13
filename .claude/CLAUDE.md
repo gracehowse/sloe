@@ -90,6 +90,12 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   (mobile, via `PressableScale` with the right `haptic` weight) / hover +
   `:focus-visible` + active (web), plus disabled, plus loading on async
   commits (disable + progress — no double-submit, no silent success/failure).
+  **Enforced on mobile by the only-shrink ratchet** `check:pressable-feedback`
+  (`scripts/check-pressable-feedback.mjs`, ENG-1519, in `npm run ci` + CI): pins
+  the 84 legacy mobile files with raw feedbackless `<Pressable>`
+  (`scripts/pressable-feedback-budget.json`) — a new raw `<Pressable>` without
+  `PressableScale`/`SupprButton`/inline `({ pressed })` fails; migrate a pinned
+  file then re-pin lower with `npm run check:pressable-feedback:write`.
 - **One filled CTA per screen** (FAB + conversion surfaces excepted — see the
   2026-06-09 CTA decision). Secondary = outline, tertiary = ghost.
 - **Elevation per the card-grammar ruling (ENG-1497, 2026-07-10):**

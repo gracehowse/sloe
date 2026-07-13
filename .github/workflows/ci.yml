@@ -103,6 +103,12 @@ jobs:
         # in scripts/type-scale-mobile-budget.json and may only shrink; any new
         # off-ramp size (or a pinned file gaining one) fails.
         run: npm run check:type-scale-mobile
+      - name: Pressable-feedback ratchet (ENG-1519)
+        # Gives teeth to "Pressables go through PressableScale with the right
+        # haptic weight". Pins the 84 mobile files with raw feedbackless
+        # <Pressable> (scripts/pressable-feedback-budget.json) only-shrink; a new
+        # raw <Pressable> without PressableScale/SupprButton/inline pressed fails.
+        run: npm run check:pressable-feedback
       - name: Screen line-count ratchet (ENG-717)
         # Gives teeth to the "No screen file over 400 lines" rule. Scans
         # both web (src/app/components, app) and mobile (apps/mobile/app,
