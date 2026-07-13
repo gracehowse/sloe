@@ -1408,12 +1408,9 @@ function ProgressDashboardContent() {
             <div className="mt-3">
               <ResponsiveContainer width="100%" height={150}>
                 <LineChart data={weightChartData} margin={{ top: 6, right: 6, bottom: 0, left: 6 }}>
-                  <defs>
-                    <linearGradient id="weight-trend-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--macro-protein)" stopOpacity={0.18} />
-                      <stop offset="100%" stopColor="var(--macro-protein)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+                  {/* ENG-1526 — removed the `weight-trend-fill` gradient: a
+                      <Line> never fills (Recharts forces the curve to
+                      fill:"none"), so it painted nothing — dead defs. */}
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
                   <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
                   <Tooltip contentStyle={{ fontSize: 11 }} />
@@ -1425,7 +1422,6 @@ function ProgressDashboardContent() {
                       dataKey="value"
                       stroke="var(--macro-protein)"
                       strokeWidth={2.25}
-                      fill="url(#weight-trend-fill)"
                       dot={weightView === "scale" ? { r: 3, fill: "var(--card)", stroke: "var(--macro-protein)", strokeWidth: 2 } : false}
                       activeDot={{ r: 5, fill: "var(--macro-protein)", stroke: "var(--card)", strokeWidth: 2 }}
                       connectNulls
