@@ -5,6 +5,7 @@ import { IconBox } from "./ui/icon-box";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { toast } from "sonner";
+import { SignOutButton } from "./settings/SignOutButton";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "../../lib/nutrition/streakFreeze.ts";
 import { cmToFeetInches, feetInchesToCm, kgToLb, lbToKg } from "../../lib/units/imperial.ts";
@@ -795,17 +796,9 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
         </div>
       </div>
 
-      {/* Sign Out — matches mobile */}
-      <button
-        type="button"
-        onClick={() => {
-          void supabase.auth.signOut();
-          toast.success("Signed out");
-        }}
-        className="w-full py-3 rounded-xl border border-destructive/30 text-destructive text-sm font-semibold hover:bg-destructive/10 transition-colors mb-4"
-      >
-        Sign Out
-      </button>
+      {/* Sign Out — matches mobile; confirmed before ending the session
+          (ENG-1517). Extracted to SignOutButton to hold Profile's budget. */}
+      <SignOutButton />
 
       {/* Tabs */}
       <div className="border-t border-border pt-8">
