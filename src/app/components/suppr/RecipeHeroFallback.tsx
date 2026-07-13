@@ -63,7 +63,16 @@ function RecipeHeroFallbackImpl({ iconSize = 32, className, testId, ...input }: 
       data-bucket={fb.bucket}
       data-pattern={fb.pattern}
       data-glyph={fb.glyph}
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        // ENG-1552 — establish a size container so the glyph can scale with
+        // the slab (a fixed 32/48px glyph was lost in a 1100×260 hero and read
+        // as a broken image).
+        containerType: "size",
+      }}
     >
       <svg
         viewBox="0 0 100 100"
@@ -113,9 +122,14 @@ function RecipeHeroFallbackImpl({ iconSize = 32, className, testId, ...input }: 
         }}
       >
         <Glyph
-          width={iconSize}
-          height={iconSize}
-          style={{ color: fb.glyphColor }}
+          style={{
+            color: fb.glyphColor,
+            // ENG-1552 — scale with the container's smaller dimension
+            // (`cqmin`), floored at the caller's `iconSize` so small thumbs are
+            // unchanged and capped so a giant hero doesn't get a giant glyph.
+            width: `clamp(${iconSize}px, 30cqmin, 112px)`,
+            height: `clamp(${iconSize}px, 30cqmin, 112px)`,
+          }}
           aria-hidden
         />
       </div>
