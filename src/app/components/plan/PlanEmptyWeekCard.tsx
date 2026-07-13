@@ -8,7 +8,7 @@ import { Sparkles } from "lucide-react";
  * the whole week has zero planned meals, this ONE warm invitation card
  * replaces:
  *   - the dashed-box wall (`PlanEmptySlotV3` × every slot × every day), and
- *   - the "0 of 7 days land" verdict row (`PlanHeaderV3`) + the "0 / 1,900" /
+ *   - the "0 of 7 days on target" verdict row (`PlanHeaderV3`) + the "0 / 1,900" /
  *     "P 0g C 0g F 0g" zero-triad (`PlanDayDetailBandV3`) — derived numbers
  *     with nothing behind them yet (law 3).
  *

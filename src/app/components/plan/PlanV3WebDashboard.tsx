@@ -83,9 +83,11 @@ function useWeekStats(plan: DayPlan[], targetKcal: number): WeekStat[] {
       n === 0 ? 0 : Math.round(plannedDays.reduce((s, d) => s + pick(d), 0) / n);
     return [
       { value: `${n}/7`, label: "Days planned" },
-      { value: String(avg((d) => d.totals?.calories ?? 0)), label: "Avg cal" },
+      // ENG-1533 — comma-format kcal so it matches the "1,856" used everywhere
+      // else (was raw String() → "1856").
+      { value: avg((d) => d.totals?.calories ?? 0).toLocaleString(), label: "Avg cal" },
       { value: `${avg((d) => d.totals?.protein ?? 0)}g`, label: "Avg protein" },
-      { value: String(targetKcal), label: "Daily target" },
+      { value: targetKcal.toLocaleString(), label: "Daily target" },
     ];
   }, [plan, targetKcal]);
 }
@@ -266,7 +268,7 @@ export function PlanV3WebDashboard({
   const openDays = useOpenSlots(plan, weekDates);
 
   // ENG-1547 — law 3 (ENG-1372): a week with nothing planned yet shows NO
-  // verdict ("0 of 7 days land" is derived noise on an empty week, and it
+  // verdict ("0 of 7 days on target" is derived noise on an empty week, and it
   // duplicates the 0/7 stat below). Mobile's PlanV3Surface already gates
   // this; the desktop dashboard never did. Same predicate + flag as mobile.
   const weekIsEmpty =
@@ -318,7 +320,7 @@ export function PlanV3WebDashboard({
                     {WEEKDAY_LONG[date.getDay()] ?? "Day"} {date.getDate()}
                   </h3>
                   <span className="text-[11px] tabular-nums text-foreground-tertiary">
-                    {dayKcal > 0 ? `${dayKcalDisplay} / ${targetKcal} kcal` : "—"}
+                    {dayKcal > 0 ? `${dayKcalDisplay} / ${targetKcal.toLocaleString()} kcal` : "—"}
                   </span>
                 </div>
                 {ALL_MEAL_SLOTS.map((slot, slotIndex) => {

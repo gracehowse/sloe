@@ -18,7 +18,7 @@ void React;
 const partial: PlanWeekVerdict = {
   daysHit: 4,
   total: 7,
-  headline: "On track — 4 of 7 days land",
+  headline: "On track — 4 of 7 days on target",
   subline: "3 days need a meal or swap",
   tone: "neutral",
 };
@@ -46,7 +46,7 @@ describe("PlanHeaderV3 (web)", () => {
 
   it("renders the partial verdict headline + nudge subline", () => {
     const { getByText } = render(<PlanHeaderV3 {...baseProps} verdict={partial} />);
-    expect(getByText("On track — 4 of 7 days land")).not.toBeNull();
+    expect(getByText("On track — 4 of 7 days on target")).not.toBeNull();
     expect(getByText("3 days need a meal or swap")).not.toBeNull();
   });
 
@@ -74,7 +74,7 @@ describe("PlanHeaderV3 (web)", () => {
       <PlanHeaderV3 {...baseProps} verdict={null} />,
     );
     expect(getByText("Your plan")).not.toBeNull();
-    expect(queryByText(/days land/)).toBeNull();
+    expect(queryByText(/days on target/)).toBeNull();
   });
 
   it("exposes the action buttons and fires their handlers", () => {

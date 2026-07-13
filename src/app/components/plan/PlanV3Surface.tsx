@@ -206,7 +206,7 @@ export function PlanV3Surface({
     <>
       <PlanHeaderV3
         dateRangeLabel={weekLabel}
-        // ENG-1372 law 3 — no verdict/dot/jargon ("0 of 7 days land") until
+        // ENG-1372 law 3 — no verdict/dot/jargon ("0 of 7 days on target") until
         // ≥1 meal exists; the empty-week card carries the invitation instead.
         verdict={showEmptyWeekCard ? null : verdict}
         onGenerate={onGenerate}

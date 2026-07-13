@@ -12,7 +12,7 @@ import type { PlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
  * Parity twin of the prototype (`docs/ux/redesign/v3/Sloe-App.html` Plan
  * screen ~L4707–4721): the date-range overline + "Your plan" serif title with
  * three quiet action buttons (generate / adjust / templates), then a verdict
- * row — a tone dot + "On track — N of M days land" headline + "{M−N} days need
+ * row — a tone dot + "On track — N of M days on target" headline + "{M−N} days need
  * a meal or swap" nudge. The verdict comes from {@link PlanWeekVerdict}
  * (`computePlanWeekVerdict`), so completeness logic stays shared web↔mobile.
  *
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.dense,
   },
   dot: { width: 8, height: 8, borderRadius: Radius.full },
-  // Sentence case — the prototype renders "On track — N of M days land" as a
+  // Sentence case — the prototype renders "On track — N of M days on target" as a
   // sentence, not an overline (Type.label defaults to uppercase). ENG-1247.
   vHeadline: { ...Type.label, fontSize: 14, lineHeight: 18, textTransform: "none", letterSpacing: 0 },
   vSub: { ...Type.caption },

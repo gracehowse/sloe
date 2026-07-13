@@ -7,7 +7,7 @@
  * "lands" when ≥3 of its main slots (Breakfast / Lunch / Dinner) hold a real,
  * calorie-bearing meal. Snacks do NOT count toward the threshold. The per-day
  * week-strip ring shows `full` (≥3) / `part` (1–2) / `empty` (0). The headline
- * reads "On track — N of M days land" with a "{M−N} days need a meal or swap"
+ * reads "On track — N of M days on target" with a "{M−N} days need a meal or swap"
  * nudge, or "Every day lands on target" when all land.
  *
  * This is planning GAPS, not calorie accuracy — the day-detail calorie band
@@ -61,7 +61,7 @@ export function countPlanDayMainSlotsFilled(
  * simpler check: has the user planned literally nothing yet?). `null`/empty
  * `week`, or a week where every day's every slot is a placeholder, both
  * count as empty. Drives the warm invitation card that replaces the dashed-
- * box wall + zero-triad ("0 of 7 days land" / "0 / 1,900" / "P 0g C 0g F
+ * box wall + zero-triad ("0 of 7 days on target" / "0 / 1,900" / "P 0g C 0g F
  * 0g") — those numbers are derived noise on a week with nothing planned,
  * not a real status (law 3).
  */
@@ -85,7 +85,7 @@ export interface PlanWeekVerdict {
   daysHit: number;
   /** Total days in the plan (1 / 3 / 7 supported). */
   total: number;
-  /** Headline copy — "Every day lands on target" | "On track — N of M days land". */
+  /** Headline copy — "Every day lands on target" | "On track — N of M days on target". */
   headline: string;
   /** Nudge subline, or `null` when every day lands. */
   subline: string | null;
@@ -119,12 +119,14 @@ export function computePlanWeekVerdict(
     total,
     headline: allLand
       ? "Every day lands on target"
-      : `On track — ${daysHit} of ${total} days land`,
+      : `On track — ${daysHit} of ${total} days on target`,
     subline: allLand
       ? null
       : `${remaining} ${remaining === 1 ? "day needs" : "days need"} a meal or swap`,
     // ENG-1547 — a partially-filled week is progress, not a warning: "On
-    // track — N of M days land" pairs with a calm neutral dot, not amber.
+    // track — N of M days on target" pairs with a calm neutral dot, not amber.
+    // ENG-1533 — bare "days land" was insider jargon; "days on target" matches
+    // the app's standard vocabulary (weekly recap, Progress "N of 7 days").
     tone: allLand ? "success" : "neutral",
   };
 }

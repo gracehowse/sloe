@@ -29,7 +29,7 @@ import type { PlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
 const partial: PlanWeekVerdict = {
   daysHit: 4,
   total: 7,
-  headline: "On track — 4 of 7 days land",
+  headline: "On track — 4 of 7 days on target",
   subline: "3 days need a meal or swap",
   tone: "neutral",
 };
@@ -57,7 +57,7 @@ describe("PlanHeaderV3", () => {
 
   it("renders the partial verdict headline + nudge subline", () => {
     const { getByText } = render(<PlanHeaderV3 {...baseProps} verdict={partial} />);
-    expect(getByText("On track — 4 of 7 days land")).toBeTruthy();
+    expect(getByText("On track — 4 of 7 days on target")).toBeTruthy();
     expect(getByText("3 days need a meal or swap")).toBeTruthy();
   });
 
@@ -74,7 +74,7 @@ describe("PlanHeaderV3", () => {
       <PlanHeaderV3 {...baseProps} verdict={null} />,
     );
     expect(getByText("Your plan")).toBeTruthy();
-    expect(queryByText(/days land/)).toBeNull();
+    expect(queryByText(/days on target/)).toBeNull();
   });
 
   it("exposes the action buttons and fires their handlers", () => {
