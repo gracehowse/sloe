@@ -11,7 +11,7 @@
  * (Salad, Beef, Fish, Pizza, Cookie, Soup, Wheat, Utensils) — no
  * substitution needed at current pin.
  */
-import { memo } from "react";
+import { memo, useState } from "react";
 import { View, type ViewStyle, type StyleProp } from "react-native";
 import Svg, {
   Defs,
@@ -96,12 +96,24 @@ function RecipeHeroFallbackImpl({ iconSize = 32, style, testID, ...input }: Reci
   const Glyph = GLYPHS[fb.glyph];
   const patternId = `hero-p-${fb.pattern}-${input.id}`;
   const gradientId = `hero-g-${fb.bucket}-${input.id}`;
+  // ENG-1552 — RN has no container queries, so measure the slab and scale the
+  // glyph with its smaller dimension (floored at `iconSize` so thumbs are
+  // unchanged, capped at 112). Mirrors the web `clamp(iconSize, 30cqmin, 112)`.
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const glyphSize =
+    box.w > 0 && box.h > 0
+      ? Math.max(iconSize, Math.min(112, 0.3 * Math.min(box.w, box.h)))
+      : iconSize;
   return (
     <View
       style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }, style]}
       testID={testID ?? `recipe-hero-fallback-${input.id}`}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setBox((p) => (p.w === width && p.h === height ? p : { w: width, h: height }));
+      }}
     >
       <Svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100">
         <Defs>
@@ -135,7 +147,7 @@ function RecipeHeroFallbackImpl({ iconSize = 32, style, testID, ...input }: Reci
           justifyContent: "center",
         }}
       >
-        <Glyph size={iconSize} color={fb.glyphColor} />
+        <Glyph size={glyphSize} color={fb.glyphColor} />
       </View>
     </View>
   );
