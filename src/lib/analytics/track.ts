@@ -597,6 +597,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "discover_verified_filter_v1", // ENG-1417 — Discover "Verified only" filter chip (web-only in practice)
   "energy_numbers_v1", // ENG-1506/1507 — canonical energy numbers (selectMaintenance input policy + qualifiers)
   "referral_invite_loop_v1", // ENG-1541 — OFF until Pro-days entitlement grant is wired (unkeepable promise)
+  "mobile_preauth_reveal_v1", // ENG-1513 — MOBILE-ONLY (pre-auth onboarding reveal). Registered here only for the web↔mobile KNOWN_DEFAULT_OFF_FLAGS parity check; web already runs pre-auth (ENG-962).
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
