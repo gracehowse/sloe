@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -218,7 +219,23 @@ export default function SettingsScreen() {
                 `claude/settings-mobile-structural-fix` 2026-05-01.) */}
             <Pressable
               testID="settings-sign-out-row"
-              onPress={() => void supabase.auth.signOut()}
+              onPress={() =>
+                // ENG-1517 — confirm before ending the session. Sign Out sits
+                // directly below the destructive Delete-account control, so an
+                // instant no-confirm sign-out is a hazardous mis-tap. Not
+                // styled destructive (Sign Out is reversible), just gated.
+                Alert.alert(
+                  "Sign out?",
+                  "You'll need to sign in again to get back to your plan.",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Sign Out",
+                      onPress: () => void supabase.auth.signOut(),
+                    },
+                  ],
+                )
+              }
               accessibilityRole="button"
               accessibilityLabel="Sign out"
               style={{
