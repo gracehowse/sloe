@@ -32,6 +32,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -253,9 +254,9 @@ export function ReportRecipeSheet({
                   style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: Spacing.sm }}
                 >
                   <Text style={{ flex: 1, ...Type.navTitle, color: colors.text }}>Report an issue</Text>
-                  <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={12}>
+                  <PressableScale onPress={onClose} haptic="selection" accessibilityRole="button" accessibilityLabel="Close" hitSlop={12}>
                     <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
-                  </Pressable>
+                  </PressableScale>
                 </View>
                 <Text style={{ ...Type.bodyMuted, color: colors.textSecondary, marginTop: Spacing.xs, marginBottom: Spacing.md }}>
                   What&apos;s wrong with this recipe? Copyright claims go to our DMCA team; everything
@@ -265,9 +266,10 @@ export function ReportRecipeSheet({
                   {REASONS.map((r) => {
                     const Icon = r.icon;
                     return (
-                      <Pressable
+                      <PressableScale
                         key={r.key}
                         onPress={() => pick(r)}
+                        haptic="selection"
                         accessibilityRole="button"
                         accessibilityLabel={r.label}
                         style={{
@@ -300,7 +302,7 @@ export function ReportRecipeSheet({
                             {r.hint}
                           </Text>
                         </View>
-                      </Pressable>
+                      </PressableScale>
                     );
                   })}
                 </View>
