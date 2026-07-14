@@ -157,7 +157,7 @@ export function TodayDesktopRightRail({
           </h2>
           {weekAvgKcal != null && (
             <span className="text-[11px] font-semibold text-foreground tabular-nums">
-              {Math.round(weekAvgKcal).toLocaleString()} avg
+              {Math.round(weekAvgKcal).toLocaleString()} kcal avg
             </span>
           )}
         </div>
@@ -213,7 +213,7 @@ export function TodayDesktopRightRail({
           soft lift (`card-slab`). Was flat slab. */}
       <div className="rounded-card bg-card card-slab p-4">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2.5 px-1">
-          Daily breakdown
+          Last 7 days
         </h2>
         <ol className="space-y-0.5" role="list">
           {dateKeys.map((key) => {
@@ -263,11 +263,18 @@ export function TodayDesktopRightRail({
 
                   <span
                     className={cn(
-                      "w-10 shrink-0 text-right text-[10px] font-medium tabular-nums",
+                      "w-16 shrink-0 text-right text-[10px] font-medium tabular-nums",
                       calories === 0 ? "text-muted-foreground" : "text-foreground",
                     )}
                   >
-                    {calories === 0 ? "—" : Math.round(calories)}
+                    {calories === 0 ? (
+                      "—"
+                    ) : (
+                      <>
+                        {Math.round(calories)}
+                        <span className="text-muted-foreground"> kcal</span>
+                      </>
+                    )}
                   </span>
                 </button>
               </li>

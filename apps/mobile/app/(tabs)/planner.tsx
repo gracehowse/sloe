@@ -2972,7 +2972,7 @@ export default function PlannerScreen() {
             summary row that opens the dedicated household-settings
             screen; tester ask was explicit ("this page should just be
             showing the household, like the prototype"). */}
-        <HouseholdSummaryRow />
+        {!sloeV3Plan && <HouseholdSummaryRow />}
         </ReAnimated.View>
 
         <ReAnimated.View style={planEntrance.style}>
