@@ -73,6 +73,7 @@ import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useTrendOnlyWeight } from "../../lib/preferences/useTrendOnlyWeight.ts";
 import { describeTrendOnly, trendOnlyDirection, resolveEffectiveWeightSurfaceMode, TREND_ONLY_MODE_NOTE } from "../../lib/preferences/trendOnlyWeight.ts";
 import { WinMomentPlayer } from "./ui/win-moment-player.tsx";
+import { WeightChartTooltip } from "./progress/WeightChartTooltip.tsx";
 import { WeightPlateauInsight } from "./progress/WeightPlateauInsight.tsx";
 import { WeightMilestoneMoment } from "./progress/WeightMilestoneMoment.tsx";
 import { useWeightCelebration } from "./progress/useWeightCelebration.ts";
@@ -1409,11 +1410,10 @@ function ProgressDashboardContent() {
               <ResponsiveContainer width="100%" height={150}>
                 <LineChart data={weightChartData} margin={{ top: 6, right: 6, bottom: 0, left: 6 }}>
                   {/* ENG-1526 — removed the `weight-trend-fill` gradient: a
-                      <Line> never fills (Recharts forces the curve to
-                      fill:"none"), so it painted nothing — dead defs. */}
+                      <Line> never fills (fill:"none"), so it was dead defs. */}
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
                   <YAxis hide domain={["dataMin - 1", "dataMax + 1"]} />
-                  <Tooltip contentStyle={{ fontSize: 11 }} />
+                  <Tooltip cursor={{ stroke: "var(--border)", strokeDasharray: "4 4" }} content={<WeightChartTooltip unit={profileMeasurementSystem === "imperial" ? "lb" : "kg"} />} />
                   {/* Trend = MA line; Scale = raw weigh-ins. Brand-plum line —
                       parity w/ mobile WeightChart; was carbs-amber (ENG-1225). */}
                   {weightView === "scale" || showRawDots ? (
