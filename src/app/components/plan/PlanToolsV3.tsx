@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronRight, Flame, ShoppingCart } from "lucide-react";
+import { Flame, ShoppingCart } from "lucide-react";
 
 /**
  * PlanToolsV3 — the Sloe v3 Plan "plan tool" rows at the foot of the meal body.
@@ -49,12 +49,11 @@ function ToolButton({
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] font-semibold text-foreground">{title}</span>
+        <span className="block truncate text-[11px] font-semibold text-foreground">{title}</span>
         <span className="mt-px block truncate text-[10px] tabular-nums text-foreground-tertiary">
           {subtitle}
         </span>
       </span>
-      <ChevronRight className="size-4 shrink-0 text-foreground-tertiary" />
     </button>
   );
 }
