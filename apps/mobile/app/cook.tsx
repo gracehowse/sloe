@@ -1115,7 +1115,7 @@ export default function CookModeScreen() {
       flexDirection: "row",
       alignSelf: "center",
       backgroundColor: colors.card,
-      borderRadius: 999,
+      borderRadius: Radius.full,
       padding: 4,
       borderWidth: 1,
       borderColor: colors.border,
@@ -1124,7 +1124,7 @@ export default function CookModeScreen() {
     scalePill: {
       paddingHorizontal: 14,
       paddingVertical: 6,
-      borderRadius: 999,
+      borderRadius: Radius.full,
       minWidth: 44,
       alignItems: "center",
     },

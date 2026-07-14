@@ -4,7 +4,7 @@ import { Pressable, Text, View, type ImageStyle, type StyleProp } from "react-na
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
-import { Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useResolvedScheme } from "@/context/theme";
 import { decodeEntities } from "@/lib/decodeEntities";
@@ -84,7 +84,7 @@ export function DiscoverMoreIdeaRow({ item, idx, onPress }: DiscoverMoreIdeaRowP
         style={{
           width: 56,
           height: 56,
-          borderRadius: 10,
+          borderRadius: Radius.xl,
           overflow: "hidden",
           backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }, scheme),
         }}

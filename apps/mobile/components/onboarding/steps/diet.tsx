@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { Pressable, Text, View } from "react-native";
 import {
   Cookie,
@@ -145,7 +145,7 @@ export function MobileDietStep() {
               style={({ pressed }) => ({
                 paddingHorizontal: Spacing.dense,
                 paddingVertical: 8,
-                borderRadius: 999,
+                borderRadius: Radius.full,
                 backgroundColor: on ? accent.primary + "26" : colors.card,
                 borderWidth: 1,
                 borderColor: on ? accent.primary : colors.border,

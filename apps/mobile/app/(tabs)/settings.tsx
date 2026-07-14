@@ -16,7 +16,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { supabase } from "@/lib/supabase";
-import { Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 import { SettingsBundleContent } from "@/components/settings/SettingsBundleContent";
 import { DevFlagOverrides } from "@/components/settings/DevFlagOverrides";
@@ -164,7 +164,7 @@ export default function SettingsScreen() {
             backgroundColor: colors.card,
             // Sloe reskin: pill search field (was Radius.md 6px) so it
             // reads as a soft Sloe input, not a boxy form field.
-            borderRadius: 16,
+            borderRadius: Radius.xl,
             borderWidth: 1,
             borderColor: colors.border,
             gap: Spacing.sm,

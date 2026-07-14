@@ -1,5 +1,6 @@
 import * as React from "react";
 import { View } from "react-native";
+import { Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -34,7 +35,7 @@ export function OnboardingSegmentedProgress({
           style={{
             flex: 1,
             height: 4,
-            borderRadius: 999,
+            borderRadius: Radius.full,
             backgroundColor:
               index < value ? accent.primary : colors.inputBg,
           }}

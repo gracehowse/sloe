@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 import { Clock, Lock, type LucideIcon } from "lucide-react-native";
 import { useRouter } from "expo-router";
-import { Accent, FontFamily, Spacing } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
@@ -102,7 +102,7 @@ export function MobileWelcomeStep() {
           accessibilityLabel="Get started"
           style={({ pressed }) => ({
             height: 56,
-            borderRadius: 999,
+            borderRadius: Radius.full,
             backgroundColor: Accent.primaryForeground,
             alignItems: "center",
             justifyContent: "center",

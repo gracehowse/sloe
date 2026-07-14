@@ -400,7 +400,7 @@ export function MobileRevealStep() {
             backgroundColor: colors.card,
             borderColor: colors.border,
             borderWidth: 1,
-            borderRadius: 14,
+            borderRadius: Radius.xl,
             padding: Spacing.md,
             flexDirection: "row",
           }}
