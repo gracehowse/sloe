@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, LayoutChangeEvent, Text, View } from "react-native";
 import { Calendar, ChevronLeft, ChevronRight, Snowflake } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import {
   addDaysLocal,
@@ -169,7 +169,7 @@ export default function DayStrip({
           // Selected day-LETTER demoted to 70% white (prototype `.is-sel .dc-dow`
           // rgba(255,255,255,.7) + web `text-primary-foreground/70`); the day
           // NUMBER stays full white, so the letter doesn't read as loud. (ENG-1247 S1)
-          const labelColor = selectedFill ? accent.primaryForeground + "B3" : secondaryColor;
+          const labelColor = selectedFill ? withAlpha(accent.primaryForeground, 0xB3) : secondaryColor;
           return (
             <PressableScale
               key={`${dateKeyFromDate(weekStart)}-${dk}`}
@@ -229,7 +229,7 @@ export default function DayStrip({
                       borderRadius: 7,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: Accent.cyan + "33",
+                      backgroundColor: withAlpha(Accent.cyan, 0x33),
                     }}
                   >
                     <Snowflake size={IconSize.xs} color={Accent.cyan} strokeWidth={2} />

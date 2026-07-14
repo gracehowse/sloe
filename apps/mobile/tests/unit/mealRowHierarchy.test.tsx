@@ -5,7 +5,7 @@
  * The tracker's point is the energy figure, but the pre-1524 row whispered it:
  * the kcal value rendered at `Type.caption` (11pt) in secondary ink — the same
  * size as the timestamp and quieter than the food name — while the row divider
- * used a `cardBorderColor + "08"` (≈3% alpha) concat that was effectively
+ * used a `withAlpha(cardBorderColor, 0x08)` (≈3% alpha) concat that was effectively
  * invisible, so a slot's food rows read as one undivided block.
  *
  * This pins the corrected hierarchy:
@@ -19,6 +19,7 @@
  *      aggregates its children for VoiceOver, so the numeral alone isn't read).
  */
 import * as React from "react";
+import { withAlpha } from "@/constants/theme";
 import { StyleSheet } from "react-native";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
@@ -135,7 +136,7 @@ describe("TodayMealsSection — ENG-1524 meal-row hierarchy", () => {
       borderBottomWidth?: number;
     };
     expect(style.borderBottomColor).toBe(CARD_BORDER);
-    // Guard against the old `cardBorderColor + "08"` alpha concat.
+    // Guard against the old `withAlpha(cardBorderColor, 0x08)` alpha concat.
     expect(style.borderBottomColor).not.toContain("08");
     expect(style.borderBottomWidth).toBe(StyleSheet.hairlineWidth);
   });

@@ -15,6 +15,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { withAlpha } from "@/constants/theme";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fallbackSlotFromTimeOfDay, slotForHour } from "../../../../src/lib/nutrition/recipeJournalSlot";
@@ -170,7 +171,7 @@ describe("barcode.tsx — gap #3: corner-bracket reticle", () => {
   });
 
   it("does not use faint 50% opacity reticle", () => {
-    // Old pattern: borderColor: accent.primary + "80"
+    // Old pattern: borderColor: withAlpha(accent.primary, 0x80)
     expect(BARCODE_SRC).not.toContain('"80"');
   });
 });

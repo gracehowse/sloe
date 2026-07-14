@@ -20,7 +20,7 @@
 import * as React from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { Check, FileSpreadsheet, RotateCcw } from "lucide-react-native";
-import { Accent, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { authedFetch } from "@/lib/authedFetch";
@@ -160,9 +160,9 @@ export function MobileMfpCsvImportCard({
         borderWidth: 1,
         borderColor:
           state.kind === "success"
-            ? Accent.success + "66"
+            ? withAlpha(Accent.success, 0x66)
             : highlighted && state.kind === "idle"
-              ? accent.primary + "66"
+              ? withAlpha(accent.primary, 0x66)
               : colors.border,
       }}
     >
@@ -174,7 +174,7 @@ export function MobileMfpCsvImportCard({
             borderRadius: Radius.lg,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: accent.primaryLight + "26",
+            backgroundColor: withAlpha(accent.primaryLight, 0x26),
           }}
         >
           <FileSpreadsheet size={18} color={accent.primaryLight} />
@@ -198,7 +198,7 @@ export function MobileMfpCsvImportCard({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 4,
-                  backgroundColor: Accent.success + "26",
+                  backgroundColor: withAlpha(Accent.success, 0x26),
                   paddingHorizontal: 8,
                   paddingVertical: 3,
                   borderRadius: Radius.full,

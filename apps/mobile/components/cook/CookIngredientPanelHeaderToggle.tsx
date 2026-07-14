@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 import { ListChecks } from "lucide-react-native";
-import { Radius } from "@/constants/theme";
+import { withAlpha, Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
 
@@ -27,7 +27,7 @@ export function CookIngredientPanelHeaderToggle({
       testID="cook-ingredient-panel-toggle"
       onPress={onOpen}
       hitSlop={8}
-      style={[styles.toggle, { backgroundColor: colors.card }, open && { backgroundColor: accentInk + "18" }]}
+      style={[styles.toggle, { backgroundColor: colors.card }, open && { backgroundColor: withAlpha(accentInk, 0x18) }]}
     >
       <ListChecks
         size={20}

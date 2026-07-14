@@ -1,7 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   type PlanSourceMode,
@@ -65,7 +65,7 @@ export function PlanSourceSelector({
               style={[
                 styles.row,
                 { borderColor: colors.border, backgroundColor: colors.card },
-                selected && { borderColor: colors.tint, backgroundColor: colors.tint + "1A" },
+                selected && { borderColor: colors.tint, backgroundColor: withAlpha(colors.tint, 0x1A) },
               ]}
             >
               <View
@@ -84,7 +84,7 @@ export function PlanSourceSelector({
                   <View
                     style={[
                       styles.countBadge,
-                      { backgroundColor: selected ? colors.card : colors.border + "80" },
+                      { backgroundColor: selected ? colors.card : withAlpha(colors.border, 0x80) },
                     ]}
                   >
                     <Text

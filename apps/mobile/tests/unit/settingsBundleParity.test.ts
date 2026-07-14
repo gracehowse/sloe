@@ -17,6 +17,7 @@
  * Source-level structural check — no React rendering.
  */
 import { readFileSync } from "node:fs";
+import { withAlpha } from "@/constants/theme";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -353,7 +354,7 @@ describe("Settings — Figma `335:2` frame reskin", () => {
     const iconBoxBody =
       rowModule.slice(rowModule.indexOf("function IconBox")).split("\nexport function ")[0] ??
       "";
-    // IconBox swapped the colour-tinted rounded square (color + "18") for a
+    // IconBox swapped the colour-tinted rounded square (withAlpha(color, 0x18)) for a
     // white circle (background + cardBorder ring) per the frame.
     expect(iconBoxBody).toMatch(/borderRadius: size \/ 2/);
     expect(iconBoxBody).toMatch(/borderColor: colors\.cardBorder/);

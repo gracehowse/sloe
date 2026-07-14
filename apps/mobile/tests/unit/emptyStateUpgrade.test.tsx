@@ -5,7 +5,7 @@
  * The pre-2026-05-02 primitive surfaced empty tabs as 13pt bold over a
  * tiny 6pt gap — too quiet to read as a state. The new shape:
  *   - Optional `illustration` slot rendered inside a 72pt
- *     `accent.primary + "10"` tinted disc (scheme-resolved via `useAccent()`).
+ *     `withAlpha(accent.primary, 0x10)` tinted disc (scheme-resolved via `useAccent()`).
  *   - Title routed through `Type.headline` (17pt).
  *   - Description routed through `Type.body` (14pt).
  *   - Optional `cta` slot below.
@@ -15,6 +15,7 @@
  * are skipped so the existing call sites don't break.
  */
 import * as React from "react";
+import { withAlpha } from "@/constants/theme";
 import { Pressable, Text } from "react-native";
 import { describe, expect, it, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
@@ -90,7 +91,7 @@ describe("EmptyState (mobile) — 72pt illustration + headline ladder + CTA", ()
     // On light, `accent.primary === Accent.primary`, so this pin correctly
     // verifies the light-scheme disc colour.
     expect((disc as { backgroundColor?: string }).backgroundColor).toBe(
-      Accent.primary + "10",
+      withAlpha(Accent.primary, 0x10),
     );
   });
 

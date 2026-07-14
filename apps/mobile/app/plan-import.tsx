@@ -19,7 +19,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { getSupprApiBase } from "@/lib/supprWeb";
@@ -328,12 +328,12 @@ export default function PlanImportScreen() {
         subtitle: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: Spacing.md },
         // SLOE DS reskin (2026-06-07): cream surface-card slabs, 24px radius, serif headings — presentation only.
         callout: {
-          backgroundColor: Accent.success + "1F",
+          backgroundColor: withAlpha(Accent.success, 0x1F),
           borderRadius: Radius.xl,
           padding: Spacing.lg,
           marginBottom: Spacing.md,
           borderWidth: 1,
-          borderColor: Accent.success + "40",
+          borderColor: withAlpha(Accent.success, 0x40),
         },
         calloutTitle: { ...Type.label, color: Accent.successSolid, marginBottom: 6 },
         calloutItem: { ...Type.caption, color: colors.textSecondary, marginBottom: 4 },

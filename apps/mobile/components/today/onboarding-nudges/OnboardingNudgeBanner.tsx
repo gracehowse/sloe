@@ -4,7 +4,7 @@ import { Platform, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { BookOpen, Heart, Link2 } from "lucide-react-native";
 
-import { FontWeight, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, FontWeight, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -302,7 +302,7 @@ function OnboardingNudgeBannerImpl({
             borderRadius: Radius.sm,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: accent.primary + "1A",
+            backgroundColor: withAlpha(accent.primary, 0x1A),
           }}
         >
           <Icon size={16} color={accent.primary} strokeWidth={2.25} />
@@ -440,9 +440,9 @@ function OnboardingNudgeBannerImpl({
         marginTop: Spacing.sm,
         padding: Spacing.sm,
         borderRadius: Radius.md,
-        backgroundColor: accent.primary + "0A",
+        backgroundColor: withAlpha(accent.primary, 0x0A),
         borderWidth: 1,
-        borderColor: accent.primary + "30",
+        borderColor: withAlpha(accent.primary, 0x30),
       }}
     >
       {body}

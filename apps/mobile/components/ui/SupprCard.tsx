@@ -5,7 +5,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 
@@ -231,7 +231,7 @@ function computeToneStyle(
       };
     case "success":
       return {
-        backgroundColor: Accent.success + "1A", // Accent.success @ ~10%
+        backgroundColor: withAlpha(Accent.success, 0x1A), // Accent.success @ ~10%
         borderColor: colors.sourceUsda,
       };
     case "warning":
@@ -241,7 +241,7 @@ function computeToneStyle(
       };
     case "magenta":
       return {
-        backgroundColor: Accent.win + "1A", // Sloe damson (Accent.win) @ ~10%
+        backgroundColor: withAlpha(Accent.win, 0x1A), // Sloe damson (Accent.win) @ ~10%
         borderColor: colors.sourceAi,
       };
     case "neutral":

@@ -11,7 +11,7 @@ import {
 } from "lucide-react-native";
 import { CalorieRingDial } from "@/components/charts/CalorieRingDial";
 import { useHaptics } from "@/hooks/useHaptics";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { Layout } from "@/constants/layout";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -633,7 +633,7 @@ function MacroTile({
           marginTop: Spacing.sm,
           height: 3,
           borderRadius: 2,
-          backgroundColor: color + "22",
+          backgroundColor: withAlpha(color, 0x22),
         }}
       >
         <View

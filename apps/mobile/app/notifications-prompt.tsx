@@ -17,7 +17,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -139,7 +139,7 @@ export default function NotificationsPromptScreen() {
     },
     badge: {
       width: 100, height: 100, borderRadius: 50,
-      backgroundColor: Accent.success + "15",
+      backgroundColor: withAlpha(Accent.success, 0x15),
       justifyContent: "center", alignItems: "center",
       marginBottom: Spacing.xl,
     },
@@ -270,7 +270,7 @@ function BulletRow({
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: Accent.success + "15",
+          backgroundColor: withAlpha(Accent.success, 0x15),
           alignItems: "center",
           justifyContent: "center",
           marginTop: 1,

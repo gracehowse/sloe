@@ -24,7 +24,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { Accent } from "@/constants/theme";
+import { withAlpha, Accent } from "@/constants/theme";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
@@ -81,7 +81,7 @@ const LIGHT_CARD = "#ffffff"; // Colors.light.card
 const DARK_CARD = "#211A2A"; // Colors.dark.card
 const LIGHT_BG2 = "#F1F0F4"; // Colors.light.backgroundSecondary — the chip surface
 const DARK_BG2 = "#1A1422"; // Colors.dark.backgroundSecondary
-// The Badge fill is `color + "24"` (hex 0x24 = 36/255 ≈ 14% alpha); the
+// The Badge fill is `withAlpha(color, 0x24)` (hex 0x24 = 36/255 ≈ 14% alpha); the
 // StreakInsight card uses an 8% success tint behind the headline.
 const BADGE_TINT = 14;
 const STREAK_CARD_TINT = 8;

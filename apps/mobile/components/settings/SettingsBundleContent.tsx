@@ -64,7 +64,7 @@ import {
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { CARD_RADIUS, SHEET_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -1634,7 +1634,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 width: 36,
                 height: 36,
                 borderRadius: Radius.full,
-                backgroundColor: accent.primary + "22",
+                backgroundColor: withAlpha(accent.primary, 0x22),
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -1694,7 +1694,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 width: 36,
                 height: 36,
                 borderRadius: Radius.full,
-                backgroundColor: accent.primary + "18",
+                backgroundColor: withAlpha(accent.primary, 0x18),
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -2542,7 +2542,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   width: 48,
                   height: 48,
                   borderRadius: Radius.full,
-                  backgroundColor: t.amber + "18",
+                  backgroundColor: withAlpha(t.amber, 0x18),
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: Spacing.md,
@@ -2655,7 +2655,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               disabled={resetting}
               style={{
                 borderWidth: 1,
-                borderColor: t.red + "40",
+                borderColor: withAlpha(t.red, 0x40),
                 borderRadius: Radius.md,
                 paddingVertical: 16,
                 alignItems: "center",

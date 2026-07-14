@@ -1,6 +1,6 @@
 import { Text, View, StyleSheet } from "react-native";
 import { Check } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCookIngredientChecklist } from "@/hooks/useCookIngredientChecklist";
@@ -71,7 +71,7 @@ export function CookIngredientChecklist({
                 styles.check,
                 {
                   borderColor: checked ? Accent.success : colors.border,
-                  backgroundColor: checked ? Accent.success + "18" : colors.card,
+                  backgroundColor: checked ? withAlpha(Accent.success, 0x18) : colors.card,
                 },
               ]}
             >

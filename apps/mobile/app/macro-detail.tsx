@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Plus, Salad } from "lucide-react-native";
 
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import { MacroIngredientList } from "@/components/nutrition/MacroIngredientList";
@@ -130,7 +130,7 @@ export default function MacroDetailScreen() {
         caption={formatDateLabel(dateKey)}
         onBack={() => router.back()}
         rightSlot={
-          <View style={{ backgroundColor: config.color + "20", paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm, borderRadius: Radius.sm }}>
+          <View style={{ backgroundColor: withAlpha(config.color, 0x20), paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm, borderRadius: Radius.sm }}>
             <Text style={{ fontSize: 16, fontWeight: "800", color: config.color, fontVariant: ["tabular-nums"] }}>
               {loading ? `—${config.unit}` : `${Math.round(total * 10) / 10}${config.unit}`}
             </Text>
@@ -318,7 +318,7 @@ export default function MacroDetailScreen() {
             })}
 
             {/* Visual breakdown bar */}
-            <View style={{ marginTop: Spacing.lg, padding: Spacing.md, borderRadius: Radius.md, backgroundColor: config.color + "10" }}>
+            <View style={{ marginTop: Spacing.lg, padding: Spacing.md, borderRadius: Radius.md, backgroundColor: withAlpha(config.color, 0x10) }}>
               <View style={{ flexDirection: "row", gap: 2, height: 8, borderRadius: 4, overflow: "hidden", backgroundColor: colors.border }}>
                 {meals.map((meal, i) => {
                   const val = Number(meal[config.field]) || 0;

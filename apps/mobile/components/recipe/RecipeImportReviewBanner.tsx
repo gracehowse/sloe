@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { AlertTriangle } from "lucide-react-native";
 
 import { SupprButton } from "@/components/ui/SupprButton";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { importReviewBannerCopy } from "@suppr/nutrition-core/recipeImportReview";
 
@@ -23,7 +23,7 @@ export function RecipeImportReviewBanner({
 
   return (
     <View
-      style={[styles.banner, { backgroundColor: Accent.warning + "22" }]}
+      style={[styles.banner, { backgroundColor: withAlpha(Accent.warning, 0x22) }]}
       testID="recipe-import-review-banner"
       accessibilityRole="summary"
     >

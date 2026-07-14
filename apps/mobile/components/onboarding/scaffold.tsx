@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ScrollView, Text, View, ViewStyle, StyleProp } from "react-native";
 import { Sparkles } from "lucide-react-native";
-import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { withAlpha, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useOnboarding } from "./context";
@@ -136,9 +136,9 @@ export function MobileMethodologyNote({
       style={{
         marginTop: Spacing.lg,
         padding: Spacing.md,
-        backgroundColor: accent.primary + "10",
+        backgroundColor: withAlpha(accent.primary, 0x10),
         borderWidth: 1,
-        borderColor: accent.primary + "26",
+        borderColor: withAlpha(accent.primary, 0x26),
         borderRadius: Radius.md,
         flexDirection: "row",
         gap: Spacing.sm,

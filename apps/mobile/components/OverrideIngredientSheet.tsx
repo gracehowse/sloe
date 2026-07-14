@@ -20,7 +20,7 @@ import {
   View,
 } from "react-native";
 
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { SupprButton } from "./ui/SupprButton";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import {
@@ -150,7 +150,7 @@ export default function OverrideIngredientSheet({
     // Layout-only override for the SupprButton Cancel/Save (padding/radius/colour
     // come from the button system; this only matches the destructive button width).
     btnLayout: { minWidth: 96 },
-    btnDestructive: { backgroundColor: "transparent", borderWidth: 1, borderColor: Accent.destructive + "80" },
+    btnDestructive: { backgroundColor: "transparent", borderWidth: 1, borderColor: withAlpha(Accent.destructive, 0x80) },
     btnDestructiveText: { color: Accent.destructive, fontWeight: "600", fontSize: 14 },
   });
 

@@ -13,7 +13,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
@@ -274,7 +274,7 @@ export default function DuplicateDaySheet({
                         backgroundColor: isHighlighted
                           ? accent.primary
                           : inRange
-                            ? accent.primary + "22"
+                            ? withAlpha(accent.primary, 0x22)
                             : "transparent",
                         opacity: disabled ? 0.28 : 1,
                       }}

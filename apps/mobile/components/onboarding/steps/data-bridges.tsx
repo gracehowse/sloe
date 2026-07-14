@@ -57,7 +57,7 @@ import {
   Heart,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -287,7 +287,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
             alignItems: "center",
             gap: 8,
             marginTop: 8,
-            backgroundColor: Accent.warning + "1A",
+            backgroundColor: withAlpha(Accent.warning, 0x1A),
             borderRadius: Radius.sm,
             paddingHorizontal: Spacing.dense,
             paddingVertical: 8,
@@ -457,7 +457,7 @@ function BridgeCard({
         padding: 16,
         marginBottom: 20, // Spacing.lg — breathable inter-card gap (was off-scale 12 = too tight, per Grace)
         borderWidth: 1,
-        borderColor: grantedBadge ? Accent.success + "66" : colors.border,
+        borderColor: grantedBadge ? withAlpha(Accent.success, 0x66) : colors.border,
       }}
     >
       <View
@@ -470,7 +470,7 @@ function BridgeCard({
             borderRadius: Radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: iconColor + "26",
+            backgroundColor: withAlpha(iconColor, 0x26),
           }}
         >
           <Icon size={18} color={iconColor} />
@@ -494,7 +494,7 @@ function BridgeCard({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 4,
-                  backgroundColor: Accent.success + "26",
+                  backgroundColor: withAlpha(Accent.success, 0x26),
                   paddingHorizontal: 8,
                   paddingVertical: Spacing.xs,
                   borderRadius: Radius.full,

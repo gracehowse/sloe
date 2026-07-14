@@ -76,7 +76,7 @@ import {
   CloudOff,
   X,
 } from "lucide-react-native";
-import { Accent, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
+import { withAlpha, Accent, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Layout } from "@/constants/layout";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
@@ -3025,7 +3025,7 @@ export default function TrackerScreen() {
           paddingVertical: Spacing.xs,
           paddingHorizontal: Spacing.md,
           borderWidth: 1,
-          borderColor: accent.primary + "30",
+          borderColor: withAlpha(accent.primary, 0x30),
           alignSelf: "flex-start",
         },
         offlineBannerText: { ...Type.caption, fontWeight: "600", color: colors.text },
@@ -4303,7 +4303,7 @@ export default function TrackerScreen() {
         {loadError && (
           <PressableScale haptic="selection"
             onPress={() => { setLoadError(null); void loadJournal(); }}
-            style={{ backgroundColor: Accent.destructive + "18", borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
+            style={{ backgroundColor: withAlpha(Accent.destructive, 0x18), borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
           >
             <AlertCircle size={18} color={Accent.destructive} strokeWidth={1.75} />
             <Text style={{ flex: 1, ...Type.caption, color: Accent.destructive, fontWeight: "600" }}>
@@ -5442,7 +5442,7 @@ export default function TrackerScreen() {
             style={{
               backgroundColor: colors.card,
               borderWidth: 1,
-              borderColor: Accent.success + "60",
+              borderColor: withAlpha(Accent.success, 0x60),
               paddingHorizontal: Spacing.lg,
               paddingVertical: Spacing.md,
               borderRadius: Radius.lg,

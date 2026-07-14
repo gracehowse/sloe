@@ -13,7 +13,7 @@
 import * as React from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { ArrowRight } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { CsvSampleRow } from "@suppr/shared/imports/useCsvImportFlow";
@@ -79,7 +79,7 @@ export function CsvImportPreview({
           >
             <View
               style={{
-                backgroundColor: accent.primaryLight + "1a",
+                backgroundColor: withAlpha(accent.primaryLight, 0x1A),
                 borderRadius: Radius.full,
                 paddingHorizontal: Spacing.sm,
                 paddingVertical: 3,

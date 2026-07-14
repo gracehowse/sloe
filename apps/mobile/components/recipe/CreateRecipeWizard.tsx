@@ -59,7 +59,7 @@ import {
   X,
 } from "lucide-react-native";
 
-import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
+import { withAlpha, Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -898,7 +898,7 @@ export default function CreateRecipeWizard() {
           backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: accent.primary + "30",
+          borderColor: withAlpha(accent.primary, 0x30),
           padding: Spacing.lg,
           ...(cardElevation.shadowStyle ?? {}),
         },
@@ -945,7 +945,7 @@ export default function CreateRecipeWizard() {
           bottom: 0,
           left: 0,
           right: 0,
-          backgroundColor: colors.background + "f0",
+          backgroundColor: withAlpha(colors.background, 0xF0),
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: colors.border,
           paddingHorizontal: Spacing.xl,

@@ -48,7 +48,7 @@ import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, FontFamily, Type } from "@/constants/theme";
+import { withAlpha, Accent, MacroColors, MacroColorsDark, Spacing, Radius, FontFamily, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -1370,7 +1370,7 @@ export default function ImportSharedScreen() {
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: accent.primary + "18",
+      backgroundColor: withAlpha(accent.primary, 0x18),
       alignItems: "center",
       justifyContent: "center",
     },
@@ -1419,7 +1419,7 @@ export default function ImportSharedScreen() {
       backgroundColor: colors.card,
       borderRadius: Radius.xl * 2,
       borderWidth: 1,
-      borderColor: Accent.success + "35",
+      borderColor: withAlpha(Accent.success, 0x35),
       paddingVertical: Spacing.xxxl,
       paddingHorizontal: Spacing.xxl,
       alignItems: "center",
@@ -1469,12 +1469,12 @@ export default function ImportSharedScreen() {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: Accent.success + "15",
+      backgroundColor: withAlpha(Accent.success, 0x15),
       paddingVertical: 10,
       paddingHorizontal: Spacing.lg,
       borderRadius: Radius.full,
       borderWidth: 1,
-      borderColor: Accent.success + "35",
+      borderColor: withAlpha(Accent.success, 0x35),
       marginTop: Spacing.xs,
       marginBottom: Spacing.sm,
     },
@@ -1527,10 +1527,10 @@ export default function ImportSharedScreen() {
       paddingVertical: Spacing.md,
       borderRadius: Radius.xl,
       borderWidth: 1,
-      borderColor: accent.primary + "55",
+      borderColor: withAlpha(accent.primary, 0x55),
       marginTop: Spacing.xs,
     },
-    outlineBtnPressed: { backgroundColor: accent.primary + "12" },
+    outlineBtnPressed: { backgroundColor: withAlpha(accent.primary, 0x12) },
     outlineBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 15 },
 
     textLinkBtn: {
@@ -1672,7 +1672,7 @@ export default function ImportSharedScreen() {
       paddingHorizontal: Spacing.sm,
       paddingVertical: 2,
       borderRadius: Radius.full, // tags census 2026-06-10
-      backgroundColor: Accent.warning + "1F",
+      backgroundColor: withAlpha(Accent.warning, 0x1F),
     },
     proPillText: {
       fontFamily: Type.captionSmall.fontFamily,
@@ -1870,10 +1870,10 @@ export default function ImportSharedScreen() {
     // panel it sits inside.
     macroCardContainer: {
       alignSelf: "stretch",
-      backgroundColor: Accent.success + "18",
+      backgroundColor: withAlpha(Accent.success, 0x18),
       borderRadius: Radius.xl * 2,
       borderWidth: 1,
-      borderColor: Accent.success + "30",
+      borderColor: withAlpha(Accent.success, 0x30),
       padding: Spacing.lg,
       marginBottom: Spacing.lg,
       gap: Spacing.sm,
@@ -1957,7 +1957,7 @@ export default function ImportSharedScreen() {
     },
     importIngRowNeedsReview: {
       borderColor: Accent.warning,
-      backgroundColor: Accent.warning + "10",
+      backgroundColor: withAlpha(Accent.warning, 0x10),
     },
     importIngRowPressed: {
       opacity: 0.75,
@@ -2280,7 +2280,7 @@ export default function ImportSharedScreen() {
                     paddingVertical: 8,
                     paddingHorizontal: 14,
                     borderRadius: Radius.md,
-                    backgroundColor: accent.primary + "18",
+                    backgroundColor: withAlpha(accent.primary, 0x18),
                   }}
                 >
                   <Text style={{ color: accent.primarySolid, fontWeight: "800", fontSize: 14 }}>Done</Text>
@@ -2325,9 +2325,9 @@ export default function ImportSharedScreen() {
                     marginTop: Spacing.md,
                     padding: Spacing.md,
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.warning + "1A",
+                    backgroundColor: withAlpha(Accent.warning, 0x1A),
                     borderWidth: 1,
-                    borderColor: Accent.warning + "55",
+                    borderColor: withAlpha(Accent.warning, 0x55),
                     flexDirection: "row",
                     alignItems: "flex-start",
                     gap: 10,

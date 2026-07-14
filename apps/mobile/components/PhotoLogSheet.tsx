@@ -55,7 +55,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ArrowRight, Camera, Images, Plus, X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
@@ -597,7 +597,7 @@ export default function PhotoLogSheet({
                       paddingVertical: 12,
                       alignItems: "center",
                       borderRadius: Radius.md,
-                      backgroundColor: accent.primary + "22",
+                      backgroundColor: withAlpha(accent.primary, 0x22),
                       flexDirection: "row",
                       justifyContent: "center",
                       gap: 6,
@@ -645,8 +645,8 @@ export default function PhotoLogSheet({
                 accessibilityRole="alert"
                 style={{
                   borderWidth: 1,
-                  borderColor: Accent.destructive + "66",
-                  backgroundColor: Accent.destructive + "10",
+                  borderColor: withAlpha(Accent.destructive, 0x66),
+                  backgroundColor: withAlpha(Accent.destructive, 0x10),
                   borderRadius: Radius.md,
                   padding: Spacing.md,
                 }}
@@ -701,8 +701,8 @@ export default function PhotoLogSheet({
                             paddingHorizontal: 10,
                             paddingVertical: 8,
                             borderWidth: 1,
-                            borderColor: low ? Accent.warning + "55" : colors.cardBorder,
-                            backgroundColor: low ? Accent.warning + "0F" : colors.background,
+                            borderColor: low ? withAlpha(Accent.warning, 0x55) : colors.cardBorder,
+                            backgroundColor: low ? withAlpha(Accent.warning, 0x0F) : colors.background,
                             borderRadius: Radius.sm,
                             marginBottom: 4,
                           }}
@@ -759,7 +759,7 @@ export default function PhotoLogSheet({
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    backgroundColor: accent.primary + "1A",
+                    backgroundColor: withAlpha(accent.primary, 0x1A),
                     paddingHorizontal: 12,
                     paddingVertical: 10,
                     borderRadius: Radius.md,

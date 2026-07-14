@@ -35,7 +35,7 @@ import {
 import { useHaptics } from "@/hooks/useHaptics";
 import { decode } from "base64-arraybuffer";
 
-import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -887,7 +887,7 @@ export default function CreateRecipeScreen() {
     // Totals
     totalsCard: {
       backgroundColor: colors.card, borderRadius: Radius.xl,
-      borderWidth: 1, borderColor: accent.primary + "30",
+      borderWidth: 1, borderColor: withAlpha(accent.primary, 0x30),
       padding: Spacing.lg,
     },
     totalsRow: { flexDirection: "row", justifyContent: "space-around" },
@@ -942,7 +942,7 @@ export default function CreateRecipeScreen() {
     coverHeroCta: {
       flexDirection: "row", alignItems: "center", gap: Spacing.sm,
       paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-      borderRadius: Radius.full, backgroundColor: colors.background + "E6",
+      borderRadius: Radius.full, backgroundColor: withAlpha(colors.background, 0xE6),
     },
     quickRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
     // Three peer entry actions — all ghost SupprButtons (no one is the primary).
@@ -1177,7 +1177,7 @@ export default function CreateRecipeScreen() {
                 <Search size={20} color={accent.primary} />
               </Pressable>
               <Pressable style={styles.removeBtn} onPress={() => removeIngredient(ing.id)} accessibilityLabel="Remove ingredient">
-                <CircleX size={20} color={Accent.destructive + "B0"} />
+                <CircleX size={20} color={withAlpha(Accent.destructive, 0xB0)} />
               </Pressable>
             </View>
           ))}
@@ -1248,7 +1248,7 @@ export default function CreateRecipeScreen() {
           <Switch
             value={publish}
             onValueChange={setPublish}
-            trackColor={{ false: colors.border, true: accent.primary + "80" }}
+            trackColor={{ false: colors.border, true: withAlpha(accent.primary, 0x80) }}
             thumbColor={publish ? accent.primary : colors.textTertiary}
           />
         </View>

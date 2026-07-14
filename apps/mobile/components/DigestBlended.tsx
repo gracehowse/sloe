@@ -28,7 +28,7 @@ import {
 import { Share2, X } from "lucide-react-native";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -173,7 +173,7 @@ export function DigestBlended(props: DigestProps) {
   // progress_digest_beige_v2 (Option A): pull mobile's hero off the opaque slab to
   // web's muted/40 tint (over the white card → #fbfaf7). Alpha keeps it dark-mode-safe.
   const heroFill = isFeatureEnabled("progress_digest_beige_v2")
-    ? colors.backgroundSecondary + "66"
+    ? withAlpha(colors.backgroundSecondary, 0x66)
     : colors.backgroundSecondary;
 
   // ── Metric strip.
@@ -440,7 +440,7 @@ export function DigestBlended(props: DigestProps) {
             paddingHorizontal: 16,
             paddingVertical: 11,
             borderRadius: 12,
-            backgroundColor: shareDisabled ? colors.cardBorder + "22" : Accent.success + "1f",
+            backgroundColor: shareDisabled ? withAlpha(colors.cardBorder, 0x22) : withAlpha(Accent.success, 0x1F),
             opacity: shareDisabled ? 0.4 : 1,
           }}
         >
@@ -520,7 +520,7 @@ function PatternBar({
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 5 }}>
       <Text style={{ fontSize: 11, color: colors.textSecondary, width: 30 }}>{label}</Text>
       <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.cardBorder, overflow: "hidden" }}>
-        <View style={{ height: "100%", width: `${Number(clamped.toFixed(1))}%`, borderRadius: 4, backgroundColor: accent.primary + "3D" }} />
+        <View style={{ height: "100%", width: `${Number(clamped.toFixed(1))}%`, borderRadius: 4, backgroundColor: withAlpha(accent.primary, 0x3D) }} />
       </View>
       <Text style={{ fontSize: 11, color: colors.textTertiary, width: 46, textAlign: "right", fontVariant: ["tabular-nums"] }}>
         {value}

@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, CheckCircle2, ChefHat, BarChart3, Flag, Tag, ChevronDown, ChevronUp, type LucideIcon } from "lucide-react-native";
 import type { PurchasesPackage } from "react-native-purchases";
 
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -1185,7 +1185,7 @@ export default function PaywallScreen() {
               return (
               <View key={item.title} style={styles.timelineItem}>
                 <View style={styles.timelineIconWrap}>
-                  <View style={[styles.timelineDot, { backgroundColor: item.color + "20" }]}>
+                  <View style={[styles.timelineDot, { backgroundColor: withAlpha(item.color, 0x20) }]}>
                     <TimelineIcon size={16} color={item.color} strokeWidth={1.75} />
                   </View>
                   {i < TIMELINE.length - 1 && <View style={styles.timelineLine} />}

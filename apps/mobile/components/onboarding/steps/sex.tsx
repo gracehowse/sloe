@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, Type } from "@/constants/theme";
 import { Text, TextInput, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Info, ShieldCheck } from "lucide-react-native";
@@ -160,8 +160,8 @@ export function MobileSexStep() {
           style={{
             marginTop: Spacing.dense,
             padding: Spacing.md,
-            backgroundColor: accent.primary + "10",
-            borderColor: accent.primary + "33",
+            backgroundColor: withAlpha(accent.primary, 0x10),
+            borderColor: withAlpha(accent.primary, 0x33),
             borderWidth: 1,
             borderRadius: Radius.xl,
           }}

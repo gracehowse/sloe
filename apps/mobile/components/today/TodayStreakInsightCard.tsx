@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { Text, View } from "react-native";
 import { Flame, Snowflake } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import Badge from "@/components/Badge";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -44,9 +44,9 @@ function TodayStreakInsightCardImpl({
         gap: Spacing.dense,
         padding: Spacing.lg,
         borderRadius: Radius.lg,
-        backgroundColor: Accent.success + "08",
+        backgroundColor: withAlpha(Accent.success, 0x08),
         borderWidth: 1,
-        borderColor: Accent.success + "18",
+        borderColor: withAlpha(Accent.success, 0x18),
       }}
     >
       <View
@@ -54,7 +54,7 @@ function TodayStreakInsightCardImpl({
           width: 36,
           height: 36,
           borderRadius: Radius.full,
-          backgroundColor: Accent.success + "18",
+          backgroundColor: withAlpha(Accent.success, 0x18),
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -94,8 +94,8 @@ function TodayStreakInsightCardImpl({
               paddingVertical: Spacing.sm,
               borderRadius: Radius.md,
               borderWidth: 1,
-              borderColor: Accent.cyan + "30",
-              backgroundColor: Accent.cyan + "18",
+              borderColor: withAlpha(Accent.cyan, 0x30),
+              backgroundColor: withAlpha(Accent.cyan, 0x18),
             }}
           >
             <Snowflake size={13} color={Accent.cyan} strokeWidth={1.75} />

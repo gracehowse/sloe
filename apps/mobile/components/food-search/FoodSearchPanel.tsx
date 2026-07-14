@@ -72,7 +72,7 @@ import Svg, {
   Rect,
   Stop,
 } from "react-native-svg";
-import { Accent, FontWeight, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontWeight, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
@@ -1363,7 +1363,7 @@ export default function FoodSearchPanel({
       borderRadius: Radius.md,
       borderWidth: 1,
       borderColor: Accent.warning,
-      backgroundColor: Accent.warning + "14",
+      backgroundColor: withAlpha(Accent.warning, 0x14),
     },
     degradedNoticeText: {
       color: Accent.warningSolid,
@@ -1847,7 +1847,7 @@ export default function FoodSearchPanel({
       >
         <View style={{
           backgroundColor: colors.card, borderRadius: Radius.lg,
-          borderWidth: 1, borderColor: Accent.success + "40",
+          borderWidth: 1, borderColor: withAlpha(Accent.success, 0x40),
           padding: Spacing.xl, gap: Spacing.md,
         }}>
           <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>{preview.name}</Text>
@@ -1893,7 +1893,7 @@ export default function FoodSearchPanel({
                       paddingHorizontal: Spacing.dense, paddingVertical: 8,
                       borderRadius: Radius.md, borderWidth: 1,
                       borderColor: isActive ? commitCtaColor : colors.border,
-                      backgroundColor: isActive ? commitCtaColor + "15" : "transparent",
+                      backgroundColor: isActive ? withAlpha(commitCtaColor, 0x15) : "transparent",
                       minWidth: 50, alignItems: "center",
                     }}
                   >
@@ -2171,7 +2171,7 @@ export default function FoodSearchPanel({
               borderWidth: 1,
               borderColor: accent.primary,
               borderRadius: Radius.md,
-              backgroundColor: accent.primary + "10",
+              backgroundColor: withAlpha(accent.primary, 0x10),
             }}
           >
             <Plus size={16} color={accent.primary} />
@@ -2226,7 +2226,7 @@ export default function FoodSearchPanel({
               paddingVertical: Spacing.sm,
               paddingHorizontal: Spacing.md,
               borderRadius: Radius.md,
-              backgroundColor: Accent.success + "15",
+              backgroundColor: withAlpha(Accent.success, 0x15),
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",

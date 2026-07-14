@@ -54,7 +54,7 @@ import * as ImagePicker from "expo-image-picker";
 import Constants from "expo-constants";
 
 import KeyboardSafeView from "./KeyboardSafeView";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { track } from "@/lib/analytics";
@@ -775,7 +775,7 @@ export default function CreateCustomFoodSheet({
                   gap: Spacing.sm,
                   borderWidth: 1,
                   borderColor: accent.primary,
-                  backgroundColor: accent.primary + "1f",
+                  backgroundColor: withAlpha(accent.primary, 0x1F),
                   borderRadius: Radius.md,
                   paddingVertical: 11,
                   marginBottom: Spacing.md,

@@ -47,7 +47,7 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import {
   getMyHousehold,
@@ -460,9 +460,9 @@ export default function HouseholdSettingsScreen() {
               marginBottom: Spacing.md,
               padding: Spacing.md,
               borderRadius: Radius.md,
-              borderColor: Accent.destructive + "55",
+              borderColor: withAlpha(Accent.destructive, 0x55),
               borderWidth: 1,
-              backgroundColor: Accent.destructive + "14",
+              backgroundColor: withAlpha(Accent.destructive, 0x14),
             }}
           >
             <Text style={{ ...Type.captionSmall, color: Accent.destructiveSolid }}>{error}</Text>
@@ -522,8 +522,8 @@ export default function HouseholdSettingsScreen() {
                   style={{
                     borderRadius: CARD_RADIUS,
                     borderWidth: 1,
-                    borderColor: accent.primary + "33",
-                    backgroundColor: accent.primary + "0d",
+                    borderColor: withAlpha(accent.primary, 0x33),
+                    backgroundColor: withAlpha(accent.primary, 0x0D),
                     padding: Spacing.md,
                     alignItems: "center",
                     overflow: "hidden",
@@ -534,7 +534,7 @@ export default function HouseholdSettingsScreen() {
                       width: 48,
                       height: 48,
                       borderRadius: Radius.full,
-                      backgroundColor: accent.primary + "1f",
+                      backgroundColor: withAlpha(accent.primary, 0x1F),
                       alignItems: "center",
                       justifyContent: "center",
                       marginBottom: Spacing.sm,
@@ -814,7 +814,7 @@ export default function HouseholdSettingsScreen() {
                         minHeight: 44,
                         borderBottomWidth: isLast ? 0 : 1,
                         borderBottomColor: colors.cardBorder,
-                        backgroundColor: active ? accent.primary + "10" : "transparent",
+                        backgroundColor: active ? withAlpha(accent.primary, 0x10) : "transparent",
                       }}
                     >
                       <View
@@ -916,12 +916,12 @@ export default function HouseholdSettingsScreen() {
                       const isAll = count === all && all > 0;
                       const isSome = count > 1 && count < all;
                       const bg = isAll
-                        ? accent.primary + "33"
+                        ? withAlpha(accent.primary, 0x33)
                         : isSome
-                          ? accent.primary + "1a"
+                          ? withAlpha(accent.primary, 0x1A)
                           : colors.inputBg;
                       const fg = isAll || isSome ? accent.primary : colors.textTertiary;
-                      const border = isAll || isSome ? accent.primary + "4d" : "transparent";
+                      const border = isAll || isSome ? withAlpha(accent.primary, 0x4D) : "transparent";
                       return (
                         <Pressable
                           key={`${d}-${s}`}
@@ -1036,7 +1036,7 @@ export default function HouseholdSettingsScreen() {
             paddingHorizontal: Spacing.lg,
             paddingBottom: insets.bottom + Spacing.md,
             paddingTop: Spacing.sm,
-            backgroundColor: colors.background + "ee",
+            backgroundColor: withAlpha(colors.background, 0xEE),
           }}
         >
           {/* Save changes — the footer's ONE commit action → SupprButton

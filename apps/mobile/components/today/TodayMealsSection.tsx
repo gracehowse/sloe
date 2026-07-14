@@ -36,7 +36,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Elevation, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Elevation, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
@@ -365,13 +365,13 @@ function MealActionRow({
         mas.row,
         Elevation.card,
         {
-          backgroundColor: danger ? Accent.destructive + "0F" : colors.card,
-          borderColor: danger ? Accent.destructive + "26" : colors.border,
+          backgroundColor: danger ? withAlpha(Accent.destructive, 0x0F) : colors.card,
+          borderColor: danger ? withAlpha(Accent.destructive, 0x26) : colors.border,
           transform: [{ scale: pressed ? 0.985 : 1 }],
         },
       ]}
     >
-      <View style={[mas.rowIcon, { backgroundColor: accent + "1A" }]}>
+      <View style={[mas.rowIcon, { backgroundColor: withAlpha(accent, 0x1A) }]}>
         <Glyph size={17} color={accent} strokeWidth={2.1} />
       </View>
       <View style={mas.rowText}>
@@ -436,7 +436,7 @@ function MealActionSheet({
                 accessibilityIgnoresInvertColors
               />
             ) : (
-              <View style={[mas.thumb, mas.thumbFallback, { backgroundColor: accent.primary + "14" }]}>
+              <View style={[mas.thumb, mas.thumbFallback, { backgroundColor: withAlpha(accent.primary, 0x14) }]}>
                 <UtensilsCrossed size={22} color={accent.primary} />
               </View>
             )}
@@ -759,7 +759,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
               style={{
                 // Sloe: hairline `divide-y divide-line`, not a 1pt (3px) rule.
                 borderBottomWidth: StyleSheet.hairlineWidth,
-                borderBottomColor: cardBorderColor + "60",
+                borderBottomColor: withAlpha(cardBorderColor, 0x60),
               }}
             >
               <Pressable
@@ -874,7 +874,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                 // ENG-1099): a divided ROW inside the outer card — hairline
                 // between slots, none after the last.
                 borderBottomWidth: slotIndex < slots.length - 1 ? StyleSheet.hairlineWidth : 0,
-                borderBottomColor: cardBorderColor + "60",
+                borderBottomColor: withAlpha(cardBorderColor, 0x60),
                 // ENG-1092: empties stay full-opacity once they carry an "Aim ~X kcal" line.
                 opacity: hasMeals || aimEmptyOn ? 1 : 0.55,
               }}
@@ -939,7 +939,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                       width: 32,
                       height: 32,
                       borderRadius: Radius.lg,
-                      backgroundColor: col + "12",
+                      backgroundColor: withAlpha(col, 0x12),
                       alignItems: "center",
                       justifyContent: "center",
                     }}
@@ -1321,9 +1321,9 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                     marginVertical: Spacing.sm,
                     padding: Spacing.dense,
                     borderRadius: Radius.md,
-                    backgroundColor: col + "0C",
+                    backgroundColor: withAlpha(col, 0x0C),
                     borderWidth: 1,
-                    borderColor: col + "28",
+                    borderColor: withAlpha(col, 0x28),
                   }}
                 >
                   <Text style={{ ...Type.body, color: textColor }}>
@@ -1395,7 +1395,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                     paddingHorizontal: Spacing.md,
                     // Sloe: hairline divider above the action row.
                     borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: cardBorderColor + "30",
+                    borderTopColor: withAlpha(cardBorderColor, 0x30),
                   }}
                 >
                   <RefreshCw size={14} color={col} />
@@ -1420,7 +1420,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                     paddingHorizontal: Spacing.md,
                     // Sloe: hairline divider above the action row.
                     borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: cardBorderColor + "30",
+                    borderTopColor: withAlpha(cardBorderColor, 0x30),
                   }}
                 >
                   <Bookmark size={14} color={textSecondaryColor} />

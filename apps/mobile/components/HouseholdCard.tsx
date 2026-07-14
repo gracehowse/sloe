@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Users, Lock, X } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, Radius, MacroColors, MacroColorsDark, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, MacroColors, MacroColorsDark, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -283,7 +283,7 @@ export function HouseholdCard() {
     <View
       accessibilityRole="alert"
       style={{
-        backgroundColor: t.accent + "14",
+        backgroundColor: withAlpha(t.accent, 0x14),
         borderLeftWidth: 3,
         borderLeftColor: t.accent,
         borderRadius: Radius.md,
@@ -316,7 +316,7 @@ export function HouseholdCard() {
             re-pulls /household state. */}
         <ReceivedInvitesBanner onAccepted={load} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-          <View style={{ width: 28, height: 28, borderRadius: Radius.full, backgroundColor: t.accent + "18", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 28, height: 28, borderRadius: Radius.full, backgroundColor: withAlpha(t.accent, 0x18), alignItems: "center", justifyContent: "center" }}>
             <Users size={14} color={t.accent} />
           </View>
           <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>Household Meals</Text>
@@ -385,7 +385,7 @@ export function HouseholdCard() {
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <View style={{ width: 28, height: 28, borderRadius: Radius.full, backgroundColor: t.accent + "18", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 28, height: 28, borderRadius: Radius.full, backgroundColor: withAlpha(t.accent, 0x18), alignItems: "center", justifyContent: "center" }}>
             <Users size={14} color={t.accent} />
           </View>
           <Text style={{ fontSize: 13, fontWeight: "600", color: t.text }}>{data.household.name}</Text>

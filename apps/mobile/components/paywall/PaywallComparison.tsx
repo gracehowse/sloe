@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Check } from "lucide-react-native";
 
-import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
@@ -30,7 +30,7 @@ import {
  */
 // Damson-lilac wash for the PRO column (mirrors web --accent-info-soft).
 // Accent.win (#6A4B7A = rgb(106,75,122)) @ ~8% via the alpha-suffix pattern.
-const PRO_COLUMN_WASH = Accent.win + "14";
+const PRO_COLUMN_WASH = withAlpha(Accent.win, 0x14);
 
 function Cell({
   value,

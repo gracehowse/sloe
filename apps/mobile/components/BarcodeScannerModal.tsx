@@ -33,7 +33,7 @@ import {
   X,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
@@ -768,7 +768,7 @@ export default function BarcodeScannerModal({
       width: "80%",
       height: "50%",
       borderWidth: 2,
-      borderColor: accent.primary + "80",
+      borderColor: withAlpha(accent.primary, 0x80),
       borderRadius: Radius.lg,
     },
     // F-134 (2026-05-08): when the camera collapses on result, the
@@ -779,7 +779,7 @@ export default function BarcodeScannerModal({
     errorText: { color: colors.textSecondary, fontSize: 14, textAlign: "center" },
     retryBtn: {
       borderWidth: 1,
-      borderColor: accent.primary + "55",
+      borderColor: withAlpha(accent.primary, 0x55),
       borderRadius: Radius.md,
       paddingHorizontal: Spacing.xl,
       paddingVertical: 12,
@@ -880,10 +880,10 @@ export default function BarcodeScannerModal({
       paddingVertical: 5,
       borderRadius: Radius.sm,
       borderWidth: 1,
-      borderColor: accent.primary + "40",
+      borderColor: withAlpha(accent.primary, 0x40),
     },
     presetChipSelected: {
-      backgroundColor: accent.primary + "18",
+      backgroundColor: withAlpha(accent.primary, 0x18),
       borderColor: accent.primary,
     },
     presetChipText: { fontSize: 11, fontWeight: "600", color: accent.primarySolid },
@@ -959,7 +959,7 @@ export default function BarcodeScannerModal({
     manualSubmitText: { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 },
     manualEntryBtn: {
       borderWidth: 1,
-      borderColor: accent.primary + "55",
+      borderColor: withAlpha(accent.primary, 0x55),
       borderRadius: Radius.md,
       paddingHorizontal: Spacing.xl,
       paddingVertical: 12,
@@ -993,7 +993,7 @@ export default function BarcodeScannerModal({
     },
     basisChipSelected: {
       borderColor: accent.primary,
-      backgroundColor: accent.primary + "18",
+      backgroundColor: withAlpha(accent.primary, 0x18),
     },
     basisChipText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
     basisChipTextSelected: { color: accent.primarySolid },
@@ -1005,7 +1005,7 @@ export default function BarcodeScannerModal({
       backgroundColor: colors.card,
       borderRadius: Radius.lg,
       borderWidth: 1,
-      borderColor: Accent.success + "40",
+      borderColor: withAlpha(Accent.success, 0x40),
       paddingHorizontal: Spacing.xl,
       paddingVertical: Spacing.xxl,
       alignItems: "center",
@@ -1015,7 +1015,7 @@ export default function BarcodeScannerModal({
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: Accent.success + "18",
+      backgroundColor: withAlpha(Accent.success, 0x18),
       alignItems: "center",
       justifyContent: "center",
     },
@@ -1073,10 +1073,10 @@ export default function BarcodeScannerModal({
     // F-138 Phase 2 — plausibility-block error surface. Tinted destructive
     // panel inside the form, above the Save button, with a per-reason list.
     plausibilityBlockBox: {
-      backgroundColor: Accent.destructive + "12",
+      backgroundColor: withAlpha(Accent.destructive, 0x12),
       borderRadius: Radius.md,
       borderWidth: 1,
-      borderColor: Accent.destructive + "55",
+      borderColor: withAlpha(Accent.destructive, 0x55),
       padding: Spacing.md,
       gap: 4,
     },
@@ -1270,7 +1270,7 @@ export default function BarcodeScannerModal({
                       alignItems: "center",
                       justifyContent: "center",
                       gap: Spacing.sm,
-                      backgroundColor: accent.primary + "1f",
+                      backgroundColor: withAlpha(accent.primary, 0x1F),
                       borderColor: accent.primary,
                       borderWidth: 1,
                       borderRadius: Radius.md,

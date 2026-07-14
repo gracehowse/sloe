@@ -9,7 +9,7 @@ import {
   Utensils,
   X,
 } from "lucide-react-native";
-import { Accent, FontWeight, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontWeight, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -89,7 +89,7 @@ export default function FirstRunChecklist({
       borderRadius: Radius.md,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: Accent.primary + "1A",
+      backgroundColor: withAlpha(Accent.primary, 0x1A),
     },
     content: { flex: 1, minWidth: 0 },
     header: {

@@ -27,7 +27,7 @@ import { Layout } from "@/constants/layout";
 import { ProgressTabChrome } from "@/components/tabs/ProgressTabChrome";
 import { Milestone30DayModal } from "@/components/today/Milestone30DayModal";
 import { useMilestone30DayOnProgress } from "@/hooks/useMilestone30DayOnProgress";
-import { Accent, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useAccent } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
@@ -168,7 +168,7 @@ function parseNumMap(raw: unknown): Record<string, number> {
 
 function IconBox({ color, size = 28, children }: { color: string; size?: number; children: React.ReactNode }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 3.5, backgroundColor: color + "18", alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: size, height: size, borderRadius: size / 3.5, backgroundColor: withAlpha(color, 0x18), alignItems: "center", justifyContent: "center" }}>
       {children}
     </View>
   );
@@ -1719,7 +1719,7 @@ export default function ProgressScreen() {
                 <View
                   testID="maintenance-source-pill"
                   accessibilityLabel="Maintenance source: Apple Health"
-                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
+                  style={{ backgroundColor: withAlpha(t.green, 0x18), paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
                 >
                   <Text style={{ ...Type.label, color: t.green }}>Apple Health</Text>
                 </View>
@@ -1727,7 +1727,7 @@ export default function ProgressScreen() {
                 <View
                   testID="maintenance-source-pill"
                   accessibilityLabel="Maintenance source: adaptive"
-                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
+                  style={{ backgroundColor: withAlpha(t.green, 0x18), paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
                 >
                   {/* headers census 2026-06-10: pill eyebrow → Type.label, pill hue kept. */}
                   <Text style={{ ...Type.label, color: t.green }}>Adaptive</Text>

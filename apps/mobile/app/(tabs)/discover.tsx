@@ -16,7 +16,7 @@ import { Search, Utensils, Bookmark, ChevronRight } from "lucide-react-native";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { decodeEntities } from "@/lib/decodeEntities";
-import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
@@ -848,7 +848,7 @@ export default function DiscoverScreen() {
                     borderRadius: Radius.lg,
                     borderWidth: 1,
                     borderColor: accent.primary,
-                    backgroundColor: accent.primary + "10",
+                    backgroundColor: withAlpha(accent.primary, 0x10),
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >

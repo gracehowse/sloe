@@ -49,7 +49,7 @@ import { useIngredientTileImages } from "@suppr/shared/recipe/useIngredientTileI
 import { loadRecipeIngredientRows } from "@suppr/shared/recipe/loadRecipeIngredientRows";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { Accent, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
+import { withAlpha, Accent, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
@@ -1744,7 +1744,7 @@ export default function RecipeDetailScreen() {
       paddingHorizontal: Spacing.lg,
       borderRadius: Radius.md,
       borderWidth: 1,
-      borderColor: accent.primary + "55",
+      borderColor: withAlpha(accent.primary, 0x55),
     },
     sourceLinkText: { color: accent.primarySolid, fontSize: 14, fontWeight: "600" },
     // ENG-858 — import disclaimer caption. Matches the gluten-disclaimer
@@ -2303,7 +2303,7 @@ export default function RecipeDetailScreen() {
               Edamam when configured)…
             </Text>
           ) : autoVerifyFailed ? (
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md, backgroundColor: Accent.warning + "1A", borderWidth: 1, borderColor: Accent.warning }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md, backgroundColor: withAlpha(Accent.warning, 0x1A), borderWidth: 1, borderColor: Accent.warning }}>
               <Text style={{ ...Type.captionSmall, color: Accent.warningSolid, lineHeight: 17, flexShrink: 1 }}>
                 Couldn’t match ingredients against the food database.
               </Text>

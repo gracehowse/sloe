@@ -14,7 +14,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Accent, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, Spacing, Radius, Type } from "@/constants/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useAccent } from "@/context/theme";
 import { useAuth } from "@/context/auth";
@@ -746,7 +746,7 @@ export default function FastingScreen() {
                         paddingHorizontal: Spacing.sm,
                         paddingVertical: 2,
                         borderRadius: 4,
-                        backgroundColor: Accent.warning + "1F",
+                        backgroundColor: withAlpha(Accent.warning, 0x1F),
                       }}
                     >
                       <Text

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Spacing, Type } from "@/constants/theme";
+import { withAlpha, Spacing, Type } from "@/constants/theme";
 import { Text, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Info } from "lucide-react-native";
@@ -78,8 +78,8 @@ export function MobileAgeStep() {
           style={{
             marginTop: Spacing.dense,
             padding: Spacing.md,
-            backgroundColor: accent.primary + "10",
-            borderColor: accent.primary + "33",
+            backgroundColor: withAlpha(accent.primary, 0x10),
+            borderColor: withAlpha(accent.primary, 0x33),
             borderWidth: 1,
             borderRadius: 12,
           }}

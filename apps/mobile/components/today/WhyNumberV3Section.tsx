@@ -2,7 +2,7 @@ import React, { memo } from "react";
 import { Text, View } from "react-native";
 import { Sparkles, TrendingDown } from "lucide-react-native";
 
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import {
@@ -49,9 +49,9 @@ function SetIcPlate({
         borderRadius: Radius.lg,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: highlight ? accent.primary + "18" : cardColor,
+        backgroundColor: highlight ? withAlpha(accent.primary, 0x18) : cardColor,
         borderWidth: 1,
-        borderColor: highlight ? accent.primary + "40" : borderColor,
+        borderColor: highlight ? withAlpha(accent.primary, 0x40) : borderColor,
       }}
     >
       {children}
@@ -127,7 +127,7 @@ function WhyNumberV3SectionImpl({
                 paddingVertical: Spacing.md,
                 borderTopWidth: index > 0 ? 1 : 0,
                 borderTopColor: borderColor,
-                backgroundColor: row.highlight ? accent.primary + "0D" : cardColor,
+                backgroundColor: row.highlight ? withAlpha(accent.primary, 0x0D) : cardColor,
               }}
             >
               <SetIcPlate highlight={row.highlight} borderColor={borderColor} cardColor={cardColor}>

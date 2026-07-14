@@ -11,6 +11,7 @@
  * Static analysis pin so the regression doesn't sneak back in.
  */
 import { describe, it, expect } from "vitest";
+import { withAlpha } from "@/constants/theme";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -21,8 +22,8 @@ const SRC = readFileSync(
 );
 
 describe("F-139 — Goals hit banner restyle", () => {
-  it("targetCelebration banner no longer uses Accent.primary + 'E8' background", () => {
-    // Pre-fix used `backgroundColor: Accent.primary + "E8"` for the
+  it("targetCelebration banner no longer uses withAlpha(Accent.primary, 0xE8) background", () => {
+    // Pre-fix used `backgroundColor: withAlpha(Accent.primary, 0xE8)` for the
     // solid purple block. Post-fix the banner is white card +
     // subtle green border. Pin the absence of the old color literal.
     const code = SRC.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { AlertTriangle, Check, Info } from "lucide-react-native";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled, track } from "@/lib/analytics";
@@ -279,8 +279,8 @@ export function MobilePaceStep() {
             padding: Spacing.md + 2,
             borderRadius: Radius.md,
             borderWidth: 1,
-            backgroundColor: accent + "1f",
-            borderColor: accent + "66",
+            backgroundColor: withAlpha(accent, 0x1F),
+            borderColor: withAlpha(accent, 0x66),
             flexDirection: "row",
           }}
         >
@@ -415,8 +415,8 @@ function PaceWarningBanner({
       Icon: AlertTriangle,
     },
     info: {
-      bg: accent.primary + "1a",
-      border: accent.primary + "59",
+      bg: withAlpha(accent.primary, 0x1A),
+      border: withAlpha(accent.primary, 0x59),
       accent: accent.primaryLight,
       Icon: Info,
     },
@@ -447,7 +447,7 @@ function PaceWarningBanner({
           borderRadius: 8,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: config.accent + "40",
+          backgroundColor: withAlpha(config.accent, 0x40),
           marginTop: 1,
         }}
       >

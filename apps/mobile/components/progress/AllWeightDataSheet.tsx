@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Scale as ScaleIcon, X } from "lucide-react-native";
 
-import { IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { kgToLb } from "@suppr/shared/units/imperial";
@@ -314,7 +314,7 @@ export function AllWeightDataSheet({
                   <View
                     style={[
                       styles.iconSquare,
-                      { backgroundColor: accent.primary + "22" },
+                      { backgroundColor: withAlpha(accent.primary, 0x22) },
                     ]}
                   >
                     <ScaleIcon

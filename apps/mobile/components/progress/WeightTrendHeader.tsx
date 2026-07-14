@@ -2,7 +2,7 @@ import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { ArrowRight, TrendingDown, TrendingUp } from "lucide-react-native";
 
-import { Spacing, Type } from "@/constants/theme";
+import { withAlpha, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import type { WeightTrendResult } from "@/lib/progress/weightTrend";
@@ -89,7 +89,7 @@ export function WeightTrendHeader({ trend, isImperial, periodLabel }: WeightTren
             <View
               style={[
                 styles.iconCircle,
-                { backgroundColor: statusIconColor + "1f" },
+                { backgroundColor: withAlpha(statusIconColor, 0x1F) },
               ]}
             >
               <StatusIcon size={14} color={statusIconColor} strokeWidth={2.25} />

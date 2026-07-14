@@ -18,7 +18,7 @@ import Animated from "react-native-reanimated";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, ChevronRight, Shuffle, Copy } from "lucide-react-native";
-import {
+import { withAlpha,
   Accent,
   Elevation,
   IconSize,
@@ -439,7 +439,7 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                 haptic="warn"
                 accessibilityRole="button"
                 accessibilityLabel="Delete entry"
-                style={[v2.deleteBtn, { borderColor: Accent.destructive + "30" }]}
+                style={[v2.deleteBtn, { borderColor: withAlpha(Accent.destructive, 0x30) }]}
               >
                 <Text style={{ color: Accent.destructive, fontWeight: "700", fontSize: 14 }}>Delete</Text>
               </PressableScale>
@@ -755,7 +755,7 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
                 justifyContent: "center",
                 borderRadius: Radius.md,
                 borderWidth: 1,
-                borderColor: Accent.destructive + "30",
+                borderColor: withAlpha(Accent.destructive, 0x30),
                 paddingVertical: Spacing.md,
               }}
               onPress={onDelete}

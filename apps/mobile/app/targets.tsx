@@ -25,7 +25,7 @@ import Svg, {
 } from "react-native-svg";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
+import { withAlpha, Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets, calculateTDEE } from "@/lib/calcTargets";
@@ -601,11 +601,11 @@ export default function TargetsScreen() {
   const statusPillStyle = (status: string | undefined) => {
     switch (status) {
       case "on_track":
-        return { background: Accent.success + "22", fg: Accent.success };
+        return { background: withAlpha(Accent.success, 0x22), fg: Accent.success };
       case "stalled":
-        return { background: Accent.warning + "22", fg: Accent.warning };
+        return { background: withAlpha(Accent.warning, 0x22), fg: Accent.warning };
       case "wrong_way":
-        return { background: Accent.destructive + "22", fg: Accent.destructive };
+        return { background: withAlpha(Accent.destructive, 0x22), fg: Accent.destructive };
       default:
         return { background: colors.border, fg: colors.textSecondary };
     }
@@ -907,7 +907,7 @@ export default function TargetsScreen() {
               width: 28,
               height: 28,
               borderRadius: 14,
-              backgroundColor: accent.primary + "1A",
+              backgroundColor: withAlpha(accent.primary, 0x1A),
               alignItems: "center",
               justifyContent: "center",
             }}

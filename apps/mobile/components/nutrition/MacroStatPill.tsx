@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { Check } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { macroStatProgressRatio } from "@suppr/nutrition-core/macroStatCaption";
 
@@ -81,7 +81,7 @@ export function MacroStatPill({
             top: 0,
             bottom: 0,
             width: `${fillPct}%`,
-            backgroundColor: color + "18",
+            backgroundColor: withAlpha(color, 0x18),
           }}
         />
       ) : null}

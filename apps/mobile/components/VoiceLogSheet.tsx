@@ -26,7 +26,7 @@ import {
 } from "react-native";
 import { Mic, X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
@@ -293,9 +293,9 @@ export default function VoiceLogSheet({
                       borderRadius: Radius.full,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: isRecording ? Accent.success : Accent.success + "22",
+                      backgroundColor: isRecording ? Accent.success : withAlpha(Accent.success, 0x22),
                       borderWidth: 1,
-                      borderColor: Accent.success + "55",
+                      borderColor: withAlpha(Accent.success, 0x55),
                     }}
                   >
                     <Mic
@@ -347,8 +347,8 @@ export default function VoiceLogSheet({
                 accessibilityRole="alert"
                 style={{
                   borderWidth: 1,
-                  borderColor: Accent.destructive + "66",
-                  backgroundColor: Accent.destructive + "10",
+                  borderColor: withAlpha(Accent.destructive, 0x66),
+                  backgroundColor: withAlpha(Accent.destructive, 0x10),
                   borderRadius: Radius.md,
                   padding: Spacing.md,
                 }}

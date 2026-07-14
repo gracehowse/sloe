@@ -11,7 +11,7 @@ import {
 } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing } from "@/constants/theme";
 import type { ThemeColors } from "@/hooks/use-theme-colors";
 import {
   notificationDisplay,
@@ -61,7 +61,7 @@ function plateColors(
     case "brand":
       return { bg: Accent.primarySoft, fg: accent.primary };
     case "good":
-      return { bg: Accent.success + "24", fg: Accent.successSolid };
+      return { bg: withAlpha(Accent.success, 0x24), fg: Accent.successSolid };
     case "neutral":
     default:
       return { bg: colors.border, fg: colors.textSecondary };

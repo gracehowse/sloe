@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Bell, Check, Heart, type LucideIcon } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -181,7 +181,7 @@ function PermissionCard({
         padding: 16,
         marginBottom: Spacing.dense,
         borderWidth: 1,
-        borderColor: granted === true ? Accent.success + "66" : colors.border,
+        borderColor: granted === true ? withAlpha(Accent.success, 0x66) : colors.border,
       }}
     >
       <View
@@ -194,7 +194,7 @@ function PermissionCard({
             borderRadius: Radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: iconColor + "26",
+            backgroundColor: withAlpha(iconColor, 0x26),
           }}
         >
           <Icon size={20} color={iconColor} />

@@ -26,7 +26,7 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -207,7 +207,7 @@ export function MoveMealSheet({
                       width: 28,
                       height: 28,
                       borderRadius: 8,
-                      backgroundColor: tint + "1A",
+                      backgroundColor: withAlpha(tint, 0x1A),
                       alignItems: "center",
                       justifyContent: "center",
                     }}

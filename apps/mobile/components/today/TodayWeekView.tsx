@@ -7,7 +7,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from "react-native-reanimated";
-import { Accent, Colors, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Accent, Colors, MacroColors, MacroColorsDark, Radius, Spacing } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -274,7 +274,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
               const isCurrentDay = day.key === todayDk;
               const isScrubbed = scrubIndex === i;
               const barColor = over
-                ? Accent.warning + "CC"
+                ? withAlpha(Accent.warning, 0xCC)
                 : day.totals.calories > 0
                   ? accent.primary
                   : borderColor;
@@ -346,7 +346,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
                 right: 0,
                 height: 0,
                 borderTopWidth: 1,
-                borderTopColor: accent.primary + "66",
+                borderTopColor: withAlpha(accent.primary, 0x66),
                 borderStyle: "dashed",
                 transform: [{ translateY: -targetRuleY }],
               }}

@@ -3,7 +3,7 @@ import * as React from "react";
 import { Text, View } from "react-native";
 import { Sparkles } from "lucide-react-native";
 
-import { Accent, Radius, ShadowColor, Spacing } from "@/constants/theme";
+import { withAlpha, Accent, Radius, ShadowColor, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -95,7 +95,7 @@ function FirstLogAcknowledgmentImpl(props: FirstLogAcknowledgmentProps) {
         borderRadius: Radius.md,
         backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: Accent.success + "40",
+        borderColor: withAlpha(Accent.success, 0x40),
         // Subtle elevation so the toast lifts off the ring beneath it.
         shadowColor: ShadowColor.cast,
         shadowOffset: { width: 0, height: 2 },
@@ -111,7 +111,7 @@ function FirstLogAcknowledgmentImpl(props: FirstLogAcknowledgmentProps) {
           borderRadius: 14,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: Accent.success + "1A",
+          backgroundColor: withAlpha(Accent.success, 0x1A),
         }}
       >
         <Sparkles size={14} color={Accent.success} strokeWidth={2.25} />

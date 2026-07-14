@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { RefreshCw } from "lucide-react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -35,11 +35,11 @@ export function PlanRegenerateToast({ toast, topInset }: PlanRegenerateToastProp
         {
           top: topInset + Spacing.sm,
           backgroundColor: colors.card,
-          borderColor: accent.primary + "40",
+          borderColor: withAlpha(accent.primary, 0x40),
         },
       ]}
     >
-      <View style={[styles.icon, { backgroundColor: accent.primary + "1A" }]}>
+      <View style={[styles.icon, { backgroundColor: withAlpha(accent.primary, 0x1A) }]}>
         <RefreshCw size={14} color={accent.primary} strokeWidth={2.25} />
       </View>
       <Text style={[styles.text, { color: colors.text }]}>

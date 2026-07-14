@@ -69,7 +69,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Elevation, MacroColors, MacroColorsDark, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, Elevation, MacroColors, MacroColorsDark, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated, {
@@ -347,7 +347,7 @@ const SLOT_COLOR_MOBILE: Record<PlanSlotIconKey, string> = {
  * The on-error state is the key fix: a stale/expired recipe hero URL
  * settles into the calm Library/Discover tile, never a flat square.
  * ENG-1374 PR 2: rungs 1–2 ground on the recipe's OPAQUE §11.4 cuisine
- * tint (`recipeUnderlayColor`) — the old translucent `tint + "22"` wash
+ * tint (`recipeUnderlayColor`) — the old translucent `withAlpha(tint, 0x22)` wash
  * is now empty-slot-only, so no failure can expose page white.
  */
 function PlanMealThumb({
@@ -396,7 +396,7 @@ function PlanMealThumb({
 
   // Genuinely empty slot → slot icon-box (unchanged behaviour).
   return (
-    <View style={[iconBoxStyle, { backgroundColor: tint + "22" }]}>
+    <View style={[iconBoxStyle, { backgroundColor: withAlpha(tint, 0x22) }]}>
       <Icon size={16} color={tint} strokeWidth={1.75} />
     </View>
   );
@@ -1629,7 +1629,7 @@ export default function PlannerScreen() {
           justifyContent: "center",
         },
         // Prototype-ported summary card. Gradient fallback = flat tint
-        // (accent.primary + "14") because expo-linear-gradient isn't
+        // (withAlpha(accent.primary, 0x14)) because expo-linear-gradient isn't
         // installed; switching to a true gradient only requires wrapping
         // the inner content in <LinearGradient> with the same two colours
         // the prototype uses (primary 12% → fat 8%).
@@ -1784,7 +1784,7 @@ export default function PlannerScreen() {
           marginTop: Spacing.md,
           padding: Spacing.md,
           borderRadius: Radius.md,
-          backgroundColor: colors.border + "40",
+          backgroundColor: withAlpha(colors.border, 0x40),
         },
         libraryEmptyHintText: {
           ...Type.body,
@@ -1815,7 +1815,7 @@ export default function PlannerScreen() {
         // surface in both themes without dominating like a solid fill.
         dayBtnActive: {
           borderColor: colors.textSecondary,
-          backgroundColor: colors.textSecondary + "18",
+          backgroundColor: withAlpha(colors.textSecondary, 0x18),
         },
         dayBtnText: { color: colors.textTertiary, fontWeight: "600", fontSize: 14 },
         dayBtnTextActive: { color: colors.text, fontWeight: "700" },
@@ -1830,8 +1830,8 @@ export default function PlannerScreen() {
         // canonical LogSheet slot pill (`text-foreground` on `bg-primary/10`).
         dayBtnActivePrimary: {
           // §7 (2026-06-10): tint IS the signal — no accent ring.
-          borderColor: colors.tint + "1A",
-          backgroundColor: colors.tint + "1A",
+          borderColor: withAlpha(colors.tint, 0x1A),
+          backgroundColor: withAlpha(colors.tint, 0x1A),
         },
         // Sloe treatment system (2026-06-08, §7): selected config pill label in
         // the deep primarySolid aubergine (AA on the 10% tint), matching the
@@ -1883,7 +1883,7 @@ export default function PlannerScreen() {
           paddingVertical: Spacing.sm,
           paddingHorizontal: 14,
           borderTopWidth: 1,
-          borderTopColor: colors.border + "99",
+          borderTopColor: withAlpha(colors.border, 0x99),
           gap: Spacing.sm,
         },
         /** Single-row add-slot chips — kept tight so empty/partial days
@@ -1920,7 +1920,7 @@ export default function PlannerScreen() {
           // ENG-1018: r10 is exactly between Radius.lg (8) and Radius.xl (12);
           // left as a literal — ambiguous snap reported, not guessed.
           borderRadius: Radius.xl,
-          backgroundColor: colors.border + "66",
+          backgroundColor: withAlpha(colors.border, 0x66),
           alignItems: "center",
           justifyContent: "center",
         },
@@ -1950,7 +1950,7 @@ export default function PlannerScreen() {
           width: 30,
           height: 30,
           borderRadius: Radius.lg,
-          backgroundColor: colors.border + "66",
+          backgroundColor: withAlpha(colors.border, 0x66),
           alignItems: "center",
           justifyContent: "center",
           marginTop: 3,
@@ -2796,7 +2796,7 @@ export default function PlannerScreen() {
                   borderRadius: Radius.full,
                   borderWidth: 1,
                   borderColor: active ? colors.textSecondary : colors.border,
-                  backgroundColor: active ? colors.textSecondary + "18" : colors.card,
+                  backgroundColor: active ? withAlpha(colors.textSecondary, 0x18) : colors.card,
                 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
@@ -3748,7 +3748,7 @@ export default function PlannerScreen() {
                         paddingHorizontal: 8,
                         paddingVertical: 2,
                         borderRadius: Radius.full,
-                        backgroundColor: colors.textTertiary + "1A",
+                        backgroundColor: withAlpha(colors.textTertiary, 0x1A),
                       }}
                       accessibilityLabel="Recipe no longer in your library"
                     >
@@ -3780,7 +3780,7 @@ export default function PlannerScreen() {
                         paddingHorizontal: 8,
                         paddingVertical: 2,
                         borderRadius: Radius.full,
-                        backgroundColor: Accent.warning + "1F",
+                        backgroundColor: withAlpha(Accent.warning, 0x1F),
                       }}
                       accessibilityLabel="Estimated macros — open the recipe to verify"
                     >
@@ -3979,7 +3979,7 @@ export default function PlannerScreen() {
                 <View
                   style={{
                     flex: 1,
-                    backgroundColor: accent.primary + "26",
+                    backgroundColor: withAlpha(accent.primary, 0x26),
                   }}
                 />
                 <View
@@ -3989,7 +3989,7 @@ export default function PlannerScreen() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: mc.fat + "12",
+                    backgroundColor: withAlpha(mc.fat, 0x12),
                   }}
                 />
               </Animated.View>
@@ -4520,8 +4520,8 @@ export default function PlannerScreen() {
                   paddingVertical: Spacing.md,
                   paddingHorizontal: Spacing.xl,
                   borderTopWidth: 1,
-                  borderTopColor: colors.border + "60",
-                  backgroundColor: pressed ? colors.border + "30" : "transparent",
+                  borderTopColor: withAlpha(colors.border, 0x60),
+                  backgroundColor: pressed ? withAlpha(colors.border, 0x30) : "transparent",
                 })}
               >
                 <Text
@@ -4586,7 +4586,7 @@ export default function PlannerScreen() {
                     marginHorizontal: Spacing.xl,
                     paddingVertical: Spacing.md,
                     borderRadius: Radius.md,
-                    backgroundColor: colors.border + "60",
+                    backgroundColor: withAlpha(colors.border, 0x60),
                     alignItems: "center",
                   }}
                 >

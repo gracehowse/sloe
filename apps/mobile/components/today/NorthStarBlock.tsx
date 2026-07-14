@@ -27,7 +27,7 @@ import { formatQualifiedKcal } from "@suppr/nutrition-core/formatMacro";
 // vitest shim). Mirrors `PressableScale.tsx`.
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
@@ -374,7 +374,7 @@ function NorthStarDefault({
                 styles.chip,
                 {
                   backgroundColor: suggestion.bandTight
-                    ? Accent.success + "1A"
+                    ? withAlpha(Accent.success, 0x1A)
                     : colors.cardBorder,
                 },
               ]}

@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Minus, Plus } from "lucide-react-native";
 
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -72,7 +72,7 @@ export function ServingStepper({
   // Lifted from the module-level StyleSheet (which can't read a hook) onto the
   // inline button style — the `TodayPlannedMealsCard` StyleSheet-lift pattern.
   const accent = useAccent();
-  const btnTint = { backgroundColor: accent.primary + "1a" };
+  const btnTint = { backgroundColor: withAlpha(accent.primary, 0x1A) };
 
   const parsed = React.useMemo(() => {
     const n = Number.parseFloat(String(value).replace(",", ".").trim());

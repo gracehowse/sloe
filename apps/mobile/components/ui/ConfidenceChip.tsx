@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -40,7 +40,7 @@ export function ConfidenceChip({ level, label, style, testID }: ConfidenceChipPr
         styles.chip,
         // Chips census (2026-06-10): warm neutral wash — the slate literal
         // was a cool-grey outlier on a warm-aubergine app.
-        { backgroundColor: colors.confidenceNeutral + "1F" },
+        { backgroundColor: withAlpha(colors.confidenceNeutral, 0x1F) },
         style,
       ]}
     >

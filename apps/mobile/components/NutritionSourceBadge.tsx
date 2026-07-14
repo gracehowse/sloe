@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { classifySource, type SourceTier } from "@suppr/nutrition-core/classifySource";
 
@@ -35,7 +35,7 @@ export default function NutritionSourceBadge({ source, compact = true }: { sourc
           borderRadius: Radius.full, // tags census 2026-06-10
           paddingHorizontal: Spacing.xs,
           paddingVertical: 1,
-          backgroundColor: color + "18",
+          backgroundColor: withAlpha(color, 0x18),
         },
         abbr: { fontSize: 10, fontWeight: "700", color },
         label: { fontSize: 9, fontWeight: "600", color },

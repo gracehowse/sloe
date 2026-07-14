@@ -20,7 +20,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Radius } from "@/constants/theme";
+import { withAlpha, Radius } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
@@ -107,7 +107,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
 
   const currentSel = selected ?? localSelected;
   // ENG-1375 S1 — selected fill = the primarySoft token (was a raw
-  // accent.primary+"26" alpha string), matching web HouseholdBar's
+  // withAlpha(accent.primary, 0x26) alpha string), matching web HouseholdBar's
   // bg-primary-soft this same slice. ENG-828's label rule stands: the
   // selected label ink reads the AA-safe scheme-resolved `primarySolid`.
   const chipColors = (active: boolean) => ({

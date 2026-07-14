@@ -11,7 +11,7 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Bookmark, FolderPlus } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Radius, Spacing, ShadowColor } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, ShadowColor } from "@/constants/theme";
 import { useThemeColors, type ThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import type { RecipeCollection } from "@suppr/shared/recipes/recipeCollections";
@@ -127,7 +127,7 @@ function stylesFor(colors: ThemeColors) {
       paddingHorizontal: Spacing.sm,
       paddingVertical: Spacing.xs,
       borderRadius: Radius.full,
-      backgroundColor: colors.text + "CC",
+      backgroundColor: withAlpha(colors.text, 0xCC),
     },
     draftBadgeText: {
       fontSize: 11,

@@ -29,7 +29,7 @@ import {
 } from "react-native";
 import { ChevronDown, ChevronUp, X } from "lucide-react-native";
 
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { formatMacro } from "@suppr/nutrition-core/formatMacro";
 import type { SavedMealItem } from "@suppr/nutrition-core/savedMeals";
@@ -274,7 +274,7 @@ export default function SaveMealSheet({
                         borderRadius: Radius.full,
                         borderWidth: 1,
                         borderColor: isActive ? accent.primary : colors.cardBorder,
-                        backgroundColor: isActive ? accent.primary + "18" : "transparent",
+                        backgroundColor: isActive ? withAlpha(accent.primary, 0x18) : "transparent",
                       }}
                     >
                       <Text

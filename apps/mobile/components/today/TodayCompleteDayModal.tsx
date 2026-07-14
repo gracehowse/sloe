@@ -3,7 +3,7 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, X } from "lucide-react-native";
-import { Spacing, Type } from "@/constants/theme";
+import { withAlpha, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { CompleteDayV3Section } from "@/components/today/CompleteDayV3Section";
@@ -122,7 +122,7 @@ function TodayCompleteDayModalImpl({
                 width: 80,
                 height: 80,
                 borderRadius: 40,
-                backgroundColor: accent.primary + "18",
+                backgroundColor: withAlpha(accent.primary, 0x18),
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 24,

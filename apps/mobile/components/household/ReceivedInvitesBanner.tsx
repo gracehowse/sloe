@@ -17,7 +17,7 @@ import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { Mail } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
@@ -110,8 +110,8 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
         padding: Spacing.lg,
         borderRadius: Radius.md,
         borderWidth: 1,
-        borderColor: accent.primary + "40",
-        backgroundColor: accent.primary + "10",
+        borderColor: withAlpha(accent.primary, 0x40),
+        backgroundColor: withAlpha(accent.primary, 0x10),
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

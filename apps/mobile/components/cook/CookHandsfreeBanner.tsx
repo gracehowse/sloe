@@ -1,5 +1,5 @@
 import { Text, View, StyleSheet } from "react-native";
-import { Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Spacing, Radius, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 
@@ -19,8 +19,8 @@ export function CookHandsfreeBanner({ visible }: CookHandsfreeBannerProps) {
       style={[
         styles.banner,
         {
-          backgroundColor: accent.primary + "10",
-          borderColor: accent.primary + "30",
+          backgroundColor: withAlpha(accent.primary, 0x10),
+          borderColor: withAlpha(accent.primary, 0x30),
         },
       ]}
       accessibilityLiveRegion="polite"

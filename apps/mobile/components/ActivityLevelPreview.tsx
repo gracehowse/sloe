@@ -16,7 +16,7 @@ import {
   type ActivityLevel,
   type Sex,
 } from "@suppr/nutrition-core/tdee";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -85,7 +85,7 @@ export default function ActivityLevelPreview({
                   {
                     borderColor: active ? accent.primary : colors.border,
                     backgroundColor: active
-                      ? accent.primary + "15"
+                      ? withAlpha(accent.primary, 0x15)
                       : colors.inputBg,
                   },
                 ]}

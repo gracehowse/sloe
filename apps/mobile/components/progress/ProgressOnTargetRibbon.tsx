@@ -1,5 +1,5 @@
 import { Text, View } from "react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Radius, Spacing } from "@/constants/theme";
 import { Award } from "lucide-react-native";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -43,7 +43,7 @@ export function ProgressOnTargetRibbon({
           width: 40,
           height: 40,
           borderRadius: Radius.full,
-          backgroundColor: medal + "1F",
+          backgroundColor: withAlpha(medal, 0x1F),
           alignItems: "center",
           justifyContent: "center",
         }}

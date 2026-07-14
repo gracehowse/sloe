@@ -10,7 +10,7 @@
  * the magenta `MacroColors.fat` value.
  *
  * The component renders the wrapper as
- *   `<View style={{ backgroundColor: col + "12", ... }}>`
+ *   `<View style={{ backgroundColor: withAlpha(col, 0x12), ... }}>`
  * where `col = SLOT_COLOR[slot]`. (ENG-1099's recipe-tier `"12"` alpha was the
  * only live value once `today_tracker_tier_v1` — always-on in production —
  * was collapsed in ENG-1356; the legacy `"18"` flag-off tint no longer
@@ -20,6 +20,7 @@
  * snack↔fat collision (the original 2026-05-01 bug) must never regress.
  */
 import * as React from "react";
+import { withAlpha } from "@/constants/theme";
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react-native";
 import { View } from "react-native";
@@ -72,7 +73,7 @@ const BASE_PROPS = {
  * Pull every distinct `<col>12` backgroundColor from rendered Views.
  *
  * The slot icon wrapper renders as
- *   `<View style={{ backgroundColor: col + "12", ... }}>`
+ *   `<View style={{ backgroundColor: withAlpha(col, 0x12), ... }}>`
  * (TodayMealsSection.tsx). A 9-char hex with trailing `12` is the
  * tint signature. Returns the lower-cased set so we can assert
  * exactly the four SlotColors values appear.

@@ -965,3 +965,16 @@ export const Spring = {
   /** Tab switch + segmented control thumb (crisp settle). */
   snapSegment: { damping: 22, stiffness: 320 },
 } as const;
+
+/**
+ * ENG-1521 — apply an alpha byte (0x00–0xFF) to a hex colour, replacing the
+ * ad-hoc `colour + "18"` string-concat pattern that had spread to ~39 distinct
+ * suffixes across ~100 files (3 different mechanisms for the same soft-tint
+ * role). Output is byte-identical to the old concat (`withAlpha(c, 0x18)` ===
+ * `c + "18"`). This is the PRESERVE-EXACT centralisation only — snapping the 39
+ * opacities down to a canonical ladder is a visual change deferred to a
+ * follow-up (needs a design call + sim validation).
+ */
+export function withAlpha(color: string, alphaByte: number): string {
+  return color + (alphaByte & 0xff).toString(16).padStart(2, "0").toUpperCase();
+}

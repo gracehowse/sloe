@@ -2,7 +2,7 @@ import React, { memo, useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Check, ChevronRight, Circle, Flame, Shield } from "lucide-react-native";
 
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -289,7 +289,7 @@ function makeStyles(
     // m7 — semi-transparent today ring (~40% opacity, `+ '66'`) to match the
     // web `ring-primary/40` halo. Threaded via `accent` (M3) so the plum inverts
     // correctly on dark instead of collapsing to the near-invisible static plum.
-    dotToday: { borderWidth: 2, borderColor: accent.primarySolid + "66" },
+    dotToday: { borderWidth: 2, borderColor: withAlpha(accent.primarySolid, 0x66) },
     bestLine: { ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
 
     milestoneRow: { flexDirection: "row", alignItems: "center", gap: Spacing.dense },

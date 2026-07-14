@@ -3,7 +3,7 @@ import * as React from "react";
 import { Text, View } from "react-native";
 import { Sparkles } from "lucide-react-native";
 
-import { Accent, Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -82,7 +82,7 @@ function PostLogSuggestionToastImpl(props: PostLogSuggestionToastProps) {
         borderRadius: Radius.md,
         backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: Accent.win + "40",
+        borderColor: withAlpha(Accent.win, 0x40),
         shadowColor: ShadowColor.cast,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.12,
@@ -97,7 +97,7 @@ function PostLogSuggestionToastImpl(props: PostLogSuggestionToastProps) {
           borderRadius: Radius.full,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: Accent.win + "1A",
+          backgroundColor: withAlpha(Accent.win, 0x1A),
         }}
       >
         <Sparkles size={14} color={Accent.win} strokeWidth={2.25} />

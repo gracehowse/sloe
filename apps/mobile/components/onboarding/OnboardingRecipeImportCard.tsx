@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import Constants from "expo-constants";
 import { Check, Link2 } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -128,7 +128,7 @@ export function MobileOnboardingRecipeImportCard() {
             borderRadius: Radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: Accent.success + "26",
+            backgroundColor: withAlpha(Accent.success, 0x26),
           }}
         >
           <Link2 size={18} color={Accent.successLight} />
@@ -152,7 +152,7 @@ export function MobileOnboardingRecipeImportCard() {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 4,
-                  backgroundColor: Accent.success + "26",
+                  backgroundColor: withAlpha(Accent.success, 0x26),
                   paddingHorizontal: 8,
                   paddingVertical: Spacing.xs,
                   borderRadius: Radius.full,

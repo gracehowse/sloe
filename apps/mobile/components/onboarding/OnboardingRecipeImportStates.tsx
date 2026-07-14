@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Check, RotateCcw } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -73,7 +73,7 @@ export function ImportProgress() {
                   borderColor:
                     i === cur ? accent.primaryLight : colors.cardBorder,
                   backgroundColor:
-                    i === cur ? accent.primary + "33" : "transparent",
+                    i === cur ? withAlpha(accent.primary, 0x33) : "transparent",
                 }}
               />
             )}
@@ -115,7 +115,7 @@ export function ImportSuccess({
         marginTop: Spacing.dense,
         borderRadius: Radius.md,
         borderWidth: 1,
-        borderColor: Accent.success + "66",
+        borderColor: withAlpha(Accent.success, 0x66),
         overflow: "hidden",
       }}
     >

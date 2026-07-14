@@ -4,7 +4,7 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import { sha256 } from "js-sha256";
 // ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
 import { Ionicons } from "@expo/vector-icons";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
@@ -165,8 +165,8 @@ export function MobileSignupStep() {
       {error ? (
         <View
           style={{
-            backgroundColor: Accent.destructive + "15",
-            borderColor: Accent.destructive + "40",
+            backgroundColor: withAlpha(Accent.destructive, 0x15),
+            borderColor: withAlpha(Accent.destructive, 0x40),
             borderWidth: 1,
             borderRadius: Radius.md,
             padding: Spacing.dense,

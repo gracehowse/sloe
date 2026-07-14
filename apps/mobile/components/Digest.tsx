@@ -16,7 +16,7 @@ import { ActivityIndicator, Platform, Share, StyleSheet, Text, View } from "reac
 import { Bookmark, Share as ShareIcon, X } from "lucide-react-native";
 
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -437,9 +437,9 @@ function DigestLegacy(props: DigestProps) {
             padding: 12,
             marginBottom: 10,
             borderRadius: Radius.md,
-            backgroundColor: accent.primary + "0D",
+            backgroundColor: withAlpha(accent.primary, 0x0D),
             borderWidth: 1,
-            borderColor: accent.primary + "40",
+            borderColor: withAlpha(accent.primary, 0x40),
           }}
         >
           <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
@@ -485,9 +485,9 @@ function DigestLegacy(props: DigestProps) {
             paddingHorizontal: 12,
             paddingVertical: 8,
             borderRadius: Radius.full,
-            backgroundColor: shareDisabled ? colors.cardBorder + "22" : Accent.success + "18",
+            backgroundColor: shareDisabled ? withAlpha(colors.cardBorder, 0x22) : withAlpha(Accent.success, 0x18),
             borderWidth: 1,
-            borderColor: shareDisabled ? colors.cardBorder : Accent.success + "30",
+            borderColor: shareDisabled ? colors.cardBorder : withAlpha(Accent.success, 0x30),
             opacity: shareDisabled ? 0.4 : 1,
           }}
         >
@@ -552,7 +552,7 @@ function Stat({
         flexGrow: 1,
         padding: 10,
         borderRadius: Radius.full,
-        backgroundColor: colors.cardBorder + "22",
+        backgroundColor: withAlpha(colors.cardBorder, 0x22),
         borderWidth: 1,
         borderColor: colors.cardBorder,
       }}

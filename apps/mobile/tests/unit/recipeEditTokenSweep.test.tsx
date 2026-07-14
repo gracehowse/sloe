@@ -6,7 +6,7 @@
  * The design-director review read the edit sheet + ingredient editor as
  * "imported from a different design system": a hardcoded `#00000066` backdrop,
  * a border-as-depth sheet panel, and an off-token dashed add-button outline
- * (`Accent.primary + "50"`). This sweep aligns them to the one design language.
+ * (`withAlpha(Accent.primary, 0x50)`). This sweep aligns them to the one design language.
  * Resting cards take their soft-lift treatment from `useCardElevation` (now an
  * unconditional default — the shadow carries the separation); the sheet PANEL
  * keeps its own `design_system_elevation` read for the heavier sheet shadow:
@@ -26,6 +26,7 @@
  * regressions in the token sweep surface) + a render test of the new sheet.
  */
 import { readFileSync } from "node:fs";
+import { withAlpha } from "@/constants/theme";
 import { resolve } from "node:path";
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -45,7 +46,7 @@ describe("ENG-821 — recipe edit sheet token sweep (mobile)", () => {
     // No `#rrggbb` / `#rrggbbaa` literals.
     expect(sheet()).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     // No `Accent.<token> + "<alpha-hex>"` string-concat alpha hacks (the old
-    // `Accent.primary + "50"` dashed-outline tint). Strip `//` comments first
+    // `withAlpha(Accent.primary, 0x50)` dashed-outline tint). Strip `//` comments first
     // so the explanatory comment referencing the old pattern doesn't trip it.
     const codeOnly = sheet()
       .split("\n")

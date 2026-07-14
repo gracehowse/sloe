@@ -7,7 +7,7 @@ import {
   ViewStyle,
 } from "react-native";
 import { Check } from "lucide-react-native";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -66,7 +66,7 @@ export function OptionCard({
   // module-level `PRIMARY_TINT` constant so the hook can drive it (the
   // `TodayPlannedMealsCard` StyleSheet-lift pattern).
   const accent = useAccent();
-  const primaryTint = accent.primary + "14"; // ~8% alpha
+  const primaryTint = withAlpha(accent.primary, 0x14); // ~8% alpha
   const showCheckbox = trailing === undefined;
   const leading = thumbnail ?? icon;
 
@@ -115,7 +115,7 @@ export function OptionCard({
             backgroundColor: thumbnail
               ? colors.inputBg
               : selected
-                ? accent.primary + "26"
+                ? withAlpha(accent.primary, 0x26)
                 : colors.inputBg,
           }}
         >

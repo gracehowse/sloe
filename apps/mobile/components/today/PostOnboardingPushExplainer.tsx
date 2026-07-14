@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bell } from "lucide-react-native";
 
-import { Colors, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -95,7 +95,7 @@ function PostOnboardingPushExplainerImpl(
           <View
             style={[
               styles.iconRing,
-              { backgroundColor: accent.primary + "1A" },
+              { backgroundColor: withAlpha(accent.primary, 0x1A) },
             ]}
           >
             <Bell size={28} color={accent.primary} strokeWidth={2.25} />

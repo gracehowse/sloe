@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -126,9 +126,9 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
                   : `${Math.abs(deltaKcal).toLocaleString()} under`;
           const deltaBg =
             deltaTone === "over"
-              ? Accent.destructive + "1a"
+              ? withAlpha(Accent.destructive, 0x1A)
               : deltaTone === "under"
-                ? Accent.success + "1f"
+                ? withAlpha(Accent.success, 0x1F)
                 : colors.border;
           const deltaFg =
             deltaTone === "over"

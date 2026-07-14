@@ -2,7 +2,7 @@ import React, { memo } from "react";
 import { Text } from "react-native";
 import { Clock } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -93,7 +93,7 @@ function TodayFastingPillImpl(props: TodayFastingPillProps) {
         paddingVertical: Spacing.sm,
         paddingHorizontal: Spacing.lg,
         alignSelf: "center",
-        backgroundColor: accent.primary + "18",
+        backgroundColor: withAlpha(accent.primary, 0x18),
         borderRadius: Radius.full,
         marginVertical: Spacing.xs,
       }}

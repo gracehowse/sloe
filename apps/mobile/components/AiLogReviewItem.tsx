@@ -16,7 +16,7 @@
 import { Text, TextInput, View } from "react-native";
 import { CircleX, Sparkles } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { withAlpha, Accent, Radius, Spacing } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import {
   classifyConfidence,
@@ -133,8 +133,8 @@ export default function AiLogReviewItem({
       style={[
         {
           borderWidth: 1,
-          borderColor: low ? Accent.warning + "55" : colors.cardBorder,
-          backgroundColor: low ? Accent.warning + "0F" : colors.background,
+          borderColor: low ? withAlpha(Accent.warning, 0x55) : colors.cardBorder,
+          backgroundColor: low ? withAlpha(Accent.warning, 0x0F) : colors.background,
           borderRadius: Radius.md,
           padding: Spacing.md,
           marginBottom: Spacing.sm,
@@ -188,7 +188,7 @@ export default function AiLogReviewItem({
               borderRadius: Radius.full,
               paddingHorizontal: 6,
               paddingVertical: 2,
-              backgroundColor: cColor + "22",
+              backgroundColor: withAlpha(cColor, 0x22),
             }}
           >
             <View

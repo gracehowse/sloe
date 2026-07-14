@@ -55,7 +55,7 @@ import {
   shoppingScopeRealtimeFilter,
   type ShoppingScope,
 } from "@suppr/shared/household/shoppingScope";
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useAccent } from "@/context/theme";
@@ -649,7 +649,7 @@ export default function ShoppingListScreen() {
       gap: Spacing.sm,
       paddingVertical: Spacing.sm,
       paddingHorizontal: Spacing.md,
-      backgroundColor: accent.primary + "12",
+      backgroundColor: withAlpha(accent.primary, 0x12),
       borderRadius: Radius.md,
     },
     syncBannerText: {
@@ -871,7 +871,7 @@ export default function ShoppingListScreen() {
               width: 44,
               height: 44,
               borderRadius: Radius.xl,
-              backgroundColor: accent.primary + "14",
+              backgroundColor: withAlpha(accent.primary, 0x14),
               alignItems: "center",
               justifyContent: "center",
               marginBottom: Spacing.md,

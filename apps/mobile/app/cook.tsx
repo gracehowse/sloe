@@ -28,7 +28,7 @@ import {
   CheckCircle2,
 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
-import { Accent, Spacing, Radius, FontFamily, Type } from "@/constants/theme";
+import { withAlpha, Accent, Spacing, Radius, FontFamily, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { track, isFeatureEnabled } from "@/lib/analytics";
@@ -1263,7 +1263,7 @@ export default function CookModeScreen() {
       fontFamily: "Menlo",
     },
     timerStopBtn: {
-      backgroundColor: Accent.destructive + "20",
+      backgroundColor: withAlpha(Accent.destructive, 0x20),
       paddingHorizontal: Spacing.xl,
       paddingVertical: Spacing.md,
       borderRadius: Radius.md,
@@ -1385,7 +1385,7 @@ export default function CookModeScreen() {
     micToggleOff: { backgroundColor: colors.card },
     // Accent tint when on so the active state is unmistakable
     // even from across the kitchen.
-    micToggleOn: { backgroundColor: accent.primary + "22" },
+    micToggleOn: { backgroundColor: withAlpha(accent.primary, 0x22) },
   }), [colors, accent, cookV3]);
 
   if (steps.length === 0) {

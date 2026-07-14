@@ -13,7 +13,7 @@ import { slotLineItemLabels } from "@/lib/mealNutritionLabels";
 import { formatNutritionSourceLabel } from "@/lib/sourceLabel";
 import { parseNutritionMicrosJson, type JournalMeal, normalizeJournalSlotName, dateKeyFromDate } from "@/lib/nutritionJournal";
 import { supabase } from "@/lib/supabase";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { MacroTotalGrid, type MacroTotalCell } from "@/components/meal/MacroTotalGrid";
 import { useAccent, useResolvedScheme } from "@/context/theme";
@@ -365,7 +365,7 @@ export default function MealNutritionScreen() {
           rightSlot={
             <View
               style={{
-                backgroundColor: accent.primary + "20",
+                backgroundColor: withAlpha(accent.primary, 0x20),
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
@@ -492,7 +492,7 @@ export default function MealNutritionScreen() {
                 marginTop: Spacing.lg,
                 padding: Spacing.md,
                 borderRadius: Radius.md,
-                backgroundColor: accent.primary + "10",
+                backgroundColor: withAlpha(accent.primary, 0x10),
               }}
             >
               <View
@@ -627,7 +627,7 @@ export default function MealNutritionScreen() {
               {microRows
                 .filter((row) => row.value !== "—")
                 .map((row) => (
-                  <View key={row.key} style={[styles.microRow, { borderBottomColor: colors.cardBorder + "55" }]}>
+                  <View key={row.key} style={[styles.microRow, { borderBottomColor: withAlpha(colors.cardBorder, 0x55) }]}>
                     <Text style={[styles.microLabel, { color: colors.text }]} numberOfLines={2}>
                       {row.label}
                     </Text>

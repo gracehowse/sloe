@@ -1,7 +1,7 @@
 import React from "react";
 import { Linking, Text, View, ActivityIndicator } from "react-native";
 import { Footprints, Flame, HeartPulse, Scale } from "lucide-react-native";
-import { Accent, Radius } from "@/constants/theme";
+import { withAlpha, Accent, Radius } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
@@ -225,7 +225,7 @@ export function AppleHealthCard({
                   width: 28,
                   height: 28,
                   borderRadius: Radius.full,
-                  backgroundColor: row.color + "1A",
+                  backgroundColor: withAlpha(row.color, 0x1A),
                   alignItems: "center",
                   justifyContent: "center",
                 }}

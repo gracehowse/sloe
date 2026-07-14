@@ -4,7 +4,7 @@ import { BarChart3 } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
-import { Elevation, Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Elevation, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
@@ -107,7 +107,7 @@ export function AnalyticsConsentPrompt() {
             width: 36,
             height: 36,
             borderRadius: Radius.full,
-            backgroundColor: accent.primary + "1A",
+            backgroundColor: withAlpha(accent.primary, 0x1A),
             alignItems: "center",
             justifyContent: "center",
           }}

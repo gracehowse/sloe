@@ -13,7 +13,7 @@
 import { useMemo } from "react";
 import { Text, View } from "react-native";
 
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { withAlpha, Radius, Spacing, Type } from "@/constants/theme";
 import {
   aggregateTotals,
   averageConfidence,
@@ -83,7 +83,7 @@ export default function AiLogReviewSummary({ items, slotLabel, colors }: Props) 
             borderRadius: Radius.full,
             paddingHorizontal: 8,
             paddingVertical: 3,
-            backgroundColor: cColor + "22",
+            backgroundColor: withAlpha(cColor, 0x22),
           }}
         >
           <View

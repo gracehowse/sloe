@@ -24,7 +24,7 @@ import { normaliseCachedTier } from "@/lib/cachedUserTier";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
+import { withAlpha, Accent, MacroColors, MacroColorsDark, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
@@ -332,7 +332,7 @@ export default function ProfileScreen() {
     // grammar. (Sage stays reserved for success/status + nutrition-confidence
     // semantics, not selection state.)
     dietaryChipActive: {
-      borderColor: accent.primarySolid + "80",
+      borderColor: withAlpha(accent.primarySolid, 0x80),
       backgroundColor: accent.primarySoft,
     },
     dietaryLabel: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
@@ -743,9 +743,9 @@ export default function ProfileScreen() {
                 paddingHorizontal: Spacing.md,
                 paddingVertical: Spacing.dense,
                 borderRadius: Radius.md,
-                backgroundColor: Accent.warning + "14",
+                backgroundColor: withAlpha(Accent.warning, 0x14),
                 borderWidth: 1,
-                borderColor: Accent.warning + "40",
+                borderColor: withAlpha(Accent.warning, 0x40),
                 flexDirection: "row",
                 gap: 8,
                 alignItems: "flex-start",
