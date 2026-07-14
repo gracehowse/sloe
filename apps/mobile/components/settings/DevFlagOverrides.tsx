@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
-import { DevSettings, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { DevSettings, ScrollView, Text, TextInput, View } from "react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -145,7 +146,8 @@ export function DevFlagOverrides() {
             paddingVertical: Spacing.xs,
           }}
         />
-        <Pressable
+        <PressableScale
+          haptic="confirm"
           accessibilityRole="button"
           accessibilityLabel="Force custom flag on"
           disabled={!customFlag.trim()}
@@ -165,11 +167,12 @@ export function DevFlagOverrides() {
           <Text style={{ ...Type.body, fontWeight: "700", color: accent.primaryForeground }}>
             Force ON
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       <View style={{ flexDirection: "row", gap: Spacing.sm }}>
-        <Pressable
+        <PressableScale
+          haptic="destructive"
           accessibilityRole="button"
           accessibilityLabel="Clear all forced flags"
           onPress={() => void clearAll()}
@@ -185,8 +188,9 @@ export function DevFlagOverrides() {
           <Text style={{ ...Type.body, fontWeight: "700", color: colors.text }}>
             Clear all
           </Text>
-        </Pressable>
-        <Pressable
+        </PressableScale>
+        <PressableScale
+          haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Reload app to apply forced flags"
           onPress={() => DevSettings.reload()}
@@ -201,7 +205,7 @@ export function DevFlagOverrides() {
           <Text style={{ ...Type.body, fontWeight: "700", color: "#ffffff" }}>
             Reload app
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );
@@ -248,8 +252,9 @@ function FlagRow({
           const tint =
             opt === "on" ? Accent.success : opt === "off" ? Accent.destructive : accent.primary;
           return (
-            <Pressable
+            <PressableScale
               key={opt}
+              haptic="selection"
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               accessibilityLabel={`${flag} ${opt}`}
@@ -269,7 +274,7 @@ function FlagRow({
               >
                 {opt === "auto" ? "Auto" : opt === "on" ? "On" : "Off"}
               </Text>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>

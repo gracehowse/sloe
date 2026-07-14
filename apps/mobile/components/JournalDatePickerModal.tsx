@@ -6,6 +6,7 @@ import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 type Theme = {
@@ -76,23 +77,25 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
       >
         <Pressable onPress={() => {}} style={{ backgroundColor: colors.card, borderRadius: Radius.lg, padding: Spacing.md, borderWidth: 1, borderColor: colors.cardBorder }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.md }}>
-            <Pressable
+            <PressableScale
               onPress={goPrevMonth}
+              haptic="selection"
               hitSlop={12}
               accessibilityRole="button"
               accessibilityLabel="Previous month"
             >
               <ChevronLeft size={22} color={colors.text} />
-            </Pressable>
+            </PressableScale>
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>{monthLabel}</Text>
-            <Pressable
+            <PressableScale
               onPress={goNextMonth}
+              haptic="selection"
               hitSlop={12}
               accessibilityRole="button"
               accessibilityLabel="Next month"
             >
               <ChevronRight size={22} color={colors.text} />
-            </Pressable>
+            </PressableScale>
           </View>
           <View style={{ flexDirection: "row", marginBottom: Spacing.sm }}>
             {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
@@ -110,8 +113,9 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
               const disabled = cell.getTime() < min.getTime() || cell.getTime() > max.getTime();
               const isSel = ck === selKey;
               return (
-                <Pressable
+                <PressableScale
                   key={`${ck}-${idx}`}
+                  haptic="selection"
                   disabled={disabled}
                   onPress={() => {
                     onSelectDate(clampJournalDate(cell));
@@ -149,16 +153,17 @@ export default function JournalDatePickerModal({ visible, onClose, selectedDate,
                       {cell.getDate()}
                     </Text>
                   </View>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </View>
-          <Pressable
+          <PressableScale
             onPress={onClose}
+            haptic="selection"
             style={{ marginTop: Spacing.md, paddingVertical: Spacing.dense, alignItems: "center" }}
           >
             <Text style={{ fontSize: 15, fontWeight: "600", color: accent.primarySolid }}>Cancel</Text>
-          </Pressable>
+          </PressableScale>
         </Pressable>
       </Pressable>
     </Modal>

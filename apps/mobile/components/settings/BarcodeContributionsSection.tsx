@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 import { Package, Trash2 } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -184,7 +185,8 @@ export function BarcodeContributionsSection({ userId }: { userId: string | null 
                     {item.barcode} · {barcodeContributionStatusLabel(item.verification_status)}
                   </Text>
                 </View>
-                <Pressable
+                <PressableScale
+                  haptic="destructive"
                   accessibilityRole="button"
                   accessibilityLabel={`Remove ${barcodeContributionTitle(item)} from barcode contributions`}
                   disabled={barcodeContributionDeletingId === item.id}
@@ -201,7 +203,7 @@ export function BarcodeContributionsSection({ userId }: { userId: string | null 
                   }}
                 >
                   <Trash2 size={16} color={Accent.destructive} strokeWidth={1.75} />
-                </Pressable>
+                </PressableScale>
               </View>
             ))
           )}

@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import {
   Modal,
   Pressable,
@@ -309,14 +310,15 @@ function FullNutrientPanelSheetImpl({
                 {FULL_NUTRIENT_PANEL_ROW_COUNT} nutrients · sorted by %DV
               </Text>
             </View>
-            <Pressable
+            <PressableScale
               onPress={onClose}
+              haptic="selection"
               hitSlop={12}
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
               <X size={24} color={colors.textSecondary} strokeWidth={2.25} />
-            </Pressable>
+            </PressableScale>
           </View>
           <ScrollView
             contentContainerStyle={{

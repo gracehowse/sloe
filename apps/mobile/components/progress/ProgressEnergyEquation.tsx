@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { StyleSheet, Text, useColorScheme, View } from "react-native";
 import { ChevronDown, ChevronRight } from "lucide-react-native";
 
 import { SupprCard } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -103,7 +104,8 @@ export function ProgressEnergyEquation({
           Maintenance: {qualifierLine}
         </Text>
       ) : null}
-      <Pressable
+      <PressableScale
+        haptic="selection"
         onPress={() => setShowHow((v) => !v)}
         accessibilityRole="button"
         accessibilityState={{ expanded: showHow }}
@@ -118,7 +120,7 @@ export function ProgressEnergyEquation({
         ) : (
           <ChevronRight size={14} color={plum} strokeWidth={2.25} />
         )}
-      </Pressable>
+      </PressableScale>
       {showHow ? (
         <Text style={[styles.explainer, { color: colors.textSecondary }]}>
           Maintenance (your TDEE) is what you&apos;d burn on a normal day. Sloe

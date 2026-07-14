@@ -1,9 +1,10 @@
 import React, { memo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Flame, Snowflake } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import Badge from "@/components/Badge";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 /**
  * TodayStreakInsightCard — streak count + freeze badge + one-time
@@ -101,8 +102,9 @@ function TodayStreakInsightCardImpl({
             <Text style={{ flex: 1, fontSize: 11, fontWeight: "600", color: textColor }}>
               You earned a freeze — {freezesAvailableToday} available
             </Text>
-            <Pressable
+            <PressableScale
               onPress={onDismissFreezeEarned}
+              haptic="selection"
               accessibilityRole="button"
               accessibilityLabel="Got it — dismiss earned freeze"
               hitSlop={6}
@@ -116,7 +118,7 @@ function TodayStreakInsightCardImpl({
               >
                 Got it
               </Text>
-            </Pressable>
+            </PressableScale>
           </View>
         ) : null}
       </View>

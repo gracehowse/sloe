@@ -20,7 +20,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -28,6 +27,7 @@ import {
 } from "react-native";
 import { Mail, Plus, Trash2, X } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -182,14 +182,15 @@ export function HouseholdInviteSheet({
             <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text }}>
               Invite to household
             </Text>
-            <Pressable
+            <PressableScale
+              haptic="selection"
               accessibilityRole="button"
               accessibilityLabel="Close invite sheet"
               onPress={onClose}
               hitSlop={10}
             >
               <X size={22} color={colors.textSecondary} />
-            </Pressable>
+            </PressableScale>
           </View>
 
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -235,8 +236,9 @@ export function HouseholdInviteSheet({
                     style={{ flex: 1, paddingVertical: 12, ...Type.bodyLarge, color: colors.text }}
                   />
                 </View>
-                <Pressable
+                <PressableScale
                   testID="household-invite-send"
+                  haptic="confirm"
                   accessibilityRole="button"
                   accessibilityLabel="Send invite"
                   onPress={onSend}
@@ -254,7 +256,7 @@ export function HouseholdInviteSheet({
                   ) : (
                     <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 14 }}>Send</Text>
                   )}
-                </Pressable>
+                </PressableScale>
               </View>
               <Text style={{ ...Type.captionSmall, color: colors.textTertiary, lineHeight: 16 }}>
                 {"They'll see an Accept / Decline prompt the next time they open Sloe."}
@@ -306,14 +308,15 @@ export function HouseholdInviteSheet({
                         </Text>
                       </View>
                       {inv.status === "pending" && (
-                        <Pressable
+                        <PressableScale
+                          haptic="destructive"
                           accessibilityRole="button"
                           accessibilityLabel={`Cancel invite to ${inv.invitee_email}`}
                           onPress={() => onCancel(inv)}
                           hitSlop={6}
                         >
                           <Trash2 size={16} color={Accent.destructive} />
-                        </Pressable>
+                        </PressableScale>
                       )}
                     </View>
                   ))}

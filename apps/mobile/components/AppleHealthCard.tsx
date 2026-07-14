@@ -1,8 +1,9 @@
 import React from "react";
-import { Linking, Pressable, Text, View, ActivityIndicator } from "react-native";
+import { Linking, Text, View, ActivityIndicator } from "react-native";
 import { Footprints, Flame, HeartPulse, Scale } from "lucide-react-native";
 import { Accent, Radius } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -147,14 +148,15 @@ export function AppleHealthCard({
           Couldn&rsquo;t load Apple Health data.
         </Text>
         {onRetry ? (
-          <Pressable
+          <PressableScale
             testID="apple-health-card-retry"
+            haptic="selection"
             accessibilityRole="button"
             onPress={onRetry}
             style={{ alignSelf: "flex-start" }}
           >
             <Text style={{ fontSize: 13, color: accent.primarySolid, fontWeight: "600" }}>Retry</Text>
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>,
     );

@@ -11,9 +11,9 @@
  * flight (no double-submit).
  */
 import * as React from "react";
-import { Pressable } from "react-native";
 import { Star } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -35,12 +35,13 @@ export function FavoriteStarButton({
 }) {
   const colors = useThemeColors();
   return (
-    <Pressable
+    <PressableScale
       onPress={(e) => {
         e?.stopPropagation?.();
         if (pending) return;
         onToggle();
       }}
+      haptic="selection"
       hitSlop={12}
       disabled={pending}
       accessibilityRole="button"
@@ -55,7 +56,7 @@ export function FavoriteStarButton({
         fill={starred ? Accent.warning : "transparent"}
         strokeWidth={2.25}
       />
-    </Pressable>
+    </PressableScale>
   );
 }
 

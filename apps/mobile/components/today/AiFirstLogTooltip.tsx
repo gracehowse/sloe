@@ -1,7 +1,8 @@
 import React, { memo, useEffect } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Sparkles, X } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 
@@ -109,7 +110,8 @@ function AiFirstLogTooltipImpl(props: AiFirstLogTooltipProps) {
       >
         We fill in nutrition for photos &amp; voice. Tap to verify or edit.
       </Text>
-      <Pressable
+      <PressableScale
+        haptic="selection"
         onPress={onDismiss}
         accessibilityRole="button"
         accessibilityLabel="Dismiss tooltip"
@@ -123,7 +125,7 @@ function AiFirstLogTooltipImpl(props: AiFirstLogTooltipProps) {
         }}
       >
         <X size={14} color={accent.primary} strokeWidth={2.25} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

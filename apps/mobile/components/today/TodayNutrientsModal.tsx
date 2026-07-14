@@ -4,6 +4,7 @@ import { Radius, Spacing } from "@/constants/theme";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 /**
  * TodayNutrientsModal — "View all nutrients" day sheet.
@@ -59,9 +60,9 @@ function TodayNutrientsModalImpl({
             }}
           >
             <Text style={{ fontSize: 17, fontWeight: "700", color: textColor }}>Day nutrients</Text>
-            <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
+            <PressableScale onPress={onClose} haptic="selection" hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
               <X size={24} color={textSecondaryColor} strokeWidth={2.25} />
-            </Pressable>
+            </PressableScale>
           </View>
           <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>

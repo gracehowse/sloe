@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -53,8 +54,9 @@ export function PlanSourceSelector({
           const selected = m === mode;
           const empty = count === 0;
           return (
-            <Pressable
+            <PressableScale
               key={m}
+              haptic="selection"
               testID={`plan-source-row-${m}`}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
@@ -96,7 +98,7 @@ export function PlanSourceSelector({
                   {empty ? meta.emptySubtitle : meta.subtitle}
                 </Text>
               </View>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>

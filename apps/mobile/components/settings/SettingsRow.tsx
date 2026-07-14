@@ -1,7 +1,8 @@
 import * as React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { ChevronRight, type LucideIcon } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -72,7 +73,8 @@ export function SettingsRow({
   // to the default proportional figures.
   const subHasNumber = typeof sub === "string" && /\d/.test(sub);
   return (
-    <Pressable
+    <PressableScale
+      haptic="selection"
       testID={testID}
       onPress={onPress}
       style={{
@@ -123,6 +125,6 @@ export function SettingsRow({
         ) : null}
         <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }

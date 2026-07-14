@@ -7,9 +7,10 @@
  * Fraunces "Saved.", book name, "In your library" chip, View/Plan CTAs.
  * No modal. No Alert.
  */
-import { View, Text, Pressable } from "react-native";
+import { View, Text } from "react-native";
 import { CheckCircle } from "lucide-react-native";
 import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
@@ -91,7 +92,8 @@ export function CookbookSuccessView({
           </Text>
         </View>
         {/* Primary CTA: view library. */}
-        <Pressable
+        <PressableScale
+          haptic="confirm"
           style={{
             backgroundColor: accent.primary,
             borderRadius: Radius.xl,
@@ -112,9 +114,9 @@ export function CookbookSuccessView({
           >
             View library
           </Text>
-        </Pressable>
+        </PressableScale>
         {/* Secondary CTA: plan. */}
-        <Pressable style={{ marginTop: Spacing.md }} onPress={onBuildPlan}>
+        <PressableScale haptic="selection" style={{ marginTop: Spacing.md }} onPress={onBuildPlan}>
           <Text
             style={{
               fontFamily: FontFamily.sansRegular,
@@ -124,7 +126,7 @@ export function CookbookSuccessView({
           >
             Build your week in Plan
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );

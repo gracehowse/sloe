@@ -1,7 +1,8 @@
-import { Pressable, ScrollView, Text } from "react-native";
+import { ScrollView, Text } from "react-native";
 
 import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 /**
  * 2026-04-26 polish (round 2): trimmed to 4 visible ranges. Pre-fix this
@@ -92,8 +93,9 @@ export default function TimeRangeSelector({
       {RANGES.map((r) => {
         const isDisabled = disabledRanges?.has(r) ?? false;
         return (
-          <Pressable
+          <PressableScale
             key={r}
+            haptic="selection"
             onPress={() => !isDisabled && onSelect(r)}
             disabled={isDisabled}
             accessibilityHint={
@@ -121,7 +123,7 @@ export default function TimeRangeSelector({
             >
               {rangeLabel(r)}
             </Text>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </ScrollView>

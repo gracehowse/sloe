@@ -2,7 +2,6 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import {
   Alert,
   AppState,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useHaptics } from "@/hooks/useHaptics";
 import { showSignInAlert } from "@/lib/authAlertCopy";
 import { formatMealSourceLabelForRow, parseByDayNumberMap } from "@/lib/todayScreenRows";
@@ -4301,7 +4301,7 @@ export default function TrackerScreen() {
 
         {/* Error banner */}
         {loadError && (
-          <Pressable
+          <PressableScale haptic="selection"
             onPress={() => { setLoadError(null); void loadJournal(); }}
             style={{ backgroundColor: Accent.destructive + "18", borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
           >
@@ -4310,7 +4310,7 @@ export default function TrackerScreen() {
               {loadError}
               {" Tap to retry."}
             </Text>
-          </Pressable>
+          </PressableScale>
         )}
 
         {/* Day-of-week strip in week mode */}
@@ -4787,7 +4787,7 @@ export default function TrackerScreen() {
                 borderColor={colors.border}
               />
             ) : (
-              <Pressable
+              <PressableScale haptic="selection"
                 onPress={() => router.push("/health-sync" as any)}
                 accessibilityRole="button"
                 accessibilityLabel="Connect health"
@@ -4796,7 +4796,7 @@ export default function TrackerScreen() {
                 <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
                   Connect health
                 </Text>
-              </Pressable>
+              </PressableScale>
             )}
             {userId && (hasBurnData || isToday) ? (
               <TodayActivityBonusCard
@@ -4889,7 +4889,7 @@ export default function TrackerScreen() {
             onReset={(kind) => void resetHydrationStimulantsForDay(kind)}
               />
             ) : (
-              <Pressable
+              <PressableScale haptic="selection"
                 onPress={() => setHydrationManualExpanded(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Track hydration"
@@ -4898,7 +4898,7 @@ export default function TrackerScreen() {
                 <Text style={{ ...Type.caption, color: colors.textSecondary, fontWeight: "600", textAlign: "center" }}>
                   Track hydration?
                 </Text>
-              </Pressable>
+              </PressableScale>
             )}
           </View>
         )}
@@ -5743,9 +5743,9 @@ export default function TrackerScreen() {
                 Logging to {activeMealSlot}
               </Text>
             </View>
-            <Pressable onPress={() => setShowPrevious(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close quick add">
+            <PressableScale haptic="selection" onPress={() => setShowPrevious(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close quick add">
               <X size={24} color={colors.text} strokeWidth={2} />
-            </Pressable>
+            </PressableScale>
           </View>
           <QuickAddPanel
             byDay={byDay}

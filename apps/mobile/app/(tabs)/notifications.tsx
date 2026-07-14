@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -16,6 +15,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { NotificationRow } from "@/components/notifications/NotificationRow";
 import { supabase } from "@/lib/supabase";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
@@ -335,7 +335,8 @@ export default function NotificationsScreen() {
             {unreadCount > 0 ? `${unreadCount} unread` : "No unread notifications"}
           </Text>
         </View>
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={() => void markAllRead()}
           disabled={markingAllRead || items.length === 0 || unreadCount === 0}
           style={[
@@ -349,7 +350,7 @@ export default function NotificationsScreen() {
           ) : (
             <Text style={styles.btnText}>Mark all read</Text>
           )}
-        </Pressable>
+        </PressableScale>
       </View>
 
       {loading ? (
@@ -359,9 +360,9 @@ export default function NotificationsScreen() {
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.err}>{error}</Text>
-          <Pressable onPress={() => void loadInbox()} style={styles.retry}>
+          <PressableScale haptic="selection" onPress={() => void loadInbox()} style={styles.retry}>
             <Text style={styles.retryText}>Try again</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       ) : (
         <ScrollView

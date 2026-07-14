@@ -1,9 +1,10 @@
 import React, { memo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Layout } from "@/constants/layout";
 import { Accent, Spacing } from "@/constants/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import type { JournalMeal } from "@/lib/nutritionJournal";
 import { carbsLabel, netCarbsForRow } from "@suppr/nutrition-core/netCarbs";
 import { formatMacro } from "@suppr/nutrition-core/formatMacro";
@@ -255,16 +256,17 @@ function TodayDashboardMacroBarsImpl({
           );
         }
         return (
-          <Pressable
+          <PressableScale
             key={macro}
             onPress={() => onPressMacro(macro)}
+            haptic="selection"
             accessibilityRole="button"
             accessibilityLabel={`${def.label}: ${value} of ${targetLabel} ${def.unit}`}
             hitSlop={6}
             testID={`today-macro-bar-${macro}`}
           >
             {rowBody}
-          </Pressable>
+          </PressableScale>
         );
       })}
     </SupprCard>

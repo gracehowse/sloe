@@ -27,13 +27,13 @@ import * as React from "react";
 import {
   Image,
   Linking,
-  Pressable,
   StyleSheet,
   Text,
   View,
   type ViewStyle,
 } from "react-native";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 export interface FatSecretBadgeProps {
   /**
@@ -71,8 +71,9 @@ export function FatSecretBadge({
 
   if (variant === "text") {
     return (
-      <Pressable
+      <PressableScale
         onPress={handlePress}
+        haptic="selection"
         accessibilityRole="link"
         accessibilityLabel="Powered by fatsecret Platform API"
         testID={testID ?? "fatsecret-badge"}
@@ -81,14 +82,15 @@ export function FatSecretBadge({
         <Text style={[styles.text, { color: colors.textTertiary }]}>
           Powered by fatsecret Platform API
         </Text>
-      </Pressable>
+      </PressableScale>
     );
   }
 
   /* Badge variant — official image. Must not be modified per ToS. */
   return (
-    <Pressable
+    <PressableScale
       onPress={handlePress}
+      haptic="selection"
       accessibilityRole="link"
       accessibilityLabel="Powered by fatsecret Platform API"
       testID={testID ?? "fatsecret-badge"}
@@ -102,7 +104,7 @@ export function FatSecretBadge({
           accessibilityIgnoresInvertColors
         />
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 

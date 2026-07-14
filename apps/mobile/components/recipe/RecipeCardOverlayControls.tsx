@@ -8,8 +8,9 @@
  * Web mirror: `src/app/components/library/RecipeCardOverlayControls.tsx`.
  */
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Bookmark, FolderPlus } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, ShadowColor } from "@/constants/theme";
 import { useThemeColors, type ThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
@@ -42,7 +43,8 @@ export function RecipeCardOverlayControls({
 
   return (
     <>
-      <Pressable
+      <PressableScale
+        haptic="selection"
         style={styles.bookmarkDot}
         onPress={onToggleSave}
         accessibilityRole="button"
@@ -55,13 +57,14 @@ export function RecipeCardOverlayControls({
           color={isSaved ? accent.primary : colors.textSecondary}
           fill={isSaved ? accent.primary : "transparent"}
         />
-      </Pressable>
+      </PressableScale>
       {showDraft ? (
         <View style={styles.draftBadge} pointerEvents="none">
           <Text style={styles.draftBadgeText}>Draft</Text>
         </View>
       ) : collectionsEnabled && collections.length > 0 ? (
-        <Pressable
+        <PressableScale
+          haptic="selection"
           style={styles.collectionDot}
           onPress={() => setSheetVisible(true)}
           accessibilityRole="button"
@@ -69,7 +72,7 @@ export function RecipeCardOverlayControls({
           hitSlop={8}
         >
           <FolderPlus size={15} color={colors.textSecondary} />
-        </Pressable>
+        </PressableScale>
       ) : null}
       {collectionsEnabled ? (
         <AddToCollectionSheet

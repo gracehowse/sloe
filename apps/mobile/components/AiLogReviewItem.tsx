@@ -13,10 +13,11 @@
  * Pure presentational + per-row event handlers passed in from the
  * parent. No analytics, no I/O — the parent commits.
  */
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
 import { CircleX, Sparkles } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import {
   classifyConfidence,
   isLowConfidence,
@@ -210,14 +211,15 @@ export default function AiLogReviewItem({
             AI estimate
           </Badge>
         </View>
-        <Pressable
+        <PressableScale
+          haptic="destructive"
           accessibilityRole="button"
           accessibilityLabel={`Remove ${item.name}`}
           onPress={onRemove}
           hitSlop={8}
         >
           <CircleX size={20} color={colors.textTertiary} strokeWidth={2} />
-        </Pressable>
+        </PressableScale>
       </View>
       <View style={{ flexDirection: "row", gap: 6, marginTop: Spacing.sm }}>
         {numField(

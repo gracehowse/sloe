@@ -8,8 +8,9 @@
  * - DS §6.2: included state = 2pt terracotta border + 6% tint. Excluded = dimmed.
  * - DS §10.1: visible trailing checkbox affordance (not opacity-only strikethrough).
  */
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { CheckCircle, UtensilsCrossed } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
@@ -37,8 +38,9 @@ export function CookbookReviewRow({ item, excluded, nutritionMode, onToggle }: P
     : { borderWidth: 2, borderColor: accent.primary, backgroundColor: accent.primarySoft };
 
   return (
-    <Pressable
+    <PressableScale
       onPress={() => onToggle(item.key)}
+      haptic="selection"
       testID={`cookbook-recipe-${item.key}`}
       // Flat-card surfaces (2026-06-12, Withings grammar — decision:
       // docs/decisions/2026-06-12-flat-card-surfaces.md): the resting recipe
@@ -129,6 +131,6 @@ export function CookbookReviewRow({ item, excluded, nutritionMode, onToggle }: P
           </View>
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }

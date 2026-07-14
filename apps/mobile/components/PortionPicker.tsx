@@ -5,6 +5,7 @@ import { Accent, Radius, Spacing } from "@/constants/theme";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 import {
   buildPickerOptions,
@@ -121,7 +122,8 @@ export function PortionPicker(props: PortionPickerProps) {
           gap: 4,
         }}
       >
-        <Pressable
+        <PressableScale
+          haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Decrease amount"
           onPress={() => bump(-step)}
@@ -136,7 +138,7 @@ export function PortionPicker(props: PortionPickerProps) {
           hitSlop={6}
         >
           <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text, lineHeight: 22 }}>−</Text>
-        </Pressable>
+        </PressableScale>
 
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 4 }}>
           <Text
@@ -152,7 +154,8 @@ export function PortionPicker(props: PortionPickerProps) {
           >
             {roundAmount(value.amount, value.unit)}
           </Text>
-          <Pressable
+          <PressableScale
+            haptic="selection"
             accessibilityRole="button"
             accessibilityLabel="Change unit"
             onPress={() => setUnitPickerOpen(true)}
@@ -176,10 +179,11 @@ export function PortionPicker(props: PortionPickerProps) {
               {unitLabel(value)}
             </Text>
             <Text style={{ fontSize: 10, color: accent.primarySolid, opacity: 0.7, transform: [{ rotate: "90deg" }] }}>›</Text>
-          </Pressable>
+          </PressableScale>
         </View>
 
-        <Pressable
+        <PressableScale
+          haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Increase amount"
           onPress={() => bump(step)}
@@ -194,7 +198,7 @@ export function PortionPicker(props: PortionPickerProps) {
           hitSlop={6}
         >
           <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text, lineHeight: 22 }}>+</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {!hideQuickChips && opts.quickChips.length > 0 && (
@@ -223,8 +227,9 @@ export function PortionPicker(props: PortionPickerProps) {
                 (chip.state.unit.kind !== "count" ||
                   (value.unit.kind === "count" && chip.state.unit.singular === value.unit.singular));
               return (
-                <Pressable
+                <PressableScale
                   key={`${chip.label}-${i}`}
+                  haptic="selection"
                   accessibilityRole="button"
                   accessibilityLabel={`Set portion to ${chip.label}`}
                   accessibilityState={{ selected: isActive }}
@@ -249,7 +254,7 @@ export function PortionPicker(props: PortionPickerProps) {
                   >
                     {chip.label}
                   </Text>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </ScrollView>
@@ -319,8 +324,9 @@ function UnitPickerModal(props: {
           {units.map((u, i) => {
             const isActive = unitsEqual(u, current);
             return (
-              <Pressable
+              <PressableScale
                 key={`${u.kind}-${i}`}
+                haptic="selection"
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
                 accessibilityLabel={`Use ${unitLabelFor(u)}`}
@@ -343,7 +349,7 @@ function UnitPickerModal(props: {
                 <Text style={{ fontSize: 11.5, color: isActive ? accent.primarySolid : colors.textTertiary, fontVariant: ["tabular-nums"] }}>
                   {unitMeta(u)}
                 </Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </Pressable>

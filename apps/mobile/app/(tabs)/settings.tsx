@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +14,7 @@ import { ChevronLeft, ChevronRight, LogOut, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { supabase } from "@/lib/supabase";
 import { Spacing, Type } from "@/constants/theme";
 import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
@@ -130,7 +130,8 @@ export default function SettingsScreen() {
           paddingBottom: Spacing.xs,
         }}
       >
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={() => {
             if (router.canGoBack()) router.back();
             else router.replace("/(tabs)" as never);
@@ -141,7 +142,7 @@ export default function SettingsScreen() {
           style={{ padding: 4, width: 30 }}
         >
           <ChevronLeft size={22} color={colors.text} strokeWidth={2} />
-        </Pressable>
+        </PressableScale>
         <Text style={[styles.title, { flex: 1 }]} accessibilityRole="header">
           Settings
         </Text>
@@ -191,7 +192,8 @@ export default function SettingsScreen() {
             }}
           />
           {searchQuery.length > 0 ? (
-            <Pressable
+            <PressableScale
+              haptic="selection"
               onPress={() => setSearchQuery("")}
               accessibilityRole="button"
               accessibilityLabel="Clear search"
@@ -206,7 +208,7 @@ export default function SettingsScreen() {
               >
                 Clear
               </Text>
-            </Pressable>
+            </PressableScale>
           ) : null}
         </View>
 
@@ -217,7 +219,8 @@ export default function SettingsScreen() {
                 Out is reversible — red is reserved for irreversible
                 actions like Delete Account. (P1-5,
                 `claude/settings-mobile-structural-fix` 2026-05-01.) */}
-            <Pressable
+            <PressableScale
+              haptic="selection"
               testID="settings-sign-out-row"
               onPress={() =>
                 // ENG-1517 — confirm before ending the session. Sign Out sits
@@ -263,7 +266,7 @@ export default function SettingsScreen() {
                 color={colors.textTertiary}
                 strokeWidth={1.75}
               />
-            </Pressable>
+            </PressableScale>
             {/* Dev-only flag-force panel (ENG-840). Renders null in
                 release builds — preview flag-gated UI on device/sim
                 without a PostHog ramp. */}
@@ -288,8 +291,9 @@ export default function SettingsScreen() {
             }}
           >
             {searchResults.map((entry, idx) => (
-              <Pressable
+              <PressableScale
                 key={entry.id}
+                haptic="selection"
                 testID={`settings-search-result-${entry.id}`}
                 accessibilityRole="button"
                 accessibilityLabel={entry.label}
@@ -331,7 +335,7 @@ export default function SettingsScreen() {
                   color={colors.textTertiary}
                   strokeWidth={1.75}
                 />
-              </Pressable>
+              </PressableScale>
             ))}
           </View>
         ) : (

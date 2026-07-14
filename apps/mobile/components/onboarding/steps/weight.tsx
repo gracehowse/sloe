@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Spacing } from "@/constants/theme";
-import { Animated, Easing, Pressable, Text, View } from "react-native";
+import { Animated, Easing, Text, View } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Scale } from "lucide-react-native";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -43,8 +44,9 @@ export function MobileWeightStep() {
             the illustration so the user can flip back without
             scrolling. */}
         <WeightSkippedIllustration />
-        <Pressable
+        <PressableScale
           onPress={() => set({ weightSkipped: false })}
+          haptic="selection"
           accessibilityRole="button"
           style={{ alignSelf: "center", marginTop: 8 }}
         >
@@ -57,7 +59,7 @@ export function MobileWeightStep() {
           >
             Actually, I&apos;ll enter it
           </Text>
-        </Pressable>
+        </PressableScale>
       </MobileStepBody>
     );
   }
@@ -110,8 +112,9 @@ export function MobileWeightStep() {
         </View>
       </View>
       <View style={{ alignItems: "center", marginTop: 24 }}>
-        <Pressable
+        <PressableScale
           onPress={() => set({ weightSkipped: true })}
+          haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Prefer not to enter weight"
         >
@@ -126,7 +129,7 @@ export function MobileWeightStep() {
           >
             Prefer not to enter
           </Text>
-        </Pressable>
+        </PressableScale>
         <Text
           style={{
             fontSize: 11,

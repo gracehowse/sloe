@@ -6,9 +6,10 @@
  * verify flow) so this surface never invents nutrition.
  */
 import { memo } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { StyleSheet, TextInput, View } from "react-native";
 import { Trash2 } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation, type CardElevation } from "@/hooks/useCardElevation";
@@ -63,7 +64,8 @@ function IngredientEditRowImpl({
         style={[styles.input, styles.unitInput]}
         accessibilityLabel="Ingredient unit"
       />
-      <Pressable
+      <PressableScale
+        haptic="destructive"
         onPress={onDelete}
         hitSlop={8}
         style={styles.deleteBtn}
@@ -71,7 +73,7 @@ function IngredientEditRowImpl({
         accessibilityLabel={`Delete ${ingredient.name || "ingredient"}`}
       >
         <Trash2 size={18} color={Accent.destructive} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

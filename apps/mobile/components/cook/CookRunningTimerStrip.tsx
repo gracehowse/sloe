@@ -1,5 +1,6 @@
-import { Pressable, Text, View, StyleSheet } from "react-native";
+import { Text, View, StyleSheet } from "react-native";
 import { X } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Spacing, Radius, Accent, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
@@ -66,8 +67,9 @@ export function CookRunningTimerStrip({
                 Done!
               </Text>
             ) : null}
-            <Pressable
+            <PressableScale
               onPress={() => onReset(timer.id)}
+              haptic="destructive"
               accessibilityRole="button"
               accessibilityLabel={`Reset ${timer.label} timer`}
               hitSlop={6}
@@ -75,15 +77,16 @@ export function CookRunningTimerStrip({
               <Text style={[Type.captionSmall, styles.action, { color: colors.textSecondary }]}>
                 Reset
               </Text>
-            </Pressable>
-            <Pressable
+            </PressableScale>
+            <PressableScale
               onPress={() => onCancel(timer.id)}
+              haptic="destructive"
               accessibilityRole="button"
               accessibilityLabel={`Cancel ${timer.label} timer`}
               hitSlop={6}
             >
               <X size={14} color={colors.textSecondary} strokeWidth={2.25} />
-            </Pressable>
+            </PressableScale>
           </View>
         );
       })}
