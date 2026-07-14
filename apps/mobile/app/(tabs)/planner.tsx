@@ -1919,7 +1919,7 @@ export default function PlannerScreen() {
           height: 36,
           // ENG-1018: r10 is exactly between Radius.lg (8) and Radius.xl (12);
           // left as a literal — ambiguous snap reported, not guessed.
-          borderRadius: 10,
+          borderRadius: Radius.xl,
           backgroundColor: colors.border + "66",
           alignItems: "center",
           justifyContent: "center",

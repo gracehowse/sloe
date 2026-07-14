@@ -88,7 +88,9 @@ describe("ENG-895 — onboarding Figma conformance pins", () => {
     expect(welcome).toContain("Cook what you love.");
     expect(welcome).toContain("Still");
     expect(welcome).toContain("reach your goals.");
-    expect(welcome).toMatch(/borderRadius: 999/);
+    // ENG-1561: the fully-round pill now uses the Radius.full token (=9999)
+    // instead of a bare `borderRadius: 999` literal. Same fully-round CTA.
+    expect(welcome).toMatch(/borderRadius: Radius\.full/);
     expect(welcome).toContain("Get started");
     expect(welcome).toContain("I already have an account");
   });
@@ -108,7 +110,8 @@ describe("ENG-895 — onboarding Figma conformance pins", () => {
       "utf8",
     );
     expect(flow).toContain("OnboardingSegmentedProgress");
-    expect(flow).toMatch(/borderRadius: 999/);
+    // ENG-1561: fully-round pill now via the Radius.full token (=9999).
+    expect(flow).toMatch(/borderRadius: Radius\.full/);
   });
 
   it("web step headers use plum Newsreader serif (scaffold)", () => {

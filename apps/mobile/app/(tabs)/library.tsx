@@ -705,7 +705,7 @@ export default function LibraryScreen() {
       marginHorizontal: Spacing.lg,
       paddingVertical: 48,
       paddingHorizontal: 32,
-      borderRadius: 20,
+      borderRadius: Radius.card,
       borderWidth: 1,
       borderStyle: "dashed",
       borderColor: colors.border,
