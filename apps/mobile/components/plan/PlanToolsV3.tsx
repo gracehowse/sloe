@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { ChevronRight, Flame, ShoppingCart } from "lucide-react-native";
+import { Flame, ShoppingCart } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
@@ -46,10 +46,9 @@ function ToolRow({
     >
       <View style={[styles.iconBox, { backgroundColor: Accent.primarySoft }]}>{icon}</View>
       <View style={styles.body}>
-        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-        <Text style={[styles.sub, { color: colors.textTertiary }]}>{subtitle}</Text>
+        <Text numberOfLines={1} style={[styles.title, { color: colors.text }]}>{title}</Text>
+        <Text numberOfLines={1} style={[styles.sub, { color: colors.textTertiary }]}>{subtitle}</Text>
       </View>
-      <ChevronRight size={18} color={colors.textTertiary} />
     </PressableScale>
   );
 }
