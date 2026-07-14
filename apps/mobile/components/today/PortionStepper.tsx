@@ -1,6 +1,7 @@
 import React, { memo, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { Minus, Plus } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { IconSize, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import type { ThemeColors } from "@/hooks/use-theme-colors";
@@ -68,15 +69,16 @@ function PortionStepperImpl({
   return (
     <>
       <View style={s.stepperRow}>
-        <Pressable
+        <PressableScale
           onPress={() => commit(value - step)}
+          haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Decrease portion"
           testID={`${testIDPrefix}-minus`}
           style={[s.stepBtn, { borderColor: colors.border, backgroundColor: colors.inputBg }]}
         >
           <Minus size={IconSize.base} color={colors.text} strokeWidth={2.25} />
-        </Pressable>
+        </PressableScale>
         <TextInput
           style={[s.stepValue, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
           keyboardType="decimal-pad"
@@ -87,23 +89,25 @@ function PortionStepperImpl({
           accessibilityLabel="Portion multiplier"
           testID={`${testIDPrefix}-input`}
         />
-        <Pressable
+        <PressableScale
           onPress={() => commit(value + step)}
+          haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Increase portion"
           testID={`${testIDPrefix}-plus`}
           style={[s.stepBtn, { borderColor: colors.border, backgroundColor: colors.inputBg }]}
         >
           <Plus size={IconSize.base} color={colors.text} strokeWidth={2.25} />
-        </Pressable>
+        </PressableScale>
       </View>
       <View style={s.chipRow}>
         {chips.map((chip) => {
           const active = Math.abs(value - chip) < 0.001;
           return (
-            <Pressable
+            <PressableScale
               key={chip}
               onPress={() => commit(chip)}
+              haptic="selection"
               accessibilityRole="button"
               accessibilityLabel={`Set portion to ${chip} times`}
               testID={`${testIDPrefix}-chip-${chip}`}
@@ -119,7 +123,7 @@ function PortionStepperImpl({
               <Text style={{ fontSize: 13, fontWeight: "700", color: active ? colors.text : colors.textSecondary }}>
                 {formatMultiplier(chip)}×
               </Text>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>

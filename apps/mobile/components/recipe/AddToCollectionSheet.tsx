@@ -6,6 +6,7 @@
  */
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { Check } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -66,8 +67,9 @@ export function AddToCollectionSheet({
             {collections.map((c) => {
               const checked = memberOf.includes(c.id);
               return (
-                <Pressable
+                <PressableScale
                   key={c.id}
+                  haptic="selection"
                   onPress={() => onToggle(c.id, checked)}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked }}
@@ -96,7 +98,7 @@ export function AddToCollectionSheet({
                   <Text style={{ ...Type.body, color: colors.text, flex: 1 }} numberOfLines={1}>
                     {c.name}
                   </Text>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </ScrollView>

@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import { ListChecks } from "lucide-react-native";
 import { Radius } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 export type CookIngredientPanelHeaderToggleProps = {
   open: boolean;
@@ -18,7 +19,8 @@ export function CookIngredientPanelHeaderToggle({
   const colors = useThemeColors();
 
   return (
-    <Pressable
+    <PressableScale
+      haptic="selection"
       accessibilityRole="button"
       accessibilityLabel="Ingredients"
       accessibilityState={{ expanded: open }}
@@ -32,7 +34,7 @@ export function CookIngredientPanelHeaderToggle({
         color={open ? accentInk : colors.textSecondary}
         strokeWidth={2}
       />
-    </Pressable>
+    </PressableScale>
   );
 }
 

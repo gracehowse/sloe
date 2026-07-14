@@ -33,6 +33,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
@@ -253,9 +254,9 @@ export function ReportRecipeSheet({
                   style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: Spacing.sm }}
                 >
                   <Text style={{ flex: 1, ...Type.navTitle, color: colors.text }}>Report an issue</Text>
-                  <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={12}>
+                  <PressableScale onPress={onClose} haptic="selection" accessibilityRole="button" accessibilityLabel="Close" hitSlop={12}>
                     <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
-                  </Pressable>
+                  </PressableScale>
                 </View>
                 <Text style={{ ...Type.bodyMuted, color: colors.textSecondary, marginTop: Spacing.xs, marginBottom: Spacing.md }}>
                   What&apos;s wrong with this recipe? Copyright claims go to our DMCA team; everything
@@ -265,9 +266,10 @@ export function ReportRecipeSheet({
                   {REASONS.map((r) => {
                     const Icon = r.icon;
                     return (
-                      <Pressable
+                      <PressableScale
                         key={r.key}
                         onPress={() => pick(r)}
+                        haptic="selection"
                         accessibilityRole="button"
                         accessibilityLabel={r.label}
                         style={{
@@ -300,7 +302,7 @@ export function ReportRecipeSheet({
                             {r.hint}
                           </Text>
                         </View>
-                      </Pressable>
+                      </PressableScale>
                     );
                   })}
                 </View>
@@ -329,8 +331,9 @@ function PrimaryButton({
   flex?: boolean;
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
+      haptic="confirm"
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -346,7 +349,7 @@ function PrimaryButton({
       }}
     >
       <Text style={{ ...Type.button, color: ink }}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -362,8 +365,9 @@ function SecondaryButton({
   colors: { text: string; cardBorder: string };
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
+      haptic="selection"
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -378,7 +382,7 @@ function SecondaryButton({
       }}
     >
       <Text style={{ ...Type.button, color: colors.text }}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

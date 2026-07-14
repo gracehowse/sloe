@@ -9,6 +9,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
@@ -178,9 +179,10 @@ export default function DuplicateDaySheet({
             {(["single", "range"] as Mode[]).map((m) => {
               const isActive = mode === m;
               return (
-                <Pressable
+                <PressableScale
                   key={m}
                   onPress={() => setMode(m)}
+                  haptic="selection"
                   accessibilityRole="tab"
                   accessibilityLabel={m === "single" ? "Single day" : "Date range"}
                   accessibilityState={{ selected: isActive }}
@@ -194,30 +196,32 @@ export default function DuplicateDaySheet({
                   <Text style={{ fontSize: 13, fontWeight: "700", color: isActive ? colors.primaryForeground : colors.textSecondary }}>
                     {m === "single" ? "Single day" : "Date range"}
                   </Text>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </View>
 
           <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <Pressable
+              <PressableScale
                 onPress={() => setViewMonth((v) => new Date(v.getFullYear(), v.getMonth() - 1, 1))}
+                haptic="selection"
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Previous month"
               >
                 <ChevronLeft size={20} color={colors.text} />
-              </Pressable>
+              </PressableScale>
               <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>{monthLabel}</Text>
-              <Pressable
+              <PressableScale
                 onPress={() => setViewMonth((v) => new Date(v.getFullYear(), v.getMonth() + 1, 1))}
+                haptic="selection"
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Next month"
               >
                 <ChevronRight size={20} color={colors.text} />
-              </Pressable>
+              </PressableScale>
             </View>
             <View style={{ flexDirection: "row", marginBottom: 4 }}>
               {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
@@ -244,10 +248,11 @@ export default function DuplicateDaySheet({
                 const inRange = isInRange(ck);
                 const isHighlighted = mode === "single" ? isStart : isStart || isEnd;
                 return (
-                  <Pressable
+                  <PressableScale
                     key={`${ck}-${idx}`}
                     disabled={disabled}
                     onPress={() => onCellPress(ck)}
+                    haptic="selection"
                     accessibilityRole="button"
                     accessibilityLabel={`Pick ${formatHumanDate(ck)}`}
                     accessibilityState={{ selected: isHighlighted, disabled }}
@@ -285,7 +290,7 @@ export default function DuplicateDaySheet({
                         {cell.getDate()}
                       </Text>
                     </View>
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </View>
@@ -307,8 +312,9 @@ export default function DuplicateDaySheet({
           </Text>
 
           <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.lg }}>
-            <Pressable
+            <PressableScale
               onPress={onClose}
+              haptic="selection"
               style={{
                 flex: 1,
                 paddingVertical: 12,
@@ -321,8 +327,8 @@ export default function DuplicateDaySheet({
               accessibilityLabel="Cancel"
             >
               <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Cancel</Text>
-            </Pressable>
-            <Pressable
+            </PressableScale>
+            <PressableScale
               onPress={() => {
                 if (!canConfirm) {
                   onConfirm([], summary);
@@ -332,6 +338,7 @@ export default function DuplicateDaySheet({
                 onConfirm(targetDayKeys, summary);
                 onClose();
               }}
+              haptic="confirm"
               disabled={!canConfirm}
               style={{
                 flex: 1,
@@ -345,7 +352,7 @@ export default function DuplicateDaySheet({
               accessibilityState={{ disabled: !canConfirm }}
             >
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Duplicate</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         </Pressable>
       </Pressable>

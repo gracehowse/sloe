@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { Check, CheckCheck, RefreshCw, X } from "lucide-react-native";
 
 import { Accent, Radius, Spacing } from "@/constants/theme";
@@ -94,8 +95,9 @@ export function ImportProgressDrawer({ queue, onOpenRecipe }: Props) {
           </View>
         </View>
         {recent.length > 0 && !hasActivity ? (
-          <Pressable
+          <PressableScale
             onPress={queue.clearFinished}
+            haptic="destructive"
             accessibilityRole="button"
             accessibilityLabel="Clear finished imports"
             hitSlop={8}
@@ -104,7 +106,7 @@ export function ImportProgressDrawer({ queue, onOpenRecipe }: Props) {
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSecondary }}>
               Clear
             </Text>
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>
 
@@ -159,8 +161,9 @@ function ImportJobRow({
   const clickable = isDone && job.recipeId != null && onOpenRecipe != null;
 
   return (
-    <Pressable
+    <PressableScale
       testID="import-progress-row"
+      haptic="selection"
       accessibilityRole={clickable ? "button" : undefined}
       accessibilityLabel={`${job.title}, ${statusText}`}
       onPress={clickable ? () => onOpenRecipe!(job.recipeId!) : undefined}
@@ -205,8 +208,9 @@ function ImportJobRow({
             </View>
           ) : null}
           {job.canRetry ? (
-            <Pressable
+            <PressableScale
               onPress={() => queue.retry(job.id)}
+              haptic="selection"
               accessibilityRole="button"
               accessibilityLabel={`Retry importing ${job.title}`}
               testID="import-progress-retry"
@@ -214,11 +218,12 @@ function ImportJobRow({
               style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" }}
             >
               <RefreshCw size={15} color={colors.textSecondary} />
-            </Pressable>
+            </PressableScale>
           ) : null}
           {!isDone && !isCancelled ? (
-            <Pressable
+            <PressableScale
               onPress={() => queue.cancel(job.id)}
+              haptic="selection"
               accessibilityRole="button"
               accessibilityLabel={`Cancel importing ${job.title}`}
               testID="import-progress-cancel"
@@ -226,11 +231,12 @@ function ImportJobRow({
               style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" }}
             >
               <X size={17} color={colors.textSecondary} />
-            </Pressable>
+            </PressableScale>
           ) : null}
           {isFailed || isCancelled ? (
-            <Pressable
+            <PressableScale
               onPress={() => queue.dismiss(job.id)}
+              haptic="selection"
               accessibilityRole="button"
               accessibilityLabel={`Dismiss ${job.title}`}
               testID="import-progress-dismiss"
@@ -238,7 +244,7 @@ function ImportJobRow({
               style={{ width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" }}
             >
               <X size={17} color={colors.textSecondary} />
-            </Pressable>
+            </PressableScale>
           ) : null}
         </View>
       </View>
@@ -246,7 +252,7 @@ function ImportJobRow({
       {!isQueued && !isDone && !isFailed && !isCancelled ? (
         <StageRail stage={job.stage} />
       ) : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 

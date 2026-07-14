@@ -29,7 +29,6 @@
 import { useEffect, useState } from "react";
 import {
   Modal,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -48,6 +47,7 @@ import {
 import { Spacing, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 import KeyboardSafeView from "./KeyboardSafeView";
 import FoodSearchPanel, {
   type SelectedFood as PanelSelectedFood,
@@ -216,9 +216,9 @@ export default function FoodSearchModal({
       >
         <View style={styles.header}>
           <Text style={styles.title}>Search Foods</Text>
-          <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close search">
+          <PressableScale onPress={onClose} haptic="selection" hitSlop={12} accessibilityRole="button" accessibilityLabel="Close search">
             <X size={24} color={colors.text} />
-          </Pressable>
+          </PressableScale>
         </View>
 
         <View style={styles.searchRow}>
@@ -241,8 +241,9 @@ export default function FoodSearchModal({
               already supplies its own onScanBarcode quick-add icon to
               avoid two barcode affordances side-by-side. */}
           {showInlineBarcodeShortcut ? (
-            <Pressable
+            <PressableScale
               onPress={() => router.push("/(tabs)/barcode")}
+              haptic="selection"
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Scan a barcode"
@@ -250,7 +251,7 @@ export default function FoodSearchModal({
               style={{ paddingHorizontal: 8, paddingVertical: 10 }}
             >
               <ScanLine size={18} color={colors.textSecondary} />
-            </Pressable>
+            </PressableScale>
           ) : null}
           {/* F-128 quick-add row — mirrors LogSheet's right-edge input
               modes so the recipe-ingredient flow has the same "scan /
@@ -261,8 +262,9 @@ export default function FoodSearchModal({
             <>
               <View style={styles.quickAddDivider} />
               {onScanBarcode ? (
-                <Pressable
+                <PressableScale
                   onPress={onScanBarcode}
+                  haptic="selection"
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Scan barcode to add ingredient"
@@ -270,11 +272,12 @@ export default function FoodSearchModal({
                   style={styles.quickAddBtn}
                 >
                   <ScanBarcode size={20} color={accent.primary} strokeWidth={1.75} />
-                </Pressable>
+                </PressableScale>
               ) : null}
               {onVoiceLog ? (
-                <Pressable
+                <PressableScale
                   onPress={onVoiceLog}
+                  haptic="selection"
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Voice log to add ingredient"
@@ -282,11 +285,12 @@ export default function FoodSearchModal({
                   style={styles.quickAddBtn}
                 >
                   <MicIcon size={20} color={accent.primary} strokeWidth={1.75} />
-                </Pressable>
+                </PressableScale>
               ) : null}
               {onPhotoLog ? (
-                <Pressable
+                <PressableScale
                   onPress={onPhotoLog}
+                  haptic="selection"
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Photo log to add ingredient"
@@ -294,7 +298,7 @@ export default function FoodSearchModal({
                   style={styles.quickAddBtn}
                 >
                   <CameraIcon size={20} color={accent.primary} strokeWidth={1.75} />
-                </Pressable>
+                </PressableScale>
               ) : null}
             </>
           ) : null}

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Spacing, Type } from "@/constants/theme";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Info } from "lucide-react-native";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -48,8 +49,9 @@ export function MobileAgeStep() {
       </View>
 
       {/* Inclusive explainer expander — DC7 polish, mirror of Sex step. */}
-      <Pressable
+      <PressableScale
         onPress={() => setHelpOpen((v) => !v)}
+        haptic="selection"
         accessibilityRole="button"
         accessibilityState={{ expanded: helpOpen }}
         style={{
@@ -69,7 +71,7 @@ export function MobileAgeStep() {
         >
           How does age affect my target?
         </Text>
-      </Pressable>
+      </PressableScale>
 
       {helpOpen ? (
         <View

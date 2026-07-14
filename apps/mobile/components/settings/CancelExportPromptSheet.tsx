@@ -3,6 +3,7 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { Download, Settings as SettingsIcon, X } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
@@ -107,14 +108,15 @@ export function CancelExportPromptSheet({
                 export now and still manage your subscription after.
               </Text>
             </View>
-            <Pressable
+            <PressableScale
+              haptic="selection"
               onPress={onDismiss}
               hitSlop={10}
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
               <X size={20} color={colors.textSecondary} />
-            </Pressable>
+            </PressableScale>
           </View>
 
           <View style={{ marginTop: Spacing.lg, gap: Spacing.sm }}>
@@ -122,7 +124,8 @@ export function CancelExportPromptSheet({
                 background, same icon-tile treatment as the second
                 card. The user is mid-cancel; we do not visually
                 privilege "stay" over "go". */}
-            <Pressable
+            <PressableScale
+              haptic="selection"
               testID="cancel-export-prompt-export"
               onPress={onExport}
               disabled={exporting}
@@ -179,9 +182,10 @@ export function CancelExportPromptSheet({
                     : "Export your nutrition log as a CSV before any change."}
                 </Text>
               </View>
-            </Pressable>
+            </PressableScale>
 
-            <Pressable
+            <PressableScale
+              haptic="selection"
               testID="cancel-export-prompt-continue"
               onPress={onContinueToManage}
               accessibilityRole="button"
@@ -233,7 +237,7 @@ export function CancelExportPromptSheet({
                   Open the App Store / Play Store subscription page.
                 </Text>
               </View>
-            </Pressable>
+            </PressableScale>
           </View>
         </Pressable>
       </Pressable>

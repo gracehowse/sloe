@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
@@ -58,9 +59,9 @@ export function CookIngredientPanelSheet({
         >
           <View style={styles.header}>
             <Text style={[Type.title, { color: colors.text, flex: 1 }]}>Ingredients</Text>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close ingredients">
+            <PressableScale onPress={onClose} haptic="selection" accessibilityRole="button" accessibilityLabel="Close ingredients">
               <X size={22} color={colors.textSecondary} strokeWidth={2} />
-            </Pressable>
+            </PressableScale>
           </View>
           {scaleLabel ? (
             <Text style={[Type.caption, { color: colors.textSecondary, marginBottom: Spacing.md }]}>

@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
@@ -11,6 +11,7 @@ import {
 } from "lucide-react-native";
 import { Colors, Spacing, Type } from "@/constants/theme";
 import { MacroStatTile } from "@/components/nutrition/MacroStatTile";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { macroColorFor } from "@/lib/macroColors";
 import { MACRO_ICONS } from "@/lib/macroIconsLucide";
 import { useCalmMode } from "@/lib/calmMode";
@@ -158,8 +159,9 @@ function TodayDashboardMacroTilesImpl({
           for the active day). */}
       {showNutrientsLink && onPressNutrients ? (
         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: Spacing.xs }}>
-          <Pressable
+          <PressableScale
             onPress={onPressNutrients}
+            haptic="selection"
             accessibilityRole="button"
             accessibilityLabel="View all nutrients for today"
             hitSlop={8}
@@ -174,7 +176,7 @@ function TodayDashboardMacroTilesImpl({
               All nutrients
             </Text>
             <ChevronRight size={12} color={textTertiaryColor} strokeWidth={2} />
-          </Pressable>
+          </PressableScale>
         </View>
       ) : null}
       {/* Proto `.mtiles` hairline grid (Grace 2026-06-25): a 2-col grid divided

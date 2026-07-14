@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { Users } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/auth";
@@ -22,6 +22,7 @@ import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Radius } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import {
   getMyHousehold,
@@ -146,8 +147,9 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
         >
           Household
         </Text>
-        <Pressable
+        <PressableScale
           onPress={handleManage}
+          haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Manage household"
           testID="household-bar-manage"
@@ -156,7 +158,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
           <Text style={{ fontSize: 11, fontWeight: "600", color: accent.primarySolid }}>
             Manage
           </Text>
-        </Pressable>
+        </PressableScale>
       </View>
       <ScrollView
         horizontal
@@ -164,8 +166,9 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
         contentContainerStyle={{ gap: 8, paddingHorizontal: 2, paddingBottom: 2 }}
         style={{ marginHorizontal: -2 }}
       >
-        <Pressable
+        <PressableScale
           onPress={() => handlePick("all")}
+          haptic="selection"
           testID="household-bar-pill-all"
           accessibilityRole="tab"
           accessibilityState={{ selected: currentSel === "all" }}
@@ -183,7 +186,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
           <Text style={{ fontSize: 12, fontWeight: "600", color: allChip.fg }}>
             All {members.length}
           </Text>
-        </Pressable>
+        </PressableScale>
         {members.map((m, idx) => {
           const color = householdMemberAccent(idx);
           const initials = householdMemberInitials(m.displayName);
@@ -191,9 +194,10 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
           const active = currentSel === m.userId;
           const chip = chipColors(active);
           return (
-            <Pressable
+            <PressableScale
               key={m.userId}
               onPress={() => handlePick(m.userId)}
+              haptic="selection"
               testID={`household-bar-pill-${m.userId}`}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
@@ -223,7 +227,7 @@ export function HouseholdBar({ selected, onSelect, onManage }: HouseholdBarProps
                 </Text>
               </View>
               <Text style={{ fontSize: 12, fontWeight: "600", color: chip.fg }}>{first}</Text>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </ScrollView>

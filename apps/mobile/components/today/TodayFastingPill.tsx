@@ -1,6 +1,7 @@
 import React, { memo } from "react";
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
 import { Clock } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -45,10 +46,11 @@ function TodayFastingPillImpl(props: TodayFastingPillProps) {
   const colors = useThemeColors();
   if (props.mode === "idle") {
     return (
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="Start fast"
         onPress={props.onPress}
+        haptic="selection"
         testID="today-fasting-pill-idle"
         style={{
           flexDirection: "row",
@@ -69,7 +71,7 @@ function TodayFastingPillImpl(props: TodayFastingPillProps) {
         <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: colors.textSecondary }}>
           Start fast
         </Text>
-      </Pressable>
+      </PressableScale>
     );
   }
 
@@ -77,10 +79,11 @@ function TodayFastingPillImpl(props: TodayFastingPillProps) {
   const h = Math.floor(elapsedH);
   const m = Math.floor((elapsedH - h) * 60);
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`Fasting — ${h} hours ${m} minutes elapsed`}
       onPress={props.onPress}
+      haptic="selection"
       testID="today-fasting-pill-active"
       style={{
         flexDirection: "row",
@@ -99,7 +102,7 @@ function TodayFastingPillImpl(props: TodayFastingPillProps) {
       <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 13, fontWeight: "600", color: accent.primarySolid }}>
         Fasting — {h}h {m}m
       </Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

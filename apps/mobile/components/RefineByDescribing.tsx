@@ -21,9 +21,10 @@
  * Mirrors `src/app/components/suppr/refine-by-describing.tsx` (web).
  */
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Text, TextInput, View } from "react-native";
 import { ArrowUp, Sparkles } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -233,7 +234,8 @@ export default function RefineByDescribing(props: RefineByDescribingProps) {
             opacity: submitting ? 0.6 : 1,
           }}
         />
-        <Pressable
+        <PressableScale
+          haptic="confirm"
           accessibilityRole="button"
           accessibilityLabel="Apply this correction"
           accessibilityState={{ disabled: !canSubmit, busy: submitting }}
@@ -253,7 +255,7 @@ export default function RefineByDescribing(props: RefineByDescribingProps) {
           ) : (
             <ArrowUp size={IconSize.xl} color={colors.primaryForeground} strokeWidth={2.5} />
           )}
-        </Pressable>
+        </PressableScale>
       </View>
       {stage === "error" && (
         <Text

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { Users, ChevronRight } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 import {
   getMyHousehold,
   type HouseholdData,
@@ -112,8 +113,9 @@ export function HouseholdSummaryRow() {
   const summary = `${(data.household as { name?: string }).name ?? "Household"} · ${memberCount} ${memberWord} · ${sharingPreset}`;
 
   return (
-    <Pressable
+    <PressableScale
       onPress={() => router.push("/household-settings")}
+      haptic="selection"
       style={{
         marginHorizontal: Spacing.xl,
         marginTop: Spacing.sm,
@@ -139,6 +141,6 @@ export function HouseholdSummaryRow() {
         {summary}
       </Text>
       <ChevronRight size={16} color={colors.textTertiary} />
-    </Pressable>
+    </PressableScale>
   );
 }

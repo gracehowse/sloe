@@ -14,6 +14,7 @@ import { RefreshCw, X } from "lucide-react-native";
 
 import { FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 export interface WhereThisComesFromSheetProps {
   visible: boolean;
@@ -129,15 +130,16 @@ function WhereThisComesFromSheetImpl({
             >
               Where this comes from
             </Text>
-            <Pressable
+            <PressableScale
               onPress={onClose}
+              haptic="selection"
               hitSlop={12}
               accessibilityRole="button"
               accessibilityLabel="Close"
               style={{ marginTop: 2, marginLeft: 8 }}
             >
               <X size={24} color={textSecondaryColor} strokeWidth={2.25} />
-            </Pressable>
+            </PressableScale>
           </View>
 
           <Text
@@ -186,8 +188,9 @@ function WhereThisComesFromSheetImpl({
             // Sloe treatment system (2026-06-08): primary inline CTA →
             // aubergine outline (transparent fill + 1.5px primarySolid
             // border + primarySolid label/glyph), not a filled slab.
-            <Pressable
+            <PressableScale
               onPress={primaryCta.onPress}
+              haptic="confirm"
               disabled={primaryCta.busy}
               accessibilityRole="button"
               accessibilityLabel={primaryCta.label}
@@ -211,7 +214,7 @@ function WhereThisComesFromSheetImpl({
               <Text style={{ color: accent.primarySolid, fontWeight: "600", fontSize: 15 }}>
                 {primaryCta.busy ? "Syncing…" : primaryCta.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           ) : null}
         </View>
       </View>

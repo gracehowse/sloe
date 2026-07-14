@@ -1,10 +1,11 @@
 import React, { memo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Flame, Footprints, Info } from "lucide-react-native";
 import { Accent, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { todayHealthConnectActiveCaloriesHint } from "@suppr/shared/copy/today";
 
 /**
@@ -64,15 +65,16 @@ function TodayActivityCardImpl({
         <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
           <Text style={{ ...Type.headline, color: colors.navPrimary }}>Steps & activity</Text>
           {onShowProvenance ? (
-            <Pressable
+            <PressableScale
               onPress={onShowProvenance}
+              haptic="selection"
               hitSlop={12}
               accessibilityRole="button"
               accessibilityLabel="Where this number comes from"
               testID="today-activity-provenance-info"
             >
               <Info size={14} color={textTertiaryColor} strokeWidth={2} />
-            </Pressable>
+            </PressableScale>
           ) : null}
         </View>
         <Text style={{ ...Type.caption, color: textTertiaryColor }}>{dayLabel}</Text>

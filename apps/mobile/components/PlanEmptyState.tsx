@@ -1,11 +1,12 @@
 import * as React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { BookOpen } from "lucide-react-native";
 import { Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { EmptyState } from "@/components/EmptyState";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 /**
  * ENG-788 (2026-05-30) — calm Plan empty state for users with zero saved
@@ -71,23 +72,25 @@ export function PlanEmptyState({
         description="Save recipes you like and Sloe builds a balanced plan from them in seconds."
         cta={
           <View style={styles.ctaWrap}>
-            <Pressable
+            <PressableScale
+              haptic="selection"
               style={[styles.primaryBtn, { backgroundColor: colors.backgroundSecondary }]}
               onPress={onBrowseLibrary}
               accessibilityRole="button"
               accessibilityLabel="Browse recipe library"
             >
               <Text style={[styles.primaryBtnText, { color: colors.text }]}>Browse recipe library</Text>
-            </Pressable>
+            </PressableScale>
             {planImportEnabled ? (
-              <Pressable
+              <PressableScale
+                haptic="selection"
                 onPress={onImport}
                 accessibilityRole="button"
                 accessibilityLabel="Import existing meal plan"
                 style={styles.importBtn}
               >
                 <Text style={[styles.importText, { color: accent.primarySolid }]}>Or import a plan you already have</Text>
-              </Pressable>
+              </PressableScale>
             ) : null}
           </View>
         }

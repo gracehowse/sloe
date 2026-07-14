@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, LayoutChangeEvent, Pressable, Text, View } from "react-native";
+import { FlatList, LayoutChangeEvent, Text, View } from "react-native";
 import { Calendar, ChevronLeft, ChevronRight, Snowflake } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
@@ -14,6 +14,7 @@ import {
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { dayStripIndicatorStyle } from "@suppr/shared/today/dayStripIndicator";
 import { weekdayInitials } from "@suppr/shared/today/weekdayLabels";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 type Props = {
   selectedDate: Date;
@@ -170,8 +171,9 @@ export default function DayStrip({
           // NUMBER stays full white, so the letter doesn't read as loud. (ENG-1247 S1)
           const labelColor = selectedFill ? accent.primaryForeground + "B3" : secondaryColor;
           return (
-            <Pressable
+            <PressableScale
               key={`${dateKeyFromDate(weekStart)}-${dk}`}
+              haptic="selection"
               onPress={() => onSelectDate(clampJournalDate(date))}
               accessibilityLabel={isProtected ? `Freeze used on ${dk}` : undefined}
               style={{
@@ -243,7 +245,7 @@ export default function DayStrip({
                   backgroundColor: dotColor,
                 }}
               />
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>
@@ -260,7 +262,8 @@ export default function DayStrip({
   return (
     <View style={{ gap: Spacing.xs }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={() => goViewWeek(-1)}
           disabled={prevDisabled}
           accessibilityRole="button"
@@ -269,7 +272,7 @@ export default function DayStrip({
           style={{ padding: 6, opacity: prevDisabled ? 0.3 : 1 }}
         >
           <ChevronLeft size={IconSize.lg} color={secondaryColor} strokeWidth={2} />
-        </Pressable>
+        </PressableScale>
         <View testID="daystrip-pager" style={{ flex: 1 }} onLayout={onPagerLayout}>
           {pagerW > 0 ? (
             <FlatList<Date>
@@ -306,7 +309,8 @@ export default function DayStrip({
             <View style={{ height: 56 }} />
           )}
         </View>
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={() => goViewWeek(1)}
           disabled={nextDisabled}
           accessibilityRole="button"
@@ -315,8 +319,9 @@ export default function DayStrip({
           style={{ padding: 6, opacity: nextDisabled ? 0.3 : 1 }}
         >
           <ChevronRight size={IconSize.lg} color={secondaryColor} strokeWidth={2} />
-        </Pressable>
-        <Pressable
+        </PressableScale>
+        <PressableScale
+          haptic="selection"
           onPress={onOpenCalendar}
           accessibilityRole="button"
           accessibilityLabel="Open calendar"
@@ -324,7 +329,7 @@ export default function DayStrip({
           style={{ padding: 8 }}
         >
           <Calendar size={IconSize.lg} color={accent.primary} strokeWidth={1.75} />
-        </Pressable>
+        </PressableScale>
       </View>
     </View>
   );

@@ -36,11 +36,11 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import {
   ActivityIndicator,
   Modal,
-  Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useRouter } from "expo-router";
 import { Check, ChevronRight, SlidersHorizontal, X } from "lucide-react-native";
 
@@ -149,7 +149,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
             >
               Edit goal &amp; pace
             </Text>
-            <Pressable
+            <PressableScale haptic="selection"
               accessibilityRole="button"
               accessibilityLabel="Close"
               onPress={onClose}
@@ -157,7 +157,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
               testID="goal-pace-editor-close"
             >
               <X size={24} color={colors.textSecondary} />
-            </Pressable>
+            </PressableScale>
           </View>
 
           {editor.loading ? (
@@ -293,7 +293,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                     {safetyAckBody(editor.safetyFloorKcal)}
                   </Text>
 
-                  <Pressable
+                  <PressableScale haptic="selection"
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: editor.acknowledged }}
                     accessibilityLabel={SAFETY_ACK_CONFIRM_LABEL}
@@ -338,14 +338,14 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                     >
                       {SAFETY_ACK_CONFIRM_LABEL}
                     </Text>
-                  </Pressable>
+                  </PressableScale>
                 </View>
               ) : null}
 
               {/* Customise macros (incl. fibre) → the manual /profile editor.
                   The goal editor recomputes macros from the goal/pace; the
                   fibre goal + per-macro overrides live on /profile. */}
-              <Pressable
+              <PressableScale haptic="selection"
                 accessibilityRole="button"
                 accessibilityLabel="Customise macros including fibre"
                 onPress={goToManualMacros}
@@ -373,7 +373,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                   </Text>
                 </View>
                 <ChevronRight size={18} color={colors.textTertiary} />
-              </Pressable>
+              </PressableScale>
 
               {editor.error ? (
                 <View style={{ marginBottom: Spacing.md }}>

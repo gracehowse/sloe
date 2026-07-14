@@ -1,7 +1,8 @@
 import React, { useCallback } from "react";
-import { ActivityIndicator, Alert, Pressable, Share, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Share, Text, View } from "react-native";
 import { Gift, Share2 } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -73,7 +74,8 @@ export function ReferralRewardCard({
           {"Couldn't load your referral link."}
         </Text>
       ) : reward ? (
-        <Pressable
+        <PressableScale
+          haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Share referral link"
           onPress={onShare}
@@ -97,7 +99,7 @@ export function ReferralRewardCard({
             {reward.referralUrl}
           </Text>
           <Share2 size={16} color={accent.primary} />
-        </Pressable>
+        </PressableScale>
       ) : null}
     </View>
   );

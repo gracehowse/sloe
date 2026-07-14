@@ -1,8 +1,9 @@
 import React from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
 import { Link, Pencil } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
 import { SubTabPill } from "@/components/ui/SubTabPill";
 import { IconSize, Spacing } from "@/constants/theme";
@@ -34,7 +35,8 @@ export function RecipesTabChrome() {
       title="Your kitchen"
       trailing={
         <View style={{ flexDirection: "row", gap: Spacing.xs }}>
-          <Pressable
+          <PressableScale
+            haptic="selection"
             onPress={() => router.push("/create-recipe")}
             accessibilityRole="button"
             accessibilityLabel="Create recipe"
@@ -45,8 +47,9 @@ export function RecipesTabChrome() {
                 title; matches web `text-foreground-secondary` + the prototype
                 `.icon-btn` neutral `var(--fg)`. (ENG-1247 S2) */}
             <Pencil size={IconSize.lg} color={colors.textSecondary} strokeWidth={1.75} />
-          </Pressable>
-          <Pressable
+          </PressableScale>
+          <PressableScale
+            haptic="selection"
             onPress={() => router.push("/import-shared")}
             accessibilityRole="button"
             accessibilityLabel="Import recipe"
@@ -54,7 +57,7 @@ export function RecipesTabChrome() {
             style={{ padding: 6 }}
           >
             <Link size={IconSize.lg} color={colors.textSecondary} strokeWidth={1.75} />
-          </Pressable>
+          </PressableScale>
         </View>
       }
     >

@@ -13,9 +13,10 @@
  * user joins.
  */
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { Mail } from "lucide-react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -125,8 +126,9 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
             {"You've been invited to join a household."}
           </Text>
           <View style={{ flexDirection: "row", gap: Spacing.sm }}>
-            <Pressable
+            <PressableScale
               testID={`household-invite-accept-${inv.id}`}
+              haptic="confirm"
               accessibilityRole="button"
               accessibilityLabel="Accept invite"
               onPress={() => handleAccept(inv)}
@@ -145,9 +147,10 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
               ) : (
                 <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 14 }}>Accept</Text>
               )}
-            </Pressable>
-            <Pressable
+            </PressableScale>
+            <PressableScale
               testID={`household-invite-decline-${inv.id}`}
+              haptic="selection"
               accessibilityRole="button"
               accessibilityLabel="Decline invite"
               onPress={() => handleDecline(inv)}
@@ -166,7 +169,7 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
               <Text style={{ color: colors.textSecondary, fontWeight: "600", fontSize: 14 }}>
                 Decline
               </Text>
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
       ))}

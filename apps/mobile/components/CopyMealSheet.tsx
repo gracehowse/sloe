@@ -8,6 +8,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
@@ -155,23 +156,25 @@ export default function CopyMealSheet({
           <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
             {/* Month header */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <Pressable
+              <PressableScale
                 onPress={() => setViewMonth((v) => new Date(v.getFullYear(), v.getMonth() - 1, 1))}
+                haptic="selection"
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Previous month"
               >
                 <ChevronLeft size={20} color={colors.text} />
-              </Pressable>
+              </PressableScale>
               <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>{monthLabel}</Text>
-              <Pressable
+              <PressableScale
                 onPress={() => setViewMonth((v) => new Date(v.getFullYear(), v.getMonth() + 1, 1))}
+                haptic="selection"
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Next month"
               >
                 <ChevronRight size={20} color={colors.text} />
-              </Pressable>
+              </PressableScale>
             </View>
             <View style={{ flexDirection: "row", marginBottom: 4 }}>
               {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
@@ -192,10 +195,11 @@ export default function CopyMealSheet({
                 const disabled = cell.getTime() < min.getTime() || cell.getTime() > max.getTime() || ck === sourceDayKey;
                 const isSel = ck === targetKey;
                 return (
-                  <Pressable
+                  <PressableScale
                     key={`${ck}-${idx}`}
                     disabled={disabled}
                     onPress={() => setTargetKey(dateKeyFromDate(clampJournalDate(cell)))}
+                    haptic="selection"
                     accessibilityRole="button"
                     accessibilityLabel={`Pick ${formatHumanDate(ck)}`}
                     accessibilityState={{ selected: isSel, disabled }}
@@ -229,7 +233,7 @@ export default function CopyMealSheet({
                         {cell.getDate()}
                       </Text>
                     </View>
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </View>
@@ -244,9 +248,10 @@ export default function CopyMealSheet({
               const isActive = quickRange === key;
               const label = key === "none" ? "Just this day" : QUICK_RANGES.find((r) => r.key === key)!.label;
               return (
-                <Pressable
+                <PressableScale
                   key={key}
                   onPress={() => setQuickRange(key)}
+                  haptic="selection"
                   accessibilityRole="button"
                   accessibilityLabel={label}
                   accessibilityState={{ selected: isActive }}
@@ -270,7 +275,7 @@ export default function CopyMealSheet({
                   >
                     {label}
                   </Text>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </View>
@@ -288,8 +293,9 @@ export default function CopyMealSheet({
 
           {/* Action row */}
           <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.lg }}>
-            <Pressable
+            <PressableScale
               onPress={onClose}
+              haptic="selection"
               style={{
                 flex: 1,
                 paddingVertical: 12,
@@ -302,8 +308,8 @@ export default function CopyMealSheet({
               accessibilityLabel="Cancel"
             >
               <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Cancel</Text>
-            </Pressable>
-            <Pressable
+            </PressableScale>
+            <PressableScale
               onPress={() => {
                 if (!canConfirm) {
                   onConfirm([], "Nothing to copy");
@@ -313,6 +319,7 @@ export default function CopyMealSheet({
                 onConfirm(targetDayKeys, summary);
                 onClose();
               }}
+              haptic="confirm"
               disabled={!canConfirm}
               style={{
                 flex: 1,
@@ -326,7 +333,7 @@ export default function CopyMealSheet({
               accessibilityState={{ disabled: !canConfirm }}
             >
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Copy</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         </Pressable>
       </Pressable>

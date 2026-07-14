@@ -9,7 +9,7 @@
  * full hero with the controls still overlaid — never a regression to a separate
  * nav bar.
  */
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import {
   Bookmark,
@@ -22,6 +22,7 @@ import {
 } from "lucide-react-native";
 
 import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
@@ -76,7 +77,8 @@ function HeroCircleButton({
   children: React.ReactNode;
 }) {
   return (
-    <Pressable
+    <PressableScale
+      haptic="selection"
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
@@ -92,7 +94,7 @@ function HeroCircleButton({
       }}
     >
       {children}
-    </Pressable>
+    </PressableScale>
   );
 }
 

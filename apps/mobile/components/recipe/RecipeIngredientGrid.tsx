@@ -19,10 +19,11 @@
  * info; the header Edit + the View-all pill both route to /recipe/verify), and
  * count-to-weight scaled amounts via the viewing multiplier.
  */
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Text, View } from "react-native";
 
 import { FontFamily, Spacing, Type } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
@@ -120,8 +121,9 @@ export function RecipeIngredientGrid({
           const displayName = cleanIngredientDisplayName(ing.name) || decodeEntities(ing.name);
           return (
             <View key={i} style={{ width: "25%", padding: Spacing.dense / 2 }}>
-              <Pressable
+              <PressableScale
                 onPress={() => onIngredientPress(i)}
+                haptic="selection"
                 accessibilityRole="button"
                 accessibilityLabel={`${displayName} ${tier}`}
                 style={{ gap: Spacing.xs }}
@@ -207,15 +209,16 @@ export function RecipeIngredientGrid({
                     {formatIngredientAmountUnit(scaledAmount, ing.unit)}
                   </Text>
                 ) : null}
-              </Pressable>
+              </PressableScale>
             </View>
           );
         })}
       </View>
 
       {hiddenCount > 0 || expanded ? (
-        <Pressable
+        <PressableScale
           onPress={onViewAll}
+          haptic="selection"
           accessibilityRole="button"
           testID="recipe-ingredients-view-all"
           style={{
@@ -230,7 +233,7 @@ export function RecipeIngredientGrid({
           <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 14, fontWeight: "600", color: colors.text }}>
             {expanded ? "Show fewer" : `View all ${ingredients.length} ingredients`}
           </Text>
-        </Pressable>
+        </PressableScale>
       ) : null}
     </View>
   );

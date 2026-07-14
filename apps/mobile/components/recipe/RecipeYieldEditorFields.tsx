@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -39,8 +40,9 @@ export function RecipeYieldEditorFields({ draft, onChange, disabled }: RecipeYie
         {MODES.map((m) => {
           const active = draft.mode === m.id;
           return (
-            <Pressable
+            <PressableScale
               key={m.id}
+              haptic="selection"
               testID={`recipe-yield-mode-${m.id}`}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
@@ -62,7 +64,7 @@ export function RecipeYieldEditorFields({ draft, onChange, disabled }: RecipeYie
               >
                 {m.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>

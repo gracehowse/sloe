@@ -3,7 +3,6 @@ import {
   Alert,
   Linking,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -19,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import {
@@ -189,7 +189,8 @@ export default function NotificationsPromptScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Audit 2026-04-30: visible escape hatch. Routes to /(tabs) and
           marks the prompt as dismissed, mirroring `onSkip`. */}
-      <Pressable
+      <PressableScale
+        haptic="selection"
         style={[styles.closeBtn, { top: insets.top + Spacing.md }]}
         onPress={() => void onSkip()}
         accessibilityRole="button"
@@ -197,7 +198,7 @@ export default function NotificationsPromptScreen() {
         hitSlop={8}
       >
         <X size={20} color={colors.textSecondary} strokeWidth={2.25} />
-      </Pressable>
+      </PressableScale>
 
       <View style={styles.badge}>
         <Bell size={48} color={Accent.success} strokeWidth={1.75} />
@@ -234,12 +235,12 @@ export default function NotificationsPromptScreen() {
         />
       </View>
 
-      <Pressable style={styles.enableBtn} onPress={() => void onEnable()}>
+      <PressableScale haptic="confirm" style={styles.enableBtn} onPress={() => void onEnable()}>
         <Text style={styles.enableBtnText}>Turn on notifications</Text>
-      </Pressable>
-      <Pressable style={styles.skipBtn} onPress={() => void onSkip()}>
+      </PressableScale>
+      <PressableScale haptic="selection" style={styles.skipBtn} onPress={() => void onSkip()}>
         <Text style={styles.skipText}>Maybe later</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

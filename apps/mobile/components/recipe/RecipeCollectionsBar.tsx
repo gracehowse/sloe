@@ -6,7 +6,8 @@
  * Web mirror: `src/app/components/library/LibraryCollectionsBar.tsx`.
  */
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors, type ThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
@@ -53,7 +54,8 @@ export function RecipeCollectionsBar({
       contentContainerStyle={styles.filterScroll}
     >
       {collections.length > 0 ? (
-        <Pressable
+        <PressableScale
+          haptic="selection"
           testID="library-collection-all"
           onPress={() => onSelectCollection(null)}
           style={[styles.filterPill, selectedCollectionId === null && collectionActive(accent)]}
@@ -66,13 +68,14 @@ export function RecipeCollectionsBar({
           >
             All
           </Text>
-        </Pressable>
+        </PressableScale>
       ) : null}
       {collections.map((c) => {
         const active = selectedCollectionId === c.id;
         return (
-          <Pressable
+          <PressableScale
             key={c.id}
+            haptic="selection"
             testID={`library-collection-${c.id}`}
             onPress={() => onSelectCollection(active ? null : c.id)}
             style={[styles.filterPill, active && collectionActive(accent)]}
@@ -83,7 +86,7 @@ export function RecipeCollectionsBar({
             <Text style={[styles.filterPillText, active && collectionActiveText(accent)]} numberOfLines={1}>
               {c.name}
             </Text>
-          </Pressable>
+          </PressableScale>
         );
       })}
       {creating ? (
@@ -100,7 +103,8 @@ export function RecipeCollectionsBar({
           style={styles.newCollectionInput}
         />
       ) : (
-        <Pressable
+        <PressableScale
+          haptic="selection"
           testID="library-new-collection"
           onPress={() => setCreating(true)}
           style={styles.filterPill}
@@ -110,7 +114,7 @@ export function RecipeCollectionsBar({
           <Text style={styles.filterPillText}>
             {collections.length === 0 ? "+ New collection" : "+ New"}
           </Text>
-        </Pressable>
+        </PressableScale>
       )}
     </ScrollView>
   );

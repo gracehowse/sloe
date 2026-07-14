@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { FontFamily, Type } from "@/constants/theme";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 /**
  * CalorieRingDial — Sloe v3 "jewel dial" calorie ring (mobile, react-native-svg).
@@ -201,8 +202,9 @@ export function CalorieRingDial({
     // ENG-1465 — legacy `CalorieRing` interaction restored: tap and long-press
     // both fire the macro toggle. Inert when no handler is wired (dev states,
     // onboarding reveal).
-    <Pressable
+    <PressableScale
       testID="calorie-ring-dial"
+      haptic="selection"
       onPress={onToggle}
       onLongPress={onToggle}
       disabled={!onToggle}
@@ -236,7 +238,7 @@ export function CalorieRingDial({
           </Text>
         </View>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Beaker, BookOpen, ChevronLeft, Database, ExternalLink, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
@@ -144,14 +145,15 @@ export default function NutritionSourcesScreen() {
   return (
     <View testID="screen-nutrition-sources" style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable
+        <PressableScale
+          haptic="selection"
           onPress={goBack}
           hitSlop={12}
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
           <ChevronLeft size={24} color={colors.text} strokeWidth={1.75} />
-        </Pressable>
+        </PressableScale>
         <Text style={styles.title}>Nutrition sources</Text>
       </View>
 
@@ -192,12 +194,12 @@ export default function NutritionSourcesScreen() {
                 <Text style={styles.sourceName}>{name}</Text>
                 <Text style={styles.sourceTagline}>{detail.tagline}</Text>
                 <Text style={styles.sourceDesc}>{detail.description}</Text>
-                <Pressable onPress={() => Linking.openURL(detail.url)}>
+                <PressableScale haptic="selection" onPress={() => Linking.openURL(detail.url)}>
                   <Text style={styles.sourceLink}>
                     {detail.url.replace("https://", "")}{" "}
                     <ExternalLink size={12} color={accent.primarySolid} strokeWidth={1.75} />
                   </Text>
-                </Pressable>
+                </PressableScale>
               </View>
             </View>
           );

@@ -1,9 +1,10 @@
 import React from "react";
-import { Pressable, Text, View, ViewStyle } from "react-native";
+import { Text, View, ViewStyle } from "react-native";
 import { ChevronLeft } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 /**
  * PushScreenHeader — canonical chrome for non-tab push screens.
@@ -58,14 +59,15 @@ export function PushScreenHeader({
         style,
       ]}
     >
-      <Pressable
+      <PressableScale
+        haptic="selection"
         onPress={onBack}
         hitSlop={12}
         accessibilityRole="button"
         accessibilityLabel={backA11yLabel}
       >
         <ChevronLeft size={24} color={colors.text} strokeWidth={1.75} />
-      </Pressable>
+      </PressableScale>
       <View style={{ flex: 1 }}>
         <Text style={{ ...Type.navTitle, color: colors.text }} numberOfLines={1}>
           {title}

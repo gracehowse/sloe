@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { Check } from "lucide-react-native";
 
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SkeletonCard, SkeletonRow } from "@/components/ui/SkeletonRow";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 type ImportLoadingSkeletonProps = {
   phase: "checking" | "importing";
@@ -138,14 +139,15 @@ export function ImportLoadingSkeleton({
       ) : null}
 
       {onCancel ? (
-        <Pressable
+        <PressableScale
           onPress={onCancel}
+          haptic="selection"
           style={{ marginTop: Spacing.lg, alignSelf: "center", paddingVertical: 8, paddingHorizontal: 16 }}
           accessibilityRole="button"
           accessibilityLabel="Cancel import"
         >
           <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>Cancel</Text>
-        </Pressable>
+        </PressableScale>
       ) : null}
     </View>
   );

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Radius, Spacing, Type } from "@/constants/theme";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Info, ShieldCheck } from "lucide-react-native";
 import { OptionCard } from "@/components/OptionCard";
 import { useAccent } from "@/context/theme";
@@ -130,8 +131,9 @@ export function MobileSexStep() {
         </View>
       ) : null}
 
-      <Pressable
+      <PressableScale
         onPress={() => setHelpOpen((v) => !v)}
+        haptic="selection"
         accessibilityRole="button"
         accessibilityState={{ expanded: helpOpen }}
         style={{
@@ -151,7 +153,7 @@ export function MobileSexStep() {
         >
           Which one should I choose?
         </Text>
-      </Pressable>
+      </PressableScale>
 
       {helpOpen ? (
         <View

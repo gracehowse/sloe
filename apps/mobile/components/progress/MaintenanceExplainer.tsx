@@ -1,7 +1,8 @@
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 
 import { Spacing } from "@/constants/theme";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { buildMaintenanceChain } from "@suppr/nutrition-core/maintenanceChain";
 import type { ResolvedMaintenance } from "@suppr/nutrition-core/resolveMaintenance";
 import type { PlanPace, Sex, ActivityLevel } from "@suppr/nutrition-core/tdee";
@@ -63,7 +64,8 @@ export function MaintenanceExplainer({
 
   return (
     <View style={{ marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
-      <Pressable
+      <PressableScale
+        haptic="selection"
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityLabel={open ? "Hide explanation" : "Show how this works"}
@@ -79,7 +81,7 @@ export function MaintenanceExplainer({
         ) : (
           <ChevronDown size={14} color={colors.accentSolid} strokeWidth={1.75} />
         )}
-      </Pressable>
+      </PressableScale>
       {open && (
         <View style={{ marginTop: Spacing.sm, gap: Spacing.sm }}>
           {chain.steps.map((step, i) => {
