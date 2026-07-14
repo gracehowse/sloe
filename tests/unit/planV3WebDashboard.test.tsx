@@ -96,7 +96,7 @@ describe("PlanV3WebDashboard", () => {
     render(<PlanV3WebDashboard {...baseProps} />);
     expect(screen.getByText("5/7")).toBeInTheDocument(); // 5 planned days
     expect(screen.getByText("Days planned")).toBeInTheDocument();
-    expect(screen.getByText("1830")).toBeInTheDocument(); // daily target
+    expect(screen.getByText("1,830")).toBeInTheDocument(); // daily target (ENG-1533 — comma-formatted)
   });
 
   it("surfaces a grounded open-slots insight + live shopping count", () => {
@@ -115,7 +115,7 @@ describe("PlanV3WebDashboard", () => {
     }
   });
 
-  it("ENG-1547 — an all-empty week renders NO verdict row (law 3: '0 of 7 days land' is derived noise)", () => {
+  it("ENG-1547 — an all-empty week renders NO verdict row (law 3: '0 of 7 days on target' is derived noise)", () => {
     const allEmpty = Array.from({ length: 7 }, (_, i) => emptyDay(i));
     const emptyVerdict = computePlanWeekVerdict(
       allEmpty.map((dp) =>
@@ -125,7 +125,7 @@ describe("PlanV3WebDashboard", () => {
     render(<PlanV3WebDashboard {...baseProps} plan={allEmpty} verdict={emptyVerdict} />);
     // The verdict headline must not appear on an empty week (desktop parity
     // with mobile PlanV3Surface's gate).
-    expect(screen.queryByText(/days land/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/days on target/)).not.toBeInTheDocument();
     // The 0/7 fact still lives in the stat strip alone.
     expect(screen.getByText("0/7")).toBeInTheDocument();
   });

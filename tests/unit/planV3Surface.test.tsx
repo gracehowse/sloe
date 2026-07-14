@@ -61,7 +61,7 @@ const baseProps = {
   verdict: {
     daysHit: 4,
     total: 7,
-    headline: "On track — 4 of 7 days land",
+    headline: "On track — 4 of 7 days on target",
     subline: "3 days need a meal or swap",
     tone: "warning" as const,
   },
@@ -84,7 +84,7 @@ describe("PlanV3Surface (web)", () => {
   it("renders the header, verdict, and 7-day strip", () => {
     const { getByText, getByLabelText } = render(<PlanV3Surface {...baseProps} />);
     expect(getByText("Your plan")).not.toBeNull();
-    expect(getByText("On track — 4 of 7 days land")).not.toBeNull();
+    expect(getByText("On track — 4 of 7 days on target")).not.toBeNull();
     // Mon 15 … Sun 21
     expect(getByLabelText("M 15")).not.toBeNull();
     expect(getByLabelText("S 21")).not.toBeNull();

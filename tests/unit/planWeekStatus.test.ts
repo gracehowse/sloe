@@ -102,12 +102,12 @@ describe("computePlanWeekVerdict", () => {
     expect(v.tone).toBe("success");
   });
 
-  it("partial week → 'On track — N of M days land' + plural nudge, neutral tone (ENG-1547 — 'On track' is progress, not a warning)", () => {
+  it("partial week → 'On track — N of M days on target' + plural nudge, neutral tone (ENG-1547 — 'On track' is progress, not a warning)", () => {
     const week = [fullDay, fullDay, fullDay, fullDay, partDay, emptyDay, partDay];
     const v = computePlanWeekVerdict(week)!;
     expect(v.daysHit).toBe(4);
     expect(v.total).toBe(7);
-    expect(v.headline).toBe("On track — 4 of 7 days land");
+    expect(v.headline).toBe("On track — 4 of 7 days on target");
     expect(v.subline).toBe("3 days need a meal or swap");
     expect(v.tone).toBe("neutral");
     // A progressing week must never wear the amber warning dot.
@@ -125,7 +125,7 @@ describe("computePlanWeekVerdict", () => {
     const v = computePlanWeekVerdict([fullDay, partDay, fullDay])!;
     expect(v.total).toBe(3);
     expect(v.daysHit).toBe(2);
-    expect(v.headline).toBe("On track — 2 of 3 days land");
+    expect(v.headline).toBe("On track — 2 of 3 days on target");
   });
 });
 

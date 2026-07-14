@@ -59,7 +59,7 @@ const baseProps = {
   verdict: {
     daysHit: 0,
     total: 7,
-    headline: "On track — 0 of 7 days land",
+    headline: "On track — 0 of 7 days on target",
     subline: "7 days need a meal or swap",
     tone: "warning" as const,
   },
@@ -84,7 +84,7 @@ describe("PlanV3Surface — empty-week grammar gating", () => {
     const plan = Array.from({ length: 7 }, emptyDay);
     const { queryByTestId, getByText } = render(<PlanV3Surface {...baseProps} plan={plan} />);
     expect(queryByTestId("plan-empty-week-card")).toBeNull();
-    expect(getByText("On track — 0 of 7 days land")).not.toBeNull();
+    expect(getByText("On track — 0 of 7 days on target")).not.toBeNull();
     expect(getByText("Nothing planned yet")).not.toBeNull(); // day-detail zero-triad subline
   });
 
@@ -95,7 +95,7 @@ describe("PlanV3Surface — empty-week grammar gating", () => {
       <PlanV3Surface {...baseProps} plan={plan} />,
     );
     expect(getByTestId("plan-empty-week-card")).toBeTruthy();
-    expect(queryByText("On track — 0 of 7 days land")).toBeNull();
+    expect(queryByText("On track — 0 of 7 days on target")).toBeNull();
     expect(queryByTestId("plan-day-detail-band")).toBeNull();
   });
 
@@ -109,14 +109,14 @@ describe("PlanV3Surface — empty-week grammar gating", () => {
         verdict={{
           daysHit: 0,
           total: 7,
-          headline: "On track — 0 of 7 days land",
+          headline: "On track — 0 of 7 days on target",
           subline: "7 days need a meal or swap",
           tone: "warning",
         }}
       />,
     );
     expect(queryByTestId("plan-empty-week-card")).toBeNull();
-    expect(getByText("On track — 0 of 7 days land")).not.toBeNull();
+    expect(getByText("On track — 0 of 7 days on target")).not.toBeNull();
   });
 
   it("'or add meals as you go' dismisses the card for this session, revealing the day-detail band", () => {

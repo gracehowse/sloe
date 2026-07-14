@@ -12,7 +12,7 @@ import type { PlanWeekVerdict } from "@/lib/planning/planWeekStatus";
  * `docs/ux/redesign/v3/Sloe-App.html` Plan screen ~L4707–4721): the date-range
  * overline + "Your plan" serif title with three quiet round action buttons
  * (generate / adjust / templates), then a verdict row — a tone dot +
- * "On track — N of M days land" headline + "{M−N} days need a meal or swap"
+ * "On track — N of M days on target" headline + "{M−N} days need a meal or swap"
  * nudge. The verdict comes from {@link PlanWeekVerdict} (`computePlanWeekVerdict`),
  * so completeness logic stays shared web↔mobile.
  *
