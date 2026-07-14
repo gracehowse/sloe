@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, StatusBar, Text, View } 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRouter } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
-import { Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -346,7 +346,7 @@ export function MobileFlow() {
                 marginLeft: Spacing.sm,
                 paddingHorizontal: Spacing.dense,
                 paddingVertical: 4,
-                borderRadius: 999,
+                borderRadius: Radius.full,
                 backgroundColor: `${accent.primaryLight}1f`,
                 borderWidth: 1,
                 borderColor: `${accent.primaryLight}40`,
@@ -415,7 +415,7 @@ export function MobileFlow() {
             const isDisabled = completing || !canAdvance;
             return {
               height: 56,
-              borderRadius: 999,
+              borderRadius: Radius.full,
               // Disabled uses `inputBg` — a slightly tinted card surface
               // distinct from the page bg. Earlier iterations swung
               // between two failure modes: `opacity: 0.4` on Accent.primary

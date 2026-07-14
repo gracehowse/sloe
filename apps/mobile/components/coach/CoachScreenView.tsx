@@ -1,7 +1,7 @@
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { Info, Sparkles } from "lucide-react-native";
 
-import { Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { QuickLogButton } from "@/components/ui/QuickLogButton";
@@ -98,7 +98,7 @@ function CoachCandidateRow({
                 backgroundColor: accent.primarySoft,
                 paddingHorizontal: Spacing.sm,
                 paddingVertical: Spacing.xs,
-                borderRadius: 9999,
+                borderRadius: Radius.full,
                 overflow: "hidden",
                 textTransform: "uppercase",
                 fontWeight: "700",
@@ -190,7 +190,7 @@ export function CoachScreenView({
               backgroundColor: accent.primarySoft,
               paddingHorizontal: Spacing.sm,
               paddingVertical: Spacing.xs,
-              borderRadius: 9999,
+              borderRadius: Radius.full,
             }}
           >
             <Sparkles size={12} color={accent.primarySolid} />
@@ -259,7 +259,7 @@ export function CoachScreenView({
                   selectedChipId === chip.id ? accent.primarySolid : colors.cardBorder,
                 backgroundColor:
                   selectedChipId === chip.id ? accent.primarySoft : colors.card,
-                borderRadius: 9999,
+                borderRadius: Radius.full,
                 paddingHorizontal: Spacing.md,
                 paddingVertical: Spacing.sm,
               }}

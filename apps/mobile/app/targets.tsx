@@ -569,7 +569,7 @@ export default function TargetsScreen() {
         statusPill: {
           paddingHorizontal: Spacing.sm,
           paddingVertical: Spacing.xs,
-          borderRadius: 999,
+          borderRadius: Radius.full,
         },
         statusText: { fontSize: 11, fontWeight: "700" },
         footnote: {

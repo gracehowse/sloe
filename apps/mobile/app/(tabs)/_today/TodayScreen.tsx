@@ -3021,7 +3021,7 @@ export default function TrackerScreen() {
           alignItems: "center",
           gap: Spacing.xs,
           backgroundColor: colors.card,
-          borderRadius: 999,
+          borderRadius: Radius.full,
           paddingVertical: Spacing.xs,
           paddingHorizontal: Spacing.md,
           borderWidth: 1,

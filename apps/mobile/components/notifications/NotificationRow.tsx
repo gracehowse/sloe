@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 14, fontWeight: "600" },
   body: { fontSize: 12.5, marginTop: 1 },
   time: { fontSize: 11, marginTop: 3 },
-  dot: { width: 8, height: 8, borderRadius: 9999, marginTop: 6 },
+  dot: { width: 8, height: 8, borderRadius: Radius.full, marginTop: 6 },
 });
 
 /** Memoized — the screen re-renders on every realtime/markRead state change;

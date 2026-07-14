@@ -21,7 +21,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react-native";
 
-import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
@@ -163,7 +163,7 @@ export function RecipeDetailHero({
             position: "absolute",
             left: Spacing.md,
             bottom: Spacing.md,
-            borderRadius: 999,
+            borderRadius: Radius.full,
             backgroundColor: "rgba(0,0,0,0.5)",
             paddingHorizontal: Spacing.sm,
             paddingVertical: 4,

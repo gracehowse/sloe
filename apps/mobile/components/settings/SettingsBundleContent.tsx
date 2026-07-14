@@ -3505,7 +3505,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                     gap: 6,
                     paddingHorizontal: 12,
                     paddingVertical: 6,
-                    borderRadius: 999,
+                    borderRadius: Radius.full,
                     backgroundColor: colors.fillQuiet,
                   }}
                 >
