@@ -46,7 +46,7 @@ describe("TodayDesktopRightRail — 'This week' sparse average (web)", () => {
     render(
       <TodayDesktopRightRail {...baseProps} weekLoggedDays={3} weekAvgKcal={1900} />,
     );
-    expect(screen.getByText("1,900 avg")).toBeTruthy();
+    expect(screen.getByText("1,900 kcal avg")).toBeTruthy();
     expect(screen.getByText("3/7 days logged")).toBeTruthy();
   });
 

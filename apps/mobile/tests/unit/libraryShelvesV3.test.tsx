@@ -80,7 +80,7 @@ describe("RecipeCardWide", () => {
       <RecipeCardWide recipe={rc("Tahini bowl", { calories: 520, protein: 34 })} onPress={onPress} />,
     );
     expect(getByText("Tahini bowl")).toBeTruthy();
-    expect(getByText("520 kcal · 34g P · 20m")).toBeTruthy();
+    expect(getByText("520 kcal · 34g protein · 20 min")).toBeTruthy();
     fireEvent.press(getByLabelText(/Tahini bowl/));
     expect(onPress).toHaveBeenCalledTimes(1);
   });

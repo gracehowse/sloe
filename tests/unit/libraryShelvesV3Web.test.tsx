@@ -3,7 +3,7 @@
  * Cookbook editorial shelves (ENG-1225 Block 5) — WEB parity render tests.
  *
  * Mirrors `apps/mobile/tests/unit/libraryShelvesV3.test.tsx`:
- *   - RecipeCardWide: card name + "{kcal} kcal · {p}g P · {t}m" meta, the
+ *   - RecipeCardWide: card name + "{kcal} kcal · {p}g protein · {t} min" meta, the
  *     "Nutrition pending" fallback when calories are 0, and onPress.
  *   - EditorialShelf: section head title + subtitle + a card per recipe + tap.
  *   - FeaturedHero: kick badge / "From your cookbook" kicker / serif title / meta.
@@ -57,7 +57,7 @@ describe("RecipeCardWide (web)", () => {
       />,
     );
     expect(screen.getByText("Tahini bowl")).toBeTruthy();
-    expect(screen.getByText("520 kcal · 34g P · 20m")).toBeTruthy();
+    expect(screen.getByText("520 kcal · 34g protein · 20 min")).toBeTruthy();
     fireEvent.click(screen.getByLabelText(/Tahini bowl/));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
