@@ -14,7 +14,7 @@ import type { RecipeCard } from "@/types/recipe";
  * (prototype `rcard--wide` ~L4176, `.rcard--wide{width:188px}` /
  * `.rcard-img{height:128px}`): a fixed 188px card with a 128px photo (or the deterministic
  * RecipeHeroFallback tint + glyph when none — honest imagery, ENG-1287), the recipe name (2 lines), and a
- * "{kcal} kcal · {protein}g P · {time}m" meta line — or "Nutrition pending · {time}m"
+ * "{kcal} kcal · {protein}g protein · {time} min" meta line — or "Nutrition pending · {time} min"
  * when calories are 0. Used inside {@link EditorialShelf} (host-gated on the
  * category filter; the `sloe_v3_editorial_shelves` flag that gated this was
  * collapsed as always-on in ENG-1356).
@@ -38,9 +38,9 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
   const hasKcal = recipe.calories > 0;
   const meta = [
     hasKcal
-      ? `${Math.round(recipe.calories)} kcal · ${Math.round(recipe.protein)}g P`
+      ? `${Math.round(recipe.calories)} kcal · ${Math.round(recipe.protein)}g protein`
       : "Nutrition pending",
-    mins > 0 ? `${mins}m` : null,
+    mins > 0 ? `${mins} min` : null,
   ]
     .filter(Boolean)
     .join(" · ");

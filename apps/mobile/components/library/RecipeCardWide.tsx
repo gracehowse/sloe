@@ -10,7 +10,7 @@ import type { RecipeCard } from "@/lib/types";
 /**
  * RecipeCardWide — the Sloe v3 Cookbook editorial-shelf card (prototype
  * `rcard--wide` ~L4176): a fixed 188px card (128px photo) with the recipe name
- * and a "{kcal} kcal · {protein}g P · {time}m" meta line. Used inside
+ * and a "{kcal} kcal · {protein}g protein · {time} min" meta line. Used inside
  * {@link EditorialShelf} (ENG-1225 Block 5; the `sloe_v3_editorial_shelves`
  * flag that gated this was collapsed as always-on in ENG-1356).
  */
@@ -31,9 +31,9 @@ export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
   const hasKcal = recipe.calories > 0;
   const meta = [
     hasKcal
-      ? `${Math.round(recipe.calories)} kcal · ${Math.round(recipe.protein)}g P`
+      ? `${Math.round(recipe.calories)} kcal · ${Math.round(recipe.protein)}g protein`
       : "Nutrition pending",
-    mins > 0 ? `${mins}m` : null,
+    mins > 0 ? `${mins} min` : null,
   ]
     .filter(Boolean)
     .join(" · ");
