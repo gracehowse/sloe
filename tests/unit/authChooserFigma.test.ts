@@ -104,16 +104,21 @@ describe("auth chooser — Figma 296:2 (web)", () => {
 describe("email signup — session-aware success copy (ENG-1512)", () => {
   it("branches on signUpData.session — silent redirect when a session returns", () => {
     // Confirmations OFF (supabase/config.toml) → signUp returns a live
-    // session and the SIGNED_IN listener redirects; the "check your email"
-    // claim would be false. The branch mirrors the onboarding SignupStep.
-    expect(SRC).toMatch(/if \(signUpData\.session\)/);
+    // session and the SIGNED_IN listener redirects. ENG-1537 routes this
+    // through the shared classifier (classifySignUpResult → outcome).
+    expect(SRC).toMatch(/classifySignUpResult\(signUpData\)/);
+    expect(SRC).toMatch(/if \(outcome === "signed_in"\)/);
   });
 
-  it('only claims "check your email" when no session came back (confirmations ON)', () => {
-    const gate = SRC.indexOf("if (signUpData.session)");
-    const sent = SRC.indexOf("Check your email to confirm");
-    expect(gate).toBeGreaterThan(-1);
-    expect(sent).toBeGreaterThan(gate);
+  it("no-session copy is neutral + honest — never the false 'Account created' claim (ENG-1537)", () => {
+    // An already-registered confirmed email returns no session + an obfuscated
+    // user; the old "Account created. Check your email to confirm" copy was
+    // false. Both no-session cases now share neutral, enumeration-safe copy,
+    // and analytics fire only for a real new user.
+    expect(SRC).toMatch(/If this email is new to Sloe/);
+    expect(SRC).not.toMatch(/Account created/);
+    expect(SRC).not.toMatch(/Check your email to confirm/);
+    expect(SRC).toMatch(/isRealSignUp\(outcome\)/);
   });
 
   it("standing 'you may need to confirm your email' fine-print is gone", () => {

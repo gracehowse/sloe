@@ -5,6 +5,7 @@ import posthog from "posthog-js";
 import { supabase } from "../../src/lib/supabase/browserClient.ts";
 import { AnalyticsEvents } from "../../src/lib/analytics/events.ts";
 import { track } from "../../src/lib/analytics/track.ts";
+import { classifySignUpResult, isRealSignUp } from "../../src/lib/auth/signUpResult.ts";
 
 export type LoginClientProps = {
   /** Default tab; `/signin` defaults to "signin" with `hideTabs` so
@@ -110,19 +111,18 @@ export function LoginClient({
       setMessage(error.message);
       return;
     }
-    if (signUpData.user) {
+    // ENG-1512/ENG-1537 — see classifySignUpResult: signed_in → silent redirect; both no-session cases share copy (no enumeration oracle); analytics only for a real new user.
+    const outcome = classifySignUpResult(signUpData);
+    if (signUpData.user && isRealSignUp(outcome)) {
       posthog.identify(signUpData.user.id, { email: trimmed });
       track(AnalyticsEvents.user_signed_up, { method: "email" });
     }
-    // ENG-1512 — branch on the returned session (mirrors onboarding SignupStep,
-    // ENG-672): confirmations OFF → signUp returns a live session → SIGNED_IN
-    // listener redirects (silent success); only no-session shows "check email".
-    if (signUpData.session) {
+    if (outcome === "signed_in") {
       setStatus("idle");
       return;
     }
     setStatus("sent");
-    setMessage("Account created. Check your email to confirm, then sign in.");
+    setMessage("If this email is new to Sloe, a confirmation link is on its way.");
   };
 
   const signIn = async () => {

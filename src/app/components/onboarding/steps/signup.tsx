@@ -6,6 +6,7 @@ import { Button } from "@/app/components/ui/button";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { track } from "@/lib/analytics/track";
 import { supabase } from "@/lib/supabase/browserClient";
+import { classifySignUpResult, isRealSignUp } from "@/lib/auth/signUpResult";
 import { useAuthSessionOptional } from "@/context/AuthSessionContext";
 import { useOnboarding } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
@@ -87,7 +88,7 @@ export function SignupStep() {
         <StepHeader
           overline={overline}
           title="Check your email"
-          subtitle={`We sent a confirmation link to ${state.email.trim()}. Open it to finish setting up — your answers are saved.`}
+          subtitle={`If ${state.email.trim()} is new to Sloe, a confirmation link is on its way. Open it to finish setting up — your answers are saved.`}
         />
         <p className="text-[13px] text-muted-foreground leading-relaxed">
           Didn&apos;t get it? Check your spam folder, or{" "}
@@ -140,7 +141,13 @@ export function SignupStep() {
         setError(signUpError.message);
         return;
       }
-      if (data.user) {
+      // ENG-1512/ENG-1537 — classify the (non-error) result. An already-
+      // registered confirmed email (confirmations ON) returns an obfuscated
+      // user (`identities: []`) with no session and no email; don't attribute
+      // a signup to it, and show the SAME confirm interstitial as a genuine
+      // new signup so the two can't be enumerated apart.
+      const outcome = classifySignUpResult(data);
+      if (data.user && isRealSignUp(outcome)) {
         if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
           try {
             posthog.identify(data.user.id, { email: trimmedEmail });
@@ -150,22 +157,18 @@ export function SignupStep() {
         }
         track(AnalyticsEvents.user_signed_up, { method: "email", flow: "v2" });
         set({ authMethod: "email" });
-        // ENG-672 (2026-05-26) — advance ONLY when a real session lands.
-        //   - Confirmations OFF: `signUp` returns a `session` immediately;
-        //     the AuthSessionContext subscriber flips `authedUserId` and
-        //     the WebFlow shell's auto-skip effect carries the user past
-        //     Signup. We do NOT call `go(1)` here — letting the session-
-        //     driven effect own the advance keeps a single source of truth
-        //     and avoids advancing a frame before auth state settles.
-        //   - Confirmations ON: `signUp` returns a `user` but NO
-        //     `session`. We must NOT advance — the user is still
-        //     unauthenticated. Show the "check your email" state and keep
-        //     them on Signup. Their answers persist in localStorage, so
-        //     the email-redirect back to /onboarding resumes the flow with
-        //     a real session.
-        if (!data.session) {
-          setConfirmEmailSent(true);
-        }
+      }
+      // ENG-672 (2026-05-26) — advance ONLY when a real session lands.
+      //   - Confirmations OFF: `signUp` returns a `session` immediately;
+      //     the AuthSessionContext subscriber flips `authedUserId` and the
+      //     WebFlow shell's auto-skip effect carries the user past Signup. We
+      //     do NOT call `go(1)` here — letting the session-driven effect own
+      //     the advance keeps a single source of truth.
+      //   - No session (confirmations ON, new OR obfuscated-existing): stay on
+      //     Signup and show the confirm interstitial. Their answers persist in
+      //     localStorage, so the email-redirect back to /onboarding resumes.
+      if (data.user && outcome !== "signed_in") {
+        setConfirmEmailSent(true);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sign-up failed. Try again.");
