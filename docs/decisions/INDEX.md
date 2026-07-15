@@ -9,15 +9,16 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-337 decision docs, newest first. Generated 2026-07-12.
+338 decision docs, newest first. Generated 2026-07-15.
 
 | Date | Decision | Summary |
 |------|----------|---------|
+| 2026-07-15 | [Onboarding seed taster-week tier semantics (Free = 1 day, paid = 7)](./2026-07-15-onboarding-seed-taster-week-tier.md) | The onboarding first-plan seeder (`buildFirstWeekFromSeeds`, `src/lib/onboarding/onboardingFirstWeek.ts`) seeds **1 day for Free signups** and **7 days for paid**. Implemented as the function's default `planDays: 1`; a p… |
 | 2026-07-12 | [Launch is blocked until a working paid rail is live](./2026-07-12-launch-blocked-on-paid-rail.md) | **We do not launch until a user can actually pay and receive the entitlement they paid for.** No soft launch, no "trial-only" beta, no "we'll wire billing after the wedge lands." The paid rail — checkout → payment → enti… |
 | 2026-07-11 | [Canonical energy numbers — one input policy, one qualifier grammar, one goal vocabulary](./2026-07-11-canonical-energy-numbers.md) | The 2026-07-11 audit found the same account, in the same hour, showing **four different "maintenance" numbers** (1,567 / 1,647 / ~1,720 / 1,778) plus a ring goal (1,856) that reconciled with none of them, a paywall that… |
 | 2026-07-10 | [2026-07-10 — One card grammar: 24px corners everywhere, flat cards WITH a bound separation mechanism](./2026-07-10-card-grammar-rounder-flat.md) | Reference read: Oura ≈20–24pt radii, flat, separation by surface tone on a dark ground. Natural Cycles ≈16–20 radii, flat white cards on a clearly grey ground, no shadows. In-app exemplar: the Discover TikTok-import card… |
 | 2026-07-10 | [Chip grammar — soft tint carries selection (2026-07-10)](./2026-07-10-chip-grammar-soft-tint.md) | **Ruling (ENG-1375, component-grammar epic, slice S1):** |
-| 2026-07-10 | [Entitlement reconciliation cron (ENG-1463 / ENG-1437)](./2026-07-10-entitlement-reconciliation-cron.md) | `profiles.user_tier` is a denormalised mirror of the payment processors' entitlement truth. Its only writers are the Stripe and RevenueCat webhooks (through `updateProfileTierServiceRole`); the column is client-write-loc… |
+| 2026-07-10 | [Entitlement reconciliation cron (ENG-1463 / ENG-1437)](./2026-07-10-entitlement-reconciliation-cron.md) | An adversarial review before this shipped found the v1 design (below, preserved for its still-valid reasoning on correction policy) had two structural bugs: it was blind to the exact failure it exists to heal (a customer… |
 | 2026-07-10 | [Money-path hardening — red-team fixes (ENG-1487 / ENG-1490)](./2026-07-10-money-path-hardening-redteam-fixes.md) | The 2026-07-10 adversarial money-path sweep confirmed a cluster of live defects. This change fixes the highest-value / lowest-risk subset: |
 | 2026-07-09 | [Email-confirmation signup hardening + mobile deep-link spec (ENG-1395)](./2026-07-09-email-confirmation-signup-hardening.md) | Two decisions landed the day after this doc was written; the sections below were only partially reconciled to them, so read this block as authoritative: |
 | 2026-07-09 | [Mobile degraded-paywall disclosure — defer the price to the App Store (2026-07-09)](./2026-07-09-mobile-degraded-paywall-disclosure.md) | ENG-1381 shipped a flag-gated fallback paywall (`paywall_fallback_when_unavailable`, default-OFF) for the degraded `subscriptionsUnavailable` state — when RevenueCat offerings fail to resolve (App Store Sandbox, App Stor… |

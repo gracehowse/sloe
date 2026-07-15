@@ -114,6 +114,7 @@
 ### D-2026-04-27-14: Onboarding ends with a populated first week, not just a target
 **Status:** Resolved-pending-execution
 **Decision:** Yes. Onboarding's last step seeds Library with 5-10 recipes the user picks, and auto-generates their first weekly plan. End-state on Today + Plan is a working artifact, not an empty dashboard.
+**Amended 2026-07-15:** free-tier seed reduced to a 1-day plan (7 days for paid) per `docs/decisions/2026-07-15-onboarding-seed-taster-week-tier.md` (ENG-1388). Free users' end-state is a populated first *day*, not a full week.
 **Reasoning:** Best-in-class onboarding ends with the user having a thing, not just knowing a thing. Current end-state ("you have a target, now go figure it out") is the cliff that kills activation. The recipe-picking step also seeds D-2026-04-27-04 (north-star moment needs library content to render).
 **Honours:** `project_onboarding_redesign.md` — Phase 2 at 100% rollout. This decision extends Phase 2 with the populated-first-week step; legacy `/onboarding` deletion countdown is unaffected.
 **Honours:** `project_onboarding_welcome_divergence.md` — web/mobile welcome copy divergence remains intentional.
