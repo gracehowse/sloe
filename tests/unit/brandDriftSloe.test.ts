@@ -386,4 +386,24 @@ describe("ENG-1298 — stale-Suppr sweep (user-facing surfaces)", () => {
       expect(src, rel).not.toContain("Suppr Pro");
     }
   });
+
+  it("trust page revision-history link points at the current repo slug (ENG-1457)", () => {
+    // The repo was renamed gracehowse/Suppr -> gracehowse/sloe. GitHub 301s
+    // the old slug, so this link "worked" either way — pin the canonical
+    // URL directly rather than relying on a redirect staying in place.
+    const src = readFileSync(
+      join(ROOT, "src/app/components/trust/TrustPageHeader.tsx"),
+      "utf8",
+    );
+    expect(src).toContain("https://github.com/gracehowse/sloe/commits/main/");
+    expect(src).not.toContain("github.com/gracehowse/Suppr/");
+  });
+
+  it("HealthKit write-failure diagnostic points at the Sloe Settings row (ENG-1457)", () => {
+    // Sibling diagnostic in healthSync.ts already said "...Devices → Sloe.";
+    // this one had drifted and still said Suppr.
+    const src = readFileSync(join(ROOT, "apps/mobile/lib/healthKitMealWriter.ts"), "utf8");
+    expect(src).toContain("Data Access & Devices → Sloe.");
+    expect(src).not.toContain("Data Access & Devices → Suppr.");
+  });
 });

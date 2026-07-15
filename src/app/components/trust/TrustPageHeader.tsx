@@ -101,7 +101,7 @@ export function TrustPageHeader({
             doc per page. The repo is public so no auth gate. */}
         {revisionPath ? (
           <a
-            href={`https://github.com/gracehowse/Suppr/commits/main/${revisionPath}`}
+            href={`https://github.com/gracehowse/sloe/commits/main/${revisionPath}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[10px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-primary-solid transition-colors print:hidden"
