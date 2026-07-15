@@ -24,11 +24,14 @@ Notes on the meal-plan gate:
   never hit the server rejection; it fires on stale-cached-tier desync or a
   downgrade holding a multi-day plan (web toasts, mobile alerts — see
   `apps/mobile/lib/mealPlanErrors.ts`).
-- Interaction with the onboarding first-week seeder (D-2026-04-27-14): the
-  seeder would persist 7 days for Free signups through this RPC, but the
-  chain has never succeeded in production (ENG-1388 — 0 seeds resolve, and
-  its null `slotId` hit a NOT NULL before the gate existed). Whoever repairs
-  ENG-1388 must decide the taster-week tier semantics against this gate.
+- Interaction with the onboarding first-week seeder (D-2026-04-27-14):
+  repaired in ENG-1388 (#899, 2026-07-15) — the provenance gate now matches
+  `SEED_RECIPE_SOURCE_NAME` (`'Suppr Kitchen'`, `onboardingSeedResolver.ts`)
+  and the null-`slotId` NOT NULL is fixed (ENG-1387's `coalesce`). Taster-week
+  tier semantics (Grace, 2026-07-15): `buildFirstWeekFromSeeds` seeds **1 day
+  for Free** signups (default `planDays: 1`) and **7 days for paid**, so Free
+  seeds satisfy this 1-day gate by construction and never trigger the server
+  rejection. See `docs/decisions/2026-07-15-onboarding-seed-taster-week-tier.md`.
 
 ## API-route layer
 
