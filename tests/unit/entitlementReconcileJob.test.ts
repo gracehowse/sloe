@@ -575,6 +575,91 @@ describe("reconcileEntitlements — correction policy", () => {
     expect(writes).toEqual([]);
   });
 
+  it("does NOT write when the pre-write TOCTOU re-read itself fails (regression: null must abort, not fall through)", async () => {
+    // A read error from the pre-write re-check must be treated the same as
+    // "the tier changed" — writing blind over an unreadable row is worse
+    // than skipping one cycle. `freshTier === null || freshTier !== current`
+    // is the correct guard; `freshTier !== null && freshTier !== current`
+    // would let this fall through and write anyway.
+    const raceSupabase = {
+      from(_table: string) {
+        return {
+          select(_cols: string) {
+            return {
+              not() {
+                return {
+                  order() {
+                    return {
+                      range() {
+                        return Promise.resolve({
+                          data: [{ id: "u17", user_tier: "free", stripe_customer_id: "cus_17" }],
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
+              },
+              in() {
+                return Promise.resolve({ data: [], error: null });
+              },
+              eq(_col: string, _id: string) {
+                return {
+                  maybeSingle() {
+                    return Promise.resolve({ data: null, error: { message: "connection reset" } });
+                  },
+                };
+              },
+            };
+          },
+          update() {
+            return { eq: () => Promise.resolve({ error: null }) };
+          },
+        };
+      },
+    } as any;
+
+    const writes: string[] = [];
+    const summary = await reconcileEntitlements(
+      raceSupabase,
+      STRIPE_STUB,
+      {
+        listAllSubscriptions: sweepOf([rec("active", PRICE_PRO_MONTHLY, "cus_17")]),
+        writeTier: async (id) => {
+          writes.push(id);
+          return true;
+        },
+      },
+    );
+    expect(summary.staleWriteSkipped).toBe(1);
+    expect(summary.granted).toBe(0);
+    expect(writes).toEqual([]);
+  });
+
+  it("backfills the ENTITLING customer's id, not a stale one, when a user has churned and resubscribed under a new Stripe customer", async () => {
+    // Regression: grouping must not lock in whichever customer id is
+    // encountered first — an old canceled customer's id must never win
+    // over a currently-active one (would break the Customer Portal link).
+    const backfills: string[] = [];
+    const summary = await reconcileEntitlements(
+      fakeSupabase([{ id: "user-churned", user_tier: "free", stripe_customer_id: null }]),
+      STRIPE_STUB,
+      {
+        listAllSubscriptions: sweepOf([
+          rec("canceled", PRICE_PRO_MONTHLY, "cus_OLD_dead", "user-churned"),
+          rec("active", PRICE_PRO_MONTHLY, "cus_NEW_active", "user-churned"),
+        ]),
+        writeTier: async () => true,
+        backfillCustomerId: async (_id, customerId) => {
+          backfills.push(customerId);
+          return true;
+        },
+      },
+    );
+    expect(summary.granted).toBe(1);
+    expect(backfills).toEqual(["cus_NEW_active"]);
+  });
+
   it("surfaces sweepTruncated when the Stripe sweep hits the page cap", async () => {
     const summary = await reconcileEntitlements(
       fakeSupabase([{ id: "u14", user_tier: "free", stripe_customer_id: "cus_14" }]),

@@ -312,18 +312,45 @@ function groupSweepByCustomer(
   return map;
 }
 
+/**
+ * Groups by `metadata.supabase_user_id`, picking which Stripe customer id
+ * to backfill onto the profile when a user has subscriptions under more
+ * than one Stripe Customer (churn-and-resubscribe mints a fresh Customer
+ * per checkout — see `checkout/route.ts`'s "no `customer` param" comment).
+ * An ENTITLING subscription's customer id always wins over one from a
+ * terminal-status subscription, so a stale/canceled customer id can never
+ * overwrite the live one — the tier resolution is already correct either
+ * way (it considers every sub regardless of which customer id backs it),
+ * this only affects which id `/account/billing` gets to open the Customer
+ * Portal against.
+ */
 function groupSweepBySupabaseUser(
   records: RawStripeSubscriptionRecord[],
 ): Map<string, { subs: ReconcilableSubscription[]; customerId: string }> {
-  const map = new Map<string, { subs: ReconcilableSubscription[]; customerId: string }>();
+  const map = new Map<
+    string,
+    { subs: ReconcilableSubscription[]; customerId: string; customerIdIsEntitling: boolean }
+  >();
   for (const r of records) {
     if (!r.supabaseUserId) continue;
-    const entry = map.get(r.supabaseUserId);
     const sub: ReconcilableSubscription = { status: r.status, items: r.items };
-    if (entry) entry.subs.push(sub);
-    else map.set(r.supabaseUserId, { subs: [sub], customerId: r.customerId });
+    const isEntitling = tierDecisionForSubscription(sub).action === "grant";
+    const entry = map.get(r.supabaseUserId);
+    if (!entry) {
+      map.set(r.supabaseUserId, { subs: [sub], customerId: r.customerId, customerIdIsEntitling: isEntitling });
+      continue;
+    }
+    entry.subs.push(sub);
+    if (isEntitling && !entry.customerIdIsEntitling) {
+      entry.customerId = r.customerId;
+      entry.customerIdIsEntitling = true;
+    }
   }
-  return map;
+  const out = new Map<string, { subs: ReconcilableSubscription[]; customerId: string }>();
+  for (const [userId, entry] of map) {
+    out.set(userId, { subs: entry.subs, customerId: entry.customerId });
+  }
+  return out;
 }
 
 interface ProfileRow {
@@ -573,7 +600,10 @@ export async function reconcileEntitlements(
       if (desiredRank > currentRank) {
         // Upgrade drift — paid but under-entitled. Always safe to correct.
         const freshTier = await readCurrentTier(supabase, profile.id);
-        if (freshTier !== null && freshTier !== current) {
+        // A read failure (null) must ALSO abort the write — we have no
+        // basis to confirm the decision still holds, and writing blind
+        // over an unreadable row is worse than skipping one cycle.
+        if (freshTier === null || freshTier !== current) {
           summary.staleWriteSkipped += 1;
           continue;
         }
@@ -598,7 +628,10 @@ export async function reconcileEntitlements(
           continue;
         }
         const freshTier = await readCurrentTier(supabase, profile.id);
-        if (freshTier !== null && freshTier !== current) {
+        // A read failure (null) must ALSO abort the write — we have no
+        // basis to confirm the decision still holds, and writing blind
+        // over an unreadable row is worse than skipping one cycle.
+        if (freshTier === null || freshTier !== current) {
           summary.staleWriteSkipped += 1;
           continue;
         }
