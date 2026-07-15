@@ -275,7 +275,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               "Both rows" (Grace); writes `entryKind`. Mobile parity. */}
           <div
             data-testid="library-provenance-pills"
-            className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden mb-2"
+            className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
             {LIBRARY_PROVENANCE_PILLS.map((p) => {
               const active = p.id === "all" ? entryKind === null : entryKind === p.id;

@@ -162,7 +162,6 @@ function MacroDial({
         <View style={styles.center} pointerEvents="none">
           <Text style={[styles.value, { color: textColor }]}>
             {animated}
-            <Text style={[styles.unit, { color: subColor }]}> g</Text>
           </Text>
         </View>
       </View>
@@ -259,7 +258,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   value: { ...Type.macroValue },
-  unit: { ...Type.statLabel },
   label: { ...Type.body },
   goal: { ...Type.caption },
 });

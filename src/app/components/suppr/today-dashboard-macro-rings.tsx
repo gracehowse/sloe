@@ -160,7 +160,6 @@ function MacroDial({
         </svg>
         <span className="absolute inset-0 flex items-center justify-center font-[family-name:var(--font-headline)] text-[18px] tabular-nums leading-none">
           {animated}
-          <small className="text-[11px] text-foreground-tertiary ml-0.5">g</small>
         </span>
       </div>
       <span className="text-sm font-medium text-foreground">{label}</span>

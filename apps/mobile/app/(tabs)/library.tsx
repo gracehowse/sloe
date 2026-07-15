@@ -369,7 +369,7 @@ export default function LibraryScreen() {
       // Explicit top padding + alignItems centres the pills against
       // a known row height (see filterScrollStyle below).
       paddingTop: Spacing.xs,
-      paddingBottom: Spacing.md,
+      paddingBottom: Spacing.sm,
       alignItems: "center",
       gap: 8,
     },

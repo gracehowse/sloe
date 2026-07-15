@@ -58,7 +58,7 @@ export function PlanEmptyWeekCard({
       <button
         type="button"
         onClick={onAddMealsAsYouGo}
-        className="mt-1 text-[13px] font-semibold text-primary-solid transition-opacity hover:opacity-80"
+        className="mt-1 text-[13px] font-semibold text-primary-solid underline underline-offset-2 transition-opacity hover:opacity-80"
       >
         or add meals as you go
       </button>

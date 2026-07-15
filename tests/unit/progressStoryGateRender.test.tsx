@@ -13,7 +13,7 @@ import { ProgressStoryGate } from "../../src/app/components/suppr/progress-story
 import { DigestStoryCard } from "../../src/app/components/suppr/digest-story-card";
 
 describe("<ProgressStoryGate />", () => {
-  it("renders the eyebrow + 0/3 ring + aspirational copy when daysLogged = 0", () => {
+  it("renders the eyebrow + ring + aspirational copy when daysLogged = 0", () => {
     render(<ProgressStoryGate daysLogged={0} />);
     expect(screen.getByText("THIS WEEK")).toBeDefined();
     expect(screen.getByText("Your story builds with your data")).toBeDefined();
@@ -21,8 +21,8 @@ describe("<ProgressStoryGate />", () => {
       screen.getByText("Log a meal to start the count. 3 days to your first insight."),
     ).toBeDefined();
     expect(screen.getByTestId("progress-story-gate-ring")).toBeDefined();
-    const label = screen.getByTestId("progress-story-gate-ring-label");
-    expect(label.textContent).toContain("0 / 3");
+    // fit-and-finish (ENG-1558): redundant ring-label line trimmed — the count lives in the a11y label now.
+    expect(screen.queryByTestId("progress-story-gate-ring-label")).toBeNull();
   });
 
   it("renders 'Almost there' on day 2", () => {
@@ -31,8 +31,6 @@ describe("<ProgressStoryGate />", () => {
     expect(
       screen.getByText("One more logged day and your weekly story unlocks."),
     ).toBeDefined();
-    const label = screen.getByTestId("progress-story-gate-ring-label");
-    expect(label.textContent).toContain("2 / 3");
   });
 
   it("fit-and-finish 2026-07-11 — NO in-ring numeral (redundant with the caption; supersedes the slice-2 numeral note)", () => {
