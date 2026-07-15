@@ -46,6 +46,9 @@ apps/**/AGENTS.md
 # Local patch bundles / git worktrees created by tooling (machine-specific).
 .claude/patches/
 .claude/worktrees/
+# Review-pipeline output + evidence (audit markdown, screenshots, manifests) —
+# regenerable scratch from Workflow runs; never track (nearly leaked into #897).
+.claude/workflows/
 
 # Office
 ~$*.docx
