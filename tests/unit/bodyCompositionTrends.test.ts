@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   BODY_COMP_TREND_WINDOW_DAYS,
   buildBodyCompositionTrendCopy,
 } from "../../src/lib/progress/bodyCompositionTrends";
+import { dateKeyFromDate } from "../../src/lib/datetime/dateKey";
 
 describe("buildBodyCompositionTrendCopy (ENG-1237)", () => {
   const now = Date.parse("2026-07-01T12:00:00.000Z");
@@ -63,5 +64,42 @@ describe("buildBodyCompositionTrendCopy (ENG-1237)", () => {
 
     expect(copy.bodyFat.current).toBe(20);
     expect(copy.leanMass.current).toBeNull();
+  });
+});
+
+describe("buildBodyCompositionTrendCopy — local day keys (ENG-1562)", () => {
+  // The app writes bodyFatPctByDay / weightKgByDay with LOCAL calendar keys
+  // (dateKeyFromDate). This module previously synthesised the latest-point key
+  // and the window baseline with `toISOString().slice(0,10)` (UTC), so near
+  // UTC midnight those keys landed on a different day than the series they
+  // joined/compared against. Force a zone behind UTC so local ≠ UTC diverge.
+  const ORIGINAL_TZ = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = "America/Los_Angeles";
+  });
+  afterAll(() => {
+    process.env.TZ = ORIGINAL_TZ;
+  });
+
+  it("keys the synthesised latest point on the LOCAL day so it joins the local-keyed weight series", () => {
+    // 2026-07-15T04:30Z = 2026-07-14 21:30 PDT → local day 07-14, UTC day 07-15.
+    const now = Date.parse("2026-07-15T04:30:00.000Z");
+    const localToday = dateKeyFromDate(new Date(now));
+    const utcToday = new Date(now).toISOString().slice(0, 10);
+    // Precondition — this fixture only guards the regression when the env TZ
+    // actually makes local and UTC diverge. Fails loudly if TZ didn't apply.
+    expect(localToday).not.toBe(utcToday);
+
+    const copy = buildBodyCompositionTrendCopy({
+      bodyFatPctByDay: {},
+      weightKgByDay: { [localToday]: 80 },
+      bodyFatPctLatest: 22,
+      now,
+    });
+
+    expect(copy.bodyFat.current).toBe(22);
+    // Lean mass derives only when the body-fat point shares a key with a weight
+    // reading. The old UTC key (07-15) missed the local weight (07-14) → null.
+    expect(copy.leanMass.current).toBe(62.4); // 80 × (1 − 0.22)
   });
 });
