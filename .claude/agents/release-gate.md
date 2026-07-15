@@ -27,7 +27,7 @@ Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-cont
 - **Landing parity:** `tests/unit/landingParity.test.tsx` green. No silent silencing.
 - **Visual validation:** before/after screenshots on web AND mobile attached to PR.
 - **Notion mirror:** any decision/feature ship landed a row in the appropriate Notion DB this turn.
-- **PR hygiene:** ≤3 open PRs in flight before this one. Branch rebased against `origin/main`.
+- **PR hygiene:** ≤8 open PRs in flight before this one (raised from 3, 2026-07-15). Branch rebased against `origin/main`.
 - **TestFlight:** for mobile changes, build promoted via TestFlight (Grace = sole tester for now).
 
 ### Suppr-specific conditional-ship triggers

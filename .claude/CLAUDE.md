@@ -133,7 +133,7 @@ On 2026-05-02 we discovered 14 open PRs that had drifted 41 commits behind `main
 
 Three rules to keep this from recurring:
 
-1. **Cap of 3 open PRs in flight at any time.** Before opening a new PR, check `gh pr list --state open` — if 3+ are already open, merge or close one first. Spinning up agents in parallel is fine; opening their PRs in parallel is not.
+1. **Cap of 8 open PRs in flight at any time** (raised from 3 on 2026-07-15 — rules 2+3 below now cover the staleness half of the original incident on their own; the cap's remaining job is bounding solo-founder review-queue depth and cross-PR collision risk, not staleness, so it can run higher than the original conservative number). Before opening a new PR, check `gh pr list --state open` — if 8+ are already open, merge or close one first. Spinning up agents in parallel is fine; opening their PRs in parallel is not.
 2. **Rebase before push, every push.** `git fetch origin main && git rebase origin/main` before `git push`. If main moved >5 commits since branch point, rebase regardless of conflicts — easier now than later.
 3. **The auto-rebase workflow** (`.github/workflows/auto-rebase-prs.yml`) runs every 6h, force-pushes clean rebases, and flags PRs it can't rebase as `stale-rebase`. Stuck-stale PRs auto-close after 7 days. **Treat the `stale-rebase` label as a P1 — fix or close that day.**
 
