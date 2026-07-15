@@ -28,8 +28,8 @@ vi.mock("@/hooks/use-theme-colors", () => ({
 }));
 
 describe("<ProgressStoryGate /> (mobile)", () => {
-  it("renders eyebrow + headline + body + ring + 0/3 label when daysLogged = 0", () => {
-    const { getByText, getByTestId } = render(
+  it("renders eyebrow + headline + body + ring when daysLogged = 0", () => {
+    const { getByText, getByTestId, queryByTestId } = render(
       <ProgressStoryGate daysLogged={0} />,
     );
     expect(getByText("THIS WEEK")).toBeTruthy();
@@ -38,20 +38,18 @@ describe("<ProgressStoryGate /> (mobile)", () => {
       getByText("Log a meal to start the count. 3 days to your first insight."),
     ).toBeTruthy();
     expect(getByTestId("progress-story-gate-ring")).toBeTruthy();
-    const label = getByTestId("progress-story-gate-ring-label");
-    expect(label.props.children.join("")).toContain("0 / 3");
+    // fit-and-finish (ENG-1558): redundant ring-label line trimmed — the count lives in the a11y label now.
+    expect(queryByTestId("progress-story-gate-ring-label")).toBeNull();
   });
 
   it("renders 'Almost there' headline on day 2", () => {
-    const { getByText, getByTestId } = render(
+    const { getByText } = render(
       <ProgressStoryGate daysLogged={2} />,
     );
     expect(getByText("Almost there")).toBeTruthy();
     expect(
       getByText("One more logged day and your weekly story unlocks."),
     ).toBeTruthy();
-    const label = getByTestId("progress-story-gate-ring-label");
-    expect(label.props.children.join("")).toContain("2 / 3");
   });
 
   it("ENG-1372 slice 2 — renders a standalone '<n>/3' numeral WITH the ring (not just buried in the sentence below)", () => {

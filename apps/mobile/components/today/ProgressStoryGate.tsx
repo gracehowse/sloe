@@ -144,23 +144,7 @@ function ProgressStoryGateImpl({
         {placeholder.body}
       </Text>
 
-      <Text
-        testID="progress-story-gate-ring-label"
-        style={{
-          fontSize: 11,
-          color: colors.textTertiary,
-          marginTop: Spacing.sm,
-          fontVariant: ["tabular-nums"],
-        }}
-      >
-        {/*
-          V17 (2026-05-11 visual sweep): "3-day floor" was jargon —
-          the user had to infer it meant "minimum 3 days needed to
-          unlock insights". Replaced with the plain-English version
-          "needed to unlock" so the meaning is immediate.
-        */}
-        {placeholder.ringLabel} days logged · {STORY_DATA_FLOOR_DAYS} needed to unlock
-      </Text>
+
     </View>
   );
 }

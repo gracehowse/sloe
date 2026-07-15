@@ -57,10 +57,16 @@ export function PlanEmptyWeekCard({ onGenerate, onAddMealsAsYouGo }: PlanEmptyWe
       />
       <SupprButton
         variant="ghost"
-        label="or add meals as you go"
         onPress={onAddMealsAsYouGo}
+        accessibilityLabel="Add meals as you go"
         style={{ marginTop: Spacing.xs, alignSelf: "center" }}
-      />
+      >
+        <Text
+          style={[Type.button, { color: accent.primarySolid, textDecorationLine: "underline" }]}
+        >
+          or add meals as you go
+        </Text>
+      </SupprButton>
     </View>
   );
 }

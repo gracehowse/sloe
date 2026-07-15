@@ -119,13 +119,7 @@ export function ProgressStoryGate({
       <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
         {placeholder.body}
       </p>
-      <p
-        data-testid="progress-story-gate-ring-label"
-        className="mt-2 text-[11px] tabular-nums text-muted-foreground/80"
-      >
-        {/* V17 (2026-05-11 visual sweep) — see mobile ProgressStoryGate. */}
-        {placeholder.ringLabel} days logged · {STORY_DATA_FLOOR_DAYS} needed to unlock
-      </p>
+
     </SupprCard>
   );
 }
