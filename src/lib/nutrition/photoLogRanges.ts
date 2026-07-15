@@ -23,6 +23,7 @@ import {
   type AiLoggedItem,
   AI_PHOTO_SOURCE,
 } from "./aiLogging";
+import { checkItemMacroConsistency } from "./macroPlausibility";
 
 /** Inclusive low/high kcal (or macro-gram) range. low <= high. */
 export type Range = { low: number; high: number };
@@ -55,6 +56,16 @@ export type PhotoLogItemRanged = {
    *  per-item "Verify with database" flow swaps this row to a
    *  USDA / OFF / FatSecret-matched single-number row before commit. */
   source: "ai";
+  /**
+   * ENG-1421 — soft plausibility flag. `true` when the item's own kcal and
+   * macros fail a scale-invariant Atwater self-consistency check (the model
+   * contradicted itself). The item is NEVER dropped — its confidence is
+   * downgraded to "low" so the existing amber "verify before logging"
+   * treatment fires, and `plausibilityReason` is surfaced for optional
+   * display. Absent = passed, or the model gave no macros to cross-check.
+   */
+  implausible?: boolean;
+  plausibilityReason?: "atwater_mismatch" | "single_macro_only" | null;
 };
 
 /** Suggested add-on the photo doesn't show — "a glass of wine with
@@ -231,6 +242,24 @@ function parseItem(raw: unknown, index: number): PhotoLogItemRanged | null {
     category,
     source: "ai",
   };
+
+  // ENG-1421 — soft plausibility gate on the only previously-ungated AI
+  // logging path. Cross-check the item's own kcal against its macros (Atwater,
+  // at range midpoints). On failure, flag it and drop to "low" confidence so
+  // the existing amber verify-before-logging treatment fires — never drop the
+  // row (the user may still want to log it after a look).
+  const consistency = checkItemMacroConsistency({
+    calories: rangeMidpoint(calories),
+    protein: protein ? rangeMidpoint(protein) : 0,
+    carbs: carbs ? rangeMidpoint(carbs) : 0,
+    fat: fat ? rangeMidpoint(fat) : 0,
+  });
+  if (!consistency.ok) {
+    item.implausible = true;
+    item.plausibilityReason = consistency.reason;
+    item.confidence = "low";
+  }
+
   if (quantityHint) item.quantityHint = quantityHint;
   return item;
 }

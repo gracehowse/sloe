@@ -78,6 +78,43 @@ export function isPlausibleMacrosPer100g(m: MacrosPer100gShape): boolean {
   return checkMacroPlausibility(m).ok;
 }
 
+export type ItemMacroConsistencyResult =
+  | { ok: true }
+  | { ok: false; reason: "atwater_mismatch" | "single_macro_only" };
+
+/**
+ * ENG-1421 — scale-invariant Atwater self-consistency for an ABSOLUTE per-item
+ * macro row (a photo-log plate item, a voice-logged item) whose portion grams
+ * are unknown. Unlike {@link checkMacroPlausibility} there is NO per-100g kcal
+ * ceiling — a whole plate item legitimately exceeds 900 kcal — only the
+ * kcal-vs-(4·P + 4·C + 9·F) internal-consistency test (scale-invariant, so it
+ * works on any absolute portion). Returns `ok:true` when no macros are present
+ * (nothing to cross-check), so items the model declines to break down are
+ * never flagged. Reuses the same TOL_ABS / TOL_PCT tolerances as the per-100g
+ * gate.
+ */
+export function checkItemMacroConsistency(m: MacrosPer100gShape): ItemMacroConsistencyResult {
+  const cal = Number(m.calories) || 0;
+  const p = Number(m.protein) || 0;
+  const c = Number(m.carbs) || 0;
+  const f = Number(m.fat) || 0;
+
+  const nonZeroCount = (p > 0 ? 1 : 0) + (c > 0 ? 1 : 0) + (f > 0 ? 1 : 0);
+  // No macros to cross-check, or a kcal-only row → nothing to falsify.
+  if (nonZeroCount === 0 || cal <= 0) return { ok: true };
+
+  const atwater = 4 * p + 4 * c + 9 * f;
+  const tol = Math.max(TOL_ABS, cal * TOL_PCT);
+  const diff = Math.abs(cal - atwater);
+
+  // Single-macro case — e.g. "300 kcal" claimed from "3 g protein" alone.
+  if (nonZeroCount === 1 && cal > 50 && diff > tol) {
+    return { ok: false, reason: "single_macro_only" };
+  }
+  if (diff > tol) return { ok: false, reason: "atwater_mismatch" };
+  return { ok: true };
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // P0 (2026-05-26) — post-scale log plausibility guard.
 //
