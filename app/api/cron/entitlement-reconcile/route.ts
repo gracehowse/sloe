@@ -47,6 +47,12 @@ import { getStripeClient } from "../../../../src/lib/stripe/stripeClient";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+// ENG-1463 (2026-07-15): the job now does one paginated Stripe-wide sweep
+// instead of one call per profile (see the lib module doc comment), which
+// should stay comfortably under this — but a sweep over a large historical
+// subscription volume is the one path that could still run long, so this
+// is set explicitly rather than left to the plan default.
+export const maxDuration = 60;
 
 export function POST(req: Request): Promise<NextResponse> {
   return runEntitlementReconcileRoute(req, getSupabaseAdminClient, getStripeClient);
