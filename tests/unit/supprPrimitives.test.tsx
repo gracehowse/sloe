@@ -112,7 +112,7 @@ describe("SupprCard", () => {
 
 describe("TrustChip", () => {
   it.each([
-    ["usda", "USDA verified"],
+    ["usda", "USDA"],
     ["off-adjusted", "OFF · adjusted"],
     ["estimated", "Estimated · verify"],
     ["manual", "Manual"],

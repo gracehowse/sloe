@@ -56,8 +56,8 @@ describe("SearchResultConfidenceChip", () => {
 
   it("respects a label override", () => {
     const { getByText } = render(
-      <SearchResultConfidenceChip tier="verified" label="USDA verified" />,
+      <SearchResultConfidenceChip tier="verified" label="USDA" />,
     );
-    expect(getByText("USDA verified")).toBeTruthy();
+    expect(getByText("USDA")).toBeTruthy();
   });
 });

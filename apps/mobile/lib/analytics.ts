@@ -368,6 +368,10 @@ export function reset(): void {
  *  `isFeatureDisabled`. Keep in sync with the same set in
  *  `src/lib/analytics/track.ts` (web). */
 const REDESIGN_DEFAULT_ON = new Set<string>([
+  // ENG-1464 — trust chips/dots show the source name ("USDA") instead of the
+  // "USDA verified" over-promise. Default-ON (N=1 tester); flag-off keeps the
+  // legacy "USDA verified" copy (kill switch). Keep in sync with web.
+  "trust_source_name_v1",
   // ENG-1527 — the shopping-list "Update from plan" re-sync affordance
   // (mobile + web). Default-ON so the dead-end fix ships everywhere; the
   // PostHog gate is the kill switch for the non-destructive DB write path.

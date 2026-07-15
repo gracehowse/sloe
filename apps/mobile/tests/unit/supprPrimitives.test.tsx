@@ -102,6 +102,9 @@ describe("mobile SupprCard", () => {
 
 describe("mobile TrustChip", () => {
   it.each([
+    // ENG-1464: this file mocks isFeatureEnabled → false, so the usda chip
+    // renders the flag-OFF kill-switch copy. The flag-ON "USDA" path is
+    // covered in trustPostureSweepPhase3.test.tsx (which lets the flag resolve).
     ["usda", "USDA verified"],
     ["off-adjusted", "OFF · adjusted"],
     ["estimated", "Estimated · verify"],

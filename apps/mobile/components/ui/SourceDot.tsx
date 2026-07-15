@@ -2,6 +2,7 @@ import * as React from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 import { Sparkles } from "lucide-react-native";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import type { SourceDotSource, SourceDotSize } from "@suppr/shared/types/source";
 
 /**
@@ -76,7 +77,7 @@ export function SourceDot({
 function ariaLabel(source: SourceDotSource): string {
   switch (source) {
     case "usda":
-      return "USDA verified";
+      return isFeatureEnabled("trust_source_name_v1") ? "USDA" : "USDA verified";
     case "off":
       return "Open Food Facts";
     case "fatsecret":

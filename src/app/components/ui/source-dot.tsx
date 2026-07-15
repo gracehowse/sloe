@@ -17,6 +17,7 @@
 import * as React from "react";
 import { Sparkles } from "lucide-react";
 import { cn } from "./utils";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import type { SourceDotSource, SourceDotSize } from "../../../lib/types/source";
 
 export type { SourceDotSource, SourceDotSize } from "../../../lib/types/source";
@@ -62,6 +63,13 @@ export function SourceDot({
     />
   );
 
+  // ENG-1464: the top tier shows the source NAME ("USDA") rather than the
+  // "USDA verified" over-promise. Flag-off keeps the legacy label (kill switch).
+  const displayLabel =
+    source === "usda" && isFeatureEnabled("trust_source_name_v1")
+      ? "USDA"
+      : sourceLabel[source];
+
   if (source === "ai") {
     // AI source pairs the dot with a sparkle glyph (spec §1.6).
     return (
@@ -93,8 +101,8 @@ export function SourceDot({
       role="img"
       className={cn("inline-flex items-center", className)}
       style={style}
-      aria-label={sourceLabel[source]}
-      title={sourceLabel[source]}
+      aria-label={displayLabel}
+      title={displayLabel}
       {...props}
     >
       {dot}

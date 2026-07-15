@@ -26,6 +26,7 @@
 import * as React from "react";
 import { Check, Sparkles } from "lucide-react";
 import { cn } from "./utils";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import type { TrustChipVariant } from "../../../lib/types/trust";
 
 export type { TrustChipVariant } from "../../../lib/types/trust";
@@ -91,7 +92,11 @@ export function TrustChip({
   ...props
 }: TrustChipProps) {
   const cfg = config[variant];
-  const displayLabel = label ?? cfg.label;
+  const displayLabel =
+    label ??
+    (variant === "usda" && isFeatureEnabled("trust_source_name_v1")
+      ? "USDA"
+      : cfg.label);
 
   return (
     <span
