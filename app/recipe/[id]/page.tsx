@@ -9,6 +9,7 @@ import { normaliseInstructions } from "../../../src/lib/recipes/normaliseInstruc
 import { RecipeHeroFallback } from "../../../src/app/components/suppr/RecipeHeroFallback.tsx";
 import { RecipeUnderlaySurface } from "../../../src/app/components/suppr/RecipeUnderlaySurface.tsx";
 import { isRetiredStockImageUrl } from "../../../src/lib/recipes/heroImageFallback.ts";
+import { recipeConfidenceTier } from "../../../src/lib/nutrition/verifyConfidencePolicy.ts";
 import { SupprLogoMark } from "../../components/SupprLogoMark.tsx";
 
 function getServerClient() {
@@ -153,11 +154,7 @@ export default async function RecipePage({ params }: Props) {
 
   const confidenceTier =
     recipe.verifiedConfidence != null
-      ? recipe.verifiedConfidence >= 0.75
-        ? "high"
-        : recipe.verifiedConfidence >= 0.5
-          ? "medium"
-          : "low"
+      ? recipeConfidenceTier(recipe.verifiedConfidence)
       : null;
 
   const confidenceLabel = {

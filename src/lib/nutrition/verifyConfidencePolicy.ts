@@ -115,6 +115,34 @@ export const INGREDIENT_VERIFY_REVIEW_AVG_THRESHOLD = RECIPE_INGREDIENT_REVIEW_C
  */
 export const INGREDIENT_VERIFY_REVIEW_MIN_THRESHOLD = 0.2;
 
+/**
+ * Display tier for a recipe/ingredient-import confidence average —
+ * high / medium / low. ENG-1424: this exact 0.75/0.50 ternary was
+ * independently hardcoded in five places (`app/recipe/[id]/page.tsx`,
+ * `app/api/plan-import/parse/route.ts`, `app/api/nutrition/refine-log/route.ts`,
+ * `app/api/nutrition/verify-recipe/route.ts`, `app/api/nutrition/voice-log/route.ts`)
+ * — a silent-drift risk (a value tuned in one copy would leave the other
+ * four stale). Centralised here since 0.50 is already this file's
+ * {@link RECIPE_INGREDIENT_REVIEW_CONFIDENCE}; only the "high" boundary
+ * (0.75) was net-new.
+ *
+ * Deliberately distinct from `classifyConfidence` in `aiLogging.ts`,
+ * which happens to use the same two numbers but for a different
+ * confidence signal (the AI model's own confidence in a photo/voice
+ * interpretation, not a recipe-ingredient-match average) — see that
+ * file's doc comment. Not merged with it; only the five recipe/import
+ * sites above are in scope here.
+ */
+export const RECIPE_CONFIDENCE_TIER_HIGH = 0.75;
+
+export type RecipeConfidenceTier = "high" | "medium" | "low";
+
+export function recipeConfidenceTier(avgConfidence: number): RecipeConfidenceTier {
+  if (avgConfidence >= RECIPE_CONFIDENCE_TIER_HIGH) return "high";
+  if (avgConfidence >= RECIPE_INGREDIENT_REVIEW_CONFIDENCE) return "medium";
+  return "low";
+}
+
 export function ingredientVerifyNeedsReview(
   avgIngredientConfidence: number | null | undefined,
   minIngredientConfidence: number | null | undefined,
