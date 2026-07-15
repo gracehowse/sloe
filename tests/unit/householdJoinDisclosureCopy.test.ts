@@ -23,8 +23,10 @@
  *      — that macros WERE shared) are gone from both files, so no
  *      drift, dead UI, or commented-out legacy copy can mislead
  *      reviewers into thinking the old model is still live.
- *   4. The existing `/api/household/join` rate-limit guard (M1)
- *      still holds. Unchanged from the prior test.
+ *
+ * (The former M1 join-route rate-limit assertion was dropped when the dead
+ * `/api/household/*` routes were deleted — ENG-1566. The live join path goes
+ * through the `household_join_by_invite_code` security-definer RPC.)
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -98,32 +100,5 @@ describe("household sharing scope copy (F-16, 2026-04-25)", () => {
     for (const fragment of FORBIDDEN_LEGACY_FRAGMENTS) {
       expect(src, `mobile copy still contains legacy fragment: "${fragment}"`).not.toContain(fragment);
     }
-  });
-});
-
-describe("household join rate limit (M1)", () => {
-  it("POST /api/household/join calls rateLimit before processing the body", () => {
-    const src = readRepoFile("app/api/household/join/route.ts");
-    expect(src).toContain('keyPrefix: "api:household-join"');
-    expect(src).toMatch(/rateLimit\s*\(/);
-    expect(src).toMatch(/limit:\s*5/);
-    // Rate-limit must run BEFORE parsing JSON / hitting Supabase so invite
-    // stuffing can't burn DB work before the cap.
-    const postIdx = src.indexOf("export async function POST");
-    expect(postIdx).toBeGreaterThan(0);
-    const body = src.slice(postIdx);
-    const rateLimitCallIdx = body.indexOf("await rateLimit(");
-    const jsonCallIdx = body.indexOf("await req.json()");
-    expect(rateLimitCallIdx).toBeGreaterThan(0);
-    expect(jsonCallIdx).toBeGreaterThan(rateLimitCallIdx);
-
-    // P0-6 (2026-04-25): authenticate BEFORE rate-limit so the bucket is
-    // scoped per-(user, ip). Pre-fix the bucket was IP-only and a shared
-    // NAT could starve all legitimate joiners; post-fix the userId is
-    // resolved first and threaded into rateLimit({ userId, ... }).
-    const userIdCallIdx = body.indexOf("await getUserIdFromRequest(");
-    expect(userIdCallIdx).toBeGreaterThan(0);
-    expect(rateLimitCallIdx).toBeGreaterThan(userIdCallIdx);
-    expect(jsonCallIdx).toBeGreaterThan(rateLimitCallIdx);
   });
 });
