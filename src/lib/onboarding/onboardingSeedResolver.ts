@@ -36,6 +36,24 @@
 
 import type { OnboardingSeed } from "./onboardingSeeds";
 
+/**
+ * Provenance gate value (copyright review —
+ * docs/decisions/2026-04-27-onboarding-seed-copyright-review.md §Top-issues #3).
+ * Onboarding seeds may ONLY resolve to first-party, Suppr-authored recipes —
+ * never a user-imported row that happens to share a title (republication risk).
+ *
+ * The seed recipes are inserted by
+ * `supabase/migrations/20260514100000_replace_recipes_with_suppr_kitchen.sql`
+ * with `source_name = 'Suppr Kitchen'`. That 2026-05-14 migration replaced the
+ * earlier `'Suppr onboarding'` seed set (deleted via
+ * `delete from recipes where author_id is null`). The rename was never
+ * propagated here, so this gate matched zero rows and every seed silently
+ * resolved to nothing in production (ENG-1388). The
+ * `onboardingSeedProvenanceParity` test now ties this constant to the
+ * migration, so a future rename fails CI instead of prod.
+ */
+export const SEED_RECIPE_SOURCE_NAME = "Suppr Kitchen";
+
 /** Loose Supabase client shape — mirrors the loose typing in
  *  `dailyTargetSnapshot.ts` so this helper works for both web
  *  (`browserClient`) and mobile (`@/lib/supabase`) without `as any`. */
@@ -75,16 +93,13 @@ export async function resolveSeedsToRecipeIds(
     .map((t) => `title.ilike.${escapeForPostgrest(t)}`)
     .join(",");
 
-  // Provenance gate per docs/decisions/2026-04-27-onboarding-seed-copyright-review.md
-  // §Top-issues #3 — never resolve a seed slug to a row with non-Suppr
-  // provenance. Even if a user-imported recipe has a matching title,
-  // we must not surface it as an onboarding seed (republication risk).
-  // The seed migration writes `source_name = 'Suppr onboarding'`; the
-  // gate matches that exact value.
+  // Provenance gate — only first-party Suppr recipes. See
+  // SEED_RECIPE_SOURCE_NAME above for the copyright rationale + the ENG-1388
+  // rename history this value guards against.
   const { data, error } = await supabase
     .from("recipes")
     .select("id, title, published, source_name")
-    .eq("source_name", "Suppr onboarding")
+    .eq("source_name", SEED_RECIPE_SOURCE_NAME)
     .or(orExpr);
 
   if (error || !Array.isArray(data)) {
