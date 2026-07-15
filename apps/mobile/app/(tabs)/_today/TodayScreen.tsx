@@ -4692,7 +4692,7 @@ export default function TrackerScreen() {
           isToday &&
           hydrated &&
           mealsToday.length === 0 &&
-          !hasAnyJournalHistory && (
+          !hasAnyJournalHistory && !isFeatureEnabled("empty_state_grammar_v1") && (
             <TodayFirstMealEmptyState
               isBrandNew={isBrandNewUser}
               tipDismissed={firstMealTipDismissed}

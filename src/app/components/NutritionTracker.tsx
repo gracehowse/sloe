@@ -2102,7 +2102,8 @@ export const NutritionTracker = memo(function NutritionTracker({
       )}
       {selectedDateKey === todayKey() &&
         mealsForSelectedDate.length === 0 &&
-        loggedDays.size === 0 && (
+        loggedDays.size === 0 &&
+        !isFeatureEnabled("empty_state_grammar_v1") && (
           <TodayFirstMealEmptyState
             isBrandNew={isBrandNewUser}
             tipDismissed={firstMealTipDismissed}
