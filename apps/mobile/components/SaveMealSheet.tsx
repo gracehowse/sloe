@@ -17,6 +17,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -25,6 +26,7 @@ import {
   ScrollView,
   Text,
   TextInput,
+  type TextStyle,
   View,
 } from "react-native";
 import { ChevronDown, ChevronUp, X } from "lucide-react-native";
@@ -80,6 +82,17 @@ export default function SaveMealSheet({
   const [items, setItems] = useState<typeof initialItems>([]);
   const [saving, setSaving] = useState(false);
   const accent = useAccent();
+
+  // Shared section-label style ("Name" / "Default slot" / "Items") — hoisted
+  // so the three labels stay identical and the file stays under budget.
+  const sectionLabel: TextStyle = {
+    fontFamily: Type.captionSmall.fontFamily,
+    fontSize: Type.captionSmall.fontSize,
+    lineHeight: Type.captionSmall.lineHeight,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 6,
+  };
 
   // Reset local state when the sheet opens so a cancelled edit doesn't
   // leak into a fresh session.
@@ -176,14 +189,15 @@ export default function SaveMealSheet({
               <Text style={{ flex: 1, fontSize: 18, fontWeight: "700", color: colors.text }}>
                 Save as a usual meal
               </Text>
-              <Pressable
+              <PressableScale
+                haptic="selection"
                 onPress={onClose}
                 accessibilityRole="button"
                 accessibilityLabel="Close"
                 hitSlop={12}
               >
                 <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
-              </Pressable>
+              </PressableScale>
             </View>
             <Text
               style={{
@@ -200,18 +214,7 @@ export default function SaveMealSheet({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <Text
-                style={{
-                  fontFamily: Type.captionSmall.fontFamily,
-                  fontSize: Type.captionSmall.fontSize,
-                  lineHeight: Type.captionSmall.lineHeight,
-                  fontWeight: "600",
-                  color: colors.text,
-                  marginBottom: 6,
-                }}
-              >
-                Name
-              </Text>
+              <Text style={sectionLabel}>Name</Text>
               <TextInput
                 value={name}
                 onChangeText={setName}
@@ -236,18 +239,7 @@ export default function SaveMealSheet({
                 returnKeyType="done"
               />
 
-              <Text
-                style={{
-                  fontFamily: Type.captionSmall.fontFamily,
-                  fontSize: Type.captionSmall.fontSize,
-                  lineHeight: Type.captionSmall.lineHeight,
-                  fontWeight: "600",
-                  color: colors.text,
-                  marginBottom: 6,
-                }}
-              >
-                Default slot (optional)
-              </Text>
+              <Text style={sectionLabel}>Default slot (optional)</Text>
               <View
                 style={{
                   flexDirection: "row",
@@ -262,7 +254,8 @@ export default function SaveMealSheet({
                   const isActive = slot === s;
                   const label = s === "" ? "No default" : s;
                   return (
-                    <Pressable
+                    <PressableScale
+                      haptic="selection"
                       key={label}
                       onPress={() => setSlot(s as MealSlot | "")}
                       accessibilityRole="radio"
@@ -288,23 +281,12 @@ export default function SaveMealSheet({
                       >
                         {label}
                       </Text>
-                    </Pressable>
+                    </PressableScale>
                   );
                 })}
               </View>
 
-              <Text
-                style={{
-                  fontFamily: Type.captionSmall.fontFamily,
-                  fontSize: Type.captionSmall.fontSize,
-                  lineHeight: Type.captionSmall.lineHeight,
-                  fontWeight: "600",
-                  color: colors.text,
-                  marginBottom: 6,
-                }}
-              >
-                Items ({items.length})
-              </Text>
+              <Text style={sectionLabel}>Items ({items.length})</Text>
               {items.length === 0 && (
                 <Text
                   style={{
@@ -364,7 +346,8 @@ export default function SaveMealSheet({
                           })}
                         </Text>
                       </View>
-                      <Pressable
+                      <PressableScale
+                        haptic="selection"
                         onPress={() => moveItem(i, -1)}
                         disabled={i === 0}
                         hitSlop={8}
@@ -374,8 +357,9 @@ export default function SaveMealSheet({
                         style={{ padding: 4, opacity: i === 0 ? 0.35 : 1 }}
                       >
                         <ChevronUp size={18} color={colors.textSecondary} />
-                      </Pressable>
-                      <Pressable
+                      </PressableScale>
+                      <PressableScale
+                        haptic="selection"
                         onPress={() => moveItem(i, 1)}
                         disabled={i === items.length - 1}
                         hitSlop={8}
@@ -388,8 +372,9 @@ export default function SaveMealSheet({
                         }}
                       >
                         <ChevronDown size={18} color={colors.textSecondary} />
-                      </Pressable>
-                      <Pressable
+                      </PressableScale>
+                      <PressableScale
+                        haptic="warn"
                         onPress={() => removeItem(i)}
                         hitSlop={8}
                         accessibilityRole="button"
@@ -397,7 +382,7 @@ export default function SaveMealSheet({
                         style={{ padding: 4 }}
                       >
                         <X size={18} color={Accent.destructive} />
-                      </Pressable>
+                      </PressableScale>
                     </View>
                   );
                 })}
@@ -405,7 +390,8 @@ export default function SaveMealSheet({
             </ScrollView>
 
             <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm }}>
-              <Pressable
+              <PressableScale
+                haptic="selection"
                 onPress={onClose}
                 disabled={saving}
                 style={{
@@ -423,8 +409,9 @@ export default function SaveMealSheet({
                 <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
                   Cancel
                 </Text>
-              </Pressable>
-              <Pressable
+              </PressableScale>
+              <PressableScale
+                haptic="confirm"
                 onPress={handleSave}
                 disabled={!canSave}
                 style={{
@@ -441,7 +428,7 @@ export default function SaveMealSheet({
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>
                   {saving ? "Saving…" : "Save"}
                 </Text>
-              </Pressable>
+              </PressableScale>
             </View>
           </Pressable>
         </Pressable>
