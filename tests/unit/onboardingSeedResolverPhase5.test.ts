@@ -23,6 +23,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   resolveSeedsToRecipeIds,
   saveResolvedSeeds,
+  SEED_RECIPE_SOURCE_NAME,
 } from "../../src/lib/onboarding/onboardingSeedResolver";
 import type { OnboardingSeed } from "../../src/lib/onboarding/onboardingSeeds";
 
@@ -47,11 +48,11 @@ interface FakeRow {
 }
 
 function makeFakeSupabase(rows: FakeRow[]) {
-  // Chain: from('recipes').select(...).eq('source_name', 'Suppr onboarding').or(...)
+  // Chain: from('recipes').select(...).eq('source_name', SEED_RECIPE_SOURCE_NAME).or(...)
   // The .eq() call enforces the provenance gate per the legal-reviewer
   // P0 from docs/decisions/2026-04-27-onboarding-seed-copyright-review.md
   // §Top-issues #3 — never resolve a seed slug to a row with non-Suppr
-  // provenance.
+  // provenance. (ENG-1388: the gate value must match the seed migration.)
   const orMock = vi.fn().mockResolvedValue({ data: rows, error: null });
   const eqMock = vi.fn().mockReturnValue({ or: orMock });
   const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
@@ -84,6 +85,9 @@ describe("resolveSeedsToRecipeIds — happy path", () => {
     expect(r.missing).toHaveLength(0);
     expect(r.resolved[0].recipeId).toBe("r-1");
     expect(r.resolved[1].recipeId).toBe("r-2");
+    // ENG-1388 — the provenance gate must filter on the value the seed
+    // migration actually writes, not silently drift to a dead literal.
+    expect(supabase._eqMock).toHaveBeenCalledWith("source_name", SEED_RECIPE_SOURCE_NAME);
   });
 
   it("normalises whitespace + case on the title key", async () => {

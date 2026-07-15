@@ -10,8 +10,8 @@
  *      via `saveResolvedSeeds` in `onboardingSeedResolver.ts`.
  *   2. We turn the resolved seeds into the SimpleRecipe shape required
  *      by `generateSmartPlan`.
- *   3. Run the planner against the user's macro targets to get 7 days
- *      of meal sets.
+ *   3. Run the planner against the user's macro targets to get the first
+ *      plan (1 day for free users, 7 for paid — see `planDays`).
  *   4. Persist the result through the existing `save_meal_plan` RPC
  *      (server-side validates user_id + week start_date).
  *
@@ -114,9 +114,16 @@ export async function buildFirstWeekFromSeeds(
     targets: FirstWeekTargets;
     /** Plan start date as ISO yyyy-mm-dd. Defaults to today. */
     startDate?: string;
-    /** Slot config id — server enforces user-scoped. Defaults to user's
-     *  primary slot from `meal_plan_slots`; null lets the RPC pick. */
+    /** Slot config id — server-scoped. When omitted the client sends null and
+     *  the `save_meal_plan` RPC coalesces it to 'default' (ENG-1387). */
     slotId?: string;
+    /**
+     * How many days to seed. Defaults to **1** — the free-tier cap. All new
+     * signups are Free, and ENG-1387's `save_meal_plan` RPC rejects `day > 1`
+     * for free users, so a 7-day seed rolls back at day 2 (ENG-1388). Paid
+     * onboarding paths pass 7 for the full week.
+     */
+    planDays?: number;
   },
 ): Promise<BuildFirstWeekResult> {
   // Defensive: no recipes → no plan possible.
@@ -145,7 +152,9 @@ export async function buildFirstWeekFromSeeds(
     plan = generateSmartPlan({
       recipes,
       targets: plannerTargets,
-      days: 7,
+      // 1 day for free (the onboarding population) — the RPC caps day > 1 for
+      // free users (ENG-1387/ENG-1388). Paid callers pass planDays: 7.
+      days: args.planDays ?? 1,
     });
   } catch (e) {
 

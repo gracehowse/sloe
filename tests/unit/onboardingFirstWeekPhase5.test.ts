@@ -93,6 +93,43 @@ describe("buildFirstWeekFromSeeds — happy path", () => {
   });
 });
 
+describe("buildFirstWeekFromSeeds — tier-aware day count (ENG-1388)", () => {
+  const RESOLVED = [
+    { seed: makeSeed("a", 540, 45), recipeId: "r-1" },
+    { seed: makeSeed("b", 480, 38), recipeId: "r-2" },
+    { seed: makeSeed("c", 620, 35), recipeId: "r-3" },
+    { seed: makeSeed("d", 510, 28), recipeId: "r-4" },
+    { seed: makeSeed("e", 590, 42), recipeId: "r-5" },
+  ];
+  const TARGETS = { calories: 2100, proteinG: 150, carbsG: 220, fatG: 70 };
+
+  it("defaults to a 1-day plan (free-tier cap — all onboarding signups are Free)", async () => {
+    // ENG-1387's save_meal_plan RPC rejects day > 1 for free users; a 7-day
+    // seed would roll back at day 2. The default must be 1.
+    const rpcMock = vi.fn().mockResolvedValue({ data: null, error: null });
+    const result = await buildFirstWeekFromSeeds({ rpc: rpcMock } as never, {
+      userId: "u-1",
+      resolved: RESOLVED,
+      targets: TARGETS,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.daysGenerated).toBe(1);
+  });
+
+  it("honours planDays: 7 for the paid full-week path", async () => {
+    const rpcMock = vi.fn().mockResolvedValue({ data: null, error: null });
+    const result = await buildFirstWeekFromSeeds({ rpc: rpcMock } as never, {
+      userId: "u-1",
+      resolved: RESOLVED,
+      targets: TARGETS,
+      planDays: 7,
+    });
+    expect(result.ok).toBe(true);
+    // The knob must flow through to the planner — more than the free default.
+    expect(result.daysGenerated).toBeGreaterThan(1);
+  });
+});
+
 describe("buildFirstWeekFromSeeds — failure modes", () => {
   it("returns ok=false on empty resolved list (no I/O)", async () => {
     const rpcMock = vi.fn();
