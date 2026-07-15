@@ -181,6 +181,10 @@ function flagForceOverride(flag: string): boolean | null {
  *  dev/test force (above) still wins, so pre-redesign captures keep working.
  *  Keep in sync with the same set in `apps/mobile/lib/analytics.ts`. */
 const REDESIGN_DEFAULT_ON = new Set<string>([
+  // ENG-1464 — trust chips/dots show the source name ("USDA") instead of the
+  // "USDA verified" over-promise. Default-ON (N=1 tester); flag-off keeps the
+  // legacy "USDA verified" copy (kill switch). Keep in sync with mobile.
+  "trust_source_name_v1",
   "design_system_elevation",
   // ENG-1527 — the shopping-list "Update from plan" re-sync affordance
   // (mobile + web). Default-ON so the dead-end fix ships everywhere; the

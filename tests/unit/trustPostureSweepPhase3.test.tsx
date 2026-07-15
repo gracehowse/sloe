@@ -88,7 +88,7 @@ describe("SourceDot rendering — every variant", () => {
 describe("TrustChip rendering — every variant", () => {
   it("renders 6 variants with the spec copy", () => {
     const variants: Array<{ v: Parameters<typeof TrustChip>[0]["variant"]; expected: string }> = [
-      { v: "usda", expected: "USDA verified" },
+      { v: "usda", expected: "USDA" },
       { v: "off-adjusted", expected: "OFF · adjusted" },
       { v: "estimated", expected: "Estimated · verify" },
       { v: "manual", expected: "Manual" },

@@ -2,6 +2,7 @@ import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Check, Sparkles } from "lucide-react-native";
 import { Accent, Colors, Radius, Spacing } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import type { TrustChipVariant } from "@suppr/shared/types/trust";
 
 /**
@@ -85,7 +86,11 @@ const config: Record<TrustChipVariant, VariantConfig> = {
 
 export function TrustChip({ variant, label, style, testID }: TrustChipProps) {
   const cfg = config[variant];
-  const displayLabel = label ?? cfg.label;
+  const displayLabel =
+    label ??
+    (variant === "usda" && isFeatureEnabled("trust_source_name_v1")
+      ? "USDA"
+      : cfg.label);
 
   return (
     <View

@@ -58,7 +58,7 @@ describe("SourceDot (mobile) — every variant renders", () => {
 
 describe("TrustChip (mobile) — every variant renders the spec copy", () => {
   it.each([
-    ["usda", "USDA verified"],
+    ["usda", "USDA"],
     ["off-adjusted", "OFF · adjusted"],
     ["estimated", "Estimated · verify"],
     ["manual", "Manual"],
