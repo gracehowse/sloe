@@ -38,6 +38,7 @@ Canonical implementation paths live under `app/api/**/route.ts`. Detail for heav
 | `/api/household/meals` | GET, POST, DELETE | Bearer | Shared household meals |
 | `/api/user-foods` | GET, POST | Bearer | Community custom foods search / submit |
 | `/api/user-foods/vote` | POST | Bearer | Vote on pending food |
+| `/api/custom-foods` | POST | Bearer + origin | Create a personal custom food; server-side Atwater plausibility gate (**422** unless `acknowledgeImplausible`) — ENG-1420 |
 | `/api/push/weekly-recap` | POST | `X-Cron-Secret` | Cron fan-out to Expo push (mobile) + Web Push (browser) |
 | `/api/push/weigh-in-reminder` | POST | `X-Cron-Secret` | ENG-955 hourly cron — gentle, opt-in weigh-in reminder (anti-nag); default-ON `weigh_in_reminder_v1` (ENG-1279) |
 
@@ -797,6 +798,27 @@ Implementation: [app/api/recipes/claim-official/route.ts](../../app/api/recipes/
 **Auth:** Bearer. Vote on pending entries.
 
 Implementation: [app/api/user-foods/route.ts](../../app/api/user-foods/route.ts), [vote/route.ts](../../app/api/user-foods/vote/route.ts).
+
+---
+
+## Custom foods (personal library, ENG-1420)
+
+### `POST /api/custom-foods`
+
+**Auth:** Bearer + **origin** check (`assertOrigin`). **Service role** required on server. Per-user rate limit (30 / hour, `keyPrefix: api:custom-foods-create`).
+
+Creates a row in the caller's `user_custom_foods` library ("my homemade granola"). Manual custom-food creation previously wrote **directly from the client to Supabase with no plausibility gate** — a user could persist an impossible macro set (e.g. 50 kcal with 40g P + 40g C + 40g F, implied ~700 kcal). This route makes the gate server-enforced (a client-only check would be bypassable).
+
+Pipeline mirrors `POST /api/user-foods`: `assertOrigin` → auth (**401**) → service-role guard (**503**) → rate limit (**429**) → body validation (**400** `missing_fields` / `invalid_macros` / `negative_macros`) → `scaledMacrosPlausible()` Atwater 4/4/9 gate → service-role insert (dedupe `" (2)"…" (9)"` on the per-user unique name).
+
+- Body: the `CreateCustomFoodInput` field set (`name`, `calories`, `protein`, `carbs`, `fat`, plus optional `brand`, `baseGrams`, `fiber`, `servings`, `servingsPerContainer`, `sugarG`, `saturatedFatG`, `sodiumMg`, `barcode`, `acknowledgeImplausible`).
+- **422 `implausible_macros`** when the macros fail the Atwater gate **and** `acknowledgeImplausible` is not `true`. The create-food form (web dialog + mobile sheet) catches this and reveals a "save anyway" acknowledgement.
+- On an acknowledged override the row is stamped `plausibility_overridden = true` (else `false`), so an intentional override is distinguishable from an unguarded gap.
+- Response: `{ ok: true, food }` where `food` is the mapped `CustomFood`.
+
+Client entry point: `createCustomFood(apiFetch, userId, input)` in `src/lib/nutrition/customFoodsClient.ts` (shared web + mobile). Web binds a same-origin relative `fetch` (`src/lib/nutrition/customFoodsApiFetch.ts`); mobile binds `authedFetch(getSupprApiBase() + path)` (`apps/mobile/lib/customFoodsApiFetch.ts`). The insert + dedupe loop is the shared server-only `insertCustomFoodWithDedupe`.
+
+Implementation: [app/api/custom-foods/route.ts](../../app/api/custom-foods/route.ts).
 
 ---
 

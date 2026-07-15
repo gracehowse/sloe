@@ -78,6 +78,10 @@ import {
   volumeToGrams,
 } from "@suppr/nutrition-core/volumeToGrams";
 import { parseIngredientLine } from "@suppr/shared/recipe-ingredients/parseIngredientLine";
+// ENG-1420 — recognise the server's implausible-macros rejection so the sheet
+// can reveal the "save anyway" acknowledgement instead of failing silently.
+import { isImplausibleMacrosError } from "@suppr/nutrition-core/customFoodsClient";
+import ImplausibleMacrosNotice from "./ImplausibleMacrosNotice";
 
 /** F-156 PR-1 — AsyncStorage key for the user's last-chosen macro basis. */
 const MACRO_BASIS_STORAGE_KEY = "@suppr/customFood/macroBasis/v1";
@@ -112,6 +116,12 @@ export type CreateCustomFoodPayload = {
   saturatedFatG?: number;
   sodiumMg?: number;
   barcode?: string;
+  /**
+   * ENG-1420 — set when the user ticked "these numbers are correct — save
+   * anyway" after the server flagged the macros implausible. Forwarded to
+   * `createCustomFood` so the server records the override.
+   */
+  acknowledgeImplausible?: boolean;
 };
 
 type Props = {
@@ -191,6 +201,12 @@ export default function CreateCustomFoodSheet({
   // on first paint. Users who don't need them can still tap to hide.
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [saving, setSaving] = useState(false);
+  // ENG-1420 — flipped true when the server rejects the macros as implausible
+  // (HTTP 422). Reveals the "save anyway" acknowledgement below the macro grid;
+  // clears itself when the user edits any core macro (they're fixing the
+  // numbers) so a corrected entry re-submits cleanly without the override.
+  const [implausibleBlocked, setImplausibleBlocked] = useState(false);
+  const [acknowledgeImplausible, setAcknowledgeImplausible] = useState(false);
   // F-156 PR-1 — macro basis the user is currently entering values in.
   // Persisted across sessions so a power user doesn't re-toggle every
   // time. Default for new foods: per_serving when natural serving is
@@ -325,11 +341,22 @@ export default function CreateCustomFoodSheet({
     setScanLoading(false);
     setScanError(null);
     setScanWarning(null);
+    // ENG-1420 — a fresh open never carries a prior session's override state.
+    setImplausibleBlocked(false);
+    setAcknowledgeImplausible(false);
     if (conversionNoticeTimeoutRef.current) {
       clearTimeout(conversionNoticeTimeoutRef.current);
       conversionNoticeTimeoutRef.current = null;
     }
   }, [visible, initialFood, initialName, initialBarcode]);
+
+  // ENG-1420 — editing any core macro clears the implausible block + the
+  // acknowledgement: the user is correcting the numbers, so the next Save
+  // should re-run the gate fresh rather than silently carry the override.
+  useEffect(() => {
+    setImplausibleBlocked(false);
+    setAcknowledgeImplausible(false);
+  }, [caloriesText, proteinText, carbsText, fatText]);
 
   // Cleanup the conversion-notice timer on unmount.
   useEffect(() => {
@@ -677,14 +704,30 @@ export default function CreateCustomFoodSheet({
       if (satFatText.trim()) payload.saturatedFatG = toNumber(satFatText);
       if (sodiumText.trim()) payload.sodiumMg = toNumber(sodiumText);
       if (barcodeParsed.ok && barcodeParsed.value) payload.barcode = barcodeParsed.value;
+      // ENG-1420 — only after the user ticked "save anyway" do we ask the
+      // server to bypass a failing plausibility gate.
+      if (acknowledgeImplausible) payload.acknowledgeImplausible = true;
       await onSave(payload);
       onClose();
+    } catch (err) {
+      // ENG-1420 — the server rejected the macros as implausible (422): keep
+      // the sheet open and reveal the acknowledgement instead of closing. Any
+      // other failure propagates unchanged.
+      if (isImplausibleMacrosError(err)) {
+        setImplausibleBlocked(true);
+        return;
+      }
+      throw err;
     } finally {
       setSaving(false);
     }
   };
 
   const isEditing = Boolean(initialFood);
+  // ENG-1420 — once the server has blocked an implausible set, Save stays
+  // disabled until the user either edits the numbers (clears the block) or
+  // ticks the acknowledgement.
+  const saveEnabled = canSave && !(implausibleBlocked && !acknowledgeImplausible);
   const inputStyle = {
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -1412,6 +1455,21 @@ export default function CreateCustomFoodSheet({
                   )}
                 </View>
               )}
+
+              {/* ENG-1420 — server-side plausibility gate. When the create
+                  route rejects the macros (422), the notice reveals a "save
+                  anyway" acknowledgement so an intentional override is
+                  distinguishable from an unguarded gap. */}
+              <ImplausibleMacrosNotice
+                visible={implausibleBlocked}
+                acknowledged={acknowledgeImplausible}
+                onToggle={() => setAcknowledgeImplausible((v) => !v)}
+                colors={{
+                  text: colors.text,
+                  cardBorder: colors.cardBorder,
+                  background: colors.background,
+                }}
+              />
             </ScrollView>
 
             <View
@@ -1442,24 +1500,24 @@ export default function CreateCustomFoodSheet({
               </Pressable>
               <Pressable
                 onPress={handleSave}
-                disabled={!canSave}
+                disabled={!saveEnabled}
                 style={{
                   flex: 1,
                   paddingVertical: 12,
                   alignItems: "center",
                   borderRadius: Radius.md,
-                  backgroundColor: canSave ? accent.primary : colors.cardBorder,
-                  opacity: canSave ? 1 : 0.6,
+                  backgroundColor: saveEnabled ? accent.primary : colors.cardBorder,
+                  opacity: saveEnabled ? 1 : 0.6,
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={isEditing ? "Save changes" : "Save food"}
-                accessibilityState={{ disabled: !canSave }}
+                accessibilityState={{ disabled: !saveEnabled }}
               >
                 <Text
                   style={{
                     fontSize: 14,
                     fontWeight: "700",
-                    color: canSave ? Accent.primaryForeground : colors.textSecondary,
+                    color: saveEnabled ? Accent.primaryForeground : colors.textSecondary,
                   }}
                 >
                   {saving ? "Saving…" : isEditing ? "Save changes" : "Save food"}

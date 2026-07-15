@@ -10,11 +10,40 @@
 import { describe, expect, it } from "vitest";
 import {
   createCustomFood,
+  CustomFoodImplausibleMacrosError,
   deleteCustomFood,
+  insertCustomFoodWithDedupe,
+  isImplausibleMacrosError,
   listCustomFoods,
   searchCustomFoods,
   updateCustomFood,
 } from "@/lib/nutrition/customFoodsClient";
+
+/**
+ * ENG-1420 — mock the injected `CustomFoodsApiFetch` transport so the
+ * (now fetch-based) `createCustomFood` can be exercised without a network.
+ * Returns a plain object shaped like the bits of `Response` the client reads
+ * (`ok` / `status` / `json()`), plus a `calls` log for asserting the request.
+ */
+function mockFetch(response: {
+  status?: number;
+  ok?: boolean;
+  body?: unknown;
+  throwNetwork?: boolean;
+}) {
+  const calls: Array<{ path: string; init: RequestInit }> = [];
+  const fn = async (path: string, init: RequestInit): Promise<Response> => {
+    calls.push({ path, init });
+    if (response.throwNetwork) throw new Error("network down");
+    const status = response.status ?? 200;
+    return {
+      ok: response.ok ?? (status >= 200 && status < 300),
+      status,
+      json: async () => response.body,
+    } as unknown as Response;
+  };
+  return Object.assign(fn, { calls });
+}
 
 type HandlerCtx = { payload?: unknown; filters: Record<string, unknown>; table: string };
 type Handler = (
@@ -146,32 +175,40 @@ describe("listCustomFoods", () => {
   });
 });
 
-// ── createCustomFood ───────────────────────────────────────────────
+// ── insertCustomFoodWithDedupe (server-only insert helper, ENG-1420) ──
+//
+// The row-mapping + dedupe loop moved out of the (now fetch-based)
+// `createCustomFood` into this server-only helper the `/api/custom-foods`
+// route calls. These tests exercise it directly against the mock supabase —
+// the same coverage the old client tests gave, plus the plausibility-override
+// stamp.
 
-describe("createCustomFood", () => {
+const OK = { plausibilityOverridden: false } as const;
+
+describe("insertCustomFoodWithDedupe", () => {
   it("throws when userId is missing", async () => {
     const sb = makeSupabase({});
     await expect(
-      createCustomFood(sb as any, "", {
+      insertCustomFoodWithDedupe(sb as any, "", {
         name: "x",
         calories: 0,
         protein: 0,
         carbs: 0,
         fat: 0,
-      }),
+      }, OK),
     ).rejects.toThrow(/userId is required/);
   });
 
   it("throws when name is empty / whitespace", async () => {
     const sb = makeSupabase({});
     await expect(
-      createCustomFood(sb as any, "u1", {
+      insertCustomFoodWithDedupe(sb as any, "u1", {
         name: "   ",
         calories: 0,
         protein: 0,
         carbs: 0,
         fat: 0,
-      }),
+      }, OK),
     ).rejects.toThrow(/name is required/);
   });
 
@@ -186,13 +223,13 @@ describe("createCustomFood", () => {
         return { data: null, error: null };
       },
     });
-    await createCustomFood(sb as any, "u1", {
+    await insertCustomFoodWithDedupe(sb as any, "u1", {
       name: "  Homemade   granola  ",
       calories: 400.6,
       protein: 7.77,
       carbs: 60.11,
       fat: 12.49,
-    });
+    }, OK);
     expect(seenPayload.name).toBe("Homemade granola");
     expect(seenPayload.user_id).toBe("u1");
     expect(seenPayload.base_grams).toBe(100);
@@ -201,6 +238,38 @@ describe("createCustomFood", () => {
     expect(seenPayload.carbs).toBe(60.1);
     expect(seenPayload.fat).toBe(12.5);
     expect(seenPayload.servings).toEqual([]);
+  });
+
+  it("stamps plausibility_overridden from opts (false when the gate passed)", async () => {
+    let passPayload: any = null;
+    let overridePayload: any = null;
+    const sb = makeSupabase({
+      user_custom_foods: (op, ctx) => {
+        if (op === "insert:single") {
+          if ((ctx.payload as any).plausibility_overridden === true) {
+            overridePayload = ctx.payload;
+          } else {
+            passPayload = ctx.payload;
+          }
+          return { data: sampleRow(), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    await insertCustomFoodWithDedupe(
+      sb as any,
+      "u1",
+      { name: "Sane food", calories: 100, protein: 5, carbs: 10, fat: 3 },
+      { plausibilityOverridden: false },
+    );
+    await insertCustomFoodWithDedupe(
+      sb as any,
+      "u1",
+      { name: "Weird food", calories: 50, protein: 40, carbs: 40, fat: 40 },
+      { plausibilityOverridden: true },
+    );
+    expect(passPayload.plausibility_overridden).toBe(false);
+    expect(overridePayload.plausibility_overridden).toBe(true);
   });
 
   it("on unique-violation appends ' (2)' ... ' (9)' then throws", async () => {
@@ -215,13 +284,13 @@ describe("createCustomFood", () => {
       },
     });
     await expect(
-      createCustomFood(sb as any, "u1", {
+      insertCustomFoodWithDedupe(sb as any, "u1", {
         name: "Granola",
         calories: 0,
         protein: 0,
         carbs: 0,
         fat: 0,
-      }),
+      }, OK),
     ).rejects.toMatchObject({ code: "23505" });
     // First attempt is the raw name, then " (2)" through " (9)" — 9 total.
     expect(attempts).toEqual([
@@ -251,15 +320,15 @@ describe("createCustomFood", () => {
         return { data: null, error: null };
       },
     });
-    const out = await createCustomFood(sb as any, "u1", {
+    const out = await insertCustomFoodWithDedupe(sb as any, "u1", {
       name: "Granola",
       calories: 0,
       protein: 0,
       carbs: 0,
       fat: 0,
-    });
+    }, OK);
     // Third attempt succeeds — DB row name reflects the suffix the
-    // client resolved to on the winning retry.
+    // server resolved to on the winning retry.
     expect(out.name).toBe("Granola (3)");
     expect(calls).toBe(3);
   });
@@ -276,13 +345,13 @@ describe("createCustomFood", () => {
       },
     });
     await expect(
-      createCustomFood(sb as any, "u1", {
+      insertCustomFoodWithDedupe(sb as any, "u1", {
         name: "Granola",
         calories: 0,
         protein: 0,
         carbs: 0,
         fat: 0,
-      }),
+      }, OK),
     ).rejects.toMatchObject({ code: "42501" });
     expect(attempts).toBe(1);
   });
@@ -298,7 +367,7 @@ describe("createCustomFood", () => {
         return { data: null, error: null };
       },
     });
-    await createCustomFood(sb as any, "u1", {
+    await insertCustomFoodWithDedupe(sb as any, "u1", {
       name: "Granola",
       calories: 100,
       protein: 1,
@@ -311,7 +380,7 @@ describe("createCustomFood", () => {
         { label: "1 scoop", grams: 0 }, // invalid grams — dropped
         { label: "1 tbsp", grams: 12 },
       ],
-    });
+    }, OK);
     expect(seenPayload.servings).toEqual([
       { label: "1 Bowl", grams: 80 },
       { label: "1 tbsp", grams: 12 },
@@ -342,7 +411,7 @@ describe("createCustomFood", () => {
         return { data: null, error: null };
       },
     });
-    const out = await createCustomFood(sb as any, "u1", {
+    const out = await insertCustomFoodWithDedupe(sb as any, "u1", {
       name: "Sliced bread",
       calories: 240,
       protein: 9,
@@ -354,7 +423,7 @@ describe("createCustomFood", () => {
       saturatedFatG: 0.5,
       sodiumMg: 120,
       barcode: " 5012345678900 ", // trims
-    });
+    }, OK);
     // Payload into the DB — snake_case, rounded per the UI precision rules.
     expect(seenPayload.servings).toEqual([{ label: "1 slice", grams: 30 }]);
     expect(seenPayload.servings_per_container).toBe(8);
@@ -382,7 +451,7 @@ describe("createCustomFood", () => {
         return { data: null, error: null };
       },
     });
-    await createCustomFood(sb as any, "u1", {
+    await insertCustomFoodWithDedupe(sb as any, "u1", {
       name: "Cheese",
       calories: 100,
       protein: 7,
@@ -391,7 +460,7 @@ describe("createCustomFood", () => {
       sugarG: 1.23,
       saturatedFatG: 4.567,
       sodiumMg: 182.4,
-    });
+    }, OK);
     expect(seenPayload.sugar_g).toBe(1.2);
     expect(seenPayload.saturated_fat_g).toBe(4.6);
     expect(seenPayload.sodium_mg).toBe(182);
@@ -400,14 +469,14 @@ describe("createCustomFood", () => {
   it("rejects a malformed barcode loudly (never silently drops)", async () => {
     const sb = makeSupabase({});
     await expect(
-      createCustomFood(sb as any, "u1", {
+      insertCustomFoodWithDedupe(sb as any, "u1", {
         name: "Cereal",
         calories: 0,
         protein: 0,
         carbs: 0,
         fat: 0,
         barcode: "12345", // 5 digits — not an allowed GTIN length
-      }),
+      }, OK),
     ).rejects.toThrow(/valid 8, 12, 13, or 14-digit barcode/);
   });
 
@@ -422,15 +491,116 @@ describe("createCustomFood", () => {
         return { data: null, error: null };
       },
     });
-    await createCustomFood(sb as any, "u1", {
+    await insertCustomFoodWithDedupe(sb as any, "u1", {
       name: "Muffin",
       calories: 100,
       protein: 2,
       carbs: 20,
       fat: 2,
       servingsPerContainer: 0, // ignored — not positive
-    });
+    }, OK);
     expect("servings_per_container" in seenPayload).toBe(false);
+  });
+});
+
+// ── createCustomFood (API transport, ENG-1420) ───────────────────────
+//
+// The client function no longer inserts directly — it POSTs to the
+// server-enforced `/api/custom-foods` route via the injected transport, and
+// translates a 422 `implausible_macros` into the typed error the form catches.
+
+describe("createCustomFood (API transport)", () => {
+  const base = { name: "Granola", calories: 400, protein: 8, carbs: 60, fat: 12 };
+
+  it("throws when userId is missing — before any fetch", async () => {
+    const f = mockFetch({ body: { ok: true, food: sampleRow() } });
+    await expect(createCustomFood(f, "", base)).rejects.toThrow(/userId is required/);
+    expect(f.calls).toHaveLength(0);
+  });
+
+  it("throws when name is empty — before any fetch", async () => {
+    const f = mockFetch({ body: { ok: true, food: sampleRow() } });
+    await expect(createCustomFood(f, "u1", { ...base, name: "   " })).rejects.toThrow(
+      /name is required/,
+    );
+    expect(f.calls).toHaveLength(0);
+  });
+
+  it("rejects a malformed barcode before hitting the API", async () => {
+    const f = mockFetch({ body: { ok: true, food: sampleRow() } });
+    await expect(
+      createCustomFood(f, "u1", { ...base, barcode: "12345" }),
+    ).rejects.toThrow(/valid 8, 12, 13, or 14-digit barcode/);
+    expect(f.calls).toHaveLength(0);
+  });
+
+  it("POSTs the input to /api/custom-foods and returns the created food", async () => {
+    const food = { id: "cf-1", name: "Granola" };
+    const f = mockFetch({ status: 200, body: { ok: true, food } });
+    const out = await createCustomFood(f, "u1", base);
+    expect(out).toEqual(food);
+    expect(f.calls[0]!.path).toBe("/api/custom-foods");
+    expect(f.calls[0]!.init.method).toBe("POST");
+    const sent = JSON.parse(String(f.calls[0]!.init.body));
+    expect(sent.name).toBe("Granola");
+    expect(sent.calories).toBe(400);
+  });
+
+  it("throws CustomFoodImplausibleMacrosError on a 422 implausible_macros", async () => {
+    const f = mockFetch({
+      status: 422,
+      ok: false,
+      body: { ok: false, error: "implausible_macros", message: "nope" },
+    });
+    const err = await createCustomFood(f, "u1", {
+      name: "Weird",
+      calories: 50,
+      protein: 40,
+      carbs: 40,
+      fat: 40,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(CustomFoodImplausibleMacrosError);
+    expect(isImplausibleMacrosError(err)).toBe(true);
+  });
+
+  it("forwards acknowledgeImplausible and returns food when the server accepts the override", async () => {
+    const food = { id: "cf-2", name: "Weird" };
+    const f = mockFetch({ status: 200, body: { ok: true, food } });
+    const out = await createCustomFood(f, "u1", {
+      name: "Weird",
+      calories: 50,
+      protein: 40,
+      carbs: 40,
+      fat: 40,
+      acknowledgeImplausible: true,
+    });
+    expect(out).toEqual(food);
+    const sent = JSON.parse(String(f.calls[0]!.init.body));
+    expect(sent.acknowledgeImplausible).toBe(true);
+  });
+
+  it("throws with the server message on a non-implausible failure", async () => {
+    const f = mockFetch({
+      status: 500,
+      ok: false,
+      body: { ok: false, error: "create_failed", message: "boom" },
+    });
+    await expect(createCustomFood(f, "u1", base)).rejects.toThrow(/boom/);
+  });
+
+  it("surfaces a network failure", async () => {
+    const f = mockFetch({ throwNetwork: true });
+    await expect(createCustomFood(f, "u1", base)).rejects.toThrow(/network down/);
+  });
+});
+
+describe("isImplausibleMacrosError", () => {
+  it("matches the error instance and any code-carrying object; nothing else", () => {
+    expect(isImplausibleMacrosError(new CustomFoodImplausibleMacrosError())).toBe(true);
+    expect(isImplausibleMacrosError({ code: "implausible_macros" })).toBe(true);
+    expect(isImplausibleMacrosError(new Error("other"))).toBe(false);
+    expect(isImplausibleMacrosError(null)).toBe(false);
+    expect(isImplausibleMacrosError(undefined)).toBe(false);
   });
 });
 
