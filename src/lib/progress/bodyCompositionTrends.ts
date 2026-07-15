@@ -8,7 +8,15 @@
  * Lean mass is DERIVED, never stored: on any calendar day where both weight and
  * body-fat % exist, `lean_mass_kg = weight_kg × (1 − body_fat_pct / 100)`.
  * We do not guess lean mass without a paired weight reading.
+ *
+ * ENG-1562 — day keys here are LOCAL, matching how the app writes
+ * `bodyFatPctByDay` / `weightKgByDay` (local calendar days via
+ * `dateKeyFromDate`). Baseline + latest-point keys use the same helper so a
+ * reading near UTC midnight can't land on a different key than the series it
+ * compares against.
  */
+
+import { dateKeyFromDate } from "../datetime/dateKey";
 
 export const BODY_COMP_TREND_WINDOW_DAYS = 90;
 export const MAX_BODY_FAT_JSONB_DAYS = 400;
@@ -80,9 +88,12 @@ function valueOnOrBefore(
 }
 
 function dateKeyDaysAgo(fromMs: number, days: number): string {
+  // Local calendar arithmetic + local day key (ENG-1562) — the series this
+  // baseline is compared against is local-keyed, so UTC here would drift the
+  // window boundary by a day for users behind UTC in the evening.
   const d = new Date(fromMs);
-  d.setUTCDate(d.getUTCDate() - days);
-  return d.toISOString().slice(0, 10);
+  d.setDate(d.getDate() - days);
+  return dateKeyFromDate(d);
 }
 
 function deriveLeanMassSeries(
@@ -139,7 +150,9 @@ export function buildBodyCompositionTrendCopy(
 
   const bfEntries = sortedFiniteEntries(input.bodyFatPctByDay);
   if (bfEntries.length === 0 && input.bodyFatPctLatest != null && Number.isFinite(input.bodyFatPctLatest)) {
-    const today = new Date(nowMs).toISOString().slice(0, 10);
+    // Local key (ENG-1562) so the synthesised latest point sorts + windows
+    // consistently with the local-keyed series.
+    const today = dateKeyFromDate(new Date(nowMs));
     bfEntries.push([today, round1(input.bodyFatPctLatest)]);
   }
 
