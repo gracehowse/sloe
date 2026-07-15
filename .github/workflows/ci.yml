@@ -132,6 +132,12 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Build
         run: npm run build
+      - name: PostHog first-party-proxy check (ENG-1559)
+        # Bundle-scan half needs .next/static, hence after Build. Previously
+        # this gate only ran in the local `npm run ci` chain (package.json)
+        # and did not actually block merges — see
+        # docs/decisions/2026-06-19-posthog-first-party-proxy.md.
+        run: npm run check:posthog-proxy
       - name: E2E (smoke)
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100

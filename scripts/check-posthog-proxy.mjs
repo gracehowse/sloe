@@ -27,6 +27,7 @@ const textExt = new Set([".js", ".mjs", ".cjs", ".ts", ".tsx", ".json", ".html",
 // client-side, a more serious bug than which URL string it happens to contain.
 const serverOnlyModuleMarkers = [
   { module: "src/lib/analytics/serverTrack.ts", marker: "DEFAULT_POSTHOG_HOST" },
+  { module: "src/lib/server/featureFlags.ts", marker: "system:killswitch" },
 ];
 const vendorPkgDirs = [path.join(repoRoot, "node_modules", "posthog-js"), path.join(repoRoot, "node_modules", "posthog-node")];
 
@@ -53,6 +54,34 @@ const checks = [
     ignore: [],
   },
   {
+    label: "web committed source (src/)",
+    root: path.join(repoRoot, "src"),
+    required: true,
+    ignore: [
+      // Documented server-only modules that intentionally hold the real
+      // PostHog host as their own default. The module-marker deny-list above
+      // independently catches either of these leaking into the client
+      // bundle, so excluding them here (source, not output) doesn't weaken
+      // enforcement — it just avoids flagging the legitimate server-only
+      // source that defines the literal in the first place.
+      path.join(repoRoot, "src", "lib", "analytics", "serverTrack.ts"),
+      path.join(repoRoot, "src", "lib", "server", "featureFlags.ts"),
+    ],
+  },
+  {
+    label: "web committed source (app/)",
+    root: path.join(repoRoot, "app"),
+    required: true,
+    ignore: [
+      // Next.js route handlers under app/api/** are server-only by
+      // framework convention — they never reach the client bundle — so they
+      // get the same direct-host carve-out as the two src/ modules above.
+      // Structural exclusion (an entire directory that is categorically
+      // server-side), not a per-file judgment call.
+      path.join(repoRoot, "app", "api"),
+    ],
+  },
+  {
     label: "mobile committed config/source",
     root: path.join(repoRoot, "apps", "mobile"),
     required: true,
@@ -73,10 +102,13 @@ const checks = [
 
 function* walk(dir, ignore) {
   if (!existsSync(dir)) return;
-  const resolved = path.resolve(dir);
-  if (ignore.some((entry) => resolved === entry || resolved.startsWith(`${entry}${path.sep}`))) return;
   for (const name of readdirSync(dir)) {
     const full = path.join(dir, name);
+    // Checked per-entry (not just once at the top on `dir`) so a
+    // *file*-level ignore (e.g. a single excluded server-only module) is
+    // honoured too, not just directory-level ignores.
+    const resolved = path.resolve(full);
+    if (ignore.some((entry) => resolved === entry || resolved.startsWith(`${entry}${path.sep}`))) continue;
     // Use lstat so a dangling symlink (e.g. stale CocoaPods header links)
     // anywhere in the tree is skipped rather than crashing the scan.
     let st;

@@ -20,7 +20,7 @@ Keep PostHog analytics and flag evaluation on first-party origins:
 
 ## Enforcement
 
-`npm run check:posthog-proxy` scans the built web client output (`.next/static`) and committed mobile config/source for direct PostHog host literals. CI runs it immediately after `next build`, so a future SDK/config change that reintroduces `*.posthog.com` into client-reachable assets fails before deploy.
+`npm run check:posthog-proxy` scans the built web client output (`.next/static`), web's own committed source (`src/`, `app/`, excluding the documented server-only modules and `app/api/**` route handlers), and committed mobile config/source for direct PostHog host literals. `.github/workflows/ci.yml` runs it as an explicit step immediately after `Build`, so a future SDK/config change that reintroduces `*.posthog.com` into client-reachable assets fails CI before merge (ENG-1559 — previously this only ran in the local `npm run ci` chain and did not gate merges).
 
 ## Alternatives considered
 
