@@ -1,9 +1,42 @@
 # Entitlement reconciliation cron (ENG-1463 / ENG-1437)
 
-- **Date:** 2026-07-10
+- **Date:** 2026-07-10 (revised 2026-07-15 — see "Revision" below)
 - **Area:** Payments / entitlement integrity
 - **Status:** Decided + built (Stripe half) — RevenueCat half tracked in ENG-1463
 - **Linear:** ENG-1463, ENG-1437 (parents: ENG-1433 launch-sequencing, ENG-1392 money-path audit)
+
+## Revision (2026-07-15)
+
+An adversarial review before this shipped found the v1 design (below,
+preserved for its still-valid reasoning on correction policy) had two
+structural bugs: it was blind to the exact failure it exists to heal
+(a customer whose `checkout.session.completed` webhook — the only writer
+of `stripe_customer_id` — was the one permanently missed), and it made one
+sequential Stripe API call per Stripe-touched profile, which crosses the
+GitHub Actions invoker's 120s timeout at a few hundred profiles. Both are
+fixed by replacing the per-profile Stripe calls with ONE paginated sweep
+of Stripe's own subscription list (`status: "all"`), grouped both by
+Stripe customer id (the known-profile path, now free of extra API calls)
+and by `metadata.supabase_user_id` (discovers and backfills profiles
+Stripe knows about that `stripe_customer_id` doesn't yet). See the
+`src/lib/server/entitlementReconcileJob.ts` module doc comment for the
+full architecture. This revision also:
+- Delegates per-subscription status→tier resolution to the webhook's
+  `tierDecisionForSubscription` (shared, not re-encoded) — fixing a
+  latent divergence where an entitling subscription on an unrecognised
+  price resolved to a downgrade signal here but a no-op on the webhook.
+- Adds a TOCTOU guard (re-read immediately before any write) and a
+  per-run circuit breaker on auto-applied downgrades.
+- Makes a systemic failure (every scanned customer errored) report
+  `ok: false` / HTTP 502 instead of a silent green 200.
+- Paginates the `profiles` scan (`.range()`, ordered by `id`) — the
+  original unpaginated select silently truncated at PostgREST's
+  `max_rows` (1000) cap with no signal.
+
+The "Alternatives rejected" section below is superseded where it
+conflicts with this revision (the "scan the whole `profiles` table"
+rejection no longer applies — the new design never does that, it scans
+Stripe's own list instead).
 
 ## Summary
 
@@ -98,29 +131,59 @@ should always page.
 
 ## Failure modes pressure-tested
 
-- **One customer's Stripe call fails** → isolated per-customer try/catch;
+- **One customer's write/lookup fails** → isolated per-customer try/catch;
   counted as an error, batch continues. A single deleted customer or a transient
-  Stripe 500 cannot abort the whole run.
-- **Write rejected** (`updateProfileTierServiceRole` returns false) → counted as
-  an error, not a grant; no silent success.
+  Stripe error cannot abort the whole run — but if EVERY scanned customer errors
+  (a systemic failure, e.g. the write path breaking fleet-wide), the run reports
+  `ok: false` / HTTP 502 rather than a false-green 200 (2026-07-15 revision).
+- **The Stripe sweep itself fails** → not per-customer isolated (there's one
+  sweep per run) — propagates and the route returns 502.
+- **The sweep hits its page cap** (`MAX_SWEEP_PAGES`) → `sweepTruncated: true`
+  in the summary plus a Sentry error; the run still completes on the coverage
+  it got rather than silently reporting complete coverage.
+- **Write rejected** (`writeTier` returns false, no throw) → counted as an
+  error AND fires its own Sentry alert (2026-07-15 — previously this was only a
+  silent counter increment with the run still reporting green).
+- **A webhook races the cron** (TOCTOU) → the pre-write re-read catches a
+  fresher tier and skips that one write (`staleWriteSkipped`), re-evaluated
+  next cycle.
+- **Entitling subscription on an unrecognised price** (env var missing/rotated)
+  → `indeterminate`, not a downgrade signal — mirrors the webhook's own skip.
+  Reported once in aggregate, not per-user, to avoid burying genuine
+  cancellation drift under misconfig noise.
+- **`RECONCILE_STRIPE_AUTO_DOWNGRADE` enabled during a price misconfiguration**
+  → capped by `MAX_AUTO_DOWNGRADES_PER_RUN`; remaining candidates are still
+  detected + alerted, just not auto-applied, and the cap being hit fires its
+  own Sentry error.
 - **Cron secret / service-role drift** → 503 + the existing ENG-1400 GitHub-issue
   alerting fires. Stripe unconfigured → clean skip (see decision 4).
 - **Comp user with a lapsed Stripe sub** → `lifetime_pro` floor-protected, never
   downgraded.
+- **The checkout webhook that writes `stripe_customer_id` is the one
+  permanently missed** → no longer a blind spot (2026-07-15 revision): the
+  Stripe-wide sweep discovers the user via `metadata.supabase_user_id` and
+  backfills the customer id regardless of what `profiles` currently holds.
 
 ## Confidence
 
-8/10. The Stripe reconciliation logic is unit-tested (21 tests: tier resolution
-across every subscription status, both drift directions, floor protection, error
+8/10 (unchanged from v1 — the 2026-07-15 revision closes the two structural
+gaps a review found, at the cost of a materially larger surface to keep
+correct). The Stripe reconciliation logic is unit-tested (34 tests: tier
+resolution across every subscription status including "incomplete" as
+indeterminate, both drift directions, the circuit breaker, TOCTOU, orphan
+discovery + backfill, systemic-failure reporting, floor protection, error
 isolation, all route gates) and shares its tier-resolution primitives with the
 webhook so the two cannot silently diverge. What would most change this: a
 production run surfacing that the both-rails (Stripe + App Store on one account)
 population is larger than assumed — which would raise the priority of the RC
-half so downgrades can be auto-applied safely.
+half so downgrades can be auto-applied safely; or the Stripe-wide sweep's
+page volume growing enough (mature-business historical subscription count,
+not Suppr user count) to warrant a `created`-date floor or per-status
+parallel paging — flagged in the sweep's own code comment, not a silent gap.
 
 ## Verification
 
-- `npm run test` — `tests/unit/entitlementReconcileJob.test.ts`, 21 passing.
+- `npm run test` — `tests/unit/entitlementReconcileJob.test.ts`, 34 passing.
 - `npm run typecheck` — clean (exit 0).
 - Not exercised against a live Stripe account from this environment (no Stripe
   keys here); the job is dependency-injected on the Stripe/Supabase clients and

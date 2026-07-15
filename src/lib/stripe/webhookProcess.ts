@@ -54,7 +54,7 @@ function resolveUserIdFromSubscription(sub: Stripe.Subscription): string | null 
   return null;
 }
 
-function priceIdsFromSubscription(sub: Stripe.Subscription): string[] {
+function priceIdsFromSubscription(sub: TierDecidableSubscription): string[] {
   return sub.items.data.map((item) => item.price?.id).filter((x): x is string => Boolean(x));
 }
 
@@ -76,13 +76,25 @@ function priceIdsFromSubscription(sub: Stripe.Subscription): string[] {
  *   - incomplete (payment pending) / any future status → do nothing
  *   - entitling status but an unrecognised price → do nothing (skip),
  *     never a spurious grant
+ *
+ * ENG-1463 (2026-07-15): the parameter is a minimal structural type (not
+ * the full `Stripe.Subscription`) so `entitlementReconcileJob.ts` can call
+ * this same decision function for its own reconciliation loop — a real
+ * `Stripe.Subscription` satisfies it structurally, and it keeps the
+ * two callers' entitling-status policy from re-diverging into two
+ * hardcoded copies (exactly the drift this function exists to prevent).
  */
+export interface TierDecidableSubscription {
+  status: Stripe.Subscription.Status;
+  items: { data: Array<{ price?: { id?: string | null } | null }> };
+}
+
 type TierDecision =
   | { action: "grant"; tier: NonNullable<ReturnType<typeof tierFromStripePriceIds>> }
   | { action: "free" }
   | { action: "skip" };
 
-export function tierDecisionForSubscription(sub: Stripe.Subscription): TierDecision {
+export function tierDecisionForSubscription(sub: TierDecidableSubscription): TierDecision {
   const status = sub.status;
   if (status === "canceled" || status === "unpaid" || status === "incomplete_expired") {
     return { action: "free" };
