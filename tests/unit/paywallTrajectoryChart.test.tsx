@@ -15,7 +15,7 @@
 
 import * as React from "react";
 import { describe, expect, it, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 void React;
 
@@ -23,6 +23,7 @@ import {
   PaywallTrajectoryChart,
   PAYWALL_TRAJECTORY_CHART_FLAG,
 } from "../../app/pricing/PaywallTrajectoryChart";
+import { CALM_MODE_STORAGE_KEY } from "../../src/lib/preferences/calmMode";
 
 type Meal = { calories?: number | null };
 function buildDays(count: number, kcal: number): Record<string, Meal[]> {
@@ -41,6 +42,7 @@ function forceFlag(value: boolean) {
 
 afterEach(() => {
   delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__;
+  window.localStorage.removeItem(CALM_MODE_STORAGE_KEY);
 });
 
 describe("PaywallTrajectoryChart — flag gate (web)", () => {
@@ -97,5 +99,24 @@ describe("PaywallTrajectoryChart — never fabricates / nags (web, flag ON)", ()
     forceFlag(true);
     render(<PaywallTrajectoryChart />);
     expect(screen.queryByTestId("paywall-trajectory-chart")).toBeNull();
+  });
+});
+
+describe("PaywallTrajectoryChart — calm mode (ENG-1444/LEGAL-011)", () => {
+  it("renders nothing when calm mode is on, even with a valid projection", async () => {
+    forceFlag(true);
+    window.localStorage.setItem(CALM_MODE_STORAGE_KEY, "true");
+    render(
+      <PaywallTrajectoryChart
+        byDay={buildDays(7, 1500)}
+        latestWeightKg={70}
+        targetCalories={1500}
+        maintenanceTdeeKcal={2200}
+        goal="lose"
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId("paywall-trajectory-chart")).toBeNull();
+    });
   });
 });

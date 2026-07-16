@@ -45,6 +45,7 @@ import {
 import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 import { ENERGY_NUMBERS_V1_FLAG } from "../../src/lib/nutrition/energyNumbers.ts";
 import { SupprCard } from "../../src/app/components/ui/suppr-card.tsx";
+import { useCalmMode } from "../../src/lib/preferences/useCalmMode.ts";
 
 /** Default-OFF flag (ENG-969). Registered in `KNOWN_DEFAULT_OFF_FLAGS` on both
  *  platforms; mirrored on mobile as the host-side gate in `apps/mobile/app/paywall.tsx`. */
@@ -70,9 +71,17 @@ export interface PaywallTrajectoryChartProps {
 export function PaywallTrajectoryChart(props: PaywallTrajectoryChartProps) {
   const { className, byDay, latestWeightKg, targetCalories } = props;
 
+  // ENG-1444 (LEGAL-011) — Calm mode suppresses a body-weight outcome sitting
+  // right beside a purchase CTA, mirroring the existing gate on
+  // today-dashboard-macro-tiles.tsx / today-meals-section.tsx. Called before
+  // any early return since it's the component's only hook.
+  const [calmMode] = useCalmMode();
+
   // Default-OFF flag gate (mirrors the host-side gate on the mobile paywall).
   // Self-gated here because `/pricing` is an RSC — flag reads must be client-side.
   if (!isFeatureEnabled(PAYWALL_TRAJECTORY_CHART_FLAG)) return null;
+
+  if (calmMode) return null;
 
   // No per-user data (e.g. the public, unauthenticated /pricing route) → render
   // nothing. We never project from an empty input.

@@ -102,3 +102,19 @@ describe("PaywallTrajectoryChartView — never fabricates / nags (mobile)", () =
     expect(queryByTestId("paywall-trajectory-chart")).toBeNull();
   });
 });
+
+describe("PaywallTrajectoryChartView — calm mode (ENG-1444/LEGAL-011)", () => {
+  it("renders nothing when calmMode is true, even with a valid projection", () => {
+    const { queryByTestId } = render(
+      <PaywallTrajectoryChartView
+        byDay={buildDays(7, 1500)}
+        latestWeightKg={70}
+        targetCalories={1500}
+        maintenanceTdeeKcal={2200}
+        goal="lose"
+        calmMode
+      />,
+    );
+    expect(queryByTestId("paywall-trajectory-chart")).toBeNull();
+  });
+});
