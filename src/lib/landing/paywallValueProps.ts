@@ -6,11 +6,11 @@
  * `284:2` (the Sloe Pro paywall redesign):
  *
  *   1. The **2×2 value-prop grid** — four condensed Pro benefits
- *      (Unlimited imports / Macro fitting / AI coach / Cloud sync),
+ *      (Unlimited saves / Macro fitting / AI coach / Cloud sync),
  *      each an icon + title + one-line description.
  *   2. The **FREE / PRO comparison matrix** — the four headline rows
  *      shown directly on the paywall (Log meals & macros · Browse
- *      community recipes · Unlimited imports · AI macro fitting). The
+ *      community recipes · Unlimited saves · AI macro fitting). The
  *      full capability ladder still lives in `PRICING_TIERS.features`;
  *      this is the at-a-glance "what Pro adds" table the frame shows.
  *
@@ -27,11 +27,22 @@
  * future limit change can't make the paywall lie.
  *
  * Why these are NOT new pricing claims: every row here maps 1:1 to a
- * gate that already exists in code (recipe-import gate, macro-fitting
- * meal-plan gate, AI-logging quota, cloud sync). This module is a
- * restyle of how the existing Pro pitch is presented, not a new
- * promise. See `docs/ux/redesign/paywall.md` §3a (value ladder) and
+ * gate that already exists in code (the `FREE_SAVE_LIMIT` save cap,
+ * macro-fitting meal-plan gate, AI-logging quota, cloud sync). This
+ * module is a restyle of how the existing Pro pitch is presented, not a
+ * new promise. See `docs/ux/redesign/paywall.md` §3a (value ladder) and
  * §12 (FUNCTIONALITY PRESERVED).
+ *
+ * ENG-1444 (LEGAL-012, 2026-07-16): the `unlimited_imports` row used to
+ * read "Unlimited imports" — false. Recipe import itself has never been
+ * tier-gated (`app/api/recipe-import/route.ts` only rate-limits abuse,
+ * identically for every authed user); the real Free-vs-Pro differentiator
+ * is the SAVE limit (`FREE_SAVE_LIMIT`, enforced in `AppDataContext.tsx`,
+ * `apps/mobile/lib/recipes.ts`, and RLS). Copy now says "Unlimited saves"
+ * to match `PRICING_TIERS.pro.features[0]` ("Unlimited saved recipes"),
+ * which it previously contradicted. The `unlimited_imports` key name is
+ * legacy-only (React key + test lookup, never user-visible) — kept as-is
+ * to keep this fix minimal; a rename is a separate fast-follow.
  */
 
 import { FREE_SAVE_LIMIT } from "../../context/appData/constants";
@@ -61,8 +72,8 @@ export const PAYWALL_VALUE_PROPS: readonly PaywallValueProp[] = [
   {
     key: "unlimited_imports",
     icon: "Link2",
-    title: "Unlimited imports",
-    description: "Save any recipe from a link or Reel.",
+    title: "Unlimited saves",
+    description: "Keep every recipe you love.",
   },
   {
     key: "macro_fitting",
@@ -166,7 +177,7 @@ export const PAYWALL_COMPARISON_ROWS: readonly PaywallComparisonRow[] = [
   },
   {
     key: "unlimited_imports",
-    label: "Unlimited imports",
+    label: "Unlimited saves",
     free: false,
     pro: true,
   },

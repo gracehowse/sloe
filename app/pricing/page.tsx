@@ -237,7 +237,7 @@ export default async function PricingPage({
             matches mobile so an authenticated web mount draws the same chart. */}
         <PaywallTrajectoryChart />
 
-        {/* 2×2 value-prop grid (Figma `284:2`) — Unlimited imports /
+        {/* 2×2 value-prop grid (Figma `284:2`) — Unlimited saves /
             Macro fitting / AI coach / Cloud sync. Copy from the shared
             `PAYWALL_VALUE_PROPS` SSOT (web == mobile). */}
         <PaywallValueGrid />

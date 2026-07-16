@@ -248,7 +248,7 @@ export const FAQS: ReadonlyArray<{ q: string; a: string }> = [
     // softened 2026-04-19 (round-2 legal pass) to clarify recipes stay
     // editable — "read-only" was the bug, "stay saved and editable" is
     // the honest promise.
-    a: `Nothing disappears. Your recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved and editable; you just won't be able to save new recipes until you're back at ${FREE_SAVE_LIMIT} or fewer, or on Base.`,
+    a: `Nothing disappears. Your recipes above the Free tier's ${FREE_SAVE_LIMIT}-recipe limit stay saved and editable; you just won't be able to save new recipes until you're back at ${FREE_SAVE_LIMIT} or fewer, or on Pro.`,
   },
   {
     q: "Is this a diet app?",
