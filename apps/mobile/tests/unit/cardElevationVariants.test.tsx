@@ -29,7 +29,7 @@
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react-native";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { Elevation } from "../../constants/theme";
@@ -283,5 +283,68 @@ describe("iOS overflow-clip fix lives in the shared <SupprCard> shell", () => {
     expect(triad).toMatch(/<SupprCard[\s\S]{0,160}testID="progress-energy-avg-intake"/);
     expect(triad).toMatch(/<SupprCard[\s\S]{0,160}testID="progress-energy-tdee"/);
     expect(triad).toMatch(/<SupprCard[\s\S]{0,160}testID="progress-energy-deficit"/);
+  });
+});
+
+/**
+ * ENG-1525 — the tinted-hero carve-out (deliberate amendment).
+ *
+ * The `progress_hierarchy_v1` branch keeps the ENG-1497 card grammar with ONE
+ * documented exception: the §1 Trajectory hero draws the `heroTint` wash +
+ * hairline (decision doc `docs/decisions/2026-07-16-progress-hierarchy-v1.md`).
+ * The legacy-card pins above stay scoped to the legacy branch (flag off);
+ * these source pins scope the carve-out to exactly one surface and keep it
+ * TINT-ONLY — hairline + wash, never a shadow, never a second tinted card.
+ */
+describe("progress-hierarchy-v1 tinted hero carve-out (ENG-1525/ENG-1497)", () => {
+  /** Strip comments so a doc note mentioning e.g. "shadow" can't trip the pins. */
+  function stripComments(src: string): string {
+    return src
+      .replace(/\/\*[\s\S]*?\*\//g, "") // block comments
+      .replace(/(^|[^:])\/\/.*$/gm, "$1"); // line comments (not the // in URLs)
+  }
+  const HIERARCHY_DIR = "components/progress/hierarchy";
+  const HERO_FILE = `${HIERARCHY_DIR}/ProgressTrajectoryHero.tsx`;
+  const hierarchyFiles = readdirSync(resolve(MOBILE_ROOT, HIERARCHY_DIR))
+    .filter((f) => f.endsWith(".tsx"))
+    .map((f) => `${HIERARCHY_DIR}/${f}`);
+
+  it("the hero draws hairline + wash from the heroTint token trio only", () => {
+    const hero = stripComments(read(HERO_FILE));
+    // Flat + hairline chrome (the ENG-1497 grammar) with the token border…
+    expect(hero).toMatch(/borderWidth:\s*StyleSheet\.hairlineWidth/);
+    expect(hero).toMatch(/borderColor:\s*colors\.heroTintBorder/);
+    // …and the wash's gradient stops come ONLY from the tokens.
+    expect(hero).toMatch(/stopColor=\{colors\.heroTint\}/);
+    expect(hero).toMatch(/stopColor=\{colors\.heroTintTo\}/);
+  });
+
+  it("exactly ONE surface carries the tint — no other hierarchy section references heroTint", () => {
+    for (const f of hierarchyFiles.filter((f) => f !== HERO_FILE)) {
+      expect(stripComments(read(f)), `${f} must not carry the hero tint`).not.toMatch(
+        /heroTint/,
+      );
+    }
+  });
+
+  it("the carve-out is TINT-only: no shadow and no raw colour literals in the hierarchy dir", () => {
+    for (const f of hierarchyFiles) {
+      const src = stripComments(read(f));
+      expect(src, `${f} carries a shadow`).not.toMatch(/shadow/i);
+      expect(src, `${f} carries a raw hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+      expect(src, `${f} carries a raw rgb()/rgba() literal`).not.toMatch(/rgba?\(\s*\d/);
+    }
+  });
+
+  it("the four flat sections route their card chrome through <SupprCard>; only the hero hand-draws its tinted shell", () => {
+    for (const f of hierarchyFiles.filter(
+      (f) =>
+        f !== HERO_FILE &&
+        /Progress(Week|Energy|BodyComp|YourWeek)Section\.tsx$/.test(f),
+    )) {
+      const src = read(f);
+      expect(src, f).toMatch(/from ["']@\/components\/ui\/SupprCard["']/);
+      expect(src, f).toMatch(/<SupprCard/);
+    }
   });
 });
