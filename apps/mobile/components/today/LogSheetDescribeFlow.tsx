@@ -155,7 +155,7 @@ function LogSheetDescribeFlowImpl({
     return (
       <View style={{ flex: 1, paddingHorizontal: Spacing.md, paddingTop: Spacing.sm }} testID="log-sheet-describe-review">
         <Text style={[Type.caption, { color: colors.textSecondary, marginBottom: Spacing.sm }]}>
-          Review parsed items — edit or remove before logging.
+          Review the items we found — edit or remove before logging.
         </Text>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: Spacing.lg }}>
           <AiLogReviewSummary items={items} slotLabel={slotLabel ?? "Meal"} colors={colors} />

@@ -204,14 +204,14 @@ export function VoiceLogDialog({
           setError(
             typeof data?.message === "string"
               ? data.message
-              : "Could not parse your description. Try again or type more detail.",
+              : "Couldn't make sense of your description. Try again or type more detail.",
           );
           setStage("error");
           return;
         }
         const cleaned = sanitiseAiItems(data.items, "voice");
         if (cleaned.length === 0) {
-          setError("No food items could be parsed. Try describing the portions too.");
+          setError("No foods found in your description. Try describing the portions too.");
           setStage("error");
           return;
         }
@@ -261,7 +261,7 @@ export function VoiceLogDialog({
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {stage === "review"
-              ? `Review the ${items.length} item${items.length === 1 ? "" : "s"} we parsed. Edit or remove before logging.`
+              ? `Review the ${items.length} item${items.length === 1 ? "" : "s"} we found. Edit or remove before logging.`
               : "Describe what you ate — we'll estimate macros using verified nutrition data. You can edit each item before logging."}
           </DialogDescription>
         </DialogHeader>
