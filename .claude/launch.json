@@ -28,6 +28,13 @@
       "runtimeArgs": ["serve", "docs/brand", "-l", "4601"],
       "port": 4601,
       "autoPort": true
+    },
+    {
+      "name": "sloe-v3",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "docs/ux/redesign/v3", "-l", "4602"],
+      "port": 4602,
+      "autoPort": true
     }
   ]
 }

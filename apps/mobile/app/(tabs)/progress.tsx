@@ -15,7 +15,8 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react-native";
-import { AppleHealthCard, type AppleHealthCardStatus } from "@/components/AppleHealthCard";
+import { AppleHealthCardHost } from "@/components/progress/AppleHealthCardHost";
+import { ProgressHierarchyV1 } from "@/components/progress/hierarchy/ProgressHierarchyV1";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -859,6 +860,10 @@ export default function ProgressScreen() {
   // deferred read-once-on-mount pattern as the plateau flag.
   const [expenditureCardEnabled, setExpenditureCardEnabled] = useState(false);
   const [bodyCompositionCardEnabled, setBodyCompositionCardEnabled] = useState(false);
+  // ENG-1525 — the 5-section hierarchy rebuild (progress_hierarchy_v1, default
+  // OFF). Read once on mount so the layout never flips mid-session; the legacy
+  // 13-card stack stays alive in every else branch as the kill switch.
+  const [hierarchyV1Enabled, setHierarchyV1Enabled] = useState(false);
   useEffect(() => {
     void loadCachedUserTier().then((cached) => {
       setUserTier((prev) => (prev === "free" ? cached : prev));
@@ -867,6 +872,7 @@ export default function ProgressScreen() {
     setPlateauInsightEnabled(isFeatureEnabled("progress_plateau_insight_v1"));
     setExpenditureCardEnabled(isFeatureEnabled("expenditure_trend_card"));
     setBodyCompositionCardEnabled(isFeatureEnabled("body_composition_trends_v1"));
+    setHierarchyV1Enabled(isFeatureEnabled("progress_hierarchy_v1"));
   }, []);
   const digestBlendVisible =
     digestBlendEnabled &&
@@ -1282,7 +1288,7 @@ export default function ProgressScreen() {
           until the user crosses the 3-day data floor (geometry matches so
           the slot doesn't jump). On `trends_only` the direction tile still
           renders above so opt-out users keep a weight signal. */}
-      {effectiveWeightSurfaceMode === "trends_only" && (
+      {!hierarchyV1Enabled && effectiveWeightSurfaceMode === "trends_only" && (
         <WeightTrendOnlyCard weekDeltaKg={weightRange.weekDeltaKg} windowLabel={periodWindowLabel} theme={t} />
       )}
       {hasEnoughDataForStory(weekStats.daysWithFood) ? (
@@ -1318,6 +1324,65 @@ export default function ProgressScreen() {
       </ReAnimated.View>
 
       <ReAnimated.View style={[chartsEntrance.style, { gap: Spacing.lg }]}>
+      {hierarchyV1Enabled ? (() => {
+        // ENG-1525 — §1 Trajectory → §2 This Week → §3 Energy → §4 Body comp →
+        // §5 Your Week. Every value below is the SAME host-computed object the
+        // legacy stack reads — nothing re-derived (ENG-1506 anti-drift).
+        const timeline = hasGoalWeightData({ goalWeightKg, latestWeightKg }) ? calcGoalTimeline({ currentWeightKg: latestWeightKg as number, goalWeightKg: goalWeightKg as number, weightKgByDay }) : null;
+        return (
+          <ProgressHierarchyV1
+            mode={effectiveWeightSurfaceMode}
+            trajectory={chartsReady ? {
+              latestWeightKg, goalWeightKg, weightKgByDay, measurementSystem,
+              trend: weightChartTrend, range: weightChartRange, chartKey: `${period.type}:${period.offset}`,
+              onSwipePrev: () => { haptics.select(); setPeriod(previousPeriod(period)); },
+              onSwipeNext: () => { haptics.select(); setPeriod(nextPeriod(period)); }, canSwipeNext: !isCurrentPeriod(period),
+              byDay, targetCalories: targets.calories, userGoal, timeline,
+              maintenanceTdeeKcal: isAdaptiveTdee && adaptiveTdee != null ? adaptiveTdee : staticTdee,
+              weekDeltaKg: weightRange.weekDeltaKg, periodWindowLabel, onLogWeight: () => setLogWeightOpen(true),
+            } : null}
+            week={hasData ? {
+              adherencePct: hasEnoughDataForStory(caloriesRange.daysLogged) ? caloriesRange.adherencePct : null,
+              days: weekStats.days, todayKey, streakDays: recap.streakLength, streakFreezesAvailable: recap.freezesAvailable,
+              macros: [
+                { name: "Protein", pct: macroRange.proteinPct, color: t.protein }, { name: "Carbs", pct: macroRange.carbsPct, color: t.carbs },
+                { name: "Fat", pct: macroRange.fatPct, color: t.fat }, { name: "Fibre", pct: macroRange.fiberPct, color: macro.fiber },
+              ],
+              onOpenStreak: () => router.push("/weekly-recap" as never),
+              onDayPress: (dayKey: string) => router.navigate({ pathname: "/(tabs)" as any, params: { date: dayKey, _t: String(Date.now()) } }),
+            } : null}
+            energy={hasData ? {
+              avgIntakeKcal: caloriesRange.avgCaloriesPerDay != null ? Math.round(caloriesRange.avgCaloriesPerDay) : null,
+              maintenanceKcal: recapMaintenance?.kcal ?? (isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? null : staticTdee),
+              isAdaptive: recapMaintenance?.source === "adaptive", periodLabel: periodWindowLabel, latestWeightKg, goalWeightKg,
+              adaptiveConfidence: adaptiveConfidence === "high" || adaptiveConfidence === "medium" || adaptiveConfidence === "low" ? adaptiveConfidence : null,
+              qualifierLine: recapMaintenance ? maintenanceQualifier(recapMaintenance.source, recapMaintenance.confidence).line : null,
+              expenditureCopy: expenditureCardEnabled && isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? expenditureFromResolved(recapMaintenance, adaptiveUpdatedAt) : null,
+              adaptiveProgress: computeAdaptiveDataProgressFromMeals({ mealsByDay: byDay, weightByDay: weightKgByDay, sex: profileSexState as any,
+                weightKg: latestWeightKg ?? null, heightCm: profileHeightCmState, age: profileAgeState }),
+              maintenanceExplainer: recapMaintenance ? (
+                <MaintenanceExplainer
+                  sex={profileSexState} weightKg={latestWeightKg ?? null} heightCm={profileHeightCmState} age={profileAgeState}
+                  activityLevel={profileActivityLevelState} resolved={recapMaintenance} planPace={planPace} userGoal={userGoal}
+                  goalCalories={targets.calories} open={maintenanceExplainerOpen} onToggle={() => setMaintenanceExplainerOpen((v) => !v)}
+                  colors={{ accentSolid: t.accentSolid, text: t.text, sub: t.sub, border: t.border }}
+                />
+              ) : null,
+            } : null}
+            bodyComp={bodyCompositionCardEnabled ? {
+              // Mobile has no host-level user-owned body-fat plumbing yet (the Pro payload backfills in-section) — deferred: see ENG-1525.
+              userTier, latestBodyFatPct: null, latestLeanMassKg: null,
+              onOpenPaywall: () => router.push("/paywall?from=body_composition" as never),
+            } : null}
+            yourWeek={recap.daysLogged > 0 ? {
+              weekKey: recap.weekKey, shareText: formatRecapForShare(recap),
+              headline: resolveDigestHeadline({ weightDeltaKg: recap.weightDeltaKg, closestToTargetLabel: recap.bestDay?.label ?? null, streakDays: recap.streakLength, daysLogged: recap.daysLogged }),
+              usualMealLine: usualMealInsight?.kind === "celebration" ? `${usualMealInsight.name} — your usual, logged ${usualMealInsight.count}× last week` : null,
+              bestDay: recap.bestDay ? { label: recap.bestDay.label, protein: recap.bestDay.protein, calories: recap.bestDay.calories } : null,
+            } : null}
+          />
+        );
+      })() : (<>
       {/* WEIGHT CARD (Sloe Figma 492:2) — serif kg headline + "↓ N this
           week" + Trend/Scale segmented toggle, clay sparkline, dashed goal
           line, START/CURRENT/GOAL/RATE stat row, "Log weight" button,
@@ -1552,6 +1617,7 @@ export default function ProgressScreen() {
           periodLabel={periodWindowLabel}
         />
       ) : null}
+      </>)}
       </ReAnimated.View>
 
       <ReAnimated.View style={[detailsEntrance.style, { gap: Spacing.lg }]}>
@@ -1565,6 +1631,17 @@ export default function ProgressScreen() {
             Log meals on the Today tab and your weekly trends, macro adherence, and charts will populate.
           </Text>
         </View>
+      ) : hierarchyV1Enabled ? (
+        // ENG-1525 — hierarchy branch: the composer above absorbs the legacy
+        // cards; the preserved shared surface (Apple Health) renders unchanged.
+        userId ? (
+          <AppleHealthCardHost
+            userId={userId}
+            stepsToday={stepsByDay[todayKey] ?? null}
+            latestWeightKg={latestWeightKg}
+            useImperial={measurementSystem === "imperial"}
+          />
+        ) : null
       ) : (
         <>
         {/* 6. DAILY CALORIES (Sloe Figma 492:2) — M–S bars, sage = on
@@ -2265,80 +2342,3 @@ function WeightTrendOnlyCard({
   );
 }
 
-/**
- * AppleHealthCardHost — Progress-tab wrapper for the Apple Health card.
- *
- * Lives on the Progress screen because the four metrics live in
- * `profiles.{steps_by_day, activity_burn_by_day, basal_burn_by_day,
- * weight_kg}` and we don't want to plumb them through the mega-host's
- * render. This host reads only what the card needs on focus and maps
- * `syncHealthData` crash/denial state to the card's status prop.
- */
-function AppleHealthCardHost({
-  userId,
-  stepsToday,
-  latestWeightKg,
-  useImperial,
-}: {
-  userId: string;
-  stepsToday: number | null;
-  latestWeightKg: number | null;
-  useImperial: boolean;
-}) {
-  const [status, setStatus] = useState<AppleHealthCardStatus>("loading");
-  const [active, setActive] = useState<number | null>(null);
-  const [resting, setResting] = useState<number | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    setStatus("loading");
-    const todayKey = dateKeyFromDate(new Date()); // ENG-1540: local day key — burn maps are local-keyed (healthSync); UTC misses today after ~5pm local in the Americas
-    (async () => {
-      try {
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("activity_burn_by_day, basal_burn_by_day")
-          .eq("id", userId)
-          .maybeSingle();
-        if (cancelled) return;
-        if (error) {
-          setStatus("error");
-          return;
-        }
-        const act = (profile?.activity_burn_by_day ?? {}) as Record<string, number>;
-        const bas = (profile?.basal_burn_by_day ?? {}) as Record<string, number>;
-        const a = typeof act[todayKey] === "number" ? act[todayKey] : null;
-        const r = typeof bas[todayKey] === "number" ? bas[todayKey] : null;
-        setActive(a);
-        setResting(r);
-        // Denial heuristic: HealthKit is available but none of the
-        // four metrics came back. The design brief specifies a
-        // dedicated denied footer in that case.
-        if (!isHealthSyncAvailable() || (stepsToday == null && a == null && r == null && latestWeightKg == null)) {
-          setStatus(!isHealthSyncAvailable() ? "denied" : "ready");
-        } else {
-          setStatus("ready");
-        }
-      } catch {
-        if (!cancelled) setStatus("error");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-     
-  }, [userId, reloadKey, stepsToday, latestWeightKg]);
-
-  return (
-    <AppleHealthCard
-      status={status}
-      steps={stepsToday}
-      activeEnergyKcal={active}
-      restingBurnKcal={resting}
-      weightKg={latestWeightKg}
-      useImperial={useImperial}
-      onRetry={() => setReloadKey((k) => k + 1)}
-    />
-  );
-}
