@@ -744,6 +744,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   purchase rail). Shipping it on made an unkeepable promise. Keep OFF
  *   until the grant is wired; off → the referral card is hidden and the
  *   existing household invite flow is unchanged. Web + mobile.
+ * - `progress_hierarchy_v1` (ENG-1525) — the Progress tab 5-section
+ *   hierarchy rebuild (Trajectory hero → This Week → Energy → Body
+ *   composition → Your Week) replacing the legacy 13-card stack.
+ *   DEFAULT-OFF: a full-surface structural change (the energy_numbers_v1
+ *   precedent, not the "always flag on" additive-card one) — Grace ramps
+ *   in PostHog with before/after screenshots. Off → the legacy 13-card
+ *   stack renders exactly as before (kill switch). Both hosts read the
+ *   flag ONCE on mount into state so the layout never flips mid-session.
+ *   Keep in sync with `src/lib/analytics/track.ts`. Web + mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -764,6 +773,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "energy_numbers_v1", // ENG-1506/1507 — canonical energy numbers (selectMaintenance input policy + qualifiers)
   "referral_invite_loop_v1", // ENG-1541 — OFF until Pro-days entitlement grant is wired (unkeepable promise)
   "mobile_preauth_reveal_v1", // ENG-1513 — fresh installs run onboarding+reveal BEFORE the auth wall (match web/ENG-962). OFF → legacy auth-first gate.
+  "progress_hierarchy_v1", // ENG-1525 — Progress 5-section hierarchy; else = legacy 13-card stack (kill switch). Keep in sync with src/lib/analytics/track.ts.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

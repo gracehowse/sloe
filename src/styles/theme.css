@@ -372,6 +372,14 @@
   --north-star-bg-from: rgba(59, 42, 77, 0.08);
   --north-star-bg-to: rgba(200, 121, 78, 0.05);
   --north-star-border: rgba(59, 42, 77, 0.18);
+  /** ENG-1525 — Progress hierarchy hero tint: the ONE tinted card on the
+   *  Progress page (Trajectory hero), a deliberate ENG-1497 carve-out on the
+   *  flat card field. Brand plum (#5B3B6E) wash — gradient `from` → `to` +
+   *  hairline border, mirroring the north-star trio pattern above.
+   *  ↔ mobile `Colors.light.heroTint/-To/-Border`. */
+  --hero-tint: rgba(91, 59, 110, 0.11);
+  --hero-tint-to: rgba(91, 59, 110, 0.045);
+  --hero-tint-border: rgba(91, 59, 110, 0.28);
   /* ENG-1094 — Discover import hero: a confident lavender-plum accent (the
      lighter brand plum at a higher opacity) — Discover's one deliberate accent,
      replacing the muddy flat --accent-primary-soft-strong dark-plum wash that
@@ -676,6 +684,12 @@
   --north-star-bg-from: rgba(129, 94, 145, 0.16);
   --north-star-bg-to: rgba(213, 138, 94, 0.06);
   --north-star-border: rgba(129, 94, 145, 0.28);
+  /** ENG-1525 — Progress hierarchy hero tint, Sloe dark (lifted plum,
+   *  alphas raised so the wash + hairline read on the dark ground).
+   *  ↔ mobile `Colors.dark.heroTint/-To/-Border`. */
+  --hero-tint: rgba(154, 123, 170, 0.2);
+  --hero-tint-to: rgba(154, 123, 170, 0.08);
+  --hero-tint-border: rgba(154, 123, 170, 0.38);
   /* ENG-1094 — Discover import hero confident lavender-plum accent (dark). */
   --import-hero-bg: rgba(154, 123, 170, 0.3);
 
@@ -892,6 +906,11 @@
   --color-north-star-bg-from: var(--north-star-bg-from);
   --color-north-star-bg-to: var(--north-star-bg-to);
   --color-north-star-border: var(--north-star-border);
+
+  /* Progress hierarchy hero tint (gradient bounds + border, ENG-1525) */
+  --color-hero-tint: var(--hero-tint);
+  --color-hero-tint-to: var(--hero-tint-to);
+  --color-hero-tint-border: var(--hero-tint-border);
 
   /* Charts */
   --color-chart-1: var(--chart-1);
