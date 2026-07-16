@@ -28,6 +28,7 @@ For each table below, confirm in the Supabase SQL editor (or `psql`) that **RLS 
 | `foods` / `food_sources` / `barcode_mappings` | Public read; write via service role | select (public) |
 | `ingredients` | Legacy food catalog; public read | select (public) |
 | `user_foods` | Community barcode contributions; public read; **owner-only insert/update/delete** — UPDATE has `with check (submitted_by = auth.uid())` (added 20260425100000) so authorship can't be reassigned | select (authenticated), insert_own, update_own (with check), delete_own |
+| `user_food_votes` / `user_food_flags` | Own votes/flags only — **SELECT narrowed to own rows 20260716130000 (ENG-1398/SEC-10)**: was `to authenticated using (true)`, exposing every user's `voter_id`/`flagger_id` to any authenticated caller. Aggregate tallies (`user_foods.upvotes`/`.downvotes`) are served from the denormalised columns, kept in sync by the `security definer` `user_food_votes_recompute_counts` trigger (bypasses RLS, unaffected) — nothing reads these tables for anyone else's vote/flag | select_own, insert_own, update_own, delete_own |
 | `user_favorite_foods` / `user_saved_meals` / `user_saved_meal_items` / `user_recipe_notes` / `user_custom_foods` / `user_plan_templates` | Per-user private; full CRUD scoped to `auth.uid() = user_id` | for_all (user_id) |
 | `recipe_ingredients_overrides` | Per-recipe-owner; gated by parent `recipes` author check | parent-row owner check |
 | `fasting_sessions` / `caffeine_logs` / `alcohol_logs` / `streak_freeze_*` | Per-user private | for_all (user_id) |
