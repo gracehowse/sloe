@@ -1715,6 +1715,22 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 [data-surface="paper"] .pushed-scroll{ background:var(--bg-marketing); }
 [data-surface="paper"] .phone{ background:var(--bg-marketing); }
 [data-theme="light"][data-surface="paper"] .card{ background:var(--card); border:1px solid transparent; box-shadow:0 1px 2px rgba(36,23,51,.05), 0 12px 28px rgba(36,23,51,.05); }
+
+/* ── PREMIUM PASS (preview, 2026-07-16) — toggled from Tweaks · "Current / Elevated".
+   Warm editorial ground · instrument data-viz · broken card rhythm · duotone cuisine tiles.
+   NOT ratified: the Current path stays canonical until Grace signs this off. ── */
+/* 1 · warm oat-tinged ground — cards lift by warmth contrast; plum hairlines stay (ENG-1497 grammar) */
+[data-premium="1"][data-theme="light"]{ --bg:#fbfaf6; --bg-grouped:#f6f3ee; --bg-secondary:#f2efe9; --muted:#edeae3; }
+/* 3 · rhythm — the eat-next hero goes full-bleed editorial on mobile screens */
+[data-premium="1"] .screen-scroll .recipe-hero{ margin-left:-20px; margin-right:-20px; width:calc(100% + 40px); border-radius:0; border-color:transparent; box-shadow:none; }
+[data-premium="1"] .screen-scroll .recipe-hero:hover{ transform:none; box-shadow:none; }
+[data-premium="1"] .screen-scroll .rh-photo{ height:224px; }
+[data-premium="1"] .screen-scroll .rh-body{ padding:16px 20px 18px; }
+[data-premium="1"] .screen-scroll .rh-title{ font-size:24px; }
+/* 3 · Plan's day verdict takes the one-tinted-hero treatment (one per screen) */
+[data-premium="1"] .plan-day{ background:var(--hero-tint); border-color:var(--hero-tint-border); border-radius:var(--radius-card-lg); box-shadow:none; }
+/* 4 · placeholder kill — creator monograms get a quiet frost ring while real photos are pending */
+[data-premium="1"] .creator-rail-av{ box-shadow:0 0 0 2px var(--card), 0 0 0 3.5px var(--accent-frost); }
 [data-theme="light"][data-surface="paper"] .w-scroll{ background:var(--bg-marketing); }
 
 /* ── Net energy (deficit / surplus bar) ── */
@@ -3277,6 +3293,7 @@ function MacroCount({v,dur}){ return useCountUp(v, dur||820); }
 
 /* Macros — THREE layouts, switchable live via Tweaks */
 function MacroSection({sums, mg, variant, netCarbs, onMacro}){
+  const { premium } = useApp();
   const v = variant || 'tiles';
   const fib = Math.round(sums.c*0.13);
   const defs=[['Protein','p','protein','dumbbell',mg.p],[netCarbs?'Net carbs':'Carbs','c','carbs','wheat',mg.c],['Fat','f','fat','droplet',mg.f],['Fibre','fib','fiber','leaf',30]];
@@ -3295,8 +3312,10 @@ function MacroSection({sums, mg, variant, netCarbs, onMacro}){
       const SZ=86, cx=SZ/2, cy=SZ/2, N=36, p=Math.min(1,val(k)/goalv); const gid='mac-'+k;
       const cc=`var(--macro-${c})`, cl=`color-mix(in srgb, var(--macro-${c}) 52%, #fff)`;
       const track=[], lit=[];
+      // premium: the ring reads as a complete instrument even at low fill — tinted track + soft macro backdrop
+      const trackFill = premium ? `color-mix(in srgb, var(--macro-${c}) 28%, var(--ring-tick))` : 'var(--ring-tick)';
       for(let i=0;i<N;i++){ const ang=i*(360/N); const frac=i/N; const on=frac<=p+0.0001; const lead=on&&((i+1)/N)>p;
-        track.push(<rect key={'t'+i} x={cx-1.5} y={7} width={3} height={5} rx={1.5} fill="var(--ring-tick)" opacity="0.7" transform={`rotate(${ang} ${cx} ${cy})`}/>);
+        track.push(<rect key={'t'+i} x={cx-1.5} y={7} width={3} height={5} rx={1.5} fill={trackFill} opacity="0.7" transform={`rotate(${ang} ${cx} ${cy})`}/>);
         lit.push(<rect key={'l'+i} x={cx-1.5} y={5} width={3} height={9} rx={1.5} fill={`url(#${gid})`} transform={`rotate(${ang} ${cx} ${cy})`}
           filter={lead?`url(#${gid}-g)`:undefined}
           style={{opacity:on?1:0, transition:'opacity .4s var(--ease)', transitionDelay:(frac*0.8)+'s'}}/>); }
@@ -3308,6 +3327,7 @@ function MacroSection({sums, mg, variant, netCarbs, onMacro}){
                 <linearGradient id={gid} x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={cl}/><stop offset="100%" stopColor={cc}/></linearGradient>
                 <filter id={gid+'-g'} x="-180%" y="-180%" width="460%" height="460%"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
               </defs>
+              {premium && <circle cx={cx} cy={cy} r={SZ/2-9} fill={`var(--macro-${c}-soft)`} opacity="0.55"/>}
               {track}{lit}
             </svg>
             <span className="macror-v tnum"><MacroCount v={val(k)}/><small>g</small></span>
@@ -4158,7 +4178,7 @@ function MealEdit(){
 
 /* ════ COOK (editorial recipe library) ════ */
 function Cook(){
-  const { open, toast } = useApp();
+  const { open, toast, premium } = useApp();
   const [filter,setFilter]=RS('All');
   const [scope,setScope]=RS('mine'); // mine (cookbook) | discover
   const [following,setFollowing]=RS({Priya:true});
@@ -4223,7 +4243,10 @@ function Cook(){
               <div className="cuisine-rail">
                 {CUISINES.map(([c,t],i)=>(
                   <button className={'cuisine-chip'+(cuisine===c?' on':'')} key={c} onClick={()=>setCuisine(c)}>
-                    <span className="cuisine-chip-ph" style={{background:cuisine===c?'var(--primary)':TINT2[t]}}>{c==='All'?<Ic2 n="sparkles" s={17}/>:<span className="cuisine-chip-i">{c[0]}</span>}</span>
+                    {/* premium: duotone photo tiles (one graded base image = designed texture, not fake cuisine photos) replace the letter monograms */}
+                    <span className="cuisine-chip-ph" style={premium
+                      ? {background:`linear-gradient(160deg, rgba(59,42,77,${(0.32+(i%3)*0.1).toFixed(2)}), rgba(36,23,51,${(0.58+(i%3)*0.08).toFixed(2)})), url(${HIMG}) ${['left','center','right'][i%3]} center / cover`}
+                      : {background:cuisine===c?'var(--primary)':TINT2[t]}}>{c==='All'?<Ic2 n="sparkles" s={17}/>:(premium?null:<span className="cuisine-chip-i">{c[0]}</span>)}</span>
                     <span className="cuisine-chip-n">{c}</span>
                   </button>
                 ))}
@@ -4943,7 +4966,7 @@ window.PROG = {
 function Progress(){
   /* ENG-1525 — 5 prioritised sections, one tinted hero on a flat field ("story, not dashboard").
      §1 Trajectory (hero, goal-conditional) · §2 This week · §3 Energy · §4 Body composition · §5 Your week. */
-  const { open, progressState, bodyNeutral, toast } = useApp();
+  const { open, progressState, bodyNeutral, toast, premium } = useApp();
   const [period,setPeriod]=RS('W');       // global window — drives §1 chart + §3 averaging; §2 pins to the current week
   const [wView,setWView]=RS('trend');     // trend | scale
   const [showHow,setShowHow]=RS(false);
@@ -4964,7 +4987,7 @@ function Progress(){
           {P.dayK.map(([d,v],i)=>(
             <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',height:'100%'}}>
               {!bodyNeutral && <span className="tnum" style={{fontSize:9,color:'var(--fg-tertiary)',marginBottom:3}}>{(v/1000).toFixed(2)}k</span>}
-              <div style={{width:'100%',maxWidth:28,height:Math.round(v/2300*84),background:bodyNeutral?'var(--success)':(v>hi?'var(--warning)':'var(--success)'),borderRadius:'6px 6px 3px 3px',...(i===6?{outline:'1.5px solid var(--fg-secondary)',outlineOffset:2}:{})}}></div>
+              <div style={{width:'100%',maxWidth:28,height:Math.round(v/2300*84),background:(()=>{const c=(!bodyNeutral&&v>hi)?'var(--warning)':'var(--success)';return premium?`linear-gradient(180deg, color-mix(in srgb, ${c} 62%, var(--card)) 0%, ${c} 90%)`:c;})(),borderRadius:'6px 6px 3px 3px',...(i===6?{outline:'1.5px solid var(--fg-secondary)',outlineOffset:2}:{})}}></div>
             </div>
           ))}
         </div>
@@ -5008,14 +5031,20 @@ function Progress(){
           <div className="prog-hero-kg tnum">{P.weight.current}<small>kg</small></div>
           <div className={'prog-rate '+(toward?'is-toward':'is-away')}>{P.weight.rate<0?'↓':'↑'} {Math.abs(P.weight.rate)} kg/wk · {toward?'toward your goal':'away from your goal'}</div>
           <svg viewBox="0 0 300 112" width="100%" preserveAspectRatio="none" style={{display:'block',height:112,marginTop:10}}>
+            <defs>
+              <linearGradient id="ph-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="var(--primary-active)"/><stop offset="100%" stopColor="var(--primary)"/></linearGradient>
+              <linearGradient id="ph-area" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--primary)" stopOpacity="0.15"/><stop offset="100%" stopColor="var(--primary)" stopOpacity="0"/></linearGradient>
+              <filter id="ph-glow" x="-140%" y="-140%" width="380%" height="380%"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
             <rect x="0" y="82" width="300" height="13" rx="4" fill="var(--success-soft)" opacity=".5"/>
             <line x1="0" y1="88" x2="300" y2="88" stroke="var(--success)" strokeWidth="1" strokeDasharray="3 5" opacity=".6"/>
             <text x="298" y="80" textAnchor="end" fontSize="9.5" fontWeight="600" fill="var(--success)" fontFamily="var(--font-sans)">Goal {P.weight.goalW}</text>
+            {premium && <path d="M0,20 C70,28 140,42 200,52 C226,56 248,58 262,59 L262,110 L0,110 Z" fill="url(#ph-area)"/>}
             {wView==='scale' && <polyline points="0,26 44,18 88,36 132,26 176,44 220,38 262,52" fill="none" stroke="var(--fg-tertiary)" strokeWidth="1.2" opacity=".55"/>}
             {wView==='scale' && [[0,26],[44,18],[88,36],[132,26],[176,44],[220,38],[262,52]].map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r="2.4" fill="var(--fg-tertiary)" opacity=".6"/>)}
-            <path d="M0,20 C70,28 140,42 200,52 C226,56 248,58 262,59" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round"/>
+            <path d="M0,20 C70,28 140,42 200,52 C226,56 248,58 262,59" fill="none" stroke={premium?'url(#ph-line)':'var(--primary)'} strokeWidth="2.5" strokeLinecap="round"/>
             <path d="M262,59 L300,66" fill="none" stroke="var(--primary-active)" strokeWidth="2" strokeDasharray="4 4" opacity=".75"/>
-            <circle cx="262" cy="59" r="4.2" fill="var(--primary)" stroke="var(--card)" strokeWidth="1.6"/>
+            <circle cx="262" cy="59" r="4.2" fill="var(--primary)" stroke="var(--card)" strokeWidth="1.6" filter={premium?'url(#ph-glow)':undefined}/>
           </svg>
           <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}>{axis.map((m)=><span key={m} className="tnum" style={{fontSize:10.5,color:'var(--fg-tertiary)'}}>{m}</span>)}</div>
           <div className="prog-proj-line"><b>{P.weight.toGoal} kg to go</b> · at this pace ~early October — an estimate, not a promise.</div>
@@ -5055,7 +5084,8 @@ function Progress(){
           </div>
           <div className="prog-eq tnum"><b>{P.maintenance.toLocaleString()}</b> maintenance − <b>{P.avgIntake.toLocaleString()}</b> intake = <b>{deficit}</b> · <span style={{color:'var(--success)',fontWeight:600}}>on plan for your cut</span></div>
           <svg viewBox="0 0 300 46" width="100%" preserveAspectRatio="none" style={{display:'block',marginTop:12,height:46}}>
-            <polygon points="0,20 60,19 120,21 180,18 240,22 300,16 300,30 240,32 180,28 120,29 60,25 0,24" fill="var(--success-soft)" opacity=".55"/>
+            {premium && <defs><linearGradient id="exp-band" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--success)" stopOpacity="0.22"/><stop offset="100%" stopColor="var(--success)" stopOpacity="0.04"/></linearGradient></defs>}
+            <polygon points="0,20 60,19 120,21 180,18 240,22 300,16 300,30 240,32 180,28 120,29 60,25 0,24" fill={premium?'url(#exp-band)':'var(--success-soft)'} opacity={premium?1:.55}/>
             <polyline points="0,22 60,22 120,25 180,23 240,27 300,23" fill="none" stroke="var(--success)" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
           <div className="prog-hero-caption" style={{color:'var(--fg-tertiary)'}}>Expenditure, adapting weekly — the band widens when confidence drops</div>
@@ -7719,7 +7749,7 @@ function WebPlan({open}){
 
 function WebProgress({open}){
   /* ENG-1525 — same 5 sections as mobile, desktop grid. §1 tinted hero full-width; §2+§3, §4+§5 in the two-column grid. */
-  const { bodyNeutral, progressState, toast } = window.useApp();
+  const { bodyNeutral, progressState, toast, premium } = window.useApp();
   const [period,setPeriod]=RS('W');
   const [wView,setWView]=RS('trend');
   const P=PROG, lo=1630, hi=2030;
@@ -7774,14 +7804,20 @@ function WebProgress({open}){
           <div>
             <div style={{display:'flex',justifyContent:'flex-end',marginBottom:4}}><span className="segmented" style={{transform:'scale(.85)'}}><button aria-pressed={wView==='trend'} onClick={()=>setWView('trend')}>Trend</button><button aria-pressed={wView==='scale'} onClick={()=>setWView('scale')}>Scale</button></span></div>
             <svg viewBox="0 0 560 200" width="100%" style={{display:'block'}}>
+              <defs>
+                <linearGradient id="wph-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="var(--primary-active)"/><stop offset="100%" stopColor="var(--primary)"/></linearGradient>
+                <linearGradient id="wph-area" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--primary)" stopOpacity="0.14"/><stop offset="100%" stopColor="var(--primary)" stopOpacity="0"/></linearGradient>
+                <filter id="wph-glow" x="-140%" y="-140%" width="380%" height="380%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              </defs>
               <rect x="40" y="158" width="516" height="18" rx="5" fill="var(--success-soft)" opacity=".5"/>
               <line x1="40" y1="167" x2="556" y2="167" stroke="var(--success)" strokeWidth="1" strokeDasharray="4 5" opacity=".6"/>
               <text x="552" y="153" textAnchor="end" fontSize="11" fontWeight="600" fill="var(--success)" fontFamily="var(--font-sans)">Goal {P.weight.goalW}</text>
+              {premium && <path d="M46,42 C120,55 180,76 232,90 C300,106 360,116 420,120 C460,122 486,123 500,124 L500,196 L46,196 Z" fill="url(#wph-area)"/>}
               {wView==='scale' && <polyline points="46,48 131,40 217,72 303,58 388,92 472,84 500,104" fill="none" stroke="var(--fg-tertiary)" strokeWidth="1.2" opacity=".5"/>}
               {wView==='scale' && [[46,48],[131,40],[217,72],[303,58],[388,92],[472,84],[500,104]].map(([cx,cy],i)=>(<circle key={i} cx={cx} cy={cy} r="3" fill="var(--fg-tertiary)" opacity=".55"/>))}
-              <path d="M46,42 C120,55 180,76 232,90 C300,106 360,116 420,120 C460,122 486,123 500,124" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M46,42 C120,55 180,76 232,90 C300,106 360,116 420,120 C460,122 486,123 500,124" fill="none" stroke={premium?'url(#wph-line)':'var(--primary)'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M500,124 L556,136" fill="none" stroke="var(--primary-active)" strokeWidth="2.5" strokeDasharray="5 5" opacity=".75"/>
-              <circle cx="500" cy="124" r="5.5" fill="var(--primary)" stroke="var(--card)" strokeWidth="2"/>
+              <circle cx="500" cy="124" r="5.5" fill="var(--primary)" stroke="var(--card)" strokeWidth="2" filter={premium?'url(#wph-glow)':undefined}/>
               <text x="500" y="112" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="var(--primary)" fontFamily="var(--font-sans)">{P.weight.current}</text>
               {axis.map((m,i)=>{const x=i===0?46:(i===axis.length-1?552:46+(552-46)*i/(axis.length-1));return <text key={m} x={x} y="196" textAnchor={i===0?'start':(i===axis.length-1?'end':'middle')} fontSize="11" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{m}</text>;})}
             </svg>
@@ -7799,8 +7835,12 @@ function WebProgress({open}){
             : <p style={{fontSize:15,lineHeight:1.55,color:'var(--fg-secondary)',margin:'2px 0 0'}}><b style={{color:'var(--fg)'}}>{onTarget} of 7 days</b> in your calorie range · macro adherence averaged <b style={{color:'var(--fg)'}}>{adhAvg}%</b>.</p>}
           {(()=>{ const days=['M','T','W','T','F','S','S']; const baseY=120,plotH=104,maxK=2300; const tY=baseY-(P.goal/maxK)*plotH; const cx=i=>44+(i+0.5)*((552-44)/7); return (
           <svg viewBox="0 0 560 150" width="100%" style={{display:'block',marginTop:10}}>
+            {premium && <defs>
+              <linearGradient id="wkb-in" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="color-mix(in srgb, var(--success) 62%, var(--card))"/><stop offset="90%" stopColor="var(--success)"/></linearGradient>
+              <linearGradient id="wkb-over" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="color-mix(in srgb, var(--warning) 62%, var(--card))"/><stop offset="90%" stopColor="var(--warning)"/></linearGradient>
+            </defs>}
             <line x1="40" y1={baseY} x2="556" y2={baseY} stroke="var(--border-strong)"/>
-            {P.dayK.map(([d,v],i)=>{const h=(v/maxK)*plotH;return <rect key={i} x={cx(i)-20} y={baseY-h} width="40" height={h} rx="6" fill={bodyNeutral?'var(--success)':(v>hi?'var(--warning)':'var(--success)')} stroke={i===6?'var(--fg-secondary)':'none'} strokeWidth={i===6?1.5:0}/>;})}
+            {P.dayK.map(([d,v],i)=>{const h=(v/maxK)*plotH;const overBar=!bodyNeutral&&v>hi;return <rect key={i} x={cx(i)-20} y={baseY-h} width="40" height={h} rx="6" fill={premium?(overBar?'url(#wkb-over)':'url(#wkb-in)'):(overBar?'var(--warning)':'var(--success)')} stroke={i===6?'var(--fg-secondary)':'none'} strokeWidth={i===6?1.5:0}/>;})}
             {!bodyNeutral && <line x1="40" y1={tY} x2="556" y2={tY} stroke="var(--fg-secondary)" strokeWidth="1.5" strokeDasharray="5 4" opacity=".55"/>}
             {!bodyNeutral && <text x="44" y={tY-6} textAnchor="start" fontSize="10.5" fontWeight="600" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{P.goal.toLocaleString()} target</text>}
             {!bodyNeutral && P.dayK.map(([d,v],i)=><text key={'v'+i} x={cx(i)} y={baseY-(v/maxK)*plotH-6} textAnchor="middle" fontSize="10" fontWeight="600" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{(v/1000).toFixed(2)}k</text>)}
@@ -7822,7 +7862,8 @@ function WebProgress({open}){
           </div>
           <div className="prog-eq tnum"><b>{P.maintenance.toLocaleString()}</b> maintenance − <b>{P.avgIntake.toLocaleString()}</b> intake = <b>{deficit}</b> · <span style={{color:'var(--success)',fontWeight:600}}>on plan for your cut</span></div>
           <svg viewBox="0 0 560 60" width="100%" preserveAspectRatio="none" style={{display:'block',marginTop:14,height:60}}>
-            <polygon points="0,26 112,25 224,28 336,23 448,29 560,20 560,40 448,42 336,37 224,38 112,33 0,31" fill="var(--success-soft)" opacity=".55"/>
+            {premium && <defs><linearGradient id="wexp-band" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--success)" stopOpacity="0.22"/><stop offset="100%" stopColor="var(--success)" stopOpacity="0.04"/></linearGradient></defs>}
+            <polygon points="0,26 112,25 224,28 336,23 448,29 560,20 560,40 448,42 336,37 224,38 112,33 0,31" fill={premium?'url(#wexp-band)':'var(--success-soft)'} opacity={premium?1:.55}/>
             <polyline points="0,28 112,29 224,33 336,30 448,35 560,30" fill="none" stroke="var(--success)" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
           <div className="prog-hero-caption" style={{color:'var(--fg-tertiary)'}}>Expenditure, adapting weekly — the band widens when confidence drops</div>
@@ -8841,7 +8882,7 @@ function TweaksModal({state, set, nav}){
       <div className="tw-mhead">
         <span className="tw-mtitle">Tweaks</span>
         <div style={{display:'flex',gap:6}}>
-          <button className="tw-x" onClick={()=>set({device:'mobile',theme:'light',accent:'plum',fontSans:'inter',fontSerif:'newsreader',fontBrand:'fraunces',ring:'segflat',mac:'rings',density:'standard',surface:'white',calm:false,netCarbs:false,ingTiles:false,provenance:'honest'})} title="Reset" style={{fontSize:11,width:'auto',padding:'0 8px'}}>Reset</button>
+          <button className="tw-x" onClick={()=>set({device:'mobile',theme:'light',accent:'plum',fontSans:'inter',fontSerif:'newsreader',fontBrand:'fraunces',ring:'segflat',mac:'rings',density:'standard',surface:'white',premium:false,calm:false,netCarbs:false,ingTiles:false,provenance:'honest'})} title="Reset" style={{fontSize:11,width:'auto',padding:'0 8px'}}>Reset</button>
           <button className="tw-x" onClick={()=>setOpen(false)} aria-label="Minimise"><I4 n="x" s={16}/></button>
         </div>
       </div>
@@ -8853,6 +8894,8 @@ function TweaksModal({state, set, nav}){
       <div className="tw-mbody">
         <Row label="Device"><Chip on={state.device==='mobile'} onClick={()=>set({device:'mobile'})}>Mobile</Chip><Chip on={state.device==='web'} onClick={()=>set({device:'web'})}>Web</Chip></Row>
         <Row label="Theme"><Chip on={state.theme==='light'} onClick={()=>set({theme:'light'})}>Light</Chip><Chip on={state.theme==='dark'} onClick={()=>set({theme:'dark'})}>Dark</Chip></Row>
+        <Row label="Premium pass"><Chip on={!state.premium} onClick={()=>set({premium:false})}>Current</Chip><Chip on={!!state.premium} onClick={()=>set({premium:true})}>Elevated</Chip></Row>
+        {!!state.premium && <div className="tw-hint">Preview of the 2026-07-16 premium pass — warm editorial ground, instrument-grade rings &amp; charts, broken card rhythm, duotone cuisine tiles. Not yet ratified.</div>}
         <Row label="Calm mode"><Chip on={!state.calm} onClick={()=>set({calm:false})}>Off</Chip><Chip on={state.calm} onClick={()=>set({calm:true})}>Body-neutral</Chip></Row>
         {state.calm && <div className="tw-hint">Hides calorie aims and over/under deltas, shows a numbers-light ring and trends-only progress — for body-neutral &amp; ED-recovery-safe use.</div>}
         <Row label="Carbs lens"><Chip on={!state.netCarbs} onClick={()=>set({netCarbs:false})}>Total</Chip><Chip on={state.netCarbs} onClick={()=>set({netCarbs:true})}>Net carbs</Chip></Row>
@@ -8882,7 +8925,7 @@ function TweaksModal({state, set, nav}){
 }
 
 function App(){
-  const [tw,setTw]=RS({device:'mobile', theme:'light', accent:'plum', fontSans:'inter', fontSerif:'newsreader', fontBrand:'fraunces', ring:'segflat', mac:'rings', scenario:'breakfast', density:'standard', surface:'white', calm:false, netCarbs:false, ingTiles:false, provenance:'honest', webView:'today', webModal:null});
+  const [tw,setTw]=RS({device:'mobile', theme:'light', accent:'plum', fontSans:'inter', fontSerif:'newsreader', fontBrand:'fraunces', ring:'segflat', mac:'rings', scenario:'breakfast', density:'standard', surface:'white', premium:false, calm:false, netCarbs:false, ingTiles:false, provenance:'honest', webView:'today', webModal:null});
   const set=(patch)=>setTw(s=>Object.assign({},s,patch));
   const [tab,setTab]=RS('today');
   const [onboarded,setOnboarded]=RS(false);
@@ -8897,13 +8940,13 @@ function App(){
   const tRef=RR(null);
 
   RE(()=>{ applyTheme(tw.theme, tw.accent, {sans:tw.fontSans,serif:tw.fontSerif,brand:tw.fontBrand}); },[tw.theme, tw.accent, tw.fontSans, tw.fontSerif, tw.fontBrand]);
-  RE(()=>{ const r=document.documentElement; r.setAttribute('data-platform',tw.device); r.setAttribute('data-density',tw.density); r.setAttribute('data-surface',tw.surface); },[tw.device, tw.density, tw.surface]);
+  RE(()=>{ const r=document.documentElement; r.setAttribute('data-platform',tw.device); r.setAttribute('data-density',tw.density); r.setAttribute('data-surface',tw.surface); if(tw.premium) r.setAttribute('data-premium','1'); else r.removeAttribute('data-premium'); },[tw.device, tw.density, tw.surface, tw.premium]);
 
   const top = stack[stack.length-1]||null;
   const isWeb = tw.device==='web';
   const api = {
     theme:tw.theme, scenarioKey:tw.scenario, tab, planState, progressState, activeFood,
-    ringStyle:tw.calm?'calm':tw.ring, macroStyle:tw.mac, bodyNeutral:tw.calm, netCarbs:tw.netCarbs, ingTiles:tw.ingTiles, provenance:tw.provenance,
+    ringStyle:tw.calm?'calm':(tw.premium?'segments':tw.ring), macroStyle:tw.mac, bodyNeutral:tw.calm, netCarbs:tw.netCarbs, ingTiles:tw.ingTiles, provenance:tw.provenance, premium:!!tw.premium,
     setPlanState, setProgressState,
     household, setHousehold:(patch)=>setHousehold(h=>Object.assign({},h,typeof patch==='function'?patch(h):patch)),
     setScenario:(s)=>set({scenario:s}),

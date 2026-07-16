@@ -116,6 +116,7 @@ function baseProps(): ProgressHierarchyV1Props {
     },
     energy: {
       avgIntakeKcal: 1840,
+      hasEnoughData: true,
       resolved: {
         kcal: 2073,
         source: "adaptive",
@@ -289,6 +290,32 @@ describe("ProgressHierarchyV1 — §3 Energy equation (web)", () => {
     expect(getByTestId("hierarchy-energy-equation").textContent).toBe(
       `${(2000).toLocaleString()} maintenance − ${(2400).toLocaleString()} intake`,
     );
+  });
+
+  it("below the story floor the numeral gives way — no confident deficit from one logged day", () => {
+    const props = baseProps();
+    props.energy = { ...props.energy, hasEnoughData: false };
+    const { queryByTestId, getByTestId } = render(<ProgressHierarchyV1 {...props} />);
+    expect(queryByTestId("hierarchy-energy-lead")).toBeNull();
+    expect(queryByTestId("hierarchy-energy-equation")).toBeNull();
+    expect(getByTestId("progress-hierarchy-energy").textContent).toContain(
+      "An honest average needs a few more logged days",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5b — §1 overline honesty: "toward goal" only with real goal data
+// ---------------------------------------------------------------------------
+
+describe("ProgressHierarchyV1 — §1 overline (web)", () => {
+  it("drops the 'toward goal' suffix when there is no goal-weight data", () => {
+    const props = baseProps();
+    props.hero = { ...props.hero, goalWeightKg: null, timeline: null };
+    const { getByTestId } = render(<ProgressHierarchyV1 {...props} />);
+    const hero = getByTestId("progress-hierarchy-hero").textContent ?? "";
+    expect(hero).toContain("Weight");
+    expect(hero).not.toContain("toward goal");
   });
 });
 

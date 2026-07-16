@@ -260,7 +260,7 @@ export function ProgressTrajectoryHero(props: ProgressTrajectoryHeroProps) {
       data-testid="progress-hierarchy-hero"
       data-hero-tint="true"
     >
-      <HierarchySectionOverline label="Weight · toward goal" />
+      <HierarchySectionOverline label={hasGoalWeightData({ goalWeightKg, latestWeightKg }) ? "Weight · toward goal" : "Weight"} />
       {sparse ? (
         // Sparse grammar INSIDE the hero slot (ENG-1372/1504 reveal-then-focus).
         // Its filled "Log your first weigh-in" CTA is the screen's ONE filled

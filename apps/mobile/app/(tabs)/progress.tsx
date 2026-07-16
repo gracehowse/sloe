@@ -1352,7 +1352,7 @@ export default function ProgressScreen() {
               onDayPress: (dayKey: string) => router.navigate({ pathname: "/(tabs)" as any, params: { date: dayKey, _t: String(Date.now()) } }),
             } : null}
             energy={hasData ? {
-              avgIntakeKcal: caloriesRange.avgCaloriesPerDay != null ? Math.round(caloriesRange.avgCaloriesPerDay) : null,
+              avgIntakeKcal: caloriesRange.avgCaloriesPerDay != null ? Math.round(caloriesRange.avgCaloriesPerDay) : null, hasEnoughData: hasEnoughDataForStory(caloriesRange.daysLogged),
               maintenanceKcal: recapMaintenance?.kcal ?? (isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) ? null : staticTdee),
               isAdaptive: recapMaintenance?.source === "adaptive", periodLabel: periodWindowLabel, latestWeightKg, goalWeightKg,
               adaptiveConfidence: adaptiveConfidence === "high" || adaptiveConfidence === "medium" || adaptiveConfidence === "low" ? adaptiveConfidence : null,

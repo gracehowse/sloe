@@ -25,6 +25,10 @@ import type { ExpenditureTrendCopy } from "@suppr/shared/progress/expenditureTre
  */
 export interface ProgressEnergySectionProps {
   avgIntakeKcal: number | null;
+  /** The SAME 3-day story floor §2 uses (`hasEnoughDataForStory`) — below it
+   *  a one-day average would typeset as a confident 4-digit "deficit", so the
+   *  numeral gives way to the settling copy instead. */
+  hasEnoughData: boolean;
   /** Resolved maintenance (the host's shared `recapMaintenance` — ENG-1506
    *  anti-drift: never re-derived per section). */
   maintenanceKcal: number | null;
@@ -65,6 +69,7 @@ export function impliedRateKgPerWeek(deficitKcal: number | null): number | null 
 
 export function ProgressEnergySection({
   avgIntakeKcal,
+  hasEnoughData,
   maintenanceKcal,
   isAdaptive,
   adaptiveConfidence,
@@ -105,14 +110,14 @@ export function ProgressEnergySection({
         testID="progress-hierarchy-energy-deficit"
         style={{ ...Type.display, color: numeralColor, marginTop: Spacing.xs, fontVariant: ["tabular-nums"] }}
       >
-        {deficitKcal == null ? "—" : Math.abs(deficitKcal).toLocaleString()}
-        {deficitKcal != null ? (
+        {deficitKcal == null || !hasEnoughData ? "—" : Math.abs(deficitKcal).toLocaleString()}
+        {deficitKcal != null && hasEnoughData ? (
           <Text style={{ ...Type.bodyLarge, color: colors.textSecondary }}> kcal</Text>
         ) : null}
       </Text>
 
       {/* The equation in words — maintenance − intake = deficit. */}
-      {hasMaintenance && avgIntakeKcal != null ? (
+      {hasMaintenance && avgIntakeKcal != null && hasEnoughData ? (
         <Text
           testID="progress-hierarchy-energy-equation"
           style={{ ...Type.captionStrong, fontWeight: "400", color: colors.textSecondary, marginTop: Spacing.xs, fontVariant: ["tabular-nums"] }}
@@ -121,9 +126,11 @@ export function ProgressEnergySection({
         </Text>
       ) : (
         <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: Spacing.xs }}>
-          {hasMaintenance
-            ? "Log meals to see your energy balance."
-            : "Maintenance is still resolving — log meals and weigh in to unlock it."}
+          {hasMaintenance && avgIntakeKcal != null
+            ? "An honest average needs a few more logged days — keep logging."
+            : hasMaintenance
+              ? "Log meals to see your energy balance."
+              : "Maintenance is still resolving — log meals and weigh in to unlock it."}
         </Text>
       )}
 

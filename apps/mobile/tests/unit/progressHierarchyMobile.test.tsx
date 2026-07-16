@@ -264,6 +264,7 @@ function baseProps(): ProgressHierarchyV1Props {
     },
     energy: {
       avgIntakeKcal: 1840,
+      hasEnoughData: true,
       maintenanceKcal: 2073,
       isAdaptive: true,
       adaptiveConfidence: "high",
@@ -414,6 +415,18 @@ describe("ProgressHierarchyV1 — §3 Energy equation (mobile)", () => {
     );
     expect(textOf(findByTestId(tree, "progress-hierarchy-energy-equation"))).toBe(
       `${(2000).toLocaleString()} maintenance − ${(2400).toLocaleString()} intake`,
+    );
+  });
+
+  it("below the story floor the numeral gives way — no confident deficit from one logged day", () => {
+    const props = baseProps();
+    props.energy = { ...props.energy!, hasEnoughData: false };
+    const r = render(<ProgressHierarchyV1 {...props} />);
+    const tree = r.toJSON() as JsonNode;
+    expect(textOf(findByTestId(tree, "progress-hierarchy-energy-deficit"))).toBe("—");
+    expect(findByTestId(tree, "progress-hierarchy-energy-equation")).toBeNull();
+    expect(textOf(findByTestId(tree, "progress-hierarchy-energy"))).toContain(
+      "An honest average needs a few more logged days",
     );
   });
 

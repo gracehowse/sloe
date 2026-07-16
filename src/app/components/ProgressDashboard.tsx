@@ -1373,7 +1373,7 @@ function ProgressDashboardContent() {
                 onOpenStreak: () => openMetric("streak"),
               }}
               energy={{
-                avgIntakeKcal: caloriesRange.avgCaloriesPerDay,
+                avgIntakeKcal: caloriesRange.avgCaloriesPerDay, hasEnoughData: hasEnoughDataForStory(caloriesRange.daysLogged),
                 resolved: recapMaintenance,
                 latestWeightKg,
                 goalWeightKg,

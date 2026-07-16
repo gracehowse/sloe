@@ -55,6 +55,10 @@ export interface ExpenditureSparkPoint {
 export interface ProgressEnergySectionProps {
   /** Range-average intake (`caloriesRange.avgCaloriesPerDay`), null when unlogged. */
   avgIntakeKcal: number | null;
+  /** The SAME 3-day story floor §2 uses (`hasEnoughDataForStory`) — below it
+   *  a one-day average would typeset as a confident 4-digit "deficit", so the
+   *  numeral gives way to the settling copy instead. */
+  hasEnoughData: boolean;
   /** Resolved maintenance (`recapMaintenance`) — the SAME object every sibling reads. */
   resolved: ResolvedMaintenance | null;
   /** Goal context for the deficit/surplus tone (delta 3). */
@@ -142,6 +146,7 @@ function ExpenditureSpark({ points }: { points: ExpenditureSparkPoint[] }) {
 
 export function ProgressEnergySection({
   avgIntakeKcal,
+  hasEnoughData,
   resolved,
   latestWeightKg,
   goalWeightKg,
@@ -181,7 +186,7 @@ export function ProgressEnergySection({
         {conf.label}
       </p>
 
-      {deficitKcal != null ? (
+      {deficitKcal != null && hasEnoughData ? (
         <>
           <p className="mt-3" data-testid="hierarchy-energy-lead">
             <span
@@ -205,7 +210,9 @@ export function ProgressEnergySection({
         </>
       ) : (
         <p className="mt-3 text-[13px] text-muted-foreground">
-          Log meals and weigh in to see your daily energy balance.
+          {deficitKcal != null
+            ? "An honest average needs a few more logged days — keep logging."
+            : "Log meals and weigh in to see your daily energy balance."}
         </p>
       )}
 
