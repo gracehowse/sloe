@@ -90,7 +90,25 @@ as the plum-duotone texture system. **Letter monograms never represent food.** P
 may use serif initials only with the frost-ring treatment, as a stated placeholder
 until real photography lands.
 
-## Rule 8 — Motion is confirmation
+## Rule 8 — The loop is the layout
+
+The app exists to run one loop: **where do I stand → what do I eat next → log it →
+the week is handled → did it work.** Each screen's hero (Rule 1) IS its loop moment,
+and each moment obeys a researched composition law (Mobbin refs in the census):
+
+| Moment | Screen · hero | Composition law |
+|---|---|---|
+| Where do I stand | Today · the ring | One numeral, state-coloured; tap flips remaining↔eaten (MacroFactor reframe) |
+| What do I eat next | Today · decision module | Editorial photo + serif name, target chips as the numerals, ONE verdict line, ONE action ("Log this"); tap opens the recipe. Never three prompts (Copilot/Flighty: one number leads, one action clears) |
+| Log it | FAB · log hub | Recents = one-tap re-log (Lose It); post-log reward = the watched element completes + one honesty line — never confetti (MacroFactor state-flip, Cal AI verdict) |
+| Week is handled | Plan · day verdict hero | Calm verdict sentence + **one-tap fix** that re-derives downstream (open lane — none of Mealime/eMeals render the verdict; we do) |
+| Did it work | Progress · trajectory hero | Smoothed line + raw dots + goal line **co-visible** (Withings' hard lesson) + rate + hedged projection; coaching only on drift |
+
+Next tranche of this rule: the weekly recap as full-bleed single-stat story scenes,
+descriptively framed, ending on an identity beat, each scene saveable
+(Gentler Streak / Duolingo / Strava grammar) — the §5 Share action's real payload.
+
+## Rule 9 — Motion is confirmation
 
 Count-ups and arc-draws on mount; a spring on every commit; the gold win-moment on
 goal days. Nothing moves decoratively. Honour `prefers-reduced-motion`.

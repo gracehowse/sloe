@@ -1751,6 +1751,11 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 [data-premium="1"] .creator-chip{ width:72px; }
 /* Rule 5 · numeric instrument scale — hero numerals 44 */
 [data-premium="1"] .prog-hero-kg{ font-size:44px; }
+/* Loop · the decision module — instrument target band + actions inside the editorial card */
+.rh-loop{ display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.rh-loop-chip{ display:inline-flex; align-items:center; background:var(--muted); color:var(--fg); font-size:12.5px; font-weight:var(--fw-semibold); padding:5px 10px; border-radius:9999px; }
+.rh-loop-chip.is-protein{ background:var(--macro-protein-soft); color:var(--macro-protein); }
+.rh-acts{ display:flex; align-items:center; gap:14px; margin-top:12px; }
 [data-theme="light"][data-surface="paper"] .w-scroll{ background:var(--bg-marketing); }
 
 /* ── Net energy (deficit / surplus bar) ── */
@@ -3506,7 +3511,7 @@ function WeeklySummary(){
 
 /* ════════════ TODAY (full realistic scroll stack) ════════════ */
 function Today(){
-  const { scenarioKey, open, toast, ringStyle, macroStyle, bodyNeutral, netCarbs } = useApp();
+  const { scenarioKey, open, toast, ringStyle, macroStyle, bodyNeutral, netCarbs, premium } = useApp();
   const [calView,setCalView] = RS('remaining');
   const [selDay,setSelDay] = RS(18);
   const week = [['M',16],['T',17],['W',18],['T',19],['F',20],['S',21],['S',22]];
@@ -3647,7 +3652,18 @@ function Today(){
             <span className="rh-body">
               <span className="rh-eyebrow"><Ic n={guide.icon} s={13}/> {proteinLed?`Lead with ~${Math.min(50,Math.round(proteinGap/2/5)*5)}g protein`:'Fits your day'}</span>
               <span className="rh-title">{plannedRec? plannedRec.name : 'Chicken & avocado salad'}</span>
-              <span className="rh-meta tnum">~{slotBudget.toLocaleString()} kcal · {proteinLed?'closes your protein gap':'balanced & on pace'}</span>
+              {!premium && <span className="rh-meta tnum">~{slotBudget.toLocaleString()} kcal · {proteinLed?'closes your protein gap':'balanced & on pace'}</span>}
+              {premium && (<>
+                {/* Elevated decision module — the loop's pivot. Composition law (MacroFactor/Copilot/Flighty):
+                    leading numerals (target chips) + ONE verdict line (the eyebrow) + ONE action; tap-card opens the recipe. */}
+                <span className="rh-loop tnum">
+                  <span className="rh-loop-chip">{lo.toLocaleString()}–{hi.toLocaleString()} kcal</span>
+                  {proteinLed && <span className="rh-loop-chip is-protein">~{proteinThisMeal}g protein</span>}
+                </span>
+                <span className="rh-acts">
+                  <span className="btn btn--secondary btn--sm" role="button" onClick={(e)=>{e.stopPropagation(); toast('Logged to '+nextSlot+' · it fits.',{sub:'~'+slotBudget.toLocaleString()+' kcal · your day stays on track.'});}}><Ic n="plus" s={15}/>Log this</span>
+                </span>
+              </>)}
             </span>
           </button>
         )}
@@ -4698,7 +4714,7 @@ const PLAN_WEEK={
 };
 if(typeof window!=='undefined') window.SloePlanWeek = PLAN_WEEK;
 function Plan(){
-  const { open, planState, setPlanState, toast, household } = useApp();
+  const { open, planState, setPlanState, toast, household, premium } = useApp();
   const [day,setDay]=RS('Thu');
   const [cooked,setCooked]=RS({});            // `${day}-${slot}` → true
   const [act,setAct]=RS(null);                // active meal action sheet
@@ -4761,7 +4777,9 @@ function Plan(){
           <div className="planx-verdict">
             <span className="planx-v-dot" style={{background:daysHit>=7?'var(--success)':'var(--warning)'}}></span>
             <span className="planx-v-t">{daysHit>=7?'Every day lands on target':`On track — ${daysHit} of 7 days land`}</span>
-            {daysHit<7 && <span className="planx-v-s">{7-daysHit} {7-daysHit===1?'day needs':'days need'} a meal or swap</span>}
+            {daysHit<7 && (premium
+              ? <button className="link planx-v-s" style={{fontSize:13}} onClick={()=>{ const lc=Object.values(locked).filter(Boolean).length; setPlanState('generating'); setTimeout(()=>{ setPlanState('ready'); toast(`Filled the gaps — ${7-daysHit} ${7-daysHit===1?'day':'days'} fixed${lc?`, kept ${lc} locked`:''}.`); },1500); }}>Fix {7-daysHit} {7-daysHit===1?'day':'days'} — fill the gaps <I3 n="chevR" s={13} st={{verticalAlign:'-2px'}}/></button>
+              : <span className="planx-v-s">{7-daysHit} {7-daysHit===1?'day needs':'days need'} a meal or swap</span>)}
           </div>
         </div>
         );})()}
@@ -5060,8 +5078,9 @@ function Progress(){
             <line x1="0" y1="88" x2="300" y2="88" stroke="var(--success)" strokeWidth="1" strokeDasharray="3 5" opacity=".6"/>
             <text x="298" y="80" textAnchor="end" fontSize="9.5" fontWeight="600" fill="var(--success)" fontFamily="var(--font-sans)">Goal {P.weight.goalW}</text>
             {premium && <path d="M0,20 C70,28 140,42 200,52 C226,56 248,58 262,59 L262,110 L0,110 Z" fill="url(#ph-area)"/>}
-            {wView==='scale' && <polyline points="0,26 44,18 88,36 132,26 176,44 220,38 262,52" fill="none" stroke="var(--fg-tertiary)" strokeWidth="1.2" opacity=".55"/>}
-            {wView==='scale' && [[0,26],[44,18],[88,36],[132,26],[176,44],[220,38],[262,52]].map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r="2.4" fill="var(--fg-tertiary)" opacity=".6"/>)}
+            {/* Withings lesson: premium keeps raw dots + smoothed line + goal line CO-VISIBLE (toggle remains for Current) */}
+            {wView==='scale' && !premium && <polyline points="0,26 44,18 88,36 132,26 176,44 220,38 262,52" fill="none" stroke="var(--fg-tertiary)" strokeWidth="1.2" opacity=".55"/>}
+            {(premium || wView==='scale') && [[0,26],[44,18],[88,36],[132,26],[176,44],[220,38],[262,52]].map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r="2.4" fill="var(--fg-tertiary)" opacity={premium?'.38':'.6'}/>)}
             <path d="M0,20 C70,28 140,42 200,52 C226,56 248,58 262,59" fill="none" stroke={premium?'url(#ph-line)':'var(--primary)'} strokeWidth="2.5" strokeLinecap="round"/>
             <path d="M262,59 L300,66" fill="none" stroke="var(--primary-active)" strokeWidth="2" strokeDasharray="4 4" opacity=".75"/>
             <circle cx="262" cy="59" r="4.2" fill="var(--primary)" stroke="var(--card)" strokeWidth="1.6" filter={premium?'url(#ph-glow)':undefined}/>
@@ -7838,8 +7857,8 @@ function WebProgress({open}){
               <line x1="40" y1="167" x2="556" y2="167" stroke="var(--success)" strokeWidth="1" strokeDasharray="4 5" opacity=".6"/>
               <text x="552" y="153" textAnchor="end" fontSize="11" fontWeight="600" fill="var(--success)" fontFamily="var(--font-sans)">Goal {P.weight.goalW}</text>
               {premium && <path d="M46,42 C120,55 180,76 232,90 C300,106 360,116 420,120 C460,122 486,123 500,124 L500,196 L46,196 Z" fill="url(#wph-area)"/>}
-              {wView==='scale' && <polyline points="46,48 131,40 217,72 303,58 388,92 472,84 500,104" fill="none" stroke="var(--fg-tertiary)" strokeWidth="1.2" opacity=".5"/>}
-              {wView==='scale' && [[46,48],[131,40],[217,72],[303,58],[388,92],[472,84],[500,104]].map(([cx,cy],i)=>(<circle key={i} cx={cx} cy={cy} r="3" fill="var(--fg-tertiary)" opacity=".55"/>))}
+              {wView==='scale' && !premium && <polyline points="46,48 131,40 217,72 303,58 388,92 472,84 500,104" fill="none" stroke="var(--fg-tertiary)" strokeWidth="1.2" opacity=".5"/>}
+              {(premium || wView==='scale') && [[46,48],[131,40],[217,72],[303,58],[388,92],[472,84],[500,104]].map(([cx,cy],i)=>(<circle key={i} cx={cx} cy={cy} r="3" fill="var(--fg-tertiary)" opacity={premium?'.35':'.55'}/>))}
               <path d="M46,42 C120,55 180,76 232,90 C300,106 360,116 420,120 C460,122 486,123 500,124" fill="none" stroke={premium?'url(#wph-line)':'var(--primary)'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M500,124 L556,136" fill="none" stroke="var(--primary-active)" strokeWidth="2.5" strokeDasharray="5 5" opacity=".75"/>
               <circle cx="500" cy="124" r="5.5" fill="var(--primary)" stroke="var(--card)" strokeWidth="2" filter={premium?'url(#wph-glow)':undefined}/>
