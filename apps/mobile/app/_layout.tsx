@@ -416,7 +416,7 @@ function AutoSurfaceWhatsNew() {
 /** Full-screen flows — no stack chrome (custom in-screen headers / modals). */
 const STACK_HEADER_HIDDEN = new Set([
   "(tabs)",
-  "login",
+  "login", "reset-password",
   "import-shared",
   "plan-import",
   "cookbook-import",
