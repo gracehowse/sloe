@@ -207,10 +207,9 @@ export default function TermsPage() {
           <p>
             If you are a consumer resident in the European Union or the United Kingdom, you have a statutory right to cancel a
             purchase of digital content or digital services within <strong>14 days</strong> of the contract being concluded,
-            without giving a reason. Because Sloe is a digital service whose performance starts immediately on purchase,{" "}
-            <strong>you are asked to expressly consent to performance beginning before the 14-day period ends and to acknowledge
-            that, by doing so, you lose the right to withdraw once performance has begun in full</strong>. If you purchased a
-            subscription and wish to exercise a withdrawal right before performance has begun, email{" "}
+            without giving a reason. Although your Sloe subscription starts immediately on purchase,{" "}
+            <strong>we do not ask you to waive this right at checkout — your 14-day right to cancel for a full refund remains in
+            effect for the full period</strong>. To exercise it, email{" "}
             <a href={`mailto:legal@getsloe.com`} className="text-primary-solid underline">legal@getsloe.com</a>{" "}
             within 14 days of purchase. This right is separate from, and additional to, the voluntary 7-day refund policy above,
             and it does not apply to in-app purchases made through the Apple App Store or Google Play (which are governed by the
