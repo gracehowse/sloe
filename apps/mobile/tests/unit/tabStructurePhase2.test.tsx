@@ -49,6 +49,21 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     background: "#fff",
     card: "#fff",
     cardBorder: "#eee",
+    border: "#eee",
+    inputBg: "#f4f4f6",
+    primaryForeground: "#fff",
+  }),
+}));
+// ENG-1532 — component_grammar_dedup is default-ON (REDESIGN_DEFAULT_ON), so
+// the sub-tab headers render the §8 SegmentedTrack. Mock the flag reader to
+// mirror that default (avoids pulling the PostHog client into vitest).
+vi.mock("@/lib/analytics", () => ({
+  isFeatureEnabled: (flag: string) => flag === "component_grammar_dedup",
+}));
+vi.mock("@/context/theme", () => ({
+  useAccent: () => ({
+    primarySolid: "#7A5C8A",
+    primarySoft: "rgba(122,92,138,0.18)",
   }),
 }));
 
@@ -58,7 +73,10 @@ const setPathname = (p: string) => {
 
 describe("RecipesSubTabHeader", () => {
   // ENG-1247: the "Library" sub-tab is labelled "Cookbook" (the /library route
-  // is unchanged — only the user-facing label).
+  // is unchanged — only the user-facing label). ENG-1532: with
+  // component_grammar_dedup ON (the default) the switcher renders the §8
+  // SegmentedTrack; each option carries an explicit accessibilityLabel, so
+  // the label queries keep working across the swap.
   it("highlights Cookbook when on /library", () => {
     setPathname("/library");
     const { getByLabelText } = render(<RecipesSubTabHeader />);
@@ -108,7 +126,11 @@ describe("YouSubTabHeader (deprecated 2026-05-19 — Progress is a tab; Settings
 });
 
 describe("PlanSubTabHeader", () => {
-  it("renders 'This week' and 'Shopping list' pills in canonical order", () => {
+  // ENG-1532: with component_grammar_dedup ON (the default) the header
+  // renders the §8 SegmentedTrack; the Shopping unchecked-count badge now
+  // rides the track's per-option `badge` (same hidden-at-0 / "999+"-cap
+  // behaviour the SubTabPill badge had).
+  it("renders 'This week' and 'Shopping list' segments in canonical order", () => {
     const onChange = vi.fn();
     const { getByLabelText } = render(
       <PlanSubTabHeader value="plan" onChange={onChange} />,
@@ -126,7 +148,7 @@ describe("PlanSubTabHeader", () => {
     expect(onChange).toHaveBeenCalledWith("shopping");
   });
 
-  it("does not call onChange when tapping the already-active pill", () => {
+  it("does not call onChange when tapping the already-active segment", () => {
     const onChange = vi.fn();
     const { getByLabelText } = render(
       <PlanSubTabHeader value="plan" onChange={onChange} />,
@@ -141,14 +163,15 @@ describe("PlanSubTabHeader", () => {
       <PlanSubTabHeader value="plan" onChange={onChange} shoppingUncheckedCount={5} />,
     );
     // The badge renders the integer count as plain text inside the
-    // Shopping pill. getByText is the simplest stable assertion.
+    // Shopping segment. getByText is the simplest stable assertion.
     expect(getByText("5")).toBeTruthy();
   });
 
   it("caps the badge at 999+ for high counts", () => {
-    // Implementation caps at 999+ (PlanSubTabHeader). Test pinned to
-    // match the rendered output. If the cap moves again, update the
-    // string here too — this test exists to lock the cap, whatever it is.
+    // Implementation caps at 999+ (the SegmentedTrack badge, ENG-1532
+    // amendment). Test pinned to match the rendered output. If the cap
+    // moves again, update the string here too — this test exists to lock
+    // the cap, whatever it is.
     const onChange = vi.fn<(_v: PlanSubTab) => void>();
     const { getByText } = render(
       <PlanSubTabHeader value="plan" onChange={onChange} shoppingUncheckedCount={1234} />,

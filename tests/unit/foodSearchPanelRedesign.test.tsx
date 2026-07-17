@@ -347,3 +347,62 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     expect(screen.queryByTestId("food-search-category-tabs")).toBeNull();
   });
 });
+
+// ── ENG-1532 — component grammar dedup: ONE search-row grammar ─────────
+//
+// Fable ruling 2026-07-16: with `component_grammar_dedup` ON, best-match
+// results render as PLAIN ROWS with the Past-logged skeleton — hairline
+// `divide-y` separators instead of the grouped card, the unified
+// kcal-leads-basis-trails sub-line (shared `formatFoodSearchRowSubline`),
+// and NO big right-aligned KCAL display numeral (it invited misreading
+// per-100g values as per-serving). The tier chip stays inline; section
+// overlines stay. Flag OFF → today's carded render, byte-intact (the
+// PostHog kill switch). Mobile sibling coverage:
+// `apps/mobile/tests/unit/foodSearchRedesignResults.test.tsx`.
+describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", () => {
+  it("flag ON: best matches render as plain rows — no card wrapper, unified sub-line, no KCAL numeral", async () => {
+    enableFlags("redesign_search_results", "component_grammar_dedup");
+    vi.stubGlobal("fetch", BOTH_SOURCES);
+    const { container } = renderPanel();
+    await drain();
+
+    const redesign = await screen.findByTestId("food-search-results-redesign");
+    // Section overlines survive the dedup.
+    expect(screen.getByText("Best matches")).toBeInTheDocument();
+    // No grouped-card wrapper — the Past-logged hairline grammar instead.
+    expect(redesign.querySelector(".rounded-2xl")).toBeNull();
+    expect(redesign.querySelector(".divide-y")).not.toBeNull();
+    // Plain rows carry the `search-row-` testID prefix.
+    expect(redesign.querySelector('[data-testid^="search-row-"]')).not.toBeNull();
+    // Unified sub-line: kcal LEADS, basis TRAILS, source name last
+    // (USDA fixture: 96 kcal / 20 P / 0 C / 1.7 F per 100g → 2g F rounded).
+    expect(
+      screen.getByText("96 kcal · 20g P · 0g C · 2g F · per 100g · USDA"),
+    ).toBeInTheDocument();
+    // The big right-aligned KCAL display numeral is gone — the kcal value
+    // only appears inside the sub-line string, never as a standalone numeral.
+    expect(screen.queryByText("96")).toBeNull();
+    // The tier chip stays inline in the row (current labels — ENG-1567
+    // renames are a separate ticket).
+    expect(screen.getByTestId("food-search-confidence-verified")).toBeInTheDocument();
+    expect(screen.getByText("Structured")).toBeInTheDocument();
+    void container;
+  });
+
+  it("flag OFF (kill switch): the carded render stays byte-intact — card wrapper + KCAL numeral, no plain rows", async () => {
+    enableFlags("redesign_search_results"); // component_grammar_dedup OFF
+    vi.stubGlobal("fetch", BOTH_SOURCES);
+    renderPanel();
+    await drain();
+
+    const redesign = await screen.findByTestId("food-search-results-redesign");
+    // Grouped card + right-rail kcal numeral still render.
+    expect(redesign.querySelector(".rounded-2xl")).not.toBeNull();
+    expect(screen.getByText("96")).toBeInTheDocument();
+    // No plain-row grammar leaks into the OFF path.
+    expect(redesign.querySelector('[data-testid^="search-row-"]')).toBeNull();
+    expect(
+      screen.queryByText("96 kcal · 20g P · 0g C · 2g F · per 100g · USDA"),
+    ).toBeNull();
+  });
+});

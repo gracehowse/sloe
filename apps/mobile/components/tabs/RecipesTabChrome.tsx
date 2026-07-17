@@ -5,9 +5,11 @@ import { Link, Pencil } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
+import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import { SubTabPill } from "@/components/ui/SubTabPill";
 import { IconSize, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 export type RecipesTab = "library" | "discover";
 
@@ -61,16 +63,34 @@ export function RecipesTabChrome() {
         </View>
       }
     >
-      <SubTabPill<RecipesTab>
-        embedded
-        items={[
-          { id: "library", label: "Cookbook" },
-          { id: "discover", label: "Discover" },
-        ]}
-        activeId={activeId}
-        onSelect={(id) => router.replace(`/(tabs)/${id}` as never)}
-        accessibilityLabel="Recipes sections"
-      />
+      {/* ENG-1532 component-grammar dedup — sub-tab switchers are the §8
+          SegmentedTrack pill. Flag-off renders the legacy SubTabPill
+          underline tabs byte-intact (kill switch). */}
+      {isFeatureEnabled("component_grammar_dedup") ? (
+        <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md }}>
+          <SegmentedTrack<RecipesTab>
+            role="tablist"
+            options={[
+              { value: "library", label: "Cookbook", accessibilityLabel: "Cookbook" },
+              { value: "discover", label: "Discover", accessibilityLabel: "Discover" },
+            ]}
+            value={activeId}
+            onChange={(id) => router.replace(`/(tabs)/${id}` as never)}
+            accessibilityLabel="Recipes sections"
+          />
+        </View>
+      ) : (
+        <SubTabPill<RecipesTab>
+          embedded
+          items={[
+            { id: "library", label: "Cookbook" },
+            { id: "discover", label: "Discover" },
+          ]}
+          activeId={activeId}
+          onSelect={(id) => router.replace(`/(tabs)/${id}` as never)}
+          accessibilityLabel="Recipes sections"
+        />
+      )}
     </ScreenSectionChrome>
   );
 }

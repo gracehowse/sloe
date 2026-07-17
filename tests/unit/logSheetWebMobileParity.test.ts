@@ -208,11 +208,27 @@ describe("LogSheet v3 method-grid tile grammar — web ↔ mobile parity (ENG-13
     }
   });
 
-  it("both rows render the v3 order Scan / Photo / Voice / Describe / Quick add when the flag is on", () => {
-    // The `v3 ? [...] : [...]` split lists the grid order photo-before-voice.
+  it("both rows render the v3 order Photo / Voice / Describe / Quick add, gated on the ENG-1532 dedup flag", () => {
+    // ENG-1532 (`component_grammar_dedup`, default-ON) drops the Scan tile
+    // from both renders — the loud CTA is the single scanner entry. The
+    // dedup-OFF arrays keep Scan leading, byte-intact (kill switch).
     for (const src of [webRow, mobileRow]) {
+      expect(src).toContain('isFeatureEnabled("component_grammar_dedup")');
       expect(src).toMatch(
-        /v3\s*\?\s*\[\s*scan,\s*photoMode,\s*voiceMode,\s*describeMode,\s*quick\s*\]/,
+        /v3\s*\?\s*dedup\s*\?\s*\[\s*photoMode,\s*voiceMode,\s*describeMode,\s*quick\s*\]\s*:\s*\[\s*scan,\s*photoMode,\s*voiceMode,\s*describeMode,\s*quick\s*\]/,
+      );
+      expect(src).toMatch(
+        /dedup\s*\?\s*\[\s*voiceMode,\s*photoMode,\s*quick\s*\]\s*:\s*\[\s*scan,\s*voiceMode,\s*photoMode,\s*quick\s*\]/,
+      );
+    }
+  });
+
+  it("ENG-1532 — both sheets gate the search-field scanner affordances on the dedup flag", () => {
+    // The inline scanner button + the legacy right-edge glyph render only
+    // while `component_grammar_dedup` is OFF on both platforms.
+    for (const src of [web, mobile]) {
+      expect(src).toMatch(
+        /barcode\?\.onOpen && !isFeatureEnabled\("component_grammar_dedup"\)/,
       );
     }
   });

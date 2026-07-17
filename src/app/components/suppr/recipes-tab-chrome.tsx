@@ -2,7 +2,9 @@
 
 import { Icons } from "../ui/icons";
 import { ScreenChrome } from "./screen-chrome";
+import { SegmentedTrack } from "../ui/segmented-track";
 import { SubTabPill } from "../ui/sub-tab-pill";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 
 export type RecipesTab = "library" | "discover";
 
@@ -61,17 +63,34 @@ export function RecipesTabChrome({
         </>
       }
     >
-      <SubTabPill
-        embedded
-        items={[
-          { id: "library", label: "Cookbook" },
-          { id: "discover", label: "Discover" },
-        ]}
-        activeId={activeId}
-        onSelect={onSelect}
-        accessibilityLabel="Recipes sections"
-        className="pt-0 pb-3"
-      />
+      {/* ENG-1532 component-grammar dedup — sub-tab switchers are the §8
+          SegmentedTrack pill. Flag-off renders the legacy SubTabPill
+          underline tabs byte-intact (kill switch). */}
+      {isFeatureEnabled("component_grammar_dedup") ? (
+        <div className="px-6 pb-3">
+          <SegmentedTrack<RecipesTab>
+            options={[
+              { value: "library", label: "Cookbook" },
+              { value: "discover", label: "Discover" },
+            ]}
+            value={activeId}
+            onChange={onSelect}
+            ariaLabel="Recipes sections"
+          />
+        </div>
+      ) : (
+        <SubTabPill
+          embedded
+          items={[
+            { id: "library", label: "Cookbook" },
+            { id: "discover", label: "Discover" },
+          ]}
+          activeId={activeId}
+          onSelect={onSelect}
+          accessibilityLabel="Recipes sections"
+          className="pt-0 pb-3"
+        />
+      )}
     </ScreenChrome>
   );
 }

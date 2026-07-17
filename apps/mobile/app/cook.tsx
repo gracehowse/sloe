@@ -62,6 +62,7 @@ import {
   type StepMatchableIngredient,
 } from "@suppr/shared/recipe-ingredients/stepIngredients";
 import { formatIngredientAmountUnit } from "@suppr/shared/recipe-ingredients/formatIngredientAmount";
+import { cleanIngredientDisplayName } from "@suppr/shared/recipe/cleanIngredientDisplayName";
 import {
   formatCookHistoryPreview,
   insertCookHistory,
@@ -326,21 +327,20 @@ export default function CookModeScreen() {
   const checklistItems = useMemo(
     () =>
       stepIngredients.map((ing) => {
-        const numericAmount =
-          typeof ing.amount === "number"
-            ? ing.amount
-            : typeof ing.amount === "string"
-              ? Number.parseFloat(ing.amount)
-              : NaN;
+        const numericAmount = typeof ing.amount === "number"
+          ? ing.amount
+          : typeof ing.amount === "string"
+            ? Number.parseFloat(ing.amount)
+            : NaN;
         const scaledAmount =
           Number.isFinite(numericAmount) && scale !== 1
             ? Math.round(numericAmount * scale * 100) / 100
             : ing.amount;
-        const amountLabel =
-          scaledAmount != null || ing.unit
-            ? formatIngredientAmountUnit(scaledAmount, ing.unit)
-            : null;
-        return { name: ing.name, amountLabel };
+        const amountLabel = scaledAmount != null || ing.unit
+          ? formatIngredientAmountUnit(scaledAmount, ing.unit)
+          : null;
+        // ENG-1532 — parity with web CookMode: render the CLEANED name.
+        return { name: cleanIngredientDisplayName(ing.name) || ing.name, amountLabel };
       }),
     [stepIngredients, scale],
   );

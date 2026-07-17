@@ -4,14 +4,17 @@
  * the LogSheet input-method row, gated on `sloe_v3_log` (default-ON).
  *
  * Mounts the real `<LogSheet>` and asserts:
- *   - FLAG ON  → the five method tiles (Scan / Photo / Voice / Describe /
- *     Quick add) render with their `log-sheet-method-*` handles, a frost lock
+ *   - FLAG ON  → the four method tiles (Photo / Voice / Describe / Quick add)
+ *     render with their `log-sheet-method-*` handles, a frost lock
  *     badge on the locked AI method, and NO "PRO" text pill.
  *   - FLAG OFF → the legacy circular chips: a "PRO" text pill on the locked AI
  *     method, no v3 tile handles, no lock-badge handle, no Describe tile.
  *   - the header copy swaps "Log a meal" → "Add to today" with the flag.
  *   - the Describe tile expands the inline describe flow (unlocked) / paywalls
  *     (locked).
+ *   - ENG-1532 (`component_grammar_dedup`, default-ON) — the Scan tile/chip is
+ *     dropped from BOTH renders (the loud CTA is the single scanner entry);
+ *     the dedup kill switch (OFF) restores the Scan tile, byte-intact.
  *
  * Mirror of `tests/unit/logSheetInputModeRowV3.test.tsx` (web).
  */
@@ -20,11 +23,15 @@ import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
-// Flag toggle — the InputModeRow + LogSheet header read
-// `isFeatureEnabled("sloe_v3_log")` from `@/lib/analytics`.
+// Flag toggles — the InputModeRow + LogSheet header read
+// `isFeatureEnabled("sloe_v3_log")` from `@/lib/analytics`; ENG-1532 adds
+// `component_grammar_dedup` (drops the Scan tile — default-ON) as a
+// separately-toggleable kill switch.
 let flagOn = true;
+let dedupOn = true;
 vi.mock("@/lib/analytics", () => ({
-  isFeatureEnabled: () => flagOn,
+  isFeatureEnabled: (flag: string) =>
+    flag === "component_grammar_dedup" ? dedupOn : flagOn,
   track: vi.fn(),
 }));
 
@@ -90,6 +97,7 @@ import {
 
 beforeEach(() => {
   flagOn = true;
+  dedupOn = true;
 });
 
 function open(props?: Partial<LogSheetProps>) {
@@ -111,11 +119,13 @@ function open(props?: Partial<LogSheetProps>) {
 }
 
 describe("LogSheet input-method row — v3 tile grammar (mobile)", () => {
-  it("renders the five method tiles when the flag is ON (default)", () => {
-    const { getByTestId } = open();
-    for (const key of ["scan", "photo", "voice", "describe", "quick"]) {
+  it("renders the four method tiles when the flag is ON (default) — no Scan tile (ENG-1532)", () => {
+    const { getByTestId, queryByTestId } = open();
+    for (const key of ["photo", "voice", "describe", "quick"]) {
       expect(getByTestId(`log-sheet-method-${key}`)).toBeTruthy();
     }
+    // ENG-1532 — the loud "Scan barcode" CTA is the single scanner entry.
+    expect(queryByTestId("log-sheet-method-scan")).toBeNull();
   });
 
   it("shows the frost lock badge (not a PRO text pill) on the locked AI method when flag ON", () => {
@@ -134,14 +144,31 @@ describe("LogSheet input-method row — v3 tile grammar (mobile)", () => {
 
   it("renders the legacy circular chips + PRO pill when the flag is OFF", () => {
     flagOn = false;
-    const { getByText, queryByTestId } = open({ voice: { onStart: () => {}, locked: true } });
+    const { getByText, queryByText, queryByTestId } = open({ voice: { onStart: () => {}, locked: true } });
     expect(getByText("PRO")).toBeTruthy();
     // No v3 tile / lock-badge handles, and Describe is not a legacy chip.
     expect(queryByTestId("log-sheet-method-voice")).toBeNull();
     expect(queryByTestId("log-sheet-method-lock-voice")).toBeNull();
     expect(queryByTestId("log-sheet-method-describe")).toBeNull();
-    // The input-mode row itself still renders (legacy variant).
-    expect(getByText("Scan")).toBeTruthy();
+    // The input-mode row itself still renders (legacy variant) — minus the
+    // Scan chip (ENG-1532, `component_grammar_dedup` default-ON).
+    expect(getByText("Voice")).toBeTruthy();
+    expect(queryByText("Scan")).toBeNull();
+  });
+
+  it("ENG-1532 kill switch — `component_grammar_dedup` OFF restores the Scan tile (v3) and chip (legacy)", () => {
+    dedupOn = false;
+    const onScanOpen = vi.fn();
+    // v3 grid: the Scan tile leads the five-tile set and still opens the scanner.
+    const v3Render = open({ barcode: { onOpen: onScanOpen } });
+    expect(v3Render.getByTestId("log-sheet-method-scan")).toBeTruthy();
+    fireEvent.press(v3Render.getByTestId("log-sheet-method-scan"));
+    expect(onScanOpen).toHaveBeenCalledTimes(1);
+    v3Render.unmount();
+    // Legacy chips: the Scan chip renders again too.
+    flagOn = false;
+    const legacyRender = open();
+    expect(legacyRender.getByText("Scan")).toBeTruthy();
   });
 
   it("swaps the header copy to 'Add to today' when flag ON and 'Log a meal' when OFF", () => {

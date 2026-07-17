@@ -92,7 +92,6 @@ import {
   type UnifiedSearchResult,
   type FoodPortion,
 } from "@/lib/verifyRecipe";
-import type { SearchRowConfidenceTier } from "@suppr/nutrition-core/foodSearchRanking";
 import {
   primaryServingToPortionChip,
   type PrimaryServing,
@@ -127,8 +126,8 @@ import CreateCustomFoodSheet, {
   type CreateCustomFoodPayload,
 } from "../CreateCustomFoodSheet";
 import Badge from "../Badge";
-import { SearchResultConfidenceChip } from "../ui/SearchResultConfidenceChip";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
+import { FoodSearchFeedItem } from "./FoodSearchFeedItem";
 import { track } from "@/lib/analytics";
 import { parseQuantityText } from "@/lib/parseQuantityText";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -209,7 +208,7 @@ export type SelectedFood = {
 export type SupabaseLike = { from: (table: string) => unknown };
 
 /** Local superset of UnifiedSearchResult — see FoodSearchModal history. */
-type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
+export type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
   _source: "USDA" | "OFF" | "CUSTOM" | "Edamam" | "FatSecret" | "GenericBeverage" | "GenericFood";
   _custom?: CustomFood;
 };
@@ -222,7 +221,7 @@ type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
  * corners + inset seams render correctly. Only used on the
  * `redesign_search_results`-flagged path.
  */
-type RenderRow =
+export type RenderRow =
   | { kind: "header"; key: string; label: string }
   | { kind: "row"; key: string; row: SearchRow; isFirst: boolean; isLast: boolean };
 
@@ -1639,177 +1638,23 @@ export default function FoodSearchPanel({
     return feed;
   }, [redesignSearch, sectionedResults]);
 
-  // The legible confidence chip is the canonical shared
-  // `<SearchResultConfidenceChip>` (also used by the barcode + voice-log
-  // result surfaces) so the chip language can't drift between logging entry
-  // points. The tier is computed upstream (ENG-807) from BOTH provenance AND
-  // the name match — never source alone — so "Verified" is always backed by a
-  // real signal (CLAUDE.md trust posture). A defensively-absent tier falls
-  // back to the CONSERVATIVE "Estimated" label — never "Verified" — so a
-  // missing signal can never over-claim trust. Matches the web sibling
-  // (ENG-815).
-  const renderConfidenceChip = useCallback(
-    (tier: SearchRowConfidenceTier | undefined) => (
-      <SearchResultConfidenceChip tier={tier === "verified" ? "verified" : "estimated"} />
-    ),
-    [],
-  );
-
-  // Grouped-card result row (redesign path). Same tap target + a11y as the
-  // flat row, but framed inside a soft-elevated card with the confidence
-  // chip on the topline and a faint inset seam between rows (not a hairline
-  // divider). `isFirst` suppresses the seam on the first row of a card.
-  const renderCardRow = useCallback(
-    (item: SearchRow, isFirst: boolean) => {
-      const isLoading = loadingKey === item.key;
-      const isCustom = item._source === "CUSTOM";
-      const customFood = isCustom ? item._custom : null;
-      const headline = resolveFoodSearchHeadline(item);
-      const primary = item.primaryServing ?? null;
-      return (
-        <Pressable
-          key={item.key}
-          onPress={() => onPickResult(item)}
-          onLongPress={isCustom && customFood ? () => openCustomFoodActions(customFood) : undefined}
-          disabled={isLoading}
-          accessibilityRole="button"
-          accessibilityLabel={
-            isCustom
-              ? `Custom food: ${item.name}. Long-press for edit or delete.`
-              : primary
-                ? `${item.name}. ${primary.kcal} kcal per ${primary.label}, ${primary.grams} grams.`
-                : item.name
-          }
-          style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            gap: Spacing.md,
-            paddingHorizontal: Spacing.md,
-            paddingVertical: Spacing.md,
-            borderTopWidth: isFirst ? 0 : StyleSheet.hairlineWidth,
-            borderTopColor: colors.cardBorder,
-            backgroundColor: pressed ? colors.background : "transparent",
-          })}
-        >
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flexWrap: "wrap" }}>
-              {isCustom && <Badge variant="custom">Custom</Badge>}
-              {renderConfidenceChip(item.confidenceTier)}
-              <Text style={styles.resultName} numberOfLines={2}>
-                {item.name}
-              </Text>
-            </View>
-            {headline.mode === "per-serving" ? (
-              <>
-                <View style={styles.macroPreview}>
-                  <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
-                </View>
-                <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
-                <Text style={styles.per100g}>
-                  {headline.servingLabel}
-                  {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
-                </Text>
-              </>
-            ) : headline.mode === "per-100g" && headline.macros ? (
-              <>
-                <View style={styles.macroPreview}>
-                  <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
-                  <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
-                </View>
-                <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
-              </>
-            ) : headline.mode === "per-100g" ? (
-              <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
-            ) : (
-              <Text style={styles.per100g}>Tap for nutrition info</Text>
-            )}
-            {customFood && isLearnedCustomFoodSource(customFood.source) ? (
-              <Text
-                testID="learned-custom-food-cue"
-                style={{ fontSize: 11, fontStyle: "italic", color: colors.textSecondary, marginTop: 2 }}
-              >
-                {LEARNED_CUSTOM_FOOD_REUSE_CUE}
-              </Text>
-            ) : null}
-          </View>
-          {headline.mode !== "placeholder" && !isLoading ? (
-            <View style={{ alignItems: "flex-end" }}>
-              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
-                {headline.headlineKcal}
-              </Text>
-              <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.4 }}>KCAL</Text>
-            </View>
-          ) : null}
-          {isLoading ? (
-            <ActivityIndicator size="small" color={accent.primary} />
-          ) : (
-            <ChevronRight size={16} color={colors.textTertiary} />
-          )}
-        </Pressable>
-      );
-    },
-    [loadingKey, onPickResult, openCustomFoodActions, renderConfidenceChip, colors, styles],
-  );
-
-  // FlatList renderItem for the redesigned, sectioned feed. Headers render
-  // the uppercase section label; rows render `renderCardRow` wrapped in a
-  // per-section soft-elevated card (rounded top on the first row, rounded
-  // bottom on the last, so contiguous rows read as one pressable card).
+  // FlatList renderItem for the redesigned, sectioned feed — extracted to
+  // `<FoodSearchFeedItem>` (ENG-1532) so this pinned file only shrinks.
+  // Headers render the uppercase section label; rows render either the
+  // ENG-814 grouped card (component_grammar_dedup OFF, byte-intact) or the
+  // unified Past-logged-skeleton plain row (flag ON).
   const renderRedesignItem = useCallback(
-    ({ item }: { item: RenderRow }) => {
-      if (item.kind === "header") {
-        return (
-          <Text
-            testID={`food-search-section-${item.label === "Best matches" ? "best" : "more"}`}
-            style={{
-              fontSize: 11,
-              fontWeight: "800",
-              letterSpacing: 0.6,
-              color: colors.textTertiary,
-              textTransform: "uppercase",
-              marginTop: Spacing.md,
-              marginBottom: Spacing.sm,
-              marginHorizontal: 2,
-            }}
-          >
-            {item.label}
-          </Text>
-        );
-      }
-      // Soft-elevated grouped card. The shadow lives on the same View as the
-      // row content (no `overflow: hidden`, so iOS shadows are not clipped);
-      // corner radius is applied per card-position so the section reads as a
-      // single card. Dark mode uses the tonal lift + hairline (per
-      // `useCardElevation`); light mode uses the soft shadow.
-      return (
-        <View
-          style={[
-            {
-              backgroundColor: cardElevation.liftBg ?? colors.card,
-              borderTopLeftRadius: item.isFirst ? Radius.lg : 0,
-              borderTopRightRadius: item.isFirst ? Radius.lg : 0,
-              borderBottomLeftRadius: item.isLast ? Radius.lg : 0,
-              borderBottomRightRadius: item.isLast ? Radius.lg : 0,
-              borderLeftWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
-              borderRightWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
-              borderTopWidth: cardElevation.useBorder && item.isFirst ? StyleSheet.hairlineWidth : 0,
-              borderBottomWidth: cardElevation.useBorder && item.isLast ? StyleSheet.hairlineWidth : 0,
-              borderColor: colors.cardBorder,
-            },
-            // Apply the soft shadow only on the first row of a card; a single
-            // shadow on the top row reads as the card's lift without stacking
-            // four overlapping shadows down the group.
-            item.isFirst ? cardElevation.shadowStyle : undefined,
-          ]}
-        >
-          {renderCardRow(item.row, item.isFirst)}
-        </View>
-      );
-    },
-    [renderCardRow, cardElevation, colors],
+    ({ item }: { item: RenderRow }) => (
+      <FoodSearchFeedItem
+        item={item}
+        loadingKey={loadingKey}
+        mc={mc}
+        styles={styles}
+        onPickResult={onPickResult}
+        onLongPressCustom={openCustomFoodActions}
+      />
+    ),
+    [loadingKey, mc, styles, onPickResult, openCustomFoodActions],
   );
 
   // Locale-resolved hint flag (2026-04-26 — Premier Free is US-only).

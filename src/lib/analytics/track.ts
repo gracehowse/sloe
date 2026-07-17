@@ -484,6 +484,16 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // surface. Off → the direct `<NutritionTracker>` render in App.tsx
   // (kill switch).
   "today_desktop_frame_v1",
+  // ENG-1532 — component-grammar dedup: sub-tab switchers (Recipes
+  // Cookbook/Discover, Plan This week/Shopping) render the §8 SegmentedTrack
+  // pill (Shopping keeps its count badge via the new SegmentedTrack badge
+  // option) instead of the SubTabPill underline tabs; plus the one-search-row
+  // grammar and single barcode entry point. Default-ON per the beta-window
+  // "always flag on" policy (N=1 tester); flag-off renders every gated
+  // surface byte-intact — SubTabPill underline tabs, carded BEST MATCHES,
+  // scan tile + search-row scanner icons (kill switch: remove here /
+  // PostHog). Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
+  "component_grammar_dedup",
 ]);
 
 /**

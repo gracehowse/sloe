@@ -4,7 +4,7 @@
  * chrome that clipped at accessibility Dynamic Type sizes (evidence:
  * apps/mobile/screenshots/agent/audit-71-today-a11y.png):
  *
- *  - the five v3 method tiles carry NO fixed height (containers grow with
+ *  - the v3 method tiles carry NO fixed height (containers grow with
  *    type size) and their labels carry the F-36 clamp
  *    (`maxFontSizeMultiplier={1.2}` — the library.tsx convention) so
  *    single-word labels never clip mid-glyph;
@@ -110,12 +110,14 @@ function open(props?: Partial<LogSheetProps>) {
 
 describe("LogSheet Dynamic Type (ENG-1529)", () => {
   it("method tiles carry no fixed height, and tile labels carry the F-36 1.2 clamp", () => {
+    // ENG-1532 — `component_grammar_dedup` (mocked ON with every flag here)
+    // drops the Scan tile; the loud CTA is the single scanner entry.
     const { getByTestId, getByText } = open();
-    for (const key of ["scan", "photo", "voice", "describe", "quick"]) {
+    for (const key of ["photo", "voice", "describe", "quick"]) {
       const style = StyleSheet.flatten(getByTestId(`log-sheet-method-${key}`).props.style);
       expect(style?.height, `tile ${key} must not fix its height`).toBeUndefined();
     }
-    for (const label of ["Scan", "Photo", "Voice", "Describe", "Quick add"]) {
+    for (const label of ["Photo", "Voice", "Describe", "Quick add"]) {
       expect(getByText(label).props.maxFontSizeMultiplier).toBe(1.2);
     }
   });

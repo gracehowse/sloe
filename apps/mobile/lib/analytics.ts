@@ -649,6 +649,17 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (pre-gloss) label at each site — never a broken render, so still a safe
   // kill switch. Mirror of the web entry in src/lib/analytics/track.ts. M+W.
   "onboarding_jargon_gloss_v1",
+  // ENG-1532 — component-grammar dedup: sub-tab switchers (Recipes
+  // Cookbook/Discover, Plan This week/Shopping list) render the §8
+  // SegmentedTrack pill (Shopping keeps its count badge via the new
+  // SegmentedTrack badge option) instead of the SubTabPill underline tabs;
+  // plus the one-search-row grammar and single barcode entry point.
+  // Default-ON per the beta-window "always flag on" policy (N=1 tester);
+  // flag-off renders every gated surface byte-intact — SubTabPill underline
+  // tabs, carded BEST MATCHES, scan tile + search-row scanner icons (kill
+  // switch: remove here / PostHog). Web + mobile — keep in sync with
+  // src/lib/analytics/track.ts.
+  "component_grammar_dedup",
 ]);
 
 /**

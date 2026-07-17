@@ -1,9 +1,13 @@
 import React from "react";
+import { View } from "react-native";
 
+import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import { SubTabPill } from "@/components/ui/SubTabPill";
+import { Spacing } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
- * PlanSubTabHeader — segmented sub-tab pill bar shown at the top of
+ * PlanSubTabHeader — segmented sub-tab bar shown at the top of
  * the Plan tab to flip between the weekly Plan and Shopping list
  * sub-views once the 6→4 tab collapse landed (Phase 2 / B1.1,
  * 2026-04-27 strategic spec).
@@ -19,11 +23,11 @@ import { SubTabPill } from "@/components/ui/SubTabPill";
  * purely a visual segmented control whose `value` and `onChange` are
  * owned by the planner host.
  *
- * Refactored 2026-04-28 (Next-10 #13 from the teardown doc) to use
- * the shared `<SubTabPill>` primitive at
- * `apps/mobile/components/ui/SubTabPill.tsx`. The Shopping pill's
- * unread-count badge is exposed via `items[1].badge` — the primitive
- * renders the pill counter natively (≤99 / "99+" formatting included).
+ * ENG-1532 (component-grammar dedup): renders the §8 `SegmentedTrack`
+ * pill, with the Shopping unchecked-count badge carried by the track's
+ * per-option `badge` (hidden at 0, "999+" cap). Flag-off renders the
+ * legacy `SubTabPill` underline tabs byte-intact (kill switch) — its
+ * badge behaviour unchanged.
  */
 export type PlanSubTab = "plan" | "shopping";
 
@@ -38,6 +42,34 @@ export function PlanSubTabHeader({
   onChange,
   shoppingUncheckedCount = 0,
 }: PlanSubTabHeaderProps) {
+  if (isFeatureEnabled("component_grammar_dedup")) {
+    return (
+      <View
+        style={{
+          paddingHorizontal: Spacing.xl,
+          paddingTop: Spacing.sm,
+          paddingBottom: Spacing.lg,
+        }}
+      >
+        <SegmentedTrack<PlanSubTab>
+          role="tablist"
+          options={[
+            { value: "plan", label: "This week", accessibilityLabel: "This week" },
+            {
+              value: "shopping",
+              label: "Shopping list",
+              accessibilityLabel: "Shopping list",
+              badge: shoppingUncheckedCount,
+            },
+          ]}
+          value={value}
+          onChange={onChange}
+          accessibilityLabel="Plan sections"
+        />
+      </View>
+    );
+  }
+
   return (
     <SubTabPill<PlanSubTab>
       items={[
