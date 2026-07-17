@@ -660,6 +660,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // switch: remove here / PostHog). Web + mobile — keep in sync with
   // src/lib/analytics/track.ts.
   "component_grammar_dedup",
+  // ENG-1438 (2026-07-05 deep audit, MP-06/LEGAL-006) — condensed one-line
+  // auto-renewal disclosure directly under the sticky purchase CTA
+  // (`buildStickyRenewalLine` in `src/lib/landing/paywallTrust.ts`).
+  // Pre-fix the full disclosure sat below the fold while the CTA was
+  // visible from frame one. Legal-reviewed copy; shared web + mobile.
+  // Off → no condensed line (kill switch; full disclosure below the fold
+  // is unchanged either way). Mirror of the web entry in
+  // src/lib/analytics/track.ts. M+W.
+  "paywall_sticky_renewal_line_v1",
 ]);
 
 /**

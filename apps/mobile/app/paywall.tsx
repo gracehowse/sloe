@@ -55,7 +55,7 @@ import { TrialEndReminderPaywallBlock, type TrialEndReminderPaywallBlockHandle }
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents, type PaywallViewedFrom } from "@suppr/shared/analytics/events";
 import { PRICING_TIERS, type PricingTier, computeAnnualSavingsBadge } from "@suppr/shared/landing/pricingTiers";
-import { getPaywallTrustChips, buildReceiptTrustCopy } from "@suppr/shared/landing/paywallTrust";
+import { getPaywallTrustChips, buildReceiptTrustCopy, buildStickyRenewalLine } from "@suppr/shared/landing/paywallTrust";
 import {
   buildPersonalisedPlanPaywallSummary,
   shouldLeadPaywallWithPersonalisedPlan,
@@ -1314,10 +1314,10 @@ export default function PaywallScreen() {
       >
         {trialApplies && currentProPkg && hasPro ? <PaywallNoPaymentChip /> : null}
         {primaryPurchaseCta}
+        {isFeatureEnabled("paywall_sticky_renewal_line_v1") && currentProPkg && <Text style={styles.secondaryNote}>{buildStickyRenewalLine({ trialApplies, price: currentProPkg.product.priceString, period: periodSuffix, cancelSurface: "Settings" })}</Text>}
         <Pressable
           testID="paywall-restore-footer"
-          onPress={() => void onRestore()}
-          disabled={restoring}
+          onPress={() => void onRestore()} disabled={restoring}
           accessibilityRole="button"
           accessibilityLabel="Restore previous purchases"
           hitSlop={8}

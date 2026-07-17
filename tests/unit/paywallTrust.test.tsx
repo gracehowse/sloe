@@ -21,6 +21,7 @@ import { render, screen } from "@testing-library/react";
 import {
   PAYWALL_TRUST_CHIPS,
   buildReceiptTrustCopy,
+  buildStickyRenewalLine,
   getPaywallTrustChips,
 } from "../../src/lib/landing/paywallTrust";
 import { PaywallTrustStrip } from "../../app/pricing/PaywallTrustStrip";
@@ -164,5 +165,40 @@ describe("buildReceiptTrustCopy — receipt composition", () => {
     });
     expect(copy.toLowerCase()).not.toContain("email support to cancel");
     expect(copy.toLowerCase()).not.toContain("contact support to cancel");
+  });
+});
+
+describe("buildStickyRenewalLine — condensed sticky-bar disclosure (ENG-1438)", () => {
+  it("trial branch states trial length, auto-conversion, converted price, and the cancel-before trigger", () => {
+    const line = buildStickyRenewalLine({
+      trialApplies: true,
+      price: "£7.99",
+      period: "/year",
+      cancelSurface: "account settings",
+    });
+    expect(line).toContain("7-day free trial");
+    expect(line).toContain("auto-renews at £7.99/year");
+    expect(line).toContain("cancel before day 7");
+  });
+
+  it("non-trial branch states price, auto-renewal, and the platform cancel path", () => {
+    const line = buildStickyRenewalLine({
+      trialApplies: false,
+      price: "£7.99",
+      period: "/month",
+      cancelSurface: "account settings",
+    });
+    expect(line).toContain("£7.99/month");
+    expect(line).toContain("auto-renews until cancelled");
+    expect(line).toContain("cancel anytime in account settings");
+    // Never claims a trial on a SKU that doesn't carry one (ENG-1436).
+    expect(line).not.toContain("free trial");
+  });
+
+  it("substitutes the platform-specific cancel surface", () => {
+    const web = buildStickyRenewalLine({ trialApplies: false, price: "£7.99", period: "/month", cancelSurface: "account settings" });
+    const mobile = buildStickyRenewalLine({ trialApplies: false, price: "£7.99", period: "/month", cancelSurface: "Settings" });
+    expect(web).toContain("account settings");
+    expect(mobile).toContain("cancel anytime in Settings");
   });
 });

@@ -156,6 +156,42 @@ export const PAYWALL_TRUST_CHIPS: ReadonlyArray<PaywallTrustChip> = [
  *   - refund window + zero-email-needed promise
  *   - support email as a fallback (not as a gate)
  */
+/**
+ * ENG-1438 (2026-07-05 deep audit, MP-06/LEGAL-006) — condensed one-line
+ * auto-renewal disclosure for the ALWAYS-VISIBLE sticky/hero purchase CTA.
+ * The full paragraph disclosure (mobile `disclosureText` in
+ * `apps/mobile/app/paywall.tsx`, web `BillingDisclosure.tsx`) sits below the
+ * fold; the sticky CTA is visible from frame one, so a user could tap
+ * purchase without ever scrolling past it. This renders alongside the CTA
+ * itself, behind the `paywall_sticky_renewal_line_v1` flag (registered in
+ * `REDESIGN_DEFAULT_ON` on both platforms).
+ *
+ * Legal-reviewed wording (2026-07-17): states all four required elements in
+ * one line — it's a trial, it converts to a paid subscription automatically,
+ * the price it converts to, and that the user can cancel before it converts
+ * (trial branch) — or price + auto-renewal + cancel path (non-trial branch,
+ * since only the annual SKU carries a trial, ENG-1285/ENG-1436). Consistent
+ * with, and does not replace, the full disclosure paragraph.
+ */
+export function buildStickyRenewalLine(args: {
+  /** True only for the annual SKU — the sole plan carrying a 7-day trial. */
+  trialApplies: boolean;
+  /** Resolved price string, e.g. "£7.99" (platform's own priceString/SSOT). */
+  price: string;
+  /** Period suffix including its leading separator, e.g. "/year" or "/month". */
+  period: string;
+  /** Where the user actually cancels — platform-specific ("Settings" on
+   *  mobile, "account settings" on web) so the line never implies a path
+   *  that doesn't exist on this platform. */
+  cancelSurface: string;
+}): string {
+  const { trialApplies, price, period, cancelSurface } = args;
+  if (trialApplies) {
+    return `7-day free trial, then auto-renews at ${price}${period} — cancel before day 7 to avoid charges.`;
+  }
+  return `${price}${period}, auto-renews until cancelled — cancel anytime in ${cancelSurface}.`;
+}
+
 export function buildReceiptTrustCopy(args: {
   trialEndsLabel: string;
   cancelPath: string;
