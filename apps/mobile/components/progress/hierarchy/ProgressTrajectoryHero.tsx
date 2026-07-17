@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View, useColorScheme } from "react-native";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Plus, TrendingDown, TrendingUp } from "lucide-react-native";
 
 import { CARD_RADIUS, SupprCard } from "@/components/ui/SupprCard";
@@ -139,18 +138,15 @@ export function ProgressTrajectoryHero(props: ProgressTrajectoryHeroProps) {
         padding: Spacing.lg,
       }}
     >
-      {/* Hero wash — react-native-svg gradient (expo-linear-gradient is
-          intentionally not installed; same pattern as NorthStarFigmaHero).
-          Colours come ONLY from the ENG-1525 heroTint tokens. */}
-      <Svg style={StyleSheet.absoluteFill} pointerEvents="none" width="100%" height="100%">
-        <Defs>
-          <LinearGradient id="progress-hero-tint" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={colors.heroTint} />
-            <Stop offset="1" stopColor={colors.heroTintTo} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#progress-hero-tint)" />
-      </Svg>
+      {/* Hero wash — a flat token wash, not an SVG gradient: react-native-svg
+          mangles rgba() alpha in gradient stops (renders the hue opaque), so
+          the sim showed a solid plum slab. A plain View honours the token's
+          alpha; the top→bottom fade stays a web-only nicety (deliberate
+          platform deviation, same tokens). */}
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors.heroTint }]}
+      />
 
       <HierarchyOverline testID="progress-hierarchy-trajectory-overline">
         {hasGoal ? "Weight · toward goal" : "Weight"}

@@ -418,6 +418,15 @@ describe("ProgressHierarchyV1 — §3 Energy equation (mobile)", () => {
     );
   });
 
+  it("§5 quiet week: verdict renders, Share pill does not (shareText null)", () => {
+    const props = baseProps();
+    props.yourWeek = { ...props.yourWeek!, headline: "Quiet week.", shareText: null, usualMealLine: null, bestDay: null };
+    const r = render(<ProgressHierarchyV1 {...props} />);
+    const tree = r.toJSON() as JsonNode;
+    expect(textOf(findByTestId(tree, "progress-hierarchy-your-week-verdict"))).toBe("Quiet week.");
+    expect(findByTestId(tree, "progress-hierarchy-your-week-share")).toBeNull();
+  });
+
   it("below the story floor the numeral gives way — no confident deficit from one logged day", () => {
     const props = baseProps();
     props.energy = { ...props.energy!, hasEnoughData: false };

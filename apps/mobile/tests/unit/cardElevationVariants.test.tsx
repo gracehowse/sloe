@@ -314,9 +314,12 @@ describe("progress-hierarchy-v1 tinted hero carve-out (ENG-1525/ENG-1497)", () =
     // Flat + hairline chrome (the ENG-1497 grammar) with the token border…
     expect(hero).toMatch(/borderWidth:\s*StyleSheet\.hairlineWidth/);
     expect(hero).toMatch(/borderColor:\s*colors\.heroTintBorder/);
-    // …and the wash's gradient stops come ONLY from the tokens.
-    expect(hero).toMatch(/stopColor=\{colors\.heroTint\}/);
-    expect(hero).toMatch(/stopColor=\{colors\.heroTintTo\}/);
+    // …and the wash comes ONLY from the token — a flat View backgroundColor,
+    // NOT an SVG gradient: react-native-svg mangles rgba() alpha in gradient
+    // stops (rendered a solid plum slab on sim, 2026-07-17). The top→bottom
+    // fade is a web-only nicety on the same tokens.
+    expect(hero).toMatch(/backgroundColor:\s*colors\.heroTint\b/);
+    expect(hero).not.toMatch(/stopColor/);
   });
 
   it("exactly ONE surface carries the tint — no other hierarchy section references heroTint", () => {

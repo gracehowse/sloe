@@ -1374,12 +1374,12 @@ export default function ProgressScreen() {
               userTier, latestBodyFatPct: null, latestLeanMassKg: null,
               onOpenPaywall: () => router.push("/paywall?from=body_composition" as never),
             } : null}
-            yourWeek={recap.daysLogged > 0 ? {
-              weekKey: recap.weekKey, shareText: formatRecapForShare(recap),
+            yourWeek={{
+              weekKey: recap.weekKey, shareText: recap.daysLogged > 0 ? formatRecapForShare(recap) : null,
               headline: resolveDigestHeadline({ weightDeltaKg: recap.weightDeltaKg, closestToTargetLabel: recap.bestDay?.label ?? null, streakDays: recap.streakLength, daysLogged: recap.daysLogged }),
               usualMealLine: usualMealInsight?.kind === "celebration" ? `${usualMealInsight.name} — your usual, logged ${usualMealInsight.count}× last week` : null,
               bestDay: recap.bestDay ? { label: recap.bestDay.label, protein: recap.bestDay.protein, calories: recap.bestDay.calories } : null,
-            } : null}
+            }}
           />
         );
       })() : (<>

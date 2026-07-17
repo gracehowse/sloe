@@ -40,8 +40,10 @@ export interface ProgressYourWeekSectionProps {
   usualMealLine?: string | null;
   /** `recap.bestDay` — the closest-to-target day. */
   bestDay: { label: string; protein: number; calories: number } | null;
-  /** `formatRecapForShare(recap)` — the share sheet body. */
-  shareText: string;
+  /** `formatRecapForShare(recap)` — the share sheet body. Null on a
+   *  quiet week (nothing to share yet): the verdict still renders, the
+   *  Share pill does not. */
+  shareText: string | null;
   /** Optional host hook, fired alongside the owned share analytics
    *  (mirrors Digest, where the host's onShare is a no-op). */
   onShare?: () => void;
@@ -58,6 +60,7 @@ export function ProgressYourWeekSection({
   const colors = useThemeColors();
 
   const handleShare = useCallback(async () => {
+    if (!shareText) return;
     track(AnalyticsEvents.weekly_recap_shared, { weekKey, platform: Platform.OS });
     onShare?.();
     try {
@@ -98,6 +101,7 @@ export function ProgressYourWeekSection({
         </Text>
       ) : null}
 
+      {shareText == null ? null : (
       <SupprButton
         variant="ghost"
         testID="progress-hierarchy-your-week-share"
@@ -110,6 +114,7 @@ export function ProgressYourWeekSection({
           <Text style={{ ...Type.button, color: colors.navPrimary }}>Share</Text>
         </View>
       </SupprButton>
+      )}
     </SupprCard>
   );
 }
