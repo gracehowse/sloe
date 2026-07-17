@@ -322,3 +322,29 @@ these as the target, not as app drift.
 > `screenshots/mobile-progress.png` and `screenshots/web-progress.png` predate the
 > ENG-1525 hierarchy — the live `Sloe-App.html` is the source of truth for Progress
 > until those captures are regenerated.
+
+## Changelog — 2026-07-17 · "Premium pass" preview (Tweaks → Style → Premium pass)
+
+A toggled A/B preview of the premium elevation direction, benchmarked against Oura /
+Lifesum / Julienne ("editorial where food, instrument where data"). **Current stays
+canonical**; Elevated is a proposal awaiting Grace's ratification. Gated behind
+`data-premium="1"` on the html root + the `premium` flag in app state — flip it live
+from the Tweaks panel. What Elevated changes:
+
+1. **Warm editorial ground** — light-theme `--bg` → `#fbfaf6` (oat-tinged; grouped/
+   secondary/muted follow). Cards lift by warmth contrast; plum hairlines stay.
+   ⚠ Ratifying this reverses the P0 "pure white in-product" ground ruling.
+2. **Instrument-grade data viz** — the daily ring promotes to the existing "jewel
+   dial" segments variant (gradient-lit ticks, glowing leading mark, radial core);
+   macro rings gain a soft macro-tinted backdrop + tinted track so they read complete
+   at low fill; the Progress trajectory gets a gradient stroke + area fade + glowing
+   endpoint; week bars and the expenditure band pick up vertical gradients.
+3. **Broken card rhythm** — the eat-next hero goes full-bleed edge-to-edge on mobile
+   (taller photo, bigger serif title); Plan's day verdict takes the tinted-hero
+   treatment (one per screen, matching Progress §1).
+4. **Placeholder kill** — cuisine letter monograms become duotone plum-graded photo
+   tiles (one shared base image = designed texture, not fake cuisine photography);
+   creator monograms gain a quiet frost ring while real photos are pending.
+
+Not in the preview (next tranche if ratified): micro-motion/win-moment demos, web
+dashboard de-templating, decorative-colour audit.
