@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { render } from "@testing-library/react-native";
+import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const trackMock = vi.fn();
@@ -111,6 +112,36 @@ describe("useJournalWriteAhead", () => {
     expect(result).toEqual({ persisted: false, timedOut: true });
     const queued = await loadQueueRaw();
     expect(queued.entries.map((e) => e.row.id)).toEqual(["meal-1"]);
+  });
+
+  it("ENG-1522 — suppressFailureAlert: true skips the 'Saved on this device' Alert on a rejected upsert", async () => {
+    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(() => {});
+    let hookApi!: ReturnType<typeof useJournalWriteAhead>;
+    const { supabase } = makeSupabase({ upsert: () => ({ error: { message: "network error" } }) });
+    render(<Harness supabase={supabase} onReady={(api) => (hookApi = api)} />);
+
+    const result = await hookApi.writeAhead("2026-07-06", [{ id: "meal-1" }], {
+      suppressFailureAlert: true,
+    });
+
+    expect(result).toEqual({ persisted: false, timedOut: false });
+    expect(alertSpy).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it("ENG-1522 — omitting suppressFailureAlert keeps the default 'Saved on this device' Alert on a rejected upsert", async () => {
+    const alertSpy = vi.spyOn(Alert, "alert").mockImplementation(() => {});
+    let hookApi!: ReturnType<typeof useJournalWriteAhead>;
+    const { supabase } = makeSupabase({ upsert: () => ({ error: { message: "network error" } }) });
+    render(<Harness supabase={supabase} onReady={(api) => (hookApi = api)} />);
+
+    await hookApi.writeAhead("2026-07-06", [{ id: "meal-1" }]);
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "Saved on this device",
+      "We'll sync this log when you're back online.",
+    );
+    alertSpy.mockRestore();
   });
 
   it("duplicate-safety: a flush retry after a successful-but-unacked write does not duplicate the row (onConflict: id)", async () => {

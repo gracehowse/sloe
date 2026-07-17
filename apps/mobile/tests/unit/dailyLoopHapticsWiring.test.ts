@@ -42,6 +42,13 @@ const WIN_HOOK = readFileSync(
   resolve(__dirname, "../../hooks/use-win-moment.ts"),
   "utf8",
 );
+// ENG-1522 — the copy/duplicate insert primitive (the second funnel below)
+// was extracted out of TodayScreen.tsx into its own hook so the honest
+// persisted/failed reporting fix didn't grow this pinned screen-budget file.
+const COPY_DUPLICATE_HOOK = readFileSync(
+  resolve(__dirname, "../../hooks/useCopyDuplicateMeal.ts"),
+  "utf8",
+);
 
 describe("Daily-loop haptics — LOG MEAL (Today)", () => {
   it("Today fires the confirm haptic on the persist-success path", () => {
@@ -54,13 +61,16 @@ describe("Daily-loop haptics — LOG MEAL (Today)", () => {
     // The commit beat is invoked through the shared `confirmLogHapticRef` funnel,
     // never as a scattered raw `Haptics.impactAsync(...)` per log entry point.
     // Two distinct durable-commit code paths fire it (ENG-1016):
-    //   1. `persistMealsImmediate` — the upsert funnel every add/quick-add/
-    //      search/saved-meal/barcode/AI log flows through.
-    //   2. the copy/duplicate path, which does its own insert (not the upsert
-    //      funnel) so it invokes the ref itself.
+    //   1. `persistMealsImmediate` (TodayScreen.tsx) — the upsert funnel every
+    //      add/quick-add/search/saved-meal/barcode/AI log flows through.
+    //   2. the copy/duplicate path (ENG-1522: extracted to
+    //      `useCopyDuplicateMeal.ts`), which does its own insert (not the
+    //      upsert funnel) so it invokes the ref itself.
     // Each fires exactly once per commit — no double-buzz within a single path.
-    const calls = TODAY.match(/confirmLogHapticRef\.current\(\)/g) ?? [];
-    expect(calls.length).toBe(2);
+    const todayCalls = TODAY.match(/confirmLogHapticRef\.current\(\)/g) ?? [];
+    const copyDuplicateCalls = COPY_DUPLICATE_HOOK.match(/confirmLogHapticRef\.current\(\)/g) ?? [];
+    expect(todayCalls.length).toBe(1);
+    expect(copyDuplicateCalls.length).toBe(1);
   });
 
   it("the ref is kept current from the useWinMoment confirmLog handler", () => {
