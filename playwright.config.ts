@@ -1,3 +1,5 @@
+// ENG-1525: docs-only PR touch so CI `paths-ignore` (docs/**, **.md) still runs
+// required `test`/`mobile` checks. Safe to remove after #925 merges.
 import { defineConfig, devices } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";

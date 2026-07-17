@@ -90,12 +90,53 @@ Colour **means** something or it doesn't appear.
 
 One screen should read near-monochrome plum-ink until the *data* speaks.
 
-## Rule 5 — The numeric instrument scale
+## Rule 5 — The type roles (amended 2026-07-17, after Grace's S8 verdict)
 
-Serif, tabular. **Hero numeral 44–46** (one per screen) · **section numeral 28** ·
-row numeral 15–17 · caption 11–12. **Story tier (recap scenes ONLY, ratified with
-Rule 8's ≥8:1 law): display numeral 84 · statement 40 — one per scene.** No other
-numeric sizes exist.
+Grace's S8 finding: "every font is a different size, weight, colour — there are no
+rules or logic." Root cause: the constitution had a numeral *scale* but no *role
+system* — every component chose its own size/weight/colour combination, so
+same-role elements rendered differently (a green sibling stat next to ink ones;
+ring labels in dark sentence-case beside caps-grey labels; semibold sprinkled
+mid-sentence). The fix: **every text node maps to exactly one of ten roles.** A
+treatment not in this table does not exist.
+
+| # | Role | Font | Size | Weight | Colour | Used for |
+|---|---|---|---|---|---|---|
+| 1 | `display` | Newsreader, tnum | 46 | 500 | ink — state colour permitted on THIS element only | THE hero numeral, one per screen (the ring). Full-screen sheets count as screens: their single hero numeral (meal-detail total, burn total, adaptive-TDEE result, fasting timer) is a display 46 |
+| 2 | `stat` | Newsreader, tnum | 28 | 500 | **ink, always** | card-headline numerals — one per card (net-energy result, steps tile, prices, kcal lines). Sibling stats never differ in colour — state lives in the pill/dot, not the numeral |
+| 3 | `stat-sm` | Newsreader, tnum | 20 | 500 | ink | in-card trios and grids (Eaten/Goal/Left, Burned/Eaten/Maintenance), macro-ring numerals, day totals, row numerals in serif register |
+| 4 | `title` | Newsreader | 33 | 500 | ink | page titles, full-screen sheet/overlay headlines (recipe hero, paywall, cook-mode step) |
+| 5 | `content` | Newsreader | 18–22 | 500 | ink | dish names (18 floor), verdict sentences, editorial statements, card headlines |
+| 6 | `label` | Inter, caps, tracked .1em | 11 | 700 | fg-tertiary | ALL structural labels — section heads, in-card overlines, column heads (EATEN/GOAL/LEFT), axis words, stat sublabels. One variant only |
+| 7 | `body` | Inter | 15 | 400 | ink | row titles, primary sentences. Emphasis: at most ONE 600-weight phrase per verdict sentence |
+| 8 | `support` | Inter | 13 | 400 | fg-secondary | descriptive sublines, "of 151g", ring labels (Protein/Carbs/Fat), unit suffixes ("/ 10,000", "kcal"), meta |
+| 9 | `caption` | Inter | 12 | 400 | fg-tertiary | timestamps, footnotes, provenance ("From your cookbook"). Chart micro-text 9–11 exempt as `chart-micro` |
+| 10 | `interactive` | Inter | 13–15 | 600 | control kit | buttons, links, chips, tabs, "+ Add" rows — **the only other home of sans-600** |
+| 11 | `accent` | Newsreader italic | 15 (18 as a display accent) | 400 | fg or fg-secondary | quotes, citations, recipe attributions ("You said", cook-mode recipe line) |
+
+**Story tier (recap scenes ONLY, ratified with Rule 8's ≥8:1 law): display numeral
+84 · statement 40 — one per scene.** Two glyph exemptions, ratified: **monograms**
+(serif initials inside avatar circles are glyphs sized to their circle, not text)
+and **macro tokens** (`46P 12C 9F` strips: 12/600/macro-hue tnum — part of the
+macro visualisation grammar under Rule 4, the one sanctioned coloured-numeral
+register outside `display`). No other type treatments exist.
+
+Three hard corollaries:
+- **Sans-600/700 lives only in `label` and `interactive`** (plus the single body
+  emphasis phrase). A bold word anywhere else is a violation.
+- **Numeral colour is ink** except the one `display` element per screen,
+  semantic bar/arc fills, and macro tokens. Colouring one stat green beside ink
+  siblings is the exact chaos S8 was faulted for.
+- **Serif appears only at role sizes** (46 / 33 / 28 / 20 / 18–22 / accent 15 /
+  story tier). A serif numeral at 24 or a serif dish name at 15 is off-role.
+
+**Enforced 2026-07-17 (build S9):** a 4-lens node census (Today / Progress+story /
+Plan+Cook+Import / Web) found 97 role deviations; all fixed, plus a deterministic
+tail sweep over every sheet, onboarding, paywall and web-shell rule. End state,
+verified programmatically: serif exists at role sizes only; caps-label tracking
+is 100% `.1em`; serif-600 count is zero (monograms exempt); the label register
+is one spec (11/700/.1em/fg-tertiary — `fg-muted` is the same hex and appears
+only in legacy rules).
 
 ## Rule 6 — Ground & depth
 
@@ -214,9 +255,18 @@ breaking case); the ink sidebar reverted to the light refined shell; chrome icon
 replaced with true Lucide geometry (the fork was two-pronged with a stray stem —
 "malformed and cheap" was accurate); section rhythm normalised to 28/10.
 
-Still open for the next tranche: full spacing audit against the 4px grid (Grace:
-"still massive spacing issues" — the 28/10 label rhythm is a first cut, not the
-audit), decorative-colour sweep of sheets/pushed screens,
+**Fix round (2026-07-17, sign-off build):** clay eliminated from all 11 remaining
+use-sites globally (discover like, onboarding stars/first-win, recipe PRO pill,
+favourite heart, streak flames, settings plates, household avatar tints,
+why-number figures — all rebound to plum/frost); structural spacing snapped to
+the ratified scale across 16 rhythm specs (section labels 24/12, story scenes
+32/40, card/tile paddings 16/20, hero-tinted plan-day 16); six more
+hand-modified icons replaced with official Lucide geometry (the malformed fork
+survived under a second name on meal rows — utensils, user, heart, heart-pulse,
+triangle-alert, info); story stat numerals now count up (450ms ease-out,
+reduced-motion safe).
+
+Still open for the next tranche: decorative-colour sweep of sheets/pushed screens,
 onboarding steps against Rule 1, mobile-web breakpoint against the ink shell, live
 count-up numerals in story scenes, a real fit-derivation note for the demo
 threshold on shelf cards.

@@ -332,6 +332,14 @@ everywhere, the one 40px icon button, one chip/rail spec, serif section-heads on
 Progress, clay reserved for Pro). A screen ships at zero violations. Current remains
 the pre-constitution baseline until Grace ratifies.
 
+**Rule 5 is the type-role table (build S9, 2026-07-17, per Grace's ruling):** eleven
+roles (display 46 / stat 28 / stat-sm 20 / title 33 / content 18–22 / label
+11-700-caps / body 15 / support 13 / caption 12 / interactive 600 / accent italic),
+each text node bound to exactly one — enforced across the whole prototype via a
+97-item census + tail sweep. The same table is mirrored in the app's write-time
+Design craft contract (`.claude/agents/_project-context.md`) so real-app UI work
+inherits it.
+
 ## Changelog — 2026-07-17 · "Premium pass" preview (Tweaks → Style → Premium pass)
 
 A toggled A/B preview of the premium elevation direction, benchmarked against Oura /
