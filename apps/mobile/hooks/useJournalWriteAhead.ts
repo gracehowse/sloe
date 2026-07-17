@@ -126,7 +126,13 @@ export function useJournalWriteAhead(supabase: SupabaseClient) {
     async (
       dayKey: string,
       rows: ReadonlyArray<Record<string, unknown>>,
-      opts?: { timeoutMs?: number; onEnqueued?: () => void },
+      opts?: {
+        timeoutMs?: number;
+        onEnqueued?: () => void;
+        // ENG-1522 — a range caller (writes to N days independently) suppresses
+        // this per-day Alert and shows one consolidated message itself.
+        suppressFailureAlert?: boolean;
+      },
     ): Promise<WriteAheadResult> => {
       if (rows.length === 0) return { persisted: true, timedOut: false };
       // Step 1 — durable BEFORE the network attempt.
@@ -141,20 +147,24 @@ export function useJournalWriteAhead(supabase: SupabaseClient) {
 
       if (outcome === UPSERT_TIMEOUT) {
         console.warn("[journalWriteAhead] upsert timed out — row(s) stay queued");
-        Alert.alert(
-          "Saved on this device",
-          "We'll sync this log when you're back online.",
-        );
+        if (!opts?.suppressFailureAlert) {
+          Alert.alert(
+            "Saved on this device",
+            "We'll sync this log when you're back online.",
+          );
+        }
         return { persisted: false, timedOut: true };
       }
 
       const { error } = outcome as { error: { message?: string } | null };
       if (error) {
         console.error("[journalWriteAhead] upsert failed:", error.message);
-        Alert.alert(
-          "Saved on this device",
-          "We'll sync this log when you're back online.",
-        );
+        if (!opts?.suppressFailureAlert) {
+          Alert.alert(
+            "Saved on this device",
+            "We'll sync this log when you're back online.",
+          );
+        }
         return { persisted: false, timedOut: false };
       }
 

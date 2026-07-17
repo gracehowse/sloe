@@ -22,6 +22,10 @@ const MOBILE_TODAY = readFileSync(
   resolve(__dirname, "../../apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
+const MOBILE_COPY_DUPLICATE = readFileSync(
+  resolve(__dirname, "../../apps/mobile/hooks/useCopyDuplicateMeal.ts"),
+  "utf8",
+);
 const MOBILE_RECIPE_DETAIL = readFileSync(
   resolve(__dirname, "../../apps/mobile/app/recipe/[id].tsx"),
   "utf8",
@@ -97,12 +101,10 @@ describe("Phase 2 — mobile insert sites populate recipe_id", () => {
   });
 
   it("copy/duplicate path propagates recipe_id from JournalMeal.recipeId (via buildNutritionEntryRow)", () => {
-    // `insertClonedRowsIntoDay` builds every cloned row via the shared
-    // builder; the clone keeps `recipeId`, the builder maps it to
-    // `recipe_id` (pinned behaviourally in nutritionEntryRowPersistence).
-    // ENG-1076 threaded the canonical `profileTimeZone` as the 4th arg and
-    // wrapped the call across lines — the recipe_id propagation is unchanged.
-    expect(MOBILE_TODAY).toMatch(
+    // ENG-1522 extracted copy/duplicate into `useCopyDuplicateMeal`; the
+    // clone keeps `recipeId`, the shared builder maps it to `recipe_id`
+    // (pinned behaviourally in nutritionEntryRowPersistence).
+    expect(MOBILE_COPY_DUPLICATE).toMatch(
       /withIds\.map\(\(m\) =>\s*buildNutritionEntryRow\(m, targetDayKey, userId, profileTimeZone\)/,
     );
   });

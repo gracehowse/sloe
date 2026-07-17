@@ -47,6 +47,14 @@ const WRITE_AHEAD_LIB_SRC = readFileSync(
   resolve(REPO, "src/lib/nutrition/journalWriteAhead.ts"),
   "utf8",
 );
+// ENG-1522 — insertClonedRowsIntoDay (copy meal / duplicate day) was
+// extracted to useCopyDuplicateMeal so the honest persisted/failed
+// reporting fix didn't grow this pinned screen-budget file. Pin its shape
+// where it now lives, same pattern as the write-ahead hook above.
+const COPY_DUPLICATE_HOOK_SRC = readFileSync(
+  resolve(REPO, "apps/mobile/hooks/useCopyDuplicateMeal.ts"),
+  "utf8",
+);
 
 describe("Today journal — every meal-add path persists to Supabase immediately", () => {
   it("declares persistMealsImmediate helper that delegates to the write-ahead hook", () => {
@@ -124,9 +132,9 @@ describe("Today journal — every meal-add path persists to Supabase immediately
   });
 
   it("insertClonedRowsIntoDay (copy/duplicate) delegates to writeAhead — no inline insert, no pre-write haptic", () => {
-    expect(SRC).toMatch(/const\s+insertClonedRowsIntoDay\s*=\s*useCallback/);
-    const idx = SRC.indexOf("const insertClonedRowsIntoDay");
-    const slice = SRC.slice(idx, idx + 3500);
+    expect(COPY_DUPLICATE_HOOK_SRC).toMatch(/const\s+insertClonedRowsIntoDay\s*=\s*useCallback/);
+    const idx = COPY_DUPLICATE_HOOK_SRC.indexOf("const insertClonedRowsIntoDay");
+    const slice = COPY_DUPLICATE_HOOK_SRC.slice(idx, idx + 3500);
     // ENG-1447 — routed through the same write-ahead helper as every other
     // log-commit path; no more direct `.insert()` (which had no timeout and
     // wasn't upsert-safe against a retried flush) and no raw

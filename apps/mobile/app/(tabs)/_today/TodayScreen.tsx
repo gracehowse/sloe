@@ -140,10 +140,7 @@ import { findPlanDayIdForCalendarDate } from "@suppr/shared/mealPlan/planCalenda
 import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { coerceMacrosWhenCaloriesButNoGrams } from "@suppr/nutrition-core/coerceRecipeMacrosForPlanning";
 import { fetchPlannedMealMicros, type SupabaseLike } from "@suppr/shared/planning/plannedMealMicros";
-import {
-  refreshAdaptiveTdeeForUser,
-  scheduleAdaptiveTdeeRefresh,
-} from "@/lib/refreshAdaptiveTdee";
+import { scheduleAdaptiveTdeeRefresh } from "@/lib/refreshAdaptiveTdee";
 import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
 import { refreshExpoPushTokenIfChanged } from "@/lib/expoPushToken";
 import { subscribeOffline } from "@/lib/subscribeOffline";
@@ -173,10 +170,7 @@ import { isHealthImportFallbackTitle } from "@suppr/nutrition-core/healthImportL
 import { mapMealSourceToDot } from "@suppr/nutrition-core/sourceMap";
 import { isMealSlot } from "@suppr/nutrition-core/mealSlots";
 import { journalSlotFromMealTypes, slotForHour } from "@suppr/nutrition-core/recipeJournalSlot";
-import {
-  cloneMealWithoutId,
-  sanitizeCopyTargets,
-} from "@suppr/nutrition-core/copyMeals";
+import { cloneMealWithoutId } from "@suppr/nutrition-core/copyMeals";
 import {
   parseDayNumberMap,
 } from "@suppr/nutrition-core/hydrationStimulants";
@@ -285,6 +279,8 @@ import { PostOnboardingPushExplainer } from "@/components/today/PostOnboardingPu
 // Phase 5 / B3.M (2026-04-27) — wire the NorthStarBlockHost on Today.
 import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
 import { useSavedLibraryRecipes, toNorthStarLibrary } from "@/lib/recipes";
+import { copyDuplicateBatchAlert } from "@/lib/copyDuplicateResultAlert";
+import { useCopyDuplicateMeal } from "@/hooks/useCopyDuplicateMeal";
 import { TodayDeficitInsight } from "@/components/today/TodayDeficitInsight";
 import { TodayPlannedMealsCard } from "@/components/today/TodayPlannedMealsCard";
 import { TodayCompleteDayButton } from "@/components/today/TodayCompleteDayButton";
@@ -3623,182 +3619,18 @@ export default function TrackerScreen() {
     }));
   }, [byDay, activeMealSlot]);
 
-  /**
-   * Shared insert primitive for batch 1.4 "copy meal" / "duplicate day".
-   * Optimistically adds rows to `byDay[targetDayKey]`, then routes the
-   * durable write through the same `writeAhead` helper every log-commit
-   * path uses (can't reuse the debounced selected-day sync — the target
-   * day may not be the selected day). `rows` are clones from
-   * `cloneMealWithoutId` (no id yet); a fresh `newMealId()` is minted per row.
-   *
-   * ENG-1447 — previously fired its confirm haptic right after the
-   * optimistic `setByDay`, before any write at all; now fires from
-   * `writeAhead`'s `onEnqueued`, once the row is durably queued.
-   */
-  const insertClonedRowsIntoDay = useCallback(
-    async (targetDayKey: string, clones: Omit<JournalMeal, "id">[]): Promise<number> => {
-      if (clones.length === 0) return 0;
-      // Re-anchor each clone's `eatenAt` onto the TARGET day (preserving
-      // wall-clock time) before it ever reaches memory or the DB — clones
-      // keep the source-day instant, and `buildNutritionEntryRow` derives
-      // `date_key` from `eaten_at`, so skipping this would bucket the copy
-      // back onto the source day (launch-audit 2026-06-12 copy-path fix).
-      const withIds: JournalMeal[] = clones.map((c) =>
-        reanchorMealEatenAt(
-          { ...c, id: newMealId() } as JournalMeal,
-          targetDayKey,
-          { timeZone: profileTimeZone },
-        ),
-      );
-      setByDay((prev) => ({
-        ...prev,
-        [targetDayKey]: [...(prev[targetDayKey] ?? []), ...withIds],
-      }));
-      if (!userId) return withIds.length;
-      // Single shared row shape (launch-audit P1-2 consolidation) — the
-      // builder guarantees `eaten_at` + the eaten-derived `date_key` are
-      // present (re-anchored above, so date_key === targetDayKey) and keeps
-      // the recipe_id FK propagation from Schema refactor Phase 2.
-      const dbRows = withIds.map((m) =>
-        buildNutritionEntryRow(m, targetDayKey, userId, profileTimeZone),
-      );
-      // onConflict: "id" (via writeAhead's upsert) — copy/duplicate is a
-      // log commit like any other; a retried write-ahead flush of the same
-      // ids must never duplicate-key.
-      const { persisted } = await writeAhead(targetDayKey, dbRows, {
-        onEnqueued: () => confirmLogHapticRef.current(),
-      });
-      if (!persisted) return withIds.length;
-      void refreshAdaptiveTdeeForUser(supabase, userId);
-      // F-2 — snapshot today's target regardless of `targetDayKey`
-      // (back-dating a snapshot would defeat the purpose).
-      void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) });
-      // Tracking-extras autoupdate (2026-05-02) — close the mobile
-      // F-74 / F-103 fix (2026-05-07): per-meal micros canonical SoT —
-      // duplicate-day clones carry `micros.caffeineMg` / `alcoholG`
-      // forward via `cloneMealWithoutId`, so the target day's chip
-      // totals re-sum from `byDay` at render. No ledger bump here.
-      // Audit/2026-04-30 — per-meal HK write for the copied rows.
-      // Cloned meals are minted with fresh ids so the dedupe set
-      // doesn't suppress them; the user just logged a real meal on
-      // `targetDayKey`. Same idempotency rules as the debounce path.
-      for (const m of withIds) {
-        void writeMealToHealthKitIfEnabled({
-          mealId: m.id,
-          userId,
-          name: m.recipeTitle || m.name,
-          calories: m.calories,
-          protein: m.protein,
-          carbs: m.carbs,
-          fat: m.fat,
-          fiberG: m.fiberG ?? null,
-          date: new Date().toISOString(),
-          source: m.source ?? null,
-          origin: "duplicate",
-        });
-      }
-      return withIds.length;
-    },
-    [profileTimeZone, userId, writeAhead],
-  );
-
-  const copyMealToDate = useCallback(
-    async (sourceDayKey: string, mealId: string, targetDayKey: string): Promise<void> => {
-      if (!sourceDayKey || !mealId || !targetDayKey) return;
-      if (sourceDayKey === targetDayKey) return;
-      const meal = (byDay[sourceDayKey] ?? []).find((m) => m.id === mealId);
-      if (!meal) return;
-      const cloned = cloneMealWithoutId(meal) as Omit<JournalMeal, "id">;
-      await insertClonedRowsIntoDay(targetDayKey, [cloned]);
-      try { track(AnalyticsEvents.meal_copied, { source: "copy_meal", batchSize: 1, targetDayCount: 1 }); } catch { /* noop */ }
-    },
-    [byDay, insertClonedRowsIntoDay],
-  );
-
-  const copyMealToDateRange = useCallback(
-    async (sourceDayKey: string, mealId: string, targetDayKeys: string[]): Promise<void> => {
-      if (!sourceDayKey || !mealId) return;
-      const clean = sanitizeCopyTargets(sourceDayKey, targetDayKeys);
-      if (clean.length === 0) return;
-      const meal = (byDay[sourceDayKey] ?? []).find((m) => m.id === mealId);
-      if (!meal) return;
-      let totalInserted = 0;
-      for (const t of clean) {
-        const cloned = cloneMealWithoutId(meal) as Omit<JournalMeal, "id">;
-        totalInserted += await insertClonedRowsIntoDay(t, [cloned]);
-      }
-      try {
-        track(AnalyticsEvents.meal_copied, { source: "copy_meal", batchSize: 1, targetDayCount: clean.length });
-      } catch { /* noop */ }
-      // Audit M3 (2026-04-18): fire ONE batched food_logged event for the
-      // whole copy-range, not N events.
-      if (totalInserted > 0) {
-        try {
-          track(AnalyticsEvents.food_logged, {
-            count: totalInserted,
-            batched: true,
-            source: "copy_meal",
-          });
-        } catch { /* noop */ }
-      }
-    },
-    [byDay, insertClonedRowsIntoDay],
-  );
-
-  const duplicateDay = useCallback(
-    async (sourceDayKey: string, targetDayKey: string): Promise<void> => {
-      if (!sourceDayKey || !targetDayKey) return;
-      if (sourceDayKey === targetDayKey) return;
-      const src = byDay[sourceDayKey] ?? [];
-      if (src.length === 0) return;
-      const clones = src.map((m) => cloneMealWithoutId(m) as Omit<JournalMeal, "id">);
-      const inserted = await insertClonedRowsIntoDay(targetDayKey, clones);
-      try {
-        track(AnalyticsEvents.day_duplicated, { source: "duplicate_day", batchSize: src.length, targetDayCount: 1 });
-      } catch { /* noop */ }
-      // Audit M3 (2026-04-18): single batched food_logged per duplicate.
-      if (inserted > 0) {
-        try {
-          track(AnalyticsEvents.food_logged, {
-            count: inserted,
-            batched: true,
-            source: "duplicate_day",
-          });
-        } catch { /* noop */ }
-      }
-    },
-    [byDay, insertClonedRowsIntoDay],
-  );
-
-  const duplicateDayToDateRange = useCallback(
-    async (sourceDayKey: string, targetDayKeys: string[]): Promise<void> => {
-      if (!sourceDayKey) return;
-      const clean = sanitizeCopyTargets(sourceDayKey, targetDayKeys);
-      if (clean.length === 0) return;
-      const src = byDay[sourceDayKey] ?? [];
-      if (src.length === 0) return;
-      let totalInserted = 0;
-      for (const t of clean) {
-        const clones = src.map((m) => cloneMealWithoutId(m) as Omit<JournalMeal, "id">);
-        totalInserted += await insertClonedRowsIntoDay(t, clones);
-      }
-      try {
-        track(AnalyticsEvents.day_duplicated, { source: "duplicate_day", batchSize: src.length, targetDayCount: clean.length });
-      } catch { /* noop */ }
-      // Audit M3 (2026-04-18): ONE batched food_logged for the 7-day range,
-      // not N events per inserted row.
-      if (totalInserted > 0) {
-        try {
-          track(AnalyticsEvents.food_logged, {
-            count: totalInserted,
-            batched: true,
-            source: "duplicate_day",
-          });
-        } catch { /* noop */ }
-      }
-    },
-    [byDay, insertClonedRowsIntoDay],
-  );
+  // Batch 1.4 "copy meal" / "duplicate day" — extracted to
+  // `useCopyDuplicateMeal` (ENG-1522: honest persisted/failed reporting
+  // instead of a premature success alert; also keeps this pinned
+  // screen-budget file from growing).
+  const { copyMealToDate, copyMealToDateRange, duplicateDay, duplicateDayToDateRange } = useCopyDuplicateMeal({
+    byDay,
+    setByDay,
+    userId,
+    profileTimeZone,
+    writeAhead,
+    confirmLogHapticRef,
+  });
 
   const syncEditCanonicalFromFields = useCallback(() => {
     const p = parseFloat(editPortion.replace(",", ".")) || 1;
@@ -5895,12 +5727,17 @@ export default function TrackerScreen() {
                 Alert.alert("Copy meal", summary);
                 return;
               }
+              // ENG-1522 — await the persist before claiming success (unpersisted: writeAhead already alerted "Saved on this device").
               if (targetDayKeys.length === 1) {
-                void copyMealToDate(dayKey, meal.id, targetDayKeys[0]!);
+                void copyMealToDate(dayKey, meal.id, targetDayKeys[0]!).then((persisted) => {
+                  if (persisted) Alert.alert("Copied", summary);
+                });
               } else {
-                void copyMealToDateRange(dayKey, meal.id, targetDayKeys);
+                void copyMealToDateRange(dayKey, meal.id, targetDayKeys).then(({ succeeded, failed }) => {
+                  const { title, message } = copyDuplicateBatchAlert("Copied", targetDayKeys.length, succeeded.length, failed.length, summary);
+                  Alert.alert(title, message);
+                });
               }
-              Alert.alert("Copied", summary);
             }}
             colors={{
               text: colors.text,
@@ -5926,12 +5763,17 @@ export default function TrackerScreen() {
             Alert.alert("Duplicate day", summary);
             return;
           }
+          // ENG-1522 — await the actual persist before claiming success.
           if (targetDayKeys.length === 1) {
-            void duplicateDay(dayKey, targetDayKeys[0]!);
+            void duplicateDay(dayKey, targetDayKeys[0]!).then((persisted) => {
+              if (persisted) Alert.alert("Duplicated", summary);
+            });
           } else {
-            void duplicateDayToDateRange(dayKey, targetDayKeys);
+            void duplicateDayToDateRange(dayKey, targetDayKeys).then(({ succeeded, failed }) => {
+              const { title, message } = copyDuplicateBatchAlert("Duplicated", targetDayKeys.length, succeeded.length, failed.length, summary);
+              Alert.alert(title, message);
+            });
           }
-          Alert.alert("Duplicated", summary);
         }}
         colors={{
           text: colors.text,
