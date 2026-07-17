@@ -265,7 +265,7 @@ Rules of engagement:
 
 - Web ↔ mobile must stay in sync at all times.
 - No feature is complete without: implementation + tests + docs + cross-platform review.
-- Cap of 3 open PRs in flight. Rebase before push every push. Run `npm run ci` before push.
+- Cap of 8 open PRs in flight (raised from 3, 2026-07-15). Rebase before push every push. Run `npm run ci` before push.
 - Visual validation is mandatory: before/after screenshots on web AND mobile attached to the PR. Verify visuals BEFORE commit + push.
 - Never apply Supabase migrations via MCP `apply_migration` for tracked files. Use `supabase db push --linked`.
 - Notion mirroring: when a feature ships, a decision is resolved, or roadmap state changes, mirror to Notion in the same turn.

@@ -49,8 +49,8 @@ Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-cont
 - Pre-push hook also runs typecheck + lint + migration static check; don't bypass with `--no-verify`.
 - Visual validation mandatory before commit: capture before/after screenshots on web AND mobile for any UI change.
 
-### Cap of 3 open PRs
-Per `CLAUDE.md`: before opening a new PR, run `gh pr list --state open` — if 3+ are already open, merge or close one first. Rebase before push every push.
+### Cap of 8 open PRs
+Per `CLAUDE.md` (raised from 3, 2026-07-15): before opening a new PR, run `gh pr list --state open` — if 8+ are already open, merge or close one first. Rebase before push every push.
 
 ---
 

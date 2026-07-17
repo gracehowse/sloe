@@ -49,3 +49,7 @@ Three preventative layers added in [PR #70](https://github.com/gracehowse/Suppr/
 - Watch the first scheduled run of `auto-rebase-prs.yml` to confirm the workflow can find + label conflicts correctly.
 - Re-evaluate the 3-PR cap after a week of operation. May need to be tighter (2) or looser (5) depending on flow.
 - If `stale-rebase` PRs cluster around specific kinds of changes (e.g., always conflict in CHANGELOG.md), consider a structural change to those files (e.g., per-PR changelog stubs).
+
+## Update — 2026-07-15: cap raised 3 → 8
+
+The re-evaluation flagged above happened, ~2.5 months late but on the anticipated axis (looser, not tighter). Reasoning: layers 1+2 above (auto-rebase cron + the Stop-hook auto-push) have been running the whole time and independently solve the *staleness* half of the original incident — a PR can no longer silently drift 41 commits behind without either self-healing or getting flagged `stale-rebase`. What the numeric cap still guards, on its own, is solo-founder review-queue depth and the chance of two open PRs colliding on the same files before either merges — a different concern than staleness, and one that tolerates a higher number. Raised to 8 (Grace's call, 2026-07-15) to unblock a longer autonomous backlog-clearing session without dropping the cap entirely. Re-evaluate again if 8 starts producing the same kind of pileup as the original incident.

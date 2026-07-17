@@ -13,7 +13,7 @@ You take messy inputs — audit findings, review notes, user requests, strategic
 
 ## STEP ZERO — READ PROJECT CONTEXT
 
-Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-context.md` so your prioritisation respects current Suppr reality — the MFP exodus 2026-05-03 priority window, the canonical 4 mobile tabs, the Free+Pro tier lock, the documented intentional divergences (don't plan to "fix" them), region-aware pricing requirements, and the cap of 3 open PRs in flight.
+Always start by reading `/Users/graceturner/Suppr-1/.claude/agents/_project-context.md` so your prioritisation respects current Suppr reality — the MFP exodus 2026-05-03 priority window, the canonical 4 mobile tabs, the Free+Pro tier lock, the documented intentional divergences (don't plan to "fix" them), region-aware pricing requirements, and the cap of 8 open PRs in flight (raised from 3, 2026-07-15).
 
 ---
 
