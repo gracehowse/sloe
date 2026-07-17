@@ -1,5 +1,14 @@
 # The Sloe Design Constitution — v1 (2026-07-17)
 
+**The thesis (Grace, 2026-07-17):** Sloe is the fusion of three things — a rigorous
+fitness tracker (MacroFactor/MFP class), recipe capture from Instagram/TikTok/web into
+one place (ReciMe/Julienne class), and **the bridge**: the app already knows your
+calorie and macro targets, so your saved recipes slot into your plan *without
+thinking* — "eat what you love." Non-negotiable beneath it: industry-leading calorie
+and macro calculation for imported recipes, worn visibly (confidence, provenance,
+editability), never just claimed. The look is luxury-editorial; the usability is
+fitness-tracker familiar. Every rule below serves that fusion.
+
 Premium isn't a material; it's **radical repetition of a small rulebook**. Oura and
 Julienne read expensive because every screen obeys the same few laws. This document is
 that rulebook for Sloe. A screen ships when it has **zero violations** — not when it
@@ -112,6 +121,24 @@ descriptively framed, ending on an identity beat, each scene saveable
 
 Count-ups and arc-draws on mount; a spring on every commit; the gold win-moment on
 goal days. Nothing moves decoratively. Honour `prefers-reduced-motion`.
+
+## Rule 10 — Every recipe knows your day (the bridge)
+
+The differentiator is not tracking and not capture — it's that they meet without the
+user thinking. So fit is **ambient**, everywhere a recipe appears:
+
+- **Every recipe surface wears a calm fit verdict** derived from live targets — the
+  sage "✓ Fits your day / ✓ Fits Thursday dinner" tag on cookbook cards, Discover
+  shelves, and the decision module. **Absence is neutral, never a judgment** — no
+  red, no "doesn't fit," no shame states (the Calm-mode ethos applies to fit).
+- **The plan shows its provenance** — "From your cookbook" on plan cards. The week
+  is visibly made of food you chose to save, not app-issued meals.
+- **Capture ends in a trust card** — every import resolves to per-serving macros +
+  "Weighed from N ingredients · confidence" + the fit tag + one action. The
+  industry-leading calculation is *shown* (provenance, confidence, tap-to-correct),
+  because in nutrition, trust that isn't visible doesn't exist.
+- Fit language is one calm register everywhere: "Fits" — never scores, grades, or
+  percentages on food itself.
 
 ---
 
