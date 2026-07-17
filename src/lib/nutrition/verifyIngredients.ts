@@ -50,9 +50,10 @@ export type VerifiedIngredient = {
    * the same shape the FOOD-LOG path plumbs. Absent when the source did not
    * publish a micros panel (absent ≠ zero; never synthesised).
    *
-   * Populated by the OFF (search + barcode-override) and FatSecret (Premier,
-   * metric-grounded servings only) branches. USDA / Edamam carry — deferred:
-   * see ENG-1332.
+   * Populated by the OFF (search + barcode-override), FatSecret (Premier,
+   * metric-grounded servings only), USDA (full panel), and Edamam
+   * (search-hit minimal panel — fiber/sugar/sodium only, ENG-1332)
+   * branches.
    */
   micros?: Record<string, number>;
   /**
@@ -849,10 +850,17 @@ export async function verifyIngredients(opts: {
       try {
         const edamamHits = await edamamFoodSearch(edamamCfg, query, { pageSize: 5 });
         const edamamPrepQuery = normalizeQueryForUsda(applyNameAliases(query));
-        for (const hit of edamamHits) {
-          const label = [hit.food.brand, hit.food.label].filter(Boolean).join(" · ");
-          const conf = confidenceForMatch(query, label);
-          if (conf < MIN_MATCH_CONFIDENCE) continue;
+        // ENG-1426 (count-to-weight-1) — rank candidates by name-match
+        // confidence instead of taking the search API's own order;
+        // mirrors the OFF ranked-candidates pattern below.
+        const edamamRanked = edamamHits
+          .map((hit) => {
+            const label = [hit.food.brand, hit.food.label].filter(Boolean).join(" · ");
+            return { hit, label, conf: confidenceForMatch(query, label) };
+          })
+          .sort((a, b) => b.conf - a.conf);
+        for (const { hit, label, conf } of edamamRanked) {
+          if (conf < MIN_MATCH_CONFIDENCE) break; // sorted desc — the rest are sub-threshold too
           if (preparationStateMismatch(edamamPrepQuery, label)) continue;
           const per100g = edamamFoodMacrosPer100g(hit.food);
           if (!per100gPlausible(per100g)) continue;
@@ -960,99 +968,107 @@ export async function verifyIngredients(opts: {
     if (fatsecretCfg) {
       try {
         const results = await fatSecretFoodSearch(fatsecretCfg, query);
-        const best = results[0] ?? null;
-        if (best) {
-          const conf = confidenceForMatch(query, best.food_name);
-          if (
-            conf >= MIN_MATCH_CONFIDENCE &&
-            !preparationStateMismatch(normalizeQueryForUsda(applyNameAliases(query)), best.food_name)
-          ) {
-            const food = await fatSecretFoodGet(fatsecretCfg, best.food_id);
-            const servingNode = food?.servings?.serving;
-            if (food && servingNode) {
-              const serving = pickBestServing(servingNode);
-              const perServing = normalizeServingToMacros(serving);
-              // Polish (2026-04-25) — FatSecret occasionally exposes
-              // placeholder rows with calories=0 and all macros=0 (e.g. a
-              // brand-stub for "olive oil" that has not been populated).
-              // scaledMacrosPlausible() lets the all-zero scaled result
-              // through (the rule is intentional for tiny rounded-down
-              // portions), so the fix is upstream: skip the candidate
-              // entirely when the SOURCE serving has no macros at all.
-              // This forced the "olive oil at 98% confidence → 0 kcal"
-              // bug. Falls through to next source / local estimator.
-              const sourceIsAllZero =
-                (!Number.isFinite(perServing.calories) || perServing.calories <= 0) &&
-                (!Number.isFinite(perServing.protein) || perServing.protein <= 0) &&
-                (!Number.isFinite(perServing.carbs) || perServing.carbs <= 0) &&
-                (!Number.isFinite(perServing.fat) || perServing.fat <= 0);
-              if (sourceIsAllZero) {
-                console.warn(
-                  `[verifyIngredients] FatSecret returned a zero-macro serving for "${query}" → ${best.food_name} (food_id=${best.food_id}). Skipping candidate; falling through to next source.`,
-                );
-                // fall through past the FatSecret block to USDA-other / OFF / estimator
-              } else {
-              const servingMass = servingMassGrams(serving);
-              const servingG = servingMass ?? 100;
-              const perGram = {
-                calories: perServing.calories / servingG,
-                protein: perServing.protein / servingG,
-                carbs: perServing.carbs / servingG,
-                fat: perServing.fat / servingG,
-                fiberG: perServing.fiberG / servingG,
-                sugarG: perServing.sugarG / servingG,
-                sodiumMg: perServing.sodiumMg / servingG,
-              };
-              const fsMacros: VerifiedMacros = {
-                calories: Math.max(0, Math.round(perGram.calories * grams)),
-                protein: Math.max(0, Math.round(perGram.protein * grams * 10) / 10),
-                carbs: Math.max(0, Math.round(perGram.carbs * grams * 10) / 10),
-                fat: Math.max(0, Math.round(perGram.fat * grams * 10) / 10),
-                fiberG: Math.max(0, Math.round(perGram.fiberG * grams * 10) / 10),
-                sugarG: Math.max(0, Math.round(perGram.sugarG * grams * 10) / 10),
-                sodiumMg: Math.max(0, Math.round(perGram.sodiumMg * grams)),
-              };
-              // P0 (2026-05-26) — post-scale physical-plausibility guard with
-              // the reconstructed per-100g panel (perGram × 100) cross-check.
-              const fsPer100g = {
-                calories: perGram.calories * 100,
-                protein: perGram.protein * 100,
-                carbs: perGram.carbs * 100,
-                fat: perGram.fat * 100,
-              };
-              if (
-                scaledMacrosPlausible(fsMacros) &&
-                checkScaledLogPlausibility(fsMacros, grams, fsPer100g).ok
-              ) {
-                // ENG-1299 — carry the Premier micros panel ONLY when the
-                // serving has real metric grounding (`servingMassGrams`
-                // resolved). When it is null the macros above already run on
-                // an assumed-100g serving (legacy behaviour, unchanged); we
-                // do NOT stack the new micros surface on that assumption —
-                // carry nothing rather than guess. Grounded servings scale
-                // per-100g micros by the same `grams` the macros used, so
-                // micros ∝ macros exactly. Basic-tier responses return an
-                // empty panel → no key.
-                const fsMicros =
-                  servingMass != null && servingMass > 0
-                    ? scaleMicrosForGrams(
-                        fatSecretServingMicrosPer100g(serving, servingMass),
-                        grams,
-                      )
-                    : {};
-                return {
-                  input: raw, resolved,
-                  fatSecretFoodId: best.food_id,
-                  matchedName: best.food_name,
-                  confidence: conf,
-                  source: "FatSecret",
-                  macros: fsMacros,
-                  ...(Object.keys(fsMicros).length > 0 ? { micros: fsMicros } : {}),
-                };
-              }
-              } // closes else { (sourceIsAllZero guard, 2026-04-25)
-            }
+        const fsPrepQuery = normalizeQueryForUsda(applyNameAliases(query));
+        // ENG-1426 (count-to-weight-1) — rank candidates by name-match
+        // confidence instead of trusting the search API's own order
+        // (previously always `results[0]`); mirrors the OFF/Edamam
+        // ranked-candidates pattern above.
+        const fsRanked = results
+          .map((r) => ({ hit: r, conf: confidenceForMatch(query, r.food_name) }))
+          .sort((a, b) => b.conf - a.conf);
+        for (const { hit: best, conf } of fsRanked) {
+          if (conf < MIN_MATCH_CONFIDENCE) break; // sorted desc — the rest are sub-threshold too
+          if (preparationStateMismatch(fsPrepQuery, best.food_name)) continue;
+          const food = await fatSecretFoodGet(fatsecretCfg, best.food_id);
+          const servingNode = food?.servings?.serving;
+          if (!food || !servingNode) continue;
+          const serving = pickBestServing(servingNode);
+          const perServing = normalizeServingToMacros(serving);
+          // Polish (2026-04-25) — FatSecret occasionally exposes
+          // placeholder rows with calories=0 and all macros=0 (e.g. a
+          // brand-stub for "olive oil" that has not been populated).
+          // scaledMacrosPlausible() lets the all-zero scaled result
+          // through (the rule is intentional for tiny rounded-down
+          // portions), so the fix is upstream: skip the candidate
+          // entirely when the SOURCE serving has no macros at all.
+          // This forced the "olive oil at 98% confidence → 0 kcal"
+          // bug. Continues to the next ranked candidate.
+          const sourceIsAllZero =
+            (!Number.isFinite(perServing.calories) || perServing.calories <= 0) &&
+            (!Number.isFinite(perServing.protein) || perServing.protein <= 0) &&
+            (!Number.isFinite(perServing.carbs) || perServing.carbs <= 0) &&
+            (!Number.isFinite(perServing.fat) || perServing.fat <= 0);
+          if (sourceIsAllZero) {
+            console.warn(
+              `[verifyIngredients] FatSecret returned a zero-macro serving for "${query}" → ${best.food_name} (food_id=${best.food_id}). Trying next candidate.`,
+            );
+            continue;
           }
+          const servingMass = servingMassGrams(serving);
+          const servingG = servingMass ?? 100;
+          const perGram = {
+            calories: perServing.calories / servingG,
+            protein: perServing.protein / servingG,
+            carbs: perServing.carbs / servingG,
+            fat: perServing.fat / servingG,
+            fiberG: perServing.fiberG / servingG,
+            sugarG: perServing.sugarG / servingG,
+            sodiumMg: perServing.sodiumMg / servingG,
+          };
+          const fsMacros: VerifiedMacros = {
+            calories: Math.max(0, Math.round(perGram.calories * grams)),
+            protein: Math.max(0, Math.round(perGram.protein * grams * 10) / 10),
+            carbs: Math.max(0, Math.round(perGram.carbs * grams * 10) / 10),
+            fat: Math.max(0, Math.round(perGram.fat * grams * 10) / 10),
+            fiberG: Math.max(0, Math.round(perGram.fiberG * grams * 10) / 10),
+            sugarG: Math.max(0, Math.round(perGram.sugarG * grams * 10) / 10),
+            sodiumMg: Math.max(0, Math.round(perGram.sodiumMg * grams)),
+          };
+          // P0 (2026-05-26) — post-scale physical-plausibility guard with
+          // the reconstructed per-100g panel (perGram × 100) cross-check.
+          const fsPer100g = {
+            calories: perGram.calories * 100,
+            protein: perGram.protein * 100,
+            carbs: perGram.carbs * 100,
+            fat: perGram.fat * 100,
+          };
+          if (
+            !scaledMacrosPlausible(fsMacros) ||
+            !checkScaledLogPlausibility(fsMacros, grams, fsPer100g).ok
+          ) {
+            continue;
+          }
+          // ENG-1299 — carry the Premier micros panel ONLY when the
+          // serving has real metric grounding (`servingMassGrams`
+          // resolved). When it is null the macros above already run on
+          // an assumed-100g serving; we do NOT stack the new micros
+          // surface on that assumption — carry nothing rather than
+          // guess. Grounded servings scale per-100g micros by the same
+          // `grams` the macros used, so micros ∝ macros exactly.
+          // Basic-tier responses return an empty panel → no key.
+          const fsMicros =
+            servingMass != null && servingMass > 0
+              ? scaleMicrosForGrams(
+                  fatSecretServingMicrosPer100g(serving, servingMass),
+                  grams,
+                )
+              : {};
+          // ne-A2 (2026-07-05 audit) — no metric weight resolved means
+          // the macros above ran on an ASSUMED 100g serving
+          // (`servingG = servingMass ?? 100`), a real multi-x error risk
+          // invisible to the plausibility checks above (same shape,
+          // wrong absolute scale). Demote below the accept floor rather
+          // than let the guess ride at full match confidence.
+          const fsConf = servingMass == null ? Math.min(0.5, conf - 0.1) : conf;
+          return {
+            input: raw, resolved,
+            fatSecretFoodId: best.food_id,
+            matchedName: best.food_name,
+            confidence: fsConf,
+            source: "FatSecret",
+            macros: fsMacros,
+            ...(Object.keys(fsMicros).length > 0 ? { micros: fsMicros } : {}),
+          };
         }
       } catch (e) {
         console.error("[verifyIngredients] FatSecret lookup failed for", query, ":", e instanceof Error ? e.message : e);
