@@ -137,6 +137,38 @@ enforced at write time as well as review time.
   micro 8–10 + display 36+ band that mirrors the web `check:type-scale` bands),
   pins per-file off-ramp counts in `scripts/type-scale-mobile-budget.json`
   (only-shrink). Re-pin with `npm run check:type-scale-mobile:write`.
+- **Type roles (adopted 2026-07-17, ENG-1525 build S9 — Grace's ruling):** a
+  size ramp alone does not prevent typographic chaos — the S8 prototype review
+  proved same-role elements can diverge in weight/colour/family while every
+  size is "legal" ("every font is a different size, weight, colour — there are
+  no rules or logic"). So sizes are necessary but not sufficient: **every text
+  node maps to exactly one role**, and a treatment not in this table does not
+  exist. Canonical source: `docs/ux/redesign/v3/DESIGN-CONSTITUTION.md` Rule 5;
+  app implementations bind roles to theme tokens (`Type` on mobile, the
+  type-scale classes on web), never to literals.
+
+  | Role | Spec | Job |
+  |---|---|---|
+  | `display` | serif 46/500, tnum | THE hero numeral, one per screen (full-screen sheets count as screens). The only numeral that may wear state colour |
+  | `stat` | serif 28/500, tnum, ink | card-headline numerals, one per card. Sibling stats NEVER differ in colour — state lives in a pill/dot |
+  | `stat-sm` | serif 20/500, tnum, ink | in-card trios/grids (Eaten/Goal/Left), macro-ring numerals, day totals |
+  | `title` | serif 33/500, ink | page titles, full-screen sheet headlines |
+  | `content` | serif 18–22/500, ink | dish names (18 floor), verdict sentences, editorial statements |
+  | `label` | sans 11/700, caps, .1em, tertiary grey | ALL structural labels — section heads, overlines, column heads, axis words, stat sublabels. ONE variant only |
+  | `body` | sans 15/400, ink | row titles, primary sentences. At most ONE 600 emphasis phrase per verdict sentence |
+  | `support` | sans 13/400, secondary grey | descriptive sublines, "of 151g", unit suffixes, meta |
+  | `caption` | sans 12/400, tertiary grey | timestamps, footnotes, provenance. Chart micro-text 9–11 exempt |
+  | `interactive` | sans 13–15/600, control kit | buttons, links, chips, tabs — the ONLY other home of sans-600 |
+  | `accent` | serif italic 15/400 | quotes, citations, recipe attributions |
+
+  Three hard corollaries: **sans-600/700 lives only in `label` and
+  `interactive`** (plus the single body emphasis phrase); **numerals are ink**
+  except the one `display` per screen, semantic bar/arc fills, and macro
+  tokens (`46P 12C 9F` strips at 12/600/macro-hue — the one sanctioned
+  coloured-numeral register); **serif appears only at role sizes** (46 / 33 /
+  28 / 20 / 18–22 / accent 15). Ratified glyph exemptions: avatar monograms,
+  the recap story tier (84/40). Review-time census: audit ROLES (same-job
+  elements rendered identically), not just ramp membership.
 - **Colour:** every value traces to a semantic token (`theme.ts` /
   `src/styles/theme.css`). A literal hex in a component is a finding.
   **Enforced by the token-scale ratchet** `npm run check:token-scale`
