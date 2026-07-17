@@ -1,0 +1,2310 @@
+{
+ "sites": [
+  {
+   "file": "apps/mobile/app/targets.tsx",
+   "line": 604,
+   "expr": "Accent.success + \"22\"",
+   "family": "success",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/targets.tsx",
+   "line": 606,
+   "expr": "Accent.warning + \"22\"",
+   "family": "warning",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/targets.tsx",
+   "line": 608,
+   "expr": "Accent.destructive + \"22\"",
+   "family": "destructive",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/targets.tsx",
+   "line": 910,
+   "expr": "accent.primary + \"1A\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/meal-nutrition.tsx",
+   "line": 368,
+   "expr": "accent.primary + \"20\"",
+   "family": "primary",
+   "alphaPct": 12.5,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/meal-nutrition.tsx",
+   "line": 495,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft",
+   "note": "sub-10% snaps UP per ruling"
+  },
+  {
+   "file": "apps/mobile/app/meal-nutrition.tsx",
+   "line": 630,
+   "expr": "colors.cardBorder + \"55\"",
+   "family": "colors.cardBorder",
+   "alphaPct": 33.3,
+   "snapTo": "exempt",
+   "note": "semantic hairline divider convention"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 463,
+   "expr": "Accent.destructive + \"55\"",
+   "family": "destructive",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "borderColor; -13.3pp change"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 465,
+   "expr": "Accent.destructive + \"14\"",
+   "family": "destructive",
+   "alphaPct": 7.8,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 525,
+   "expr": "accent.primary + \"33\"",
+   "family": "primary",
+   "alphaPct": 20,
+   "snapTo": "SoftStrong",
+   "note": "borderColor"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 526,
+   "expr": "accent.primary + \"0d\"",
+   "family": "primary",
+   "alphaPct": 5.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 537,
+   "expr": "accent.primary + \"1f\"",
+   "family": "primary",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 817,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 919,
+   "expr": "accent.primary + \"33\"",
+   "family": "primary",
+   "alphaPct": 20,
+   "snapTo": "SoftStrong"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 921,
+   "expr": "accent.primary + \"1a\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 924,
+   "expr": "accent.primary + \"4d\"",
+   "family": "primary",
+   "alphaPct": 30.2,
+   "snapTo": "SoftStrong",
+   "note": "border; -10.2pp"
+  },
+  {
+   "file": "apps/mobile/app/household-settings.tsx",
+   "line": 1039,
+   "expr": "colors.background + \"ee\"",
+   "family": "colors.background",
+   "alphaPct": 93.3,
+   "snapTo": "exempt",
+   "note": "scrim/frosted overlay convention"
+  },
+  {
+   "file": "apps/mobile/app/macro-detail.tsx",
+   "line": 133,
+   "expr": "config.color + \"20\"",
+   "family": "macro (MACRO_CONFIG dynamic)",
+   "alphaPct": 12.5,
+   "snapTo": "Soft",
+   "note": "needs per-macro Soft tokens (web --macro-*-soft parity)"
+  },
+  {
+   "file": "apps/mobile/app/macro-detail.tsx",
+   "line": 321,
+   "expr": "config.color + \"10\"",
+   "family": "macro (MACRO_CONFIG dynamic)",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/fasting.tsx",
+   "line": 749,
+   "expr": "Accent.warning + \"1F\"",
+   "family": "warning",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/shopping.tsx",
+   "line": 652,
+   "expr": "accent.primary + \"12\"",
+   "family": "primary",
+   "alphaPct": 7.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/shopping.tsx",
+   "line": 874,
+   "expr": "accent.primary + \"14\"",
+   "family": "primary",
+   "alphaPct": 7.8,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/paywall.tsx",
+   "line": 1188,
+   "expr": "item.color + \"20\"",
+   "family": "dynamic (success/info/warningSolid)",
+   "alphaPct": 12.5,
+   "snapTo": "Soft",
+   "note": "item.color spans success/info/warningSolid — needs those families' Soft tokens"
+  },
+  {
+   "file": "apps/mobile/app/plan-import.tsx",
+   "line": 331,
+   "expr": "Accent.success + \"1F\"",
+   "family": "success",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/plan-import.tsx",
+   "line": 336,
+   "expr": "Accent.success + \"40\"",
+   "family": "success",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border; -5.1pp"
+  },
+  {
+   "file": "apps/mobile/app/health-sync.tsx",
+   "line": 1060,
+   "expr": "Accent.warning + \"40\"",
+   "family": "warning",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/health-sync.tsx",
+   "line": 1091,
+   "expr": "Accent.destructive + \"12\"",
+   "family": "destructive",
+   "alphaPct": 7.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/health-sync.tsx",
+   "line": 1092,
+   "expr": "Accent.destructive + \"40\"",
+   "family": "destructive",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/profile.tsx",
+   "line": 335,
+   "expr": "accent.primarySolid + \"80\"",
+   "family": "primary",
+   "alphaPct": 50.2,
+   "snapTo": "exempt",
+   "note": "50% border = translucent-solid, not a soft tint; snapping to 20% would halve visibility — needs its own border-step ruling under ENG-1521"
+  },
+  {
+   "file": "apps/mobile/app/profile.tsx",
+   "line": 746,
+   "expr": "Accent.warning + \"14\"",
+   "family": "warning",
+   "alphaPct": 7.8,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/profile.tsx",
+   "line": 748,
+   "expr": "Accent.warning + \"40\"",
+   "family": "warning",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/cook.tsx",
+   "line": 1266,
+   "expr": "Accent.destructive + \"20\"",
+   "family": "destructive",
+   "alphaPct": 12.5,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/cook.tsx",
+   "line": 1388,
+   "expr": "accent.primary + \"22\"",
+   "family": "primary",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/notifications-prompt.tsx",
+   "line": 142,
+   "expr": "Accent.success + \"15\"",
+   "family": "success",
+   "alphaPct": 8.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/notifications-prompt.tsx",
+   "line": 273,
+   "expr": "Accent.success + \"15\"",
+   "family": "success",
+   "alphaPct": 8.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/create-recipe.tsx",
+   "line": 890,
+   "expr": "accent.primary + \"30\"",
+   "family": "primary",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/create-recipe.tsx",
+   "line": 945,
+   "expr": "colors.background + \"E6\"",
+   "family": "colors.background",
+   "alphaPct": 90.2,
+   "snapTo": "exempt",
+   "note": "scrim"
+  },
+  {
+   "file": "apps/mobile/app/create-recipe.tsx",
+   "line": 1180,
+   "expr": "Accent.destructive + \"B0\"",
+   "family": "destructive",
+   "alphaPct": 69,
+   "snapTo": "exempt",
+   "note": "69% icon colour (muted glyph), not a tint — use destructiveLight or opacity prop instead"
+  },
+  {
+   "file": "apps/mobile/app/create-recipe.tsx",
+   "line": 1251,
+   "expr": "accent.primary + \"80\"",
+   "family": "primary",
+   "alphaPct": 50.2,
+   "snapTo": "exempt",
+   "note": "Switch trackColor at 50% — translucent-solid, not a soft tint"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1373,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1422,
+   "expr": "Accent.success + \"35\"",
+   "family": "success",
+   "alphaPct": 20.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1472,
+   "expr": "Accent.success + \"15\"",
+   "family": "success",
+   "alphaPct": 8.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1477,
+   "expr": "Accent.success + \"35\"",
+   "family": "success",
+   "alphaPct": 20.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1530,
+   "expr": "accent.primary + \"55\"",
+   "family": "primary",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "outline-button border; -13.3pp"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1533,
+   "expr": "accent.primary + \"12\"",
+   "family": "primary",
+   "alphaPct": 7.1,
+   "snapTo": "Soft",
+   "note": "pressed-state fill"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1675,
+   "expr": "Accent.warning + \"1F\"",
+   "family": "warning",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1873,
+   "expr": "Accent.success + \"18\"",
+   "family": "success",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1876,
+   "expr": "Accent.success + \"30\"",
+   "family": "success",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 1960,
+   "expr": "Accent.warning + \"10\"",
+   "family": "warning",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 2283,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 2328,
+   "expr": "Accent.warning + \"1A\"",
+   "family": "warning",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/import-shared.tsx",
+   "line": 2330,
+   "expr": "Accent.warning + \"55\"",
+   "family": "warning",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border; -13.3pp"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 722,
+   "expr": "Accent.warning + \"1F\"",
+   "family": "warning",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 723,
+   "expr": "Accent.warningLight + \"66\"",
+   "family": "warning",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% border on warningLight — translucent-solid border, not a tint; border-step ruling needed"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 746,
+   "expr": "accent.primary + \"30\"",
+   "family": "primary",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 772,
+   "expr": "Accent.warning + \"0D\"",
+   "family": "warning",
+   "alphaPct": 5.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 783,
+   "expr": "Accent.warning + \"22\"",
+   "family": "warning",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 810,
+   "expr": "accent.primary + \"50\"",
+   "family": "primary",
+   "alphaPct": 31.4,
+   "snapTo": "SoftStrong",
+   "note": "border; -11.4pp"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 811,
+   "expr": "accent.primary + \"12\"",
+   "family": "primary",
+   "alphaPct": 7.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 825,
+   "expr": "accent.primary + \"40\"",
+   "family": "primary",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 851,
+   "expr": "accent.primary + \"40\"",
+   "family": "primary",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 858,
+   "expr": "colors.background + \"f0\"",
+   "family": "colors.background",
+   "alphaPct": 94.1,
+   "snapTo": "exempt",
+   "note": "scrim"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 907,
+   "expr": "Accent.warning + \"22\"",
+   "family": "warning",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 1157,
+   "expr": "Accent.success + \"15\"",
+   "family": "success",
+   "alphaPct": 8.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 1255,
+   "expr": "accent.primary + \"33\"",
+   "family": "primary",
+   "alphaPct": 20,
+   "snapTo": "SoftStrong",
+   "note": "SVG icon fill"
+  },
+  {
+   "file": "apps/mobile/app/recipe/verify.tsx",
+   "line": 1262,
+   "expr": "Accent.destructive + \"40\"",
+   "family": "destructive",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/recipe/[id].tsx",
+   "line": 1747,
+   "expr": "accent.primary + \"55\"",
+   "family": "primary",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border; -13.3pp"
+  },
+  {
+   "file": "apps/mobile/app/recipe/[id].tsx",
+   "line": 2306,
+   "expr": "Accent.warning + \"1A\"",
+   "family": "warning",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/discover.tsx",
+   "line": 851,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/progress.tsx",
+   "line": 172,
+   "expr": "color + \"18\"",
+   "family": "dynamic (stat icon accent prop)",
+   "alphaPct": 9.4,
+   "snapTo": "Soft",
+   "note": "icon-disc tint; prop-threaded — migrate to token prop"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/progress.tsx",
+   "line": 1799,
+   "expr": "t.green + \"18\"",
+   "family": "success",
+   "alphaPct": 9.4,
+   "snapTo": "Soft",
+   "note": "t.green = Accent.success"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/progress.tsx",
+   "line": 1807,
+   "expr": "t.green + \"18\"",
+   "family": "success",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 399,
+   "expr": "tint + \"22\"",
+   "family": "slot-tint (dynamic)",
+   "alphaPct": 13.3,
+   "snapTo": "Soft",
+   "note": "slot icon-box tint — needs SlotColors soft tokens (web --slot-*-soft parity)"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 1787,
+   "expr": "colors.border + \"40\"",
+   "family": "colors.border",
+   "alphaPct": 25.1,
+   "snapTo": "exempt",
+   "note": "semantic hairline"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 1818,
+   "expr": "colors.textSecondary + \"18\"",
+   "family": "colors.textSecondary",
+   "alphaPct": 9.4,
+   "snapTo": "exempt",
+   "note": "neutral chip fill — documented deliberate bump (comment at 1812-1814)"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 1833,
+   "expr": "colors.tint + \"1A\"",
+   "family": "colors.tint (accent primary)",
+   "alphaPct": 10.2,
+   "snapTo": "Soft",
+   "note": "documented as web bg-primary/10 parity"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 1834,
+   "expr": "colors.tint + \"1A\"",
+   "family": "colors.tint (accent primary)",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 1886,
+   "expr": "colors.border + \"99\"",
+   "family": "colors.border",
+   "alphaPct": 60,
+   "snapTo": "exempt",
+   "note": "semantic hairline"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 1923,
+   "expr": "colors.border + \"66\"",
+   "family": "colors.border",
+   "alphaPct": 40,
+   "snapTo": "exempt"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 1953,
+   "expr": "colors.border + \"66\"",
+   "family": "colors.border",
+   "alphaPct": 40,
+   "snapTo": "exempt"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 2799,
+   "expr": "colors.textSecondary + \"18\"",
+   "family": "colors.textSecondary",
+   "alphaPct": 9.4,
+   "snapTo": "exempt",
+   "note": "neutral active-chip fill convention"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 3751,
+   "expr": "colors.textTertiary + \"1A\"",
+   "family": "colors.textTertiary",
+   "alphaPct": 10.2,
+   "snapTo": "exempt",
+   "note": "neutral tint"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 3783,
+   "expr": "Accent.warning + \"1F\"",
+   "family": "warning",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 3982,
+   "expr": "accent.primary + \"26\"",
+   "family": "primary",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 3992,
+   "expr": "mc.fat + \"12\"",
+   "family": "macro-fat (MacroColors)",
+   "alphaPct": 7.1,
+   "snapTo": "Soft",
+   "note": "needs macro-fat Soft token"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 4523,
+   "expr": "colors.border + \"60\"",
+   "family": "colors.border",
+   "alphaPct": 37.6,
+   "snapTo": "exempt"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 4524,
+   "expr": "colors.border + \"30\"",
+   "family": "colors.border",
+   "alphaPct": 18.8,
+   "snapTo": "exempt",
+   "note": "pressed fill on neutral"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/planner.tsx",
+   "line": 4589,
+   "expr": "colors.border + \"60\"",
+   "family": "colors.border",
+   "alphaPct": 37.6,
+   "snapTo": "exempt"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/notifications.tsx",
+   "line": 90,
+   "expr": "accent.primary + \"80\"",
+   "family": "primary",
+   "alphaPct": 50.2,
+   "snapTo": "exempt",
+   "note": "50% outline border — translucent-solid; border-step ruling needed"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/barcode.tsx",
+   "line": 618,
+   "expr": "accent.primary + \"55\"",
+   "family": "primary",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border; -13.3pp"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/barcode.tsx",
+   "line": 621,
+   "expr": "accent.primary + \"22\"",
+   "family": "primary",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/barcode.tsx",
+   "line": 683,
+   "expr": "accent.primary + \"55\"",
+   "family": "primary",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/barcode.tsx",
+   "line": 695,
+   "expr": "accent.primary + \"55\"",
+   "family": "primary",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/barcode.tsx",
+   "line": 1161,
+   "expr": "Accent.success + \"1F\"",
+   "family": "success",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/_today/TodayScreen.tsx",
+   "line": 3028,
+   "expr": "accent.primary + \"30\"",
+   "family": "primary",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/_today/TodayScreen.tsx",
+   "line": 4306,
+   "expr": "Accent.destructive + \"18\"",
+   "family": "destructive",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/app/(tabs)/_today/TodayScreen.tsx",
+   "line": 5445,
+   "expr": "Accent.success + \"60\"",
+   "family": "success",
+   "alphaPct": 37.6,
+   "snapTo": "SoftStrong",
+   "note": "border; -17.6pp — capture review essential"
+  },
+  {
+   "file": "apps/mobile/components/NutritionSourceBadge.tsx",
+   "line": 38,
+   "expr": "color + \"18\"",
+   "family": "source-badge (colors.sourceManual/sourceAi/...)",
+   "alphaPct": 9.4,
+   "snapTo": "Soft",
+   "note": "needs source-badge soft variants"
+  },
+  {
+   "file": "apps/mobile/components/OverrideIngredientSheet.tsx",
+   "line": 153,
+   "expr": "Accent.destructive + \"80\"",
+   "family": "destructive",
+   "alphaPct": 50.2,
+   "snapTo": "exempt",
+   "note": "50% destructive outline border — translucent-solid"
+  },
+  {
+   "file": "apps/mobile/components/SaveMealSheet.tsx",
+   "line": 270,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/ActivityLevelPreview.tsx",
+   "line": 88,
+   "expr": "accent.primary + \"15\"",
+   "family": "primary",
+   "alphaPct": 8.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/PhotoLogSheet.tsx",
+   "line": 600,
+   "expr": "accent.primary + \"22\"",
+   "family": "primary",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/PhotoLogSheet.tsx",
+   "line": 648,
+   "expr": "Accent.destructive + \"66\"",
+   "family": "destructive",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% border — translucent-solid; border-step ruling needed"
+  },
+  {
+   "file": "apps/mobile/components/PhotoLogSheet.tsx",
+   "line": 649,
+   "expr": "Accent.destructive + \"10\"",
+   "family": "destructive",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/PhotoLogSheet.tsx",
+   "line": 704,
+   "expr": "Accent.warning + \"55\"",
+   "family": "warning",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border; -13.3pp"
+  },
+  {
+   "file": "apps/mobile/components/PhotoLogSheet.tsx",
+   "line": 705,
+   "expr": "Accent.warning + \"0F\"",
+   "family": "warning",
+   "alphaPct": 5.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/PhotoLogSheet.tsx",
+   "line": 762,
+   "expr": "accent.primary + \"1A\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/AiLogReviewItem.tsx",
+   "line": 136,
+   "expr": "Accent.warning + \"55\"",
+   "family": "warning",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/AiLogReviewItem.tsx",
+   "line": 137,
+   "expr": "Accent.warning + \"0F\"",
+   "family": "warning",
+   "alphaPct": 5.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/AiLogReviewItem.tsx",
+   "line": 191,
+   "expr": "cColor + \"22\"",
+   "family": "confidence (dynamic via confidenceColor())",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/FirstRunChecklist.tsx",
+   "line": 92,
+   "expr": "Accent.primary + \"1A\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/VoiceLogSheet.tsx",
+   "line": 296,
+   "expr": "Accent.success + \"22\"",
+   "family": "success",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/VoiceLogSheet.tsx",
+   "line": 298,
+   "expr": "Accent.success + \"55\"",
+   "family": "success",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border; -13.3pp"
+  },
+  {
+   "file": "apps/mobile/components/VoiceLogSheet.tsx",
+   "line": 350,
+   "expr": "Accent.destructive + \"66\"",
+   "family": "destructive",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% border — translucent-solid"
+  },
+  {
+   "file": "apps/mobile/components/VoiceLogSheet.tsx",
+   "line": 351,
+   "expr": "Accent.destructive + \"10\"",
+   "family": "destructive",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/AiLogReviewSummary.tsx",
+   "line": 86,
+   "expr": "cColor + \"22\"",
+   "family": "confidence (dynamic)",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/OptionCard.tsx",
+   "line": 69,
+   "expr": "accent.primary + \"14\"",
+   "family": "primary",
+   "alphaPct": 7.8,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/OptionCard.tsx",
+   "line": 118,
+   "expr": "accent.primary + \"26\"",
+   "family": "primary",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/CreateCustomFoodSheet.tsx",
+   "line": 778,
+   "expr": "accent.primary + \"1f\"",
+   "family": "primary",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/DigestBlended.tsx",
+   "line": 176,
+   "expr": "colors.backgroundSecondary + \"66\"",
+   "family": "colors.backgroundSecondary",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "neutral wash"
+  },
+  {
+   "file": "apps/mobile/components/DigestBlended.tsx",
+   "line": 443,
+   "expr": "shareDisabled ? colors.cardBorder + \"22\" : Accent.success + \"1f\"",
+   "family": "success (+ colors.cardBorder disabled arm exempt)",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/DigestBlended.tsx",
+   "line": 523,
+   "expr": "accent.primary + \"3D\"",
+   "family": "primary",
+   "alphaPct": 23.9,
+   "snapTo": "SoftStrong",
+   "note": "progress-bar fill"
+  },
+  {
+   "file": "apps/mobile/components/AppleHealthCard.tsx",
+   "line": 228,
+   "expr": "row.color + \"1A\"",
+   "family": "dynamic (health metric accents)",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 771,
+   "expr": "accent.primary + \"80\"",
+   "family": "primary",
+   "alphaPct": 50.2,
+   "snapTo": "exempt",
+   "note": "50% border — translucent-solid"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 782,
+   "expr": "accent.primary + \"55\"",
+   "family": "primary",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 883,
+   "expr": "accent.primary + \"40\"",
+   "family": "primary",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 886,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 962,
+   "expr": "accent.primary + \"55\"",
+   "family": "primary",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 996,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 1008,
+   "expr": "Accent.success + \"40\"",
+   "family": "success",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 1018,
+   "expr": "Accent.success + \"18\"",
+   "family": "success",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 1076,
+   "expr": "Accent.destructive + \"12\"",
+   "family": "destructive",
+   "alphaPct": 7.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 1079,
+   "expr": "Accent.destructive + \"55\"",
+   "family": "destructive",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+   "line": 1273,
+   "expr": "accent.primary + \"1f\"",
+   "family": "primary",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/MoveMealSheet.tsx",
+   "line": 210,
+   "expr": "tint + \"1A\"",
+   "family": "slot-tint (dynamic via resolveSlotTint)",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/DuplicateDaySheet.tsx",
+   "line": 277,
+   "expr": "accent.primary + \"22\"",
+   "family": "primary",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/EmptyState.tsx",
+   "line": 93,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft",
+   "note": "heavily documented as deliberate 6.25% — doc comments must be updated with the snap"
+  },
+  {
+   "file": "apps/mobile/components/Digest.tsx",
+   "line": 440,
+   "expr": "accent.primary + \"0D\"",
+   "family": "primary",
+   "alphaPct": 5.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/Digest.tsx",
+   "line": 442,
+   "expr": "accent.primary + \"40\"",
+   "family": "primary",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/Digest.tsx",
+   "line": 488,
+   "expr": "shareDisabled ? colors.cardBorder + \"22\" : Accent.success + \"18\"",
+   "family": "success (+ colors.cardBorder arm exempt)",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/Digest.tsx",
+   "line": 490,
+   "expr": "Accent.success + \"30\"",
+   "family": "success",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/Digest.tsx",
+   "line": 555,
+   "expr": "colors.cardBorder + \"22\"",
+   "family": "colors.cardBorder",
+   "alphaPct": 13.3,
+   "snapTo": "exempt",
+   "note": "neutral disabled fill"
+  },
+  {
+   "file": "apps/mobile/components/HouseholdCard.tsx",
+   "line": 286,
+   "expr": "t.accent + \"14\"",
+   "family": "primary",
+   "alphaPct": 7.8,
+   "snapTo": "Soft",
+   "note": "t.accent = accent.primary"
+  },
+  {
+   "file": "apps/mobile/components/HouseholdCard.tsx",
+   "line": 319,
+   "expr": "t.accent + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/HouseholdCard.tsx",
+   "line": 388,
+   "expr": "t.accent + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/ui/SupprCard.tsx",
+   "line": 234,
+   "expr": "Accent.success + \"1A\"",
+   "family": "success",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/ui/SupprCard.tsx",
+   "line": 244,
+   "expr": "Accent.win + \"1A\"",
+   "family": "win",
+   "alphaPct": 10.2,
+   "snapTo": "Soft",
+   "note": "winSoft (12% light) exists — but no winSoftDark"
+  },
+  {
+   "file": "apps/mobile/components/ui/TrustChip.tsx",
+   "line": 44,
+   "expr": "Accent.success + \"14\"",
+   "family": "success",
+   "alphaPct": 7.8,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/ui/TrustChip.tsx",
+   "line": 56,
+   "expr": "Accent.warning + \"1A\"",
+   "family": "warning",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/ui/TrustChip.tsx",
+   "line": 62,
+   "expr": "Colors.light.confidenceNeutral + \"1F\"",
+   "family": "colors.confidenceNeutral",
+   "alphaPct": 12.2,
+   "snapTo": "Soft",
+   "note": "theme-colour base used as chip TINT (not scrim/border) — needs confidenceNeutralSoft token, or an explicit exempt ruling; also hard-codes .light"
+  },
+  {
+   "file": "apps/mobile/components/ui/TrustChip.tsx",
+   "line": 68,
+   "expr": "Accent.success + \"14\"",
+   "family": "success",
+   "alphaPct": 7.8,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/ui/TrustChip.tsx",
+   "line": 80,
+   "expr": "Accent.warning + \"1A\"",
+   "family": "warning",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/ui/ConfidenceChip.tsx",
+   "line": 43,
+   "expr": "colors.confidenceNeutral + \"1F\"",
+   "family": "colors.confidenceNeutral",
+   "alphaPct": 12.2,
+   "snapTo": "Soft",
+   "note": "same confidenceNeutralSoft need as TrustChip"
+  },
+  {
+   "file": "apps/mobile/components/settings/SettingsBundleContent.tsx",
+   "line": 1637,
+   "expr": "accent.primary + \"22\"",
+   "family": "primary",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/settings/SettingsBundleContent.tsx",
+   "line": 1697,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/settings/SettingsBundleContent.tsx",
+   "line": 2545,
+   "expr": "t.amber + \"18\"",
+   "family": "warning",
+   "alphaPct": 9.4,
+   "snapTo": "Soft",
+   "note": "t.amber = Accent.warning"
+  },
+  {
+   "file": "apps/mobile/components/settings/SettingsBundleContent.tsx",
+   "line": 2658,
+   "expr": "t.red + \"40\"",
+   "family": "destructive",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "t.red = Accent.destructive; border"
+  },
+  {
+   "file": "apps/mobile/components/progress/WeightTrendHeader.tsx",
+   "line": 92,
+   "expr": "statusIconColor + \"1f\"",
+   "family": "dynamic (status accent)",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/progress/AllWeightDataSheet.tsx",
+   "line": 317,
+   "expr": "accent.primary + \"22\"",
+   "family": "primary",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/discover/IconBox.tsx",
+   "line": 7,
+   "expr": "color + \"18\"",
+   "family": "dynamic (icon accent prop)",
+   "alphaPct": 9.4,
+   "snapTo": "Soft",
+   "note": "shared IconBox — one fix covers all discover call sites"
+  },
+  {
+   "file": "apps/mobile/components/progress/ProgressOnTargetRibbon.tsx",
+   "line": 46,
+   "expr": "medal + \"1F\"",
+   "family": "source-badge (colors.sourceAi damson)",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/progress/DigestStoryCard.tsx",
+   "line": 129,
+   "expr": "Accent.destructive + \"1a\"",
+   "family": "destructive",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/progress/DigestStoryCard.tsx",
+   "line": 131,
+   "expr": "Accent.success + \"1f\"",
+   "family": "success",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/WeeklyCheckinModal.tsx",
+   "line": 113,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/WeeklyCheckinModal.tsx",
+   "line": 209,
+   "expr": "accent.primary + \"55\"",
+   "family": "primary",
+   "alphaPct": 33.3,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/today/WeeklyCheckinModal.tsx",
+   "line": 210,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/PostOnboardingPushExplainer.tsx",
+   "line": 98,
+   "expr": "accent.primary + \"1A\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/FirstLogAcknowledgment.tsx",
+   "line": 98,
+   "expr": "Accent.success + \"40\"",
+   "family": "success",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/today/FirstLogAcknowledgment.tsx",
+   "line": 114,
+   "expr": "Accent.success + \"1A\"",
+   "family": "success",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/WhyNumberV3Section.tsx",
+   "line": 52,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/WhyNumberV3Section.tsx",
+   "line": 54,
+   "expr": "accent.primary + \"40\"",
+   "family": "primary",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/today/WhyNumberV3Section.tsx",
+   "line": 130,
+   "expr": "accent.primary + \"0D\"",
+   "family": "primary",
+   "alphaPct": 5.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/PostLogSuggestionToast.tsx",
+   "line": 85,
+   "expr": "Accent.win + \"40\"",
+   "family": "win",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border; needs winSoftStrong token"
+  },
+  {
+   "file": "apps/mobile/components/today/PostLogSuggestionToast.tsx",
+   "line": 100,
+   "expr": "Accent.win + \"1A\"",
+   "family": "win",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/NorthStarBlock.tsx",
+   "line": 377,
+   "expr": "Accent.success + \"1A\"",
+   "family": "success",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/AiFirstLogTooltip.tsx",
+   "line": 89,
+   "expr": "accent.primary + \"0F\"",
+   "family": "primary",
+   "alphaPct": 5.9,
+   "snapTo": "Soft",
+   "note": "doc comment at line 37 claims 8% — comment also stale"
+  },
+  {
+   "file": "apps/mobile/components/today/AiFirstLogTooltip.tsx",
+   "line": 91,
+   "expr": "accent.primary + \"30\"",
+   "family": "primary",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayCompleteDayModal.tsx",
+   "line": 125,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayStreakInsightCard.tsx",
+   "line": 47,
+   "expr": "Accent.success + \"08\"",
+   "family": "success",
+   "alphaPct": 3.1,
+   "snapTo": "Soft",
+   "note": "3.1%→12% is a big lift; a11y contrast note in theme.ts references the 8% card — capture review"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayStreakInsightCard.tsx",
+   "line": 49,
+   "expr": "Accent.success + \"18\"",
+   "family": "success",
+   "alphaPct": 9.4,
+   "snapTo": "Soft",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayStreakInsightCard.tsx",
+   "line": 57,
+   "expr": "Accent.success + \"18\"",
+   "family": "success",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayStreakInsightCard.tsx",
+   "line": 97,
+   "expr": "Accent.cyan + \"30\"",
+   "family": "teal",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border; teal family has no soft tokens"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayStreakInsightCard.tsx",
+   "line": 98,
+   "expr": "Accent.cyan + \"18\"",
+   "family": "teal",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayEditMealModal.tsx",
+   "line": 442,
+   "expr": "Accent.destructive + \"30\"",
+   "family": "destructive",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayEditMealModal.tsx",
+   "line": 758,
+   "expr": "Accent.destructive + \"30\"",
+   "family": "destructive",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 368,
+   "expr": "Accent.destructive + \"0F\"",
+   "family": "destructive",
+   "alphaPct": 5.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 369,
+   "expr": "Accent.destructive + \"26\"",
+   "family": "destructive",
+   "alphaPct": 14.9,
+   "snapTo": "Soft",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 374,
+   "expr": "accent + \"1A\"",
+   "family": "slot-tint (dynamic accent param)",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 439,
+   "expr": "accent.primary + \"14\"",
+   "family": "primary",
+   "alphaPct": 7.8,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 762,
+   "expr": "cardBorderColor + \"60\"",
+   "family": "colors.cardBorder",
+   "alphaPct": 37.6,
+   "snapTo": "exempt",
+   "note": "hairline"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 877,
+   "expr": "cardBorderColor + \"60\"",
+   "family": "colors.cardBorder",
+   "alphaPct": 37.6,
+   "snapTo": "exempt"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 942,
+   "expr": "col + \"12\"",
+   "family": "slot-tint (slotColor dynamic)",
+   "alphaPct": 7.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 1324,
+   "expr": "col + \"0C\"",
+   "family": "slot-tint (slotColor dynamic)",
+   "alphaPct": 4.7,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 1326,
+   "expr": "col + \"28\"",
+   "family": "slot-tint (slotColor dynamic)",
+   "alphaPct": 15.7,
+   "snapTo": "Soft",
+   "note": "border; 15.7 is 3.7pp from Soft vs 4.3pp from SoftStrong — nearest is Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 1398,
+   "expr": "cardBorderColor + \"30\"",
+   "family": "colors.cardBorder",
+   "alphaPct": 18.8,
+   "snapTo": "exempt"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+   "line": 1423,
+   "expr": "cardBorderColor + \"30\"",
+   "family": "colors.cardBorder",
+   "alphaPct": 18.8,
+   "snapTo": "exempt"
+  },
+  {
+   "file": "apps/mobile/components/today/onboarding-nudges/OnboardingNudgeBanner.tsx",
+   "line": 305,
+   "expr": "accent.primary + \"1A\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/today/onboarding-nudges/OnboardingNudgeBanner.tsx",
+   "line": 443,
+   "expr": "accent.primary + \"0A\"",
+   "family": "primary",
+   "alphaPct": 3.9,
+   "snapTo": "Soft",
+   "note": "3.9%→12% big lift — capture review"
+  },
+  {
+   "file": "apps/mobile/components/today/onboarding-nudges/OnboardingNudgeBanner.tsx",
+   "line": 445,
+   "expr": "accent.primary + \"30\"",
+   "family": "primary",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayWeekView.tsx",
+   "line": 277,
+   "expr": "Accent.warning + \"CC\"",
+   "family": "warning",
+   "alphaPct": 80,
+   "snapTo": "exempt",
+   "note": "80% dot/indicator — translucent-solid, use warningLight or solid instead; not a tint"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayWeekView.tsx",
+   "line": 349,
+   "expr": "accent.primary + \"66\"",
+   "family": "primary",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% borderTop — translucent-solid border; border-step ruling needed"
+  },
+  {
+   "file": "apps/mobile/components/today/TodayFastingPill.tsx",
+   "line": 96,
+   "expr": "accent.primary + \"18\"",
+   "family": "primary",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/plan/PlanRegenerateToast.tsx",
+   "line": 38,
+   "expr": "accent.primary + \"40\"",
+   "family": "primary",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/plan/PlanRegenerateToast.tsx",
+   "line": 42,
+   "expr": "accent.primary + \"1A\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/plan/PlanSourceSelector.tsx",
+   "line": 68,
+   "expr": "colors.tint + \"1A\"",
+   "family": "colors.tint (accent primary)",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/plan/PlanSourceSelector.tsx",
+   "line": 87,
+   "expr": "colors.border + \"80\"",
+   "family": "colors.border",
+   "alphaPct": 50.2,
+   "snapTo": "exempt",
+   "note": "neutral segmented-track fill"
+  },
+  {
+   "file": "apps/mobile/components/recipe/CreateRecipeWizard.tsx",
+   "line": 901,
+   "expr": "accent.primary + \"30\"",
+   "family": "primary",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/recipe/CreateRecipeWizard.tsx",
+   "line": 948,
+   "expr": "colors.background + \"f0\"",
+   "family": "colors.background",
+   "alphaPct": 94.1,
+   "snapTo": "exempt",
+   "note": "scrim"
+  },
+  {
+   "file": "apps/mobile/components/recipe/RecipeCardOverlayControls.tsx",
+   "line": 130,
+   "expr": "colors.text + \"CC\"",
+   "family": "colors.text",
+   "alphaPct": 80,
+   "snapTo": "exempt",
+   "note": "dark scrim behind overlay controls"
+  },
+  {
+   "file": "apps/mobile/components/recipe/RecipeImportReviewBanner.tsx",
+   "line": 26,
+   "expr": "Accent.warning + \"22\"",
+   "family": "warning",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/charts/DayStrip.tsx",
+   "line": 172,
+   "expr": "accent.primaryForeground + \"B3\"",
+   "family": "primary",
+   "alphaPct": 70.2,
+   "snapTo": "exempt",
+   "note": "70% white text-on-filled-pill — foreground opacity, not a tint"
+  },
+  {
+   "file": "apps/mobile/components/charts/DayStrip.tsx",
+   "line": 232,
+   "expr": "Accent.cyan + \"33\"",
+   "family": "teal",
+   "alphaPct": 20,
+   "snapTo": "SoftStrong",
+   "note": "teal family needs tokens"
+  },
+  {
+   "file": "apps/mobile/components/profile/EditorialProfileBlock.tsx",
+   "line": 292,
+   "expr": "accent.primarySolid + \"66\"",
+   "family": "primary",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% today-ring border — translucent-solid; documented deliberate (m7)"
+  },
+  {
+   "file": "apps/mobile/components/food-search/FoodSearchPanel.tsx",
+   "line": 1366,
+   "expr": "Accent.warning + \"14\"",
+   "family": "warning",
+   "alphaPct": 7.8,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/food-search/FoodSearchPanel.tsx",
+   "line": 1850,
+   "expr": "Accent.success + \"40\"",
+   "family": "success",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/food-search/FoodSearchPanel.tsx",
+   "line": 1896,
+   "expr": "commitCtaColor + \"15\"",
+   "family": "primary (flag-resolved CTA colour)",
+   "alphaPct": 8.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/food-search/FoodSearchPanel.tsx",
+   "line": 2174,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/food-search/FoodSearchPanel.tsx",
+   "line": 2229,
+   "expr": "Accent.success + \"15\"",
+   "family": "success",
+   "alphaPct": 8.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/household/ReceivedInvitesBanner.tsx",
+   "line": 113,
+   "expr": "accent.primary + \"40\"",
+   "family": "primary",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/household/ReceivedInvitesBanner.tsx",
+   "line": 114,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/imports/CsvImportPreview.tsx",
+   "line": 82,
+   "expr": "accent.primaryLight + \"1a\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft",
+   "note": "primaryLight IS the Soft base hue (rgba(91,59,110)) — folds cleanly"
+  },
+  {
+   "file": "apps/mobile/components/cook/CookIngredientChecklist.tsx",
+   "line": 74,
+   "expr": "Accent.success + \"18\"",
+   "family": "success",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/imports/MfpCsvImportCard.tsx",
+   "line": 163,
+   "expr": "Accent.success + \"66\"",
+   "family": "success",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% border — translucent-solid"
+  },
+  {
+   "file": "apps/mobile/components/imports/MfpCsvImportCard.tsx",
+   "line": 165,
+   "expr": "accent.primary + \"66\"",
+   "family": "primary",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% border — translucent-solid"
+  },
+  {
+   "file": "apps/mobile/components/imports/MfpCsvImportCard.tsx",
+   "line": 177,
+   "expr": "accent.primaryLight + \"26\"",
+   "family": "primary",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/imports/MfpCsvImportCard.tsx",
+   "line": 201,
+   "expr": "Accent.success + \"26\"",
+   "family": "success",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/consent/AnalyticsConsentPrompt.tsx",
+   "line": 110,
+   "expr": "accent.primary + \"1A\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/cook/CookHandsfreeBanner.tsx",
+   "line": 22,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/cook/CookHandsfreeBanner.tsx",
+   "line": 23,
+   "expr": "accent.primary + \"30\"",
+   "family": "primary",
+   "alphaPct": 18.8,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/OnboardingRecipeImportCard.tsx",
+   "line": 131,
+   "expr": "Accent.success + \"26\"",
+   "family": "success",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/OnboardingRecipeImportCard.tsx",
+   "line": 155,
+   "expr": "Accent.success + \"26\"",
+   "family": "success",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/cook/CookIngredientPanelHeaderToggle.tsx",
+   "line": 30,
+   "expr": "accentInk + \"18\"",
+   "family": "primary (accentInk prop)",
+   "alphaPct": 9.4,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/food-log/ServingStepper.tsx",
+   "line": 75,
+   "expr": "accent.primary + \"1a\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/nutrition/MacroStatPill.tsx",
+   "line": 84,
+   "expr": "color + \"18\"",
+   "family": "macro (colour prop)",
+   "alphaPct": 9.4,
+   "snapTo": "Soft",
+   "note": "needs macro soft tokens"
+  },
+  {
+   "file": "apps/mobile/components/notifications/NotificationRow.tsx",
+   "line": 64,
+   "expr": "Accent.success + \"24\"",
+   "family": "success",
+   "alphaPct": 14.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/OnboardingRecipeImportStates.tsx",
+   "line": 76,
+   "expr": "accent.primary + \"33\"",
+   "family": "primary",
+   "alphaPct": 20,
+   "snapTo": "SoftStrong"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/OnboardingRecipeImportStates.tsx",
+   "line": 118,
+   "expr": "Accent.success + \"66\"",
+   "family": "success",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% border — translucent-solid"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/scaffold.tsx",
+   "line": 139,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/scaffold.tsx",
+   "line": 141,
+   "expr": "accent.primary + \"26\"",
+   "family": "primary",
+   "alphaPct": 14.9,
+   "snapTo": "Soft",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/paywall/PaywallComparison.tsx",
+   "line": 33,
+   "expr": "Accent.win + \"14\"",
+   "family": "win",
+   "alphaPct": 7.8,
+   "snapTo": "Soft",
+   "note": "module-scope const PRO_COLUMN_WASH"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/sex.tsx",
+   "line": 163,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/sex.tsx",
+   "line": 164,
+   "expr": "accent.primary + \"33\"",
+   "family": "primary",
+   "alphaPct": 20,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/data-bridges.tsx",
+   "line": 290,
+   "expr": "Accent.warning + \"1A\"",
+   "family": "warning",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/data-bridges.tsx",
+   "line": 460,
+   "expr": "Accent.success + \"66\"",
+   "family": "success",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% granted-state border — translucent-solid"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/data-bridges.tsx",
+   "line": 473,
+   "expr": "iconColor + \"26\"",
+   "family": "dynamic (primaryLight/macro-fat/warning)",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/data-bridges.tsx",
+   "line": 497,
+   "expr": "Accent.success + \"26\"",
+   "family": "success",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/signup.tsx",
+   "line": 168,
+   "expr": "Accent.destructive + \"15\"",
+   "family": "destructive",
+   "alphaPct": 8.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/signup.tsx",
+   "line": 169,
+   "expr": "Accent.destructive + \"40\"",
+   "family": "destructive",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/app-choice.tsx",
+   "line": 95,
+   "expr": "accent.primary + \"0D\"",
+   "family": "primary",
+   "alphaPct": 5.1,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/app-choice.tsx",
+   "line": 97,
+   "expr": "accent.primary + \"26\"",
+   "family": "primary",
+   "alphaPct": 14.9,
+   "snapTo": "Soft",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/age.tsx",
+   "line": 81,
+   "expr": "accent.primary + \"10\"",
+   "family": "primary",
+   "alphaPct": 6.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/age.tsx",
+   "line": 82,
+   "expr": "accent.primary + \"33\"",
+   "family": "primary",
+   "alphaPct": 20,
+   "snapTo": "SoftStrong",
+   "note": "border"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/reveal.tsx",
+   "line": 636,
+   "expr": "color + \"22\"",
+   "family": "dynamic (macro/accent per row)",
+   "alphaPct": 13.3,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/permissions.tsx",
+   "line": 184,
+   "expr": "Accent.success + \"66\"",
+   "family": "success",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% granted border — translucent-solid"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/permissions.tsx",
+   "line": 197,
+   "expr": "iconColor + \"26\"",
+   "family": "dynamic (macro-fat/warning)",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/pace.tsx",
+   "line": 282,
+   "expr": "accent + \"1f\"",
+   "family": "dynamic (destructive/warning/primaryLight)",
+   "alphaPct": 12.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/pace.tsx",
+   "line": 283,
+   "expr": "accent + \"66\"",
+   "family": "dynamic (destructive/warning/primaryLight)",
+   "alphaPct": 40,
+   "snapTo": "exempt",
+   "note": "40% border — translucent-solid"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/pace.tsx",
+   "line": 418,
+   "expr": "accent.primary + \"1a\"",
+   "family": "primary",
+   "alphaPct": 10.2,
+   "snapTo": "Soft"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/pace.tsx",
+   "line": 419,
+   "expr": "accent.primary + \"59\"",
+   "family": "primary",
+   "alphaPct": 34.9,
+   "snapTo": "SoftStrong",
+   "note": "border; -14.9pp"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/pace.tsx",
+   "line": 450,
+   "expr": "config.accent + \"40\"",
+   "family": "dynamic (destructive/warning/primaryLight)",
+   "alphaPct": 25.1,
+   "snapTo": "SoftStrong"
+  },
+  {
+   "file": "apps/mobile/components/onboarding/steps/diet.tsx",
+   "line": 149,
+   "expr": "accent.primary + \"26\"",
+   "family": "primary",
+   "alphaPct": 14.9,
+   "snapTo": "Soft"
+  }
+ ],
+ "families": [
+  "success — needs Accent.successSoft/successSoftStrong (+Dark variants) in apps/mobile/constants/theme.ts; web has --accent-success-soft (12%) but NO -soft-strong",
+  "warning — needs warningSoft/warningSoftStrong (+Dark); web has --accent-warning-soft only (no -soft-strong)",
+  "destructive — needs destructiveSoft/destructiveSoftStrong (+Dark); web has --accent-destructive-soft only",
+  "win — Accent.winSoft exists but LIGHT-ONLY at 12%: needs winSoftDark plus winSoftStrong/winSoftStrongDark; web has --accent-win-soft",
+  "teal (Accent.cyan/fiber hue #4A7878) — no soft tokens on either platform (nearest web is --macro-water-soft)",
+  "info — Accent.info reached via paywall item.color; web --accent-info-soft exists (8%), mobile has none",
+  "macro colours (MacroColors.* — mc.fat concat in planner.tsx plus MACRO_CONFIG/MacroStatPill dynamic tints) — web has --macro-*-soft set; mobile has none",
+  "slot tints (SlotColors breakfast/lunch/dinner/snack via slotColor()/resolveSlotTint()) — web has --slot-*-soft; mobile has none",
+  "confidenceNeutral (colors.confidenceNeutral, scheme-resolved theme colour used as chip TINT in TrustChip/ConfidenceChip) — needs confidenceNeutralSoft or an explicit exempt ruling",
+  "source badges (colors.sourceAi/sourceManual — NutritionSourceBadge, ProgressOnTargetRibbon) — need soft variants or routing through win/neutral softs"
+ ],
+ "webConcatSites": [
+  "NONE — the only grep hit is a code COMMENT at src/app/components/MealPlanner.tsx:1510 mentioning `tint + \"1A\"` (no live concat); zero withAlpha() calls anywhere in src/. withAlpha does not exist yet anywhere in the repo, including apps/mobile/constants/theme.ts — the two existing mobile soft tokens are hand-written rgba() literals, so the ENG-1521 implementation must ADD the withAlpha helper to the token file, not just fence an existing one.",
+  "DETECTOR SLOT-IN (scripts/check-token-scale.mjs, 229 lines): findViolations() at ~line 144 runs per-line regexes HEX_RE/TW_RE/RADIUS_RE/RGBA_RE over comment-stripped source; a new ALPHA_CONCAT_RE (identifier + `+` + quoted 2-hex-char string) and a bare `withAlpha(` matcher slot in alongside them (~line 171-180), with the existing TOKEN_DEF_FILES set (line 88) already providing the theme-file carve-out where withAlpha is allowed to live; pins go in scripts/token-budget.json via the shared ratchet lib (scripts/lib/ratchet.mjs). Comment-stripping is already done, so the census's comment-only mentions (EmptyState.tsx docs, planner.tsx notes, HouseholdBar.tsx, MealPlanner.tsx web) won't false-positive."
+ ],
+ "visibleSnaps": [
+  "apps/mobile/app/meal-nutrition.tsx:495 (6.3%→12%)",
+  "apps/mobile/app/macro-detail.tsx:321 (6.3%→12%)",
+  "apps/mobile/app/household-settings.tsx:463 (33.3%→20% border)",
+  "apps/mobile/app/household-settings.tsx:465 (7.8%→12%)",
+  "apps/mobile/app/household-settings.tsx:526 (5.1%→12%)",
+  "apps/mobile/app/household-settings.tsx:817 (6.3%→12%)",
+  "apps/mobile/app/household-settings.tsx:924 (30.2%→20% border)",
+  "apps/mobile/app/shopping.tsx:652 (7.1%→12%)",
+  "apps/mobile/app/shopping.tsx:874 (7.8%→12%)",
+  "apps/mobile/app/plan-import.tsx:336 (25.1%→20% border)",
+  "apps/mobile/app/health-sync.tsx:1060 (25.1%→20% border)",
+  "apps/mobile/app/health-sync.tsx:1091 (7.1%→12%)",
+  "apps/mobile/app/health-sync.tsx:1092 (25.1%→20% border)",
+  "apps/mobile/app/profile.tsx:746 (7.8%→12%)",
+  "apps/mobile/app/profile.tsx:748 (25.1%→20% border)",
+  "apps/mobile/app/import-shared.tsx:1530 (33.3%→20% border)",
+  "apps/mobile/app/import-shared.tsx:1533 (7.1%→12% pressed fill)",
+  "apps/mobile/app/import-shared.tsx:1960 (6.3%→12%)",
+  "apps/mobile/app/import-shared.tsx:2330 (33.3%→20% border)",
+  "apps/mobile/app/recipe/verify.tsx:772 (5.1%→12%)",
+  "apps/mobile/app/recipe/verify.tsx:810 (31.4%→20% border)",
+  "apps/mobile/app/recipe/verify.tsx:811 (7.1%→12%)",
+  "apps/mobile/app/recipe/verify.tsx:825 (25.1%→20% border)",
+  "apps/mobile/app/recipe/verify.tsx:851 (25.1%→20% border)",
+  "apps/mobile/app/recipe/verify.tsx:1262 (25.1%→20% border)",
+  "apps/mobile/app/recipe/[id].tsx:1747 (33.3%→20% border)",
+  "apps/mobile/app/(tabs)/discover.tsx:851 (6.3%→12%)",
+  "apps/mobile/app/(tabs)/planner.tsx:3992 (7.1%→12% macro-fat)",
+  "apps/mobile/app/(tabs)/barcode.tsx:618 (33.3%→20% border)",
+  "apps/mobile/app/(tabs)/barcode.tsx:683 (33.3%→20% border)",
+  "apps/mobile/app/(tabs)/barcode.tsx:695 (33.3%→20% border)",
+  "apps/mobile/app/(tabs)/_today/TodayScreen.tsx:5445 (37.6%→20% border — biggest border delta)",
+  "apps/mobile/components/PhotoLogSheet.tsx:649 (6.3%→12%)",
+  "apps/mobile/components/PhotoLogSheet.tsx:704 (33.3%→20% border)",
+  "apps/mobile/components/PhotoLogSheet.tsx:705 (5.9%→12%)",
+  "apps/mobile/components/AiLogReviewItem.tsx:136 (33.3%→20% border)",
+  "apps/mobile/components/AiLogReviewItem.tsx:137 (5.9%→12%)",
+  "apps/mobile/components/VoiceLogSheet.tsx:298 (33.3%→20% border)",
+  "apps/mobile/components/VoiceLogSheet.tsx:351 (6.3%→12%)",
+  "apps/mobile/components/OptionCard.tsx:69 (7.8%→12%)",
+  "apps/mobile/components/BarcodeScannerModal.tsx:782 (33.3%→20% border)",
+  "apps/mobile/components/BarcodeScannerModal.tsx:883 (25.1%→20% border)",
+  "apps/mobile/components/BarcodeScannerModal.tsx:962 (33.3%→20% border)",
+  "apps/mobile/components/BarcodeScannerModal.tsx:1008 (25.1%→20% border)",
+  "apps/mobile/components/BarcodeScannerModal.tsx:1076 (7.1%→12%)",
+  "apps/mobile/components/BarcodeScannerModal.tsx:1079 (33.3%→20% border)",
+  "apps/mobile/components/EmptyState.tsx:93 (6.3%→12% — documented 6.25% disc)",
+  "apps/mobile/components/Digest.tsx:440 (5.1%→12%)",
+  "apps/mobile/components/Digest.tsx:442 (25.1%→20% border)",
+  "apps/mobile/components/HouseholdCard.tsx:286 (7.8%→12%)",
+  "apps/mobile/components/ui/TrustChip.tsx:44 (7.8%→12%)",
+  "apps/mobile/components/ui/TrustChip.tsx:68 (7.8%→12%)",
+  "apps/mobile/components/settings/SettingsBundleContent.tsx:2658 (25.1%→20% border)",
+  "apps/mobile/components/today/WeeklyCheckinModal.tsx:209 (33.3%→20% border)",
+  "apps/mobile/components/today/WeeklyCheckinModal.tsx:210 (6.3%→12%)",
+  "apps/mobile/components/today/FirstLogAcknowledgment.tsx:98 (25.1%→20% border)",
+  "apps/mobile/components/today/WhyNumberV3Section.tsx:54 (25.1%→20% border)",
+  "apps/mobile/components/today/WhyNumberV3Section.tsx:130 (5.1%→12%)",
+  "apps/mobile/components/today/PostLogSuggestionToast.tsx:85 (25.1%→20% border)",
+  "apps/mobile/components/today/AiFirstLogTooltip.tsx:89 (5.9%→12%)",
+  "apps/mobile/components/today/TodayStreakInsightCard.tsx:47 (3.1%→12% — largest tint lift in the census; a11y contrast notes reference the 8% card)",
+  "apps/mobile/components/today/TodayMealsSection.tsx:368 (5.9%→12%)",
+  "apps/mobile/components/today/TodayMealsSection.tsx:439 (7.8%→12%)",
+  "apps/mobile/components/today/TodayMealsSection.tsx:942 (7.1%→12% slot tint)",
+  "apps/mobile/components/today/TodayMealsSection.tsx:1324 (4.7%→12% slot tint)",
+  "apps/mobile/components/today/onboarding-nudges/OnboardingNudgeBanner.tsx:443 (3.9%→12%)",
+  "apps/mobile/components/plan/PlanRegenerateToast.tsx:38 (25.1%→20% border)",
+  "apps/mobile/components/food-search/FoodSearchPanel.tsx:1366 (7.8%→12%)",
+  "apps/mobile/components/food-search/FoodSearchPanel.tsx:1850 (25.1%→20% border)",
+  "apps/mobile/components/food-search/FoodSearchPanel.tsx:2174 (6.3%→12%)",
+  "apps/mobile/components/household/ReceivedInvitesBanner.tsx:113 (25.1%→20% border)",
+  "apps/mobile/components/household/ReceivedInvitesBanner.tsx:114 (6.3%→12%)",
+  "apps/mobile/components/cook/CookHandsfreeBanner.tsx:22 (6.3%→12%)",
+  "apps/mobile/components/onboarding/scaffold.tsx:139 (6.3%→12% — every onboarding screen)",
+  "apps/mobile/components/paywall/PaywallComparison.tsx:33 (7.8%→12% Pro column wash)",
+  "apps/mobile/components/onboarding/steps/sex.tsx:163 (6.3%→12%)",
+  "apps/mobile/components/onboarding/steps/signup.tsx:169 (25.1%→20% border)",
+  "apps/mobile/components/onboarding/steps/app-choice.tsx:95 (5.1%→12%)",
+  "apps/mobile/components/onboarding/steps/age.tsx:81 (6.3%→12%)",
+  "apps/mobile/components/onboarding/steps/pace.tsx:419 (34.9%→20% border)",
+  "apps/mobile/components/onboarding/steps/pace.tsx:450 (25.1%→20%)"
+ ]
+}
