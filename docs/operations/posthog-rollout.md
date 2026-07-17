@@ -290,7 +290,25 @@ envelope estimates assuming 30 days/month.
 
 ## Retired flags
 
-(none yet)
+### `dial_flat_material_v1` (ENG-1571) — resolved without creation, 2026-07-17
+
+| Property | Value |
+| --- | --- |
+| Flag ID | _never created in PostHog_ |
+| Type | Boolean (planned) |
+| Platforms | Web + Mobile (iOS) |
+| Owner | Grace |
+| Decision doc | [2026-07-17-dial-flat-material](../decisions/2026-07-17-dial-flat-material.md) |
+
+Was to gate the flat-material calorie dial (radial bloom removed, all states,
+both themes) with the bloom as the `else`/kill switch. **Intentionally never
+registered:** the bloom was already removed unconditionally on 2026-06-22
+(commit `03946c62`), so both arms of the flag would have been byte-identical —
+there is no bloom path to gate or kill-switch back to, and production has run
+flat-dial since then with no regression. The ruling is enforced by test pins
+instead (`tests/unit/calorieRingDial.test.tsx` +
+`apps/mobile/tests/unit/calorieRingDial.test.tsx`). No PostHog archival needed
+(nothing exists to archive); listed here so the flag name stays searchable.
 
 ## Flag hygiene rules
 

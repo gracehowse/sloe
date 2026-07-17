@@ -88,6 +88,53 @@ describe("CalorieRingDial — jewel watch dial", () => {
   });
 });
 
+// ENG-1571 (ruling 2026-07-17) — flat dial material, ALL states, both themes:
+// the core/rim radial-bloom circles stay REMOVED. The bloom was already
+// dropped unconditionally on 2026-06-22 (commit 03946c62, Grace's call), so
+// there is no bloom code path left to flag-gate — `dial_flat_material_v1`
+// was intentionally NOT registered (a flag gating nothing would dead-letter
+// the rollout; not a gap). These pins convert the ruling into a gate so the
+// ENG-1247 prototype-conformance pass can't re-teach the bloom back in from
+// `Sloe-App.html`. Kept jewel identity: the 48 graduation ticks, the
+// per-state tick gradient def, and the lead-segment gem cap
+// (`--ring-cap-core`; absent at a full dial, where there is no leading edge).
+describe("CalorieRingDial — flat material, no radial bloom (ENG-1571)", () => {
+  function expectFlat(consumed: number, target: number, gemCaps: number) {
+    const { container } = render(
+      <CalorieRingDial consumed={consumed} target={target} />,
+    );
+    // No bloom: zero radial-gradient defs, zero circle geometry — the dial
+    // is rects-only in every state.
+    expect(container.getElementsByTagName("radialGradient").length).toBe(0);
+    expect(container.getElementsByTagName("circle").length).toBe(0);
+    const rects = [...container.querySelectorAll("rect")];
+    // Kept: all 48 frost graduation ticks…
+    expect(
+      rects.filter((r) => r.getAttribute("fill") === "var(--ring-tick)")
+        .length,
+    ).toBe(48);
+    // …the per-state tick gradient def…
+    expect(container.querySelector('linearGradient[id^="cr-dial-"]')).not.toBeNull();
+    // …and the lead-segment gem cap where a leading edge exists.
+    expect(
+      rects.filter((r) => r.getAttribute("fill") === "var(--ring-cap-core)")
+        .length,
+    ).toBe(gemCaps);
+  }
+
+  it("empty state is flat: no bloom nodes, ticks + gem cap intact", () => {
+    expectFlat(0, 2000, 1);
+  });
+
+  it("under-budget state is flat: no bloom nodes, ticks + gem cap intact", () => {
+    expectFlat(1200, 2000, 1);
+  });
+
+  it("over-budget state is flat: no amber halo around 'kcal over' (trust posture)", () => {
+    expectFlat(2300, 2000, 0);
+  });
+});
+
 // ENG-1465 — the v3 dial swap dropped the legacy `DailyRing` interaction
 // contract (click/keyboard macro toggle + the win/commit pulses). These pin
 // the restored wiring: dial contract + hero host end-to-end.

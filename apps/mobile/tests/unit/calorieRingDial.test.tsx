@@ -62,6 +62,60 @@ describe("CalorieRingDial — mobile jewel watch dial", () => {
   });
 });
 
+// ENG-1571 (ruling 2026-07-17) — flat dial material, ALL states, both themes:
+// the core/rim radial-bloom circles stay REMOVED. Parity twin of the web
+// block in `tests/unit/calorieRingDial.test.tsx` — see its header for why
+// `dial_flat_material_v1` was intentionally not registered (the bloom was
+// already dropped unconditionally on 2026-06-22, commit 03946c62; there is
+// no bloom path left to flag-gate — not a gap). Pins the flat material so
+// the ENG-1247 prototype-conformance pass can't re-teach the bloom back in.
+// Kept jewel identity: 48 graduation ticks, the state-gradient def, and the
+// lead-segment gem cap (absent at a full dial — no leading edge).
+describe("CalorieRingDial — flat material, no radial bloom (ENG-1571)", () => {
+  /** Flatten the rendered tree; the rn-svg shim tags nodes `data-svg-stub`. */
+  function collect(node: any, out: any[] = []): any[] {
+    if (!node) return out;
+    out.push(node);
+    const children = Array.isArray(node.children) ? node.children : [];
+    for (const c of children) collect(c, out);
+    return out;
+  }
+
+  function expectFlat(consumed: number, target: number, gemCaps: number) {
+    const { toJSON } = render(
+      <CalorieRingDial consumed={consumed} target={target} />,
+    );
+    const nodes = collect(toJSON());
+    const stubs = (name: string) =>
+      nodes.filter((n) => n?.props?.["data-svg-stub"] === name);
+    // No bloom: zero RadialGradient defs, zero Circle geometry — the dial is
+    // Rects-only in every state.
+    expect(stubs("RadialGradient").length).toBe(0);
+    expect(stubs("Circle").length).toBe(0);
+    // Kept: all 48 frost graduation ticks (the height-14 track rects)…
+    expect(stubs("Rect").filter((n) => n.props.height === 14).length).toBe(48);
+    // …the per-state tick gradient def…
+    expect(stubs("LinearGradient").length).toBe(1);
+    // …and the lead-segment gem cap (the height-6 sparkle rect) where a
+    // leading edge exists.
+    expect(stubs("Rect").filter((n) => n.props.height === 6).length).toBe(
+      gemCaps,
+    );
+  }
+
+  it("empty state is flat: no bloom nodes, ticks + gem cap intact", () => {
+    expectFlat(0, 2000, 1);
+  });
+
+  it("under-budget state is flat: no bloom nodes, ticks + gem cap intact", () => {
+    expectFlat(1200, 2000, 1);
+  });
+
+  it("over-budget state is flat: no amber halo around 'kcal over' (trust posture)", () => {
+    expectFlat(2300, 2000, 0);
+  });
+});
+
 // ENG-1465 — the v3 dial swap dropped the legacy `CalorieRing` tap/long-press
 // macro toggle (`Pressable onPress={onToggle} onLongPress={onToggle}`). These
 // pin the restored gesture end-to-end: dial → graphic → hero host.
