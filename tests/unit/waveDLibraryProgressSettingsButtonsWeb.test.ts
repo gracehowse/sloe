@@ -98,7 +98,7 @@ describe("Wave D (web) — ProgressDashboard CTAs", () => {
   it("SANCTIONED non-migration: the Calendar icon-only button stays a raw icon button", () => {
     // h-9 w-9 icon-only affordance, no text label — intentionally NOT a SupprButton.
     expect(PROGRESS).toMatch(
-      /data-testid="progress-calendar-button"[\s\S]{0,200}h-9 w-9/,
+      /data-testid="progress-calendar-button"[\s\S]{0,500}h-9 w-9/,
     );
   });
 

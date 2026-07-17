@@ -42,6 +42,9 @@ export type LogSheetDescribeFlowProps = {
   onPaywall?: () => void;
   onReviewActiveChange?: (active: boolean) => void;
   inputHidden?: boolean;
+  /** The deduplicated Log-sheet grammar opens Describe only from its method
+   *  tile, so the old collapsed row must not render as a second entry point. */
+  collapsedEntryHidden?: boolean;
   /** ENG-1303 — the Describe method tile bumps this to expand the flow EMPTY
    *  (distinct from `seedText`, which pre-fills from the search-row NL CTA).
    *  A change > 0 expands; the initial `0` is inert so it doesn't auto-open. */
@@ -58,6 +61,7 @@ export function LogSheetDescribeFlow({
   onPaywall,
   onReviewActiveChange,
   inputHidden = false,
+  collapsedEntryHidden = false,
   expandSignal = 0,
 }: LogSheetDescribeFlowProps) {
   const [stage, setStage] = React.useState<Stage>("input");
@@ -242,6 +246,7 @@ export function LogSheetDescribeFlow({
   }
 
   if (!expanded && stage === "input" && !error) {
+    if (collapsedEntryHidden) return null;
     return (
       <button
         type="button"

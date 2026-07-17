@@ -4,6 +4,7 @@ import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { useResolvedScheme } from "@/context/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
  * Library / profile recipe card image with no-image + on-error fallback
@@ -38,8 +39,10 @@ export function RecipeCardImage({
   // ENG-1528 — resolved-scheme aware so a dark card gets the dark ramp
   // tint instead of a glowing cream one.
   const scheme = useResolvedScheme();
-  const underlay = recipeUnderlayColor({ id: recipeId, title: recipeTitle }, scheme);
-  const showPlaceholder = !uri || errored;
+  const mediaPalette = isFeatureEnabled("recipe_sparse_media_v1") ? "plum-duotone" : "legacy-cuisine";
+  const underlay = recipeUnderlayColor({ id: recipeId, title: recipeTitle }, scheme, mediaPalette);
+  const trimmed = uri?.trim() ?? "";
+  const showPlaceholder = trimmed.length === 0 || errored;
   if (showPlaceholder) {
     // ENG-1382 — most consumers pass a plain `{width:"100%", height:"100%"}`
     // `cardImageStyle` sized by a fixed-height wrapper `View`, which needs
@@ -71,7 +74,7 @@ export function RecipeCardImage({
   }
   return (
     <SmartImage
-      source={{ uri }}
+      source={{ uri: trimmed }}
       // The opaque tint rides the image element's own style (not just the
       // flag-gated `placeholderColor`), so the never-white guarantee holds
       // on the flag-off plain-RN-Image path too.

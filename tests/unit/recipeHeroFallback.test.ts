@@ -26,6 +26,7 @@ import {
   CARD_DARK,
   HERO_TINTS,
   HERO_TINTS_DARK,
+  PLUM_DUOTONE,
   djb2,
   getRecipeFallback,
   patternSvgContent,
@@ -120,6 +121,23 @@ describe("djb2 + pattern selection", () => {
   it("djb2 is pure / deterministic", () => {
     expect(djb2("abc")).toBe(djb2("abc"));
     expect(djb2("")).toBe(5381);
+  });
+});
+
+describe("ENG-1575 plum-duotone media fallback", () => {
+  it("uses one plum palette while preserving deterministic glyph and pattern identity", () => {
+    const input = { id: "recipe-42", title: "Tomato Pasta" };
+    const light = getRecipeFallback(input, "light", "plum-duotone");
+    const dark = getRecipeFallback(input, "dark", "plum-duotone");
+    expect(light.gradientStart).toBe(PLUM_DUOTONE.light.start);
+    expect(light.gradientEnd).toBe(PLUM_DUOTONE.light.end);
+    expect(light.glyphColor).toMatch(/^rgba\(91, 59, 110,/);
+    expect(dark.gradientStart).toBe(PLUM_DUOTONE.dark.start);
+    expect(dark.gradientEnd).toBe(PLUM_DUOTONE.dark.end);
+    expect(dark.glyphColor).toMatch(/^rgba\(169, 140, 184,/);
+    expect(dark.pattern).toBe(light.pattern);
+    expect(dark.glyph).toBe(light.glyph);
+    expect(recipeUnderlayColor(input, "light", "plum-duotone")).toBe(PLUM_DUOTONE.light.start);
   });
 });
 

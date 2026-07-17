@@ -5,6 +5,7 @@ import Image from "next/image";
 import { RecipeHeroFallback } from "./RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 type DiscoverRecipeImageProps = {
   id: string;
@@ -85,13 +86,14 @@ export function DiscoverRecipeImage({
 }: DiscoverRecipeImageProps) {
   const [broken, setBroken] = useState(false);
   const scheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
+  const mediaPalette = isFeatureEnabled("recipe_sparse_media_v1") ? "plum-duotone" : "legacy-cuisine";
 
   const trimmed = image?.trim() || "";
   // ENG-1374 PR 2 structural guarantee — the wrapper itself paints the
   // recipe's opaque §11.4 cuisine tint (replacing the frost-grey
   // `bg-muted`, which §11.4 bans for imagery), so a 404, a slow load,
   // or a failed fallback SVG mount can never expose page white.
-  const underlay = recipeUnderlayColor({ id, title }, scheme);
+  const underlay = recipeUnderlayColor({ id, title }, scheme, mediaPalette);
 
   if (variant === "thumb") {
     if (!trimmed || broken) {

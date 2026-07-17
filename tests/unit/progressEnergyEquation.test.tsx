@@ -18,6 +18,13 @@ function forceEquation(on: boolean) {
   };
 }
 
+function forceSemanticStats(equation: boolean) {
+  (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ = {
+    sloe_v3_energy_equation: equation,
+    semantic_stat_roles_v1: true,
+  };
+}
+
 afterEach(() => {
   delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__;
 });
@@ -64,5 +71,25 @@ describe("ProgressEnergyTriad equation layout", () => {
     fireEvent.click(getByTestId("progress-energy-how"));
     expect(container.textContent).toContain("what you'd burn on a normal day");
     expect(container.textContent).toContain("adaptive estimate");
+  });
+
+  it("keeps sibling triad numerals ink and moves state into indicators", () => {
+    forceSemanticStats(false);
+    const { getByTestId, container } = render(
+      <ProgressEnergyTriad avgIntakeKcal={1800} maintenanceKcal={2200} isAdaptive />,
+    );
+    expect(getByTestId("progress-energy-tdee-value")).toHaveStyle({ color: "var(--foreground)" });
+    expect(getByTestId("progress-energy-deficit-value")).toHaveStyle({ color: "var(--foreground)" });
+    expect(container.querySelectorAll(".rounded-full").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps equation values ink while state is carried by label dots", () => {
+    forceSemanticStats(true);
+    const { getByTestId } = render(
+      <ProgressEnergyTriad avgIntakeKcal={1800} maintenanceKcal={2200} isAdaptive />,
+    );
+    const equation = getByTestId("progress-energy-equation");
+    expect(equation.querySelectorAll(".text-foreground")).toHaveLength(3);
+    expect(equation.querySelectorAll(".rounded-full")).toHaveLength(2);
   });
 });

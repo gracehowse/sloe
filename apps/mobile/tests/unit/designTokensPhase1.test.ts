@@ -88,6 +88,7 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
     const REQUIRED = [
       "display",
       "title",
+      "pageTitle",
       "headline",
       "body",
       "bodyMuted",
@@ -119,6 +120,13 @@ describe("mobile theme — Phase 1 production design spec coverage", () => {
       expect(Type.title.lineHeight).toBe(28);
       expect(Type.title.fontWeight).toBe("400");
       expect(Type.title.letterSpacing).toBe(-0.3);
+    });
+
+    it("Type.pageTitle is the ratified 33/38/500 standard chrome title", () => {
+      expect(Type.pageTitle.fontSize).toBe(33);
+      expect(Type.pageTitle.lineHeight).toBe(38);
+      expect(Type.pageTitle.fontWeight).toBe("500");
+      expect(Type.pageTitle.letterSpacing).toBe(-0.4);
     });
 
     it("Type.macroValue matches Today macro tiles (20/24/700/-0.35)", () => {

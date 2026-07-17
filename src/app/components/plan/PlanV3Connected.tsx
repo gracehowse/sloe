@@ -41,6 +41,7 @@ export interface PlanV3ConnectedProps {
    *  while the plan has real meals (mobile ENG-1480 contract). */
   planStartDate: string | null;
   onGenerate: () => void;
+  isGenerating?: boolean;
   onAdjust: () => void;
   /** Open the swap picker for (dayIndex, slotIndex) — powers add-to-slot. */
   onSwapSlot: (dayIndex: number, slotIndex: number) => void;
@@ -75,6 +76,7 @@ function PlanV3ConnectedBody({
   startOffset,
   planStartDate,
   onGenerate,
+  isGenerating = false,
   onAdjust,
   onTemplates,
   onOpenHousehold,
@@ -169,6 +171,7 @@ function PlanV3ConnectedBody({
           verdict={verdict}
           household={household}
           onGenerate={onGenerate}
+          isGenerating={isGenerating}
           onAdjust={onAdjust}
           onTemplates={templates}
           onOpenHousehold={openHousehold}

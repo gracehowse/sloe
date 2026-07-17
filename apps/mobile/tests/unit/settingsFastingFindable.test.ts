@@ -37,7 +37,7 @@ const FASTING_SCREEN = readFileSync(
   "utf8",
 );
 const SETTINGS = readFileSync(
-  resolve(ROOT, "app/(tabs)/settings.tsx"),
+  resolve(ROOT, "app/settings.tsx"),
   "utf8",
 );
 

@@ -55,6 +55,19 @@ describe("Library <RecipeCardImage> — honest imagery fallback (ENG-1287)", () 
     expect(getByTestId("recipe-hero-fallback-abc-123")).toBeTruthy();
   });
 
+  it("treats whitespace-only URLs as missing media", () => {
+    const { UNSAFE_queryByType, getByTestId } = render(
+      <RecipeCardImage
+        uri="   "
+        cardImageStyle={cardImageStyle}
+        recipeId="blank-url"
+        recipeTitle="Untitled"
+      />,
+    );
+    expect(UNSAFE_queryByType(Image)).toBeNull();
+    expect(getByTestId("recipe-card-image-fallback-blank-url")).toBeTruthy();
+  });
+
   it("swaps to RecipeHeroFallback when the image fires onError", () => {
     const { UNSAFE_getByType, UNSAFE_queryByType, getByTestId, queryByTestId } = render(
       <RecipeCardImage

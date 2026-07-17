@@ -31,6 +31,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Icons } from "../ui/icons";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 
 export interface SettingsPaneSection {
   /** Stable id — used as the React key + active-state token. */
@@ -59,6 +60,7 @@ export function SettingsTwoPaneShell({ header, sections }: SettingsTwoPaneShellP
   // than crashing on `sections[0]`.
   const [activeId, setActiveId] = useState<string>(() => sections[0]?.id ?? "");
   const active = sections.find((s) => s.id === activeId) ?? sections[0] ?? null;
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
 
   return (
     <div className="product-shell py-8" data-testid="settings-two-pane">
@@ -77,7 +79,9 @@ export function SettingsTwoPaneShell({ header, sections }: SettingsTwoPaneShellP
               style={{ color: "var(--foreground-brand)" }}
             />
           </div>
-          <h1 className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">
+          <h1 className={consistencyChrome
+            ? "page-title text-foreground-brand"
+            : "font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"}>
             Settings
           </h1>
         </div>

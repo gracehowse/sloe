@@ -1,6 +1,7 @@
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Spacing } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
  * Floating glass pill metrics — single source of truth for `SupprTabBar`,
@@ -39,6 +40,9 @@ export function tabBarOuterHeight(bottomInset: number): number {
  */
 export function useTabBarClearance(): number {
   const insets = useSafeAreaInsets();
+  if (isFeatureEnabled("bottom_chrome_contract_v1")) {
+    return tabBarOuterHeight(insets.bottom);
+  }
   const { pillHeight, bottomGap } = TAB_BAR_METRICS;
   return pillHeight + bottomGap + insets.bottom;
 }

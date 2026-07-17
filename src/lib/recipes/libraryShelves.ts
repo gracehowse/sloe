@@ -37,6 +37,15 @@ export interface LibraryShelf<T> {
   recipes: T[];
 }
 
+export type LibraryCompositionMode = "empty" | "single" | "pair" | "many";
+
+export interface LibraryComposition<T> {
+  mode: LibraryCompositionMode;
+  featured: T | null;
+  shelves: LibraryShelf<T>[];
+  gridRecipes: T[];
+}
+
 /** `true` when a recipe has a real, positive calorie count at/under the cap. */
 function fitsYourDay(r: LibraryShelfRecipe): boolean {
   return Number.isFinite(r.calories) && r.calories > 0 && r.calories <= SHELF_FITS_KCAL_MAX;
@@ -75,4 +84,34 @@ export function deriveLibraryShelves<T extends LibraryShelfRecipe>(
     },
   ];
   return shelves.filter((s) => s.recipes.length > 0);
+}
+
+/**
+ * ENG-1575 — deterministic sparse Library composition. With the rollout on,
+ * one recipe appears once as the editorial hero; two recipes appear once each
+ * (hero + grid). Three-or-more preserves the existing editorial density.
+ */
+export function deriveLibraryComposition<T extends LibraryShelfRecipe & { id: string }>(
+  recipes: readonly T[],
+  sparseMediaEnabled: boolean,
+): LibraryComposition<T> {
+  const shelves = deriveLibraryShelves(recipes);
+  const featured = shelves[0]?.recipes[0] ?? recipes[0] ?? null;
+  if (!sparseMediaEnabled || recipes.length >= 3) {
+    return {
+      mode: recipes.length === 0 ? "empty" : recipes.length === 1 ? "single" : recipes.length === 2 ? "pair" : "many",
+      featured,
+      shelves,
+      gridRecipes: [...recipes],
+    };
+  }
+  if (!featured) {
+    return { mode: "empty", featured: null, shelves: [], gridRecipes: [] };
+  }
+  return {
+    mode: recipes.length === 1 ? "single" : "pair",
+    featured,
+    shelves: [],
+    gridRecipes: recipes.filter((recipe) => recipe.id !== featured.id),
+  };
 }

@@ -126,6 +126,7 @@ import {
 } from "@suppr/nutrition-core/userMealSlotConfig";
 import { parseMealDescriptionTranscript } from "@suppr/nutrition-core/parseMealDescription";
 import { track, isFeatureEnabled } from "@/lib/analytics";
+import { settingsRoute } from "@/lib/settingsRoute";
 import {
   compareMealsByChronology,
   defaultEatenAtForNewLog,
@@ -365,9 +366,7 @@ function formatMealTimeDisplay(
 // ENG-773 (2026-05-30): the time-of-day bucketing now comes from
 // `slotForHour` in the shared `recipeJournalSlot` lib (imported above),
 // not a local copy. The useMemo + the two reset call-sites all call
-// that one helper, so web and mobile seed the same slot for the same
-// clock time (was 10/14/17 locally vs 11/15/17 shared — now 11/15/17
-// everywhere).
+// Shared helper keeps web/mobile slot seeding identical (now 11/15/17).
 export default function TrackerScreen() {
   const { router, params, insets, session, userId } = useToday();
   const haptics = useHaptics();
@@ -4019,7 +4018,7 @@ export default function TrackerScreen() {
         <TodayHeaderBar
           userId={session?.user?.id ?? null}
           avatarInitial={session?.user?.email?.[0]?.toUpperCase() ?? "U"}
-          onOpenSettings={() => router.push("/(tabs)/settings")}
+          onOpenSettings={() => router.push(settingsRoute())}
           onOpenNotifications={() => router.push("/(tabs)/notifications")}
         />
 

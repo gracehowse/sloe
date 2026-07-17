@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { settingsRoute } from "@/lib/settingsRoute";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Barcode,
@@ -198,11 +199,10 @@ function ingredientsFromImageResponse(
   }
   return out;
 }
-
 export default function CreateRecipeScreen() {
   const haptics = useHaptics(), insets = useSafeAreaInsets();
   const router = useRouter();
-  const goBackOrCancel = useSafeBack("/(tabs)/settings");
+  const goBackOrCancel = useSafeBack(settingsRoute());
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for the header title,
   // add-row affordance, and primary submit CTA. Threaded into the memoised

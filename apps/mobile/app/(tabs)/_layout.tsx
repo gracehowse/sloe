@@ -40,7 +40,7 @@ import { useHasSignedInBefore } from '@/lib/hasSignedInBefore';
  *  - Progress → dedicated tab (`/(tabs)/progress`). Settings is
  *    reached from the avatar on Today (and deep links), not the tab bar.
  *
- * `discover`, `settings`, `barcode`, and `notifications` remain as
+ * `discover`, `settings-legacy`, `barcode`, and `notifications` remain as
  * routable screens but are removed from the tab bar (`href: null`). All
  * existing deep-links (e.g. `/library?from=onboarding`,
  * `useSafeBack("/(tabs)/discover")`) continue to resolve.
@@ -252,7 +252,7 @@ export default function TabLayout() {
       {/* Hidden routes — accessible via deep links and sub-tab pills,
           but not surfaced in the tab bar. */}
       <Tabs.Screen name="discover" options={{ href: null }} />
-      <Tabs.Screen name="settings" options={{ href: null }} />
+      <Tabs.Screen name="settings-legacy" options={{ href: null }} />
       <Tabs.Screen name="barcode" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
       {/* V1 (2026-05-11 visual sweep): /recipes redirects to /library

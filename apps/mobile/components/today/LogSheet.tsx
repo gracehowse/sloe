@@ -703,12 +703,8 @@ function DefaultComposition({
   }, [showGoTos, showRecent, showLibrary, showSaved]);
   const showBrowseToggle = visibleTabs.length >= 2;
 
-  // Inline-search mode is active when the host wired `search.onSelect`.
-  // In that case the search row is a real `<TextInput>` and results
-  // render via `<FoodSearchPanel>` within this same sheet. Without
-  // `onSelect` we fall back to the legacy tap-to-open path that
-  // routes to a separate `<FoodSearchModal>` (preserves any host
-  // that hasn't migrated yet).
+  // `search.onSelect` owns an inline input/results path; `onOpen`-only
+  // callers retain the legacy external modal.
   const inlineMode = !!search?.onSelect;
 
   // Local query state — owned by LogSheet so the TextInput is
@@ -717,6 +713,8 @@ function DefaultComposition({
   // empty input, not their previous query — or to ENG-1450's
   // `initialQuery` (onboarding deep-link) when set.
   const [query, setQuery] = React.useState(initialQuery ?? "");
+  const searchQueryActive = inlineMode && query.trim().length > 0;
+  const showSecondaryMethodChrome = !(isFeatureEnabled("component_grammar_dedup") && searchQueryActive);
   React.useEffect(() => {
     if (!visible) {
       setQuery("");
@@ -815,10 +813,11 @@ function DefaultComposition({
           aiMethodTooltipVisible={aiMethodTooltipVisible}
           onQuickAdd={onAddManually}
           onDescribe={describe ? onDescribe : undefined}
+          hidden={!showSecondaryMethodChrome}
         />
       </View>
 
-      {showBarcodeFreePromise && barcode?.onOpen ? (
+      {showSecondaryMethodChrome && showBarcodeFreePromise && barcode?.onOpen ? (
         <LogSheetBarcodeFreePromise onOpen={() => barcode.onOpen?.()} />
       ) : null}
         </>
@@ -836,7 +835,8 @@ function DefaultComposition({
           onCommit={describe.onCommit}
           onPaywall={describe.onPaywall}
           onReviewActiveChange={setDescribeReviewActive}
-          inputHidden={!describeReviewActive && query.trim().length > 0}
+          inputHidden={!describeReviewActive && searchQueryActive}
+          collapsedEntryHidden={isFeatureEnabled("component_grammar_dedup")}
         />
       ) : null}
 

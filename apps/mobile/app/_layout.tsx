@@ -424,10 +424,10 @@ const STACK_HEADER_HIDDEN = new Set([
   "recipe/verify",
   "shopping",
   "profile",
+  "settings",
   "paywall",
   "onboarding",
   "notifications-prompt",
-  // Custom in-screen headers (avoid double back + native title clash)
   "progress-metric",
   "health-sync",
   "fasting",

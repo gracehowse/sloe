@@ -382,6 +382,27 @@ describe("ProgressHierarchyV1 — weight opt-out (mobile)", () => {
   });
 });
 
+describe("ProgressHierarchyV1 — sparse weight with other progress (mobile, ENG-1578)", () => {
+  it("lets available weekly evidence lead and moves weight setup into slot two", () => {
+    const props = baseProps();
+    props.promoteAvailableProgress = true;
+    props.trajectory = {
+      ...props.trajectory!,
+      trend: { ...props.trajectory!.trend, points: [] },
+      weightKgByDay: {},
+      latestWeightKg: null,
+    };
+    const r = render(<ProgressHierarchyV1 {...props} />);
+    expect(sectionRoots(r.toJSON() as JsonNode | JsonNode[])).toEqual([
+      "progress-hierarchy-week",
+      "progress-hierarchy-trajectory-hero",
+      "progress-hierarchy-energy",
+      "progress-hierarchy-body-comp",
+      "progress-hierarchy-your-week",
+    ]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // 5 — §3 Energy: the equation in words, correct arithmetic
 // ---------------------------------------------------------------------------

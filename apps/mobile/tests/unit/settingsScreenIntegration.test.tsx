@@ -26,7 +26,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = resolve(__dirname, "../..");
-const SETTINGS = readFileSync(resolve(ROOT, "app/(tabs)/settings.tsx"), "utf8");
+const SETTINGS = readFileSync(resolve(ROOT, "app/settings.tsx"), "utf8");
 const HOUSEHOLD = readFileSync(
   resolve(ROOT, "app/household-settings.tsx"),
   "utf8",

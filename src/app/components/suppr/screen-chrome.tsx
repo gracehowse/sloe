@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { isFeatureEnabled } from "@/lib/analytics/track";
 import { cn } from "../ui/utils";
 
 export interface ScreenChromeProps {
@@ -42,6 +43,7 @@ export function ScreenChrome({
   overlineTestID,
   titleTestID,
 }: ScreenChromeProps) {
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   return (
     <header
       className={cn(
@@ -62,7 +64,12 @@ export function ScreenChrome({
           ) : null}
           <h1
             data-testid={titleTestID}
-            className="font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight text-foreground-brand"
+            className={cn(
+              "text-foreground-brand",
+              consistencyChrome
+                ? "page-title"
+                : "font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight",
+            )}
           >
             {title}
           </h1>

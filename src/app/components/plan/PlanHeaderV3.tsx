@@ -4,6 +4,8 @@ import * as React from "react";
 import { Bookmark, Sparkles, SlidersHorizontal } from "lucide-react";
 
 import type { PlanWeekVerdict } from "@/lib/planning/planWeekStatus";
+import { isFeatureEnabled } from "@/lib/analytics/track";
+import { cn } from "../ui/utils";
 
 /**
  * PlanHeaderV3 — the Sloe v3 Plan header + week-verdict row.
@@ -32,10 +34,12 @@ export interface PlanHeaderV3Props {
 function ActButton({
   label,
   onClick,
+  consistencyChrome,
   children,
 }: {
   label: string;
   onClick: () => void;
+  consistencyChrome: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -43,7 +47,12 @@ function ActButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="flex h-[38px] w-[38px] items-center justify-center rounded-xl border border-border bg-card shadow-sm text-foreground transition-[background-color,transform] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95"
+      className={cn(
+        "flex items-center justify-center text-foreground transition-[background-color,transform] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95",
+        consistencyChrome
+          ? "h-10 w-10 rounded-full bg-muted"
+          : "h-[38px] w-[38px] rounded-xl border border-border bg-card shadow-sm",
+      )}
     >
       {children}
     </button>
@@ -57,25 +66,34 @@ export function PlanHeaderV3({
   onAdjust,
   onTemplates,
 }: PlanHeaderV3Props) {
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   return (
     <div className="mb-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 shrink">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-foreground-tertiary">
+          <p className={cn(
+            "text-[11px] uppercase text-foreground-tertiary",
+            consistencyChrome ? "font-bold tracking-[0.1em]" : "font-semibold tracking-[0.05em]",
+          )}>
             {dateRangeLabel.toUpperCase()}
           </p>
-          <h2 className="mt-0.5 font-[family-name:var(--font-headline)] text-[28px] font-medium leading-tight tracking-tight text-foreground">
+          <h2 className={cn(
+            "mt-0.5 text-foreground",
+            consistencyChrome
+              ? "page-title"
+              : "font-[family-name:var(--font-headline)] text-[28px] font-medium leading-tight tracking-tight",
+          )}>
             Your plan
           </h2>
         </div>
         <div className="flex items-center gap-1">
-          <ActButton label="Generate week" onClick={onGenerate}>
+          <ActButton label="Generate week" onClick={onGenerate} consistencyChrome={consistencyChrome}>
             <Sparkles className="size-[17px]" strokeWidth={1.9} />
           </ActButton>
-          <ActButton label="Adjust constraints" onClick={onAdjust}>
+          <ActButton label="Adjust constraints" onClick={onAdjust} consistencyChrome={consistencyChrome}>
             <SlidersHorizontal className="size-[17px]" strokeWidth={1.9} />
           </ActButton>
-          <ActButton label="Templates" onClick={onTemplates}>
+          <ActButton label="Templates" onClick={onTemplates} consistencyChrome={consistencyChrome}>
             <Bookmark className="size-4" strokeWidth={1.9} />
           </ActButton>
         </div>

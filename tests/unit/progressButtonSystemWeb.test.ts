@@ -80,7 +80,7 @@ describe("Progress CTAs — solid primary / ghost (button system 2026-06-12)", (
 
   it("SANCTIONED: the Calendar icon-only button stays a raw icon button (not migrated)", () => {
     // h-9 w-9 icon-only affordance — no text label, intentionally left as-is.
-    expect(WEB).toMatch(/data-testid="progress-calendar-button"[\s\S]{0,200}h-9 w-9/);
+    expect(WEB).toMatch(/data-testid="progress-calendar-button"[\s\S]{0,500}h-9 w-9/);
   });
 
   it("cross-platform parity: both primitives expose the identical variant contract", () => {

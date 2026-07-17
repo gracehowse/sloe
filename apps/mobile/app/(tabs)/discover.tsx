@@ -99,7 +99,7 @@ function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
   const showPhoto = trimmed.length > 0 && !broken;
   return (
     // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never page white)
-    <View style={{ aspectRatio: showPhoto ? 16 / 10 : 8, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }, scheme) }}>
+    <View style={{ aspectRatio: showPhoto ? 16 / 10 : 8, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }, scheme, isFeatureEnabled("recipe_sparse_media_v1") ? "plum-duotone" : "legacy-cuisine") }}>
       {showPhoto ? (
         <SmartImage
           source={{ uri: trimmed }}

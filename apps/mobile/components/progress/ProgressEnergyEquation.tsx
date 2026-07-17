@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight } from "lucide-react-native";
 
 import { SupprCard } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -30,6 +30,8 @@ export interface ProgressEnergyEquationProps {
   /** ENG-1506 — REAL selected-period label for the header; null → the
    *  legacy hard-coded "7-day average". */
   periodLabel?: string | null;
+  /** ENG-1578 — sibling values stay ink; semantic state moves to label dots. */
+  semanticStatRoles?: boolean;
 }
 
 export function ProgressEnergyEquation({
@@ -40,6 +42,7 @@ export function ProgressEnergyEquation({
   isAdaptive,
   qualifierLine,
   periodLabel,
+  semanticStatRoles = false,
 }: ProgressEnergyEquationProps) {
   const colors = useThemeColors();
   const isDark = useColorScheme() === "dark";
@@ -58,7 +61,9 @@ export function ProgressEnergyEquation({
         : deficitKcal === 0
           ? "0"
           : `+${Math.abs(deficitKcal).toLocaleString()}`;
-  const resultColor = isSurplus
+  const resultColor = semanticStatRoles
+    ? colors.text
+    : isSurplus
     ? Accent.warning
     : deficitKcal != null && deficitKcal > 0
       ? plum
@@ -84,8 +89,9 @@ export function ProgressEnergyEquation({
         <EqTerm
           label="Maintenance"
           value={hasMaintenance ? maintenanceKcal!.toLocaleString() : "—"}
-          color={sage}
+          color={semanticStatRoles ? colors.text : sage}
           dim={dim}
+          stateColor={semanticStatRoles && hasMaintenance ? sage : undefined}
         />
         <EqOp color={dim}>=</EqOp>
         <EqTerm
@@ -93,6 +99,9 @@ export function ProgressEnergyEquation({
           value={resultValue}
           color={resultColor}
           dim={dim}
+          stateColor={semanticStatRoles && deficitKcal != null && deficitKcal !== 0
+            ? isSurplus ? Accent.warning : plum
+            : undefined}
         />
       </View>
       {/* ENG-1506 — explicit source qualifier under the equation. */}
@@ -149,16 +158,21 @@ function EqTerm({
   value,
   color,
   dim,
+  stateColor,
 }: {
   label: string;
   value: string;
   color: string;
   dim: string;
+  stateColor?: string;
 }) {
   return (
     <View style={styles.term}>
       <Text style={[styles.termValue, { color }]}>{value}</Text>
-      <Text style={[styles.termLabel, { color: dim }]}>{label}</Text>
+      <View style={styles.termLabelRow}>
+        {stateColor ? <View style={[styles.stateDot, { backgroundColor: stateColor }]} /> : null}
+        <Text style={[styles.termLabel, { color: dim }]}>{label}</Text>
+      </View>
     </View>
   );
 }
@@ -194,7 +208,9 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
     lineHeight: 26,
   },
-  termLabel: { ...Type.statLabel, fontSize: 10, marginTop: 4 },
+  termLabel: { ...Type.statLabel, fontSize: 10 },
+  termLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 4 },
+  stateDot: { width: 6, height: 6, borderRadius: Radius.full },
   op: { fontSize: 18, fontWeight: "300", paddingBottom: 12 },
   howBtn: {
     flexDirection: "row",

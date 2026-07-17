@@ -174,7 +174,7 @@ module.exports = defineConfig([
       'app/(tabs)/recipes.tsx',
       'app/(tabs)/more.tsx',
       'app/(tabs)/notifications.tsx',
-      'app/(tabs)/settings.tsx',
+      'app/settings.tsx',
       'app/recipe/[id].tsx',
       'components/charts/CalorieRing.tsx',
     ],

@@ -7,6 +7,7 @@ import { useAccent } from "@/context/theme";
 import DayStrip from "@/components/charts/DayStrip";
 import { GradientAvatar } from "@/components/GradientAvatar";
 import { StreakPip } from "@/components/today/StreakPip";
+import { settingsRoute } from "@/lib/settingsRoute";
 
 /**
  * TodayDateHeader — day/week nav buttons, title, view-mode toggle, avatar,
@@ -218,7 +219,7 @@ function TodayDateHeaderImpl({
           ) : null}
 
           <Pressable
-            onPress={() => router.push("/(tabs)/settings")}
+            onPress={() => router.push(settingsRoute())}
             accessibilityRole="button"
             accessibilityLabel="Open settings"
             hitSlop={8}
@@ -352,7 +353,7 @@ function TodayDateHeaderImpl({
             </View>
           ) : null}
           <Pressable
-            onPress={() => router.push("/(tabs)/settings")}
+            onPress={() => router.push(settingsRoute())}
             accessibilityRole="button"
             accessibilityLabel="Open settings"
             hitSlop={8}

@@ -89,6 +89,7 @@ import { supabase } from "@/lib/supabase";
 import { fastingWindowLabel } from "@suppr/shared/fasting/milestones";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { probeHealthAccess } from "@/lib/healthSync";
+import { settingsRoute } from "@/lib/settingsRoute";
 import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 import { saveWeekStartDay } from "@suppr/nutrition-core/weekStartDayClient";
@@ -104,7 +105,7 @@ import {
 } from "@suppr/nutrition-core/weekSummaryWindow";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { saveDisplayName } from "@suppr/shared/account/displayName";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { nutritionLogToCsv, nutritionLogCsvFilename } from "@suppr/shared/export/nutritionLogToCsv";
 import { exportEverythingToFile } from "@/lib/exportEverything";
 import { MobileMfpCsvImportCard } from "../imports/MfpCsvImportCard";
@@ -371,10 +372,9 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // CTAs. Destructive actions (sign out / delete) keep `Accent.destructive`;
   // status keeps success/warning; macros keep `MacroColors`.
   const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
-  // One-card-treatment (2026-06-09): soft chrome for the page-ground stat
-  // tiles (Recipes / Streak), matching the SettingsCard sections around them.
-  // Tile-class rule (2026-06-10): stat tiles are flat-tonal, not lifted.
+  // Recipes/Streak use the same flat page-ground card grammar as Settings.
   const statTileElevation = useCardElevation();
+  const semanticStatRoles = isFeatureEnabled("semantic_stat_roles_v1");
   const userId = session?.user?.id ?? null;
 
   const [profileData, setProfileData] = useState<{
@@ -1489,10 +1489,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           {(
             [
               profileData.savedCount > 0
-                ? [String(profileData.savedCount), profileData.savedCount === 1 ? "Recipe" : "Recipes", t.accent]
+                ? [String(profileData.savedCount), profileData.savedCount === 1 ? "Recipe" : "Recipes", semanticStatRoles ? colors.text : t.accent]
                 : null,
               profileData.streak > 0
-                ? [String(profileData.streak), "Streak", t.green]
+                ? [String(profileData.streak), "Streak", semanticStatRoles ? colors.text : t.green]
                 : null,
             ].filter((x): x is [string, string, string] => x !== null)
           ).map(([v, l, c]) => (
@@ -2311,7 +2311,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             iconColor={t.accent}
             label="Settings"
             sub="Theme, password, plan, activity level, journal"
-            onPress={() => router.push("/(tabs)/settings" as any)}
+            onPress={() => router.push(settingsRoute())}
           />
         ) : null}
         <SettingsRow

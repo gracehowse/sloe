@@ -29,7 +29,7 @@ const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 describe("web recipe-image containers — opaque wrapper underlay (ENG-1374 PR 2)", () => {
   it("DiscoverRecipeImage (Discover rail + grid + list rows, featured hero): all four wrappers tinted, bg-muted gone", () => {
     const src = read("src/app/components/suppr/discover-recipe-image.tsx");
-    expect(src).toMatch(/recipeUnderlayColor\(\{ id, title \}, scheme\)/);
+    expect(src).toMatch(/recipeUnderlayColor\(\{ id, title \}, scheme, mediaPalette\)/);
     // hero photo + hero fallback + thumb photo + thumb fallback all paint it
     expect(src.match(/backgroundColor: underlay/g)?.length).toBe(4);
     expect(src).not.toMatch(/className="[^"]*bg-muted/);
@@ -45,19 +45,19 @@ describe("web recipe-image containers — opaque wrapper underlay (ENG-1374 PR 2
   it("Library grid card image wrapper is tinted", () => {
     const src = read("src/app/components/Library.tsx");
     expect(src).toMatch(
-      /aspectRatio: "1 \/ 1", backgroundColor: recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, fallbackScheme\)/,
+      /aspectRatio: "1 \/ 1", backgroundColor: recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, fallbackScheme, sparseMediaEnabled \? "plum-duotone" : "legacy-cuisine"\)/,
     );
   });
 
   it("FeaturedHero (Tonight's pick) photo slot: cuisine tint replaced the cool plum-grey --background-secondary", () => {
     const src = read("src/app/components/library/FeaturedHero.tsx");
-    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, fallbackScheme\)/);
+    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, fallbackScheme, mediaPalette\)/);
     expect(src).not.toContain('backgroundColor: "var(--background-secondary)"');
   });
 
   it("RecipeCardWide photo slot: cuisine tint replaced --background-secondary", () => {
     const src = read("src/app/components/library/RecipeCardWide.tsx");
-    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, fallbackScheme\)/);
+    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, fallbackScheme, mediaPalette\)/);
     expect(src).not.toContain('backgroundColor: "var(--background-secondary)"');
   });
 

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { settingsRoute } from "@/lib/settingsRoute";
 import {
   AlertCircle,
   ChevronLeft,
@@ -97,10 +98,9 @@ function statusDotColor(
   if (!lastSyncedAt) return Accent.warning; // amber — connected but never synced
   return Accent.success;                     // green — synced at least once
 }
-
 export default function HealthSyncScreen() {
   const insets = useSafeAreaInsets();
-  const goBack = useSafeBack("/(tabs)/settings");
+  const goBack = useSafeBack(settingsRoute());
   const { session } = useAuth();
   const userId = session?.user?.id;
   const colors = useThemeColors();

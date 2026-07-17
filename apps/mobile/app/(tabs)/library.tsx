@@ -54,12 +54,11 @@ import {
 } from "@suppr/shared/planning/planImport/libraryFilters";
 import { classifyLibraryEntry } from "@suppr/shared/recipes/libraryEntryKind";
 import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
+import { deriveLibraryComposition } from "@suppr/shared/recipes/libraryShelves";
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
 import { LibraryShelvesHeader } from "@/components/library/LibraryShelvesHeader";
-// GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
-// dropped — Library cards no longer render the chip; see the comment
-// by each card body for the rationale.
+// GW-08: Library cards intentionally omit the retired TrustChip.
 
 type SortKey = "recent" | "calories" | "protein";
 
@@ -131,17 +130,13 @@ export default function LibraryScreen() {
   // image + body into one piece (kills the "floating photo box /
   // double-frame" — Grace 2026-06-07).
   const cardElevation = useCardElevation({ variant: "soft" });
-  // Library is a tab root — `useSafeBack` falls back to Today when the
-  // stack is cold (e.g. hitting Library first from a deep link). The
-  // back chevron in the prototype is presentational parity with the
-  // push-Library surface used when we navigate there from a recipe
-  // detail; when there's no history we send the user home rather than
-  // stranding them.
+  // A cold tab-root back falls through to Today instead of stranding the user.
   const goBack = useSafeBack("/(tabs)");
 
   const { recipes: savedRecipes, loading, refreshing, refresh } = useSavedLibraryRecipes(userId);
   const { toggleSave: persistSaveToggle } = useSavedRecipes(userId);
   const collectionsEnabled = isFeatureEnabled("recipe_collections_v1"); // ENG-1126
+  const sparseMediaEnabled = isFeatureEnabled("recipe_sparse_media_v1");
   const {
     collections: recipeCollections,
     membership: collectionMembership,
@@ -272,6 +267,7 @@ export default function LibraryScreen() {
     }
     return list;
   }, [savedRecipes, search, sortKey, category, secondary, userId, selectedCollectionId, collectionMembership]);
+  const gridRecipes = category === "all" ? deriveLibraryComposition(filtered, sparseMediaEnabled).gridRecipes : filtered;
 
   const handleGoPublic = useCallback(
     async (item: RecipeCard) => {
@@ -917,7 +913,7 @@ export default function LibraryScreen() {
         </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={gridRecipes}
           keyExtractor={(item) => item.id}
           renderItem={renderRecipe}
           // 2-column photo grid — Figma `527:2`.
@@ -1017,6 +1013,7 @@ export default function LibraryScreen() {
               <LibraryShelvesHeader
                 filtered={filtered}
                 category={category}
+                sparseMediaEnabled={sparseMediaEnabled}
                 onPressRecipe={(r) => router.push(`/recipe/${r.id}`)}
               />
               {/* Contextual plan-import source pills — ENG-921 (2026-06-07).
@@ -1094,7 +1091,7 @@ export default function LibraryScreen() {
             </>
           }
           ListEmptyComponent={
-            search.trim() ? (
+            filtered.length > 0 ? null : search.trim() ? (
               <View style={styles.emptyContainer}>
                 <SearchIcon size={40} color={colors.textTertiary} style={{ marginBottom: 4 }} />
                 <Text style={styles.emptyTitle}>No results for &ldquo;{search.trim()}&rdquo;</Text>

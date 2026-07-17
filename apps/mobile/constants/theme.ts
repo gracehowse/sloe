@@ -909,6 +909,10 @@ export const Fonts = Platform.select({
 export const Type = {
   display: { fontFamily: FontFamily.serifRegular, fontSize: 32, lineHeight: 36, fontWeight: '400' as const, letterSpacing: -0.4 },
   title:   { fontFamily: FontFamily.serifRegular, fontSize: 24, lineHeight: 28, fontWeight: '400' as const, letterSpacing: -0.3 },
+  /** Ratified standard page title (ENG-1574/1577): Newsreader 33/38/500.
+   *  Used by Plan, Recipes, Progress, Settings, and comparable utility
+   *  screens. Today deliberately keeps its wordmark + ring-first chrome. */
+  pageTitle: { fontFamily: FontFamily.serifMedium, fontSize: 33, lineHeight: 38, fontWeight: '500' as const, letterSpacing: -0.4 },
   headline:{ fontFamily: FontFamily.serifMedium, fontSize: 17, lineHeight: 22, fontWeight: '500' as const, letterSpacing: -0.1 },
   /** Large left-aligned in-body screen H1 — Newsreader serif 28/34, weight 600,
    *  the editorial screen-title voice (matches what SloeHeaderWordmark / Settings

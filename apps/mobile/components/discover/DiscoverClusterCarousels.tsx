@@ -2,10 +2,7 @@ import { useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { useResolvedScheme } from "@/context/theme";
-import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
-import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
-import { SmartImage } from "@/components/ui/SmartImage";
+import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import { decodeEntities } from "@/lib/decodeEntities";
@@ -41,10 +38,6 @@ function ClusterRecipeCard({
   const cookTime = recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
   const width = hero ? 280 : 200;
   const aspectRatio = hero ? 3 / 4 : 4 / 5;
-  const trimmed = (recipe.image ?? "").trim();
-  // ENG-1528 — dark ramp underlay on dark cards.
-  const scheme = useResolvedScheme();
-  const underlay = recipeUnderlayColor({ id: recipe.id, title: recipe.title }, scheme);
 
   return (
     <Pressable
@@ -62,18 +55,13 @@ function ClusterRecipeCard({
           §11.4 cuisine tint, computed here rather than passed in (the
           retired `placeholderColor` prop was fed `colors.card` #FFFFFF), so
           no child failure can expose page white. */}
-      <View style={{ aspectRatio, position: "relative", backgroundColor: underlay }}>
-        {trimmed ? (
-          <SmartImage
-            source={{ uri: trimmed }}
-            style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
-            recyclingKey={recipe.id}
-            placeholderColor={underlay}
-          />
-        ) : (
-          <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={24} />
-        )}
+      <View style={{ aspectRatio, position: "relative" }}>
+        <RecipeCardImage
+          uri={recipe.image}
+          cardImageStyle={{ width: "100%", height: "100%" }}
+          recipeId={recipe.id}
+          recipeTitle={recipe.title}
+        />
         <View
           style={{
             position: "absolute",

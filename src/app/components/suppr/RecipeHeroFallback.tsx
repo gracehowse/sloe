@@ -28,6 +28,7 @@ import {
   type RecipeHeroInput,
 } from "../../../lib/recipe/recipeHeroFallback";
 import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 const GLYPHS: Record<RecipeHeroGlyph, LucideIcon> = {
   Salad,
@@ -52,7 +53,10 @@ export interface RecipeHeroFallbackProps extends RecipeHeroInput {
 function RecipeHeroFallbackImpl({ iconSize = 32, className, testId, ...input }: RecipeHeroFallbackProps) {
   // ENG-1528 — dark cards get the dark ramp tile; light is byte-identical.
   const scheme = useFallbackScheme();
-  const fb = getRecipeFallback(input, scheme);
+  const palette = isFeatureEnabled("recipe_sparse_media_v1")
+    ? "plum-duotone"
+    : "legacy-cuisine";
+  const fb = getRecipeFallback(input, scheme, palette);
   const Glyph = GLYPHS[fb.glyph];
   const patternId = `hero-pattern-${fb.pattern}-${fb.bucket}-${input.id}`;
   const gradientId = `hero-gradient-${fb.bucket}-${input.id}`;

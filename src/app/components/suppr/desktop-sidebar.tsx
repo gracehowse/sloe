@@ -185,9 +185,9 @@ const SUB_TABS: Record<PrimaryView, SubTabItem[]> = {
 };
 
 /** Map any leaf SidebarView to the primary group that should highlight. */
-export function resolvePrimaryFromView(view: SidebarView): PrimaryView {
-  // Settings / profile are avatar-entry surfaces — highlight Today group.
-  if (view === "settings" || view === "profile") return "today";
+export function resolvePrimaryFromView(view: SidebarView): PrimaryView | null {
+  // The persistent avatar owns Settings/profile; no primary group highlights.
+  if (view === "settings" || view === "profile") return null;
   for (const item of PRIMARY_ITEMS) {
     if (item.leaves.includes(view)) return item.view;
   }

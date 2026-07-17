@@ -55,6 +55,7 @@ export function InputModeRow({
   aiMethodTooltipVisible = false,
   onQuickAdd,
   onDescribe,
+  hidden = false,
 }: {
   barcode: LogSheetProps["barcode"];
   voice: LogSheetProps["voice"];
@@ -67,6 +68,7 @@ export function InputModeRow({
   onQuickAdd?: () => void;
   /** ENG-1303 — host expands (or paywalls) the inline describe flow. */
   onDescribe?: () => void;
+  hidden?: boolean;
 }) {
   const v3 = isFeatureEnabled("sloe_v3_log");
   // ENG-1532 — one barcode entry point (`component_grammar_dedup`): ON drops
@@ -117,6 +119,8 @@ export function InputModeRow({
   const tooltipKey = aiMethodTooltipVisible
     ? modes.find((m) => m.aiMethod && m.locked && m.onClick)?.key ?? null
     : null;
+
+  if (hidden) return null;
 
   if (v3) {
     return (

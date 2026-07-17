@@ -1,4 +1,5 @@
 import { Redirect } from "expo-router";
+import { settingsRoute } from "@/lib/settingsRoute";
 
 /**
  * `/(tabs)/more` is a legacy deeplink target from the pre-2026-04-27
@@ -13,5 +14,5 @@ import { Redirect } from "expo-router";
  * breaking until they're scrubbed.
  */
 export default function MoreRedirect() {
-  return <Redirect href="/(tabs)/settings" />;
+  return <Redirect href={settingsRoute()} />;
 }

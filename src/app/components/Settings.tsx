@@ -849,7 +849,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   // exact same `<SupprCard>` nodes, so no setting is dropped or added.
   // Registered default-OFF in KNOWN_DEFAULT_OFF_FLAGS (web-only re-layout).
   const twoPane = isFeatureEnabled("sloe_v3_settings");
-
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   // The page title block — rendered by the legacy stack; the two-pane
   // shell renders its own equivalent header.
   const titleBlock = (
@@ -869,7 +869,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             style={{ color: "var(--foreground-brand)" }}
           />
         </div>
-        <h1 className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">Settings</h1>
+        <h1 className={consistencyChrome ? "page-title text-foreground-brand" : "font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"}>Settings</h1>
       </div>
       <p className="text-muted-foreground">Manage your account and preferences</p>
     </div>

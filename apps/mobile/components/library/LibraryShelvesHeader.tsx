@@ -1,4 +1,5 @@
-import { useLibraryShelves } from "@/hooks/useLibraryShelves";
+import { useMemo } from "react";
+import { deriveLibraryComposition } from "@suppr/shared/recipes/libraryShelves";
 import type { RecipeCard } from "@/lib/types";
 import { FeaturedHero } from "./FeaturedHero";
 import { EditorialShelf } from "./EditorialShelf";
@@ -17,16 +18,21 @@ export interface LibraryShelvesHeaderProps {
   /** Active category id — shelves show only when this is "all". */
   category: string;
   onPressRecipe: (recipe: RecipeCard) => void;
+  sparseMediaEnabled?: boolean;
 }
 
 export function LibraryShelvesHeader({
   filtered,
   category,
   onPressRecipe,
+  sparseMediaEnabled = false,
 }: LibraryShelvesHeaderProps) {
-  const shelves = useLibraryShelves(filtered);
+  const composition = useMemo(
+    () => deriveLibraryComposition(filtered, sparseMediaEnabled),
+    [filtered, sparseMediaEnabled],
+  );
   if (category !== "all") return null;
-  const featured = shelves[0]?.recipes[0] ?? filtered[0] ?? null;
+  const { featured, shelves } = composition;
   return (
     <>
       {featured ? (

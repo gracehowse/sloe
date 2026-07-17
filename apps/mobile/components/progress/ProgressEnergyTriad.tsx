@@ -1,5 +1,5 @@
 import { Text, View, type TextStyle } from "react-native";
-import { Accent, FontFamily, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -87,6 +87,7 @@ export function ProgressEnergyTriad({
   // ENG-1506 — the qualifier line + real period label render only behind
   // `energy_numbers_v1`; off → the exact legacy card.
   const energyV1 = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG);
+  const semanticStats = isFeatureEnabled("semantic_stat_roles_v1");
 
   if (isFeatureEnabled("sloe_v3_energy_equation")) {
     return (
@@ -98,6 +99,7 @@ export function ProgressEnergyTriad({
         isAdaptive={isAdaptive}
         qualifierLine={energyV1 ? (qualifierLine ?? null) : null}
         periodLabel={energyV1 ? (periodLabel ?? null) : null}
+        semanticStatRoles={semanticStats}
       />
     );
   }
@@ -142,7 +144,7 @@ export function ProgressEnergyTriad({
         style={{ flex: 1 }}
       >
         <Text style={eyebrow}>{tdeeCellLabel}</Text>
-        <Text style={[value, { color: sage }]}>
+        <Text testID="progress-energy-tdee-value" style={[value, { color: semanticStats ? text : sage }]}>
           {maintenanceKcal != null && maintenanceKcal > 0
             ? maintenanceKcal.toLocaleString()
             : "—"}
@@ -150,9 +152,14 @@ export function ProgressEnergyTriad({
         {/* headers census 2026-06-10: 9px sub-label → Type.label (kills the
             sub-ramp 9px; pill hue kept). */}
         {maintenanceKcal != null && maintenanceKcal > 0 ? (
-          <Text style={{ ...Type.label, color: sage, marginTop: 2 }}>
-            {isAdaptive ? "Adaptive" : "Formula"}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, marginTop: Spacing.xs }}>
+            {semanticStats ? (
+              <View style={{ width: 6, height: 6, borderRadius: Radius.full, backgroundColor: sage }} />
+            ) : null}
+            <Text style={{ ...Type.label, color: semanticStats ? dim : sage }}>
+              {isAdaptive ? "Adaptive" : "Formula"}
+            </Text>
+          </View>
         ) : null}
         {/* ENG-1506 — explicit source qualifier (flag-gated via energyV1). */}
         {energyV1 && qualifierLine && maintenanceKcal != null && maintenanceKcal > 0 ? (
@@ -174,10 +181,13 @@ export function ProgressEnergyTriad({
       >
         <Text style={eyebrow}>Deficit</Text>
         <Text
+          testID="progress-energy-deficit-value"
           style={[
             value,
             {
-              color: isSurplus
+              color: semanticStats
+                ? text
+                : isSurplus
                 ? Accent.warning
                 : deficitKcal != null && deficitKcal > 0
                   ? plum
@@ -193,9 +203,24 @@ export function ProgressEnergyTriad({
                 : `+${Math.abs(deficitKcal).toLocaleString()}`
             : "—"}
         </Text>
+        {semanticStats && deficitKcal != null && deficitKcal !== 0 ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs, marginTop: Spacing.xs }}>
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: Radius.full,
+                backgroundColor: isSurplus ? Accent.warning : plum,
+              }}
+            />
+            <Text style={{ ...Type.label, color: dim }}>
+              {isSurplus ? "Surplus" : "Deficit"}
+            </Text>
+          </View>
+        ) : null}
         {/* headers census 2026-06-10: 9px sub-label → Type.label. */}
-        {isSurplus ? (
-          <Text style={{ ...Type.label, color: Accent.warningSolid, marginTop: 2 }}>
+        {!semanticStats && isSurplus ? (
+          <Text style={{ ...Type.label, color: Accent.warningSolid, marginTop: Spacing.xs }}>
             Surplus
           </Text>
         ) : null}

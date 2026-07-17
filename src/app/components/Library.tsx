@@ -30,13 +30,10 @@ import {
   planImportPillId,
 } from "../../lib/planning/planImport/libraryFilters.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
+import { deriveLibraryComposition } from "../../lib/recipes/libraryShelves.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 
-/**
- * Renders a recipe image with automatic fallback to RecipeHeroFallback
- * when the URL fails to load (e.g. hot-linked external images that
- * return 403/404). Without this, broken images render as blank areas.
- */
+/** Recipe image with the shared fallback for missing or failed URLs. */
 function RecipeCardImage({
   src,
   recipeId,
@@ -55,14 +52,14 @@ function RecipeCardImage({
   const [broken, setBroken] = useState(false);
   const handleError = useCallback(() => setBroken(true), []);
 
-  if (broken) {
+  if (!src.trim() || broken) {
     return <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={iconSize} />;
   }
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={src.trim()}
       alt=""
       className={className}
       style={style}
@@ -159,10 +156,9 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   // only meaningful when `entryKind === "imported"`.
   const [planImportPill, setPlanImportPill] = useState<string | null>(null);
   const collectionsEnabled = isFeatureEnabled("recipe_collections_v1"); // ENG-1126
+  const sparseMediaEnabled = isFeatureEnabled("recipe_sparse_media_v1");
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
-  // Mobile parity: a cycle button switches the sort key between
-  // Recent (default) / Calories / Protein. See
-  // `apps/mobile/app/(tabs)/library.tsx` 24-57.
+  // Mobile-parity cycle: Recent (default) / Calories / Protein.
   const [sortKey, setSortKey] = useState<"recent" | "calories" | "protein">("recent");
   const cycleSort = () => {
     setSortKey((prev) =>
@@ -224,6 +220,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
     }
     return sorted;
   }, [savedRecipesForLibrary, searchQuery, category, entryKind, planImportPill, selectedCollectionId, collectionMembershipByRecipeId, libraryEntryKindByRecipeId, uid, sortKey]);
+  const gridRecipes = category === "all" ? deriveLibraryComposition(filteredRecipes, sparseMediaEnabled).gridRecipes : filteredRecipes;
 
   // ENG-1313: the loading state IS the Library skeleton — never Discover.
   if (!libraryDataReady && savedRecipesForLibrary.length === 0) return <LibraryLoadingSkeleton />;
@@ -525,18 +522,19 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
       <LibraryShelvesHeader
         filtered={filteredRecipes}
         category={category}
+        sparseMediaEnabled={sparseMediaEnabled}
         onPressRecipe={(r) => setSelectedRecipe(r as RecipeCard & { savedAt: Date })}
       />
       {/* Recipe grid — Sloe Figma `527:2` unified card layout (ENG-896).
           One responsive grid (2-col mobile-web, 3-col desktop). Square hero,
           bookmark overlay, macro row, saves/time meta — mobile parity. */}
-      {filteredRecipes.length > 0 && (
+      {gridRecipes.length > 0 && (
         <>
           <div
             data-testid="library-recipe-grid"
             className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4"
           >
-            {filteredRecipes.map((recipe) => {
+            {gridRecipes.map((recipe) => {
               const kind = entryKindForRecipe(recipe, libraryEntryKindByRecipeId[recipe.id], uid);
               const kcal = Math.round(recipe.calories ?? 0);
               const protein = Math.round(recipe.protein ?? 0);
@@ -564,7 +562,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   className="group overflow-hidden text-left cursor-pointer transition-all"
                 >
                   {/* ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never page white) */}
-                  <div className="relative overflow-hidden" style={{ aspectRatio: "1 / 1", backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, fallbackScheme) }}>
+                  <div className="relative overflow-hidden" style={{ aspectRatio: "1 / 1", backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, fallbackScheme, sparseMediaEnabled ? "plum-duotone" : "legacy-cuisine") }}>
                     {recipe.image ? (
                       <RecipeCardImage
                         src={recipe.image}

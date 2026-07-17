@@ -153,9 +153,8 @@ describe("Settings — page header (P1-5)", () => {
     // a plain text-foreground heading.
     expect(SRC).not.toMatch(/<h1[^>]*bg-clip-text/);
     expect(SRC).not.toMatch(/<h1[^>]*text-transparent/);
-    expect(SRC).toMatch(
-      /<h1 className="font-\[family-name:var\(--font-headline\)\][^"]*text-foreground-brand"[^>]*>Settings<\/h1>/,
-    );
+    expect(SRC).toMatch(/className=\{consistencyChrome \? "page-title text-foreground-brand"/);
+    expect(SRC).toMatch(/font-\[family-name:var\(--font-headline\)\][^"]*text-foreground-brand/);
   });
 
   it("page-header cog sits on a plum-tinted Sloe plate, not bg-primary/30 or grey bg-muted", () => {

@@ -25,7 +25,7 @@ const BUNDLE_PATH = resolve(
   ROOT,
   "components/settings/SettingsBundleContent.tsx",
 );
-const SETTINGS_PATH = resolve(ROOT, "app/(tabs)/settings.tsx");
+const SETTINGS_PATH = resolve(ROOT, "app/settings.tsx");
 
 const bundle = readFileSync(BUNDLE_PATH, "utf8");
 const settings = readFileSync(SETTINGS_PATH, "utf8");

@@ -60,6 +60,13 @@ export type RecipeHeroPattern = "dots" | "grid" | "chevron" | "circles";
  * tile instead of a glowing cream one.
  */
 export type FallbackScheme = "light" | "dark";
+export type RecipeFallbackPalette = "legacy-cuisine" | "plum-duotone";
+
+/** ENG-1575 — the one flag-gated no-image identity for recipe surfaces. */
+export const PLUM_DUOTONE = {
+  light: { start: "#D8D0E6", end: "#F1F0F4", markRgb: "91, 59, 110" },
+  dark: { start: "#332843", end: "#211A2A", markRgb: "169, 140, 184" },
+} as const;
 
 export interface RecipeHeroFallback {
   bucket: RecipeHeroBucket;
@@ -280,20 +287,34 @@ export const SAGE_RGB_DARK = "154, 163, 130";
 export function getRecipeFallback(
   input: RecipeHeroInput,
   scheme: FallbackScheme = "light",
+  palette: RecipeFallbackPalette = "legacy-cuisine",
 ): RecipeHeroFallback {
   const bucket = resolveBucket(input);
   const patternIdx = djb2(input.id) % PATTERNS.length;
   const pattern = PATTERNS[patternIdx];
   // Calm reskin (§11.4): sage mark on cream. The glyph reads at ~0.7
   // alpha on the pale tints; the pattern is a faint 0.07 sage texture.
-  const patternAlpha = 0.07;
+  const patternAlpha = palette === "plum-duotone" ? 0.12 : 0.07;
   const glyphAlpha = 0.7;
   // ENG-1528 — dark surfaces swap to the dark ramp (tint + lifted sage +
   // dark card end); light stays byte-identical (the default branch).
   const dark = scheme === "dark";
-  const sage = dark ? SAGE_RGB_DARK : SAGE_RGB;
-  const gradientStart = dark ? HERO_TINTS_DARK[bucket.key] : bucket.start;
-  const gradientEnd = dark ? CARD_DARK : bucket.end;
+  const duo = dark ? PLUM_DUOTONE.dark : PLUM_DUOTONE.light;
+  const sage = palette === "plum-duotone"
+    ? duo.markRgb
+    : dark
+      ? SAGE_RGB_DARK
+      : SAGE_RGB;
+  const gradientStart = palette === "plum-duotone"
+    ? duo.start
+    : dark
+      ? HERO_TINTS_DARK[bucket.key]
+      : bucket.start;
+  const gradientEnd = palette === "plum-duotone"
+    ? duo.end
+    : dark
+      ? CARD_DARK
+      : bucket.end;
   return {
     bucket: bucket.key,
     gradientStart,
@@ -325,8 +346,9 @@ export function getRecipeFallback(
 export function recipeUnderlayColor(
   input: RecipeHeroInput,
   scheme: FallbackScheme = "light",
+  palette: RecipeFallbackPalette = "legacy-cuisine",
 ): string {
-  return getRecipeFallback(input, scheme).gradientStart;
+  return getRecipeFallback(input, scheme, palette).gradientStart;
 }
 
 /**

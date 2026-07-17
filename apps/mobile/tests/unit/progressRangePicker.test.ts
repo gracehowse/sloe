@@ -53,8 +53,10 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
     expect(mobileSrc).not.toContain("Weekly report");
     expect(mobileChromeSrc).toContain('overline="Your trends"');
     expect(mobileChromeSrc).toContain('titleTestID="progress-header"');
-    // headers census 2026-06-10: chrome title on the canonical Type.title token.
-    expect(mobileSectionSrc).toMatch(/title:\s*\{\s*\.\.\.Type\.title,\s*color:\s*colors\.navPrimary\s*\}/);
+    // ENG-1577: flag-ON chrome uses the 33px pageTitle token while the
+    // existing Type.title path remains the kill switch.
+    expect(mobileSectionSrc).toContain('isFeatureEnabled("primary_screen_chrome_v1")');
+    expect(mobileSectionSrc).toMatch(/consistencyChrome\s*\?\s*Type\.pageTitle\s*:\s*Type\.title/);
     expect(mobileSectionSrc).not.toMatch(/compact\s*\?\s*22/);
     expect(mobileSectionSrc).not.toContain('"Newsreader_400Regular"');
   });
@@ -131,9 +133,7 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
     );
   });
 
-  it("web header shows the 'Your trends' overline via ScreenChrome (S6: serif-24 title ruling)", () => {
-    // ENG-1375 S6 — the hand-rolled 28px header was replaced by the
-    // ScreenChrome primitive (title = serif 24, the ONE tab-title voice).
+  it("web header shows the 'Your trends' overline via the flag-gated 33px ScreenChrome", () => {
     expect(webChromeSrc).toContain('overlineTestID="progress-overline"');
     expect(webChromeSrc).toContain('titleTestID="progress-header"');
     expect(webChromeSrc).not.toMatch(/text-\[28px\]/);
@@ -141,7 +141,9 @@ describe("Progress period control (ENG-1030) — header + picker + rhythm", () =
       require("node:path").resolve(__dirname, "../../../../src/app/components/suppr/screen-chrome.tsx"),
       "utf8",
     );
-    expect(prim).toMatch(/text-\[24px\]/);
+    expect(prim).toContain('isFeatureEnabled("primary_screen_chrome_v1")');
+    expect(prim).toContain('"page-title"');
+    expect(prim).toMatch(/text-\[24px\]/); // flag-off kill switch
   });
 
   it("web header carries a calendar icon button", () => {

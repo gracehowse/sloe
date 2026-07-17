@@ -5,6 +5,7 @@ import { TodayBrandBar } from "@/components/today/TodayBrandBar";
 import { Layout } from "@/constants/layout";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 export interface ScreenSectionChromeProps {
   /** Eyebrow above the title. Pass an empty string / null to hide it
@@ -47,6 +48,7 @@ export function ScreenSectionChrome({
   titleTestID,
 }: ScreenSectionChromeProps) {
   const colors = useThemeColors();
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
 
   const styles = useMemo(
     () =>
@@ -74,11 +76,14 @@ export function ScreenSectionChrome({
         overline: { ...Type.label, color: colors.textTertiary },
         // headers census 2026-06-10 — one tab-title size (Type.title, 24);
         // the compact-22 fork left the type ramp and split sibling tabs.
-        title: { ...Type.title, color: colors.navPrimary },
+        title: {
+          ...(consistencyChrome ? Type.pageTitle : Type.title),
+          color: colors.navPrimary,
+        },
         // headers census 2026-06-10 — tokenised 13/600 chrome subtitle.
         subtitle: { ...Type.captionStrong, color: colors.textSecondary, marginTop: 2 },
       }),
-    [colors, subtitle],
+    [colors, consistencyChrome, subtitle],
   );
 
   return (

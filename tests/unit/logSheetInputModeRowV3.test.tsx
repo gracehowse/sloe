@@ -156,11 +156,39 @@ describe("LogSheet input-method row — v3 tile grammar (web)", () => {
 
   it("expands the inline describe flow when the Describe tile is tapped (flag ON, unlocked)", () => {
     forceLogFlag(true);
+    forceDedupFlag(true);
     open({ describe: { locked: false, onParse: async () => ({ ok: true, items: [] }), onCommit: () => {} } });
-    // Collapsed entry shows first; tapping the tile expands to the input.
+    // Exactly one Describe entry exists: the tile. The legacy collapsed row is
+    // suppressed by the dedup grammar, and the tile expands the real input.
     expect(screen.queryByTestId("log-sheet-describe-input")).toBeNull();
+    expect(screen.queryByTestId("log-sheet-describe-expand")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Describe" })).toHaveLength(1);
     fireEvent.click(screen.getByTestId("log-sheet-method-describe"));
     expect(screen.getByTestId("log-sheet-describe-input")).toBeTruthy();
+  });
+
+  it("lets an active search query own the sheet and restores method chrome when cleared", () => {
+    forceLogFlag(true);
+    forceDedupFlag(true);
+    open({
+      search: { onSelect: () => {} },
+      showBarcodeFreePromise: true,
+    });
+    expect(screen.getByTestId("log-sheet-input-mode-row")).toBeTruthy();
+    expect(screen.getByTestId("log-sheet-loud-barcode-cta")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Search foods"), {
+      target: { value: "yogurt" },
+    });
+    expect(screen.queryByTestId("log-sheet-input-mode-row")).toBeNull();
+    expect(screen.queryByTestId("log-sheet-loud-barcode-cta")).toBeNull();
+    expect(screen.queryByTestId("log-sheet-describe-expand")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Search foods"), {
+      target: { value: "" },
+    });
+    expect(screen.getByTestId("log-sheet-input-mode-row")).toBeTruthy();
+    expect(screen.getByTestId("log-sheet-loud-barcode-cta")).toBeTruthy();
   });
 
   it("paywalls (does not expand) when the Describe tile is tapped while locked (flag ON)", () => {
