@@ -55,6 +55,16 @@ export function confidenceColor(c: number): string {
   return Accent.destructive;
 }
 
+/** Soft-tint companion to {@link confidenceColor} — the same level mapping
+ * onto the sanctioned `*Soft` tokens (ENG-1521) so chip fills consume named
+ * tokens instead of alpha-concatenating the anchor hue. */
+export function confidenceSoftColor(c: number): string {
+  const level = classifyConfidence(c);
+  if (level === "high") return Accent.successSoft;
+  if (level === "medium") return Accent.warningSoft;
+  return Accent.destructiveSoft;
+}
+
 /** Short label for the chip — "High" / "Med" / "Low". */
 export function confidenceLabel(c: number): "High" | "Med" | "Low" {
   const level = classifyConfidence(c);
@@ -133,8 +143,8 @@ export default function AiLogReviewItem({
       style={[
         {
           borderWidth: 1,
-          borderColor: low ? Accent.warning + "55" : colors.cardBorder,
-          backgroundColor: low ? Accent.warning + "0F" : colors.background,
+          borderColor: low ? Accent.warningSoftStrong : colors.cardBorder,
+          backgroundColor: low ? Accent.warningSoft : colors.background,
           borderRadius: Radius.md,
           padding: Spacing.md,
           marginBottom: Spacing.sm,
@@ -188,7 +198,7 @@ export default function AiLogReviewItem({
               borderRadius: Radius.full,
               paddingHorizontal: 6,
               paddingVertical: 2,
-              backgroundColor: cColor + "22",
+              backgroundColor: confidenceSoftColor(item.confidence),
             }}
           >
             <View

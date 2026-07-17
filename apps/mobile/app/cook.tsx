@@ -1263,7 +1263,7 @@ export default function CookModeScreen() {
       fontFamily: "Menlo",
     },
     timerStopBtn: {
-      backgroundColor: Accent.destructive + "20",
+      backgroundColor: Accent.destructiveSoft,
       paddingHorizontal: Spacing.xl,
       paddingVertical: Spacing.md,
       borderRadius: Radius.md,
@@ -1385,7 +1385,7 @@ export default function CookModeScreen() {
     micToggleOff: { backgroundColor: colors.card },
     // Accent tint when on so the active state is unmistakable
     // even from across the kitchen.
-    micToggleOn: { backgroundColor: accent.primary + "22" },
+    micToggleOn: { backgroundColor: accent.primarySoft },
   }), [colors, accent, cookV3]);
 
   if (steps.length === 0) {

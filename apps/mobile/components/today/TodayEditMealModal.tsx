@@ -439,7 +439,7 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                 haptic="warn"
                 accessibilityRole="button"
                 accessibilityLabel="Delete entry"
-                style={[v2.deleteBtn, { borderColor: Accent.destructive + "30" }]}
+                style={[v2.deleteBtn, { borderColor: accent.destructiveSoftStrong }]}
               >
                 <Text style={{ color: Accent.destructive, fontWeight: "700", fontSize: 14 }}>Delete</Text>
               </PressableScale>
@@ -755,7 +755,7 @@ function EditEntryLegacy(props: TodayEditMealModalProps) {
                 justifyContent: "center",
                 borderRadius: Radius.md,
                 borderWidth: 1,
-                borderColor: Accent.destructive + "30",
+                borderColor: accent.destructiveSoftStrong,
                 paddingVertical: Spacing.md,
               }}
               onPress={onDelete}

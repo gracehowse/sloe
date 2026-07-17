@@ -61,7 +61,7 @@ function plateColors(
     case "brand":
       return { bg: Accent.primarySoft, fg: accent.primary };
     case "good":
-      return { bg: Accent.success + "24", fg: Accent.successSolid };
+      return { bg: Accent.successSoft, fg: Accent.successSolid };
     case "neutral":
     default:
       return { bg: colors.border, fg: colors.textSecondary };

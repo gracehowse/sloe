@@ -71,7 +71,7 @@ export function CookIngredientChecklist({
                 styles.check,
                 {
                   borderColor: checked ? Accent.success : colors.border,
-                  backgroundColor: checked ? Accent.success + "18" : colors.card,
+                  backgroundColor: checked ? Accent.successSoft : colors.card,
                 },
               ]}
             >

@@ -66,7 +66,11 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   in `scripts/spacing-budget.json`) and `check:token-scale`
   (`scripts/check-token-scale.mjs` — raw hexes, raw `rgb()`/`rgba()` hue
   literals (ENG-1520; pure black/white scrims carved out), raw Tailwind
-  palette colour classes, and off-scale `borderRadius` across web + mobile,
+  palette colour classes, off-scale `borderRadius` across web + mobile, AND
+  alpha-suffix concats / call-site `withAlpha()` outside the token files
+  (ENG-1521 — soft tints come from the named `*Soft`/`*SoftStrong` tokens,
+  Soft 12/18 · SoftStrong 20/28; ruled-exempt translucent-solid sites are
+  pinned per the census `docs/audits/2026-07-17-eng1521-soft-tint-census.json`),
   pinned in `scripts/token-budget.json`; the web `rounded-[Npx]` bracket
   namespace is gated separately by `check:web-radius`, ENG-1499). Both read
   the legal scales from `theme.ts`; a

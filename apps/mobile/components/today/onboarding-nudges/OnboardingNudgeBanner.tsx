@@ -302,7 +302,7 @@ function OnboardingNudgeBannerImpl({
             borderRadius: Radius.sm,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: accent.primary + "1A",
+            backgroundColor: accent.primarySoft,
           }}
         >
           <Icon size={16} color={accent.primary} strokeWidth={2.25} />
@@ -440,9 +440,9 @@ function OnboardingNudgeBannerImpl({
         marginTop: Spacing.sm,
         padding: Spacing.sm,
         borderRadius: Radius.md,
-        backgroundColor: accent.primary + "0A",
+        backgroundColor: accent.primarySoft,
         borderWidth: 1,
-        borderColor: accent.primary + "30",
+        borderColor: accent.primarySoftStrong,
       }}
     >
       {body}

@@ -1,10 +1,10 @@
 import React from "react";
 import { Linking, Text, View, ActivityIndicator } from "react-native";
 import { Footprints, Flame, HeartPulse, Scale } from "lucide-react-native";
-import { Accent, Radius } from "@/constants/theme";
+import { Accent, MacroColorsSoft, MacroColorsSoftDark, Radius } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { useAccent } from "@/context/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -71,6 +71,10 @@ export function AppleHealthCard({
   // Retry, and manage link. The not-authorised caution keeps `Accent.warning`.
   const accent = useAccent();
   const { colors: macro } = useMacroColors();
+  // ENG-1521 — icon-disc tints come from the sanctioned *Soft maps, scheme-
+  // resolved like the base macro map above.
+  const macroSoft =
+    useResolvedScheme() === "dark" ? MacroColorsSoftDark : MacroColorsSoft;
   // One-card-treatment soft lift (2026-06-09): the Apple Health card sits
   // directly on the Progress page ground, so it takes the soft elevation like
   // every sibling content card. Spread onto the OUTER shell View. Mirrors web's
@@ -167,6 +171,9 @@ export function AppleHealthCard({
     key: string;
     Icon: React.ComponentType<{ size?: number; color?: string }>;
     color: string;
+    /** Icon-disc fill — the family's sanctioned Soft token (ENG-1521); the
+     *  neutral steps row keeps the hairline-grey plate convention. */
+    soft: string;
     label: string;
     value: string;
     hint?: string;
@@ -175,6 +182,7 @@ export function AppleHealthCard({
       key: "steps",
       Icon: Footprints,
       color: t.sub,
+      soft: t.border,
       label: "Steps",
       value: formatSteps(steps),
     },
@@ -182,6 +190,7 @@ export function AppleHealthCard({
       key: "active",
       Icon: Flame,
       color: Accent.warningSolid,
+      soft: accent.warningSoft,
       label: "Active energy",
       value: formatKcal(activeEnergyKcal),
     },
@@ -189,6 +198,7 @@ export function AppleHealthCard({
       key: "resting",
       Icon: HeartPulse,
       color: macro.fat,
+      soft: macroSoft.fat,
       label: "Resting burn",
       value: formatKcal(restingBurnKcal),
     },
@@ -196,6 +206,7 @@ export function AppleHealthCard({
       key: "weight",
       Icon: Scale,
       color: macro.protein,
+      soft: macroSoft.protein,
       label: "Weight",
       value: formatWeight(weightKg, useImperial),
       hint: status === "ready" && weightKg == null ? "No weigh-in today" : undefined,
@@ -225,7 +236,7 @@ export function AppleHealthCard({
                   width: 28,
                   height: 28,
                   borderRadius: Radius.full,
-                  backgroundColor: row.color + "1A",
+                  backgroundColor: row.soft,
                   alignItems: "center",
                   justifyContent: "center",
                 }}

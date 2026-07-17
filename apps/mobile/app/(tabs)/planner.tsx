@@ -69,7 +69,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Elevation, MacroColors, MacroColorsDark, SlotColors, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, Elevation, MacroColors, MacroColorsDark, MacroColorsSoft, MacroColorsSoftDark, SlotColors, SlotColorsSoft, SlotColorsSoftDark, Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated, {
@@ -347,8 +347,8 @@ const SLOT_COLOR_MOBILE: Record<PlanSlotIconKey, string> = {
  * The on-error state is the key fix: a stale/expired recipe hero URL
  * settles into the calm Library/Discover tile, never a flat square.
  * ENG-1374 PR 2: rungs 1–2 ground on the recipe's OPAQUE §11.4 cuisine
- * tint (`recipeUnderlayColor`) — the old translucent `tint + "22"` wash
- * is now empty-slot-only, so no failure can expose page white.
+ * tint (`recipeUnderlayColor`) — the translucent slot wash (`SlotColorsSoft`,
+ * ENG-1521) is empty-slot-only, so no failure can expose page white.
  */
 function PlanMealThumb({
   hasRecipe,
@@ -356,7 +356,7 @@ function PlanMealThumb({
   recipeTitle,
   imageUri,
   Icon,
-  tint,
+  tint, slotKey,
   iconBoxStyle,
 }: {
   hasRecipe: boolean;
@@ -364,7 +364,7 @@ function PlanMealThumb({
   recipeTitle: string;
   imageUri: string | null;
   Icon: LucideIcon;
-  tint: string;
+  tint: string; slotKey: PlanSlotIconKey;
   iconBoxStyle: StyleProp<ViewStyle>;
 }) {
   const [broken, setBroken] = useState(false);
@@ -396,7 +396,7 @@ function PlanMealThumb({
 
   // Genuinely empty slot → slot icon-box (unchanged behaviour).
   return (
-    <View style={[iconBoxStyle, { backgroundColor: tint + "22" }]}>
+    <View style={[iconBoxStyle, { backgroundColor: (scheme === "dark" ? SlotColorsSoftDark : SlotColorsSoft)[slotKey === "snacks" ? "snack" : slotKey] }]}>
       <Icon size={16} color={tint} strokeWidth={1.75} />
     </View>
   );
@@ -570,7 +570,7 @@ export default function PlannerScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const householdBanner = useHouseholdBanner(userId); // ENG-1247 — v3 Plan "Cooking for N" banner
-  const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
+  const colors = useThemeColors(), plannerDark = useResolvedScheme() === "dark", mc = plannerDark ? MacroColorsDark : MacroColors, mcSoft = plannerDark ? MacroColorsSoftDark : MacroColorsSoft;
   // Secondary accent (Frost flag → damson, else clay) for card edges, CTAs,
   // refresh, controls + links. Macros/slots/win keep their own palettes.
   const accent = useAccent();
@@ -1629,7 +1629,7 @@ export default function PlannerScreen() {
           justifyContent: "center",
         },
         // Prototype-ported summary card. Gradient fallback = flat tint
-        // (accent.primary + "14") because expo-linear-gradient isn't
+        // (`accent.primarySoft`, ENG-1521) because expo-linear-gradient isn't
         // installed; switching to a true gradient only requires wrapping
         // the inner content in <LinearGradient> with the same two colours
         // the prototype uses (primary 12% → fat 8%).
@@ -1823,15 +1823,15 @@ export default function PlannerScreen() {
         // `plan_empty_state_v2` / `plan_source_selector` config form. Web
         // parity: `MealPlanner.tsx` selected segments use
         // `border-primary bg-primary/10 text-foreground`.
-        // `colors.tint` is the theme-correct primary (accent.primary light /
-        // primaryLight dark); `+ "1A"` ≈ 10% alpha = web `bg-primary/10`.
+        // `primarySoft` is the sanctioned Soft step (12% light / 18% dark,
+        // ENG-1521 — snapped up from the old ~10% `bg-primary/10` parity).
         // Label is `colors.text` (foreground), NOT `colors.tint`: tint text on
         // a 10% tint fill measures 2.89:1, below WCAG AA — matches the
         // canonical LogSheet slot pill (`text-foreground` on `bg-primary/10`).
         dayBtnActivePrimary: {
           // §7 (2026-06-10): tint IS the signal — no accent ring.
-          borderColor: colors.tint + "1A",
-          backgroundColor: colors.tint + "1A",
+          borderColor: accent.primarySoft,
+          backgroundColor: accent.primarySoft,
         },
         // Sloe treatment system (2026-06-08, §7): selected config pill label in
         // the deep primarySolid aubergine (AA on the 10% tint), matching the
@@ -3516,7 +3516,7 @@ export default function PlannerScreen() {
                         recipeTitle=""
                         imageUri={null}
                         Icon={SLOT_ICON_MOBILE[slotKey]}
-                        tint={SLOT_COLOR_MOBILE[slotKey]}
+                        tint={SLOT_COLOR_MOBILE[slotKey]} slotKey={slotKey}
                         iconBoxStyle={styles.mealIconBox}
                       />
                       <View style={{ flex: 1 }}>
@@ -3595,7 +3595,7 @@ export default function PlannerScreen() {
                       recipeTitle={meal.recipeTitle}
                       imageUri={ref?.image ?? null}
                       Icon={SLOT_ICON_MOBILE[slotKey]}
-                      tint={SLOT_COLOR_MOBILE[slotKey]}
+                      tint={SLOT_COLOR_MOBILE[slotKey]} slotKey={slotKey}
                       iconBoxStyle={styles.mealIconBox}
                     />
                   );
@@ -3780,7 +3780,7 @@ export default function PlannerScreen() {
                         paddingHorizontal: 8,
                         paddingVertical: 2,
                         borderRadius: Radius.full,
-                        backgroundColor: Accent.warning + "1F",
+                        backgroundColor: accent.warningSoft,
                       }}
                       accessibilityLabel="Estimated macros — open the recipe to verify"
                     >
@@ -3979,7 +3979,7 @@ export default function PlannerScreen() {
                 <View
                   style={{
                     flex: 1,
-                    backgroundColor: accent.primary + "26",
+                    backgroundColor: accent.primarySoft,
                   }}
                 />
                 <View
@@ -3989,7 +3989,7 @@ export default function PlannerScreen() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: mc.fat + "12",
+                    backgroundColor: mcSoft.fat,
                   }}
                 />
               </Animated.View>

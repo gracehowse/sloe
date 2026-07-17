@@ -121,30 +121,30 @@ const FALLBACK_PRICES = {
 const TIMELINE: {
   icon: LucideIcon;
   color: string;
+  /** Soft-step dot tint (ENG-1521 — replaces `item.color + "20"`). Always the
+   *  item's FAMILY `*Soft` token: `warningSolid` is an INK variant with no
+   *  soft form, so its dot tints from `warningSoft` (the family FILL hue). */
+  soft: string;
   title: string;
   desc: string;
 }[] = [
   {
-    icon: CheckCircle2,
-    color: Accent.success,
+    icon: CheckCircle2, color: Accent.success, soft: Accent.successSoft,
     title: "Your targets are set",
     desc: "Calorie budget and macro targets based on your goals.",
   },
   {
-    icon: ChefHat,
-    color: Accent.success,
+    icon: ChefHat, color: Accent.success, soft: Accent.successSoft,
     title: "Today: Start importing recipes",
     desc: "Grab recipes from Instagram, TikTok, or any website — we'll handle the nutrition.",
   },
   {
-    icon: BarChart3,
-    color: Accent.info,
+    icon: BarChart3, color: Accent.info, soft: Accent.infoSoft,
     title: "This week: Save and plan",
     desc: "Save recipes, verify nutrition, and start a meal plan.",
   },
   {
-    icon: Flag,
-    color: Accent.warningSolid,
+    icon: Flag, color: Accent.warningSolid, soft: Accent.warningSoft,
     title: "Day 7: Trial ends",
     desc: "Your trial ends. Continue with Pro or switch to the free plan.",
   },
@@ -1185,7 +1185,7 @@ export default function PaywallScreen() {
               return (
               <View key={item.title} style={styles.timelineItem}>
                 <View style={styles.timelineIconWrap}>
-                  <View style={[styles.timelineDot, { backgroundColor: item.color + "20" }]}>
+                  <View style={[styles.timelineDot, { backgroundColor: item.soft }]}>
                     <TimelineIcon size={16} color={item.color} strokeWidth={1.75} />
                   </View>
                   {i < TIMELINE.length - 1 && <View style={styles.timelineLine} />}

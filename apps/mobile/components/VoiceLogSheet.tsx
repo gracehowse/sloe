@@ -293,9 +293,9 @@ export default function VoiceLogSheet({
                       borderRadius: Radius.full,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: isRecording ? Accent.success : Accent.success + "22",
+                      backgroundColor: isRecording ? Accent.success : accent.successSoft,
                       borderWidth: 1,
-                      borderColor: Accent.success + "55",
+                      borderColor: accent.successSoftStrong,
                     }}
                   >
                     <Mic
@@ -348,7 +348,7 @@ export default function VoiceLogSheet({
                 style={{
                   borderWidth: 1,
                   borderColor: Accent.destructive + "66",
-                  backgroundColor: Accent.destructive + "10",
+                  backgroundColor: accent.destructiveSoft,
                   borderRadius: Radius.md,
                   padding: Spacing.md,
                 }}

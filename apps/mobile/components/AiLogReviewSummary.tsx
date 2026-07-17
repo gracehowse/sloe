@@ -23,6 +23,7 @@ import { formatMacroTrailer } from "@suppr/nutrition-core/macroFormat";
 import {
   confidenceColor,
   confidenceLabel,
+  confidenceSoftColor,
   confidencePercentLabel,
 } from "./AiLogReviewItem";
 
@@ -83,7 +84,7 @@ export default function AiLogReviewSummary({ items, slotLabel, colors }: Props) 
             borderRadius: Radius.full,
             paddingHorizontal: 8,
             paddingVertical: 3,
-            backgroundColor: cColor + "22",
+            backgroundColor: confidenceSoftColor(avg),
           }}
         >
           <View

@@ -51,7 +51,9 @@ describe("Today cohesion — TodayMealsSection ENG-1099 M5 (collapsed ENG-1356)"
     // (quiet fill, no border) styling.
     expect(src).not.toMatch(/today_tracker_tier_v1/);
     expect(src).not.toMatch(/tierV1/);
-    expect(src).toMatch(/backgroundColor: col \+ "12"/);
+    // ENG-1521 — the quiet tint reads the named SlotColorsSoft-backed `colSoft`
+    // (alpha-concat of `col` is banned by check:token-scale).
+    expect(src).toMatch(/backgroundColor: colSoft/);
     expect(src).toMatch(/backgroundColor: colors\.fillQuiet/);
   });
 
@@ -90,7 +92,8 @@ describe("Today cohesion — NorthStarBlock ENG-1099 RC-4 (collapsed ENG-1356)",
     // `today_tracker_tier_v1` was always-on in production and was collapsed
     // in ENG-1356 — no flag check remains, only the tier-on sage tokens.
     expect(src).not.toMatch(/today_tracker_tier_v1/);
-    expect(src).toMatch(/Accent\.success \+ "1A"/);
+    // ENG-1521 — the sage chip fill is the named scheme-resolved Soft token.
+    expect(src).toMatch(/accent\.successSoft/);
     expect(src).toMatch(/Accent\.successSolid/);
   });
 

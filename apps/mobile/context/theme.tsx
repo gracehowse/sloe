@@ -47,6 +47,21 @@ const DARK_ACCENT: typeof Accent = {
   cyanSolid: Accent.cyanSolidDark, // #7FAAB8 (freeze/info Badge + Got-it link)
   successSolid: Accent.successSolidDark, // #83A57E (added Badge + streak headline)
   alcoholSolid: Accent.alcoholSolidDark, // #D6A24A (alcohol quick-add chip label)
+  // ENG-1521 — the sanctioned soft-tint scale is scheme-resolved here exactly
+  // like primarySoft: `useAccent().<family>Soft` returns the 12% light / 18%
+  // dark step (SoftStrong = 20/28) without call sites touching the *Dark names.
+  successSoft: Accent.successSoftDark,
+  successSoftStrong: Accent.successSoftStrongDark,
+  warningSoft: Accent.warningSoftDark,
+  warningSoftStrong: Accent.warningSoftStrongDark,
+  destructiveSoft: Accent.destructiveSoftDark,
+  destructiveSoftStrong: Accent.destructiveSoftStrongDark,
+  cyanSoft: Accent.cyanSoftDark,
+  cyanSoftStrong: Accent.cyanSoftStrongDark,
+  infoSoft: Accent.infoSoftDark,
+  infoSoftStrong: Accent.infoSoftStrongDark,
+  winSoft: Accent.winSoftDark,
+  winSoftStrong: Accent.winSoftStrongDark,
 };
 
 type ThemeContextValue = {

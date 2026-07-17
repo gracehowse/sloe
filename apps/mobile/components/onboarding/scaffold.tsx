@@ -136,9 +136,9 @@ export function MobileMethodologyNote({
       style={{
         marginTop: Spacing.lg,
         padding: Spacing.md,
-        backgroundColor: accent.primary + "10",
+        backgroundColor: accent.primarySoft,
         borderWidth: 1,
-        borderColor: accent.primary + "26",
+        borderColor: accent.primarySoft,
         borderRadius: Radius.md,
         flexDirection: "row",
         gap: Spacing.sm,

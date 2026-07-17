@@ -28,9 +28,9 @@ import {
  * macros). Off → the legacy four-row matrix. Gated via
  * `getPaywallComparisonRows`.
  */
-// Damson-lilac wash for the PRO column (mirrors web --accent-info-soft).
-// Accent.win (#6A4B7A = rgb(106,75,122)) @ ~8% via the alpha-suffix pattern.
-const PRO_COLUMN_WASH = Accent.win + "14";
+// Damson-lilac wash for the PRO column (mirrors web --accent-info-soft) —
+// the sanctioned Soft step of the win family (ENG-1521 soft-tint scale).
+const PRO_COLUMN_WASH = Accent.winSoft;
 
 function Cell({
   value,

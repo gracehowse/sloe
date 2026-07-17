@@ -267,7 +267,7 @@ export default function SaveMealSheet({
                         borderRadius: Radius.full,
                         borderWidth: 1,
                         borderColor: isActive ? accent.primary : colors.cardBorder,
-                        backgroundColor: isActive ? accent.primary + "18" : "transparent",
+                        backgroundColor: isActive ? accent.primarySoft : "transparent",
                       }}
                     >
                       <Text

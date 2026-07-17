@@ -35,11 +35,11 @@ export function PlanRegenerateToast({ toast, topInset }: PlanRegenerateToastProp
         {
           top: topInset + Spacing.sm,
           backgroundColor: colors.card,
-          borderColor: accent.primary + "40",
+          borderColor: accent.primarySoftStrong,
         },
       ]}
     >
-      <View style={[styles.icon, { backgroundColor: accent.primary + "1A" }]}>
+      <View style={[styles.icon, { backgroundColor: accent.primarySoft }]}>
         <RefreshCw size={14} color={accent.primary} strokeWidth={2.25} />
       </View>
       <Text style={[styles.text, { color: colors.text }]}>

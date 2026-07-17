@@ -110,7 +110,7 @@ function WeeklyCheckinModalImpl({
               width: 48,
               height: 48,
               borderRadius: 24,
-              backgroundColor: accent.primary + "18",
+              backgroundColor: accent.primarySoft,
               alignItems: "center",
               justifyContent: "center",
               marginBottom: Spacing.dense,
@@ -206,8 +206,8 @@ function WeeklyCheckinModalImpl({
           <View
             style={{
               borderWidth: 1,
-              borderColor: accent.primary + "55",
-              backgroundColor: accent.primary + "10",
+              borderColor: accent.primarySoftStrong,
+              backgroundColor: accent.primarySoft,
               borderRadius: Radius.md,
               paddingVertical: Spacing.md,
               paddingHorizontal: Spacing.md,

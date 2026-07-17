@@ -93,7 +93,7 @@ function TodayFastingPillImpl(props: TodayFastingPillProps) {
         paddingVertical: Spacing.sm,
         paddingHorizontal: Spacing.lg,
         alignSelf: "center",
-        backgroundColor: accent.primary + "18",
+        backgroundColor: accent.primarySoft,
         borderRadius: Radius.full,
         marginVertical: Spacing.xs,
       }}

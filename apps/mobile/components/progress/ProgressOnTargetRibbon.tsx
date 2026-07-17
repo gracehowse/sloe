@@ -43,7 +43,7 @@ export function ProgressOnTargetRibbon({
           width: 40,
           height: 40,
           borderRadius: Radius.full,
-          backgroundColor: medal + "1F",
+          backgroundColor: colors.sourceAiSoft,
           alignItems: "center",
           justifyContent: "center",
         }}

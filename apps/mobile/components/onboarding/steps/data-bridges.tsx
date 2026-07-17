@@ -57,7 +57,7 @@ import {
   Heart,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, MacroColors, MacroColorsDark, MacroColorsSoft, MacroColorsSoftDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -172,7 +172,7 @@ function ManualTargetsCard() {
   return (
     <BridgeCard
       icon={Calculator}
-      iconColor={accent.primaryLight}
+      iconColor={accent.primaryLight} iconSoft={accent.primarySoft}
       title="I already know my targets"
       body="Paste them in — we'll use these instead of the BMR estimate. You can re-calibrate any time in Settings."
     >
@@ -232,7 +232,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
   // Secondary accent (Frost flag → damson, else clay) for the "Open Settings"
   // link and the "Allow Health access" CTA. The card's heart glyph keeps
   // `MacroColors.fat`, and the permission-error box keeps `Accent.warning`.
-  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
+  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors, mcSoft = useResolvedScheme() === "dark" ? MacroColorsSoftDark : MacroColorsSoft;
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const granted = state.healthGranted === true;
@@ -275,7 +275,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
   return (
     <BridgeCard
       icon={Heart}
-      iconColor={mc.fat}
+      iconColor={mc.fat} iconSoft={mcSoft.fat}
       title="Connect Apple Health"
       body="Read active energy + steps so your adaptive TDEE calibrates from day 1. If you opt in later, logged meals can also sync back to Health."
       grantedBadge={granted ? "Connected" : null}
@@ -287,7 +287,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
             alignItems: "center",
             gap: 8,
             marginTop: 8,
-            backgroundColor: Accent.warning + "1A",
+            backgroundColor: Accent.warningSoft,
             borderRadius: Radius.sm,
             paddingHorizontal: Spacing.dense,
             paddingVertical: 8,
@@ -387,7 +387,7 @@ function NotificationsCard({ userId }: { userId: string | null }) {
   return (
     <BridgeCard
       icon={Bell}
-      iconColor={Accent.warning}
+      iconColor={Accent.warning} iconSoft={Accent.warningSoft}
       title="Gentle reminders"
       body="Off-target evening nudge + a Sunday recap. Two notifications max per week."
       grantedBadge={granted ? "On" : null}
@@ -435,14 +435,14 @@ function NotificationsCard({ userId }: { userId: string | null }) {
 
 function BridgeCard({
   icon: Icon,
-  iconColor,
+  iconColor, iconSoft, // iconSoft = paired Soft-step circle fill (ENG-1521) — a named token, never a concat of iconColor
   title,
   body,
   grantedBadge,
   children,
 }: {
   icon: LucideIcon;
-  iconColor: string;
+  iconColor: string; iconSoft: string;
   title: string;
   body: string;
   grantedBadge?: string | null;
@@ -470,7 +470,7 @@ function BridgeCard({
             borderRadius: Radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: iconColor + "26",
+            backgroundColor: iconSoft,
           }}
         >
           <Icon size={18} color={iconColor} />
@@ -494,7 +494,7 @@ function BridgeCard({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 4,
-                  backgroundColor: Accent.success + "26",
+                  backgroundColor: Accent.successSoft,
                   paddingHorizontal: 8,
                   paddingVertical: Spacing.xs,
                   borderRadius: Radius.full,

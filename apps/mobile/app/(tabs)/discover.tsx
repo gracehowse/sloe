@@ -848,7 +848,7 @@ export default function DiscoverScreen() {
                     borderRadius: Radius.lg,
                     borderWidth: 1,
                     borderColor: accent.primary,
-                    backgroundColor: accent.primary + "10",
+                    backgroundColor: accent.primarySoft,
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >

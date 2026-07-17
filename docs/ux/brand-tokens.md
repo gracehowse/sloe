@@ -49,6 +49,32 @@ contrast ratios.
 | **Amber (alias)** | `#C9892C` | `Accent.orange` / `Accent.magenta` | `--macro-sodium` / `--macro-fat` | Sodium + fat macro — Sloe amber (legacy `orange` / `magenta` aliases) |
 | **Info** | `#6A4B7A` (light) / `#9A7BAA` (dark) | `Accent.info` | `--accent-info` | Informational accents — Sloe damson |
 
+## Soft-tint scale (ENG-1521)
+
+THE two sanctioned soft-tint steps per scheme (Linear ruling, 2026-07-17):
+
+| Step | Light | Dark | Role |
+|------|-------|------|------|
+| **Soft** | 12% | 18% | Everyday tinted fills — selected pills, chips, badges, nudges |
+| **SoftStrong** | 20% | 28% | The rare hero tinted slab (one per surface — e.g. the Discover import card, ENG-1087) |
+
+Light softs derive from the family **base** hue; dark softs from the family's
+**OLED-lifted** hue (the `primarySoft` / `primarySoftDark` precedent). Call
+sites consume the **named tokens only** — mobile `Accent.<family>Soft` /
+`<family>SoftStrong` (+ `…Dark`, scheme-resolved via `useAccent()`),
+`MacroColorsSoft*` / `SlotColorsSoft*` maps, and the scheme-resolved
+`colors.sourceAiSoft` / `sourceManualSoft` / `confidenceNeutralSoft`; web
+`--accent-<family>-soft` / `-soft-strong`. Ad-hoc alpha-concat
+(`Accent.warning + "1F"`) and call-site `withAlpha()` are banned by the
+`check:token-scale` alpha-concat detector — `withAlpha` lives inside
+`apps/mobile/constants/theme.ts` as the derivation helper only. Migration
+snaps each legacy site to the NEAREST step; sub-10% tints snap UP to Soft.
+Scrims/borders built on semantic theme colours (`colors.border`,
+`colors.background`) with existing conventions may stay exempt — marked at
+the site, never silently. Web's drifted values (info/win 8–16%, macro dark
+16%, sodium 8%, slot hex-`12`/`15`) snap to the scale in the web half of the
+same consolidation.
+
 ## Macro colours
 
 Fixed across all screens. Never hardcode — always reference `MacroColors` (mobile) or `--macro-*` (web).
@@ -75,7 +101,7 @@ Per-slot tint applied to the slot-header icon wrapper on Today's meal section an
 | Dinner | `#6A4B7A` (damson) | `#9A7BAA` | `SlotColors.dinner` | `--slot-dinner` |
 | Snack(s) | `#4A7878` (teal) | `#6FA3A3` | `SlotColors.snack` | `--slot-snack` |
 
-Each slot also exposes a `--slot-<name>-soft` variant (`12` alpha suffix in light, `15` in dark) for tinted backgrounds (chip pills, icon wrappers).
+Each slot also exposes a `--slot-<name>-soft` variant (`12` alpha suffix in light, `15` in dark) for tinted backgrounds (chip pills, icon wrappers). Mobile mirrors these as the `SlotColorsSoft` / `SlotColorsSoftDark` (+ `SoftStrong`) maps on the sanctioned ENG-1521 scale (12/18%, 20/28%); the web hex-suffix values snap to the same scale in the web half of the consolidation.
 
 > **Breakfast (amber) shares the warning + fat hue family.** They live in
 > different namespaces — `--slot-breakfast` (meal slot) vs `--warning` /

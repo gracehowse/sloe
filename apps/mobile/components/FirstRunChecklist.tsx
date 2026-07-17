@@ -89,7 +89,7 @@ export default function FirstRunChecklist({
       borderRadius: Radius.md,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: Accent.primary + "1A",
+      backgroundColor: Accent.primarySoft,
     },
     content: { flex: 1, minWidth: 0 },
     header: {

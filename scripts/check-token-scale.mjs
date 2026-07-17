@@ -24,6 +24,13 @@
  *      3-digit `#000` / `#fff` carve-out. (The web `rounded-[Npx]` bracket
  *      blind spot from the same ticket is gated separately by
  *      `check:web-radius` / ENG-1499.)
+ *   5. Call-site alpha-concat (ENG-1521): a colour expression glued to a
+ *      quoted 2-hex-digit alpha suffix (`Accent.warning + "1F"`,
+ *      `slotColor(slot) + "14"`), plus any `withAlpha(` call outside a
+ *      token-definition file. The sanctioned soft-tint scale is the named
+ *      `*Soft` / `*SoftStrong` tokens (12/20% light, 18/28% dark) — an
+ *      ad-hoc alpha is off-scale by construction, and `withAlpha` is the
+ *      token-file-internal derivation helper only.
  *
  * Exclusions: token-definition files (`apps/mobile/constants/theme.ts`,
  * `src/styles/theme.css`, the Tailwind theme config), `node_modules`, and
@@ -110,6 +117,18 @@ const RADIUS_RE = /\bborderRadius\s*:\s*(\d+(?:\.\d+)?)\b/g;
 // token-routed `rgba(var(--x), 0.5)` has no numeric triple and never matches.
 const RGBA_RE = /\brgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\b[^)]*\)/g;
 
+// Call-site alpha-concat (ENG-1521): an identifier / property chain / call
+// or index tail (`)` / `]`) followed by `+` and a quoted 2-hex-digit string —
+// the `Accent.warning + "1F"` idiom that manufactures an off-scale tint from
+// a token. Plain string-literal concat (`"a" + "1f"`) deliberately does NOT
+// match: the left side must end in an expression character, not a quote.
+const ALPHA_CONCAT_RE =
+  /(?:[A-Za-z_$][\w$.]*|\)|\])\s*\+\s*(['"`])[0-9a-fA-F]{2}\1/g;
+// `withAlpha(` outside a token-definition file (ENG-1521): the derivation
+// helper lives in `apps/mobile/constants/theme.ts` ONLY (TOKEN_DEF_FILES,
+// which scanTree skips) — call sites consume the named `*Soft` tokens.
+const WITH_ALPHA_RE = /\bwithAlpha\s*\(/g;
+
 /** Pure black / pure white channels — the carved-out scrim/shadow idiom. */
 function isScrimBlackWhite(r, g, b) {
   return (r === 0 && g === 0 && b === 0) || (r === 255 && g === 255 && b === 255);
@@ -174,6 +193,14 @@ export function findViolations(src, legalRadius) {
       if (isScrimBlackWhite(r, g, b)) continue;
       hits.push({ line: i + 1, kind: "rgba", token: m[0].replace(/\s+/g, " ") });
     }
+    ALPHA_CONCAT_RE.lastIndex = 0;
+    while ((m = ALPHA_CONCAT_RE.exec(line)) !== null) {
+      hits.push({ line: i + 1, kind: "alpha-concat", token: m[0].replace(/\s+/g, " ") });
+    }
+    WITH_ALPHA_RE.lastIndex = 0;
+    while ((m = WITH_ALPHA_RE.exec(line)) !== null) {
+      hits.push({ line: i + 1, kind: "with-alpha", token: "withAlpha(…)" });
+    }
   }
   return hits;
 }
@@ -198,6 +225,10 @@ function describeHit(h) {
   if (h.kind === "radius") return `borderRadius ${h.token.split(": ")[1]} → ${h.nearest}`;
   if (h.kind === "tailwind") return `${h.token} → semantic token utility`;
   if (h.kind === "rgba") return `${h.token} → semantic colour token (token + opacity)`;
+  if (h.kind === "alpha-concat")
+    return `${h.token} → named *Soft / *SoftStrong token (ENG-1521 soft-tint scale)`;
+  if (h.kind === "with-alpha")
+    return `withAlpha() at a call site → named *Soft token (ENG-1521 — helper is theme.ts-internal)`;
   return `${h.token} → semantic token`;
 }
 
@@ -219,6 +250,8 @@ function main() {
     guidance:
       `Colour + radius come from tokens: a literal hex / Tailwind palette class is a finding;\n` +
       `borderRadius snaps to ${sortedRadius} (\`Radius.*\`).\n` +
+      `Soft tints come from the named *Soft / *SoftStrong tokens (ENG-1521: 12/20% light,\n` +
+      `18/28% dark) — alpha-concat (\`hue + "18"\`) and call-site withAlpha() are findings.\n` +
       `Route the value to a semantic token (theme.ts / theme.css / the Tailwind theme). The gate\n` +
       `is a ratchet — it can only ever tighten. If you are legitimately shrinking a pinned file,\n` +
       `re-pin it lower with:\n` +

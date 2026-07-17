@@ -1744,7 +1744,7 @@ export default function RecipeDetailScreen() {
       paddingHorizontal: Spacing.lg,
       borderRadius: Radius.md,
       borderWidth: 1,
-      borderColor: accent.primary + "55",
+      borderColor: accent.primarySoftStrong,
     },
     sourceLinkText: { color: accent.primarySolid, fontSize: 14, fontWeight: "600" },
     // ENG-858 — import disclaimer caption. Matches the gluten-disclaimer
@@ -2303,7 +2303,7 @@ export default function RecipeDetailScreen() {
               Edamam when configured)…
             </Text>
           ) : autoVerifyFailed ? (
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md, backgroundColor: Accent.warning + "1A", borderWidth: 1, borderColor: Accent.warning }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md, backgroundColor: accent.warningSoft, borderWidth: 1, borderColor: Accent.warning }}>
               <Text style={{ ...Type.captionSmall, color: Accent.warningSolid, lineHeight: 17, flexShrink: 1 }}>
                 Couldn’t match ingredients against the food database.
               </Text>

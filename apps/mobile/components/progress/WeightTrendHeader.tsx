@@ -67,6 +67,13 @@ export function WeightTrendHeader({ trend, isImperial, periodLabel }: WeightTren
   // direction is glanceable. Withings does the same.
   const statusIconColor =
     status === "stable" || status === "no_data" ? colors.textSecondary : accent.primary;
+  // Paired Soft-step circle fill (ENG-1521): the neutral arm reads the named
+  // neutral soft token (`confidenceNeutralSoft`) rather than tinting the
+  // text-ink hue; the accent arm reads `primarySoft`.
+  const statusIconSoft =
+    status === "stable" || status === "no_data"
+      ? colors.confidenceNeutralSoft
+      : accent.primarySoft;
 
   const deltaLabel =
     trend.trendDeltaKg != null && status !== "no_data"
@@ -89,7 +96,7 @@ export function WeightTrendHeader({ trend, isImperial, periodLabel }: WeightTren
             <View
               style={[
                 styles.iconCircle,
-                { backgroundColor: statusIconColor + "1f" },
+                { backgroundColor: statusIconSoft },
               ]}
             >
               <StatusIcon size={14} color={statusIconColor} strokeWidth={2.25} />

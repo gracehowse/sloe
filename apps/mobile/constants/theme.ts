@@ -1,5 +1,28 @@
 import { Platform } from 'react-native';
 
+/** ENG-1521 — THE two sanctioned soft-tint steps per scheme (Linear ruling,
+ *  2026-07-17): Soft = 12% light / 18% dark; SoftStrong = 20% light / 28%
+ *  dark. Every soft tint in this file derives from a family hue at one of
+ *  these four alphas via `withAlpha` below. Call sites consume the NAMED
+ *  `*Soft` / `*SoftStrong` tokens ONLY — ad-hoc alpha-concat (`hue + "18"`)
+ *  and call-site `withAlpha` are banned by the `check:token-scale`
+ *  alpha-concat detector. */
+const SOFT = 0.12;
+const SOFT_DARK = 0.18;
+const SOFT_STRONG = 0.2;
+const SOFT_STRONG_DARK = 0.28;
+
+/** `#RRGGBB` → `rgba(r, g, b, a)` at a sanctioned soft-tint alpha (ENG-1521).
+ *  Token-file-internal derivation helper ONLY — never import, re-export, or
+ *  re-implement it at a call site; consume the named `*Soft` tokens instead
+ *  (`check:token-scale` enforces this outside token-definition files). */
+function withAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /**
  * Suppr brand accents (mobile). Aligned with the web Sloe palette.
  * Primary: `Accent.primary` (#5B3B6E aubergine-violet) — 2026-06-08.
@@ -86,6 +109,17 @@ export const Accent = {
   successLight: '#83A57E',
   successSolid: '#466046',
   successSolidDark: '#83A57E',
+  /** Soft sage tint for success chips / "added" badges / on-track fills
+   *  (ENG-1521 — snaps the old `Accent.success + "1F"`-style concats onto the
+   *  sanctioned scale). Dark derives from the OLED-lifted sage, same lift the
+   *  primary family uses. ↔ web `--accent-success-soft` (light + .dark). */
+  successSoft: withAlpha('#5E7C5A', SOFT),
+  successSoftDark: withAlpha('#83A57E', SOFT_DARK),
+  /** Stronger sage slab for the rare hero success surface (ENG-1521 — the
+   *  `"35"`/`"40"`-suffix concat sites snap here). No web `-soft-strong`
+   *  counterpart yet: web has zero consuming sites (ENG-1521 census). */
+  successSoftStrong: withAlpha('#5E7C5A', SOFT_STRONG),
+  successSoftStrongDark: withAlpha('#83A57E', SOFT_STRONG_DARK),
   /** Amber slot — warning, sodium, approaching limits, AND over-budget
    *  (2026-07-01 re-ratification, sweep decision #2 / ENG-1296: the dossier
    *  D-2 "over = red" carve-out is RETIRED — over-budget signals product-wide
@@ -99,6 +133,17 @@ export const Accent = {
   warning: '#C9892C',
   warningLight: '#D6A24A',
   warningSolid: '#925812',
+  /** Soft amber tint for warning chips / approaching-limit fills (ENG-1521).
+   *  Value-equal to `Colors.*.overBudgetSoft` (the over-budget family IS the
+   *  warning family — ENG-1296); dark derives from the lifted honey.
+   *  ↔ web `--accent-warning-soft` (light + .dark). */
+  warningSoft: withAlpha('#C9892C', SOFT),
+  warningSoftDark: withAlpha('#D6A24A', SOFT_DARK),
+  /** Stronger amber slab (ENG-1521 — the `"40"`-suffix warning concat sites
+   *  snap here). No web `-soft-strong` counterpart yet: zero web consumers
+   *  (ENG-1521 census). */
+  warningSoftStrong: withAlpha('#C9892C', SOFT_STRONG),
+  warningSoftStrongDark: withAlpha('#D6A24A', SOFT_STRONG_DARK),
   /** Alcohol INK — the alcohol tracker FILL is the amber `warning` hue
    *  (`StimulantColors.alcohol` / `HydrationStimulantsCard` tone), which is
    *  only 2.61:1 as TEXT on the chip's `backgroundSecondary` surface in light
@@ -123,6 +168,17 @@ export const Accent = {
   destructive: '#B04434',
   destructiveLight: '#DC6B55',
   destructiveSolid: '#9E3F2E',
+  /** Soft brick tint for destructive rows / delete confirms / error fills
+   *  (ENG-1521 — the `Accent.destructive + "12"/"14"`-style concats snap
+   *  here). Dark derives from the lifted brick. ↔ web
+   *  `--accent-destructive-soft` (light + .dark). */
+  destructiveSoft: withAlpha('#B04434', SOFT),
+  destructiveSoftDark: withAlpha('#DC6B55', SOFT_DARK),
+  /** Stronger brick slab (ENG-1521 — the `"40"`/`"55"`-suffix destructive
+   *  concat sites snap here). No web `-soft-strong` counterpart yet: zero web
+   *  consumers (ENG-1521 census). */
+  destructiveSoftStrong: withAlpha('#B04434', SOFT_STRONG),
+  destructiveSoftStrongDark: withAlpha('#DC6B55', SOFT_STRONG_DARK),
   /** Legacy `cyan` alias — remapped onto Sloe teal (cyan has no Sloe slot). */
   cyan: '#4A7878',
   /** Teal INK — the raw `cyan` fill (#4A7878) is only 4.14:1 as TEXT on its own
@@ -136,6 +192,17 @@ export const Accent = {
    *  with web ENG-780/828/1273.) */
   cyanSolid: '#3C5F6B',
   cyanSolidDark: '#7FAAB8',
+  /** Soft teal tint for freeze/fiber chips + snack-adjacent fills (ENG-1521 —
+   *  the teal family had NO soft token on either platform; the `#4A7878`
+   *  concat sites snap here). Dark derives from the lifted teal `fiberLight`
+   *  #6FA3A3 (= dark `sourceOff`), the same OLED lift the other families use.
+   *  No web `--accent-teal-soft` yet — nearest web relative is
+   *  `--macro-water-soft`, a different (muted-teal) hue; zero web consumers
+   *  need one (ENG-1521 census). */
+  cyanSoft: withAlpha('#4A7878', SOFT),
+  cyanSoftDark: withAlpha('#6FA3A3', SOFT_DARK),
+  cyanSoftStrong: withAlpha('#4A7878', SOFT_STRONG),
+  cyanSoftStrongDark: withAlpha('#6FA3A3', SOFT_STRONG_DARK),
   /** Legacy `orange` alias — remapped onto Sloe amber. */
   orange: '#C9892C',
   /** Legacy `magenta` alias — remapped onto Sloe amber (Fat macro is amber;
@@ -143,6 +210,16 @@ export const Accent = {
   magenta: '#C9892C',
   /** Info — Sloe damson (info/win family). Mirrors web `--accent-info`. */
   info: '#6A4B7A',
+  /** Soft damson tint for info fills — paywall feature-row tint, PRO-column
+   *  wash (ENG-1521). Dark derives from the lifted damson `purpleLight` (=
+   *  web .dark `--accent-info`). Web `--accent-info-soft` currently sits at
+   *  8% light / 16% dark — under the sanctioned 12/18 scale; the ruling snaps
+   *  sub-10% UP to Soft, and the web-side snap is part of the same ENG-1521
+   *  consolidation (mobile lands the ruling values, not the drifted ones). */
+  infoSoft: withAlpha('#6A4B7A', SOFT),
+  infoSoftDark: withAlpha('#9A7BAA', SOFT_DARK),
+  infoSoftStrong: withAlpha('#6A4B7A', SOFT_STRONG),
+  infoSoftStrongDark: withAlpha('#9A7BAA', SOFT_STRONG_DARK),
   /** Carbs (+ sugar) — Sloe clay. Distinct from sodium's honey + the amber
    *  warning/fat hue. */
   carbs: '#C8794E',
@@ -200,6 +277,16 @@ export const Accent = {
   win: '#6A4B7A',
   /** Win at ~12% alpha — soft fill behind a win-moment landmark / badge. */
   winSoft: 'rgba(106, 75, 122, 0.12)',
+  /** Win soft, dark scheme (ENG-1521 — `winSoft` was light-only). Derives
+   *  from the OLED-lifted damson `purpleLight` (= web .dark `--accent-win`).
+   *  Web .dark `--accent-win-soft` sits at 16% — 2 points under the
+   *  sanctioned dark Soft step; the web-side snap is part of the same
+   *  ENG-1521 consolidation. */
+  winSoftDark: withAlpha('#9A7BAA', SOFT_DARK),
+  /** Stronger win slab for the one hero celebration surface (ENG-1521). No
+   *  web `-soft-strong` counterpart yet: zero web consumers (census). */
+  winSoftStrong: withAlpha('#6A4B7A', SOFT_STRONG),
+  winSoftStrongDark: withAlpha('#9A7BAA', SOFT_STRONG_DARK),
 };
 
 /**
@@ -334,6 +421,64 @@ export const MacroColorsDark: typeof MacroColors = {
   water:    '#7FAAB8',         // teal (lightened — no web dark token)
 };
 
+/** The 8 macro identity hues that carry a soft-tint role. The `*Solid` keys
+ *  are INK variants — they have no soft form (a tint derives from the FILL
+ *  hue). (ENG-1521.) */
+type MacroSoftTints = Record<
+  'calories' | 'protein' | 'carbs' | 'fat' | 'fiber' | 'sugar' | 'sodium' | 'water',
+  string
+>;
+
+/** ENG-1521 — macro soft tints (the dynamic `config.color + "20"` /
+ *  `mc.fat + "…"` concat sites snap here). Light derives from `MacroColors`
+ *  at the sanctioned Soft/SoftStrong steps; dark from `MacroColorsDark`
+ *  (already the OLED-lifted hues). Resolve scheme-side like the base maps
+ *  (`macroColorFor`-style), never read the light map on a dark surface.
+ *  ↔ web `--macro-*-soft` — web light matches at 12% except sodium (8%) and
+ *  web dark sits at 16%; both are under the sanctioned scale and the
+ *  web-side snap is part of the same ENG-1521 consolidation. Web has no
+ *  `--macro-calories-soft`; included here so the map is total over the 8. */
+export const MacroColorsSoft: MacroSoftTints = {
+  calories: withAlpha(MacroColors.calories, SOFT),
+  protein: withAlpha(MacroColors.protein, SOFT),
+  carbs: withAlpha(MacroColors.carbs, SOFT),
+  fat: withAlpha(MacroColors.fat, SOFT),
+  fiber: withAlpha(MacroColors.fiber, SOFT),
+  sugar: withAlpha(MacroColors.sugar, SOFT),
+  sodium: withAlpha(MacroColors.sodium, SOFT),
+  water: withAlpha(MacroColors.water, SOFT),
+};
+export const MacroColorsSoftDark: MacroSoftTints = {
+  calories: withAlpha(MacroColorsDark.calories, SOFT_DARK),
+  protein: withAlpha(MacroColorsDark.protein, SOFT_DARK),
+  carbs: withAlpha(MacroColorsDark.carbs, SOFT_DARK),
+  fat: withAlpha(MacroColorsDark.fat, SOFT_DARK),
+  fiber: withAlpha(MacroColorsDark.fiber, SOFT_DARK),
+  sugar: withAlpha(MacroColorsDark.sugar, SOFT_DARK),
+  sodium: withAlpha(MacroColorsDark.sodium, SOFT_DARK),
+  water: withAlpha(MacroColorsDark.water, SOFT_DARK),
+};
+export const MacroColorsSoftStrong: MacroSoftTints = {
+  calories: withAlpha(MacroColors.calories, SOFT_STRONG),
+  protein: withAlpha(MacroColors.protein, SOFT_STRONG),
+  carbs: withAlpha(MacroColors.carbs, SOFT_STRONG),
+  fat: withAlpha(MacroColors.fat, SOFT_STRONG),
+  fiber: withAlpha(MacroColors.fiber, SOFT_STRONG),
+  sugar: withAlpha(MacroColors.sugar, SOFT_STRONG),
+  sodium: withAlpha(MacroColors.sodium, SOFT_STRONG),
+  water: withAlpha(MacroColors.water, SOFT_STRONG),
+};
+export const MacroColorsSoftStrongDark: MacroSoftTints = {
+  calories: withAlpha(MacroColorsDark.calories, SOFT_STRONG_DARK),
+  protein: withAlpha(MacroColorsDark.protein, SOFT_STRONG_DARK),
+  carbs: withAlpha(MacroColorsDark.carbs, SOFT_STRONG_DARK),
+  fat: withAlpha(MacroColorsDark.fat, SOFT_STRONG_DARK),
+  fiber: withAlpha(MacroColorsDark.fiber, SOFT_STRONG_DARK),
+  sugar: withAlpha(MacroColorsDark.sugar, SOFT_STRONG_DARK),
+  sodium: withAlpha(MacroColorsDark.sodium, SOFT_STRONG_DARK),
+  water: withAlpha(MacroColorsDark.water, SOFT_STRONG_DARK),
+};
+
 /**
  * Meal-slot tint roles — aligned with web `--slot-*` CSS custom properties.
  *
@@ -358,6 +503,48 @@ export const SlotColors = {
   lunch:     '#5E7C5A',           // Sage
   dinner:    '#6A4B7A',           // Damson
   snack:     '#4A7878',           // Teal
+};
+
+/** OLED-lifted slot hues for the dark soft tints below — the same per-family
+ *  lift the accent tokens use (amber → honey `warningLight`, sage →
+ *  `successLight`, damson → `purpleLight`, teal → `fiberLight`). Module-
+ *  private: only the dark soft derivations read it. (ENG-1521.) */
+const SlotColorsLifted: typeof SlotColors = {
+  breakfast: '#D6A24A',
+  lunch:     '#83A57E',
+  dinner:    '#9A7BAA',
+  snack:     '#6FA3A3',
+};
+
+/** ENG-1521 — meal-slot soft tints (the `slotColor(slot) + "14"` /
+ *  `resolveSlotTint` concat sites snap here). Light derives from
+ *  `SlotColors` at the sanctioned steps; dark from the lifted hues above.
+ *  ↔ web `--slot-*-soft` — currently hex8 `#…12` (~7% alpha), under the
+ *  sanctioned scale; the web-side snap is part of the same ENG-1521
+ *  consolidation. */
+export const SlotColorsSoft: typeof SlotColors = {
+  breakfast: withAlpha(SlotColors.breakfast, SOFT),
+  lunch: withAlpha(SlotColors.lunch, SOFT),
+  dinner: withAlpha(SlotColors.dinner, SOFT),
+  snack: withAlpha(SlotColors.snack, SOFT),
+};
+export const SlotColorsSoftDark: typeof SlotColors = {
+  breakfast: withAlpha(SlotColorsLifted.breakfast, SOFT_DARK),
+  lunch: withAlpha(SlotColorsLifted.lunch, SOFT_DARK),
+  dinner: withAlpha(SlotColorsLifted.dinner, SOFT_DARK),
+  snack: withAlpha(SlotColorsLifted.snack, SOFT_DARK),
+};
+export const SlotColorsSoftStrong: typeof SlotColors = {
+  breakfast: withAlpha(SlotColors.breakfast, SOFT_STRONG),
+  lunch: withAlpha(SlotColors.lunch, SOFT_STRONG),
+  dinner: withAlpha(SlotColors.dinner, SOFT_STRONG),
+  snack: withAlpha(SlotColors.snack, SOFT_STRONG),
+};
+export const SlotColorsSoftStrongDark: typeof SlotColors = {
+  breakfast: withAlpha(SlotColorsLifted.breakfast, SOFT_STRONG_DARK),
+  lunch: withAlpha(SlotColorsLifted.lunch, SOFT_STRONG_DARK),
+  dinner: withAlpha(SlotColorsLifted.dinner, SOFT_STRONG_DARK),
+  snack: withAlpha(SlotColorsLifted.snack, SOFT_STRONG_DARK),
 };
 
 /**
@@ -456,6 +643,15 @@ export const Colors = {
     sourceManual: '#9B93A3',        // warm grey
     sourceAi: '#6A4B7A',            // damson
     confidenceNeutral: '#655C6E',
+    /** ENG-1521 — soft chip tints for the provenance + confidence families
+     *  (NutritionSourceBadge, TrustChip/ConfidenceChip, ProgressOnTargetRibbon
+     *  fills that previously alpha-concatenated the base hue). Soft step only:
+     *  these chips never take the hero SoftStrong weight. Scheme-resolved via
+     *  `colors.*` like their base hues. No web counterparts yet — zero web
+     *  consumers (ENG-1521 census). */
+    sourceManualSoft: withAlpha('#9B93A3', SOFT),
+    sourceAiSoft: withAlpha('#6A4B7A', SOFT),
+    confidenceNeutralSoft: withAlpha('#655C6E', SOFT),
     /** North-star + over-budget — Sloe palette. plum → clay gradient. */
     northStarBgFrom: 'rgba(59, 42, 77, 0.08)',
     northStarBgTo: 'rgba(200, 121, 78, 0.05)',
@@ -559,6 +755,11 @@ export const Colors = {
     sourceManual: '#857F8B',
     sourceAi: '#9A7BAA',
     confidenceNeutral: '#857F8B',
+    /** ENG-1521 — provenance + confidence soft chip tints, dark scheme.
+     *  Derive from the lifted dark base hues above (see light-scheme note). */
+    sourceManualSoft: withAlpha('#857F8B', SOFT_DARK),
+    sourceAiSoft: withAlpha('#9A7BAA', SOFT_DARK),
+    confidenceNeutralSoft: withAlpha('#857F8B', SOFT_DARK),
     /** North-star + over-budget — Sloe dark. */
     northStarBgFrom: 'rgba(129, 94, 145, 0.16)',
     northStarBgTo: 'rgba(213, 138, 94, 0.06)',

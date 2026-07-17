@@ -1370,7 +1370,7 @@ export default function ImportSharedScreen() {
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: accent.primary + "18",
+      backgroundColor: accent.primarySoft,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -1419,7 +1419,7 @@ export default function ImportSharedScreen() {
       backgroundColor: colors.card,
       borderRadius: Radius.xl * 2,
       borderWidth: 1,
-      borderColor: Accent.success + "35",
+      borderColor: Accent.successSoftStrong,
       paddingVertical: Spacing.xxxl,
       paddingHorizontal: Spacing.xxl,
       alignItems: "center",
@@ -1469,12 +1469,12 @@ export default function ImportSharedScreen() {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: Accent.success + "15",
+      backgroundColor: Accent.successSoft,
       paddingVertical: 10,
       paddingHorizontal: Spacing.lg,
       borderRadius: Radius.full,
       borderWidth: 1,
-      borderColor: Accent.success + "35",
+      borderColor: Accent.successSoftStrong,
       marginTop: Spacing.xs,
       marginBottom: Spacing.sm,
     },
@@ -1527,10 +1527,10 @@ export default function ImportSharedScreen() {
       paddingVertical: Spacing.md,
       borderRadius: Radius.xl,
       borderWidth: 1,
-      borderColor: accent.primary + "55",
+      borderColor: accent.primarySoftStrong,
       marginTop: Spacing.xs,
     },
-    outlineBtnPressed: { backgroundColor: accent.primary + "12" },
+    outlineBtnPressed: { backgroundColor: accent.primarySoft },
     outlineBtnText: { color: accent.primarySolid, fontWeight: "700", fontSize: 15 },
 
     textLinkBtn: {
@@ -1672,7 +1672,7 @@ export default function ImportSharedScreen() {
       paddingHorizontal: Spacing.sm,
       paddingVertical: 2,
       borderRadius: Radius.full, // tags census 2026-06-10
-      backgroundColor: Accent.warning + "1F",
+      backgroundColor: Accent.warningSoft,
     },
     proPillText: {
       fontFamily: Type.captionSmall.fontFamily,
@@ -1870,10 +1870,10 @@ export default function ImportSharedScreen() {
     // panel it sits inside.
     macroCardContainer: {
       alignSelf: "stretch",
-      backgroundColor: Accent.success + "18",
+      backgroundColor: Accent.successSoft,
       borderRadius: Radius.xl * 2,
       borderWidth: 1,
-      borderColor: Accent.success + "30",
+      borderColor: Accent.successSoftStrong,
       padding: Spacing.lg,
       marginBottom: Spacing.lg,
       gap: Spacing.sm,
@@ -1957,7 +1957,7 @@ export default function ImportSharedScreen() {
     },
     importIngRowNeedsReview: {
       borderColor: Accent.warning,
-      backgroundColor: Accent.warning + "10",
+      backgroundColor: Accent.warningSoft,
     },
     importIngRowPressed: {
       opacity: 0.75,
@@ -2280,7 +2280,7 @@ export default function ImportSharedScreen() {
                     paddingVertical: 8,
                     paddingHorizontal: 14,
                     borderRadius: Radius.md,
-                    backgroundColor: accent.primary + "18",
+                    backgroundColor: accent.primarySoft,
                   }}
                 >
                   <Text style={{ color: accent.primarySolid, fontWeight: "800", fontSize: 14 }}>Done</Text>
@@ -2325,9 +2325,9 @@ export default function ImportSharedScreen() {
                     marginTop: Spacing.md,
                     padding: Spacing.md,
                     borderRadius: Radius.md,
-                    backgroundColor: Accent.warning + "1A",
+                    backgroundColor: Accent.warningSoft,
                     borderWidth: 1,
-                    borderColor: Accent.warning + "55",
+                    borderColor: Accent.warningSoftStrong,
                     flexDirection: "row",
                     alignItems: "flex-start",
                     gap: 10,

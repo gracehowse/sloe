@@ -440,7 +440,7 @@ export function DigestBlended(props: DigestProps) {
             paddingHorizontal: 16,
             paddingVertical: 11,
             borderRadius: 12,
-            backgroundColor: shareDisabled ? colors.cardBorder + "22" : Accent.success + "1f",
+            backgroundColor: shareDisabled ? colors.cardBorder + "22" : Accent.successSoft,
             opacity: shareDisabled ? 0.4 : 1,
           }}
         >
@@ -520,7 +520,7 @@ function PatternBar({
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 5 }}>
       <Text style={{ fontSize: 11, color: colors.textSecondary, width: 30 }}>{label}</Text>
       <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: colors.cardBorder, overflow: "hidden" }}>
-        <View style={{ height: "100%", width: `${Number(clamped.toFixed(1))}%`, borderRadius: 4, backgroundColor: accent.primary + "3D" }} />
+        <View style={{ height: "100%", width: `${Number(clamped.toFixed(1))}%`, borderRadius: 4, backgroundColor: accent.primarySoftStrong }} />
       </View>
       <Text style={{ fontSize: 11, color: colors.textTertiary, width: 46, textAlign: "right", fontVariant: ["tabular-nums"] }}>
         {value}

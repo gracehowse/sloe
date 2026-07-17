@@ -128,7 +128,9 @@ describe("AI log review parity (audit B5)", () => {
     it("flags the row with the low-confidence amber border", () => {
       // The amber border is the visual gate — without it the user
       // can scroll past a 0.4 confidence row without noticing.
-      expect(ITEM_SRC).toMatch(/Accent\.warning \+ "55"/);
+      // ENG-1521 — the border reads the named SoftStrong token (the old
+      // `Accent.warning + "55"` alpha-concat is banned by check:token-scale).
+      expect(ITEM_SRC).toMatch(/Accent\.warningSoftStrong/);
     });
 
     it("emits the 'Low confidence — please verify' alert when low", () => {

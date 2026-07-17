@@ -92,9 +92,9 @@ export function MobileAppChoiceStep() {
             alignItems: "flex-start",
             padding: Spacing.dense,
             borderRadius: Radius.md,
-            backgroundColor: accent.primary + "0D",
+            backgroundColor: accent.primarySoft,
             borderWidth: 1,
-            borderColor: accent.primary + "26",
+            borderColor: accent.primarySoft,
           }}
           accessibilityLabel="app-choice-followup"
         >

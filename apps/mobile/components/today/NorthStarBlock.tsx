@@ -374,7 +374,7 @@ function NorthStarDefault({
                 styles.chip,
                 {
                   backgroundColor: suggestion.bandTight
-                    ? Accent.success + "1A"
+                    ? accent.successSoft
                     : colors.cardBorder,
                 },
               ]}

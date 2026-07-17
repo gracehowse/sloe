@@ -72,7 +72,7 @@ export function ServingStepper({
   // Lifted from the module-level StyleSheet (which can't read a hook) onto the
   // inline button style — the `TodayPlannedMealsCard` StyleSheet-lift pattern.
   const accent = useAccent();
-  const btnTint = { backgroundColor: accent.primary + "1a" };
+  const btnTint = { backgroundColor: accent.primarySoft };
 
   const parsed = React.useMemo(() => {
     const n = Number.parseFloat(String(value).replace(",", ".").trim());

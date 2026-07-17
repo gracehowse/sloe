@@ -128,7 +128,7 @@ export function MobileOnboardingRecipeImportCard() {
             borderRadius: Radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: Accent.success + "26",
+            backgroundColor: Accent.successSoft,
           }}
         >
           <Link2 size={18} color={Accent.successLight} />
@@ -152,7 +152,7 @@ export function MobileOnboardingRecipeImportCard() {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 4,
-                  backgroundColor: Accent.success + "26",
+                  backgroundColor: Accent.successSoft,
                   paddingHorizontal: 8,
                   paddingVertical: Spacing.xs,
                   borderRadius: Radius.full,

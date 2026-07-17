@@ -73,7 +73,7 @@ export function ImportProgress() {
                   borderColor:
                     i === cur ? accent.primaryLight : colors.cardBorder,
                   backgroundColor:
-                    i === cur ? accent.primary + "33" : "transparent",
+                    i === cur ? accent.primarySoftStrong : "transparent",
                 }}
               />
             )}

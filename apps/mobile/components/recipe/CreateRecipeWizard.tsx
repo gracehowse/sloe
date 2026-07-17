@@ -898,7 +898,7 @@ export default function CreateRecipeWizard() {
           backgroundColor: cardElevation.liftBg ?? colors.card,
           borderRadius: Radius.lg,
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: accent.primary + "30",
+          borderColor: accent.primarySoftStrong,
           padding: Spacing.lg,
           ...(cardElevation.shadowStyle ?? {}),
         },

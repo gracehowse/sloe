@@ -122,7 +122,7 @@ function TodayCompleteDayModalImpl({
                 width: 80,
                 height: 80,
                 borderRadius: 40,
-                backgroundColor: accent.primary + "18",
+                backgroundColor: accent.primarySoft,
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 24,

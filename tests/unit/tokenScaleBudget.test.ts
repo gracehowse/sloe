@@ -5,8 +5,9 @@
  *  1. readLegalRadius() reads the canonical Radius scale from theme.ts
  *     (4/6/8/12/full) and always allows `0`.
  *  2. findViolations() flags raw 6-digit hexes, raw Tailwind palette colour
- *     classes, and off-scale borderRadius literals; ignores 3-digit hexes
- *     (the Apple-brand carve-out), comments, and on-scale radii.
+ *     classes, off-scale borderRadius literals, call-site alpha-concat +
+ *     call-site withAlpha() (ENG-1521); ignores 3-digit hexes (the
+ *     Apple-brand carve-out), comments, and on-scale radii.
  *  3. evaluate() flags a new (un-pinned) file, a grown pin, passes a held pin,
  *     treats a shrink as a non-fatal notice, and rejects a silent allow entry.
  *  4. Self-check: the committed budget passes the live repo tree (exit 0).
@@ -92,6 +93,31 @@ describe("findViolations", () => {
 
   it("does NOT flag a token-routed rgba (no numeric triple)", () => {
     expect(findViolations("background: 'rgba(var(--accent-rgb), 0.12)'", legal)).toEqual([]);
+  });
+
+  it("flags call-site alpha-concat — token + quoted 2-hex alpha suffix (ENG-1521)", () => {
+    expect(findViolations('backgroundColor: Accent.warning + "1F"', legal)).toEqual([
+      { line: 1, kind: "alpha-concat", token: 'Accent.warning + "1F"' },
+    ]);
+    // Call-result and index tails count too (`slotColor(slot) + "14"`).
+    const callHit = findViolations("const tint = slotColor(slot) + '14';", legal);
+    expect(callHit).toEqual([{ line: 1, kind: "alpha-concat", token: ") + '14'" }]);
+    expect(findViolations('colors.cardBorder + "55"', legal)).toEqual([
+      { line: 1, kind: "alpha-concat", token: 'colors.cardBorder + "55"' },
+    ]);
+  });
+
+  it("does NOT flag non-hex string concat or comment-only alpha-concat mentions", () => {
+    expect(findViolations('const label = width + "px";', legal)).toEqual([]);
+    expect(findViolations('const s = "a" + "1f";', legal)).toEqual([]);
+    expect(findViolations('// the old tint + "1A" idiom is banned\nconst x = 1;', legal)).toEqual([]);
+  });
+
+  it("flags a call-site withAlpha() (ENG-1521 — helper is theme.ts-internal)", () => {
+    expect(findViolations("backgroundColor: withAlpha(accent.primary, 0.12)", legal)).toEqual([
+      { line: 1, kind: "with-alpha", token: "withAlpha(…)" },
+    ]);
+    expect(findViolations("// withAlpha(x, 0.12) in a comment\nconst x = 1;", legal)).toEqual([]);
   });
 
   it("ignores a hex that lives in a comment", () => {

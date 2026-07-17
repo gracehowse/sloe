@@ -4,6 +4,7 @@ import { Text, View } from "react-native";
 import { Sparkles } from "lucide-react-native";
 
 import { Accent, Radius, ShadowColor, Spacing } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -62,6 +63,8 @@ function FirstLogAcknowledgmentImpl(props: FirstLogAcknowledgmentProps) {
     topInset = Spacing.lg,
   } = props;
   const colors = useThemeColors();
+  // ENG-1521 — success soft tints scheme-resolve via useAccent().
+  const accent = useAccent();
 
   React.useEffect(() => {
     if (!visible) return;
@@ -95,7 +98,7 @@ function FirstLogAcknowledgmentImpl(props: FirstLogAcknowledgmentProps) {
         borderRadius: Radius.md,
         backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: Accent.success + "40",
+        borderColor: accent.successSoftStrong,
         // Subtle elevation so the toast lifts off the ring beneath it.
         shadowColor: ShadowColor.cast,
         shadowOffset: { width: 0, height: 2 },
@@ -111,7 +114,7 @@ function FirstLogAcknowledgmentImpl(props: FirstLogAcknowledgmentProps) {
           borderRadius: 14,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: Accent.success + "1A",
+          backgroundColor: accent.successSoft,
         }}
       >
         <Sparkles size={14} color={Accent.success} strokeWidth={2.25} />

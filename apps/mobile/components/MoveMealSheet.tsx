@@ -26,7 +26,7 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, SlotColors, SlotColorsSoft, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -57,6 +57,19 @@ function resolveSlotGlyph(name: string): LucideIcon {
 }
 function resolveSlotTint(name: string): string {
   return SLOT_TINT[name] ?? Accent.primary;
+}
+/** Sanctioned Soft-step fill behind the slot glyph (ENG-1521) — same
+ *  per-slot mapping as `resolveSlotTint`, resolved from the named
+ *  `SlotColorsSoft` tokens instead of alpha-concatenating the tint. */
+const SLOT_SOFT: Record<string, string> = {
+  Breakfast: SlotColorsSoft.breakfast,
+  Lunch: SlotColorsSoft.lunch,
+  Dinner: SlotColorsSoft.dinner,
+  Snacks: SlotColorsSoft.snack,
+  Snack: SlotColorsSoft.snack,
+};
+function resolveSlotSoft(name: string): string {
+  return SLOT_SOFT[name] ?? Accent.primarySoft;
 }
 
 type Props = {
@@ -207,7 +220,7 @@ export function MoveMealSheet({
                       width: 28,
                       height: 28,
                       borderRadius: 8,
-                      backgroundColor: tint + "1A",
+                      backgroundColor: resolveSlotSoft(r.slotName),
                       alignItems: "center",
                       justifyContent: "center",
                     }}

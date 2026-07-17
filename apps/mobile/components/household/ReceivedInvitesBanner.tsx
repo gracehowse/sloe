@@ -110,8 +110,8 @@ export function ReceivedInvitesBanner({ onAccepted }: ReceivedInvitesBannerProps
         padding: Spacing.lg,
         borderRadius: Radius.md,
         borderWidth: 1,
-        borderColor: accent.primary + "40",
-        backgroundColor: accent.primary + "10",
+        borderColor: accent.primarySoftStrong,
+        backgroundColor: accent.primarySoft,
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

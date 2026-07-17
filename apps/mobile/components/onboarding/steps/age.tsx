@@ -78,8 +78,8 @@ export function MobileAgeStep() {
           style={{
             marginTop: Spacing.dense,
             padding: Spacing.md,
-            backgroundColor: accent.primary + "10",
-            borderColor: accent.primary + "33",
+            backgroundColor: accent.primarySoft,
+            borderColor: accent.primarySoftStrong,
             borderWidth: 1,
             borderRadius: 12,
           }}

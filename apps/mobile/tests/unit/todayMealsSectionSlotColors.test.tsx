@@ -25,7 +25,7 @@ import { render } from "@testing-library/react-native";
 import { View } from "react-native";
 
 import { TodayMealsSection } from "../../components/today/TodayMealsSection";
-import { MacroColors, SlotColors } from "../../constants/theme";
+import { MacroColors, SlotColors, SlotColorsSoft } from "../../constants/theme";
 import type { JournalMeal } from "../../lib/nutritionJournal";
 
 void React;
@@ -87,8 +87,9 @@ function collectIconWrapperBackgrounds(
     if (!style || typeof style !== "object") continue;
     const bg = (style as { backgroundColor?: string }).backgroundColor;
     if (typeof bg !== "string") continue;
-    // 9-char hex with `12` alpha suffix is the wrapper tint signature.
-    if (bg.length === 9 && bg.toLowerCase().endsWith("12")) {
+    // ENG-1521 — the wrapper tint is a named `SlotColorsSoft` rgba token
+    // (was a 9-char hex with a `12` alpha-concat suffix).
+    if (Object.values(SlotColorsSoft).includes(bg)) {
       out.add(bg.toLowerCase());
     }
   }
@@ -108,7 +109,7 @@ describe("TodayMealsSection — slot icon tint (ui-critic P2 #10)", () => {
     const tree = render(<TodayMealsSection {...BASE_PROPS} />);
     const tints = collectIconWrapperBackgrounds(tree);
     // The teal snack tint MUST be present (Sloe D-4).
-    expect(tints).toContain(`${SlotColors.snack.toLowerCase()}12`);
+    expect(tints).toContain(SlotColorsSoft.snack.toLowerCase());
     // The original 2026-05-01 bug was Snacks borrowing MacroColors.fat — so
     // the invariant is that the snack tint is NOT the fat hue. In Sloe snack
     // is teal and fat is amber, so they're distinct by construction.
@@ -123,10 +124,10 @@ describe("TodayMealsSection — slot icon tint (ui-critic P2 #10)", () => {
   it("renders the canonical SlotColors tints for Breakfast / Lunch / Dinner / Snacks", () => {
     const tree = render(<TodayMealsSection {...BASE_PROPS} />);
     const tints = collectIconWrapperBackgrounds(tree);
-    expect(tints).toContain(`${SlotColors.breakfast.toLowerCase()}12`);
-    expect(tints).toContain(`${SlotColors.lunch.toLowerCase()}12`);
-    expect(tints).toContain(`${SlotColors.dinner.toLowerCase()}12`);
-    expect(tints).toContain(`${SlotColors.snack.toLowerCase()}12`);
+    expect(tints).toContain(SlotColorsSoft.breakfast.toLowerCase());
+    expect(tints).toContain(SlotColorsSoft.lunch.toLowerCase());
+    expect(tints).toContain(SlotColorsSoft.dinner.toLowerCase());
+    expect(tints).toContain(SlotColorsSoft.snack.toLowerCase());
   });
 });
 

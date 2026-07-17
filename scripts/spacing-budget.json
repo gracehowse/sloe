@@ -123,7 +123,7 @@
     "apps/mobile/components/RecipeNotesCard.tsx": 4,
     "apps/mobile/components/RemainingMacrosBar.tsx": 3,
     "apps/mobile/components/RulerSlider.tsx": 4,
-    "apps/mobile/components/SaveMealSheet.tsx": 9,
+    "apps/mobile/components/SaveMealSheet.tsx": 7,
     "apps/mobile/components/settings/BarcodeContributionsSection.tsx": 2,
     "apps/mobile/components/settings/CancelExportPromptSheet.tsx": 2,
     "apps/mobile/components/settings/DevFlagOverrides.tsx": 1,

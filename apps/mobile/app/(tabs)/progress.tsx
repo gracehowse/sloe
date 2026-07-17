@@ -167,9 +167,9 @@ function parseNumMap(raw: unknown): Record<string, number> {
   return out;
 }
 
-function IconBox({ color, size = 28, children }: { color: string; size?: number; children: React.ReactNode }) {
+function IconBox({ soft, size = 28, children }: { soft: string; size?: number; children: React.ReactNode }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 3.5, backgroundColor: color + "18", alignItems: "center", justifyContent: "center" }}>
+    <View style={{ width: size, height: size, borderRadius: size / 3.5, backgroundColor: soft, alignItems: "center", justifyContent: "center" }}>
       {children}
     </View>
   );
@@ -1623,7 +1623,7 @@ export default function ProgressScreen() {
       <ReAnimated.View style={[detailsEntrance.style, { gap: Spacing.lg }]}>
       {!hasData ? (
         <View style={[{ padding: 24, borderRadius: CARD_RADIUS, backgroundColor: cardElevation.liftBg ?? t.elevated, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, alignItems: "center", gap: Spacing.md }, cardElevation.shadowStyle]}>
-          <IconBox color={t.accent} size={40}>
+          <IconBox soft={t.accentSoft} size={40}>
             <BarChart3 size={20} color={t.accent} strokeWidth={1.75} />
           </IconBox>
           <Text style={{ ...Type.headline, color: t.plum, textAlign: "center" }}>Your progress will appear here</Text>
@@ -1787,7 +1787,7 @@ export default function ProgressScreen() {
           >
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <IconBox color={t.accent} size={28}>
+                <IconBox soft={t.accentSoft} size={28}>
                   <Zap size={14} color={t.accent} strokeWidth={1.75} />
                 </IconBox>
                 <Text style={{ ...Type.headline, color: t.plum }}>Maintenance</Text>
@@ -1796,7 +1796,7 @@ export default function ProgressScreen() {
                 <View
                   testID="maintenance-source-pill"
                   accessibilityLabel="Maintenance source: Apple Health"
-                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
+                  style={{ backgroundColor: accent.successSoft, paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
                 >
                   <Text style={{ ...Type.label, color: t.green }}>Apple Health</Text>
                 </View>
@@ -1804,7 +1804,7 @@ export default function ProgressScreen() {
                 <View
                   testID="maintenance-source-pill"
                   accessibilityLabel="Maintenance source: adaptive"
-                  style={{ backgroundColor: t.green + "18", paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
+                  style={{ backgroundColor: accent.successSoft, paddingHorizontal: 8, paddingVertical: Spacing.xs, borderRadius: Radius.lg }}
                 >
                   {/* headers census 2026-06-10: pill eyebrow → Type.label, pill hue kept. */}
                   <Text style={{ ...Type.label, color: t.green }}>Adaptive</Text>
@@ -2006,7 +2006,7 @@ export default function ProgressScreen() {
               >
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <IconBox color={t.green} size={28}>
+                    <IconBox soft={accent.successSoft} size={28}>
                       <Flag size={14} color={t.green} strokeWidth={1.75} />
                     </IconBox>
                     <Text style={{ ...Type.headline, color: t.plum }}>Journey</Text>

@@ -41,7 +41,7 @@ const config: Record<TrustChipVariant, VariantConfig> = {
   usda: {
     // Chips census (2026-06-10): token-derived wash — the rgba literals
     // were the RETIRED green/indigo palette, not the sage/aubergine system.
-    bg: Accent.success + "14",
+    bg: Accent.successSoft,
     fg: Accent.success,
     glyph: "check",
     label: "USDA verified",
@@ -53,19 +53,19 @@ const config: Record<TrustChipVariant, VariantConfig> = {
     label: "OFF · adjusted",
   },
   estimated: {
-    bg: Accent.warning + "1A",
+    bg: Accent.warningSoft,
     fg: Accent.warning,
     glyph: "sparkles",
     label: "Estimated · verify",
   },
   manual: {
-    bg: Colors.light.confidenceNeutral + "1F",
+    bg: Colors.light.confidenceNeutralSoft,
     fg: Colors.light.confidenceNeutral,
     glyph: null,
     label: "Manual",
   },
   "gluten-high-conf": {
-    bg: Accent.success + "14",
+    bg: Accent.successSoft,
     fg: Accent.success,
     // ENG-748 (legal-reviewer P0): the gluten chip must NOT read as a
     // verified safety guarantee on a coeliac surface. The `check` glyph
@@ -77,7 +77,7 @@ const config: Record<TrustChipVariant, VariantConfig> = {
     label: "No gluten-containing ingredients",
   },
   "gluten-uncertain": {
-    bg: Accent.warning + "1A",
+    bg: Accent.warningSoft,
     fg: Accent.warning,
     glyph: "sparkles",
     label: "Contains potential gluten · review",
