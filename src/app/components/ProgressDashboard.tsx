@@ -61,13 +61,8 @@ import {
   weekKeyFor,
   type UsualMealRecapInsight,
 } from "../../lib/nutrition/weeklyRecap.ts";
-import { listSavedMeals, type SavedMeal, type SavedMealItem } from "../../lib/nutrition/savedMeals.ts";
+import { listSavedMeals, type SavedMeal } from "../../lib/nutrition/savedMeals.ts";
 import { normaliseRecipeTitle } from "../../lib/nutrition/usualMealHint.ts";
-import {
-  PENDING_USUAL_MEAL_SAVE_KEY,
-  serializePendingUsualMealSave,
-} from "../../lib/nutrition/pendingUsualMealSave.ts";
-import { Digest } from "./suppr/digest.tsx";
 import { resolveDigestHeadline } from "../../lib/nutrition/digest.ts";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useTrendOnlyWeight } from "../../lib/preferences/useTrendOnlyWeight.ts";
@@ -79,11 +74,6 @@ import { WeightMilestoneMoment } from "./progress/WeightMilestoneMoment.tsx";
 import { useWeightCelebration } from "./progress/useWeightCelebration.ts";
 import { resolveWeightSaveCelebration } from "../../lib/nutrition/weightWinMoment.ts";
 import { formatRecapForShare } from "../../lib/nutrition/weeklyRecap.ts";
-import {
-  formatMaintenanceRecapLine,
-} from "../../lib/nutrition/resolveMaintenance.ts";
-import { buildWeeklyCheckin } from "../../lib/nutrition/weeklyCheckin.ts";
-import { selectMostFrequentSlotSeed } from "../../lib/nutrition/usualMealHint.ts";
 import { ProgressMetricDetail, type ProgressMetric } from "./ProgressMetricDetail.tsx";
 // Note: `ProgressHeroMetric` (the Oura-style adherence ring) is removed in
 // the Sloe Figma 492:2 reskin — the "Average Adherence" card is the single
@@ -107,7 +97,11 @@ import { ExpenditureTrendCard } from "./suppr/expenditure-trend-card.tsx";
 import { BodyCompositionTrendCard } from "./suppr/body-composition-trend-card.tsx";
 import { pruneBodyFatPctByDay } from "../../lib/progress/bodyCompositionTrends.ts";
 import { hasEnoughDataForStory } from "../../lib/nutrition/progressStoryGate.ts";
-import { DigestStoryCard } from "./suppr/digest-story-card.tsx";
+// ENG-1525 — legacy Week-Digest + story-card block, extracted verbatim so the
+// hierarchy gate below fits the pinned line budget (renders flag-off only).
+import { ProgressDigestBlock } from "./suppr/progress-digest-block.tsx";
+// ENG-1525 — the `progress_hierarchy_v1` 5-section composer (flag-on branch).
+import { ProgressHierarchyV1 } from "./suppr/progress-hierarchy/progress-hierarchy-v1.tsx";
 import { TrajectoryCard } from "./suppr/trajectory-card.tsx";
 import { generateProgressCommentary } from "../../lib/nutrition/progressCommentary.ts";
 import { useMilestone30DayOnProgress } from "../../hooks/useMilestone30DayOnProgress.ts";
@@ -936,6 +930,16 @@ function ProgressDashboardContent() {
     setTrajectoryBoxEnabled(isFeatureEnabled("progress_trajectory_box"));
   }, []);
 
+  // ENG-1525 — Progress 5-section hierarchy. Same read-once-on-mount,
+  // default-false-until-loaded posture as the blended-digest flag above
+  // (PostHog flags can resolve after first paint; a structural flag read
+  // inline would visibly restructure the page seconds after load).
+  // Default-off keeps the legacy 13-card stack (the kill switch).
+  const [hierarchyV1Enabled, setHierarchyV1Enabled] = useState(false);
+  useEffect(() => {
+    setHierarchyV1Enabled(isFeatureEnabled("progress_hierarchy_v1"));
+  }, []);
+
   // Ship M1 — usual-meal growth-loop line on the recap card. Pull the
   // user's saved meals once and match them against the last 7 days of
   // journal history to count re-logs. Journal rows don't carry a
@@ -1276,6 +1280,167 @@ function ProgressDashboardContent() {
         );
       })()}
 
+      {/* ── ENG-1525 `progress_hierarchy_v1` ─────────────────────────────
+          ON → the 5-section hierarchy (Trajectory → This Week → Energy →
+          Body composition → Your Week) composed from the SAME host-computed
+          values the legacy cards read; StreakFreezeCard keeps rendering
+          below §5 (freezes are mechanics, not summary duplication).
+          OFF → the legacy 13-card stack below, byte-identical (kill
+          switch). Shared chrome — period control, story gate/headline,
+          activity section, footer, milestone dialog — sits OUTSIDE the
+          gate on both branches. */}
+      {hierarchyV1Enabled ? (() => {
+        const isImperial = profileMeasurementSystem === "imperial";
+        // §2 pins to the CURRENT week regardless of the period control (the
+        // period drives §1's chart window + §3's averaging window instead).
+        const currentWeekWin = periodWindow(DEFAULT_PERIOD, weekStartDay, new Date());
+        const weekCaloriesStats = buildCaloriesRangeStatsForWindow(
+          nutritionByDay,
+          nutritionTargets.calories,
+          currentWeekWin,
+        );
+        const weekMacroStats = buildMacroAdherenceRangeStatsForWindow(
+          nutritionByDay,
+          targets,
+          currentWeekWin,
+        );
+        // §3 thin-data progress — the SAME honest-progress helper the legacy
+        // Maintenance card computes (ENG-1189 gate parity).
+        const hierarchyAdaptiveProgress = computeAdaptiveDataProgressFromMeals({
+          mealsByDay: nutritionByDay,
+          weightByDay: weightKgByDay,
+          sex: profileSexCached,
+          weightKg: weightKg ?? null,
+          heightCm: profileHeightCmCached,
+          age: profileAgeCached,
+        });
+        // Quiet §3 sparkline from the week's frozen per-day maintenance
+        // snapshots (same `daily_targets` map the calorie bars read).
+        const expenditureSparkline = Object.entries(dailyTargetsByDay)
+          .filter((entry): entry is [string, DailyTarget] => entry[1]?.maintenanceTdee != null)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, v]) => ({ key, kcal: v.maintenanceTdee as number }));
+        return (
+          <>
+            <ProgressHierarchyV1
+              weightSurfaceMode={effectiveWeightSurfaceMode}
+              hero={{
+                isImperial,
+                latestWeightKg,
+                goalWeightKg,
+                timeline: goalTimeline,
+                weighInDayCount: Object.keys(weightKgByDay).length,
+                chartData: weightChartData,
+                goalWeightChart: goalWeightChart ?? null,
+                showRawDots,
+                byDay: nutritionByDay,
+                targetCalories: targets.calories,
+                maintenanceTdeeKcal: isAdaptive && adaptiveTdee != null ? adaptiveTdee : staticTdee,
+                goal: userGoal,
+                normalizeGoalVocabulary: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG),
+                weekDeltaKg: weightRange.weekDeltaKg,
+                windowLabel: periodWindowLabel,
+                sparse: weightChartData.length < 2,
+                // Hero log CTA routes to the weight tracker (the inline log
+                // row lives in the legacy weight card only) — deferred: see
+                // ENG-1525 follow-up for hero-inline logging + win moments.
+                onLogWeight: () => router.replace("/home?view=weight-tracker"),
+              }}
+              week={{
+                adherencePct: hasEnoughDataForStory(weekCaloriesStats.daysLogged)
+                  ? weekCaloriesStats.adherencePct
+                  : null,
+                onTargetCount: weekStatsBundle.days.filter(
+                  (d) => d.calories > 0 && d.calories <= d.effectiveTargetCalories,
+                ).length,
+                days: dailyCaloriesData.map((d) => ({
+                  key: d.key,
+                  day: d.day,
+                  calories: d.calories,
+                  effectiveTarget: d.effectiveTarget,
+                })),
+                todayKey: todayDateKey,
+                macros: [
+                  { name: "Protein", pct: weekMacroStats.proteinPct, color: "var(--macro-protein)" },
+                  { name: "Carbs", pct: weekMacroStats.carbsPct, color: "var(--macro-carbs)" },
+                  { name: "Fat", pct: weekMacroStats.fatPct, color: "var(--macro-fat)" },
+                  { name: "Fibre", pct: weekMacroStats.fiberPct, color: "var(--macro-fiber)" },
+                ],
+                streakDays,
+                freezesAvailable,
+                // Delta 7 — freezes stay reachable: press-through to the
+                // existing streak drill-down (plus StreakFreezeCard below).
+                onOpenStreak: () => openMetric("streak"),
+              }}
+              energy={{
+                avgIntakeKcal: caloriesRange.avgCaloriesPerDay, hasEnoughData: hasEnoughDataForStory(caloriesRange.daysLogged),
+                resolved: recapMaintenance,
+                latestWeightKg,
+                goalWeightKg,
+                adaptiveProgress: hierarchyAdaptiveProgress,
+                expenditureCopy: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG)
+                  ? expenditureFromResolved(recapMaintenance, adaptiveUpdatedAt)
+                  : null,
+                expenditureSparkline,
+                sex: profileSexCached,
+                weightKg: weightKg ?? null,
+                heightCm: profileHeightCmCached,
+                age: profileAgeCached,
+                activityLevel: profileActivityLevelCached,
+                planPace,
+                userGoal,
+                goalCalories: targets.calories,
+              }}
+              bodyComp={{
+                userTier: profileTier,
+                refreshKey: bodyCompositionRefreshKey,
+                latestBodyFatPct: bodyFatPct,
+                // Lean mass derived from the user's OWN latest values (delta
+                // 2 — renders free whenever present).
+                latestLeanMassKg:
+                  latestWeightKg != null && bodyFatPct != null
+                    ? latestWeightKg * (1 - bodyFatPct / 100)
+                    : null,
+              }}
+              yourWeek={{
+                weekKey: recap.weekKey,
+                weekLabel: recap.weekLabel,
+                headline: resolveDigestHeadline({
+                  weightDeltaKg: recap.weightDeltaKg,
+                  closestToTargetLabel: recap.bestDay?.label ?? null,
+                  streakDays: recap.streakLength,
+                  daysLogged: recap.daysLogged,
+                }),
+                usualMeal:
+                  usualMealInsight?.kind === "celebration"
+                    ? { name: usualMealInsight.name, count: usualMealInsight.count }
+                    : null,
+                bestDay: recap.bestDay
+                  ? {
+                      label: recap.bestDay.label,
+                      calories: recap.bestDay.calories,
+                      protein: recap.bestDay.protein,
+                    }
+                  : null,
+                shareText: formatRecapForShare(recap),
+                shareDisabled: recap.daysLogged === 0,
+              }}
+            />
+            {/* Freezes are mechanics, not summary — keep the card below §5
+                in v1 (same props as the legacy branch). */}
+            <StreakFreezeCard
+              freezeBudgetMax={freezeBudgetMax}
+              freezesAvailable={freezesAvailable}
+              freezeLedger={freezeLedger}
+              protectedDateKeys={protectedStreakInfo.protectedDateKeys}
+              rawStreakDays={rawStreakDays}
+              streakDays={streakDays}
+              emptyStateGrammarOn={isFeatureEnabled("empty_state_grammar_v1")}
+            />
+          </>
+        );
+      })() : (
+      <>
       {/* WEIGHT DIRECTION (trends_only) — opt-out users keep a lightweight
           weight signal here (no absolute numbers). Average Adherence moved to
           AFTER Daily Calories per the v3 prototype order (ENG-1247). */}
@@ -1618,194 +1783,27 @@ function ProgressDashboardContent() {
           macro-adherence breakdown, adaptive-maintenance card + explainer,
           journey/projection, steps, body fat. */}
 
-      {/* WEEK DIGEST (D3) — replaces the legacy WeeklyRecapCard. Host
-          computes headline + flattens usual-meal insight into the
-          shared `DigestProps` shape so web + mobile cannot drift. See
-          `docs/design/digest-primitive.md`.
-
-          ENG-740 — when `progress_digest_blend` is on, this single
-          block renders the merged premium card (blended hero + metric
-          strip + PATTERN row) gated on always-on `digestBlendVisible`;
-          the legacy `<DigestStoryCard>` below is suppressed. When the
-          flag is off, the legacy recap renders on the Sat→Tue window
-          and the story card renders below it. */}
-      {(digestBlendEnabled ? digestBlendVisible : recapVisible) ? (() => {
-        const digestSeed = (() => {
-          if (usualMealInsight?.kind !== "prompt") return null;
-          const seed = selectMostFrequentSlotSeed(nutritionByDay, usualMealInsight.suggestedSlot);
-          if (!seed || seed.seedItems.length < 2) return null;
-          return seed;
-        })();
-        const digestSeedItems = digestSeed
-          ? digestSeed.seedItems.map((it) => {
-              const row: Omit<SavedMealItem, "id" | "position"> = {
-                recipeTitle: it.recipeTitle,
-                calories: it.calories,
-                protein: it.protein,
-                carbs: it.carbs,
-                fat: it.fat,
-                portionMultiplier: 1,
-              };
-              if (it.fiber != null) row.fiber = it.fiber;
-              if (it.source) row.source = it.source;
-              return row;
-            })
-          : undefined;
-        const usualMeal: import("./suppr/digest").DigestUsualMeal | null =
-          usualMealInsight?.kind === "celebration"
-            ? { kind: "celebration", name: usualMealInsight.name, count: usualMealInsight.count }
-            : usualMealInsight?.kind === "prompt"
-              ? {
-                  kind: "prompt",
-                  suggestedSlot: digestSeed?.slot ?? usualMealInsight.suggestedSlot,
-                  ...(usualMealInsight.repeats != null ? { repeats: usualMealInsight.repeats } : {}),
-                  ...(digestSeedItems ? { seedItems: digestSeedItems } : {}),
-                }
-              : null;
-        const closestToTarget = recap.bestDay
-          ? {
-              label: recap.bestDay.label,
-              protein: recap.bestDay.protein,
-              calories: recap.bestDay.calories,
-            }
-          : null;
-        const maintenanceLine = formatMaintenanceRecapLine(recapMaintenance);
-        const mealsLogged = Object.values(nutritionByDay).reduce(
-          (total, day) => total + (Array.isArray(day) ? day.length : 0),
-          0,
-        );
-        const headline = resolveDigestHeadline({
-          weightDeltaKg: recap.weightDeltaKg,
-          closestToTargetLabel: closestToTarget?.label ?? null,
-          streakDays: recap.streakLength,
-          daysLogged: recap.daysLogged,
-        });
-        const digestState: "success" | "empty" | "partial" =
-          recap.daysLogged === 0 ? "empty" : recap.daysLogged < 4 ? "partial" : "success";
-
-        // Weekly Check-in payload — MacroFactor parity (2026-04-30).
-        // Inputs come from the existing recap + the prior-week TDEE
-        // snapshot we fetch alongside `daily_targets`. We pass
-        // `null` weight endpoints when the recap doesn't have ≥2
-        // weigh-ins (the cascade handles the missing-weight branch).
-        const currentTdeeForCheckin =
-          adaptiveTdee != null && adaptiveTdee > 0 &&
-          (adaptiveConfidence === "medium" || adaptiveConfidence === "high")
-            ? adaptiveTdee
-            : staticTdee;
-        const weeklyIntakeKcal = recap.avgCalories * recap.daysLogged;
-        const weighInsThisWeek = recap.weightDeltaKg != null ? 2 : 0; // ≥2 → has both endpoints
-        // F-129 (Grace, 2026-05-07): pass engine confidence so the
-        // weeklyCheckin gate can skip the weighInsThisWeek floor when
-        // the engine already trusts the long-term TDEE — mirrors the
-        // F-124 carve-out on the calibrating-card.
-        const engineConfidenceForCheckin: "low" | "medium" | "high" | null =
-          adaptiveConfidence === "low" ||
-          adaptiveConfidence === "medium" ||
-          adaptiveConfidence === "high"
-            ? adaptiveConfidence
-            : null;
-        const weeklyCheckin = currentTdeeForCheckin
-          ? buildWeeklyCheckin({
-              previousTdeeKcal: previousWeekTdeeKcal,
-              currentTdeeKcal: currentTdeeForCheckin,
-              weeklyIntakeKcal,
-              dailyTargetKcal: targets.calories,
-              weightStartKg: recap.weightFirstKg,
-              weightEndKg: recap.weightLastKg,
-              weighInsThisWeek,
-              daysLogged: recap.daysLogged,
-              adaptiveTdeeConfidence: engineConfidenceForCheckin,
-            })
-          : null;
-        // ENG-740/1373 — PATTERN row reads `recap.dayOfWeekPattern` (same anchored+gated value the legacy story card below reads). Hero track reads the closest day's per-day target.
-        const blendedExtras: import("../../lib/nutrition/digest").DigestBlendedExtras = {
-          dayOfWeekPattern: recap.dayOfWeekPattern,
-          closestDayTargetCalories: recap.bestDay?.targetCalories ?? null,
-          patternWindowLabel: recap.patternWindowLabel,
-        };
-        return (
-          <Digest
-            blended={digestBlendEnabled}
-            blendedExtras={blendedExtras}
-            onAdjustPace={() => router.push("/settings#targets")}
-            weekKey={recap.weekKey}
-            weekLabel={recap.weekLabel}
-            daysLogged={recap.daysLogged}
-            mealsLogged={mealsLogged}
-            headline={headline}
-            stats={{
-              streakDays: recap.streakLength,
-              streakFreezesAvailable: recap.freezesAvailable,
-              avgCalories: recap.avgCalories,
-              avgProtein: recap.avgProtein,
-              proteinAdherencePct: recap.proteinAdherencePct > 0 ? recap.proteinAdherencePct : null,
-              weightDeltaKg: recap.weightDeltaKg,
-              weightFirstKg: recap.weightFirstKg,
-              weightLastKg: recap.weightLastKg,
-            }}
-            narrative={{ closestToTarget, maintenanceLine, usualMeal, weeklyCheckin }}
-            onAdjustGoalPace={() => {
-              // Web routes to existing Settings → Targets surface;
-              // we don't ship a parallel modal sheet on web.
-              router.push("/settings#targets");
-            }}
-            shareText={formatRecapForShare(recap)}
-            state={digestState}
-            weightSurfaceMode={effectiveWeightSurfaceMode}
-            // ENG-1019/1020 — history-aware empty + check-in copy. Any logged
-            // day in the journal store → returning user, not a cold start
-            // (same derivation as the Progress story gate above; mirror of
-            // mobile `weekly-recap.tsx`).
-            hasHistory={Object.keys(nutritionByDay).some(
-              (k) => (nutritionByDay[k] ?? []).length > 0,
-            )}
-            onShare={() => { /* Digest handles share sheet + analytics */ }}
-            onDismiss={dismissRecap}
-            onOpenSaveCombo={(slot, items) => {
-              const serialized = serializePendingUsualMealSave(slot, items);
-              if (serialized && typeof window !== "undefined") {
-                try {
-                  window.sessionStorage.setItem(PENDING_USUAL_MEAL_SAVE_KEY, serialized);
-                } catch {
-                  /* sessionStorage can throw in private modes — ignore. */
-                }
-              }
-              router.replace("/home?view=today");
-            }}
-            onStartUsualMealSave={() => {
-              router.replace("/home?view=today");
-            }}
-          />
-        );
-      })() : null}
-
-      {/* Week digest — narrative LEAD card (customer-lens audit 2026-04-30 +
-          D-2026-04-27-17). ENG-740 — suppressed when `progress_digest_blend`
-          is on (blended card above absorbs this). `dayOfWeekPattern` (Lose
-          It "Closer" parity slot) reads `recap.dayOfWeekPattern`, same
-          anchored+gated value as above (ENG-1373). */}
-      {digestBlendEnabled ? null : (
-        <div className="mb-4">
-          <DigestStoryCard
-            weekLabel={recap.weekLabel}
-            daysLogged={recap.daysLogged}
-            avgCalories={recap.avgCalories}
-            targetCalories={targets.calories}
-            avgProtein={recap.avgProtein}
-            targetProtein={targets.protein}
-            proteinOnTargetDays={digestWeekStats.proteinOnTarget}
-            closestToTarget={recap.bestDay
-              ? {
-                  label: recap.bestDay.label,
-                  calories: recap.bestDay.calories,
-                  protein: recap.bestDay.protein,
-                }
-              : null}
-            dayOfWeekPattern={recap.dayOfWeekPattern}
-          />
-        </div>
-      )}
+      {/* WEEK DIGEST (D3) + story lead — extracted VERBATIM to
+          `ProgressDigestBlock` (ENG-1525 line-budget offset; zero test pins
+          on the moved lines, verified). Same Digest/DigestStoryCard render,
+          same ENG-740 blend gating, same dismiss/share/save-combo wiring. */}
+      <ProgressDigestBlock
+        digestBlendEnabled={digestBlendEnabled}
+        digestVisible={digestBlendEnabled ? digestBlendVisible : recapVisible}
+        recap={recap}
+        usualMealInsight={usualMealInsight}
+        nutritionByDay={nutritionByDay}
+        recapMaintenance={recapMaintenance}
+        adaptiveTdee={adaptiveTdee}
+        adaptiveConfidence={adaptiveConfidence}
+        staticTdee={staticTdee}
+        previousWeekTdeeKcal={previousWeekTdeeKcal}
+        targetsCalories={targets.calories}
+        targetsProtein={targets.protein}
+        digestProteinOnTarget={digestWeekStats.proteinOnTarget}
+        weightSurfaceMode={effectiveWeightSurfaceMode}
+        onDismiss={dismissRecap}
+      />
 
       {/* DEMOTED stat chips (D-2026-04-27-17 — tiles demoted, not
           deleted). Was a 4-tile 2x2 grid that anchored the page; now
@@ -2337,6 +2335,8 @@ function ProgressDashboardContent() {
           </SupprCard>
         );
       })()}
+      </>
+      )}
 
       {/* Activity feeding maintenance — v3 read-only AppleHealthCard behind
           `web_apple_health_card` (parity with mobile), else the legacy manual

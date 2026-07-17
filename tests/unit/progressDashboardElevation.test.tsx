@@ -17,6 +17,8 @@
  *      chips, not page-ground content cards, so they keep the bare default.
  */
 import * as React from "react";
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 
@@ -201,5 +203,65 @@ describe("ProgressDashboard page-ground cards take the soft lift (2026-06-09)", 
     expect(tile.className).toContain("min-h-[86px]");
     // Let the pending load settle so React doesn't warn on unmount.
     await waitFor(() => resolveLoad({ data: profileRow, error: null }));
+  });
+});
+
+/**
+ * ENG-1525 — the tinted-hero carve-out (deliberate amendment).
+ *
+ * The `progress_hierarchy_v1` branch keeps the ENG-1497 card grammar (flat
+ * field) with ONE documented exception: the §1 Trajectory hero carries the
+ * `--hero-tint` wash + hairline (decision doc
+ * `docs/decisions/2026-07-16-progress-hierarchy-v1.md`). The legacy soft-lift
+ * pins above stay scoped to the legacy branch (flag off); these source pins
+ * scope the carve-out to exactly one card and keep it TINT-ONLY — no second
+ * tinted surface, no shadow smuggled in with it.
+ */
+describe("progress-hierarchy-v1 tinted hero carve-out (ENG-1525/ENG-1497)", () => {
+  const DIR = resolvePath(__dirname, "../../src/app/components/suppr/progress-hierarchy");
+  const files = readdirSync(DIR).filter((f) => f.endsWith(".tsx"));
+  const read = (f: string) => readFileSync(resolvePath(DIR, f), "utf8");
+  const HERO_FILE = "progress-trajectory-hero.tsx";
+
+  it("the hero tint comes ONLY from the --hero-tint token trio", () => {
+    const hero = read(HERO_FILE);
+    expect(hero).toContain("var(--hero-tint)");
+    expect(hero).toContain("var(--hero-tint-to)");
+    expect(hero).toContain("var(--hero-tint-border)");
+  });
+
+  it("exactly ONE card carries the tint — the show-mode hero, never the trend-only card", () => {
+    const hero = read(HERO_FILE);
+    // One application of the tint style, marked as the hero.
+    expect(hero.match(/style=\{HERO_TINT_STYLE\}/g)).toHaveLength(1);
+    expect(hero.match(/data-hero-tint="true"/g)).toHaveLength(1);
+    // The trends_only SupprCard stays plain (dignity contract: the tint
+    // belongs to the absolute-weight hero only).
+    const trendOnlyBlock = hero.slice(
+      hero.indexOf('if (surfaceMode === "trends_only")'),
+      hero.indexOf("progress-hierarchy-trend-only"),
+    );
+    expect(trendOnlyBlock).not.toContain("HERO_TINT_STYLE");
+    expect(trendOnlyBlock).not.toContain("hero-tint");
+  });
+
+  it("no OTHER hierarchy section references the hero tint", () => {
+    for (const f of files.filter((f) => f !== HERO_FILE)) {
+      expect(read(f), `${f} must not carry the hero tint`).not.toContain("hero-tint");
+    }
+  });
+
+  it("the carve-out is TINT-only: no shadow, no soft-lift opt-in, no raw colour literals in the hierarchy dir", () => {
+    for (const f of files) {
+      const src = read(f);
+      // New-branch cards stay flat (ENG-1497) — no elevation="card" opt-in
+      // and no hand-rolled shadow rides along with the tint.
+      expect(src, `${f} opts into the soft lift`).not.toMatch(/elevation="card"/);
+      expect(src, `${f} carries a shadow`).not.toMatch(/boxShadow|shadow-/);
+      // Tokens only (the hosts have ZERO token-budget headroom; the new files
+      // must stay at zero too).
+      expect(src, `${f} carries a raw hex colour`).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+      expect(src, `${f} carries a raw rgb()/rgba() literal`).not.toMatch(/rgba?\(\s*\d/);
+    }
   });
 });

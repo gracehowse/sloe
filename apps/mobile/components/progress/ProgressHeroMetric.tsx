@@ -40,10 +40,11 @@ const STROKE = 5;
 const RADIUS = (RING_SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-// 2026-05-22 evening (Grace): ring tone now mirrors Today's calorie
-// ring — green when in 90-110%, red when over, green-when-under.
-// Owns one rule across both rings instead of Today saying green/red
-// and Progress saying green/amber.
+// 2026-05-22 evening (Grace): ring tone mirrors Today's calorie ring —
+// green when in 90-110%, green-when-under. ENG-1296 (2026-07-01
+// re-ratification): over-target is the AMBER warning family product-wide —
+// the dossier D-2 destructive-red carve-out is RETIRED (matches ENG-1431
+// and `Accent.warning` in ProgressAverageAdherence's over-budget bars).
 function adherenceTone(pct: number): { color: string; label: string } {
   if (pct >= 90 && pct <= 110) {
     return { color: Accent.success, label: "On target" };
@@ -51,8 +52,8 @@ function adherenceTone(pct: number): { color: string; label: string } {
   if (pct < 90) {
     return { color: Accent.success, label: "Under target" };
   }
-  // Over (> 110%) — red, owning the same green/red rule Today uses.
-  return { color: Accent.destructive, label: "Over target" };
+  // Over (> 110%) — amber, never red (ENG-1296).
+  return { color: Accent.warning, label: "Over target" };
 }
 
 export function ProgressHeroMetric({
@@ -85,12 +86,11 @@ export function ProgressHeroMetric({
   const fillPct = Math.min(clamped / 100, 1);
   const offset = CIRCUMFERENCE * (1 - fillPct);
   const tone = adherenceTone(adherencePct);
-  // `adherence_over_display` (audit P1-3): above the 110% band the ring
-  // centre-number flips to an overshoot reading ("11% over", amber) so a
-  // >100% figure can't read as a *better* score. The flag gates ONLY the
-  // over branch; ring fill geometry + the supporting "Over target" label
-  // are unchanged, and the ≤110% path is untouched. Else = today's raw red
-  // `{pct}%` centre. Mirror: web.
+  // Audit P1-3 (ENG-1073): above the 110% band the ring centre-number
+  // flips to an overshoot reading ("11% over", amber) so a >100% figure
+  // can't read as a *better* score. Ring fill geometry + the supporting
+  // "Over target" label are unchanged, and the ≤110% path is untouched.
+  // Mirror: web.
   const overDisplay =
     adherencePct > 110 ? formatAdherenceHeadline(adherencePct) : null;
 
@@ -151,8 +151,9 @@ export function ProgressHeroMetric({
             fontSize: 14,
             fontWeight: "700",
             fontVariant: ["tabular-nums"],
-            // Over target + flag on: amber overshoot ("11% over") instead of
-            // the raw red "111%". Else = today's tone (red over / sage on/under).
+            // Over target: amber overshoot ("11% over") instead of the raw
+            // "111%". Else = the tone colour (amber over / sage on/under —
+            // ENG-1296: never red).
             color: overDisplay ? Accent.warning : tone.color,
           }}
         >

@@ -179,15 +179,43 @@ Purpose: a week of meals balanced to the user's targets.
 - The week meal data is a single shared source (`window.SloePlanWeek`) so both render the
   exact same meals.
 
-### Progress
-Purpose: honest trends — "wins, not streaks." Period toggle Week/Month/Year.
-Cards (both platforms): **This week** narrative (one maintenance figure + confidence chips) ·
-**Weight** (hero kg, Trend/Scale, corridor, start/current/goal/rate) · **Energy balance**
-(avg intake − maintenance = deficit, with "how maintenance adapts") · **Daily calories** bar
-chart vs goal band, on-target days · **Average adherence** (overall % + per-macro bars) ·
-**Apple Health** (steps / active energy / weight rows) · **Projected weight** + body-comp
-(Pro). **Empty / new-user state** (Weekly recap "A little more to go" + "No weigh-ins yet")
-exists on both. Body-neutral (Calm) mode hides numeric aims throughout.
+### Progress — ENG-1525 hierarchy (ratified 2026-07-16)
+Purpose: honest trends — "wins, not streaks." A **story, not a dashboard**: five
+prioritised sections replace the old ~13 equal-weight cards. Global period control
+**D / W / M / 6M / Y** drives §1's chart window and §3's averaging window; **§2 always
+pins to the current week**.
+
+1. **Trajectory (THE hero — the screen's only tinted card).** `--hero-tint` ground +
+   `--hero-tint-border` hairline, radius `card-lg 24`, no shadow. 40px serif weight
+   numeral · direction-aware rate line (sage toward goal, amber away — derived from
+   `sign(rate) × sign(goal delta)`, never the raw sign) · smoothed trend line
+   (`--primary`) with ONE emphasised endpoint dot · dashed goal line labelled at the
+   axis + faint sage target band · dashed projection continuation · axis labels come
+   from the chart window (no fake centered month string). Projection leads with
+   **distance** ("4.4 kg to go"), hedges the date ("at this pace ~early October — an
+   estimate, not a promise"). Trend/Scale toggle retained. **Goal-conditional:** Calm /
+   weight-opt-out users get NO trajectory hero — §2 promotes into the hero slot.
+2. **This week (pinned to the current week).** Demoted, reconciled headline ("5 of 7
+   days in your calorie range · macro adherence averaged 79%") · quiet **Week score**
+   chip (weekly nutrition-quality composite, ENG-992) · Mon–Sun calorie bars (today
+   boxed; sage under / amber over — **never red**) with dashed goal reference · macro
+   label·value·bar rows · streak microrow (flame + "12-day logging streak · 2 freezes
+   available" — freezes reachable via the recap, per delta 7).
+3. **Energy.** The deficit is the ONE number; the equation is support and reads
+   **maintenance − intake = deficit** (arithmetic correct). Direction-aware verdict
+   ("on plan for your cut"). Confidence = bare sage overline, not a pill. Subordinate
+   expenditure sparkline with a confidence band that widens as confidence drops.
+   "How maintenance works" collapsible retained.
+4. **Body composition.** User-owned readings (body fat, lean mass from the smart
+   scale) are **always free** — only the 90-day trend chart + analysis is the Pro
+   layer (blurred teaser + lock + ghost CTA). Never mask data the user already owns.
+5. **Your week.** ONE slimmed recap: serif verdict sentence + one net-new texture
+   line + ghost Share. (The old duplicate story-card is gone.)
+
+**Empty / new-user state:** the hero slot keeps the trajectory grammar — tinted card,
+"No weigh-ins yet", and a **filled "Log your first weigh-in" CTA (the screen's one
+filled CTA)**; "This week" shows "A little more to go". Body-neutral (Calm) mode hides
+numeric aims throughout and promotes §2 (serif verdict, trends-only sage bars).
 
 ### Cook / Cookbook (Recipes)
 Editorial recipe hero, your cookbook grid, recipe detail (ingredients as list or tiles,
@@ -261,3 +289,71 @@ spacing and interaction.
 
 > Other `redesign/v3/*.html` and `proto-*.jsx/.css` files in the project are earlier or
 > modular explorations; `Sloe-App.html` supersedes them and is the agreed source of truth.
+
+---
+
+## Changelog — 2026-07-16 · backlog end-state deltas
+
+The prototype now shows the app **as it will look once the open design backlog is
+executed**. Each delta maps to a Linear ticket; conformance (ENG-1247) should treat
+these as the target, not as app drift.
+
+- **ENG-1525 — Progress hierarchy v1** (ratified; building behind
+  `progress_hierarchy_v1`): full 5-section rebuild of Progress on both platforms —
+  see the Progress section above. New tokens `--hero-tint` / `--hero-tint-border`
+  (light + dark) added to `:root`; the hero uses `--radius-card-lg` (24). The old
+  ~13-card stack and its now-dead CSS (`prog-narr`, `prog-statrow`, `prog-balance`,
+  `prog-win`, `prog-adh-big`, Apple-Health rows, `prog-proj`, old `prog-hero*`,
+  `prog-legend`) were removed.
+- **ENG-992 — Week score**: quiet weekly nutrition-quality chip in §2 This week
+  (hidden in Calm mode). Naming is placeholder — composite spec is the ticket's scope.
+- **ENG-1518 — Barcode manual path**: "Enter barcode or details manually" affordance
+  under the scan frame, visible before any failed scan (also the design answer to the
+  hard-denied-camera dead-end).
+- **ENG-1535 — Seeded creators labelled**: Discover creator rail retitled
+  "Collections curated by the Sloe kitchen"; every seeded profile carries a
+  "Sloe Kitchen" caption (option (a) of the ticket — honest house-curation labelling).
+- **ENG-1274 — Est. cost per serving (Pro)**: "≈ £1.60 / serving" + clay PRO pill in
+  the recipe-detail hero meta row.
+- Housekeeping: `.link` / `.w-ch-more` gained proper button resets (they rendered
+  with browser default chrome); web week-bars target label moved left to stop
+  colliding with Sunday's value.
+
+> `screenshots/mobile-progress.png` and `screenshots/web-progress.png` predate the
+> ENG-1525 hierarchy — the live `Sloe-App.html` is the source of truth for Progress
+> until those captures are regenerated.
+
+## Design Constitution (2026-07-17)
+
+**`DESIGN-CONSTITUTION.md`** is the cohesion rulebook — one page template, one control
+kit, colour governance, the numeric instrument scale, the two-grammar law. The
+**Elevated** mode implements it (v2 adds the constitution kit: 33px title grammar
+everywhere, the one 40px icon button, one chip/rail spec, serif section-heads on
+Progress, clay reserved for Pro). A screen ships at zero violations. Current remains
+the pre-constitution baseline until Grace ratifies.
+
+## Changelog — 2026-07-17 · "Premium pass" preview (Tweaks → Style → Premium pass)
+
+A toggled A/B preview of the premium elevation direction, benchmarked against Oura /
+Lifesum / Julienne ("editorial where food, instrument where data"). **Current stays
+canonical**; Elevated is a proposal awaiting Grace's ratification. Gated behind
+`data-premium="1"` on the html root + the `premium` flag in app state — flip it live
+from the Tweaks panel. What Elevated changes:
+
+1. **Warm editorial ground** — light-theme `--bg` → `#fbfaf6` (oat-tinged; grouped/
+   secondary/muted follow). Cards lift by warmth contrast; plum hairlines stay.
+   ⚠ Ratifying this reverses the P0 "pure white in-product" ground ruling.
+2. **Instrument-grade data viz** — the daily ring promotes to the existing "jewel
+   dial" segments variant (gradient-lit ticks, glowing leading mark, radial core);
+   macro rings gain a soft macro-tinted backdrop + tinted track so they read complete
+   at low fill; the Progress trajectory gets a gradient stroke + area fade + glowing
+   endpoint; week bars and the expenditure band pick up vertical gradients.
+3. **Broken card rhythm** — the eat-next hero goes full-bleed edge-to-edge on mobile
+   (taller photo, bigger serif title); Plan's day verdict takes the tinted-hero
+   treatment (one per screen, matching Progress §1).
+4. **Placeholder kill** — cuisine letter monograms become duotone plum-graded photo
+   tiles (one shared base image = designed texture, not fake cuisine photography);
+   creator monograms gain a quiet frost ring while real photos are pending.
+
+Not in the preview (next tranche if ratified): micro-motion/win-moment demos, web
+dashboard de-templating, decorative-colour audit.

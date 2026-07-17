@@ -2,6 +2,12 @@
 
 Generated from the 14-agent forensic audit (workflow `sloe-v3-conformance-audit`). Canonical source: `docs/ux/redesign/v3/Sloe-App.html`. Drive to 100%: each surface → conform web+mobile in parity → SEE on sim + web → gate → commit → tick here.
 
+> **Prototype developed 2026-07-16 (backlog end-state):** the canonical prototype now
+> includes the ratified ENG-1525 Progress hierarchy (5 sections, tinted trajectory
+> hero) plus ENG-992 / ENG-1274 / ENG-1518 / ENG-1535 deltas — see the README
+> changelog. Any Progress-surface conformance line-item written against the old
+> ~13-card stack is superseded; conform against the new §1–§5.
+
 **Totals:** 79 surfaces · 21 need work · 21 conformant · 33 keep-current · 1 net-new build · 3 in progress. §B/§D ratified 2026-06-28 — see registry below.
 
 **Completion framing (2026-06-28):** Launch-critical daily-loop + recipe spine conforms ship behind default-OFF flags on `main` (PR #609). §B (29) + §D (18) ratified 2026-06-28; remaining ⬜ = autonomous §A + explicit builds (CreatorProfile, import input-phase polish). See `docs/decisions/2026-06-28-eng1247-conformance-completion-status.md`.

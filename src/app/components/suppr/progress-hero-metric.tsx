@@ -53,12 +53,12 @@ function adherenceTone(pct: number): {
     // under case). Not an alarm; the user simply hasn't filled the budget.
     return { ring: "var(--success)", gradientId: "url(#prog-grad-success)", text: "text-success", label: "Under target" };
   }
-  // Over-target (>110%) — the Progress adherence RING owns the same
-  // green/red rule as Today's calorie ring (mobile decision 2026-05-22:
-  // "one rule across both rings"). Over = destructive red on BOTH the ring
-  // stroke and the centred number so web == mobile. (The amber over rule
-  // still governs the macro bars + daily-calorie bars, which are not rings.)
-  return { ring: "var(--destructive)", gradientId: "url(#prog-grad-over)", text: "text-destructive", label: "Over target" };
+  // Over-target (>110%) — AMBER warning family (ENG-1296, 2026-07-01
+  // re-ratification: the dossier D-2 destructive-red carve-out is RETIRED;
+  // over-budget signals product-wide are uniformly amber). Ring stroke =
+  // fill amber `--warning`; text = `text-warning-solid` (the AA amber text
+  // token — base amber fails as text). Mirrors mobile `Accent.warning`.
+  return { ring: "var(--warning)", gradientId: "url(#prog-grad-over)", text: "text-warning-solid", label: "Over target" };
 }
 
 import { SupprCard } from "../ui/suppr-card";
@@ -163,13 +163,12 @@ export function ProgressHeroMetric({
               <stop offset="0%" stopColor="var(--success)" stopOpacity="0.8" />
               <stop offset="100%" stopColor="var(--success)" />
             </linearGradient>
-            {/* Over-target adherence ring is destructive red — the Progress
-                ring owns the same green/red rule as Today's calorie ring
-                (mobile decision 2026-05-22). Macro/daily-calorie bars stay
-                amber; rings go red. */}
+            {/* Over-target adherence ring is AMBER (ENG-1296, 2026-07-01
+                re-ratification) — the 2026-05-22 "rings go red" carve-out is
+                retired; over-budget is the warning family product-wide. */}
             <linearGradient id="prog-grad-over" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="var(--destructive)" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="var(--destructive)" />
+              <stop offset="0%" stopColor="var(--warning)" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="var(--warning)" />
             </linearGradient>
           </defs>
           <circle
@@ -195,8 +194,8 @@ export function ProgressHeroMetric({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {overDisplay ? (
-            // Over target + flag on: overshoot magnitude with a smaller
-            // "over" tag, amber (warning) not the raw "111%" red number.
+            // Over target: overshoot magnitude with a smaller "over" tag,
+            // amber (warning-solid) not the raw "111%" (ENG-1296: never red).
             <span
               data-testid="progress-hero-pct"
               className="flex items-baseline tabular-nums leading-none text-warning-solid"

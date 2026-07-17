@@ -324,6 +324,62 @@ export function signedObservedKgPerWeek(timeline: WeightGoalTimeline): number {
   return 0;
 }
 
+/** Tone bucket for a signed weekly weight rate relative to the goal.
+ *  `toward` renders sage, `away` renders amber (never red — ENG-1296),
+ *  `neutral` renders the plum ink. */
+export type TrendDirectionTone = "toward" | "away" | "neutral";
+
+/**
+ * ENG-1525 — rates slower than this are "holding steady", not a
+ * direction. Matches the |rate| ≥ 0.05 kg/week floor `projectWeight`
+ * uses before it lets an observed trend override the formula, so the
+ * tone can never claim a direction the projection maths would ignore.
+ */
+export const TREND_DIRECTION_EPSILON_KG_PER_WEEK = 0.05;
+
+/**
+ * ENG-1525 — single source of truth for the Progress hierarchy's
+ * direction-aware colour (delta 3). Drives the §1 Trajectory hero's
+ * rate + verdict tone AND the §3 Energy deficit/surplus framing on
+ * both platforms (mobile via the `@suppr/shared/weightProjection`
+ * re-export), so the two sections can never disagree about whether
+ * the user is moving toward their goal.
+ *
+ * - `"neutral"` when there's no goal weight, no latest weight, a
+ *   non-finite/near-zero rate (|rate| < the 0.05 kg/week epsilon), or
+ *   the user is already at goal (within the same 0.05 kg tolerance the
+ *   Journey card uses to suppress itself).
+ * - `"toward"` when the rate's sign moves `latestKg` toward
+ *   `goalWeightKg` (losing with a lower goal, gaining with a higher one).
+ * - `"away"` otherwise — rendered amber, never destructive red.
+ *
+ * @param rateKgPerWeek signed smoothed rate (negative = losing), i.e.
+ *   `signedObservedKgPerWeek(timeline)` — never the raw two-point delta.
+ */
+export function trendDirectionTone(
+  rateKgPerWeek: number | null | undefined,
+  latestKg: number | null | undefined,
+  goalWeightKg: number | null | undefined,
+): TrendDirectionTone {
+  if (typeof rateKgPerWeek !== "number" || !Number.isFinite(rateKgPerWeek)) {
+    return "neutral";
+  }
+  if (!hasGoalWeightData({ goalWeightKg: goalWeightKg ?? null, latestWeightKg: latestKg ?? null })) {
+    return "neutral";
+  }
+  if (Math.abs(rateKgPerWeek) < TREND_DIRECTION_EPSILON_KG_PER_WEEK) {
+    return "neutral";
+  }
+  const gapKg = (goalWeightKg as number) - (latestKg as number);
+  // At goal (within the Journey card's 0.05 kg suppression tolerance):
+  // any movement is technically "away", but amber-at-goal reads as shame
+  // for maintaining — stay neutral.
+  if (Math.abs(gapKg) < TREND_DIRECTION_EPSILON_KG_PER_WEEK) {
+    return "neutral";
+  }
+  return Math.sign(rateKgPerWeek) === Math.sign(gapKg) ? "toward" : "away";
+}
+
 export type TrajectoryState =
   | {
       kind: "projection";

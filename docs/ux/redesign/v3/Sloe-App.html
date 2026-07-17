@@ -402,6 +402,8 @@ code, pre, .mono {
   --border-strong: #d9d4e0;
   --ring-bg:       #d8d0e6;   /* frost-grey ring track — visible full ring on white */
   --input-bg:      #ffffff;
+  --hero-tint:        #f3eff7; /* ENG-1525 — the ONE tinted card (Progress trajectory hero) */
+  --hero-tint-border: #ddd3e8; /* hairline on the tinted ground */
   --shadow-card:   0 0.5px 1px rgba(36,23,51,.06), 0 4px 8px -3px rgba(36,23,51,.06), 0 14px 32px -10px rgba(36,23,51,.10);
   --shadow-md:     0 1px 2px rgba(36,23,51,.06), 0 8px 18px -6px rgba(36,23,51,.09), 0 22px 48px -14px rgba(36,23,51,.13);
   --shadow-lg:     0 2px 6px rgba(36,23,51,.08), 0 16px 36px -10px rgba(36,23,51,.16), 0 40px 80px -22px rgba(36,23,51,.20);
@@ -416,6 +418,8 @@ code, pre, .mono {
   --border:        #332843;
   --border-strong: #443656;
   --input-bg:      #1a1422;
+  --hero-tint:        #2a2136; /* ENG-1525 hero tint — lifted plum on Nocturne */
+  --hero-tint-border: #453757;
   --shadow-card:   0 1px 0 rgba(255,255,255,.03), 0 14px 34px rgba(0,0,0,.45);
   --shadow-md:     0 1px 0 rgba(255,255,255,.04), 0 22px 50px rgba(0,0,0,.55);
   --shadow-lg:     0 30px 70px rgba(0,0,0,.6);
@@ -569,7 +573,7 @@ button{ color: inherit; }
 .section-head{ display:flex; align-items:baseline; justify-content:space-between; margin: var(--space-xl) 0 var(--space-dense); }
 .section-head h2{ margin:0; white-space:nowrap; }
 .section-head h2 + *{ flex:none; }
-.section-head .link{ font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--primary-active); background:none; border:none; cursor:pointer; font-family: var(--font-sans); }
+.link{ font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--primary-active); background:none; border:none; padding:0; cursor:pointer; font-family: var(--font-sans); }
 /* unified card title (serif heading + optional info + right label) — shared by every Activity card */
 .act-title{ display:flex; align-items:center; gap:8px; margin-bottom:16px; }
 .act-title h3{ margin:0; font-family:var(--font-sans); font-size:var(--text-xs); font-weight:var(--fw-semibold); color:var(--fg-muted); letter-spacing:var(--tracking-wide); text-transform:uppercase; line-height:1.1; white-space:nowrap; }
@@ -1362,13 +1366,7 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .plan-cooked-badge{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:color-mix(in srgb, var(--success) 82%, transparent); color:#fff; }
 .plan-card-thumb img{ width:100%; height:100%; object-fit:cover; }
 
-/* ── progress: hero + legend ── */
-.prog-hero{ display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-card,16px); padding:16px 18px; margin-top:6px; box-shadow:var(--shadow-card); }
-.prog-hero-v{ font-family:var(--font-serif); font-size:38px; font-weight:var(--fw-semibold); line-height:1; margin:5px 0 4px; }
-.prog-hero-v small{ font-size:16px; color:var(--fg-tertiary); margin-left:2px; }
-.prog-hero-d{ font-size:12.5px; color:var(--fg-secondary); }
-.prog-legend{ display:flex; gap:16px; margin-top:12px; }
-.prog-legend span{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--fg-tertiary); }
+/* (progress hero + legend rules retired with the pre-ENG-1525 card stack — see the ENG-1525 block below) */
 .pl-dot{ width:8px; height:8px; border-radius:9999px; }
 
 /* ── density: compact tightens padding + type a touch ── */
@@ -1717,6 +1715,104 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 [data-surface="paper"] .pushed-scroll{ background:var(--bg-marketing); }
 [data-surface="paper"] .phone{ background:var(--bg-marketing); }
 [data-theme="light"][data-surface="paper"] .card{ background:var(--card); border:1px solid transparent; box-shadow:0 1px 2px rgba(36,23,51,.05), 0 12px 28px rgba(36,23,51,.05); }
+
+/* ── PREMIUM PASS (preview, 2026-07-16) — toggled from Tweaks · "Current / Elevated".
+   Warm editorial ground · instrument data-viz · broken card rhythm · duotone cuisine tiles.
+   NOT ratified: the Current path stays canonical until Grace signs this off. ── */
+/* 1 · warm oat-tinged ground — cards lift by warmth contrast; plum hairlines stay (ENG-1497 grammar) */
+[data-premium="1"][data-theme="light"]{ --bg:#fbfaf6; --bg-grouped:#f6f3ee; --bg-secondary:#f2efe9; --muted:#edeae3; }
+/* 3 · rhythm — the eat-next hero goes full-bleed editorial on mobile screens */
+[data-premium="1"] .screen-scroll .recipe-hero{ margin-left:-20px; margin-right:-20px; width:calc(100% + 40px); border-radius:0; border-color:transparent; box-shadow:none; }
+[data-premium="1"] .screen-scroll .recipe-hero:hover{ transform:none; box-shadow:none; }
+[data-premium="1"] .screen-scroll .rh-photo{ height:224px; }
+[data-premium="1"] .screen-scroll .rh-body{ padding:16px 20px 18px; }
+[data-premium="1"] .screen-scroll .rh-title{ font-size:24px; }
+/* 3 · Plan's day verdict takes the one-tinted-hero treatment (one per screen) */
+[data-premium="1"] .plan-day{ background:var(--hero-tint); border-color:var(--hero-tint-border); border-radius:var(--radius-card-lg); box-shadow:none; }
+/* 4 · placeholder kill — creator monograms get a quiet frost ring while real photos are pending */
+[data-premium="1"] .creator-rail-av{ box-shadow:0 0 0 2px var(--card), 0 0 0 3.5px var(--accent-frost); }
+
+/* ── CONSTITUTION KIT (Elevated v2, 2026-07-17) — see DESIGN-CONSTITUTION.md.
+   One title grammar · one icon button · one chip · one rail tile · numeric scale ·
+   colour governance. Inline sizes on legacy h1s force the !important overrides. ── */
+/* Rule 1 · one title grammar — every tab title is 33px serif (matches .tg-day) */
+[data-premium="1"] .t-head h1{ font-size:33px !important; line-height:1.05 !important; letter-spacing:-.015em; }
+/* Rule 3 · one icon button — the 40px muted circle; the white-square variant is abolished */
+[data-premium="1"] .planx-act{ width:40px; height:40px; border-radius:var(--radius-full); border:none; background:var(--muted); color:var(--fg); box-shadow:none; }
+[data-premium="1"] .planx-act:hover{ background:var(--accent-frost); color:var(--fg); }
+/* Rule 3 · one chip spec — status chips align to .chip metrics */
+[data-premium="1"] .prog-chip{ padding:8px 13px; font-size:13px; }
+[data-premium="1"] .plan-reset-btn{ padding:9px 14px; background:var(--muted); }
+/* Rule 3 · one rail tile — creators and cuisines share 64px */
+[data-premium="1"] .creator-rail-av{ width:64px; height:64px; font-size:24px; }
+[data-premium="1"] .w-creator-rail .creator-rail-av{ width:64px; height:64px; font-size:24px; }
+[data-premium="1"] .cuisine-chip-ph{ width:64px; height:64px; }
+[data-premium="1"] .cuisine-chip{ width:66px; }
+[data-premium="1"] .creator-chip{ width:72px; }
+/* Rule 5 · numeric instrument scale — hero numerals 44 */
+[data-premium="1"] .prog-hero-kg{ font-size:44px; }
+/* Bridge · ambient fit — every recipe quietly wears its relationship to your day (sage = fits; absence is neutral, never a judgment) */
+.fit-tag{ display:flex; width:max-content; align-items:center; gap:4px; font-size:11px; font-weight:var(--fw-semibold); padding:2px 8px; border-radius:9999px; margin:2px 0 4px; }
+.rh-loop .fit-tag{ display:inline-flex; margin:0; }
+.fit-tag.is-fit{ background:var(--success-soft); color:var(--success); }
+.plan-src{ display:block; font-size:11px; color:var(--fg-tertiary); margin-top:2px; }
+.ip-trust{ margin-top:8px; font-size:13.5px; color:var(--fg-secondary); }
+.ip-trust b{ color:var(--fg); font-size:15px; }
+.ip-trust-per{ color:var(--fg-tertiary); font-size:11.5px; }
+.ip-trust-sub{ margin-top:4px; font-size:12px; color:var(--fg-secondary); }
+/* ── Recap story — the payoff. One stat per scene; descriptive, never judgmental; per-scene save ── */
+.recap-story{ position:absolute; inset:0; z-index:70; background:var(--primary-deep); color:#fff; display:flex; flex-direction:column; cursor:pointer; overflow:hidden; }
+.recap-story::after{ content:""; position:absolute; inset:-40%; background:radial-gradient(circle at 30% 18%, rgba(148,116,168,.30), transparent 55%); pointer-events:none; }
+.rs-photo{ position:absolute; inset:0; background-size:cover; background-position:center; opacity:.38; }
+.rs-photo::after{ content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(36,23,51,.55) 0%, rgba(36,23,51,.94) 80%); }
+.rs-dots{ position:relative; z-index:2; display:flex; gap:5px; padding:16px 18px 0; }
+.rs-dot{ flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.22); transition:background .3s var(--ease); }
+.rs-dot.on{ background:rgba(255,255,255,.9); }
+.rs-top{ position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:16px 18px 0; }
+.rs-kicker{ font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-frost); }
+.rs-x{ background:rgba(255,255,255,.14); border:none; color:#fff; width:40px; height:40px; border-radius:9999px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; }
+.rs-scene{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; justify-content:center; padding:0 30px 40px; }
+.rs-stat{ font-family:var(--font-serif); font-size:84px; font-weight:var(--fw-medium); line-height:1; letter-spacing:-.02em; animation:rsUp .38s var(--ease) both; }
+.rs-big{ font-family:var(--font-serif); font-size:40px; font-weight:var(--fw-medium); line-height:1.14; letter-spacing:-.015em; animation:rsUp .38s var(--ease) both; }
+.rs-mark{ font-family:var(--font-brand); font-size:22px; color:rgba(255,255,255,.85); }
+.rs-line{ font-family:var(--font-serif); font-size:22px; margin-top:10px; color:rgba(255,255,255,.92); animation:rsUp .38s .07s var(--ease) both; }
+.rs-sub{ font-size:14.5px; line-height:1.55; margin-top:14px; color:rgba(255,255,255,.66); max-width:30ch; animation:rsUp .38s .14s var(--ease) both; }
+.rs-card{ background:#fff; color:var(--primary-deep); border-radius:16px; padding:16px 18px 12px; margin-top:20px; max-width:280px; box-shadow:0 18px 44px rgba(0,0,0,.35); animation:rsUp .38s .1s var(--ease) both; }
+.rs-card-k{ font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--primary-active); }
+.rs-card-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:12px; }
+.rs-card-grid b{ display:block; font-family:var(--font-serif); font-size:20px; font-weight:var(--fw-medium); line-height:1; }
+.rs-card-grid span{ display:block; font-size:10.5px; color:var(--fg-secondary); margin-top:3px; }
+.rs-card-mark{ font-family:var(--font-brand); font-size:15px; text-align:right; margin-top:10px; color:var(--primary); }
+.rs-foot{ position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:0 22px 30px; min-height:66px; }
+.rs-save{ background:none; border:none; color:rgba(255,255,255,.75); font-family:var(--font-sans); font-size:13px; font-weight:600; cursor:pointer; padding:8px 0; }
+.rs-hint{ font-size:12px; color:rgba(255,255,255,.4); }
+@keyframes rsUp{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
+.rs-bars{ display:flex; align-items:flex-end; gap:7px; height:72px; margin-top:22px; max-width:230px; animation:rsUp .38s .1s var(--ease) both; }
+.rs-bars span{ flex:1; border-radius:5px 5px 3px 3px; }
+@media (prefers-reduced-motion: reduce){ .rs-stat,.rs-big,.rs-line,.rs-sub,.rs-bars{ animation:none; } }
+
+/* ── Web premium shell v2 — LIGHT refined (Grace 2026-07-17: ink sidebar rejected; the light shell wins).
+   Sidebar sits on the warm canvas, dimmed by hairline + tone only (Linear grammar); the plum Log food is THE filled CTA. ── */
+[data-premium="1"][data-theme="light"] .w-side{ background:var(--bg); border-right:1px solid var(--border); }
+[data-premium="1"][data-theme="light"] .w-nav{ color:var(--fg-secondary); }
+[data-premium="1"][data-theme="light"] .w-nav:hover{ background:var(--bg-secondary); color:var(--fg); }
+[data-premium="1"][data-theme="light"] .w-nav.on{ background:var(--muted); color:var(--primary); box-shadow:none; }
+[data-premium="1"][data-theme="light"] .w-pro{ background:var(--card); border:1px solid var(--border); box-shadow:none; }
+[data-premium="1"] .w-pro b{ font-family:var(--font-sans); font-size:13.5px; font-weight:600; letter-spacing:.01em; }
+/* Grace 2026-07-17: clay/orange RETIRED — monetisation wears plum; amber survives ONLY as the data over-state (pending ratification) */
+[data-premium="1"] .rd-pro{ background:var(--primary); }
+/* One structural-label grammar (Grace: the NET ENERGY register wins) — section labels are quiet tracked caps;
+   serif is reserved for page titles, hero numerals, content nouns and verdict sentences. !important beats legacy inline sizes. */
+[data-premium="1"] .section-head h2{ font-family:var(--font-sans) !important; font-size:11px !important; font-weight:700 !important; letter-spacing:.1em; text-transform:uppercase; color:var(--fg-muted); }
+[data-premium="1"] .section-head{ margin:28px 2px 10px !important; align-items:center; }
+[data-premium="1"] .w-ch h2{ font-family:var(--font-sans); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--fg-muted); }
+[data-premium="1"] .w-card{ border-radius:var(--radius-card-lg); border-color:var(--border); box-shadow:none; }
+/* Rule 3 filled budget: the ink sidebar's Log food is THE filled CTA; page-header primaries demote to outline */
+[data-premium="1"] .w-head .btn--primary{ background:transparent; color:var(--primary); border:1px solid var(--border-strong); }
+/* Loop · the decision module — instrument target band + actions inside the editorial card */
+.rh-loop{ display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.rh-loop-chip{ display:inline-flex; align-items:center; background:var(--muted); color:var(--fg); font-size:12.5px; font-weight:var(--fw-semibold); padding:5px 10px; border-radius:9999px; }
+.rh-acts{ display:flex; align-items:center; gap:14px; margin-top:12px; }
 [data-theme="light"][data-surface="paper"] .w-scroll{ background:var(--bg-marketing); }
 
 /* ── Net energy (deficit / surplus bar) ── */
@@ -2246,44 +2342,44 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .trend-key i{ width:14px; height:3px; border-radius:2px; }
 .trend-key i.band{ height:9px; border-radius:3px; }
 /* ── progress v2: redesigned, deduped cards ── */
-.prog-narr{ font-size:15px; line-height:1.55; color:var(--fg-secondary); margin-top:8px; }
-.prog-narr b{ color:var(--fg); font-weight:var(--fw-semibold); }
-.prog-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
 .prog-chip{ display:inline-flex; align-items:center; gap:5px; background:var(--bg-grouped); color:var(--fg-secondary); font-size:12px; font-weight:var(--fw-semibold); padding:6px 11px; border-radius:9999px; }
 .prog-chip.is-good{ background:var(--success-soft); color:var(--success); }
-.prog-statrow{ display:flex; margin:16px 0 4px; padding-top:14px; border-top:1px solid var(--border); }
-.prog-statrow > div{ flex:1; text-align:center; position:relative; }
-.prog-statrow > div + div::before{ content:""; position:absolute; left:0; top:2px; bottom:2px; width:1px; background:var(--border); }
-.prog-stat-l{ font-size:10.5px; font-weight:var(--fw-semibold); letter-spacing:var(--tracking-wide); text-transform:uppercase; color:var(--fg-tertiary); }
-.prog-stat-v{ font-size:15px; font-weight:var(--fw-semibold); color:var(--fg); margin-top:3px; }
 .prog-wactions{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
-.prog-balance{ display:flex; align-items:center; gap:6px; }
-.prog-balance > div{ flex:1; text-align:center; }
-.prog-bal-v{ font-family:var(--font-serif); font-size:25px; font-weight:var(--fw-medium); line-height:1; color:var(--fg); }
-.prog-bal-l{ font-size:11px; color:var(--fg-tertiary); margin-top:5px; }
-.prog-bal-op{ font-size:18px; color:var(--fg-tertiary); flex:none; }
 .prog-how{ display:inline-flex; align-items:center; gap:5px; margin-top:16px; background:none; border:none; padding:0; font-family:var(--font-sans); font-size:13px; font-weight:var(--fw-semibold); color:var(--primary-active); cursor:pointer; }
 .prog-how-body{ margin-top:12px; padding-top:14px; border-top:1px solid var(--border); }
-.prog-win{ display:flex; align-items:center; gap:11px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); font-size:13.5px; line-height:1.4; color:var(--fg-secondary); }
-.prog-win b{ color:var(--fg); font-weight:var(--fw-semibold); }
-.prog-win-ic{ flex:none; width:34px; height:34px; border-radius:10px; background:var(--accent-frost-mist); color:var(--primary); display:flex; align-items:center; justify-content:center; }
-.prog-adh-big{ font-family:var(--font-serif); font-size:42px; font-weight:var(--fw-medium); line-height:1; color:var(--fg); margin:2px 0 6px; }
-.prog-adh-big small{ font-size:18px; color:var(--fg-tertiary); margin-left:1px; }
 .prog-adh-row{ margin-top:13px; }
 .prog-adh-l{ font-size:13.5px; color:var(--fg); }
 .prog-adh-v{ font-size:13px; font-weight:var(--fw-semibold); color:var(--fg-secondary); }
 .prog-adh-track{ height:7px; border-radius:9999px; background:var(--muted); overflow:hidden; }
 .prog-adh-fill{ height:100%; border-radius:9999px; }
-.prog-ah-row{ display:flex; align-items:center; gap:13px; padding:11px 18px; border-bottom:1px solid var(--border); }
-.prog-ah-row:last-of-type{ border-bottom:none; }
-.prog-ah-ic{ flex:none; width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; }
-.prog-ah-v{ font-size:15px; font-weight:var(--fw-semibold); color:var(--fg); }
-.prog-ah-v small{ font-size:12px; }
-.prog-proj{ display:flex; align-items:baseline; gap:10px; }
-.prog-proj-v{ font-family:var(--font-serif); font-size:38px; font-weight:var(--fw-medium); line-height:1; color:var(--primary-active); }
-.prog-proj-v small{ font-size:17px; color:var(--fg-tertiary); margin-left:2px; }
-.prog-proj-when{ font-size:14px; color:var(--fg-secondary); }
 .prog-disclaimer{ text-align:center; font-size:12px; color:var(--fg-tertiary); margin:20px 12px 4px; }
+
+/* ── ENG-1525 · Progress hierarchy v1 — 5 sections, one tinted hero on a flat field ── */
+.prog-hero{ background:var(--hero-tint); border:1px solid var(--hero-tint-border); border-radius:var(--radius-card-lg); box-shadow:none; }
+.prog-hero-kg{ font-family:var(--font-serif); font-size:40px; font-weight:var(--fw-medium); line-height:1; letter-spacing:-0.02em; margin-top:6px; }
+.prog-hero-kg small{ font-size:17px; font-weight:400; color:var(--fg-secondary); margin-left:3px; }
+.prog-rate{ display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:var(--fw-semibold); margin-top:7px; }
+.prog-rate.is-toward{ color:var(--success); }
+.prog-rate.is-away{ color:var(--warning); }   /* direction-aware: away-from-goal is amber, never red */
+.prog-proj-line{ font-size:13.5px; line-height:1.5; color:var(--fg-secondary); margin-top:12px; }
+.prog-proj-line b{ color:var(--fg); font-family:var(--font-serif); font-size:15.5px; }
+.prog-hero-caption{ font-size:11.5px; color:var(--fg-secondary); margin-top:6px; }
+.prog-conf{ font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--success); } /* confidence = bare sage overline, not a pill */
+.prog-eq{ display:flex; align-items:baseline; gap:6px; font-size:13px; color:var(--fg-secondary); margin-top:8px; flex-wrap:wrap; }
+.prog-eq b{ color:var(--fg); font-weight:var(--fw-semibold); }
+.prog-streak{ display:flex; align-items:center; gap:9px; margin-top:14px; padding-top:13px; border-top:1px solid var(--border); font-size:12.5px; color:var(--fg-secondary); }
+.prog-streak b{ color:var(--fg); }
+.prog-verdict{ font-family:var(--font-serif); font-size:19px; line-height:1.4; color:var(--fg); margin-top:8px; text-wrap:pretty; }
+.prog-bc-tiles{ display:flex; gap:10px; margin-top:12px; }
+.prog-bc-tile{ flex:1; background:var(--bg-secondary); border-radius:var(--radius-card); padding:12px 14px; }
+.prog-bc-v{ font-family:var(--font-serif); font-size:21px; font-weight:var(--fw-semibold); }
+.prog-bc-l{ font-size:11px; color:var(--fg-tertiary); margin-top:2px; }
+.prog-bc-teaser{ position:relative; margin-top:12px; border-radius:var(--radius-card); overflow:hidden; border:1px solid var(--border); }
+.prog-bc-teaser svg{ display:block; filter:blur(3px) saturate(.6); opacity:.7; }
+.prog-bc-veil{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; background:color-mix(in srgb, var(--card) 45%, transparent); color:var(--fg-secondary); font-size:12.5px; font-weight:var(--fw-semibold); }
+.creator-rail-cur{ font-size:10px; color:var(--fg-tertiary); letter-spacing:.02em; margin-top:-3px; } /* ENG-1535 — seeded profiles labelled as house-curated */
+.rd-pro{ font-size:9px; font-weight:700; letter-spacing:.08em; background:var(--clay); color:#fff; border-radius:5px; padding:2px 5px; margin-left:6px; vertical-align:1px; } /* ENG-1274 — est. cost per serving (Pro) */
+.scan-manual{ margin:14px auto 0; display:flex; align-items:center; gap:7px; background:rgba(255,255,255,.14); color:#fff; border:none; border-radius:9999px; padding:10px 18px; font-size:13.5px; font-weight:600; font-family:var(--font-sans); cursor:pointer; } /* ENG-1518 — pre-scan manual path */
 .trend-key .tnum{ margin-left:auto; color:var(--success); font-weight:var(--fw-semibold); }
 .prog-subhead{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:18px 0 12px; padding-top:14px; border-top:1px solid var(--border); }
 /* protein-floor reference line (restored chart detail) */
@@ -2530,7 +2626,7 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .w-sub-lead{ font-size:14px; color:var(--fg-tertiary); margin-bottom:24px; line-height:1.5; }
 
 /* discover: collections + section more */
-.w-ch-more{ font-size:13px; font-weight:var(--fw-semibold); color:var(--primary-active); cursor:pointer; }
+.w-ch-more{ font-size:13px; font-weight:var(--fw-semibold); color:var(--primary-active); cursor:pointer; background:none; border:none; padding:0; font-family:var(--font-sans); }
 .w-collections{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
 .w-collection{ aspect-ratio:1.4; border-radius:18px; padding:18px; display:flex; flex-direction:column; justify-content:flex-end; cursor:pointer; box-shadow:var(--shadow-card); transition:transform .18s var(--ease); }
 .w-collection:hover{ transform:translateY(-3px); }
@@ -2810,15 +2906,15 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 const { useState, useEffect, useRef, createContext, useContext } = React;
 
 const I = {
-  today:'<path d="M5 2v20M3 2v7a2 2 0 0 0 4 0V2"/><path d="M19 2c-1.7 0-3 1.8-3 4v6h3"/><path d="M19 2v20"/>',
-  plan:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 9h18M8 3v4M16 3v4"/>',
-  cook:'<path d="M12 6.5C10.5 5 8 4.5 5 5v13c3-.5 5.5 0 7 1.5 1.5-1.5 4-2 7-1.5V5c-3-.5-5.5 0-7 1.5z"/><path d="M12 6.5V20"/>',
-  progress:'<path d="M3 16l5-5 4 3 6-7"/><path d="M16 7h5v5"/>',
+  today:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+  plan:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/>',
+  cook:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  progress:'<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', minus:'<path d="M5 12h14"/>',
   check:'<path d="M20 6 9 17l-5-5"/>', x:'<path d="M18 6 6 18M6 6l12 12"/>',
   chevL:'<path d="M15 18l-6-6 6-6"/>', chevR:'<path d="M9 18l6-6-6-6"/>', chevD:'<path d="M6 9l6 6 6-6"/>',
   clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>',
-  flame:'<path d="M12 3c.5 2.5 2 4.4 3.8 5.9C17.6 10.4 18.5 12 18.5 14a6.5 6.5 0 1 1-13 0c0-1.1.4-2.2 1-3a2.5 2.5 0 0 0 2.5 2.5A2.5 2.5 0 0 0 11.5 11c0-1.3-.5-2-1-3-1-2 0-3.8 1.5-5z"/>',
+  flame:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
   scan:'<path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M7 8v8M10 8v8M13 8v8M16.5 8v8"/>',
   label:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>',
@@ -2836,7 +2932,7 @@ const I = {
   droplet:'<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>',
   steps:'<path d="M8 4c1.5 0 2.5 1.2 2.5 3 0 1.4-.3 2.6-.3 4 0 1.3 1 2 1 3.5S10 20 8.5 20 6 18.5 6 17s.5-2 .5-3.5S6 11 6 9c0-3 .8-5 2-5z"/><path d="M16.5 8c1.2 0 2 1 2 2.5 0 1.2-.3 2-.3 3 0 1 .8 1.6.8 2.8S18.2 19 17 19s-1.8-.8-1.8-2 .4-1.6.4-2.7-.4-1.8-.4-3.3S15.5 8 16.5 8z"/>',
   heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
-  bookmark:'<path d="M6 4h12v17l-6-4-6 4z"/>',
+  bookmark:'<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>',
   cart:'<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2 12.4a1 1 0 0 0 1 .8h9.4a1 1 0 0 0 1-.8L21 7H5.2"/>',
   wifi_off:'<path d="M5 12.5a10 10 0 0 1 14 0M8 15.5a6 6 0 0 1 8 0M2 2l20 20"/><circle cx="12" cy="18.5" r="1"/>',
   alert:'<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>',
@@ -2847,7 +2943,7 @@ const I = {
   link:'<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
   user:'<circle cx="12" cy="8" r="4"/><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
-  bell:'<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 19a2 2 0 0 0 4 0"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
   heart2:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
   scale:'<path d="M12 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/><path d="M5 21V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v13z"/><path d="M9 6.5h6"/>',
@@ -2866,11 +2962,11 @@ const I = {
   sprout:'<path d="M12 22V11M12 14c-3 0-5-2-5-5 3 0 5 2 5 5zM12 11c0-3 2-5 5-5 0 3-2 5-5 5z"/>',
   leaf:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/>',
   flag:'<path d="M4 22V4M4 4h11l-1.5 4L15 12H4"/>',
-  calendar:'<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  calendar:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/>',
   share:'<circle cx="6" cy="12" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="17" cy="18" r="2.4"/><path d="M8.1 10.9l6.8-3.8M8.1 13.1l6.8 3.8"/>',
   star:'<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z"/>',
   starFill:'<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z" fill="currentColor" stroke="none"/>',
-  sliders:'<path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  sliders:'<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
 };
 function Ic({n,s,st,cls}){ return React.createElement('svg',{width:s||20,height:s||20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.75,strokeLinecap:'round',strokeLinejoin:'round',className:cls,style:st,'aria-hidden':true,dangerouslySetInnerHTML:{__html:I[n]||''}}); }
 
@@ -3279,6 +3375,7 @@ function MacroCount({v,dur}){ return useCountUp(v, dur||820); }
 
 /* Macros — THREE layouts, switchable live via Tweaks */
 function MacroSection({sums, mg, variant, netCarbs, onMacro}){
+  const { premium } = useApp();
   const v = variant || 'tiles';
   const fib = Math.round(sums.c*0.13);
   const defs=[['Protein','p','protein','dumbbell',mg.p],[netCarbs?'Net carbs':'Carbs','c','carbs','wheat',mg.c],['Fat','f','fat','droplet',mg.f],['Fibre','fib','fiber','leaf',30]];
@@ -3297,8 +3394,10 @@ function MacroSection({sums, mg, variant, netCarbs, onMacro}){
       const SZ=86, cx=SZ/2, cy=SZ/2, N=36, p=Math.min(1,val(k)/goalv); const gid='mac-'+k;
       const cc=`var(--macro-${c})`, cl=`color-mix(in srgb, var(--macro-${c}) 52%, #fff)`;
       const track=[], lit=[];
+      // premium: the ring reads as a complete instrument even at low fill — tinted track + soft macro backdrop
+      const trackFill = premium ? `color-mix(in srgb, var(--macro-${c}) 28%, var(--ring-tick))` : 'var(--ring-tick)';
       for(let i=0;i<N;i++){ const ang=i*(360/N); const frac=i/N; const on=frac<=p+0.0001; const lead=on&&((i+1)/N)>p;
-        track.push(<rect key={'t'+i} x={cx-1.5} y={7} width={3} height={5} rx={1.5} fill="var(--ring-tick)" opacity="0.7" transform={`rotate(${ang} ${cx} ${cy})`}/>);
+        track.push(<rect key={'t'+i} x={cx-1.5} y={7} width={3} height={5} rx={1.5} fill={trackFill} opacity="0.7" transform={`rotate(${ang} ${cx} ${cy})`}/>);
         lit.push(<rect key={'l'+i} x={cx-1.5} y={5} width={3} height={9} rx={1.5} fill={`url(#${gid})`} transform={`rotate(${ang} ${cx} ${cy})`}
           filter={lead?`url(#${gid}-g)`:undefined}
           style={{opacity:on?1:0, transition:'opacity .4s var(--ease)', transitionDelay:(frac*0.8)+'s'}}/>); }
@@ -3310,6 +3409,7 @@ function MacroSection({sums, mg, variant, netCarbs, onMacro}){
                 <linearGradient id={gid} x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={cl}/><stop offset="100%" stopColor={cc}/></linearGradient>
                 <filter id={gid+'-g'} x="-180%" y="-180%" width="460%" height="460%"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
               </defs>
+              {premium && <circle cx={cx} cy={cy} r={SZ/2-9} fill={`var(--macro-${c}-soft)`} opacity="0.55"/>}
               {track}{lit}
             </svg>
             <span className="macror-v tnum"><MacroCount v={val(k)}/><small>g</small></span>
@@ -3468,7 +3568,7 @@ function WeeklySummary(){
 
 /* ════════════ TODAY (full realistic scroll stack) ════════════ */
 function Today(){
-  const { scenarioKey, open, toast, ringStyle, macroStyle, bodyNeutral, netCarbs } = useApp();
+  const { scenarioKey, open, toast, ringStyle, macroStyle, bodyNeutral, netCarbs, premium } = useApp();
   const [calView,setCalView] = RS('remaining');
   const [selDay,setSelDay] = RS(18);
   const week = [['M',16],['T',17],['W',18],['T',19],['F',20],['S',21],['S',22]];
@@ -3609,7 +3709,18 @@ function Today(){
             <span className="rh-body">
               <span className="rh-eyebrow"><Ic n={guide.icon} s={13}/> {proteinLed?`Lead with ~${Math.min(50,Math.round(proteinGap/2/5)*5)}g protein`:'Fits your day'}</span>
               <span className="rh-title">{plannedRec? plannedRec.name : 'Chicken & avocado salad'}</span>
-              <span className="rh-meta tnum">~{slotBudget.toLocaleString()} kcal · {proteinLed?'closes your protein gap':'balanced & on pace'}</span>
+              {!premium && <span className="rh-meta tnum">~{slotBudget.toLocaleString()} kcal · {proteinLed?'closes your protein gap':'balanced & on pace'}</span>}
+              {premium && (<>
+                {/* Elevated decision module — the loop's pivot. Composition law (MacroFactor/Copilot/Flighty):
+                    leading numerals (target chips) + ONE verdict line (the eyebrow) + ONE action; tap-card opens the recipe. */}
+                <span className="rh-loop tnum">
+                  <span className="rh-loop-chip">{lo.toLocaleString()}–{hi.toLocaleString()} kcal</span>
+                  {proteinLed && <span className="rh-loop-chip">~{proteinThisMeal}g protein</span>}
+                </span>
+                <span className="rh-acts">
+                  <span className="btn btn--secondary btn--sm" role="button" onClick={(e)=>{e.stopPropagation(); toast('Logged to '+nextSlot+'.',{sub:'~'+slotBudget.toLocaleString()+' kcal · inside your target range.'});}}><Ic n="plus" s={15}/>Log this</span>
+                </span>
+              </>)}
             </span>
           </button>
         )}
@@ -3963,6 +4074,8 @@ function Barcode(){
     <div className="scanview">
       <div className="scan-top"><button className="icon-btn" style={{background:'rgba(255,255,255,.16)',color:'#fff'}} onClick={pop} aria-label="Close"><Ic2 n="x" s={19}/></button><span>Scan a barcode</span><div style={{width:40}}></div></div>
       <div className="scan-frame"><div className="scan-corners"></div><div className="scan-laser"></div></div>
+      {/* ENG-1518 — manual path is visible BEFORE a failed scan (crumpled labels, hard-denied camera) */}
+      <button className="scan-manual" onClick={()=>setPhase('add')}>Enter barcode or details manually</button>
       <div className="scan-result">
         <div className="state__icon is-error" style={{margin:'0 auto 12px'}}><Ic2 n="alert" s={24}/></div>
         <div className="state__title" style={{color:'#fff'}}>New barcode</div>
@@ -4158,7 +4271,7 @@ function MealEdit(){
 
 /* ════ COOK (editorial recipe library) ════ */
 function Cook(){
-  const { open, toast } = useApp();
+  const { open, toast, premium } = useApp();
   const [filter,setFilter]=RS('All');
   const [scope,setScope]=RS('mine'); // mine (cookbook) | discover
   const [following,setFollowing]=RS({Priya:true});
@@ -4181,7 +4294,7 @@ function Cook(){
         {r.imported && <span className="rcard-src">{r.imported}</span>}
       </div>
       <div className="rcard-name">{r.name}</div>
-      <div className="rcard-meta tnum">{r.kcal? r.kcal+' kcal · '+r.p+'g P' : 'Nutrition pending'} · {r.time}m</div>
+      <div className="rcard-meta tnum">{/* demo threshold — the spec (Constitution Rule 10) derives fit from LIVE targets in the app build */}{premium && r.kcal && r.kcal<=620 && (r.p||0)>=25 ? <span className="fit-tag is-fit">✓ Fits your day</span> : null}{r.kcal? r.kcal+' kcal · '+r.p+'g P' : 'Nutrition pending'} · {r.time}m</div>
     </button>
   );
   return (
@@ -4201,12 +4314,14 @@ function Cook(){
         const EATOUT=[['Dishoom','Chicken ruby',560,'Indian'],["Nando's",'½ chicken + salad',610,'Grill'],['Wagamama','Teriyaki chicken',680,'Asian'],['Pret','Chicken & avo wrap',480,'Café']];
         const CREATORS=[['Priya Patel','a'],['Marcus Chen','b'],['Sofia Romano','c'],['Theo Blake','d'],['Aisha Khan','e']];
         return (<>
-          <div className="section-head" style={{marginTop:2}}><div><h2 style={{fontSize:18,margin:0}}>Explore recipes from</h2><div className="meal-sub" style={{marginTop:1}}>Cooks worth following</div></div></div>
+          {/* ENG-1535 — seeded profiles are labelled house collections until real creators land */}
+          <div className="section-head" style={{marginTop:2}}><div><h2 style={{fontSize:18,margin:0}}>Explore recipes from</h2><div className="meal-sub" style={{marginTop:1}}>Collections curated by the Sloe kitchen</div></div></div>
           <div className="creator-rail">
             {CREATORS.map((c,i)=>(
               <button className="creator-chip" key={i} onClick={()=>open('creator', c[0])}>
                 <span className="creator-rail-av" style={{background:TINT2[c[1]]}}>{c[0][0]}</span>
                 <span className="creator-rail-n">{c[0].split(' ')[0]}</span>
+                <span className="creator-rail-cur">Sloe Kitchen</span>
               </button>
             ))}
           </div>
@@ -4221,7 +4336,10 @@ function Cook(){
               <div className="cuisine-rail">
                 {CUISINES.map(([c,t],i)=>(
                   <button className={'cuisine-chip'+(cuisine===c?' on':'')} key={c} onClick={()=>setCuisine(c)}>
-                    <span className="cuisine-chip-ph" style={{background:cuisine===c?'var(--primary)':TINT2[t]}}>{c==='All'?<Ic2 n="sparkles" s={17}/>:<span className="cuisine-chip-i">{c[0]}</span>}</span>
+                    {/* premium: duotone photo tiles (one graded base image = designed texture, not fake cuisine photos) replace the letter monograms */}
+                    <span className="cuisine-chip-ph" style={premium
+                      ? {background:`linear-gradient(160deg, rgba(59,42,77,${(0.32+(i%3)*0.1).toFixed(2)}), rgba(36,23,51,${(0.58+(i%3)*0.08).toFixed(2)})), url(${HIMG}) ${['left','center','right'][i%3]} center / cover`}
+                      : {background:cuisine===c?'var(--primary)':TINT2[t]}}>{c==='All'?<Ic2 n="sparkles" s={17}/>:(premium?null:<span className="cuisine-chip-i">{c[0]}</span>)}</span>
                     <span className="cuisine-chip-n">{c}</span>
                   </button>
                 ))}
@@ -4231,7 +4349,7 @@ function Cook(){
                   <button className="cuisine-card" key={r.id} onClick={()=>open('recipe',r.id)}>
                     <span className="cuisine-card-ph" style={{background:`url(${r.photo}) center/cover`}}><span className="cuisine-card-time">{r.time} min</span></span>
                     <span className="cuisine-card-n">{r.name}</span>
-                    <span className="cuisine-card-m tnum">{r.kcal} kcal · {r.p}g P</span>
+                    <span className="cuisine-card-m tnum">{premium && r.kcal && r.kcal<=620 && (r.p||0)>=25 && <span className="fit-tag is-fit">✓ Fits</span>}{r.kcal} kcal · {r.p}g P</span>
                   </button>
                 ))}
               </div>
@@ -4337,7 +4455,7 @@ function RecipeDetail(){
           <span className="rd-kicker">{kicker}</span>
           {official && <span className="rd-official"><Ic2 n="check" s={12}/>Official</span>}
           <h1>{r.name}</h1>
-          <div className="rd-meta"><span><Ic2 n="clock" s={14}/>{r.time} min</span>{r.kcal && <span><Ic2 n="flame" s={14}/>{Math.round(r.kcal*k)} kcal</span>}<span><Ic2 n="utensils" s={14}/>Serves {serv}</span></div>
+          <div className="rd-meta"><span><Ic2 n="clock" s={14}/>{r.time} min</span>{r.kcal && <span><Ic2 n="flame" s={14}/>{Math.round(r.kcal*k)} kcal</span>}<span><Ic2 n="utensils" s={14}/>Serves {serv}</span><span>≈ £1.60 / serving<span className="rd-pro">PRO</span></span>{/* ENG-1274 */}</div>
         </div>
       </div>
       <div className="rd-body">
@@ -4513,7 +4631,7 @@ function CookMode(){
 
 /* ── unified importer: one input, auto-detects type (recipe / reel / collection / plan / MFP) ── */
 function ImportFlow(){
-  const { close, open, toast } = useApp();
+  const { close, open, toast, premium } = useApp();
   const [phase,setPhase]=RS('input'); // input | loading | single | multi | mfp | fail
   const [val,setVal]=RS('');
   const [picked,setPicked]=RS({0:true,1:true,2:true,3:true,4:true});
@@ -4564,7 +4682,13 @@ function ImportFlow(){
         {phase==='single' && (<>
           <div className="import-preview">
             <div className="ip-photo" style={{background:T_IMPORT}}><span className="rcard-src">{det?det.label:'Imported'}</span></div>
-            <div className="ip-body"><div className="rd-kicker" style={{color:'var(--primary)'}}>Imported · serves 4</div><div className="ip-name">Marry-me chicken</div><div className="meal-sub tnum">35 min · 8 ingredients found</div></div>
+            <div className="ip-body"><div className="rd-kicker" style={{color:'var(--primary)'}}>Imported · serves 4</div><div className="ip-name">Marry-me chicken</div><div className="meal-sub tnum">35 min · 8 ingredients found</div>
+              {premium && (<>
+                {/* The bridge, at the capture moment: weighed macros + confidence + fit — trust shown, not claimed */}
+                <div className="ip-trust tnum"><b>612 kcal</b> · 41g P · 18g C · 38g F <span className="ip-trust-per">per serving</span></div>
+                <div className="ip-trust-sub">Weighed from 8 ingredients · 2 to confirm below</div>
+                <div className="rh-loop" style={{marginTop:8}}><span className="fit-tag is-fit">✓ Fits a dinner this week</span></div>
+              </>)}</div>
           </div>
           <div className="card review-banner" style={{marginTop:14}}>
             <div className="rb-ic"><Ic2 n="alertTri" s={20}/></div>
@@ -4653,7 +4777,7 @@ const PLAN_WEEK={
 };
 if(typeof window!=='undefined') window.SloePlanWeek = PLAN_WEEK;
 function Plan(){
-  const { open, planState, setPlanState, toast, household } = useApp();
+  const { open, planState, setPlanState, toast, household, premium } = useApp();
   const [day,setDay]=RS('Thu');
   const [cooked,setCooked]=RS({});            // `${day}-${slot}` → true
   const [act,setAct]=RS(null);                // active meal action sheet
@@ -4716,7 +4840,9 @@ function Plan(){
           <div className="planx-verdict">
             <span className="planx-v-dot" style={{background:daysHit>=7?'var(--success)':'var(--warning)'}}></span>
             <span className="planx-v-t">{daysHit>=7?'Every day lands on target':`On track — ${daysHit} of 7 days land`}</span>
-            {daysHit<7 && <span className="planx-v-s">{7-daysHit} {7-daysHit===1?'day needs':'days need'} a meal or swap</span>}
+            {daysHit<7 && (premium
+              ? <button className="link planx-v-s" style={{fontSize:13}} onClick={()=>{ const lc=Object.values(locked).filter(Boolean).length; setPlanState('generating'); setTimeout(()=>{ setPlanState('ready'); toast(`Filled the gaps — ${7-daysHit} ${7-daysHit===1?'day':'days'} fixed${lc?`, kept ${lc} locked`:''}.`); },1500); }}>Fix {7-daysHit} {7-daysHit===1?'day':'days'} — fill the gaps <I3 n="chevR" s={13} st={{verticalAlign:'-2px'}}/></button>
+              : <span className="planx-v-s">{7-daysHit} {7-daysHit===1?'day needs':'days need'} a meal or swap</span>)}
           </div>
         </div>
         );})()}
@@ -4760,6 +4886,7 @@ function Plan(){
               <div className="plan-card-body">
                 <div className="spread"><span className="overline">{FULLDAY[d]} {n}</span><span className="tnum" style={{fontSize:12,color:'var(--fg-tertiary)'}}>{m.kcal?m.kcal+' kcal':'—'}</span></div>
                 <div className="plan-card-name">{m.name}</div>
+                {premium && m.kcal ? <span className="plan-src">From your cookbook</span> : null}
                 {m.note==='batch' ? <button className="batch-chip" onClick={(e)=>{e.stopPropagation();open('batch');}}><I3 n="flame" s={12}/>Batch</button> : m.note && <span className="queued" style={{background:'var(--accent-frost-mist)',color:'var(--primary-active)'}}>{m.note}</span>}
               </div>
             </div>
@@ -4791,6 +4918,7 @@ function Plan(){
             <div className="plan-card-body">
               <div className="spread"><span style={{display:'inline-flex',alignItems:'center'}}><span className="overline">{m.slot}</span>{locked[day+'-'+m.slot] && <span className="plan-lock"><I3 n="lock" s={10}/></span>}</span><span className="tnum" style={{fontSize:12,color:'var(--fg-tertiary)'}}>{m.kcal?m.kcal+' kcal':'—'}</span></div>
               <div className="plan-card-name">{m.name}</div>
+              {premium && m.kcal ? <span className="plan-src">From your cookbook</span> : null}
               {m.note==='batch' ? <button className="batch-chip" onClick={(e)=>{e.stopPropagation();open('batch');}}><I3 n="flame" s={12}/>Batch · covers 3 meals</button> : m.note && <span className="queued" style={{background:'var(--accent-frost-mist)',color:'var(--primary-active)'}}>{m.note}</span>}
             </div>
             <button className="icon-btn icon-btn--ghost plan-card-opt" onClick={(e)=>{e.stopPropagation();setAct({m,i});setMode('menu');setPortion(1);}} aria-label="Meal options"><I3 n="shuffle" s={17}/></button>
@@ -4931,84 +5059,143 @@ window.PROG = {
   dayK: [['Mon',1690],['Tue',1820],['Wed',2120],['Thu',1640],['Fri',1780],['Sat',1380],['Sun',1710]],
   adherence: [['Protein','86','var(--macro-protein)'],['Carbs','78','var(--macro-carbs)'],['Fat','88','var(--macro-fat)'],['Fibre','64','var(--macro-fiber)']],
   health: { steps:'8,420', active:'412', resting:'1,490' },
+  bodycomp: { fat:'24.1%', fatFrom:'Withings scale · this morning', lean:'59.2 kg' },   // ENG-1525 delta 2: user-owned values are always free
+  streak: { days:12, freezes:2 },                                                       // §2 microrow; freezes reachable (delta 7)
+  weekScore: 79,                                                                        // ENG-992 — weekly nutrition-quality composite
+  // §1 chart axis labels follow the global period window (no fake centered month string)
+  axis: { D:['Mon','Thu','Sun'], W:['Mon','Wed','Fri','Sun'], M:['14 Jun','28 Jun','12 Jul'], '6M':['Feb','Apr','Jun'], Y:['Aug','Nov','Feb','May'] },
+  avgLabel: { D:'today', W:'7-day average', M:'30-day average', '6M':'6-month average', Y:'12-month average' },
 };
 function Progress(){
-  const { open, progressState, setProgressState, bodyNeutral } = useApp();
-  const [period,setPeriod]=RS('W');
+  /* ENG-1525 — 5 prioritised sections, one tinted hero on a flat field ("story, not dashboard").
+     §1 Trajectory (hero, goal-conditional) · §2 This week · §3 Energy · §4 Body composition · §5 Your week. */
+  const { open, progressState, bodyNeutral, toast, premium } = useApp();
+  const [period,setPeriod]=RS('W');       // global window — drives §1 chart + §3 averaging; §2 pins to the current week
   const [wView,setWView]=RS('trend');     // trend | scale
   const [showHow,setShowHow]=RS(false);
   const P=PROG, lo=1630, hi=2030;
-  const deficit=P.maintenance-P.avgIntake;
+  const deficit=P.maintenance-P.avgIntake;                     // maintenance − intake = deficit
   const onTarget=P.dayK.filter(([,v])=>v>=lo&&v<=hi).length;
-  const projWeeks=8, projKg=+(P.weight.current + P.weight.rate*projWeeks).toFixed(1);
+  const adhAvg=Math.round(P.adherence.reduce((s,r)=>s+ +r[1],0)/P.adherence.length);
+  const toward=(P.weight.rate*(P.weight.goalW-P.weight.current))>0;  // direction-aware, never raw-sign
+  const axis=P.axis[period]||P.axis.W;
+  const StreakRow=()=>(
+    <div className="prog-streak"><I3 n="flame" s={15} st={{color:premium?'var(--primary-active)':'var(--clay)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
+  );
+  const WeekBars=()=>(
+    <div style={{marginTop:14}}>
+      <div style={{position:'relative',height:84}}>
+        {!bodyNeutral && <div style={{position:'absolute',left:0,right:0,bottom:Math.round(P.goal/2300*84),height:0,borderTop:'1.5px dashed var(--fg-secondary)',opacity:.4}}></div>}
+        <div style={{position:'absolute',left:0,right:0,bottom:0,height:84,display:'flex',alignItems:'flex-end',gap:7}}>
+          {P.dayK.map(([d,v],i)=>(
+            <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',height:'100%'}}>
+              {!bodyNeutral && <span className="tnum" style={{fontSize:9,color:'var(--fg-tertiary)',marginBottom:3}}>{(v/1000).toFixed(2)}k</span>}
+              <div style={{width:'100%',maxWidth:28,height:Math.round(v/2300*84),background:(()=>{const c=(!bodyNeutral&&v>hi)?'var(--warning)':'var(--success)';return premium?`linear-gradient(180deg, color-mix(in srgb, ${c} 62%, var(--card)) 0%, ${c} 90%)`:c;})(),borderRadius:'6px 6px 3px 3px',...(i===6?{outline:'1.5px solid var(--fg-secondary)',outlineOffset:2}:{})}}></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{display:'flex',gap:7,marginTop:7}}>{P.dayK.map(([d],i)=><span key={i} style={{flex:1,textAlign:'center',fontSize:11,color:i===6?'var(--fg)':'var(--fg-tertiary)',fontWeight:i===6?600:400}}>{d[0]}</span>)}</div>
+    </div>
+  );
   return (
     <div className="screen-scroll grouped"><div className="pad t-rise">
       <div className="t-head"><div><div className="overline">Your trends</div><h1 style={{margin:'2px 0 0',fontSize:26}}>Progress</h1></div>
-        <div className="segmented" style={{transform:'scale(.92)'}}>{['W','M','Y'].map(p=><button key={p} aria-pressed={period===p} onClick={()=>setPeriod(p)}>{p==='W'?'Week':p==='M'?'Month':'Year'}</button>)}</div>
+        <div className="segmented" style={{transform:'scale(.92)'}}>{['D','W','M','6M','Y'].map(p=><button key={p} aria-pressed={period===p} onClick={()=>setPeriod(p)}>{p}</button>)}</div>
       </div>
 
       {progressState==='empty' ? (<>
-        <div className="card" style={{marginTop:6}}>
-          <div className="overline" style={{marginBottom:10}}>Weekly recap</div>
+        {/* Sparse state IS the skeleton (delta 6) — hero slot keeps the trajectory grammar; its CTA is the screen's one filled CTA */}
+        <div className="card prog-hero" style={{marginTop:6}}>
+          <div className="overline">Weight trajectory</div>
+          <div className="state" style={{padding:'12px 0 4px'}}>
+            <div className="state__title" style={{fontSize:17}}>No weigh-ins yet</div>
+            <div className="state__body">Add your first weight and Sloe starts an honest trend — smoothed, never judged day-to-day.</div>
+            <div className="state__action"><button className="btn btn--primary" onClick={()=>open('weighttrends')}><I3 n="plus" s={16}/>Log your first weigh-in</button></div>
+          </div>
+        </div>
+        <div className="card" style={{marginTop:14}}>
+          <div className="overline" style={{marginBottom:10}}>This week</div>
           <div className="state" style={{padding:'14px 0'}}>
             <div className="state__icon is-offline"><I3 n="progress" s={26}/></div>
             <div className="state__title">A little more to go</div>
-            <div className="state__body">Log a few more days and your trends, recap and weight projection appear here.</div>
+            <div className="state__body">Log a few more days and your trends, recap and projection appear here.</div>
           </div>
-        </div>
-        <div className="card" style={{marginTop:14}}><div className="overline" style={{marginBottom:10}}>Weight</div>
-          <div className="state" style={{padding:'10px 0'}}><div className="state__title" style={{fontSize:16}}>No weigh-ins yet</div><div className="state__body">Add your first weight to start a trend.</div><div className="state__action"><button className="btn btn--secondary btn--sm" onClick={()=>open('weighttrends')}><I3 n="plus" s={16}/>Log weight</button></div></div>
         </div>
         <div className="safe-bottom"></div>
       </>) : (<>
-        {/* 1 · THIS WEEK — narrative insight (single maintenance figure) */}
-        <div className="card recap animate-up" style={{marginTop:6}}>
-          <div className="spread"><span className="overline"><I3 n="sparkles" s={13} st={{verticalAlign:'-2px',marginRight:5,color:'var(--primary)'}}/>This week</span><button className="link" onClick={()=>open('recap')}>Full recap</button></div>
-          {bodyNeutral ? (
-            <div className="prog-narr">A steady, consistent week — your routine is doing the work.</div>
-          ) : (
-            <div className="prog-narr">Maintenance held steady at <b>{P.maintenance.toLocaleString()} kcal</b>, and you averaged <b>{P.avgIntake.toLocaleString()}</b> — a <b>{deficit} kcal</b> daily deficit. Keep going.</div>
-          )}
-          <div className="prog-chips"><span className="prog-chip is-good"><I3 n="check" s={12}/>High confidence</span><span className="prog-chip">{onTarget}/7 days on target</span></div>
-        </div>
-
-        {/* 2 · WEIGHT — hero + Trend/Scale + corridor + stat row */}
-        <div className="card animate-up" style={{marginTop:14}}>
-          <div className="spread" style={{marginBottom:6}}>
-            {bodyNeutral
-              ? <div><div className="overline">Weight</div><div className="prog-hero-v" style={{fontSize:22}}>Trending gently down</div></div>
-              : <div><div className="overline">Weight</div><div className="prog-hero-v tnum" style={{fontSize:34}}>{P.weight.current}<small>kg</small></div><div className="prog-hero-d"><I3 n="progress" s={14} st={{color:'var(--success)',verticalAlign:'-2px'}}/> {P.weight.weekDelta} kg this week · {P.weight.toGoal} to goal</div></div>}
-            <div className="segmented" style={{flex:'none',transform:'scale(.88)'}}><button aria-pressed={wView==='trend'} onClick={()=>setWView('trend')}>Trend</button><button aria-pressed={wView==='scale'} onClick={()=>setWView('scale')}>Scale</button></div>
+        {/* §1 · TRAJECTORY — the one tinted hero (ENG-1525). Goal-conditional (delta 1): Calm / weight-opt-out promotes §2 instead */}
+        {!bodyNeutral && (
+        <div className="card prog-hero animate-up" style={{marginTop:6}}>
+          <div className="spread">
+            <span className="overline">Weight trajectory</span>
+            <div className="segmented" style={{flex:'none',transform:'scale(.85)'}}><button aria-pressed={wView==='trend'} onClick={()=>setWView('trend')}>Trend</button><button aria-pressed={wView==='scale'} onClick={()=>setWView('scale')}>Scale</button></div>
           </div>
-          <svg className="trendline" viewBox="0 0 300 90" preserveAspectRatio="none">
-            {!bodyNeutral && wView==='trend' && <path d="M0,10 L300,40 L300,58 L0,26 Z" fill="var(--success-soft)"/>}
-            {!bodyNeutral && wView==='trend' && <line x1="0" y1="60" x2="300" y2="60" stroke="var(--success)" strokeWidth="1" strokeDasharray="3 5" opacity="0.5"/>}
-            {wView==='scale'
-              ? <polyline points="0,30 50,22 100,40 150,18 200,34 250,26 300,38" fill="none" stroke="var(--macro-protein)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
-              : <polyline points="0,20 50,24 100,18 150,30 200,28 250,40 300,38" fill="none" stroke="var(--macro-protein)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>}
+          <div className="prog-hero-kg tnum">{P.weight.current}<small>kg</small></div>
+          <div className={'prog-rate '+(toward?'is-toward':'is-away')}>{P.weight.rate<0?'↓':'↑'} {Math.abs(P.weight.rate)} kg/wk · {toward?'toward your goal':'away from your goal'}</div>
+          <svg viewBox="0 0 300 112" width="100%" preserveAspectRatio="none" style={{display:'block',height:112,marginTop:10}}>
+            <defs>
+              <linearGradient id="ph-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="var(--primary-active)"/><stop offset="100%" stopColor="var(--primary)"/></linearGradient>
+              <linearGradient id="ph-area" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--primary)" stopOpacity="0.15"/><stop offset="100%" stopColor="var(--primary)" stopOpacity="0"/></linearGradient>
+              <filter id="ph-glow" x="-140%" y="-140%" width="380%" height="380%"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <rect x="0" y="82" width="300" height="13" rx="4" fill="var(--success-soft)" opacity=".5"/>
+            <line x1="0" y1="88" x2="300" y2="88" stroke="var(--success)" strokeWidth="1" strokeDasharray="3 5" opacity=".6"/>
+            <text x="298" y="80" textAnchor="end" fontSize="9.5" fontWeight="600" fill="var(--success)" fontFamily="var(--font-sans)">Goal {P.weight.goalW}</text>
+            {premium && <path d="M0,20 C70,28 140,42 200,52 C226,56 248,58 262,59 L262,110 L0,110 Z" fill="url(#ph-area)"/>}
+            {/* Withings lesson: premium keeps raw dots + smoothed line + goal line CO-VISIBLE (toggle remains for Current) */}
+            {wView==='scale' && !premium && <polyline points="0,26 44,18 88,36 132,26 176,44 220,38 262,52" fill="none" stroke="var(--fg-tertiary)" strokeWidth="1.2" opacity=".55"/>}
+            {(premium || wView==='scale') && [[0,26],[44,18],[88,36],[132,26],[176,44],[220,38],[262,52]].map(([cx,cy],i)=><circle key={i} cx={cx} cy={cy} r="2.4" fill="var(--fg-tertiary)" opacity={premium?'.38':'.6'}/>)}
+            <path d="M0,20 C70,28 140,42 200,52 C226,56 248,58 262,59" fill="none" stroke={premium?'url(#ph-line)':'var(--primary)'} strokeWidth="2.5" strokeLinecap="round"/>
+            <path d="M262,59 L300,66" fill="none" stroke="var(--primary-active)" strokeWidth="2" strokeDasharray="4 4" opacity=".75"/>
+            <circle cx="262" cy="59" r="4.2" fill="var(--primary)" stroke="var(--card)" strokeWidth="1.6" filter={premium?'url(#ph-glow)':undefined}/>
           </svg>
-          <div className="prog-statrow">
-            {[['Start',P.weight.start+' kg'],['Current',P.weight.current+' kg'],['Goal',P.weight.goalW+' kg'],['Rate',P.weight.rate+' kg/wk']].map(([l,v])=>(
-              <div key={l}><div className="prog-stat-l">{l}</div><div className="prog-stat-v tnum">{bodyNeutral&&(l==='Rate'||l==='Goal')?'—':v}</div></div>
-            ))}
-          </div>
+          <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}>{axis.map((m)=><span key={m} className="tnum" style={{fontSize:10.5,color:'var(--fg-tertiary)'}}>{m}</span>)}</div>
+          <div className="prog-proj-line"><b>{P.weight.toGoal} kg to go</b> · at this pace ~early October — an estimate, not a promise.</div>
+          <div className="prog-hero-caption">Started {P.weight.start} kg · goal {P.weight.goalW} kg · the smoothed trend, not scale noise</div>
           <div className="prog-wactions">
-            <button className="btn btn--secondary btn--sm" onClick={()=>open('weighttrends')}><I3 n="plus" s={15}/>{bodyNeutral?'Note':'Log weight'}</button>
+            <button className="btn btn--secondary btn--sm" onClick={()=>open('weighttrends')}><I3 n="plus" s={15}/>Log weight</button>
             <button className="link" onClick={()=>open('weighttrends')}>All measurements <I3 n="chevR" s={14} st={{verticalAlign:'-2px'}}/></button>
           </div>
         </div>
+        )}
 
-        {/* 3 · ENERGY BALANCE — intake / maintenance / deficit, one source */}
-        {!bodyNeutral && (
-        <div className="card animate-up" style={{marginTop:14}}>
-          <div className="overline" style={{marginBottom:12}}>Energy balance · 7-day average</div>
-          <div className="prog-balance">
-            <div><div className="prog-bal-v tnum">{P.avgIntake.toLocaleString()}</div><div className="prog-bal-l">Avg intake</div></div>
-            <span className="prog-bal-op">−</span>
-            <div><div className="prog-bal-v tnum" style={{color:'var(--success)'}}>{P.maintenance.toLocaleString()}</div><div className="prog-bal-l">Maintenance</div></div>
-            <span className="prog-bal-op">=</span>
-            <div><div className="prog-bal-v tnum" style={{color:'var(--primary-active)'}}>−{deficit}</div><div className="prog-bal-l">Deficit/day</div></div>
+        {/* §2 · THIS WEEK — pinned to the current week whatever the global window (delta 4); promotes to the hero slot under Calm (delta 1).
+            Constitution Rule 2 (Elevated): sections are titled by the serif section-head OUTSIDE the card; the calm-promoted hero keeps its instrument label. */}
+        {premium && !bodyNeutral && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>This week</h2><span className="prog-chip" title="Weekly nutrition-quality composite">Week score {P.weekScore}</span></div>}
+        <div className={'card animate-up'+(bodyNeutral?' prog-hero':'')} style={{marginTop:bodyNeutral?6:(premium?0:14)}}>
+          {(!premium || bodyNeutral) && <div className="spread"><span className="overline">This week</span>{!bodyNeutral && <span className="prog-chip" title="Weekly nutrition-quality composite">Week score {P.weekScore}</span>}</div>}
+          {bodyNeutral
+            ? <div className="prog-verdict">A steady, consistent week — your routine is doing the work.</div>
+            : <div style={{fontSize:15,lineHeight:1.5,color:'var(--fg-secondary)',marginTop:8}}><b style={{color:'var(--fg)'}}>{onTarget} of 7 days</b> in your calorie range · macro adherence averaged <b style={{color:'var(--fg)'}}>{adhAvg}%</b>.</div>}
+          <WeekBars/>
+          <div style={{marginTop:14}}>
+            {P.adherence.map(([l,pct,c])=>(
+              <div key={l} className="prog-adh-row">
+                <div className="spread" style={{marginBottom:5}}><span className="prog-adh-l">{l}</span>{!bodyNeutral && <span className="tnum prog-adh-v">{pct}%</span>}</div>
+                <div className="prog-adh-track"><div className="prog-adh-fill" style={{width:(bodyNeutral?60:pct)+'%',background:c}}></div></div>
+              </div>
+            ))}
           </div>
+          <StreakRow/>
+        </div>
+
+        {/* §3 · ENERGY — the deficit is the one number; the equation is support: maintenance − intake = deficit */}
+        {!bodyNeutral && (<>
+        {premium && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>Energy</h2><span className="prog-conf">High confidence</span></div>}
+        <div className="card animate-up" style={{marginTop:premium?0:14}}>
+          {!premium && <div className="spread"><span className="overline">Energy</span><span className="prog-conf">High confidence</span></div>}
+          <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:premium?2:10}}>
+            <span className="tnum" style={{fontFamily:'var(--font-serif)',fontSize:premium?28:32,fontWeight:'var(--fw-medium)',lineHeight:1}}>{deficit}</span>
+            <span style={{fontSize:12.5,color:'var(--fg-secondary)'}}>kcal/day deficit · {P.avgLabel[period]||P.avgLabel.W}</span>
+          </div>
+          <div className="prog-eq tnum"><b>{P.maintenance.toLocaleString()}</b> maintenance − <b>{P.avgIntake.toLocaleString()}</b> intake = <b>{deficit}</b> · <span style={{color:'var(--success)',fontWeight:600}}>on plan for your cut</span></div>
+          <svg viewBox="0 0 300 46" width="100%" preserveAspectRatio="none" style={{display:'block',marginTop:12,height:46}}>
+            {premium && <defs><linearGradient id="exp-band" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--success)" stopOpacity="0.22"/><stop offset="100%" stopColor="var(--success)" stopOpacity="0.04"/></linearGradient></defs>}
+            <polygon points="0,20 60,19 120,21 180,18 240,22 300,16 300,30 240,32 180,28 120,29 60,25 0,24" fill={premium?'url(#exp-band)':'var(--success-soft)'} opacity={premium?1:.55}/>
+            <polyline points="0,22 60,22 120,25 180,23 240,27 300,23" fill="none" stroke="var(--success)" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <div className="prog-hero-caption" style={{color:'var(--fg-tertiary)'}}>Expenditure, adapting weekly — the band widens when confidence drops</div>
           <button className="prog-how" onClick={()=>setShowHow(v=>!v)}>How maintenance works <I3 n={showHow?'chevD':'chevR'} s={15} st={{verticalAlign:'-2px'}}/></button>
           {showHow && (
             <div className="prog-how-body">
@@ -5017,77 +5204,37 @@ function Progress(){
             </div>
           )}
         </div>
-        )}
+        </>)}
 
-        {/* 4 · DAILY CALORIES — per-day vs goal, on-target inline */}
-        <div className="card animate-up" style={{marginTop:14}}>
-          <div className="spread"><span className="overline">Daily calories</span><span className="tnum" style={{fontSize:12,color:'var(--fg-tertiary)'}}>{bodyNeutral?'vs your range':'vs '+P.goal.toLocaleString()+' goal'}</span></div>
-          {(()=>{ const maxK=2300, PH=112; const h=v=>Math.round(v/maxK*PH);
-            const cls=v=> v>hi?'over': v<lo?'under':'in';
-            const col={over:'var(--warning)',under:'var(--fg-tertiary)',in:'var(--success)'};
-            return (
-            <div style={{marginTop:12}}>
-              <div style={{position:'relative',height:PH}}>
-                <div style={{position:'absolute',left:30,right:0,bottom:h(lo),height:h(hi)-h(lo),background:'var(--success-soft)',opacity:.5,borderRadius:5}}></div>
-                <div style={{position:'absolute',left:30,right:0,bottom:h(P.goal),height:0,borderTop:'1.5px dashed var(--fg-secondary)',opacity:.5}}></div>
-                <span className="tnum" style={{position:'absolute',left:0,bottom:h(P.goal)-6,fontSize:9.5,color:'var(--fg-tertiary)'}}>{(P.goal/1000).toFixed(1)}k</span>
-                <div style={{position:'absolute',left:30,right:0,bottom:0,height:PH,display:'flex',alignItems:'flex-end',gap:7}}>
-                  {P.dayK.map(([d,v],i)=>(
-                    <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',height:'100%'}}>
-                      {!bodyNeutral && <span className="tnum" style={{fontSize:9,color:'var(--fg-tertiary)',marginBottom:3}}>{(v/1000).toFixed(2)}k</span>}
-                      <div style={{width:'100%',maxWidth:28,height:h(v),background:col[cls(v)],borderRadius:'6px 6px 3px 3px'}}></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{display:'flex',gap:7,marginTop:6,paddingLeft:30}}>{P.dayK.map(([d],i)=><span key={i} style={{flex:1,textAlign:'center',fontSize:11,color:'var(--fg-tertiary)'}}>{d[0]}</span>)}</div>
-            </div>
-            );})()}
-          <div className="prog-legend"><span><i className="pl-dot" style={{background:'var(--success)'}}></i>On target</span><span><i className="pl-dot" style={{background:'var(--warning)'}}></i>Over</span><span><i className="pl-dot" style={{background:'var(--fg-tertiary)'}}></i>Under</span></div>
-          <div className="prog-win"><span className="prog-win-ic"><I3 n="sparkles" s={16}/></span><span><b>{onTarget} on-target days this week.</b> Your most consistent week this month.</span></div>
-        </div>
-
-        {/* 5 · ADHERENCE — overall + per-macro */}
-        <div className="card animate-up" style={{marginTop:14}}>
-          <div className="spread" style={{marginBottom:4}}><span className="overline">Average adherence</span><span className="tnum" style={{fontSize:12,color:'var(--fg-tertiary)'}}>last 7 days</span></div>
-          {!bodyNeutral && <div className="prog-adh-big tnum">{Math.round(onTarget/7*100)}<small>%</small></div>}
-          <div style={{marginTop:6}}>
-            {P.adherence.map(([l,pct,c])=>(
-              <div key={l} className="prog-adh-row">
-                <div className="spread" style={{marginBottom:5}}><span className="prog-adh-l">{l}</span>{!bodyNeutral && <span className="tnum prog-adh-v">{pct}%</span>}</div>
-                <div className="prog-adh-track"><div className="prog-adh-fill" style={{width:(bodyNeutral?60:pct)+'%',background:c}}></div></div>
-              </div>
-            ))}
+        {/* §4 · BODY COMPOSITION — your own readings are always free (delta 2); the trend + analysis is the Pro layer */}
+        {premium && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>Body composition</h2><span style={{fontSize:12,color:'var(--fg-tertiary)'}}>{P.bodycomp.fatFrom}</span></div>}
+        <div className="card animate-up" style={{marginTop:premium?0:14}}>
+          {!premium && <div className="spread"><span className="overline">Body composition</span><span style={{fontSize:11.5,color:'var(--fg-tertiary)'}}>{P.bodycomp.fatFrom}</span></div>}
+          <div className="prog-bc-tiles">
+            <div className="prog-bc-tile"><div className="prog-bc-v tnum">{bodyNeutral?'—':P.bodycomp.fat}</div><div className="prog-bc-l">Body fat</div></div>
+            <div className="prog-bc-tile"><div className="prog-bc-v tnum">{bodyNeutral?'—':P.bodycomp.lean}</div><div className="prog-bc-l">Lean mass</div></div>
+          </div>
+          <div className="prog-bc-teaser">
+            <svg viewBox="0 0 300 64" width="100%" preserveAspectRatio="none" style={{height:64}}>
+              <path d="M0,18 C60,24 120,36 180,42 C230,46 270,49 300,50" fill="none" stroke="var(--primary)" strokeWidth="2.5"/>
+              <path d="M0,34 C60,37 120,44 180,48 C230,51 270,53 300,54" fill="none" stroke="var(--macro-fat)" strokeWidth="2"/>
+            </svg>
+            <div className="prog-bc-veil"><I3 n="lock" s={16}/><span>90-day trend &amp; analysis · Pro</span></div>
+          </div>
+          <div className="prog-wactions" style={{marginTop:12}}>
+            <button className="btn btn--outline btn--sm" onClick={()=>open('paywall')}>See your trends with Pro</button>
           </div>
         </div>
 
-        {/* 6 · APPLE HEALTH — activity rows feeding maintenance */}
-        <div className="card card--flush divide animate-up" style={{marginTop:14,padding:'16px 0 4px'}}>
-          <div className="overline" style={{margin:'0 18px 8px'}}>Apple Health</div>
-          {[['steps','Steps',P.health.steps,'/day','var(--fg-secondary)','var(--muted)'],['flame','Active energy',P.health.active,' kcal','var(--warning)','var(--warning-soft)'],['scale','Weight',P.weight.current+' kg','','var(--success)','var(--success-soft)']].map(([ic,t,v,u,tint,bg],i)=>(
-            <div className="prog-ah-row" key={i}>
-              <span className="prog-ah-ic" style={{background:bg,color:tint}}><I3 n={ic} s={16}/></span>
-              <span style={{flex:1}} className="meal-name">{t}</span>
-              <span className="tnum prog-ah-v">{bodyNeutral&&t!=='Weight'?'—':v}<small style={{color:'var(--fg-tertiary)',fontWeight:400}}>{u}</small></span>
-            </div>
-          ))}
-          <p className="insight-b" style={{margin:'10px 18px 14px',fontSize:12,color:'var(--fg-tertiary)'}}>Steps and active energy feed your maintenance estimate — that’s how your target adapts.</p>
-        </div>
-
-        {/* 7 · PROJECTED WEIGHT */}
-        {!bodyNeutral && (
-        <div className="card animate-up" style={{marginTop:14}}>
-          <div className="overline" style={{marginBottom:8,color:'var(--primary-active)'}}><span className="pl-dot" style={{background:'var(--primary-active)',display:'inline-block',marginRight:6,verticalAlign:'1px'}}></span>Projected weight</div>
-          <div className="prog-proj"><span className="tnum prog-proj-v">{projKg}<small>kg</small></span><span className="prog-proj-when">in ~{projWeeks} weeks</span></div>
-          <p className="insight-b" style={{margin:'6px 0 0'}}>If you hold this pace — averaging <b>{P.avgIntake.toLocaleString()} kcal/day</b> against a <b>{P.maintenance.toLocaleString()}</b> burn. Based on 7,700 kcal ≈ 1 kg. An estimate, not a promise.</p>
-        </div>
-        )}
-
-        {/* 8 · BODY COMPOSITION — Pro */}
-        <div className="card locked animate-up" style={{marginTop:14,overflow:'hidden'}}>
-          <div className="overline" style={{marginBottom:12}}>Body composition · trends</div>
-          <div className="macro-tiles" style={{filter:'saturate(.5)'}}><div className="macro-tile"><div className="mv tnum">—</div><div className="ml">Body fat</div></div><div className="macro-tile"><div className="mv tnum">—</div><div className="ml">Lean mass</div></div><div className="macro-tile"><div className="mv tnum">—</div><div className="ml">Trend</div></div></div>
-          <div className="locked__veil"><I3 n="lock" s={20}/><span style={{fontSize:13,fontWeight:600}}>Unlock with Pro</span></div>
+        {/* §5 · YOUR WEEK — one slimmed recap: serif verdict + one texture line + ghost Share (delta 7) */}
+        {premium && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>Your week</h2><button className="link" onClick={()=>open('recapstory')}>Full recap</button></div>}
+        <div className="card animate-up" style={{marginTop:premium?0:14}}>
+          {!premium && <div className="spread"><span className="overline"><I3 n="sparkles" s={13} st={{verticalAlign:'-2px',marginRight:5,color:'var(--primary)'}}/>Your week</span><button className="link" onClick={()=>open('recap')}>Full recap</button></div>}
+          <div className="prog-verdict">A steady, consistent week — your routine is doing the work.</div>
+          <div style={{fontSize:13,color:'var(--fg-secondary)',marginTop:8}}>Your most consistent week this month — Thursday was your best day.</div>
+          <div className="prog-wactions" style={{marginTop:14}}>
+            <button className="btn btn--outline btn--sm" onClick={()=>premium?open('recapstory'):toast('Your week card is ready to share.')}><I3 n="share" s={14}/>Share your week</button>
+          </div>
         </div>
         <p className="prog-disclaimer">Nutrition data are estimates. Not medical or dietetic advice.</p>
         <div className="safe-bottom"></div>
@@ -7535,11 +7682,13 @@ function WebDiscover({open}){
       <div className="w-head"><div><div className="w-eyebrow">Recipes that fit your day</div><h1>Discover</h1></div><div style={{display:'flex',gap:10}}><button className="btn btn--outline" onClick={()=>open&&open('creator','Priya Patel')}><Ic n="user" s={15}/> Creators</button><button className="btn btn--primary" onClick={()=>open&&open('import')}>+ Import a recipe</button></div></div>
       <div className="w-search"><Ic n="search" s={18}/><input placeholder="Search 4,000+ recipes — ingredient, cuisine, goal"/></div>
       <div className="w-filters">{['All','Following','High protein','Under 500','15 min','Eating out','Vegetarian','Meal prep'].map((c,i)=><button className={'chip'+(i===0?' on':'')} key={c} onClick={()=>c==='Following'&&open&&open('creator','Theo Blake')}>{c}</button>)}</div>
+      {/* ENG-1535 — seeded profiles are labelled house collections until real creators land */}
       <div className="w-creator-rail creator-rail">
         {CR.map((c,i)=>(
           <button className="creator-chip" key={i} onClick={()=>open&&open('creator', c.key)}>
             <span className="creator-rail-av" style={{background:TINT[c.tint]}}>{c.key[0]}</span>
             <span className="creator-rail-n">{c.key.split(' ')[0]}</span>
+            <span className="creator-rail-cur">Sloe Kitchen</span>
           </button>
         ))}
       </div>
@@ -7708,28 +7857,33 @@ function WebPlan({open}){
 }
 
 function WebProgress({open}){
-  const { bodyNeutral, progressState } = window.useApp();
+  /* ENG-1525 — same 5 sections as mobile, desktop grid. §1 tinted hero full-width; §2+§3, §4+§5 in the two-column grid. */
+  const { bodyNeutral, progressState, toast, premium } = window.useApp();
+  const [period,setPeriod]=RS('W');
+  const [wView,setWView]=RS('trend');
   const P=PROG, lo=1630, hi=2030;
   const deficit=P.maintenance-P.avgIntake;
   const onTarget=P.dayK.filter(([,v])=>v>=lo&&v<=hi).length;
-  const projWeeks=8, projKg=+(P.weight.current + P.weight.rate*projWeeks).toFixed(1);
+  const adhAvg=Math.round(P.adherence.reduce((s,r)=>s+ +r[1],0)/P.adherence.length);
+  const toward=(P.weight.rate*(P.weight.goalW-P.weight.current))>0;
+  const axis=P.axis[period]||P.axis.W;
   if(progressState==='empty'){
     return (
       <div className="w-main">
-        <div className="w-head"><div><div className="w-eyebrow">Honest trends — wins, not streaks</div><h1>Progress</h1></div><button className="btn btn--primary" onClick={()=>open&&open('weighttrends')}><Ic n="plus" s={16}/> Log weight</button></div>
+        <div className="w-head"><div><div className="w-eyebrow">Honest trends — wins, not streaks</div><h1>Progress</h1></div><button className="btn btn--outline" onClick={()=>open&&open('weighttrends')}><Ic n="scale" s={15}/> Weight &amp; trends</button></div>
         <div className="w-grid">
-          <div className="w-col"><div className="w-card"><div className="w-ch"><h2>Weekly recap</h2></div>
+          <div className="w-col"><div className="w-card prog-hero"><div className="w-ch"><h2>Weight trajectory</h2></div>
+            <div className="state" style={{padding:'26px 0'}}>
+              <div className="state__title" style={{fontSize:17}}>No weigh-ins yet</div>
+              <div className="state__body">Add your first weight and Sloe starts an honest trend — smoothed, never judged day-to-day.</div>
+              <div className="state__action"><button className="btn btn--primary" onClick={()=>open&&open('weighttrends')}><Ic n="plus" s={16}/>Log your first weigh-in</button></div>
+            </div>
+          </div></div>
+          <div className="w-col"><div className="w-card"><div className="w-ch"><h2>This week</h2></div>
             <div className="state" style={{padding:'26px 0'}}>
               <div className="state__icon is-offline"><Ic n="progress" s={26}/></div>
               <div className="state__title">A little more to go</div>
-              <div className="state__body">Log a few more days and your trends, recap and weight projection appear here.</div>
-            </div>
-          </div></div>
-          <div className="w-col"><div className="w-card"><div className="w-ch"><h2>Weight</h2></div>
-            <div className="state" style={{padding:'26px 0'}}>
-              <div className="state__title" style={{fontSize:17}}>No weigh-ins yet</div>
-              <div className="state__body">Add your first weight to start a trend.</div>
-              <div className="state__action"><button className="btn btn--secondary btn--sm" onClick={()=>open&&open('weighttrends')}><Ic n="plus" s={16}/>Log weight</button></div>
+              <div className="state__body">Log a few more days and your trends, recap and projection appear here.</div>
             </div>
           </div></div>
         </div>
@@ -7737,92 +7891,120 @@ function WebProgress({open}){
       </div>
     );
   }
-  const stats = bodyNeutral
-    ? [['Weight','Trending ↓','steady direction','var(--success)'],['Avg intake','—','aims hidden','var(--fg-tertiary)'],['On target','Calm','consistent','var(--success)'],['Maintenance','—','adaptive','var(--fg-tertiary)']]
-    : [['Weight',P.weight.current+' kg',P.weight.weekDelta+' kg / wk','var(--success)'],['Avg intake',P.avgIntake.toLocaleString(),'target '+P.goal.toLocaleString(),'var(--fg-tertiary)'],['On target',onTarget+'/7','days this week','var(--success)'],['Maintenance',P.maintenance.toLocaleString(),'−'+deficit+' deficit','var(--success)']];
   return (
     <div className="w-main">
-      <div className="w-head"><div><div className="w-eyebrow">Honest trends — wins, not streaks</div><h1>Progress</h1></div><div style={{display:'flex',gap:10,alignItems:'center'}}><button className="btn btn--outline" onClick={()=>open&&open('weighttrends')}><Ic n="scale" s={15}/> Weight &amp; trends</button><button className="btn btn--outline" onClick={()=>open&&open('nutrients')}><Ic n="health" s={15}/> Nutrients</button><span className="segmented" style={{transform:'scale(.92)'}}><button aria-pressed="true">Week</button><button aria-pressed="false">Month</button><button aria-pressed="false">Year</button></span></div></div>
+      <div className="w-head"><div><div className="w-eyebrow">Honest trends — wins, not streaks</div><h1>Progress</h1></div><div style={{display:'flex',gap:10,alignItems:'center'}}><button className="btn btn--outline" onClick={()=>open&&open('weighttrends')}><Ic n="scale" s={15}/> Weight &amp; trends</button><button className="btn btn--outline" onClick={()=>open&&open('nutrients')}><Ic n="health" s={15}/> Nutrients</button><span className="segmented" style={{transform:'scale(.92)'}}>{['D','W','M','6M','Y'].map(p=><button key={p} aria-pressed={period===p} onClick={()=>setPeriod(p)}>{p}</button>)}</span></div></div>
 
-      {/* This week — one maintenance figure */}
-      <div className="w-card" style={{marginBottom:22}}>
-        <div className="w-ch"><h2>This week</h2><button className="w-ch-more" onClick={()=>open&&open('recap')}>View full recap</button></div>
-        <p style={{fontSize:16,lineHeight:1.55,color:'var(--fg-secondary)',margin:'2px 0 14px'}}>{bodyNeutral?'A steady, consistent week — your routine is doing the work.':<>Maintenance held steady at <b style={{color:'var(--fg)'}}>{P.maintenance.toLocaleString()} kcal</b>, and you averaged <b style={{color:'var(--fg)'}}>{P.avgIntake.toLocaleString()}</b> — a <b style={{color:'var(--fg)'}}>{deficit} kcal</b> daily deficit. Keep going.</>}</p>
-        <div style={{display:'flex',gap:10}}><span className="prog-chip is-good"><Ic n="check" s={12}/>High confidence</span><span className="prog-chip">{onTarget}/7 days on target</span></div>
+      {/* §1 · TRAJECTORY — the one tinted hero. Calm promotes §2 instead (delta 1) */}
+      {!bodyNeutral && (
+      <div className="w-card prog-hero" style={{marginBottom:22}}>
+        <div style={{display:'grid',gridTemplateColumns:'250px 1fr',gap:32,alignItems:'center'}}>
+          <div>
+            <div className="w-eyebrow">Weight trajectory</div>
+            <div className="prog-hero-kg tnum" style={{fontSize:44}}>{P.weight.current}<small>kg</small></div>
+            <div className={'prog-rate '+(toward?'is-toward':'is-away')}>{P.weight.rate<0?'↓':'↑'} {Math.abs(P.weight.rate)} kg/wk · {toward?'toward your goal':'away from your goal'}</div>
+            <div className="prog-proj-line"><b>{P.weight.toGoal} kg to go</b> · at this pace ~early October — an estimate, not a promise.</div>
+            <div className="prog-hero-caption">Started {P.weight.start} kg · goal {P.weight.goalW} kg · the smoothed trend, not scale noise</div>
+            <div style={{display:'flex',gap:12,alignItems:'center',marginTop:16}}>
+              <button className="btn btn--secondary btn--sm" onClick={()=>open&&open('weighttrends')}><Ic n="plus" s={15}/>Log weight</button>
+              <button className="link" onClick={()=>open&&open('weighttrends')}>All measurements</button>
+            </div>
+          </div>
+          <div>
+            <div style={{display:'flex',justifyContent:'flex-end',marginBottom:4}}><span className="segmented" style={{transform:'scale(.85)'}}><button aria-pressed={wView==='trend'} onClick={()=>setWView('trend')}>Trend</button><button aria-pressed={wView==='scale'} onClick={()=>setWView('scale')}>Scale</button></span></div>
+            <svg viewBox="0 0 560 200" width="100%" style={{display:'block'}}>
+              <defs>
+                <linearGradient id="wph-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="var(--primary-active)"/><stop offset="100%" stopColor="var(--primary)"/></linearGradient>
+                <linearGradient id="wph-area" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--primary)" stopOpacity="0.14"/><stop offset="100%" stopColor="var(--primary)" stopOpacity="0"/></linearGradient>
+                <filter id="wph-glow" x="-140%" y="-140%" width="380%" height="380%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              </defs>
+              <rect x="40" y="158" width="516" height="18" rx="5" fill="var(--success-soft)" opacity=".5"/>
+              <line x1="40" y1="167" x2="556" y2="167" stroke="var(--success)" strokeWidth="1" strokeDasharray="4 5" opacity=".6"/>
+              <text x="552" y="153" textAnchor="end" fontSize="11" fontWeight="600" fill="var(--success)" fontFamily="var(--font-sans)">Goal {P.weight.goalW}</text>
+              {premium && <path d="M46,42 C120,55 180,76 232,90 C300,106 360,116 420,120 C460,122 486,123 500,124 L500,196 L46,196 Z" fill="url(#wph-area)"/>}
+              {wView==='scale' && !premium && <polyline points="46,48 131,40 217,72 303,58 388,92 472,84 500,104" fill="none" stroke="var(--fg-tertiary)" strokeWidth="1.2" opacity=".5"/>}
+              {(premium || wView==='scale') && [[46,48],[131,40],[217,72],[303,58],[388,92],[472,84],[500,104]].map(([cx,cy],i)=>(<circle key={i} cx={cx} cy={cy} r="3" fill="var(--fg-tertiary)" opacity={premium?'.35':'.55'}/>))}
+              <path d="M46,42 C120,55 180,76 232,90 C300,106 360,116 420,120 C460,122 486,123 500,124" fill="none" stroke={premium?'url(#wph-line)':'var(--primary)'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M500,124 L556,136" fill="none" stroke="var(--primary-active)" strokeWidth="2.5" strokeDasharray="5 5" opacity=".75"/>
+              <circle cx="500" cy="124" r="5.5" fill="var(--primary)" stroke="var(--card)" strokeWidth="2" filter={premium?'url(#wph-glow)':undefined}/>
+              <text x="500" y="112" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="var(--primary)" fontFamily="var(--font-sans)">{P.weight.current}</text>
+              {axis.map((m,i)=>{const x=i===0?46:(i===axis.length-1?552:46+(552-46)*i/(axis.length-1));return <text key={m} x={x} y="196" textAnchor={i===0?'start':(i===axis.length-1?'end':'middle')} fontSize="11" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{m}</text>;})}
+            </svg>
+          </div>
+        </div>
       </div>
-
-      <div className="w-stats">
-        {stats.map((s,i)=>(
-          <div className="w-stat" key={i}><div className="w-eyebrow">{s[0]}</div><div className="w-stat-v tnum">{s[1]}</div><div style={{fontSize:12,color:s[3],marginTop:2}}>{s[2]}</div></div>
-        ))}
-      </div>
+      )}
 
       <div className="w-grid">
-        <div className="w-col"><div className="w-card"><div className="w-ch"><h2>Weight trend</h2><span style={{fontSize:13,color:'var(--fg-tertiary)'}}>{bodyNeutral?'90 days · gently down':'90 days · −3.8 kg'}</span></div>
-          <svg viewBox="0 0 560 210" width="100%" style={{display:'block'}}>
-            {[['86',38],['84',84],['82',130],['80',176]].map(([lbl,y])=>(<g key={y}><line x1="42" y1={y} x2="556" y2={y} stroke="var(--border)" opacity=".7"/>{!bodyNeutral && <text x="32" y={y+4} textAnchor="end" fontSize="11" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{lbl}</text>}</g>))}
-            <path d="M46,42 C120,55 180,76 232,90 C300,106 360,116 408,120 C470,123 520,125 556,126 L556,186 L46,186 Z" fill="var(--macro-protein-soft)" opacity=".55"/>
-            <path d="M46,42 L556,112" fill="none" stroke="var(--fg-tertiary)" strokeWidth="1.5" strokeDasharray="5 5" opacity=".45"/>
-            <path d="M46,42 C120,55 180,76 232,90 C300,106 360,116 408,120 C470,123 520,125 556,126" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-            {[[131,66],[217,86],[303,104],[388,117],[472,123]].map(([cx,cy],i)=>(<circle key={i} cx={cx} cy={cy} r="3.4" fill="#fff" stroke="var(--primary)" strokeWidth="2"/>))}
-            <circle cx="46" cy="42" r="4" fill="var(--primary)"/><circle cx="556" cy="126" r="5" fill="var(--primary)"/>
-            {!bodyNeutral && <text x="545" y="118" textAnchor="end" fontSize="12.5" fontWeight="700" fill="var(--primary)" fontFamily="var(--font-sans)">{P.weight.current}</text>}
-            {[['Mar',46,'start'],['Apr',217,'middle'],['May',388,'middle'],['Jun',552,'end']].map(([m,x,a])=>(<text key={m} x={x} y="205" textAnchor={a} fontSize="11" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{m}</text>))}
-          </svg>
-          <div className="w-statrow" style={{display:'flex',marginTop:14,paddingTop:14,borderTop:'1px solid var(--border)'}}>
-            {[['Start',P.weight.start+' kg'],['Current',P.weight.current+' kg'],['Goal',bodyNeutral?'—':P.weight.goalW+' kg'],['Rate',bodyNeutral?'—':P.weight.rate+' kg/wk']].map(([l,v])=>(<div key={l} style={{flex:1,textAlign:'center'}}><div className="w-eyebrow" style={{fontSize:10}}>{l}</div><div className="tnum" style={{fontSize:15,fontWeight:600,marginTop:3}}>{v}</div></div>))}
-          </div>
-        </div></div>
-        <div className="w-col"><div className="w-card"><div className="w-ch"><h2>Daily calories</h2><span style={{fontSize:13,color:'var(--fg-tertiary)'}}>Last 7 days{bodyNeutral?'':' · '+P.goal.toLocaleString()}</span></div>
-          {(()=>{ const days=['M','T','W','T','F','S','S']; const baseY=150,plotH=140,maxK=2300; const tY=baseY-(P.goal/maxK)*plotH; const cx=i=>44+(i+0.5)*((552-44)/7); const col=v=>v>hi?'var(--warning)':v<lo?'var(--fg-tertiary)':'var(--success)'; return (
-          <svg viewBox="0 0 560 210" width="100%" style={{display:'block'}}>
-            {[0.25,0.5,0.75,1].map((g,i)=>{const y=baseY-g*plotH;return <line key={i} x1="40" y1={y} x2="556" y2={y} stroke="var(--border)" opacity=".6"/>;})}
+        {/* §2 · THIS WEEK — pinned to the current week (delta 4); promotes to the hero slot under Calm (delta 1) */}
+        <div className="w-col"><div className={'w-card'+(bodyNeutral?' prog-hero':'')}>
+          <div className="w-ch"><h2>This week</h2>{!bodyNeutral && <span className="prog-chip" title="Weekly nutrition-quality composite">Week score {P.weekScore}</span>}</div>
+          {bodyNeutral
+            ? <div className="prog-verdict" style={{marginTop:2}}>A steady, consistent week — your routine is doing the work.</div>
+            : <p style={{fontSize:15,lineHeight:1.55,color:'var(--fg-secondary)',margin:'2px 0 0'}}><b style={{color:'var(--fg)'}}>{onTarget} of 7 days</b> in your calorie range · macro adherence averaged <b style={{color:'var(--fg)'}}>{adhAvg}%</b>.</p>}
+          {(()=>{ const days=['M','T','W','T','F','S','S']; const baseY=120,plotH=104,maxK=2300; const tY=baseY-(P.goal/maxK)*plotH; const cx=i=>44+(i+0.5)*((552-44)/7); return (
+          <svg viewBox="0 0 560 150" width="100%" style={{display:'block',marginTop:10}}>
+            {premium && <defs>
+              <linearGradient id="wkb-in" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="color-mix(in srgb, var(--success) 62%, var(--card))"/><stop offset="90%" stopColor="var(--success)"/></linearGradient>
+              <linearGradient id="wkb-over" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="color-mix(in srgb, var(--warning) 62%, var(--card))"/><stop offset="90%" stopColor="var(--warning)"/></linearGradient>
+            </defs>}
             <line x1="40" y1={baseY} x2="556" y2={baseY} stroke="var(--border-strong)"/>
-            {P.dayK.map(([d,v],i)=>{const h=(v/maxK)*plotH;return <rect key={i} x={cx(i)-20} y={baseY-h} width="40" height={h} rx="6" fill={col(v)}/>;})}
-            <line x1="40" y1={tY} x2="556" y2={tY} stroke="var(--fg-secondary)" strokeWidth="1.5" strokeDasharray="5 4" opacity=".55"/>
-            <text x="556" y={tY-5} textAnchor="end" fontSize="10.5" fontWeight="600" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{bodyNeutral?'target':P.goal.toLocaleString()+' target'}</text>
+            {P.dayK.map(([d,v],i)=>{const h=(v/maxK)*plotH;const overBar=!bodyNeutral&&v>hi;return <rect key={i} x={cx(i)-20} y={baseY-h} width="40" height={h} rx="6" fill={premium?(overBar?'url(#wkb-over)':'url(#wkb-in)'):(overBar?'var(--warning)':'var(--success)')} stroke={i===6?'var(--fg-secondary)':'none'} strokeWidth={i===6?1.5:0}/>;})}
+            {!bodyNeutral && <line x1="40" y1={tY} x2="556" y2={tY} stroke="var(--fg-secondary)" strokeWidth="1.5" strokeDasharray="5 4" opacity=".55"/>}
+            {!bodyNeutral && <text x={premium?340:556} y={tY-(premium?6:5)} textAnchor={premium?"middle":"end"} fontSize="10.5" fontWeight="600" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{P.goal.toLocaleString()} target</text>}
             {!bodyNeutral && P.dayK.map(([d,v],i)=><text key={'v'+i} x={cx(i)} y={baseY-(v/maxK)*plotH-6} textAnchor="middle" fontSize="10" fontWeight="600" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{(v/1000).toFixed(2)}k</text>)}
-            {days.map((d,i)=><text key={'d'+i} x={cx(i)} y={baseY+24} textAnchor="middle" fontSize="11" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{d}</text>)}
+            {days.map((d,i)=><text key={'d'+i} x={cx(i)} y={baseY+22} textAnchor="middle" fontSize="11" fontWeight={i===6?700:400} fill={i===6?'var(--fg)':'var(--fg-tertiary)'} fontFamily="var(--font-sans)">{d}</text>)}
           </svg>);})()}
-          <div className="w-cal-legend"><span><i style={{background:'var(--success)'}}></i>On target</span><span><i style={{background:'var(--warning)'}}></i>Over</span><span><i style={{background:'var(--fg-tertiary)'}}></i>Under</span></div>
-          <div className="prog-win" style={{marginTop:14}}><span className="prog-win-ic"><Ic n="sparkles" s={16}/></span><span><b>{onTarget} on-target days this week.</b> Your most consistent week this month.</span></div>
-        </div></div>
-      </div>
-
-      <div className="w-grid" style={{marginTop:22}}>
-        <div className="w-col"><div className="w-card"><div className="w-ch"><h2>Energy balance</h2><span style={{fontSize:13,color:'var(--fg-tertiary)'}}>7-day average</span></div>
-          <div className="prog-balance" style={{marginTop:8}}>
-            <div><div className="prog-bal-v tnum">{P.avgIntake.toLocaleString()}</div><div className="prog-bal-l">Avg intake</div></div>
-            <span className="prog-bal-op">−</span>
-            <div><div className="prog-bal-v tnum" style={{color:'var(--success)'}}>{P.maintenance.toLocaleString()}</div><div className="prog-bal-l">Maintenance</div></div>
-            <span className="prog-bal-op">=</span>
-            <div><div className="prog-bal-v tnum" style={{color:'var(--primary-active)'}}>−{deficit}</div><div className="prog-bal-l">Deficit/day</div></div>
-          </div>
-          <div className="w-adapt" style={{marginTop:16}}><span className="tnum w-adapt-old">2,260</span><Ic n="chevR" s={18} st={{color:'var(--success)'}}/><span className="tnum w-adapt-new">{P.maintenance.toLocaleString()}</span><button className="w-ch-more" style={{marginLeft:'auto'}} onClick={()=>open&&open('adaptive')}>How maintenance adapts</button></div>
-        </div></div>
-        <div className="w-col"><div className="w-card"><div className="w-ch"><h2>Average adherence</h2><span style={{fontSize:13,color:'var(--fg-tertiary)'}}>last 7 days</span></div>
-          {!bodyNeutral && <div className="prog-adh-big tnum" style={{fontSize:36}}>{Math.round(onTarget/7*100)}<small>%</small></div>}
-          <div style={{marginTop:6}}>{P.adherence.map(([l,pct,c])=>(
+          <div style={{marginTop:10}}>{P.adherence.map(([l,pct,c])=>(
             <div key={l} className="prog-adh-row"><div className="spread" style={{marginBottom:5}}><span className="prog-adh-l">{l}</span>{!bodyNeutral && <span className="tnum prog-adh-v">{pct}%</span>}</div><div className="prog-adh-track"><div className="prog-adh-fill" style={{width:(bodyNeutral?60:pct)+'%',background:c}}></div></div></div>
           ))}</div>
+          <div className="prog-streak"><Ic n="flame" s={15} st={{color:premium?'var(--primary-active)':'var(--clay)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open&&open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
         </div></div>
+
+        {/* §3 · ENERGY — deficit-led; equation as support (maintenance − intake = deficit) */}
+        <div className="w-col">{!bodyNeutral && (
+        <div className="w-card">
+          <div className="w-ch"><h2>Energy</h2><span className="prog-conf">High confidence</span></div>
+          <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:6}}>
+            <span className="tnum" style={{fontFamily:'var(--font-serif)',fontSize:36,fontWeight:'var(--fw-medium)',lineHeight:1}}>{deficit}</span>
+            <span style={{fontSize:13,color:'var(--fg-secondary)'}}>kcal/day deficit · {P.avgLabel[period]||P.avgLabel.W}</span>
+          </div>
+          <div className="prog-eq tnum"><b>{P.maintenance.toLocaleString()}</b> maintenance − <b>{P.avgIntake.toLocaleString()}</b> intake = <b>{deficit}</b> · <span style={{color:'var(--success)',fontWeight:600}}>on plan for your cut</span></div>
+          <svg viewBox="0 0 560 60" width="100%" preserveAspectRatio="none" style={{display:'block',marginTop:14,height:60}}>
+            {premium && <defs><linearGradient id="wexp-band" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--success)" stopOpacity="0.22"/><stop offset="100%" stopColor="var(--success)" stopOpacity="0.04"/></linearGradient></defs>}
+            <polygon points="0,26 112,25 224,28 336,23 448,29 560,20 560,40 448,42 336,37 224,38 112,33 0,31" fill={premium?'url(#wexp-band)':'var(--success-soft)'} opacity={premium?1:.55}/>
+            <polyline points="0,28 112,29 224,33 336,30 448,35 560,30" fill="none" stroke="var(--success)" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <div className="prog-hero-caption" style={{color:'var(--fg-tertiary)'}}>Expenditure, adapting weekly — the band widens when confidence drops</div>
+          <div className="w-adapt" style={{marginTop:14}}><span className="tnum w-adapt-old">2,260</span><Ic n="chevR" s={18} st={{color:'var(--success)'}}/><span className="tnum w-adapt-new">{P.maintenance.toLocaleString()}</span><button className="w-ch-more" style={{marginLeft:'auto'}} onClick={()=>open&&open('adaptive')}>How maintenance adapts</button></div>
+        </div>
+        )}</div>
       </div>
 
       <div className="w-grid" style={{marginTop:22}}>
-        <div className="w-col"><div className="w-card"><div className="w-ch"><h2>Apple Health</h2><span className="badge-confidence is-high" style={{fontSize:10}}>Synced</span></div>
-          <div style={{marginTop:4}}>{[['steps','Steps',P.health.steps,'/day','var(--fg-secondary)','var(--muted)'],['flame','Active energy',P.health.active,' kcal','var(--warning)','var(--warning-soft)'],['scale','Weight',P.weight.current+' kg','','var(--success)','var(--success-soft)']].map(([ic,t,v,u,tint,bg],i)=>(
-            <div className="prog-ah-row" key={i} style={{paddingLeft:0,paddingRight:0}}><span className="prog-ah-ic" style={{background:bg,color:tint}}><Ic n={ic} s={16}/></span><span style={{flex:1}} className="w-meal-n">{t}</span><span className="tnum prog-ah-v">{bodyNeutral&&t!=='Weight'?'—':v}<small style={{color:'var(--fg-tertiary)',fontWeight:400}}>{u}</small></span></div>
-          ))}</div>
-          <p style={{fontSize:12,color:'var(--fg-tertiary)',lineHeight:1.5,margin:'8px 0 0'}}>Steps and active energy feed your maintenance estimate — that’s how your target adapts.</p>
-        </div></div>
-        <div className="w-col"><div className="w-card" style={{display:'flex',flexDirection:'column'}}><div className="w-ch"><h2>Projected weight</h2><span className="badge-confidence is-high" style={{fontSize:10}}>Estimate</span></div>
-          {bodyNeutral ? <p style={{fontSize:15,color:'var(--fg-secondary)',lineHeight:1.55,margin:'8px 0 0'}}>On your current pace, gently trending toward your goal.</p> : (<>
-          <div className="prog-proj" style={{marginTop:6}}><span className="tnum prog-proj-v">{projKg}<small>kg</small></span><span className="prog-proj-when">in ~{projWeeks} weeks</span></div>
-          <p style={{fontSize:13.5,color:'var(--fg-secondary)',lineHeight:1.55,margin:'8px 0 0'}}>If you hold this pace — <b>{P.avgIntake.toLocaleString()} kcal/day</b> against a <b>{P.maintenance.toLocaleString()}</b> burn. Based on 7,700 kcal ≈ 1 kg. An estimate, not a promise.</p></>)}
-          <div className="w-bodycomp" style={{marginTop:'auto',paddingTop:16}}>
-            <div><div className="w-eyebrow">To goal</div><div className="w-bc-v tnum">{bodyNeutral?'—':P.weight.toGoal+' kg'}</div><div style={{fontSize:12,color:'var(--fg-tertiary)'}}>{bodyNeutral?'in view':'remaining'}</div></div>
-            <div><div className="w-eyebrow">Body fat · Pro</div><div className="w-bc-v tnum">24.1%</div><div style={{fontSize:12,color:'var(--success)'}}>−1.3% / 90d</div></div>
+        {/* §4 · BODY COMPOSITION — user-owned readings free (delta 2); trend + analysis is the Pro layer */}
+        <div className="w-col"><div className="w-card">
+          <div className="w-ch"><h2>Body composition</h2><span style={{fontSize:12,color:'var(--fg-tertiary)'}}>{P.bodycomp.fatFrom}</span></div>
+          <div className="prog-bc-tiles">
+            <div className="prog-bc-tile"><div className="prog-bc-v tnum">{bodyNeutral?'—':P.bodycomp.fat}</div><div className="prog-bc-l">Body fat</div></div>
+            <div className="prog-bc-tile"><div className="prog-bc-v tnum">{bodyNeutral?'—':P.bodycomp.lean}</div><div className="prog-bc-l">Lean mass</div></div>
           </div>
+          <div className="prog-bc-teaser">
+            <svg viewBox="0 0 560 84" width="100%" preserveAspectRatio="none" style={{height:84}}>
+              <path d="M0,24 C112,32 224,48 336,56 C430,61 505,64 560,66" fill="none" stroke="var(--primary)" strokeWidth="3"/>
+              <path d="M0,45 C112,49 224,58 336,63 C430,67 505,70 560,71" fill="none" stroke="var(--macro-fat)" strokeWidth="2.5"/>
+            </svg>
+            <div className="prog-bc-veil"><Ic n="lock" s={16}/><span>90-day trend &amp; analysis · Pro</span></div>
+          </div>
+          <div style={{marginTop:14}}><button className="btn btn--outline btn--sm" onClick={()=>open&&open('paywall')}>See your trends with Pro</button></div>
+        </div></div>
+
+        {/* §5 · YOUR WEEK — one slimmed recap: serif verdict + one texture line + ghost Share (delta 7) */}
+        <div className="w-col"><div className="w-card" style={{display:'flex',flexDirection:'column'}}>
+          <div className="w-ch"><h2>Your week</h2><button className="w-ch-more" onClick={()=>open&&open(premium?'recapstory':'recap')}>View full recap</button></div>
+          <div className="prog-verdict">A steady, consistent week — your routine is doing the work.</div>
+          <div style={{fontSize:13.5,color:'var(--fg-secondary)',marginTop:8}}>Your most consistent week this month — Thursday was your best day.</div>
+          <div style={{marginTop:'auto',paddingTop:16}}><button className="btn btn--outline btn--sm" onClick={()=>premium&&open?open('recapstory'):(toast&&toast('Your week card is ready to share.'))}><Ic n="share" s={14}/>Share your week</button></div>
         </div></div>
       </div>
       <p className="prog-disclaimer">Nutrition data are estimates. Not medical or dietetic advice.</p>
@@ -7980,7 +8162,7 @@ function WebApp({view, setView, modal, setModal}){
       {mn==='fasting' && <WebFasting onClose={closeModal}/>}
       {mn==='verify' && <WebVerify r={recipeById(modal.id)||RECIPES[0]} onClose={closeModal}/>}
       {mn==='billing' && <WebBilling onClose={closeModal} open={open}/>}
-      {['coach','digest','recap','adaptive','report','mfpimport','scanlabel','whynumber','provenance','burndetail','nutrients','hydration','completeday','winmoment','voicelog','plantemplates','creator','gopublic','changelog','eraseeverything','household','export','deleteacct','resetplan','targets','healthsync','grocery','barcode','search','confirm','mealedit','macrodetail','mealdetail','entrydetail','weighttrends','adjustconstraints','calendar','notfound'].includes(mn) && <WebFrame name={mn} onClose={closeModal}/>}
+      {['coach','digest','recap','recapstory','adaptive','report','mfpimport','scanlabel','whynumber','provenance','burndetail','nutrients','hydration','completeday','winmoment','voicelog','plantemplates','creator','gopublic','changelog','eraseeverything','household','export','deleteacct','resetplan','targets','healthsync','grocery','barcode','search','confirm','mealedit','macrodetail','mealdetail','entrydetail','weighttrends','adjustconstraints','calendar','notfound'].includes(mn) && <WebFrame name={mn} onClose={closeModal}/>}
     </div>
   );
 }
@@ -7989,7 +8171,7 @@ function WebApp({view, setView, modal, setModal}){
 function WebFrame({name,onClose}){
   const SX=window.SloeExtra, SC=window.SloeScreens, S2=window.SloeScreens2, SN=window.SloeNew;
   const map={
-    coach:SX&&SX.Coach, digest:SX&&SX.Digest, recap:SX&&SX.WeeklyRecap, adaptive:SX&&SX.AdaptiveTDEE, report:SX&&SX.ReportRecipe, mfpimport:SX&&SX.MfpImport, scanlabel:SC&&SC.ScanLabel, billing:S2&&S2.Billing,
+    coach:SX&&SX.Coach, digest:SX&&SX.Digest, recap:SX&&SX.WeeklyRecap, recapstory:window.RecapStory, adaptive:SX&&SX.AdaptiveTDEE, report:SX&&SX.ReportRecipe, mfpimport:SX&&SX.MfpImport, scanlabel:SC&&SC.ScanLabel, billing:S2&&S2.Billing,
     whynumber:SX&&SX.WhyNumber, provenance:SX&&SX.Provenance, burndetail:SX&&SX.BurnDetail, nutrients:SX&&SX.Nutrients, hydration:SX&&SX.Hydration, completeday:SX&&SX.CompleteDay, winmoment:SX&&SX.WinMoment, voicelog:SX&&SX.VoiceLog,
     plantemplates:SX&&SX.PlanTemplates, creator:SX&&SX.CreatorProfile, gopublic:SX&&SX.GoPublic, changelog:SX&&SX.Changelog, eraseeverything:SX&&SX.EraseEverything, household:SX&&SX.Household, export:SX&&SX.DataExport, deleteacct:SX&&SX.DeleteAccount, resetplan:SX&&SX.ResetPlan,
     targets:S2&&S2.Targets, healthsync:S2&&S2.HealthSync, grocery:S2&&S2.Grocery, barcode:SC&&SC.Barcode, search:SC&&SC.SearchView, confirm:SC&&SC.ConfirmFood, mealedit:SC&&SC.MealEdit,
@@ -8796,6 +8978,73 @@ function applyTheme(theme, accent, fonts){
     ':root,[data-theme="light"],[data-theme="dark"],.dark{--font-sans:"'+sans+'",system-ui,sans-serif!important;--font-serif:"'+serif+'",Georgia,serif!important;--font-brand:"'+brand+'",Georgia,serif!important;}';
 }
 
+/* ════ Recap story (Elevated §5 payoff) — one stat per scene, descriptive, saveable.
+   Grammar: Gentler Streak (no-red descriptive framing) × Duolingo (escalate → identity beat) × Strava (per-scene save). ════ */
+function RecapStory(){
+  const { close, toast, bodyNeutral } = useApp();
+  const [i,setI]=RS(0);
+  /* Calm mode serves a numbers-light story: no ranges, no weight, no aim-tinged stats (the mode's whole point) */
+  const scenes= bodyNeutral ? [
+    {k:'arrive', kick:'Your week', big:'10\u201316 June', sub:'A steady one \u2014 the kind that adds up.'},
+    {k:'headline', kick:'The headline', stat:'4', line:'saved recipes on the table', sub:'Cooked from your cookbook \u2014 the harissa stew carried three of the meals.', photo:true},
+    {k:'texture', kick:'The rhythm', big:'A steady rhythm.', sub:'Consistent days, gentle gaps \u2014 trends only while Calm is on.', bars:true},
+    {k:'id', kick:'Your style this week', big:'Planned, then home-cooked.', sub:'Batch once, cruise three nights \u2014 it suits you.'},
+    {k:'honest', kick:'The honest note', big:'One lunch out midweek.', sub:'It didn\u2019t move the week \u2014 that\u2019s what the plan is for.'},
+    {k:'forward', kick:'Carried into next week', big:'The stew\u2019s back for two nights \u2014 Thursday\u2019s already handled.', sub:'Share exactly what you see \u2014 nothing more leaves the app.', end:true},
+  ] : [
+    {k:'arrive', kick:'Your week', big:'10\u201316 June', sub:'A steady one \u2014 the kind that adds up.'},
+    {k:'headline', kick:'The headline', stat:'4', line:'saved recipes on the table', sub:'Cooked from your cookbook \u2014 the harissa stew carried three of the meals.', photo:true},
+    {k:'texture', kick:'The rhythm', stat:'5 of 7', line:'days in your range', sub:'One more than your usual week. Wednesday ran big \u2014 the week held.', bars:true},
+    {k:'quiet', kick:'The quiet win', stat:'6 of 7', line:'dinners landed protein', sub:'The gap you were closing \u2014 closed where it matters.'},
+    {k:'id', kick:'Your style this week', big:'Planned, then home-cooked.', sub:'Batch once, cruise three nights \u2014 it suits you.'},
+    {k:'honest', kick:'The honest note', big:'Wednesday ran 290 over.', sub:'One lunch out. It didn\u2019t move the week \u2014 that\u2019s what the plan is for.'},
+    {k:'forward', kick:'Carried into next week', big:'The stew\u2019s back for two nights \u2014 Thursday\u2019s already handled.', sub:'Share exactly what you see \u2014 nothing more leaves the app.', end:true},
+  ];
+  const s=scenes[i];
+  const next=()=> i<scenes.length-1 ? setI(i+1) : close();
+  const prev=()=> { if(i>0) setI(i-1); };
+  return (
+    <div className="recap-story" onClick={(e)=>{ const r=e.currentTarget.getBoundingClientRect(); (e.clientX-r.left) < r.width*0.3 ? prev() : next(); }}>
+      {s.photo && <div className="rs-photo" style={{backgroundImage:`url(${window.HERO_IMG})`}}></div>}
+      <div className="rs-dots">{scenes.map((_,d)=><span key={d} className={'rs-dot'+(d<=i?' on':'')}></span>)}</div>
+      <div className="rs-top"><span className="rs-kicker">{s.kick}</span><button className="rs-x" onClick={(e)=>{e.stopPropagation(); close();}} aria-label="Close"><I4 n="x" s={17}/></button></div>
+      <div className="rs-scene" key={s.k}>
+        {s.stat ? <div className="rs-stat tnum">{s.stat}</div> : <div className="rs-big">{s.big}</div>}
+        {s.end && (
+          <div className="rs-card tnum">
+            <div className="rs-card-k">Week of 10\u201316 June</div>
+            <div className="rs-card-grid">
+              {bodyNeutral ? (<>
+                <div><b>4</b><span>recipes cooked</span></div>
+                <div><b>7</b><span>days showed up</span></div>
+                <div><b>1</b><span>batch, 3 meals</span></div>
+                <div><b>Steady</b><span>the week\u2019s word</span></div>
+              </>) : (<>
+                <div><b>5 of 7</b><span>days in range</span></div>
+                <div><b>4</b><span>recipes cooked</span></div>
+                <div><b>\u2193 0.4 kg</b><span>this week</span></div>
+                <div><b>79%</b><span>adherence</span></div>
+              </>)}
+            </div>
+            <div className="rs-card-mark">sloe</div>
+          </div>
+        )}
+        {s.line && <div className="rs-line">{s.line}</div>}
+        {s.bars && <div className="rs-bars">{[62,74,96,58,70,44,66].map((h,d)=><span key={d} style={{height:h+'%',background:d===2?'rgba(224,146,78,.85)':'rgba(255,255,255,'+(d===6?'.9':'.55')+')'}}></span>)}</div>}
+        {s.sub && <div className="rs-sub">{s.sub}</div>}
+      </div>
+      <div className="rs-foot">
+        {s.end
+          ? <button className="btn btn--onbrand" onClick={(e)=>{e.stopPropagation(); toast('Your week story is ready to share.'); close();}}>Share your week</button>
+          : <button className="rs-save" onClick={(e)=>{e.stopPropagation(); toast('Scene ready to share.');}}>Share scene</button>}
+        {s.end ? <span className="rs-mark">sloe</span> : <span className="rs-hint">Tap to continue</span>}
+      </div>
+    </div>
+  );
+}
+
+window.RecapStory = RecapStory;
+
 /* ════ Floating Tweaks modal (bottom-right) ════ */
 function TweaksModal({state, set, nav}){
   const [open,setOpen]=RS(true);
@@ -8809,7 +9058,7 @@ function TweaksModal({state, set, nav}){
       <div className="tw-mhead">
         <span className="tw-mtitle">Tweaks</span>
         <div style={{display:'flex',gap:6}}>
-          <button className="tw-x" onClick={()=>set({device:'mobile',theme:'light',accent:'plum',fontSans:'inter',fontSerif:'newsreader',fontBrand:'fraunces',ring:'segflat',mac:'rings',density:'standard',surface:'white',calm:false,netCarbs:false,ingTiles:false,provenance:'honest'})} title="Reset" style={{fontSize:11,width:'auto',padding:'0 8px'}}>Reset</button>
+          <button className="tw-x" onClick={()=>set({device:'mobile',theme:'light',accent:'plum',fontSans:'inter',fontSerif:'newsreader',fontBrand:'fraunces',ring:'segflat',mac:'rings',density:'standard',surface:'white',premium:false,calm:false,netCarbs:false,ingTiles:false,provenance:'honest'})} title="Reset" style={{fontSize:11,width:'auto',padding:'0 8px'}}>Reset</button>
           <button className="tw-x" onClick={()=>setOpen(false)} aria-label="Minimise"><I4 n="x" s={16}/></button>
         </div>
       </div>
@@ -8821,6 +9070,8 @@ function TweaksModal({state, set, nav}){
       <div className="tw-mbody">
         <Row label="Device"><Chip on={state.device==='mobile'} onClick={()=>set({device:'mobile'})}>Mobile</Chip><Chip on={state.device==='web'} onClick={()=>set({device:'web'})}>Web</Chip></Row>
         <Row label="Theme"><Chip on={state.theme==='light'} onClick={()=>set({theme:'light'})}>Light</Chip><Chip on={state.theme==='dark'} onClick={()=>set({theme:'dark'})}>Dark</Chip></Row>
+        <Row label="Premium pass"><Chip on={!state.premium} onClick={()=>set({premium:false})}>Current</Chip><Chip on={!!state.premium} onClick={()=>set({premium:true})}>Elevated</Chip></Row>
+        {!!state.premium && <div className="tw-hint">Preview of the 2026-07-16 premium pass — warm editorial ground, instrument-grade rings &amp; charts, broken card rhythm, duotone cuisine tiles. Not yet ratified.</div>}
         <Row label="Calm mode"><Chip on={!state.calm} onClick={()=>set({calm:false})}>Off</Chip><Chip on={state.calm} onClick={()=>set({calm:true})}>Body-neutral</Chip></Row>
         {state.calm && <div className="tw-hint">Hides calorie aims and over/under deltas, shows a numbers-light ring and trends-only progress — for body-neutral &amp; ED-recovery-safe use.</div>}
         <Row label="Carbs lens"><Chip on={!state.netCarbs} onClick={()=>set({netCarbs:false})}>Total</Chip><Chip on={state.netCarbs} onClick={()=>set({netCarbs:true})}>Net carbs</Chip></Row>
@@ -8850,7 +9101,7 @@ function TweaksModal({state, set, nav}){
 }
 
 function App(){
-  const [tw,setTw]=RS({device:'mobile', theme:'light', accent:'plum', fontSans:'inter', fontSerif:'newsreader', fontBrand:'fraunces', ring:'segflat', mac:'rings', scenario:'breakfast', density:'standard', surface:'white', calm:false, netCarbs:false, ingTiles:false, provenance:'honest', webView:'today', webModal:null});
+  const [tw,setTw]=RS({device:'mobile', theme:'light', accent:'plum', fontSans:'inter', fontSerif:'newsreader', fontBrand:'fraunces', ring:'segflat', mac:'rings', scenario:'breakfast', density:'standard', surface:'white', premium:false, calm:false, netCarbs:false, ingTiles:false, provenance:'honest', webView:'today', webModal:null});
   const set=(patch)=>setTw(s=>Object.assign({},s,patch));
   const [tab,setTab]=RS('today');
   const [onboarded,setOnboarded]=RS(false);
@@ -8865,13 +9116,13 @@ function App(){
   const tRef=RR(null);
 
   RE(()=>{ applyTheme(tw.theme, tw.accent, {sans:tw.fontSans,serif:tw.fontSerif,brand:tw.fontBrand}); },[tw.theme, tw.accent, tw.fontSans, tw.fontSerif, tw.fontBrand]);
-  RE(()=>{ const r=document.documentElement; r.setAttribute('data-platform',tw.device); r.setAttribute('data-density',tw.density); r.setAttribute('data-surface',tw.surface); },[tw.device, tw.density, tw.surface]);
+  RE(()=>{ const r=document.documentElement; r.setAttribute('data-platform',tw.device); r.setAttribute('data-density',tw.density); r.setAttribute('data-surface',tw.surface); if(tw.premium) r.setAttribute('data-premium','1'); else r.removeAttribute('data-premium'); },[tw.device, tw.density, tw.surface, tw.premium]);
 
   const top = stack[stack.length-1]||null;
   const isWeb = tw.device==='web';
   const api = {
     theme:tw.theme, scenarioKey:tw.scenario, tab, planState, progressState, activeFood,
-    ringStyle:tw.calm?'calm':tw.ring, macroStyle:tw.mac, bodyNeutral:tw.calm, netCarbs:tw.netCarbs, ingTiles:tw.ingTiles, provenance:tw.provenance,
+    ringStyle:tw.calm?'calm':(tw.premium?'segments':tw.ring), macroStyle:tw.mac, bodyNeutral:tw.calm, netCarbs:tw.netCarbs, ingTiles:tw.ingTiles, provenance:tw.provenance, premium:!!tw.premium,
     setPlanState, setProgressState,
     household, setHousehold:(patch)=>setHousehold(h=>Object.assign({},h,typeof patch==='function'?patch(h):patch)),
     setScenario:(s)=>set({scenario:s}),
@@ -8923,14 +9174,14 @@ function App(){
     grocery:<S2.Grocery/>, settings:<S2.Settings/>, targets:<S2.Targets/>, billing:<S2.Billing/>,
     healthsync:<S2.HealthSync/>, verify:<S2.Verify/>, paywall:<S2.Paywall/>,
     create:<SX.CreateRecipe/>, profile:<SX.Profile/>, notifications:<SX.Notifications/>, fasting:<SX.Fasting/>, planimport:<SX.PlanImport/>, household:<SX.Household/>, batch:<SX.BatchCook/>,
-    coach:<SX.Coach/>, mfpimport:<SX.MfpImport/>, adaptive:<SX.AdaptiveTDEE/>, export:<SX.DataExport/>, deleteacct:<SX.DeleteAccount/>, recap:<SX.WeeklyRecap/>, digest:<SX.Digest/>, report:<SX.ReportRecipe/>, resetplan:<SX.ResetPlan/>,
+    coach:<SX.Coach/>, mfpimport:<SX.MfpImport/>, adaptive:<SX.AdaptiveTDEE/>, export:<SX.DataExport/>, deleteacct:<SX.DeleteAccount/>, recap:<SX.WeeklyRecap/>, recapstory:<RecapStory/>, digest:<SX.Digest/>, report:<SX.ReportRecipe/>, resetplan:<SX.ResetPlan/>,
     whynumber:<SX.WhyNumber/>, provenance:<SX.Provenance/>,
     burndetail:<SX.BurnDetail/>, nutrients:<SX.Nutrients/>, hydration:<SX.Hydration/>, completeday:<SX.CompleteDay/>, winmoment:<SX.WinMoment/>, voicelog:<SX.VoiceLog/>,
     plantemplates:<SX.PlanTemplates/>, creator:<SX.CreatorProfile/>, gopublic:<SX.GoPublic/>, changelog:<SX.Changelog/>, eraseeverything:<SX.EraseEverything/>,
     macrodetail:<SN.MacroDetail/>, entrydetail:<SN.EntryDetail/>, weighttrends:<SN.WeightTrends/>, calendar:<SN.CalendarPicker/>, notfound:<SN.NotFound/>, adjustconstraints:<SN.AdjustConstraints/>, mealdetail:<SN.MealDetail/>,
   })[top.name];
-  const darkStatus = tw.theme==='dark' || (top && ['barcode','scanlabel','cookmode','paywall'].includes(top.name));
-  const fullOverlay = top && ['settings','recipe','paywall','barcode','scanlabel','cookmode','photolock','voicelock','search','confirm','targets','billing','healthsync','verify','create','profile','notifications','fasting','household','batch','coach','adaptive','recap','digest','whynumber','provenance','burndetail','nutrients','voicelog','winmoment','creator','changelog','macrodetail','entrydetail','weighttrends','notfound','mealdetail'].includes(top.name);
+  const darkStatus = tw.theme==='dark' || (top && ['barcode','scanlabel','cookmode','paywall','recapstory'].includes(top.name));
+  const fullOverlay = top && ['settings','recipe','paywall','barcode','scanlabel','cookmode','photolock','voicelock','search','confirm','targets','billing','healthsync','verify','create','profile','notifications','fasting','household','batch','coach','adaptive','recap','digest','whynumber','provenance','burndetail','nutrients','voicelog','winmoment','creator','changelog','macrodetail','entrydetail','weighttrends','notfound','mealdetail','recapstory'].includes(top.name);
 
   return (
     <AppCtx.Provider value={api}>

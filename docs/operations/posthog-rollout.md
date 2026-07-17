@@ -188,6 +188,38 @@ AI-cost or "AI broke → blank" risk to ramp around.
 | Ramp | Flip flag → 100% | One tester (Grace); no cohort split needed. |
 | Cleanup | After 2 weeks at 100% with no regression | Remove the gate, keep the default-toast `else` branch as the fallback. |
 
+### `progress_hierarchy_v1` (ENG-1525)
+
+| Property | Value |
+| --- | --- |
+| Flag ID | _create in PostHog before ramp_ |
+| Type | Boolean |
+| Platforms | Web + Mobile (iOS) |
+| Owner | Grace |
+| Decision doc | [2026-07-16-progress-hierarchy-v1](../decisions/2026-07-16-progress-hierarchy-v1.md) |
+
+Gates the **Progress tab 5-section hierarchy rebuild** (Trajectory hero ·
+This Week · Energy · Body composition · Your Week) on both platforms. Flag
+ON → the `ProgressHierarchyV1` composer renders the 5 sections, including
+the one tinted hero card (goal-conditional per the decision doc's delta 1)
+and the corrected maintenance − intake equation. Flag OFF → the legacy
+13-card stack, byte-identical to pre-ENG-1525 — the `else` branch in both
+hosts is the kill switch. The flag is read once on mount, so a mid-session
+PostHog change never restructures the page under the user.
+
+Default OFF until ramped (the `energy_numbers_v1` structural-rebuild
+precedent, not the additive-card "always flag on" convention) — a
+cold/missing client resolves `isFeatureEnabled("progress_hierarchy_v1")`
+to `false`.
+
+#### Ramp schedule
+
+| Phase | Action | Why |
+| --- | --- | --- |
+| Pre-ramp | Create the PostHog row; validate flag-on pixels on web (`web-drive`) + iOS sim with before/after screenshots (light + dark; goal-user, trends_only, opt-out, and sparse weigh-in states) | A full-tab structural rebuild ships validated, never blind. |
+| Ramp | Internal (Grace) → 100% | One tester; no cohort split needed. |
+| Cleanup | After 2 weeks at 100% with no regression | Remove the gate + the dead legacy 13-card branch; keep the row as an emergency kill switch. |
+
 ### `session-replay-sample-rate` (ENG-516)
 
 | Property | Value |

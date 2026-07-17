@@ -460,6 +460,13 @@ export const Colors = {
     northStarBgFrom: 'rgba(59, 42, 77, 0.08)',
     northStarBgTo: 'rgba(200, 121, 78, 0.05)',
     northStarBorder: 'rgba(59, 42, 77, 0.18)',
+    /** ENG-1525 — Progress hierarchy hero tint: the ONE tinted card on the
+     *  Progress page (Trajectory hero), a deliberate ENG-1497 carve-out on
+     *  the flat card field. Brand plum (#5B3B6E) wash — gradient from → to +
+     *  hairline border. ↔ web `--hero-tint/-to/-border`. */
+    heroTint: 'rgba(91, 59, 110, 0.11)',
+    heroTintTo: 'rgba(91, 59, 110, 0.045)',
+    heroTintBorder: 'rgba(91, 59, 110, 0.28)',
     /** ENG-1094 — Discover import-from-Reel hero (the permanent conversion
      *  wedge). A confident lavender-plum accent: the lighter brand plum (#7E5C92)
      *  at a higher opacity reads clearly as a deliberate accent, not the
@@ -556,6 +563,12 @@ export const Colors = {
     northStarBgFrom: 'rgba(129, 94, 145, 0.16)',
     northStarBgTo: 'rgba(213, 138, 94, 0.06)',
     northStarBorder: 'rgba(129, 94, 145, 0.28)',
+    /** ENG-1525 — Progress hierarchy hero tint, Sloe dark (lifted plum,
+     *  alphas raised so the wash + hairline read on the dark ground).
+     *  ↔ web .dark `--hero-tint/-to/-border`. */
+    heroTint: 'rgba(154, 123, 170, 0.2)',
+    heroTintTo: 'rgba(154, 123, 170, 0.08)',
+    heroTintBorder: 'rgba(154, 123, 170, 0.38)',
     /** ENG-1094 — Discover import hero confident lavender-plum accent (dark). */
     importHeroBg: 'rgba(154, 123, 170, 0.30)',
     /** Over-budget foreground (dark) — amber (ENG-1296): the dark warning-solid

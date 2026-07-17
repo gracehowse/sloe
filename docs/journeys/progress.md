@@ -177,6 +177,98 @@ Deferred. Suppr does not currently run a service-worker-backed push registration
 
 ## Progress Dashboard tiles & charts
 
+**Two branches since 2026-07-16 (ENG-1525).** The dashboard body is gated by
+`progress_hierarchy_v1` (default **OFF**, registered in
+`KNOWN_DEFAULT_OFF_FLAGS` on both platforms; read once on mount so the layout
+never flips mid-session):
+
+- **Flag OFF (default, what every user sees today)** — the legacy 13-card
+  stack documented in "Legacy branch" below, byte-identical to pre-ENG-1525.
+  This is the kill switch.
+- **Flag ON** — the 5-section prioritised hierarchy documented in
+  "Hierarchy v1 branch" below. Decision doc:
+  [2026-07-16-progress-hierarchy-v1](../decisions/2026-07-16-progress-hierarchy-v1.md);
+  ramp runbook: [posthog-rollout](../operations/posthog-rollout.md).
+
+Shared by both branches: the period control (D/W/M/6M/Y), the story gate
+(<3 logged days), StreakFreezeCard, the Activity section, LogWeightSheet,
+milestone/win-moment overlays, and `?metric=` deep links.
+
+### Hierarchy v1 branch (`progress_hierarchy_v1` ON)
+
+Composer `ProgressHierarchyV1` (web
+`src/app/components/suppr/progress-hierarchy/`, mobile
+`apps/mobile/components/progress/hierarchy/`) renders five sections in
+order, each headed by the shared overline primitive. The host computes all
+data; sections are render-only.
+
+1. **Trajectory (hero)** — the ONLY tinted card on the page (hero-tint
+   token gradient + hairline, flat, radius 24 — the deliberate ENG-1497
+   carve-out). Serif kg numeral (ph-masked), smoothed weekly rate
+   (`signedObservedKgPerWeek`, never the raw two-point delta), the canonical
+   weight chart with goal line, and the `computeTrajectory` projection —
+   distance leads bold ("3.4 kg to go"), date hedged ("at this pace
+   ~Sep 12"), footnote "An estimate, not a promise." **Goal-conditional:**
+   weight-surface mode `show` → full hero; `trends_only` → trend-direction
+   copy only, no absolute kg (legal-signed strings); opt-out / no data
+   intent → no Trajectory section at all and This Week promotes to the top
+   slot as a plain card. Sparse (<2 weigh-ins) → the WeightSparseState
+   grammar renders inside the hero slot and its "Log your first weigh-in"
+   button is the screen's one filled CTA; <14 days of weigh-ins or a flat
+   slope drops the date + verdict ("Trend still settling — keep logging.").
+   Absorbs the Journey card and the standalone TrajectoryCard.
+2. **This Week** — always the current week regardless of the period
+   control. Headline reconciles adherence average AND on-target count
+   ("82% avg · 5 of 7 days on target" — two different numbers, never
+   conflated), adherence numeral at the ~29px serif step (demoted from
+   40px). Mon–Sun calorie bars (today boxed, per-day target reference,
+   sage under / amber over / muted empty — never red; today emphasis
+   suppressed for past weeks), macro label·value·bar rows, and a streak
+   microrow whose affordance presses through to the streak drill-down so
+   freezes stay reachable. Absorbs the Daily Calories card, Average
+   Adherence card, and on-target ribbon.
+3. **Energy** — the deficit/surplus is the ONE leading number (~33px
+   serif; sage when it matches the user's goal direction, amber when it
+   opposes it), with the equation in words as the support line —
+   **maintenance − intake**, correct arithmetic. Confidence is a bare sage
+   overline ("Adaptive · high confidence"), the "How maintenance works ›"
+   explainer link stays, thin data degrades to "building estimate · low
+   confidence" + the weigh-ins/logging-days progress bars
+   (`computeAdaptiveDataProgressFromMeals`), and a subordinate expenditure
+   sparkline renders quietly under the equation (no second TDEE numeral).
+   Absorbs the Maintenance card, Energy triad, and standalone
+   ExpenditureTrendCard.
+4. **Body composition** — overline "Body composition · Pro" (Pro suffix
+   for free users only). User-owned latest values (body fat %, lean mass
+   from HealthKit/manual) **always render free when present**; the
+   Pro-gated layer is the trend — free users with data see their values
+   plus a masked mini-trend behind a lock + ghost "See Pro plans"; Pro
+   users see the real BodyCompositionTrendCard content; free users with no
+   data see the teaser only.
+5. **Your Week** — serif verdict sentence (`resolveDigestHeadline`), one
+   texture line (usual-meal insight, else best day), ghost Share (same
+   analytics events + `formatRecapForShare` text as Digest). No restated
+   avg/streak numerals — they live in §2. DigestStoryCard does not render
+   on this branch.
+
+Direction-aware tone across §1 and §3 comes from one shared helper,
+`trendDirectionTone` in `src/lib/weightProjection.ts` (sage toward goal /
+amber away / neutral plum with no goal or at goal — never red), so the two
+sections can never disagree. Every CTA on this branch is ghost except the
+sparse-state "Log your first weigh-in".
+
+**Not rendered on this branch:** Journey card, Maintenance card, Energy
+triad, Daily Calories card, Average Adherence card, on-target ribbon,
+demoted stat chips, DigestStoryCard, standalone TrajectoryCard /
+ExpenditureTrendCard / BodyCompositionTrendCard.
+
+### Legacy branch (flag OFF — the default)
+
+The 13-card stack below. Every per-card note in the rest of this section
+describes the legacy branch (many of these behaviours — the shared helpers,
+copy rules, and honesty gates — are reused by the hierarchy sections, as
+noted above).
+
 ### "Avg Calories" stat tile (Action 5 Item 3, 2026-04-19)
 - Headline number = `weekStats.avgCalories` (`sum / daysWithFood`).
 - Sub-label is the shared helper `formatAvgCaloriesLabel(daysWithFood)`:
@@ -293,5 +385,6 @@ The Maintenance Recalibrate suggestion (Progress Digest, Rule 2) needs to know *
 - **Freezes exhausted mid-walk** — the protected streak simply stops at the first unprotected zero day. The raw streak is unchanged.
 
 ## Change log
+- **2026-07-16 — ENG-1525** — Progress dashboard body split into two branches behind `progress_hierarchy_v1` (default OFF): legacy 13-card stack (kill switch, byte-intact) vs the 5-section prioritised hierarchy (Trajectory hero · This Week · Energy · Body composition · Your Week). Goal-conditional tinted hero (ENG-1497 carve-out), corrected maintenance − intake equation, direction-aware `trendDirectionTone`, user-owned body-comp values always free. ENG-1296 over-target red → amber on both branches. See [decision doc](../decisions/2026-07-16-progress-hierarchy-v1.md).
 - **2026-04-19 — Action 13** — Trend tile uses one shared `computeWeightTrendCopy` helper so the on-track copy + delta can't drift; fixes the `(weightKg ?? Infinity)` "always on track for gain users" bug (Item #2). Macro Adherence bars cap at 150% with truthful labels via shared `formatMacroAdherenceBar` helper (Item #4). Web Daily Calories bar denominator scales to the largest day (Item #5). Mobile Trend tile + Weight card route through `formatWeightForUnit` so imperial users see `lb` everywhere (Item #6, #7). Daily projection block requires ≥5 logged days; below the floor it's suppressed entirely (Item #8). Weekly recap "Best day" → "Closest to target" using normalised L1 deviation (Item #9). Steps card distinguishes HK pending / failed / success states with a retry CTA (Item #10, mobile). Daily Calories chart adds a dashed border on past days using the current-target fallback (Item #11). Maintenance chain weekly-loss line carries a long-term-fat caveat (Item #12). Weekly recap weight delta relabelled "First → Last weigh-in" with both endpoints surfaced (Item #13). Maintenance card always renders an explicit "Adaptive" or "Formula estimate" pill — never a confidence bar coupled to a formula value (Item #14). `calcGoalTimeline` exposes `cappedAtMaxDays` so the Journey card renders "More than 1 year at current rate" instead of an empty headline (Item #15).
 - **2026-04-19 — Action 5** — Removed the Weekly Insight card on web + mobile (Item 1). Fixed the today-bar dim bug on the web Daily Calories chart so it matches mobile's by-key rule (Item 2). Re-labelled the Avg Calories tile so partial weeks show "Avg on logged days (X/7)" via shared helper (Item 3). Added an adaptive-vs-formula maintenance one-liner to the WeeklyRecapCard, suppressed for formula / low-confidence weeks (Item 7). Loosened the `usualMealInsight` gate so it also fires when the most-repeated unsaved slot has ≥3 distinct-day repeats over the last 14 days (Item 8).
