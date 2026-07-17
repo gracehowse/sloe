@@ -14,10 +14,11 @@ Julienne read expensive because every screen obeys the same few laws. This docum
 that rulebook for Sloe. A screen ships when it has **zero violations** — not when it
 "looks nice."
 
-Status: authored by Fable for Grace's ratification. The prototype's **Elevated** mode
-(Tweaks → Premium pass) implements it; Current remains the pre-constitution baseline
-for comparison. On ratification this becomes the conformance target for ENG-1247 and
-the write-time bar for all UI code.
+Status: the shell/chrome subset in Rules 0/1/3/5/6/7 is ratified by
+`docs/decisions/2026-07-17-primary-ui-consistency-contract.md`. The rest remains
+authored by Fable for Grace's separate ratification; this amendment does not make
+unrelated prototype claims production law. The prototype's **Elevated** mode
+(Tweaks → Premium pass) remains the comparison surface for those unratified claims.
 
 ---
 
@@ -25,8 +26,9 @@ the write-time bar for all UI code.
 
 Every element belongs to exactly one grammar. Never blend them on one element.
 
-- **Editorial** (the Julienne lineage) — food surfaces: full-bleed photography, serif
-  display, warm ground, chrome recedes. Where appetite lives.
+- **Editorial** (the Julienne lineage) — food surfaces: full-bleed photography with a
+  consistent warm grade, serif display, chrome recedes. The application shell remains
+  neutral cool plum-white. Where appetite lives.
 - **Instrument** (the Oura lineage) — data surfaces: gradient-lit arcs, glow, tabular
   numerals, semantic colour. Where trust lives.
 - **Chrome** is neutral: ink, plum, muted. Chrome never borrows either grammar's
@@ -53,6 +55,12 @@ and inconsistent; the overline system is the calm spine of every screen.
   weight trajectory. Cook = tonight's pick. The hero is the only element allowed
   display-scale type or the tinted ground.
 - Display type exists nowhere else. If two things look "biggest," the screen is wrong.
+
+**Today exception (ratified 2026-07-17):** Today's wordmark + ring-first chrome is
+intentional and does not gain a redundant 33px page title. The 33px title + 40px
+right-slot control template applies to Plan, Recipes, Progress, Settings, and
+comparable utility screens. Implement it by extending the existing shared screen
+chrome; do not create another parallel header primitive.
 
 ## Rule 2 — One card grammar (ENG-1497, unchanged)
 
@@ -160,9 +168,11 @@ elements.
 
 ## Rule 6 — Ground & depth
 
-Light: warm oat ground (`#fbfaf6` family), white cards, plum hairlines; **glow is
-reserved for the instrument** (data arcs, never chrome). Dark: Nocturne. One light
-source; no mixed elevation on a surface.
+Light: cool plum-white product ground (`#F7F6FA`), white cards, plum hairlines;
+oat is reserved for marketing. Warmth enters the product through food photography
+and its editorial grade, not beige shell or empty-state surfaces. **Glow is reserved
+for the instrument** (data arcs, never chrome). Dark: Nocturne. One light source;
+no mixed elevation on a surface.
 
 ## Rule 7 — Photography or nothing
 
@@ -245,11 +255,11 @@ user thinking. So fit is **ambient**, everywhere a recipe appears:
 | Progress hero numeral 40 vs ring 46 | 5 | Hero numerals 44 |
 | Energy numeral 32 (off-scale) | 5 | Section numeral 28 |
 | Cuisine letter monograms | 7 | Duotone texture tiles |
-| Pure-white clinical ground | 6 | Warm oat ground |
+| Pure-white clinical ground | 6 | Cool plum-white `#F7F6FA` product ground; warmth from food photography |
 
 **Delivered 2026-07-17 (tranche 2):** the recap story (Rule 8, above) · web shell
 de-templated — first shipped as an ink Sloe-Deep sidebar, **rejected by Grace and
-replaced with the light refined shell** (warm canvas sidebar, hairline separation,
+replaced with the light refined shell** (cool plum-white sidebar, hairline separation,
 muted nav states, plum Log food as THE filled — Linear's dimmed-same-family
 grammar), web cards to constitution grammar (radius 24, hairline, no shadow — was
 radius-22 + shadow) · motion demos live in the story
