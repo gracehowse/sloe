@@ -1762,33 +1762,33 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .ip-trust-sub{ margin-top:4px; font-size:12px; color:var(--fg-secondary); }
 /* ── Recap story — the payoff. One stat per scene; descriptive, never judgmental; per-scene save ── */
 .recap-story{ position:absolute; inset:0; z-index:70; background:var(--primary-deep); color:#fff; display:flex; flex-direction:column; cursor:pointer; overflow:hidden; }
-.rs-photo{ position:absolute; inset:0; background-size:cover; background-position:center; opacity:.38; }
-.rs-photo::after{ content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(36,23,51,.55) 0%, rgba(36,23,51,.94) 80%); }
-.rs-dots{ position:relative; z-index:2; display:flex; gap:5px; padding:16px 20px 0; }
-.rs-dot{ flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.22); transition:background .3s var(--ease); }
-.rs-dot.on{ background:rgba(255,255,255,.9); }
-.rs-top{ position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:16px 20px 0; }
-.rs-kicker{ font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-frost); }
-.rs-x{ background:rgba(255,255,255,.14); border:none; color:#fff; width:40px; height:40px; border-radius:9999px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; }
-.rs-scene{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; justify-content:center; padding:0 32px 40px; }
-.rs-stat{ font-family:var(--font-serif); font-size:84px; font-weight:var(--fw-medium); line-height:1; letter-spacing:-.02em; animation:rsUp .38s var(--ease) both; }
-.rs-big{ font-family:var(--font-serif); font-size:40px; font-weight:var(--fw-medium); line-height:1.14; letter-spacing:-.015em; animation:rsUp .38s var(--ease) both; }
-.rs-mark{ font-family:var(--font-brand); font-size:22px; color:rgba(255,255,255,.85); }
-.rs-line{ font-family:var(--font-serif); font-size:22px; margin-top:10px; color:rgba(255,255,255,.92); animation:rsUp .38s .07s var(--ease) both; }
-.rs-sub{ font-size:15px; line-height:1.55; margin-top:14px; color:rgba(255,255,255,.66); max-width:30ch; animation:rsUp .38s .14s var(--ease) both; }
-.rs-card{ background:#fff; color:var(--primary-deep); border-radius:16px; padding:16px 20px 12px; margin-top:20px; max-width:280px; box-shadow:0 18px 44px rgba(0,0,0,.35); animation:rsUp .38s .1s var(--ease) both; }
-.rs-card-k{ font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--primary-active); }
-.rs-card-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:12px; }
-.rs-card-grid b{ display:block; font-family:var(--font-serif); font-size:20px; font-weight:var(--fw-medium); line-height:1; }
-.rs-card-grid span{ display:block; font-size:11px; color:var(--fg-secondary); margin-top:3px; }
-.rs-card-mark{ font-family:var(--font-brand); font-size:15px; text-align:right; margin-top:10px; color:var(--primary); }
-.rs-foot{ position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:0 24px 32px; min-height:64px; }
-.rs-save{ background:none; border:none; color:rgba(255,255,255,.75); font-family:var(--font-sans); font-size:13px; font-weight:600; cursor:pointer; padding:8px 0; }
-.rs-hint{ font-size:12px; color:rgba(255,255,255,.4); }
+.recap-story .rs-photo{ position:absolute; inset:0; background-size:cover; background-position:center; opacity:.38; }
+.recap-story .rs-photo::after{ content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(36,23,51,.55) 0%, rgba(36,23,51,.94) 80%); }
+.recap-story .rs-dots{ position:relative; z-index:2; display:flex; gap:5px; padding:16px 20px 0; }
+.recap-story .rs-dot{ flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.22); transition:background .3s var(--ease); }
+.recap-story .rs-dot.on{ background:rgba(255,255,255,.9); }
+.recap-story .rs-top{ position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:16px 20px 0; }
+.recap-story .rs-kicker{ font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-frost); }
+.recap-story .rs-x{ background:rgba(255,255,255,.14); border:none; color:#fff; width:40px; height:40px; border-radius:9999px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; }
+.recap-story .rs-scene{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; justify-content:center; padding:0 32px 40px; }
+.recap-story .rs-stat{ font-family:var(--font-serif); font-size:84px; font-weight:var(--fw-medium); line-height:1; letter-spacing:-.02em; animation:rsUp .38s var(--ease) both; }
+.recap-story .rs-big{ font-family:var(--font-serif); font-size:40px; font-weight:var(--fw-medium); line-height:1.14; letter-spacing:-.015em; animation:rsUp .38s var(--ease) both; }
+.recap-story .rs-mark{ font-family:var(--font-brand); font-size:22px; color:rgba(255,255,255,.85); }
+.recap-story .rs-line{ font-family:var(--font-serif); font-size:22px; margin-top:10px; color:rgba(255,255,255,.92); animation:rsUp .38s .07s var(--ease) both; }
+.recap-story .rs-sub{ font-size:15px; line-height:1.55; margin-top:14px; color:rgba(255,255,255,.66); max-width:30ch; animation:rsUp .38s .14s var(--ease) both; }
+.recap-story .rs-card{ background:#fff; color:var(--primary-deep); border-radius:16px; padding:16px 20px 12px; margin-top:20px; max-width:280px; box-shadow:0 18px 44px rgba(0,0,0,.35); animation:rsUp .38s .1s var(--ease) both; }
+.recap-story .rs-card-k{ font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--primary-active); }
+.recap-story .rs-card-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:12px; }
+.recap-story .rs-card-grid b{ display:block; font-family:var(--font-serif); font-size:20px; font-weight:var(--fw-medium); line-height:1; }
+.recap-story .rs-card-grid span{ display:block; font-size:11px; color:var(--fg-secondary); margin-top:3px; }
+.recap-story .rs-card-mark{ font-family:var(--font-brand); font-size:15px; text-align:right; margin-top:10px; color:var(--primary); }
+.recap-story .rs-foot{ position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:0 24px 32px; min-height:64px; }
+.recap-story .rs-save{ background:none; border:none; color:rgba(255,255,255,.75); font-family:var(--font-sans); font-size:13px; font-weight:600; cursor:pointer; padding:8px 0; }
+.recap-story .rs-hint{ font-size:12px; color:rgba(255,255,255,.4); }
 @keyframes rsUp{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
-.rs-bars{ display:flex; align-items:flex-end; gap:8px; height:72px; margin-top:24px; max-width:230px; animation:rsUp .38s .1s var(--ease) both; }
-.rs-bars span{ flex:1; border-radius:5px 5px 3px 3px; }
-@media (prefers-reduced-motion: reduce){ .rs-stat,.rs-big,.rs-line,.rs-sub,.rs-bars{ animation:none; } }
+.recap-story .rs-bars{ display:flex; align-items:flex-end; gap:8px; height:72px; margin-top:24px; max-width:230px; animation:rsUp .38s .1s var(--ease) both; }
+.recap-story .rs-bars span{ flex:1; border-radius:5px 5px 3px 3px; }
+@media (prefers-reduced-motion: reduce){ .recap-story .rs-stat,.recap-story .rs-big,.recap-story .rs-line,.recap-story .rs-sub,.recap-story .rs-bars{ animation:none; } }
 
 /* ── Web premium shell v2 — LIGHT refined (Grace 2026-07-17: ink sidebar rejected; the light shell wins).
    Sidebar sits on the warm canvas, dimmed by hairline + tone only (Linear grammar); the plum Log food is THE filled CTA. ── */
