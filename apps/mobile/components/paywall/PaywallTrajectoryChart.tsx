@@ -17,6 +17,7 @@ import {
 } from "@/lib/weightProjection";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
+import { useCalmMode } from "@/lib/calmMode";
 
 /**
  * `<PaywallTrajectoryChart>` — ENG-969 (mobile).
@@ -67,12 +68,16 @@ export interface PaywallTrajectoryChartViewProps {
   goal?: string | null;
   style?: ViewStyle;
   testID?: string;
+  /** ENG-1444 (LEGAL-011) — suppress the body-weight outcome under Calm mode,
+   *  same as TodayDashboardMacroTiles/TodayMealsSection. Defaults to false so
+   *  existing callers/tests are unaffected. */
+  calmMode?: boolean;
 }
 
 /** Pure presentation. Renders the single-line projected-weight chart only for
  *  the `projection` state; placeholder / null both render nothing. */
 export function PaywallTrajectoryChartView(props: PaywallTrajectoryChartViewProps) {
-  const { style, testID, ...input } = props;
+  const { style, testID, calmMode, ...input } = props;
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the forecast line —
   // matches the Progress TrajectoryCard's projection tone.
@@ -87,7 +92,7 @@ export function PaywallTrajectoryChartView(props: PaywallTrajectoryChartViewProp
 
   // Conversion surface: only ever draw a REAL projection. No placeholder nag,
   // no fabricated forecast.
-  if (!state || state.kind !== "projection") return null;
+  if (!state || state.kind !== "projection" || calmMode) return null;
 
   const startKg = input.latestWeightKg as number;
   const endKg = state.projectedKg;
@@ -213,6 +218,10 @@ export function PaywallTrajectoryChartView(props: PaywallTrajectoryChartViewProp
 export function PaywallTrajectoryChart({ style }: { style?: ViewStyle }) {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  // ENG-1444 (LEGAL-011) — Calm mode suppresses a body-weight outcome
+  // sitting right beside a purchase CTA, mirroring the existing gate on
+  // TodayDashboardMacroTiles/TodayMealsSection.
+  const [calmMode] = useCalmMode();
   const [data, setData] = useState<{
     byDay: Record<string, { calories?: number | null }[]>;
     latestWeightKg: number | null;
@@ -319,6 +328,7 @@ export function PaywallTrajectoryChart({ style }: { style?: ViewStyle }) {
 
   return (
     <PaywallTrajectoryChartView
+      calmMode={calmMode}
       byDay={data.byDay}
       latestWeightKg={data.latestWeightKg}
       targetCalories={data.targetCalories}

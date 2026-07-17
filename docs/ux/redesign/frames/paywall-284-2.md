@@ -10,11 +10,11 @@ Cream `#F6F5F2` · plum `#3B2A4D` · body `#6A6072` · clay `#C8794E` (CTA, sele
 1. **Hero** — full-bleed food **photo** + close X (top-right). Soft fade into content.
 2. **"SLOE PRO"** eyebrow (clay, uppercase, tracked) + **headline** "Cook what you love. / *Still* reach your goals." (Newsreader, "Still" italic) overlaid on the fade.
 3. **2×2 feature grid** (cream rounded cards): each = icon + title + one-line desc:
-   - **Unlimited imports** — "Save any recipe from a link or Reel."
+   - **Unlimited saves** — "Keep every recipe you love." *(ENG-1444/LEGAL-012, 2026-07-16: was "Unlimited imports" — recipe import has never been tier-gated; the real Free-vs-Pro differentiator is the save limit. Corrected to match the shipped `PAYWALL_VALUE_PROPS` SSOT so this prototype can't reseed the false claim in a future conformance pass.)*
    - **Macro fitting** — "Auto-fit any recipe to your day."
    - **AI coach** — "Personalised, guilt-free nudges."
    - **Cloud sync** — "Your journal, safe on every device."
-4. **Comparison table** — two columns **FREE** / **PRO** (PRO column lilac-highlighted), rows with ✓ / – : Log meals & macros (✓/✓) · Browse community recipes (✓/✓) · Unlimited imports (–/✓) · AI macro fitting (–/✓).
+4. **Comparison table** — two columns **FREE** / **PRO** (PRO column lilac-highlighted), rows with ✓ / – : Log meals & macros (✓/✓) · Browse community recipes (✓/✓) · Unlimited saves (–/✓) · AI macro fitting (–/✓).
 5. **Plan selector:**
    - **Annual** — "BEST VALUE" clay badge, "Save 28%", "£19.99/yr · just £1.66/mo", SELECTED (clay border + clay radio).
    - **Monthly** — "£2.99/mo".

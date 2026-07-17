@@ -54,9 +54,9 @@ describe("PAYWALL_VALUE_PROPS — 2×2 grid SSOT (Figma 284:2)", () => {
 
   it("matches the frame copy exactly", () => {
     const byKey = Object.fromEntries(PAYWALL_VALUE_PROPS.map((p) => [p.key, p]));
-    expect(byKey.unlimited_imports.title).toBe("Unlimited imports");
+    expect(byKey.unlimited_imports.title).toBe("Unlimited saves");
     expect(byKey.unlimited_imports.description).toBe(
-      "Save any recipe from a link or Reel.",
+      "Keep every recipe you love.",
     );
     expect(byKey.macro_fitting.title).toBe("Macro fitting");
     expect(byKey.macro_fitting.description).toBe(

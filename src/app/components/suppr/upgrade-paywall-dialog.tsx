@@ -407,7 +407,7 @@ export function UpgradePaywallDialog({
                 <em className="italic">Still</em> reach your goals.
               </h2>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
-                Snap a photo or say what you ate — Pro handles the rest, and unlocks unlimited imports and macro fitting.
+                Snap a photo or say what you ate — Pro handles the rest, and unlocks unlimited saves and macro fitting.
               </p>
             </>
           ) : (

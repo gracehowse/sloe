@@ -5108,7 +5108,7 @@ function Settings(){
           <span className="pglow"></span>
           <span className="overline" style={{color:'var(--accent-frost)',position:'relative'}}>Sloe Pro</span>
           <span className="pro-h">Plan the whole week</span>
-          <span className="pro-p">Unlimited imports, photo &amp; voice logging, adaptive targets and body-composition trends.</span>
+          <span className="pro-p">Unlimited saves, photo &amp; voice logging, adaptive targets and body-composition trends.</span>
         </button>
 
         <div className="overline" style={{margin:'22px 4px 8px'}}>Account</div>
@@ -5283,7 +5283,7 @@ function Paywall(){
     au:{cur:'A$',mo:'13.99',yr:'104.99',yrmo:'8.75',tax:'incl. GST',flag:'🇦🇺',label:'AU'},
   };
   const p=PRICE[region];
-  const feats=[['plan','Plan your whole week','Map every meal, then cook through a week that’s handled.'],['camera','Photo & voice logging','Snap or speak a meal; Sloe estimates the macros.'],['link','Unlimited imports','Any recipe from the web, read for you.'],['progress','Adaptive targets & trends','Targets that learn, plus body-composition insights.']];
+  const feats=[['plan','Plan your whole week','Map every meal, then cook through a week that’s handled.'],['camera','Photo & voice logging','Snap or speak a meal; Sloe estimates the macros.'],['link','Unlimited saves','Keep every recipe you love.'],['progress','Adaptive targets & trends','Targets that learn, plus body-composition insights.']];
   return (
     <div className="pushed full">
       <div className="pw-hero"><span className="pglow"></span>
@@ -8427,7 +8427,7 @@ function WebPaywall({onClose}){
         <p className="w-pay-sub">Plan the whole week, log by photo or voice, and watch targets adapt to you.</p>
         <div className="w-pay-tiers">
           <div className="w-pay-tier"><div className="w-pay-tn">Free</div><div className="w-pay-price"><b>£0</b></div><ul>{['Tracking & macros','Recipe library','Barcode & search','One weekly plan'].map(f=><li key={f}><Ic n="check" s={15}/>{f}</li>)}</ul><button className="btn btn--outline btn--block" disabled style={{opacity:.6}}>Current plan</button></div>
-          <div className="w-pay-tier pro"><span className="w-pay-badge">Most popular</span><div className="w-pay-tn">Pro</div><div className="w-pay-price"><b>£5</b><span>/mo</span></div><ul>{['Everything in Free','Photo & voice logging','Adaptive targets','Trends & recaps','Unlimited imports'].map(f=><li key={f}><Ic n="check" s={15}/>{f}</li>)}</ul><button className="btn btn--primary btn--block" onClick={onClose}>Start 7 days free</button></div>
+          <div className="w-pay-tier pro"><span className="w-pay-badge">Most popular</span><div className="w-pay-tn">Pro</div><div className="w-pay-price"><b>£5</b><span>/mo</span></div><ul>{['Everything in Free','Photo & voice logging','Adaptive targets','Trends & recaps','Unlimited saves'].map(f=><li key={f}><Ic n="check" s={15}/>{f}</li>)}</ul><button className="btn btn--primary btn--block" onClick={onClose}>Start 7 days free</button></div>
         </div>
         <p className="w-pay-clar tnum">Billed £59.99/year · cancel anytime</p>
       </div>

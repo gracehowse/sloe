@@ -102,7 +102,7 @@ export function BodyCompositionTrendCard({
             Track body fat and lean mass trends over time — a quiet read on how your composition is shifting.
           </Text>
           <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: Spacing.sm, lineHeight: 16 }}>
-            Included with Sloe Pro alongside adaptive targets and unlimited imports.
+            Included with Sloe Pro alongside adaptive targets and unlimited saves.
           </Text>
           <PressableScale
             haptic="selection"
