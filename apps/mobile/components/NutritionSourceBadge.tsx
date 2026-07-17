@@ -25,6 +25,16 @@ export default function NutritionSourceBadge({ source, compact = true }: { sourc
       : tier === "verified"
         ? Accent.success
         : Accent.warning;
+  // ENG-1521 — badge fill at the sanctioned Soft step (replaces `color + "18"`):
+  // manual reads the scheme-resolved `sourceManualSoft` provenance tint;
+  // verified/estimated stay on the static Accent family Softs, matching the
+  // static Accent ink idiom above.
+  const soft =
+    tier === "manual"
+      ? colors.sourceManualSoft
+      : tier === "verified"
+        ? Accent.successSoft
+        : Accent.warningSoft;
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -35,12 +45,12 @@ export default function NutritionSourceBadge({ source, compact = true }: { sourc
           borderRadius: Radius.full, // tags census 2026-06-10
           paddingHorizontal: Spacing.xs,
           paddingVertical: 1,
-          backgroundColor: color + "18",
+          backgroundColor: soft,
         },
         abbr: { fontSize: 10, fontWeight: "700", color },
         label: { fontSize: 9, fontWeight: "600", color },
       }),
-    [color],
+    [color, soft],
   );
 
   return (

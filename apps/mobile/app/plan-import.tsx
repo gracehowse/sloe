@@ -328,12 +328,12 @@ export default function PlanImportScreen() {
         subtitle: { fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: Spacing.md },
         // SLOE DS reskin (2026-06-07): cream surface-card slabs, 24px radius, serif headings — presentation only.
         callout: {
-          backgroundColor: Accent.success + "1F",
+          backgroundColor: Accent.successSoft,
           borderRadius: Radius.xl,
           padding: Spacing.lg,
           marginBottom: Spacing.md,
           borderWidth: 1,
-          borderColor: Accent.success + "40",
+          borderColor: Accent.successSoftStrong,
         },
         calloutTitle: { ...Type.label, color: Accent.successSolid, marginBottom: 6 },
         calloutItem: { ...Type.caption, color: colors.textSecondary, marginBottom: 4 },

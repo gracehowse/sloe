@@ -89,8 +89,10 @@ describe("EmptyState (mobile) — 72pt illustration + headline ladder + CTA", ()
     // `Accent` palette when no ThemeProvider is present (context default).
     // On light, `accent.primary === Accent.primary`, so this pin correctly
     // verifies the light-scheme disc colour.
+    // ENG-1521 — the disc reads the named Soft token (the old `+ "10"`
+    // sub-10% concat snapped UP to Soft per the ruling).
     expect((disc as { backgroundColor?: string }).backgroundColor).toBe(
-      Accent.primary + "10",
+      Accent.primarySoft,
     );
   });
 

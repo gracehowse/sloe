@@ -19,8 +19,8 @@ export function CookHandsfreeBanner({ visible }: CookHandsfreeBannerProps) {
       style={[
         styles.banner,
         {
-          backgroundColor: accent.primary + "10",
-          borderColor: accent.primary + "30",
+          backgroundColor: accent.primarySoft,
+          borderColor: accent.primarySoftStrong,
         },
       ]}
       accessibilityLiveRegion="polite"

@@ -649,7 +649,7 @@ export default function ShoppingListScreen() {
       gap: Spacing.sm,
       paddingVertical: Spacing.sm,
       paddingHorizontal: Spacing.md,
-      backgroundColor: accent.primary + "12",
+      backgroundColor: accent.primarySoft,
       borderRadius: Radius.md,
     },
     syncBannerText: {
@@ -871,7 +871,7 @@ export default function ShoppingListScreen() {
               width: 44,
               height: 44,
               borderRadius: Radius.xl,
-              backgroundColor: accent.primary + "14",
+              backgroundColor: accent.primarySoft,
               alignItems: "center",
               justifyContent: "center",
               marginBottom: Spacing.md,

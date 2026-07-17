@@ -36,7 +36,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react-native";
-import { Accent, Elevation, Radius, SlotColors, Spacing, Type } from "@/constants/theme";
+import { Accent, Elevation, Radius, SlotColors, SlotColorsSoft, Spacing, Type } from "@/constants/theme";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
@@ -217,11 +217,12 @@ const SLOT_ICON: Record<string, LucideIcon> = {
  * reserved for the Macro tile row.
  */
 const SLOT_COLOR: Record<string, string> = {
-  Breakfast: SlotColors.breakfast,
-  Lunch: SlotColors.lunch,
-  Dinner: SlotColors.dinner,
-  Snacks: SlotColors.snack,
-  Snack: SlotColors.snack,
+  Breakfast: SlotColors.breakfast, Lunch: SlotColors.lunch, Dinner: SlotColors.dinner,
+  Snacks: SlotColors.snack, Snack: SlotColors.snack,
+};
+const SLOT_SOFT: Record<string, string> = { // ENG-1521 — paired Soft-step slot tints (named tokens; concat of the hue is banned)
+  Breakfast: SlotColorsSoft.breakfast, Lunch: SlotColorsSoft.lunch, Dinner: SlotColorsSoft.dinner,
+  Snacks: SlotColorsSoft.snack, Snack: SlotColorsSoft.snack,
 };
 
 function slotIcon(s: string): LucideIcon {
@@ -230,9 +231,8 @@ function slotIcon(s: string): LucideIcon {
 
 // Plain helper — hooks are forbidden here (rules-of-hooks); the caller passes
 // the scheme-resolved accent fallback from its own useAccent().
-function slotColor(s: string, fallback: string): string {
-  return SLOT_COLOR[s] ?? fallback;
-}
+function slotColor(s: string, fallback: string): string { return SLOT_COLOR[s] ?? fallback; }
+function slotSoft(s: string, fallback: string): string { return SLOT_SOFT[s] ?? fallback; }
 
 function SlotIcon({
   Glyph,
@@ -365,13 +365,13 @@ function MealActionRow({
         mas.row,
         Elevation.card,
         {
-          backgroundColor: danger ? Accent.destructive + "0F" : colors.card,
-          borderColor: danger ? Accent.destructive + "26" : colors.border,
+          backgroundColor: danger ? Accent.destructiveSoft : colors.card,
+          borderColor: danger ? Accent.destructiveSoft : colors.border,
           transform: [{ scale: pressed ? 0.985 : 1 }],
         },
       ]}
     >
-      <View style={[mas.rowIcon, { backgroundColor: accent + "1A" }]}>
+      <View style={[mas.rowIcon, { backgroundColor: danger ? Accent.destructiveSoft : themeAccent.primarySoft }]}>
         <Glyph size={17} color={accent} strokeWidth={2.1} />
       </View>
       <View style={mas.rowText}>
@@ -436,7 +436,7 @@ function MealActionSheet({
                 accessibilityIgnoresInvertColors
               />
             ) : (
-              <View style={[mas.thumb, mas.thumbFallback, { backgroundColor: accent.primary + "14" }]}>
+              <View style={[mas.thumb, mas.thumbFallback, { backgroundColor: accent.primarySoft }]}>
                 <UtensilsCrossed size={22} color={accent.primary} />
               </View>
             )}
@@ -848,7 +848,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
           const isOpen = !collapsedSlots.has(slot);
           const hasMeals = meals.length > 0;
           const ic = slotIcon(slot);
-          const col = slotColor(slot, accent.primary);
+          const col = slotColor(slot, accent.primary), colSoft = slotSoft(slot, accent.primarySoft);
           const slotSaved = savedMealsForSlot(savedMeals, slot);
           const hasSaved = slotSaved.length > 0;
           const showSaveRow = meals.length >= 2 && !hasSaved;
@@ -939,7 +939,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                       width: 32,
                       height: 32,
                       borderRadius: Radius.lg,
-                      backgroundColor: col + "12",
+                      backgroundColor: colSoft,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
@@ -1321,9 +1321,9 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                     marginVertical: Spacing.sm,
                     padding: Spacing.dense,
                     borderRadius: Radius.md,
-                    backgroundColor: col + "0C",
+                    backgroundColor: colSoft,
                     borderWidth: 1,
-                    borderColor: col + "28",
+                    borderColor: colSoft,
                   }}
                 >
                   <Text style={{ ...Type.body, color: textColor }}>

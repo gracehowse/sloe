@@ -165,8 +165,8 @@ export function MobileSignupStep() {
       {error ? (
         <View
           style={{
-            backgroundColor: Accent.destructive + "15",
-            borderColor: Accent.destructive + "40",
+            backgroundColor: Accent.destructiveSoft,
+            borderColor: Accent.destructiveSoftStrong,
             borderWidth: 1,
             borderRadius: Radius.md,
             padding: Spacing.dense,

@@ -1,8 +1,30 @@
 import * as React from "react";
 import { Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { Check } from "lucide-react-native";
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import {
+  Accent,
+  MacroColors,
+  MacroColorsDark,
+  MacroColorsSoft,
+  MacroColorsSoftDark,
+  Radius,
+  Spacing,
+} from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+
+/** ENG-1521 — resolve the sanctioned Soft tint paired with a macro hue. The
+ *  pill receives the macro FILL hue as a prop (already scheme-resolved by the
+ *  caller via `MacroColors`/`MacroColorsDark`), so the progress fill reads the
+ *  paired named `MacroColorsSoft*` token instead of alpha-concatenating the
+ *  hue. A hue outside the macro maps falls back to the neutral Soft step so
+ *  the fill never manufactures an off-scale tint. */
+function macroSoftFor(color: string, fallback: string): string {
+  for (const key of Object.keys(MacroColorsSoft) as (keyof typeof MacroColorsSoft)[]) {
+    if (MacroColors[key] === color) return MacroColorsSoft[key];
+    if (MacroColorsDark[key] === color) return MacroColorsSoftDark[key];
+  }
+  return fallback;
+}
 import { macroStatProgressRatio } from "@suppr/nutrition-core/macroStatCaption";
 
 export type MacroStatPillVariant = "delta" | "ratio" | "value";
@@ -81,7 +103,7 @@ export function MacroStatPill({
             top: 0,
             bottom: 0,
             width: `${fillPct}%`,
-            backgroundColor: color + "18",
+            backgroundColor: macroSoftFor(color, colors.confidenceNeutralSoft),
           }}
         />
       ) : null}

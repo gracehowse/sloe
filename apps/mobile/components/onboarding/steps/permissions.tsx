@@ -1,8 +1,8 @@
 import * as React from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Bell, Check, Heart, type LucideIcon } from "lucide-react-native";
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
-import { useAccent } from "@/context/theme";
+import { Accent, MacroColorsSoft, MacroColorsSoftDark, Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
@@ -19,6 +19,11 @@ export function MobilePermissionsStep() {
   const { state, set } = useOnboarding();
   const overline = useStepOverline();
   const { colors: macro } = useMacroColors();
+  // ENG-1521 — glyph-disc tints at the sanctioned Soft step, scheme-resolved
+  // the same way `useMacroColors` resolves the base hues.
+  const isDark = useResolvedScheme() === "dark";
+  const macroSoft = isDark ? MacroColorsSoftDark : MacroColorsSoft;
+  const warningSoft = isDark ? Accent.warningSoftDark : Accent.warningSoft;
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const [healthBusy, setHealthBusy] = React.useState(false);
@@ -115,6 +120,7 @@ export function MobilePermissionsStep() {
       <PermissionCard
         icon={Heart}
         iconColor={macro.fat}
+        iconSoft={macroSoft.fat}
         title="Apple Health"
         body="Read your active energy and steps to refine your adaptive TDEE. Sloe does not write to Health."
         granted={state.healthGranted}
@@ -129,6 +135,7 @@ export function MobilePermissionsStep() {
       <PermissionCard
         icon={Bell}
         iconColor={Accent.warning}
+        iconSoft={warningSoft}
         title="Notifications"
         body="Gentle reminders only — an evening nudge when you're off-target, plus a Sunday recap of your week."
         granted={state.notifGranted}
@@ -149,6 +156,7 @@ export function MobilePermissionsStep() {
 function PermissionCard({
   icon: Icon,
   iconColor,
+  iconSoft,
   title,
   body,
   granted,
@@ -159,6 +167,9 @@ function PermissionCard({
 }: {
   icon: LucideIcon;
   iconColor: string;
+  /** The icon hue's FAMILY `*Soft` token for the glyph disc (ENG-1521 —
+   *  replaces the old `iconColor + "26"` alpha-concat). */
+  iconSoft: string;
   title: string;
   body: string;
   granted: boolean | null;
@@ -194,7 +205,7 @@ function PermissionCard({
             borderRadius: Radius.full,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: iconColor + "26",
+            backgroundColor: iconSoft,
           }}
         >
           <Icon size={20} color={iconColor} />

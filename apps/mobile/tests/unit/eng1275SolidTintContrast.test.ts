@@ -198,9 +198,10 @@ describe("ENG-1275 mobile — call sites ink with the scheme-resolved `-solid`, 
     expect(STREAK_INSIGHT).toContain("import { useAccent }");
     expect(STREAK_INSIGHT).toContain("color: accent.successSolid");
     expect(STREAK_INSIGHT).toContain("color: accent.cyanSolid");
-    // The icons + soft tints stay on the raw Accent.success / Accent.cyan fills.
+    // The icons stay on the raw Accent.success / Accent.cyan fills; the soft
+    // tints read the named scheme-resolved Soft tokens (ENG-1521).
     expect(STREAK_INSIGHT).toContain("color={Accent.success}");
-    expect(STREAK_INSIGHT).toContain("backgroundColor: Accent.success +");
+    expect(STREAK_INSIGHT).toContain("backgroundColor: accent.successSoft");
     expect(STREAK_INSIGHT).toContain("color={Accent.cyan}");
   });
 

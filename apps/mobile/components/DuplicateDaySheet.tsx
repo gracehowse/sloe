@@ -274,7 +274,7 @@ export default function DuplicateDaySheet({
                         backgroundColor: isHighlighted
                           ? accent.primary
                           : inRange
-                            ? accent.primary + "22"
+                            ? accent.primarySoft
                             : "transparent",
                         opacity: disabled ? 0.28 : 1,
                       }}

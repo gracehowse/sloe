@@ -126,9 +126,9 @@ export function DigestStoryCard(props: DigestStoryCardProps) {
                   : `${Math.abs(deltaKcal).toLocaleString()} under`;
           const deltaBg =
             deltaTone === "over"
-              ? Accent.destructive + "1a"
+              ? accent.destructiveSoft
               : deltaTone === "under"
-                ? Accent.success + "1f"
+                ? accent.successSoft
                 : colors.border;
           const deltaFg =
             deltaTone === "over"

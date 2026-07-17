@@ -42,8 +42,10 @@ describe("ENG-1097 — import nudge flat-white treatment", () => {
   });
 
   it("flag-off keeps the legacy tinted clay-wash + border slab (kill switch)", () => {
-    expect(BANNER).toMatch(/accent\.primary \+ "0A"/);
-    expect(BANNER).toMatch(/borderColor: accent\.primary \+ "30"/);
+    // ENG-1521 — the wash reads the named scheme-resolved Soft token (the old
+    // `accent.primary + "0A"` sub-10% concat snapped UP to Soft per the ruling).
+    expect(BANNER).toMatch(/accent\.primarySoft/);
+    expect(BANNER).toMatch(/borderColor: accent\.primarySoftStrong/);
   });
 
   it("the 'Try it' CTA is solid aubergine when flat-white, outline when off", () => {

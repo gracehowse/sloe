@@ -174,7 +174,7 @@ export function MobileMfpCsvImportCard({
             borderRadius: Radius.lg,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: accent.primaryLight + "26",
+            backgroundColor: accent.primarySoft,
           }}
         >
           <FileSpreadsheet size={18} color={accent.primaryLight} />
@@ -198,7 +198,7 @@ export function MobileMfpCsvImportCard({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 4,
-                  backgroundColor: Accent.success + "26",
+                  backgroundColor: Accent.successSoft,
                   paddingHorizontal: 8,
                   paddingVertical: 3,
                   borderRadius: Radius.full,

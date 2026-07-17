@@ -373,9 +373,8 @@ export default function FoodSearchPanel({
   // identity, never a commit-button fill. Gate behind `design_system_colours`:
   //   flag ON  → accent commit CTA (damson under Frost, else clay)
   //   flag OFF → existing green (old path stays alive in the `else`).
-  const commitCtaColor = isFeatureEnabled("design_system_colours")
-    ? accent.primary
-    : Accent.success;
+  const commitCtaColor = isFeatureEnabled("design_system_colours") ? accent.primary : Accent.success;
+  const commitCtaSoft = isFeatureEnabled("design_system_colours") ? accent.primarySoft : Accent.successSoft; // ENG-1521 — the CTA family's Soft step
   // 2026-05-31 design-direction (LANE: search-results UI — ENG-814).
   // Gate the redesigned results body behind `redesign_search_results`:
   //   flag ON  → unified segmented control + softly-elevated grouped
@@ -1362,7 +1361,7 @@ export default function FoodSearchPanel({
       borderRadius: Radius.md,
       borderWidth: 1,
       borderColor: Accent.warning,
-      backgroundColor: Accent.warning + "14",
+      backgroundColor: Accent.warningSoft,
     },
     degradedNoticeText: {
       color: Accent.warningSolid,
@@ -1692,7 +1691,7 @@ export default function FoodSearchPanel({
       >
         <View style={{
           backgroundColor: colors.card, borderRadius: Radius.lg,
-          borderWidth: 1, borderColor: Accent.success + "40",
+          borderWidth: 1, borderColor: Accent.successSoftStrong,
           padding: Spacing.xl, gap: Spacing.md,
         }}>
           <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>{preview.name}</Text>
@@ -1738,7 +1737,7 @@ export default function FoodSearchPanel({
                       paddingHorizontal: Spacing.dense, paddingVertical: 8,
                       borderRadius: Radius.md, borderWidth: 1,
                       borderColor: isActive ? commitCtaColor : colors.border,
-                      backgroundColor: isActive ? commitCtaColor + "15" : "transparent",
+                      backgroundColor: isActive ? commitCtaSoft : "transparent",
                       minWidth: 50, alignItems: "center",
                     }}
                   >
@@ -2016,7 +2015,7 @@ export default function FoodSearchPanel({
               borderWidth: 1,
               borderColor: accent.primary,
               borderRadius: Radius.md,
-              backgroundColor: accent.primary + "10",
+              backgroundColor: accent.primarySoft,
             }}
           >
             <Plus size={16} color={accent.primary} />
@@ -2071,7 +2070,7 @@ export default function FoodSearchPanel({
               paddingVertical: Spacing.sm,
               paddingHorizontal: Spacing.md,
               borderRadius: Radius.md,
-              backgroundColor: Accent.success + "15",
+              backgroundColor: Accent.successSoft,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",

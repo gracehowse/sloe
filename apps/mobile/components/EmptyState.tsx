@@ -12,7 +12,8 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
  * upgrade. The previous primitive surfaced empty tabs as 13pt bold
  * over a tiny gap — too quiet to read as a state. The new primitive:
  *   - Optional `illustration` slot rendered inside a 72pt circular
- *     `accent.primary + "10"` (6.25% alpha) primary-tinted disc (scheme-resolved).
+ *     `accent.primarySoft` primary-tinted disc (scheme-resolved; ENG-1521
+ *     snapped the old 6.25% ad-hoc alpha UP to the sanctioned Soft step).
  *   - Title routed through `Type.headline` (17pt / 22 lh).
  *   - Description routed through `Type.body` (14pt / 20 lh).
  *   - 12pt rhythm between elements; 20pt paddingTop/Bottom.
@@ -38,7 +39,7 @@ export interface EmptyStateProps {
    *  New callers should prefer `illustration` for the 72pt disc. */
   icon?: React.ReactNode;
   /** Optional ~32pt lucide glyph rendered inside a 72pt
-   *  `accent.primary + "10"` tinted disc (scheme-resolved via `useAccent()`). */
+   *  `accent.primarySoft` tinted disc (scheme-resolved via `useAccent()`). */
   illustration?: React.ReactNode;
   /** Short title — typically a plain string, but accepts any React
    *  node so callers can preserve existing inline emphasis. */
@@ -85,12 +86,10 @@ export function EmptyState({
         <View
           style={[
             styles.illustrationDisc,
-            // Literal `+ "10"` concatenation — the trailing "10" is the
-            // alpha channel hex (6.25% on mobile; web uses
-            // `bg-primary/10` which is the Tailwind 10% alpha). Visual
-            // parity is close enough that any drift is captured by
-            // visual-qa, not numeric tests.
-            { backgroundColor: accent.primary + "10" },
+            // ENG-1521 — sanctioned Soft step (12% light / 18% dark),
+            // snapped UP from the old 6.25% ad-hoc alpha (sub-10% snaps
+            // to Soft per the ruling). Web parity: `--accent-primary-soft`.
+            { backgroundColor: accent.primarySoft },
           ]}
         >
           {illustration}

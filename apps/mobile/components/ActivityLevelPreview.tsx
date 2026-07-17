@@ -85,7 +85,7 @@ export default function ActivityLevelPreview({
                   {
                     borderColor: active ? accent.primary : colors.border,
                     backgroundColor: active
-                      ? accent.primary + "15"
+                      ? accent.primarySoft
                       : colors.inputBg,
                   },
                 ]}

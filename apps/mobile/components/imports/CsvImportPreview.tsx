@@ -79,7 +79,7 @@ export function CsvImportPreview({
           >
             <View
               style={{
-                backgroundColor: accent.primaryLight + "1a",
+                backgroundColor: accent.primarySoft,
                 borderRadius: Radius.full,
                 paddingHorizontal: Spacing.sm,
                 paddingVertical: 3,

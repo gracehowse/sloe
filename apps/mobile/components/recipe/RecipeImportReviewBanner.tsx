@@ -23,7 +23,7 @@ export function RecipeImportReviewBanner({
 
   return (
     <View
-      style={[styles.banner, { backgroundColor: Accent.warning + "22" }]}
+      style={[styles.banner, { backgroundColor: Accent.warningSoft }]}
       testID="recipe-import-review-banner"
       accessibilityRole="summary"
     >

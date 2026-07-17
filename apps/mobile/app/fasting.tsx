@@ -746,7 +746,7 @@ export default function FastingScreen() {
                         paddingHorizontal: Spacing.sm,
                         paddingVertical: 2,
                         borderRadius: 4,
-                        backgroundColor: Accent.warning + "1F",
+                        backgroundColor: Accent.warningSoft,
                       }}
                     >
                       <Text

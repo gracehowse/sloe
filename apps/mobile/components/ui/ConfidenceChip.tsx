@@ -40,7 +40,7 @@ export function ConfidenceChip({ level, label, style, testID }: ConfidenceChipPr
         styles.chip,
         // Chips census (2026-06-10): warm neutral wash — the slate literal
         // was a cool-grey outlier on a warm-aubergine app.
-        { backgroundColor: colors.confidenceNeutral + "1F" },
+        { backgroundColor: colors.confidenceNeutralSoft },
         style,
       ]}
     >

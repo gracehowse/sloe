@@ -107,7 +107,7 @@ export function AnalyticsConsentPrompt() {
             width: 36,
             height: 36,
             borderRadius: Radius.full,
-            backgroundColor: accent.primary + "1A",
+            backgroundColor: accent.primarySoft,
             alignItems: "center",
             justifyContent: "center",
           }}

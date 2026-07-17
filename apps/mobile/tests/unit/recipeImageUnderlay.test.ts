@@ -92,8 +92,10 @@ describe("mobile recipe-image containers — opaque wrapper underlay (ENG-1374 P
   it("planner meal-row thumbs: photo + fallback grounds are the OPAQUE cuisine tint (the translucent slot wash is off the photo path)", () => {
     const src = read("app/(tabs)/planner.tsx");
     expect(src.match(/backgroundColor: recipeUnderlayColor\(/g)?.length).toBe(2);
-    // the translucent slot wash survives ONLY on the empty-slot icon box (no image ever renders there)
-    expect(src.match(/backgroundColor: tint \+ "22"/g)?.length).toBe(1);
+    // the translucent slot wash survives ONLY on the empty-slot icon box (no
+    // image ever renders there) — ENG-1521: it reads the named SlotColorsSoft
+    // tokens, scheme-resolved, instead of alpha-concatenating the tint.
+    expect(src.match(/backgroundColor: \(scheme === "dark" \? SlotColorsSoftDark : SlotColorsSoft\)/g)?.length).toBe(1);
   });
 
   it("create-recipe + wizard photo grounds are CARD_CREAM (no recipe identity yet — never white colors.card)", () => {

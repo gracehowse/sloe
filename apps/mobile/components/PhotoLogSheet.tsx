@@ -597,7 +597,7 @@ export default function PhotoLogSheet({
                       paddingVertical: 12,
                       alignItems: "center",
                       borderRadius: Radius.md,
-                      backgroundColor: accent.primary + "22",
+                      backgroundColor: accent.primarySoft,
                       flexDirection: "row",
                       justifyContent: "center",
                       gap: 6,
@@ -646,7 +646,7 @@ export default function PhotoLogSheet({
                 style={{
                   borderWidth: 1,
                   borderColor: Accent.destructive + "66",
-                  backgroundColor: Accent.destructive + "10",
+                  backgroundColor: accent.destructiveSoft,
                   borderRadius: Radius.md,
                   padding: Spacing.md,
                 }}
@@ -701,8 +701,8 @@ export default function PhotoLogSheet({
                             paddingHorizontal: 10,
                             paddingVertical: 8,
                             borderWidth: 1,
-                            borderColor: low ? Accent.warning + "55" : colors.cardBorder,
-                            backgroundColor: low ? Accent.warning + "0F" : colors.background,
+                            borderColor: low ? accent.warningSoftStrong : colors.cardBorder,
+                            backgroundColor: low ? accent.warningSoft : colors.background,
                             borderRadius: Radius.sm,
                             marginBottom: 4,
                           }}
@@ -759,7 +759,7 @@ export default function PhotoLogSheet({
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    backgroundColor: accent.primary + "1A",
+                    backgroundColor: accent.primarySoft,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
                     borderRadius: Radius.md,

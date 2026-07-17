@@ -231,7 +231,7 @@ function computeToneStyle(
       };
     case "success":
       return {
-        backgroundColor: Accent.success + "1A", // Accent.success @ ~10%
+        backgroundColor: Accent.successSoft, // sanctioned Soft step (ENG-1521)
         borderColor: colors.sourceUsda,
       };
     case "warning":
@@ -241,7 +241,7 @@ function computeToneStyle(
       };
     case "magenta":
       return {
-        backgroundColor: Accent.win + "1A", // Sloe damson (Accent.win) @ ~10%
+        backgroundColor: Accent.winSoft, // Sloe damson at the Soft step (ENG-1521)
         borderColor: colors.sourceAi,
       };
     case "neutral":

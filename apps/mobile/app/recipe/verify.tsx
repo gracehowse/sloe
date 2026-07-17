@@ -719,7 +719,7 @@ export default function VerifyScreen() {
     claimBanner: {
       flexDirection: "row",
       alignItems: "flex-start",
-      backgroundColor: Accent.warning + "1F",
+      backgroundColor: accent.warningSoft,
       borderColor: Accent.warningLight + "66",
       borderWidth: 1,
       borderRadius: Radius.md,
@@ -743,7 +743,7 @@ export default function VerifyScreen() {
     // Totals card
     totalsCard: {
       backgroundColor: colors.card, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: accent.primary + "30",
+      borderWidth: 1, borderColor: accent.primarySoftStrong,
       padding: Spacing.lg, marginBottom: Spacing.sm,
     },
     totalsLabel: { fontSize: 12, color: colors.textTertiary, fontWeight: "600", marginBottom: Spacing.sm },
@@ -769,7 +769,7 @@ export default function VerifyScreen() {
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
-    ingRowNeedsReview: { backgroundColor: Accent.warning + "0D" },
+    ingRowNeedsReview: { backgroundColor: accent.warningSoft },
     verDot: {
       width: 9,
       height: 9,
@@ -780,7 +780,7 @@ export default function VerifyScreen() {
     reviewBanner: {
       flexDirection: "row",
       gap: Spacing.md,
-      backgroundColor: Accent.warning + "22",
+      backgroundColor: accent.warningSoft,
       borderRadius: Radius.xl,
       padding: Spacing.lg,
       marginBottom: Spacing.md,
@@ -807,8 +807,8 @@ export default function VerifyScreen() {
       paddingVertical: Spacing.xs,
       borderRadius: Radius.full,
       borderWidth: 1,
-      borderColor: accent.primary + "50",
-      backgroundColor: accent.primary + "12",
+      borderColor: accent.primarySoftStrong,
+      backgroundColor: accent.primarySoft,
       marginRight: Spacing.sm,
     },
     // `fontWeight` snapped to the `FontWeight.bold` token. `fontSize: 12` has no
@@ -822,7 +822,7 @@ export default function VerifyScreen() {
     // Expanded section
     expandedSection: {
       backgroundColor: colors.card, borderRadius: Radius.md,
-      borderWidth: 1, borderColor: accent.primary + "40",
+      borderWidth: 1, borderColor: accent.primarySoftStrong,
       padding: Spacing.lg, marginTop: -1, gap: Spacing.md,
     },
     sectionTitle: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, letterSpacing: 1, textTransform: "uppercase" as const },
@@ -848,7 +848,7 @@ export default function VerifyScreen() {
     actionBtn: {
       flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: Spacing.sm, paddingVertical: Spacing.dense, borderRadius: Radius.md,
-      borderWidth: 1, borderColor: accent.primary + "40",
+      borderWidth: 1, borderColor: accent.primarySoftStrong,
     },
     actionBtnText: { color: accent.primarySolid, fontSize: 13, fontWeight: "600" },
 
@@ -904,7 +904,7 @@ export default function VerifyScreen() {
         <View
           testID="screen-recipe-verify-fixture"
           style={{
-            backgroundColor: Accent.warning + "22",
+            backgroundColor: accent.warningSoft,
             paddingHorizontal: Spacing.lg,
             paddingVertical: Spacing.xs,
           }}
@@ -1154,7 +1154,7 @@ export default function VerifyScreen() {
                             paddingHorizontal: Spacing.dense, paddingVertical: Spacing.xs,
                             borderRadius: Radius.sm, borderWidth: 1,
                             borderColor: isActive ? Accent.success : colors.border,
-                            backgroundColor: isActive ? Accent.success + "15" : "transparent",
+                            backgroundColor: isActive ? accent.successSoft : "transparent",
                             minWidth: 44, alignItems: "center",
                           }}
                         >
@@ -1252,14 +1252,14 @@ export default function VerifyScreen() {
                       accessibilityLabel={`Edit nutrition for ${displayName}`}
                     >
                       {/* ENG-120: no filled lucide variant — override-pinned state (was solid `create`) preserved via `fill` (reads "on" vs outline default). */}
-                      <SquarePen size={16} color={accent.primary} fill={rowHasOverride ? accent.primary + "33" : "none"} />
+                      <SquarePen size={16} color={accent.primary} fill={rowHasOverride ? accent.primarySoftStrong : "none"} />
                       <Text style={styles.actionBtnText}>
                         {rowHasOverride ? "Edit values" : "Edit nutrition"}
                       </Text>
                     </PressableScale>
                     <PressableScale
                       haptic="warn"
-                      style={[styles.actionBtn, { borderColor: Accent.destructive + "40" }]}
+                      style={[styles.actionBtn, { borderColor: accent.destructiveSoftStrong }]}
                       onPress={() => onDeleteIngredient(i)}
                       accessibilityRole="button"
                       accessibilityLabel={`Remove ${displayName} from recipe`}

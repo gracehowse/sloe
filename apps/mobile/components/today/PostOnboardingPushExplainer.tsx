@@ -95,7 +95,7 @@ function PostOnboardingPushExplainerImpl(
           <View
             style={[
               styles.iconRing,
-              { backgroundColor: accent.primary + "1A" },
+              { backgroundColor: accent.primarySoft },
             ]}
           >
             <Bell size={28} color={accent.primary} strokeWidth={2.25} />

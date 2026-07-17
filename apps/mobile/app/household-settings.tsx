@@ -460,9 +460,9 @@ export default function HouseholdSettingsScreen() {
               marginBottom: Spacing.md,
               padding: Spacing.md,
               borderRadius: Radius.md,
-              borderColor: Accent.destructive + "55",
+              borderColor: accent.destructiveSoftStrong,
               borderWidth: 1,
-              backgroundColor: Accent.destructive + "14",
+              backgroundColor: accent.destructiveSoft,
             }}
           >
             <Text style={{ ...Type.captionSmall, color: Accent.destructiveSolid }}>{error}</Text>
@@ -522,8 +522,8 @@ export default function HouseholdSettingsScreen() {
                   style={{
                     borderRadius: CARD_RADIUS,
                     borderWidth: 1,
-                    borderColor: accent.primary + "33",
-                    backgroundColor: accent.primary + "0d",
+                    borderColor: accent.primarySoftStrong,
+                    backgroundColor: accent.primarySoft,
                     padding: Spacing.md,
                     alignItems: "center",
                     overflow: "hidden",
@@ -534,7 +534,7 @@ export default function HouseholdSettingsScreen() {
                       width: 48,
                       height: 48,
                       borderRadius: Radius.full,
-                      backgroundColor: accent.primary + "1f",
+                      backgroundColor: accent.primarySoft,
                       alignItems: "center",
                       justifyContent: "center",
                       marginBottom: Spacing.sm,
@@ -814,7 +814,7 @@ export default function HouseholdSettingsScreen() {
                         minHeight: 44,
                         borderBottomWidth: isLast ? 0 : 1,
                         borderBottomColor: colors.cardBorder,
-                        backgroundColor: active ? accent.primary + "10" : "transparent",
+                        backgroundColor: active ? accent.primarySoft : "transparent",
                       }}
                     >
                       <View
@@ -916,12 +916,12 @@ export default function HouseholdSettingsScreen() {
                       const isAll = count === all && all > 0;
                       const isSome = count > 1 && count < all;
                       const bg = isAll
-                        ? accent.primary + "33"
+                        ? accent.primarySoftStrong
                         : isSome
-                          ? accent.primary + "1a"
+                          ? accent.primarySoft
                           : colors.inputBg;
                       const fg = isAll || isSome ? accent.primary : colors.textTertiary;
-                      const border = isAll || isSome ? accent.primary + "4d" : "transparent";
+                      const border = isAll || isSome ? accent.primarySoftStrong : "transparent";
                       return (
                         <Pressable
                           key={`${d}-${s}`}

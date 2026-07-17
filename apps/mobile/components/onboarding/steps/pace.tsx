@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import { AlertTriangle, Check, Info } from "lucide-react-native";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, MacroColorsSoft, MacroColorsSoftDark, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled, track } from "@/lib/analytics";
@@ -67,7 +67,7 @@ export function MobilePaceStep() {
   // ring — mirroring the web pace step + the diet/allergy chip pattern. The
   // per-goal `accent` below stays reserved for the slider track + projection
   // tile (the macro-coded goal hue), matching web `BrandedSlider`.
-  const plum = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
+  const plum = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors, mcSoft = useResolvedScheme() === "dark" ? MacroColorsSoftDark : MacroColorsSoft;
   // ENG-1187 — gloss the "TDEE" label on first use on the pace screen
   // behind `onboarding_jargon_gloss_v1` (default-OFF). Plain copy stays
   // in the `else`. Shared web ↔ mobile via `figmaCopy.ts`.
@@ -279,7 +279,7 @@ export function MobilePaceStep() {
             padding: Spacing.md + 2,
             borderRadius: Radius.md,
             borderWidth: 1,
-            backgroundColor: accent + "1f",
+            backgroundColor: mcSoft[MACRO_KEY_BY_GOAL[goal] as keyof typeof mcSoft],
             borderColor: accent + "66",
             flexDirection: "row",
           }}
@@ -405,19 +405,19 @@ function PaceWarningBanner({
     danger: {
       bg: "rgba(217,69,69,0.18)",
       border: "rgba(217,69,69,0.55)",
-      accent: Accent.destructive,
+      accent: Accent.destructive, accentSoft: Accent.destructiveSoftStrong,
       Icon: AlertTriangle,
     },
     warn: {
       bg: "rgba(232,148,45,0.18)",
       border: "rgba(232,148,45,0.55)",
-      accent: Accent.warning,
+      accent: Accent.warning, accentSoft: Accent.warningSoftStrong,
       Icon: AlertTriangle,
     },
     info: {
-      bg: accent.primary + "1a",
-      border: accent.primary + "59",
-      accent: accent.primaryLight,
+      bg: accent.primarySoft,
+      border: accent.primarySoftStrong,
+      accent: accent.primaryLight, accentSoft: accent.primarySoftStrong,
       Icon: Info,
     },
   }[warning.level];
@@ -447,7 +447,7 @@ function PaceWarningBanner({
           borderRadius: 8,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: config.accent + "40",
+          backgroundColor: config.accentSoft,
           marginTop: 1,
         }}
       >

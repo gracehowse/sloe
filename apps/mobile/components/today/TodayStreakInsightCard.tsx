@@ -44,9 +44,9 @@ function TodayStreakInsightCardImpl({
         gap: Spacing.dense,
         padding: Spacing.lg,
         borderRadius: Radius.lg,
-        backgroundColor: Accent.success + "08",
+        backgroundColor: accent.successSoft,
         borderWidth: 1,
-        borderColor: Accent.success + "18",
+        borderColor: accent.successSoft,
       }}
     >
       <View
@@ -54,7 +54,7 @@ function TodayStreakInsightCardImpl({
           width: 36,
           height: 36,
           borderRadius: Radius.full,
-          backgroundColor: Accent.success + "18",
+          backgroundColor: accent.successSoft,
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -94,8 +94,8 @@ function TodayStreakInsightCardImpl({
               paddingVertical: Spacing.sm,
               borderRadius: Radius.md,
               borderWidth: 1,
-              borderColor: Accent.cyan + "30",
-              backgroundColor: Accent.cyan + "18",
+              borderColor: accent.cyanSoftStrong,
+              backgroundColor: accent.cyanSoft,
             }}
           >
             <Snowflake size={13} color={Accent.cyan} strokeWidth={1.75} />

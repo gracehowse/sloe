@@ -314,7 +314,7 @@ export function AllWeightDataSheet({
                   <View
                     style={[
                       styles.iconSquare,
-                      { backgroundColor: accent.primary + "22" },
+                      { backgroundColor: accent.primarySoft },
                     ]}
                   >
                     <ScaleIcon

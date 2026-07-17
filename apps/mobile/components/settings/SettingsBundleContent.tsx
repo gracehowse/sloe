@@ -1634,7 +1634,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 width: 36,
                 height: 36,
                 borderRadius: Radius.full,
-                backgroundColor: accent.primary + "22",
+                backgroundColor: accent.primarySoft,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -1694,7 +1694,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                 width: 36,
                 height: 36,
                 borderRadius: Radius.full,
-                backgroundColor: accent.primary + "18",
+                backgroundColor: accent.primarySoft,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -2542,7 +2542,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
                   width: 48,
                   height: 48,
                   borderRadius: Radius.full,
-                  backgroundColor: t.amber + "18",
+                  backgroundColor: accent.warningSoft,
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: Spacing.md,
@@ -2655,7 +2655,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               disabled={resetting}
               style={{
                 borderWidth: 1,
-                borderColor: t.red + "40",
+                borderColor: accent.destructiveSoftStrong,
                 borderRadius: Radius.md,
                 paddingVertical: 16,
                 alignItems: "center",

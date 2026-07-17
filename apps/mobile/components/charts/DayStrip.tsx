@@ -229,7 +229,7 @@ export default function DayStrip({
                       borderRadius: 7,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: Accent.cyan + "33",
+                      backgroundColor: accent.cyanSoftStrong,
                     }}
                   >
                     <Snowflake size={IconSize.xs} color={Accent.cyan} strokeWidth={2} />

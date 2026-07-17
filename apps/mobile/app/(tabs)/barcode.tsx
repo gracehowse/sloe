@@ -615,10 +615,10 @@ export default function BarcodeScreen() {
           paddingVertical: Spacing.xs,
           borderRadius: Radius.sm,
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: accent.primary + "55",
+          borderColor: accent.primarySoftStrong,
           ...(cardElevation.shadowStyle ?? {}),
         },
-        presetChipSelected: { backgroundColor: accent.primary + "22", borderColor: accent.primary },
+        presetChipSelected: { backgroundColor: accent.primarySoft, borderColor: accent.primary },
         presetChipText: { fontSize: 11, fontWeight: "600" as const, color: accent.primarySolid },
         // Gap #5 (2026-06-09): slot pill row — 4-segment pill above portion
         // picker. Matches §3.1 LogSheet pattern.
@@ -680,7 +680,7 @@ export default function BarcodeScreen() {
         errorText: { color: Colors.dark.textSecondary, fontSize: 14, textAlign: "center", maxWidth: 260 },
         retryBtn: {
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: accent.primary + "55",
+          borderColor: accent.primarySoftStrong,
           // Gap #10: radius → xl(12).
           borderRadius: Radius.xl,
           paddingHorizontal: Spacing.xl,
@@ -692,7 +692,7 @@ export default function BarcodeScreen() {
         retryBtnText: { color: accent.primarySolid, fontWeight: "600" },
         manualEntryBtn: {
           borderWidth: cardElevation.useBorder ? 1 : 0,
-          borderColor: accent.primary + "55",
+          borderColor: accent.primarySoftStrong,
           // Gap #10: radius → xl(12).
           borderRadius: Radius.xl,
           paddingHorizontal: Spacing.xl,
@@ -1158,7 +1158,7 @@ export default function BarcodeScreen() {
                 width: 56,
                 height: 56,
                 borderRadius: Radius.full,
-                backgroundColor: Accent.success + "1F",
+                backgroundColor: Accent.successSoft,
                 alignItems: "center",
                 justifyContent: "center",
               }}

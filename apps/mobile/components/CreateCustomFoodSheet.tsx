@@ -818,7 +818,7 @@ export default function CreateCustomFoodSheet({
                   gap: Spacing.sm,
                   borderWidth: 1,
                   borderColor: accent.primary,
-                  backgroundColor: accent.primary + "1f",
+                  backgroundColor: accent.primarySoft,
                   borderRadius: Radius.md,
                   paddingVertical: 11,
                   marginBottom: Spacing.md,

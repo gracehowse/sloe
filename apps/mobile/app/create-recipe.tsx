@@ -887,7 +887,7 @@ export default function CreateRecipeScreen() {
     // Totals
     totalsCard: {
       backgroundColor: colors.card, borderRadius: Radius.xl,
-      borderWidth: 1, borderColor: accent.primary + "30",
+      borderWidth: 1, borderColor: accent.primarySoftStrong,
       padding: Spacing.lg,
     },
     totalsRow: { flexDirection: "row", justifyContent: "space-around" },

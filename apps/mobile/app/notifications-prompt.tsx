@@ -139,7 +139,7 @@ export default function NotificationsPromptScreen() {
     },
     badge: {
       width: 100, height: 100, borderRadius: 50,
-      backgroundColor: Accent.success + "15",
+      backgroundColor: Accent.successSoft,
       justifyContent: "center", alignItems: "center",
       marginBottom: Spacing.xl,
     },
@@ -270,7 +270,7 @@ function BulletRow({
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: Accent.success + "15",
+          backgroundColor: Accent.successSoft,
           alignItems: "center",
           justifyContent: "center",
           marginTop: 1,

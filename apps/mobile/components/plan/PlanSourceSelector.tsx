@@ -2,6 +2,7 @@ import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, Type } from "@/constants/theme";
+import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   type PlanSourceMode,
@@ -44,6 +45,8 @@ export function PlanSourceSelector({
   discoverCount,
 }: PlanSourceSelectorProps) {
   const colors = useThemeColors();
+  // ENG-1521 — the selected-row tint is the sanctioned primary Soft step.
+  const accent = useAccent();
   return (
     <View testID="plan-source-selector">
       <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Plan from</Text>
@@ -65,7 +68,7 @@ export function PlanSourceSelector({
               style={[
                 styles.row,
                 { borderColor: colors.border, backgroundColor: colors.card },
-                selected && { borderColor: colors.tint, backgroundColor: colors.tint + "1A" },
+                selected && { borderColor: colors.tint, backgroundColor: accent.primarySoft },
               ]}
             >
               <View

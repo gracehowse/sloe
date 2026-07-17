@@ -82,7 +82,7 @@ function PostLogSuggestionToastImpl(props: PostLogSuggestionToastProps) {
         borderRadius: Radius.md,
         backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: Accent.win + "40",
+        borderColor: Accent.winSoftStrong,
         shadowColor: ShadowColor.cast,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.12,
@@ -97,7 +97,7 @@ function PostLogSuggestionToastImpl(props: PostLogSuggestionToastProps) {
           borderRadius: Radius.full,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: Accent.win + "1A",
+          backgroundColor: Accent.winSoft,
         }}
       >
         <Sparkles size={14} color={Accent.win} strokeWidth={2.25} />

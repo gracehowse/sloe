@@ -11,7 +11,7 @@ import {
 } from "lucide-react-native";
 import { CalorieRingDial } from "@/components/charts/CalorieRingDial";
 import { useHaptics } from "@/hooks/useHaptics";
-import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, FontFamily, MacroColors, MacroColorsDark, MacroColorsSoft, MacroColorsSoftDark, Radius, Spacing, Type } from "@/constants/theme";
 import { Layout } from "@/constants/layout";
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -47,7 +47,7 @@ export function MobileRevealStep() {
   // icon. The "Watch the ring fill" row keeps `Accent.success` (green status),
   // the "Adapt" row keeps `MacroColors.fat`, and the macro tiles keep their own
   // `MacroColors` — none of those are the secondary accent.
-  const accent = useAccent(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
+  const accent = useAccent(), dark = useResolvedScheme() === "dark", mc = dark ? MacroColorsDark : MacroColors, mcSoft = dark ? MacroColorsSoftDark : MacroColorsSoft;
   // ENG-1187 — gloss BMR / TDEE / Mifflin-St Jeor on first use behind
   // `onboarding_jargon_gloss_v1` (default-OFF). Glossed copy leads with the
   // plain phrase; the "Show the maths" expander stays on the acronyms. Shared
@@ -378,19 +378,19 @@ export function MobileRevealStep() {
           <MacroTile
             name="Protein"
             value={targets.proteinG}
-            color={mc.protein}
+            color={mc.protein} soft={mcSoft.protein}
             pct={Math.round(((targets.proteinG * 4) / targets.target) * 100)}
           />
           <MacroTile
             name="Carbs"
             value={targets.carbsG}
-            color={mc.carbs}
+            color={mc.carbs} soft={mcSoft.carbs}
             pct={Math.round(((targets.carbsG * 4) / targets.target) * 100)}
           />
           <MacroTile
             name="Fat"
             value={targets.fatG}
-            color={mc.fat}
+            color={mc.fat} soft={mcSoft.fat}
             pct={Math.round(((targets.fatG * 9) / targets.target) * 100)}
           />
         </View>
@@ -535,12 +535,12 @@ function NextStepRow({
 function MacroTile({
   name,
   value,
-  color,
+  color, soft,
   pct,
 }: {
   name: string;
   value: number;
-  color: string;
+  color: string; soft: string;
   pct: number;
 }) {
   const colors = useThemeColors();
@@ -633,7 +633,7 @@ function MacroTile({
           marginTop: Spacing.sm,
           height: 3,
           borderRadius: 2,
-          backgroundColor: color + "22",
+          backgroundColor: soft,
         }}
       >
         <View

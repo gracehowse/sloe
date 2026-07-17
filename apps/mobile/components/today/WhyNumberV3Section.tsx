@@ -49,9 +49,9 @@ function SetIcPlate({
         borderRadius: Radius.lg,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: highlight ? accent.primary + "18" : cardColor,
+        backgroundColor: highlight ? accent.primarySoft : cardColor,
         borderWidth: 1,
-        borderColor: highlight ? accent.primary + "40" : borderColor,
+        borderColor: highlight ? accent.primarySoftStrong : borderColor,
       }}
     >
       {children}
@@ -127,7 +127,7 @@ function WhyNumberV3SectionImpl({
                 paddingVertical: Spacing.md,
                 borderTopWidth: index > 0 ? 1 : 0,
                 borderTopColor: borderColor,
-                backgroundColor: row.highlight ? accent.primary + "0D" : cardColor,
+                backgroundColor: row.highlight ? accent.primarySoft : cardColor,
               }}
             >
               <SetIcPlate highlight={row.highlight} borderColor={borderColor} cardColor={cardColor}>

@@ -437,9 +437,9 @@ function DigestLegacy(props: DigestProps) {
             padding: 12,
             marginBottom: 10,
             borderRadius: Radius.md,
-            backgroundColor: accent.primary + "0D",
+            backgroundColor: accent.primarySoft,
             borderWidth: 1,
-            borderColor: accent.primary + "40",
+            borderColor: accent.primarySoftStrong,
           }}
         >
           <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>
@@ -485,9 +485,9 @@ function DigestLegacy(props: DigestProps) {
             paddingHorizontal: 12,
             paddingVertical: 8,
             borderRadius: Radius.full,
-            backgroundColor: shareDisabled ? colors.cardBorder + "22" : Accent.success + "18",
+            backgroundColor: shareDisabled ? colors.cardBorder + "22" : Accent.successSoft,
             borderWidth: 1,
-            borderColor: shareDisabled ? colors.cardBorder : Accent.success + "30",
+            borderColor: shareDisabled ? colors.cardBorder : Accent.successSoftStrong,
             opacity: shareDisabled ? 0.4 : 1,
           }}
         >

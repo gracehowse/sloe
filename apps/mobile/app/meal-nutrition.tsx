@@ -365,7 +365,7 @@ export default function MealNutritionScreen() {
           rightSlot={
             <View
               style={{
-                backgroundColor: accent.primary + "20",
+                backgroundColor: accent.primarySoft,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderRadius: Radius.sm,
@@ -492,7 +492,7 @@ export default function MealNutritionScreen() {
                 marginTop: Spacing.lg,
                 padding: Spacing.md,
                 borderRadius: Radius.md,
-                backgroundColor: accent.primary + "10",
+                backgroundColor: accent.primarySoft,
               }}
             >
               <View

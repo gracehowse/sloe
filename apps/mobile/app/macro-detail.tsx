@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Plus, Salad } from "lucide-react-native";
 
-import { Accent, Spacing, Radius, Type } from "@/constants/theme";
+import { Accent, MacroColorsSoft, Spacing, Radius, Type } from "@/constants/theme";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import { MacroIngredientList } from "@/components/nutrition/MacroIngredientList";
@@ -38,6 +38,21 @@ import { useMacroDetail } from "./useMacroDetail";
 // supported-macros gating + the snapshot/recipe derive data flow live in the
 // `useMacroDetail` hook.
 type BreakdownMode = "meal" | "ingredient";
+
+// ENG-1521 — Soft-step tint per renderable macro key, replacing the old
+// `config.color + "20"`/`"10"` alpha-concats. Keys mirror `MACRO_CONFIG`
+// hue-for-hue: protein/carbs/fat/calories tint from `MacroColorsSoft`;
+// fiber (Accent.success) and water (Accent.info) tint from their accent
+// families' Soft tokens. Static light-map values, matching this screen's
+// existing static `config.color` idiom (no scheme switch here).
+const MACRO_SOFT_TINTS: Record<string, string> = {
+  protein: MacroColorsSoft.protein,
+  carbs: MacroColorsSoft.carbs,
+  fat: MacroColorsSoft.fat,
+  calories: MacroColorsSoft.calories,
+  fiber: Accent.successSoft,
+  water: Accent.infoSoft,
+};
 
 function formatDateLabel(dateKey: string): string {
   try {
@@ -130,7 +145,7 @@ export default function MacroDetailScreen() {
         caption={formatDateLabel(dateKey)}
         onBack={() => router.back()}
         rightSlot={
-          <View style={{ backgroundColor: config.color + "20", paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm, borderRadius: Radius.sm }}>
+          <View style={{ backgroundColor: MACRO_SOFT_TINTS[macro], paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm, borderRadius: Radius.sm }}>
             <Text style={{ fontSize: 16, fontWeight: "800", color: config.color, fontVariant: ["tabular-nums"] }}>
               {loading ? `—${config.unit}` : `${Math.round(total * 10) / 10}${config.unit}`}
             </Text>
@@ -318,7 +333,7 @@ export default function MacroDetailScreen() {
             })}
 
             {/* Visual breakdown bar */}
-            <View style={{ marginTop: Spacing.lg, padding: Spacing.md, borderRadius: Radius.md, backgroundColor: config.color + "10" }}>
+            <View style={{ marginTop: Spacing.lg, padding: Spacing.md, borderRadius: Radius.md, backgroundColor: MACRO_SOFT_TINTS[macro] }}>
               <View style={{ flexDirection: "row", gap: 2, height: 8, borderRadius: 4, overflow: "hidden", backgroundColor: colors.border }}>
                 {meals.map((meal, i) => {
                   const val = Number(meal[config.field]) || 0;

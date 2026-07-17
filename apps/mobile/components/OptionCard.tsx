@@ -62,11 +62,11 @@ export function OptionCard({
 }: OptionCardProps) {
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the selected card's
-  // border, 8% tint fill, icon-square, and checkmark. Lifted from a former
+  // border, soft tint fill, icon-square, and checkmark. Lifted from a former
   // module-level `PRIMARY_TINT` constant so the hook can drive it (the
   // `TodayPlannedMealsCard` StyleSheet-lift pattern).
   const accent = useAccent();
-  const primaryTint = accent.primary + "14"; // ~8% alpha
+  const primaryTint = accent.primarySoft;
   const showCheckbox = trailing === undefined;
   const leading = thumbnail ?? icon;
 
@@ -115,7 +115,7 @@ export function OptionCard({
             backgroundColor: thumbnail
               ? colors.inputBg
               : selected
-                ? accent.primary + "26"
+                ? accent.primarySoft
                 : colors.inputBg,
           }}
         >

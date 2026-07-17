@@ -3029,7 +3029,7 @@ export default function TrackerScreen() {
           paddingVertical: Spacing.xs,
           paddingHorizontal: Spacing.md,
           borderWidth: 1,
-          borderColor: accent.primary + "30",
+          borderColor: accent.primarySoftStrong,
           alignSelf: "flex-start",
         },
         offlineBannerText: { ...Type.caption, fontWeight: "600", color: colors.text },
@@ -4307,7 +4307,7 @@ export default function TrackerScreen() {
         {loadError && (
           <PressableScale haptic="selection"
             onPress={() => { setLoadError(null); void loadJournal(); }}
-            style={{ backgroundColor: Accent.destructive + "18", borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
+            style={{ backgroundColor: accent.destructiveSoft, borderRadius: Radius.md, padding: Spacing.md, flexDirection: "row", alignItems: "center", gap: Spacing.sm }}
           >
             <AlertCircle size={18} color={Accent.destructive} strokeWidth={1.75} />
             <Text style={{ flex: 1, ...Type.caption, color: Accent.destructive, fontWeight: "600" }}>
@@ -5446,7 +5446,7 @@ export default function TrackerScreen() {
             style={{
               backgroundColor: colors.card,
               borderWidth: 1,
-              borderColor: Accent.success + "60",
+              borderColor: accent.successSoftStrong,
               paddingHorizontal: Spacing.lg,
               paddingVertical: Spacing.md,
               borderRadius: Radius.lg,

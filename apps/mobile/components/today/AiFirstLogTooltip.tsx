@@ -34,8 +34,8 @@ import { useAccent } from "@/context/theme";
  * places it directly below the meal row in the JSX tree.
  *
  * Theming: the secondary accent comes from `useAccent()` (Frost flag →
- * damson, else clay). Background uses `accent.primary + "0F"` (8% opacity)
- * for a subtle tint that reads as info, not warning.
+ * damson, else clay). Background uses `accent.primarySoft` (the sanctioned
+ * Soft step, ENG-1521) for a subtle tint that reads as info, not warning.
  *
  * Web parity: web has no equivalent surface yet — the AI sentinel
  * never shipped on `today-hero-ring.tsx`, so there is nothing to
@@ -86,9 +86,9 @@ function AiFirstLogTooltipImpl(props: AiFirstLogTooltipProps) {
         paddingVertical: Spacing.sm,
         paddingHorizontal: Spacing.md,
         borderRadius: Radius.md,
-        backgroundColor: accent.primary + "0F",
+        backgroundColor: accent.primarySoft,
         borderWidth: 1,
-        borderColor: accent.primary + "30",
+        borderColor: accent.primarySoftStrong,
         // Subtle elevation so the bubble lifts off the meal row
         // beneath it without dominating the card.
         shadowColor: ShadowColor.cast,
