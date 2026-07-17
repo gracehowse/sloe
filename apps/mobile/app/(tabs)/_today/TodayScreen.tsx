@@ -227,7 +227,11 @@ import { TodayFastingPill } from "@/components/today/TodayFastingPill";
 // `<LogFab>` import path while the web still ships its own FAB.
 import { LogSheet } from "@/components/today/LogSheet";
 import CreateCustomFoodSheet, { type CreateCustomFoodPayload } from "@/components/CreateCustomFoodSheet";
-import { createCustomFood } from "@suppr/nutrition-core/customFoodsClient";
+import {
+  createCustomFood,
+  isImplausibleMacrosError,
+} from "@suppr/nutrition-core/customFoodsClient";
+import { customFoodsApiFetch } from "@/lib/customFoodsApiFetch";
 // TodayEatAgainBanner/Scroller retired (ENG-984, 2026-06-17). The Eat-again
 // card was suppressed from Today on 2026-05-22 (v4) and never re-surfaced;
 // the dead components + their dismiss/candidate plumbing are now removed.
@@ -5699,7 +5703,8 @@ export default function TrackerScreen() {
         onSave={async (payload: CreateCustomFoodPayload) => {
           if (!userId) return;
           try {
-            await createCustomFood(supabase as Parameters<typeof createCustomFood>[0], userId, payload);
+            // ENG-1420 — server-enforced create (plausibility gate).
+            await createCustomFood(customFoodsApiFetch, userId, payload);
             try {
               track(AnalyticsEvents.custom_food_created, {
                 hasBrand: Boolean(payload.brand),
@@ -5717,6 +5722,10 @@ export default function TrackerScreen() {
               "Scan the barcode again to log it.",
             );
           } catch (err) {
+            // ENG-1420 — let the sheet own the implausible-macros override
+            // affordance (re-throw so its handleSave catches it); only Alert
+            // genuinely unexpected failures here.
+            if (isImplausibleMacrosError(err)) throw err;
             Alert.alert(
               "Couldn't save",
               err instanceof Error ? err.message : "Try again in a moment.",

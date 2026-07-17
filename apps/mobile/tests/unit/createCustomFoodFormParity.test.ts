@@ -26,9 +26,19 @@ const SHARED_PATH = resolve(
   "../../../../src/lib/nutrition/customFoods.ts",
 );
 
+// ENG-1420 — the plausibility-override notice is extracted into a per-platform
+// child component (keeps the already-large parents from growing further).
+const MOBILE_NOTICE_PATH = resolve(__dirname, "../../components/ImplausibleMacrosNotice.tsx");
+const WEB_NOTICE_PATH = resolve(
+  __dirname,
+  "../../../../src/app/components/suppr/ImplausibleMacrosNotice.tsx",
+);
+
 const MOBILE_SRC = readFileSync(MOBILE_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 const SHARED_SRC = readFileSync(SHARED_PATH, "utf8");
+const MOBILE_NOTICE_SRC = readFileSync(MOBILE_NOTICE_PATH, "utf8");
+const WEB_NOTICE_SRC = readFileSync(WEB_NOTICE_PATH, "utf8");
 
 /** Names of the fields both sides must carry on the input payload. */
 const PAYLOAD_KEYS = [
@@ -46,6 +56,9 @@ const PAYLOAD_KEYS = [
   "saturatedFatG",
   "sodiumMg",
   "barcode",
+  // ENG-1420 — the plausibility-override acknowledgement forwarded to the
+  // server on both platforms.
+  "acknowledgeImplausible",
 ] as const;
 
 /** Accessibility / a11y labels that identify each input. Web uses
@@ -369,5 +382,49 @@ describe("Create custom food form parity (TestFlight AE52_fIRZ-ZIupmoJ8T4yaI)", 
     expect(dialog).toMatch(/onAddAsCustomFood\?/);
     expect(dialog).toMatch(/Add as custom food|Add this product/);
     expect(dialog).toMatch(/barcode-not-found-add-custom-food/);
+  });
+
+  // ENG-1420 — server-side plausibility gate override affordance. The 422
+  // `implausible_macros` rejection reveals a "save anyway" acknowledgement on
+  // BOTH surfaces; pinned so it can't ship on one platform and drift on the
+  // other.
+  it("both surfaces recognise the server implausible-macros rejection", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/isImplausibleMacrosError/);
+      // The block is revealed on the caught 422 (not a client-only pre-check).
+      expect(src).toMatch(/setImplausibleBlocked\(true\)/);
+    }
+  });
+
+  it("both surfaces' notice components render the warning + save-anyway acknowledgement with matching test ids", () => {
+    for (const src of [MOBILE_NOTICE_SRC, WEB_NOTICE_SRC]) {
+      expect(src).toMatch(/custom-food-implausible-warning/);
+      expect(src).toMatch(/custom-food-implausible-ack/);
+      expect(src).toMatch(/These numbers are correct — save anyway/);
+    }
+  });
+
+  it("both surfaces render the shared ImplausibleMacrosNotice child", () => {
+    expect(MOBILE_SRC).toMatch(/ImplausibleMacrosNotice/);
+    expect(WEB_SRC).toMatch(/ImplausibleMacrosNotice/);
+  });
+
+  it("both notice components share the exact implausible-macros copy", () => {
+    const expected =
+      "Macro values don't pass a basic sanity check. Please double-check the numbers.";
+    expect(MOBILE_NOTICE_SRC).toContain(expected);
+    expect(WEB_NOTICE_SRC).toContain(expected);
+  });
+
+  it("both surfaces block Save until the numbers are fixed or the override is ticked", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/implausibleBlocked && !acknowledgeImplausible/);
+    }
+  });
+
+  it("both surfaces forward acknowledgeImplausible on the save payload", () => {
+    for (const src of [MOBILE_SRC, WEB_SRC]) {
+      expect(src).toMatch(/payload\.acknowledgeImplausible = true/);
+    }
   });
 });

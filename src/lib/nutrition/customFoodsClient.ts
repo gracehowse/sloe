@@ -65,6 +65,14 @@ export type CreateCustomFoodInput = {
   sodiumMg?: number;
   /** Optional barcode (EAN-8 / UPC-A / EAN-13 / GTIN-14 — digits only). */
   barcode?: string;
+  /**
+   * ENG-1420 — set true to bypass a FAILING server-side Atwater
+   * plausibility gate (the user explicitly confirmed the numbers are
+   * correct). Ignored when the macros already pass. The server records the
+   * bypass on the row's `plausibility_overridden` column so an intentional
+   * override is distinguishable from an unguarded gap.
+   */
+  acknowledgeImplausible?: boolean;
 };
 
 /** Partial update — every field optional, undefined fields left alone. */
@@ -376,24 +384,38 @@ export async function listCustomFoods(
 }
 
 /**
- * Create a custom food. On unique-violation we retry with " (2)",
- * " (3)", … up to " (9)" appended; beyond that we surface the
- * underlying error so the UI can prompt the user to rename.
+ * ENG-1420 — SERVER-ONLY insert of a validated custom food using a
+ * service-role Supabase client. On the per-user unique-name collision we
+ * retry with " (2)", " (3)", … up to " (9)" appended; beyond that we
+ * surface the underlying error so the API can 500 and the UI can prompt a
+ * rename. This is the same dedupe loop `createCustomFood` used to run
+ * client-side before the write moved behind `/api/custom-foods` — it lives
+ * here (one home, imported by the route) so the row-mapping (`payloadForInsert`)
+ * and dedupe logic can't drift between two copies.
+ *
+ * `opts.plausibilityOverridden` is stamped onto the row: true ONLY when the
+ * caller bypassed a failing Atwater gate with an explicit acknowledgement
+ * (never when the gate passed). The gate itself is enforced by the route
+ * before this is called — this helper trusts the flag it is handed.
  */
-export async function createCustomFood(
+export async function insertCustomFoodWithDedupe(
   supabase: SupabaseLike,
   userId: string,
   input: CreateCustomFoodInput,
+  opts: { plausibilityOverridden: boolean },
 ): Promise<CustomFood> {
-  if (!userId) throw new Error("createCustomFood: userId is required");
+  if (!userId) throw new Error("insertCustomFoodWithDedupe: userId is required");
   const baseName = normaliseCustomFoodName(input.name);
-  if (!baseName) throw new Error("createCustomFood: name is required");
+  if (!baseName) throw new Error("insertCustomFoodWithDedupe: name is required");
 
   let attempt = 1;
   let lastError: unknown = null;
   while (attempt <= DEDUPE_SUFFIX_LIMIT) {
     const name = attempt === 1 ? baseName : `${baseName} (${attempt})`;
-    const payload = payloadForInsert(userId, input, name);
+    const payload = {
+      ...payloadForInsert(userId, input, name),
+      plausibility_overridden: opts.plausibilityOverridden,
+    };
     const { data, error } = await supabase
       .from("user_custom_foods")
       .insert(payload)
@@ -408,7 +430,105 @@ export async function createCustomFood(
     if (!isUniqueViolation) break;
     attempt += 1;
   }
-  throw lastError ?? new Error("createCustomFood: unknown Supabase error");
+  throw lastError ?? new Error("insertCustomFoodWithDedupe: unknown Supabase error");
+}
+
+/**
+ * Transport for the custom-food create API. Web binds a same-origin
+ * relative `fetch`; mobile binds `authedFetch(getSupprApiBase() + path)`
+ * (localhost is unreachable from a device, and RN has no relative host).
+ * Injected — not imported — so this shared module carries no platform
+ * fetch-base or auth-header logic (the same web/mobile split `useCoach`
+ * uses). ENG-1420.
+ */
+export type CustomFoodsApiFetch = (path: string, init: RequestInit) => Promise<Response>;
+
+/**
+ * ENG-1420 — thrown by `createCustomFood` when the server rejects the macros
+ * as implausible (HTTP 422, `error: "implausible_macros"`). The create-food
+ * form catches this specifically to reveal the "save anyway" acknowledgement,
+ * which distinguishes an intentional override from an unguarded gap. Carries a
+ * stable `code` so a structurally-equivalent error (e.g. re-thrown across a
+ * module boundary) is still recognised by `isImplausibleMacrosError`.
+ */
+export class CustomFoodImplausibleMacrosError extends Error {
+  readonly code = "implausible_macros" as const;
+  constructor(message?: string) {
+    super(
+      message ??
+        "Macro values don't pass a basic sanity check. Please double-check the numbers.",
+    );
+    this.name = "CustomFoodImplausibleMacrosError";
+  }
+}
+
+/** True when `err` is the implausible-macros rejection (instance OR any object
+ *  carrying `code: "implausible_macros"`). ENG-1420. */
+export function isImplausibleMacrosError(err: unknown): err is CustomFoodImplausibleMacrosError {
+  return (
+    err instanceof CustomFoodImplausibleMacrosError ||
+    (typeof err === "object" &&
+      err !== null &&
+      (err as { code?: unknown }).code === "implausible_macros")
+  );
+}
+
+/**
+ * Create a custom food. ENG-1420: the write now goes through the
+ * server-enforced `/api/custom-foods` route (validation + Atwater
+ * plausibility gate + dedupe + insert) instead of a direct client Supabase
+ * insert, so an implausible macro set can't be persisted without an explicit
+ * acknowledgement. Pass the platform transport (`CustomFoodsApiFetch`) as the
+ * first argument; web binds a relative `fetch`, mobile binds
+ * `authedFetch(getSupprApiBase() + path)`.
+ *
+ * Throws `CustomFoodImplausibleMacrosError` on a 422 so the form can surface
+ * the "save anyway" affordance; any other non-2xx throws a plain Error with
+ * the server message. Retrying with `input.acknowledgeImplausible = true`
+ * lets an intentional override through.
+ */
+export async function createCustomFood(
+  apiFetch: CustomFoodsApiFetch,
+  userId: string,
+  input: CreateCustomFoodInput,
+): Promise<CustomFood> {
+  if (!userId) throw new Error("createCustomFood: userId is required");
+  const baseName = normaliseCustomFoodName(input.name);
+  if (!baseName) throw new Error("createCustomFood: name is required");
+  // Fail fast on a malformed barcode with the exact message the form shows —
+  // preserves the pre-write guard the direct-insert path gave (the server
+  // re-validates regardless).
+  if (input.barcode != null) {
+    const parsed = validateCustomFoodBarcode(input.barcode);
+    if (!parsed.ok) throw new Error(`createCustomFood: ${parsed.reason}`);
+  }
+
+  let res: Response;
+  try {
+    res = await apiFetch("/api/custom-foods", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  } catch (err) {
+    throw err instanceof Error ? err : new Error("createCustomFood: request failed");
+  }
+
+  const json = (await res.json().catch(() => null)) as
+    | { ok?: boolean; food?: CustomFood; error?: string; message?: string }
+    | null;
+
+  if (res.status === 422 && json?.error === "implausible_macros") {
+    throw new CustomFoodImplausibleMacrosError(json.message);
+  }
+  if (!res.ok || !json || json.ok !== true || !json.food) {
+    const msg =
+      (typeof json?.message === "string" && json.message) ||
+      (typeof json?.error === "string" && json.error) ||
+      "createCustomFood: request failed";
+    throw new Error(msg);
+  }
+  return json.food;
 }
 
 /**

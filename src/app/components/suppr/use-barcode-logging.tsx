@@ -9,7 +9,11 @@ import { type OffProductMacros } from "../../../lib/openFoodFacts/fetchProductBy
 import { scaleCaffeineAlcohol } from "../../../lib/nutrition/scaleCaffeineAlcoholForGrams.ts";
 import { scaleMicrosForGrams } from "../../../lib/openFoodFacts/parseOffMicros.ts";
 import { loadRecentFoods, pushRecentFood } from "../../../lib/nutrition/trackerLocalState.ts";
-import { createCustomFood } from "../../../lib/nutrition/customFoodsClient";
+import {
+  createCustomFood,
+  isImplausibleMacrosError,
+} from "../../../lib/nutrition/customFoodsClient";
+import { customFoodsApiFetch } from "../../../lib/nutrition/customFoodsApiFetch";
 import {
   submitFoodCorrection,
   type FoodCorrectionInput,
@@ -221,7 +225,8 @@ export function useBarcodeLogging({
         onSave={async (payload: CreateCustomFoodPayload) => {
           if (!authedUserId) return;
           try {
-            await createCustomFood(supabase, authedUserId, payload);
+            // ENG-1420 — server-enforced create (plausibility gate).
+            await createCustomFood(customFoodsApiFetch, authedUserId, payload);
             try {
               track(AnalyticsEvents.custom_food_created, {
                 hasBrand: Boolean(payload.brand),
@@ -255,6 +260,10 @@ export function useBarcodeLogging({
               });
             }
           } catch (err) {
+            // ENG-1420 — let the dialog own the implausible-macros override
+            // affordance (re-throw so its handleSave catches it); only toast
+            // genuinely unexpected failures here.
+            if (isImplausibleMacrosError(err)) throw err;
             toast.error(
               err instanceof Error ? err.message : "Couldn't save custom food",
             );

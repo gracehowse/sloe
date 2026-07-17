@@ -68,6 +68,10 @@ import {
 // density table + conversion math; only converts when density is known.
 import { isVolumeUnit, volumeToGrams } from "../../../lib/nutrition/volumeToGrams";
 import { parseIngredientLine } from "../../../lib/recipe-ingredients/parseIngredientLine";
+// ENG-1420 — recognise the server's implausible-macros rejection so the form
+// can reveal the "save anyway" acknowledgement instead of failing silently.
+import { isImplausibleMacrosError } from "../../../lib/nutrition/customFoodsClient";
+import { ImplausibleMacrosNotice } from "./ImplausibleMacrosNotice";
 
 /** F-156 PR-1 — localStorage key for the user's last-chosen macro basis. */
 const MACRO_BASIS_STORAGE_KEY = "suppr.customFood.macroBasis.v1";
@@ -87,6 +91,12 @@ export type CreateCustomFoodPayload = {
   saturatedFatG?: number;
   sodiumMg?: number;
   barcode?: string;
+  /**
+   * ENG-1420 — set when the user ticked "these numbers are correct — save
+   * anyway" after the server flagged the macros implausible. Forwarded to
+   * `createCustomFood` so the server records the override.
+   */
+  acknowledgeImplausible?: boolean;
 };
 
 export type CreateCustomFoodDialogProps = {
@@ -153,6 +163,12 @@ export function CreateCustomFoodDialog({
   const [barcode, setBarcode] = useState("");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // ENG-1420 — flipped true when the server rejects the macros as implausible
+  // (HTTP 422). Reveals the "save anyway" acknowledgement below the macro grid;
+  // clears itself when the user edits any core macro (they're fixing the
+  // numbers) so a corrected entry re-submits cleanly without the override.
+  const [implausibleBlocked, setImplausibleBlocked] = useState(false);
+  const [acknowledgeImplausible, setAcknowledgeImplausible] = useState(false);
   // F-156 PR-1 — macro basis the user is currently entering values in.
   const [macroBasis, setMacroBasis] = useState<MacroBasis>("per_100g");
   const [conversionNotice, setConversionNotice] = useState<string | null>(null);
@@ -273,11 +289,22 @@ export function CreateCustomFoodDialog({
     setScanLoading(false);
     setScanError(null);
     setScanWarning(null);
+    // ENG-1420 — a fresh open never carries a prior session's override state.
+    setImplausibleBlocked(false);
+    setAcknowledgeImplausible(false);
     if (conversionNoticeTimeoutRef.current) {
       clearTimeout(conversionNoticeTimeoutRef.current);
       conversionNoticeTimeoutRef.current = null;
     }
   }, [open, initialFood, initialName, initialBarcode]);
+
+  // ENG-1420 — editing any core macro clears the implausible block + the
+  // acknowledgement: the user is correcting the numbers, so the next Save
+  // should re-run the gate fresh rather than silently carry the override.
+  useEffect(() => {
+    setImplausibleBlocked(false);
+    setAcknowledgeImplausible(false);
+  }, [caloriesText, proteinText, carbsText, fatText]);
 
   // Cleanup timer on unmount.
   useEffect(() => {
@@ -560,8 +587,20 @@ export function CreateCustomFoodDialog({
       if (satFatText.trim()) payload.saturatedFatG = toNumber(satFatText);
       if (sodiumText.trim()) payload.sodiumMg = toNumber(sodiumText);
       if (barcodeParsed.ok && barcodeParsed.value) payload.barcode = barcodeParsed.value;
+      // ENG-1420 — only after the user ticked "save anyway" do we ask the
+      // server to bypass a failing plausibility gate.
+      if (acknowledgeImplausible) payload.acknowledgeImplausible = true;
       await onSave(payload);
       onOpenChange(false);
+    } catch (err) {
+      // ENG-1420 — the server rejected the macros as implausible (422): keep
+      // the dialog open and reveal the acknowledgement instead of closing.
+      // Any other failure propagates unchanged.
+      if (isImplausibleMacrosError(err)) {
+        setImplausibleBlocked(true);
+        return;
+      }
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -1046,13 +1085,27 @@ export function CreateCustomFoodDialog({
               </div>
             )}
           </div>
+
+          {/* ENG-1420 — server-side plausibility gate. When the create route
+              rejects the macros (422), the notice reveals a "save anyway"
+              acknowledgement so an intentional override is distinguishable from
+              an unguarded gap. */}
+          <ImplausibleMacrosNotice
+            open={implausibleBlocked}
+            acknowledged={acknowledgeImplausible}
+            onAcknowledgedChange={setAcknowledgeImplausible}
+          />
         </div>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!canSave} aria-disabled={!canSave}>
+          <Button
+            onClick={handleSave}
+            disabled={!canSave || (implausibleBlocked && !acknowledgeImplausible)}
+            aria-disabled={!canSave || (implausibleBlocked && !acknowledgeImplausible)}
+          >
             {saving ? "Saving…" : isEditing ? "Save changes" : "Save food"}
           </Button>
         </DialogFooter>

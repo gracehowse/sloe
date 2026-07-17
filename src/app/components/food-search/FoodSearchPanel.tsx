@@ -78,6 +78,7 @@ import {
   searchCustomFoods,
   updateCustomFood,
 } from "../../../lib/nutrition/customFoodsClient";
+import { customFoodsApiFetch } from "../../../lib/nutrition/customFoodsApiFetch";
 import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
@@ -1506,11 +1507,10 @@ export function FoodSearchPanel({
   const handleCreateCustomFood = useCallback(
     async (payload: CreateCustomFoodPayload) => {
       if (!customEnabled || !supabase || !userId) return;
-      const created = await createCustomFood(
-        supabase as Parameters<typeof createCustomFood>[0],
-        userId,
-        payload,
-      );
+      // ENG-1420 — write goes through the server-enforced /api/custom-foods
+      // route (plausibility gate). An implausible-macros rejection propagates
+      // to the dialog's handleSave, which reveals the "save anyway" override.
+      const created = await createCustomFood(customFoodsApiFetch, userId, payload);
       try {
         track(AnalyticsEvents.custom_food_created, {
           hasBrand: Boolean(created.brand),
